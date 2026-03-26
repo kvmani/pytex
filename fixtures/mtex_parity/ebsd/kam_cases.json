@@ -1,0 +1,16 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "ebsd_parity_fixture.m",
+  "tolerance": 1e-8,
+  "case": {
+    "point_group": "1",
+    "euler_convention": "bunge",
+    "grid_shape": [2, 2],
+    "coordinates": [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+    "angles_deg": [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0], [6.0, 0.0, 0.0]],
+    "expected_order1_mean": [[3.0, 3.0], [3.0, 3.0]],
+    "expected_order2_mean": [[4.0, 2.6666666666666665], [2.6666666666666665, 4.0]],
+    "expected_threshold3_mean": [[2.0, 2.0], [2.0, 2.0]],
+    "expected_order1_max": [[4.0, 4.0], [4.0, 4.0]]
+  }
+}

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+  <rect width="1180" height="620" fill="#fcfbf7"/>
+  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">Disorientation And Fundamental Region</text>
+  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Orientation-space reduction differs from direction-sector reduction: the goal is to choose a canonical or minimum-angle representative among symmetry-equivalent orientation differences.
+  </text>
+
+  <rect x="56" y="122" width="454" height="396" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="608" y="122" width="516" height="396" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+
+  <text x="90" y="162" font-size="25" font-family="Georgia, serif" fill="#21402c">Misorientation orbit</text>
+  <g transform="translate(284,324)">
+    <circle cx="0" cy="0" r="110" fill="none" stroke="#d9dfe6" stroke-width="2"/>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="84" y2="-68" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="104" y2="22" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-86" y2="64" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="94" y="-74" font-size="18" font-family="Georgia, serif" fill="#8f301e">Δ₁</text>
+    <text x="112" y="34" font-size="18" font-family="Georgia, serif" fill="#21402c">Δ₂</text>
+    <text x="-126" y="76" font-size="18" font-family="Georgia, serif" fill="#17324a">Δ₃</text>
+    <text x="-22" y="142" font-size="18" font-family="Georgia, serif" fill="#313a43">equivalent candidates</text>
+  </g>
+
+  <text x="642" y="162" font-size="25" font-family="Georgia, serif" fill="#17324a">Current PyTex reduction posture</text>
+  <g transform="translate(866,326)">
+    <polygon points="-140,-82 40,-128 158,-12 86,116 -96,128 -168,10" fill="#eef5fb" stroke="#7aa0c0" stroke-width="2.5"/>
+    <text x="-50" y="-144" font-size="18" font-family="Georgia, serif" fill="#17324a">schematic fundamental region</text>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="50" y2="-34" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="58" y="-36" font-size="18" font-family="Georgia, serif" fill="#8f301e">chosen representative</text>
+  </g>
+
+  <text x="676" y="476" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Foundational implementation: enumerate symmetry-equivalent candidates and choose the representative closest to the reference orientation.
+  </text>
+  <text x="676" y="504" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Future refinement: exact polyhedral boundaries for every intended crystal class.
+  </text>
+
+  <line x1="510" y1="324" x2="608" y2="324" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="526" y="302" font-size="18" font-family="Georgia, serif" fill="#223241">minimum-angle selection</text>
+</svg>

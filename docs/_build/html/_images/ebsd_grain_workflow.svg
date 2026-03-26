@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1160" height="600" viewBox="0 0 1160 600">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#243140"/>
+    </marker>
+  </defs>
+  <rect width="1160" height="600" fill="#fbfaf6"/>
+  <text x="44" y="54" font-size="30" font-family="Georgia, serif" fill="#17212b">Regular-Grid EBSD Grain Workflow</text>
+  <text x="44" y="86" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#52606d">
+    A teaching-oriented view of the current PyTex Phase 3 workflow surface for grain reconstruction, GROD, and boundary extraction.
+  </text>
+
+  <rect x="56" y="150" width="190" height="130" rx="20" fill="#dbead6" stroke="#4d7a58" stroke-width="2.5"/>
+  <text x="84" y="188" font-size="24" font-family="Georgia, serif" fill="#183223">CrystalMap</text>
+  <text x="84" y="222" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#183223">grid shape</text>
+  <text x="84" y="246" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#183223">step sizes</text>
+  <text x="84" y="270" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#183223">orientations</text>
+
+  <rect x="292" y="150" width="200" height="130" rx="20" fill="#f7e8c2" stroke="#ab8b2d" stroke-width="2.5"/>
+  <text x="322" y="188" font-size="24" font-family="Georgia, serif" fill="#4b390a">Neighbors</text>
+  <text x="322" y="222" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4b390a">4 or 8 connectivity</text>
+  <text x="322" y="246" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4b390a">order-aware pairs</text>
+
+  <rect x="538" y="150" width="220" height="130" rx="20" fill="#e4edf8" stroke="#3b6890" stroke-width="2.5"/>
+  <text x="566" y="188" font-size="24" font-family="Georgia, serif" fill="#16324a">Segmentation</text>
+  <text x="566" y="222" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#16324a">misorientation threshold</text>
+  <text x="566" y="246" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#16324a">connected components</text>
+
+  <rect x="808" y="112" width="286" height="106" rx="20" fill="#f9dfdf" stroke="#9c5252" stroke-width="2.5"/>
+  <text x="840" y="150" font-size="24" font-family="Georgia, serif" fill="#4a1f1f">GROD</text>
+  <text x="840" y="182" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4a1f1f">representative measured</text>
+  <text x="840" y="204" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4a1f1f">orientation per grain</text>
+
+  <rect x="808" y="246" width="286" height="106" rx="20" fill="#dde8f0" stroke="#4d6978" stroke-width="2.5"/>
+  <text x="840" y="284" font-size="24" font-family="Georgia, serif" fill="#23323b">Boundaries</text>
+  <text x="840" y="316" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#23323b">segment length from spacing</text>
+  <text x="840" y="338" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#23323b">low or high-angle classes</text>
+
+  <rect x="808" y="380" width="286" height="106" rx="20" fill="#eadfc8" stroke="#8e7040" stroke-width="2.5"/>
+  <text x="840" y="418" font-size="24" font-family="Georgia, serif" fill="#4d3610">Cleanup</text>
+  <text x="840" y="450" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4d3610">merge small grains</text>
+  <text x="840" y="472" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4d3610">deterministic tie-breaking</text>
+
+  <line x1="246" y1="215" x2="292" y2="215" stroke="#243140" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="492" y1="215" x2="538" y2="215" stroke="#243140" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="758" y1="178" x2="808" y2="165" stroke="#243140" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="758" y1="215" x2="808" y2="299" stroke="#243140" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="758" y1="252" x2="808" y2="433" stroke="#243140" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <rect x="56" y="360" width="702" height="160" rx="22" fill="#fffdf9" stroke="#d0c7b8" stroke-width="1.5"/>
+  <text x="82" y="396" font-size="22" font-family="Georgia, serif" fill="#17212b">Interpretation Notes</text>
+  <text x="82" y="430" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#374151">
+    1. Segmentation threshold fixes grain topology and therefore influences GROD, boundaries, and cleanup.
+  </text>
+  <text x="82" y="456" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#374151">
+    2. GROD is a within-grain metric; boundary extraction is an inter-grain metric.
+  </text>
+  <text x="82" y="482" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#374151">
+    3. Cleanup is a post-processing policy and should stay explicit in reproducible workflows.
+  </text>
+</svg>

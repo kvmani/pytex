@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+  <rect width="1180" height="620" fill="#fcfbf7"/>
+  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">Kinematic Spot Projection</text>
+  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Minimal Phase 4b workflow: reciprocal vector → outgoing direction → detector coordinate.
+  </text>
+
+  <rect x="54" y="132" width="260" height="320" rx="22" fill="#dcebd9" stroke="#4c7a57" stroke-width="2.5"/>
+  <rect x="460" y="132" width="260" height="320" rx="22" fill="#f6e9c5" stroke="#a88a2f" stroke-width="2.5"/>
+  <rect x="866" y="132" width="260" height="320" rx="22" fill="#e4edf8" stroke="#396890" stroke-width="2.5"/>
+
+  <text x="90" y="174" font-size="25" font-family="Georgia, serif" fill="#21402c">Reciprocal vector</text>
+  <text x="90" y="210" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#21402c">from Miller indices</text>
+  <text x="90" y="236" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#21402c">and reciprocal basis</text>
+  <text x="90" y="286" font-size="34" font-family="Georgia, serif" fill="#21402c">g</text>
+
+  <text x="486" y="174" font-size="25" font-family="Georgia, serif" fill="#5b4308">Outgoing direction</text>
+  <text x="486" y="210" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#5b4308">k_out = k_in + g</text>
+  <text x="486" y="236" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#5b4308">accept if excitation error is small</text>
+  <line x1="580" y1="320" x2="664" y2="250" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <text x="900" y="174" font-size="25" font-family="Georgia, serif" fill="#17324a">Detector hit</text>
+  <text x="900" y="210" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#17324a">project outgoing ray onto plane</text>
+  <rect x="934" y="246" width="120" height="144" fill="#dceaf6" stroke="#4e7ea7" stroke-width="2.5"/>
+  <circle cx="996" cy="314" r="6" fill="#c13d5a"/>
+  <text x="1010" y="320" font-size="18" font-family="Georgia, serif" fill="#17324a">spot</text>
+
+  <line x1="314" y1="292" x2="460" y2="292" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="720" y1="292" x2="866" y2="292" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <text x="214" y="510" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Current foundation keeps geometry explicit; intensity modeling remains ahead.
+  </text>
+</svg>

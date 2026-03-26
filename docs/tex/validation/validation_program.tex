@@ -1,0 +1,39 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{PyTex Validation Program}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Validation Philosophy}
+
+Scientific software should not rely on informal trust. PyTex validation is structured around layered evidence:
+
+\begin{itemize}
+  \item unit tests for invariants,
+  \item numerical regression tests,
+  \item MTEX parity tracking,
+  \item interoperability checks,
+  \item documentation and figure integrity checks.
+\end{itemize}
+
+\section{MTEX Baseline}
+
+Relevant public MTEX tests and examples form the minimum baseline for overlapping functionality. PyTex records this traceability in the parity matrix maintained in the repository documentation.
+
+\section{Beyond MTEX}
+
+PyTex must also validate areas that are central to its own architecture:
+
+\begin{itemize}
+  \item provenance retention,
+  \item explicit frame normalization,
+  \item adapter boundary correctness,
+  \item documentation and asset completeness.
+\end{itemize}
+
+\end{document}

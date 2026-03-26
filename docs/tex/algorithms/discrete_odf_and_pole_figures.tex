@@ -1,0 +1,56 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Discrete ODF and Pole-Figure Foundations in PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scope}
+
+The current PyTex texture layer implements the foundational algorithms needed before full inversion and harmonic reconstruction:
+
+\begin{itemize}
+  \item pole-figure synthesis from orientation sets,
+  \item inverse-pole-figure synthesis from orientation sets,
+  \item kernel-weighted ODF evaluation,
+  \item volume-fraction queries around a reference orientation.
+\end{itemize}
+
+\section{Pole-Figure Construction}
+
+Given a pole normal in the crystal frame and an orientation set $\{g_i\}$, the corresponding specimen directions are obtained by applying each orientation to the pole family. The current implementation uses explicit crystal-symmetry expansion of the pole family and stores the resulting specimen directions together with their weights.
+
+\section{ODF Evaluation}
+
+PyTex currently treats the ODF as a weighted orientation set together with an angular kernel. This is a foundational representation rather than a final inversion framework. Two kernels are presently supported:
+
+\begin{itemize}
+  \item a halfwidth-calibrated cosine-power kernel exposed as \texttt{de\_la\_vallee\_poussin},
+  \item a von Mises--Fisher style kernel.
+\end{itemize}
+
+\section{Current Limits}
+
+Full harmonic ODF expansion, experimental PF inversion, and rigorous kernel normalization on $SO(3)$ remain future work. The current representation is deliberately explicit and testable so later algorithms can be layered on top of a stable semantic core.
+
+\section{Normative References}
+
+\begin{thebibliography}{9}
+\bibitem{bunge}
+H.-J. Bunge,
+\textit{Texture Analysis in Materials Science: Mathematical Methods},
+Butterworths, 1969.
+DOI: \url{https://doi.org/10.1016/C2013-0-11769-2}.
+
+\bibitem{fisher}
+R. A. Fisher,
+``Dispersion on a Sphere'',
+\textit{Proceedings of the Royal Society A}, 217(1130), 1953, 295--305.
+DOI: \url{https://doi.org/10.1098/rspa.1953.0064}.
+\end{thebibliography}
+
+\end{document}

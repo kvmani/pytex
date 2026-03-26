@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+  <rect width="1180" height="620" fill="#fcfbf7"/>
+  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">Zone Axis And Ewald Geometry</text>
+  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Teaching geometry: reciprocal vectors in the zone satisfy z · g = 0, and diffracting candidates lie close to the Ewald sphere condition.
+  </text>
+
+  <rect x="58" y="118" width="520" height="420" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="620" y="118" width="500" height="420" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+
+  <text x="92" y="158" font-size="26" font-family="Georgia, serif" fill="#21402c">Zone axis view</text>
+  <g transform="translate(312,336)">
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="0" y2="-126" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="10" y="-134" font-size="22" font-family="Georgia, serif" fill="#17324a">z</text>
+    <line x1="0" y1="0" x2="110" y2="0" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-96" y2="54" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="118" y="8" font-size="20" font-family="Georgia, serif" fill="#8f301e">g₁</text>
+    <text x="-132" y="60" font-size="20" font-family="Georgia, serif" fill="#21402c">g₂</text>
+    <text x="-72" y="124" font-size="18" font-family="Georgia, serif" fill="#313a43">reciprocal vectors in the zone plane</text>
+  </g>
+
+  <text x="654" y="158" font-size="26" font-family="Georgia, serif" fill="#17324a">Ewald-style selection</text>
+  <g transform="translate(866,338)">
+    <circle cx="0" cy="0" r="138" fill="none" stroke="#7aa0c0" stroke-width="2.5"/>
+    <circle cx="-138" cy="0" r="4" fill="#1f2937"/>
+    <line x1="-138" y1="0" x2="0" y2="0" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="96" y2="-68" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="-90" y="-14" font-size="20" font-family="Georgia, serif" fill="#17324a">k_in</text>
+    <text x="104" y="-74" font-size="20" font-family="Georgia, serif" fill="#8f301e">k_out</text>
+    <line x1="-138" y1="0" x2="-42" y2="-68" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="-94" y="-86" font-size="20" font-family="Georgia, serif" fill="#5b4308">g</text>
+    <text x="-38" y="168" font-size="18" font-family="Georgia, serif" fill="#313a43">small excitation error ⇒ accepted spot</text>
+  </g>
+</svg>

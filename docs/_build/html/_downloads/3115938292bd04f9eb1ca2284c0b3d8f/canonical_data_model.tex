@@ -1,0 +1,46 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Canonical Data Model for PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Motivation}
+
+Texture and diffraction workflows are sensitive to convention drift. A vector without an attached frame, a plane without a declared reciprocal basis, or an orientation without explicit crystal and specimen frames is scientifically under-specified.
+
+\section{Design}
+
+PyTex therefore defines stable primitives for:
+
+\begin{itemize}
+  \item reference frames and transforms,
+  \item symmetry specifications,
+  \item lattice and basis representations,
+  \item rotations, orientations, and misorientations,
+  \item texture-domain containers,
+  \item EBSD-domain containers,
+  \item diffraction-domain containers,
+  \item provenance records.
+\end{itemize}
+
+\section{Canonical Convention}
+
+The initial canonical convention set is:
+
+\begin{align*}
+  \text{handedness} &= \text{right-handed}, \\
+  q &= (w, x, y, z), \\
+  \text{Euler labels} &= (\phi_1, \Phi, \phi_2), \\
+  \mathbf{a}_i^\ast \cdot \mathbf{a}_j &= \delta_{ij}.
+\end{align*}
+
+\section{Implementation Rule}
+
+Public APIs should not expose raw arrays where domain types are needed to recover scientific meaning.
+
+\end{document}

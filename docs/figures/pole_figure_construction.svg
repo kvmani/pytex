@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="620" viewBox="0 0 1040 620">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#1f2937"/>
+    </marker>
+  </defs>
+  <rect width="1040" height="620" fill="#fbfbf8"/>
+  <text x="40" y="50" font-size="30" font-family="Georgia, serif" fill="#111827">Pole-Figure Construction in PyTex</text>
+  <text x="40" y="84" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#374151">
+    Crystal pole family -&gt; orientation map -&gt; specimen directions -&gt; projected PF coordinates
+  </text>
+
+  <rect x="70" y="170" width="220" height="120" rx="18" fill="#ddebd3" stroke="#4b7f52" stroke-width="2"/>
+  <text x="102" y="212" font-size="24" font-family="Georgia, serif" fill="#17321e">Crystal pole</text>
+  <text x="102" y="248" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#17321e">plane normal in crystal frame</text>
+
+  <rect x="405" y="170" width="220" height="120" rx="18" fill="#f5e8bf" stroke="#aa8b27" stroke-width="2"/>
+  <text x="455" y="212" font-size="24" font-family="Georgia, serif" fill="#473608">Orientation</text>
+  <text x="430" y="248" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#473608">g maps crystal -&gt; specimen</text>
+
+  <rect x="740" y="170" width="220" height="120" rx="18" fill="#d7e7f5" stroke="#356891" stroke-width="2"/>
+  <text x="785" y="212" font-size="24" font-family="Georgia, serif" fill="#112d44">Specimen pole</text>
+  <text x="770" y="248" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#112d44">direction on unit sphere</text>
+
+  <line x1="290" y1="230" x2="405" y2="230" stroke="#1f2937" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="625" y1="230" x2="740" y2="230" stroke="#1f2937" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <circle cx="850" cy="440" r="110" fill="none" stroke="#6c8fba" stroke-width="4"/>
+  <line x1="850" y1="440" x2="910" y2="360" stroke="#c13c3c" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="918" y="355" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#111827">projected specimen pole</text>
+  <text x="742" y="575" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#4b5563">
+    Foundation for PF and IPF synthesis; projection can be equal-area or stereographic.
+  </text>
+</svg>

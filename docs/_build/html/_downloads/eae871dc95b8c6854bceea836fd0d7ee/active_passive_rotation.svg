@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="600" viewBox="0 0 1180 600">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+  <rect width="1180" height="600" fill="#fcfbf7"/>
+  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">Active Versus Passive Rotation Views</text>
+  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Same mathematics, different language. PyTex keeps frame-mapping language primary because it is usually safer at scientific workflow boundaries.
+  </text>
+
+  <rect x="50" y="116" width="500" height="408" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="628" y="116" width="500" height="408" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+
+  <text x="82" y="156" font-size="26" font-family="Georgia, serif" fill="#21402c">Active view</text>
+  <text x="660" y="156" font-size="26" font-family="Georgia, serif" fill="#17324a">Passive / frame-mapping view</text>
+
+  <g transform="translate(262,338)">
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="116" y2="0" stroke="#8aa2bb" stroke-width="3" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="-116" stroke="#8aa2bb" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="126" y="6" font-size="20" font-family="Georgia, serif" fill="#51667b">x</text>
+    <text x="10" y="-124" font-size="20" font-family="Georgia, serif" fill="#51667b">z</text>
+    <line x1="0" y1="0" x2="104" y2="-60" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="114" y="-64" font-size="21" font-family="Georgia, serif" fill="#8f301e">v</text>
+    <path d="M22 -6 A58 58 0 0 1 54 -34" fill="none" stroke="#c14d39" stroke-width="4"/>
+    <text x="62" y="-30" font-size="21" font-family="Georgia, serif" fill="#8f301e">rotate v</text>
+  </g>
+  <text x="102" y="446" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    In active language, the vector moves while the reference basis is held fixed.
+  </text>
+
+  <g transform="translate(840,338)">
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="116" y2="0" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="-116" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="126" y="6" font-size="20" font-family="Georgia, serif" fill="#21402c">a</text>
+    <text x="10" y="-124" font-size="20" font-family="Georgia, serif" fill="#21402c">c</text>
+    <line x1="0" y1="0" x2="104" y2="-58" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="50" y2="-104" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="112" y="-58" font-size="20" font-family="Georgia, serif" fill="#17324a">x</text>
+    <text x="58" y="-114" font-size="20" font-family="Georgia, serif" fill="#17324a">z</text>
+    <text x="-22" y="144" font-size="20" font-family="Georgia, serif" fill="#17324a">basis is re-expressed</text>
+  </g>
+  <text x="680" y="446" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    In passive language, the object is fixed and the basis relationship changes.
+  </text>
+
+  <rect x="242" y="472" width="698" height="76" rx="14" fill="#f3efe3" stroke="#d1c19b" stroke-width="1.2"/>
+  <text x="268" y="505" font-size="20" font-family="Georgia, serif" fill="#313a43">
+    PyTex documentation prefers the passive / mapping description for Orientation because it keeps source and target frames explicit.
+  </text>
+  <text x="268" y="533" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4f5a65">
+    The active view remains mathematically valid, but it is easier to misread when crystal and specimen frames are already in play.
+  </text>
+</svg>

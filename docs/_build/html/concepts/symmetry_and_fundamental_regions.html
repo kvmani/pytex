@@ -1,0 +1,560 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Quickstart" href="../tutorials/quickstart.html"><link rel="prev" title="Orientation And Texture" href="orientation_texture.html">
+
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>Symmetry Reduction And Fundamental Regions - PyTex</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">PyTex</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">PyTex</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Symmetry Reduction And Fundamental Regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#g-mathrm-proj">[
+g_{\mathrm{proj}}</a></li>
+<li class="toctree-l1"><a class="reference internal" href="#delta-mathrm-dis">[
+\Delta_{\mathrm{dis}}</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Workflows</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_kam.html">EBSD: Kernel-Average Misorientation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_grains.html">EBSD: Grain Segmentation And GROD</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/index.html">Theory Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../validation/index.html">Validation</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/concepts/symmetry_and_fundamental_regions.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="symmetry-reduction-and-fundamental-regions">
+<h1>Symmetry Reduction And Fundamental Regions<a class="headerlink" href="#symmetry-reduction-and-fundamental-regions" title="Link to this heading">¶</a></h1>
+<p>This page explains one of the most important scientific contracts in PyTex: how symmetry acts on different geometric objects, and how those objects are reduced into a single representative.</p>
+<p>This is foundational because the same idea appears in multiple places:</p>
+<ul class="simple">
+<li><p>inverse pole figures</p></li>
+<li><p>orientation canonicalization</p></li>
+<li><p>misorientation and disorientation</p></li>
+<li><p>EBSD neighborhood metrics</p></li>
+<li><p>diffraction family grouping</p></li>
+</ul>
+<p>If this reduction is vague, the rest of the library becomes vague with it.</p>
+<section id="one-phrase-three-different-problems">
+<h2>One Phrase, Three Different Problems<a class="headerlink" href="#one-phrase-three-different-problems" title="Link to this heading">¶</a></h2>
+<p>People often say “reduce by symmetry” as if there were only one mathematical operation. In practice, PyTex has to distinguish at least three different reduction problems:</p>
+<ol class="arabic simple">
+<li><p>reduce a <strong>crystal direction</strong> into an inverse-pole-figure sector</p></li>
+<li><p>reduce an <strong>orientation</strong> into one symmetry-equivalent representative</p></li>
+<li><p>reduce a <strong>misorientation</strong> into a disorientation</p></li>
+</ol>
+<p>These are related, but they do not live in the same geometric space and they are not reduced by the same rule.</p>
+</section>
+<section id="the-basic-objects">
+<h2>The Basic Objects<a class="headerlink" href="#the-basic-objects" title="Link to this heading">¶</a></h2>
+<p>Let</p>
+<p>[
+g : \text{crystal} \rightarrow \text{specimen}
+]</p>
+<p>denote an orientation. In PyTex, <code class="docutils literal notranslate"><span class="pre">Orientation</span></code> stores this mapping explicitly through a rotation together with crystal and specimen frames.</p>
+<p>Let</p>
+<p>[
+\mathbf{d}_c \in S^2
+]</p>
+<p>be a unit crystal direction. Under the orientation, it maps into specimen space as</p>
+<p>[
+\mathbf{d}_s = g \mathbf{d}_c.
+]</p>
+<p>Let</p>
+<p>[
+\mathcal{C} = {c_1, c_2, \dots}
+]</p>
+<p>be the crystal symmetry group, and optionally</p>
+<p>[
+\mathcal{S} = {s_1, s_2, \dots}
+]</p>
+<p>be a specimen symmetry group.</p>
+<p>Then symmetry-equivalent orientations are</p>
+<p>[
+g’ = s g c,
+\qquad s \in \mathcal{S}, ; c \in \mathcal{C}.
+]</p>
+<p>Symmetry-equivalent directions are</p>
+<p>[
+\mathbf{d}’_c = c \mathbf{d}_c,
+\qquad c \in \mathcal{C}.
+]</p>
+<p>That difference matters: directions are acted on directly in direction space, while orientations are acted on through left and right multiplication in orientation space.</p>
+<p><img alt="Direction Orbit And Sector Reduction" src="../_images/symmetry_direction_orbit.svg" /></p>
+</section>
+<section id="direction-reduction-ipf-sectors">
+<h2>Direction Reduction: IPF Sectors<a class="headerlink" href="#direction-reduction-ipf-sectors" title="Link to this heading">¶</a></h2>
+<p>Inverse pole figure reduction is a direction-space problem.</p>
+<p>Given one crystal direction (\mathbf{d}_c), PyTex:</p>
+<ol class="arabic simple">
+<li><p>generates its symmetry orbit ({c \mathbf{d}_c})</p></li>
+<li><p>optionally applies antipodal identification when the workflow treats (\mathbf{d}) and (-\mathbf{d}) as equivalent</p></li>
+<li><p>selects the representative that lies in the supported fundamental sector for the crystal class</p></li>
+</ol>
+<p>This produces a unique representative direction</p>
+<p>[
+\mathbf{d}<em>{\mathrm{FR}} \in \mathcal{F}</em>{\mathrm{dir}}.
+]</p>
+<p>For cubic symmetry, this sector is often drawn as the triangle bounded by ([001]), ([101]), and ([111]). For other supported classes, the wedge geometry changes, but the reduction logic is the same: the representative must lie inside the declared sector.</p>
+<section id="what-pytex-means-by-in-sector">
+<h3>What PyTex Means By “In Sector”<a class="headerlink" href="#what-pytex-means-by-in-sector" title="Link to this heading">¶</a></h3>
+<p>PyTex does not treat the sector as a vague picture. Each supported point group has:</p>
+<ul class="simple">
+<li><p>explicit sector vertices</p></li>
+<li><p>explicit inequalities or wedge tests</p></li>
+<li><p>deterministic tie-breaking when a direction lies on a symmetry boundary</p></li>
+</ul>
+<p>That is why the direction reduction can be used safely for IPF construction and IPF color keys.</p>
+<p><img alt="IPF Sector Geometry" src="../_images/ipf_sector_geometry_detailed.svg" /></p>
+</section>
+</section>
+<section id="orientation-reduction-symmetry-orbits-in-orientation-space">
+<h2>Orientation Reduction: Symmetry Orbits In Orientation Space<a class="headerlink" href="#orientation-reduction-symmetry-orbits-in-orientation-space" title="Link to this heading">¶</a></h2>
+<p>Orientation reduction is not a direction-space problem. The object being reduced is the orientation (g) itself.</p>
+<p>The orbit is</p>
+<p>[
+\mathcal{O}(g) = {s g c ; | ; s \in \mathcal{S},; c \in \mathcal{C}}.
+]</p>
+<p>The question is not “which pole lies in the triangle?” but rather:</p>
+<p>[
+\text{which element of } \mathcal{O}(g) \text{ should be the stable representative?}
+]</p>
+<p>PyTex now answers that in two different modes.</p>
+<section id="mode-1-exact-orbit-reduction-to-the-dirichlet-type-region">
+<h3>Mode 1: Exact Orbit Reduction To The Dirichlet-Type Region<a class="headerlink" href="#mode-1-exact-orbit-reduction-to-the-dirichlet-type-region" title="Link to this heading">¶</a></h3>
+<p>When no explicit reference orientation is supplied, PyTex reduces the full symmetry orbit exactly in the unit-quaternion hemisphere.</p>
+<p>Let the orientation be represented by a unit quaternion (q), with the sign convention fixed to the upper hemisphere:</p>
+<p>[
+q \sim -q,
+\qquad
+q_0 \ge 0.
+]</p>
+<p>For crystal symmetry (\mathcal{C}), PyTex forms the right-action orbit</p>
+<p>[
+\mathcal{O}(q) = { q \cdot c ; | ; c \in \mathcal{C} },
+]</p>
+<p>canonicalizes each representative back into the upper hemisphere, and then selects the representative with maximal scalar part (q_0). Because</p>
+<p>[
+\omega = 2 \arccos(q_0)
+]</p>
+<p>on that hemisphere, this is exactly the same as choosing the symmetry-equivalent representative with minimum rotation angle to the identity.</p>
+<p>The tie surfaces are the bisectors where two orbit representatives have the same scalar part. In that sense, the implemented PyTex orientation region is a Dirichlet-type fundamental region in quaternion space, and therefore an exact symmetry-orbit reduction rule for the supported proper point groups already present in <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code>.</p>
+<p>PyTex still applies a deterministic lexicographic tie-break after the exact minimum-angle criterion so boundary cases remain reproducible in floating-point arithmetic.</p>
+<p><img alt="Exact SO(3) Region Selection" src="../_images/so3_dirichlet_fundamental_region.svg" /></p>
+</section>
+<section id="mode-2-reference-aware-projection">
+<h3>Mode 2: Reference-Aware Projection<a class="headerlink" href="#mode-2-reference-aware-projection" title="Link to this heading">¶</a></h3>
+<p>When a workflow supplies a reference orientation (g_{\mathrm{ref}}), PyTex instead chooses the symmetry-equivalent representative minimizing the unsymmetrized orientation distance to that reference:</p>
+</section>
+</section>
+</section>
+<section id="g-mathrm-proj">
+<h1>[
+g_{\mathrm{proj}}<a class="headerlink" href="#g-mathrm-proj" title="Link to this heading">¶</a></h1>
+<p>\arg\min_{g’ \in \mathcal{O}(g)}
+d(g’, g_{\mathrm{ref}}).
+]</p>
+<p>This is useful for workflows where “closest to the reference” is scientifically more meaningful than “first by deterministic ordering”.</p>
+<p><img alt="Orientation Orbit And Deterministic Representative" src="../_images/orientation_orbit_reduction.svg" /></p>
+<section id="misorientation-and-disorientation">
+<h2>Misorientation And Disorientation<a class="headerlink" href="#misorientation-and-disorientation" title="Link to this heading">¶</a></h2>
+<p>Given two orientations (g_1) and (g_2), the base misorientation is</p>
+<p>[
+\Delta = g_2 g_1^{-1}.
+]</p>
+<p>Under symmetry, PyTex considers the orbit</p>
+<p>[
+\Delta’ = c_L , \Delta , c_R^{T},
+\qquad
+c_L \in \mathcal{C}_L,;
+c_R \in \mathcal{C}_R.
+]</p>
+<p>The disorientation is then the representative with minimum rotation angle:</p>
+</section>
+</section>
+<section id="delta-mathrm-dis">
+<h1>[
+\Delta_{\mathrm{dis}}<a class="headerlink" href="#delta-mathrm-dis" title="Link to this heading">¶</a></h1>
+<p>\arg\min_{\Delta’} \omega(\Delta’).
+]</p>
+<p>This is the quantity used in symmetry-aware misorientation distance, EBSD KAM, GROD, and grain-boundary misorientation.</p>
+<p>The key point is that disorientation is a <strong>minimum-angle reduction of a misorientation orbit</strong>, not the same thing as IPF-sector reduction and not the same thing as orientation canonicalization.</p>
+<p><img alt="Disorientation Geometry" src="../_images/disorientation_orbit_geometry.svg" /></p>
+<section id="what-is-exact-and-what-is-still-approximate">
+<h2>What Is Exact, And What Is Still Approximate<a class="headerlink" href="#what-is-exact-and-what-is-still-approximate" title="Link to this heading">¶</a></h2>
+<p>PyTex is already explicit and deterministic here, but the current implementation boundary should be stated carefully.</p>
+<section id="implemented">
+<h3>Implemented<a class="headerlink" href="#implemented" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>explicit symmetry orbits for directions, orientations, and misorientations</p></li>
+<li><p>class-specific direction-space sector reduction for supported point groups</p></li>
+<li><p>exact minimum-angle orientation-space representative selection through a Dirichlet-type orbit rule in quaternion space</p></li>
+<li><p>deterministic tie-breaking and explicit <code class="docutils literal notranslate"><span class="pre">project_to_exact_fundamental_region()</span></code> / <code class="docutils literal notranslate"><span class="pre">is_in_fundamental_region()</span></code> APIs</p></li>
+<li><p>minimum-angle disorientation under crystal symmetry</p></li>
+</ul>
+</section>
+<section id="still-ahead">
+<h3>Still Ahead<a class="headerlink" href="#still-ahead" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p>proof-level boundary catalogs for each crystal class written as closed-form inequality sets</p></li>
+<li><p>broader external-baseline parity at the level of exact class-specific boundary fixtures</p></li>
+<li><p>richer region visualizations and class-by-class boundary tables in the public docs</p></li>
+</ul>
+<p>So the current PyTex behavior is no longer only a heuristic canonicalization. It is an exact orbit-reduction rule for the supported symmetry classes, with the remaining gap being boundary catalogs and external parity at the class-by-class polyhedral-description level.</p>
+</section>
+</section>
+<section id="how-this-connects-to-the-code">
+<h2>How This Connects To The Code<a class="headerlink" href="#how-this-connects-to-the-code" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">SymmetrySpec.reduce_vector_to_fundamental_sector()</span></code> handles direction reduction</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Orientation.project_to_exact_fundamental_region()</span></code> handles exact symmetry-orbit reduction in orientation space</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Orientation.project_to_fundamental_region()</span></code> remains as the stable convenience alias</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Orientation.fundamental_region_key()</span></code> exposes the deterministic ordering surface</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Misorientation.disorientation()</span></code> handles minimum-angle misorientation reduction</p></li>
+</ul>
+<p>Those APIs are separated on purpose because they solve different mathematical problems.</p>
+</section>
+<section id="related-material">
+<h2>Related Material<a class="headerlink" href="#related-material" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="orientation_texture.html"><span class="doc">Orientation And Texture</span></a></p></li>
+<li><p><a class="reference download internal" download="" href="../_downloads/e99643c4b0fcc6a7da41c144f5a10894/fundamental_region_reduction.tex"><span class="xref download myst">../../tex/theory/fundamental_region_reduction.tex</span></a></p></li>
+<li><p><a class="reference download internal" download="" href="../_downloads/053eb4c10d4b3202f0383e9902eacf14/orientation_space_and_disorientation.tex"><span class="xref download myst">../../tex/theory/orientation_space_and_disorientation.tex</span></a></p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="../tutorials/quickstart.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Quickstart</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="orientation_texture.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Orientation And Texture</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Symmetry Reduction And Fundamental Regions</a><ul>
+<li><a class="reference internal" href="#one-phrase-three-different-problems">One Phrase, Three Different Problems</a></li>
+<li><a class="reference internal" href="#the-basic-objects">The Basic Objects</a></li>
+<li><a class="reference internal" href="#direction-reduction-ipf-sectors">Direction Reduction: IPF Sectors</a><ul>
+<li><a class="reference internal" href="#what-pytex-means-by-in-sector">What PyTex Means By “In Sector”</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#orientation-reduction-symmetry-orbits-in-orientation-space">Orientation Reduction: Symmetry Orbits In Orientation Space</a><ul>
+<li><a class="reference internal" href="#mode-1-exact-orbit-reduction-to-the-dirichlet-type-region">Mode 1: Exact Orbit Reduction To The Dirichlet-Type Region</a></li>
+<li><a class="reference internal" href="#mode-2-reference-aware-projection">Mode 2: Reference-Aware Projection</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#g-mathrm-proj">[
+g_{\mathrm{proj}}</a><ul>
+<li><a class="reference internal" href="#misorientation-and-disorientation">Misorientation And Disorientation</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#delta-mathrm-dis">[
+\Delta_{\mathrm{dis}}</a><ul>
+<li><a class="reference internal" href="#what-is-exact-and-what-is-still-approximate">What Is Exact, And What Is Still Approximate</a><ul>
+<li><a class="reference internal" href="#implemented">Implemented</a></li>
+<li><a class="reference internal" href="#still-ahead">Still Ahead</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#how-this-connects-to-the-code">How This Connects To The Code</a></li>
+<li><a class="reference internal" href="#related-material">Related Material</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=965fac30"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

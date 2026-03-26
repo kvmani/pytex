@@ -1,0 +1,24 @@
+\section{EBSD KAM Parameterization}
+
+PyTex currently implements kernel-average misorientation (KAM) on regular 2D grids with the MTEX-relevant controls needed for parity hardening.
+
+\subsection{Supported Parameters}
+
+\begin{itemize}
+  \item neighborhood order on square grids
+  \item optional misorientation threshold
+  \item mean or maximum aggregation
+  \item optional restriction to within-grain neighbors through a segmentation mask
+\end{itemize}
+
+\subsection{Neighborhood Policy}
+
+For square grids, PyTex currently interprets KAM order through cumulative Manhattan neighborhoods. This matches the parity-fixture assumptions used in the current validation suite.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item Only regular 2D grids are supported.
+  \item Hexagonal-grid neighborhood semantics are not implemented yet.
+  \item Confidence- or phase-aware KAM filtering is not implemented yet.
+\end{itemize}

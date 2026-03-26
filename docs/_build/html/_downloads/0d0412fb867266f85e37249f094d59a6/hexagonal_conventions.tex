@@ -1,0 +1,61 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Hexagonal and Trigonal Conventions in PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Purpose}
+
+Hexagonal and trigonal systems are a common source of avoidable confusion because internal coordinate storage, direct-space notation, reciprocal-space notation, and teaching conventions are often mixed without warning.
+
+\section{Canonical Policy}
+
+PyTex fixes the following rules:
+
+\begin{itemize}
+  \item Internal direct-space vectors use a three-component direct basis.
+  \item Internal reciprocal-space planes use a three-component reciprocal basis.
+  \item Four-index notation is an interface and documentation convention, not an internal storage requirement.
+\end{itemize}
+
+\section{Direction Mapping}
+
+For three-index direct-basis directions $[u\,v\,w]$, the four-index Weber form follows
+\begin{align*}
+  U &= \frac{2u - v}{3}, \\
+  V &= \frac{2v - u}{3}, \\
+  T &= -\frac{u + v}{3}, \\
+  W &= w,
+\end{align*}
+with $U + V + T = 0$.
+
+\section{Plane Mapping}
+
+For reciprocal-space planes, the Miller--Bravais redundancy is
+\[
+  i = -(h + k),
+\]
+so the four-index plane $(h\,k\,i\,l)$ is normalized internally to the three-component reciprocal-basis form $(h\,k\,l)$.
+
+\section{Normative References}
+
+\begin{thebibliography}{9}
+\bibitem{degraef2003}
+M. De Graef,
+\textit{Introduction to Conventional Transmission Electron Microscopy},
+Cambridge University Press, 2003.
+DOI: \url{https://doi.org/10.1017/CBO9780511615092}.
+
+\bibitem{ita}
+Th. Hahn (ed.),
+\textit{International Tables for Crystallography, Volume A: Space-Group Symmetry},
+IUCr / Springer.
+DOI: \url{https://doi.org/10.1107/97809553602060000100}.
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.ebsd_import_manifest",
+  "title": "PyTex EBSD Import Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "canonical_convention_set",
+    "created_at",
+    "source_system",
+    "source_file",
+    "phase_name",
+    "point_group",
+    "orientation_convention",
+    "angle_unit",
+    "crystal_frame",
+    "specimen_frame",
+    "metadata"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "pytex.ebsd_import_manifest"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "pytex_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "canonical_convention_set": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_system": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_file": {
+      "type": "string",
+      "minLength": 1
+    },
+    "phase_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "point_group": {
+      "type": "string",
+      "minLength": 1
+    },
+    "orientation_convention": {
+      "type": "string",
+      "minLength": 1
+    },
+    "angle_unit": {
+      "enum": ["degree", "radian"]
+    },
+    "crystal_frame": {
+      "$ref": "#/$defs/frame_declaration"
+    },
+    "specimen_frame": {
+      "$ref": "#/$defs/frame_declaration"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "frame_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "axis_1", "axis_2", "axis_3"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis_1": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis_2": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis_3": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

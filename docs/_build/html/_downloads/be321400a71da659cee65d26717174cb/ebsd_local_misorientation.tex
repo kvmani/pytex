@@ -1,0 +1,38 @@
+\section{EBSD Local Misorientation Foundations}
+
+This note records the initial PyTex definition of local misorientation on regular EBSD grids.
+
+\subsection{Scope}
+
+The current implementation supports:
+
+\begin{itemize}
+  \item regular two-dimensional grids with explicit grid shape metadata,
+  \item four- and eight-neighbor connectivity,
+  \item kernel-average misorientation (KAM) computed as the arithmetic mean of neighbor misorientation angles.
+\end{itemize}
+
+\subsection{Definition}
+
+For a measurement site $i$ with valid neighbor set $\mathcal{N}(i)$, PyTex currently defines
+
+\[
+\mathrm{KAM}(i) = \frac{1}{|\mathcal{N}(i)|} \sum_{j \in \mathcal{N}(i)} \omega(g_i, g_j),
+\]
+
+where $\omega(g_i, g_j)$ is the misorientation angle between orientations $g_i$ and $g_j$, optionally reduced by the active crystal symmetry.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item No thresholded KAM truncation is applied yet.
+  \item No confidence-index masking or phase filtering is implemented yet.
+  \item No grain-aware neighborhood filtering is implemented yet.
+\end{itemize}
+
+\subsection{Normative And Informative References}
+
+\begin{itemize}
+  \item Bunge, H.-J., \emph{Texture Analysis in Materials Science: Mathematical Methods}.
+  \item MTEX documentation and public test categories for EBSD neighborhood metrics, as a parity baseline rather than a semantic source of truth.
+\end{itemize}

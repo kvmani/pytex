@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="520" viewBox="0 0 960 520">
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 z" fill="#1f2937"/>
+    </marker>
+  </defs>
+  <rect width="960" height="520" fill="#f9fbfd"/>
+  <text x="40" y="50" font-size="28" font-family="Georgia, serif" fill="#111827">Diffraction Geometry</text>
+  <text x="40" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#374151">
+    Beam direction, specimen frame, detector frame, pattern center, and camera length must remain explicit
+  </text>
+
+  <circle cx="260" cy="280" r="60" fill="#e4eddc" stroke="#4b7f52" stroke-width="3"/>
+  <text x="210" y="287" font-size="22" font-family="Georgia, serif" fill="#17321e">Specimen</text>
+
+  <rect x="630" y="150" width="180" height="260" fill="#e2eef9" stroke="#356891" stroke-width="3"/>
+  <text x="660" y="135" font-size="22" font-family="Georgia, serif" fill="#112d44">Detector</text>
+  <circle cx="710" cy="250" r="7" fill="#c13c3c"/>
+  <text x="725" y="255" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#112d44">PC</text>
+
+  <line x1="340" y1="280" x2="630" y2="250" stroke="#1f2937" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="458" y="248" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#1f2937">beam direction</text>
+
+  <line x1="320" y1="340" x2="610" y2="340" stroke="#8b5cf6" stroke-width="3" stroke-dasharray="10 8"/>
+  <text x="410" y="330" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#5b3b9b">camera length</text>
+</svg>

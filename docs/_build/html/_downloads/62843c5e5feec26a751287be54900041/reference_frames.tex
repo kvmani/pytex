@@ -1,0 +1,37 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Reference Frames and Conventions in PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Frame Domains}
+
+PyTex distinguishes at least the following frame domains:
+
+\begin{itemize}
+  \item crystal frame,
+  \item specimen frame,
+  \item map frame,
+  \item detector frame,
+  \item laboratory frame,
+  \item reciprocal frame.
+\end{itemize}
+
+\section{Transform Semantics}
+
+A frame transform is represented as a proper rigid transform
+\[
+  \mathbf{x}_{\text{target}} = \mathbf{R}\mathbf{x}_{\text{source}} + \mathbf{t},
+\]
+with $\mathbf{R} \in SO(3)$ and explicit source and target frames.
+
+\section{Why This Matters}
+
+The same numerical vector can mean different things in different software environments. PyTex aims to force those meanings to remain inspectable.
+
+\end{document}

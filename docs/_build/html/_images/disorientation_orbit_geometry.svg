@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+  <rect width="1200" height="760" fill="#f8f5ec"/>
+  <text x="60" y="70" font-size="34" font-family="Georgia, serif" fill="#17324a">Disorientation as minimum-angle reduction</text>
+  <text x="60" y="108" font-size="20" font-family="Georgia, serif" fill="#35526b">Disorientation is built from a misorientation orbit, then reduced by minimum rotation angle.</text>
+
+  <rect x="90" y="170" width="420" height="180" rx="20" fill="#e6edf5" stroke="#4a708b"/>
+  <text x="118" y="212" font-size="24" font-family="Georgia, serif" fill="#24445c">Base misorientation</text>
+  <text x="118" y="256" font-size="22" font-family="Georgia, serif" fill="#24445c">Δ = g₂ g₁⁻¹</text>
+  <text x="118" y="298" font-size="18" font-family="Georgia, serif" fill="#24445c">This is one rotation before symmetry reduction.</text>
+
+  <ellipse cx="745" cy="390" rx="290" ry="190" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
+  <text x="640" y="620" font-size="22" font-family="Georgia, serif" fill="#17324a">misorientation orbit { c_L Δ c_Rᵀ }</text>
+
+  <circle cx="605" cy="360" r="11" fill="#8a6fb5"/>
+  <circle cx="685" cy="470" r="11" fill="#8a6fb5"/>
+  <circle cx="790" cy="320" r="11" fill="#8a6fb5"/>
+  <circle cx="890" cy="430" r="11" fill="#8a6fb5"/>
+  <circle cx="815" cy="525" r="11" fill="#8a6fb5"/>
+
+  <circle cx="720" cy="300" r="14" fill="#d94f2b"/>
+  <text x="742" y="295" font-size="20" font-family="Georgia, serif" fill="#7d2f1f">Δ_dis</text>
+  <text x="742" y="321" font-size="18" font-family="Georgia, serif" fill="#7d2f1f">minimum rotation angle</text>
+
+  <path d="M515 260 C575 260 598 274 640 292" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow3)"/>
+  <text x="525" y="238" font-size="19" font-family="Georgia, serif" fill="#17324a">generate symmetry orbit</text>
+
+  <rect x="875" y="175" width="255" height="145" rx="18" fill="#efe5c8" stroke="#b38a3a"/>
+  <text x="900" y="212" font-size="22" font-family="Georgia, serif" fill="#5b4215">Rule</text>
+  <text x="900" y="250" font-size="20" font-family="Georgia, serif" fill="#5b4215">choose arg min ω(Δ')</text>
+  <text x="900" y="286" font-size="17" font-family="Georgia, serif" fill="#5b4215">over all symmetry-equivalent</text>
+  <text x="900" y="310" font-size="17" font-family="Georgia, serif" fill="#5b4215">misorientation candidates</text>
+
+  <defs>
+    <marker id="arrow3" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#17324a"/>
+    </marker>
+  </defs>
+</svg>

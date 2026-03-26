@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="640" viewBox="0 0 1180 640">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+
+  <rect width="1180" height="640" fill="#fcfbf7"/>
+  <text x="44" y="54" font-size="30" font-family="Georgia, serif" fill="#18212b">Bunge Euler Geometry</text>
+  <text x="44" y="84" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Teaching-oriented ZXZ sequence used by the stable PyTex Bunge helper: first about z, then about x′, then about z′′.
+  </text>
+
+  <rect x="44" y="116" width="1092" height="470" rx="26" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+
+  <g transform="translate(208,366)">
+    <text x="-48" y="-170" font-size="24" font-family="Georgia, serif" fill="#20402c">Initial frame</text>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="120" y2="0" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-56" y2="-92" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="-128" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="130" y="8" font-size="22" font-family="Georgia, serif" fill="#21402c">x</text>
+    <text x="-86" y="-96" font-size="22" font-family="Georgia, serif" fill="#21402c">y</text>
+    <text x="10" y="-136" font-size="22" font-family="Georgia, serif" fill="#21402c">z</text>
+    <path d="M28 -10 A46 46 0 0 1 8 -52" fill="none" stroke="#b55239" stroke-width="4"/>
+    <text x="34" y="-58" font-size="22" font-family="Georgia, serif" fill="#8a2f1d">φ1</text>
+    <text x="-36" y="148" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56616d">rotate about original z</text>
+  </g>
+
+  <g transform="translate(590,366)">
+    <text x="-72" y="-170" font-size="24" font-family="Georgia, serif" fill="#5a4308">After φ1</text>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="102" y2="56" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-106" y2="-44" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="-128" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="112" y="66" font-size="22" font-family="Georgia, serif" fill="#5a4308">x′</text>
+    <text x="-140" y="-44" font-size="22" font-family="Georgia, serif" fill="#5a4308">y′</text>
+    <text x="10" y="-136" font-size="22" font-family="Georgia, serif" fill="#5a4308">z</text>
+    <path d="M18 -18 A52 52 0 0 1 84 24" fill="none" stroke="#3c6b9c" stroke-width="4"/>
+    <text x="78" y="-6" font-size="22" font-family="Georgia, serif" fill="#204c77">Φ</text>
+    <text x="-52" y="148" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56616d">tilt about intermediate x′</text>
+  </g>
+
+  <g transform="translate(968,366)">
+    <text x="-70" y="-170" font-size="24" font-family="Georgia, serif" fill="#17324a">After Φ and φ2</text>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="98" y2="26" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-36" y2="-100" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="54" y2="-112" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="108" y="34" font-size="22" font-family="Georgia, serif" fill="#17324a">x′′</text>
+    <text x="-66" y="-104" font-size="22" font-family="Georgia, serif" fill="#17324a">y′′</text>
+    <text x="64" y="-118" font-size="22" font-family="Georgia, serif" fill="#17324a">z′′</text>
+    <path d="M16 -32 A40 40 0 0 1 52 -12" fill="none" stroke="#c13d5a" stroke-width="4"/>
+    <text x="58" y="-12" font-size="22" font-family="Georgia, serif" fill="#a12743">φ2</text>
+    <text x="-52" y="148" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56616d">spin about final z′′</text>
+  </g>
+
+  <line x1="294" y1="364" x2="472" y2="364" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="678" y1="364" x2="852" y2="364" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <rect x="190" y="510" width="800" height="54" rx="12" fill="#f6f1e4" stroke="#d1c19b" stroke-width="1.2"/>
+  <text x="214" y="544" font-size="19" font-family="Georgia, serif" fill="#313a43">
+    Bunge sequence in compact form: R = Rz(φ1) Rx(Φ) Rz(φ2), with angle labels kept explicit in the public API.
+  </text>
+</svg>
