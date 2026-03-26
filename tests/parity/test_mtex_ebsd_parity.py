@@ -22,7 +22,9 @@ def _load_json(path: str) -> dict:
     return json.loads((REPO_ROOT / path).read_text(encoding="utf-8"))
 
 
-def _make_orientation_set(point_group: str, angles_deg: list[list[float]]) -> tuple[OrientationSet, ReferenceFrame]:
+def _make_orientation_set(
+    point_group: str, angles_deg: list[list[float]]
+) -> tuple[OrientationSet, ReferenceFrame]:
     crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
     specimen = ReferenceFrame("specimen", FrameDomain.SPECIMEN, ("x", "y", "z"), Handedness.RIGHT)
     symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal)
@@ -96,8 +98,14 @@ def test_grain_and_boundary_cases_match_pinned_values() -> None:
         symmetry_aware=False,
         connectivity=4,
     )
-    assert_allclose(segmentation.label_grid, np.asarray(case["expected_labels"], dtype=np.int64), atol=tolerance)
-    assert_allclose(segmentation.grod_map_deg(), np.asarray(case["expected_grod_deg"], dtype=np.float64), atol=tolerance)
+    assert_allclose(
+        segmentation.label_grid, np.asarray(case["expected_labels"], dtype=np.int64), atol=tolerance
+    )
+    assert_allclose(
+        segmentation.grod_map_deg(),
+        np.asarray(case["expected_grod_deg"], dtype=np.float64),
+        atol=tolerance,
+    )
     network = segmentation.boundary_network(high_angle_threshold_deg=15.0)
     assert network.count == case["expected_boundary_count"]
     assert network.high_angle_count == case["expected_high_angle_count"]
@@ -122,4 +130,6 @@ def test_cleanup_case_matches_pinned_values() -> None:
         connectivity=4,
     )
     merged = segmentation.merge_small_grains(min_size=2)
-    assert_allclose(merged.label_grid, np.asarray(case["expected_merged_label"], dtype=np.int64), atol=tolerance)
+    assert_allclose(
+        merged.label_grid, np.asarray(case["expected_merged_label"], dtype=np.int64), atol=tolerance
+    )

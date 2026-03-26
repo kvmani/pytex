@@ -56,3 +56,15 @@ Every importer must preserve:
 ## Structure Import Rule
 
 Crystallographic structure import, including CIF-backed construction, should terminate in canonical `Lattice`, `UnitCell`, and `Phase` objects rather than exposing source-library structure objects as the stable PyTex surface.
+
+## References
+
+### Normative
+
+- `../standards/notation_and_conventions.md`
+- `../standards/data_contracts_and_manifests.md`
+- `../standards/reference_canon.md`
+
+### Informative
+
+- `multimodal_characterization_foundation.md`

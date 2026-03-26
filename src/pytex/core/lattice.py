@@ -25,7 +25,7 @@ def _require_pymatgen() -> tuple[Any, Any]:
     return Structure, SpacegroupAnalyzer
 
 
-def _sites_from_pymatgen_structure(structure: Any) -> tuple["AtomicSite", ...]:
+def _sites_from_pymatgen_structure(structure: Any) -> tuple[AtomicSite, ...]:
     sites: list[AtomicSite] = []
     for site_index, site in enumerate(structure.sites, start=1):
         fractional_coordinates = np.asarray(site.frac_coords, dtype=np.float64)
@@ -99,12 +99,16 @@ class Lattice:
         *,
         crystal_frame: ReferenceFrame,
         provenance: ProvenanceRecord | None = None,
-    ) -> "Lattice":
+    ) -> Lattice:
         lengths = tuple(float(value) for value in pymatgen_lattice.abc)
         angles = tuple(float(value) for value in pymatgen_lattice.angles)
         return cls(
-            *lengths,
-            *angles,
+            a=lengths[0],
+            b=lengths[1],
+            c=lengths[2],
+            alpha_deg=angles[0],
+            beta_deg=angles[1],
+            gamma_deg=angles[2],
             crystal_frame=crystal_frame,
             provenance=provenance,
         )
@@ -182,7 +186,7 @@ class UnitCell:
         crystal_frame: ReferenceFrame,
         lattice: Lattice | None = None,
         provenance: ProvenanceRecord | None = None,
-    ) -> "UnitCell":
+    ) -> UnitCell:
         unit_cell_lattice = lattice or Lattice.from_pymatgen_lattice(
             structure.lattice,
             crystal_frame=crystal_frame,
@@ -239,9 +243,9 @@ class Phase:
         symprec: float = 1e-3,
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
-    ) -> "Phase":
-        _, SpacegroupAnalyzer = _require_pymatgen()
-        analyzer = SpacegroupAnalyzer(
+    ) -> Phase:
+        _, spacegroup_analyzer_cls = _require_pymatgen()
+        analyzer = spacegroup_analyzer_cls(
             structure,
             symprec=float(symprec),
             angle_tolerance=float(angle_tolerance),
@@ -285,10 +289,10 @@ class Phase:
         symprec: float = 1e-3,
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
-    ) -> "Phase":
-        Structure, _ = _require_pymatgen()
+    ) -> Phase:
+        structure_cls, _ = _require_pymatgen()
         cif_path = Path(path)
-        structure = Structure.from_file(str(cif_path))
+        structure = structure_cls.from_file(str(cif_path))
         if primitive:
             structure = structure.get_primitive_structure()
         record = provenance or ProvenanceRecord(
@@ -318,9 +322,9 @@ class Phase:
         symprec: float = 1e-3,
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
-    ) -> "Phase":
-        Structure, _ = _require_pymatgen()
-        structure = Structure.from_str(cif_text, fmt="cif")
+    ) -> Phase:
+        structure_cls, _ = _require_pymatgen()
+        structure = structure_cls.from_str(cif_text, fmt="cif")
         if primitive:
             structure = structure.get_primitive_structure()
         record = provenance or ProvenanceRecord(

@@ -37,3 +37,13 @@ Every major scientific note should separate these categories.
 ## Repository Rule
 
 Do not introduce a crystallographic convention, algorithm description, or notation mapping into the stable docs without at least one explicit reference.
+
+## References
+
+### Normative
+
+- `reference_canon.md`
+
+### Informative
+
+- `documentation_architecture.md`

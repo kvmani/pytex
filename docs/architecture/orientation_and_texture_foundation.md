@@ -28,3 +28,15 @@ This document records the current implementation posture for Phase 2.
 ## Why This Still Moves The Project Forward
 
 The current implementation fixes the shared semantics that later harmonic, inversion, EBSD, and plotting work will depend on. It is intentionally more concerned with explicit meaning and reproducibility than with fully optimized texture algorithms at this stage.
+
+## References
+
+### Normative
+
+- `canonical_data_model.md`
+- `../standards/reference_canon.md`
+
+### Informative
+
+- `../tex/theory/orientation_space_and_disorientation.tex`
+- `../tex/algorithms/discrete_odf_and_pole_figures.tex`

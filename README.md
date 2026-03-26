@@ -2,12 +2,12 @@
 
 PyTex is a GPL-compatible, pure-Python-first library for crystallographic texture and diffraction with a deliberate focus on materials-science research and teaching.
 
-The repository is being built around three non-negotiable foundations:
+The repository is being built around four non-negotiable foundations:
 
-- a canonical crystallographic data model for frames, symmetry, orientations, maps, and diffraction geometry
-- hybrid scientific documentation: Sphinx for the primary browsable/searchable docs surface, LaTeX for authoritative scientific notes, and SVG for canonical figures
+- a canonical crystallographic data model for frames, symmetry, orientations, maps, structure, and diffraction geometry
+- hybrid scientific documentation: Sphinx for the primary browsable and searchable docs surface, LaTeX for authoritative scientific notes, and SVG for canonical figures
 - MTEX-plus validation, where MTEX parity is the baseline and PyTex-specific interoperability and provenance checks extend beyond it
-- explicit normative-source hierarchy, so conventions are fixed from authoritative references and not re-litigated locally
+- explicit reference canon governance, so conventions are fixed from authoritative sources and not re-litigated locally
 
 ## Start Here
 
@@ -19,6 +19,7 @@ The repository is being built around three non-negotiable foundations:
 - `docs/architecture/canonical_data_model.md`
 - `docs/testing/strategy.md`
 - `docs/testing/mtex_parity_matrix.md`
+- `docs/testing/diffraction_validation_matrix.md`
 - `docs/roadmap/implementation_roadmap.md`
 - `docs/standards/notation_and_conventions.md`
 - `docs/standards/latex_and_figures.md`
@@ -28,21 +29,23 @@ The repository is being built around three non-negotiable foundations:
 - `docs/standards/hexagonal_and_trigonal_conventions.md`
 - `docs/standards/development_principles.md`
 - `docs/standards/data_contracts_and_manifests.md`
+- `docs/standards/reference_canon.md`
 
 ## Current Status
 
-The repository currently implements Phases 0 through 2 of the foundation roadmap:
+The repository is now best described as a strong foundation build rather than a pure scaffold:
 
 - modern Python packaging and CI skeleton
 - canonical core data structures under `src/pytex/`
 - documentation governance and hybrid scientific doc scaffold
-- validation strategy and MTEX parity matrix scaffold
+- validation strategy and explicit ledgers for texture, EBSD, and diffraction posture
 - baseline tests for the foundational data model
 - symmetry-aware orientation and disorientation foundations
 - PF/IPF containers, class-specific IPF sector reduction, and discrete kernel-based ODF foundations
-- minimal regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, and cleanup workflow foundations
+- regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and import-manifest workflow foundations
+- diffraction geometry, reciprocal-space primitives, kinematic spot simulation, reflection-family grouping, and local indexing candidate scaffolding
 
-Exact orientation-space fundamental-region polyhedra, harmonic ODF inversion, richer EBSD workflows, diffraction engines, and external-tool adapters are intentionally staged after this foundation so they do not invent conflicting conventions.
+Exact orientation-space polyhedra, harmonic ODF inversion, richer adapter validation, diffraction baselines, multimodal acquisition semantics, and phase-transformation foundations are intentionally staged after the current build so they do not invent conflicting conventions.
 
 ## Quick Start
 
@@ -51,15 +54,17 @@ Install the package in editable mode with development tools:
 ```bash
 python -m pip install -e '.[dev]'
 python scripts/check_repo_integrity.py
+ruff check .
+mypy src
 pytest
 ```
 
 Inspect the documentation inventory from the CLI:
 
 ```bash
-pytex info
-pytex docs inventory
-pytex core demo
+python -m pytex info
+python -m pytex docs inventory
+python -m pytex core demo
 ```
 
 ## Repository Layout
@@ -97,6 +102,14 @@ pytex/
 - Reuse proven projects such as ORIX, KikuchiPy, PyEBSDIndex, pymatgen, and diffsims through adapters instead of coupling the whole library to any single external representation.
 - Treat documentation, figures, and validation artifacts as product deliverables rather than release polish.
 - Keep research-grade depth and teaching-grade clarity in the same repository.
+- Broaden the foundations deliberately toward multimodal materials characterization without weakening the texture-led semantic core.
+
+## Current Hardening Priorities
+
+- Keep README, roadmap, CI, and validation ledgers synchronized with the actual repository state.
+- Extend the canonical model on paper before adding new stable APIs for space-group, acquisition, calibration, uncertainty, and transformation workflows.
+- Add non-MTEX validation doctrine for diffraction and structure-import semantics.
+- Preserve the current core-model clarity while expanding toward EBSD, XRD, neutron, TEM, and phase-transformation use cases.
 
 ## License
 

@@ -6,8 +6,7 @@ import numpy as np
 
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
-from pytex.core.orientation import Orientation
-from pytex.core.orientation import OrientationSet
+from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 
 
@@ -115,14 +114,19 @@ class GrainBoundaryNetwork:
     def grain_graph(self) -> GrainGraph:
         edge_groups: dict[tuple[int, int], list[tuple[int, GrainBoundarySegment]]] = {}
         for index, segment in enumerate(self.segments):
-            edge_key = tuple(sorted((segment.left_grain_id, segment.right_grain_id)))
+            left_grain_id, right_grain_id = sorted((segment.left_grain_id, segment.right_grain_id))
+            edge_key = (left_grain_id, right_grain_id)
             edge_groups.setdefault(edge_key, []).append((index, segment))
         edges: list[GrainGraphEdge] = []
         for edge_key, members in sorted(edge_groups.items()):
-            segment_indices = np.array([member_index for member_index, _ in members], dtype=np.int64)
+            segment_indices = np.array(
+                [member_index for member_index, _ in members], dtype=np.int64
+            )
             segments = [segment for _, segment in members]
             total_length = float(np.sum([segment.length for segment in segments]))
-            mean_misorientation = float(np.mean([segment.misorientation_deg for segment in segments]))
+            mean_misorientation = float(
+                np.mean([segment.misorientation_deg for segment in segments])
+            )
             high_angle_fraction = float(
                 np.mean(
                     [
@@ -142,7 +146,9 @@ class GrainBoundaryNetwork:
                     high_angle_fraction=high_angle_fraction,
                 )
             )
-        node_grain_ids = np.array([grain.grain_id for grain in self.segmentation.grains], dtype=np.int64)
+        node_grain_ids = np.array(
+            [grain.grain_id for grain in self.segmentation.grains], dtype=np.int64
+        )
         return GrainGraph(
             segmentation=self.segmentation,
             edges=tuple(edges),
@@ -165,7 +171,11 @@ class GrainGraphEdge:
     def __post_init__(self) -> None:
         if self.left_grain_id == self.right_grain_id:
             raise ValueError("GrainGraphEdge must connect distinct grains.")
-        object.__setattr__(self, "segment_indices", np.ascontiguousarray(np.asarray(self.segment_indices, dtype=np.int64)))
+        object.__setattr__(
+            self,
+            "segment_indices",
+            np.ascontiguousarray(np.asarray(self.segment_indices, dtype=np.int64)),
+        )
         if self.segment_indices.ndim != 1 or self.segment_indices.size == 0:
             raise ValueError("GrainGraphEdge.segment_indices must be a non-empty 1D array.")
         if self.total_length < 0.0:
@@ -262,6 +272,7 @@ class GrainSegmentation:
         return self.crystal_map.orientations[grain.reference_orientation_index]
 
     def grod_map_deg(self) -> np.ndarray:
+        rows, cols = self.crystal_map._require_regular_2d_grid()
         deviations = np.zeros(len(self.crystal_map.orientations), dtype=np.float64)
         for grain in self.grains:
             reference = self.reference_orientation(grain)
@@ -274,7 +285,7 @@ class GrainSegmentation:
                         )
                     )
                 )
-        deviations = np.ascontiguousarray(deviations.reshape(self.crystal_map.grid_shape))
+        deviations = np.ascontiguousarray(deviations.reshape((rows, cols)))
         deviations.setflags(write=False)
         return deviations
 
@@ -287,7 +298,9 @@ class GrainSegmentation:
         if min_misorientation_deg < 0.0:
             raise ValueError("min_misorientation_deg must be non-negative.")
         segments: list[GrainBoundarySegment] = []
-        for left_index, right_index in self.crystal_map.neighbor_pairs(connectivity=self.connectivity):
+        for left_index, right_index in self.crystal_map.neighbor_pairs(
+            connectivity=self.connectivity
+        ):
             left_label = int(self.labels[int(left_index)])
             right_label = int(self.labels[int(right_index)])
             if left_label == right_label:
@@ -364,7 +377,9 @@ class GrainSegmentation:
                 neighbor_labels = [int(labels[neighbor]) for neighbor in adjacency[index]]
                 if not neighbor_labels:
                     continue
-                unique, counts = np.unique(np.asarray(neighbor_labels, dtype=np.int64), return_counts=True)
+                unique, counts = np.unique(
+                    np.asarray(neighbor_labels, dtype=np.int64), return_counts=True
+                )
                 best_position = int(np.argmax(counts))
                 best_label = int(unique[best_position])
                 best_count = int(counts[best_position])
@@ -576,9 +591,12 @@ class CrystalMap:
         sums = np.zeros(len(self.orientations), dtype=np.float64)
         counts = np.zeros(len(self.orientations), dtype=np.int64)
         maxima = np.zeros(len(self.orientations), dtype=np.float64)
-        _, cols = self._require_regular_2d_grid()
+        rows, cols = self._require_regular_2d_grid()
         for left_index, right_index in neighbor_pairs:
-            if segmentation is not None and segmentation.labels[int(left_index)] != segmentation.labels[int(right_index)]:
+            if (
+                segmentation is not None
+                and segmentation.labels[int(left_index)] != segmentation.labels[int(right_index)]
+            ):
                 continue
             if connectivity == 8:
                 row_left, col_left = divmod(int(left_index), cols)
@@ -608,7 +626,7 @@ class CrystalMap:
                 )
         else:
             values = maxima
-        values = np.ascontiguousarray(values.reshape(self.grid_shape))
+        values = np.ascontiguousarray(values.reshape((rows, cols)))
         values.setflags(write=False)
         return values
 

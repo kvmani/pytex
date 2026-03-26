@@ -9,6 +9,7 @@ PyTex is intentionally opinionated about scientific semantics. Stable APIs are e
 :caption: Concepts
 
 concepts/core_model
+concepts/library_structure
 concepts/how_pytex_differs
 concepts/reference_frames_and_conventions
 concepts/orientation_texture
@@ -69,6 +70,7 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - Real EBSD workflow support for regular-grid neighbor relationships, KAM, grain segmentation, GROD, boundary extraction, cleanup, and import-manifest normalization contracts.
 - Core-model phase creation from crystallographic structures and CIF files.
 - Diffraction-domain containers for geometry and pattern data, ready for later algorithmic expansion.
+- Architecture-level doctrine for multimodal characterization and future phase-transformation work.
 
 ## Recommended Reading Path
 
@@ -92,6 +94,8 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - Canonical data model: `docs/architecture/canonical_data_model.md`
 - Orientation and texture foundation: `docs/architecture/orientation_and_texture_foundation.md`
 - EBSD foundation: `docs/architecture/ebsd_foundation.md`
+- Diffraction foundation: `docs/architecture/diffraction_foundation.md`
+- Multimodal characterization foundation: `docs/architecture/multimodal_characterization_foundation.md`
 - Validation program: `docs/testing/strategy.md`
 
 ![Reference Frames](../figures/reference_frames_vectors.svg)

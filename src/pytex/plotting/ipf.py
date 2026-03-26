@@ -39,7 +39,9 @@ class IPFColorKey:
         if self.crystal_symmetry.reference_frame is None:
             raise ValueError("IPFColorKey.crystal_symmetry must declare a crystal reference frame.")
         if self.crystal_symmetry.reference_frame.domain is not FrameDomain.CRYSTAL:
-            raise ValueError("IPFColorKey.crystal_symmetry must use a crystal-domain reference frame.")
+            raise ValueError(
+                "IPFColorKey.crystal_symmetry must use a crystal-domain reference frame."
+            )
         object.__setattr__(self, "specimen_direction", normalize_vector(self.specimen_direction))
         object.__setattr__(self, "color_vertices", _normalize_rgb_vertices(self.color_vertices))
         if not np.isfinite(self.saturation_gamma) or self.saturation_gamma <= 0.0:
@@ -55,7 +57,7 @@ class IPFColorKey:
             directions,
             antipodal=self.antipodal,
         )
-        sector_basis = np.column_stack(self.sector_vertices)
+        sector_basis = np.asarray(self.sector_vertices, dtype=np.float64).T
         barycentric = np.linalg.solve(sector_basis, reduced.T).T
         barycentric = np.clip(barycentric, 0.0, None)
         sums = barycentric.sum(axis=1, keepdims=True)

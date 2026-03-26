@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TypedDict
 
 import numpy as np
 
@@ -13,22 +14,29 @@ from pytex.core._arrays import (
 )
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import CrystalPlane
-from pytex.core.lattice import MillerIndex
-from pytex.core.lattice import Phase
-from pytex.core.lattice import ReciprocalLatticeVector
-from pytex.core.lattice import ZoneAxis
-from pytex.core.orientation import Orientation
-from pytex.core.orientation import OrientationSet
-from pytex.core.orientation import Rotation
+from pytex.core.lattice import CrystalPlane, MillerIndex, Phase, ReciprocalLatticeVector, ZoneAxis
+from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
-
 
 _DETECTOR_PROJECTION_EPSILON = 1e-12
 _BRAGG_ARGUMENT_TOLERANCE = 1e-12
 _ZONE_AXIS_ORTHOGONALITY_ATOL = 1e-8
 _ZONE_AXIS_ORTHOGONALITY_RTOL = 1e-8
 _INTENSITY_EPSILON = 1e-12
+
+
+class _CandidateSpot(TypedDict):
+    miller_indices: np.ndarray
+    reciprocal_vector_lab: np.ndarray
+    outgoing_direction_lab: np.ndarray
+    detector_coordinates_px: np.ndarray
+    excitation_error_inv_angstrom: float
+    intensity: float
+    two_theta_rad: float
+    azimuth_rad: float
+    on_detector: bool
+    accepted_by_mask: bool
+    family_key: tuple[float, ...]
 
 
 def _rotation_matrix_x(angle_rad: float) -> np.ndarray:
@@ -95,7 +103,7 @@ def _reflection_family_key(miller_indices: np.ndarray, phase: Phase) -> tuple[fl
     canonical_direction = phase.symmetry.canonicalize_vector(reciprocal_vector, antipodal=False)
     magnitude = float(np.linalg.norm(reciprocal_vector))
     rounded_direction = tuple(float(value) for value in np.round(canonical_direction, decimals=8))
-    return rounded_direction + (float(np.round(magnitude, decimals=8)),)
+    return (*rounded_direction, float(np.round(magnitude, decimals=8)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -160,7 +168,9 @@ class DiffractionGeometry:
             as_float_array(self.specimen_to_lab_matrix, shape=(3, 3)),
         )
         if not is_rotation_matrix(self.specimen_to_lab_matrix):
-            raise ValueError("DiffractionGeometry.specimen_to_lab_matrix must be a rotation matrix.")
+            raise ValueError(
+                "DiffractionGeometry.specimen_to_lab_matrix must be a rotation matrix."
+            )
         object.__setattr__(
             self,
             "detector_pixel_size_um",
@@ -274,7 +284,9 @@ class DiffractionGeometry:
         directions.setflags(write=False)
         return directions
 
-    def project_directions_to_detector_px(self, directions_lab: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    def project_directions_to_detector_px(
+        self, directions_lab: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray]:
         directions = normalize_vectors(directions_lab)
         basis = self.detector_basis_lab
         detector_normal = basis[:, 2]
@@ -356,12 +368,15 @@ class DetectorAcceptanceMask:
             raise ValueError("DetectorAcceptanceMask.inset_px must have length 2.")
         inset = tuple(float(value) for value in self.inset_px)
         if any(not np.isfinite(value) or value < 0.0 for value in inset):
-            raise ValueError("DetectorAcceptanceMask.inset_px values must be finite and non-negative.")
+            raise ValueError(
+                "DetectorAcceptanceMask.inset_px values must be finite and non-negative."
+            )
         if self.max_radius_px is not None:
             radius = float(self.max_radius_px)
             if not np.isfinite(radius) or radius <= 0.0:
                 raise ValueError(
-                    "DetectorAcceptanceMask.max_radius_px must be finite and positive when provided."
+                    "DetectorAcceptanceMask.max_radius_px must be finite "
+                    "and positive when provided."
                 )
             object.__setattr__(self, "max_radius_px", radius)
         object.__setattr__(self, "inset_px", inset)
@@ -384,7 +399,9 @@ class DetectorAcceptanceMask:
         if self.max_radius_px is None:
             accepted = within_rectangle
         else:
-            radial_distance = np.linalg.norm(coordinates - geometry.pattern_center_px[None, :], axis=1)
+            radial_distance = np.linalg.norm(
+                coordinates - geometry.pattern_center_px[None, :], axis=1
+            )
             accepted = within_rectangle & (radial_distance <= self.max_radius_px)
         accepted = np.ascontiguousarray(accepted)
         accepted.setflags(write=False)
@@ -414,9 +431,13 @@ class ReflectionFamily:
         object.__setattr__(self, "spot_indices", as_int_array(self.spot_indices, shape=(None,)))
         if self.multiplicity <= 0:
             raise ValueError("ReflectionFamily.multiplicity must be positive.")
-        if self.spot_indices.shape[0] == 0 or self.spot_indices.shape[0] > self.member_miller_indices.shape[0]:
+        if (
+            self.spot_indices.shape[0] == 0
+            or self.spot_indices.shape[0] > self.member_miller_indices.shape[0]
+        ):
             raise ValueError(
-                "ReflectionFamily.spot_indices must contain between one and the full set of member indices."
+                "ReflectionFamily.spot_indices must contain between one and "
+                "the full set of member indices."
             )
         if not np.isfinite(self.total_intensity) or self.total_intensity < 0.0:
             raise ValueError("ReflectionFamily.total_intensity must be finite and non-negative.")
@@ -466,7 +487,9 @@ class KinematicSpot:
         if not np.isfinite(self.azimuth_rad):
             raise ValueError("KinematicSpot.azimuth_rad must be finite.")
         if self.accepted_by_mask and not self.on_detector:
-            raise ValueError("KinematicSpot.accepted_by_mask cannot be true for off-detector spots.")
+            raise ValueError(
+                "KinematicSpot.accepted_by_mask cannot be true for off-detector spots."
+            )
         if self.on_detector:
             if np.any(~np.isfinite(self.detector_coordinates_px)):
                 raise ValueError(
@@ -506,7 +529,9 @@ class KinematicSimulation:
         use_only_accepted: bool = True,
     ) -> tuple[OrientationIndexingCandidate, ...]:
         if isinstance(candidate_orientations, OrientationSet):
-            orientations = [candidate_orientations[index] for index in range(len(candidate_orientations))]
+            orientations = [
+                candidate_orientations[index] for index in range(len(candidate_orientations))
+            ]
         else:
             orientations = list(candidate_orientations)
         candidates: list[OrientationIndexingCandidate] = []
@@ -594,7 +619,7 @@ class KinematicSimulation:
         current_half_width = float(search_half_width_deg)
         current_step = float(step_deg)
         for _ in range(iterations):
-            center_phi1, center_Phi, center_phi2 = best_orientation.rotation.to_bunge_euler()
+            center_phi1, center_phi, center_phi2 = best_orientation.rotation.to_bunge_euler()
             offsets = np.arange(
                 -current_half_width,
                 current_half_width + 0.5 * current_step,
@@ -603,12 +628,12 @@ class KinematicSimulation:
             )
             candidates: list[OrientationIndexingCandidate] = []
             for delta_phi1 in offsets:
-                for delta_Phi in offsets:
+                for delta_phi in offsets:
                     for delta_phi2 in offsets:
                         candidate_orientation = Orientation(
                             rotation=Rotation.from_bunge_euler(
                                 center_phi1 + float(delta_phi1),
-                                center_Phi + float(delta_Phi),
+                                center_phi + float(delta_phi),
                                 center_phi2 + float(delta_phi2),
                             ),
                             crystal_frame=initial_orientation.crystal_frame,
@@ -713,7 +738,11 @@ class KinematicSimulation:
                 )
         matched_cluster_ids = {match.observed_cluster_id for match in matches}
         unmatched_clusters = np.array(
-            [cluster.cluster_id for cluster in clusters if cluster.cluster_id not in matched_cluster_ids],
+            [
+                cluster.cluster_id
+                for cluster in clusters
+                if cluster.cluster_id not in matched_cluster_ids
+            ],
             dtype=np.int64,
         )
         unmatched_spots = np.array(sorted(remaining_spots), dtype=np.int64)
@@ -756,16 +785,14 @@ class KinematicSimulation:
             if orientation.crystal_frame != phase.crystal_frame:
                 raise ValueError("orientation.crystal_frame must match phase.crystal_frame.")
             if orientation.specimen_frame != geometry.specimen_frame:
-                raise ValueError(
-                    "orientation.specimen_frame must match geometry.specimen_frame."
-                )
+                raise ValueError("orientation.specimen_frame must match geometry.specimen_frame.")
         if zone_axis is not None and zone_axis.phase != phase:
             raise ValueError("zone_axis.phase must match phase.")
 
         incident = geometry.incident_wavevector_lab
         incident_magnitude = float(np.linalg.norm(incident))
         zone_axis_vector = zone_axis.unit_vector if zone_axis is not None else None
-        candidate_spots: list[dict[str, object]] = []
+        candidate_spots: list[_CandidateSpot] = []
         for miller_triplet in miller_array:
             miller_triplet_int = np.rint(miller_triplet).astype(np.int64)
             reciprocal_vector = ReciprocalLatticeVector.from_miller_index(
@@ -797,7 +824,11 @@ class KinematicSimulation:
                 outgoing_direction[None, :]
             )
             two_theta = float(
-                np.arccos(np.clip(float(np.dot(outgoing_direction, geometry.beam_direction_lab)), -1.0, 1.0))
+                np.arccos(
+                    np.clip(
+                        float(np.dot(outgoing_direction, geometry.beam_direction_lab)), -1.0, 1.0
+                    )
+                )
             )
             basis = geometry.detector_basis_lab
             azimuth = float(
@@ -816,7 +847,9 @@ class KinematicSimulation:
             if acceptance_mask is None:
                 accepted_by_mask = on_detector
             else:
-                accepted_by_mask = bool(acceptance_mask.contains(geometry, coordinates_px)[0]) and on_detector
+                accepted_by_mask = (
+                    bool(acceptance_mask.contains(geometry, coordinates_px)[0]) and on_detector
+                )
             intensity = _kinematic_intensity(
                 reciprocal_vector_lab,
                 excitation_error,
@@ -865,7 +898,9 @@ class KinematicSimulation:
             representative_indices.append(representative_index)
             reflection_families.append(
                 ReflectionFamily(
-                    representative_miller_indices=candidate_spots[representative_index]["miller_indices"],
+                    representative_miller_indices=candidate_spots[representative_index][
+                        "miller_indices"
+                    ],
                     member_miller_indices=np.stack(
                         [row["miller_indices"] for row in member_rows],
                         axis=0,
@@ -894,7 +929,9 @@ class KinematicSimulation:
         ]
         if deduplicate_families:
             selected = set(representative_indices)
-            spots = tuple(spot for index, spot in enumerate(instantiated_spots) if index in selected)
+            spots = tuple(
+                spot for index, spot in enumerate(instantiated_spots) if index in selected
+            )
             reflection_families = [
                 ReflectionFamily(
                     representative_miller_indices=family.representative_miller_indices,
@@ -963,7 +1000,9 @@ class DiffractionPattern:
     def azimuth_rad(self) -> np.ndarray:
         return self.geometry.azimuth_rad(self.coordinates_px)
 
-    def cluster_observations(self, *, max_distance_px: float = 5.0) -> tuple[DetectedSpotCluster, ...]:
+    def cluster_observations(
+        self, *, max_distance_px: float = 5.0
+    ) -> tuple[DetectedSpotCluster, ...]:
         if max_distance_px <= 0.0:
             raise ValueError("max_distance_px must be strictly positive.")
         unassigned = set(range(self.coordinates_px.shape[0]))
@@ -980,7 +1019,8 @@ class DiffractionPattern:
                 close_indices = [
                     candidate
                     for candidate in list(unassigned)
-                    if np.linalg.norm(self.coordinates_px[candidate] - current_coordinate) <= max_distance_px
+                    if np.linalg.norm(self.coordinates_px[candidate] - current_coordinate)
+                    <= max_distance_px
                 ]
                 for candidate in close_indices:
                     unassigned.remove(candidate)
@@ -1159,14 +1199,19 @@ class FamilyIndexingReport:
             raise ValueError("FamilyIndexingReport.simulated_spot_count must be positive.")
         if self.matched_spot_count < 0 or self.matched_spot_count > self.simulated_spot_count:
             raise ValueError(
-                "FamilyIndexingReport.matched_spot_count must lie between zero and simulated_spot_count."
+                "FamilyIndexingReport.matched_spot_count must lie between "
+                "zero and simulated_spot_count."
             )
         if not np.isfinite(self.matched_fraction) or not (0.0 <= self.matched_fraction <= 1.0):
             raise ValueError("FamilyIndexingReport.matched_fraction must lie in [0, 1].")
         if not np.isfinite(self.total_family_intensity) or self.total_family_intensity < 0.0:
-            raise ValueError("FamilyIndexingReport.total_family_intensity must be finite and non-negative.")
+            raise ValueError(
+                "FamilyIndexingReport.total_family_intensity must be finite and non-negative."
+            )
         if not np.isfinite(self.mean_residual_px) and self.matched_spot_count > 0:
-            raise ValueError("FamilyIndexingReport.mean_residual_px must be finite when matches exist.")
+            raise ValueError(
+                "FamilyIndexingReport.mean_residual_px must be finite when matches exist."
+            )
 
 
 @dataclass(frozen=True, slots=True)

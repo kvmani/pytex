@@ -76,3 +76,14 @@ The Sphinx layer should eventually expose top-level sections for:
 - Ordinary users should be able to browse and search the built HTML docs uniformly across Linux, Windows, and macOS.
 - The documentation toolchain should remain practical across Linux, Windows, and macOS for contributors.
 - Full PDF builds may require a documented TeX toolchain, but the public documentation system must not depend on users having LaTeX installed locally.
+
+## References
+
+### Normative
+
+- `reference_canon.md`
+- `scientific_citation_policy.md`
+
+### Informative
+
+- `../site/README.md`

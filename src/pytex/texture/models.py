@@ -34,9 +34,7 @@ class KernelSpec:
         if self.name == "de_la_vallee_poussin":
             denominator = np.cos(halfwidth_rad / 2.0)
             exponent = (
-                1.0
-                if np.isclose(denominator, 1.0)
-                else float(np.log(0.5) / np.log(denominator))
+                1.0 if np.isclose(denominator, 1.0) else float(np.log(0.5) / np.log(denominator))
             )
             exponent = max(1.0, exponent)
             values = np.clip(np.cos(angle_array / 2.0), 0.0, 1.0) ** exponent
@@ -104,8 +102,7 @@ class PoleFigure:
             else pole.normal[None, :]
         )
         specimen_directions = [
-            orientations.map_crystal_directions(plane_normal)
-            for plane_normal in plane_normals
+            orientations.map_crystal_directions(plane_normal) for plane_normal in plane_normals
         ]
         sample_directions = np.vstack(specimen_directions)
         repeated_intensities = np.tile(intensities, len(plane_normals))
@@ -274,9 +271,7 @@ class ODF:
     ) -> ODF:
         default_weights = np.ones(len(orientations), dtype=np.float64)
         weights_value = (
-            default_weights
-            if weights is None
-            else np.asarray(weights, dtype=np.float64)
+            default_weights if weights is None else np.asarray(weights, dtype=np.float64)
         )
         return cls(
             orientations=orientations,

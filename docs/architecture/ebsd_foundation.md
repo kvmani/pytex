@@ -27,3 +27,16 @@ This document records the initial Phase 3 implementation posture for EBSD-facing
 ## Why This Is The Right First Step
 
 Phase 3 should start by proving that EBSD workflows can reuse the same orientation, frame, and symmetry semantics already established in the core model. KAM on regular grids is a useful first boundary test because it requires neighbor topology, misorientation semantics, and map-shape metadata without forcing premature commitment to full grain-analysis infrastructure.
+
+## References
+
+### Normative
+
+- `canonical_data_model.md`
+- `multimodal_characterization_foundation.md`
+- `../standards/reference_canon.md`
+
+### Informative
+
+- `../tex/algorithms/ebsd_kam_parameterization.tex`
+- `../tex/algorithms/ebsd_grain_segmentation_and_grod.tex`

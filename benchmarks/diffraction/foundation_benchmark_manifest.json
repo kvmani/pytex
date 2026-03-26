@@ -1,0 +1,13 @@
+{
+  "schema_id": "pytex.benchmark_placeholder",
+  "schema_version": "0.1.0",
+  "category": "diffraction_foundation",
+  "status": "placeholder",
+  "workflows": [
+    "geometry_invariants",
+    "kinematic_spot_simulation",
+    "reflection_family_grouping",
+    "orientation_candidate_ranking"
+  ],
+  "notes": "Placeholder manifest until a stable benchmark schema and harness are introduced."
+}

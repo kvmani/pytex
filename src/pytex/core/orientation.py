@@ -100,9 +100,7 @@ def _canonical_quaternion_index(quaternions: np.ndarray) -> int:
     candidates = np.asarray(quaternions, dtype=np.float64)
     canonical = np.stack([_canonicalize_quaternion(candidate) for candidate in candidates], axis=0)
     rounded = np.round(canonical, decimals=12)
-    return int(
-        np.lexsort((rounded[:, 3], rounded[:, 2], rounded[:, 1], rounded[:, 0]))[-1]
-    )
+    return int(np.lexsort((rounded[:, 3], rounded[:, 2], rounded[:, 1], rounded[:, 0]))[-1])
 
 
 def _exact_fundamental_region_key_from_quaternion(
@@ -117,7 +115,9 @@ def _exact_fundamental_region_key_from_quaternion(
     )
 
 
-def _fundamental_region_key(rotation: Rotation, symmetry: SymmetrySpec | None) -> tuple[float, float, float, float]:
+def _fundamental_region_key(
+    rotation: Rotation, symmetry: SymmetrySpec | None
+) -> tuple[float, float, float, float]:
     del symmetry
     return _exact_fundamental_region_key_from_quaternion(rotation.quaternion)
 
@@ -453,9 +453,13 @@ class Orientation:
             index = int(min(range(len(keys)), key=keys.__getitem__))
         else:
             if reference_orientation.crystal_frame != self.crystal_frame:
-                raise ValueError("reference_orientation.crystal_frame must match Orientation.crystal_frame.")
+                raise ValueError(
+                    "reference_orientation.crystal_frame must match Orientation.crystal_frame."
+                )
             if reference_orientation.specimen_frame != self.specimen_frame:
-                raise ValueError("reference_orientation.specimen_frame must match Orientation.specimen_frame.")
+                raise ValueError(
+                    "reference_orientation.specimen_frame must match Orientation.specimen_frame."
+                )
             index = int(
                 np.argmin(
                     [
@@ -564,7 +568,9 @@ class Misorientation:
             [matrix_to_quaternion(candidate) for candidate in candidates],
             axis=0,
         )
-        keys = [_exact_fundamental_region_key_from_quaternion(quaternion) for quaternion in quaternions]
+        keys = [
+            _exact_fundamental_region_key_from_quaternion(quaternion) for quaternion in quaternions
+        ]
         index = int(min(range(len(keys)), key=keys.__getitem__))
         return Misorientation(
             rotation=Rotation(quaternions[index]),
@@ -758,7 +764,9 @@ class OrientationSet:
                 symmetry=self.symmetry,
                 phase=self.phase,
                 provenance=self.provenance,
-            ).canonicalize(specimen_symmetry=specimen_symmetry).rotation.quaternion
+            )
+            .canonicalize(specimen_symmetry=specimen_symmetry)
+            .rotation.quaternion
             for quaternion in self.quaternions
         ]
         return OrientationSet(
@@ -783,10 +791,12 @@ class OrientationSet:
                 symmetry=self.symmetry,
                 phase=self.phase,
                 provenance=self.provenance,
-            ).project_to_fundamental_region(
+            )
+            .project_to_fundamental_region(
                 specimen_symmetry=specimen_symmetry,
                 reference_orientation=reference_orientation,
-            ).rotation.quaternion
+            )
+            .rotation.quaternion
             for quaternion in self.quaternions
         ]
         return OrientationSet(

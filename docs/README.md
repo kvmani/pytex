@@ -1,7 +1,5 @@
 # Documentation Index
 
-This folder is the navigation hub for implementation-facing and science-facing documentation.
-
 ## Core Documents
 
 - `../mission.md`
@@ -15,11 +13,15 @@ This folder is the navigation hub for implementation-facing and science-facing d
 - `architecture/orientation_and_texture_foundation.md`
 - `architecture/ebsd_foundation.md`
 - `architecture/diffraction_foundation.md`
+- `architecture/multimodal_characterization_foundation.md`
+- `architecture/phase_transformation_foundation.md`
+- `architecture/repo_review_2026_foundation_audit.md`
 
 ## Testing And Validation
 
 - `testing/strategy.md`
 - `testing/mtex_parity_matrix.md`
+- `testing/diffraction_validation_matrix.md`
 
 ## Standards
 
@@ -32,6 +34,7 @@ This folder is the navigation hub for implementation-facing and science-facing d
 - `standards/hexagonal_and_trigonal_conventions.md`
 - `standards/development_principles.md`
 - `standards/data_contracts_and_manifests.md`
+- `standards/reference_canon.md`
 
 ## Development
 
@@ -85,4 +88,4 @@ This folder is the navigation hub for implementation-facing and science-facing d
 - Major scientific notes are authored canonically in LaTeX.
 - Scientific geometry diagrams are maintained canonically as SVG.
 - Stable features are not considered complete until docs, figures, examples, and validation notes all exist.
-- Foundational conventions, frame mappings, symmetry reductions, and major algorithms must be explained through prose, explicit mathematics, and annotated figures together.
+- Foundational conventions, frame mappings, symmetry reductions, major algorithms, and modality boundaries must be explained through prose, explicit mathematics, and annotated figures together.

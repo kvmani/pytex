@@ -1,10 +1,10 @@
 from pytex.ebsd.models import (
     CrystalMap,
     Grain,
-    GrainGraph,
-    GrainGraphEdge,
     GrainBoundaryNetwork,
     GrainBoundarySegment,
+    GrainGraph,
+    GrainGraphEdge,
     GrainSegmentation,
 )
 

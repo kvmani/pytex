@@ -83,10 +83,7 @@ class FrameTransform:
                 "Transform domains do not chain: previous.target must equal self.source."
             )
         rotation = self.rotation_matrix @ previous.rotation_matrix
-        translation = (
-            previous.translation_vector @ self.rotation_matrix.T
-            + self.translation_vector
-        )
+        translation = previous.translation_vector @ self.rotation_matrix.T + self.translation_vector
         return FrameTransform(
             source=previous.source,
             target=self.target,

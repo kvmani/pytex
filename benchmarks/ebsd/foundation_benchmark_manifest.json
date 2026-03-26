@@ -1,0 +1,14 @@
+{
+  "schema_id": "pytex.benchmark_placeholder",
+  "schema_version": "0.1.0",
+  "category": "ebsd_foundation",
+  "status": "placeholder",
+  "workflows": [
+    "kernel_average_misorientation",
+    "grain_segmentation",
+    "grod",
+    "boundary_extraction",
+    "cleanup"
+  ],
+  "notes": "Placeholder manifest until a stable benchmark schema and harness are introduced."
+}

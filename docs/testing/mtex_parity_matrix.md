@@ -20,7 +20,7 @@ Reference baseline:
 | Area | MTEX reference examples/tests | PyTex status | Notes |
 | --- | --- | --- | --- |
 | Euler/quaternion conversions | `check_eulerquat.m` | implemented | Baseline conversion and normalization tests present. |
-| Fundamental regions | `check_fundamentalRegion.m` | foundational | Exact orbit-based minimum-angle reduction is implemented for the supported proper point groups, but external fixture-backed parity and closed-form class-by-class boundary catalogs are still ahead. |
+| Fundamental regions | `check_fundamentalRegion.m` | foundational | Exact orbit-based minimum-angle reduction is implemented for the supported proper point groups, but broader class-by-class boundary catalogs are still ahead. |
 | Symmetry operators and SO(3) basics | `SO3FunTests`, `check_WignerD.m`, symmetry-related checks | foundational | Common proper point-group generation, exact orbit reduction, and symmetry actions are implemented; harmonic machinery and broader external parity are still planned. |
 | EBSD container basics | `check_ebsd.m` | implemented | `CrystalMap` plus fixture-backed regular-grid segmentation coverage are implemented. |
 | KAM-related behavior | `testKAM2.m` | implemented | Fixture-backed regular-grid KAM support covers order, threshold, and max-style aggregation. |
@@ -39,3 +39,14 @@ The following categories must exceed MTEX coverage:
 - adapter interoperability with ORIX, KikuchiPy, PyEBSDIndex, pymatgen, and diffsims
 - LaTeX/SVG documentation asset integrity
 - workflow-level reproducibility from CLI entry points
+
+## References
+
+### Normative
+
+- `strategy.md`
+- `../standards/reference_canon.md`
+
+### Informative
+
+- MTEX documentation: <https://mtex-toolbox.github.io/>

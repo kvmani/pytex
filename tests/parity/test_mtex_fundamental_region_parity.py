@@ -66,4 +66,6 @@ def test_orientation_projection_cases_match_pinned_projected_angles() -> None:
             symmetry=symmetry,
         )
         projected = orientation.project_to_fundamental_region(reference_orientation=identity)
-        assert_allclose(projected.rotation.angle_deg, case["expected_projected_angle_deg"], atol=tolerance)
+        assert_allclose(
+            projected.rotation.angle_deg, case["expected_projected_angle_deg"], atol=tolerance
+        )
