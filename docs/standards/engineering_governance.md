@@ -23,3 +23,14 @@
 - Do not depend on external scientific libraries for basic importability of the core package.
 - When a subsystem depends on a scientific convention, update the corresponding standards document in the same change.
 - When a change affects a foundational frame, symmetry, reduction, or algorithm contract, update the Sphinx concept or workflow page, the LaTeX note, and the canonical SVG figures in the same change.
+
+## References
+
+### Normative
+
+- `reference_canon.md`
+- `documentation_architecture.md`
+
+### Informative
+
+- `../architecture/overview.md`

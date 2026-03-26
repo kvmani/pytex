@@ -1,6 +1,6 @@
 from pytex.core.conventions import (
-    AngleConvention,
     PYTEX_CANONICAL_CONVENTIONS,
+    AngleConvention,
     BasisKind,
     ConventionSet,
     FrameDomain,

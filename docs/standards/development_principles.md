@@ -59,3 +59,14 @@ Before merging a substantial change, answer these questions explicitly:
 - Does it preserve provenance and source semantics?
 - Does it overstate validation or maturity?
 - Does it make the next stage easier rather than more ad hoc?
+
+## References
+
+### Normative
+
+- `engineering_governance.md`
+- `reference_canon.md`
+
+### Informative
+
+- `../roadmap/implementation_roadmap.md`

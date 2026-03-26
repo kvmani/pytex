@@ -7,8 +7,8 @@ from pytex.diffraction.models import (
     IndexingCandidate,
     KinematicSimulation,
     KinematicSpot,
-    OrientationRefinementResult,
     OrientationIndexingCandidate,
+    OrientationRefinementResult,
     ReflectionFamily,
     SpotAssignment,
 )

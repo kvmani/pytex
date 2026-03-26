@@ -32,3 +32,16 @@ This document records the initial Phase 4 implementation posture for diffraction
 ## Why This Is The Right First Step
 
 Phase 4 should begin by making reciprocal-space and detector-space semantics explicit before attempting simulation breadth. A usable diffraction foundation needs detector coordinates, wave-vector transfer, Bragg geometry, and clear frame ownership before more elaborate indexing or pattern-generation work can stay interpretable.
+
+## References
+
+### Normative
+
+- `canonical_data_model.md`
+- `multimodal_characterization_foundation.md`
+- `../standards/reference_canon.md`
+
+### Informative
+
+- `../tex/algorithms/diffraction_geometry_and_bragg_rings.tex`
+- `../tex/algorithms/reciprocal_space_and_kinematic_spots.tex`

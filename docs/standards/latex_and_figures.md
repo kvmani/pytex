@@ -37,3 +37,14 @@ At minimum, the repository must maintain canonical figures for:
 ## Completion Rule
 
 A major scientifically substantial stable feature is incomplete until its LaTeX note, SVG figures, tests, and validation note all exist.
+
+## References
+
+### Normative
+
+- `documentation_architecture.md`
+- `reference_canon.md`
+
+### Informative
+
+- `../tex/README.md`

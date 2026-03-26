@@ -12,7 +12,6 @@ from pytex.core.orientation import OrientationSet
 from pytex.core.symmetry import SymmetrySpec
 from pytex.ebsd import CrystalMap
 
-
 EBSD_IMPORT_MANIFEST_SCHEMA_ID = "pytex.ebsd_import_manifest"
 EBSD_IMPORT_MANIFEST_SCHEMA_VERSION = "1.0.0"
 _PYTEX_VERSION = "0.1.0.dev0"
@@ -23,7 +22,9 @@ def _iso8601_now() -> str:
     return datetime.now(tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def _validate_mapping_string(mapping: dict[str, Any], required_keys: tuple[str, ...], name: str) -> None:
+def _validate_mapping_string(
+    mapping: dict[str, Any], required_keys: tuple[str, ...], name: str
+) -> None:
     missing = [key for key in required_keys if key not in mapping]
     if missing:
         raise ValueError(f"{name} is missing required keys: {', '.join(missing)}")
@@ -56,9 +57,13 @@ class EBSDImportManifest:
             if not isinstance(value, str) or not value:
                 raise ValueError(f"EBSDImportManifest.{name} must be a non-empty string.")
         if self.schema_id != EBSD_IMPORT_MANIFEST_SCHEMA_ID:
-            raise ValueError("EBSDImportManifest.schema_id must match the stable schema identifier.")
+            raise ValueError(
+                "EBSDImportManifest.schema_id must match the stable schema identifier."
+            )
         if self.schema_version != EBSD_IMPORT_MANIFEST_SCHEMA_VERSION:
-            raise ValueError("EBSDImportManifest.schema_version must match the stable schema version.")
+            raise ValueError(
+                "EBSDImportManifest.schema_version must match the stable schema version."
+            )
         if self.angle_unit not in {"degree", "radian"}:
             raise ValueError("EBSDImportManifest.angle_unit must be either 'degree' or 'radian'.")
         _validate_mapping_string(
@@ -97,7 +102,9 @@ class EBSDImportManifest:
 
     def write_json(self, path: str | Path) -> Path:
         output_path = Path(path)
-        output_path.write_text(json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8")
+        output_path.write_text(
+            json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
+        )
         return output_path
 
     @classmethod
@@ -131,7 +138,8 @@ class NormalizedEBSDDataset:
         map_phase = self.crystal_map.orientations.phase
         if map_phase is not None and map_phase.name != self.manifest.phase_name:
             raise ValueError(
-                "NormalizedEBSDDataset manifest phase_name must match crystal_map.orientations.phase.name."
+                "NormalizedEBSDDataset manifest phase_name must match "
+                "crystal_map.orientations.phase.name."
             )
         object.__setattr__(self, "source_phase_aliases", tuple(self.source_phase_aliases))
 
@@ -231,7 +239,9 @@ def _payload_from_object(
         "phase_name": _extract_from_object_paths(obj, phase_name_paths),
     }
     angle_value = _extract_from_object_paths(obj, angle_paths)
-    angle_key = "euler_angles_deg" if any("deg" in path.lower() for path in angle_paths) else "euler_angles"
+    angle_key = (
+        "euler_angles_deg" if any("deg" in path.lower() for path in angle_paths) else "euler_angles"
+    )
     payload[angle_key] = angle_value
     optional_mappings = (
         ("grid_shape", grid_shape_paths),
@@ -260,16 +270,22 @@ def _normalize_vendor_payload(
     map_frame: ReferenceFrame,
     angle_key_candidates: tuple[str, ...],
 ) -> NormalizedEBSDDataset:
-    angle_key = next((candidate for candidate in angle_key_candidates if candidate in payload), None)
+    angle_key = next(
+        (candidate for candidate in angle_key_candidates if candidate in payload), None
+    )
     if angle_key is None:
-        raise ValueError(f"{source_system} payload must contain one of: {', '.join(angle_key_candidates)}")
+        raise ValueError(
+            f"{source_system} payload must contain one of: {', '.join(angle_key_candidates)}"
+        )
     if "coordinates" not in payload:
         raise ValueError(f"{source_system} payload must contain 'coordinates'.")
     if "point_group" not in payload or "phase_name" not in payload:
         raise ValueError(f"{source_system} payload must contain 'point_group' and 'phase_name'.")
     convention = str(payload.get("orientation_convention", "bunge"))
     degrees = str(payload.get("angle_unit", "degree")) == "degree"
-    symmetry = SymmetrySpec.from_point_group(str(payload["point_group"]), reference_frame=crystal_frame)
+    symmetry = SymmetrySpec.from_point_group(
+        str(payload["point_group"]), reference_frame=crystal_frame
+    )
     orientations = OrientationSet.from_euler_angles(
         payload[angle_key],
         crystal_frame=crystal_frame,

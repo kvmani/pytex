@@ -43,6 +43,7 @@ dev = [
 docs = [
   "furo>=2024.1.29",
   "myst-parser>=3.0",
+  "sphinxcontrib-mermaid>=1.0.0",
   "sphinx-copybutton>=0.5.2",
   "sphinx-design>=0.6",
   "sphinxcontrib-bibtex>=2.6",
@@ -82,3 +83,7 @@ python_version = "3.11"
 strict = true
 disable_error_code = ["type-arg"]
 packages = ["pytex"]
+
+[[tool.mypy.overrides]]
+module = ["pymatgen", "pymatgen.*"]
+ignore_missing_imports = true

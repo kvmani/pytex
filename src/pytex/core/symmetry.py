@@ -135,9 +135,7 @@ def _normalized_proper_point_group(point_group: str) -> str:
     proper_group = _PROPER_POINT_GROUP_ALIASES.get(normalized)
     if proper_group is None:
         supported = ", ".join(sorted(_PROPER_POINT_GROUP_ALIASES))
-        raise ValueError(
-            f"Unsupported point group '{point_group}'. Supported groups: {supported}"
-        )
+        raise ValueError(f"Unsupported point group '{point_group}'. Supported groups: {supported}")
     return proper_group
 
 
@@ -205,25 +203,21 @@ def _vector_in_fundamental_sector(vector: np.ndarray, proper_group: str) -> bool
             and z >= x - _SECTOR_TOLERANCE
         )
     if proper_group in {"4", "422"}:
+        return z >= -_SECTOR_TOLERANCE and y >= -_SECTOR_TOLERANCE and x >= y - _SECTOR_TOLERANCE
+    if proper_group in {"3", "32"}:
         return (
             z >= -_SECTOR_TOLERANCE
-            and y >= -_SECTOR_TOLERANCE
-            and x >= y - _SECTOR_TOLERANCE
-        )
-    if proper_group in {"3", "32"}:
-        return z >= -_SECTOR_TOLERANCE and x >= -_SECTOR_TOLERANCE and _angle_in_wedge(
-            vector, np.deg2rad(60.0)
+            and x >= -_SECTOR_TOLERANCE
+            and _angle_in_wedge(vector, np.deg2rad(60.0))
         )
     if proper_group in {"6", "622"}:
-        return z >= -_SECTOR_TOLERANCE and x >= -_SECTOR_TOLERANCE and _angle_in_wedge(
-            vector, np.deg2rad(30.0)
+        return (
+            z >= -_SECTOR_TOLERANCE
+            and x >= -_SECTOR_TOLERANCE
+            and _angle_in_wedge(vector, np.deg2rad(30.0))
         )
     if proper_group in {"2", "222"}:
-        return (
-            x >= -_SECTOR_TOLERANCE
-            and y >= -_SECTOR_TOLERANCE
-            and z >= -_SECTOR_TOLERANCE
-        )
+        return x >= -_SECTOR_TOLERANCE and y >= -_SECTOR_TOLERANCE and z >= -_SECTOR_TOLERANCE
     return z >= -_SECTOR_TOLERANCE
 
 
@@ -359,8 +353,7 @@ class SymmetrySpec:
     def canonicalize_vectors(self, vectors: ArrayLike, *, antipodal: bool = False) -> np.ndarray:
         normalized = normalize_vectors(vectors)
         canonicalized = [
-            self.canonicalize_vector(vector, antipodal=antipodal)
-            for vector in normalized
+            self.canonicalize_vector(vector, antipodal=antipodal) for vector in normalized
         ]
         array = np.stack(canonicalized, axis=0)
         array = np.ascontiguousarray(array)

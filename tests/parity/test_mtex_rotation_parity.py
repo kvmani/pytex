@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytex.core.orientation import quaternion_to_matrix
 from pytex import Rotation
+from pytex.core.orientation import quaternion_to_matrix
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 

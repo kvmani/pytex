@@ -6,6 +6,7 @@ PyTex validates stable work through multiple layers, not just unit tests. A feat
 
 - `docs/testing/strategy.md`
 - `docs/testing/mtex_parity_matrix.md`
+- `docs/testing/diffraction_validation_matrix.md`
 - [../../tex/validation/validation_program.tex](../../tex/validation/validation_program.tex)
 
 ## What Fixture-Backed Validation Means Here
@@ -30,13 +31,14 @@ This is important for two reasons:
 - vector and orientation projection into currently supported fundamental-region surfaces
 - regular-grid EBSD KAM, GROD, grain segmentation, boundary extraction, and cleanup workflows
 - stable EBSD import-manifest schema and normalization validation
+- detector geometry, reciprocal-space, and kinematic diffraction invariants
 
 ## Intentional Current Differences
 
 - exact polyhedral orientation-region boundaries are not yet implemented for every crystal class
 - parity fixtures are pinned and repo-local; future MTEX regeneration is prepared but not automated yet
 - adapter-backed import normalization remains a separate follow-on phase
-- diffraction does not yet have an external-baseline parity program analogous to MTEX-backed texture or EBSD validation
+- diffraction now has an explicit validation ledger, but its external-baseline program is still foundational rather than mature
 
 ## Reading The Validation Posture Correctly
 
@@ -49,14 +51,22 @@ Likewise, “foundational” in the parity ledger does not mean “hand-wavy.”
 - core model invariants are covered by automated unit tests
 - orientation and texture foundations have dedicated unit and parity tests
 - EBSD parity coverage now includes KAM, GROD, segmentation, boundaries, and cleanup on regular grids
+- diffraction foundations have dedicated unit tests and a separate validation ledger
 - exact orientation-space polyhedral parity remains ahead of the current build
 
 ## Related Material
 
 - `docs/testing/mtex_parity_matrix.md`
+- `docs/testing/diffraction_validation_matrix.md`
 - [../../tex/validation/validation_program.tex](../../tex/validation/validation_program.tex)
 
 ## References
+
+### Normative
+
+- `../../testing/strategy.md`
+- `../../testing/mtex_parity_matrix.md`
+- `../../testing/diffraction_validation_matrix.md`
 
 ### Informative
 

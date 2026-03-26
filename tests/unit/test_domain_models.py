@@ -5,7 +5,6 @@ import pytest
 
 from pytex.core import (
     CrystalPlane,
-    ReciprocalLatticeVector,
     FrameDomain,
     Handedness,
     Lattice,
@@ -14,17 +13,20 @@ from pytex.core import (
     OrientationSet,
     Phase,
     ProvenanceRecord,
+    ReciprocalLatticeVector,
     ReferenceFrame,
     Rotation,
     SymmetrySpec,
     ZoneAxis,
 )
-from pytex.diffraction import DiffractionGeometry, DiffractionPattern, KinematicSimulation
 from pytex.diffraction import (
-    DetectorAcceptanceMask,
     DetectedSpotCluster,
+    DetectorAcceptanceMask,
+    DiffractionGeometry,
+    DiffractionPattern,
     FamilyIndexingReport,
     IndexingCandidate,
+    KinematicSimulation,
     OrientationIndexingCandidate,
     OrientationRefinementResult,
     ReflectionFamily,
@@ -424,20 +426,75 @@ def test_grain_segmentation_majority_smoothed_removes_isolated_label_noise() -> 
     crystal, specimen, symmetry = make_foundation()
     orientations = OrientationSet.from_orientations(
         [
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.from_bunge_euler(25.0, 0.0, 0.0), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
-            Orientation(Rotation.identity(), crystal_frame=crystal, specimen_frame=specimen, symmetry=symmetry),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.from_bunge_euler(25.0, 0.0, 0.0),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
         ]
     )
     crystal_map = CrystalMap(
         coordinates=np.array(
-            [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [0.0, 1.0], [1.0, 1.0], [2.0, 1.0], [0.0, 2.0], [1.0, 2.0], [2.0, 2.0]],
+            [
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [2.0, 0.0],
+                [0.0, 1.0],
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [0.0, 2.0],
+                [1.0, 2.0],
+                [2.0, 2.0],
+            ],
             dtype=np.float64,
         ),
         orientations=orientations,
@@ -1440,7 +1497,9 @@ def test_kinematic_simulation_can_rank_orientation_candidates() -> None:
         max_excitation_error_inv_angstrom=0.2,
     )
     pattern = DiffractionPattern(
-        coordinates_px=np.vstack([spot.detector_coordinates_px for spot in simulation.accepted_spots()]),
+        coordinates_px=np.vstack(
+            [spot.detector_coordinates_px for spot in simulation.accepted_spots()]
+        ),
         intensities=np.array([10.0, 9.0, 8.0, 7.0]),
         geometry=geometry,
         phase=phase,
@@ -1507,7 +1566,9 @@ def test_indexing_candidate_reports_family_level_aggregation() -> None:
         max_excitation_error_inv_angstrom=0.2,
     )
     pattern = DiffractionPattern(
-        coordinates_px=np.vstack([spot.detector_coordinates_px for spot in simulation.accepted_spots()]),
+        coordinates_px=np.vstack(
+            [spot.detector_coordinates_px for spot in simulation.accepted_spots()]
+        ),
         intensities=np.array([10.0, 9.0, 8.0]),
         geometry=geometry,
         phase=phase,
@@ -1574,7 +1635,9 @@ def test_refine_orientation_candidate_improves_or_preserves_candidate_score() ->
         max_excitation_error_inv_angstrom=0.2,
     )
     pattern = DiffractionPattern(
-        coordinates_px=np.vstack([spot.detector_coordinates_px for spot in pattern_simulation.accepted_spots()]),
+        coordinates_px=np.vstack(
+            [spot.detector_coordinates_px for spot in pattern_simulation.accepted_spots()]
+        ),
         intensities=np.array([10.0, 9.0, 8.0, 7.0]),
         geometry=geometry,
         phase=phase,
@@ -1638,7 +1701,9 @@ def test_fundamental_region_key_matches_for_symmetry_equivalent_orientations() -
     )
     assert np.allclose(base.fundamental_region_key(), equivalent.fundamental_region_key())
     projected = base.project_to_fundamental_region()
-    reduced_axis = symmetry.reduce_vector_to_fundamental_sector(projected.rotation.axis, antipodal=True)
+    reduced_axis = symmetry.reduce_vector_to_fundamental_sector(
+        projected.rotation.axis, antipodal=True
+    )
     assert symmetry.vector_in_fundamental_sector(reduced_axis, antipodal=True)
 
 

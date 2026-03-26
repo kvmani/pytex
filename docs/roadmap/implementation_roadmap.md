@@ -1,77 +1,60 @@
 # Implementation Roadmap
 
-This document is the authoritative phase-by-phase guide for building PyTex from foundation work through the first stable scientific releases.
+The roadmap is now expressed as capability ladders rather than only chronological phases.
 
-Current implementation posture:
+## Capability Ladders
 
-- Phases 0 and 1 are in place as repository foundations.
-- Phase 2 has a working implementation for rotations, disorientation, exact orbit-based symmetry reduction in orientation space, PF/IPF containers, class-specific IPF sector reduction, and discrete kernel ODF support.
-- Full external-baseline parity for exact class-by-class fundamental-region boundaries and harmonic PF-to-ODF inversion remains ahead.
-- Phase 3 now has a substantial regular-grid implementation through KAM, grain segmentation, GROD, grain-boundary, cleanup, grain-graph aggregation, import-manifest normalization contracts, manifest IO, and object-backed vendor bridge entry points.
-- Phase 4 now has a real foundation through detector-space geometry, scattering vectors, reciprocal-space primitives, kinematic spot simulation, reflection families, detector masks, proxy intensity ranking, detector-space indexing association primitives, local candidate refinement, and family-level indexing reports.
+### Semantic Foundation
 
-## Phase 0: Documentation And Standards Foundation
+| Subsystem | Status | Notes |
+| --- | --- | --- |
+| Documentation and standards | implemented | Mission, standards, Sphinx, LaTeX, SVG, and validation doctrine are in place. |
+| Canonical core model | implemented | Frames, transforms, symmetry, lattice, provenance, orientations, and reciprocal primitives exist. |
+| Multimodal characterization doctrine | foundational | Shared cross-modality semantics are now documented, but the corresponding stable API family is not fully implemented. |
+| Phase-transformation doctrine | planned | Foundation docs exist, but stable transformation primitives are still ahead. |
 
-Goals:
+### Validated Foundational Implementation
 
-- finalize mission, scope, and product principles
-- establish notation and convention rules
-- establish the hybrid documentation architecture: Sphinx for the primary docs surface, LaTeX for scientific notes, SVG for canonical figures
-- create validation doctrine and MTEX parity matrix
+| Subsystem | Status | Notes |
+| --- | --- | --- |
+| Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, and discrete ODF foundations exist with tests and MTEX-backed ledgers. |
+| EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
+| Diffraction foundations | foundational | Geometry and kinematic spot workflows exist with unit coverage, but the external-baseline validation program is still growing. |
+| CIF and structure import | foundational | Core-model construction exists, but broader validation and space-group semantics remain ahead. |
 
-Deliverables:
+### Research-Grade Algorithmic Expansion
 
-- `docs/standards/documentation_architecture.md`
-- `docs/site/README.md`
-- updated foundational repo contracts reflecting the hybrid docs policy
+| Subsystem | Status | Notes |
+| --- | --- | --- |
+| Exact orientation-space boundary catalogs | planned | Required for broader class-by-class parity claims. |
+| Harmonic ODF inversion and richer reconstruction | planned | Discrete/kernel foundations exist; harmonic inversion remains ahead. |
+| Rich diffraction refinement and intensity models | planned | Current implementation is geometric and kinematic, not full physical modeling. |
+| Phase transformation and parent reconstruction | planned | Requires stable transformation semantics first. |
 
-## Phase 1: Canonical Data Model
+### Teaching-Grade Explanatory Surface
 
-Goals:
+| Subsystem | Status | Notes |
+| --- | --- | --- |
+| Sphinx concepts and workflows | implemented | Public entry point is live and buildable. |
+| Canonical LaTeX theory notes | implemented | Major foundation notes exist and are cross-linked from the site. |
+| SVG geometry figures | implemented | Core orientation, diffraction, and EBSD figures exist. |
+| Multimodal and transformation teaching notes | foundational | Architectural prose is now defined; broader workflow coverage remains ahead. |
 
-- implement stable primitives for frames, symmetry, lattice, orientation, provenance, and domain containers
-- define canonical internal conventions
-- enforce explicit semantics at public API boundaries
+## Immediate Next Steps
 
-Deliverables:
+1. Keep engineering hygiene green in CI: lint, types, tests, and docs build.
+2. Harden space-group and structure semantics before broadening stable structure-facing APIs.
+3. Add acquisition, calibration, and uncertainty foundations for multimodal workflows.
+4. Grow diffraction validation into a literature-backed and benchmark-backed program.
+5. Define and then implement transformation primitives and validation posture.
 
-- `src/pytex/core/`
-- core tests
-- canonical data-model docs
+## References
 
-## Phase 2: Orientation And Texture Foundation
+### Normative
 
-Goals:
+- `../standards/engineering_governance.md`
+- `../standards/reference_canon.md`
 
-- rotation and misorientation operations
-- PF and IPF container semantics
-- ODF container and reconstruction foundations
-- kernels, harmonics, and inversion roadmap
+### Informative
 
-## Phase 3: EBSD Post-Processing Foundation
-
-Goals:
-
-- crystal-map workflows
-- grain and neighborhood semantics
-- KAM/GROD and map-cleaning roadmap
-- adapter boundaries for KikuchiPy and PyEBSDIndex
-
-## Phase 4: Diffraction Foundation
-
-Goals:
-
-- diffraction geometry model
-- stereographic and reciprocal-space foundations
-- kinematic XRD and SAED workflow scaffolding
-- teaching-grade geometry figures
-
-## Phase 5: Experimental Incubator
-
-Goals:
-
-- unstable research methods with explicit quality gates
-- ML-assisted indexing
-- parent reconstruction
-- distortion correction
-- dynamical TEM and related frontier work
+- `../architecture/repo_review_2026_foundation_audit.md`
