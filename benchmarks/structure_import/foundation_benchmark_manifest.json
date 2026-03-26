@@ -1,0 +1,26 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-26T00:00:00Z",
+  "benchmark_id": "structure_import_foundation_internal_baseline",
+  "subsystem": "structure_import",
+  "baseline_kind": "cif_and_invariant",
+  "workflows": [
+    "phase_from_cif",
+    "phase_from_pymatgen_structure",
+    "space_group_preservation",
+    "unit_cell_site_preservation"
+  ],
+  "fixture_ids": [],
+  "artifact_paths": [
+    "benchmarks/structure_import/foundation_benchmark_manifest.json"
+  ],
+  "tolerances": {
+    "lattice_atol_angstrom": 1e-08
+  },
+  "status": "foundational",
+  "notes": [
+    "This benchmark manifest marks the structure-import validation surface while broader literature-backed baselines grow."
+  ]
+}

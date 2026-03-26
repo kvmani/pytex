@@ -69,12 +69,13 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 
 ## Current Scope
 
-- Stable core primitives for frames, symmetry, lattice semantics, provenance, rotations, and orientations.
+- Stable core primitives for frames, symmetry, lattice semantics, provenance, batch semantics, rotations, orientations, and transformation records.
 - Foundational texture-domain support for pole figures, inverse pole figures, IPF color keys, and discrete kernel ODF evaluation.
 - Real EBSD workflow support for regular-grid neighbor relationships, KAM, grain segmentation, GROD, boundary extraction, cleanup, and import-manifest normalization contracts.
-- Core-model phase creation from crystallographic structures and CIF files.
-- Diffraction-domain containers for geometry and pattern data, ready for later algorithmic expansion.
-- Architecture-level doctrine for multimodal characterization and future phase-transformation work.
+- Core-model phase creation from crystallographic structures and CIF files, with explicit point-group and space-group semantics.
+- Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.
+- Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.
+- Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration.
 
 ## Recommended Reading Path
 

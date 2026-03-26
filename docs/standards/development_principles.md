@@ -7,6 +7,9 @@ This document makes the repository's engineering posture explicit so future stag
 1. Semantic correctness before feature breadth
    New capability must extend the canonical data model when scientific meaning would otherwise be implicit.
 
+1. Vectorized semantics are stable API surface
+   If a large-data workflow depends on shared frame, convention, symmetry, or provenance meaning, the public API should use a semantic batch primitive rather than a raw ndarray alone.
+
 2. Normalize once at the boundary
    Vendor, adapter, and file-format conventions should be converted into PyTex canonical semantics once and then carried explicitly.
 
@@ -33,6 +36,7 @@ This document makes the repository's engineering posture explicit so future stag
 A stable feature is not complete until all of the following exist:
 
 - explicit domain types or clearly justified API boundaries
+- semantic batch types for vectorized workflows where shared metadata affects interpretation
 - construction-time invariant checks
 - deterministic tests
 - a benchmark or parity note

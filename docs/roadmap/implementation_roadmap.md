@@ -10,8 +10,8 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | --- | --- | --- |
 | Documentation and standards | implemented | Mission, standards, Sphinx, LaTeX, SVG, and validation doctrine are in place. |
 | Canonical core model | implemented | Frames, transforms, symmetry, lattice, provenance, orientations, and reciprocal primitives exist. |
-| Multimodal characterization doctrine | foundational | Shared cross-modality semantics are now documented, but the corresponding stable API family is not fully implemented. |
-| Phase-transformation doctrine | planned | Foundation docs exist, but stable transformation primitives are still ahead. |
+| Multimodal characterization doctrine | implemented | Shared cross-modality semantics are documented and the core acquisition/calibration/quality primitive family now exists. |
+| Phase-transformation doctrine | implemented | Foundation docs exist and the first stable transformation primitive family now exists in the core model. |
 
 ### Validated Foundational Implementation
 
@@ -20,7 +20,9 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, and discrete ODF foundations exist with tests and MTEX-backed ledgers. |
 | EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
 | Diffraction foundations | foundational | Geometry and kinematic spot workflows exist with unit coverage, but the external-baseline validation program is still growing. |
-| CIF and structure import | foundational | Core-model construction exists, but broader validation and space-group semantics remain ahead. |
+| CIF and structure import | foundational | Core-model construction, space-group semantics, and a dedicated validation ledger exist, but broader external baselines remain ahead. |
+| Multimodal acquisition core | foundational | Acquisition geometry, calibration, quality, scattering, experiment manifests, and workflow entry points now exist, but broader modality coverage remains ahead. |
+| Phase-transformation foundation | foundational | Core transformation primitives now exist, but literature-backed validation and richer algorithms remain ahead. |
 
 ### Research-Grade Algorithmic Expansion
 
@@ -29,7 +31,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | Exact orientation-space boundary catalogs | planned | Required for broader class-by-class parity claims. |
 | Harmonic ODF inversion and richer reconstruction | planned | Discrete/kernel foundations exist; harmonic inversion remains ahead. |
 | Rich diffraction refinement and intensity models | planned | Current implementation is geometric and kinematic, not full physical modeling. |
-| Phase transformation and parent reconstruction | planned | Requires stable transformation semantics first. |
+| Phase transformation and parent reconstruction | planned | Stable transformation semantics now exist; algorithmic breadth and validation remain ahead. |
 
 ### Teaching-Grade Explanatory Surface
 
@@ -43,10 +45,10 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 ## Immediate Next Steps
 
 1. Keep engineering hygiene green in CI: lint, types, tests, and docs build.
-2. Harden space-group and structure semantics before broadening stable structure-facing APIs.
-3. Add acquisition, calibration, and uncertainty foundations for multimodal workflows.
+2. Grow structure-import validation into a literature-backed and benchmark-backed program.
+3. Grow the new manifest family into richer experiment, benchmark, validation, and workflow-result use cases.
 4. Grow diffraction validation into a literature-backed and benchmark-backed program.
-5. Define and then implement transformation primitives and validation posture.
+5. Extend the transformation primitive family into literature-backed variant-generation and parent-reconstruction workflows.
 
 ## References
 

@@ -26,6 +26,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `ReferenceFrame`
 - `FrameTransform`
 - `ConventionSet`
+- `VectorSet`
 - `SymmetrySpec`
 - `SpaceGroupSpec`
 - `Lattice`
@@ -41,7 +42,10 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 
 ### Orientation And Texture
 
+- `EulerSet`
+- `QuaternionSet`
 - `Rotation`
+- `RotationSet`
 - `Orientation`
 - `Misorientation`
 - `OrientationSet`
@@ -69,7 +73,17 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `TransformationVariant`
 - `PhaseTransformationRecord`
 
-Some of these objects are already implemented; others are now mandatory architectural targets that must be defined on paper before corresponding stable APIs are added.
+### Stable Manifest Surface
+
+- `EBSDImportManifest`
+- `ExperimentManifest`
+- `BenchmarkManifest`
+- `ValidationManifest`
+- `WorkflowResultManifest`
+
+Some of these objects are already implemented; others are mandatory architectural targets that must be defined on paper before corresponding stable APIs are added.
+
+`SymmetrySpec` and `SpaceGroupSpec` serve different roles. `SymmetrySpec` is the orientation and reduction surface. `SpaceGroupSpec` is the structure-definition surface used by phases and CIF-backed construction.
 
 ## 4. Canonical Convention Policy
 
@@ -89,9 +103,10 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 ## 5. Data-Model Requirements
 
 - Metadata objects should be immutable or effectively immutable.
-- Vectorized containers should use contiguous NumPy arrays.
+- Vectorized containers should use contiguous NumPy arrays, but stable public vectorized workflows should prefer semantic batch types over naked arrays.
 - Derived quantities may be lazy where eager recomputation would be wasteful.
 - Public APIs must prefer named domain types over ambiguous positional arrays.
+- Stable batch APIs must preserve frame, convention, symmetry, and provenance metadata when scientific meaning depends on them.
 - Reference-frame transforms must be reusable objects, not repeated ad hoc matrix math.
 - Symmetry operators must be cacheable and reusable across computations.
 - Stable domain objects must reject inconsistent frames, phases, symmetries, and calibration metadata at construction time.
@@ -104,6 +119,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
+- Core documentation must explain both scalar and batched semantics when a primitive supports vectorized operations.
 - Every major stable feature requires:
   - a concept or workflow page in the Sphinx layer
   - a theory or architecture note
@@ -119,6 +135,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 
 - `docs/testing/mtex_parity_matrix.md` is the authoritative parity ledger for texture and EBSD categories aligned to MTEX.
 - `docs/testing/diffraction_validation_matrix.md` is the authoritative validation ledger for diffraction-facing workflows.
+- `docs/testing/structure_validation_matrix.md` is the authoritative validation ledger for structure-import workflows.
 - Every relevant external validation category must map to either:
   - a PyTex test or benchmark
   - an explicit foundational status

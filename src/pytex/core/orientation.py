@@ -12,6 +12,7 @@ from pytex.core._arrays import (
     normalize_vector,
     normalize_vectors,
 )
+from pytex.core.batches import EulerSet, RotationSet, VectorSet, normalize_euler_convention_name
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
@@ -31,14 +32,7 @@ _EULER_CONVENTION_ALIASES = {
 
 
 def _normalize_euler_convention(convention: str) -> str:
-    normalized = convention.strip().lower()
-    resolved = _EULER_CONVENTION_ALIASES.get(normalized)
-    if resolved is None:
-        supported = ", ".join(sorted(_EULER_CONVENTION_ALIASES))
-        raise ValueError(
-            f"Unsupported Euler convention '{convention}'. Supported conventions: {supported}"
-        )
-    return resolved
+    return normalize_euler_convention_name(convention)
 
 
 def _axis_angle_quaternion_for_axis(axis_name: str, angle_rad: float) -> np.ndarray:
@@ -322,8 +316,15 @@ class Rotation:
     def distance_to(self, other: Rotation) -> float:
         return other.compose(self.inverse()).angle_rad
 
-    def apply(self, vectors: ArrayLike) -> np.ndarray:
+    def apply(self, vectors: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         matrix = self.as_matrix()
+        if isinstance(vectors, VectorSet):
+            transformed = vectors.values @ matrix.T
+            return VectorSet(
+                values=transformed,
+                reference_frame=vectors.reference_frame,
+                provenance=vectors.provenance,
+            )
         array = np.asarray(vectors, dtype=np.float64)
         if array.shape[-1] != 3:
             raise ValueError("Input vectors must end with dimension 3.")
@@ -332,7 +333,7 @@ class Rotation:
         transformed.setflags(write=False)
         return transformed
 
-    def apply_inverse(self, vectors: ArrayLike) -> np.ndarray:
+    def apply_inverse(self, vectors: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         return self.inverse().apply(vectors)
 
 
@@ -363,11 +364,32 @@ class Orientation:
     def as_matrix(self) -> np.ndarray:
         return self.rotation.as_matrix()
 
-    def map_crystal_vector(self, vector: ArrayLike) -> np.ndarray:
-        return as_float_array(self.rotation.apply(vector), shape=(3,))
+    def map_crystal_vector(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        if isinstance(vector, VectorSet):
+            if vector.reference_frame != self.crystal_frame:
+                raise ValueError("VectorSet.reference_frame must match Orientation.crystal_frame.")
+            return VectorSet(
+                values=vector.values @ self.rotation.as_matrix().T,
+                reference_frame=self.specimen_frame,
+                provenance=vector.provenance,
+            )
+        return as_float_array(
+            np.asarray(vector, dtype=np.float64) @ self.rotation.as_matrix().T,
+            shape=(3,),
+        )
 
-    def map_sample_vector_to_crystal(self, vector: ArrayLike) -> np.ndarray:
-        return as_float_array(self.rotation.apply_inverse(vector), shape=(3,))
+    def map_sample_vector_to_crystal(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        if isinstance(vector, VectorSet):
+            if vector.reference_frame != self.specimen_frame:
+                raise ValueError("VectorSet.reference_frame must match Orientation.specimen_frame.")
+            inverse = self.rotation.inverse().as_matrix()
+            return VectorSet(
+                values=vector.values @ inverse.T,
+                reference_frame=self.crystal_frame,
+                provenance=vector.provenance,
+            )
+        inverse = self.rotation.inverse().as_matrix()
+        return as_float_array(np.asarray(vector, dtype=np.float64) @ inverse.T, shape=(3,))
 
     def equivalent_orientations(
         self,
@@ -661,7 +683,7 @@ class OrientationSet:
     @classmethod
     def from_euler_angles(
         cls,
-        angles: ArrayLike,
+        angles: ArrayLike | EulerSet,
         *,
         crystal_frame: ReferenceFrame,
         specimen_frame: ReferenceFrame,
@@ -671,20 +693,22 @@ class OrientationSet:
         degrees: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
-        angle_array = as_float_array(angles, shape=(None, 3))
-        quaternions = np.stack(
-            [
-                Rotation.from_euler(
-                    angle1,
-                    angle2,
-                    angle3,
-                    convention=convention,
-                    degrees=degrees,
-                ).quaternion
-                for angle1, angle2, angle3 in angle_array
-            ],
-            axis=0,
-        )
+        if isinstance(angles, EulerSet):
+            angle_array = angles.angles
+            convention = angles.convention
+            degrees = angles.degrees
+            if provenance is None:
+                provenance = angles.provenance
+        else:
+            angle_array = as_float_array(angles, shape=(None, 3))
+        quaternions = RotationSet.from_euler_set(
+            EulerSet(
+                angles=angle_array,
+                convention=convention,
+                degrees=degrees,
+                provenance=provenance,
+            )
+        ).quaternions
         return cls(
             quaternions=quaternions,
             crystal_frame=crystal_frame,
@@ -723,9 +747,32 @@ class OrientationSet:
     def as_bunge_euler(self, *, degrees: bool = True) -> np.ndarray:
         return self.as_euler(convention="bunge", degrees=degrees)
 
-    def map_crystal_directions(self, directions: ArrayLike) -> np.ndarray:
+    def as_euler_set(
+        self,
+        *,
+        convention: str = "bunge",
+        degrees: bool = True,
+    ) -> EulerSet:
+        return EulerSet(
+            angles=self.as_euler(convention=convention, degrees=degrees),
+            convention=convention,
+            degrees=degrees,
+            provenance=self.provenance,
+        )
+
+    def as_rotation_set(self) -> RotationSet:
+        return RotationSet(quaternions=self.quaternions, provenance=self.provenance)
+
+    def map_crystal_directions(self, directions: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         matrices = self.as_matrices()
-        direction_array = np.asarray(directions, dtype=np.float64)
+        if isinstance(directions, VectorSet):
+            if directions.reference_frame != self.crystal_frame:
+                raise ValueError(
+                    "VectorSet.reference_frame must match OrientationSet.crystal_frame."
+                )
+            direction_array = directions.values
+        else:
+            direction_array = np.asarray(directions, dtype=np.float64)
         if direction_array.shape == (3,):
             mapped = np.einsum("nij,j->ni", matrices, direction_array, optimize=True)
         elif direction_array.ndim == 2 and direction_array.shape[1] == 3:
@@ -737,11 +784,27 @@ class OrientationSet:
         else:
             raise ValueError("Directions must have shape (3,) or (n, 3).")
         mapped = normalize_vectors(mapped)
+        if isinstance(directions, VectorSet):
+            return VectorSet(
+                values=mapped,
+                reference_frame=self.specimen_frame,
+                provenance=directions.provenance,
+            )
         return mapped
 
-    def map_sample_directions_to_crystal(self, directions: ArrayLike) -> np.ndarray:
+    def map_sample_directions_to_crystal(
+        self,
+        directions: ArrayLike | VectorSet,
+    ) -> np.ndarray | VectorSet:
         inverse_matrices = np.swapaxes(self.as_matrices(), -1, -2)
-        direction_array = np.asarray(directions, dtype=np.float64)
+        if isinstance(directions, VectorSet):
+            if directions.reference_frame != self.specimen_frame:
+                raise ValueError(
+                    "VectorSet.reference_frame must match OrientationSet.specimen_frame."
+                )
+            direction_array = directions.values
+        else:
+            direction_array = np.asarray(directions, dtype=np.float64)
         if direction_array.shape == (3,):
             mapped = np.einsum("nij,j->ni", inverse_matrices, direction_array, optimize=True)
         elif direction_array.ndim == 2 and direction_array.shape[1] == 3:
@@ -753,6 +816,12 @@ class OrientationSet:
         else:
             raise ValueError("Directions must have shape (3,) or (n, 3).")
         mapped = normalize_vectors(mapped)
+        if isinstance(directions, VectorSet):
+            return VectorSet(
+                values=mapped,
+                reference_frame=self.crystal_frame,
+                provenance=directions.provenance,
+            )
         return mapped
 
     def canonicalized(self, specimen_symmetry: SymmetrySpec | None = None) -> OrientationSet:

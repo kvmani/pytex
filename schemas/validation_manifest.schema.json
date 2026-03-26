@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.validation_manifest",
+  "title": "PyTex Validation Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "created_at",
+    "campaign_name",
+    "subsystem",
+    "baseline_kind",
+    "status",
+    "reference_ids",
+    "fixture_ids",
+    "artifact_paths",
+    "linked_benchmark_ids",
+    "notes"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.validation_manifest" },
+    "schema_version": { "const": "1.0.0" },
+    "pytex_version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "campaign_name": { "type": "string", "minLength": 1 },
+    "subsystem": { "type": "string", "minLength": 1 },
+    "baseline_kind": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "minLength": 1 },
+    "reference_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "fixture_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "artifact_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "linked_benchmark_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

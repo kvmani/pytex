@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.workflow_result_manifest",
+  "title": "PyTex Workflow Result Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "created_at",
+    "result_id",
+    "workflow_name",
+    "modality",
+    "produced_by",
+    "input_manifest_ids",
+    "artifact_paths",
+    "notes",
+    "metadata"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.workflow_result_manifest" },
+    "schema_version": { "const": "1.0.0" },
+    "pytex_version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "result_id": { "type": "string", "minLength": 1 },
+    "workflow_name": { "type": "string", "minLength": 1 },
+    "modality": { "type": "string", "minLength": 1 },
+    "produced_by": { "type": "string", "minLength": 1 },
+    "input_manifest_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "artifact_paths": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

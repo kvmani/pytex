@@ -37,15 +37,19 @@ Researchers and students spend avoidable time verifying whether two orientations
 Create a scientific library that enables users to:
 
 - represent crystallographic objects with explicit frame, symmetry, basis, calibration, and provenance semantics
+- represent point-group and space-group meaning explicitly, without collapsing structure semantics into orientation reduction semantics
 - normalize imported data once into canonical PyTex semantics without discarding source-system meaning
 - express core texture workflows through named domain primitives rather than naked arrays
+- express large vectorized workflows through first-class batch primitives rather than anonymous `(n, ...)` arrays
 - connect EBSD, diffraction, and future phase-transformation workflows through one shared crystallographic model
+- carry experiment, benchmark, validation, and workflow-result context through stable machine-readable manifests rather than ad hoc side channels
 - generate publication-quality and teaching-quality figures from the same scientifically explicit contracts
 - trace every major result back to the conventions, transforms, references, and inputs used to produce it
 
 ## Core Outcomes
 
 - Eliminate avoidable frame and convention ambiguity from texture and diffraction workflows.
+- Treat vectorized operations on scientific primitives as a first-class capability rather than a convenience layer.
 - Establish a canonical internal data model that can support EBSD, XRD, neutron, TEM, and transformation workflows without subsystem-specific semantic forks.
 - Keep scientific documentation, figures, and validation artifacts on equal footing with code.
 - Build a validation culture where parity and literature alignment are explicit, versioned, and extendable.
@@ -55,6 +59,9 @@ Create a scientific library that enables users to:
 
 1. Explicit semantics over convenience
    No important frame, symmetry, basis, calibration, or provenance assumption should be implicit.
+
+1. Batch semantics are part of the product
+   Vectorized operations must preserve frame, convention, symmetry, and provenance meaning through first-class batch primitives.
 
 2. Texture-led core model first
    Orientation and texture semantics are the nucleus of the product, but they must scale to multimodal characterization.
@@ -82,7 +89,7 @@ Create a scientific library that enables users to:
 - Pure-Python-first project structure
 - GPL-compatible licensing posture
 - Canonical internal convention set
-- Canonical data structures for frames, symmetry, structure, orientations, maps, acquisition geometry, and diffraction geometry
+- Canonical data structures for frames, symmetry, structure, orientations, vectorized batch primitives, maps, acquisition geometry, and diffraction geometry
 - Sphinx as the primary browsable and searchable documentation surface
 - LaTeX as the canonical source for major scientific notes
 - SVG-first scientific diagrams where geometry or conventions matter
@@ -93,8 +100,10 @@ Create a scientific library that enables users to:
 
 - A user can import or construct crystallographic data without ambiguity about frames, conventions, or core symmetry meaning.
 - Core texture and diffraction workflows can be expressed through PyTex public primitives rather than ad hoc arrays or tool-specific objects.
+- A user can perform large batched operations on vectors, Euler angles, quaternions, rotations, and orientations without dropping semantic metadata.
 - Documentation explains not only how to run a workflow, but what mathematical object is being transformed and why.
 - Validation artifacts make clear what has been checked against MTEX, literature, or future diffraction baselines.
+- Stable workflows can emit or consume manifests for experiment context, benchmark identity, validation evidence, and workflow outputs.
 - Future EBSD, neutron, XRD, TEM, and phase-transformation algorithms can be added without inventing local frame or symmetry semantics.
 
 ## References

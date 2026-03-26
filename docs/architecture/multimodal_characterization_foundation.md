@@ -49,7 +49,7 @@ The following concepts are now required architectural targets:
 - `ScatteringSetup`
   Shared diffraction experiment context that can support XRD, neutron, and TEM variants without coupling them prematurely.
 
-These types need not all exist immediately in code, but new stable APIs must be designed as if they will.
+These types now exist as foundational core primitives, but broader modality-specific workflow adoption is still ahead.
 
 ## Modality Boundaries
 
@@ -80,9 +80,7 @@ These concepts must not be trapped inside vendor-specific adapters.
 
 ## Current Limits
 
-- No stable shared acquisition-geometry API exists yet.
-- No stable calibration or uncertainty object exists yet.
-- No unified modality-wide experiment manifest exists yet.
+- The shared acquisition, calibration, quality, and scattering primitives now exist, and stable experiment manifests now exist with them, but adoption across every modality surface is still incomplete.
 - The current diffraction and EBSD layers are foundational, not yet a full multimodal platform.
 
 ## References

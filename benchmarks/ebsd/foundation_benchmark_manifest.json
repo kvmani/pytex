@@ -1,8 +1,11 @@
 {
-  "schema_id": "pytex.benchmark_placeholder",
-  "schema_version": "0.1.0",
-  "category": "ebsd_foundation",
-  "status": "placeholder",
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-26T00:00:00Z",
+  "benchmark_id": "ebsd_foundation_internal_baseline",
+  "subsystem": "ebsd",
+  "baseline_kind": "mtex_plus_internal",
   "workflows": [
     "kernel_average_misorientation",
     "grain_segmentation",
@@ -10,5 +13,17 @@
     "boundary_extraction",
     "cleanup"
   ],
-  "notes": "Placeholder manifest until a stable benchmark schema and harness are introduced."
+  "fixture_ids": [
+    "fixtures/mtex_parity/ebsd/kam_cases.json"
+  ],
+  "artifact_paths": [
+    "benchmarks/ebsd/foundation_benchmark_manifest.json"
+  ],
+  "tolerances": {
+    "misorientation_atol_deg": 1e-06
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark manifest anchors the regular-grid EBSD foundation benchmark surface."
+  ]
 }

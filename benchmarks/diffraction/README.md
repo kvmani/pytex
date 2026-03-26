@@ -1,6 +1,6 @@
 # Diffraction Benchmarks
 
-This directory holds benchmark placeholders and manifests for implemented diffraction workflows.
+This directory holds benchmark manifests for implemented diffraction workflows.
 
 Current scope:
 
@@ -9,4 +9,4 @@ Current scope:
 - reflection-family grouping
 - orientation candidate ranking and local refinement
 
-These artifacts are placeholders until a fuller benchmark harness lands, but they reserve the expected benchmark surface and provenance fields now.
+These artifacts are still foundational rather than exhaustive, but the benchmark identity and schema surface are now stable.

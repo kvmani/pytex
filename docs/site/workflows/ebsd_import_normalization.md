@@ -2,6 +2,8 @@
 
 PyTex now includes both the stable manifest contract for EBSD normalization and the first real object-backed bridge entry points for vendor ecosystems.
 
+That EBSD import contract now lives inside a broader stable manifest family that also includes experiment, benchmark, validation, and workflow-result manifests.
+
 ## Scope
 
 - `EBSDImportManifest` as the stable manifest for normalized EBSD inputs
@@ -64,6 +66,7 @@ The manifest is now not just an in-memory dataclass. It is also a stable interch
 - the bridge layer currently extracts orientation/map semantics only; detector-pattern semantics are still outside this contract
 - multi-phase import normalization is still ahead
 - dependency-pinned integration tests against live vendor package versions are still ahead
+- richer experiment-manifest emission from full vendor-normalized workflows is still ahead
 
 ## Related Material
 

@@ -5,6 +5,7 @@ PyTex is a GPL-compatible, pure-Python-first library for crystallographic textur
 The repository is being built around four non-negotiable foundations:
 
 - a canonical crystallographic data model for frames, symmetry, orientations, maps, structure, and diffraction geometry
+- first-class semantic batch support for vectorized operations on vectors, Euler angles, quaternions, rotations, and orientations
 - hybrid scientific documentation: Sphinx for the primary browsable and searchable docs surface, LaTeX for authoritative scientific notes, and SVG for canonical figures
 - MTEX-plus validation, where MTEX parity is the baseline and PyTex-specific interoperability and provenance checks extend beyond it
 - explicit reference canon governance, so conventions are fixed from authoritative sources and not re-litigated locally
@@ -37,6 +38,10 @@ The repository is now best described as a strong foundation build rather than a 
 
 - modern Python packaging and CI skeleton
 - canonical core data structures under `src/pytex/`
+- semantic batch primitives for high-volume vectorized operations without dropping frame or convention meaning
+- multimodal acquisition primitives for shared geometry, calibration, quality, and scattering semantics
+- stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange
+- transformation primitives for orientation relationships, variants, and phase-transformation records
 - documentation governance and hybrid scientific doc scaffold
 - validation strategy and explicit ledgers for texture, EBSD, and diffraction posture
 - baseline tests for the foundational data model
@@ -45,7 +50,7 @@ The repository is now best described as a strong foundation build rather than a 
 - regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and import-manifest workflow foundations
 - diffraction geometry, reciprocal-space primitives, kinematic spot simulation, reflection-family grouping, and local indexing candidate scaffolding
 
-Exact orientation-space polyhedra, harmonic ODF inversion, richer adapter validation, diffraction baselines, multimodal acquisition semantics, and phase-transformation foundations are intentionally staged after the current build so they do not invent conflicting conventions.
+Exact orientation-space polyhedra, harmonic ODF inversion, richer external validation, broader multimodal workflow depth, and transformation algorithms are intentionally staged after the current build so they do not invent conflicting conventions.
 
 ## Quick Start
 
@@ -99,6 +104,7 @@ pytex/
 ## Design Direction
 
 - Own the domain model instead of leaking raw arrays through public APIs where frame or symmetry meaning would be ambiguous.
+- Treat vectorized scientific workloads as first-class and keep shared frame or convention meaning attached through semantic batch primitives.
 - Reuse proven projects such as ORIX, KikuchiPy, PyEBSDIndex, pymatgen, and diffsims through adapters instead of coupling the whole library to any single external representation.
 - Treat documentation, figures, and validation artifacts as product deliverables rather than release polish.
 - Keep research-grade depth and teaching-grade clarity in the same repository.
@@ -107,9 +113,8 @@ pytex/
 ## Current Hardening Priorities
 
 - Keep README, roadmap, CI, and validation ledgers synchronized with the actual repository state.
-- Extend the canonical model on paper before adding new stable APIs for space-group, acquisition, calibration, uncertainty, and transformation workflows.
-- Add non-MTEX validation doctrine for diffraction and structure-import semantics.
-- Preserve the current core-model clarity while expanding toward EBSD, XRD, neutron, TEM, and phase-transformation use cases.
+- Grow structure-import and diffraction validation into broader literature-backed and benchmark-backed programs.
+- Preserve the current core-model clarity while expanding multimodal workflow depth and transformation algorithms on top of the new foundations.
 
 ## Architecture Snapshot
 

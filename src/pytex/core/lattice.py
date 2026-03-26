@@ -50,6 +50,50 @@ def _sites_from_pymatgen_structure(structure: Any) -> tuple[AtomicSite, ...]:
 
 
 @dataclass(frozen=True, slots=True)
+class SpaceGroupSpec:
+    symbol: str
+    number: int
+    reference_frame: ReferenceFrame
+    setting: str | None = None
+    crystal_system: str | None = None
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if self.reference_frame.domain is not FrameDomain.CRYSTAL:
+            raise ValueError("SpaceGroupSpec.reference_frame must belong to the crystal domain.")
+        normalized_symbol = self.symbol.strip()
+        if not normalized_symbol:
+            raise ValueError("SpaceGroupSpec.symbol must be non-empty.")
+        if not 1 <= self.number <= 230:
+            raise ValueError("SpaceGroupSpec.number must lie in the interval [1, 230].")
+        if self.setting is not None and not self.setting.strip():
+            raise ValueError("SpaceGroupSpec.setting must be non-empty when provided.")
+        if self.crystal_system is not None and not self.crystal_system.strip():
+            raise ValueError("SpaceGroupSpec.crystal_system must be non-empty when provided.")
+        object.__setattr__(self, "symbol", normalized_symbol)
+        if self.setting is not None:
+            object.__setattr__(self, "setting", self.setting.strip())
+        if self.crystal_system is not None:
+            object.__setattr__(self, "crystal_system", self.crystal_system.strip().lower())
+
+    @classmethod
+    def from_pymatgen_analyzer(
+        cls,
+        analyzer: Any,
+        *,
+        reference_frame: ReferenceFrame,
+        provenance: ProvenanceRecord | None = None,
+    ) -> SpaceGroupSpec:
+        return cls(
+            symbol=str(analyzer.get_space_group_symbol()),
+            number=int(analyzer.get_space_group_number()),
+            reference_frame=reference_frame,
+            crystal_system=str(analyzer.get_crystal_system()),
+            provenance=provenance,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class Basis:
     frame: ReferenceFrame
     kind: BasisKind
@@ -206,6 +250,7 @@ class Phase:
     symmetry: SymmetrySpec
     crystal_frame: ReferenceFrame
     unit_cell: UnitCell | None = None
+    space_group: SpaceGroupSpec | None = None
     space_group_symbol: str | None = None
     space_group_number: int | None = None
     chemical_formula: str | None = None
@@ -225,6 +270,17 @@ class Phase:
             raise ValueError("Phase.symmetry.reference_frame must match Phase.crystal_frame.")
         if self.unit_cell is not None and self.unit_cell.lattice != self.lattice:
             raise ValueError("Phase.unit_cell.lattice must match Phase.lattice.")
+        if self.space_group is not None and self.space_group.reference_frame != self.crystal_frame:
+            raise ValueError("Phase.space_group.reference_frame must match Phase.crystal_frame.")
+        if self.space_group is not None:
+            if self.space_group_symbol is None:
+                object.__setattr__(self, "space_group_symbol", self.space_group.symbol)
+            elif self.space_group_symbol != self.space_group.symbol:
+                raise ValueError("Phase.space_group_symbol must match Phase.space_group.symbol.")
+            if self.space_group_number is None:
+                object.__setattr__(self, "space_group_number", self.space_group.number)
+            elif self.space_group_number != self.space_group.number:
+                raise ValueError("Phase.space_group_number must match Phase.space_group.number.")
         if self.space_group_symbol is not None and not self.space_group_symbol:
             raise ValueError("Phase.space_group_symbol must be non-empty when provided.")
         if self.space_group_number is not None and not 1 <= self.space_group_number <= 230:
@@ -252,6 +308,11 @@ class Phase:
         )
         point_group = str(analyzer.get_point_group_symbol())
         symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal_frame)
+        space_group = SpaceGroupSpec.from_pymatgen_analyzer(
+            analyzer,
+            reference_frame=crystal_frame,
+            provenance=provenance,
+        )
         lattice = Lattice.from_pymatgen_lattice(
             structure.lattice,
             crystal_frame=crystal_frame,
@@ -270,8 +331,9 @@ class Phase:
             symmetry=symmetry,
             crystal_frame=crystal_frame,
             unit_cell=unit_cell,
-            space_group_symbol=str(analyzer.get_space_group_symbol()),
-            space_group_number=int(analyzer.get_space_group_number()),
+            space_group=space_group,
+            space_group_symbol=space_group.symbol,
+            space_group_number=space_group.number,
             chemical_formula=formula,
             aliases=aliases,
             provenance=provenance,

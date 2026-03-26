@@ -311,25 +311,25 @@ flowchart TB
 
 :::{raw} html
 <p class="architecture-section-intro">
-This final diagram separates the current implemented foundation from the next layers that are already documented but not yet fully implemented as stable APIs.
+This final diagram separates the current implemented foundation from the next layers that are implemented foundationally today versus still ahead as broader expansion work.
 </p>
 :::
 
 ```{mermaid}
 flowchart LR
     subgraph current["Implemented Or Foundational Today"]
-        current_core["Core model<br/>frames, symmetry, lattice, provenance, orientation"]
+        current_core["Core model<br/>frames, symmetry, lattice, provenance,<br/>batch semantics, orientation, transformation"]
         current_texture["Texture foundation<br/>PF, IPF, ODF, IPF color keys"]
         current_ebsd["EBSD foundation<br/>CrystalMap, KAM, segmentation, GROD,<br/>boundaries, cleanup, grain graphs"]
         current_diffraction["Diffraction foundation<br/>geometry, reciprocal-space, kinematic spots,<br/>families, ranking and local refinement"]
-        current_manifests["Current manifest surface<br/>EBSD import manifest"]
+        current_manifests["Current manifest surface<br/>import, experiment, benchmark,<br/>validation, workflow-result"]
     end
 
     subgraph next["Architecturally Defined Next"]
-        next_spacegroup["Structure hardening<br/>SpaceGroupSpec and broader structure semantics"]
-        next_multimodal["Multimodal acquisition model<br/>AcquisitionGeometry, CalibrationRecord,<br/>MeasurementQuality, ScatteringSetup"]
+        next_spacegroup["Structure hardening<br/>broader external baselines and richer CIF corpora"]
+        next_multimodal["Multimodal workflow depth<br/>broader XRD, neutron, TEM,<br/>and richer experiment integration"]
         next_validation["Expanded validation<br/>diffraction baselines, structure-import doctrine,<br/>broader benchmark manifests"]
-        next_transformation["Phase transformation foundation<br/>OrientationRelationship, variants,<br/>parent-child provenance"]
+        next_transformation["Transformation expansion<br/>variant generation, parent reconstruction,<br/>and stronger literature-backed validation"]
     end
 
     current_core --> current_texture
@@ -354,7 +354,7 @@ flowchart LR
 ### Reading This View
 
 - PyTex already has a substantial implemented foundation.
-- The next major work is not “add more features blindly.” It is to broaden the semantic foundation in the few places where the current model is not yet enough for the full multimodal ambition.
+- The next major work is not “add more features blindly.” It is to deepen validation and workflow breadth on top of the now-stronger semantic foundation.
 - The gap between “implemented today” and “planned next” is intentionally documented so future contributors do not guess.
 
 ## Summary

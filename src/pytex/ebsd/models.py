@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pytex.core.acquisition import AcquisitionGeometry, CalibrationRecord, MeasurementQuality
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
+
+if TYPE_CHECKING:
+    from pytex.adapters import ExperimentManifest
 
 
 @dataclass(frozen=True, slots=True)
@@ -484,6 +489,9 @@ class CrystalMap:
     map_frame: ReferenceFrame
     grid_shape: tuple[int, ...] | None = None
     step_sizes: tuple[float, ...] | None = None
+    acquisition_geometry: AcquisitionGeometry | None = None
+    calibration_record: CalibrationRecord | None = None
+    measurement_quality: MeasurementQuality | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -494,6 +502,41 @@ class CrystalMap:
             raise ValueError("CrystalMap coordinates and orientations must have matching lengths.")
         if self.map_frame.domain not in {FrameDomain.MAP, FrameDomain.SPECIMEN}:
             raise ValueError("CrystalMap.map_frame must belong to the map or specimen domain.")
+        if self.acquisition_geometry is not None:
+            if self.acquisition_geometry.specimen_frame != self.orientations.specimen_frame:
+                raise ValueError(
+                    "CrystalMap.acquisition_geometry.specimen_frame must match "
+                    "CrystalMap.orientations.specimen_frame."
+                )
+            if self.acquisition_geometry.map_frame is not None:
+                if self.map_frame != self.acquisition_geometry.map_frame:
+                    raise ValueError(
+                        "CrystalMap.map_frame must match "
+                        "CrystalMap.acquisition_geometry.map_frame when provided."
+                    )
+            elif self.map_frame != self.orientations.specimen_frame:
+                raise ValueError(
+                    "CrystalMap.map_frame must equal the specimen frame when no acquisition "
+                    "map_frame is provided."
+                )
+            if (
+                self.calibration_record is not None
+                and self.acquisition_geometry.calibration_record is not None
+                and self.calibration_record != self.acquisition_geometry.calibration_record
+            ):
+                raise ValueError(
+                    "CrystalMap.calibration_record must match the acquisition geometry "
+                    "calibration record when both are provided."
+                )
+            if (
+                self.measurement_quality is not None
+                and self.acquisition_geometry.measurement_quality is not None
+                and self.measurement_quality != self.acquisition_geometry.measurement_quality
+            ):
+                raise ValueError(
+                    "CrystalMap.measurement_quality must match the acquisition geometry "
+                    "measurement quality when both are provided."
+                )
         coordinates = np.ascontiguousarray(coordinates)
         coordinates.setflags(write=False)
         object.__setattr__(self, "coordinates", coordinates)
@@ -521,6 +564,41 @@ class CrystalMap:
                 "workflows."
             )
         return int(rows), int(cols)
+
+    def to_experiment_manifest(
+        self,
+        *,
+        source_system: str = "pytex",
+        referenced_files: tuple[str, ...] = (),
+        metadata: dict[str, str] | None = None,
+    ) -> ExperimentManifest:
+        from pytex.adapters import ExperimentManifest
+
+        acquisition_geometry = self.acquisition_geometry
+        if acquisition_geometry is None:
+            acquisition_geometry = AcquisitionGeometry(
+                specimen_frame=self.orientations.specimen_frame,
+                modality="ebsd",
+                map_frame=self.map_frame if self.map_frame.domain is FrameDomain.MAP else None,
+                calibration_record=self.calibration_record,
+                measurement_quality=self.measurement_quality,
+                provenance=self.provenance,
+            )
+        phase = self.orientations.phase
+        merged_metadata: dict[str, str] = {}
+        if self.grid_shape is not None:
+            merged_metadata["grid_shape"] = "x".join(str(value) for value in self.grid_shape)
+        if self.step_sizes is not None:
+            merged_metadata["step_sizes"] = ",".join(f"{value:g}" for value in self.step_sizes)
+        if metadata is not None:
+            merged_metadata.update(metadata)
+        return ExperimentManifest.from_acquisition_geometry(
+            acquisition_geometry,
+            source_system=source_system,
+            phase=phase,
+            referenced_files=referenced_files,
+            metadata=merged_metadata,
+        )
 
     def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:
         rows, cols = self._require_regular_2d_grid()
