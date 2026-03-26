@@ -111,6 +111,10 @@ pytex/
 - Add non-MTEX validation doctrine for diffraction and structure-import semantics.
 - Preserve the current core-model clarity while expanding toward EBSD, XRD, neutron, TEM, and phase-transformation use cases.
 
+## Architecture Snapshot
+
+![PyTex Architecture Snapshot](docs/figures/pytex_architecture_compact.svg)
+
 ## License
 
 PyTex is released under the GPL-3.0-or-later license. See `LICENSE` for the repository license notice. The licensing posture is intentional so GPL-compatible scientific dependencies can be integrated cleanly where that makes technical sense.

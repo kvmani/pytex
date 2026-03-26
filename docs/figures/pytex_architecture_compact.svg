@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">PyTex Compact Architecture</title>
+  <desc id="desc">A compact architecture graphic for README and entry-point use.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#102a43"/>
+      <stop offset="100%" stop-color="#1f4b73"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#d9e7f5"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="520" rx="24" ry="24" fill="url(#bg)"/>
+  <text x="48" y="62" font-family="Georgia, 'Times New Roman', serif" font-size="32" fill="#ffffff">PyTex Architecture Snapshot</text>
+  <text x="48" y="94" font-family="Helvetica, Arial, sans-serif" font-size="17" fill="#d9e7f5">
+    One canonical core, multiple scientific domains, adapters at the boundary, documentation and validation as product surfaces.
+  </text>
+
+  <rect x="48" y="146" width="220" height="250" rx="18" ry="18" fill="#f0f4f8"/>
+  <text x="72" y="186" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#102a43">Governance</text>
+  <text x="72" y="226" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#334e68">Mission</text>
+  <text x="72" y="256" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#334e68">Specifications</text>
+  <text x="72" y="286" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#334e68">Standards</text>
+  <text x="72" y="316" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#334e68">Docs + validation</text>
+
+  <rect x="304" y="146" width="280" height="250" rx="18" ry="18" fill="#dcfce7"/>
+  <text x="328" y="186" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#1b4332">Canonical Core</text>
+  <text x="328" y="226" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#1b4332">Frames, transforms</text>
+  <text x="328" y="256" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#1b4332">Symmetry, lattice</text>
+  <text x="328" y="286" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#1b4332">Orientation, provenance</text>
+  <text x="328" y="316" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#1b4332">Direct and reciprocal semantics</text>
+
+  <rect x="624" y="146" width="240" height="250" rx="18" ry="18" fill="#fff7d6"/>
+  <text x="648" y="186" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#744210">Domain Layers</text>
+  <text x="648" y="226" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#744210">Texture</text>
+  <text x="648" y="256" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#744210">EBSD</text>
+  <text x="648" y="286" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#744210">Diffraction</text>
+  <text x="648" y="316" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#744210">Plotting</text>
+
+  <rect x="896" y="146" width="256" height="250" rx="18" ry="18" fill="#fde2e4"/>
+  <text x="920" y="186" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#6d1f2f">Next Foundations</text>
+  <text x="920" y="226" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#6d1f2f">Multimodal acquisition</text>
+  <text x="920" y="256" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#6d1f2f">Calibration and quality</text>
+  <text x="920" y="286" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#6d1f2f">Phase transformation</text>
+  <text x="920" y="316" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#6d1f2f">Validation expansion</text>
+
+  <line x1="268" y1="271" x2="304" y2="271" stroke="#d9e7f5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="584" y1="271" x2="624" y2="271" stroke="#d9e7f5" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="864" y1="271" x2="896" y2="271" stroke="#d9e7f5" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <text x="48" y="458" font-family="Helvetica, Arial, sans-serif" font-size="17" fill="#d9e7f5">
+    Documentation and validation are part of completion, not release polish.
+  </text>
+</svg>

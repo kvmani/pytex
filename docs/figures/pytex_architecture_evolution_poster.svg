@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">PyTex Architecture Evolution Poster</title>
+  <desc id="desc">A poster-style evolution view showing implemented foundations and documented next foundations for PyTex.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#edf3fa"/>
+    </linearGradient>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#102a43"/>
+      <stop offset="100%" stop-color="#1f4b73"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#102a43" flood-opacity="0.14"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#486581"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1100" fill="url(#bg)"/>
+  <rect x="70" y="60" rx="30" ry="30" width="1460" height="980" fill="#ffffff" filter="url(#shadow)"/>
+
+  <rect x="110" y="100" rx="24" ry="24" width="1380" height="120" fill="url(#header)"/>
+  <text x="150" y="152" font-family="Georgia, 'Times New Roman', serif" font-size="44" fill="#ffffff">Implemented Foundation And Planned Expansion</text>
+  <text x="150" y="192" font-family="Helvetica, Arial, sans-serif" font-size="21" fill="#d9e7f5">
+    The project already has a substantial semantic core. The next work broadens the foundation without breaking that core.
+  </text>
+
+  <rect x="140" y="270" rx="26" ry="26" width="620" height="640" fill="#ecfdf5" stroke="#2d6a4f" stroke-width="3"/>
+  <text x="180" y="324" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#1b4332">Implemented Or Foundational Today</text>
+
+  <text x="180" y="378" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">Core model: frames, symmetry, lattice, provenance, orientation</text>
+  <text x="180" y="426" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">Texture: PF, IPF, ODF, IPF color keys</text>
+  <text x="180" y="474" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">EBSD: CrystalMap, KAM, segmentation, GROD, boundaries</text>
+  <text x="180" y="522" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">Diffraction: geometry, reciprocal-space, kinematic spots</text>
+  <text x="180" y="570" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">Import and manifest surface: EBSD import normalization</text>
+  <text x="180" y="618" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#1b4332">Documentation and validation doctrine already live</text>
+
+  <rect x="840" y="270" rx="26" ry="26" width="620" height="640" fill="#fff1f2" stroke="#b56576" stroke-width="3"/>
+  <text x="880" y="324" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#6d1f2f">Architecturally Defined Next</text>
+
+  <text x="880" y="378" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">SpaceGroupSpec and broader structure semantics</text>
+  <text x="880" y="426" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">AcquisitionGeometry and CalibrationRecord</text>
+  <text x="880" y="474" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">MeasurementQuality and ScatteringSetup</text>
+  <text x="880" y="522" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">Diffraction validation beyond the current internal base</text>
+  <text x="880" y="570" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">PhaseTransformationRecord and variant semantics</text>
+  <text x="880" y="618" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#6d1f2f">Parent-child provenance and transformation relationships</text>
+
+  <line x1="760" y1="590" x2="840" y2="590" stroke="#486581" stroke-width="5" marker-end="url(#arrow)"/>
+  <text x="702" y="565" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#486581">extends</text>
+
+  <rect x="140" y="940" rx="18" ry="18" width="1320" height="70" fill="#102a43"/>
+  <text x="180" y="984" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#f0f4f8">
+    Rule: broaden the semantic foundation only where the current model is explicitly insufficient, never by inventing private conventions inside subsystems.
+  </text>
+</svg>
