@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="560" viewBox="0 0 1080 560">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#223042"/>
+    </marker>
+  </defs>
+  <rect width="1080" height="560" fill="#fbfaf6"/>
+  <text x="48" y="54" font-size="30" font-family="Georgia, serif" fill="#16202c">Orientation Reduction Workflow</text>
+  <text x="48" y="86" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#475569">
+    PyTex separates crystal-direction reduction for IPF work from orientation-space reduction for misorientation and canonicalization.
+  </text>
+
+  <rect x="70" y="150" width="260" height="150" rx="22" fill="#dcebd9" stroke="#4c7a57" stroke-width="2.5"/>
+  <text x="98" y="192" font-size="25" font-family="Georgia, serif" fill="#183123">Input orientation or direction</text>
+  <text x="98" y="228" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#183123">quaternion-backed orientation</text>
+  <text x="98" y="252" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#183123">or crystal direction family</text>
+
+  <rect x="410" y="100" width="280" height="160" rx="22" fill="#f7e9c0" stroke="#a9892a" stroke-width="2.5"/>
+  <text x="442" y="142" font-size="24" font-family="Georgia, serif" fill="#4a3808">IPF sector reduction</text>
+  <text x="442" y="177" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4a3808">reduce crystal direction</text>
+  <text x="442" y="201" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4a3808">to class-specific sector</text>
+  <text x="442" y="225" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4a3808">for inverse pole figures</text>
+
+  <rect x="410" y="300" width="280" height="160" rx="22" fill="#e5eef8" stroke="#386790" stroke-width="2.5"/>
+  <text x="440" y="342" font-size="24" font-family="Georgia, serif" fill="#17314a">Orientation-space reduction</text>
+  <text x="440" y="377" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#17314a">choose symmetry-reduced</text>
+  <text x="440" y="401" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#17314a">representative relative to</text>
+  <text x="440" y="425" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#17314a">a reference orientation</text>
+
+  <rect x="770" y="100" width="250" height="160" rx="22" fill="#f9dfdf" stroke="#9c5050" stroke-width="2.5"/>
+  <text x="806" y="142" font-size="24" font-family="Georgia, serif" fill="#4b1d1d">IPF-facing outputs</text>
+  <text x="806" y="177" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4b1d1d">sector coordinates</text>
+  <text x="806" y="201" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4b1d1d">boundary-aware tests</text>
+  <text x="806" y="225" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4b1d1d">class-specific parity</text>
+
+  <rect x="770" y="300" width="250" height="160" rx="22" fill="#d9e8f0" stroke="#47687a" stroke-width="2.5"/>
+  <text x="794" y="342" font-size="24" font-family="Georgia, serif" fill="#1e2f3a">Orientation outputs</text>
+  <text x="794" y="377" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#1e2f3a">projected orientation</text>
+  <text x="794" y="401" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#1e2f3a">disorientation angle</text>
+  <text x="794" y="425" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#1e2f3a">misorientation workflows</text>
+
+  <line x1="330" y1="210" x2="410" y2="180" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="330" y1="240" x2="410" y2="380" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="690" y1="180" x2="770" y2="180" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="690" y1="380" x2="770" y2="380" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  <text x="84" y="490" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#475569">
+    This figure is informative: it summarizes the distinction enforced in the PyTex API and parity suite between direction-sector and orientation-region reduction.
+  </text>
+</svg>

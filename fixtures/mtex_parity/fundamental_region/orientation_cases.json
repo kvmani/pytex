@@ -1,0 +1,21 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "fundamental_region_fixture.m",
+  "tolerance": 1e-8,
+  "cases": [
+    {
+      "name": "cubic_270z_projects_to_identity",
+      "point_group": "m-3m",
+      "euler_convention": "bunge",
+      "angles_deg": [270.0, 0.0, 0.0],
+      "expected_projected_angle_deg": 0.0
+    },
+    {
+      "name": "trigonal_80z_projects_to_40z",
+      "point_group": "-3m",
+      "euler_convention": "abg",
+      "angles_deg": [80.0, 0.0, 0.0],
+      "expected_projected_angle_deg": 40.0
+    }
+  ]
+}

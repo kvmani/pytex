@@ -1,0 +1,19 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "rotation_parity_fixture.m",
+  "tolerance": 1e-8,
+  "cases": [
+    {
+      "name": "x_180",
+      "axis": [1.0, 0.0, 0.0],
+      "angle_deg": 180.0,
+      "quaternion_wxyz": [0.0, 1.0, 0.0, 0.0]
+    },
+    {
+      "name": "diag_120",
+      "axis": [1.0, 1.0, 1.0],
+      "angle_deg": 120.0,
+      "quaternion_wxyz": [0.5, 0.5, 0.5, 0.5]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
+    </marker>
+  </defs>
+  <rect width="1180" height="620" fill="#fcfbf7"/>
+  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">Crystal Symmetry Actions</text>
+  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    The same crystal symmetry group can act on directions or on orientations, but the geometric meaning of the action depends on the object being reduced.
+  </text>
+
+  <rect x="48" y="118" width="500" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="632" y="118" width="500" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+
+  <text x="84" y="158" font-size="26" font-family="Georgia, serif" fill="#21402c">Action on directions</text>
+  <text x="668" y="158" font-size="26" font-family="Georgia, serif" fill="#17324a">Action on orientations</text>
+
+  <g transform="translate(298,334)">
+    <circle cx="0" cy="0" r="120" fill="none" stroke="#cfd8e1" stroke-width="2"/>
+    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
+    <line x1="0" y1="0" x2="0" y2="-120" stroke="#7d95ad" stroke-width="2"/>
+    <line x1="0" y1="0" x2="104" y2="60" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-104" y2="60" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="-120" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="112" y="68" font-size="18" font-family="Georgia, serif" fill="#8f301e">s·d₁</text>
+    <text x="-146" y="68" font-size="18" font-family="Georgia, serif" fill="#21402c">s·d₂</text>
+    <text x="10" y="-128" font-size="18" font-family="Georgia, serif" fill="#17324a">s·d₃</text>
+    <text x="-34" y="148" font-size="18" font-family="Georgia, serif" fill="#313a43">symmetry-equivalent poles</text>
+  </g>
+
+  <g transform="translate(878,332)">
+    <rect x="-136" y="-92" width="272" height="182" rx="18" fill="#f4e7bf" stroke="#aa8b2d" stroke-width="2"/>
+    <text x="-62" y="-42" font-size="28" font-family="Georgia, serif" fill="#5b4308">g</text>
+    <text x="-18" y="-42" font-size="28" font-family="Georgia, serif" fill="#5b4308">→</text>
+    <text x="22" y="-42" font-size="28" font-family="Georgia, serif" fill="#5b4308">c₁g</text>
+    <text x="-82" y="2" font-size="22" font-family="Georgia, serif" fill="#5b4308">→</text>
+    <text x="-42" y="2" font-size="22" font-family="Georgia, serif" fill="#5b4308">c₂g</text>
+    <text x="42" y="2" font-size="22" font-family="Georgia, serif" fill="#5b4308">→</text>
+    <text x="78" y="2" font-size="22" font-family="Georgia, serif" fill="#5b4308">c₃g</text>
+    <text x="-78" y="52" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#5b4308">orbit of symmetry-equivalent</text>
+    <text x="-34" y="76" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#5b4308">orientation representatives</text>
+  </g>
+
+  <text x="116" y="492" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Direction reduction stays on the sphere and asks: which equivalent pole belongs in the chosen IPF sector?
+  </text>
+  <text x="700" y="492" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Orientation reduction stays in orientation space and asks: which equivalent orientation is the correct canonical representative?
+  </text>
+</svg>

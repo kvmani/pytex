@@ -1,0 +1,25 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "ebsd_parity_fixture.m",
+  "tolerance": 1e-8,
+  "segmentation_case": {
+    "point_group": "1",
+    "grid_shape": [2, 2],
+    "coordinates": [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+    "angles_deg": [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [25.0, 0.0, 0.0], [26.0, 0.0, 0.0]],
+    "max_misorientation_deg": 5.0,
+    "expected_labels": [[0, 0], [1, 1]],
+    "expected_grod_deg": [[0.0, 1.0], [0.0, 1.0]],
+    "expected_boundary_count": 2,
+    "expected_high_angle_count": 2,
+    "expected_boundary_total_length": 2.0
+  },
+  "cleanup_case": {
+    "point_group": "1",
+    "grid_shape": [2, 2],
+    "coordinates": [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+    "angles_deg": [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [25.0, 0.0, 0.0]],
+    "max_misorientation_deg": 5.0,
+    "expected_merged_label": [[0, 0], [0, 0]]
+  }
+}

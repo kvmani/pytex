@@ -1,0 +1,34 @@
+# Diffraction Foundation
+
+This document records the initial Phase 4 implementation posture for diffraction-facing workflows.
+
+## Implemented
+
+- `DiffractionGeometry` as the canonical detector/specimen/laboratory geometry container
+- electron wavelength from accelerating voltage
+- detector-plane coordinates in millimeters relative to an explicit pattern center
+- outgoing ray directions in the laboratory frame
+- scattering-vector computation in reciprocal-length units
+- detector-space `2θ` and azimuth evaluation
+- Bragg-angle and ring-radius prediction from `d` spacing or `CrystalPlane`
+- explicit `ReciprocalLatticeVector` and `ZoneAxis` core-model objects
+- specimen-to-laboratory rotation as an explicit diffraction-geometry contract
+- minimal Ewald-style kinematic spot simulation with excitation-error filtering and detector projection
+- validation of detector projection edge cases, integer Miller inputs, and off-detector spot semantics
+- symmetry-aware reflection-family grouping with explicit multiplicity records
+- explicit detector acceptance masks for workflow-level detector gating
+- minimal proxy intensity weighting for spot ranking and family representation
+- detector-space clustering and simulated/observed indexing-candidate association
+- local orientation-candidate ranking and deterministic local refinement
+- family-level indexing reports built from matched reflection families
+
+## Deliberate Current Limits
+
+- no full detector-to-specimen transform calibration workflow yet
+- no structure-factor or dynamical intensity simulation yet
+- no continuous or probabilistic orientation-refinement workflow yet
+- no adapter-backed bridges to diffsims or related diffraction stacks yet
+
+## Why This Is The Right First Step
+
+Phase 4 should begin by making reciprocal-space and detector-space semantics explicit before attempting simulation breadth. A usable diffraction foundation needs detector coordinates, wave-vector transfer, Bragg geometry, and clear frame ownership before more elaborate indexing or pattern-generation work can stay interpretable.

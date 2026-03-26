@@ -1,0 +1,87 @@
+\section{Reciprocal Space And Kinematic Spots}
+
+PyTex now includes an explicit reciprocal-space and zone-axis layer for minimal diffraction spot prediction.
+
+\subsection{Reciprocal Vectors}
+
+Given Miller indices $(h,k,l)$, PyTex constructs a reciprocal-lattice vector
+\[
+  \mathbf{g} = h \mathbf{a}^\ast + k \mathbf{b}^\ast + l \mathbf{c}^\ast.
+\]
+
+\subsection{Zone Axis Condition}
+
+For a zone axis $\mathbf{z}$ in direct space, a reciprocal vector belongs to the zone when
+\[
+  \mathbf{z} \cdot \mathbf{g} = 0.
+\]
+
+The current implementation uses this relation as an explicit filter when a zone axis is provided.
+
+\subsection{Kinematic Spot Construction}
+
+With incident wavevector $\mathbf{k}_{\mathrm{in}}$ and reciprocal vector $\mathbf{g}$ in the laboratory frame, the candidate outgoing wavevector is
+\[
+  \mathbf{k}_{\mathrm{out}} = \mathbf{k}_{\mathrm{in}} + \mathbf{g}.
+\]
+
+PyTex then evaluates the excitation error as the scalar mismatch
+\[
+  s = \lVert \mathbf{k}_{\mathrm{out}} \rVert - \lVert \mathbf{k}_{\mathrm{in}} \rVert,
+\]
+and accepts candidates within a configured tolerance.
+
+\subsection{Reflection Families}
+
+PyTex groups reflections into symmetry-aware families in crystal reciprocal space. Let $\mathbf{g}_c$ be the reciprocal vector in the crystal basis and let $\mathcal{S}$ denote the proper crystal symmetry group. The family direction key is constructed from a canonicalized representative
+\[
+  \widehat{\mathbf{g}}_{\mathrm{fam}} =
+  \operatorname{canon}_{\mathcal{S}}\!\left(
+    \frac{\mathbf{g}_c}{\lVert \mathbf{g}_c \rVert}
+  \right),
+\]
+and the family key retains the reciprocal magnitude $\lVert \mathbf{g}_c \rVert$ as a separate invariant so that $(100)$ and $(200)$ do not collapse into the same family.
+
+\subsection{Detector Projection}
+
+Accepted outgoing directions are normalized and intersected with the detector plane defined by the camera length, detector basis, and pattern center.
+
+\subsection{Detector Acceptance Masks}
+
+After detector projection, PyTex may apply an explicit acceptance mask. The current implementation supports a rectangular inset and an optional radial bound about the pattern center. This separates detector-plane intersection, detector containment, and workflow-specific acceptance into distinct states.
+
+\subsection{Proxy Intensity Weighting}
+
+PyTex currently provides a minimal ranking intensity rather than a physical structure-factor model. In the default proxy mode, the intensity is
+\[
+  I_{\mathrm{proxy}} =
+  \frac{1}{1 + \left(s / \sigma_s\right)^2}
+  \cdot
+  \frac{1}{1 + \lVert \mathbf{g} \rVert^2},
+\]
+where $s$ is the excitation error, $\sigma_s$ is the configured excitation scale, and $\mathbf{g}$ is the reciprocal vector in the laboratory frame. The first factor penalizes off-Ewald candidates and the second suppresses higher-order reflections in a simple teaching-grade way.
+
+\subsection{Detector-Space Indexing Association}
+
+Observed detector coordinates can be clustered in detector space and then associated with simulated spots. Let $\mathbf{p}_i$ denote a detector-space observation cluster center and let $\mathbf{s}_j$ denote a simulated detector coordinate. PyTex currently evaluates the detector residual
+\[
+  r_{ij} = \lVert \mathbf{p}_i - \mathbf{s}_j \rVert,
+\]
+accepts matches under a configured residual threshold, and summarizes the result as an indexing candidate with match fraction, mean residual, and a simple aggregate score.
+
+\subsection{Local Candidate Refinement}
+
+PyTex now also provides a deterministic local refinement loop around a seed orientation. The current implementation parameterizes the neighborhood in Bunge Euler space, evaluates a local Cartesian grid, and retains the best-scoring candidate after each shrink step. This is intentionally a transparent local search rather than a hidden optimizer.
+
+\subsection{Family-Level Indexing Reports}
+
+Because spot-by-spot matches can be hard to interpret, PyTex also aggregates matches to reflection families. The current family report records the representative Miller indices, multiplicity, represented simulated-spot count, matched count, matched fraction, total family intensity, and mean detector residual.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item This is a minimal teaching-grade and geometry-grade kinematic spot workflow.
+  \item Excitation error is currently a simple magnitude mismatch, not a full refinement metric.
+  \item Proxy intensity weighting is not a substitute for structure factors, polarization terms, or dynamical scattering.
+  \item Local refinement now exists, but continuous gradient-style or probabilistic refinement remains future work.
+\end{itemize}

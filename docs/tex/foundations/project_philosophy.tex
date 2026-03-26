@@ -1,0 +1,30 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{PyTex Project Philosophy}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Purpose}
+
+PyTex is intended to be a coherent Python environment for crystallographic texture and diffraction where scientific meaning is explicit, reproducibility is routine, and documentation quality is treated as part of the product.
+
+\section{First Principles}
+
+\begin{itemize}
+  \item Frames, symmetry, and provenance are first-class data, not hidden assumptions.
+  \item Stable public APIs should encode scientific meaning directly.
+  \item Documentation should explain both \emph{what} a workflow does and \emph{why} the mathematics is valid.
+  \item Teaching and research are peers, not separate products.
+  \item Validation claims must be evidenced by tests, benchmarks, or traceable parity notes.
+\end{itemize}
+
+\section{Outcome}
+
+The repository should make it difficult to write semantically ambiguous code and easy to construct rigorous, publication-quality workflows.
+
+\end{document}

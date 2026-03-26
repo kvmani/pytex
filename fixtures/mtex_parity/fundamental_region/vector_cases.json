@@ -1,0 +1,21 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "fundamental_region_fixture.m",
+  "tolerance": 1e-8,
+  "cases": [
+    {
+      "name": "cubic_negative_z",
+      "point_group": "m-3m",
+      "input_vector": [0.0, 0.0, -1.0],
+      "expected_vector": [0.0, 0.0, 1.0],
+      "antipodal": true
+    },
+    {
+      "name": "hexagonal_basal_wedge",
+      "point_group": "6/mmm",
+      "input_vector": [0.0, 1.0, 0.0],
+      "expected_vector": [0.8660254037844386, 0.5, 0.0],
+      "antipodal": true
+    }
+  ]
+}

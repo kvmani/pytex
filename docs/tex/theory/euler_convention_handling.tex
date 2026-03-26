@@ -1,0 +1,22 @@
+\section{Euler Convention Handling}
+
+PyTex now exposes explicit Euler convention handling for the MTEX-relevant conventions used in the parity suite.
+
+\subsection{Supported Conventions}
+
+\begin{itemize}
+  \item Bunge \((\phi_1,\Phi,\phi_2)\) with a \(Z X Z\) axis sequence
+  \item Matthies \((\alpha,\beta,\gamma)\) with a \(Z Y Z\) axis sequence
+  \item ABG as an alias for the Matthies \(Z Y Z\) convention
+\end{itemize}
+
+\subsection{Policy}
+
+PyTex keeps Bunge as the canonical convenience API while also exposing a convention-aware Euler conversion entrypoint so parity tests can target MTEX-facing semantics directly.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item Only the conventions required for the current parity scope are exposed.
+  \item The parity policy is documented against MTEX 6.1.1 conventions, not every historical toolbox variant.
+\end{itemize}

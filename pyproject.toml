@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytex"
+version = "0.1.0.dev0"
+description = "Pure-Python-first crystallographic texture and diffraction foundation library."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-or-later" }
+authors = [
+  { name = "PyTex contributors" }
+]
+keywords = [
+  "crystallography",
+  "texture",
+  "diffraction",
+  "ebsd",
+  "odf",
+  "pole-figure",
+]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+  "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy>=1.10",
+  "pytest>=8.2,<9",
+  "pytest-cov>=5.0",
+  "ruff>=0.5",
+]
+docs = [
+  "furo>=2024.1.29",
+  "myst-parser>=3.0",
+  "sphinx-copybutton>=0.5.2",
+  "sphinx-design>=0.6",
+  "sphinxcontrib-bibtex>=2.6",
+  "sphinx>=7.4",
+]
+adapters = [
+  "diffsims>=0.6.1",
+  "kikuchipy>=0.11.5",
+  "orix>=0.13.3",
+  "pyebsdindex>=0.2.dev1",
+  "pymatgen>=2024.5.1",
+]
+
+[project.scripts]
+pytex = "pytex.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+disable_error_code = ["type-arg"]
+packages = ["pytex"]

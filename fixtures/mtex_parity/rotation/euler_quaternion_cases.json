@@ -1,0 +1,63 @@
+{
+  "mtex_version": "6.1.1",
+  "source_script_name": "rotation_parity_fixture.m",
+  "tolerance": 1e-8,
+  "cases": [
+    {
+      "name": "bunge_identity",
+      "convention": "bunge",
+      "degrees": true,
+      "angles": [0.0, 0.0, 0.0],
+      "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "name": "bunge_z_90",
+      "convention": "bunge",
+      "degrees": true,
+      "angles": [90.0, 0.0, 0.0],
+      "quaternion_wxyz": [0.7071067811865476, 0.0, 0.0, 0.7071067811865475]
+    },
+    {
+      "name": "bunge_general",
+      "convention": "bunge",
+      "degrees": true,
+      "angles": [35.0, 45.0, 10.0],
+      "quaternion_wxyz": [0.8535533905932737, 0.37361230700898823, 0.08282785436160814, 0.35355339059327373]
+    },
+    {
+      "name": "bunge_gimbal_near",
+      "convention": "bunge",
+      "degrees": true,
+      "angles": [270.0, 1.0, 45.0],
+      "quaternion_wxyz": [0.9238443540096137, 0.0033395005571735348, -0.008062267536680857, -0.3826688609525929]
+    },
+    {
+      "name": "abg_identity",
+      "convention": "abg",
+      "degrees": true,
+      "angles": [0.0, 0.0, 0.0],
+      "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]
+    },
+    {
+      "name": "abg_y_90",
+      "convention": "abg",
+      "degrees": true,
+      "angles": [0.0, 90.0, 0.0],
+      "quaternion_wxyz": [0.7071067811865476, 0.0, 0.7071067811865475, 0.0]
+    },
+    {
+      "name": "abg_general",
+      "convention": "abg",
+      "degrees": true,
+      "angles": [20.0, 35.0, 40.0],
+      "quaternion_wxyz": [0.8259431073677969, 0.05221701409779435, 0.29613740272754274, 0.4768584753741134]
+    },
+    {
+      "name": "abg_gimbal_near",
+      "convention": "abg",
+      "degrees": true,
+      "angles": [10.0, 179.0, 120.0],
+      "quaternion_wxyz": [0.0036879932633412855, 0.8191208534891674, 0.5735545963178864, 0.007908927076028015]
+    }
+  ]
+}

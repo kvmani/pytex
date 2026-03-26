@@ -1,0 +1,62 @@
+\section{Crystal Structures And CIF Import}
+
+PyTex now supports phase construction from crystallographic structures and CIF data at the canonical data-model layer rather than only through external adapters.
+
+\subsection{Core Rule}
+
+If a crystallographic source defines a phase, PyTex should construct canonical primitives directly:
+\begin{itemize}
+  \item a lattice,
+  \item a unit cell,
+  \item a phase,
+  \item a point-group symmetry specification derived from the source structure.
+\end{itemize}
+
+This ensures that downstream orientation, EBSD, and diffraction workflows operate on PyTex primitives rather than on source-specific structure objects.
+
+\subsection{Current Implementation}
+
+The present implementation uses \texttt{pymatgen} as an optional crystallographic parser and structure provider. PyTex exposes:
+\begin{itemize}
+  \item \texttt{Lattice.from\_pymatgen\_lattice(...)},
+  \item \texttt{UnitCell.from\_pymatgen\_structure(...)},
+  \item \texttt{Phase.from\_pymatgen\_structure(...)},
+  \item \texttt{Phase.from\_cif(...)},
+  \item \texttt{Phase.from\_cif\_string(...)}.
+\end{itemize}
+
+The imported structure is normalized into PyTex objects, including:
+\begin{itemize}
+  \item lattice parameters,
+  \item atomic basis,
+  \item reduced chemical formula,
+  \item space-group symbol and number,
+  \item crystal point group reduced to the supported \texttt{SymmetrySpec} surface.
+\end{itemize}
+
+\subsection{Disordered Sites}
+
+PyTex stores one species and one occupancy per \texttt{AtomicSite}. When a source structure contains a disordered crystallographic site with multiple species, the current import path expands that source site into multiple PyTex \texttt{AtomicSite} records sharing the same fractional coordinates and carrying explicit occupancy values.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item CIF support currently depends on \texttt{pymatgen} rather than on a native PyTex parser.
+  \item Space-group information is retained on the phase object, but symmetry algorithms currently operate at the point-group level implemented in \texttt{SymmetrySpec}.
+  \item Magnetic symmetry, superspace descriptions, and richer crystallographic metadata remain future work.
+\end{itemize}
+
+\subsection{Normative And Informative References}
+
+\begin{thebibliography}{9}
+\bibitem{iucr_cif}
+International Union of Crystallography,
+\textit{Crystallographic Information Framework (CIF)}.
+\url{https://www.iucr.org/resources/cif}.
+
+\bibitem{pymatgen}
+S. P. Ong et al.,
+\textit{Python Materials Genomics (pymatgen): A robust, open-source python library for materials analysis},
+Computational Materials Science 68 (2013) 314--319.
+DOI: \url{https://doi.org/10.1016/j.commatsci.2012.10.028}.
+\end{thebibliography}
