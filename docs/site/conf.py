@@ -17,6 +17,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx_design",
     "sphinxcontrib.mermaid",
 ]
 
@@ -26,7 +27,8 @@ exclude_patterns = ["_build", "README.md"]
 
 html_theme = "furo"
 html_title = "PyTex"
-html_static_path = []
+html_static_path = ["_static"]
+html_css_files = ["architecture.css"]
 
 myst_enable_extensions = [
     "colon_fence",

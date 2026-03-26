@@ -3,13 +3,15 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="How PyTex Differs" href="how_pytex_differs.html"><link rel="prev" title="Core Model" href="core_model.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="How PyTex Differs" href="how_pytex_differs.html"><link rel="prev" title="Core Foundation" href="core_foundation.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Library Structure - PyTex</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/architecture.css?v=046228d5" />
     
     
 
@@ -193,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -263,11 +269,116 @@ g_{\mathrm{proj}}</a></li>
           <section id="library-structure">
 <h1>Library Structure<a class="headerlink" href="#library-structure" title="Link to this heading">¶</a></h1>
 <p>This page is the architecture atlas for PyTex.</p>
-<p>It is meant to give a reader a fast, accurate mental model of the library before they dive into implementation details. The diagrams below do not merely mirror the folder tree. They explain how PyTex is organized semantically, how scientific data moves through the system, how documentation and validation govern the codebase, and how the current implementation relates to the next planned foundations.</p>
+<p class="architecture-lead">
+It is meant to give a reader a fast, accurate mental model of the library before they dive into implementation details. The diagrams below do not merely mirror the folder tree. They explain how PyTex is organized semantically, how scientific data moves through the system, how documentation and validation govern the codebase, and how the current implementation relates to the next planned foundations.
+</p><section id="at-a-glance">
+<h2>At A Glance<a class="headerlink" href="#at-a-glance" title="Link to this heading">¶</a></h2>
+<p>PyTex is organized around four non-negotiable ideas:</p>
+<ul class="simple">
+<li><p>one canonical crystallographic core</p></li>
+<li><p>multiple domain modules that reuse that core</p></li>
+<li><p>adapters that normalize external data into PyTex semantics</p></li>
+<li><p>documentation and validation as first-class product surfaces</p></li>
+</ul>
+<p>That structure is what lets the project remain texture-led while expanding toward EBSD, diffraction, and future phase-transformation and multimodal workflows.</p>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-1 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Semantic Nucleus</div>
+<p class="sd-card-text">PyTex is built around one canonical crystallographic core for frames, symmetry, lattice, orientation, reciprocal-space, and provenance semantics.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Domain Expansion</div>
+<p class="sd-card-text">Texture, EBSD, diffraction, and plotting are downstream scientific layers that must reuse the same core model rather than inventing private conventions.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Boundary Discipline</div>
+<p class="sd-card-text">Adapters live at the normalization boundary. They are responsible for translation into PyTex semantics, not for defining the stable product surface.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Completion Doctrine</div>
+<p class="sd-card-text">Documentation, figures, tests, ledgers, and benchmark placeholders are architectural surfaces. They are part of feature completion, not release polish.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="architecture-poster">
+  <img src="../../figures/pytex_architecture_poster.svg" alt="PyTex architecture poster"/>
+</div><div class="architecture-poster">
+  <img src="../../figures/pytex_architecture_evolution_poster.svg" alt="PyTex architecture evolution poster"/>
+</div></section>
+<section id="poster-series">
+<h2>Poster Series<a class="headerlink" href="#poster-series" title="Link to this heading">¶</a></h2>
+<p>The poster below is designed as the primary reusable figure for talks, README summaries, and high-level architecture discussions.</p>
+<p>It is intentionally poster-like: it compresses the whole project into a single view while preserving the semantic hierarchy of governance, core model, domain modules, boundary layers, and next foundations.</p>
+</section>
+<section id="visual-legend">
+<h2>Visual Legend<a class="headerlink" href="#visual-legend" title="Link to this heading">¶</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mb-4 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-1 sd-row-cols-md-4 sd-row-cols-lg-4 sd-g-2 sd-g-xs-2 sd-g-sm-2 sd-g-md-2 sd-g-lg-2 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Governance</div>
+<p class="sd-card-text">Mission, standards, documentation, and validation layers that control what the code is allowed to claim.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Core</div>
+<p class="sd-card-text">Canonical objects and semantics shared across all scientific workflows.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Domain</div>
+<p class="sd-card-text">Texture, EBSD, diffraction, and presentation-facing modules built on the core.</p>
+</div>
+</div>
+</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Growth</div>
+<p class="sd-card-text">Boundary layers and future foundations that extend the system without weakening the existing contracts.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
 <section id="system-structure">
 <h2>1. System Structure<a class="headerlink" href="#system-structure" title="Link to this heading">¶</a></h2>
-<p>This first diagram is the top-level structural map.</p>
-<pre  class="mermaid">
+<p class="architecture-section-intro">
+This first diagram is the top-level structural map. It shows the code structure as a semantic system rather than as a bare directory tree.
+</p><pre  class="mermaid">
         flowchart TB
     mission[&quot;Mission, Specifications, Standards&lt;br/&gt;Mission, specifications, governance, notation,&lt;br/&gt;reference canon, manifest policy&quot;]
     docs_surface[&quot;Documentation Surface&lt;br/&gt;Sphinx site, LaTeX theory notes, SVG figures&quot;]
@@ -376,13 +487,15 @@ g_{\mathrm{proj}}</a></li>
 <li><p>Texture, EBSD, diffraction, and plotting are downstream scientific layers, not separate semantic islands.</p></li>
 <li><p>Adapters are boundary modules. They translate into PyTex semantics rather than owning them.</p></li>
 <li><p>Documentation and validation sit above the codebase because in PyTex they define what counts as a finished feature.</p></li>
+<li><p>The future-foundations block is not speculative fluff. It is the documented expansion path for the next stable API families.</p></li>
 </ul>
 </section>
 </section>
 <section id="scientific-data-flow">
 <h2>2. Scientific Data Flow<a class="headerlink" href="#scientific-data-flow" title="Link to this heading">¶</a></h2>
-<p>This second diagram shows how scientific information is meant to move through the library.</p>
-<pre  class="mermaid">
+<p class="architecture-section-intro">
+This second diagram shows how scientific information is intended to move through the library: normalization at the boundary, canonical objects in the middle, domain workflows downstream, and documentation plus validation surrounding the flow.
+</p><pre  class="mermaid">
         flowchart LR
     external[&quot;External Sources&lt;br/&gt;Vendor EBSD data, CIF files, third-party objects,&lt;br/&gt;future diffraction datasets&quot;]
     adapters[&quot;Adapters And Import Contracts&lt;br/&gt;Manifest validation, normalization, provenance capture&quot;]
@@ -423,13 +536,15 @@ g_{\mathrm{proj}}</a></li>
 <li><p>Internal algorithms should operate on PyTex domain types, not on source-native objects.</p></li>
 <li><p>Documentation and validation are attached to the flow, not bolted on afterward.</p></li>
 <li><p>Outputs are expected to remain traceable back to conventions, inputs, and normalization boundaries.</p></li>
+<li><p>The data-flow model is intentionally conservative because scientific clarity matters more than API cleverness.</p></li>
 </ul>
 </section>
 </section>
 <section id="governance-and-completion-model">
 <h2>3. Governance And Completion Model<a class="headerlink" href="#governance-and-completion-model" title="Link to this heading">¶</a></h2>
-<p>This third diagram explains how the non-code surfaces constrain development.</p>
-<pre  class="mermaid">
+<p class="architecture-section-intro">
+This third diagram explains why PyTex development is deliberately constrained by standards, architecture docs, and validation policy.
+</p><pre  class="mermaid">
         flowchart TB
     idea[&quot;New Scientific Capability&quot;]
     standards[&quot;Standards Layer&lt;br/&gt;Notation, reference canon, manifests,&lt;br/&gt;engineering and documentation rules&quot;]
@@ -466,13 +581,15 @@ g_{\mathrm{proj}}</a></li>
 <li><p>PyTex does not treat implementation alone as completion.</p></li>
 <li><p>Standards and architecture documents are upstream decision surfaces.</p></li>
 <li><p>A stable feature claim is only valid after docs and validation exist alongside the code.</p></li>
+<li><p>This is the mechanism that keeps the project from drifting as it grows beyond texture into broader crystallography.</p></li>
 </ul>
 </section>
 </section>
 <section id="current-state-versus-planned-expansion">
 <h2>4. Current State Versus Planned Expansion<a class="headerlink" href="#current-state-versus-planned-expansion" title="Link to this heading">¶</a></h2>
-<p>This final diagram separates what is already implemented from what is architecturally defined but still ahead.</p>
-<pre  class="mermaid">
+<p class="architecture-section-intro">
+This final diagram separates the current implemented foundation from the next layers that are already documented but not yet fully implemented as stable APIs.
+</p><pre  class="mermaid">
         flowchart LR
     subgraph current[&quot;Implemented Or Foundational Today&quot;]
         current_core[&quot;Core model&lt;br/&gt;frames, symmetry, lattice, provenance, orientation&quot;]
@@ -511,6 +628,7 @@ g_{\mathrm{proj}}</a></li>
 <ul class="simple">
 <li><p>PyTex already has a substantial implemented foundation.</p></li>
 <li><p>The next major work is not “add more features blindly.” It is to broaden the semantic foundation in the few places where the current model is not yet enough for the full multimodal ambition.</p></li>
+<li><p>The gap between “implemented today” and “planned next” is intentionally documented so future contributors do not guess.</p></li>
 </ul>
 </section>
 </section>
@@ -529,7 +647,11 @@ g_{\mathrm{proj}}</a></li>
 <h2>Related Material<a class="headerlink" href="#related-material" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><a class="reference internal" href="core_model.html"><span class="doc">Core Model</span></a></p></li>
+<li><p><a class="reference internal" href="core_foundation.html"><span class="doc">Core Foundation</span></a></p></li>
 <li><p><a class="reference internal" href="orientation_texture.html"><span class="doc">Orientation And Texture</span></a></p></li>
+<li><p><a class="reference internal" href="texture_foundation.html"><span class="doc">Texture Foundation</span></a></p></li>
+<li><p><a class="reference internal" href="ebsd_foundation.html"><span class="doc">EBSD Foundation</span></a></p></li>
+<li><p><a class="reference internal" href="diffraction_foundation.html"><span class="doc">Diffraction Foundation</span></a></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/architecture/overview.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/architecture/multimodal_characterization_foundation.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/architecture/phase_transformation_foundation.md</span></code></p></li>
@@ -568,14 +690,14 @@ g_{\mathrm{proj}}</a></li>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="core_model.html">
+          <a class="prev-page" href="core_foundation.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Core Model</div>
+                <div class="title">Core Foundation</div>
                 
               </div>
             </a>
@@ -610,6 +732,9 @@ g_{\mathrm{proj}}</a></li>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Library Structure</a><ul>
+<li><a class="reference internal" href="#at-a-glance">At A Glance</a></li>
+<li><a class="reference internal" href="#poster-series">Poster Series</a></li>
+<li><a class="reference internal" href="#visual-legend">Visual Legend</a></li>
 <li><a class="reference internal" href="#system-structure">1. System Structure</a><ul>
 <li><a class="reference internal" href="#reading-this-view">Reading This View</a></li>
 </ul>
@@ -648,6 +773,7 @@ g_{\mathrm{proj}}</a></li>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs";
 

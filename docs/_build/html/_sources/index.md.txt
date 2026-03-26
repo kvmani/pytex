@@ -9,10 +9,14 @@ PyTex is intentionally opinionated about scientific semantics. Stable APIs are e
 :caption: Concepts
 
 concepts/core_model
+concepts/core_foundation
 concepts/library_structure
 concepts/how_pytex_differs
 concepts/reference_frames_and_conventions
 concepts/orientation_texture
+concepts/texture_foundation
+concepts/ebsd_foundation
+concepts/diffraction_foundation
 concepts/symmetry_and_fundamental_regions
 ```
 

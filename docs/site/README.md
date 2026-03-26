@@ -25,3 +25,12 @@ sphinx-build -b html docs/site docs/_build/html
 - Concept pages, tutorials, workflows, and curated API reference live here.
 - Canonical scientific notes remain under `../tex/`.
 - Canonical SVG figures remain under `../figures/`.
+
+## Architecture
+
+The architecture atlas is the best starting point for understanding the library as a whole:
+
+- {doc}`concepts/library_structure`
+- `../figures/pytex_architecture_poster.svg`
+- `../figures/pytex_architecture_evolution_poster.svg`
+- `../figures/pytex_architecture_compact.svg`

@@ -9,7 +9,9 @@
         <title>PyTex</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="_static/architecture.css?v=046228d5" />
     
     
 
@@ -193,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -277,7 +283,19 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/core_model.html#references">References</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/core_foundation.html">Core Foundation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#core-responsibilities">Core Responsibilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#core-object-map">Core Object Map</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#design-principles">Design Principles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#what-this-enables">What This Enables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#related-material">Related Material</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/core_foundation.html#references">References</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/library_structure.html">Library Structure</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#at-a-glance">At A Glance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#poster-series">Poster Series</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#visual-legend">Visual Legend</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#system-structure">1. System Structure</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#scientific-data-flow">2. Scientific Data Flow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/library_structure.html#governance-and-completion-model">3. Governance And Completion Model</a></li>
@@ -316,6 +334,33 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/orientation_texture.html#still-ahead">Still Ahead</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/orientation_texture.html#related-material">Related Material</a></li>
 <li class="toctree-l2"><a class="reference internal" href="concepts/orientation_texture.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/texture_foundation.html">Texture Foundation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#what-the-texture-layer-owns">What The Texture Layer Owns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#texture-flow">Texture Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#why-this-layer-matters">Why This Layer Matters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#current-state">Current State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#related-material">Related Material</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/texture_foundation.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/ebsd_foundation.html">EBSD Foundation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#what-the-ebsd-layer-owns">What The EBSD Layer Owns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#ebsd-flow">EBSD Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#why-this-layer-matters">Why This Layer Matters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#current-state">Current State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#related-material">Related Material</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/ebsd_foundation.html#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="concepts/diffraction_foundation.html">Diffraction Foundation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#what-the-diffraction-layer-owns">What The Diffraction Layer Owns</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#diffraction-flow">Diffraction Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#why-this-layer-matters">Why This Layer Matters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#current-state">Current State</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#related-material">Related Material</a></li>
+<li class="toctree-l2"><a class="reference internal" href="concepts/diffraction_foundation.html#references">References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a><ul>
@@ -630,5 +675,6 @@ g_{\mathrm{proj}}</a><ul>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     </body>
 </html>
