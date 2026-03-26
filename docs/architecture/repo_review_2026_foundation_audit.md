@@ -15,9 +15,9 @@ Strengths:
 
 Primary risks:
 
-- the multimodal ambition is broader than the currently explicit foundational doctrine
 - validation breadth is uneven across subsystems
-- some necessary future primitive families are defined only implicitly today
+- multimodal delivery depth is still shallower than the long-horizon mission breadth
+- some future algorithm families remain only foundational rather than externally benchmarked
 
 ## Review Buckets
 
@@ -29,11 +29,9 @@ Primary risks:
 
 ### Foundation Gaps
 
-- no stable `SpaceGroupSpec` layer distinct from current point-group-heavy semantics
-- no shared acquisition, calibration, or uncertainty object family
-- no stable phase-transformation architecture yet
-- no cross-domain manifest family beyond the EBSD import manifest
-- no single explicit multimodal frame-chain doctrine until this hardening pass
+- validation and benchmark evidence still lag the now-stable structure, manifest, acquisition, and transformation semantics
+- multimodal acquisition semantics are implemented, but broader modality-specific workflow adoption remains ahead
+- phase transformation now has stable primitives, but not yet a strong validation program
 
 ### Validation Gaps
 
@@ -49,9 +47,9 @@ Primary risks:
 | Orientation and texture | strong | strong | strong | foundationally ready | Needs later harmonic and exact-boundary expansion, not semantic rescue. |
 | EBSD | strong | strong | strong | foundationally ready | Regular-grid workflow base is real; richer modality scope is still ahead. |
 | Diffraction | strong foundation | moderate | strong | foundational | Geometry and indexing scaffolding are real, but external-baseline doctrine is thinner. |
-| CIF and structure import | moderate to strong | moderate | moderate to strong | foundational | Good architectural shape; still needs broader validation and space-group hardening. |
-| Multimodal acquisition | weak | weak | now foundationally defined | planned | Docs now define the target, but stable APIs are ahead. |
-| Phase transformation | weak | weak | now foundationally defined | planned | Keep out of stable APIs until the primitive family is implemented and validated. |
+| CIF and structure import | strong | moderate | strong | foundational | Space-group semantics and a dedicated validation ledger now exist; broader external validation is still ahead. |
+| Multimodal acquisition | strong | moderate | strong | foundational | Core primitives, experiment manifests, and workflow entry points now exist; broader modality depth is still ahead. |
+| Phase transformation | foundational | weak | strong | foundational | Primitive family now exists; validation and algorithm breadth are still ahead. |
 
 ## Learnings
 
@@ -63,9 +61,9 @@ Primary risks:
 ## Immediate Recommendations
 
 1. Keep lint, type checking, tests, and docs builds green in CI.
-2. Treat multimodal acquisition, calibration, and uncertainty as first-class foundational work.
-3. Treat phase-transformation semantics as an architecture-first area, not an opportunistic feature area.
-4. Grow diffraction validation doctrine before broadening diffraction-facing claims.
+2. Grow the manifest family into richer experiment, benchmark, validation, and workflow-result use cases.
+3. Build structure-import and diffraction validation doctrine before broadening public claims in those areas.
+4. Treat transformation algorithms as validation-first follow-on work on top of the new primitive family.
 
 ## References
 

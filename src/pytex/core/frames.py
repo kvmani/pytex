@@ -8,6 +8,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from pytex.core._arrays import as_float_array
+from pytex.core.batches import VectorSet
 from pytex.core.conventions import (
     PYTEX_CANONICAL_CONVENTIONS,
     ConventionSet,
@@ -57,7 +58,16 @@ class FrameTransform:
     def identity(cls, frame: ReferenceFrame) -> FrameTransform:
         return cls(source=frame, target=frame, rotation_matrix=np.eye(3))
 
-    def apply_to_vectors(self, vectors: ArrayLike) -> np.ndarray:
+    def apply_to_vectors(self, vectors: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        if isinstance(vectors, VectorSet):
+            if vectors.reference_frame != self.source:
+                raise ValueError("VectorSet.reference_frame must match FrameTransform.source.")
+            transformed = vectors.values @ self.rotation_matrix.T + self.translation_vector
+            return VectorSet(
+                values=transformed,
+                reference_frame=self.target,
+                provenance=vectors.provenance,
+            )
         array = np.asarray(vectors, dtype=np.float64)
         if array.shape[-1] != 3:
             raise ValueError("Input vectors must end with dimension 3.")

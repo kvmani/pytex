@@ -588,22 +588,22 @@ This third diagram explains why PyTex development is deliberately constrained by
 <section id="current-state-versus-planned-expansion">
 <h2>4. Current State Versus Planned Expansion<a class="headerlink" href="#current-state-versus-planned-expansion" title="Link to this heading">¶</a></h2>
 <p class="architecture-section-intro">
-This final diagram separates the current implemented foundation from the next layers that are already documented but not yet fully implemented as stable APIs.
+This final diagram separates the current implemented foundation from the next layers that are implemented foundationally today versus still ahead as broader expansion work.
 </p><pre  class="mermaid">
         flowchart LR
     subgraph current[&quot;Implemented Or Foundational Today&quot;]
-        current_core[&quot;Core model&lt;br/&gt;frames, symmetry, lattice, provenance, orientation&quot;]
+        current_core[&quot;Core model&lt;br/&gt;frames, symmetry, lattice, provenance,&lt;br/&gt;batch semantics, orientation, transformation&quot;]
         current_texture[&quot;Texture foundation&lt;br/&gt;PF, IPF, ODF, IPF color keys&quot;]
         current_ebsd[&quot;EBSD foundation&lt;br/&gt;CrystalMap, KAM, segmentation, GROD,&lt;br/&gt;boundaries, cleanup, grain graphs&quot;]
         current_diffraction[&quot;Diffraction foundation&lt;br/&gt;geometry, reciprocal-space, kinematic spots,&lt;br/&gt;families, ranking and local refinement&quot;]
-        current_manifests[&quot;Current manifest surface&lt;br/&gt;EBSD import manifest&quot;]
+        current_manifests[&quot;Current manifest surface&lt;br/&gt;import, experiment, benchmark,&lt;br/&gt;validation, workflow-result&quot;]
     end
 
     subgraph next[&quot;Architecturally Defined Next&quot;]
-        next_spacegroup[&quot;Structure hardening&lt;br/&gt;SpaceGroupSpec and broader structure semantics&quot;]
-        next_multimodal[&quot;Multimodal acquisition model&lt;br/&gt;AcquisitionGeometry, CalibrationRecord,&lt;br/&gt;MeasurementQuality, ScatteringSetup&quot;]
+        next_spacegroup[&quot;Structure hardening&lt;br/&gt;broader external baselines and richer CIF corpora&quot;]
+        next_multimodal[&quot;Multimodal workflow depth&lt;br/&gt;broader XRD, neutron, TEM,&lt;br/&gt;and richer experiment integration&quot;]
         next_validation[&quot;Expanded validation&lt;br/&gt;diffraction baselines, structure-import doctrine,&lt;br/&gt;broader benchmark manifests&quot;]
-        next_transformation[&quot;Phase transformation foundation&lt;br/&gt;OrientationRelationship, variants,&lt;br/&gt;parent-child provenance&quot;]
+        next_transformation[&quot;Transformation expansion&lt;br/&gt;variant generation, parent reconstruction,&lt;br/&gt;and stronger literature-backed validation&quot;]
     end
 
     current_core --&gt; current_texture
@@ -627,7 +627,7 @@ This final diagram separates the current implemented foundation from the next la
 <h3>Reading This View<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p>PyTex already has a substantial implemented foundation.</p></li>
-<li><p>The next major work is not “add more features blindly.” It is to broaden the semantic foundation in the few places where the current model is not yet enough for the full multimodal ambition.</p></li>
+<li><p>The next major work is not “add more features blindly.” It is to deepen validation and workflow breadth on top of the now-stronger semantic foundation.</p></li>
 <li><p>The gap between “implemented today” and “planned next” is intentionally documented so future contributors do not guess.</p></li>
 </ul>
 </section>

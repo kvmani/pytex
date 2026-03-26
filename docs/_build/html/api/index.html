@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -270,15 +274,27 @@ g_{\mathrm{proj}}</a></li>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ReferenceFrame</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">FrameTransform</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VectorSet</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcquisitionGeometry</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CalibrationRecord</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">MeasurementQuality</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Lattice</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">UnitCell</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Phase</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ReciprocalLatticeVector</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ZoneAxis</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">EulerSet</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">QuaternionSet</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Rotation</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RotationSet</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Orientation</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OrientationSet</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ScatteringSetup</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OrientationRelationship</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">TransformationVariant</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PhaseTransformationRecord</span></code></p></li>
 </ul>
 <p>See <a class="reference internal" href="../concepts/core_model.html"><span class="doc">Core Model</span></a>, <a class="reference internal" href="../concepts/how_pytex_differs.html"><span class="doc">How PyTex Differs</span></a>, and <a class="reference internal" href="../concepts/orientation_texture.html"><span class="doc">Orientation And Texture</span></a>.</p>
 </section>
@@ -302,6 +318,10 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GrainBoundaryNetwork</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GrainGraph</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">EBSDImportManifest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ExperimentManifest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">BenchmarkManifest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ValidationManifest</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">WorkflowResultManifest</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">NormalizedEBSDDataset</span></code></p></li>
 </ul>
 <p>See <a class="reference internal" href="../workflows/ebsd_kam.html"><span class="doc">EBSD: Kernel-Average Misorientation</span></a> and <a class="reference internal" href="../workflows/ebsd_grains.html"><span class="doc">EBSD: Grain Segmentation And GROD</span></a>.</p>

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
 
@@ -12,11 +12,27 @@ from pytex.core._arrays import (
     normalize_vector,
     normalize_vectors,
 )
+from pytex.core.acquisition import (
+    AcquisitionGeometry,
+    CalibrationRecord,
+    MeasurementQuality,
+    ScatteringSetup,
+)
+from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
-from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import CrystalPlane, MillerIndex, Phase, ReciprocalLatticeVector, ZoneAxis
+from pytex.core.frames import FrameTransform, ReferenceFrame
+from pytex.core.lattice import (
+    CrystalPlane,
+    MillerIndex,
+    Phase,
+    ReciprocalLatticeVector,
+    ZoneAxis,
+)
 from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
+
+if TYPE_CHECKING:
+    from pytex.adapters import ExperimentManifest
 
 _DETECTOR_PROJECTION_EPSILON = 1e-12
 _BRAGG_ARGUMENT_TOLERANCE = 1e-12
@@ -121,6 +137,10 @@ class DiffractionGeometry:
     )
     specimen_to_lab_matrix: np.ndarray = field(default_factory=lambda: np.eye(3, dtype=np.float64))
     tilt_degrees: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    acquisition_geometry: AcquisitionGeometry | None = None
+    calibration_record: CalibrationRecord | None = None
+    measurement_quality: MeasurementQuality | None = None
+    scattering_setup: ScatteringSetup | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -185,6 +205,139 @@ class DiffractionGeometry:
             self,
             "tilt_degrees",
             tuple(float(value) for value in self.tilt_degrees),
+        )
+        if self.acquisition_geometry is not None:
+            if self.acquisition_geometry.specimen_frame != self.specimen_frame:
+                raise ValueError(
+                    "DiffractionGeometry.acquisition_geometry.specimen_frame must match "
+                    "DiffractionGeometry.specimen_frame."
+                )
+            if self.acquisition_geometry.detector_frame != self.detector_frame:
+                raise ValueError(
+                    "DiffractionGeometry.acquisition_geometry.detector_frame must match "
+                    "DiffractionGeometry.detector_frame."
+                )
+            if self.acquisition_geometry.laboratory_frame != self.laboratory_frame:
+                raise ValueError(
+                    "DiffractionGeometry.acquisition_geometry.laboratory_frame must match "
+                    "DiffractionGeometry.laboratory_frame."
+                )
+            if self.acquisition_geometry.specimen_to_laboratory is not None:
+                transform = self.acquisition_geometry.specimen_to_laboratory
+                if not np.allclose(transform.translation_vector, np.zeros(3), atol=1e-8):
+                    raise ValueError(
+                        "DiffractionGeometry currently requires a zero-translation "
+                        "specimen_to_laboratory transform."
+                    )
+                if not np.allclose(
+                    transform.rotation_matrix,
+                    self.specimen_to_lab_matrix,
+                    atol=1e-8,
+                ):
+                    raise ValueError(
+                        "DiffractionGeometry.specimen_to_lab_matrix must match the "
+                        "acquisition geometry specimen_to_laboratory transform."
+                    )
+            if (
+                self.calibration_record is not None
+                and self.acquisition_geometry.calibration_record is not None
+                and self.calibration_record != self.acquisition_geometry.calibration_record
+            ):
+                raise ValueError(
+                    "DiffractionGeometry.calibration_record must match the acquisition "
+                    "geometry calibration record when both are provided."
+                )
+            if (
+                self.measurement_quality is not None
+                and self.acquisition_geometry.measurement_quality is not None
+                and self.measurement_quality != self.acquisition_geometry.measurement_quality
+            ):
+                raise ValueError(
+                    "DiffractionGeometry.measurement_quality must match the acquisition "
+                    "geometry measurement quality when both are provided."
+                )
+        if self.scattering_setup is not None:
+            if self.scattering_setup.laboratory_frame != self.laboratory_frame:
+                raise ValueError(
+                    "DiffractionGeometry.scattering_setup.laboratory_frame must match "
+                    "DiffractionGeometry.laboratory_frame."
+                )
+            if self.scattering_setup.radiation_type not in {"electron", "generic"}:
+                raise ValueError(
+                    "DiffractionGeometry currently supports only electron or generic "
+                    "scattering setups."
+                )
+            if not np.allclose(
+                self.scattering_setup.incident_beam_direction,
+                self.beam_direction_lab,
+                atol=1e-8,
+            ):
+                raise ValueError(
+                    "DiffractionGeometry.beam_direction_lab must match the scattering "
+                    "setup incident beam direction."
+                )
+            if self.scattering_setup.beam_energy_kev is not None and not np.isclose(
+                self.scattering_setup.beam_energy_kev,
+                self.beam_energy_kev,
+                atol=1e-8,
+            ):
+                raise ValueError(
+                    "DiffractionGeometry.beam_energy_kev must match the scattering setup "
+                    "beam energy when both are provided."
+                )
+
+    def to_experiment_manifest(
+        self,
+        *,
+        source_system: str = "pytex",
+        phase: Phase | None = None,
+        referenced_files: tuple[str, ...] = (),
+        metadata: dict[str, str] | None = None,
+    ) -> ExperimentManifest:
+        from pytex.adapters import ExperimentManifest
+
+        acquisition_geometry = self.acquisition_geometry
+        if acquisition_geometry is None:
+            acquisition_geometry = AcquisitionGeometry(
+                specimen_frame=self.specimen_frame,
+                modality="tem" if self.scattering_setup is not None else "generic",
+                detector_frame=self.detector_frame,
+                laboratory_frame=self.laboratory_frame,
+                specimen_to_detector=FrameTransform(
+                    source=self.specimen_frame,
+                    target=self.detector_frame,
+                    rotation_matrix=np.eye(3),
+                    provenance=self.provenance,
+                ),
+                specimen_to_laboratory=FrameTransform(
+                    source=self.specimen_frame,
+                    target=self.laboratory_frame,
+                    rotation_matrix=self.specimen_to_lab_matrix,
+                    provenance=self.provenance,
+                ),
+                calibration_record=self.calibration_record,
+                measurement_quality=self.measurement_quality,
+                provenance=self.provenance,
+            )
+        merged_metadata = {
+            "camera_length_mm": f"{self.camera_length_mm:g}",
+            "detector_shape": "x".join(str(value) for value in self.detector_shape),
+            "detector_pixel_size_um": ",".join(
+                f"{value:g}" for value in self.detector_pixel_size_um
+            ),
+            "detector_alignment_contract": (
+                "nominal_identity_when_no_explicit_specimen_to_detector_transform_is_available"
+            ),
+        }
+        if metadata is not None:
+            merged_metadata.update(metadata)
+        return ExperimentManifest.from_acquisition_geometry(
+            acquisition_geometry,
+            source_system=source_system,
+            phase=phase,
+            scattering_setup=self.scattering_setup,
+            referenced_files=referenced_files,
+            metadata=merged_metadata,
         )
 
     @property
@@ -802,9 +955,14 @@ class KinematicSimulation:
                 reciprocal_vector_specimen = orientation.map_crystal_vector(reciprocal_vector)
             else:
                 reciprocal_vector_specimen = reciprocal_vector
+            reciprocal_vector_specimen_array = (
+                reciprocal_vector_specimen.values[0]
+                if isinstance(reciprocal_vector_specimen, VectorSet)
+                else reciprocal_vector_specimen
+            )
             if zone_axis_vector is not None:
-                zone_axis_dot = float(np.dot(zone_axis_vector, reciprocal_vector_specimen))
-                zone_axis_scale = max(1.0, float(np.linalg.norm(reciprocal_vector_specimen)))
+                zone_axis_dot = float(np.dot(zone_axis_vector, reciprocal_vector_specimen_array))
+                zone_axis_scale = max(1.0, float(np.linalg.norm(reciprocal_vector_specimen_array)))
                 if not np.isclose(
                     zone_axis_dot,
                     0.0,
@@ -813,7 +971,7 @@ class KinematicSimulation:
                 ):
                     continue
             reciprocal_vector_lab = geometry.specimen_vectors_to_lab(
-                reciprocal_vector_specimen[None, :]
+                reciprocal_vector_specimen_array[None, :]
             )[0]
             outgoing_wavevector = incident + reciprocal_vector_lab
             excitation_error = float(np.linalg.norm(outgoing_wavevector) - incident_magnitude)

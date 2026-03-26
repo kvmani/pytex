@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -271,6 +275,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/strategy.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/diffraction_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/structure_validation_matrix.md</span></code></p></li>
 <li><p><a class="reference download internal" download="" href="../_downloads/5d02af9c3eca93913c04f04438789f76/validation_program.tex"><span class="xref download myst">../../tex/validation/validation_program.tex</span></a></p></li>
 </ul>
 </section>
@@ -299,7 +304,9 @@ g_{\mathrm{proj}}</a></li>
 <li><p>vector and orientation projection into currently supported fundamental-region surfaces</p></li>
 <li><p>regular-grid EBSD KAM, GROD, grain segmentation, boundary extraction, and cleanup workflows</p></li>
 <li><p>stable EBSD import-manifest schema and normalization validation</p></li>
+<li><p>stable experiment, benchmark, validation, and workflow-result manifest schemas</p></li>
 <li><p>detector geometry, reciprocal-space, and kinematic diffraction invariants</p></li>
+<li><p>CIF-backed phase creation, point-group preservation, and space-group preservation</p></li>
 </ul>
 </section>
 <section id="intentional-current-differences">
@@ -309,6 +316,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>parity fixtures are pinned and repo-local; future MTEX regeneration is prepared but not automated yet</p></li>
 <li><p>adapter-backed import normalization remains a separate follow-on phase</p></li>
 <li><p>diffraction now has an explicit validation ledger, but its external-baseline program is still foundational rather than mature</p></li>
+<li><p>structure import now has an explicit validation ledger, but its broader external-baseline program is still foundational rather than mature</p></li>
 </ul>
 </section>
 <section id="reading-the-validation-posture-correctly">
@@ -323,6 +331,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>orientation and texture foundations have dedicated unit and parity tests</p></li>
 <li><p>EBSD parity coverage now includes KAM, GROD, segmentation, boundaries, and cleanup on regular grids</p></li>
 <li><p>diffraction foundations have dedicated unit tests and a separate validation ledger</p></li>
+<li><p>structure-import foundations have dedicated unit tests and a separate validation ledger</p></li>
 <li><p>exact orientation-space polyhedral parity remains ahead of the current build</p></li>
 </ul>
 </section>
@@ -331,6 +340,7 @@ g_{\mathrm{proj}}</a></li>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/diffraction_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/structure_validation_matrix.md</span></code></p></li>
 <li><p><a class="reference download internal" download="" href="../_downloads/5d02af9c3eca93913c04f04438789f76/validation_program.tex"><span class="xref download myst">../../tex/validation/validation_program.tex</span></a></p></li>
 </ul>
 </section>
@@ -342,6 +352,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/strategy.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/diffraction_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">../../testing/structure_validation_matrix.md</span></code></p></li>
 </ul>
 </section>
 <section id="informative">

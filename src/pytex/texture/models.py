@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from pytex.core._arrays import as_float_array, normalize_vector, normalize_vectors
+from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane
@@ -104,7 +105,12 @@ class PoleFigure:
         specimen_directions = [
             orientations.map_crystal_directions(plane_normal) for plane_normal in plane_normals
         ]
-        sample_directions = np.vstack(specimen_directions)
+        sample_directions = np.vstack(
+            [
+                direction.values if isinstance(direction, VectorSet) else direction
+                for direction in specimen_directions
+            ]
+        )
         repeated_intensities = np.tile(intensities, len(plane_normals))
         return cls(
             pole=pole,
@@ -201,9 +207,14 @@ class InversePoleFigure:
                 crystal_directions,
                 antipodal=antipodal,
             )
+        crystal_direction_array = (
+            crystal_directions.values
+            if isinstance(crystal_directions, VectorSet)
+            else crystal_directions
+        )
         return cls(
             sample_direction=normalized_sample_direction,
-            crystal_directions=crystal_directions,
+            crystal_directions=crystal_direction_array,
             intensities=intensities,
             crystal_frame=orientations.crystal_frame,
             specimen_frame=orientations.specimen_frame,

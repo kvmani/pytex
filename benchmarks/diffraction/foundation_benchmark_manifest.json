@@ -1,13 +1,28 @@
 {
-  "schema_id": "pytex.benchmark_placeholder",
-  "schema_version": "0.1.0",
-  "category": "diffraction_foundation",
-  "status": "placeholder",
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-26T00:00:00Z",
+  "benchmark_id": "diffraction_foundation_internal_baseline",
+  "subsystem": "diffraction",
+  "baseline_kind": "internal_invariants",
   "workflows": [
     "geometry_invariants",
     "kinematic_spot_simulation",
     "reflection_family_grouping",
     "orientation_candidate_ranking"
   ],
-  "notes": "Placeholder manifest until a stable benchmark schema and harness are introduced."
+  "fixture_ids": [],
+  "artifact_paths": [
+    "benchmarks/diffraction/foundation_benchmark_manifest.json"
+  ],
+  "tolerances": {
+    "projection_atol": 1e-08,
+    "bragg_argument_atol": 1e-12
+  },
+  "status": "foundational",
+  "notes": [
+    "Benchmark harness is still lightweight, but the schema and benchmark identity are now stable.",
+    "This manifest anchors the current diffraction foundation benchmark surface."
+  ]
 }

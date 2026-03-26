@@ -1,6 +1,6 @@
 # Phase Transformation Foundation
 
-This document defines the architectural contracts that must exist before PyTex grows stable phase-transformation workflows.
+This document defines the architectural contracts that anchor PyTex phase-transformation workflows.
 
 ## Why This Exists
 
@@ -14,9 +14,9 @@ Phase transformation work cannot be bolted onto an orientation library by passin
 
 Without that foundation, transformation features would create private local semantics and fragment the core model.
 
-## Required Future Primitive Families
+## Stable Primitive Families
 
-PyTex should treat the following as required architectural targets:
+PyTex now treats the following as stable foundational primitives:
 
 - `OrientationRelationship`
   Defines the named mapping between parent and child phase crystallographic objects.
@@ -54,10 +54,9 @@ If PyTex exposes habit-plane or direction-correspondence features, the stable AP
 
 ## Current Limits
 
-- No stable transformation primitives are implemented yet.
-- No variant-generation validation program exists yet.
-- No canonical transformation manifest or schema exists yet.
-- Parent reconstruction should remain outside the stable surface until these semantics are defined and validated.
+- The primitive family now exists, but variant-generation validation is still weak.
+- No dedicated transformation manifest schema exists yet; current workflow-result and validation manifests must carry that context until a richer transformation contract is justified.
+- Parent reconstruction should remain outside the stable algorithmic surface until the primitive family has stronger literature-backed validation.
 
 ## References
 

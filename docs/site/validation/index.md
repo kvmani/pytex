@@ -7,6 +7,7 @@ PyTex validates stable work through multiple layers, not just unit tests. A feat
 - `docs/testing/strategy.md`
 - `docs/testing/mtex_parity_matrix.md`
 - `docs/testing/diffraction_validation_matrix.md`
+- `docs/testing/structure_validation_matrix.md`
 - [../../tex/validation/validation_program.tex](../../tex/validation/validation_program.tex)
 
 ## What Fixture-Backed Validation Means Here
@@ -31,7 +32,9 @@ This is important for two reasons:
 - vector and orientation projection into currently supported fundamental-region surfaces
 - regular-grid EBSD KAM, GROD, grain segmentation, boundary extraction, and cleanup workflows
 - stable EBSD import-manifest schema and normalization validation
+- stable experiment, benchmark, validation, and workflow-result manifest schemas
 - detector geometry, reciprocal-space, and kinematic diffraction invariants
+- CIF-backed phase creation, point-group preservation, and space-group preservation
 
 ## Intentional Current Differences
 
@@ -39,6 +42,7 @@ This is important for two reasons:
 - parity fixtures are pinned and repo-local; future MTEX regeneration is prepared but not automated yet
 - adapter-backed import normalization remains a separate follow-on phase
 - diffraction now has an explicit validation ledger, but its external-baseline program is still foundational rather than mature
+- structure import now has an explicit validation ledger, but its broader external-baseline program is still foundational rather than mature
 
 ## Reading The Validation Posture Correctly
 
@@ -52,12 +56,14 @@ Likewise, “foundational” in the parity ledger does not mean “hand-wavy.”
 - orientation and texture foundations have dedicated unit and parity tests
 - EBSD parity coverage now includes KAM, GROD, segmentation, boundaries, and cleanup on regular grids
 - diffraction foundations have dedicated unit tests and a separate validation ledger
+- structure-import foundations have dedicated unit tests and a separate validation ledger
 - exact orientation-space polyhedral parity remains ahead of the current build
 
 ## Related Material
 
 - `docs/testing/mtex_parity_matrix.md`
 - `docs/testing/diffraction_validation_matrix.md`
+- `docs/testing/structure_validation_matrix.md`
 - [../../tex/validation/validation_program.tex](../../tex/validation/validation_program.tex)
 
 ## References
@@ -67,6 +73,7 @@ Likewise, “foundational” in the parity ledger does not mean “hand-wavy.”
 - `../../testing/strategy.md`
 - `../../testing/mtex_parity_matrix.md`
 - `../../testing/diffraction_validation_matrix.md`
+- `../../testing/structure_validation_matrix.md`
 
 ### Informative
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytex.core import FrameDomain, Handedness, ReferenceFrame, Rotation, SymmetrySpec
+from pytex.core import FrameDomain, Handedness, ReferenceFrame, Rotation, SymmetrySpec, VectorSet
 
 
 def make_crystal_frame() -> ReferenceFrame:
@@ -52,3 +52,13 @@ def test_hexagonal_sector_vertices_span_expected_wedge() -> None:
     assert_allclose(sector.vertices[0], [0.0, 0.0, 1.0], atol=1e-12)
     basal_angles = np.rad2deg(np.arctan2(sector.vertices[1:, 1], sector.vertices[1:, 0]))
     assert_allclose(basal_angles, [0.0, 30.0], atol=1e-8)
+
+
+def test_reduce_vector_set_to_fundamental_sector_preserves_frame() -> None:
+    frame = make_crystal_frame()
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=frame)
+    vectors = VectorSet(values=[[0.0, 0.0, -1.0]], reference_frame=frame)
+    reduced = symmetry.reduce_vectors_to_fundamental_sector(vectors, antipodal=True)
+    assert isinstance(reduced, VectorSet)
+    assert reduced.reference_frame == frame
+    assert symmetry.vector_in_fundamental_sector(reduced.values[0], antipodal=True)

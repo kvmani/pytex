@@ -24,6 +24,7 @@ REQUIRED_PATHS = [
     "docs/testing/strategy.md",
     "docs/testing/mtex_parity_matrix.md",
     "docs/testing/diffraction_validation_matrix.md",
+    "docs/testing/structure_validation_matrix.md",
     "docs/standards/notation_and_conventions.md",
     "docs/standards/documentation_architecture.md",
     "docs/standards/latex_and_figures.md",
@@ -62,10 +63,19 @@ REQUIRED_PATHS = [
     "tests/unit/test_frames.py",
     "tests/unit/test_hexagonal.py",
     "tests/unit/test_reference_policy.py",
+    "tests/unit/test_manifests.py",
     "tests/unit/test_symmetry.py",
+    "tests/unit/test_transformation.py",
     "tests/unit/test_texture.py",
     "benchmarks/ebsd/foundation_benchmark_manifest.json",
     "benchmarks/diffraction/foundation_benchmark_manifest.json",
+    "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "benchmarks/validation/diffraction_validation_manifest.json",
+    "benchmarks/validation/structure_import_validation_manifest.json",
+    "schemas/benchmark_manifest.schema.json",
+    "schemas/experiment_manifest.schema.json",
+    "schemas/validation_manifest.schema.json",
+    "schemas/workflow_result_manifest.schema.json",
 ]
 
 

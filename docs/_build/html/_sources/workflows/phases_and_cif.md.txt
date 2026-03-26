@@ -7,6 +7,7 @@ This support lives at the core-model layer, not as an afterthought in a downstre
 - lattice parameters
 - crystal frame ownership
 - point-group symmetry used for orientation reduction
+- space-group identity used for structure definition
 - unit-cell atomic basis
 - provenance of the imported structure
 
@@ -28,6 +29,7 @@ PyTex does not want CIF import to become a sidecar convenience that bypasses the
 - a `UnitCell`
 - a `Phase`
 - a `SymmetrySpec`
+- a `SpaceGroupSpec`
 
 with explicit frame ownership and stable invariants from the start.
 
@@ -57,6 +59,7 @@ phase = Phase.from_cif_string(cif_text, crystal_frame=crystal)
 
 print(phase.name)
 print(phase.space_group_symbol, phase.space_group_number)
+print(phase.space_group.symbol, phase.space_group.number)
 print(phase.symmetry.point_group)
 print(phase.chemical_formula)
 print(len(phase.unit_cell.sites))
@@ -108,6 +111,7 @@ When a phase is created from a CIF-backed structure, PyTex derives:
 - `UnitCell` atomic sites from the crystallographic basis
 - reduced chemical formula
 - space-group symbol and number
+- a first-class `SpaceGroupSpec`
 - provenance indicating CIF-backed creation
 
 The critical point is that PyTex uses the structure source only to populate stable canonical objects. Downstream texture, EBSD, and diffraction code then works on PyTex types instead of on `pymatgen` objects.
@@ -128,6 +132,7 @@ This keeps the public `AtomicSite` type explicit and avoids smuggling site disor
 ## Interpretation Notes
 
 - PyTex currently derives point-group symmetry from space-group analysis, then normalizes that to the supported point-group surface already implemented in `SymmetrySpec`.
+- `SpaceGroupSpec` stores the structure-facing space-group identity, while `SymmetrySpec` stores the point-group-facing reduction surface used in orientation workflows.
 - The constructors create canonical PyTex objects; they do not expose `pymatgen` structures as part of the stable PyTex public API.
 - CIF-backed construction is phase-centric and unit-cell-centric. It is not yet a full crystallographic database or structure-editing subsystem.
 
@@ -136,6 +141,7 @@ This keeps the public `AtomicSite` type explicit and avoids smuggling site disor
 - CIF import currently depends on `pymatgen` rather than a native PyTex parser
 - space-group information is retained on `Phase`, but PyTex symmetry algorithms still operate on the proper point-group layer implemented in `SymmetrySpec`
 - magnetic symmetry, modulated structures, and richer crystallographic metadata are still ahead
+- broader literature-backed structure-import benchmarking is still ahead of the current invariant-driven baseline
 
 ## Related Material
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.testing import assert_allclose
 
-from pytex.core import FrameDomain, FrameTransform, Handedness, ReferenceFrame
+from pytex.core import FrameDomain, FrameTransform, Handedness, ReferenceFrame, VectorSet
 
 
 def make_frame(name: str, domain: FrameDomain) -> ReferenceFrame:
@@ -44,3 +44,17 @@ def test_transform_composition_matches_stepwise_application() -> None:
     vector = np.array([[1.0, 2.0, 3.0]])
     stepwise = second.apply_to_vectors(first.apply_to_vectors(vector))
     assert_allclose(chained.apply_to_vectors(vector), stepwise)
+
+
+def test_transform_updates_vector_set_frame() -> None:
+    crystal = make_frame("crystal", FrameDomain.CRYSTAL)
+    specimen = make_frame("specimen", FrameDomain.SPECIMEN)
+    transform = FrameTransform(
+        source=crystal,
+        target=specimen,
+        rotation_matrix=np.eye(3),
+    )
+    vectors = VectorSet(values=[[1.0, 0.0, 0.0]], reference_frame=crystal)
+    transformed = transform.apply_to_vectors(vectors)
+    assert isinstance(transformed, VectorSet)
+    assert transformed.reference_frame == specimen

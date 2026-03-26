@@ -5,6 +5,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytex.core import (
+    EulerSet,
     FrameDomain,
     Handedness,
     Orientation,
@@ -12,7 +13,9 @@ from pytex.core import (
     ProvenanceRecord,
     ReferenceFrame,
     Rotation,
+    RotationSet,
     SymmetrySpec,
+    VectorSet,
 )
 
 
@@ -155,3 +158,52 @@ def test_orientation_set_rejects_mixed_provenance_until_aggregate_model_exists()
     ]
     with pytest.raises(ValueError):
         OrientationSet.from_orientations(orientations)
+
+
+def test_orientation_set_accepts_euler_set() -> None:
+    crystal, specimen = make_orientation_frames()
+    symmetry = SymmetrySpec.identity(reference_frame=crystal)
+    eulers = EulerSet(angles=[[45.0, 35.0, 15.0], [0.0, 0.0, 0.0]])
+    orientation_set = OrientationSet.from_euler_angles(
+        eulers,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    assert len(orientation_set) == 2
+    assert orientation_set.as_euler_set().convention == "bunge"
+
+
+def test_orientation_maps_vector_set_between_frames() -> None:
+    crystal, specimen = make_orientation_frames()
+    orientation = Orientation(
+        Rotation.identity(),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=SymmetrySpec.identity(reference_frame=crystal),
+    )
+    vectors = VectorSet(values=[[1.0, 0.0, 0.0]], reference_frame=crystal)
+    mapped = orientation.map_crystal_vector(vectors)
+    assert isinstance(mapped, VectorSet)
+    assert mapped.reference_frame == specimen
+
+
+def test_orientation_set_maps_vector_set_pairwise() -> None:
+    crystal, specimen = make_orientation_frames()
+    symmetry = SymmetrySpec.identity(reference_frame=crystal)
+    rotations = RotationSet.from_rotations(
+        [Rotation.identity(), Rotation.from_bunge_euler(0.0, 0.0, 0.0)]
+    )
+    orientation_set = OrientationSet(
+        quaternions=rotations.quaternions,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    vectors = VectorSet(
+        values=[[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        reference_frame=crystal,
+    )
+    mapped = orientation_set.map_crystal_directions(vectors)
+    assert isinstance(mapped, VectorSet)
+    assert mapped.reference_frame == specimen

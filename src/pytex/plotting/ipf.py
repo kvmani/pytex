@@ -6,6 +6,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from pytex.core._arrays import as_float_array, normalize_vector, normalize_vectors
+from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.symmetry import SymmetrySpec
@@ -57,8 +58,9 @@ class IPFColorKey:
             directions,
             antipodal=self.antipodal,
         )
+        reduced_array = reduced.values if isinstance(reduced, VectorSet) else reduced
         sector_basis = np.asarray(self.sector_vertices, dtype=np.float64).T
-        barycentric = np.linalg.solve(sector_basis, reduced.T).T
+        barycentric = np.linalg.solve(sector_basis, reduced_array.T).T
         barycentric = np.clip(barycentric, 0.0, None)
         sums = barycentric.sum(axis=1, keepdims=True)
         if np.any(np.isclose(sums, 0.0)):
@@ -76,13 +78,23 @@ class IPFColorKey:
         if orientations.symmetry is None or orientations.symmetry != self.crystal_symmetry:
             raise ValueError("OrientationSet symmetry must match the IPFColorKey crystal symmetry.")
         crystal_directions = orientations.map_sample_directions_to_crystal(self.specimen_direction)
-        return self.colors_from_crystal_directions(crystal_directions)
+        crystal_direction_array = (
+            crystal_directions.values
+            if isinstance(crystal_directions, VectorSet)
+            else crystal_directions
+        )
+        return self.colors_from_crystal_directions(crystal_direction_array)
 
     def color_from_orientation(self, orientation: Orientation) -> np.ndarray:
         if orientation.symmetry is None or orientation.symmetry != self.crystal_symmetry:
             raise ValueError("Orientation symmetry must match the IPFColorKey crystal symmetry.")
         crystal_direction = orientation.map_sample_vector_to_crystal(self.specimen_direction)
+        crystal_direction_array = (
+            crystal_direction.values[0]
+            if isinstance(crystal_direction, VectorSet)
+            else crystal_direction
+        )
         return as_float_array(
-            self.colors_from_crystal_directions(crystal_direction[None, :])[0],
+            self.colors_from_crystal_directions(crystal_direction_array[None, :])[0],
             shape=(3,),
         )

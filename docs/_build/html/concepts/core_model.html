@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Library Structure" href="library_structure.html"><link rel="prev" title="PyTex" href="../index.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Core Foundation" href="core_foundation.html"><link rel="prev" title="PyTex" href="../index.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Core Model - PyTex</title>
@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -278,7 +282,12 @@ g_{\mathrm{proj}}</a></li>
 <h2>Key Rules<a class="headerlink" href="#key-rules" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ReferenceFrame</span></code> and <code class="docutils literal notranslate"><span class="pre">FrameTransform</span></code> make coordinate meaning explicit.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">VectorSet</span></code>, <code class="docutils literal notranslate"><span class="pre">EulerSet</span></code>, <code class="docutils literal notranslate"><span class="pre">QuaternionSet</span></code>, and <code class="docutils literal notranslate"><span class="pre">RotationSet</span></code> keep batched scientific data semantically typed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AcquisitionGeometry</span></code>, <code class="docutils literal notranslate"><span class="pre">CalibrationRecord</span></code>, <code class="docutils literal notranslate"><span class="pre">MeasurementQuality</span></code>, and <code class="docutils literal notranslate"><span class="pre">ScatteringSetup</span></code> keep experiment context explicit across modalities.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ExperimentManifest</span></code>, <code class="docutils literal notranslate"><span class="pre">BenchmarkManifest</span></code>, <code class="docutils literal notranslate"><span class="pre">ValidationManifest</span></code>, and <code class="docutils literal notranslate"><span class="pre">WorkflowResultManifest</span></code> keep workflow evidence and interchange explicit instead of leaving it in ad hoc side files.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code> owns reusable symmetry operators and sector or reduction rules.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code> keeps structure-facing space-group identity explicit and separate from orientation reduction semantics.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OrientationRelationship</span></code>, <code class="docutils literal notranslate"><span class="pre">TransformationVariant</span></code>, and <code class="docutils literal notranslate"><span class="pre">PhaseTransformationRecord</span></code> establish the stable transformation vocabulary before richer algorithms are added.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Lattice</span></code>, <code class="docutils literal notranslate"><span class="pre">Phase</span></code>, <code class="docutils literal notranslate"><span class="pre">CrystalPlane</span></code>, and related types prevent direct or reciprocal ambiguity.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Rotation</span></code>, <code class="docutils literal notranslate"><span class="pre">Orientation</span></code>, and <code class="docutils literal notranslate"><span class="pre">OrientationSet</span></code> carry mathematically precise orientation semantics instead of exposing anonymous arrays.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ProvenanceRecord</span></code> keeps import and conversion context attached to scientific objects.</p></li>
@@ -294,6 +303,8 @@ g_{\mathrm{proj}}</a></li>
 <li><p>passive coordinate change</p></li>
 <li><p>Bunge angles in degrees</p></li>
 <li><p>another Euler convention in radians</p></li>
+<li><p>a point group used for orientation reduction</p></li>
+<li><p>a space group used for phase definition</p></li>
 </ul>
 <p>PyTex normalizes data once at the boundary and keeps later computations on PyTex-native domain objects.</p>
 <p><img alt="Reference Frames" src="../_images/reference_frames_vectors.svg" /></p>
@@ -315,6 +326,8 @@ g_{\mathrm{proj}}</a></li>
 <li><p>Construct <code class="docutils literal notranslate"><span class="pre">ReferenceFrame</span></code> objects early and reuse them.</p></li>
 <li><p>Construct <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code> once per phase or orientation family instead of repeating ad hoc symmetry logic in each workflow.</p></li>
 <li><p>Prefer <code class="docutils literal notranslate"><span class="pre">Orientation</span></code> or <code class="docutils literal notranslate"><span class="pre">OrientationSet</span></code> over bare matrices when a value crosses module boundaries.</p></li>
+<li><p>Prefer semantic batch types over naked <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">3)</span></code> or <code class="docutils literal notranslate"><span class="pre">(n,</span> <span class="pre">4)</span></code> arrays when vectorized data carries shared frame or convention meaning.</p></li>
+<li><p>Prefer stable manifest types when workflow context, benchmark identity, or validation evidence must cross a boundary.</p></li>
 <li><p>Treat provenance as retained scientific metadata, not merely import bookkeeping.</p></li>
 </ul>
 <div class="admonition note">
@@ -355,12 +368,12 @@ g_{\mathrm{proj}}</a></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="library_structure.html">
+          <a class="next-page" href="core_foundation.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Library Structure</div>
+                <div class="title">Core Foundation</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

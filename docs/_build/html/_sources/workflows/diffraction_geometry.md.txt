@@ -78,12 +78,13 @@ ring_radius_mm = geometry.ring_radius_mm_for_plane(plane)
 - the scattering vector is a reciprocal-space object and should not be confused with detector-plane offsets
 - Bragg ring prediction in this foundation layer is geometric only; it does not yet include intensity modeling
 - detector projection validity is separate from detector containment: a ray can intersect the detector plane but still fall outside the detector bounds
+- `DiffractionGeometry.to_experiment_manifest(...)` can now emit a stable experiment manifest that carries the shared acquisition, calibration, quality, and scattering context for this setup
 
 ## Current Limits
 
 - no calibrated detector-distortion or projector model yet
 - no full kinematic pattern synthesis yet
-- no stable interchange or adapter workflow yet
+- external-baseline validation is still growing beyond the current internal and literature-aligned foundation
 
 ## Related Material
 

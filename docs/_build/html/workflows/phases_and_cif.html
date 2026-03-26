@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -270,6 +274,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>lattice parameters</p></li>
 <li><p>crystal frame ownership</p></li>
 <li><p>point-group symmetry used for orientation reduction</p></li>
+<li><p>space-group identity used for structure definition</p></li>
 <li><p>unit-cell atomic basis</p></li>
 <li><p>provenance of the imported structure</p></li>
 </ul>
@@ -292,6 +297,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>a <code class="docutils literal notranslate"><span class="pre">UnitCell</span></code></p></li>
 <li><p>a <code class="docutils literal notranslate"><span class="pre">Phase</span></code></p></li>
 <li><p>a <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code></p></li>
+<li><p>a <code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code></p></li>
 </ul>
 <p>with explicit frame ownership and stable invariants from the start.</p>
 </section>
@@ -318,6 +324,7 @@ g_{\mathrm{proj}}</a></li>
 
 <span class="nb">print</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">space_group_symbol</span><span class="p">,</span> <span class="n">phase</span><span class="o">.</span><span class="n">space_group_number</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">space_group</span><span class="o">.</span><span class="n">symbol</span><span class="p">,</span> <span class="n">phase</span><span class="o">.</span><span class="n">space_group</span><span class="o">.</span><span class="n">number</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">symmetry</span><span class="o">.</span><span class="n">point_group</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">chemical_formula</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">phase</span><span class="o">.</span><span class="n">unit_cell</span><span class="o">.</span><span class="n">sites</span><span class="p">))</span>
@@ -370,6 +377,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">UnitCell</span></code> atomic sites from the crystallographic basis</p></li>
 <li><p>reduced chemical formula</p></li>
 <li><p>space-group symbol and number</p></li>
+<li><p>a first-class <code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code></p></li>
 <li><p>provenance indicating CIF-backed creation</p></li>
 </ul>
 <p>The critical point is that PyTex uses the structure source only to populate stable canonical objects. Downstream texture, EBSD, and diffraction code then works on PyTex types instead of on <code class="docutils literal notranslate"><span class="pre">pymatgen</span></code> objects.</p>
@@ -391,6 +399,7 @@ g_{\mathrm{proj}}</a></li>
 <h2>Interpretation Notes<a class="headerlink" href="#interpretation-notes" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>PyTex currently derives point-group symmetry from space-group analysis, then normalizes that to the supported point-group surface already implemented in <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code> stores the structure-facing space-group identity, while <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code> stores the point-group-facing reduction surface used in orientation workflows.</p></li>
 <li><p>The constructors create canonical PyTex objects; they do not expose <code class="docutils literal notranslate"><span class="pre">pymatgen</span></code> structures as part of the stable PyTex public API.</p></li>
 <li><p>CIF-backed construction is phase-centric and unit-cell-centric. It is not yet a full crystallographic database or structure-editing subsystem.</p></li>
 </ul>
@@ -401,6 +410,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>CIF import currently depends on <code class="docutils literal notranslate"><span class="pre">pymatgen</span></code> rather than a native PyTex parser</p></li>
 <li><p>space-group information is retained on <code class="docutils literal notranslate"><span class="pre">Phase</span></code>, but PyTex symmetry algorithms still operate on the proper point-group layer implemented in <code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code></p></li>
 <li><p>magnetic symmetry, modulated structures, and richer crystallographic metadata are still ahead</p></li>
+<li><p>broader literature-backed structure-import benchmarking is still ahead of the current invariant-driven baseline</p></li>
 </ul>
 </section>
 <section id="related-material">

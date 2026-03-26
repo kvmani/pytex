@@ -12,6 +12,7 @@ from pytex.core._arrays import (
     normalize_vector,
     normalize_vectors,
 )
+from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.provenance import ProvenanceRecord
@@ -308,8 +309,15 @@ class SymmetrySpec:
             provenance=provenance,
         )
 
-    def apply_to_vectors(self, vectors: ArrayLike) -> np.ndarray:
-        array = np.asarray(vectors, dtype=np.float64)
+    def apply_to_vectors(self, vectors: ArrayLike | VectorSet) -> np.ndarray:
+        if isinstance(vectors, VectorSet):
+            if self.reference_frame is not None and vectors.reference_frame != self.reference_frame:
+                raise ValueError(
+                    "VectorSet.reference_frame must match SymmetrySpec.reference_frame."
+                )
+            array = vectors.values
+        else:
+            array = np.asarray(vectors, dtype=np.float64)
         if array.shape[-1] != 3:
             raise ValueError("Input vectors must end with dimension 3.")
         transformed = np.einsum("oij,...j->o...i", self.operators, array, optimize=True)
@@ -350,14 +358,36 @@ class SymmetrySpec:
         candidates = self.equivalent_vectors(vector, antipodal=antipodal)
         return as_float_array(candidates[_canonical_vector_index(candidates)], shape=(3,))
 
-    def canonicalize_vectors(self, vectors: ArrayLike, *, antipodal: bool = False) -> np.ndarray:
-        normalized = normalize_vectors(vectors)
+    def canonicalize_vectors(
+        self,
+        vectors: ArrayLike | VectorSet,
+        *,
+        antipodal: bool = False,
+    ) -> np.ndarray | VectorSet:
+        reference_frame = None
+        provenance = None
+        if isinstance(vectors, VectorSet):
+            if self.reference_frame is not None and vectors.reference_frame != self.reference_frame:
+                raise ValueError(
+                    "VectorSet.reference_frame must match SymmetrySpec.reference_frame."
+                )
+            normalized = normalize_vectors(vectors.values)
+            reference_frame = vectors.reference_frame
+            provenance = vectors.provenance
+        else:
+            normalized = normalize_vectors(vectors)
         canonicalized = [
             self.canonicalize_vector(vector, antipodal=antipodal) for vector in normalized
         ]
         array = np.stack(canonicalized, axis=0)
         array = np.ascontiguousarray(array)
         array.setflags(write=False)
+        if reference_frame is not None:
+            return VectorSet(
+                values=array,
+                reference_frame=reference_frame,
+                provenance=provenance,
+            )
         return array
 
     def fundamental_sector(self, *, antipodal: bool = True) -> FundamentalSector:
@@ -393,11 +423,22 @@ class SymmetrySpec:
 
     def reduce_vectors_to_fundamental_sector(
         self,
-        vectors: ArrayLike,
+        vectors: ArrayLike | VectorSet,
         *,
         antipodal: bool = True,
-    ) -> np.ndarray:
-        normalized = normalize_vectors(vectors)
+    ) -> np.ndarray | VectorSet:
+        reference_frame = None
+        provenance = None
+        if isinstance(vectors, VectorSet):
+            if self.reference_frame is not None and vectors.reference_frame != self.reference_frame:
+                raise ValueError(
+                    "VectorSet.reference_frame must match SymmetrySpec.reference_frame."
+                )
+            normalized = normalize_vectors(vectors.values)
+            reference_frame = vectors.reference_frame
+            provenance = vectors.provenance
+        else:
+            normalized = normalize_vectors(vectors)
         reduced = [
             self.reduce_vector_to_fundamental_sector(vector, antipodal=antipodal)
             for vector in normalized
@@ -405,6 +446,12 @@ class SymmetrySpec:
         array = np.stack(reduced, axis=0)
         array = np.ascontiguousarray(array)
         array.setflags(write=False)
+        if reference_frame is not None:
+            return VectorSet(
+                values=array,
+                reference_frame=reference_frame,
+                provenance=provenance,
+            )
         return array
 
 

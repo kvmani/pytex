@@ -6,15 +6,27 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 
 - `ReferenceFrame`
 - `FrameTransform`
+- `VectorSet`
+- `AcquisitionGeometry`
+- `CalibrationRecord`
+- `MeasurementQuality`
 - `SymmetrySpec`
+- `SpaceGroupSpec`
 - `Lattice`
 - `UnitCell`
 - `Phase`
 - `ReciprocalLatticeVector`
 - `ZoneAxis`
+- `EulerSet`
+- `QuaternionSet`
 - `Rotation`
+- `RotationSet`
 - `Orientation`
 - `OrientationSet`
+- `ScatteringSetup`
+- `OrientationRelationship`
+- `TransformationVariant`
+- `PhaseTransformationRecord`
 
 See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`, and {doc}`../concepts/orientation_texture`.
 
@@ -36,6 +48,10 @@ See {doc}`../concepts/orientation_texture`.
 - `GrainBoundaryNetwork`
 - `GrainGraph`
 - `EBSDImportManifest`
+- `ExperimentManifest`
+- `BenchmarkManifest`
+- `ValidationManifest`
+- `WorkflowResultManifest`
 - `NormalizedEBSDDataset`
 
 See {doc}`../workflows/ebsd_kam` and {doc}`../workflows/ebsd_grains`.

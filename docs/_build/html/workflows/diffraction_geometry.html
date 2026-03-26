@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -343,6 +347,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>the scattering vector is a reciprocal-space object and should not be confused with detector-plane offsets</p></li>
 <li><p>Bragg ring prediction in this foundation layer is geometric only; it does not yet include intensity modeling</p></li>
 <li><p>detector projection validity is separate from detector containment: a ray can intersect the detector plane but still fall outside the detector bounds</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DiffractionGeometry.to_experiment_manifest(...)</span></code> can now emit a stable experiment manifest that carries the shared acquisition, calibration, quality, and scattering context for this setup</p></li>
 </ul>
 </section>
 <section id="current-limits">
@@ -350,7 +355,7 @@ g_{\mathrm{proj}}</a></li>
 <ul class="simple">
 <li><p>no calibrated detector-distortion or projector model yet</p></li>
 <li><p>no full kinematic pattern synthesis yet</p></li>
-<li><p>no stable interchange or adapter workflow yet</p></li>
+<li><p>external-baseline validation is still growing beyond the current internal and literature-aligned foundation</p></li>
 </ul>
 </section>
 <section id="related-material">

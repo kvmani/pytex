@@ -30,19 +30,33 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 
 - `ReferenceFrame`: named right-handed coordinate frame with explicit domain
 - `FrameTransform`: reusable rigid transform between frames
+- `VectorSet`: batch of vectors sharing one explicit reference frame
 - `SymmetrySpec`: point-group or specimen-symmetry description plus operators
+- `SpaceGroupSpec`: structure-facing space-group identity attached to a crystal frame
 - `Basis`: direct or reciprocal basis matrix plus frame information
 - `Lattice`: lattice parameters and derived bases
 - `UnitCell`: lattice plus atomic basis
 - `Phase`: named material phase with lattice, symmetry, crystal frame, and optional space-group or formula metadata
-- `Rotation`, `Orientation`, `Misorientation`, `OrientationSet`: orientation-domain primitives
+- `AcquisitionGeometry`: shared multimodal experiment-frame and transform context
+- `CalibrationRecord`: explicit calibration state and uncertainty metadata
+- `MeasurementQuality`: stable quality, validity, and masking surface
+- `EulerSet`: batch of convention-aware Euler triples
+- `QuaternionSet`: batch of canonical unit quaternions
+- `ScatteringSetup`: shared scattering-experiment context
+- `OrientationRelationship`, `TransformationVariant`, `PhaseTransformationRecord`: phase-transformation foundation primitives
+- `Rotation`, `RotationSet`, `Orientation`, `Misorientation`, `OrientationSet`: orientation-domain primitives
 - `CrystalMap`, `PoleFigure`, `InversePoleFigure`, `ODF`: higher-level texture and EBSD models
 - `DiffractionGeometry`, `DiffractionPattern`: diffraction-facing models
 - `ProvenanceRecord`: source-system and transform traceability
+- `ExperimentManifest`, `BenchmarkManifest`, `ValidationManifest`, `WorkflowResultManifest`: stable workflow-interchange and evidence artifacts
 
 ## Public API Rule
 
 If a function would be ambiguous without knowledge of frame, symmetry, or basis meaning, it should not accept a naked array as its stable public input.
+
+If a vectorized function would be ambiguous without shared frame, convention, symmetry, or provenance meaning, it should expose or prefer a semantic batch primitive as its stable public input.
+
+PyTex keeps structure-facing and orientation-facing symmetry distinct. `SymmetrySpec` is the point-group-facing surface for direction and orientation reduction. `SpaceGroupSpec` is the structure-facing surface for phase definition and CIF-backed construction.
 
 ## Import-Normalization Rule
 

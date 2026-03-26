@@ -1,0 +1,198 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.experiment_manifest",
+  "title": "PyTex Experiment Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "canonical_convention_set",
+    "created_at",
+    "source_system",
+    "modality",
+    "specimen_frame",
+    "referenced_files",
+    "metadata"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.experiment_manifest" },
+    "schema_version": { "const": "1.0.0" },
+    "pytex_version": { "type": "string", "minLength": 1 },
+    "canonical_convention_set": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "source_system": { "type": "string", "minLength": 1 },
+    "modality": { "type": "string", "minLength": 1 },
+    "specimen_frame": { "$ref": "#/$defs/frame_declaration" },
+    "map_frame": { "$ref": "#/$defs/frame_declaration" },
+    "detector_frame": { "$ref": "#/$defs/frame_declaration" },
+    "laboratory_frame": { "$ref": "#/$defs/frame_declaration" },
+    "reciprocal_frame": { "$ref": "#/$defs/frame_declaration" },
+    "specimen_to_map": { "$ref": "#/$defs/transform_declaration" },
+    "specimen_to_detector": { "$ref": "#/$defs/transform_declaration" },
+    "specimen_to_laboratory": { "$ref": "#/$defs/transform_declaration" },
+    "laboratory_to_reciprocal": { "$ref": "#/$defs/transform_declaration" },
+    "calibration_record": { "$ref": "#/$defs/calibration_record" },
+    "measurement_quality": { "$ref": "#/$defs/measurement_quality" },
+    "scattering_setup": { "$ref": "#/$defs/scattering_setup" },
+    "phase": { "$ref": "#/$defs/phase_declaration" },
+    "referenced_files": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "frame_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "domain", "axis_1", "axis_2", "axis_3", "handedness", "convention"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string", "minLength": 1 },
+        "axis_1": { "type": "string", "minLength": 1 },
+        "axis_2": { "type": "string", "minLength": 1 },
+        "axis_3": { "type": "string", "minLength": 1 },
+        "handedness": { "type": "string", "minLength": 1 },
+        "convention": { "type": "string", "minLength": 1 }
+      }
+    },
+    "transform_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "target", "rotation_matrix", "translation_vector"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "rotation_matrix": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "number" }
+          }
+        },
+        "translation_vector": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number" }
+        }
+      }
+    },
+    "provenance": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["source_system", "metadata", "notes"],
+      "properties": {
+        "source_system": { "type": "string", "minLength": 1 },
+        "source_identifier": { "type": ["string", "null"] },
+        "source_path": { "type": ["string", "null"] },
+        "source_version": { "type": ["string", "null"] },
+        "imported_at": { "type": ["string", "null"] },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "calibration_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "status", "parameter_uncertainty", "notes", "provenance"],
+      "properties": {
+        "source": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "residual_error": { "type": ["number", "null"] },
+        "parameter_uncertainty": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0.0 }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "measurement_quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uncertainty", "flags", "provenance"],
+      "properties": {
+        "confidence": { "type": ["number", "null"] },
+        "valid_fraction": { "type": ["number", "null"] },
+        "masked_fraction": { "type": ["number", "null"] },
+        "uncertainty": {
+          "type": "object",
+          "additionalProperties": { "type": "number", "minimum": 0.0 }
+        },
+        "flags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "scattering_setup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "laboratory_frame",
+        "radiation_type",
+        "incident_beam_direction",
+        "wavelength_angstrom",
+        "beam_energy_kev",
+        "scattering_mode",
+        "provenance"
+      ],
+      "properties": {
+        "laboratory_frame": { "$ref": "#/$defs/frame_declaration" },
+        "radiation_type": { "type": "string", "minLength": 1 },
+        "incident_beam_direction": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number" }
+        },
+        "wavelength_angstrom": { "type": ["number", "null"] },
+        "beam_energy_kev": { "type": ["number", "null"] },
+        "scattering_mode": { "type": "string", "minLength": 1 },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    },
+    "phase_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "point_group",
+        "space_group_symbol",
+        "space_group_number",
+        "chemical_formula",
+        "crystal_frame",
+        "provenance"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "point_group": { "type": "string", "minLength": 1 },
+        "space_group_symbol": { "type": ["string", "null"] },
+        "space_group_number": { "type": ["integer", "null"] },
+        "chemical_formula": { "type": ["string", "null"] },
+        "crystal_frame": { "$ref": "#/$defs/frame_declaration" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    }
+  }
+}

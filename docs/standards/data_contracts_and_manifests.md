@@ -14,7 +14,7 @@
 
 ## Immediate Scope
 
-The current repository exposes one stable manifest schema today and a broader roadmap that must not be implemented ad hoc:
+The current repository exposes several stable manifest schemas today and a broader roadmap that must not be implemented ad hoc:
 
 - import manifests for vendor and external-tool normalization
 - benchmark fixture manifests
@@ -52,7 +52,15 @@ The repo now treats the following manifest families as first-class roadmap items
 - `validation manifests`
   For parity or literature-backed validation campaigns that span more than one script or test file.
 
-Only the EBSD import manifest is currently stable. The others are required architectural targets and should not be implemented ad hoc inside subsystems.
+The currently stable manifest families are:
+
+- `EBSDImportManifest`
+- `ExperimentManifest`
+- `BenchmarkManifest`
+- `ValidationManifest`
+- `WorkflowResultManifest`
+
+Stable manifests should be reused through the shared manifest surface rather than redefined inside subsystems.
 
 ## References
 

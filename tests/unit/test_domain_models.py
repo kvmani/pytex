@@ -4,10 +4,14 @@ import numpy as np
 import pytest
 
 from pytex.core import (
+    AcquisitionGeometry,
+    CalibrationRecord,
     CrystalPlane,
     FrameDomain,
+    FrameTransform,
     Handedness,
     Lattice,
+    MeasurementQuality,
     MillerIndex,
     Orientation,
     OrientationSet,
@@ -16,6 +20,7 @@ from pytex.core import (
     ReciprocalLatticeVector,
     ReferenceFrame,
     Rotation,
+    ScatteringSetup,
     SymmetrySpec,
     ZoneAxis,
 )
@@ -112,6 +117,40 @@ def test_crystal_map_neighbor_pairs_cover_regular_grid_edges() -> None:
         step_sizes=(1.0, 1.0),
     )
     assert np.array_equal(crystal_map.neighbor_pairs(), np.array([[0, 1]]))
+
+
+def test_crystal_map_accepts_multimodal_acquisition_context() -> None:
+    orientation_set = make_orientation_set()
+    specimen = orientation_set.specimen_frame
+    map_frame = ReferenceFrame(
+        name="map",
+        domain=FrameDomain.MAP,
+        axes=("i", "j", "k"),
+        handedness=Handedness.RIGHT,
+    )
+    acquisition = AcquisitionGeometry(
+        specimen_frame=specimen,
+        modality="ebsd",
+        map_frame=map_frame,
+        specimen_to_map=FrameTransform(
+            source=specimen,
+            target=map_frame,
+            rotation_matrix=np.eye(3),
+        ),
+        calibration_record=CalibrationRecord(source="stage-fit", status="calibrated"),
+        measurement_quality=MeasurementQuality(confidence=0.95, valid_fraction=1.0),
+    )
+    crystal_map = CrystalMap(
+        coordinates=np.array([[0.0, 0.0], [1.0, 0.0]]),
+        orientations=orientation_set,
+        map_frame=map_frame,
+        grid_shape=(1, 2),
+        step_sizes=(1.0, 1.0),
+        acquisition_geometry=acquisition,
+        calibration_record=acquisition.calibration_record,
+        measurement_quality=acquisition.measurement_quality,
+    )
+    assert crystal_map.acquisition_geometry == acquisition
 
 
 def test_crystal_map_kernel_average_misorientation_returns_grid() -> None:
@@ -540,6 +579,113 @@ def test_diffraction_geometry_produces_positive_wavelength() -> None:
         detector_shape=(480, 480),
     )
     assert geometry.electron_wavelength_angstrom > 0.0
+
+
+def test_diffraction_geometry_accepts_multimodal_context() -> None:
+    _, specimen, _ = make_foundation()
+    detector = ReferenceFrame(
+        name="detector",
+        domain=FrameDomain.DETECTOR,
+        axes=("u", "v", "n"),
+        handedness=Handedness.RIGHT,
+    )
+    lab = ReferenceFrame(
+        name="lab",
+        domain=FrameDomain.LABORATORY,
+        axes=("X", "Y", "Z"),
+        handedness=Handedness.RIGHT,
+    )
+    calibration = CalibrationRecord(source="pattern-fit", status="refined", residual_error=0.2)
+    quality = MeasurementQuality(confidence=0.9, valid_fraction=0.98, masked_fraction=0.02)
+    acquisition = AcquisitionGeometry(
+        specimen_frame=specimen,
+        modality="tem",
+        detector_frame=detector,
+        laboratory_frame=lab,
+        specimen_to_detector=FrameTransform(
+            source=specimen,
+            target=detector,
+            rotation_matrix=np.eye(3),
+        ),
+        specimen_to_laboratory=FrameTransform(
+            source=specimen,
+            target=lab,
+            rotation_matrix=np.eye(3),
+        ),
+        calibration_record=calibration,
+        measurement_quality=quality,
+    )
+    scattering = ScatteringSetup(
+        laboratory_frame=lab,
+        beam_energy_kev=20.0,
+        incident_beam_direction=np.array([0.0, 0.0, 1.0]),
+    )
+    geometry = DiffractionGeometry(
+        detector_frame=detector,
+        specimen_frame=specimen,
+        laboratory_frame=lab,
+        beam_energy_kev=20.0,
+        camera_length_mm=100.0,
+        pattern_center=np.array([0.5, 0.5, 0.7]),
+        detector_pixel_size_um=(60.0, 60.0),
+        detector_shape=(480, 480),
+        acquisition_geometry=acquisition,
+        calibration_record=calibration,
+        measurement_quality=quality,
+        scattering_setup=scattering,
+    )
+    assert geometry.acquisition_geometry == acquisition
+    assert geometry.scattering_setup == scattering
+
+
+def test_diffraction_geometry_rejects_inconsistent_acquisition_context() -> None:
+    _, specimen, _ = make_foundation()
+    detector = ReferenceFrame(
+        name="detector",
+        domain=FrameDomain.DETECTOR,
+        axes=("u", "v", "n"),
+        handedness=Handedness.RIGHT,
+    )
+    other_detector = ReferenceFrame(
+        name="other_detector",
+        domain=FrameDomain.DETECTOR,
+        axes=("u", "v", "n"),
+        handedness=Handedness.RIGHT,
+    )
+    lab = ReferenceFrame(
+        name="lab",
+        domain=FrameDomain.LABORATORY,
+        axes=("X", "Y", "Z"),
+        handedness=Handedness.RIGHT,
+    )
+    acquisition = AcquisitionGeometry(
+        specimen_frame=specimen,
+        modality="tem",
+        detector_frame=other_detector,
+        laboratory_frame=lab,
+        specimen_to_detector=FrameTransform(
+            source=specimen,
+            target=other_detector,
+            rotation_matrix=np.eye(3),
+        ),
+        specimen_to_laboratory=FrameTransform(
+            source=specimen,
+            target=lab,
+            rotation_matrix=np.eye(3),
+        ),
+    )
+    with pytest.raises(ValueError):
+        DiffractionGeometry(
+            detector_frame=detector,
+            specimen_frame=specimen,
+            laboratory_frame=lab,
+            beam_energy_kev=20.0,
+            camera_length_mm=100.0,
+            pattern_center=np.array([0.5, 0.5, 0.7]),
+            detector_pixel_size_um=(60.0, 60.0),
+            detector_shape=(480, 480),
+            acquisition_geometry=acquisition,
+        )
 
 
 def test_crystal_plane_exposes_expected_cubic_d_spacing() -> None:

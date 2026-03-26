@@ -13,6 +13,7 @@ from pytex.core import (
     MillerIndex,
     Phase,
     ReferenceFrame,
+    SpaceGroupSpec,
     SymmetrySpec,
 )
 
@@ -46,7 +47,34 @@ def make_phase() -> Phase:
     )
     lattice = Lattice(3.0, 3.0, 5.0, 90.0, 90.0, 120.0, crystal_frame=crystal)
     symmetry = SymmetrySpec.identity(reference_frame=crystal)
-    return Phase(name="hcp-demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    space_group = SpaceGroupSpec(symbol="P63/mmc", number=194, reference_frame=crystal)
+    return Phase(
+        name="hcp-demo",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        space_group=space_group,
+    )
+
+
+def test_space_group_spec_rejects_non_crystal_frame() -> None:
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    with pytest.raises(ValueError):
+        SpaceGroupSpec(symbol="Pm-3m", number=221, reference_frame=specimen)
+
+
+def test_phase_preserves_space_group_metadata() -> None:
+    phase = make_phase()
+    assert phase.space_group is not None
+    assert phase.space_group.symbol == "P63/mmc"
+    assert phase.space_group.number == 194
+    assert phase.space_group_symbol == "P63/mmc"
+    assert phase.space_group_number == 194
 
 
 def test_direct_and_reciprocal_bases_are_dual() -> None:
@@ -108,6 +136,37 @@ def test_phase_rejects_mismatched_lattice_frame() -> None:
         )
 
 
+def test_phase_rejects_space_group_frame_mismatch() -> None:
+    phase = make_phase()
+    other_crystal = ReferenceFrame(
+        name="other_crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    with pytest.raises(ValueError):
+        Phase(
+            name="bad-space-group",
+            lattice=phase.lattice,
+            symmetry=phase.symmetry,
+            crystal_frame=phase.crystal_frame,
+            space_group=SpaceGroupSpec(symbol="P63/mmc", number=194, reference_frame=other_crystal),
+        )
+
+
+def test_phase_rejects_conflicting_space_group_metadata() -> None:
+    phase = make_phase()
+    with pytest.raises(ValueError):
+        Phase(
+            name="bad-metadata",
+            lattice=phase.lattice,
+            symmetry=phase.symmetry,
+            crystal_frame=phase.crystal_frame,
+            space_group=phase.space_group,
+            space_group_symbol="P6_3/mmc",
+        )
+
+
 def test_phase_can_be_created_from_cif_string() -> None:
     pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
@@ -118,8 +177,11 @@ def test_phase_can_be_created_from_cif_string() -> None:
     )
     phase = Phase.from_cif_string(NACL_CIF, crystal_frame=crystal, primitive=True)
     assert phase.name == "NaCl"
+    assert phase.space_group is not None
     assert phase.space_group_number == 225
     assert phase.space_group_symbol == "Fm-3m"
+    assert phase.space_group.symbol == "Fm-3m"
+    assert phase.space_group.number == 225
     assert phase.chemical_formula == "NaCl"
     assert phase.symmetry.point_group == "m-3m"
     assert phase.unit_cell is not None
@@ -139,6 +201,7 @@ def test_phase_can_be_created_from_pymatgen_structure() -> None:
     structure = structure_cls.from_str(NACL_CIF, fmt="cif")
     phase = Phase.from_pymatgen_structure(structure, crystal_frame=crystal, phase_name="rocksalt")
     assert phase.name == "rocksalt"
+    assert phase.space_group is not None
     assert phase.space_group_number == 225
     assert phase.space_group_symbol == "Fm-3m"
     assert phase.unit_cell is not None
@@ -157,6 +220,7 @@ def test_phase_can_be_created_from_cif_path(tmp_path) -> None:
     cif_path.write_text(NACL_CIF, encoding="utf-8")
     phase = Phase.from_cif(cif_path, crystal_frame=crystal, phase_name="nacl-phase")
     assert phase.name == "nacl-phase"
+    assert phase.space_group is not None
     assert phase.space_group_number == 225
     assert phase.provenance is not None
     assert phase.provenance.source_path == str(cif_path)

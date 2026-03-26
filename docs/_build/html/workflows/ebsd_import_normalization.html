@@ -195,10 +195,14 @@
   <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
 g_{\mathrm{proj}}</a></li>
@@ -265,6 +269,7 @@ g_{\mathrm{proj}}</a></li>
           <section id="ebsd-import-normalization-and-manifests">
 <h1>EBSD: Import Normalization And Manifests<a class="headerlink" href="#ebsd-import-normalization-and-manifests" title="Link to this heading">¶</a></h1>
 <p>PyTex now includes both the stable manifest contract for EBSD normalization and the first real object-backed bridge entry points for vendor ecosystems.</p>
+<p>That EBSD import contract now lives inside a broader stable manifest family that also includes experiment, benchmark, validation, and workflow-result manifests.</p>
 <section id="scope">
 <h2>Scope<a class="headerlink" href="#scope" title="Link to this heading">¶</a></h2>
 <ul class="simple">
@@ -330,6 +335,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>the bridge layer currently extracts orientation/map semantics only; detector-pattern semantics are still outside this contract</p></li>
 <li><p>multi-phase import normalization is still ahead</p></li>
 <li><p>dependency-pinned integration tests against live vendor package versions are still ahead</p></li>
+<li><p>richer experiment-manifest emission from full vendor-normalized workflows is still ahead</p></li>
 </ul>
 </section>
 <section id="related-material">

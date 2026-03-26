@@ -31,9 +31,22 @@ No subsystem may invent additional stable frame domains or silently collapse the
 
 - Every reference frame must be named and domain-typed.
 - Every transform must declare source and target frames.
+- Every stable batch primitive must declare the shared frame or convention metadata required to interpret the batch.
 - Every crystallographic vector or plane representation must state whether it is in direct or reciprocal basis.
 - Every imported dataset must preserve source-system provenance and original convention notes.
 - Hexagonal and trigonal notation rules are centralized in `hexagonal_and_trigonal_conventions.md`.
+
+## Batch Primitive Rule
+
+PyTex treats vectorized semantics as first-class scientific meaning.
+
+- vector batches that share one frame should use a frame-aware primitive such as `VectorSet`
+- Euler batches should keep convention metadata through `EulerSet`
+- quaternion batches should keep canonical normalization and storage semantics through `QuaternionSet`
+- rotation batches should use `RotationSet`
+- orientation batches should use `OrientationSet`
+
+Raw arrays may still be accepted at boundaries for compatibility, but the stable semantic model prefers named batch primitives whenever the batch meaning would otherwise be implicit.
 
 ## Literature And Tooling Alignment
 

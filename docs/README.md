@@ -22,6 +22,7 @@
 - `testing/strategy.md`
 - `testing/mtex_parity_matrix.md`
 - `testing/diffraction_validation_matrix.md`
+- `testing/structure_validation_matrix.md`
 
 ## Standards
 

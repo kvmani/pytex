@@ -37,15 +37,20 @@ src/pytex/
 The repository already contains real foundational implementations in:
 
 - `core/` for frames, symmetry, lattice, provenance, and orientation primitives
+- `core/` semantic batch primitives for vectors, Euler angles, quaternions, rotations, and orientations
+- `core/` multimodal acquisition primitives for geometry, calibration, measurement quality, and scattering context
+- `core/` transformation primitives for orientation relationships, variants, and phase-transformation records
 - `texture/` for PF, IPF, ODF, and color-key foundations
 - `ebsd/` for regular-grid neighborhood, KAM, segmentation, GROD, boundaries, cleanup, and graph aggregation
 - `diffraction/` for geometry, reciprocal-space primitives, kinematic spots, family grouping, and indexing scaffolding
+- `adapters/` for stable manifest contracts spanning import, experiment, benchmark, validation, and workflow-result interchange
 
 The current architectural risk is not lack of code. It is adding new stable surfaces before the multimodal semantics are written down centrally.
 
 ## Layering Rules
 
 - `core/` owns canonical primitives and low-level math semantics.
+- `core/` also owns the canonical batch-semantic layer for vectorized scientific operations.
 - `texture/`, `ebsd/`, and `diffraction/` build on `core/`.
 - `adapters/` may depend on external libraries, but stable core types must remain usable without them.
 - `experimental/` can depend on stable types but must not weaken or bypass stable semantics.
@@ -57,7 +62,7 @@ Imports from vendors or external scientific libraries should be normalized into 
 ## Adjacent Architecture Notes
 
 - `multimodal_characterization_foundation.md` defines the shared semantic backbone across EBSD, XRD, neutron, and TEM.
-- `phase_transformation_foundation.md` defines the required architectural contracts for parent-child and variant workflows before stable transformation APIs are added.
+- `phase_transformation_foundation.md` defines the parent-child and variant contracts that now anchor the stable transformation primitive family.
 - `repo_review_2026_foundation_audit.md` records the current state of the repository and the immediate hardening priorities.
 
 ## References

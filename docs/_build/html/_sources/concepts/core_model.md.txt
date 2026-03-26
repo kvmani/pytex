@@ -13,7 +13,12 @@ The core model exists to make incorrect combinations difficult and correct combi
 ## Key Rules
 
 - `ReferenceFrame` and `FrameTransform` make coordinate meaning explicit.
+- `VectorSet`, `EulerSet`, `QuaternionSet`, and `RotationSet` keep batched scientific data semantically typed.
+- `AcquisitionGeometry`, `CalibrationRecord`, `MeasurementQuality`, and `ScatteringSetup` keep experiment context explicit across modalities.
+- `ExperimentManifest`, `BenchmarkManifest`, `ValidationManifest`, and `WorkflowResultManifest` keep workflow evidence and interchange explicit instead of leaving it in ad hoc side files.
 - `SymmetrySpec` owns reusable symmetry operators and sector or reduction rules.
+- `SpaceGroupSpec` keeps structure-facing space-group identity explicit and separate from orientation reduction semantics.
+- `OrientationRelationship`, `TransformationVariant`, and `PhaseTransformationRecord` establish the stable transformation vocabulary before richer algorithms are added.
 - `Lattice`, `Phase`, `CrystalPlane`, and related types prevent direct or reciprocal ambiguity.
 - `Rotation`, `Orientation`, and `OrientationSet` carry mathematically precise orientation semantics instead of exposing anonymous arrays.
 - `ProvenanceRecord` keeps import and conversion context attached to scientific objects.
@@ -28,6 +33,8 @@ Texture and diffraction workflows frequently fail at tool boundaries. The common
 - passive coordinate change
 - Bunge angles in degrees
 - another Euler convention in radians
+- a point group used for orientation reduction
+- a space group used for phase definition
 
 PyTex normalizes data once at the boundary and keeps later computations on PyTex-native domain objects.
 
@@ -49,6 +56,8 @@ That separation is deliberate. It prevents later algorithms from inventing priva
 - Construct `ReferenceFrame` objects early and reuse them.
 - Construct `SymmetrySpec` once per phase or orientation family instead of repeating ad hoc symmetry logic in each workflow.
 - Prefer `Orientation` or `OrientationSet` over bare matrices when a value crosses module boundaries.
+- Prefer semantic batch types over naked `(n, 3)` or `(n, 4)` arrays when vectorized data carries shared frame or convention meaning.
+- Prefer stable manifest types when workflow context, benchmark identity, or validation evidence must cross a boundary.
 - Treat provenance as retained scientific metadata, not merely import bookkeeping.
 
 ```{note}

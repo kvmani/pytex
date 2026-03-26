@@ -1,6 +1,6 @@
 # Testing Strategy
 
-PyTex treats automated testing, validation ledgers, benchmark placeholders, and documentation integrity as one scientific quality system.
+PyTex treats automated testing, validation ledgers, stable benchmark and validation manifests, and documentation integrity as one scientific quality system.
 
 ## Layers
 
@@ -49,7 +49,7 @@ As of the current hardening pass, the repository has passing tests and docs buil
 
 - texture and EBSD have explicit MTEX-backed ledgers
 - diffraction has foundational implementation and internal tests, but its external-baseline program is still emerging
-- structure import is implemented, but it needs a more explicit validation story than parser-success tests alone
+- structure import now has an explicit validation ledger, but it still needs broader external baselines than parser-success tests alone
 
 ## References
 
@@ -57,6 +57,7 @@ As of the current hardening pass, the repository has passing tests and docs buil
 
 - `mtex_parity_matrix.md`
 - `diffraction_validation_matrix.md`
+- `structure_validation_matrix.md`
 - `../standards/reference_canon.md`
 
 ### Informative
