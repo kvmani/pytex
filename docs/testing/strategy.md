@@ -40,6 +40,8 @@ MTEX is not the only validation authority PyTex needs.
   Validation must be anchored to IUCr and International Tables semantics, with parser behavior checked against documented structure-library expectations.
 - Diffraction geometry and kinematic workflows:
   Validation must be tracked in `diffraction_validation_matrix.md` through literature-backed checks, geometry invariants, and future adapter or external-tool comparisons.
+- Stable plotting and texture-inspection workflows:
+  Validation must be tracked in `plotting_validation_matrix.md` through semantic input checks, deterministic builder coverage, and future parity-oriented visual baselines.
 - Future phase-transformation workflows:
   Validation must be anchored to literature-backed orientation-relationship and variant-generation references, not only to tool parity.
 
@@ -50,6 +52,7 @@ As of the current hardening pass, the repository has passing tests and docs buil
 - texture and EBSD have explicit MTEX-backed ledgers
 - diffraction has foundational implementation and internal tests, but its external-baseline program is still emerging
 - structure import now has an explicit validation ledger, but it still needs broader external baselines than parser-success tests alone
+- plotting now has an explicit validation ledger, but publication presets and parity-oriented visual baselines are still ahead
 
 ## References
 
@@ -58,6 +61,7 @@ As of the current hardening pass, the repository has passing tests and docs buil
 - `mtex_parity_matrix.md`
 - `diffraction_validation_matrix.md`
 - `structure_validation_matrix.md`
+- `plotting_validation_matrix.md`
 - `../standards/reference_canon.md`
 
 ### Informative
