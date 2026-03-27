@@ -16,6 +16,7 @@ def test_foundational_docs_agree_on_hybrid_documentation_policy() -> None:
         "specifications.md",
         "AGENTS.md",
         "docs/standards/documentation_architecture.md",
+        "docs/standards/terminology_and_symbol_registry.md",
     ]
     for path in foundational_docs:
         content = _read(path).lower()
@@ -61,3 +62,15 @@ def test_foundational_docs_encode_dual_plotting_output_policy() -> None:
         content = _read(path).lower()
         assert "matplotlib" in content, path
         assert "svg" in content, path
+
+
+def test_installation_guide_covers_platforms_and_docs_builds() -> None:
+    content = _read("docs/site/tutorials/installation_and_build.md").lower()
+    for token in ("windows", "macos", "linux", "sphinx", "latex", "jupyter"):
+        assert token in content
+
+
+def test_site_index_references_glossary_and_installation_pages() -> None:
+    content = _read("docs/site/index.md")
+    assert "concepts/technical_glossary_and_symbols" in content
+    assert "tutorials/installation_and_build" in content

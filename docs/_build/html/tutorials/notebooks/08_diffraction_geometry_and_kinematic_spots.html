@@ -224,6 +224,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="11_powder_xrd_workflows.html">Powder XRD Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="12_saed_workflows.html">SAED Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="13_crystal_visualization_workflows.html">Crystal Visualization Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="14_yaml_style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="15_structure_diffraction_visualization_pipeline.html">Structure, Diffraction, And Visualization Pipeline</a></li>
 </ul>
 </li>
 </ul>
@@ -237,6 +242,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/xrd_generation.html">Powder XRD Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/saed_generation.html">SAED Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/crystal_visualization.html">3D Crystal Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/combined_structure_diffraction_visualization.html">Combined Structure, Diffraction, And Visualization Workflow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
@@ -289,11 +299,16 @@ primitives, and kinematic spot simulation. This notebook shows the geometry laye
 and the current simulation surface.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tempfile</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pytex</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">AcquisitionGeometry</span><span class="p">,</span>
+    <span class="n">AtomicSite</span><span class="p">,</span>
     <span class="n">BenchmarkManifest</span><span class="p">,</span>
+    <span class="n">build_crystal_scene</span><span class="p">,</span>
     <span class="n">CalibrationRecord</span><span class="p">,</span>
     <span class="n">CrystalMap</span><span class="p">,</span>
     <span class="n">CrystalPlane</span><span class="p">,</span>
@@ -307,6 +322,7 @@ and the current simulation surface.</p>
     <span class="n">KernelSpec</span><span class="p">,</span>
     <span class="n">KinematicSimulation</span><span class="p">,</span>
     <span class="n">Lattice</span><span class="p">,</span>
+    <span class="n">list_style_themes</span><span class="p">,</span>
     <span class="n">MeasurementQuality</span><span class="p">,</span>
     <span class="n">MillerIndex</span><span class="p">,</span>
     <span class="n">ODF</span><span class="p">,</span>
@@ -316,22 +332,32 @@ and the current simulation surface.</p>
     <span class="n">Phase</span><span class="p">,</span>
     <span class="n">PhaseTransformationRecord</span><span class="p">,</span>
     <span class="n">PoleFigure</span><span class="p">,</span>
+    <span class="n">PowderPattern</span><span class="p">,</span>
+    <span class="n">PowderReflection</span><span class="p">,</span>
     <span class="n">ReferenceFrame</span><span class="p">,</span>
+    <span class="n">resolve_style</span><span class="p">,</span>
+    <span class="n">RadiationSpec</span><span class="p">,</span>
     <span class="n">Rotation</span><span class="p">,</span>
     <span class="n">ScatteringSetup</span><span class="p">,</span>
     <span class="n">SymmetrySpec</span><span class="p">,</span>
     <span class="n">TransformationVariant</span><span class="p">,</span>
+    <span class="n">UnitCell</span><span class="p">,</span>
     <span class="n">ValidationManifest</span><span class="p">,</span>
     <span class="n">VectorSet</span><span class="p">,</span>
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
+    <span class="n">generate_saed_pattern</span><span class="p">,</span>
+    <span class="n">generate_xrd_pattern</span><span class="p">,</span>
     <span class="n">plot_odf</span><span class="p">,</span>
+    <span class="n">plot_crystal_structure_3d</span><span class="p">,</span>
     <span class="n">plot_inverse_pole_figure</span><span class="p">,</span>
     <span class="n">plot_orientations</span><span class="p">,</span>
     <span class="n">plot_pole_figure</span><span class="p">,</span>
+    <span class="n">plot_saed_pattern</span><span class="p">,</span>
     <span class="n">plot_symmetry_elements</span><span class="p">,</span>
     <span class="n">plot_symmetry_orbit</span><span class="p">,</span>
     <span class="n">plot_vector_set</span><span class="p">,</span>
+    <span class="n">plot_xrd_pattern</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -368,7 +394,22 @@ and the current simulation surface.</p>
     <span class="p">)</span>
     <span class="n">symmetry</span> <span class="o">=</span> <span class="n">SymmetrySpec</span><span class="o">.</span><span class="n">from_point_group</span><span class="p">(</span><span class="s2">&quot;m-3m&quot;</span><span class="p">,</span> <span class="n">reference_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
     <span class="n">lattice</span> <span class="o">=</span> <span class="n">Lattice</span><span class="p">(</span><span class="mf">3.6</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
-    <span class="n">phase</span> <span class="o">=</span> <span class="n">Phase</span><span class="p">(</span><span class="s2">&quot;fcc_demo&quot;</span><span class="p">,</span> <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span> <span class="n">symmetry</span><span class="o">=</span><span class="n">symmetry</span><span class="p">,</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+    <span class="n">unit_cell</span> <span class="o">=</span> <span class="n">UnitCell</span><span class="p">(</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">sites</span><span class="o">=</span><span class="p">(</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;A1&quot;</span><span class="p">,</span> <span class="s2">&quot;Cu&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;A2&quot;</span><span class="p">,</span> <span class="s2">&quot;Cu&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;A3&quot;</span><span class="p">,</span> <span class="s2">&quot;Cu&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;A4&quot;</span><span class="p">,</span> <span class="s2">&quot;Cu&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="n">phase</span> <span class="o">=</span> <span class="n">Phase</span><span class="p">(</span>
+        <span class="s2">&quot;fcc_demo&quot;</span><span class="p">,</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">symmetry</span><span class="o">=</span><span class="n">symmetry</span><span class="p">,</span>
+        <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">,</span>
+        <span class="n">unit_cell</span><span class="o">=</span><span class="n">unit_cell</span><span class="p">,</span>
+    <span class="p">)</span>
     <span class="k">return</span> <span class="n">crystal</span><span class="p">,</span> <span class="n">specimen</span><span class="p">,</span> <span class="n">map_frame</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">phase</span>
 </pre></div>
 </div>

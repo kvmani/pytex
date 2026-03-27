@@ -1,0 +1,46 @@
+common:
+  figure:
+    dpi: 180
+    figsize: [7.2, 5.0]
+    facecolor: "#ffffff"
+    axes_facecolor: "#ffffff"
+    grid_alpha: 0.22
+  font:
+    family: "DejaVu Sans"
+    size: 11
+    title_size: 13
+  colors:
+    primary: "#1f3a5f"
+    secondary: "#4c956c"
+    accent: "#bc6c25"
+    background: "#ffffff"
+    foreground: "#111111"
+  line:
+    width: 1.8
+  marker:
+    size: 36
+xrd:
+  line_color: "#1f3a5f"
+  fill_color: "#dfe7f2"
+  peak_color: "#bc6c25"
+  annotate_peaks: true
+  max_labels: 12
+saed:
+  background: "#f8fafc"
+  spot_color: "#1f3a5f"
+  ring_color: "#94a3b8"
+  label_color: "#111111"
+  spot_scale: 220
+  annotate_spots: true
+  max_labels: 16
+crystal:
+  background: "#ffffff"
+  atom_alpha: 0.95
+  bond_alpha: 0.45
+  plane_alpha: 0.28
+  lattice_color: "#334155"
+  bond_color: "#64748b"
+  plane_color: "#0f766e"
+  vector_colors: ["#1d4ed8", "#059669", "#dc2626"]
+  atom_radius_scale: 1.0
+  bond_radius: 1.2

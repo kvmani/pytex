@@ -28,6 +28,8 @@ Where geometry or conventions matter, figures must:
 
 This SVG rule is for repository assets and documentation figures. It does not require every user-generated runtime plot to be exported as SVG.
 
+When a plotting surface is also part of the runtime API, its visual defaults should be controlled through the shared YAML style system rather than duplicated inside workflow examples or documentation scripts.
+
 ## Required Figure Topics
 
 At minimum, the repository must maintain canonical figures for:
@@ -35,6 +37,8 @@ At minimum, the repository must maintain canonical figures for:
 - shared reference-frame domains and transforms
 - Euler and quaternion storage conventions
 - diffraction geometry
+- powder XRD and SAED geometry where those figures fix conventions or detector mappings
+- crystal-structure and plane-geometry schematics for the 3D visualization subsystem
 - hexagonal and trigonal indexing conventions, including HCP 3-index and 4-index notation
 
 ## Completion Rule

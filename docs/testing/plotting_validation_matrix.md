@@ -19,9 +19,13 @@ Status terms:
 | Pole-figure contour rendering | builder and runtime tests for contour layers | implemented | Contour pole figures are rendered from smoothed projected density grids with deterministic builder behavior. |
 | ODF contour rendering | builder and runtime tests for Euler-space contour layers | implemented | The current contour path is a discrete support inspection surface in Euler space. |
 | ODF Bunge-section rendering | builder and runtime tests for multi-panel section figures | implemented | Section plots are kernel-smoothed inspection views over the discrete support, not harmonic ODF sections. |
+| YAML theme loading and merging | unit tests over theme catalogs, overrides, and invalid payloads | implemented | Runtime plotting style is centralized rather than distributed across plotting routines. |
+| Powder XRD plotting | runtime plotting tests and style-config coverage | implemented | XRD figures are deterministic Matplotlib surfaces built on shared style resolution. |
+| SAED plotting | runtime plotting tests and style-config coverage | implemented | Detector-space spot plots are validated for figure creation and semantic labeling. |
+| 3D crystal visualization | scene-builder tests and runtime figure generation | implemented | Unit-cell atoms, lattice edges, and `(hkl)` plane overlays are covered by current tests. |
 | IPF plotting | workflow docs, notebook examples, and runtime plot coverage | foundational | Stable plotting exists, but broader publication presets and parity-oriented visual checks remain ahead. |
 | Visual parity against external tools | MTEX-style rendered comparisons and pinned image baselines | planned | Useful for future visual regression and semantics checks, but not yet a stable requirement. |
-| Publication presets and house styles | deterministic style bundles for papers or lectures | planned | The current runtime surface is semantically stable; richer high-level styling presets remain ahead. |
+| Publication presets and house styles | deterministic style bundles for papers or lectures | foundational | Journal, presentation, and dark presets now exist through YAML themes, but broader house-style coverage remains ahead. |
 
 ## Interpretation Notes
 
@@ -41,3 +45,6 @@ Status terms:
 
 - `../site/workflows/plotting_primitives.md`
 - `../site/workflows/texture_odf_inversion.md`
+- `../site/workflows/xrd_generation.md`
+- `../site/workflows/saed_generation.md`
+- `../site/workflows/crystal_visualization.md`

@@ -28,6 +28,11 @@ notebooks/07_ebsd_regular_grid_workflows
 notebooks/08_diffraction_geometry_and_kinematic_spots
 notebooks/09_phase_transformation_foundations
 notebooks/10_plotting_semantic_primitives
+notebooks/11_powder_xrd_workflows
+notebooks/12_saed_workflows
+notebooks/13_crystal_visualization_workflows
+notebooks/14_yaml_style_customization
+notebooks/15_structure_diffraction_visualization_pipeline
 ```
 
 ## How To Use These
@@ -36,6 +41,8 @@ notebooks/10_plotting_semantic_primitives
 - Open the raw `.ipynb` files locally when you want to execute and modify the examples.
 - Use the texture and plotting notebooks to see the currently implemented contour pole-figure and
   Bunge-section ODF surfaces, not just older scatter-style examples.
+- Use the XRD, SAED, crystal-visualization, and style notebooks to see the current diffraction and
+  structure-view surfaces rather than relying on stale standalone scripts.
 - Use the linked concept pages and LaTeX notes when you need the deeper formal derivation behind the tutorial flow.
 
 ## References

@@ -1,0 +1,60 @@
+\section{Powder XRD And SAED Foundations}
+
+\subsection{Powder XRD}
+
+PyTex models a powder reflection from an integer Miller triplet $(hkl)$ through the reciprocal-lattice vector
+\[
+\mathbf{g}_{hkl} = h \mathbf{a}^{*} + k \mathbf{b}^{*} + l \mathbf{c}^{*},
+\]
+with
+\[
+d_{hkl} = \frac{1}{\lVert \mathbf{g}_{hkl} \rVert}.
+\]
+
+For a wavelength $\lambda$, the current XRD surface applies Bragg's law
+\[
+2 d_{hkl} \sin \theta = \lambda,
+\]
+and reports the observable angle $2\theta$.
+
+The current intensity model is a deliberately modest structure-sensitive approximation:
+\[
+I_{hkl} \propto m_{hkl} \, |F_{hkl}|^2 \, L_{p}(2\theta),
+\]
+where $m_{hkl}$ is the multiplicity inferred from the phase point-group symmetry, $F_{hkl}$ is a simple atomic-number-based structure-factor proxy over the unit cell, and $L_p$ is a Lorentz-polarization term.
+
+This is suitable for foundational workflows and teaching. It is not yet a complete scattering-factor or instrument model.
+
+\subsection{Spectrum Construction}
+
+The broadened powder spectrum is constructed by depositing each reflection onto a sampled $2\theta$ grid. The current broadening path uses a Gaussian profile with configurable full width at half maximum. For a reflection centered at $2\theta_{hkl}$ and Gaussian width $\sigma$,
+\[
+I(2\theta) = \sum_{hkl} I_{hkl} \exp\left[-\frac{(2\theta - 2\theta_{hkl})^2}{2\sigma^2}\right].
+\]
+
+\subsection{SAED}
+
+PyTex treats the SAED zone axis as a direct-space direction while the diffracted reflections live in reciprocal space. This distinction is explicit in the public data model.
+
+Given a zone axis unit vector $\hat{\mathbf{z}}$, a reflection is accepted into the current in-zone SAED construction when
+\[
+|\mathbf{g}_{hkl} \cdot \hat{\mathbf{z}}| \le \varepsilon,
+\]
+for a configurable tolerance $\varepsilon$ in inverse angstroms.
+
+An orthonormal detector basis $(\hat{\mathbf{u}}, \hat{\mathbf{v}}, \hat{\mathbf{z}})$ is then constructed, and the reciprocal vector is projected into detector coordinates:
+\[
+u = C \, (\mathbf{g}_{hkl} \cdot \hat{\mathbf{u}}), \qquad
+v = C \, (\mathbf{g}_{hkl} \cdot \hat{\mathbf{v}}),
+\]
+where $C$ is the camera-constant-style scale factor in millimeter-angstrom units.
+
+The current spot intensity is again a proxy quantity intended for ranking and visualization, not a dynamical diffraction model.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item No tabulated atomic form-factor or electron-scattering-factor model yet.
+  \item No dynamical diffraction treatment.
+  \item No instrument-function refinement or calibrated detector response model yet.
+\end{itemize}

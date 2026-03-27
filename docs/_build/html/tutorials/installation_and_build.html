@@ -1,0 +1,550 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Tutorial Notebooks" href="notebooks.html"><link rel="prev" title="Quickstart" href="quickstart.html">
+
+    <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
+        <title>Installation And Build - PyTex</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css?v=8cd3d715" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/architecture.css?v=046228d5" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">PyTex</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  
+  <span class="sidebar-brand-text">PyTex</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_model.html">Core Model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/core_foundation.html">Core Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/technical_glossary_and_symbols.html">Technical Glossary And Symbols</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/diffraction_foundation.html">Diffraction Foundation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html">Symmetry Reduction And Fundamental Regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#g-mathrm-proj">[
+g_{\mathrm{proj}}</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/symmetry_and_fundamental_regions.html#delta-mathrm-dis">[
+\Delta_{\mathrm{dis}}</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Installation And Build</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/03_symmetry_and_fundamental_regions.html">Symmetry And Fundamental Regions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/04_phases_lattices_space_groups_and_cif.html">Phases, Lattices, Space Groups, And CIF Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/05_multimodal_acquisition_and_manifests.html">Multimodal Acquisition, Calibration, And Manifests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/06_texture_odf_and_pole_figure_inversion.html">Texture, ODF Evaluation, And Pole-Figure Inversion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/11_powder_xrd_workflows.html">Powder XRD Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/12_saed_workflows.html">SAED Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/13_crystal_visualization_workflows.html">Crystal Visualization Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/14_yaml_style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="notebooks/15_structure_diffraction_visualization_pipeline.html">Structure, Diffraction, And Visualization Pipeline</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Workflows</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_kam.html">EBSD: Kernel-Average Misorientation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_grains.html">EBSD: Grain Segmentation And GROD</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/xrd_generation.html">Powder XRD Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/saed_generation.html">SAED Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/crystal_visualization.html">3D Crystal Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/combined_structure_diffraction_visualization.html">Combined Structure, Diffraction, And Visualization Workflow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">API Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../theory/index.html">Theory Notes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../validation/index.html">Validation</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="../_sources/tutorials/installation_and_build.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="installation-and-build">
+<h1>Installation And Build<a class="headerlink" href="#installation-and-build" title="Link to this heading">¶</a></h1>
+<p>This page explains how to install PyTex, run the test suite, build the Sphinx documentation, and generate the LaTeX or PDF scientific notes on Windows, macOS, and Linux.</p>
+<section id="supported-python">
+<h2>Supported Python<a class="headerlink" href="#supported-python" title="Link to this heading">¶</a></h2>
+<p>PyTex currently targets Python <code class="docutils literal notranslate"><span class="pre">3.11+</span></code>.</p>
+</section>
+<section id="common-repository-setup">
+<h2>Common Repository Setup<a class="headerlink" href="#common-repository-setup" title="Link to this heading">¶</a></h2>
+<p>Clone the repository, then move into it:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>&lt;your-pytex-repo-url&gt;
+<span class="nb">cd</span><span class="w"> </span>pytex
+</pre></div>
+</div>
+</section>
+<section id="install-on-macos-or-linux">
+<h2>Install On macOS Or Linux<a class="headerlink" href="#install-on-macos-or-linux" title="Link to this heading">¶</a></h2>
+<p>Create and activate a virtual environment:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python3<span class="w"> </span>-m<span class="w"> </span>venv<span class="w"> </span>.venv
+<span class="nb">source</span><span class="w"> </span>.venv/bin/activate
+python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--upgrade<span class="w"> </span>pip
+</pre></div>
+</div>
+<p>Install the full local development toolchain:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[dev,docs]&quot;</span>
+</pre></div>
+</div>
+<p>If you need optional structure-import adapters such as <code class="docutils literal notranslate"><span class="pre">pymatgen</span></code>, also install:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[adapters]&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="install-on-windows">
+<h2>Install On Windows<a class="headerlink" href="#install-on-windows" title="Link to this heading">¶</a></h2>
+<p>Use PowerShell from the repo root:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">py</span> <span class="p">-</span><span class="n">3</span><span class="p">.</span><span class="n">11</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">venv</span>
+<span class="p">.</span><span class="n">venv</span><span class="p">\\</span><span class="n">Scripts</span><span class="p">\\</span><span class="n">Activate</span><span class="p">.</span><span class="n">ps1</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">pip</span> <span class="n">install</span> <span class="p">-</span><span class="n">-upgrade</span> <span class="n">pip</span>
+<span class="n">python</span> <span class="n">-m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">-e</span> <span class="s2">&quot;.[dev,docs]&quot;</span>
+</pre></div>
+</div>
+<p>If you need optional structure-import adapters:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">-m</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">-e</span> <span class="s2">&quot;.[adapters]&quot;</span>
+</pre></div>
+</div>
+<p>If PowerShell script execution is blocked, activate from <code class="docutils literal notranslate"><span class="pre">cmd.exe</span></code> with:</p>
+<div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>.venv\\Scripts\\activate.bat
+</pre></div>
+</div>
+</section>
+<section id="run-the-core-quality-gates">
+<h2>Run The Core Quality Gates<a class="headerlink" href="#run-the-core-quality-gates" title="Link to this heading">¶</a></h2>
+<p>These commands should work the same way on Windows, macOS, and Linux once the environment is active:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/check_repo_integrity.py
+ruff<span class="w"> </span>check<span class="w"> </span>.
+mypy<span class="w"> </span>src
+pytest<span class="w"> </span>-q
+</pre></div>
+</div>
+</section>
+<section id="build-the-sphinx-html-docs">
+<h2>Build The Sphinx HTML Docs<a class="headerlink" href="#build-the-sphinx-html-docs" title="Link to this heading">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sphinx-build<span class="w"> </span>-b<span class="w"> </span>html<span class="w"> </span>docs/site<span class="w"> </span>docs/_build/html
+</pre></div>
+</div>
+<p>Open the built site at:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/_build/html/index.html</span></code></p></li>
+</ul>
+<p>See also: <a class="reference internal" href="../concepts/library_structure.html"><span class="doc">Library Structure</span></a>, <a class="reference internal" href="../concepts/technical_glossary_and_symbols.html"><span class="doc">Technical Glossary And Symbols</span></a>.</p>
+</section>
+<section id="regenerate-tutorial-notebooks">
+<h2>Regenerate Tutorial Notebooks<a class="headerlink" href="#regenerate-tutorial-notebooks" title="Link to this heading">¶</a></h2>
+<p>The checked-in notebooks are generated from the canonical notebook generator:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/generate_tutorial_notebooks.py
+</pre></div>
+</div>
+<p>After regenerating notebooks, rebuild the Sphinx site so the rendered notebook pages stay synchronized with the runtime API.</p>
+</section>
+<section id="build-latex-or-pdf-notes">
+<h2>Build LaTeX Or PDF Notes<a class="headerlink" href="#build-latex-or-pdf-notes" title="Link to this heading">¶</a></h2>
+<p>The canonical scientific notes live under <code class="docutils literal notranslate"><span class="pre">docs/tex/</span></code>.</p>
+<section id="basic-latex-expectation">
+<h3>Basic LaTeX expectation<a class="headerlink" href="#basic-latex-expectation" title="Link to this heading">¶</a></h3>
+<p>You need a modern LaTeX distribution such as:</p>
+<ul class="simple">
+<li><p>TeX Live on Linux</p></li>
+<li><p>MacTeX on macOS</p></li>
+<li><p>MiKTeX or TeX Live on Windows</p></li>
+</ul>
+</section>
+<section id="typical-pdf-build">
+<h3>Typical PDF build<a class="headerlink" href="#typical-pdf-build" title="Link to this heading">¶</a></h3>
+<p>From <code class="docutils literal notranslate"><span class="pre">docs/tex/</span></code>, use a modern toolchain such as:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>latexmk<span class="w"> </span>-pdf<span class="w"> </span>-shell-escape<span class="w"> </span>&lt;document&gt;.tex
+</pre></div>
+</div>
+<p>If your TeX setup lacks the required packages, install them through your distribution package manager or TeX package manager first.</p>
+</section>
+</section>
+<section id="optional-jupyter-use">
+<h2>Optional Jupyter Use<a class="headerlink" href="#optional-jupyter-use" title="Link to this heading">¶</a></h2>
+<p>To run the checked-in notebooks locally:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>jupyter<span class="w"> </span>lab<span class="w"> </span>docs/site/tutorials/notebooks
+</pre></div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">¶</a></h2>
+<section id="importerror-from-optional-crystallography-adapters">
+<h3><code class="docutils literal notranslate"><span class="pre">ImportError</span></code> from optional crystallography adapters<a class="headerlink" href="#importerror-from-optional-crystallography-adapters" title="Link to this heading">¶</a></h3>
+<p>Install the adapters extra:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[adapters]&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="sphinx-builds-but-notebook-content-looks-stale">
+<h3>Sphinx builds but notebook content looks stale<a class="headerlink" href="#sphinx-builds-but-notebook-content-looks-stale" title="Link to this heading">¶</a></h3>
+<p>Regenerate the notebooks first:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/generate_tutorial_notebooks.py
+</pre></div>
+</div>
+</section>
+<section id="latex-pdf-build-fails">
+<h3>LaTeX PDF build fails<a class="headerlink" href="#latex-pdf-build-fails" title="Link to this heading">¶</a></h3>
+<p>Check that your TeX distribution includes <code class="docutils literal notranslate"><span class="pre">latexmk</span></code> and any packages needed by the note you are building.</p>
+</section>
+</section>
+<section id="related-material">
+<h2>Related Material<a class="headerlink" href="#related-material" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="notebooks.html"><span class="doc">Tutorial Notebooks</span></a></p></li>
+<li><p><a class="reference internal" href="../concepts/technical_glossary_and_symbols.html"><span class="doc">Technical Glossary And Symbols</span></a></p></li>
+<li><p><a class="reference internal" href="../theory/index.html"><span class="doc">Theory Notes</span></a></p></li>
+</ul>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading">¶</a></h2>
+<section id="normative">
+<h3>Normative<a class="headerlink" href="#normative" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">../../standards/documentation_architecture.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">../../standards/latex_and_figures.md</span></code></p></li>
+</ul>
+</section>
+<section id="informative">
+<h3>Informative<a class="headerlink" href="#informative" title="Link to this heading">¶</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">../../development/local_development.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">../README.md</span></code></p></li>
+</ul>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="notebooks.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Tutorial Notebooks</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="quickstart.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Quickstart</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Installation And Build</a><ul>
+<li><a class="reference internal" href="#supported-python">Supported Python</a></li>
+<li><a class="reference internal" href="#common-repository-setup">Common Repository Setup</a></li>
+<li><a class="reference internal" href="#install-on-macos-or-linux">Install On macOS Or Linux</a></li>
+<li><a class="reference internal" href="#install-on-windows">Install On Windows</a></li>
+<li><a class="reference internal" href="#run-the-core-quality-gates">Run The Core Quality Gates</a></li>
+<li><a class="reference internal" href="#build-the-sphinx-html-docs">Build The Sphinx HTML Docs</a></li>
+<li><a class="reference internal" href="#regenerate-tutorial-notebooks">Regenerate Tutorial Notebooks</a></li>
+<li><a class="reference internal" href="#build-latex-or-pdf-notes">Build LaTeX Or PDF Notes</a><ul>
+<li><a class="reference internal" href="#basic-latex-expectation">Basic LaTeX expectation</a></li>
+<li><a class="reference internal" href="#typical-pdf-build">Typical PDF build</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#optional-jupyter-use">Optional Jupyter Use</a></li>
+<li><a class="reference internal" href="#troubleshooting">Troubleshooting</a><ul>
+<li><a class="reference internal" href="#importerror-from-optional-crystallography-adapters"><code class="docutils literal notranslate"><span class="pre">ImportError</span></code> from optional crystallography adapters</a></li>
+<li><a class="reference internal" href="#sphinx-builds-but-notebook-content-looks-stale">Sphinx builds but notebook content looks stale</a></li>
+<li><a class="reference internal" href="#latex-pdf-build-fails">LaTeX PDF build fails</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#related-material">Related Material</a></li>
+<li><a class="reference internal" href="#references">References</a><ul>
+<li><a class="reference internal" href="#normative">Normative</a></li>
+<li><a class="reference internal" href="#informative">Informative</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=965fac30"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    </body>
+</html>

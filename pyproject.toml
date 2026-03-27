@@ -71,6 +71,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"pytex.plotting.themes" = ["*.yaml"]
+
 [tool.pytest.ini_options]
 addopts = "-q"
 pythonpath = ["src", "."]
@@ -95,4 +98,8 @@ packages = ["pytex"]
 
 [[tool.mypy.overrides]]
 module = ["pymatgen", "pymatgen.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["yaml", "yaml.*", "mpl_toolkits", "mpl_toolkits.*"]
 ignore_missing_imports = true

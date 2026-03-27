@@ -31,6 +31,7 @@
 - `standards/notation_and_conventions.md`
 - `standards/documentation_architecture.md`
 - `standards/latex_and_figures.md`
+- `standards/terminology_and_symbol_registry.md`
 - `standards/scientific_citation_policy.md`
 - `standards/benchmark_and_tolerance_governance.md`
 - `standards/hexagonal_and_trigonal_conventions.md`
@@ -57,12 +58,14 @@
 - `tex/theory/hexagonal_conventions.tex`
 - `tex/theory/orientation_space_and_disorientation.tex`
 - `tex/theory/reference_frames.tex`
+- `tex/theory/crystal_visualization_geometry.tex`
 - `tex/algorithms/discrete_odf_and_pole_figures.tex`
 - `tex/algorithms/ebsd_kam_parameterization.tex`
 - `tex/algorithms/ebsd_local_misorientation.tex`
 - `tex/algorithms/ebsd_grain_segmentation_and_grod.tex`
 - `tex/algorithms/ebsd_boundaries_and_cleanup.tex`
 - `tex/algorithms/diffraction_geometry_and_bragg_rings.tex`
+- `tex/algorithms/powder_xrd_and_saed.tex`
 - `tex/algorithms/reciprocal_space_and_kinematic_spots.tex`
 - `tex/validation/validation_program.tex`
 

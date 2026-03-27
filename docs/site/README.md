@@ -9,11 +9,15 @@ python -m pip install -e '.[docs]'
 sphinx-build -b html docs/site docs/_build/html
 ```
 
+For full platform-specific install, notebook, and PDF-build guidance, see
+{doc}`tutorials/installation_and_build`.
+
 ## Structure
 
 - `index.md`: public documentation entry point
 - `concepts/`: conceptual documentation for the canonical model
 - `tutorials/`: runnable onboarding material
+- `tutorials/installation_and_build.md`: full install and build guidance for Windows, macOS, and Linux
 - `tutorials/notebooks/`: executable deep-dive tutorials in `.ipynb` form
 - `workflows/`: multi-step domain workflows
 - `api/`: curated API navigation

@@ -24,6 +24,8 @@ The arrows do not imply that every workflow instantiates every frame. They state
   Normative by PyTex diffraction-geometry contracts: detector and laboratory semantics must remain explicit and separate from specimen semantics.
 - `crystal -> reciprocal`
   Normative from IUCr-style crystallographic basis duality and the PyTex reciprocal normalization rule.
+- `crystal or reciprocal -> visualization`
+  Normative by PyTex plotting doctrine: visualization views may re-express already defined scientific geometry, but they do not define new crystallographic meaning or replace crystal, detector, or reciprocal frames.
 
 No subsystem may invent additional stable frame domains or silently collapse these distinctions.
 
@@ -33,8 +35,11 @@ No subsystem may invent additional stable frame domains or silently collapse the
 - Every transform must declare source and target frames.
 - Every stable batch primitive must declare the shared frame or convention metadata required to interpret the batch.
 - Every crystallographic vector or plane representation must state whether it is in direct or reciprocal basis.
+- Every diffraction plot must make clear whether plotted coordinates live in detector, reciprocal, or angular coordinates.
+- Every 3D crystal visualization must state whether camera alignment is specified by a visualization view only or by a crystallographic direction such as a `CrystalDirection`.
 - Every imported dataset must preserve source-system provenance and original convention notes.
 - Hexagonal and trigonal notation rules are centralized in `hexagonal_and_trigonal_conventions.md`.
+- Repository-wide symbol names and glossary terms are centralized in `terminology_and_symbol_registry.md`.
 
 ## Batch Primitive Rule
 

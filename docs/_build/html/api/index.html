@@ -224,6 +224,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/11_powder_xrd_workflows.html">Powder XRD Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/12_saed_workflows.html">SAED Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/13_crystal_visualization_workflows.html">Crystal Visualization Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/14_yaml_style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/15_structure_diffraction_visualization_pipeline.html">Structure, Diffraction, And Visualization Pipeline</a></li>
 </ul>
 </li>
 </ul>
@@ -237,6 +242,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/xrd_generation.html">Powder XRD Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/saed_generation.html">SAED Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/crystal_visualization.html">3D Crystal Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/combined_structure_diffraction_visualization.html">Combined Structure, Diffraction, And Visualization Workflow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
@@ -297,6 +307,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SymmetrySpec</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">SpaceGroupSpec</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Lattice</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AtomicSite</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">UnitCell</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Phase</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ReciprocalLatticeVector</span></code></p></li>
@@ -349,6 +360,11 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">DetectorAcceptanceMask</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">DiffractionGeometry</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">DiffractionPattern</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RadiationSpec</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PowderReflection</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PowderPattern</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SAEDSpot</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">SAEDPattern</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">KinematicSpot</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">KinematicSimulation</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ReflectionFamily</span></code></p></li>
@@ -356,7 +372,8 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">FamilyIndexingReport</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OrientationRefinementResult</span></code></p></li>
 </ul>
-<p>See <a class="reference internal" href="../workflows/diffraction_geometry.html"><span class="doc">Diffraction: Geometry And Bragg Rings</span></a> and <a class="reference internal" href="../workflows/diffraction_spots.html"><span class="doc">Diffraction: Reciprocal Space And Kinematic Spots</span></a>.</p>
+<p>See <a class="reference internal" href="../workflows/diffraction_geometry.html"><span class="doc">Diffraction: Geometry And Bragg Rings</span></a>, <a class="reference internal" href="../workflows/diffraction_spots.html"><span class="doc">Diffraction: Reciprocal Space And Kinematic Spots</span></a>,
+<a class="reference internal" href="../workflows/xrd_generation.html"><span class="doc">Powder XRD Generation</span></a>, and <a class="reference internal" href="../workflows/saed_generation.html"><span class="doc">SAED Generation</span></a>.</p>
 </section>
 <section id="plotting">
 <h2>Plotting<a class="headerlink" href="#plotting" title="Link to this heading">¶</a></h2>
@@ -372,11 +389,24 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_pole_figure</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_inverse_pole_figure</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_odf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_xrd_pattern</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_saed_pattern</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalScene</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">build_crystal_scene</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_crystal_structure_3d</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list_style_themes</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">load_style_theme</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">read_style_yaml</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">resolve_style</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">save_documentation_figure_svg</span></code></p></li>
 </ul>
-<p>See <a class="reference internal" href="../workflows/ipf_colors.html"><span class="doc">Texture: IPF Color Keys</span></a> and <a class="reference internal" href="../workflows/plotting_primitives.html"><span class="doc">Plotting Semantic Primitives</span></a>.</p>
+<p>See <a class="reference internal" href="../workflows/ipf_colors.html"><span class="doc">Texture: IPF Color Keys</span></a>, <a class="reference internal" href="../workflows/plotting_primitives.html"><span class="doc">Plotting Semantic Primitives</span></a>,
+<a class="reference internal" href="../workflows/crystal_visualization.html"><span class="doc">3D Crystal Visualization</span></a>, and <a class="reference internal" href="../workflows/style_customization.html"><span class="doc">YAML Style Customization</span></a>.</p>
 <p><code class="docutils literal notranslate"><span class="pre">plot_pole_figure(...)</span></code> supports scatter, histogram, and contour rendering. <code class="docutils literal notranslate"><span class="pre">plot_odf(...)</span></code>
 supports scatter, contour, and classical Bunge-section rendering.</p>
+<p><code class="docutils literal notranslate"><span class="pre">plot_xrd_pattern(...)</span></code> and <code class="docutils literal notranslate"><span class="pre">plot_saed_pattern(...)</span></code> return ordinary Matplotlib figures using the
+shared YAML style system. <code class="docutils literal notranslate"><span class="pre">plot_crystal_structure_3d(...)</span></code> provides a publication-oriented 3D
+structure view while preserving PyTex lattice and plane semantics.</p>
 <p>For architectural context, see <code class="docutils literal notranslate"><span class="pre">docs/architecture/overview.md</span></code>.</p>
 </section>
 </section>

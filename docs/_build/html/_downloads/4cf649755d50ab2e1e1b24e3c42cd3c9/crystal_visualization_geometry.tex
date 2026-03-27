@@ -1,0 +1,40 @@
+\section{Crystal Visualization Geometry}
+
+PyTex treats crystal visualization as a rendering layer over the canonical crystallographic model, not as a second private geometry system.
+
+\subsection{Atomic Coordinates}
+
+Atomic sites are stored in fractional coordinates relative to the unit cell. For a direct basis matrix
+\[
+\mathbf{A} = [\mathbf{a}\ \mathbf{b}\ \mathbf{c}],
+\]
+a site at fractional coordinates $\mathbf{f}$ is rendered at Cartesian crystal-space position
+\[
+\mathbf{r} = \mathbf{A}\mathbf{f}.
+\]
+
+Supercell repetition uses explicit integer translations in the direct-lattice basis:
+\[
+\mathbf{r}_{ijk} = \mathbf{A}(\mathbf{f} + [i, j, k]^T).
+\]
+
+\subsection{Lattice And Planes}
+
+The current viewer draws lattice edges from the repeated supercell box. Plane overlays are defined from Miller indices $(hkl)$ and the reciprocal-space normal
+\[
+\mathbf{n}_{hkl} = h \mathbf{a}^{*} + k \mathbf{b}^{*} + l \mathbf{c}^{*}.
+\]
+
+The viewer computes the polygon formed by intersecting that plane with the repeated cell bounding box. This yields a static geometric overlay suitable for teaching and publication figures while preserving the exact lattice and reciprocal conventions from the core model.
+
+\subsection{View Control}
+
+Camera angles are rendering choices, not crystallographic semantics. When PyTex accepts a `CrystalDirection` as a view target, the direction is first interpreted in crystal coordinates and only then converted into visualization-camera angles. This keeps the distinction between scientific direction meaning and graphics control explicit.
+
+\subsection{Current Limits}
+
+\begin{itemize}
+  \item The bond model is heuristic and based on covalent-radius proximity rather than exhaustive chemistry rules.
+  \item The current backend is a static Matplotlib 3D renderer.
+  \item Slab views are currently implemented as deterministic geometric filtering rather than a full clipping-volume engine.
+\end{itemize}

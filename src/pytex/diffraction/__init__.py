@@ -12,6 +12,14 @@ from pytex.diffraction.models import (
     ReflectionFamily,
     SpotAssignment,
 )
+from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
+from pytex.diffraction.xrd import (
+    PowderPattern,
+    PowderReflection,
+    RadiationSpec,
+    generate_powder_reflections,
+    generate_xrd_pattern,
+)
 
 __all__ = [
     "DetectedSpotCluster",
@@ -24,6 +32,14 @@ __all__ = [
     "KinematicSpot",
     "OrientationRefinementResult",
     "OrientationIndexingCandidate",
+    "PowderPattern",
+    "PowderReflection",
+    "RadiationSpec",
     "ReflectionFamily",
+    "SAEDPattern",
+    "SAEDSpot",
     "SpotAssignment",
+    "generate_powder_reflections",
+    "generate_saed_pattern",
+    "generate_xrd_pattern",
 ]

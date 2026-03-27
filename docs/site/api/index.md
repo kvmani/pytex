@@ -13,6 +13,7 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `SymmetrySpec`
 - `SpaceGroupSpec`
 - `Lattice`
+- `AtomicSite`
 - `UnitCell`
 - `Phase`
 - `ReciprocalLatticeVector`
@@ -62,6 +63,11 @@ See {doc}`../workflows/ebsd_kam` and {doc}`../workflows/ebsd_grains`.
 - `DetectorAcceptanceMask`
 - `DiffractionGeometry`
 - `DiffractionPattern`
+- `RadiationSpec`
+- `PowderReflection`
+- `PowderPattern`
+- `SAEDSpot`
+- `SAEDPattern`
 - `KinematicSpot`
 - `KinematicSimulation`
 - `ReflectionFamily`
@@ -69,7 +75,8 @@ See {doc}`../workflows/ebsd_kam` and {doc}`../workflows/ebsd_grains`.
 - `FamilyIndexingReport`
 - `OrientationRefinementResult`
 
-See {doc}`../workflows/diffraction_geometry` and {doc}`../workflows/diffraction_spots`.
+See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spots`,
+{doc}`../workflows/xrd_generation`, and {doc}`../workflows/saed_generation`.
 
 ## Plotting
 
@@ -84,11 +91,25 @@ See {doc}`../workflows/diffraction_geometry` and {doc}`../workflows/diffraction_
 - `plot_pole_figure`
 - `plot_inverse_pole_figure`
 - `plot_odf`
+- `plot_xrd_pattern`
+- `plot_saed_pattern`
+- `CrystalScene`
+- `build_crystal_scene`
+- `plot_crystal_structure_3d`
+- `list_style_themes`
+- `load_style_theme`
+- `read_style_yaml`
+- `resolve_style`
 - `save_documentation_figure_svg`
 
-See {doc}`../workflows/ipf_colors` and {doc}`../workflows/plotting_primitives`.
+See {doc}`../workflows/ipf_colors`, {doc}`../workflows/plotting_primitives`,
+{doc}`../workflows/crystal_visualization`, and {doc}`../workflows/style_customization`.
 
 `plot_pole_figure(...)` supports scatter, histogram, and contour rendering. `plot_odf(...)`
 supports scatter, contour, and classical Bunge-section rendering.
+
+`plot_xrd_pattern(...)` and `plot_saed_pattern(...)` return ordinary Matplotlib figures using the
+shared YAML style system. `plot_crystal_structure_3d(...)` provides a publication-oriented 3D
+structure view while preserving PyTex lattice and plane semantics.
 
 For architectural context, see `docs/architecture/overview.md`.

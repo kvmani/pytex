@@ -17,6 +17,7 @@ Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The
 - [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
 - [../../tex/theory/hexagonal_conventions.tex](../../tex/theory/hexagonal_conventions.tex)
 - [../../tex/theory/crystal_structures_and_cif_import.tex](../../tex/theory/crystal_structures_and_cif_import.tex)
+- [../../tex/theory/crystal_visualization_geometry.tex](../../tex/theory/crystal_visualization_geometry.tex)
 
 ## Algorithm Notes
 
@@ -26,6 +27,7 @@ Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The
 - [../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex](../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
 - [../../tex/algorithms/ebsd_boundaries_and_cleanup.tex](../../tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
+- [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
 - [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
 
 ## Validation Notes

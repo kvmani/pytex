@@ -19,6 +19,7 @@ Read these first when working on the repository:
 - `docs/standards/notation_and_conventions.md`
 - `docs/standards/documentation_architecture.md`
 - `docs/standards/latex_and_figures.md`
+- `docs/standards/terminology_and_symbol_registry.md`
 - `docs/standards/development_principles.md`
 - `docs/standards/data_contracts_and_manifests.md`
 
@@ -42,6 +43,7 @@ If implementation choices conflict with these documents, stop and reconcile the 
 - No stable public API may rely on naked arrays when frame, symmetry, or basis meaning would be ambiguous.
 - No subsystem may define its own private frame or symmetry model.
 - Stable features are incomplete until docs, figures, tests, and validation notes all exist.
+- Stable terminology and symbol meaning must be fixed centrally and reused across docs, theory notes, notebooks, code explanations, and figures.
 - Correctness, provenance, and interpretability take priority over premature optimization.
 - Construction-time invariant checks are preferred over downstream error recovery.
 - Any stable workflow that crosses a tool boundary must eventually have a machine-readable manifest and schema.
@@ -87,6 +89,7 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 - Prefer immutable metadata objects and contiguous NumPy-backed arrays for vectorized data.
 - Add tests with implementation, not afterward.
 - Update docs when behavior, conventions, or surface area changes.
+- Add or update cross-links when a page relies on terms, conventions, or workflows defined elsewhere in the docs.
 - Add local module indexes or README files when a subsystem grows enough to need them.
 
 ### When touching algorithms

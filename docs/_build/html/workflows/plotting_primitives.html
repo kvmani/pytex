@@ -224,6 +224,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/11_powder_xrd_workflows.html">Powder XRD Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/12_saed_workflows.html">SAED Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/13_crystal_visualization_workflows.html">Crystal Visualization Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/14_yaml_style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/15_structure_diffraction_visualization_pipeline.html">Structure, Diffraction, And Visualization Pipeline</a></li>
 </ul>
 </li>
 </ul>
@@ -237,6 +242,11 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrd_generation.html">Powder XRD Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="saed_generation.html">SAED Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="crystal_visualization.html">3D Crystal Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="combined_structure_diffraction_visualization.html">Combined Structure, Diffraction, And Visualization Workflow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ipf_colors.html">Texture: IPF Color Keys</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
@@ -304,6 +314,9 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_pole_figure(...)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_inverse_pole_figure(...)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_odf(...)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_xrd_pattern(...)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_saed_pattern(...)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_crystal_structure_3d(...)</span></code></p></li>
 </ul>
 <p>These routines accept PyTex semantic objects and validate frame, symmetry, and convention meaning before rendering.</p>
 <p>For texture plots, PyTex now distinguishes between:</p>
@@ -320,6 +333,14 @@ g_{\mathrm{proj}}</a></li>
 <p>For canonical docs assets, PyTex keeps <code class="docutils literal notranslate"><span class="pre">.svg</span></code> as the required tracked format. The helper
 <code class="docutils literal notranslate"><span class="pre">save_documentation_figure_svg(...)</span></code> exists so documentation figures can be produced from the
 same semantic plotting system without weakening the repository SVG rule.</p>
+<p>The same plotting subsystem also now carries a shared YAML style system:</p>
+<ul class="simple">
+<li><p>built-in themes such as <code class="docutils literal notranslate"><span class="pre">journal</span></code>, <code class="docutils literal notranslate"><span class="pre">presentation</span></code>, and <code class="docutils literal notranslate"><span class="pre">dark</span></code></p></li>
+<li><p>deep-merge application of base defaults, theme data, YAML files, and runtime overrides</p></li>
+<li><p>reuse across texture plots, diffraction plots, and 3D crystal visualization</p></li>
+</ul>
+<p>The public helpers <code class="docutils literal notranslate"><span class="pre">list_style_themes(...)</span></code>, <code class="docutils literal notranslate"><span class="pre">load_style_theme(...)</span></code>, <code class="docutils literal notranslate"><span class="pre">read_style_yaml(...)</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">resolve_style(...)</span></code> are part of that stable plotting support.</p>
 </section>
 <section id="example">
 <h2>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h2>
@@ -388,6 +409,7 @@ same semantic plotting system without weakening the repository SVG rule.</p>
 <li><p>Runtime plotting is not allowed to redefine frame or symmetry semantics.</p></li>
 <li><p>The plotting layer is part of the user-facing product surface, not a notebook-only convenience layer.</p></li>
 <li><p>The contour and section paths reuse the same shared density-grid and render infrastructure as the rest of the plotting subsystem.</p></li>
+<li><p>Diffraction and crystal-visualization plots reuse the same style-resolution layer even when they require different rendering primitives.</p></li>
 </ul>
 </section>
 <section id="related-material">
