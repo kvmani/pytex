@@ -41,6 +41,7 @@ The repository already contains real foundational implementations in:
 - `core/` multimodal acquisition primitives for geometry, calibration, measurement quality, and scattering context
 - `core/` transformation primitives for orientation relationships, variants, and phase-transformation records
 - `texture/` for PF, IPF, ODF, and color-key foundations
+- `plotting/` for shared semantic runtime plotting across vectors, orientations, symmetry, PF, IPF, and ODF views
 - `ebsd/` for regular-grid neighborhood, KAM, segmentation, GROD, boundaries, cleanup, and graph aggregation
 - `diffraction/` for geometry, reciprocal-space primitives, kinematic spots, family grouping, and indexing scaffolding
 - `adapters/` for stable manifest contracts spanning import, experiment, benchmark, validation, and workflow-result interchange

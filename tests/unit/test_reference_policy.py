@@ -33,6 +33,7 @@ def test_foundational_docs_declare_normative_and_informative_references() -> Non
         "docs/testing/mtex_parity_matrix.md",
         "docs/testing/diffraction_validation_matrix.md",
         "docs/testing/structure_validation_matrix.md",
+        "docs/testing/plotting_validation_matrix.md",
         "docs/roadmap/implementation_roadmap.md",
     ]
     for path in foundational_docs:

@@ -9,7 +9,7 @@
         <title>Validation - PyTex</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
-    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css?v=8cd3d715" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/architecture.css?v=046228d5" />
@@ -223,6 +223,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
 </ul>
 </li>
 </ul>
@@ -233,6 +234,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
@@ -290,6 +292,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/diffraction_validation_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/structure_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/plotting_validation_matrix.md</span></code></p></li>
 <li><p><a class="reference download internal" download="" href="../_downloads/5d02af9c3eca93913c04f04438789f76/validation_program.tex"><span class="xref download myst">../../tex/validation/validation_program.tex</span></a></p></li>
 </ul>
 </section>
@@ -321,6 +324,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>stable experiment, benchmark, validation, and workflow-result manifest schemas</p></li>
 <li><p>detector geometry, reciprocal-space, and kinematic diffraction invariants</p></li>
 <li><p>CIF-backed phase creation, point-group preservation, and space-group preservation</p></li>
+<li><p>semantic plotting inputs, contour plot builders, and ODF section rendering behavior</p></li>
 </ul>
 </section>
 <section id="intentional-current-differences">
@@ -331,6 +335,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>adapter-backed import normalization remains a separate follow-on phase</p></li>
 <li><p>diffraction now has an explicit validation ledger, but its external-baseline program is still foundational rather than mature</p></li>
 <li><p>structure import now has an explicit validation ledger, but its broader external-baseline program is still foundational rather than mature</p></li>
+<li><p>plotting now has an explicit validation ledger, but parity-oriented visual baselines are still ahead</p></li>
 </ul>
 </section>
 <section id="reading-the-validation-posture-correctly">
@@ -346,6 +351,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>EBSD parity coverage now includes KAM, GROD, segmentation, boundaries, and cleanup on regular grids</p></li>
 <li><p>diffraction foundations have dedicated unit tests and a separate validation ledger</p></li>
 <li><p>structure-import foundations have dedicated unit tests and a separate validation ledger</p></li>
+<li><p>plotting foundations have dedicated unit tests and a separate validation ledger</p></li>
 <li><p>exact orientation-space polyhedral parity remains ahead of the current build</p></li>
 </ul>
 </section>
@@ -355,6 +361,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/diffraction_validation_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/structure_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">docs/testing/plotting_validation_matrix.md</span></code></p></li>
 <li><p><a class="reference download internal" download="" href="../_downloads/5d02af9c3eca93913c04f04438789f76/validation_program.tex"><span class="xref download myst">../../tex/validation/validation_program.tex</span></a></p></li>
 </ul>
 </section>
@@ -367,6 +374,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/mtex_parity_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/diffraction_validation_matrix.md</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">../../testing/structure_validation_matrix.md</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">../../testing/plotting_validation_matrix.md</span></code></p></li>
 </ul>
 </section>
 <section id="informative">

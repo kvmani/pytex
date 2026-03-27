@@ -1,0 +1,43 @@
+# Plotting Validation Matrix
+
+PyTex treats plotting as part of the stable scientific surface, not as an optional decoration layer.
+This matrix records what is currently validated for the runtime plotting subsystem.
+
+Status terms:
+
+- `implemented`: automated coverage and documentation exist for the stable plotted surface
+- `foundational`: the implementation exists and is scientifically structured, but the external or parity-backed validation surface is not yet complete
+- `planned`: the category is accepted but not yet validated adequately
+
+## Current Matrix
+
+| Category | Validation basis | Status | Notes |
+| --- | --- | --- | --- |
+| Semantic input validation | unit tests over frame, symmetry, and convention mismatches | implemented | Plot builders reject invalid frame or symmetry combinations before rendering. |
+| Runtime figure generation | Matplotlib figure creation and export tests | implemented | Public plotters return ordinary Matplotlib figures and can be exported to raster or vector formats by users. |
+| Documentation SVG policy | documentation policy tests and `save_documentation_figure_svg(...)` coverage | implemented | Repo-tracked docs figures remain SVG while runtime plotting stays backend-native. |
+| Pole-figure contour rendering | builder and runtime tests for contour layers | implemented | Contour pole figures are rendered from smoothed projected density grids with deterministic builder behavior. |
+| ODF contour rendering | builder and runtime tests for Euler-space contour layers | implemented | The current contour path is a discrete support inspection surface in Euler space. |
+| ODF Bunge-section rendering | builder and runtime tests for multi-panel section figures | implemented | Section plots are kernel-smoothed inspection views over the discrete support, not harmonic ODF sections. |
+| IPF plotting | workflow docs, notebook examples, and runtime plot coverage | foundational | Stable plotting exists, but broader publication presets and parity-oriented visual checks remain ahead. |
+| Visual parity against external tools | MTEX-style rendered comparisons and pinned image baselines | planned | Useful for future visual regression and semantics checks, but not yet a stable requirement. |
+| Publication presets and house styles | deterministic style bundles for papers or lectures | planned | The current runtime surface is semantically stable; richer high-level styling presets remain ahead. |
+
+## Interpretation Notes
+
+- Plot validation is not only about pixels. The higher priority is that plotted geometry respects the same frame, symmetry, and reduction contracts as the computational API.
+- The current contour and section plots are scientifically meaningful inspection surfaces for the implemented discrete model.
+- PyTex does not yet claim visual parity with MTEX or any other plotting package across every rendered detail.
+
+## References
+
+### Normative
+
+- `strategy.md`
+- `../standards/documentation_architecture.md`
+- `../standards/latex_and_figures.md`
+
+### Informative
+
+- `../site/workflows/plotting_primitives.md`
+- `../site/workflows/texture_odf_inversion.md`
