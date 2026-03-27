@@ -22,7 +22,7 @@ Status terms:
 | YAML theme loading and merging | unit tests over theme catalogs, overrides, and invalid payloads | implemented | Runtime plotting style is centralized rather than distributed across plotting routines. |
 | Powder XRD plotting | runtime plotting tests and style-config coverage | implemented | XRD figures are deterministic Matplotlib surfaces built on shared style resolution. |
 | SAED plotting | runtime plotting tests and style-config coverage | implemented | Detector-space spot plots are validated for figure creation and semantic labeling. |
-| 3D crystal visualization | scene-builder tests and runtime figure generation | implemented | Unit-cell atoms, lattice edges, and `(hkl)` plane overlays are covered by current tests. |
+| 3D crystal visualization | scene-builder tests and runtime figure generation | implemented | Unit-cell atoms, heuristic bonds, repeated cell overlays, hexagonal-prism overlays, bounded plane overlays, direction overlays, and scientific Miller annotations are covered by current tests. |
 | IPF plotting | workflow docs, notebook examples, and runtime plot coverage | foundational | Stable plotting exists, but broader publication presets and parity-oriented visual checks remain ahead. |
 | Visual parity against external tools | MTEX-style rendered comparisons and pinned image baselines | planned | Useful for future visual regression and semantics checks, but not yet a stable requirement. |
 | Publication presets and house styles | deterministic style bundles for papers or lectures | foundational | Journal, presentation, and dark presets now exist through YAML themes, but broader house-style coverage remains ahead. |

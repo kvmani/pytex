@@ -25,6 +25,9 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `Orientation`
 - `OrientationSet`
 - `ScatteringSetup`
+- `format_miller_indices`
+- `format_plane_indices`
+- `format_direction_indices`
 - `OrientationRelationship`
 - `TransformationVariant`
 - `PhaseTransformationRecord`
@@ -81,6 +84,9 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 ## Plotting
 
 - `IPFColorKey`
+- `CrystalCellOverlay`
+- `CrystalPlaneOverlay`
+- `CrystalDirectionOverlay`
 - `plot_vector_set`
 - `plot_symmetry_orbit`
 - `plot_symmetry_elements`
@@ -110,6 +116,7 @@ supports scatter, contour, and classical Bunge-section rendering.
 
 `plot_xrd_pattern(...)` and `plot_saed_pattern(...)` return ordinary Matplotlib figures using the
 shared YAML style system. `plot_crystal_structure_3d(...)` provides a publication-oriented 3D
-structure view while preserving PyTex lattice and plane semantics.
+structure view while preserving PyTex lattice and plane semantics, including optional unit-cell and
+hexagonal-prism overlays where scientifically appropriate.
 
 For architectural context, see `docs/architecture/overview.md`.

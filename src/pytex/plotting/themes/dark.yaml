@@ -22,3 +22,5 @@ crystal:
   lattice_color: "#cbd5e1"
   bond_color: "#94a3b8"
   plane_color: "#2dd4bf"
+  atom_edgecolor: "#e2e8f0"
+  axis_label_color: "#e2e8f0"

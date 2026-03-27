@@ -9,6 +9,7 @@ import numpy as np
 from pytex.core._arrays import as_float_array, as_int_array, normalize_vector
 from pytex.core.conventions import PYTEX_CANONICAL_CONVENTIONS, BasisKind, FrameDomain
 from pytex.core.frames import ReferenceFrame
+from pytex.core.hexagonal import direction_uvtw_to_uvw, plane_hkil_to_hkl
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
@@ -418,6 +419,10 @@ class MillerIndex:
     def as_array(self) -> np.ndarray:
         return self.indices
 
+    @classmethod
+    def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> MillerIndex:
+        return cls(indices=plane_hkil_to_hkl(indices), phase=phase)
+
 
 @dataclass(frozen=True, slots=True)
 class CrystalDirection:
@@ -438,6 +443,10 @@ class CrystalDirection:
             basis = self.phase.lattice.reciprocal_basis()
         cartesian = basis.matrix @ self.coordinates
         return normalize_vector(cartesian)
+
+    @classmethod
+    def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> CrystalDirection:
+        return cls(coordinates=direction_uvtw_to_uvw(indices).astype(np.float64), phase=phase)
 
 
 @dataclass(frozen=True, slots=True)
@@ -465,6 +474,10 @@ class ZoneAxis:
 
     def contains_miller_index(self, miller: MillerIndex) -> bool:
         return self.zone_law_value(miller) == 0
+
+    @classmethod
+    def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> ZoneAxis:
+        return cls(indices=direction_uvtw_to_uvw(indices), phase=phase)
 
 
 @dataclass(frozen=True, slots=True)
@@ -522,3 +535,7 @@ class CrystalPlane:
     @property
     def reciprocal_lattice_vector(self) -> ReciprocalLatticeVector:
         return ReciprocalLatticeVector.from_miller_index(self.miller)
+
+    @classmethod
+    def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> CrystalPlane:
+        return cls(miller=MillerIndex.from_miller_bravais(indices, phase=phase), phase=phase)
