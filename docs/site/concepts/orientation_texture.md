@@ -108,7 +108,7 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 
 - closed-form class-by-class boundary catalogs for the exact orientation-space regions
 - harmonic ODF expansion and broader experimentally calibrated PF-to-ODF inversion
-- full MTEX-level parity for IPF color coding and richer publication-grade rendered plotting surfaces
+- full MTEX-level parity for IPF color coding and richer publication-grade defaults or parity coverage across the plotting surface
 
 ## Related Material
 

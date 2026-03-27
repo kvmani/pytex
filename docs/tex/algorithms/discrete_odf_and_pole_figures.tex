@@ -18,7 +18,9 @@ The current PyTex texture layer implements the foundational algorithms needed be
   \item inverse-pole-figure synthesis from orientation sets,
   \item kernel-weighted ODF evaluation,
   \item volume-fraction queries around a reference orientation,
-  \item discrete pole-figure inversion over an explicit orientation dictionary.
+  \item discrete pole-figure inversion over an explicit orientation dictionary,
+  \item contour pole-figure plotting from projected density grids,
+  \item kernel-smoothed Bunge-section plotting for discrete ODF inspection.
 \end{itemize}
 
 \section{Pole-Figure Construction}
@@ -33,6 +35,10 @@ PyTex currently treats the ODF as a weighted orientation set together with an an
   \item a halfwidth-calibrated cosine-power kernel exposed as \texttt{de\_la\_vallee\_poussin},
   \item a von Mises--Fisher style kernel.
 \end{itemize}
+
+The current ODF representation is therefore a discrete support together with non-negative weights.
+This supports explicit estimation, explicit inversion, and explicit plotting without pretending that
+the present implementation is already a harmonic expansion on $SO(3)$.
 
 \section{Current Limits}
 
@@ -53,6 +59,19 @@ then solves a regularized nonnegative least-squares problem
 followed by normalization of the recovered weights so they define a discrete ODF.
 
 This fits the present PyTex architecture because the orientation support remains explicit and scientifically inspectable.
+
+\section{Plotting And Inspection}
+
+PyTex uses the same discrete texture model for computation and plotting.
+
+\begin{itemize}
+  \item Pole-figure contours are rendered from a smoothed density grid in the chosen projection plane.
+  \item Euler-space ODF contours are rendered from the weighted support directly.
+  \item Classical Bunge sections are rendered as kernel-smoothed inspection views through the discrete support.
+\end{itemize}
+
+These plots are intended to be faithful inspection surfaces for the implemented discrete model. They
+should not yet be read as a claim of full harmonic ODF reconstruction.
 
 \section{Current Limits}
 

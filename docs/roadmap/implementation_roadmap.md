@@ -17,7 +17,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 
 | Subsystem | Status | Notes |
 | --- | --- | --- |
-| Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, and discrete ODF foundations exist with tests and MTEX-backed ledgers. |
+| Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
 | EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
 | Diffraction foundations | foundational | Geometry and kinematic spot workflows exist with unit coverage, but the external-baseline validation program is still growing. |
 | CIF and structure import | foundational | Core-model construction, space-group semantics, and a dedicated validation ledger exist, but broader external baselines remain ahead. |

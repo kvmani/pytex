@@ -46,7 +46,7 @@ The repository is now best described as a strong foundation build rather than a 
 - validation strategy and explicit ledgers for texture, EBSD, and diffraction posture
 - baseline tests for the foundational data model
 - symmetry-aware orientation and disorientation foundations
-- PF/IPF containers, class-specific IPF sector reduction, and discrete kernel-based ODF foundations
+- PF/IPF containers, class-specific IPF sector reduction, discrete kernel-based ODF foundations, and classical contour or section plotting surfaces
 - regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and import-manifest workflow foundations
 - diffraction geometry, reciprocal-space primitives, kinematic spot simulation, reflection-family grouping, and local indexing candidate scaffolding
 

@@ -135,6 +135,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
 - Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
+- Stable plotting docs must describe the supported rendering modes for each public plotting function, especially when a routine exposes both discrete and contour-style views.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
 - Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.
 - Core documentation must explain both scalar and batched semantics when a primitive supports vectorized operations.
