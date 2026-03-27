@@ -20,3 +20,7 @@ saed:
 crystal:
   plane_alpha: 0.35
   atom_radius_scale: 1.1
+  atom_surface_resolution: 26
+  light_ambient: 0.42
+  light_diffuse: 0.78
+  light_specular: 0.38

@@ -33,6 +33,11 @@ from pytex.core.lattice import (
     UnitCell,
     ZoneAxis,
 )
+from pytex.core.notation import (
+    format_direction_indices,
+    format_miller_indices,
+    format_plane_indices,
+)
 from pytex.core.orientation import Misorientation, Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
@@ -58,6 +63,9 @@ __all__ = [
     "FrameDomain",
     "FrameTransform",
     "FundamentalSector",
+    "format_direction_indices",
+    "format_miller_indices",
+    "format_plane_indices",
     "Handedness",
     "Lattice",
     "MillerIndex",

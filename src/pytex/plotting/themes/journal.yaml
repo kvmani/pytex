@@ -19,3 +19,4 @@ crystal:
   background: "#ffffff"
   bond_alpha: 0.38
   plane_alpha: 0.24
+  atom_edgecolor: "#ffffff"

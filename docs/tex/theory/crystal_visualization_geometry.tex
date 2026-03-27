@@ -18,14 +18,48 @@ Supercell repetition uses explicit integer translations in the direct-lattice ba
 \mathbf{r}_{ijk} = \mathbf{A}(\mathbf{f} + [i, j, k]^T).
 \]
 
-\subsection{Lattice And Planes}
+\subsection{Lattice, Cell Overlays, Planes, And Directions}
 
-The current viewer draws lattice edges from the repeated supercell box. Plane overlays are defined from Miller indices $(hkl)$ and the reciprocal-space normal
+The current viewer draws lattice edges from the repeated supercell box. Optional unit-cell overlays are generated directly from translated copies of the direct-basis parallelepiped. For a cell-corner anchor $\mathbf{f}_0$ and integer span vector $\mathbf{s}$, the overlay vertices are
+\[
+\mathbf{r}_{\mathrm{cell}} = \mathbf{A}(\mathbf{f}_0 + \boldsymbol{\delta}),
+\]
+where $\boldsymbol{\delta}$ ranges over the eight parallelepiped corners implied by $\mathbf{s}$.
+
+For hexagonal-axis lattices, PyTex can also render an auxiliary hexagonal prism for teaching and visual interpretation. Let the direct basis be
+\[
+\mathbf{A} = [\mathbf{a}\ \mathbf{b}\ \mathbf{c}]
+\]
+with $|\mathbf{a}| = |\mathbf{b}|$, $\alpha = \beta = 90^{\circ}$, and $\gamma = 120^{\circ}$. From a lattice-point anchor $\mathbf{r}_0$, the basal hexagon is formed from the six vertices
+\[
+\mathbf{r}_0 \pm \mathbf{a},\qquad
+\mathbf{r}_0 \pm \mathbf{b},\qquad
+\mathbf{r}_0 \pm (\mathbf{a}+\mathbf{b}),
+\]
+ordered cyclically in the basal plane and extruded by integer multiples of $\mathbf{c}$.
+
+This hexagonal prism is an explicit visualization overlay, not a replacement for the canonical cell semantics of the PyTex data model. It is useful because it exposes the sixfold basal symmetry more directly than the direct-basis parallelepiped, but users should not confuse it with the primitive cell stored by the library.
+
+Plane overlays are defined from Miller indices $(hkl)$ and the reciprocal-space normal
 \[
 \mathbf{n}_{hkl} = h \mathbf{a}^{*} + k \mathbf{b}^{*} + l \mathbf{c}^{*}.
 \]
 
-The viewer computes the polygon formed by intersecting that plane with the repeated cell bounding box. This yields a static geometric overlay suitable for teaching and publication figures while preserving the exact lattice and reciprocal conventions from the core model.
+The viewer computes the polygon formed by intersecting that plane with the repeated cell bounding box. This yields a bounded geometric overlay suitable for teaching and publication figures while preserving the exact lattice and reciprocal conventions from the core model.
+
+Direction overlays are defined from a crystallographic direction vector and an explicit fractional anchor point inside the repeated cell. If the direct-basis fractional ray is
+\[
+\mathbf{f}(t) = \mathbf{f}_0 + t\mathbf{u},
+\]
+PyTex clips the ray to the repeated-cell volume and renders the bounded segment in Cartesian crystal coordinates. This keeps direction graphics tied to the same lattice semantics as the structure itself.
+
+\subsection{Scientific Labels}
+
+Plane and direction annotations use a shared Miller-notation formatter. Negative indices are rendered with bar notation, for example
+\[
+[11\bar{2}0], \qquad (11\bar{2}1),
+\]
+so graphics, documentation, and future figure exporters can share one scientific text convention rather than encoding ad hoc minus-sign styles per subsystem.
 
 \subsection{View Control}
 

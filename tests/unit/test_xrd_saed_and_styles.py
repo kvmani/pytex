@@ -18,7 +18,16 @@ from pytex import (
     ReferenceFrame,
     SymmetrySpec,
     ZoneAxis,
+    CrystalDirection,
+    CrystalDirectionOverlay,
+    CrystalCellOverlay,
+    CrystalPlane,
+    CrystalPlaneOverlay,
+    DirectionAnnotationStyle,
+    PlaneAnnotationStyle,
     build_crystal_scene,
+    format_direction_indices,
+    format_plane_indices,
     generate_saed_pattern,
     generate_xrd_pattern,
     list_style_themes,
@@ -28,7 +37,7 @@ from pytex import (
     read_style_yaml,
     resolve_style,
 )
-from pytex.core.lattice import AtomicSite, UnitCell
+from pytex.core.lattice import AtomicSite, MillerIndex, UnitCell
 
 
 def make_phase() -> Phase:
@@ -133,6 +142,14 @@ def test_crystal_scene_contains_atoms_and_plane() -> None:
     assert len(scene.planes) == 1
 
 
+def test_crystal_scene_can_overlay_repeated_unit_cells() -> None:
+    phase = make_phase()
+    scene = build_crystal_scene(phase, repeats=(2, 1, 1), show_unit_cells=True)
+    assert len(scene.cells) == 2
+    assert all(cell.kind == "parallelepiped" for cell in scene.cells)
+    assert all(len(cell.edges_angstrom) == 12 for cell in scene.cells)
+
+
 def test_crystal_scene_slab_filter_reduces_visible_atoms() -> None:
     phase = make_phase()
     scene = build_crystal_scene(
@@ -142,3 +159,163 @@ def test_crystal_scene_slab_filter_reduces_visible_atoms() -> None:
         slab_thickness_angstrom=1.1,
     )
     assert len(scene.atoms) < 3
+
+
+def test_crystal_scene_preserves_species_dependent_colors_and_sizes() -> None:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(5.6402, 5.6402, 5.6402, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    unit_cell = UnitCell(
+        lattice=lattice,
+        sites=(
+            AtomicSite(label="Na1", species="Na", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(label="Cl1", species="Cl", fractional_coordinates=np.array([0.5, 0.5, 0.5])),
+        ),
+    )
+    phase = Phase(
+        "NaCl",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        unit_cell=unit_cell,
+    )
+    scene = build_crystal_scene(phase, repeats=(1, 1, 1), show_bonds=False)
+    assert len(scene.atoms) == 2
+    assert scene.atoms[0].color != scene.atoms[1].color
+    assert scene.atoms[0].radius_angstrom != scene.atoms[1].radius_angstrom
+
+
+def test_crystal_scene_bonds_use_chemical_cutoffs_not_render_scale() -> None:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(2.4, 2.4, 2.4, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    unit_cell = UnitCell(
+        lattice=lattice,
+        sites=(
+            AtomicSite(label="Si1", species="Si", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(label="Si2", species="Si", fractional_coordinates=np.array([0.5, 0.0, 0.0])),
+        ),
+    )
+    phase = Phase(
+        "bond_demo",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        unit_cell=unit_cell,
+    )
+    scene = build_crystal_scene(
+        phase,
+        repeats=(1, 1, 1),
+        show_bonds=True,
+        style_overrides={"crystal": {"atom_radius_scale": 0.05}},
+    )
+    assert len(scene.bonds) == 1
+    assert scene.bonds[0].radius_angstrom > 0.0
+
+
+def test_format_miller_indices_supports_negative_components() -> None:
+    assert format_direction_indices((1, 1, -2, 0)) == "$[11\\bar{2}0]$"
+    assert format_plane_indices((1, 1, -2, 1)) == "$(11\\bar{2}1)$"
+    assert format_plane_indices((0, 0, 0, -1), style="plain") == "(000-1)"
+
+
+def test_hexagonal_miller_bravais_helpers_construct_primitives() -> None:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal)
+    phase = Phase(
+        "zr_hcp",
+        lattice=lattice,
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+        crystal_frame=crystal,
+    )
+    direction = CrystalDirection.from_miller_bravais((2, -1, -1, 0), phase=phase)
+    plane = CrystalPlane.from_miller_bravais((1, 1, -2, 1), phase=phase)
+    zone = ZoneAxis.from_miller_bravais((0, 0, 0, 1), phase=phase)
+    assert np.allclose(direction.coordinates, np.array([1.0, 0.0, 0.0]))
+    assert tuple(plane.miller.indices) == (1, 1, 1)
+    assert tuple(zone.indices) == (0, 0, 1)
+
+
+def test_hexagonal_prism_cell_overlay_is_constructed_for_hexagonal_axes() -> None:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    phase = Phase.from_cif("fixtures/phases/zr_hcp/phase.cif", crystal_frame=crystal)
+    scene = build_crystal_scene(
+        phase,
+        repeats=(2, 2, 1),
+        cell_overlays=(
+            CrystalCellOverlay(
+                kind="hexagonal_prism",
+                anchor_fractional=np.array([1.0, 1.0, 0.0]),
+                show_faces=True,
+                alpha=0.75,
+                face_alpha=0.12,
+            ),
+        ),
+    )
+    assert len(scene.cells) == 1
+    assert scene.cells[0].kind == "hexagonal_prism"
+    assert len(scene.cells[0].edges_angstrom) == 18
+    assert len(scene.cells[0].faces_angstrom) == 8
+
+
+def test_crystal_scene_supports_planes_and_directions_with_annotations() -> None:
+    phase = make_phase()
+    scene = build_crystal_scene(
+        phase,
+        repeats=(2, 2, 2),
+        plane_overlays=(
+            CrystalPlaneOverlay(
+                plane=CrystalPlane(MillerIndex([1, 1, 1], phase=phase), phase=phase),
+                label_indices=(1, 1, 1),
+                color="#ef4444",
+                alpha=0.22,
+                annotation_style=PlaneAnnotationStyle(fontsize=10.0),
+            ),
+            CrystalPlaneOverlay(
+                plane=CrystalPlane(MillerIndex([0, 0, -1], phase=phase), phase=phase),
+                offset=-1.0,
+                label_indices=(0, 0, 0, -1),
+                color="#0f766e",
+                alpha=0.18,
+            ),
+        ),
+        direction_overlays=(
+            CrystalDirectionOverlay(
+                direction=CrystalDirection(np.array([1.0, 1.0, 1.0]), phase=phase),
+                anchor_fractional=np.array([0.0, 0.0, 0.0]),
+                label_indices=(1, 1, 1),
+                color="#2563eb",
+                annotation_style=DirectionAnnotationStyle(fontsize=10.0),
+            ),
+        ),
+    )
+    assert len(scene.planes) == 2
+    assert len(scene.directions) == 1
+    assert scene.planes[0].label == "$(111)$"
+    assert scene.directions[0].label == "$[111]$"
+
+
+def test_crystal_plotter_supports_cylinder_bond_rendering() -> None:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(2.4, 2.4, 2.4, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    unit_cell = UnitCell(
+        lattice=lattice,
+        sites=(
+            AtomicSite(label="Si1", species="Si", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(label="Si2", species="Si", fractional_coordinates=np.array([0.5, 0.0, 0.0])),
+        ),
+    )
+    phase = Phase(
+        "bond_demo",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        unit_cell=unit_cell,
+    )
+    figure = plot_crystal_structure_3d(
+        phase,
+        show_bonds=True,
+        style_overrides={"crystal": {"bond_render_mode": "cylinder", "atom_radius_scale": 0.05}},
+    )
+    assert isinstance(figure, Figure)

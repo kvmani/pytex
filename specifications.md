@@ -83,6 +83,8 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 ### Plotting
 
 - `IPFColorKey`
+- `CrystalPlaneOverlay`
+- `CrystalDirectionOverlay`
 - `plot_vector_set`
 - `plot_symmetry_orbit`
 - `plot_symmetry_elements`
@@ -96,6 +98,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `plot_xrd_pattern`
 - `plot_saed_pattern`
 - `CrystalScene`
+- `CrystalCellOverlay`
 - `build_crystal_scene`
 - `plot_crystal_structure_3d`
 - `list_style_themes`
@@ -103,6 +106,9 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `read_style_yaml`
 - `resolve_style`
 - `save_documentation_figure_svg`
+- `format_miller_indices`
+- `format_plane_indices`
+- `format_direction_indices`
 
 ### Stable Manifest Surface
 
@@ -113,6 +119,17 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `WorkflowResultManifest`
 
 Some of these objects are already implemented; others are mandatory architectural targets that must be defined on paper before corresponding stable APIs are added.
+
+For crystal visualization, the stable scene surface must support one composed view carrying:
+
+- atoms
+- optional bonds
+- repeated conventional unit-cell overlays
+- bounded crystallographic plane overlays
+- bounded crystallographic direction overlays
+- scientific annotations for planes and directions
+
+For hexagonal and trigonal lattices expressed on hexagonal axes, the viewer may additionally render a pedagogical hexagonal-prism cell overlay. That prism is a visualization aid, not a replacement for the canonical unit-cell semantics stored in `Lattice`, `UnitCell`, or `Phase`.
 
 `SymmetrySpec` and `SpaceGroupSpec` serve different roles. `SymmetrySpec` is the orientation and reduction surface. `SpaceGroupSpec` is the structure-definition surface used by phases and CIF-backed construction.
 
@@ -151,6 +168,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/figures/` contains canonical SVG figure sources.
 - Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
 - Plot styling policy must support shared YAML themes, theme inheritance, and user overrides without burying visual defaults inside computation code.
+- Stable crystallographic graphics must support shared, publication-grade formatting for Miller planes and directions, including negative-index bar notation in annotations.
 - Stable plotting docs must describe the supported rendering modes for each public plotting function, especially when a routine exposes both discrete and contour-style views.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
 - Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.

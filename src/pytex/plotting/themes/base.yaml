@@ -40,7 +40,39 @@ crystal:
   plane_alpha: 0.28
   lattice_color: "#334155"
   bond_color: "#64748b"
+  bond_render_mode: "cylinder"
+  bond_radius_scale: 0.22
+  bond_surface_resolution: 18
+  bond_specular_strength: 0.2
+  bond_shininess: 10.0
   plane_color: "#0f766e"
   vector_colors: ["#1d4ed8", "#059669", "#dc2626"]
   atom_radius_scale: 1.0
   bond_radius: 1.2
+  cell_color: "#94a3b8"
+  cell_alpha: 0.85
+  cell_face_alpha: 0.08
+  cell_linewidth: 1.0
+  atom_render_mode: "sphere"
+  atom_surface_resolution: 22
+  atom_edgecolor: "#f8fafc"
+  atom_edgewidth: 0.15
+  atom_specular_strength: 0.28
+  atom_shininess: 18.0
+  light_direction: [1.0, -0.8, 1.4]
+  light_ambient: 0.40
+  light_diffuse: 0.72
+  light_specular: 0.34
+  direction_color: "#2563eb"
+  direction_alpha: 0.96
+  direction_linewidth: 2.2
+  direction_arrow_ratio: 0.14
+  direction_label_fontsize: 11
+  direction_label_offset_fraction: 0.03
+  plane_label_fontsize: 11
+  plane_label_offset_fraction: 0.035
+  show_axes: false
+  show_title: true
+  axis_label_color: "#334155"
+  hide_grid: true
+  pane_alpha: 0.0
