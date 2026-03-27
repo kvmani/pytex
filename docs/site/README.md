@@ -14,6 +14,7 @@ sphinx-build -b html docs/site docs/_build/html
 - `index.md`: public documentation entry point
 - `concepts/`: conceptual documentation for the canonical model
 - `tutorials/`: runnable onboarding material
+- `tutorials/notebooks/`: executable deep-dive tutorials in `.ipynb` form
 - `workflows/`: multi-step domain workflows
 - `api/`: curated API navigation
 - `theory/`: pointers into the canonical LaTeX notes

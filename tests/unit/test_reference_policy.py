@@ -65,6 +65,15 @@ def test_multimodal_primitives_are_part_of_stable_documented_surface() -> None:
         assert primitive in core_model
 
 
+def test_texture_inversion_surface_is_part_of_stable_documented_surface() -> None:
+    specifications = _read("specifications.md")
+    api_guide = _read("docs/site/api/index.md")
+    canonical_data_model = _read("docs/architecture/canonical_data_model.md")
+    assert "ODFInversionReport" in specifications
+    assert "ODFInversionReport" in api_guide
+    assert "ODFInversionReport" in canonical_data_model
+
+
 def test_transformation_primitives_are_part_of_stable_documented_surface() -> None:
     specifications = _read("specifications.md")
     api_guide = _read("docs/site/api/index.md")

@@ -27,7 +27,7 @@ Reference baseline:
 | GROD and grain-local orientation metrics | public EBSD workflow examples | implemented | Fixture-backed GROD relative to a representative grain orientation is implemented. |
 | Grain-boundary and cleanup workflows | public EBSD segmentation examples | implemented | Fixture-backed boundary extraction and adjacency-based small-grain merging are implemented for regular grids. |
 | IPF color coding | `checkIpfColorCoding.m` | foundational | `IPFColorKey` exists and is symmetry-aware, but full MTEX color-key parity is not yet claimed. |
-| ODF and PF reconstruction | `check_FourierODF.m`, PF reconstruction examples | foundational | Discrete/kernel ODF evaluation and PF/IPF synthesis are implemented; harmonic ODF inversion remains planned. |
+| ODF and PF reconstruction | `check_FourierODF.m`, PF reconstruction examples | foundational | Discrete/kernel ODF evaluation, PF/IPF synthesis, and explicit dictionary-based PF inversion are implemented; harmonic ODF inversion remains planned. |
 | Interfaces/import-export | `checkInterfaces.m` | foundational | Stable EBSD import manifests, manifest IO, object-backed vendor bridge adapters, and CIF-backed phase creation now exist, but dependency-pinned live-package parity is still ahead. |
 
 ## PyTex-Only Extensions

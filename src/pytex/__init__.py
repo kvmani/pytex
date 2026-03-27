@@ -101,7 +101,7 @@ from pytex.ebsd import (
     GrainSegmentation,
 )
 from pytex.plotting import IPFColorKey
-from pytex.texture import ODF, InversePoleFigure, KernelSpec, PoleFigure
+from pytex.texture import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
 
 __all__ = [
     "AngleConvention",
@@ -155,6 +155,7 @@ __all__ = [
     "MeasurementQuality",
     "Misorientation",
     "ODF",
+    "ODFInversionReport",
     "Orientation",
     "OrientationRelationship",
     "OrientationSet",

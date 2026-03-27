@@ -30,9 +30,22 @@ def test_docs_site_placeholder_encodes_public_entry_point() -> None:
     assert "concept" in content
     assert "tutorial" in content
     assert "api" in content
+    assert "notebook" in content
 
 
 def test_latex_standard_points_back_to_documentation_architecture() -> None:
     content = _read("docs/standards/latex_and_figures.md").lower()
     assert "documentation_architecture.md" in content
     assert "sphinx" in content
+
+
+def test_foundational_docs_encode_notebook_policy() -> None:
+    foundational_docs = [
+        "mission.md",
+        "specifications.md",
+        "docs/standards/documentation_architecture.md",
+        "docs/standards/development_principles.md",
+    ]
+    for path in foundational_docs:
+        content = _read(path).lower()
+        assert "notebook" in content, path

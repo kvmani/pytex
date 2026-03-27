@@ -42,6 +42,7 @@ dev = [
 ]
 docs = [
   "furo>=2024.1.29",
+  "myst-nb>=1.1",
   "myst-parser>=3.0",
   "sphinxcontrib-mermaid>=1.0.0",
   "sphinx-copybutton>=0.5.2",
@@ -74,9 +75,13 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["docs/site/tutorials/notebooks/*.ipynb"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/generate_tutorial_notebooks.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"
