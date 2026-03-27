@@ -17,7 +17,7 @@ from pytex.core import (
     Rotation,
     SymmetrySpec,
 )
-from pytex.texture import ODF, InversePoleFigure, KernelSpec, PoleFigure
+from pytex.texture import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
 
 
 def make_orientation_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
@@ -185,3 +185,70 @@ def test_derived_texture_models_preserve_orientation_set_provenance_by_default()
     assert pole_figure.provenance == orientations.provenance
     assert inverse_pole_figure.provenance == orientations.provenance
     assert odf.provenance == orientations.provenance
+
+
+def test_odf_inversion_recovers_dictionary_weights_from_synthetic_pole_figures() -> None:
+    orientations, phase = make_orientation_set()
+    true_odf = ODF.from_orientations(
+        orientations,
+        weights=[3.0, 1.0],
+        kernel=KernelSpec(name="von_mises_fisher", halfwidth_deg=8.0),
+    )
+    poles = (
+        CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase),
+        CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase),
+    )
+    pole_figures = true_odf.reconstruct_pole_figures(
+        poles,
+        include_symmetry_family=False,
+        antipodal=False,
+    )
+    report = ODF.invert_pole_figures(
+        pole_figures,
+        orientation_dictionary=orientations,
+        kernel=true_odf.kernel,
+        regularization=1e-8,
+        include_symmetry_family=False,
+        max_iterations=1000,
+        tolerance=1e-10,
+    )
+    assert isinstance(report, ODFInversionReport)
+    assert report.observation_count == sum(
+        len(pole_figure.intensities) for pole_figure in pole_figures
+    )
+    assert_allclose(report.odf.normalized_weights, true_odf.normalized_weights, atol=5e-2)
+
+
+def test_odf_inversion_rejects_mismatched_specimen_frames() -> None:
+    orientations, phase = make_orientation_set()
+    pole = CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase)
+    pole_figure = PoleFigure.from_orientations(
+        orientations,
+        pole,
+        include_symmetry_family=False,
+        antipodal=False,
+    )
+    other_specimen = ReferenceFrame(
+        name="other_specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    mismatched_dictionary = OrientationSet.from_orientations(
+        [
+            Orientation(
+                rotation=orientation.rotation,
+                crystal_frame=orientation.crystal_frame,
+                specimen_frame=other_specimen,
+                symmetry=orientation.symmetry,
+                phase=orientation.phase,
+                provenance=orientation.provenance,
+            )
+            for orientation in [orientations[0], orientations[1]]
+        ]
+    )
+    with pytest.raises(ValueError):
+        ODF.invert_pole_figures(
+            [pole_figure],
+            orientation_dictionary=mismatched_dictionary,
+        )

@@ -52,6 +52,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `PoleFigure`
 - `InversePoleFigure`
 - `ODF`
+- `ODFInversionReport`
 
 ### Mapping And Measurement
 
@@ -119,9 +120,11 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
+- Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.
 - Core documentation must explain both scalar and batched semantics when a primitive supports vectorized operations.
 - Every major stable feature requires:
   - a concept or workflow page in the Sphinx layer
+  - a notebook tutorial when the feature is easier to learn through progressive executable examples
   - a theory or architecture note
   - an algorithm or implementation note when algorithms exist
   - a validation and limitations note

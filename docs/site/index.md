@@ -25,6 +25,7 @@ concepts/symmetry_and_fundamental_regions
 :caption: Tutorials
 
 tutorials/quickstart
+tutorials/notebooks
 ```
 
 ```{toctree}
@@ -35,6 +36,7 @@ workflows/ebsd_kam
 workflows/ebsd_grains
 workflows/ebsd_import_normalization
 workflows/phases_and_cif
+workflows/texture_odf_inversion
 workflows/diffraction_geometry
 workflows/diffraction_spots
 workflows/ipf_colors
@@ -76,6 +78,7 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.
 - Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.
 - Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration.
+- Executable notebook tutorials that mirror the implemented features and their mathematical contracts.
 
 ## Recommended Reading Path
 

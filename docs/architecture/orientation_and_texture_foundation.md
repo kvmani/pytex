@@ -16,13 +16,14 @@ This document records the current implementation posture for Phase 2.
 - class-specific IPF sector reduction for supported proper point groups
 - explicit orientation projection to a symmetry-reduced representative
 - kernel-backed ODF evaluation and simple volume-fraction queries
+- discrete pole-figure inversion over an explicit orientation dictionary with a regularized non-negative solver
 - construction-time validation of frame, phase, and symmetry consistency across the orientation and texture domain models
 - cached proper point-group operator generation to keep repeated symmetry construction cheap
 
 ## Deliberate Current Limits
 
 - exact polyhedral fundamental-region boundaries for every crystal class are not yet implemented
-- harmonic ODF expansion and full inversion from experimental PF data are not yet implemented
+- harmonic ODF expansion and broad experimentally calibrated PF inversion doctrine are not yet implemented
 - exact orientation-space polyhedral regions for all crystal classes are not yet implemented
 
 ## Why This Still Moves The Project Forward

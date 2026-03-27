@@ -1,0 +1,48 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": "# Phases, Lattices, Space Groups, And CIF Import\n\nPyTex keeps structure semantics explicit by separating point-group reduction\nsemantics from structure-facing space-group identity.\n\n## Key Rule\n\n- `SymmetrySpec` is the orientation-reduction surface\n- `SpaceGroupSpec` is the structure-definition surface\n- `Phase` owns both when the structure source provides them\n",
+      "id": "cell-001"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "import numpy as np\n\nfrom pytex import (\n    AcquisitionGeometry,\n    BenchmarkManifest,\n    CalibrationRecord,\n    CrystalMap,\n    CrystalPlane,\n    DiffractionGeometry,\n    EulerSet,\n    ExperimentManifest,\n    FrameDomain,\n    FrameTransform,\n    Handedness,\n    InversePoleFigure,\n    KernelSpec,\n    KinematicSimulation,\n    Lattice,\n    MeasurementQuality,\n    MillerIndex,\n    ODF,\n    Orientation,\n    OrientationRelationship,\n    OrientationSet,\n    Phase,\n    PhaseTransformationRecord,\n    PoleFigure,\n    ReferenceFrame,\n    Rotation,\n    ScatteringSetup,\n    SymmetrySpec,\n    TransformationVariant,\n    ValidationManifest,\n    VectorSet,\n    WorkflowResultManifest,\n    ZoneAxis,\n)\n\n\ndef make_context():\n    crystal = ReferenceFrame(\n        \"crystal\",\n        FrameDomain.CRYSTAL,\n        (\"a\", \"b\", \"c\"),\n        Handedness.RIGHT,\n    )\n    specimen = ReferenceFrame(\n        \"specimen\",\n        FrameDomain.SPECIMEN,\n        (\"x\", \"y\", \"z\"),\n        Handedness.RIGHT,\n    )\n    map_frame = ReferenceFrame(\n        \"map\",\n        FrameDomain.MAP,\n        (\"i\", \"j\", \"k\"),\n        Handedness.RIGHT,\n    )\n    detector = ReferenceFrame(\n        \"detector\",\n        FrameDomain.DETECTOR,\n        (\"u\", \"v\", \"n\"),\n        Handedness.RIGHT,\n    )\n    lab = ReferenceFrame(\n        \"lab\",\n        FrameDomain.LABORATORY,\n        (\"X\", \"Y\", \"Z\"),\n        Handedness.RIGHT,\n    )\n    symmetry = SymmetrySpec.from_point_group(\"m-3m\", reference_frame=crystal)\n    lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)\n    phase = Phase(\"fcc_demo\", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)\n    return crystal, specimen, map_frame, detector, lab, phase\n",
+      "id": "cell-002"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "crystal, specimen, map_frame, detector, lab, phase = make_context()\n\nprint(\"Phase:\", phase.name)\nprint(\"Point group:\", phase.symmetry.point_group)\nprint(\"Direct basis:\")\nprint(phase.lattice.direct_basis().matrix)\nprint(\"Reciprocal basis:\")\nprint(phase.lattice.reciprocal_basis().matrix)\n",
+      "id": "cell-003"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "nacl_cif = \"\"\"\ndata_NaCl\n_symmetry_space_group_name_H-M 'F m -3 m'\n_symmetry_Int_Tables_number 225\n_cell_length_a 5.6402\n_cell_length_b 5.6402\n_cell_length_c 5.6402\n_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\nloop_\n  _atom_site_label\n  _atom_site_type_symbol\n  _atom_site_fract_x\n  _atom_site_fract_y\n  _atom_site_fract_z\n  Na1 Na 0.0 0.0 0.0\n  Cl1 Cl 0.5 0.5 0.5\n\"\"\"\n\ntry:\n    imported_phase = Phase.from_cif_string(nacl_cif, crystal_frame=make_context()[0])\n    print(imported_phase.name)\n    print(imported_phase.space_group.symbol, imported_phase.space_group.number)\n    print(imported_phase.symmetry.point_group)\nexcept ImportError:\n    print(\"Install the adapters extra to execute CIF-backed examples.\")\n",
+      "id": "cell-004"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python",
+      "version": "3.11"
+    },
+    "title": "Phases, Lattices, Space Groups, And CIF Import"
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}

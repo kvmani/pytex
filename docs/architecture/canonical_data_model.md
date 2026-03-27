@@ -45,7 +45,7 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 - `ScatteringSetup`: shared scattering-experiment context
 - `OrientationRelationship`, `TransformationVariant`, `PhaseTransformationRecord`: phase-transformation foundation primitives
 - `Rotation`, `RotationSet`, `Orientation`, `Misorientation`, `OrientationSet`: orientation-domain primitives
-- `CrystalMap`, `PoleFigure`, `InversePoleFigure`, `ODF`: higher-level texture and EBSD models
+- `CrystalMap`, `PoleFigure`, `InversePoleFigure`, `ODF`, `ODFInversionReport`: higher-level texture and EBSD models
 - `DiffractionGeometry`, `DiffractionPattern`: diffraction-facing models
 - `ProvenanceRecord`: source-system and transform traceability
 - `ExperimentManifest`, `BenchmarkManifest`, `ValidationManifest`, `WorkflowResultManifest`: stable workflow-interchange and evidence artifacts

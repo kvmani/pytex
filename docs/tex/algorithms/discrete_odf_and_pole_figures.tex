@@ -17,7 +17,8 @@ The current PyTex texture layer implements the foundational algorithms needed be
   \item pole-figure synthesis from orientation sets,
   \item inverse-pole-figure synthesis from orientation sets,
   \item kernel-weighted ODF evaluation,
-  \item volume-fraction queries around a reference orientation.
+  \item volume-fraction queries around a reference orientation,
+  \item discrete pole-figure inversion over an explicit orientation dictionary.
 \end{itemize}
 
 \section{Pole-Figure Construction}
@@ -35,7 +36,27 @@ PyTex currently treats the ODF as a weighted orientation set together with an an
 
 \section{Current Limits}
 
-Full harmonic ODF expansion, experimental PF inversion, and rigorous kernel normalization on $SO(3)$ remain future work. The current representation is deliberately explicit and testable so later algorithms can be layered on top of a stable semantic core.
+\section{Discrete Pole-Figure Inversion}
+
+The current inversion path is deliberately explicit. Given measurement directions $\mathbf{s}_m$, an orientation dictionary $\{g_j\}$, a pole family $\mathcal{H}$, and an angular kernel $K$, PyTex builds
+
+\[
+  A_{mj} = \frac{1}{|\mathcal{H}|}\sum_{h \in \mathcal{H}} K\!\left(\angle(\mathbf{s}_m, g_j h)\right),
+\]
+
+then solves a regularized nonnegative least-squares problem
+
+\[
+  \min_{\mathbf{w} \ge 0}\ \frac{1}{2}\lVert A\mathbf{w} - \mathbf{b}\rVert_2^2 + \frac{\lambda}{2}\lVert \mathbf{w}\rVert_2^2,
+\]
+
+followed by normalization of the recovered weights so they define a discrete ODF.
+
+This fits the present PyTex architecture because the orientation support remains explicit and scientifically inspectable.
+
+\section{Current Limits}
+
+Full harmonic ODF expansion, broad experimental PF inversion doctrine, and rigorous kernel normalization on $SO(3)$ remain future work. The current representation is deliberately explicit and testable so later algorithms can be layered on top of a stable semantic core.
 
 \section{Normative References}
 

@@ -7,6 +7,7 @@ PyTex uses a hybrid documentation architecture so the project can be both scient
 - Sphinx is the primary browsable and searchable documentation surface.
 - LaTeX is the canonical source for major scientific notes.
 - SVG is the canonical source for scientific figures and geometry schematics.
+- Executable notebook tutorials are part of the Sphinx-facing documentation system when stepwise exposition materially improves understanding.
 
 The public documentation entry point is therefore the HTML docs layer, not the PDF layer alone.
 
@@ -17,6 +18,7 @@ Use the Sphinx layer for:
 - concept pages
 - tutorials
 - workflow guides
+- executable notebook tutorials
 - installation and contributor guidance
 - curated API reference
 - links to deeper scientific notes
@@ -49,6 +51,7 @@ If one of these surfaces is missing for a stable foundational feature, the docum
 The intended docs surfaces are:
 
 - HTML documentation built from Sphinx/MyST
+- executable notebook tutorials rendered or linked through the Sphinx layer
 - downloadable PDF scientific notes built from LaTeX
 - reusable SVG figures shared across both surfaces
 - mathematics-and-graphics-backed convention pages for foundational semantics
@@ -67,6 +70,7 @@ The Sphinx layer should eventually expose top-level sections for:
 ## Tooling Expectations
 
 - Sphinx and MyST are the default tools for the HTML layer.
+- Notebook files should live close to the Sphinx layer and should not become a disconnected parallel documentation tree.
 - Math-heavy web pages should use MathJax-backed equations.
 - Citations in the HTML layer should use a BibTeX-backed workflow.
 - The LaTeX layer should remain suitable for publication-grade mathematical exposition.
@@ -83,6 +87,7 @@ The Sphinx layer should eventually expose top-level sections for:
 
 - `reference_canon.md`
 - `scientific_citation_policy.md`
+- `development_principles.md`
 
 ### Informative
 

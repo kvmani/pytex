@@ -44,6 +44,7 @@ Create a scientific library that enables users to:
 - connect EBSD, diffraction, and future phase-transformation workflows through one shared crystallographic model
 - carry experiment, benchmark, validation, and workflow-result context through stable machine-readable manifests rather than ad hoc side channels
 - generate publication-quality and teaching-quality figures from the same scientifically explicit contracts
+- learn the library through executable, mathematics-backed notebooks that match the formal documentation instead of drifting away from it
 - trace every major result back to the conventions, transforms, references, and inputs used to produce it
 
 ## Core Outcomes
@@ -102,6 +103,7 @@ Create a scientific library that enables users to:
 - Core texture and diffraction workflows can be expressed through PyTex public primitives rather than ad hoc arrays or tool-specific objects.
 - A user can perform large batched operations on vectors, Euler angles, quaternions, rotations, and orientations without dropping semantic metadata.
 - Documentation explains not only how to run a workflow, but what mathematical object is being transformed and why.
+- Notebook tutorials provide executable concept explanations for the implemented surface without becoming an informal competing documentation layer.
 - Validation artifacts make clear what has been checked against MTEX, literature, or future diffraction baselines.
 - Stable workflows can emit or consume manifests for experiment context, benchmark identity, validation evidence, and workflow outputs.
 - Future EBSD, neutron, XRD, TEM, and phase-transformation algorithms can be added without inventing local frame or symmetry semantics.

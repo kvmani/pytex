@@ -1,0 +1,56 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": "# Diffraction Geometry And Kinematic Spots\n\nPyTex currently treats diffraction through explicit geometry, reciprocal-space\nprimitives, and kinematic spot simulation. This notebook shows the geometry layer\nand the current simulation surface.\n",
+      "id": "cell-001"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "import numpy as np\n\nfrom pytex import (\n    AcquisitionGeometry,\n    BenchmarkManifest,\n    CalibrationRecord,\n    CrystalMap,\n    CrystalPlane,\n    DiffractionGeometry,\n    EulerSet,\n    ExperimentManifest,\n    FrameDomain,\n    FrameTransform,\n    Handedness,\n    InversePoleFigure,\n    KernelSpec,\n    KinematicSimulation,\n    Lattice,\n    MeasurementQuality,\n    MillerIndex,\n    ODF,\n    Orientation,\n    OrientationRelationship,\n    OrientationSet,\n    Phase,\n    PhaseTransformationRecord,\n    PoleFigure,\n    ReferenceFrame,\n    Rotation,\n    ScatteringSetup,\n    SymmetrySpec,\n    TransformationVariant,\n    ValidationManifest,\n    VectorSet,\n    WorkflowResultManifest,\n    ZoneAxis,\n)\n\n\ndef make_context():\n    crystal = ReferenceFrame(\n        \"crystal\",\n        FrameDomain.CRYSTAL,\n        (\"a\", \"b\", \"c\"),\n        Handedness.RIGHT,\n    )\n    specimen = ReferenceFrame(\n        \"specimen\",\n        FrameDomain.SPECIMEN,\n        (\"x\", \"y\", \"z\"),\n        Handedness.RIGHT,\n    )\n    map_frame = ReferenceFrame(\n        \"map\",\n        FrameDomain.MAP,\n        (\"i\", \"j\", \"k\"),\n        Handedness.RIGHT,\n    )\n    detector = ReferenceFrame(\n        \"detector\",\n        FrameDomain.DETECTOR,\n        (\"u\", \"v\", \"n\"),\n        Handedness.RIGHT,\n    )\n    lab = ReferenceFrame(\n        \"lab\",\n        FrameDomain.LABORATORY,\n        (\"X\", \"Y\", \"Z\"),\n        Handedness.RIGHT,\n    )\n    symmetry = SymmetrySpec.from_point_group(\"m-3m\", reference_frame=crystal)\n    lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)\n    phase = Phase(\"fcc_demo\", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)\n    return crystal, specimen, map_frame, detector, lab, phase\n",
+      "id": "cell-002"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "crystal, specimen, map_frame, detector, lab, phase = make_context()\n\ngeometry = DiffractionGeometry(\n    detector_frame=detector,\n    specimen_frame=specimen,\n    laboratory_frame=lab,\n    beam_energy_kev=200.0,\n    camera_length_mm=150.0,\n    pattern_center=np.array([0.5, 0.5, 0.7]),\n    detector_pixel_size_um=(50.0, 50.0),\n    detector_shape=(512, 512),\n    scattering_setup=ScatteringSetup(laboratory_frame=lab, beam_energy_kev=200.0),\n)\n\nplane = CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase)\nprint(\"Ring radius (mm):\", geometry.ring_radius_mm_for_plane(plane))\n",
+      "id": "cell-003"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "orientation = Orientation(\n    rotation=Rotation.identity(),\n    crystal_frame=crystal,\n    specimen_frame=specimen,\n    symmetry=phase.symmetry,\n    phase=phase,\n)\n\nsimulation = KinematicSimulation.simulate_spots(\n    geometry,\n    phase,\n    np.array(\n        [\n            [1, 0, 0],\n            [1, 1, 0],\n            [1, 1, 1],\n            [2, 0, 0],\n        ]\n    ),\n    orientation=orientation,\n)\n\nprint(\"Accepted spots:\", len(simulation.accepted_spots()))\nprint(\"Reflection families:\", len(simulation.reflection_families))\n",
+      "id": "cell-004"
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {},
+      "outputs": [],
+      "source": "experiment = geometry.to_experiment_manifest(source_system=\"pytex\", phase=phase)\nprint(experiment.to_dict()[\"modality\"])\nprint(experiment.to_dict()[\"metadata\"][\"camera_length_mm\"])\n",
+      "id": "cell-005"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "name": "python",
+      "version": "3.11"
+    },
+    "title": "Diffraction Geometry And Kinematic Spots"
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}

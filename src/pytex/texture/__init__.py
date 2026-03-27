@@ -1,3 +1,3 @@
-from pytex.texture.models import ODF, InversePoleFigure, KernelSpec, PoleFigure
+from pytex.texture.models import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
 
-__all__ = ["InversePoleFigure", "KernelSpec", "ODF", "PoleFigure"]
+__all__ = ["InversePoleFigure", "KernelSpec", "ODF", "ODFInversionReport", "PoleFigure"]

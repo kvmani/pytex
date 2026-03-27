@@ -9,6 +9,7 @@
         <title>PyTex</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/architecture.css?v=046228d5" />
@@ -212,6 +213,18 @@ g_{\mathrm{proj}}</a></li>
 <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="tutorials/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tutorials/notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/03_symmetry_and_fundamental_regions.html">Symmetry And Fundamental Regions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/04_phases_lattices_space_groups_and_cif.html">Phases, Lattices, Space Groups, And CIF Import</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/05_multimodal_acquisition_and_manifests.html">Multimodal Acquisition, Calibration, And Manifests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/06_texture_odf_and_pole_figure_inversion.html">Texture, ODF Evaluation, And Pole-Figure Inversion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
+</ul>
+</li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Workflows</span></p>
 <ul>
@@ -219,6 +232,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/ebsd_grains.html">EBSD: Grain Segmentation And GROD</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
@@ -391,6 +405,12 @@ g_{\mathrm{proj}}</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="tutorials/quickstart.html#next-steps">Next Steps</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/notebooks.html">Tutorial Notebooks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks.html#notebook-atlas">Notebook Atlas</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks.html#how-to-use-these">How To Use These</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorials/notebooks.html#references">References</a></li>
+</ul>
+</li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -439,6 +459,14 @@ g_{\mathrm{proj}}</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="workflows/phases_and_cif.html#interpretation-notes">Interpretation Notes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflows/phases_and_cif.html#current-limits">Current Limits</a></li>
 <li class="toctree-l2"><a class="reference internal" href="workflows/phases_and_cif.html#related-material">Related Material</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="workflows/texture_odf_inversion.html#discrete-inversion-model">Discrete Inversion Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/texture_odf_inversion.html#example">Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/texture_odf_inversion.html#interpretation-notes">Interpretation Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/texture_odf_inversion.html#current-limits">Current Limits</a></li>
+<li class="toctree-l2"><a class="reference internal" href="workflows/texture_odf_inversion.html#related-material">Related Material</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a><ul>
@@ -538,6 +566,7 @@ g_{\mathrm{proj}}</a><ul>
 <li><p>Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.</p></li>
 <li><p>Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.</p></li>
 <li><p>Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration.</p></li>
+<li><p>Executable notebook tutorials that mirror the implemented features and their mathematical contracts.</p></li>
 </ul>
 </section>
 <section id="recommended-reading-path">

@@ -35,6 +35,7 @@ See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`, and {do
 - `PoleFigure`
 - `InversePoleFigure`
 - `ODF`
+- `ODFInversionReport`
 - `KernelSpec`
 
 See {doc}`../concepts/orientation_texture`.

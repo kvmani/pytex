@@ -13,6 +13,7 @@ At this stage, PyTex provides a coherent orientation foundation for:
 - explicit projection of orientations to symmetry-reduced representatives
 - explicit symmetry-reduced fundamental-region keys for stable orientation comparison
 - kernel-based ODF evaluation and PF reconstruction
+- discrete pole-figure inversion over an explicit orientation dictionary
 - explicit IPF color-key generation from symmetry-reduced crystal directions
 
 ## Why Conventions Matter
@@ -97,11 +98,12 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 - explicit orientation projection to a symmetry-reduced representative relative to a reference orientation
 - explicit symmetry-reduced fundamental-region keys for parity and workflow comparison
 - kernel-based ODF evaluation and PF reconstruction
+- discrete dictionary-based pole-figure inversion with an explicit `ODFInversionReport`
 
 ## Still Ahead
 
 - closed-form class-by-class boundary catalogs for the exact orientation-space regions
-- harmonic ODF expansion and PF-to-ODF inversion
+- harmonic ODF expansion and broader experimentally calibrated PF-to-ODF inversion
 - full MTEX-level parity for IPF color coding and richer rendered plotting surfaces
 
 ## Related Material

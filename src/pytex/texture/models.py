@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -14,6 +15,106 @@ from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 from pytex.texture.projections import project_directions
+
+
+def _as_direction_array(vectors: np.ndarray | VectorSet) -> np.ndarray:
+    if isinstance(vectors, VectorSet):
+        return vectors.values
+    return vectors
+
+
+def _orientation_dictionary_response(
+    dictionary: OrientationSet,
+    pole_figure: PoleFigure,
+    kernel: KernelSpec,
+    *,
+    include_symmetry_family: bool,
+) -> np.ndarray:
+    if dictionary.crystal_frame != pole_figure.pole.phase.crystal_frame:
+        raise ValueError("PoleFigure inversion dictionary must use the pole phase crystal frame.")
+    if dictionary.phase is not None and dictionary.phase != pole_figure.pole.phase:
+        raise ValueError("PoleFigure inversion dictionary phase must match PoleFigure.pole.phase.")
+    if dictionary.symmetry is not None and dictionary.symmetry != pole_figure.pole.phase.symmetry:
+        raise ValueError(
+            "PoleFigure inversion dictionary symmetry must match PoleFigure.pole.phase.symmetry."
+        )
+    if dictionary.specimen_frame != pole_figure.specimen_frame:
+        raise ValueError(
+            "PoleFigure inversion dictionary specimen_frame must match PoleFigure.specimen_frame."
+        )
+    pole_family = (
+        pole_figure.pole.phase.symmetry.equivalent_vectors(pole_figure.pole.normal)
+        if include_symmetry_family
+        else pole_figure.pole.normal[None, :]
+    )
+    mapped_families = np.stack(
+        [
+            _as_direction_array(dictionary.map_crystal_directions(direction))
+            for direction in pole_family
+        ],
+        axis=1,
+    )
+    cos_angles = np.einsum(
+        "mk,nfk->mnf",
+        pole_figure.sample_directions,
+        mapped_families,
+        optimize=True,
+    )
+    angles = np.arccos(np.clip(cos_angles, -1.0, 1.0))
+    response = kernel.evaluate(angles)
+    block = np.mean(response, axis=2)
+    block = np.ascontiguousarray(block)
+    block.setflags(write=False)
+    return block
+
+
+def _projected_gradient_nonnegative_weights(
+    system_matrix: np.ndarray,
+    observations: np.ndarray,
+    *,
+    regularization: float,
+    max_iterations: int,
+    tolerance: float,
+) -> tuple[np.ndarray, np.ndarray, bool]:
+    if regularization < 0.0:
+        raise ValueError("regularization must be non-negative.")
+    if max_iterations <= 0:
+        raise ValueError("max_iterations must be strictly positive.")
+    if tolerance <= 0.0:
+        raise ValueError("tolerance must be strictly positive.")
+    weights = np.full(system_matrix.shape[1], 1.0 / system_matrix.shape[1], dtype=np.float64)
+    gram = system_matrix.T @ system_matrix
+    rhs = system_matrix.T @ observations
+    lipschitz = float(np.linalg.norm(gram + regularization * np.eye(gram.shape[0]), ord=2))
+    lipschitz = max(lipschitz, 1e-12)
+    history = np.empty(max_iterations, dtype=np.float64)
+    converged = False
+    for iteration in range(max_iterations):
+        gradient = gram @ weights - rhs + regularization * weights
+        candidate = np.maximum(weights - gradient / lipschitz, 0.0)
+        total = float(np.sum(candidate))
+        if np.isclose(total, 0.0):
+            candidate = np.full_like(candidate, 1.0 / candidate.size)
+        else:
+            candidate /= total
+        residual = system_matrix @ candidate - observations
+        history[iteration] = 0.5 * float(residual @ residual) + 0.5 * regularization * float(
+            candidate @ candidate
+        )
+        delta = np.linalg.norm(candidate - weights)
+        scale = max(1.0, float(np.linalg.norm(weights)))
+        weights = candidate
+        if delta <= tolerance * scale:
+            history = history[: iteration + 1]
+            converged = True
+            break
+    else:
+        history = history[:max_iterations]
+    weights = np.ascontiguousarray(weights)
+    weights.setflags(write=False)
+    history = np.ascontiguousarray(history)
+    history.setflags(write=False)
+    return weights, history, converged
 
 
 @dataclass(frozen=True, slots=True)
@@ -357,6 +458,22 @@ class ODF:
             provenance=self.provenance,
         )
 
+    def reconstruct_pole_figures(
+        self,
+        poles: Sequence[CrystalPlane],
+        *,
+        include_symmetry_family: bool = True,
+        antipodal: bool = True,
+    ) -> tuple[PoleFigure, ...]:
+        return tuple(
+            self.reconstruct_pole_figure(
+                pole,
+                include_symmetry_family=include_symmetry_family,
+                antipodal=antipodal,
+            )
+            for pole in poles
+        )
+
     def volume_fraction(
         self,
         center: Orientation,
@@ -371,3 +488,99 @@ class ODF:
         )[0]
         mask = angles <= np.deg2rad(max_angle_deg)
         return float(np.sum(self.normalized_weights[mask]))
+
+    @classmethod
+    def invert_pole_figures(
+        cls,
+        pole_figures: Sequence[PoleFigure],
+        *,
+        orientation_dictionary: OrientationSet,
+        kernel: KernelSpec | None = None,
+        regularization: float = 1e-6,
+        include_symmetry_family: bool = True,
+        max_iterations: int = 500,
+        tolerance: float = 1e-8,
+        provenance: ProvenanceRecord | None = None,
+    ) -> ODFInversionReport:
+        if not pole_figures:
+            raise ValueError("ODF inversion requires at least one PoleFigure.")
+        specimen_frame = orientation_dictionary.specimen_frame
+        for pole_figure in pole_figures:
+            if pole_figure.specimen_frame != specimen_frame:
+                raise ValueError(
+                    "All pole figures and the inversion dictionary must share a specimen frame."
+                )
+        inversion_kernel = KernelSpec() if kernel is None else kernel
+        blocks = [
+            _orientation_dictionary_response(
+                orientation_dictionary,
+                pole_figure,
+                inversion_kernel,
+                include_symmetry_family=include_symmetry_family,
+            )
+            for pole_figure in pole_figures
+        ]
+        system_matrix = np.vstack(blocks)
+        observations = np.concatenate([pole_figure.intensities for pole_figure in pole_figures])
+        if system_matrix.shape[0] != observations.shape[0]:
+            raise ValueError("ODF inversion system matrix and observation vector are inconsistent.")
+        weights, objective_history, converged = _projected_gradient_nonnegative_weights(
+            system_matrix,
+            observations,
+            regularization=regularization,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+        )
+        common_sample_symmetry = pole_figures[0].sample_symmetry
+        if any(
+            pole_figure.sample_symmetry != common_sample_symmetry
+            for pole_figure in pole_figures
+        ):
+            common_sample_symmetry = None
+        odf = cls(
+            orientations=orientation_dictionary,
+            weights=weights,
+            kernel=inversion_kernel,
+            specimen_symmetry=common_sample_symmetry,
+            provenance=orientation_dictionary.provenance if provenance is None else provenance,
+        )
+        return ODFInversionReport(
+            odf=odf,
+            residual_norm=float(np.linalg.norm(system_matrix @ weights - observations)),
+            objective_history=objective_history,
+            iterations=int(objective_history.shape[0]),
+            converged=converged,
+            regularization=regularization,
+            observation_count=int(observations.size),
+            dictionary_size=int(len(orientation_dictionary)),
+            provenance=provenance,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ODFInversionReport:
+    odf: ODF
+    residual_norm: float
+    objective_history: np.ndarray
+    iterations: int
+    converged: bool
+    regularization: float
+    observation_count: int
+    dictionary_size: int
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        history = as_float_array(self.objective_history, shape=(None,))
+        if history.size == 0:
+            raise ValueError("ODFInversionReport.objective_history must not be empty.")
+        if self.residual_norm < 0.0:
+            raise ValueError("ODFInversionReport.residual_norm must be non-negative.")
+        if self.iterations <= 0:
+            raise ValueError("ODFInversionReport.iterations must be strictly positive.")
+        if self.regularization < 0.0:
+            raise ValueError("ODFInversionReport.regularization must be non-negative.")
+        if self.observation_count <= 0:
+            raise ValueError("ODFInversionReport.observation_count must be strictly positive.")
+        if self.dictionary_size <= 0:
+            raise ValueError("ODFInversionReport.dictionary_size must be strictly positive.")
+        object.__setattr__(self, "objective_history", history)

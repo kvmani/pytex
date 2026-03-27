@@ -14,7 +14,7 @@ author = "PyTex contributors"
 release = "0.1.0.dev0"
 
 extensions = [
-    "myst_parser",
+    "myst_nb",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx_design",
@@ -34,5 +34,7 @@ myst_enable_extensions = [
     "colon_fence",
     "deflist",
 ]
+
+nb_execution_mode = "off"
 
 root_doc = "index"
