@@ -12,15 +12,28 @@
     "space_group_preservation",
     "unit_cell_site_preservation"
   ],
-  "fixture_ids": [],
+  "fixture_ids": [
+    "fe_bcc",
+    "zr_hcp",
+    "ni_fcc",
+    "nicl",
+    "diamond"
+  ],
   "artifact_paths": [
-    "benchmarks/structure_import/foundation_benchmark_manifest.json"
+    "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "fixtures/phases/catalog.json",
+    "fixtures/phases/fe_bcc/phase.cif",
+    "fixtures/phases/zr_hcp/phase.cif",
+    "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/nicl/phase.cif",
+    "fixtures/phases/diamond/phase.cif"
   ],
   "tolerances": {
     "lattice_atol_angstrom": 1e-08
   },
   "status": "foundational",
   "notes": [
-    "This benchmark manifest marks the structure-import validation surface while broader literature-backed baselines grow."
+    "This benchmark manifest marks the structure-import validation surface while broader literature-backed baselines grow.",
+    "The bundled phase corpus under fixtures/phases is the pinned in-repo benchmark dataset for structure-import smoke coverage and reproducible demos."
   ]
 }

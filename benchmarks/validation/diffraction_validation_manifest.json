@@ -11,14 +11,27 @@
     "IUCr_C",
     "Fultz_Howe_TEM"
   ],
-  "fixture_ids": [],
+  "fixture_ids": [
+    "fe_bcc",
+    "zr_hcp",
+    "ni_fcc",
+    "nicl",
+    "diamond"
+  ],
   "artifact_paths": [
-    "docs/testing/diffraction_validation_matrix.md"
+    "docs/testing/diffraction_validation_matrix.md",
+    "fixtures/phases/catalog.json",
+    "fixtures/phases/fe_bcc/metadata.json",
+    "fixtures/phases/zr_hcp/metadata.json",
+    "fixtures/phases/ni_fcc/metadata.json",
+    "fixtures/phases/nicl/metadata.json",
+    "fixtures/phases/diamond/metadata.json"
   ],
   "linked_benchmark_ids": [
     "diffraction_foundation_internal_baseline"
   ],
   "notes": [
-    "Internal invariants are implemented; broader external-baseline comparisons remain ahead."
+    "Internal invariants are implemented; broader external-baseline comparisons remain ahead.",
+    "Bundled phase-fixture metadata tie the starter diffraction corpus to pinned crystallographic provenance."
   ]
 }
