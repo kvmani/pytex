@@ -200,6 +200,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/technical_glossary_and_symbols.html">Technical Glossary And Symbols</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/orientation_texture.html">Orientation And Texture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/texture_foundation.html">Texture Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
@@ -213,6 +214,7 @@ g_{\mathrm{proj}}</a></li>
 <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/installation_and_build.html">Installation And Build</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
@@ -319,6 +321,9 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Orientation</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OrientationSet</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ScatteringSetup</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">format_miller_indices</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">format_plane_indices</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">format_direction_indices</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">OrientationRelationship</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">TransformationVariant</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">PhaseTransformationRecord</span></code></p></li>
@@ -379,6 +384,9 @@ g_{\mathrm{proj}}</a></li>
 <h2>Plotting<a class="headerlink" href="#plotting" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">IPFColorKey</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalCellOverlay</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalPlaneOverlay</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalDirectionOverlay</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_vector_set</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_symmetry_orbit</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_symmetry_elements</span></code></p></li>
@@ -406,7 +414,8 @@ g_{\mathrm{proj}}</a></li>
 supports scatter, contour, and classical Bunge-section rendering.</p>
 <p><code class="docutils literal notranslate"><span class="pre">plot_xrd_pattern(...)</span></code> and <code class="docutils literal notranslate"><span class="pre">plot_saed_pattern(...)</span></code> return ordinary Matplotlib figures using the
 shared YAML style system. <code class="docutils literal notranslate"><span class="pre">plot_crystal_structure_3d(...)</span></code> provides a publication-oriented 3D
-structure view while preserving PyTex lattice and plane semantics.</p>
+structure view while preserving PyTex lattice and plane semantics, including optional unit-cell and
+hexagonal-prism overlays where scientifically appropriate.</p>
 <p>For architectural context, see <code class="docutils literal notranslate"><span class="pre">docs/architecture/overview.md</span></code>.</p>
 </section>
 </section>

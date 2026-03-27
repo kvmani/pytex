@@ -175,7 +175,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -200,6 +200,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts/technical_glossary_and_symbols.html">Technical Glossary And Symbols</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/orientation_texture.html">Orientation And Texture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/texture_foundation.html">Texture Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
@@ -213,6 +214,7 @@ g_{\mathrm{proj}}</a></li>
 <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation_and_build.html">Installation And Build</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
@@ -287,7 +289,7 @@ g_{\mathrm{proj}}</a></li>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
@@ -295,7 +297,8 @@ g_{\mathrm{proj}}</a></li>
           <section id="crystal-visualization-workflows">
 <h1>Crystal Visualization Workflows<a class="headerlink" href="#crystal-visualization-workflows" title="Link to this heading">¶</a></h1>
 <p>This notebook demonstrates the current VESTA-like 3D crystal-visualization surface
-for atoms, bonds, lattice edges, and plane overlays.</p>
+for publication-quality structure views with atoms, bonds, cell overlays, bounded
+planes, and crystallographic directions.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
@@ -309,8 +312,13 @@ for atoms, bonds, lattice edges, and plane overlays.</p>
     <span class="n">BenchmarkManifest</span><span class="p">,</span>
     <span class="n">build_crystal_scene</span><span class="p">,</span>
     <span class="n">CalibrationRecord</span><span class="p">,</span>
+    <span class="n">CrystalCellOverlay</span><span class="p">,</span>
+    <span class="n">CrystalDirection</span><span class="p">,</span>
+    <span class="n">CrystalDirectionOverlay</span><span class="p">,</span>
     <span class="n">CrystalMap</span><span class="p">,</span>
     <span class="n">CrystalPlane</span><span class="p">,</span>
+    <span class="n">CrystalPlaneOverlay</span><span class="p">,</span>
+    <span class="n">DirectionAnnotationStyle</span><span class="p">,</span>
     <span class="n">DiffractionGeometry</span><span class="p">,</span>
     <span class="n">EulerSet</span><span class="p">,</span>
     <span class="n">ExperimentManifest</span><span class="p">,</span>
@@ -345,6 +353,7 @@ for atoms, bonds, lattice edges, and plane overlays.</p>
     <span class="n">VectorSet</span><span class="p">,</span>
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
+    <span class="n">PlaneAnnotationStyle</span><span class="p">,</span>
     <span class="n">generate_saed_pattern</span><span class="p">,</span>
     <span class="n">generate_xrd_pattern</span><span class="p">,</span>
     <span class="n">plot_odf</span><span class="p">,</span>
@@ -410,24 +419,128 @@ for atoms, bonds, lattice edges, and plane overlays.</p>
         <span class="n">unit_cell</span><span class="o">=</span><span class="n">unit_cell</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">crystal</span><span class="p">,</span> <span class="n">specimen</span><span class="p">,</span> <span class="n">map_frame</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">phase</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_nacl_phase</span><span class="p">():</span>
+    <span class="n">crystal</span> <span class="o">=</span> <span class="n">ReferenceFrame</span><span class="p">(</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">,</span>
+        <span class="n">FrameDomain</span><span class="o">.</span><span class="n">CRYSTAL</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">),</span>
+        <span class="n">Handedness</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lattice</span> <span class="o">=</span> <span class="n">Lattice</span><span class="p">(</span><span class="mf">5.6402</span><span class="p">,</span> <span class="mf">5.6402</span><span class="p">,</span> <span class="mf">5.6402</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+    <span class="n">symmetry</span> <span class="o">=</span> <span class="n">SymmetrySpec</span><span class="o">.</span><span class="n">from_point_group</span><span class="p">(</span><span class="s2">&quot;m-3m&quot;</span><span class="p">,</span> <span class="n">reference_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+    <span class="n">unit_cell</span> <span class="o">=</span> <span class="n">UnitCell</span><span class="p">(</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">sites</span><span class="o">=</span><span class="p">(</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl1&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl2&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl3&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl4&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na1&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na2&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na3&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na4&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="p">(</span>
+        <span class="s2">&quot;NaCl&quot;</span><span class="p">,</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">symmetry</span><span class="o">=</span><span class="n">symmetry</span><span class="p">,</span>
+        <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">,</span>
+        <span class="n">unit_cell</span><span class="o">=</span><span class="n">unit_cell</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_zr_hcp_phase</span><span class="p">():</span>
+    <span class="n">crystal</span> <span class="o">=</span> <span class="n">ReferenceFrame</span><span class="p">(</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">,</span>
+        <span class="n">FrameDomain</span><span class="o">.</span><span class="n">CRYSTAL</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">),</span>
+        <span class="n">Handedness</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="o">.</span><span class="n">from_cif</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;fixtures/phases/zr_hcp/phase.cif&quot;</span><span class="p">),</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">publication_crystal_style</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;atom_radius_scale&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="s2">&quot;atom_edgewidth&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;atom_surface_resolution&quot;</span><span class="p">:</span> <span class="mi">34</span><span class="p">,</span>
+            <span class="s2">&quot;bond_surface_resolution&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
+            <span class="s2">&quot;bond_alpha&quot;</span><span class="p">:</span> <span class="mf">0.72</span><span class="p">,</span>
+            <span class="s2">&quot;bond_color&quot;</span><span class="p">:</span> <span class="s2">&quot;#7c8ea3&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;atom_specular_strength&quot;</span><span class="p">:</span> <span class="mf">0.42</span><span class="p">,</span>
+            <span class="s2">&quot;light_specular&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
 </pre></div>
 </div>
 </div>
 </div>
+<section id="publication-style-nacl-example">
+<h2>Publication-Style NaCl Example<a class="headerlink" href="#publication-style-nacl-example" title="Link to this heading">¶</a></h2>
+<p>This first scene shows how one viewer can carry atoms, bonds, repeated unit cells,
+bounded Miller planes, and labeled directions at the same time.</p>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">crystal</span><span class="p">,</span> <span class="n">specimen</span><span class="p">,</span> <span class="n">map_frame</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">phase</span> <span class="o">=</span> <span class="n">make_context</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">phase</span> <span class="o">=</span> <span class="n">make_nacl_phase</span><span class="p">()</span>
 
 <span class="n">scene</span> <span class="o">=</span> <span class="n">build_crystal_scene</span><span class="p">(</span>
     <span class="n">phase</span><span class="p">,</span>
     <span class="n">repeats</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">plane_hkls</span><span class="o">=</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+    <span class="n">show_unit_cells</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalCellOverlay</span><span class="p">(</span>
+            <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;parallelepiped&quot;</span><span class="p">,</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#0f172a&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">plane_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalPlaneOverlay</span><span class="p">(</span>
+            <span class="n">plane</span><span class="o">=</span><span class="n">CrystalPlane</span><span class="p">(</span><span class="n">MillerIndex</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#f97316&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.18</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">PlaneAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">10.5</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">CrystalPlaneOverlay</span><span class="p">(</span>
+            <span class="n">plane</span><span class="o">=</span><span class="n">CrystalPlane</span><span class="p">(</span><span class="n">MillerIndex</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#14b8a6&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">PlaneAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">10.5</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">direction_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalDirectionOverlay</span><span class="p">(</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2563eb&quot;</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">DirectionAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">10.5</span><span class="p">),</span>
+        <span class="p">),</span>
+        <span class="n">CrystalDirectionOverlay</span><span class="p">(</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#7c3aed&quot;</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">DirectionAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">10.5</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
     <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;presentation&quot;</span><span class="p">,</span>
+    <span class="n">style_overrides</span><span class="o">=</span><span class="n">publication_crystal_style</span><span class="p">(),</span>
 <span class="p">)</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;atoms:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">atoms</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;bonds:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">bonds</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;cells:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">cells</span><span class="p">))</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;planes:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">planes</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;directions:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">scene</span><span class="o">.</span><span class="n">directions</span><span class="p">))</span>
 </pre></div>
 </div>
 </div>
@@ -437,6 +550,7 @@ for atoms, bonds, lattice edges, and plane overlays.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">figure</span> <span class="o">=</span> <span class="n">plot_crystal_structure_3d</span><span class="p">(</span>
     <span class="n">scene</span><span class="p">,</span>
     <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;persp&quot;</span><span class="p">,</span>
+    <span class="n">style_overrides</span><span class="o">=</span><span class="n">publication_crystal_style</span><span class="p">(),</span>
 <span class="p">)</span>
 <span class="n">figure</span>
 </pre></div>
@@ -445,6 +559,92 @@ for atoms, bonds, lattice edges, and plane overlays.</p>
 </div>
 <p>The viewer renders geometry already defined in the canonical structure model. It
 does not redefine the lattice, the unit cell, or the plane conventions.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">TemporaryDirectory</span><span class="p">()</span> <span class="k">as</span> <span class="n">tmpdir</span><span class="p">:</span>
+    <span class="n">destination</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;nacl_publication_view.png&quot;</span>
+    <span class="n">figure</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">destination</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">destination</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
+<section id="hexagonal-axis-zr-example">
+<h2>Hexagonal-Axis Zr Example<a class="headerlink" href="#hexagonal-axis-zr-example" title="Link to this heading">¶</a></h2>
+<p>The next scene adds the pedagogical hexagonal prism so the basal symmetry is easier
+to teach while keeping the canonical lattice semantics unchanged.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zr_hcp</span> <span class="o">=</span> <span class="n">load_zr_hcp_phase</span><span class="p">()</span>
+
+<span class="n">zr_scene</span> <span class="o">=</span> <span class="n">build_crystal_scene</span><span class="p">(</span>
+    <span class="n">zr_hcp</span><span class="p">,</span>
+    <span class="n">repeats</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="n">show_unit_cells</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalCellOverlay</span><span class="p">(</span>
+            <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;hexagonal_prism&quot;</span><span class="p">,</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#0f766e&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span>
+            <span class="n">show_faces</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">face_alpha</span><span class="o">=</span><span class="mf">0.08</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">plane_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalPlaneOverlay</span><span class="p">(</span>
+            <span class="n">plane</span><span class="o">=</span><span class="n">CrystalPlane</span><span class="o">.</span><span class="n">from_miller_bravais</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">zr_hcp</span><span class="p">),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#ef4444&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.20</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">CrystalPlaneOverlay</span><span class="p">(</span>
+            <span class="n">plane</span><span class="o">=</span><span class="n">CrystalPlane</span><span class="o">.</span><span class="n">from_miller_bravais</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">zr_hcp</span><span class="p">),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#0ea5e9&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.16</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">direction_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalDirectionOverlay</span><span class="p">(</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="o">.</span><span class="n">from_miller_bravais</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">zr_hcp</span><span class="p">),</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#f59e0b&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="n">CrystalDirectionOverlay</span><span class="p">(</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="o">.</span><span class="n">from_miller_bravais</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">zr_hcp</span><span class="p">),</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2563eb&quot;</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;journal&quot;</span><span class="p">,</span>
+    <span class="n">style_overrides</span><span class="o">=</span><span class="n">publication_crystal_style</span><span class="p">(),</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;hex cells:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zr_scene</span><span class="o">.</span><span class="n">cells</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;planes:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zr_scene</span><span class="o">.</span><span class="n">planes</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;directions:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">zr_scene</span><span class="o">.</span><span class="n">directions</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">zr_figure</span> <span class="o">=</span> <span class="n">plot_crystal_structure_3d</span><span class="p">(</span>
+    <span class="n">zr_scene</span><span class="p">,</span>
+    <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;persp&quot;</span><span class="p">,</span>
+    <span class="n">style_overrides</span><span class="o">=</span><span class="n">publication_crystal_style</span><span class="p">(),</span>
+<span class="p">)</span>
+<span class="n">zr_figure</span>
+</pre></div>
+</div>
+</div>
+</div>
+</section>
 </section>
 
         </article>
@@ -490,8 +690,28 @@ does not redefine the lattice, the unit cell, or the plane conventions.</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Crystal Visualization Workflows</a><ul>
+<li><a class="reference internal" href="#publication-style-nacl-example">Publication-Style NaCl Example</a></li>
+<li><a class="reference internal" href="#hexagonal-axis-zr-example">Hexagonal-Axis Zr Example</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

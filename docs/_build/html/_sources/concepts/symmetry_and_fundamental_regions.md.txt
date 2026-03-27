@@ -92,7 +92,7 @@ This produces a unique representative direction
 \mathbf{d}_{\mathrm{FR}} \in \mathcal{F}_{\mathrm{dir}}.
 \]
 
-For cubic symmetry, this sector is often drawn as the triangle bounded by \([001]\), \([101]\), and \([111]\). For other supported classes, the wedge geometry changes, but the reduction logic is the same: the representative must lie inside the declared sector.
+For cubic symmetry, this sector is more accurately understood as the spherical sector or wedge with corner directions \([001]\), \([101]\), and \([111]\). It is often flattened into a triangular sketch for teaching, but the reduction itself lives on direction space on the sphere. For other supported classes, the wedge geometry changes, but the reduction logic is the same: the representative must lie inside the declared sector.
 
 ### What PyTex Means By “In Sector”
 
@@ -116,7 +116,7 @@ The orbit is
 \mathcal{O}(g) = \{s g c \; | \; s \in \mathcal{S},\; c \in \mathcal{C}\}.
 \]
 
-The question is not “which pole lies in the triangle?” but rather:
+The question is not “which pole lies in the flattened sketch?” but rather:
 
 \[
 \text{which element of } \mathcal{O}(g) \text{ should be the stable representative?}

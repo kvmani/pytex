@@ -1,52 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="620" viewBox="0 0 1180 620">
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="700" viewBox="0 0 1320 700">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
       <path d="M0,0 L12,6 L0,12 z" fill="#223241"/>
     </marker>
   </defs>
-  <rect width="1180" height="620" fill="#fcfbf7"/>
-  <text x="42" y="52" font-size="30" font-family="Georgia, serif" fill="#18212b">IPF Sector Reduction</text>
-  <text x="42" y="82" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
-    Inverse pole figures keep one representative direction per symmetry class by reducing all equivalent poles into a supported crystal-class sector.
+  <rect width="1320" height="700" fill="#fcfbf7"/>
+  <text x="44" y="58" font-size="31" font-family="Georgia, serif" fill="#18212b">IPF Sector Reduction</text>
+  <text x="44" y="92" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    Inverse pole figures keep one representative direction per symmetry class by reducing
+  </text>
+  <text x="44" y="116" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
+    all symmetry-equivalent poles into a supported spherical sector.
   </text>
 
-  <rect x="56" y="122" width="296" height="392" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
-  <rect x="442" y="122" width="296" height="392" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
-  <rect x="828" y="122" width="296" height="392" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="56" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="485" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="914" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
 
-  <text x="92" y="162" font-size="25" font-family="Georgia, serif" fill="#21402c">1. Start with a direction</text>
-  <g transform="translate(204,324)">
-    <circle cx="0" cy="0" r="112" fill="none" stroke="#cfd8e1" stroke-width="2"/>
+  <text x="92" y="192" font-size="25" font-family="Georgia, serif" fill="#21402c">1. Start with one direction</text>
+  <g transform="translate(230,355)">
+    <circle cx="0" cy="0" r="112" fill="none" stroke="#cfd8e1" stroke-width="2.5"/>
     <circle cx="0" cy="0" r="4" fill="#1f2937"/>
-    <line x1="0" y1="0" x2="80" y2="-76" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="92" y="-82" font-size="22" font-family="Georgia, serif" fill="#8f301e">d</text>
+    <line x1="0" y1="0" x2="82" y2="-78" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="96" y="-82" font-size="23" font-family="Georgia, serif" fill="#8f301e">d</text>
+    <text x="-66" y="148" font-size="18" font-family="Georgia, serif" fill="#44515c">unit direction sphere</text>
   </g>
 
-  <text x="478" y="162" font-size="25" font-family="Georgia, serif" fill="#5b4308">2. Generate equivalents</text>
-  <g transform="translate(590,324)">
-    <circle cx="0" cy="0" r="112" fill="none" stroke="#cfd8e1" stroke-width="2"/>
+  <text x="518" y="192" font-size="25" font-family="Georgia, serif" fill="#5b4308">2. Apply example symmetries</text>
+  <g transform="translate(662,355)">
+    <circle cx="0" cy="0" r="112" fill="none" stroke="#cfd8e1" stroke-width="2.5"/>
     <circle cx="0" cy="0" r="4" fill="#1f2937"/>
-    <line x1="0" y1="0" x2="0" y2="-112" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="98" y2="30" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="-98" y2="30" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="10" y="-122" font-size="18" font-family="Georgia, serif" fill="#17324a">s₁d</text>
-    <text x="104" y="42" font-size="18" font-family="Georgia, serif" fill="#8f301e">s₂d</text>
-    <text x="-140" y="42" font-size="18" font-family="Georgia, serif" fill="#21402c">s₃d</text>
+    <line x1="0" y1="0" x2="82" y2="-78" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-82" y2="-78" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="112" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="95" y="-82" font-size="18" font-family="Georgia, serif" fill="#8f301e">e·d = d</text>
+    <text x="-148" y="-82" font-size="18" font-family="Georgia, serif" fill="#21402c">c₂·d</text>
+    <text x="12" y="126" font-size="18" font-family="Georgia, serif" fill="#17324a">c₃·d</text>
+    <text x="-114" y="156" font-size="18" font-family="Georgia, serif" fill="#44515c">orbit points remain on the sphere</text>
   </g>
 
-  <text x="860" y="162" font-size="25" font-family="Georgia, serif" fill="#17324a">3. Select the sector representative</text>
-  <g transform="translate(976,324)">
-    <polygon points="0,-112 98,56 -98,56" fill="#eef5fb" stroke="#7aa0c0" stroke-width="2.5"/>
+  <text x="946" y="192" font-size="25" font-family="Georgia, serif" fill="#17324a">3. Select the sector representative</text>
+  <g transform="translate(1089,358)">
+    <circle cx="0" cy="0" r="116" fill="#fffef9" stroke="#cfd8e1" stroke-width="2.5"/>
+    <path d="M-74 88 Q-45 -12 0 -110 Q56 -76 84 38 Q14 78 -74 88 Z" fill="#e6f2ed" stroke="#2d6b55" stroke-width="3"/>
     <circle cx="0" cy="0" r="4" fill="#1f2937"/>
-    <line x1="0" y1="0" x2="36" y2="-62" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="46" y="-68" font-size="20" font-family="Georgia, serif" fill="#8f301e">selected pole</text>
-    <text x="-24" y="-126" font-size="18" font-family="Georgia, serif" fill="#17324a">sector</text>
+    <line x1="0" y1="0" x2="34" y2="-66" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="-84" y="109" font-size="18" font-family="Georgia, serif" fill="#17324a">[001]</text>
+    <text x="78" y="56" font-size="18" font-family="Georgia, serif" fill="#17324a">[101]</text>
+    <text x="-8" y="-124" font-size="18" font-family="Georgia, serif" fill="#17324a">[111]</text>
+    <text x="48" y="-70" font-size="18" font-family="Georgia, serif" fill="#8f301e">chosen pole</text>
+    <text x="-60" y="150" font-size="18" font-family="Georgia, serif" fill="#1b5541">spherical IPF sector</text>
   </g>
 
-  <line x1="352" y1="324" x2="442" y2="324" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <line x1="738" y1="324" x2="828" y2="324" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="406" y1="355" x2="485" y2="355" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <line x1="835" y1="355" x2="914" y2="355" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <text x="240" y="556" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
-    Direction-space problem: reduce equivalent poles into one canonical IPF-sector location.
+  <text x="214" y="624" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    Direction-space problem: reduce equivalent poles into one canonical location in the
+  </text>
+  <text x="369" y="650" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
+    supported crystal-class sector.
   </text>
 </svg>

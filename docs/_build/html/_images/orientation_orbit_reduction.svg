@@ -1,39 +1,46 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
-  <rect width="1200" height="760" fill="#f5f2ea"/>
-  <text x="60" y="70" font-size="34" font-family="Georgia, serif" fill="#17324a">Orientation orbit and deterministic representative</text>
-  <text x="60" y="108" font-size="20" font-family="Georgia, serif" fill="#35526b">Orientation reduction does not choose a pole in a triangle; it orders the symmetry orbit in orientation space.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="820" viewBox="0 0 1320 820">
+  <rect width="1320" height="820" fill="#f5f2ea"/>
+  <text x="60" y="74" font-size="34" font-family="Georgia, serif" fill="#17324a">Orientation orbit and deterministic representative</text>
+  <text x="60" y="112" font-size="20" font-family="Georgia, serif" fill="#35526b">
+    Orientation reduction does not choose a pole in a direction-sector picture; it orders
+  </text>
+  <text x="60" y="138" font-size="20" font-family="Georgia, serif" fill="#35526b">
+    the symmetry orbit in orientation space.
+  </text>
 
-  <ellipse cx="355" cy="400" rx="245" ry="180" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
-  <text x="244" y="620" font-size="22" font-family="Georgia, serif" fill="#17324a">schematic orientation orbit 𝓞(g)</text>
+  <ellipse cx="360" cy="436" rx="250" ry="184" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
+  <text x="236" y="654" font-size="22" font-family="Georgia, serif" fill="#17324a">schematic orientation orbit 𝓞(g)</text>
 
-  <circle cx="250" cy="320" r="11" fill="#8a6fb5"/>
-  <circle cx="335" cy="500" r="11" fill="#8a6fb5"/>
-  <circle cx="470" cy="355" r="11" fill="#8a6fb5"/>
-  <circle cx="415" cy="255" r="11" fill="#8a6fb5"/>
-  <circle cx="205" cy="445" r="11" fill="#8a6fb5"/>
-  <text x="486" y="351" font-size="18" font-family="Georgia, serif" fill="#554075">s g c</text>
-  <text x="428" y="247" font-size="18" font-family="Georgia, serif" fill="#554075">s' g c'</text>
+  <circle cx="248" cy="338" r="11" fill="#8a6fb5"/>
+  <circle cx="332" cy="540" r="11" fill="#8a6fb5"/>
+  <circle cx="476" cy="380" r="11" fill="#8a6fb5"/>
+  <circle cx="418" cy="266" r="11" fill="#8a6fb5"/>
+  <circle cx="206" cy="478" r="11" fill="#8a6fb5"/>
+  <text x="492" y="374" font-size="18" font-family="Georgia, serif" fill="#554075">s g c</text>
+  <text x="434" y="258" font-size="18" font-family="Georgia, serif" fill="#554075">s' g c'</text>
 
-  <circle cx="300" cy="360" r="14" fill="#2d9a6b"/>
-  <text x="320" y="355" font-size="20" font-family="Georgia, serif" fill="#1c6145">selected representative</text>
-  <text x="320" y="382" font-size="18" font-family="Georgia, serif" fill="#1c6145">minimal fundamental-region key</text>
+  <circle cx="300" cy="384" r="15" fill="#2d9a6b"/>
+  <text x="326" y="378" font-size="20" font-family="Georgia, serif" fill="#1c6145">selected representative</text>
+  <text x="326" y="406" font-size="18" font-family="Georgia, serif" fill="#1c6145">minimal fundamental-region key</text>
 
-  <rect x="660" y="145" width="430" height="195" rx="18" fill="#efe5c8" stroke="#b38a3a"/>
-  <text x="685" y="182" font-size="24" font-family="Georgia, serif" fill="#5b4215">Current PyTex ordering key</text>
-  <text x="685" y="225" font-size="22" font-family="Georgia, serif" fill="#5b4215">K(g) = ( ω, -a_z, -a_x, -a_y )</text>
-  <text x="685" y="263" font-size="18" font-family="Georgia, serif" fill="#5b4215">ω = rotation angle</text>
-  <text x="685" y="291" font-size="18" font-family="Georgia, serif" fill="#5b4215">a = rotation axis reduced into the crystal sector</text>
-  <text x="685" y="319" font-size="18" font-family="Georgia, serif" fill="#5b4215">smallest key gives the deterministic representative</text>
+  <rect x="676" y="170" width="458" height="214" rx="18" fill="#efe5c8" stroke="#b38a3a"/>
+  <text x="728" y="208" font-size="24" font-family="Georgia, serif" fill="#5b4215">Current PyTex ordering key</text>
+  <text x="728" y="252" font-size="22" font-family="Georgia, serif" fill="#5b4215">K(g) = ( ω, -a_z, -a_x, -a_y )</text>
+  <text x="728" y="292" font-size="17" font-family="Georgia, serif" fill="#5b4215">ω = rotation angle</text>
+  <text x="728" y="320" font-size="17" font-family="Georgia, serif" fill="#5b4215">a = rotation axis reduced into the supported</text>
+  <text x="728" y="346" font-size="17" font-family="Georgia, serif" fill="#5b4215">crystal sector before ordering</text>
+  <text x="728" y="372" font-size="17" font-family="Georgia, serif" fill="#5b4215">the smallest key gives the representative</text>
 
-  <rect x="650" y="395" width="450" height="210" rx="18" fill="#e6edf5" stroke="#4a708b"/>
-  <text x="675" y="432" font-size="24" font-family="Georgia, serif" fill="#24445c">Reference-aware mode</text>
-  <text x="675" y="472" font-size="20" font-family="Georgia, serif" fill="#24445c">If a reference orientation g_ref is supplied,</text>
-  <text x="675" y="507" font-size="22" font-family="Georgia, serif" fill="#24445c">choose arg min d(g', g_ref)</text>
-  <text x="675" y="545" font-size="18" font-family="Georgia, serif" fill="#24445c">over all g' in the symmetry orbit</text>
-  <text x="675" y="579" font-size="18" font-family="Georgia, serif" fill="#24445c">This is a workflow-specific projection, not the default ordering key.</text>
+  <rect x="664" y="438" width="470" height="236" rx="18" fill="#e6edf5" stroke="#4a708b"/>
+  <text x="718" y="478" font-size="24" font-family="Georgia, serif" fill="#24445c">Reference-aware mode</text>
+  <text x="718" y="520" font-size="19" font-family="Georgia, serif" fill="#24445c">If a reference orientation g_ref is supplied,</text>
+  <text x="718" y="556" font-size="22" font-family="Georgia, serif" fill="#24445c">choose arg min d(g', g_ref)</text>
+  <text x="718" y="594" font-size="17" font-family="Georgia, serif" fill="#24445c">over all g' in the symmetry orbit</text>
+  <text x="718" y="626" font-size="17" font-family="Georgia, serif" fill="#24445c">This is a workflow-specific projection, not</text>
+  <text x="718" y="652" font-size="17" font-family="Georgia, serif" fill="#24445c">the default ordering key.</text>
 
-  <path d="M520 360 C585 340 610 315 652 275" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow2)"/>
-  <path d="M320 392 C430 430 540 455 648 505" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow2)"/>
+  <path d="M522 388 C620 362 658 332 694 298" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow2)"/>
+  <path d="M324 420 C470 468 586 500 690 550" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow2)"/>
 
   <defs>
     <marker id="arrow2" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">

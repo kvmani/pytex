@@ -200,6 +200,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/reference_frames_and_conventions.html">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../concepts/technical_glossary_and_symbols.html">Technical Glossary And Symbols</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/orientation_texture.html">Orientation And Texture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/texture_foundation.html">Texture Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../concepts/ebsd_foundation.html">EBSD Foundation</a></li>
@@ -213,6 +214,7 @@ g_{\mathrm{proj}}</a></li>
 <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation_and_build.html">Installation And Build</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
@@ -310,8 +312,13 @@ together.</p>
     <span class="n">BenchmarkManifest</span><span class="p">,</span>
     <span class="n">build_crystal_scene</span><span class="p">,</span>
     <span class="n">CalibrationRecord</span><span class="p">,</span>
+    <span class="n">CrystalCellOverlay</span><span class="p">,</span>
+    <span class="n">CrystalDirection</span><span class="p">,</span>
+    <span class="n">CrystalDirectionOverlay</span><span class="p">,</span>
     <span class="n">CrystalMap</span><span class="p">,</span>
     <span class="n">CrystalPlane</span><span class="p">,</span>
+    <span class="n">CrystalPlaneOverlay</span><span class="p">,</span>
+    <span class="n">DirectionAnnotationStyle</span><span class="p">,</span>
     <span class="n">DiffractionGeometry</span><span class="p">,</span>
     <span class="n">EulerSet</span><span class="p">,</span>
     <span class="n">ExperimentManifest</span><span class="p">,</span>
@@ -346,6 +353,7 @@ together.</p>
     <span class="n">VectorSet</span><span class="p">,</span>
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
+    <span class="n">PlaneAnnotationStyle</span><span class="p">,</span>
     <span class="n">generate_saed_pattern</span><span class="p">,</span>
     <span class="n">generate_xrd_pattern</span><span class="p">,</span>
     <span class="n">plot_odf</span><span class="p">,</span>
@@ -411,6 +419,62 @@ together.</p>
         <span class="n">unit_cell</span><span class="o">=</span><span class="n">unit_cell</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">crystal</span><span class="p">,</span> <span class="n">specimen</span><span class="p">,</span> <span class="n">map_frame</span><span class="p">,</span> <span class="n">detector</span><span class="p">,</span> <span class="n">lab</span><span class="p">,</span> <span class="n">phase</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">make_nacl_phase</span><span class="p">():</span>
+    <span class="n">crystal</span> <span class="o">=</span> <span class="n">ReferenceFrame</span><span class="p">(</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">,</span>
+        <span class="n">FrameDomain</span><span class="o">.</span><span class="n">CRYSTAL</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">),</span>
+        <span class="n">Handedness</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">lattice</span> <span class="o">=</span> <span class="n">Lattice</span><span class="p">(</span><span class="mf">5.6402</span><span class="p">,</span> <span class="mf">5.6402</span><span class="p">,</span> <span class="mf">5.6402</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="mf">90.0</span><span class="p">,</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+    <span class="n">symmetry</span> <span class="o">=</span> <span class="n">SymmetrySpec</span><span class="o">.</span><span class="n">from_point_group</span><span class="p">(</span><span class="s2">&quot;m-3m&quot;</span><span class="p">,</span> <span class="n">reference_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+    <span class="n">unit_cell</span> <span class="o">=</span> <span class="n">UnitCell</span><span class="p">(</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">sites</span><span class="o">=</span><span class="p">(</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl1&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl2&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl3&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Cl4&quot;</span><span class="p">,</span> <span class="s2">&quot;Cl&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na1&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na2&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na3&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+            <span class="n">AtomicSite</span><span class="p">(</span><span class="s2">&quot;Na4&quot;</span><span class="p">,</span> <span class="s2">&quot;Na&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])),</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="p">(</span>
+        <span class="s2">&quot;NaCl&quot;</span><span class="p">,</span>
+        <span class="n">lattice</span><span class="o">=</span><span class="n">lattice</span><span class="p">,</span>
+        <span class="n">symmetry</span><span class="o">=</span><span class="n">symmetry</span><span class="p">,</span>
+        <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">,</span>
+        <span class="n">unit_cell</span><span class="o">=</span><span class="n">unit_cell</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_zr_hcp_phase</span><span class="p">():</span>
+    <span class="n">crystal</span> <span class="o">=</span> <span class="n">ReferenceFrame</span><span class="p">(</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">,</span>
+        <span class="n">FrameDomain</span><span class="o">.</span><span class="n">CRYSTAL</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">),</span>
+        <span class="n">Handedness</span><span class="o">.</span><span class="n">RIGHT</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">Phase</span><span class="o">.</span><span class="n">from_cif</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;fixtures/phases/zr_hcp/phase.cif&quot;</span><span class="p">),</span> <span class="n">crystal_frame</span><span class="o">=</span><span class="n">crystal</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">publication_crystal_style</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;crystal&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;atom_radius_scale&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="s2">&quot;atom_edgewidth&quot;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+            <span class="s2">&quot;atom_surface_resolution&quot;</span><span class="p">:</span> <span class="mi">34</span><span class="p">,</span>
+            <span class="s2">&quot;bond_surface_resolution&quot;</span><span class="p">:</span> <span class="mi">28</span><span class="p">,</span>
+            <span class="s2">&quot;bond_alpha&quot;</span><span class="p">:</span> <span class="mf">0.72</span><span class="p">,</span>
+            <span class="s2">&quot;bond_color&quot;</span><span class="p">:</span> <span class="s2">&quot;#7c8ea3&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;atom_specular_strength&quot;</span><span class="p">:</span> <span class="mf">0.42</span><span class="p">,</span>
+            <span class="s2">&quot;light_specular&quot;</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
 </pre></div>
 </div>
 </div>

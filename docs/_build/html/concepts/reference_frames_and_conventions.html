@@ -3,13 +3,13 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Orientation And Texture" href="orientation_texture.html"><link rel="prev" title="How PyTex Differs" href="how_pytex_differs.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Technical Glossary And Symbols" href="technical_glossary_and_symbols.html"><link rel="prev" title="How PyTex Differs" href="how_pytex_differs.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Reference Frames And Orientation Conventions - PyTex</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
-    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css?v=8cd3d715" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/architecture.css?v=046228d5" />
@@ -200,6 +200,7 @@
 <li class="toctree-l1"><a class="reference internal" href="library_structure.html">Library Structure</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how_pytex_differs.html">How PyTex Differs</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Reference Frames And Orientation Conventions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="technical_glossary_and_symbols.html">Technical Glossary And Symbols</a></li>
 <li class="toctree-l1"><a class="reference internal" href="orientation_texture.html">Orientation And Texture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="texture_foundation.html">Texture Foundation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ebsd_foundation.html">EBSD Foundation</a></li>
@@ -213,6 +214,7 @@ g_{\mathrm{proj}}</a></li>
 <p class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../tutorials/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/installation_and_build.html">Installation And Build</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/notebooks.html">Tutorial Notebooks</a><input aria-label="Toggle navigation of Tutorial Notebooks" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/01_reference_frames_and_transforms.html">Reference Frames And Transforms</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/02_rotations_orientations_and_batch_primitives.html">Rotations, Orientations, And Batch Primitives</a></li>
@@ -223,6 +225,12 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/11_powder_xrd_workflows.html">Powder XRD Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/12_saed_workflows.html">SAED Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/13_crystal_visualization_workflows.html">Crystal Visualization Workflows</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/14_yaml_style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/15_structure_diffraction_visualization_pipeline.html">Structure, Diffraction, And Visualization Pipeline</a></li>
 </ul>
 </li>
 </ul>
@@ -233,8 +241,14 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/xrd_generation.html">Powder XRD Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/saed_generation.html">SAED Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/crystal_visualization.html">3D Crystal Visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/style_customization.html">YAML Style Customization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../workflows/combined_structure_diffraction_visualization.html">Combined Structure, Diffraction, And Visualization Workflow</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Reference</span></p>
@@ -496,12 +510,12 @@ g_{\mathrm{proj}}</a></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="orientation_texture.html">
+          <a class="next-page" href="technical_glossary_and_symbols.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Orientation And Texture</div>
+                <div class="title">Technical Glossary And Symbols</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

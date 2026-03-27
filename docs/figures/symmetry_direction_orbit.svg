@@ -1,53 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
-  <rect width="1200" height="760" fill="#f7f4ea"/>
-  <text x="60" y="70" font-size="34" font-family="Georgia, serif" fill="#17324a">Direction orbit under crystal symmetry</text>
-  <text x="60" y="108" font-size="20" font-family="Georgia, serif" fill="#35526b">A single crystal direction generates a symmetry orbit; IPF reduction chooses one representative in the sector.</text>
-
-  <circle cx="305" cy="400" r="210" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
-  <circle cx="305" cy="400" r="6" fill="#214761"/>
-  <text x="240" y="655" font-size="20" font-family="Georgia, serif" fill="#17324a">unit sphere of crystal directions</text>
-
-  <line x1="305" y1="400" x2="305" y2="205" stroke="#214761" stroke-width="4"/>
-  <line x1="305" y1="400" x2="495" y2="400" stroke="#214761" stroke-width="4"/>
-  <line x1="305" y1="400" x2="375" y2="560" stroke="#214761" stroke-width="4"/>
-  <text x="311" y="195" font-size="20" font-family="Georgia, serif" fill="#17324a">[001]</text>
-  <text x="505" y="407" font-size="20" font-family="Georgia, serif" fill="#17324a">[100]</text>
-  <text x="382" y="575" font-size="20" font-family="Georgia, serif" fill="#17324a">[010]</text>
-
-  <circle cx="430" cy="305" r="11" fill="#d94f2b"/>
-  <circle cx="430" cy="495" r="11" fill="#d94f2b"/>
-  <circle cx="180" cy="305" r="11" fill="#d94f2b"/>
-  <circle cx="180" cy="495" r="11" fill="#d94f2b"/>
-  <text x="443" y="300" font-size="18" font-family="Georgia, serif" fill="#7d2f1f">c₁ d</text>
-  <text x="443" y="503" font-size="18" font-family="Georgia, serif" fill="#7d2f1f">c₂ d</text>
-  <text x="112" y="300" font-size="18" font-family="Georgia, serif" fill="#7d2f1f">c₃ d</text>
-  <text x="112" y="503" font-size="18" font-family="Georgia, serif" fill="#7d2f1f">c₄ d</text>
-  <path d="M410 320 Q305 400 200 480" fill="none" stroke="#c8862f" stroke-width="3" stroke-dasharray="9 7"/>
-  <text x="226" y="370" font-size="19" font-family="Georgia, serif" fill="#8b5a1e">symmetry orbit { c d }</text>
-
-  <path d="M690 220 L1020 220 L940 560 L690 560 Z" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
-  <line x1="690" y1="560" x2="1020" y2="220" stroke="#214761" stroke-width="3"/>
-  <line x1="690" y1="560" x2="940" y2="560" stroke="#214761" stroke-width="3"/>
-  <line x1="940" y1="560" x2="1020" y2="220" stroke="#214761" stroke-width="3"/>
-  <text x="720" y="600" font-size="20" font-family="Georgia, serif" fill="#17324a">schematic cubic IPF sector</text>
-  <text x="674" y="584" font-size="18" font-family="Georgia, serif" fill="#17324a">[001]</text>
-  <text x="942" y="584" font-size="18" font-family="Georgia, serif" fill="#17324a">[101]</text>
-  <text x="1028" y="224" font-size="18" font-family="Georgia, serif" fill="#17324a">[111]</text>
-
-  <circle cx="805" cy="404" r="12" fill="#2d9a6b"/>
-  <text x="820" y="398" font-size="19" font-family="Georgia, serif" fill="#1c6145">d_FR</text>
-  <text x="820" y="424" font-size="17" font-family="Georgia, serif" fill="#1c6145">chosen representative</text>
-
-  <path d="M537 400 C610 400 625 400 680 400" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow)"/>
-  <text x="560" y="382" font-size="20" font-family="Georgia, serif" fill="#17324a">reduce orbit into sector</text>
-
-  <rect x="700" y="86" width="410" height="90" rx="16" fill="#efe5c8" stroke="#b38a3a"/>
-  <text x="724" y="120" font-size="21" font-family="Georgia, serif" fill="#5b4215">Mathematical rule</text>
-  <text x="724" y="150" font-size="19" font-family="Georgia, serif" fill="#5b4215">d_FR ∈ 𝓕_dir and d_FR = c d for some c ∈ 𝓒</text>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="780" viewBox="0 0 1320 780">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
       <path d="M0,0 L12,6 L0,12 z" fill="#17324a"/>
     </marker>
   </defs>
+  <rect width="1320" height="780" fill="#f7f4ea"/>
+  <text x="60" y="72" font-size="34" font-family="Georgia, serif" fill="#17324a">Direction orbit under crystal symmetry</text>
+  <text x="60" y="108" font-size="20" font-family="Georgia, serif" fill="#35526b">
+    A single crystal direction generates a symmetry orbit; IPF reduction then chooses one
+  </text>
+  <text x="60" y="134" font-size="20" font-family="Georgia, serif" fill="#35526b">
+    representative in the supported spherical sector.
+  </text>
+
+  <circle cx="318" cy="430" r="214" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
+  <circle cx="318" cy="430" r="6" fill="#214761"/>
+  <text x="208" y="676" font-size="22" font-family="Georgia, serif" fill="#17324a">unit sphere of crystal directions</text>
+
+  <line x1="318" y1="430" x2="318" y2="220" stroke="#214761" stroke-width="4"/>
+  <line x1="318" y1="430" x2="522" y2="430" stroke="#214761" stroke-width="4"/>
+  <line x1="318" y1="430" x2="392" y2="602" stroke="#214761" stroke-width="4"/>
+  <text x="324" y="210" font-size="20" font-family="Georgia, serif" fill="#17324a">[001]</text>
+  <text x="532" y="437" font-size="20" font-family="Georgia, serif" fill="#17324a">[100]</text>
+  <text x="400" y="618" font-size="20" font-family="Georgia, serif" fill="#17324a">[010]</text>
+
+  <circle cx="446" cy="322" r="11" fill="#d94f2b"/>
+  <circle cx="182" cy="322" r="11" fill="#4d7a58"/>
+  <circle cx="182" cy="538" r="11" fill="#3f78a4"/>
+  <text x="460" y="318" font-size="19" font-family="Georgia, serif" fill="#7d2f1f">e·d = d</text>
+  <text x="92" y="318" font-size="19" font-family="Georgia, serif" fill="#245540">c₂·d</text>
+  <text x="92" y="545" font-size="19" font-family="Georgia, serif" fill="#1f496c">c₃·d</text>
+  <path d="M430 338 Q318 430 198 522" fill="none" stroke="#c8862f" stroke-width="3" stroke-dasharray="9 7"/>
+  <text x="214" y="385" font-size="20" font-family="Georgia, serif" fill="#8b5a1e">example orbit points</text>
+
+  <path d="M732 596 Q776 428 864 284 Q939 186 1048 188 Q1136 193 1190 300 Q1230 375 1238 596" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
+  <path d="M822 596 Q890 438 956 274 Q1006 204 1056 204 Q1110 206 1162 292 Q1200 388 1208 596" fill="#e6f2ed" stroke="#2d6b55" stroke-width="3"/>
+  <path d="M822 596 Q1016 566 1208 596" fill="none" stroke="#2d6b55" stroke-width="3"/>
+  <text x="800" y="632" font-size="18" font-family="Georgia, serif" fill="#17324a">[001]</text>
+  <text x="1208" y="632" font-size="18" font-family="Georgia, serif" fill="#17324a">[101]</text>
+  <text x="1042" y="190" font-size="18" font-family="Georgia, serif" fill="#17324a">[111]</text>
+  <circle cx="1062" cy="420" r="12" fill="#2d9a6b"/>
+  <text x="1080" y="414" font-size="19" font-family="Georgia, serif" fill="#1c6145">d_FR</text>
+  <text x="1080" y="440" font-size="17" font-family="Georgia, serif" fill="#1c6145">representative inside the sector</text>
+  <text x="894" y="668" font-size="21" font-family="Georgia, serif" fill="#17324a">schematic cubic IPF sector on the sphere</text>
+
+  <path d="M548 430 C640 430 690 430 740 430" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="580" y="406" font-size="20" font-family="Georgia, serif" fill="#17324a">reduce orbit into the sector</text>
+
+  <rect x="804" y="72" width="388" height="96" rx="16" fill="#efe5c8" stroke="#b38a3a"/>
+  <text x="854" y="108" font-size="21" font-family="Georgia, serif" fill="#5b4215">Mathematical rule</text>
+  <text x="830" y="138" font-size="18" font-family="Georgia, serif" fill="#5b4215">d_FR ∈ 𝓕_dir and d_FR = c d for some c ∈ 𝓒</text>
 </svg>

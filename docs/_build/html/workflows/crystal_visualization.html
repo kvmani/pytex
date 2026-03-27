@@ -296,7 +296,7 @@ g_{\mathrm{proj}}</a></li>
         <article role="main" id="furo-main-content">
           <section id="d-crystal-visualization">
 <h1>3D Crystal Visualization<a class="headerlink" href="#d-crystal-visualization" title="Link to this heading">¶</a></h1>
-<p>PyTex now includes a VESTA-inspired 3D crystal viewer surface for unit cells, supercells, bond overlays, and crystallographic plane overlays.</p>
+<p>PyTex now includes a VESTA-inspired 3D crystal viewer surface for unit cells, supercells, bond overlays, repeated unit-cell overlays, bounded crystallographic plane overlays, and crystallographic direction overlays.</p>
 <p><img alt="Crystal Visualization Example" src="../_images/crystal_visualization_demo.svg" /></p>
 <section id="scope">
 <h2>Scope<a class="headerlink" href="#scope" title="Link to this heading">¶</a></h2>
@@ -305,7 +305,11 @@ g_{\mathrm{proj}}</a></li>
 <li><p>atom glyphs with element-based color and radius scaling</p></li>
 <li><p>optional bond construction from covalent-radius heuristics</p></li>
 <li><p>lattice-edge rendering</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">(hkl)</span></code> plane overlays</p></li>
+<li><p>explicit repeated unit-cell overlays inside the displayed supercell</p></li>
+<li><p>optional pedagogical hexagonal-prism overlays for hexagonal-axis lattices</p></li>
+<li><p>bounded multiple-plane overlays with configurable colors, alpha, labels, and family-member offsets</p></li>
+<li><p>direction arrows with configurable colors, anchor points, and labels</p></li>
+<li><p>shared scientific Miller-label formatting for directions and planes, including negative-index bar notation</p></li>
 <li><p>optional slab or section filtering</p></li>
 <li><p>camera alignment by view direction or manual angles</p></li>
 <li><p>publication-oriented rendering through shared YAML styles</p></li>
@@ -318,7 +322,9 @@ g_{\mathrm{proj}}</a></li>
 <li><p>atoms begin in fractional coordinates from <code class="docutils literal notranslate"><span class="pre">UnitCell</span></code></p></li>
 <li><p>fractional coordinates are mapped through the direct basis into Cartesian crystal-space coordinates</p></li>
 <li><p>supercell repetition is explicit in direct-lattice units</p></li>
-<li><p>planes are computed from the <code class="docutils literal notranslate"><span class="pre">(hkl)</span></code> plane equation over the supercell box</p></li>
+<li><p>repeated unit-cell overlays are rendered from explicit direct-basis translations rather than inferred from screen-space repetition</p></li>
+<li><p>planes are computed from the Miller plane equation over the repeated-cell box and clipped to the displayed cell volume</p></li>
+<li><p>direction overlays are bounded to the repeated cell volume from an explicit fractional anchor point</p></li>
 </ul>
 <p>The viewer does not invent its own crystallography. It renders geometry already defined by the <code class="docutils literal notranslate"><span class="pre">Phase</span></code>, <code class="docutils literal notranslate"><span class="pre">Lattice</span></code>, and <code class="docutils literal notranslate"><span class="pre">UnitCell</span></code>.</p>
 </section>
@@ -328,9 +334,16 @@ g_{\mathrm{proj}}</a></li>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pytex</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">AtomicSite</span><span class="p">,</span>
+    <span class="n">CrystalCellOverlay</span><span class="p">,</span>
     <span class="n">CrystalDirection</span><span class="p">,</span>
+    <span class="n">CrystalDirectionOverlay</span><span class="p">,</span>
+    <span class="n">CrystalPlane</span><span class="p">,</span>
+    <span class="n">CrystalPlaneOverlay</span><span class="p">,</span>
+    <span class="n">DirectionAnnotationStyle</span><span class="p">,</span>
     <span class="n">Lattice</span><span class="p">,</span>
+    <span class="n">MillerIndex</span><span class="p">,</span>
     <span class="n">Phase</span><span class="p">,</span>
+    <span class="n">PlaneAnnotationStyle</span><span class="p">,</span>
     <span class="n">ReferenceFrame</span><span class="p">,</span>
     <span class="n">SymmetrySpec</span><span class="p">,</span>
     <span class="n">UnitCell</span><span class="p">,</span>
@@ -359,12 +372,38 @@ g_{\mathrm{proj}}</a></li>
 <span class="n">scene</span> <span class="o">=</span> <span class="n">build_crystal_scene</span><span class="p">(</span>
     <span class="n">phase</span><span class="p">,</span>
     <span class="n">repeats</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
-    <span class="n">plane_hkls</span><span class="o">=</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),),</span>
+    <span class="n">show_unit_cells</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">cell_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalCellOverlay</span><span class="p">(</span>
+            <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;parallelepiped&quot;</span><span class="p">,</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#94a3b8&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">plane_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalPlaneOverlay</span><span class="p">(</span>
+            <span class="n">plane</span><span class="o">=</span><span class="n">CrystalPlane</span><span class="p">(</span><span class="n">MillerIndex</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#dc2626&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.22</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">PlaneAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">11.0</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
+    <span class="n">direction_overlays</span><span class="o">=</span><span class="p">(</span>
+        <span class="n">CrystalDirectionOverlay</span><span class="p">(</span>
+            <span class="n">direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+            <span class="n">anchor_fractional</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+            <span class="n">label_indices</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;#2563eb&quot;</span><span class="p">,</span>
+            <span class="n">annotation_style</span><span class="o">=</span><span class="n">DirectionAnnotationStyle</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mf">11.0</span><span class="p">),</span>
+        <span class="p">),</span>
+    <span class="p">),</span>
     <span class="n">theme</span><span class="o">=</span><span class="s2">&quot;presentation&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="n">figure</span> <span class="o">=</span> <span class="n">plot_crystal_structure_3d</span><span class="p">(</span>
     <span class="n">scene</span><span class="p">,</span>
-    <span class="n">view_direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
+    <span class="n">view_direction</span><span class="o">=</span><span class="n">CrystalDirection</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span> <span class="n">phase</span><span class="o">=</span><span class="n">phase</span><span class="p">),</span>
 <span class="p">)</span>
 <span class="n">figure</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="s2">&quot;nacl_structure.png&quot;</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">220</span><span class="p">)</span>
 </pre></div>
@@ -375,13 +414,32 @@ g_{\mathrm{proj}}</a></li>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">build_crystal_scene(...)</span></code> computes reusable scene geometry and can be inspected separately from rendering.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">plot_crystal_structure_3d(...)</span></code> renders either a <code class="docutils literal notranslate"><span class="pre">Phase</span></code> directly or a precomputed <code class="docutils literal notranslate"><span class="pre">CrystalScene</span></code>.</p></li>
-<li><p>Plane overlays are rendering aides for geometric interpretation. They do not change the underlying structure semantics.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">show_unit_cells=True</span></code> overlays the conventional direct-basis cell for every repeated lattice translation in the scene.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalCellOverlay(kind=&quot;hexagonal_prism&quot;,</span> <span class="pre">...)</span></code> adds a teaching-oriented six-sided prism centered on a hexagonal lattice point and extruded along <code class="docutils literal notranslate"><span class="pre">c</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalPlaneOverlay</span></code> lets one scene carry multiple bounded Miller planes with explicit colors, alpha values, member offsets, and scientific labels.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CrystalDirectionOverlay</span></code> lets one scene carry multiple labeled direction arrows bounded to the repeated cell volume from explicit anchor points.</p></li>
+<li><p>Plane and direction labels use one shared Miller-notation formatter so graphics across the library stay consistent.</p></li>
 </ul>
+</section>
+<section id="hexagonal-prism-overlay">
+<h2>Hexagonal Prism Overlay<a class="headerlink" href="#hexagonal-prism-overlay" title="Link to this heading">¶</a></h2>
+<p>For hexagonal-axis lattices with <code class="docutils literal notranslate"><span class="pre">a=b</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha=beta=90</span> <span class="pre">deg</span></code>, and <code class="docutils literal notranslate"><span class="pre">gamma=120</span> <span class="pre">deg</span></code>, PyTex can render a six-sided prism around a lattice-point anchor. The basal vertices are constructed from the direct-basis vectors</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">+a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">+b</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">+(a+b)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-a</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-b</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-(a+b)</span></code></p></li>
+</ul>
+<p>sorted around the basal-plane normal and then extruded by integer multiples of <code class="docutils literal notranslate"><span class="pre">c</span></code>.</p>
+<p>This overlay is intentionally pedagogical. It shows the visually familiar hexagonal envelope of the lattice, but it is not the canonical cell object used by the PyTex data model. The canonical crystallographic semantics remain the direct-basis unit cell stored in <code class="docutils literal notranslate"><span class="pre">Lattice</span></code> and <code class="docutils literal notranslate"><span class="pre">UnitCell</span></code>.</p>
 </section>
 <section id="current-limits">
 <h2>Current Limits<a class="headerlink" href="#current-limits" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>the current bond model is heuristic, not chemistry-complete</p></li>
+<li><p>the hexagonal prism overlay is a visualization aid, not a primitive-cell or volume-equivalent conventional-cell replacement</p></li>
 <li><p>slicing is currently a simple slab filter rather than a full interactive clipping engine</p></li>
 <li><p>the current 3D backend is Matplotlib-based and optimized for static publication-oriented views rather than interactive scene editing</p></li>
 </ul>
@@ -473,6 +531,7 @@ g_{\mathrm{proj}}</a></li>
 <li><a class="reference internal" href="#scientific-model">Scientific Model</a></li>
 <li><a class="reference internal" href="#example">Example</a></li>
 <li><a class="reference internal" href="#interpretation-notes">Interpretation Notes</a></li>
+<li><a class="reference internal" href="#hexagonal-prism-overlay">Hexagonal Prism Overlay</a></li>
 <li><a class="reference internal" href="#current-limits">Current Limits</a></li>
 <li><a class="reference internal" href="#related-material">Related Material</a></li>
 <li><a class="reference internal" href="#references">References</a><ul>

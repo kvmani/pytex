@@ -1,3 +1,116 @@
+:root {
+  --pytex-page-bg:
+    radial-gradient(circle at top left, rgba(210, 232, 240, 0.55), transparent 32%),
+    radial-gradient(circle at top right, rgba(235, 225, 198, 0.55), transparent 28%),
+    linear-gradient(180deg, #f8f5ee 0%, #f4f7f6 100%);
+  --pytex-panel-bg: rgba(255, 252, 246, 0.9);
+  --pytex-panel-border: rgba(122, 144, 163, 0.2);
+  --pytex-panel-shadow: 0 18px 42px rgba(30, 56, 82, 0.08);
+  --pytex-accent: #1f516f;
+  --pytex-accent-soft: #d9e7ea;
+  --pytex-warm-accent: #efe3c9;
+}
+
+body {
+  background: var(--pytex-page-bg);
+}
+
+.page,
+.main,
+.content,
+.content-container,
+.article-container {
+  background: transparent;
+}
+
+.sidebar-drawer,
+.toc-drawer {
+  background:
+    linear-gradient(180deg, rgba(248, 245, 238, 0.96) 0%, rgba(241, 246, 245, 0.96) 100%);
+}
+
+.sidebar-brand {
+  border-bottom: 1px solid rgba(122, 144, 163, 0.18);
+}
+
+.content-icon-container,
+.content > .article-container,
+.content .sd-card,
+.content .admonition,
+.content .nbinput,
+.content .nboutput,
+.content div.highlight,
+.content table.docutils,
+.content .math-wrapper,
+.content img:not(.sidebar-logo):not(.only-dark):not(.only-light) {
+  background: var(--pytex-panel-bg);
+  border: 1px solid var(--pytex-panel-border);
+  box-shadow: var(--pytex-panel-shadow);
+  border-radius: 18px;
+}
+
+.content > .article-container {
+  padding: 1.5rem 1.75rem;
+}
+
+.content img:not(.sidebar-logo):not(.only-dark):not(.only-light) {
+  padding: 0.5rem;
+}
+
+.content .admonition,
+.content .sd-card,
+.content div.highlight,
+.content table.docutils,
+.content .nbinput,
+.content .nboutput {
+  overflow: hidden;
+}
+
+.content h1,
+.content h2,
+.content h3,
+.content h4,
+.toc-title,
+.sidebar-brand-text {
+  color: #17324a;
+}
+
+.content h1 {
+  background: linear-gradient(90deg, rgba(217, 231, 234, 0.8), rgba(239, 227, 201, 0.34));
+  border-radius: 14px;
+  display: inline-block;
+  padding: 0.18rem 0.85rem 0.3rem;
+}
+
+.content h2 {
+  border-bottom: 1px solid rgba(122, 144, 163, 0.18);
+  padding-bottom: 0.2rem;
+}
+
+.content a {
+  color: var(--pytex-accent);
+}
+
+.content a:hover {
+  color: #2a6789;
+}
+
+.content table.docutils thead th {
+  background: linear-gradient(180deg, #eff5f4 0%, #e7efed 100%);
+}
+
+.content .admonition-title,
+.content .sd-card-header {
+  background: linear-gradient(90deg, var(--pytex-accent-soft), var(--pytex-warm-accent));
+  border-bottom: 1px solid rgba(122, 144, 163, 0.16);
+}
+
+.content .highlight pre,
+.content .nbinput .highlight pre,
+.content .nboutput .highlight pre {
+  background: transparent;
+}
+
 .mermaid {
   background: linear-gradient(180deg, #fbfdff 0%, #f5f8fc 100%);
   border: 1px solid #d8e2f0;
