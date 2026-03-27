@@ -8,6 +8,7 @@ This standard works together with `documentation_architecture.md`, where Sphinx 
 
 - `docs/tex/` contains the canonical scientific notes.
 - `docs/figures/` contains the canonical SVG figure sources.
+- Runtime plotting APIs may return ordinary Matplotlib figures for user code; the SVG rule applies to canonical repository-tracked documentation figures.
 
 ## Required Scientific Note Set Per Major Stable Feature
 
@@ -24,6 +25,8 @@ Where geometry or conventions matter, figures must:
 - label vectors, planes, poles, angles, and units
 - be suitable for papers, lectures, and documentation reuse
 - cite the scientific convention or source they are illustrating when the figure fixes a standard
+
+This SVG rule is for repository assets and documentation figures. It does not require every user-generated runtime plot to be exported as SVG.
 
 ## Required Figure Topics
 

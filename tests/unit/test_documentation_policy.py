@@ -49,3 +49,15 @@ def test_foundational_docs_encode_notebook_policy() -> None:
     for path in foundational_docs:
         content = _read(path).lower()
         assert "notebook" in content, path
+
+
+def test_foundational_docs_encode_dual_plotting_output_policy() -> None:
+    policy_docs = [
+        "specifications.md",
+        "docs/standards/documentation_architecture.md",
+        "docs/standards/latex_and_figures.md",
+    ]
+    for path in policy_docs:
+        content = _read(path).lower()
+        assert "matplotlib" in content, path
+        assert "svg" in content, path

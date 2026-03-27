@@ -1,6 +1,6 @@
 # Orientation And Texture
 
-The orientation and texture layer fixes semantics first and then grows algorithms on top of those semantics. This is why PyTex starts with convention-aware rotations, symmetry-aware misorientation, and explicit pole-figure or inverse-pole-figure objects before attempting broader plotting or inversion breadth.
+The orientation and texture layer fixes semantics first and then grows algorithms and plotting on top of those semantics. This is why PyTex starts with convention-aware rotations, symmetry-aware misorientation, and explicit pole-figure or inverse-pole-figure objects before attempting broader visual or inversion breadth.
 
 ## What The Layer Covers
 
@@ -13,6 +13,8 @@ At this stage, PyTex provides a coherent orientation foundation for:
 - explicit projection of orientations to symmetry-reduced representatives
 - explicit symmetry-reduced fundamental-region keys for stable orientation comparison
 - kernel-based ODF evaluation and PF reconstruction
+- classical contour pole-figure rendering on projected density grids
+- classical Bunge-section ODF rendering for contour-style inspection
 - discrete pole-figure inversion over an explicit orientation dictionary
 - explicit IPF color-key generation from symmetry-reduced crystal directions
 
@@ -98,13 +100,15 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 - explicit orientation projection to a symmetry-reduced representative relative to a reference orientation
 - explicit symmetry-reduced fundamental-region keys for parity and workflow comparison
 - kernel-based ODF evaluation and PF reconstruction
+- contour pole-figure rendering from smoothed projected densities
+- contour ODF visualization in Euler space and as Bunge sections
 - discrete dictionary-based pole-figure inversion with an explicit `ODFInversionReport`
 
 ## Still Ahead
 
 - closed-form class-by-class boundary catalogs for the exact orientation-space regions
 - harmonic ODF expansion and broader experimentally calibrated PF-to-ODF inversion
-- full MTEX-level parity for IPF color coding and richer rendered plotting surfaces
+- full MTEX-level parity for IPF color coding and richer publication-grade rendered plotting surfaces
 
 ## Related Material
 

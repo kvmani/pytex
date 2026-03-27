@@ -100,7 +100,20 @@ from pytex.ebsd import (
     GrainGraphEdge,
     GrainSegmentation,
 )
-from pytex.plotting import IPFColorKey
+from pytex.plotting import (
+    IPFColorKey,
+    plot_euler_set,
+    plot_inverse_pole_figure,
+    plot_odf,
+    plot_orientations,
+    plot_pole_figure,
+    plot_quaternion_set,
+    plot_rotations,
+    plot_symmetry_elements,
+    plot_symmetry_orbit,
+    plot_vector_set,
+    save_documentation_figure_svg,
+)
 from pytex.texture import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
 
 __all__ = [
@@ -171,6 +184,7 @@ __all__ = [
     "ReflectionFamily",
     "Rotation",
     "RotationSet",
+    "save_documentation_figure_svg",
     "ScatteringSetup",
     "SpaceGroupSpec",
     "SpotAssignment",
@@ -199,6 +213,16 @@ __all__ = [
     "validate_validation_manifest",
     "validate_workflow_result_manifest",
     "VectorSet",
+    "plot_euler_set",
+    "plot_inverse_pole_figure",
+    "plot_odf",
+    "plot_orientations",
+    "plot_pole_figure",
+    "plot_quaternion_set",
+    "plot_rotations",
+    "plot_symmetry_elements",
+    "plot_symmetry_orbit",
+    "plot_vector_set",
     "validation_manifest_schema_path",
     "WORKFLOW_RESULT_MANIFEST_SCHEMA_ID",
     "WORKFLOW_RESULT_MANIFEST_SCHEMA_VERSION",

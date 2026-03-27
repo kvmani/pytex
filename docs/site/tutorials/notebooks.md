@@ -23,6 +23,7 @@ notebooks/06_texture_odf_and_pole_figure_inversion
 notebooks/07_ebsd_regular_grid_workflows
 notebooks/08_diffraction_geometry_and_kinematic_spots
 notebooks/09_phase_transformation_foundations
+notebooks/10_plotting_semantic_primitives
 ```
 
 ## How To Use These

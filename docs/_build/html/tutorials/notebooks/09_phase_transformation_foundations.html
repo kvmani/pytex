@@ -3,7 +3,7 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="EBSD: Kernel-Average Misorientation" href="../../workflows/ebsd_kam.html"><link rel="prev" title="Diffraction Geometry And Kinematic Spots" href="08_diffraction_geometry_and_kinematic_spots.html">
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="Plotting Semantic Primitives" href="10_plotting_semantic_primitives.html"><link rel="prev" title="Diffraction Geometry And Kinematic Spots" href="08_diffraction_geometry_and_kinematic_spots.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Phase Transformation Foundations - PyTex</title>
@@ -223,6 +223,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
 <li class="toctree-l2"><a class="reference internal" href="08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Phase Transformation Foundations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
 </ul>
 </li>
 </ul>
@@ -233,6 +234,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/texture_odf_inversion.html">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../workflows/plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../workflows/ipf_colors.html">Texture: IPF Color Keys</a></li>
@@ -328,6 +330,12 @@ full parent-reconstruction platform.</p>
     <span class="n">VectorSet</span><span class="p">,</span>
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
+    <span class="n">plot_odf</span><span class="p">,</span>
+    <span class="n">plot_orientations</span><span class="p">,</span>
+    <span class="n">plot_pole_figure</span><span class="p">,</span>
+    <span class="n">plot_symmetry_elements</span><span class="p">,</span>
+    <span class="n">plot_symmetry_orbit</span><span class="p">,</span>
+    <span class="n">plot_vector_set</span><span class="p">,</span>
 <span class="p">)</span>
 
 
@@ -440,12 +448,12 @@ full parent-reconstruction platform.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../../workflows/ebsd_kam.html">
+          <a class="next-page" href="10_plotting_semantic_primitives.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">EBSD: Kernel-Average Misorientation</div>
+                <div class="title">Plotting Semantic Primitives</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

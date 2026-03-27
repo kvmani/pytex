@@ -8,6 +8,7 @@ PyTex uses a hybrid documentation architecture so the project can be both scient
 - LaTeX is the canonical source for major scientific notes.
 - SVG is the canonical source for scientific figures and geometry schematics.
 - Executable notebook tutorials are part of the Sphinx-facing documentation system when stepwise exposition materially improves understanding.
+- Runtime plotting APIs may return ordinary Matplotlib figures; the canonical SVG rule applies to repository-tracked documentation assets rather than all user plots.
 
 The public documentation entry point is therefore the HTML docs layer, not the PDF layer alone.
 
@@ -55,6 +56,7 @@ The intended docs surfaces are:
 - downloadable PDF scientific notes built from LaTeX
 - reusable SVG figures shared across both surfaces
 - mathematics-and-graphics-backed convention pages for foundational semantics
+- runtime plotting APIs that expose the same semantic objects directly to users
 
 ## Planned Site Shape
 
@@ -71,6 +73,7 @@ The Sphinx layer should eventually expose top-level sections for:
 
 - Sphinx and MyST are the default tools for the HTML layer.
 - Notebook files should live close to the Sphinx layer and should not become a disconnected parallel documentation tree.
+- Plotting code should be shared across runtime APIs, notebooks, and documentation figure generation rather than reimplemented separately in each surface.
 - Math-heavy web pages should use MathJax-backed equations.
 - Citations in the HTML layer should use a BibTeX-backed workflow.
 - The LaTeX layer should remain suitable for publication-grade mathematical exposition.

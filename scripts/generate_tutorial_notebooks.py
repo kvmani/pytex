@@ -95,6 +95,12 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         VectorSet,
         WorkflowResultManifest,
         ZoneAxis,
+        plot_odf,
+        plot_orientations,
+        plot_pole_figure,
+        plot_symmetry_elements,
+        plot_symmetry_orbit,
+        plot_vector_set,
     )
 
 
@@ -862,6 +868,83 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     variant_indices=np.array([1]),
                 )
                 print(record.variant_count)
+                """
+            ),
+        ],
+    }
+
+    notebooks["10_plotting_semantic_primitives.ipynb"] = {
+        "title": "Plotting Semantic Primitives",
+        "cells": [
+            markdown_cell(
+                """
+                # Plotting Semantic Primitives
+
+                PyTex plotting now treats semantic objects as the plotting inputs rather than
+                expecting users to manually convert everything into anonymous arrays.
+
+                The runtime plotting surface returns normal Matplotlib figures. Canonical
+                documentation assets may still be exported to SVG when they belong in the repo.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal, specimen, map_frame, detector, lab, phase = make_context()
+
+                vectors = VectorSet(
+                    values=np.array(
+                        [
+                            [1.0, 0.0, 0.0],
+                            [0.0, 1.0, 0.0],
+                            [0.0, 0.0, 1.0],
+                        ]
+                    ),
+                    reference_frame=crystal,
+                )
+                figure = plot_vector_set(vectors, normalize=True)
+                figure
+                """
+            ),
+            code_cell(
+                """
+                symmetry = phase.symmetry
+                orbit_figure = plot_symmetry_orbit(symmetry, np.array([1.0, 0.0, 0.0]))
+                elements_figure = plot_symmetry_elements(symmetry)
+                orbit_figure
+                """
+            ),
+            code_cell(
+                """
+                orientations = OrientationSet.from_euler_angles(
+                    np.array(
+                        [
+                            [0.0, 0.0, 0.0],
+                            [45.0, 35.0, 10.0],
+                            [90.0, 0.0, 0.0],
+                        ]
+                    ),
+                    crystal_frame=crystal,
+                    specimen_frame=specimen,
+                    symmetry=symmetry,
+                    phase=phase,
+                )
+                orientation_figure = plot_orientations(orientations, representation="euler")
+                orientation_figure
+                """
+            ),
+            code_cell(
+                """
+                odf = ODF.from_orientations(orientations, weights=[4.0, 2.0, 1.0])
+                pole = CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase)
+                pole_figure = odf.reconstruct_pole_figure(
+                    pole,
+                    include_symmetry_family=False,
+                    antipodal=False,
+                )
+                pf_figure = plot_pole_figure(pole_figure, kind="scatter")
+                odf_figure = plot_odf(odf)
+                pf_figure
                 """
             ),
         ],

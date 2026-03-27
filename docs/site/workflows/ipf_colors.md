@@ -48,11 +48,11 @@ This keeps the semantics explicit and deterministic, even though it does not yet
 ## Current Limits
 
 - no full MTEX-parity IPF color-key reproduction yet
-- no rendered plotting backend yet beyond color generation
-- no pole-figure or map rendering API yet
+- IPF rendering now exists, but richer map-style plotting and publication presets are still ahead
+- color-key semantics are ahead of full MTEX visual parity
 
 ## Related Material
 
 - {doc}`../concepts/orientation_texture`
+- {doc}`plotting_primitives`
 - `docs/testing/mtex_parity_matrix.md`
-

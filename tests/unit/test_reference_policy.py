@@ -74,6 +74,28 @@ def test_texture_inversion_surface_is_part_of_stable_documented_surface() -> Non
     assert "ODFInversionReport" in canonical_data_model
 
 
+def test_plotting_surface_is_part_of_stable_documented_surface() -> None:
+    specifications = _read("specifications.md")
+    api_guide = _read("docs/site/api/index.md")
+    plotting_workflow = _read("docs/site/workflows/plotting_primitives.md")
+    for symbol in (
+        "plot_vector_set",
+        "plot_symmetry_orbit",
+        "plot_symmetry_elements",
+        "plot_euler_set",
+        "plot_quaternion_set",
+        "plot_rotations",
+        "plot_orientations",
+        "plot_pole_figure",
+        "plot_inverse_pole_figure",
+        "plot_odf",
+        "save_documentation_figure_svg",
+    ):
+        assert symbol in specifications
+        assert symbol in api_guide
+        assert symbol in plotting_workflow
+
+
 def test_transformation_primitives_are_part_of_stable_documented_surface() -> None:
     specifications = _read("specifications.md")
     api_guide = _read("docs/site/api/index.md")
