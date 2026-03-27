@@ -37,6 +37,7 @@ workflows/ebsd_grains
 workflows/ebsd_import_normalization
 workflows/phases_and_cif
 workflows/texture_odf_inversion
+workflows/plotting_primitives
 workflows/diffraction_geometry
 workflows/diffraction_spots
 workflows/ipf_colors
@@ -73,6 +74,7 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 
 - Stable core primitives for frames, symmetry, lattice semantics, provenance, batch semantics, rotations, orientations, and transformation records.
 - Foundational texture-domain support for pole figures, inverse pole figures, IPF color keys, and discrete kernel ODF evaluation.
+- Runtime semantic plotting support for vectors, symmetry elements and orbits, rotations, orientations, PF/IPF objects, and discrete ODF views.
 - Real EBSD workflow support for regular-grid neighbor relationships, KAM, grain segmentation, GROD, boundary extraction, cleanup, and import-manifest normalization contracts.
 - Core-model phase creation from crystallographic structures and CIF files, with explicit point-group and space-group semantics.
 - Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.

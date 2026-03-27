@@ -74,6 +74,21 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `TransformationVariant`
 - `PhaseTransformationRecord`
 
+### Plotting
+
+- `IPFColorKey`
+- `plot_vector_set`
+- `plot_symmetry_orbit`
+- `plot_symmetry_elements`
+- `plot_euler_set`
+- `plot_quaternion_set`
+- `plot_rotations`
+- `plot_orientations`
+- `plot_pole_figure`
+- `plot_inverse_pole_figure`
+- `plot_odf`
+- `save_documentation_figure_svg`
+
 ### Stable Manifest Surface
 
 - `EBSDImportManifest`
@@ -119,6 +134,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/site/` is the live Sphinx root for the primary browsable and searchable documentation surface.
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
+- Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
 - Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.
 - Core documentation must explain both scalar and batched semantics when a primitive supports vectorized operations.

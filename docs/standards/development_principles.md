@@ -42,6 +42,7 @@ A stable feature is not complete until all of the following exist:
 - a benchmark or parity note
 - an example workflow
 - an executable notebook tutorial when the feature benefits from staged interactive exposition
+- a reusable plotting path when the feature naturally produces scientific figures
 - citations and scientific documentation
 - explicit mathematical definitions for major conventions, mappings, reductions, and algorithms
 - SVG figures when frames, vectors, geometry, or reduction logic matter
@@ -54,6 +55,7 @@ The repository default is no longer “text first, figures later” for foundati
 - Frame mappings, symmetry actions, reduction rules, and projection conventions must be illustrated with annotated graphics suitable for both teaching and review.
 - If a change alters a major algorithm, the corresponding docs update must explain the mathematical object being transformed, the reduction or selection rule, and the current implementation boundary.
 - Notebook tutorials should agree with the formal docs and must not introduce private conventions, hidden helper assumptions, or unexplained magic numbers.
+- Runtime plotting should reuse shared semantic builders rather than inventing ad hoc Matplotlib logic per workflow.
 - A code change that improves scientific capability but leaves the foundational documentation less clear than the implementation is incomplete.
 
 ## Review Questions
