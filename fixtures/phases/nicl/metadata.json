@@ -1,0 +1,36 @@
+{
+  "fixture_id": "nicl",
+  "display_name": "Nickel chloride",
+  "phase_name": "nickel-chloride",
+  "chemical_formula": "NiCl2",
+  "source_family": "Crystallography Open Database",
+  "source_record_id": "9009132",
+  "source_url": "https://www.crystallography.net/cod/9009132.html",
+  "authoring_mode": "Pinned PyTex CIF synthesized from COD structure parameters and the standard layered R-3m hexagonal-setting prototype used for NiCl2.",
+  "redistribution": "COD data are dedicated to the public domain under CC0; acknowledge the original structural-data authors.",
+  "citation": "Wyckoff, R. W. G. Crystal Structures, Vol. 1. Interscience Publishers, 1963.",
+  "crystal_system": "trigonal",
+  "space_group_symbol": "R-3m",
+  "space_group_number": 166,
+  "point_group": "-3m",
+  "lattice_parameters_angstrom": {
+    "a": 3.543,
+    "b": 3.543,
+    "c": 17.335
+  },
+  "lattice_angles_deg": {
+    "alpha": 90.0,
+    "beta": 90.0,
+    "gamma": 120.0
+  },
+  "expected_conventional_cell_site_count": 9,
+  "expected_primitive_site_count": 3,
+  "intended_uses": [
+    "structure_import_validation",
+    "diffraction_demo",
+    "teaching_workflow"
+  ],
+  "notes": [
+    "The fixture id is kept as 'nicl' to match the requested starter corpus, while the crystallographic phase stored here is NiCl2."
+  ]
+}

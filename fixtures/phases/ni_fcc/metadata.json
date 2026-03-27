@@ -1,0 +1,33 @@
+{
+  "fixture_id": "ni_fcc",
+  "display_name": "Nickel (FCC)",
+  "phase_name": "nickel-fcc",
+  "chemical_formula": "Ni",
+  "source_family": "Crystallography Open Database",
+  "source_record_id": "9008476",
+  "source_url": "https://www.crystallography.net/cod/9008476.html",
+  "authoring_mode": "Pinned PyTex CIF synthesized from COD structure parameters and canonical cubic close-packed prototype symmetry.",
+  "redistribution": "COD data are dedicated to the public domain under CC0; acknowledge the original structural-data authors.",
+  "citation": "Wyckoff, R. W. G. Crystal Structures, Vol. 1. Interscience Publishers, 1963.",
+  "crystal_system": "cubic",
+  "space_group_symbol": "Fm-3m",
+  "space_group_number": 225,
+  "point_group": "m-3m",
+  "lattice_parameters_angstrom": {
+    "a": 3.52387,
+    "b": 3.52387,
+    "c": 3.52387
+  },
+  "lattice_angles_deg": {
+    "alpha": 90.0,
+    "beta": 90.0,
+    "gamma": 90.0
+  },
+  "expected_conventional_cell_site_count": 4,
+  "expected_primitive_site_count": 1,
+  "intended_uses": [
+    "structure_import_validation",
+    "diffraction_demo",
+    "teaching_workflow"
+  ]
+}

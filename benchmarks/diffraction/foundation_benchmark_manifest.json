@@ -12,9 +12,21 @@
     "reflection_family_grouping",
     "orientation_candidate_ranking"
   ],
-  "fixture_ids": [],
+  "fixture_ids": [
+    "fe_bcc",
+    "zr_hcp",
+    "ni_fcc",
+    "nicl",
+    "diamond"
+  ],
   "artifact_paths": [
-    "benchmarks/diffraction/foundation_benchmark_manifest.json"
+    "benchmarks/diffraction/foundation_benchmark_manifest.json",
+    "fixtures/phases/catalog.json",
+    "fixtures/phases/fe_bcc/phase.cif",
+    "fixtures/phases/zr_hcp/phase.cif",
+    "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/nicl/phase.cif",
+    "fixtures/phases/diamond/phase.cif"
   ],
   "tolerances": {
     "projection_atol": 1e-08,
@@ -23,6 +35,7 @@
   "status": "foundational",
   "notes": [
     "Benchmark harness is still lightweight, but the schema and benchmark identity are now stable.",
-    "This manifest anchors the current diffraction foundation benchmark surface."
+    "This manifest anchors the current diffraction foundation benchmark surface.",
+    "The bundled phase corpus under fixtures/phases provides small pinned diffraction inputs for easy local validation."
   ]
 }

@@ -1,0 +1,32 @@
+{
+  "catalog_id": "pytex.phase_fixture_catalog",
+  "schema_version": "1.0.0",
+  "source_policy": "small pinned fixtures only; canonical open-source crystallographic records preferred; every bundled file must include provenance, citation, and redistribution notes",
+  "fixtures": [
+    {
+      "fixture_id": "fe_bcc",
+      "artifact_path": "fixtures/phases/fe_bcc/phase.cif",
+      "metadata_path": "fixtures/phases/fe_bcc/metadata.json"
+    },
+    {
+      "fixture_id": "zr_hcp",
+      "artifact_path": "fixtures/phases/zr_hcp/phase.cif",
+      "metadata_path": "fixtures/phases/zr_hcp/metadata.json"
+    },
+    {
+      "fixture_id": "ni_fcc",
+      "artifact_path": "fixtures/phases/ni_fcc/phase.cif",
+      "metadata_path": "fixtures/phases/ni_fcc/metadata.json"
+    },
+    {
+      "fixture_id": "nicl",
+      "artifact_path": "fixtures/phases/nicl/phase.cif",
+      "metadata_path": "fixtures/phases/nicl/metadata.json"
+    },
+    {
+      "fixture_id": "diamond",
+      "artifact_path": "fixtures/phases/diamond/phase.cif",
+      "metadata_path": "fixtures/phases/diamond/metadata.json"
+    }
+  ]
+}

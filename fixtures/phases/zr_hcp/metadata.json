@@ -1,0 +1,33 @@
+{
+  "fixture_id": "zr_hcp",
+  "display_name": "Zirconium (HCP)",
+  "phase_name": "zirconium-hcp",
+  "chemical_formula": "Zr",
+  "source_family": "Crystallography Open Database",
+  "source_record_id": "9008523",
+  "source_url": "https://www.crystallography.net/cod/9008523.html",
+  "authoring_mode": "Pinned PyTex CIF synthesized from COD structure parameters and canonical hexagonal close-packed prototype symmetry.",
+  "redistribution": "COD data are dedicated to the public domain under CC0; acknowledge the original structural-data authors.",
+  "citation": "Wyckoff, R. W. G. Crystal Structures, Vol. 1. Interscience Publishers, 1963.",
+  "crystal_system": "hexagonal",
+  "space_group_symbol": "P6_3/mmc",
+  "space_group_number": 194,
+  "point_group": "6/mmm",
+  "lattice_parameters_angstrom": {
+    "a": 3.232,
+    "b": 3.232,
+    "c": 5.147
+  },
+  "lattice_angles_deg": {
+    "alpha": 90.0,
+    "beta": 90.0,
+    "gamma": 120.0
+  },
+  "expected_conventional_cell_site_count": 2,
+  "expected_primitive_site_count": 2,
+  "intended_uses": [
+    "structure_import_validation",
+    "hexagonal_convention_checks",
+    "teaching_workflow"
+  ]
+}
