@@ -96,6 +96,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         WorkflowResultManifest,
         ZoneAxis,
         plot_odf,
+        plot_inverse_pole_figure,
         plot_orientations,
         plot_pole_figure,
         plot_symmetry_elements,
@@ -548,6 +549,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 - inverse-pole-figure synthesis
                 - kernel-weighted ODF evaluation
                 - discrete pole-figure inversion through an explicit orientation dictionary
+                - contour pole figures and Bunge-section ODF plotting through the runtime API
 
                 ## Discrete Forward Model
 
@@ -634,6 +636,36 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     antipodal=True,
                 )
                 print(ipf.crystal_directions)
+                """
+            ),
+            code_cell(
+                """
+                contour_pf = plot_pole_figure(
+                    pole_figures[0],
+                    kind="contour",
+                    bins=81,
+                    sigma_bins=1.5,
+                    levels=12,
+                    title="Pole Figure Contours",
+                )
+                odf_sections = plot_odf(
+                    inversion.odf,
+                    kind="sections",
+                    section_phi2_deg=(0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
+                    section_phi1_steps=121,
+                    section_big_phi_steps=61,
+                    levels=10,
+                    title="Estimated ODF Bunge Sections",
+                )
+                contour_pf
+                """
+            ),
+            code_cell("odf_sections"),
+            markdown_cell(
+                """
+                The contour pole figure is built from a smoothed projected density grid over the
+                reconstructed pole data. The ODF section plot is a kernel-smoothed Bunge-section
+                inspection view over the discrete support rather than a harmonic ODF expansion.
                 """
             ),
         ],
@@ -942,9 +974,44 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     include_symmetry_family=False,
                     antipodal=False,
                 )
-                pf_figure = plot_pole_figure(pole_figure, kind="scatter")
-                odf_figure = plot_odf(odf)
+                ipf = InversePoleFigure.from_orientations(
+                    orientations,
+                    [0.0, 0.0, 1.0],
+                    reduce_by_symmetry=True,
+                    antipodal=True,
+                )
+                pf_figure = plot_pole_figure(
+                    pole_figure,
+                    kind="contour",
+                    bins=81,
+                    sigma_bins=1.5,
+                    levels=12,
+                )
+                ipf_figure = plot_inverse_pole_figure(ipf)
+                odf_figure = plot_odf(
+                    odf,
+                    kind="sections",
+                    section_phi2_deg=(0.0, 30.0, 60.0),
+                    section_phi1_steps=91,
+                    section_big_phi_steps=46,
+                    levels=10,
+                )
                 pf_figure
+                """
+            ),
+            code_cell("ipf_figure"),
+            code_cell("odf_figure"),
+            markdown_cell(
+                """
+                The plotting notebook now shows the three main texture inspection surfaces
+                implemented today:
+
+                - contour pole figures
+                - inverse pole figures
+                - Bunge-section ODF plots
+
+                All of them are produced by the same runtime plotting API that ordinary user code
+                calls, rather than by notebook-specific plotting helpers.
                 """
             ),
         ],

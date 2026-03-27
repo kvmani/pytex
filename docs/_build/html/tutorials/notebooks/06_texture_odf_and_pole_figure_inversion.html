@@ -290,6 +290,7 @@ g_{\mathrm{proj}}</a></li>
 <li><p>inverse-pole-figure synthesis</p></li>
 <li><p>kernel-weighted ODF evaluation</p></li>
 <li><p>discrete pole-figure inversion through an explicit orientation dictionary</p></li>
+<li><p>contour pole figures and Bunge-section ODF plotting through the runtime API</p></li>
 </ul>
 <section id="discrete-forward-model">
 <h2>Discrete Forward Model<a class="headerlink" href="#discrete-forward-model" title="Link to this heading">¶</a></h2>
@@ -339,6 +340,7 @@ weights.</p>
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
     <span class="n">plot_odf</span><span class="p">,</span>
+    <span class="n">plot_inverse_pole_figure</span><span class="p">,</span>
     <span class="n">plot_orientations</span><span class="p">,</span>
     <span class="n">plot_pole_figure</span><span class="p">,</span>
     <span class="n">plot_symmetry_elements</span><span class="p">,</span>
@@ -465,6 +467,40 @@ weights.</p>
 </div>
 </div>
 </div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">contour_pf</span> <span class="o">=</span> <span class="n">plot_pole_figure</span><span class="p">(</span>
+    <span class="n">pole_figures</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;contour&quot;</span><span class="p">,</span>
+    <span class="n">bins</span><span class="o">=</span><span class="mi">81</span><span class="p">,</span>
+    <span class="n">sigma_bins</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Pole Figure Contours&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">odf_sections</span> <span class="o">=</span> <span class="n">plot_odf</span><span class="p">(</span>
+    <span class="n">inversion</span><span class="o">.</span><span class="n">odf</span><span class="p">,</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;sections&quot;</span><span class="p">,</span>
+    <span class="n">section_phi2_deg</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">45.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">75.0</span><span class="p">),</span>
+    <span class="n">section_phi1_steps</span><span class="o">=</span><span class="mi">121</span><span class="p">,</span>
+    <span class="n">section_big_phi_steps</span><span class="o">=</span><span class="mi">61</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Estimated ODF Bunge Sections&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">contour_pf</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">odf_sections</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The contour pole figure is built from a smoothed projected density grid over the
+reconstructed pole data. The ODF section plot is a kernel-smoothed Bunge-section
+inspection view over the discrete support rather than a harmonic ODF expansion.</p>
 </section>
 </section>
 

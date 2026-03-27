@@ -3,13 +3,13 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Diffraction: Geometry And Bragg Rings" href="diffraction_geometry.html"><link rel="prev" title="Core Model: Phases, Unit Cells, And CIF Import" href="phases_and_cif.html">
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Plotting Semantic Primitives" href="plotting_primitives.html"><link rel="prev" title="Core Model: Phases, Unit Cells, And CIF Import" href="phases_and_cif.html">
 
     <!-- Generated with Sphinx 9.0.4 and Furo 2025.12.19 -->
         <title>Texture: ODF Evaluation And Pole-Figure Inversion - PyTex</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
-    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css?v=8cd3d715" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/architecture.css?v=046228d5" />
@@ -223,6 +223,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/07_ebsd_regular_grid_workflows.html">EBSD Regular-Grid Workflows</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/08_diffraction_geometry_and_kinematic_spots.html">Diffraction Geometry And Kinematic Spots</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/09_phase_transformation_foundations.html">Phase Transformation Foundations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/notebooks/10_plotting_semantic_primitives.html">Plotting Semantic Primitives</a></li>
 </ul>
 </li>
 </ul>
@@ -233,6 +234,7 @@ g_{\mathrm{proj}}</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ebsd_import_normalization.html">EBSD: Import Normalization And Manifests</a></li>
 <li class="toctree-l1"><a class="reference internal" href="phases_and_cif.html">Core Model: Phases, Unit Cells, And CIF Import</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Texture: ODF Evaluation And Pole-Figure Inversion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="plotting_primitives.html">Plotting Semantic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffraction_geometry.html">Diffraction: Geometry And Bragg Rings</a></li>
 <li class="toctree-l1"><a class="reference internal" href="diffraction_spots.html">Diffraction: Reciprocal Space And Kinematic Spots</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ipf_colors.html">Texture: IPF Color Keys</a></li>
@@ -293,6 +295,8 @@ g_{\mathrm{proj}}</a></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ODF.reconstruct_pole_figures(...)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ODF.invert_pole_figures(...)</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">ODFInversionReport</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_pole_figure(...,</span> <span class="pre">kind=&quot;scatter&quot;</span> <span class="pre">|</span> <span class="pre">&quot;histogram&quot;</span> <span class="pre">|</span> <span class="pre">&quot;contour&quot;)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plot_odf(...,</span> <span class="pre">kind=&quot;scatter&quot;</span> <span class="pre">|</span> <span class="pre">&quot;contour&quot;</span> <span class="pre">|</span> <span class="pre">&quot;sections&quot;)</span></code></p></li>
 </ul>
 <section id="discrete-inversion-model">
 <h2>Discrete Inversion Model<a class="headerlink" href="#discrete-inversion-model" title="Link to this heading">¶</a></h2>
@@ -303,6 +307,22 @@ A_{mj} = \frac{1}{|H|}\sum_{h \in H} K\bigl(\angle(s_m, g_j h)\bigr),
 $$</p>
 <p>then solves a regularized nonnegative least-squares problem for the dictionary weights.</p>
 <p>This is not yet a harmonic inversion framework or a claim of full experimental PF inversion breadth. It is a scientifically explicit discrete inversion surface that fits the current PyTex data model.</p>
+</section>
+<section id="estimation-and-inspection-surface">
+<h2>Estimation And Inspection Surface<a class="headerlink" href="#estimation-and-inspection-surface" title="Link to this heading">¶</a></h2>
+<p>PyTex currently exposes two closely related texture-estimation surfaces:</p>
+<ul class="simple">
+<li><p>a discrete ODF represented by an explicit orientation support together with non-negative weights</p></li>
+<li><p>a dictionary-based inversion path that estimates those weights from one or more pole figures</p></li>
+</ul>
+<p>Once that discrete model exists, the same support can be used to:</p>
+<ul class="simple">
+<li><p>evaluate the ODF at query orientations</p></li>
+<li><p>reconstruct pole figures from the estimated support</p></li>
+<li><p>inspect the support in Euler space through scatter or contour views</p></li>
+<li><p>inspect the estimated texture through kernel-smoothed Bunge-section plots</p></li>
+</ul>
+<p>That means plotting is part of the texture interpretation workflow, not an unrelated presentation layer.</p>
 </section>
 <section id="example">
 <h2>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h2>
@@ -371,12 +391,37 @@ $$</p>
 </pre></div>
 </div>
 </section>
+<section id="plotting-the-estimated-texture">
+<h2>Plotting The Estimated Texture<a class="headerlink" href="#plotting-the-estimated-texture" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pytex</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_odf</span><span class="p">,</span> <span class="n">plot_pole_figure</span>
+
+<span class="n">pole_figure_plot</span> <span class="o">=</span> <span class="n">plot_pole_figure</span><span class="p">(</span>
+    <span class="n">pole_figures</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;contour&quot;</span><span class="p">,</span>
+    <span class="n">bins</span><span class="o">=</span><span class="mi">81</span><span class="p">,</span>
+    <span class="n">sigma_bins</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">odf_sections</span> <span class="o">=</span> <span class="n">plot_odf</span><span class="p">(</span>
+    <span class="n">report</span><span class="o">.</span><span class="n">odf</span><span class="p">,</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;sections&quot;</span><span class="p">,</span>
+    <span class="n">section_phi2_deg</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">45.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">,</span> <span class="mf">75.0</span><span class="p">),</span>
+    <span class="n">section_phi1_steps</span><span class="o">=</span><span class="mi">121</span><span class="p">,</span>
+    <span class="n">section_big_phi_steps</span><span class="o">=</span><span class="mi">61</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="interpretation-notes">
 <h2>Interpretation Notes<a class="headerlink" href="#interpretation-notes" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p>The dictionary is explicit. PyTex does not hide the orientation support over which the inversion is performed.</p></li>
 <li><p>The inversion report is explicit. Residual norm, iteration count, and convergence state are part of the returned surface.</p></li>
 <li><p>The current method is appropriate for the present discrete kernel foundation. It should not yet be read as a replacement for broader harmonic or experimentally calibrated inversion frameworks.</p></li>
+<li><p>Pole-figure contours are built from a smoothed projected density grid over the discrete pole data.</p></li>
+<li><p>ODF section plots are kernel-smoothed Bunge-section inspection views over the current discrete support.</p></li>
 </ul>
 </section>
 <section id="current-limits">
@@ -384,6 +429,7 @@ $$</p>
 <ul class="simple">
 <li><p>the inversion path is dictionary-based, not harmonic</p></li>
 <li><p>sample-symmetry handling is currently conservative and explicit rather than aggressively implicit</p></li>
+<li><p>ODF section plots are inspection surfaces for the current discrete model, not a harmonic ODF implementation</p></li>
 <li><p>richer experimental PF inversion doctrine and benchmarking are still ahead</p></li>
 </ul>
 </section>
@@ -402,12 +448,12 @@ $$</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="diffraction_geometry.html">
+          <a class="next-page" href="plotting_primitives.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Diffraction: Geometry And Bragg Rings</div>
+                <div class="title">Plotting Semantic Primitives</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -454,7 +500,9 @@ $$</p>
             <ul>
 <li><a class="reference internal" href="#">Texture: ODF Evaluation And Pole-Figure Inversion</a><ul>
 <li><a class="reference internal" href="#discrete-inversion-model">Discrete Inversion Model</a></li>
+<li><a class="reference internal" href="#estimation-and-inspection-surface">Estimation And Inspection Surface</a></li>
 <li><a class="reference internal" href="#example">Example</a></li>
+<li><a class="reference internal" href="#plotting-the-estimated-texture">Plotting The Estimated Texture</a></li>
 <li><a class="reference internal" href="#interpretation-notes">Interpretation Notes</a></li>
 <li><a class="reference internal" href="#current-limits">Current Limits</a></li>
 <li><a class="reference internal" href="#related-material">Related Material</a></li>

@@ -30,6 +30,9 @@ For texture plots, PyTex now distinguishes between:
 - classical contour pole figures rendered from a smoothed projected density grid
 - ODF views rendered either as Euler-space density contours or as kernel-smoothed classical Bunge sections
 
+These texture plotting surfaces are the same ones used to inspect the outputs of
+`ODF.reconstruct_pole_figure(...)` and `ODF.invert_pole_figures(...)`.
+
 ## Documentation Surface
 
 For canonical docs assets, PyTex keeps `.svg` as the required tracked format. The helper

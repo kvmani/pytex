@@ -9,6 +9,10 @@ These notebooks are meant to do two things at once:
 
 The notebooks are intentionally aligned with the architecture and theory notes rather than acting as informal side material.
 
+They are also expected to track the current runtime API closely. When plotting, inversion, or
+batch behavior changes in code, the notebook generator and the built notebooks must be updated in
+the same change so the executable examples stay trustworthy.
+
 ## Notebook Atlas
 
 ```{toctree}
@@ -30,6 +34,8 @@ notebooks/10_plotting_semantic_primitives
 
 - Read them in the built Sphinx site when you want concept-plus-code explanation.
 - Open the raw `.ipynb` files locally when you want to execute and modify the examples.
+- Use the texture and plotting notebooks to see the currently implemented contour pole-figure and
+  Bunge-section ODF surfaces, not just older scatter-style examples.
 - Use the linked concept pages and LaTeX notes when you need the deeper formal derivation behind the tutorial flow.
 
 ## References

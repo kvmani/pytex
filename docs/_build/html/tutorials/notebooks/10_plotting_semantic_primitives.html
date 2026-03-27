@@ -327,6 +327,7 @@ documentation assets may still be exported to SVG when they belong in the repo.<
     <span class="n">WorkflowResultManifest</span><span class="p">,</span>
     <span class="n">ZoneAxis</span><span class="p">,</span>
     <span class="n">plot_odf</span><span class="p">,</span>
+    <span class="n">plot_inverse_pole_figure</span><span class="p">,</span>
     <span class="n">plot_orientations</span><span class="p">,</span>
     <span class="n">plot_pole_figure</span><span class="p">,</span>
     <span class="n">plot_symmetry_elements</span><span class="p">,</span>
@@ -434,13 +435,56 @@ documentation assets may still be exported to SVG when they belong in the repo.<
     <span class="n">include_symmetry_family</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">antipodal</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">pf_figure</span> <span class="o">=</span> <span class="n">plot_pole_figure</span><span class="p">(</span><span class="n">pole_figure</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;scatter&quot;</span><span class="p">)</span>
-<span class="n">odf_figure</span> <span class="o">=</span> <span class="n">plot_odf</span><span class="p">(</span><span class="n">odf</span><span class="p">)</span>
+<span class="n">ipf</span> <span class="o">=</span> <span class="n">InversePoleFigure</span><span class="o">.</span><span class="n">from_orientations</span><span class="p">(</span>
+    <span class="n">orientations</span><span class="p">,</span>
+    <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+    <span class="n">reduce_by_symmetry</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">antipodal</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">pf_figure</span> <span class="o">=</span> <span class="n">plot_pole_figure</span><span class="p">(</span>
+    <span class="n">pole_figure</span><span class="p">,</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;contour&quot;</span><span class="p">,</span>
+    <span class="n">bins</span><span class="o">=</span><span class="mi">81</span><span class="p">,</span>
+    <span class="n">sigma_bins</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ipf_figure</span> <span class="o">=</span> <span class="n">plot_inverse_pole_figure</span><span class="p">(</span><span class="n">ipf</span><span class="p">)</span>
+<span class="n">odf_figure</span> <span class="o">=</span> <span class="n">plot_odf</span><span class="p">(</span>
+    <span class="n">odf</span><span class="p">,</span>
+    <span class="n">kind</span><span class="o">=</span><span class="s2">&quot;sections&quot;</span><span class="p">,</span>
+    <span class="n">section_phi2_deg</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">,</span> <span class="mf">60.0</span><span class="p">),</span>
+    <span class="n">section_phi1_steps</span><span class="o">=</span><span class="mi">91</span><span class="p">,</span>
+    <span class="n">section_big_phi_steps</span><span class="o">=</span><span class="mi">46</span><span class="p">,</span>
+    <span class="n">levels</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="n">pf_figure</span>
 </pre></div>
 </div>
 </div>
 </div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ipf_figure</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">odf_figure</span>
+</pre></div>
+</div>
+</div>
+</div>
+<p>The plotting notebook now shows the three main texture inspection surfaces
+implemented today:</p>
+<ul class="simple">
+<li><p>contour pole figures</p></li>
+<li><p>inverse pole figures</p></li>
+<li><p>Bunge-section ODF plots</p></li>
+</ul>
+<p>All of them are produced by the same runtime plotting API that ordinary user code
+calls, rather than by notebook-specific plotting helpers.</p>
 </section>
 
         </article>

@@ -12,6 +12,8 @@ Current scope:
 - `ODF.reconstruct_pole_figures(...)`
 - `ODF.invert_pole_figures(...)`
 - `ODFInversionReport`
+- `plot_pole_figure(..., kind="scatter" | "histogram" | "contour")`
+- `plot_odf(..., kind="scatter" | "contour" | "sections")`
 
 ## Discrete Inversion Model
 
@@ -26,6 +28,22 @@ $$
 then solves a regularized nonnegative least-squares problem for the dictionary weights.
 
 This is not yet a harmonic inversion framework or a claim of full experimental PF inversion breadth. It is a scientifically explicit discrete inversion surface that fits the current PyTex data model.
+
+## Estimation And Inspection Surface
+
+PyTex currently exposes two closely related texture-estimation surfaces:
+
+- a discrete ODF represented by an explicit orientation support together with non-negative weights
+- a dictionary-based inversion path that estimates those weights from one or more pole figures
+
+Once that discrete model exists, the same support can be used to:
+
+- evaluate the ODF at query orientations
+- reconstruct pole figures from the estimated support
+- inspect the support in Euler space through scatter or contour views
+- inspect the estimated texture through kernel-smoothed Bunge-section plots
+
+That means plotting is part of the texture interpretation workflow, not an unrelated presentation layer.
 
 ## Example
 
@@ -94,16 +112,42 @@ print(report.converged)
 print(report.odf.normalized_weights)
 ```
 
+## Plotting The Estimated Texture
+
+```python
+from pytex import plot_odf, plot_pole_figure
+
+pole_figure_plot = plot_pole_figure(
+    pole_figures[0],
+    kind="contour",
+    bins=81,
+    sigma_bins=1.5,
+    levels=12,
+)
+
+odf_sections = plot_odf(
+    report.odf,
+    kind="sections",
+    section_phi2_deg=(0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
+    section_phi1_steps=121,
+    section_big_phi_steps=61,
+    levels=10,
+)
+```
+
 ## Interpretation Notes
 
 - The dictionary is explicit. PyTex does not hide the orientation support over which the inversion is performed.
 - The inversion report is explicit. Residual norm, iteration count, and convergence state are part of the returned surface.
 - The current method is appropriate for the present discrete kernel foundation. It should not yet be read as a replacement for broader harmonic or experimentally calibrated inversion frameworks.
+- Pole-figure contours are built from a smoothed projected density grid over the discrete pole data.
+- ODF section plots are kernel-smoothed Bunge-section inspection views over the current discrete support.
 
 ## Current Limits
 
 - the inversion path is dictionary-based, not harmonic
 - sample-symmetry handling is currently conservative and explicit rather than aggressively implicit
+- ODF section plots are inspection surfaces for the current discrete model, not a harmonic ODF implementation
 - richer experimental PF inversion doctrine and benchmarking are still ahead
 
 ## Related Material
