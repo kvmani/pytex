@@ -70,8 +70,13 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         BenchmarkManifest,
         build_crystal_scene,
         CalibrationRecord,
+        CrystalCellOverlay,
+        CrystalDirection,
+        CrystalDirectionOverlay,
         CrystalMap,
         CrystalPlane,
+        CrystalPlaneOverlay,
+        DirectionAnnotationStyle,
         DiffractionGeometry,
         EulerSet,
         ExperimentManifest,
@@ -106,6 +111,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         VectorSet,
         WorkflowResultManifest,
         ZoneAxis,
+        PlaneAnnotationStyle,
         generate_saed_pattern,
         generate_xrd_pattern,
         plot_odf,
@@ -171,6 +177,62 @@ def build_notebooks() -> dict[str, dict[str, object]]:
             unit_cell=unit_cell,
         )
         return crystal, specimen, map_frame, detector, lab, phase
+
+
+    def make_nacl_phase():
+        crystal = ReferenceFrame(
+            "crystal",
+            FrameDomain.CRYSTAL,
+            ("a", "b", "c"),
+            Handedness.RIGHT,
+        )
+        lattice = Lattice(5.6402, 5.6402, 5.6402, 90.0, 90.0, 90.0, crystal_frame=crystal)
+        symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+        unit_cell = UnitCell(
+            lattice=lattice,
+            sites=(
+                AtomicSite("Cl1", "Cl", np.array([0.0, 0.0, 0.0])),
+                AtomicSite("Cl2", "Cl", np.array([0.0, 0.5, 0.5])),
+                AtomicSite("Cl3", "Cl", np.array([0.5, 0.0, 0.5])),
+                AtomicSite("Cl4", "Cl", np.array([0.5, 0.5, 0.0])),
+                AtomicSite("Na1", "Na", np.array([0.5, 0.0, 0.0])),
+                AtomicSite("Na2", "Na", np.array([0.0, 0.5, 0.0])),
+                AtomicSite("Na3", "Na", np.array([0.0, 0.0, 0.5])),
+                AtomicSite("Na4", "Na", np.array([0.5, 0.5, 0.5])),
+            ),
+        )
+        return Phase(
+            "NaCl",
+            lattice=lattice,
+            symmetry=symmetry,
+            crystal_frame=crystal,
+            unit_cell=unit_cell,
+        )
+
+
+    def load_zr_hcp_phase():
+        crystal = ReferenceFrame(
+            "crystal",
+            FrameDomain.CRYSTAL,
+            ("a", "b", "c"),
+            Handedness.RIGHT,
+        )
+        return Phase.from_cif(Path("fixtures/phases/zr_hcp/phase.cif"), crystal_frame=crystal)
+
+
+    def publication_crystal_style():
+        return {
+            "crystal": {
+                "atom_radius_scale": 0.5,
+                "atom_edgewidth": 0.0,
+                "atom_surface_resolution": 34,
+                "bond_surface_resolution": 28,
+                "bond_alpha": 0.72,
+                "bond_color": "#7c8ea3",
+                "atom_specular_strength": 0.42,
+                "light_specular": 0.4,
+            }
+        }
     """
 
     notebooks: dict[str, dict[str, object]] = {}
@@ -1148,24 +1210,77 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 # Crystal Visualization Workflows
 
                 This notebook demonstrates the current VESTA-like 3D crystal-visualization surface
-                for atoms, bonds, lattice edges, and plane overlays.
+                for publication-quality structure views with atoms, bonds, cell overlays, bounded
+                planes, and crystallographic directions.
                 """
             ),
             code_cell(common_setup),
+            markdown_cell(
+                """
+                ## Publication-Style NaCl Example
+
+                This first scene shows how one viewer can carry atoms, bonds, repeated unit cells,
+                bounded Miller planes, and labeled directions at the same time.
+                """
+            ),
             code_cell(
                 """
-                crystal, specimen, map_frame, detector, lab, phase = make_context()
+                phase = make_nacl_phase()
 
                 scene = build_crystal_scene(
                     phase,
                     repeats=(2, 2, 2),
-                    plane_hkls=((1, 1, 1), (2, 0, 0)),
+                    show_unit_cells=True,
+                    cell_overlays=(
+                        CrystalCellOverlay(
+                            kind="parallelepiped",
+                            anchor_fractional=np.array([0.0, 0.0, 0.0]),
+                            color="#0f172a",
+                            alpha=0.95,
+                            linewidth=1.1,
+                        ),
+                    ),
+                    plane_overlays=(
+                        CrystalPlaneOverlay(
+                            plane=CrystalPlane(MillerIndex([1, 1, 1], phase=phase), phase=phase),
+                            label_indices=(1, 1, 1),
+                            color="#f97316",
+                            alpha=0.18,
+                            annotation_style=PlaneAnnotationStyle(fontsize=10.5),
+                        ),
+                        CrystalPlaneOverlay(
+                            plane=CrystalPlane(MillerIndex([1, -2, 0], phase=phase), phase=phase),
+                            label_indices=(1, -2, 0),
+                            color="#14b8a6",
+                            alpha=0.22,
+                            annotation_style=PlaneAnnotationStyle(fontsize=10.5),
+                        ),
+                    ),
+                    direction_overlays=(
+                        CrystalDirectionOverlay(
+                            direction=CrystalDirection(np.array([1.0, 1.0, 1.0]), phase=phase),
+                            anchor_fractional=np.array([0.0, 0.0, 0.0]),
+                            label_indices=(1, 1, 1),
+                            color="#2563eb",
+                            annotation_style=DirectionAnnotationStyle(fontsize=10.5),
+                        ),
+                        CrystalDirectionOverlay(
+                            direction=CrystalDirection(np.array([1.0, -2.0, 0.0]), phase=phase),
+                            anchor_fractional=np.array([1.0, 1.0, 1.0]),
+                            label_indices=(1, -2, 0),
+                            color="#7c3aed",
+                            annotation_style=DirectionAnnotationStyle(fontsize=10.5),
+                        ),
+                    ),
                     theme="presentation",
+                    style_overrides=publication_crystal_style(),
                 )
 
                 print("atoms:", len(scene.atoms))
                 print("bonds:", len(scene.bonds))
+                print("cells:", len(scene.cells))
                 print("planes:", len(scene.planes))
+                print("directions:", len(scene.directions))
                 """
             ),
             code_cell(
@@ -1173,6 +1288,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 figure = plot_crystal_structure_3d(
                     scene,
                     projection="persp",
+                    style_overrides=publication_crystal_style(),
                 )
                 figure
                 """
@@ -1181,6 +1297,88 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 """
                 The viewer renders geometry already defined in the canonical structure model. It
                 does not redefine the lattice, the unit cell, or the plane conventions.
+                """
+            ),
+            code_cell(
+                """
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    destination = Path(tmpdir) / "nacl_publication_view.png"
+                    figure.savefig(destination, dpi=300, bbox_inches="tight")
+                    print(destination)
+                """
+            ),
+            markdown_cell(
+                """
+                ## Hexagonal-Axis Zr Example
+
+                The next scene adds the pedagogical hexagonal prism so the basal symmetry is easier
+                to teach while keeping the canonical lattice semantics unchanged.
+                """
+            ),
+            code_cell(
+                """
+                zr_hcp = load_zr_hcp_phase()
+
+                zr_scene = build_crystal_scene(
+                    zr_hcp,
+                    repeats=(2, 2, 2),
+                    show_unit_cells=True,
+                    cell_overlays=(
+                        CrystalCellOverlay(
+                            kind="hexagonal_prism",
+                            anchor_fractional=np.array([1.0, 1.0, 0.0]),
+                            color="#0f766e",
+                            alpha=0.95,
+                            linewidth=1.4,
+                            show_faces=True,
+                            face_alpha=0.08,
+                        ),
+                    ),
+                    plane_overlays=(
+                        CrystalPlaneOverlay(
+                            plane=CrystalPlane.from_miller_bravais((1, 1, -2, 1), phase=zr_hcp),
+                            label_indices=(1, 1, -2, 1),
+                            color="#ef4444",
+                            alpha=0.20,
+                        ),
+                        CrystalPlaneOverlay(
+                            plane=CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=zr_hcp),
+                            label_indices=(0, 0, 0, 1),
+                            color="#0ea5e9",
+                            alpha=0.16,
+                        ),
+                    ),
+                    direction_overlays=(
+                        CrystalDirectionOverlay(
+                            direction=CrystalDirection.from_miller_bravais((2, -1, -1, 0), phase=zr_hcp),
+                            anchor_fractional=np.array([0.0, 0.0, 0.0]),
+                            label_indices=(2, -1, -1, 0),
+                            color="#f59e0b",
+                        ),
+                        CrystalDirectionOverlay(
+                            direction=CrystalDirection.from_miller_bravais((0, 0, 0, 1), phase=zr_hcp),
+                            anchor_fractional=np.array([0.2, 0.2, 0.0]),
+                            label_indices=(0, 0, 0, 1),
+                            color="#2563eb",
+                        ),
+                    ),
+                    theme="journal",
+                    style_overrides=publication_crystal_style(),
+                )
+
+                print("hex cells:", len(zr_scene.cells))
+                print("planes:", len(zr_scene.planes))
+                print("directions:", len(zr_scene.directions))
+                """
+            ),
+            code_cell(
+                """
+                zr_figure = plot_crystal_structure_3d(
+                    zr_scene,
+                    projection="persp",
+                    style_overrides=publication_crystal_style(),
+                )
+                zr_figure
                 """
             ),
         ],
@@ -1253,7 +1451,28 @@ crystal:
                 """
                 crystal, specimen, map_frame, detector, lab, phase = make_context()
 
-                scene = build_crystal_scene(phase, repeats=(2, 2, 2), plane_hkls=((1, 1, 1),))
+                scene = build_crystal_scene(
+                    phase,
+                    repeats=(2, 2, 2),
+                    show_unit_cells=True,
+                    plane_overlays=(
+                        CrystalPlaneOverlay(
+                            plane=CrystalPlane(MillerIndex([1, 1, 1], phase=phase), phase=phase),
+                            label_indices=(1, 1, 1),
+                            color="#f97316",
+                            alpha=0.20,
+                        ),
+                    ),
+                    direction_overlays=(
+                        CrystalDirectionOverlay(
+                            direction=CrystalDirection(np.array([1.0, 1.0, 0.0]), phase=phase),
+                            anchor_fractional=np.array([0.0, 0.0, 0.0]),
+                            label_indices=(1, 1, 0),
+                            color="#2563eb",
+                        ),
+                    ),
+                    style_overrides=publication_crystal_style(),
+                )
                 xrd = generate_xrd_pattern(phase, broadening_fwhm_deg=0.16, max_index=6)
                 saed = generate_saed_pattern(
                     phase,
@@ -1272,7 +1491,11 @@ crystal:
                 """
                 xrd_figure = plot_xrd_pattern(xrd, theme="journal")
                 saed_figure = plot_saed_pattern(saed, theme="dark")
-                crystal_figure = plot_crystal_structure_3d(scene, projection="persp")
+                crystal_figure = plot_crystal_structure_3d(
+                    scene,
+                    projection="persp",
+                    style_overrides=publication_crystal_style(),
+                )
                 xrd_figure
                 """
             ),
