@@ -57,6 +57,7 @@ The repository default is no longer “text first, figures later” for foundati
 - Notebook tutorials should agree with the formal docs and must not introduce private conventions, hidden helper assumptions, or unexplained magic numbers.
 - Runtime plotting should reuse shared semantic builders rather than inventing ad hoc Matplotlib logic per workflow.
 - A code change that improves scientific capability but leaves the foundational documentation less clear than the implementation is incomplete.
+- Stable terms and symbols should be added to the shared terminology registry and linked from affected docs rather than redefined independently.
 
 ## Review Questions
 

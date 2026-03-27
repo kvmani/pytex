@@ -19,7 +19,8 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | --- | --- | --- |
 | Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
 | EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
-| Diffraction foundations | foundational | Geometry and kinematic spot workflows exist with unit coverage, but the external-baseline validation program is still growing. |
+| Diffraction foundations | foundational | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting exist with unit coverage, but the external-baseline validation program is still growing. |
+| Scientific visualization | foundational | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now exist, but broader publication presets and external visual baselines are still ahead. |
 | CIF and structure import | foundational | Core-model construction, space-group semantics, and a dedicated validation ledger exist, but broader external baselines remain ahead. |
 | Multimodal acquisition core | foundational | Acquisition geometry, calibration, quality, scattering, experiment manifests, and workflow entry points now exist, but broader modality coverage remains ahead. |
 | Phase-transformation foundation | foundational | Core transformation primitives now exist, but literature-backed validation and richer algorithms remain ahead. |

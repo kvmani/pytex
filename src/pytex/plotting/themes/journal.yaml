@@ -1,0 +1,21 @@
+common:
+  figure:
+    dpi: 220
+  font:
+    family: "STIXGeneral"
+    size: 11
+    title_size: 13
+  line:
+    width: 2.0
+xrd:
+  line_color: "#0f172a"
+  fill_color: "#dbe4ee"
+  peak_color: "#b45309"
+saed:
+  background: "#ffffff"
+  spot_color: "#0f172a"
+  ring_color: "#64748b"
+crystal:
+  background: "#ffffff"
+  bond_alpha: 0.38
+  plane_alpha: 0.24

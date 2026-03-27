@@ -11,6 +11,8 @@ pytest
 sphinx-build -b html docs/site docs/_build/html
 ```
 
+For a fuller user-facing setup guide, including Windows activation details, notebook use, and PDF build notes, see `../site/tutorials/installation_and_build.md`.
+
 ## Working Expectations
 
 - keep the core package importable without heavy optional scientific dependencies

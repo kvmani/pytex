@@ -59,11 +59,16 @@ def write_notebook(path: Path, title: str, cells: list[dict[str, object]]) -> No
 
 def build_notebooks() -> dict[str, dict[str, object]]:
     common_setup = """
+    from pathlib import Path
+    import tempfile
+
     import numpy as np
 
     from pytex import (
         AcquisitionGeometry,
+        AtomicSite,
         BenchmarkManifest,
+        build_crystal_scene,
         CalibrationRecord,
         CrystalMap,
         CrystalPlane,
@@ -77,6 +82,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         KernelSpec,
         KinematicSimulation,
         Lattice,
+        list_style_themes,
         MeasurementQuality,
         MillerIndex,
         ODF,
@@ -86,22 +92,32 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         Phase,
         PhaseTransformationRecord,
         PoleFigure,
+        PowderPattern,
+        PowderReflection,
         ReferenceFrame,
+        resolve_style,
+        RadiationSpec,
         Rotation,
         ScatteringSetup,
         SymmetrySpec,
         TransformationVariant,
+        UnitCell,
         ValidationManifest,
         VectorSet,
         WorkflowResultManifest,
         ZoneAxis,
+        generate_saed_pattern,
+        generate_xrd_pattern,
         plot_odf,
+        plot_crystal_structure_3d,
         plot_inverse_pole_figure,
         plot_orientations,
         plot_pole_figure,
+        plot_saed_pattern,
         plot_symmetry_elements,
         plot_symmetry_orbit,
         plot_vector_set,
+        plot_xrd_pattern,
     )
 
 
@@ -138,7 +154,22 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         )
         symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
         lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
-        phase = Phase("fcc_demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+        unit_cell = UnitCell(
+            lattice=lattice,
+            sites=(
+                AtomicSite("A1", "Cu", np.array([0.0, 0.0, 0.0])),
+                AtomicSite("A2", "Cu", np.array([0.0, 0.5, 0.5])),
+                AtomicSite("A3", "Cu", np.array([0.5, 0.0, 0.5])),
+                AtomicSite("A4", "Cu", np.array([0.5, 0.5, 0.0])),
+            ),
+        )
+        phase = Phase(
+            "fcc_demo",
+            lattice=lattice,
+            symmetry=symmetry,
+            crystal_frame=crystal,
+            unit_cell=unit_cell,
+        )
         return crystal, specimen, map_frame, detector, lab, phase
     """
 
@@ -1014,6 +1045,239 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 calls, rather than by notebook-specific plotting helpers.
                 """
             ),
+        ],
+    }
+
+    notebooks["11_powder_xrd_workflows.ipynb"] = {
+        "title": "Powder XRD Workflows",
+        "cells": [
+            markdown_cell(
+                """
+                # Powder XRD Workflows
+
+                This notebook demonstrates the current PyTex powder XRD surface from `Phase`
+                construction through reflection generation, broadened spectrum construction, and
+                plotting.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal, specimen, map_frame, detector, lab, phase = make_context()
+
+                pattern = generate_xrd_pattern(
+                    phase,
+                    radiation=RadiationSpec.cu_ka(),
+                    two_theta_range_deg=(20.0, 120.0),
+                    resolution_deg=0.02,
+                    max_index=6,
+                    broadening_fwhm_deg=0.16,
+                )
+
+                print(pattern.radiation)
+                print("reflections:", len(pattern.reflections))
+                print("first peak:", pattern.reflections[0])
+                """
+            ),
+            code_cell(
+                """
+                figure = plot_xrd_pattern(pattern, theme="journal")
+                figure
+                """
+            ),
+            markdown_cell(
+                """
+                The current intensity model is structure-sensitive but still foundational. It uses
+                crystal multiplicity, a simple structure-factor proxy, and a Lorentz-polarization
+                factor rather than a full scattering-factor or instrument model.
+                """
+            ),
+        ],
+    }
+
+    notebooks["12_saed_workflows.ipynb"] = {
+        "title": "SAED Workflows",
+        "cells": [
+            markdown_cell(
+                """
+                # SAED Workflows
+
+                This notebook demonstrates the current selected-area electron diffraction workflow
+                built around explicit reciprocal-space and detector semantics.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal, specimen, map_frame, detector, lab, phase = make_context()
+                zone_axis = ZoneAxis(indices=np.array([0, 0, 1]), phase=phase)
+                saed = generate_saed_pattern(
+                    phase,
+                    zone_axis,
+                    camera_constant_mm_angstrom=180.0,
+                    max_index=5,
+                    max_g_inv_angstrom=3.0,
+                )
+
+                print("zone axis:", saed.zone_axis.indices)
+                print("spots:", len(saed.spots))
+                print("detector frame:", saed.detector_frame.name)
+                """
+            ),
+            code_cell(
+                """
+                figure = plot_saed_pattern(saed, theme="dark")
+                figure
+                """
+            ),
+            markdown_cell(
+                """
+                PyTex keeps the direct-space zone axis, reciprocal-space reflections, and
+                detector-space coordinates explicit rather than collapsing them into one plotting
+                array.
+                """
+            ),
+        ],
+    }
+
+    notebooks["13_crystal_visualization_workflows.ipynb"] = {
+        "title": "Crystal Visualization Workflows",
+        "cells": [
+            markdown_cell(
+                """
+                # Crystal Visualization Workflows
+
+                This notebook demonstrates the current VESTA-like 3D crystal-visualization surface
+                for atoms, bonds, lattice edges, and plane overlays.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal, specimen, map_frame, detector, lab, phase = make_context()
+
+                scene = build_crystal_scene(
+                    phase,
+                    repeats=(2, 2, 2),
+                    plane_hkls=((1, 1, 1), (2, 0, 0)),
+                    theme="presentation",
+                )
+
+                print("atoms:", len(scene.atoms))
+                print("bonds:", len(scene.bonds))
+                print("planes:", len(scene.planes))
+                """
+            ),
+            code_cell(
+                """
+                figure = plot_crystal_structure_3d(
+                    scene,
+                    projection="persp",
+                )
+                figure
+                """
+            ),
+            markdown_cell(
+                """
+                The viewer renders geometry already defined in the canonical structure model. It
+                does not redefine the lattice, the unit cell, or the plane conventions.
+                """
+            ),
+        ],
+    }
+
+    notebooks["14_yaml_style_customization.ipynb"] = {
+        "title": "YAML Style Customization",
+        "cells": [
+            markdown_cell(
+                """
+                # YAML Style Customization
+
+                This notebook shows how the shared plotting style system merges built-in themes,
+                YAML files, and runtime overrides.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                print(list_style_themes())
+                base_style = resolve_style(theme="journal")
+                print(base_style["xrd"]["line_color"])
+                """
+            ),
+            code_cell(
+                """
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    style_path = Path(tmpdir) / "custom_style.yaml"
+                    style_path.write_text(
+                        '''
+common:
+  figure:
+    facecolor: "#fff7ed"
+saed:
+  background: "#0f172a"
+  spot_color: "#fde68a"
+crystal:
+  plane_color: "#dc2626"
+'''.strip()
+                        + "\\n",
+                        encoding="utf-8",
+                    )
+                    merged = resolve_style(
+                        theme="presentation",
+                        style_path=style_path,
+                        overrides={"xrd": {"annotate_peaks": False}},
+                    )
+                    print(merged["common"]["figure"]["facecolor"])
+                    print(merged["xrd"]["annotate_peaks"])
+                    print(merged["crystal"]["plane_color"])
+                """
+            ),
+        ],
+    }
+
+    notebooks["15_structure_diffraction_visualization_pipeline.ipynb"] = {
+        "title": "Structure, Diffraction, And Visualization Pipeline",
+        "cells": [
+            markdown_cell(
+                """
+                # Structure, Diffraction, And Visualization Pipeline
+
+                This notebook shows the architectural point of the new features: one `Phase` can
+                feed structure visualization, powder XRD, and SAED workflows without redefining the
+                crystallographic semantics at each step.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal, specimen, map_frame, detector, lab, phase = make_context()
+
+                scene = build_crystal_scene(phase, repeats=(2, 2, 2), plane_hkls=((1, 1, 1),))
+                xrd = generate_xrd_pattern(phase, broadening_fwhm_deg=0.16, max_index=6)
+                saed = generate_saed_pattern(
+                    phase,
+                    ZoneAxis(indices=np.array([1, 1, 0]), phase=phase),
+                    camera_constant_mm_angstrom=180.0,
+                    max_index=5,
+                    max_g_inv_angstrom=3.5,
+                )
+
+                print("scene atoms:", len(scene.atoms))
+                print("xrd reflections:", len(xrd.reflections))
+                print("saed spots:", len(saed.spots))
+                """
+            ),
+            code_cell(
+                """
+                xrd_figure = plot_xrd_pattern(xrd, theme="journal")
+                saed_figure = plot_saed_pattern(saed, theme="dark")
+                crystal_figure = plot_crystal_structure_3d(scene, projection="persp")
+                xrd_figure
+                """
+            ),
+            code_cell("saed_figure"),
+            code_cell("crystal_figure"),
         ],
     }
 

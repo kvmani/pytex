@@ -1,0 +1,22 @@
+common:
+  figure:
+    dpi: 180
+    figsize: [8.4, 5.6]
+  font:
+    family: "DejaVu Sans"
+    size: 12
+    title_size: 15
+  colors:
+    primary: "#0f4c81"
+    secondary: "#2d6a4f"
+    accent: "#d97706"
+xrd:
+  line_color: "#0f4c81"
+  fill_color: "#d8e8f6"
+  peak_color: "#d97706"
+saed:
+  background: "#f8fafc"
+  spot_scale: 260
+crystal:
+  plane_alpha: 0.35
+  atom_radius_scale: 1.1

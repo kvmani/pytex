@@ -12,10 +12,12 @@ This directory contains the canonical scientific documentation for PyTex.
 
 - `foundations/project_philosophy.tex`
 - `theory/canonical_data_model.tex`
+- `theory/crystal_visualization_geometry.tex`
 - `theory/hexagonal_conventions.tex`
 - `theory/orientation_space_and_disorientation.tex`
 - `theory/reference_frames.tex`
 - `algorithms/discrete_odf_and_pole_figures.tex`
+- `algorithms/powder_xrd_and_saed.tex`
 - `validation/validation_program.tex`
 
 ## Build Notes

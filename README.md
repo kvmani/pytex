@@ -48,7 +48,8 @@ The repository is now best described as a strong foundation build rather than a 
 - symmetry-aware orientation and disorientation foundations
 - PF/IPF containers, class-specific IPF sector reduction, discrete kernel-based ODF foundations, and classical contour or section plotting surfaces
 - regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and import-manifest workflow foundations
-- diffraction geometry, reciprocal-space primitives, kinematic spot simulation, reflection-family grouping, and local indexing candidate scaffolding
+- diffraction geometry, reciprocal-space primitives, powder XRD generation, SAED spot generation, reflection-family grouping, and local indexing candidate scaffolding
+- runtime scientific plotting for texture, diffraction, and structure, including YAML-driven styles and VESTA-like 3D crystal viewing
 
 Exact orientation-space polyhedra, harmonic ODF inversion, richer external validation, broader multimodal workflow depth, and transformation algorithms are intentionally staged after the current build so they do not invent conflicting conventions.
 
@@ -71,6 +72,9 @@ python -m pytex info
 python -m pytex docs inventory
 python -m pytex core demo
 ```
+
+For full install, notebook, Sphinx, and PDF build guidance on Windows, macOS, and Linux, see
+[installation_and_build.md](/Users/anantatamukalaamrutha/pytex/docs/site/tutorials/installation_and_build.md).
 
 ## Repository Layout
 
@@ -109,6 +113,7 @@ pytex/
 - Treat documentation, figures, and validation artifacts as product deliverables rather than release polish.
 - Keep research-grade depth and teaching-grade clarity in the same repository.
 - Broaden the foundations deliberately toward multimodal materials characterization without weakening the texture-led semantic core.
+- Keep plotting, style policy, and export behavior explicit: runtime user plots are ordinary Matplotlib figures, while repository-tracked canonical documentation figures remain SVG assets.
 
 ## Current Hardening Priorities
 

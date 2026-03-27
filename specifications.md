@@ -31,6 +31,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `SpaceGroupSpec`
 - `Lattice`
 - `Basis`
+- `AtomicSite`
 - `UnitCell`
 - `Phase`
 - `MillerIndex`
@@ -67,6 +68,11 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `DiffractionPattern`
 - `ReflectionFamily`
 - `ScatteringSetup`
+- `RadiationSpec`
+- `PowderReflection`
+- `PowderPattern`
+- `SAEDSpot`
+- `SAEDPattern`
 
 ### Transformation
 
@@ -87,6 +93,15 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `plot_pole_figure`
 - `plot_inverse_pole_figure`
 - `plot_odf`
+- `plot_xrd_pattern`
+- `plot_saed_pattern`
+- `CrystalScene`
+- `build_crystal_scene`
+- `plot_crystal_structure_3d`
+- `list_style_themes`
+- `load_style_theme`
+- `read_style_yaml`
+- `resolve_style`
 - `save_documentation_figure_svg`
 
 ### Stable Manifest Surface
@@ -135,6 +150,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
 - Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
+- Plot styling policy must support shared YAML themes, theme inheritance, and user overrides without burying visual defaults inside computation code.
 - Stable plotting docs must describe the supported rendering modes for each public plotting function, especially when a routine exposes both discrete and contour-style views.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
 - Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.
@@ -146,6 +162,8 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
   - an algorithm or implementation note when algorithms exist
   - a validation and limitations note
 - Root and web-facing docs must link to canonical LaTeX artifacts, concise summaries, and relevant figures.
+- The docs set must maintain a stable terminology and symbol registry so the same scientific symbol is reused consistently across Markdown, LaTeX, notebooks, and explanatory prose.
+- Pages that depend materially on conventions, algorithms, or workflow prerequisites should link directly to the relevant concept, workflow, validation, or theory page rather than forcing readers to rediscover the dependency tree manually.
 - Major scientific documents must contain explicit citations and separate normative references from informative ones.
 - Conventions for hexagonal and trigonal systems must be fixed centrally and reused across code, figures, examples, and tests.
 - Development principles, reference canon rules, and data-contract rules are stable repo policy.
@@ -156,6 +174,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/testing/mtex_parity_matrix.md` is the authoritative parity ledger for texture and EBSD categories aligned to MTEX.
 - `docs/testing/diffraction_validation_matrix.md` is the authoritative validation ledger for diffraction-facing workflows.
 - `docs/testing/structure_validation_matrix.md` is the authoritative validation ledger for structure-import workflows.
+- `docs/testing/plotting_validation_matrix.md` is the authoritative validation ledger for plotting, style, and scientific-visualization workflows.
 - Every relevant external validation category must map to either:
   - a PyTex test or benchmark
   - an explicit foundational status

@@ -46,7 +46,8 @@ Primary risks:
 | Core model | strong | strong | strong | foundationally ready | Best current asset in the repo. |
 | Orientation and texture | strong | strong | strong | foundationally ready | Needs later harmonic and exact-boundary expansion, not semantic rescue. |
 | EBSD | strong | strong | strong | foundationally ready | Regular-grid workflow base is real; richer modality scope is still ahead. |
-| Diffraction | strong foundation | moderate | strong | foundational | Geometry and indexing scaffolding are real, but external-baseline doctrine is thinner. |
+| Diffraction | strong foundation | moderate | strong | foundational | Geometry, powder XRD, and SAED workflows are real, but external-baseline doctrine is thinner than the implemented surface. |
+| Scientific visualization | strong foundation | moderate | strong | foundational | Shared plotting, YAML styles, and 3D crystal viewing now exist, but publication presets and external visual regression are still thinner than the core semantics. |
 | CIF and structure import | strong | moderate | strong | foundational | Space-group semantics and a dedicated validation ledger now exist; broader external validation is still ahead. |
 | Multimodal acquisition | strong | moderate | strong | foundational | Core primitives, experiment manifests, and workflow entry points now exist; broader modality depth is still ahead. |
 | Phase transformation | foundational | weak | strong | foundational | Primitive family now exists; validation and algorithm breadth are still ahead. |

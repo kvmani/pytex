@@ -1,4 +1,13 @@
 from pytex.plotting._render import save_documentation_figure_svg
+from pytex.plotting.crystal3d import (
+    CrystalAtomGlyph,
+    CrystalBondGlyph,
+    CrystalPlaneGlyph,
+    CrystalScene,
+    build_crystal_scene,
+    plot_crystal_structure_3d,
+)
+from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
 from pytex.plotting.ipf import IPFColorKey
 from pytex.plotting.runtime import (
     plot_euler_set,
@@ -12,9 +21,23 @@ from pytex.plotting.runtime import (
     plot_symmetry_orbit,
     plot_vector_set,
 )
+from pytex.plotting.styles import (
+    list_style_themes,
+    load_style_theme,
+    read_style_yaml,
+    resolve_style,
+)
 
 __all__ = [
+    "build_crystal_scene",
+    "CrystalAtomGlyph",
+    "CrystalBondGlyph",
+    "CrystalPlaneGlyph",
+    "CrystalScene",
     "IPFColorKey",
+    "list_style_themes",
+    "load_style_theme",
+    "plot_crystal_structure_3d",
     "plot_euler_set",
     "plot_inverse_pole_figure",
     "plot_odf",
@@ -22,8 +45,12 @@ __all__ = [
     "plot_pole_figure",
     "plot_quaternion_set",
     "plot_rotations",
+    "plot_saed_pattern",
     "plot_symmetry_elements",
     "plot_symmetry_orbit",
     "plot_vector_set",
+    "plot_xrd_pattern",
+    "read_style_yaml",
+    "resolve_style",
     "save_documentation_figure_svg",
 ]

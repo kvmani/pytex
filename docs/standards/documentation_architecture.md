@@ -36,6 +36,7 @@ Use the LaTeX layer for:
 - Every major concept or workflow page should link to the deeper theory or algorithm note where one exists.
 - Major scientific notes should point back to the relevant user-facing concept or workflow page when practical.
 - API docs should not stand alone; they should connect back to concepts or workflows where scientific meaning matters.
+- Pages that rely on defined terminology, notation, or installation prerequisites should link directly to the corresponding glossary, symbol-registry, or setup page.
 
 ## Explicitness Requirement
 
@@ -74,9 +75,11 @@ The Sphinx layer should eventually expose top-level sections for:
 - Sphinx and MyST are the default tools for the HTML layer.
 - Notebook files should live close to the Sphinx layer and should not become a disconnected parallel documentation tree.
 - Plotting code should be shared across runtime APIs, notebooks, and documentation figure generation rather than reimplemented separately in each surface.
+- Style configuration should be shared across runtime APIs, notebooks, and documentation figure generation through validated YAML themes rather than scattered hard-coded figure choices.
 - Math-heavy web pages should use MathJax-backed equations.
 - Citations in the HTML layer should use a BibTeX-backed workflow.
 - The LaTeX layer should remain suitable for publication-grade mathematical exposition.
+- Stable symbols and glossary terms should be defined once in the shared terminology registry and reused across docs layers rather than reintroduced with drifting local notation.
 
 ## Cross-Platform Requirement
 

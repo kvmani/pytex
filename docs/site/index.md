@@ -13,6 +13,7 @@ concepts/core_foundation
 concepts/library_structure
 concepts/how_pytex_differs
 concepts/reference_frames_and_conventions
+concepts/technical_glossary_and_symbols
 concepts/orientation_texture
 concepts/texture_foundation
 concepts/ebsd_foundation
@@ -25,6 +26,7 @@ concepts/symmetry_and_fundamental_regions
 :caption: Tutorials
 
 tutorials/quickstart
+tutorials/installation_and_build
 tutorials/notebooks
 ```
 
@@ -40,6 +42,11 @@ workflows/texture_odf_inversion
 workflows/plotting_primitives
 workflows/diffraction_geometry
 workflows/diffraction_spots
+workflows/xrd_generation
+workflows/saed_generation
+workflows/crystal_visualization
+workflows/style_customization
+workflows/combined_structure_diffraction_visualization
 workflows/ipf_colors
 ```
 
@@ -79,7 +86,8 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - Core-model phase creation from crystallographic structures and CIF files, with explicit point-group and space-group semantics.
 - Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.
 - Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.
-- Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration.
+- Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration, powder XRD generation, and SAED spot simulation.
+- Shared YAML-driven plotting styles plus runtime XRD, SAED, and 3D crystal-structure visualization surfaces.
 - Executable notebook tutorials that mirror the implemented features and their mathematical contracts.
 
 ## Recommended Reading Path
@@ -88,8 +96,9 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 
 1. Start with {doc}`tutorials/quickstart`.
 2. Read {doc}`concepts/core_model` to understand why frames and symmetry are explicit.
-3. Continue to {doc}`concepts/orientation_texture` for Euler, quaternion, and symmetry-reduction semantics.
-4. Then move to {doc}`workflows/ebsd_kam` and {doc}`workflows/ebsd_grains`.
+3. Continue to {doc}`concepts/technical_glossary_and_symbols` so the core terminology and symbols are fixed early.
+4. Continue to {doc}`concepts/orientation_texture` for Euler, quaternion, and symmetry-reduction semantics.
+5. Then move to {doc}`workflows/ebsd_kam` and {doc}`workflows/ebsd_grains`.
 
 ### If You Are Evaluating Scientific Rigor
 

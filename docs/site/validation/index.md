@@ -59,6 +59,7 @@ Likewise, “foundational” in the parity ledger does not mean “hand-wavy.”
 - orientation and texture foundations have dedicated unit and parity tests
 - EBSD parity coverage now includes KAM, GROD, segmentation, boundaries, and cleanup on regular grids
 - diffraction foundations have dedicated unit tests and a separate validation ledger
+- powder XRD and SAED foundations now sit inside that diffraction validation surface with dedicated unit tests
 - structure-import foundations have dedicated unit tests and a separate validation ledger
 - plotting foundations have dedicated unit tests and a separate validation ledger
 - exact orientation-space polyhedral parity remains ahead of the current build

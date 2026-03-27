@@ -25,6 +25,7 @@ def test_foundational_docs_declare_normative_and_informative_references() -> Non
         "docs/standards/notation_and_conventions.md",
         "docs/standards/documentation_architecture.md",
         "docs/standards/latex_and_figures.md",
+        "docs/standards/terminology_and_symbol_registry.md",
         "docs/standards/scientific_citation_policy.md",
         "docs/standards/development_principles.md",
         "docs/standards/data_contracts_and_manifests.md",
@@ -90,11 +91,45 @@ def test_plotting_surface_is_part_of_stable_documented_surface() -> None:
         "plot_pole_figure",
         "plot_inverse_pole_figure",
         "plot_odf",
+        "plot_xrd_pattern",
+        "plot_saed_pattern",
+        "plot_crystal_structure_3d",
+        "resolve_style",
         "save_documentation_figure_svg",
     ):
         assert symbol in specifications
         assert symbol in api_guide
         assert symbol in plotting_workflow
+
+
+def test_xrd_and_saed_surface_is_part_of_stable_documented_surface() -> None:
+    specifications = _read("specifications.md")
+    api_guide = _read("docs/site/api/index.md")
+    xrd_workflow = _read("docs/site/workflows/xrd_generation.md")
+    saed_workflow = _read("docs/site/workflows/saed_generation.md")
+    for symbol in (
+        "RadiationSpec",
+        "PowderReflection",
+        "PowderPattern",
+        "SAEDSpot",
+        "SAEDPattern",
+    ):
+        assert symbol in specifications
+        assert symbol in api_guide
+    assert "AtomicSite" in specifications
+    assert "AtomicSite" in api_guide
+    assert "RadiationSpec" in xrd_workflow
+    assert "PowderPattern" in xrd_workflow
+    assert "SAEDPattern" in saed_workflow
+
+
+def test_terminology_registry_and_glossary_are_present() -> None:
+    standards_doc = _read("docs/standards/terminology_and_symbol_registry.md")
+    glossary_page = _read("docs/site/concepts/technical_glossary_and_symbols.md")
+    assert "symbol" in standards_doc.lower()
+    assert "glossary" in glossary_page.lower()
+    assert "zone axis" in glossary_page.lower()
+    assert "2\\theta" in glossary_page or "2θ" in glossary_page
 
 
 def test_transformation_primitives_are_part_of_stable_documented_surface() -> None:

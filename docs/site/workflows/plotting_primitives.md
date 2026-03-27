@@ -21,6 +21,9 @@ The current runtime plotting surface includes:
 - `plot_pole_figure(...)`
 - `plot_inverse_pole_figure(...)`
 - `plot_odf(...)`
+- `plot_xrd_pattern(...)`
+- `plot_saed_pattern(...)`
+- `plot_crystal_structure_3d(...)`
 
 These routines accept PyTex semantic objects and validate frame, symmetry, and convention meaning before rendering.
 
@@ -38,6 +41,15 @@ These texture plotting surfaces are the same ones used to inspect the outputs of
 For canonical docs assets, PyTex keeps `.svg` as the required tracked format. The helper
 `save_documentation_figure_svg(...)` exists so documentation figures can be produced from the
 same semantic plotting system without weakening the repository SVG rule.
+
+The same plotting subsystem also now carries a shared YAML style system:
+
+- built-in themes such as `journal`, `presentation`, and `dark`
+- deep-merge application of base defaults, theme data, YAML files, and runtime overrides
+- reuse across texture plots, diffraction plots, and 3D crystal visualization
+
+The public helpers `list_style_themes(...)`, `load_style_theme(...)`, `read_style_yaml(...)`, and
+`resolve_style(...)` are part of that stable plotting support.
 
 ## Example
 
@@ -105,6 +117,7 @@ odf_sections.savefig("odf_bunge_sections.png", dpi=150)
 - Runtime plotting is not allowed to redefine frame or symmetry semantics.
 - The plotting layer is part of the user-facing product surface, not a notebook-only convenience layer.
 - The contour and section paths reuse the same shared density-grid and render infrastructure as the rest of the plotting subsystem.
+- Diffraction and crystal-visualization plots reuse the same style-resolution layer even when they require different rendering primitives.
 
 ## Related Material
 

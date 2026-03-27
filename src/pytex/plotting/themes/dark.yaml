@@ -1,0 +1,24 @@
+common:
+  figure:
+    facecolor: "#0b1220"
+    axes_facecolor: "#0b1220"
+  colors:
+    primary: "#93c5fd"
+    secondary: "#6ee7b7"
+    accent: "#fbbf24"
+    background: "#0b1220"
+    foreground: "#f8fafc"
+xrd:
+  line_color: "#93c5fd"
+  fill_color: "#1e293b"
+  peak_color: "#fbbf24"
+saed:
+  background: "#0b1220"
+  spot_color: "#f8fafc"
+  ring_color: "#64748b"
+  label_color: "#f8fafc"
+crystal:
+  background: "#0b1220"
+  lattice_color: "#cbd5e1"
+  bond_color: "#94a3b8"
+  plane_color: "#2dd4bf"
