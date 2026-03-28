@@ -31,6 +31,9 @@ This document makes the repository's engineering posture explicit so future stag
 8. Optimize after semantics are fixed
    Performance work is welcome, but only after the canonical representation, failure modes, and validation criteria are clear.
 
+9. Treat machine-readable interchange as product surface
+   Major stable outputs should not remain trapped in Python memory only. When a result is important for reproducibility, external tooling, validation, or workflow chaining, it should gain a versioned JSON contract that preserves enough scientific meaning for reconstruction.
+
 ## Definition Of Done For Stable Features
 
 A stable feature is not complete until all of the following exist:
@@ -44,6 +47,7 @@ A stable feature is not complete until all of the following exist:
 - an executable notebook tutorial when the feature benefits from staged interactive exposition
 - a reusable plotting path when the feature naturally produces scientific figures
 - citations and scientific documentation
+- a canonical JSON contract for major outputs that are intended to cross workflow or tool boundaries
 - explicit mathematical definitions for major conventions, mappings, reductions, and algorithms
 - SVG figures when frames, vectors, geometry, or reduction logic matter
 

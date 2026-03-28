@@ -43,12 +43,14 @@ Create a scientific library that enables users to:
 - express large vectorized workflows through first-class batch primitives rather than anonymous `(n, ...)` arrays
 - connect EBSD, diffraction, and future phase-transformation workflows through one shared crystallographic model
 - carry experiment, benchmark, validation, and workflow-result context through stable machine-readable manifests rather than ad hoc side channels
+- expose major stable scientific outputs through canonical machine-readable JSON contracts that preserve scientific meaning and support reconstruction
 - generate publication-quality and teaching-quality figures from the same scientifically explicit contracts
 - inspect texture results through first-class plotting surfaces, including contour pole figures and ODF section views, without leaving the PyTex semantic model
 - generate diffraction and structure visuals through first-class plotting surfaces, including powder XRD plots, SAED spot maps, and VESTA-like 3D crystal scenes
 - control visual output through reusable YAML themes and overrides so notebooks, workflow pages, and user scripts share one plotting style system
 - learn the library through executable, mathematics-backed notebooks that match the formal documentation instead of drifting away from it
 - trace every major result back to the conventions, transforms, references, and inputs used to produce it
+- allow major results to move across tools, workflows, and research agents through explicit machine-readable contracts rather than Python-only in-memory objects
 - rely on one stable terminology and symbol vocabulary across documentation, theory notes, notebooks, and code-facing explanations rather than redefining notation per page
 
 ## Core Outcomes
@@ -88,6 +90,9 @@ Create a scientific library that enables users to:
 
 8. Provenance, calibration, and uncertainty matter
    Scientific meaning is incomplete unless the acquisition and conversion context remain inspectable.
+
+9. Machine-readable scientific interchange matters
+   Major stable outputs should be portable through versioned JSON contracts that preserve semantics strongly enough for reconstruction, validation, and external interoperability.
 
 ## Non-Negotiable Requirements
 

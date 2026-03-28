@@ -6,27 +6,37 @@
     {
       "fixture_id": "fe_bcc",
       "artifact_path": "fixtures/phases/fe_bcc/phase.cif",
-      "metadata_path": "fixtures/phases/fe_bcc/metadata.json"
+      "metadata_path": "fixtures/phases/fe_bcc/metadata.json",
+      "artifact_sha256": "8afe4f952914c0f45fbedc62530f5e65c51a976f7c7cc3704f31904defb4bf07",
+      "metadata_sha256": "80af4d2f45612f5725b6e9fabd8f61961e1043a29e58a45508ebd143fba6956f"
     },
     {
       "fixture_id": "zr_hcp",
       "artifact_path": "fixtures/phases/zr_hcp/phase.cif",
-      "metadata_path": "fixtures/phases/zr_hcp/metadata.json"
+      "metadata_path": "fixtures/phases/zr_hcp/metadata.json",
+      "artifact_sha256": "c12440a1aa9122c2b2af4c7e131b1d857275fefc9af6aee05dc3a6b048541e99",
+      "metadata_sha256": "42ae02f3bcb13e2c96579bbc868002ddec8858f578e045450cb30b0f147f92ca"
     },
     {
       "fixture_id": "ni_fcc",
       "artifact_path": "fixtures/phases/ni_fcc/phase.cif",
-      "metadata_path": "fixtures/phases/ni_fcc/metadata.json"
+      "metadata_path": "fixtures/phases/ni_fcc/metadata.json",
+      "artifact_sha256": "ee3db5e2714d39e1ef50828fa6da4a32581da5803cc426ec5e3c66a1664b8385",
+      "metadata_sha256": "43d816ad072df8226c62e588562ce6009140868f82ac7f110496848403a7976c"
     },
     {
       "fixture_id": "nicl",
       "artifact_path": "fixtures/phases/nicl/phase.cif",
-      "metadata_path": "fixtures/phases/nicl/metadata.json"
+      "metadata_path": "fixtures/phases/nicl/metadata.json",
+      "artifact_sha256": "9acfe0acab2ced22392080c3f656b4970531b83ed398dd1e3ec5ba33ab156715",
+      "metadata_sha256": "2dbeba23da9a3bc2cf5f5520401b89589cee81bb1361f4cda3c6e1780b9e9ce4"
     },
     {
       "fixture_id": "diamond",
       "artifact_path": "fixtures/phases/diamond/phase.cif",
-      "metadata_path": "fixtures/phases/diamond/metadata.json"
+      "metadata_path": "fixtures/phases/diamond/metadata.json",
+      "artifact_sha256": "95eeebff315245de30bc7afd2ab7a7583aba2358b5af22dcbdce5036dc7c358d",
+      "metadata_sha256": "36f580c80a96fa5d29112a108ed779aa517a032cb995abce589a3fc3da7d1c64"
     }
   ]
 }

@@ -25,6 +25,7 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 - Special-system notation, such as hexagonal four-index forms, must be normalized at the boundary and documented centrally.
 - Domain objects should fail fast on inconsistent frame, phase, and symmetry combinations.
 - Stable workflow interchange should use versioned manifests and schemas rather than ad hoc dicts.
+- Major stable objects and results that cross workflow or tool boundaries should expose versioned JSON contracts that preserve enough semantics for reconstruction.
 
 ## Canonical Primitives
 
@@ -55,6 +56,8 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 If a function would be ambiguous without knowledge of frame, symmetry, or basis meaning, it should not accept a naked array as its stable public input.
 
 If a vectorized function would be ambiguous without shared frame, convention, symmetry, or provenance meaning, it should expose or prefer a semantic batch primitive as its stable public input.
+
+If a major stable result must be archived, benchmarked, exchanged with another tool, or consumed by a research agent, it should expose a canonical JSON contract rather than relying on private Python object layout.
 
 PyTex keeps structure-facing and orientation-facing symmetry distinct. `SymmetrySpec` is the point-group-facing surface for direction and orientation reduction. `SpaceGroupSpec` is the structure-facing surface for phase definition and CIF-backed construction.
 

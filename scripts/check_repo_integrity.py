@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -13,6 +14,7 @@ REQUIRED_PATHS = [
     "pyproject.toml",
     "src/pytex/__init__.py",
     "src/pytex/core/__init__.py",
+    "src/pytex/core/fixtures.py",
     "docs/README.md",
     "docs/architecture/overview.md",
     "docs/architecture/canonical_data_model.md",
@@ -83,6 +85,7 @@ REQUIRED_PATHS = [
     "benchmarks/ebsd/foundation_benchmark_manifest.json",
     "benchmarks/diffraction/foundation_benchmark_manifest.json",
     "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "benchmarks/structure_import/foundation_workflow_result_manifest.json",
     "benchmarks/validation/README.md",
     "benchmarks/validation/diffraction_validation_manifest.json",
     "benchmarks/validation/structure_import_validation_manifest.json",
@@ -98,6 +101,12 @@ def _read_json(path: Path) -> dict:
     if not isinstance(payload, dict):
         raise ValueError(f"{path} must decode to a JSON object.")
     return payload
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
 
 
 def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
@@ -144,6 +153,8 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
         fixture_id = entry.get("fixture_id")
         artifact_path = entry.get("artifact_path")
         metadata_path = entry.get("metadata_path")
+        artifact_sha256 = entry.get("artifact_sha256")
+        metadata_sha256 = entry.get("metadata_sha256")
         if not isinstance(fixture_id, str) or not fixture_id:
             issues.append("INVALID: fixtures/phases/catalog.json fixture entries must define fixture_id.")
             continue
@@ -151,10 +162,22 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
             issues.append(f"INVALID: duplicate phase fixture id '{fixture_id}'.")
             continue
         seen_ids.add(fixture_id)
+        artifact_full_path: Path | None = None
         if not isinstance(artifact_path, str) or not artifact_path:
             issues.append(f"INVALID: phase fixture '{fixture_id}' must define artifact_path.")
-        elif not (repo_root / artifact_path).exists():
+        else:
+            artifact_full_path = repo_root / artifact_path
+        if artifact_full_path is not None and not artifact_full_path.exists():
             issues.append(f"MISSING: {artifact_path}")
+        elif artifact_full_path is not None:
+            if not isinstance(artifact_sha256, str) or len(artifact_sha256) != 64:
+                issues.append(
+                    f"INVALID: phase fixture '{fixture_id}' must define a 64-character artifact_sha256."
+                )
+            elif _sha256(artifact_full_path) != artifact_sha256:
+                issues.append(
+                    f"INVALID: {artifact_path} sha256 does not match catalog entry for '{fixture_id}'."
+                )
         if not isinstance(metadata_path, str) or not metadata_path:
             issues.append(f"INVALID: phase fixture '{fixture_id}' must define metadata_path.")
             continue
@@ -162,6 +185,14 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
         if not metadata_full_path.exists():
             issues.append(f"MISSING: {metadata_path}")
             continue
+        if not isinstance(metadata_sha256, str) or len(metadata_sha256) != 64:
+            issues.append(
+                f"INVALID: phase fixture '{fixture_id}' must define a 64-character metadata_sha256."
+            )
+        elif _sha256(metadata_full_path) != metadata_sha256:
+            issues.append(
+                f"INVALID: {metadata_path} sha256 does not match catalog entry for '{fixture_id}'."
+            )
         metadata = _read_json(metadata_full_path)
         missing_metadata_fields = sorted(required_metadata_fields - set(metadata))
         if missing_metadata_fields:
@@ -171,6 +202,13 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
         if metadata.get("fixture_id") != fixture_id:
             issues.append(
                 f"INVALID: {metadata_path} fixture_id does not match catalog entry '{fixture_id}'."
+            )
+        intended_uses = metadata.get("intended_uses")
+        if not isinstance(intended_uses, list) or not intended_uses:
+            issues.append(f"INVALID: {metadata_path} intended_uses must be a non-empty list.")
+        elif "structure_import_validation" not in intended_uses:
+            issues.append(
+                f"INVALID: {metadata_path} must include 'structure_import_validation' in intended_uses."
             )
     return issues
 
@@ -201,6 +239,25 @@ def _check_manifest_artifacts_and_fixtures(repo_root: Path) -> list[str]:
                 continue
             if not (repo_root / artifact_path).exists():
                 issues.append(f"MISSING: {artifact_path}")
+    structure_fixture_ids = tuple(
+        _read_json(repo_root / "benchmarks/structure_import/foundation_benchmark_manifest.json").get(
+            "fixture_ids", []
+        )
+    )
+    validation_fixture_ids = tuple(
+        _read_json(repo_root / "benchmarks/validation/structure_import_validation_manifest.json").get(
+            "fixture_ids", []
+        )
+    )
+    expected_fixture_ids = tuple(sorted(fixture_ids))
+    if tuple(sorted(structure_fixture_ids)) != expected_fixture_ids:
+        issues.append(
+            "INVALID: structure_import foundation benchmark manifest fixture_ids must match the pinned phase fixture catalog."
+        )
+    if tuple(sorted(validation_fixture_ids)) != expected_fixture_ids:
+        issues.append(
+            "INVALID: structure_import validation manifest fixture_ids must match the pinned phase fixture catalog."
+        )
     return issues
 
 
