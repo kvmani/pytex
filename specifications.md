@@ -159,6 +159,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - Symmetry operators must be cacheable and reusable across computations.
 - Stable domain objects must reject inconsistent frames, phases, symmetries, and calibration metadata at construction time.
 - Stable manifests and schemas must be introduced before workflow interchange is treated as stable.
+- Major stable outputs should expose canonical JSON contracts with schema identifiers and versions when those outputs are naturally consumed beyond one in-memory Python call boundary.
 - Space-group, acquisition, calibration, uncertainty, and transformation semantics must not be invented separately inside downstream subsystems.
 
 ## 6. Documentation Requirements
@@ -186,6 +187,32 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - Conventions for hexagonal and trigonal systems must be fixed centrally and reused across code, figures, examples, and tests.
 - Development principles, reference canon rules, and data-contract rules are stable repo policy.
 - The documentation architecture must support HTML browsing and PDF-grade scientific exposition without treating either layer as optional.
+- Major stable JSON contracts must be documented as part of the public scientific surface once they are introduced.
+
+## 6A. Canonical JSON Interchange Requirements
+
+PyTex treats machine-readable scientific interchange as a first-class product surface.
+
+For every major stable scientific output, PyTex should define a canonical JSON serialization that is:
+
+- semantically explicit
+- versioned
+- machine-ingestible
+- reconstructible into the corresponding PyTex object or stable result surface
+- suitable for validation, workflow chaining, and external-tool interoperability
+
+This requirement exists so PyTex can function not only as a Python library, but also as a semantic interchange layer for crystallographic characterization workflows.
+
+The immediate serialization priority applies to major stable outputs such as:
+
+- frames and transforms
+- structure and phase primitives
+- orientation-domain primitives and major batched orientation results
+- acquisition and diffraction geometry
+- powder XRD and SAED outputs
+- stable workflow manifests and validation artifacts
+
+The quality bar is not merely “JSON export exists.” The JSON contract must preserve enough scientific meaning that frame, basis, symmetry, provenance, calibration, and indexing interpretation do not have to be reconstructed from hidden side channels.
 
 ## 7. Validation Requirements
 

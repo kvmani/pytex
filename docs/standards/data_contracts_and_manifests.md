@@ -3,6 +3,7 @@
 ## Policy
 
 - Stable workflow interchange must use versioned, machine-readable manifests.
+- Major stable scientific outputs should also use versioned, machine-readable JSON contracts when they must cross workflow, storage, or tool boundaries.
 - Schemas belong under `schemas/`.
 - Manifests must preserve:
   - source-system provenance
@@ -11,6 +12,24 @@
   - references to external files or fixtures
   - validation and benchmark context where relevant
 - Stable schemas must not be invented independently inside adapters or notebooks.
+
+## Broader Contract Rule
+
+PyTex distinguishes between:
+
+- `workflow manifests`
+  Scientific context, provenance, validation, and workflow-bound evidence records.
+- `object or result contracts`
+  Canonical JSON serializations for major stable outputs that must be reconstructible into PyTex objects or stable result surfaces.
+
+Both are part of the machine-readable interoperability posture of the project.
+
+The expectation is:
+
+- manifests describe workflows, evidence, and reproducibility context
+- JSON object contracts describe major scientific outputs themselves
+
+When a stable output is likely to be consumed by another tool, validation pipeline, or research agent, PyTex should prefer an explicit JSON contract over an informal ad hoc dictionary.
 
 ## Immediate Scope
 
@@ -36,6 +55,8 @@ The current repository exposes several stable manifest schemas today and a broad
 ## Design Rule
 
 Stable manifests must describe scientific semantics explicitly enough that downstream workflows do not need hidden side channels to recover frame, symmetry, or provenance meaning.
+
+The same rule applies to major stable JSON output contracts: they must preserve enough scientific semantics for reconstruction and downstream interpretation without hidden side channels.
 
 ## Manifest Family Roadmap
 

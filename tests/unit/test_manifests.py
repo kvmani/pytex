@@ -34,6 +34,9 @@ from pytex import (
     read_validation_manifest,
     read_workflow_result_manifest,
     validation_manifest_schema_path,
+    validate_benchmark_manifest,
+    validate_validation_manifest,
+    validate_workflow_result_manifest,
     workflow_result_manifest_schema_path,
 )
 
@@ -224,3 +227,21 @@ def test_workflow_result_manifest_requires_non_empty_artifact_paths() -> None:
             input_manifest_ids=("input",),
             artifact_paths=("",),
         )
+
+
+def test_repo_manifests_are_schema_valid_and_readable() -> None:
+    repo_root = Path(__file__).resolve().parents[2]
+    for manifest_path in sorted((repo_root / "benchmarks").glob("**/*.json")):
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        schema_id = payload["schema_id"]
+        if schema_id == "pytex.benchmark_manifest":
+            validate_benchmark_manifest(payload)
+            assert read_benchmark_manifest(manifest_path).to_dict() == payload
+        elif schema_id == "pytex.validation_manifest":
+            validate_validation_manifest(payload)
+            assert read_validation_manifest(manifest_path).to_dict() == payload
+        elif schema_id == "pytex.workflow_result_manifest":
+            validate_workflow_result_manifest(payload)
+            assert read_workflow_result_manifest(manifest_path).to_dict() == payload
+        else:
+            pytest.fail(f"Unexpected schema_id in repo manifest {manifest_path}: {schema_id}")

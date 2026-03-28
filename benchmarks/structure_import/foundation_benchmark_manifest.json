@@ -8,9 +8,11 @@
   "baseline_kind": "cif_and_invariant",
   "workflows": [
     "phase_from_cif",
+    "phase_from_cif_string",
     "phase_from_pymatgen_structure",
     "space_group_preservation",
-    "unit_cell_site_preservation"
+    "unit_cell_site_preservation",
+    "fixture_catalog_hash_verification"
   ],
   "fixture_ids": [
     "fe_bcc",
@@ -21,19 +23,30 @@
   ],
   "artifact_paths": [
     "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "benchmarks/structure_import/foundation_workflow_result_manifest.json",
     "fixtures/phases/catalog.json",
+    "fixtures/phases/README.md",
     "fixtures/phases/fe_bcc/phase.cif",
+    "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/zr_hcp/phase.cif",
+    "fixtures/phases/zr_hcp/metadata.json",
     "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/ni_fcc/metadata.json",
     "fixtures/phases/nicl/phase.cif",
+    "fixtures/phases/nicl/metadata.json",
     "fixtures/phases/diamond/phase.cif"
+    ,
+    "fixtures/phases/diamond/metadata.json"
   ],
   "tolerances": {
-    "lattice_atol_angstrom": 1e-08
+    "lattice_atol_angstrom": 1e-08,
+    "lattice_angle_atol_deg": 1e-08,
+    "fractional_site_count_atol": 0.0
   },
   "status": "foundational",
   "notes": [
     "This benchmark manifest marks the structure-import validation surface while broader literature-backed baselines grow.",
-    "The bundled phase corpus under fixtures/phases is the pinned in-repo benchmark dataset for structure-import smoke coverage and reproducible demos."
+    "The bundled phase corpus under fixtures/phases is the pinned in-repo benchmark dataset for structure-import smoke coverage and reproducible demos.",
+    "Hash-pinned catalog entries are part of the reproducibility contract for the built-in phase corpus."
   ]
 }

@@ -1,0 +1,38 @@
+{
+  "schema_id": "pytex.workflow_result_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-27T00:00:00Z",
+  "result_id": "structure_import_fixture_audit_result",
+  "workflow_name": "structure_import_fixture_audit",
+  "modality": "structure_import",
+  "produced_by": "pytex",
+  "input_manifest_ids": [
+    "structure_import_foundation_internal_baseline",
+    "structure_import_foundation_validation"
+  ],
+  "artifact_paths": [
+    "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "benchmarks/validation/structure_import_validation_manifest.json",
+    "fixtures/phases/catalog.json",
+    "fixtures/phases/fe_bcc/phase.cif",
+    "fixtures/phases/fe_bcc/metadata.json",
+    "fixtures/phases/zr_hcp/phase.cif",
+    "fixtures/phases/zr_hcp/metadata.json",
+    "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/ni_fcc/metadata.json",
+    "fixtures/phases/nicl/phase.cif",
+    "fixtures/phases/nicl/metadata.json",
+    "fixtures/phases/diamond/phase.cif",
+    "fixtures/phases/diamond/metadata.json"
+  ],
+  "notes": [
+    "This workflow-result manifest records the pinned artifact set used for the built-in structure-import fixture audit.",
+    "The workflow is reproducible because the catalog, per-fixture metadata, and CIF assets are versioned in-repo."
+  ],
+  "metadata": {
+    "fixture_catalog_id": "pytex.phase_fixture_catalog",
+    "validation_campaign": "structure_import_foundation_validation",
+    "benchmark_id": "structure_import_foundation_internal_baseline"
+  }
+}

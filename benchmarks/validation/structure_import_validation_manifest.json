@@ -21,6 +21,8 @@
   ],
   "artifact_paths": [
     "docs/testing/structure_validation_matrix.md",
+    "benchmarks/structure_import/foundation_benchmark_manifest.json",
+    "benchmarks/structure_import/foundation_workflow_result_manifest.json",
     "fixtures/phases/catalog.json",
     "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/zr_hcp/metadata.json",
@@ -33,6 +35,7 @@
   ],
   "notes": [
     "Parser-success tests are not the whole story; this validation campaign tracks the broader structure-import evidence base.",
-    "Bundled phase-fixture metadata provide the pinned provenance and expected crystallographic semantics for this campaign."
+    "Bundled phase-fixture metadata provide the pinned provenance and expected crystallographic semantics for this campaign.",
+    "The current structure-import validation surface requires catalog-level integrity checks and fixture-level semantic expectations, not only parser success."
   ]
 }

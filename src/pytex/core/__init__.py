@@ -14,6 +14,12 @@ from pytex.core.conventions import (
     Handedness,
 )
 from pytex.core.frames import FrameTransform, ReferenceFrame
+from pytex.core.fixtures import (
+    PhaseFixtureRecord,
+    get_phase_fixture,
+    list_phase_fixtures,
+    phase_fixture_catalog_path,
+)
 from pytex.core.hexagonal import (
     direction_uvtw_to_uvw,
     direction_uvw_to_uvtw,
@@ -66,8 +72,10 @@ __all__ = [
     "format_direction_indices",
     "format_miller_indices",
     "format_plane_indices",
+    "get_phase_fixture",
     "Handedness",
     "Lattice",
+    "list_phase_fixtures",
     "MillerIndex",
     "MeasurementQuality",
     "Misorientation",
@@ -76,6 +84,8 @@ __all__ = [
     "OrientationSet",
     "PYTEX_CANONICAL_CONVENTIONS",
     "Phase",
+    "PhaseFixtureRecord",
+    "phase_fixture_catalog_path",
     "plane_hkil_to_hkl",
     "plane_hkl_to_hkil",
     "ProvenanceRecord",

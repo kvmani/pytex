@@ -18,8 +18,47 @@ This support lives at the core-model layer, not as an afterthought in a downstre
 - `Phase.from_pymatgen_structure(...)`
 - `Phase.from_cif(...)`
 - `Phase.from_cif_string(...)`
+- `phase_fixture_catalog_path()`
+- `list_phase_fixtures()`
+- `get_phase_fixture(...)`
 
 These constructors use `pymatgen` as the optional crystallographic parser and structure source, but the returned objects are pure PyTex primitives.
+
+## Built-In Phase Fixtures
+
+PyTex also ships a small pinned in-repo phase-fixture corpus under `fixtures/phases/README.md`.
+These fixtures exist for:
+
+- structure-import validation
+- benchmark reproducibility
+- small canonical demos
+- teaching workflows that need stable crystallographic examples
+
+The public fixture helpers make that corpus discoverable without hard-coding file paths:
+
+```python
+from pytex import (
+    FrameDomain,
+    Handedness,
+    ReferenceFrame,
+    get_phase_fixture,
+    list_phase_fixtures,
+)
+
+print([record.fixture_id for record in list_phase_fixtures()])
+
+crystal = ReferenceFrame(
+    "crystal",
+    FrameDomain.CRYSTAL,
+    ("a", "b", "c"),
+    Handedness.RIGHT,
+)
+
+zr = get_phase_fixture("zr_hcp").load_phase(crystal_frame=crystal)
+print(zr.name, zr.space_group_symbol, zr.space_group_number)
+```
+
+The fixture catalog is hash-pinned, so the built-in corpus participates in the reproducibility and integrity surface rather than behaving like an informal sample-data directory.
 
 ## Why This Lives In The Core Model
 
