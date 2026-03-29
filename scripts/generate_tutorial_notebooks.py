@@ -87,6 +87,8 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         KernelSpec,
         KinematicSimulation,
         Lattice,
+        get_phase_fixture,
+        list_phase_fixtures,
         list_style_themes,
         MeasurementQuality,
         MillerIndex,
@@ -100,6 +102,8 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         PowderPattern,
         PowderReflection,
         ReferenceFrame,
+        read_validation_manifest,
+        read_workflow_result_manifest,
         resolve_style,
         RadiationSpec,
         Rotation,
@@ -127,13 +131,17 @@ def build_notebooks() -> dict[str, dict[str, object]]:
     )
 
 
-    def make_context():
-        crystal = ReferenceFrame(
+    def make_crystal_frame():
+        return ReferenceFrame(
             "crystal",
             FrameDomain.CRYSTAL,
             ("a", "b", "c"),
             Handedness.RIGHT,
         )
+
+
+    def make_context():
+        crystal = make_crystal_frame()
         specimen = ReferenceFrame(
             "specimen",
             FrameDomain.SPECIMEN,
@@ -158,66 +166,27 @@ def build_notebooks() -> dict[str, dict[str, object]]:
             ("X", "Y", "Z"),
             Handedness.RIGHT,
         )
-        symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
-        lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
-        unit_cell = UnitCell(
-            lattice=lattice,
-            sites=(
-                AtomicSite("A1", "Cu", np.array([0.0, 0.0, 0.0])),
-                AtomicSite("A2", "Cu", np.array([0.0, 0.5, 0.5])),
-                AtomicSite("A3", "Cu", np.array([0.5, 0.0, 0.5])),
-                AtomicSite("A4", "Cu", np.array([0.5, 0.5, 0.0])),
-            ),
-        )
-        phase = Phase(
-            "fcc_demo",
-            lattice=lattice,
-            symmetry=symmetry,
-            crystal_frame=crystal,
-            unit_cell=unit_cell,
-        )
+        phase = get_phase_fixture("ni_fcc").load_phase(crystal_frame=crystal)
         return crystal, specimen, map_frame, detector, lab, phase
 
 
-    def make_nacl_phase():
-        crystal = ReferenceFrame(
-            "crystal",
-            FrameDomain.CRYSTAL,
-            ("a", "b", "c"),
-            Handedness.RIGHT,
-        )
-        lattice = Lattice(5.6402, 5.6402, 5.6402, 90.0, 90.0, 90.0, crystal_frame=crystal)
-        symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
-        unit_cell = UnitCell(
-            lattice=lattice,
-            sites=(
-                AtomicSite("Cl1", "Cl", np.array([0.0, 0.0, 0.0])),
-                AtomicSite("Cl2", "Cl", np.array([0.0, 0.5, 0.5])),
-                AtomicSite("Cl3", "Cl", np.array([0.5, 0.0, 0.5])),
-                AtomicSite("Cl4", "Cl", np.array([0.5, 0.5, 0.0])),
-                AtomicSite("Na1", "Na", np.array([0.5, 0.0, 0.0])),
-                AtomicSite("Na2", "Na", np.array([0.0, 0.5, 0.0])),
-                AtomicSite("Na3", "Na", np.array([0.0, 0.0, 0.5])),
-                AtomicSite("Na4", "Na", np.array([0.5, 0.5, 0.5])),
-            ),
-        )
-        return Phase(
-            "NaCl",
-            lattice=lattice,
-            symmetry=symmetry,
-            crystal_frame=crystal,
-            unit_cell=unit_cell,
-        )
+    def describe_phase_fixture(fixture_id):
+        record = get_phase_fixture(fixture_id)
+        return {
+            "fixture_id": record.fixture_id,
+            "display_name": record.display_name,
+            "artifact_path": str(record.artifact_path),
+            "metadata_path": str(record.metadata_path),
+            "intended_uses": tuple(record.metadata["intended_uses"]),
+        }
 
 
     def load_zr_hcp_phase():
-        crystal = ReferenceFrame(
-            "crystal",
-            FrameDomain.CRYSTAL,
-            ("a", "b", "c"),
-            Handedness.RIGHT,
-        )
-        return Phase.from_cif(Path("fixtures/phases/zr_hcp/phase.cif"), crystal_frame=crystal)
+        return get_phase_fixture("zr_hcp").load_phase(crystal_frame=make_crystal_frame())
+
+
+    def load_diamond_phase():
+        return get_phase_fixture("diamond").load_phase(crystal_frame=make_crystal_frame())
 
 
     def publication_crystal_style():
@@ -489,7 +458,9 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 # Phases, Lattices, Space Groups, And CIF Import
 
                 PyTex keeps structure semantics explicit by separating point-group reduction
-                semantics from structure-facing space-group identity.
+                semantics from structure-facing space-group identity. The immediate teaching path
+                now starts from the pinned in-repo phase-fixture corpus so the examples line up
+                with the structure-import validation and reproducibility surface.
 
                 ## Key Rule
 
@@ -502,13 +473,28 @@ def build_notebooks() -> dict[str, dict[str, object]]:
             code_cell(
                 """
                 crystal, specimen, map_frame, detector, lab, phase = make_context()
+                ni_fixture = describe_phase_fixture("ni_fcc")
 
+                print("Fixture ids:", [record.fixture_id for record in list_phase_fixtures()])
+                print("Teaching fixture:", ni_fixture["display_name"])
                 print("Phase:", phase.name)
                 print("Point group:", phase.symmetry.point_group)
                 print("Direct basis:")
                 print(phase.lattice.direct_basis().matrix)
                 print("Reciprocal basis:")
                 print(phase.lattice.reciprocal_basis().matrix)
+                """
+            ),
+            code_cell(
+                """
+                zr_hcp = load_zr_hcp_phase()
+                structure_audit = read_workflow_result_manifest(
+                    "benchmarks/structure_import/foundation_workflow_result_manifest.json"
+                ).to_dict()
+
+                print("Hexagonal fixture:", zr_hcp.name)
+                print(zr_hcp.space_group.symbol, zr_hcp.space_group.number)
+                print("Audit summary artifact:", structure_audit["metadata"]["audit_summary_artifact"])
                 """
             ),
             code_cell(
@@ -539,8 +525,16 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     print(imported_phase.space_group.symbol, imported_phase.space_group.number)
                     print(imported_phase.symmetry.point_group)
                 except ImportError:
-                    print("Install the adapters extra to execute CIF-backed examples.")
+                    print("Install the default development environment to execute CIF-backed examples.")
                 '''
+            ),
+            markdown_cell(
+                """
+                The fixture-backed examples above are the default reproducible path. The inline CIF
+                string remains useful for tiny teaching snippets, but the pinned fixture corpus and
+                audit manifest are what the repository treats as the authoritative validation
+                surface.
+                """
             ),
         ],
     }
@@ -1119,13 +1113,15 @@ def build_notebooks() -> dict[str, dict[str, object]]:
 
                 This notebook demonstrates the current PyTex powder XRD surface from `Phase`
                 construction through reflection generation, broadened spectrum construction, and
-                plotting.
+                plotting. The main teaching case now uses the pinned `ni_fcc` fixture that also
+                anchors the external-baseline validation artifacts.
                 """
             ),
             code_cell(common_setup),
             code_cell(
                 """
                 crystal, specimen, map_frame, detector, lab, phase = make_context()
+                reference_fixture = describe_phase_fixture("ni_fcc")
 
                 pattern = generate_xrd_pattern(
                     phase,
@@ -1136,6 +1132,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     broadening_fwhm_deg=0.16,
                 )
 
+                print("Fixture:", reference_fixture["display_name"])
                 print(pattern.radiation)
                 print("reflections:", len(pattern.reflections))
                 print("first peak:", pattern.reflections[0])
@@ -1149,9 +1146,16 @@ def build_notebooks() -> dict[str, dict[str, object]]:
             ),
             markdown_cell(
                 """
+                ## Pedagogical Caveat
+
                 The current intensity model is structure-sensitive but still foundational. It uses
                 crystal multiplicity, a simple structure-factor proxy, and a Lorentz-polarization
                 factor rather than a full scattering-factor or instrument model.
+
+                The pinned validation case for this notebook checks peak positions and family
+                coverage against an external `pymatgen` reference artifact. Treat the rendered
+                intensity envelope as a teaching and prototyping surface, not as a calibrated
+                diffractometer model.
                 """
             ),
         ],
@@ -1165,13 +1169,16 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 # SAED Workflows
 
                 This notebook demonstrates the current selected-area electron diffraction workflow
-                built around explicit reciprocal-space and detector semantics.
+                built around explicit reciprocal-space and detector semantics. The main teaching case
+                now uses the pinned `ni_fcc` fixture that also anchors the first external shell-
+                geometry baseline.
                 """
             ),
             code_cell(common_setup),
             code_cell(
                 """
                 crystal, specimen, map_frame, detector, lab, phase = make_context()
+                reference_fixture = describe_phase_fixture("ni_fcc")
                 zone_axis = ZoneAxis(indices=np.array([0, 0, 1]), phase=phase)
                 saed = generate_saed_pattern(
                     phase,
@@ -1181,6 +1188,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                     max_g_inv_angstrom=3.0,
                 )
 
+                print("Fixture:", reference_fixture["display_name"])
                 print("zone axis:", saed.zone_axis.indices)
                 print("spots:", len(saed.spots))
                 print("detector frame:", saed.detector_frame.name)
@@ -1197,6 +1205,11 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 PyTex keeps the direct-space zone axis, reciprocal-space reflections, and
                 detector-space coordinates explicit rather than collapsing them into one plotting
                 array.
+
+                The current spot intensities are proxy values for ranking and display. The pinned
+                validation case for this notebook is geometry-first and checks indexed shell
+                agreement against a `diffsims` reference artifact rather than claiming a full
+                dynamical electron-diffraction model.
                 """
             ),
         ],
@@ -1211,21 +1224,23 @@ def build_notebooks() -> dict[str, dict[str, object]]:
 
                 This notebook demonstrates the current VESTA-like 3D crystal-visualization surface
                 for publication-quality structure views with atoms, bonds, cell overlays, bounded
-                planes, and crystallographic directions.
+                planes, and crystallographic directions. The priority examples now use the pinned
+                fixture corpus so the teaching path matches the validation corpus.
                 """
             ),
             code_cell(common_setup),
             markdown_cell(
                 """
-                ## Publication-Style NaCl Example
+                ## Publication-Style Diamond Fixture Example
 
-                This first scene shows how one viewer can carry atoms, bonds, repeated unit cells,
-                bounded Miller planes, and labeled directions at the same time.
+                This first scene uses the pinned `diamond` fixture to show how one viewer can carry
+                atoms, bonds, repeated unit cells, bounded Miller planes, and labeled directions at
+                the same time.
                 """
             ),
             code_cell(
                 """
-                phase = make_nacl_phase()
+                phase = load_diamond_phase()
 
                 scene = build_crystal_scene(
                     phase,
@@ -1302,7 +1317,7 @@ def build_notebooks() -> dict[str, dict[str, object]]:
             code_cell(
                 """
                 with tempfile.TemporaryDirectory() as tmpdir:
-                    destination = Path(tmpdir) / "nacl_publication_view.png"
+                    destination = Path(tmpdir) / "diamond_publication_view.png"
                     figure.savefig(destination, dpi=300, bbox_inches="tight")
                     print(destination)
                 """
@@ -1312,7 +1327,8 @@ def build_notebooks() -> dict[str, dict[str, object]]:
                 ## Hexagonal-Axis Zr Example
 
                 The next scene adds the pedagogical hexagonal prism so the basal symmetry is easier
-                to teach while keeping the canonical lattice semantics unchanged.
+                to teach while keeping the canonical lattice semantics unchanged. The prism is a
+                teaching overlay, not a replacement for the canonical lattice stored on the phase.
                 """
             ),
             code_cell(
@@ -1443,7 +1459,9 @@ crystal:
 
                 This notebook shows the architectural point of the new features: one `Phase` can
                 feed structure visualization, powder XRD, and SAED workflows without redefining the
-                crystallographic semantics at each step.
+                crystallographic semantics at each step. The immediate roadmap path now uses the
+                pinned `ni_fcc` fixture and reads the manifest-backed reproducibility trail that
+                supports the same example in tests and docs.
                 """
             ),
             code_cell(common_setup),
@@ -1489,6 +1507,32 @@ crystal:
             ),
             code_cell(
                 """
+                structure_audit = read_workflow_result_manifest(
+                    "benchmarks/structure_import/foundation_workflow_result_manifest.json"
+                ).to_dict()
+                diffraction_baselines = read_workflow_result_manifest(
+                    "benchmarks/diffraction/external_baseline_workflow_result_manifest.json"
+                ).to_dict()
+                diffraction_validation = read_validation_manifest(
+                    "benchmarks/validation/diffraction_validation_manifest.json"
+                ).to_dict()
+
+                print("Structure audit result:", structure_audit["result_id"])
+                print("Audit summary:", structure_audit["metadata"]["audit_summary_artifact"])
+                print(
+                    "External baseline packages:",
+                    diffraction_baselines["metadata"]["xrd_reference_package"],
+                    diffraction_baselines["metadata"]["saed_reference_package"],
+                )
+                print(
+                    "Validation campaign:",
+                    diffraction_validation["campaign_name"],
+                    diffraction_validation["status"],
+                )
+                """
+            ),
+            code_cell(
+                """
                 xrd_figure = plot_xrd_pattern(xrd, theme="journal")
                 saed_figure = plot_saed_pattern(saed, theme="dark")
                 crystal_figure = plot_crystal_structure_3d(
@@ -1501,6 +1545,17 @@ crystal:
             ),
             code_cell("saed_figure"),
             code_cell("crystal_figure"),
+            markdown_cell(
+                """
+                This is the main fixture-backed teaching path for the current immediate roadmap:
+                pinned phase fixture -> canonical structure model -> runtime visualization and
+                diffraction -> manifest-backed validation artifacts.
+
+                The figures are stable teaching and publication surfaces for the current
+                implementation, but the XRD and SAED intensity models remain intentionally modest
+                compared with full physical scattering engines.
+                """
+            ),
         ],
     }
 

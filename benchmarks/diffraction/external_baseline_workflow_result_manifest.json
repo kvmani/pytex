@@ -1,0 +1,31 @@
+{
+  "schema_id": "pytex.workflow_result_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-29T00:00:00Z",
+  "result_id": "diffraction_external_baseline_reference_artifacts",
+  "workflow_name": "diffraction_external_baseline_generation",
+  "modality": "diffraction",
+  "produced_by": "pytex",
+  "input_manifest_ids": [
+    "diffraction_external_baseline_cases",
+    "diffraction_foundation_validation"
+  ],
+  "artifact_paths": [
+    "scripts/generate_diffraction_external_baselines.py",
+    "fixtures/diffraction/README.md",
+    "fixtures/diffraction/ni_fcc_pymatgen_xrd_cuka.json",
+    "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
+    "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/ni_fcc/metadata.json"
+  ],
+  "notes": [
+    "This workflow-result manifest records the pinned open-source reference artifacts used by the diffraction external-baseline program.",
+    "The baseline artifacts are versioned in-repo so geometry comparisons stay deterministic in the default test suite."
+  ],
+  "metadata": {
+    "fixture_id": "ni_fcc",
+    "xrd_reference_package": "pymatgen",
+    "saed_reference_package": "diffsims"
+  }
+}

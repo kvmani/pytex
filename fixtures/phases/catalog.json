@@ -7,36 +7,36 @@
       "fixture_id": "fe_bcc",
       "artifact_path": "fixtures/phases/fe_bcc/phase.cif",
       "metadata_path": "fixtures/phases/fe_bcc/metadata.json",
-      "artifact_sha256": "8afe4f952914c0f45fbedc62530f5e65c51a976f7c7cc3704f31904defb4bf07",
-      "metadata_sha256": "80af4d2f45612f5725b6e9fabd8f61961e1043a29e58a45508ebd143fba6956f"
+      "artifact_sha256": "e512334ee1515f92fa90ba64d1ad2e9520aec28877d84c2baf6353a5f9ed31b5",
+      "metadata_sha256": "6fe28c886e60dc34abb4ceaf4a43252063f3268d91ebf52b0951dd511cabfecf"
     },
     {
       "fixture_id": "zr_hcp",
       "artifact_path": "fixtures/phases/zr_hcp/phase.cif",
       "metadata_path": "fixtures/phases/zr_hcp/metadata.json",
-      "artifact_sha256": "c12440a1aa9122c2b2af4c7e131b1d857275fefc9af6aee05dc3a6b048541e99",
-      "metadata_sha256": "42ae02f3bcb13e2c96579bbc868002ddec8858f578e045450cb30b0f147f92ca"
+      "artifact_sha256": "f3b0b956e56e1294d3009014f986fc18d28ca37ee344b095e68ffe1ecf6aa3c1",
+      "metadata_sha256": "553b3cb730d01308a906aeebad25094a9f021ff3f45dfb7f0a69fcc3bb1db050"
     },
     {
       "fixture_id": "ni_fcc",
       "artifact_path": "fixtures/phases/ni_fcc/phase.cif",
       "metadata_path": "fixtures/phases/ni_fcc/metadata.json",
-      "artifact_sha256": "ee3db5e2714d39e1ef50828fa6da4a32581da5803cc426ec5e3c66a1664b8385",
-      "metadata_sha256": "43d816ad072df8226c62e588562ce6009140868f82ac7f110496848403a7976c"
+      "artifact_sha256": "fc4491e0193e0cf6071db648eee50d88b734386b950e74252e291d75573f1d20",
+      "metadata_sha256": "7da44b74f19b60ac06a428887ec3fbc2dbda88cd07b63b3ec6329d313d0a7299"
     },
     {
       "fixture_id": "nicl",
       "artifact_path": "fixtures/phases/nicl/phase.cif",
       "metadata_path": "fixtures/phases/nicl/metadata.json",
-      "artifact_sha256": "9acfe0acab2ced22392080c3f656b4970531b83ed398dd1e3ec5ba33ab156715",
-      "metadata_sha256": "2dbeba23da9a3bc2cf5f5520401b89589cee81bb1361f4cda3c6e1780b9e9ce4"
+      "artifact_sha256": "b4a191a9843f4059914bfec7b431ce816f8dc19241c714d9ba22af61d6546b94",
+      "metadata_sha256": "77fa4eb007b31b30ede643bbbb657134ada80d1cbcb5af8599e30c754be318e7"
     },
     {
       "fixture_id": "diamond",
       "artifact_path": "fixtures/phases/diamond/phase.cif",
       "metadata_path": "fixtures/phases/diamond/metadata.json",
-      "artifact_sha256": "95eeebff315245de30bc7afd2ab7a7583aba2358b5af22dcbdce5036dc7c358d",
-      "metadata_sha256": "36f580c80a96fa5d29112a108ed779aa517a032cb995abce589a3fc3da7d1c64"
+      "artifact_sha256": "60d28f3c5e7d1d37e958fa83cc0ee3dd06ddec48b4ee5d6f20e44b4d2dbc34a1",
+      "metadata_sha256": "6a2b25e92582ea8ff6a44055700826fa0fe7729b1d6431e52bbcf4205e4be917"
     }
   ]
 }

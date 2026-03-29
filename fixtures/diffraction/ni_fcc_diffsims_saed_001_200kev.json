@@ -1,0 +1,163 @@
+{
+  "schema_id": "pytex.diffraction_external_baseline.saed",
+  "schema_version": "1.0.0",
+  "fixture_id": "ni_fcc",
+  "phase_name": "nickel-fcc",
+  "zone_axis": [
+    0,
+    0,
+    1
+  ],
+  "accelerating_voltage_kev": 200.0,
+  "reciprocal_radius_inv_angstrom": 1.0,
+  "source_kind": "open_source_reference_implementation",
+  "source_package": {
+    "name": "diffsims",
+    "version": "0.7.0",
+    "calculator": "DiffractionGenerator"
+  },
+  "reference_shells": [
+    {
+      "representative_hkl": [
+        2,
+        0,
+        0
+      ],
+      "spot_count": 4,
+      "radius_inv_angstrom": 0.567558,
+      "reference_spots": [
+        {
+          "miller_indices": [
+            -2,
+            0,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            -0.567558,
+            0.0
+          ],
+          "relative_intensity": 42.093797
+        },
+        {
+          "miller_indices": [
+            0,
+            -2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            0.0,
+            -0.567558
+          ],
+          "relative_intensity": 42.093797
+        },
+        {
+          "miller_indices": [
+            0,
+            2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            0.0,
+            0.567558
+          ],
+          "relative_intensity": 42.093797
+        },
+        {
+          "miller_indices": [
+            2,
+            0,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            0.567558,
+            0.0
+          ],
+          "relative_intensity": 42.093797
+        }
+      ]
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        0
+      ],
+      "spot_count": 4,
+      "radius_inv_angstrom": 0.802648,
+      "reference_spots": [
+        {
+          "miller_indices": [
+            -2,
+            -2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            -0.567558,
+            -0.567558
+          ],
+          "relative_intensity": 7.475988
+        },
+        {
+          "miller_indices": [
+            -2,
+            2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            -0.567558,
+            0.567558
+          ],
+          "relative_intensity": 7.475988
+        },
+        {
+          "miller_indices": [
+            2,
+            -2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            0.567558,
+            -0.567558
+          ],
+          "relative_intensity": 7.475988
+        },
+        {
+          "miller_indices": [
+            2,
+            2,
+            0
+          ],
+          "reciprocal_coordinates_inv_angstrom": [
+            0.567558,
+            0.567558
+          ],
+          "relative_intensity": 7.475988
+        }
+      ]
+    }
+  ],
+  "pytex_reference_shells": [
+    {
+      "representative_hkl": [
+        2,
+        0,
+        0
+      ],
+      "spot_count": 4,
+      "radius_inv_angstrom": 0.567558
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        0
+      ],
+      "spot_count": 4,
+      "radius_inv_angstrom": 0.802648
+    }
+  ],
+  "notes": [
+    "The diffsims baseline records shell radii and indexed spots for the ni_fcc [001] SAED case.",
+    "PyTex comparisons should treat shell geometry and indexed-family coverage as the hard external baseline while allowing in-plane detector-basis rotations."
+  ]
+}

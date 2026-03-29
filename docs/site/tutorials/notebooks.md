@@ -13,6 +13,9 @@ They are also expected to track the current runtime API closely. When plotting, 
 batch behavior changes in code, the notebook generator and the built notebooks must be updated in
 the same change so the executable examples stay trustworthy.
 
+The priority roadmap notebooks are also smoke-executed in the default test suite. PyTex therefore
+treats them as stable teaching artifacts rather than as unverified examples.
+
 ## Notebook Atlas
 
 ```{toctree}
@@ -44,6 +47,20 @@ notebooks/15_structure_diffraction_visualization_pipeline
 - Use the XRD, SAED, crystal-visualization, and style notebooks to see the current diffraction and
   structure-view surfaces rather than relying on stale standalone scripts.
 - Use the linked concept pages and LaTeX notes when you need the deeper formal derivation behind the tutorial flow.
+
+## Immediate Roadmap Path
+
+The main near-term teaching path is now organized around the pinned fixture corpus and the same
+validation artifacts used elsewhere in the repository:
+
+1. `04_phases_lattices_space_groups_and_cif`
+2. `13_crystal_visualization_workflows`
+3. `11_powder_xrd_workflows`
+4. `12_saed_workflows`
+5. `15_structure_diffraction_visualization_pipeline`
+
+That sequence takes one pinned phase from CIF-backed construction through structure visualization,
+diffraction generation, and manifest-backed reproducibility notes.
 
 ## References
 

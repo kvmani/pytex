@@ -243,5 +243,9 @@ def test_repo_manifests_are_schema_valid_and_readable() -> None:
         elif schema_id == "pytex.workflow_result_manifest":
             validate_workflow_result_manifest(payload)
             assert read_workflow_result_manifest(manifest_path).to_dict() == payload
+        elif schema_id == "pytex.structure_import_fixture_audit":
+            assert payload["schema_version"] == "1.0.0"
+            assert payload["fixture_catalog_id"] == "pytex.phase_fixture_catalog"
+            assert payload["fixtures"]
         else:
             pytest.fail(f"Unexpected schema_id in repo manifest {manifest_path}: {schema_id}")

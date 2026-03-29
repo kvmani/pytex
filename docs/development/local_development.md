@@ -11,6 +11,9 @@ pytest
 sphinx-build -b html docs/site docs/_build/html
 ```
 
+This default local-development install includes the CIF-backed structure-import path used by the
+normal unit suite, so a clean `pytest` run does not depend on a second undocumented install step.
+
 For a fuller user-facing setup guide, including Windows activation details, notebook use, and PDF build notes, see `../site/tutorials/installation_and_build.md`.
 
 ## Working Expectations

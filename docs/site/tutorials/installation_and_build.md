@@ -30,12 +30,9 @@ Install the full local development toolchain:
 ```bash
 python -m pip install -e ".[dev,docs]"
 ```
-
-If you need optional structure-import adapters such as `pymatgen`, also install:
-
-```bash
-python -m pip install -e ".[adapters]"
-```
+This standard development install includes the CIF-backed structure-import stack used by the
+default test suite. The broader `adapters` extra remains optional for heavier interoperability
+work beyond the normal contributor workflow.
 
 ## Install On Windows
 
@@ -47,12 +44,9 @@ py -3.11 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev,docs]"
 ```
-
-If you need optional structure-import adapters:
-
-```powershell
-python -m pip install -e ".[adapters]"
-```
+This standard development install includes the CIF-backed structure-import stack used by the
+default test suite. The broader `adapters` extra remains optional for heavier interoperability
+work beyond the normal contributor workflow.
 
 If PowerShell script execution is blocked, activate from `cmd.exe` with:
 
@@ -125,9 +119,10 @@ python -m jupyter lab docs/site/tutorials/notebooks
 
 ## Troubleshooting
 
-### `ImportError` from optional crystallography adapters
+### `ImportError` from broader optional adapters
 
-Install the adapters extra:
+The default development install already includes the CIF-backed structure-import support used by
+the normal test suite. For heavier optional interoperability adapters, install:
 
 ```bash
 python -m pip install -e ".[adapters]"

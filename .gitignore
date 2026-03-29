@@ -1,4 +1,5 @@
 __pycache__/
+*.pyc
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -6,6 +7,22 @@ __pycache__/
 .coverage
 dist/
 build/
+
+# Sphinx build output
+docs/_build/
+.doctrees/
+*.doctree
+
+# Notebook and local editor artifacts
+.ipynb_checkpoints/
+.jupyter_cache/
+.idea/
+.vscode/
+
+# OS-specific noise
+Thumbs.db
 .codex_previews/
 .DS_Store
 output/*.png
+output/*.svg
+.venv/

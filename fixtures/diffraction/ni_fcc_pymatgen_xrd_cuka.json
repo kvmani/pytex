@@ -1,0 +1,120 @@
+{
+  "schema_id": "pytex.diffraction_external_baseline.xrd",
+  "schema_version": "1.0.0",
+  "fixture_id": "ni_fcc",
+  "phase_name": "nickel-fcc",
+  "source_kind": "open_source_reference_implementation",
+  "source_package": {
+    "name": "pymatgen",
+    "version": "2026.3.23",
+    "calculator": "XRDCalculator"
+  },
+  "radiation": "CuKa",
+  "two_theta_range_deg": [
+    20.0,
+    120.0
+  ],
+  "reference_peaks": [
+    {
+      "representative_hkl": [
+        1,
+        1,
+        1
+      ],
+      "multiplicity": 8,
+      "two_theta_deg": 44.533876,
+      "relative_intensity": 100.0
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        0
+      ],
+      "multiplicity": 6,
+      "two_theta_deg": 51.894271,
+      "relative_intensity": 46.378673
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        0
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 76.453814,
+      "relative_intensity": 26.680981
+    },
+    {
+      "representative_hkl": [
+        3,
+        1,
+        1
+      ],
+      "multiplicity": 24,
+      "two_theta_deg": 93.034369,
+      "relative_intensity": 32.829305
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        2
+      ],
+      "multiplicity": 8,
+      "two_theta_deg": 98.549067,
+      "relative_intensity": 9.988477
+    }
+  ],
+  "pytex_reference_families": [
+    {
+      "representative_hkl": [
+        1,
+        1,
+        1
+      ],
+      "two_theta_deg": 44.496143,
+      "multiplicity": 8
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        0
+      ],
+      "two_theta_deg": 51.849432,
+      "multiplicity": 6
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        0
+      ],
+      "two_theta_deg": 76.38124,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        3,
+        1,
+        1
+      ],
+      "two_theta_deg": 92.937239,
+      "multiplicity": 24
+    },
+    {
+      "representative_hkl": [
+        2,
+        2,
+        2
+      ],
+      "two_theta_deg": 98.442077,
+      "multiplicity": 8
+    }
+  ],
+  "notes": [
+    "Peak positions and multiplicities come from pymatgen's XRDCalculator using the pinned ni_fcc fixture.",
+    "PyTex comparisons should treat peak-position agreement as the hard external baseline and intensity differences as informative only."
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-29T00:00:00Z",
+  "benchmark_id": "diffraction_external_baseline_cases",
+  "subsystem": "diffraction",
+  "baseline_kind": "open_source_reference_geometry",
+  "workflows": [
+    "powder_xrd_external_baseline",
+    "saed_external_baseline"
+  ],
+  "fixture_ids": [
+    "ni_fcc"
+  ],
+  "artifact_paths": [
+    "benchmarks/diffraction/external_baseline_benchmark_manifest.json",
+    "benchmarks/diffraction/external_baseline_workflow_result_manifest.json",
+    "fixtures/diffraction/README.md",
+    "fixtures/diffraction/ni_fcc_pymatgen_xrd_cuka.json",
+    "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
+    "fixtures/phases/catalog.json",
+    "fixtures/phases/ni_fcc/phase.cif",
+    "fixtures/phases/ni_fcc/metadata.json"
+  ],
+  "tolerances": {
+    "xrd_two_theta_atol_deg": 0.15,
+    "saed_shell_radius_atol_inv_angstrom": 1e-06,
+    "saed_shell_count_atol": 0.0
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark records the first pinned external diffraction baselines built from the ni_fcc phase fixture.",
+    "Powder XRD agreement is evaluated against pymatgen peak positions and multiplicities.",
+    "SAED agreement is evaluated against diffsims shell geometry and indexed-family coverage while allowing in-plane detector-basis rotations.",
+    "Intensity differences remain informative rather than normative for this benchmark surface."
+  ]
+}

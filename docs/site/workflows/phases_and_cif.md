@@ -60,6 +60,20 @@ print(zr.name, zr.space_group_symbol, zr.space_group_number)
 
 The fixture catalog is hash-pinned, so the built-in corpus participates in the reproducibility and integrity surface rather than behaving like an informal sample-data directory.
 
+## Fixture-Corpus Audit Surface
+
+The built-in fixture corpus is also consumed by the structure-import audit workflow so every pinned
+fixture participates in the same reproducibility surface:
+
+- `fe_bcc` for BCC cubic structure-import and diffraction smoke cases
+- `zr_hcp` for hexagonal-axis conventions, structure import, and crystal-visualization teaching
+- `ni_fcc` for FCC structure import and diffraction external-baseline coverage
+- `nicl` for multi-species unit-cell normalization and manifest-backed validation
+- `diamond` for covalent cubic structure import and teaching-oriented crystal examples
+
+The pinned audit summary for this corpus lives in
+`benchmarks/structure_import/phase_fixture_audit_summary.json`.
+
 ## Why This Lives In The Core Model
 
 PyTex does not want CIF import to become a sidecar convenience that bypasses the canonical data model. If a CIF file defines a phase, that phase should enter the library as:
@@ -74,13 +88,21 @@ with explicit frame ownership and stable invariants from the start.
 
 ## Installation
 
-The CIF constructors require the optional adapters stack:
+The standard contributor and documentation installs now include the CIF-backed structure-import
+stack used by this workflow:
 
 ```bash
-python -m pip install -e '.[adapters]'
+python -m pip install -e '.[dev]'
 ```
 
-If `pymatgen` is not installed, the constructors fail with an explicit error explaining that the adapters extra is required.
+For the docs build path:
+
+```bash
+python -m pip install -e '.[dev,docs]'
+```
+
+The broader `adapters` extra remains optional for heavier interoperability work outside the normal
+structure-import baseline.
 
 ## Minimal Example: From CIF Text
 
@@ -186,5 +208,6 @@ This keeps the public `AtomicSite` type explicit and avoids smuggling site disor
 
 - {doc}`../concepts/core_model`
 - {doc}`../concepts/how_pytex_differs`
+- {doc}`../tutorials/notebooks/04_phases_lattices_space_groups_and_cif`
 - [../../tex/theory/canonical_data_model.tex](../../tex/theory/canonical_data_model.tex)
 - [../../tex/theory/crystal_structures_and_cif_import.tex](../../tex/theory/crystal_structures_and_cif_import.tex)

@@ -1,0 +1,242 @@
+{
+  "schema_id": "pytex.structure_import_fixture_audit",
+  "schema_version": "1.0.0",
+  "fixture_catalog_id": "pytex.phase_fixture_catalog",
+  "fixtures": [
+    {
+      "fixture_id": "fe_bcc",
+      "display_name": "Alpha iron (BCC)",
+      "phase_name": "alpha-iron",
+      "chemical_formula": "Fe",
+      "artifact_path": "fixtures/phases/fe_bcc/phase.cif",
+      "metadata_path": "fixtures/phases/fe_bcc/metadata.json",
+      "intended_uses": [
+        "structure_import_validation",
+        "diffraction_demo",
+        "teaching_workflow"
+      ],
+      "conventional": {
+        "space_group_symbol": "Im-3m",
+        "space_group_number": 229,
+        "point_group": "m-3m",
+        "chemical_formula": "Fe",
+        "site_count": 2,
+        "lattice_parameters_angstrom": {
+          "a": 2.8665,
+          "b": 2.8665,
+          "c": 2.8665
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0
+        }
+      },
+      "primitive": {
+        "space_group_symbol": "Im-3m",
+        "space_group_number": 229,
+        "point_group": "m-3m",
+        "chemical_formula": "Fe",
+        "site_count": 1,
+        "lattice_parameters_angstrom": {
+          "a": 2.4824618199480932,
+          "b": 2.4824618199480932,
+          "c": 2.4824618199480932
+        },
+        "lattice_angles_deg": {
+          "alpha": 109.47122063449069,
+          "beta": 109.47122063449069,
+          "gamma": 109.47122063449069
+        }
+      }
+    },
+    {
+      "fixture_id": "zr_hcp",
+      "display_name": "Zirconium (HCP)",
+      "phase_name": "zirconium-hcp",
+      "chemical_formula": "Zr",
+      "artifact_path": "fixtures/phases/zr_hcp/phase.cif",
+      "metadata_path": "fixtures/phases/zr_hcp/metadata.json",
+      "intended_uses": [
+        "structure_import_validation",
+        "hexagonal_convention_checks",
+        "teaching_workflow"
+      ],
+      "conventional": {
+        "space_group_symbol": "P6_3/mmc",
+        "space_group_number": 194,
+        "point_group": "6/mmm",
+        "chemical_formula": "Zr",
+        "site_count": 2,
+        "lattice_parameters_angstrom": {
+          "a": 3.232,
+          "b": 3.232,
+          "c": 5.147
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 119.99999999999999
+        }
+      },
+      "primitive": {
+        "space_group_symbol": "P6_3/mmc",
+        "space_group_number": 194,
+        "point_group": "6/mmm",
+        "chemical_formula": "Zr",
+        "site_count": 2,
+        "lattice_parameters_angstrom": {
+          "a": 3.232,
+          "b": 3.232,
+          "c": 5.147
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 119.99999999999999
+        }
+      }
+    },
+    {
+      "fixture_id": "ni_fcc",
+      "display_name": "Nickel (FCC)",
+      "phase_name": "nickel-fcc",
+      "chemical_formula": "Ni",
+      "artifact_path": "fixtures/phases/ni_fcc/phase.cif",
+      "metadata_path": "fixtures/phases/ni_fcc/metadata.json",
+      "intended_uses": [
+        "structure_import_validation",
+        "diffraction_demo",
+        "teaching_workflow"
+      ],
+      "conventional": {
+        "space_group_symbol": "Fm-3m",
+        "space_group_number": 225,
+        "point_group": "m-3m",
+        "chemical_formula": "Ni",
+        "site_count": 4,
+        "lattice_parameters_angstrom": {
+          "a": 3.52387,
+          "b": 3.52387,
+          "c": 3.52387
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0
+        }
+      },
+      "primitive": {
+        "space_group_symbol": "Fm-3m",
+        "space_group_number": 225,
+        "point_group": "m-3m",
+        "chemical_formula": "Ni",
+        "site_count": 1,
+        "lattice_parameters_angstrom": {
+          "a": 2.4917523730198394,
+          "b": 2.4917523730198394,
+          "c": 2.4917523730198394
+        },
+        "lattice_angles_deg": {
+          "alpha": 60.00000000000001,
+          "beta": 60.00000000000001,
+          "gamma": 60.00000000000001
+        }
+      }
+    },
+    {
+      "fixture_id": "nicl",
+      "display_name": "Nickel chloride",
+      "phase_name": "nickel-chloride",
+      "chemical_formula": "NiCl2",
+      "artifact_path": "fixtures/phases/nicl/phase.cif",
+      "metadata_path": "fixtures/phases/nicl/metadata.json",
+      "intended_uses": [
+        "structure_import_validation",
+        "diffraction_demo",
+        "teaching_workflow"
+      ],
+      "conventional": {
+        "space_group_symbol": "R-3m",
+        "space_group_number": 166,
+        "point_group": "-3m",
+        "chemical_formula": "NiCl2",
+        "site_count": 9,
+        "lattice_parameters_angstrom": {
+          "a": 3.543,
+          "b": 3.543,
+          "c": 17.335
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 119.99999999999999
+        }
+      },
+      "primitive": {
+        "space_group_symbol": "R-3m",
+        "space_group_number": 166,
+        "point_group": "-3m",
+        "chemical_formula": "NiCl2",
+        "site_count": 3,
+        "lattice_parameters_angstrom": {
+          "a": 3.543000000000001,
+          "b": 3.543,
+          "c": 6.129716071002891
+        },
+        "lattice_angles_deg": {
+          "alpha": 73.20178533656619,
+          "beta": 73.20178533656619,
+          "gamma": 59.99999999999999
+        }
+      }
+    },
+    {
+      "fixture_id": "diamond",
+      "display_name": "Diamond cubic carbon",
+      "phase_name": "diamond",
+      "chemical_formula": "C",
+      "artifact_path": "fixtures/phases/diamond/phase.cif",
+      "metadata_path": "fixtures/phases/diamond/metadata.json",
+      "intended_uses": [
+        "structure_import_validation",
+        "diffraction_demo",
+        "teaching_workflow"
+      ],
+      "conventional": {
+        "space_group_symbol": "Fd-3m",
+        "space_group_number": 227,
+        "point_group": "m-3m",
+        "chemical_formula": "C",
+        "site_count": 8,
+        "lattice_parameters_angstrom": {
+          "a": 3.56679,
+          "b": 3.56679,
+          "c": 3.56679
+        },
+        "lattice_angles_deg": {
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0
+        }
+      },
+      "primitive": {
+        "space_group_symbol": "Fd-3m",
+        "space_group_number": 227,
+        "point_group": "m-3m",
+        "chemical_formula": "C",
+        "site_count": 2,
+        "lattice_parameters_angstrom": {
+          "a": 2.5221013960683663,
+          "b": 2.522101396068366,
+          "c": 2.522101396068366
+        },
+        "lattice_angles_deg": {
+          "alpha": 59.99999999999999,
+          "beta": 59.99999999999999,
+          "gamma": 60.00000000000001
+        }
+      }
+    }
+  ]
+}

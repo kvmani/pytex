@@ -19,6 +19,7 @@ from pytex.core import (
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CATALOG_PATH = REPO_ROOT / "fixtures/phases/catalog.json"
+AUDIT_SUMMARY_PATH = REPO_ROOT / "benchmarks/structure_import/phase_fixture_audit_summary.json"
 
 
 def _catalog() -> dict:
@@ -47,6 +48,10 @@ def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(path.read_bytes())
     return digest.hexdigest()
+
+
+def _audit_summary() -> dict:
+    return json.loads(AUDIT_SUMMARY_PATH.read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("entry", _fixture_entries(), ids=lambda entry: entry["fixture_id"])
@@ -191,3 +196,62 @@ def test_structure_import_manifests_cover_full_phase_fixture_catalog() -> None:
     expected_ids = sorted(entry["fixture_id"] for entry in _fixture_entries())
     assert sorted(benchmark["fixture_ids"]) == expected_ids
     assert sorted(validation["fixture_ids"]) == expected_ids
+
+
+def test_structure_import_fixture_audit_summary_covers_full_phase_fixture_catalog() -> None:
+    payload = _audit_summary()
+    assert payload["schema_id"] == "pytex.structure_import_fixture_audit"
+    assert payload["schema_version"] == "1.0.0"
+    fixture_rows = payload["fixtures"]
+    expected_ids = sorted(entry["fixture_id"] for entry in _fixture_entries())
+    assert sorted(row["fixture_id"] for row in fixture_rows) == expected_ids
+    for row in fixture_rows:
+        assert (REPO_ROOT / row["artifact_path"]).exists()
+        assert (REPO_ROOT / row["metadata_path"]).exists()
+        assert set(row["conventional"]) >= {
+            "space_group_symbol",
+            "space_group_number",
+            "point_group",
+            "chemical_formula",
+            "site_count",
+            "lattice_parameters_angstrom",
+            "lattice_angles_deg",
+        }
+        assert set(row["primitive"]) >= {
+            "space_group_symbol",
+            "space_group_number",
+            "point_group",
+            "chemical_formula",
+            "site_count",
+            "lattice_parameters_angstrom",
+            "lattice_angles_deg",
+        }
+
+
+def test_structure_import_fixture_audit_summary_matches_loaded_phase_semantics() -> None:
+    fixture_rows = {row["fixture_id"]: row for row in _audit_summary()["fixtures"]}
+    crystal = _crystal_frame()
+    for entry in _fixture_entries():
+        metadata = _metadata(entry)
+        row = fixture_rows[entry["fixture_id"]]
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
+            warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
+            warnings.filterwarnings("ignore", message="dict interface is deprecated.*")
+            conventional = Phase.from_cif(REPO_ROOT / entry["artifact_path"], crystal_frame=crystal)
+            primitive = Phase.from_cif(
+                REPO_ROOT / entry["artifact_path"],
+                crystal_frame=crystal,
+                primitive=True,
+            )
+
+        assert row["conventional"]["space_group_symbol"] == conventional.space_group_symbol
+        assert row["conventional"]["space_group_number"] == conventional.space_group_number
+        assert row["conventional"]["point_group"] == conventional.symmetry.point_group
+        assert row["conventional"]["chemical_formula"] == metadata["chemical_formula"]
+        assert row["conventional"]["site_count"] == metadata["expected_conventional_cell_site_count"]
+        assert row["primitive"]["space_group_symbol"] == primitive.space_group_symbol
+        assert row["primitive"]["space_group_number"] == primitive.space_group_number
+        assert row["primitive"]["point_group"] == primitive.symmetry.point_group
+        assert row["primitive"]["chemical_formula"] == metadata["chemical_formula"]
+        assert row["primitive"]["site_count"] == metadata["expected_primitive_site_count"]

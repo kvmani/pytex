@@ -19,9 +19,9 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | --- | --- | --- |
 | Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
 | EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
-| Diffraction foundations | foundational | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting exist with unit coverage, but the external-baseline validation program is still growing. |
-| Scientific visualization | foundational | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now exist, but broader publication presets and external visual baselines are still ahead. |
-| CIF and structure import | foundational | Core-model construction, space-group semantics, and a dedicated validation ledger exist, but broader external baselines remain ahead. |
+| Diffraction foundations | implemented | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting now have pinned external-baseline cases for one powder XRD path and one SAED path; broader coverage still remains ahead. |
+| Scientific visualization | implemented | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now include deterministic SVG regression coverage for the highest-value publication-facing surfaces. |
+| CIF and structure import | implemented | Core-model construction, space-group semantics, hash-pinned fixture integrity, and a manifest-backed fixture audit workflow now form the default reproducible structure-import baseline. |
 | Multimodal acquisition core | foundational | Acquisition geometry, calibration, quality, scattering, experiment manifests, and workflow entry points now exist, but broader modality coverage remains ahead. |
 | Phase-transformation foundation | foundational | Core transformation primitives now exist, but literature-backed validation and richer algorithms remain ahead. |
 
@@ -38,7 +38,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 
 | Subsystem | Status | Notes |
 | --- | --- | --- |
-| Sphinx concepts and workflows | implemented | Public entry point is live and buildable. |
+| Sphinx concepts and workflows | implemented | Public entry point is live and buildable, and the priority roadmap notebooks now smoke-execute as part of the default validation surface. |
 | Canonical LaTeX theory notes | implemented | Major foundation notes exist and are cross-linked from the site. |
 | SVG geometry figures | implemented | Core orientation, diffraction, and EBSD figures exist. |
 | Multimodal and transformation teaching notes | foundational | Architectural prose is now defined; broader workflow coverage remains ahead. |
@@ -47,6 +47,13 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 
 This section is the active near-term development program for the next few days and weeks.
 Unless an explicit decision supersedes it, immediate implementation work should align to this sequence rather than expanding breadth opportunistically.
+
+Current posture as of 2026-03-29:
+
+- Phase 1 is materially advanced through the pinned phase-fixture corpus, regenerated integrity hashes, and structure-import audit workflow.
+- Phase 2 is materially advanced through pinned open-source powder XRD and SAED baseline artifacts plus automated comparison tests.
+- Phase 3 is materially advanced through deterministic SVG visual-regression artifacts for XRD, SAED, crystal scenes, and IPF plotting.
+- Phase 4 is materially advanced through a coherent fixture-backed teaching path and smoke-executed priority notebooks.
 
 The governing rule for near-term execution is:
 

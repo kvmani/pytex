@@ -86,6 +86,7 @@ REQUIRED_PATHS = [
     "benchmarks/diffraction/foundation_benchmark_manifest.json",
     "benchmarks/structure_import/foundation_benchmark_manifest.json",
     "benchmarks/structure_import/foundation_workflow_result_manifest.json",
+    "benchmarks/structure_import/phase_fixture_audit_summary.json",
     "benchmarks/validation/README.md",
     "benchmarks/validation/diffraction_validation_manifest.json",
     "benchmarks/validation/structure_import_validation_manifest.json",
@@ -261,11 +262,63 @@ def _check_manifest_artifacts_and_fixtures(repo_root: Path) -> list[str]:
     return issues
 
 
+def _check_structure_import_fixture_audit(repo_root: Path) -> list[str]:
+    issues: list[str] = []
+    audit_path = repo_root / "benchmarks/structure_import/phase_fixture_audit_summary.json"
+    if not audit_path.exists():
+        return ["MISSING: benchmarks/structure_import/phase_fixture_audit_summary.json"]
+    payload = _read_json(audit_path)
+    if payload.get("schema_id") != "pytex.structure_import_fixture_audit":
+        issues.append(
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must use schema_id 'pytex.structure_import_fixture_audit'."
+        )
+    if payload.get("schema_version") != "1.0.0":
+        issues.append(
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must use schema_version '1.0.0'."
+        )
+    fixtures = payload.get("fixtures")
+    if not isinstance(fixtures, list) or not fixtures:
+        issues.append(
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must contain a non-empty fixtures list."
+        )
+        return issues
+    catalog = _read_json(repo_root / "fixtures/phases/catalog.json")
+    expected_fixture_ids = tuple(sorted(entry["fixture_id"] for entry in catalog["fixtures"]))
+    audit_fixture_ids = tuple(sorted(str(entry.get("fixture_id")) for entry in fixtures))
+    if audit_fixture_ids != expected_fixture_ids:
+        issues.append(
+            "INVALID: structure-import fixture audit summary fixture_ids must match the pinned phase fixture catalog."
+        )
+    for entry in fixtures:
+        if not isinstance(entry, dict):
+            issues.append(
+                "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json contains a non-object fixture entry."
+            )
+            continue
+        for key in ("artifact_path", "metadata_path"):
+            value = entry.get(key)
+            if not isinstance(value, str) or not value:
+                issues.append(
+                    f"INVALID: structure-import fixture audit entry '{entry.get('fixture_id')}' must define {key}."
+                )
+                continue
+            if not (repo_root / value).exists():
+                issues.append(f"MISSING: {value}")
+        for key in ("conventional", "primitive"):
+            value = entry.get(key)
+            if not isinstance(value, dict):
+                issues.append(
+                    f"INVALID: structure-import fixture audit entry '{entry.get('fixture_id')}' must define {key}."
+                )
+    return issues
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     issues = [path for path in REQUIRED_PATHS if not (repo_root / path).exists()]
     issues.extend(_check_phase_fixture_catalog(repo_root))
     issues.extend(_check_manifest_artifacts_and_fixtures(repo_root))
+    issues.extend(_check_structure_import_fixture_audit(repo_root))
     if issues:
         for issue in issues:
             print(issue if issue.startswith(("MISSING:", "INVALID:")) else f"MISSING: {issue}")

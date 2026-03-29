@@ -24,6 +24,7 @@
   "artifact_paths": [
     "benchmarks/structure_import/foundation_benchmark_manifest.json",
     "benchmarks/structure_import/foundation_workflow_result_manifest.json",
+    "benchmarks/structure_import/phase_fixture_audit_summary.json",
     "fixtures/phases/catalog.json",
     "fixtures/phases/README.md",
     "fixtures/phases/fe_bcc/phase.cif",
@@ -34,8 +35,7 @@
     "fixtures/phases/ni_fcc/metadata.json",
     "fixtures/phases/nicl/phase.cif",
     "fixtures/phases/nicl/metadata.json",
-    "fixtures/phases/diamond/phase.cif"
-    ,
+    "fixtures/phases/diamond/phase.cif",
     "fixtures/phases/diamond/metadata.json"
   ],
   "tolerances": {
@@ -47,6 +47,7 @@
   "notes": [
     "This benchmark manifest marks the structure-import validation surface while broader literature-backed baselines grow.",
     "The bundled phase corpus under fixtures/phases is the pinned in-repo benchmark dataset for structure-import smoke coverage and reproducible demos.",
-    "Hash-pinned catalog entries are part of the reproducibility contract for the built-in phase corpus."
+    "Hash-pinned catalog entries are part of the reproducibility contract for the built-in phase corpus.",
+    "The structure-import audit summary records the pinned conventional and primitive fixture semantics used by the benchmark surface."
   ]
 }

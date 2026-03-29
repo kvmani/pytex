@@ -49,13 +49,18 @@ MTEX is not the only validation authority PyTex needs.
 
 ## Current Review Note
 
-As of the current hardening pass, the repository has passing tests and docs builds, but validation breadth is still uneven:
+As of the current hardening pass, the repository has passing integrity checks, tests, and docs
+builds for the immediate roadmap surface, but validation breadth is still uneven:
 
 - texture and EBSD have explicit MTEX-backed ledgers
-- diffraction has foundational implementation and internal tests, but its external-baseline program is still emerging
-- powder XRD and SAED now have stable computation and plotting surfaces, but their broader external-baseline and literature-backed benchmarking program is still ahead
-- structure import now has an explicit validation ledger, but it still needs broader external baselines than parser-success tests alone
-- plotting now has an explicit validation ledger, but publication presets and parity-oriented visual baselines are still ahead
+- structure import now has a hash-pinned fixture corpus, manifest-backed audit workflow, and
+  default test-suite coverage, but broader IUCr-style external baselines are still ahead
+- diffraction now has pinned open-source external baselines for one powder XRD case and one SAED
+  case, but broader material and orientation coverage remains ahead
+- plotting now has deterministic SVG visual-regression coverage for the highest-value runtime
+  surfaces, but external visual-parity work remains ahead
+- the priority teaching notebooks now smoke-execute in the default suite, but the full notebook
+  atlas still follows a lighter validation path than the primary roadmap sequence
 
 ## References
 
