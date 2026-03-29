@@ -1,0 +1,32 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-30T00:00:00Z",
+  "benchmark_id": "texture_xrdml_import_and_inversion",
+  "subsystem": "texture",
+  "baseline_kind": "open_source_vendor_xml_and_synthetic_inversion",
+  "workflows": [
+    "xrdml_pole_figure_import",
+    "xrdml_odf_reconstruction"
+  ],
+  "fixture_ids": [],
+  "artifact_paths": [
+    "benchmarks/texture/xrdml_import_benchmark_manifest.json",
+    "benchmarks/texture/README.md",
+    "fixtures/xrdml/README.md",
+    "fixtures/xrdml/polefig_Ge113_xrayutilities.xrdml.bz2",
+    "tests/unit/test_xrdml_texture.py",
+    "src/pytex/adapters/xrdml.py"
+  ],
+  "tolerances": {
+    "synthetic_odf_weight_atol": 0.05,
+    "xrdml_grid_shape_atol": 0.0
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark combines one pinned real XRDML pole-figure import case with deterministic synthetic inversion cases.",
+    "The open-source Ge(113) pole figure from xrayutilities validates vendor-style XML parsing and compressed-file handling.",
+    "Synthetic fixtures validate that XRDML-backed pole figures pass cleanly into the current discrete kernel ODF inversion surface."
+  ]
+}

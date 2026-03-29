@@ -238,37 +238,10 @@ def build_symmetry_elements_figure_spec(
     symmetry: SymmetrySpec,
     *,
     title: str | None = None,
-) -> FigureSpec3D:
-    axes: list[np.ndarray] = []
-    angles: list[float] = []
-    for operator in symmetry.operators:
-        axis, angle_deg = _operator_axis_and_angle(operator)
-        if np.isclose(angle_deg, 0.0):
-            continue
-        axes.append(axis)
-        angles.append(angle_deg)
-    points = np.stack(axes, axis=0) if axes else np.zeros((0, 3), dtype=np.float64)
-    values = np.asarray(angles, dtype=np.float64) if angles else np.zeros((0,), dtype=np.float64)
-    if symmetry.reference_frame is None:
-        raise ValueError("SymmetrySpec.reference_frame is required for plotting.")
-    xlabel, ylabel, zlabel = _frame_axis_labels(symmetry.reference_frame.axes)
-    return FigureSpec3D(
-        title=title or f"Symmetry Elements: {symmetry.point_group}",
-        xlabel=xlabel,
-        ylabel=ylabel,
-        zlabel=zlabel,
-        scatter_layers=(
-            ScatterLayer3D(
-                points=points,
-                values=values if values.size > 0 else None,
-                colors=None if values.size > 0 else "tab:blue",
-                sizes=80.0,
-                colorbar_label="rotation angle (deg)" if values.size > 0 else None,
-                label="operators",
-            ),
-        ),
-        unit_sphere_radius=1.0,
-    )
+) -> FigureSpec2D:
+    from pytex.plotting.spherical import build_symmetry_elements_figure_spec as _build
+
+    return _build(symmetry, title=title)
 
 
 def build_euler_figure_spec(

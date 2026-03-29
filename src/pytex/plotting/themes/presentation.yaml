@@ -24,3 +24,13 @@ crystal:
   light_ambient: 0.42
   light_diffuse: 0.78
   light_specular: 0.38
+spherical:
+  boundary_linewidth: 1.35
+  net_major_linewidth: 0.95
+  direction_size: 102
+  plane_pole_size: 84
+  symmetry_size:
+    "2": 122
+    "3": 140
+    "4": 154
+    "6": 168

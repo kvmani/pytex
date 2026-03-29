@@ -5,8 +5,8 @@ SAED reasoning, and later multimodal workflows without redefining the crystallog
 in each subsystem.
 
 The immediate roadmap teaching path now uses the pinned `ni_fcc` fixture for this workflow, so the
-same example is shared by docs, notebooks, visual-regression artifacts, diffraction baselines, and
-manifest-backed validation notes.
+same example is shared by docs, notebooks, structural plotting-validation cases, diffraction
+baselines, and manifest-backed validation notes.
 
 ## Workflow Pattern
 

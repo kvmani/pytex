@@ -20,3 +20,9 @@ crystal:
   bond_alpha: 0.38
   plane_alpha: 0.24
   atom_edgecolor: "#ffffff"
+spherical:
+  boundary_color: "#0f172a"
+  net_major_color: "#64748b"
+  net_minor_color: "#cbd5e1"
+  direction_colors: ["#0f172a", "#b45309", "#0f766e", "#2563eb"]
+  plane_colors: ["#1d4ed8", "#dc2626", "#0f766e", "#b45309"]

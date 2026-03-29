@@ -17,6 +17,8 @@ from pytex.plotting.crystal3d import (
 from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
 from pytex.plotting.ipf import IPFColorKey
 from pytex.plotting.runtime import (
+    plot_crystal_directions,
+    plot_crystal_planes,
     plot_euler_set,
     plot_inverse_pole_figure,
     plot_odf,
@@ -27,6 +29,7 @@ from pytex.plotting.runtime import (
     plot_symmetry_elements,
     plot_symmetry_orbit,
     plot_vector_set,
+    plot_wulff_net,
 )
 from pytex.plotting.styles import (
     list_style_themes,
@@ -41,6 +44,8 @@ __all__ = [
     "CrystalBondGlyph",
     "CrystalCellGlyph",
     "CrystalCellOverlay",
+    "plot_crystal_directions",
+    "plot_crystal_planes",
     "CrystalDirectionGlyph",
     "CrystalDirectionOverlay",
     "CrystalPlaneGlyph",
@@ -62,6 +67,7 @@ __all__ = [
     "plot_symmetry_elements",
     "plot_symmetry_orbit",
     "plot_vector_set",
+    "plot_wulff_net",
     "plot_xrd_pattern",
     "PlaneAnnotationStyle",
     "read_style_yaml",

@@ -40,6 +40,7 @@ workflows/ebsd_import_normalization
 workflows/phases_and_cif
 workflows/texture_odf_inversion
 workflows/plotting_primitives
+workflows/stereographic_projections
 workflows/diffraction_geometry
 workflows/diffraction_spots
 workflows/xrd_generation
@@ -48,6 +49,7 @@ workflows/crystal_visualization
 workflows/style_customization
 workflows/combined_structure_diffraction_visualization
 workflows/ipf_colors
+workflows/xrdml_texture_import
 ```
 
 ```{toctree}
@@ -82,12 +84,14 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - Stable core primitives for frames, symmetry, lattice semantics, provenance, batch semantics, rotations, orientations, and transformation records.
 - Foundational texture-domain support for pole figures, inverse pole figures, IPF color keys, and discrete kernel ODF evaluation.
 - Runtime semantic plotting support for vectors, symmetry elements and orbits, rotations, orientations, PF/IPF objects, and discrete ODF views.
+- Publication-grade stereographic plotting for Wulff nets, crystal directions, crystal planes, and rotational symmetry elements.
 - Real EBSD workflow support for regular-grid neighbor relationships, KAM, grain segmentation, GROD, boundary extraction, cleanup, and import-manifest normalization contracts.
 - Core-model phase creation from crystallographic structures and CIF files, with explicit point-group and space-group semantics.
 - Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.
 - Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.
 - Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration, powder XRD generation, and SAED spot simulation.
 - Shared YAML-driven plotting styles plus runtime XRD, SAED, and 3D crystal-structure visualization surfaces.
+- XRDML pole-figure import and dictionary-based ODF reconstruction from vendor-style texture measurements.
 - Executable notebook tutorials that mirror the implemented features and their mathematical contracts.
 
 ## Recommended Reading Path

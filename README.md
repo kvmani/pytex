@@ -64,9 +64,13 @@ The repository is now best described as a strong foundation build rather than a 
   reflection-family grouping, and local indexing candidate scaffolding
 - runtime scientific plotting for texture, diffraction, and structure, including YAML-driven styles
   and VESTA-like 3D crystal viewing
+- publication-grade stereographic plotting for Wulff nets, crystal directions, crystal planes, and
+  rotational symmetry elements with mathtext Miller-style annotation support
 - a hash-pinned phase-fixture corpus with manifest-backed structure-import audit coverage
 - first open-source external-baseline cases for powder XRD and SAED using pinned in-repo artifacts
-- deterministic SVG visual regression coverage for XRD, SAED, crystal scenes, and IPF plotting
+- XRDML pole-figure import with pinned open-source fixture coverage and dictionary-based ODF
+  reconstruction from imported measurements
+- structural runtime plotting validation for XRD, SAED, crystal scenes, IPF plotting, and the new stereographic surfaces without tracking SVG byte baselines
 - smoke-executed priority notebooks for the immediate fixture-to-visualization-to-diffraction
   teaching path
 

@@ -9,6 +9,7 @@ This standard works together with `documentation_architecture.md`, where Sphinx 
 - `docs/tex/` contains the canonical scientific notes.
 - `docs/figures/` contains the canonical SVG figure sources.
 - Runtime plotting APIs may return ordinary Matplotlib figures for user code; the SVG rule applies to canonical repository-tracked documentation figures.
+- Runtime plotting regression tests must not introduce repo-tracked SVG byte baselines. Publication-facing runtime surfaces should be validated through structural and semantic assertions unless a figure is intentionally promoted into `docs/figures/` as a canonical documentation asset.
 
 ## Required Scientific Note Set Per Major Stable Feature
 

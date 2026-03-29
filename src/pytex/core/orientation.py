@@ -187,6 +187,28 @@ def quaternion_from_axis_angle(axis: ArrayLike, angle_rad: float) -> np.ndarray:
     return normalize_quaternion([np.cos(half), *(unit_axis * sin_half)])
 
 
+def _grid_axis_values(
+    start_deg: float,
+    stop_deg: float,
+    step_deg: float,
+    *,
+    periodic: bool,
+) -> np.ndarray:
+    if step_deg <= 0.0:
+        raise ValueError("Euler-grid step sizes must be strictly positive.")
+    if stop_deg <= start_deg:
+        raise ValueError("Euler-grid stop values must be larger than the starts.")
+    if periodic:
+        values = np.arange(start_deg, stop_deg, step_deg, dtype=np.float64)
+    else:
+        values = np.arange(start_deg, stop_deg + 0.5 * step_deg, step_deg, dtype=np.float64)
+    if values.size == 0:
+        raise ValueError("Euler-grid generation produced no support orientations.")
+    values = np.ascontiguousarray(values, dtype=np.float64)
+    values.setflags(write=False)
+    return values
+
+
 @dataclass(frozen=True, slots=True)
 class Rotation:
     quaternion: np.ndarray
@@ -715,6 +737,64 @@ class OrientationSet:
             specimen_frame=specimen_frame,
             symmetry=symmetry,
             phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_bunge_grid(
+        cls,
+        *,
+        crystal_frame: ReferenceFrame,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        phi1_range_deg: tuple[float, float] = (0.0, 360.0),
+        big_phi_range_deg: tuple[float, float] = (0.0, 90.0),
+        phi2_range_deg: tuple[float, float] = (0.0, 90.0),
+        phi1_step_deg: float = 15.0,
+        big_phi_step_deg: float = 15.0,
+        phi2_step_deg: float = 15.0,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        phi1_values = _grid_axis_values(
+            float(phi1_range_deg[0]),
+            float(phi1_range_deg[1]),
+            float(phi1_step_deg),
+            periodic=True,
+        )
+        big_phi_values = _grid_axis_values(
+            float(big_phi_range_deg[0]),
+            float(big_phi_range_deg[1]),
+            float(big_phi_step_deg),
+            periodic=False,
+        )
+        phi2_values = _grid_axis_values(
+            float(phi2_range_deg[0]),
+            float(phi2_range_deg[1]),
+            float(phi2_step_deg),
+            periodic=True,
+        )
+        phi1_mesh, big_phi_mesh, phi2_mesh = np.meshgrid(
+            phi1_values,
+            big_phi_values,
+            phi2_values,
+            indexing="ij",
+        )
+        angles = np.column_stack(
+            [
+                phi1_mesh.reshape(-1),
+                big_phi_mesh.reshape(-1),
+                phi2_mesh.reshape(-1),
+            ]
+        )
+        return cls.from_euler_angles(
+            angles,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            convention="bunge",
+            degrees=True,
             provenance=provenance,
         )
 

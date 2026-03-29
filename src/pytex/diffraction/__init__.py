@@ -13,6 +13,17 @@ from pytex.diffraction.models import (
     SpotAssignment,
 )
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
+from pytex.diffraction.stereonets import (
+    StereonetGrid,
+    directions_to_spherical_angles,
+    flatten_direction_grid,
+    generate_stereonet_grid,
+    project_great_circle_trace,
+    projection_boundary_radius,
+    sample_great_circle,
+    sample_small_circle,
+    spherical_angles_to_directions,
+)
 from pytex.diffraction.xrd import (
     PowderPattern,
     PowderReflection,
@@ -38,8 +49,17 @@ __all__ = [
     "ReflectionFamily",
     "SAEDPattern",
     "SAEDSpot",
+    "StereonetGrid",
     "SpotAssignment",
+    "directions_to_spherical_angles",
+    "flatten_direction_grid",
     "generate_powder_reflections",
     "generate_saed_pattern",
+    "generate_stereonet_grid",
     "generate_xrd_pattern",
+    "project_great_circle_trace",
+    "projection_boundary_radius",
+    "sample_great_circle",
+    "sample_small_circle",
+    "spherical_angles_to_directions",
 ]

@@ -54,6 +54,10 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `InversePoleFigure`
 - `ODF`
 - `ODFInversionReport`
+- `XRDMLPoleFigureMeasurement`
+- `read_xrdml_pole_figure`
+- `load_xrdml_pole_figure`
+- `invert_xrdml_pole_figures`
 
 ### Mapping And Measurement
 
@@ -86,6 +90,9 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `CrystalPlaneOverlay`
 - `CrystalDirectionOverlay`
 - `plot_vector_set`
+- `plot_wulff_net`
+- `plot_crystal_directions`
+- `plot_crystal_planes`
 - `plot_symmetry_orbit`
 - `plot_symmetry_elements`
 - `plot_euler_set`

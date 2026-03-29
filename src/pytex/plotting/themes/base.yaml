@@ -76,3 +76,43 @@ crystal:
   axis_label_color: "#334155"
   hide_grid: true
   pane_alpha: 0.0
+spherical:
+  boundary_color: "#0f172a"
+  boundary_linewidth: 1.15
+  net_major_color: "#94a3b8"
+  net_minor_color: "#cbd5e1"
+  net_major_linewidth: 0.8
+  net_minor_linewidth: 0.45
+  net_alpha: 0.88
+  major_step_deg: 10.0
+  minor_step_deg: 2.0
+  show_minor_grid: true
+  label_color: "#111111"
+  label_fontsize: 11
+  label_offset: 0.04
+  label_bbox_color: "#ffffff"
+  label_bbox_alpha: 0.82
+  direction_colors: ["#1f3a5f", "#bc6c25", "#4c956c", "#7c3aed"]
+  direction_marker: "o"
+  direction_size: 88
+  direction_linewidth: 1.0
+  direction_edgecolor: "#ffffff"
+  plane_colors: ["#2563eb", "#dc2626", "#0f766e", "#b45309"]
+  plane_trace_linewidth: 1.45
+  plane_trace_alpha: 0.95
+  plane_pole_marker: "o"
+  plane_pole_size: 72
+  plane_pole_linewidth: 1.3
+  plane_pole_facecolor: "#ffffff"
+  symmetry_colors:
+    "2": "#e2e8f0"
+    "3": "#bfdbfe"
+    "4": "#fecaca"
+    "6": "#bbf7d0"
+  symmetry_size:
+    "2": 112
+    "3": 128
+    "4": 140
+    "6": 154
+  symmetry_edgecolor: "#0f172a"
+  symmetry_linewidth: 1.1

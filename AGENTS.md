@@ -91,6 +91,9 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 - Update docs when behavior, conventions, or surface area changes.
 - Add or update cross-links when a page relies on terms, conventions, or workflows defined elsewhere in the docs.
 - Add local module indexes or README files when a subsystem grows enough to need them.
+- Treat repository artifact hygiene as part of the implementation task: generated outputs, local inspection assets, caches, build products, screenshots, notebooks checkpoints, benchmark scratch files, and similar non-canonical artifacts must be excluded in `.gitignore` before or alongside the change that creates them.
+- Only commit generated files when they are intentional canonical repository assets referenced by docs, tests, manifests, validation workflows, or pinned regression baselines.
+- Runtime plotting validation must prefer structural and semantic assertions over repo-tracked SVG byte baselines. Canonical SVG tracking is reserved for documentation figures in `docs/figures/`, not for routine runtime-regression fixtures.
 
 ### When touching algorithms
 

@@ -29,6 +29,7 @@ Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The
 - [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
 - [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
 - [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
+- [../../tex/algorithms/stereographic_projections_and_xrdml_texture_import.tex](../../tex/algorithms/stereographic_projections_and_xrdml_texture_import.tex)
 
 ## Validation Notes
 

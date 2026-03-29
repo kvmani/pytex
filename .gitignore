@@ -3,8 +3,15 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.hypothesis/
+.nox/
+.tox/
+.cache/
 *.egg-info/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
 dist/
 build/
 
@@ -25,4 +32,11 @@ Thumbs.db
 .DS_Store
 output/*.png
 output/*.svg
+inspection_outputs/
+artifacts/inspection/
+reports/inspection/
+fixtures/visual_regression/*.svg
+*.log
+*.tmp
+*.bak
 .venv/

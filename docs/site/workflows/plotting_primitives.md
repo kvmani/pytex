@@ -12,6 +12,9 @@ The output policy is intentionally split in two:
 The current runtime plotting surface includes:
 
 - `plot_vector_set(...)`
+- `plot_wulff_net(...)`
+- `plot_crystal_directions(...)`
+- `plot_crystal_planes(...)`
 - `plot_symmetry_orbit(...)`
 - `plot_symmetry_elements(...)`
 - `plot_euler_set(...)`
@@ -26,6 +29,13 @@ The current runtime plotting surface includes:
 - `plot_crystal_structure_3d(...)`
 
 These routines accept PyTex semantic objects and validate frame, symmetry, and convention meaning before rendering.
+
+For spherical crystallographic plotting, PyTex now distinguishes between:
+
+- semantic direction markers projected from `CrystalDirection`
+- semantic plane poles and great-circle traces projected from `CrystalPlane`
+- rotational symmetry-axis plots rendered with order-specific markers
+- reusable Wulff-net overlays generated from explicit projected circles rather than raster backdrops
 
 For texture plots, PyTex now distinguishes between:
 
@@ -50,6 +60,9 @@ The same plotting subsystem also now carries a shared YAML style system:
 
 The public helpers `list_style_themes(...)`, `load_style_theme(...)`, `read_style_yaml(...)`, and
 `resolve_style(...)` are part of that stable plotting support.
+
+The shared style system now also covers the spherical plotting surface, including Wulff-net line
+weights, label backgrounds, marker palettes, and publication-oriented symmetry-element symbols.
 
 ## Example
 
@@ -111,6 +124,31 @@ odf_sections = plot_odf(
 odf_sections.savefig("odf_bunge_sections.png", dpi=150)
 ```
 
+## Stereographic Directions, Planes, And Symmetry
+
+```python
+from pytex import CrystalDirection, plot_crystal_directions, plot_crystal_planes, plot_symmetry_elements
+
+direction_figure = plot_crystal_directions(
+    (
+        CrystalDirection(np.array([1.0, 0.0, 0.0]), phase=phase),
+        CrystalDirection(np.array([1.0, 1.0, 1.0]), phase=phase),
+    ),
+    labels=((1, 0, 0), (1, 1, 1)),
+)
+
+plane_figure = plot_crystal_planes(
+    (pole,),
+    labels=((1, 1, 1),),
+    render="both",
+)
+
+symmetry_figure = plot_symmetry_elements(
+    phase.symmetry,
+    annotate_axes=True,
+)
+```
+
 ## Design Notes
 
 - Plotters are built on shared figure-spec builders rather than each routine owning private Matplotlib logic.
@@ -118,9 +156,11 @@ odf_sections.savefig("odf_bunge_sections.png", dpi=150)
 - The plotting layer is part of the user-facing product surface, not a notebook-only convenience layer.
 - The contour and section paths reuse the same shared density-grid and render infrastructure as the rest of the plotting subsystem.
 - Diffraction and crystal-visualization plots reuse the same style-resolution layer even when they require different rendering primitives.
+- Stereographic direction, plane, and symmetry-element plots use the same notation registry as the 3D crystal-scene overlays, so Miller-style labels render consistently across 2D and 3D surfaces.
 
 ## Related Material
 
 - {doc}`../concepts/orientation_texture`
+- {doc}`stereographic_projections`
 - {doc}`../tutorials/notebooks`
 - {doc}`ipf_colors`

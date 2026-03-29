@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from numpy.typing import ArrayLike
 
 from pytex.core.batches import EulerSet, QuaternionSet, RotationSet, VectorSet
 from pytex.core.frames import ReferenceFrame
+from pytex.core.lattice import CrystalDirection, CrystalPlane
 from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.symmetry import SymmetrySpec
 from pytex.plotting._render import render_figure_spec
@@ -17,12 +19,17 @@ from pytex.plotting.builders import (
     build_pole_figure_spec,
     build_quaternion_figure_spec,
     build_rotation_figure_spec,
-    build_symmetry_elements_figure_spec,
     build_symmetry_orbit_figure_spec,
     build_vector_figure_spec,
     coerce_orientation_set,
     coerce_rotation_set,
     coerce_vector_set,
+)
+from pytex.plotting.spherical import (
+    plot_crystal_directions as _plot_crystal_directions,
+    plot_crystal_planes as _plot_crystal_planes,
+    plot_symmetry_elements as _plot_symmetry_elements,
+    plot_wulff_net as _plot_wulff_net,
 )
 from pytex.texture.models import ODF, InversePoleFigure, PoleFigure
 
@@ -66,10 +73,97 @@ def plot_symmetry_orbit(
 def plot_symmetry_elements(
     symmetry: SymmetrySpec,
     *,
+    method: str = "stereographic",
+    include_wulff_net: bool = True,
+    annotate_axes: bool = False,
     title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
-    return render_figure_spec(build_symmetry_elements_figure_spec(symmetry, title=title), ax=ax)
+    return _plot_symmetry_elements(
+        symmetry,
+        method=method,
+        include_wulff_net=include_wulff_net,
+        annotate_axes=annotate_axes,
+        title=title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
+
+
+def plot_wulff_net(
+    *,
+    method: str = "stereographic",
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    return _plot_wulff_net(
+        method=method,
+        title=title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
+
+
+def plot_crystal_directions(
+    directions: CrystalDirection | Sequence[CrystalDirection],
+    *,
+    labels: Sequence[str | Sequence[int] | None] | None = None,
+    method: str = "stereographic",
+    include_wulff_net: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    return _plot_crystal_directions(
+        directions,
+        labels=labels,
+        method=method,
+        include_wulff_net=include_wulff_net,
+        title=title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
+
+
+def plot_crystal_planes(
+    planes: CrystalPlane | Sequence[CrystalPlane],
+    *,
+    labels: Sequence[str | Sequence[int] | None] | None = None,
+    method: str = "stereographic",
+    render: str = "trace",
+    include_wulff_net: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    return _plot_crystal_planes(
+        planes,
+        labels=labels,
+        method=method,
+        render=render,
+        include_wulff_net=include_wulff_net,
+        title=title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
 
 
 def plot_euler_set(

@@ -7,7 +7,7 @@ PyTex now keeps runtime plotting style in a shared YAML-driven system rather tha
 - built-in themes such as `journal`, `presentation`, and `dark`
 - YAML loading from user files
 - deterministic merge order from base defaults to runtime overrides
-- shared application across texture, diffraction, and crystal-visualization plots
+- shared application across texture, diffraction, stereographic, and crystal-visualization plots
 
 ## Merge Order
 
@@ -57,6 +57,7 @@ print(style["xrd"]["annotate_peaks"])
 - style validation happens at load time, not inside each plotting routine
 - computation code should not carry hard-coded visual policy
 - runtime plots remain ordinary Matplotlib figures even though repo-tracked documentation figures remain SVG assets
+- the `spherical:` section now controls Wulff-net lines, stereographic labels, plane and direction marker styles, and symmetry-element symbol palettes
 
 ## Related Material
 
@@ -64,6 +65,7 @@ print(style["xrd"]["annotate_peaks"])
 - {doc}`../concepts/technical_glossary_and_symbols`
 - {doc}`xrd_generation`
 - {doc}`saed_generation`
+- {doc}`stereographic_projections`
 - {doc}`crystal_visualization`
 
 ## References

@@ -9,7 +9,7 @@ import yaml
 
 _THEME_PACKAGE = "pytex.plotting.themes"
 _DEFAULT_THEME = "journal"
-_TOP_LEVEL_SECTIONS = {"common", "xrd", "saed", "crystal"}
+_TOP_LEVEL_SECTIONS = {"common", "xrd", "saed", "crystal", "spherical"}
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

@@ -37,6 +37,13 @@ from pytex.adapters.manifests import (
     validation_manifest_schema_path,
     workflow_result_manifest_schema_path,
 )
+from pytex.adapters.xrdml import (
+    XRDML_NAMESPACE,
+    XRDMLPoleFigureMeasurement,
+    invert_xrdml_pole_figures,
+    load_xrdml_pole_figure,
+    read_xrdml_pole_figure,
+)
 
 __all__ = [
     "BENCHMARK_MANIFEST_SCHEMA_ID",
@@ -74,4 +81,9 @@ __all__ = [
     "validate_workflow_result_manifest",
     "validation_manifest_schema_path",
     "workflow_result_manifest_schema_path",
+    "XRDML_NAMESPACE",
+    "XRDMLPoleFigureMeasurement",
+    "invert_xrdml_pole_figures",
+    "load_xrdml_pole_figure",
+    "read_xrdml_pole_figure",
 ]

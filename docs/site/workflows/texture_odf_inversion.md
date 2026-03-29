@@ -7,10 +7,15 @@ Current scope:
 - `PoleFigure.from_orientations(...)`
 - `InversePoleFigure.from_orientations(...)`
 - `ODF.from_orientations(...)`
+- `OrientationSet.from_bunge_grid(...)`
 - `ODF.evaluate(...)`
+- `ODF.evaluate_pole_density(...)`
 - `ODF.reconstruct_pole_figure(...)`
 - `ODF.reconstruct_pole_figures(...)`
 - `ODF.invert_pole_figures(...)`
+- `read_xrdml_pole_figure(...)`
+- `load_xrdml_pole_figure(...)`
+- `invert_xrdml_pole_figures(...)`
 - `ODFInversionReport`
 - `plot_pole_figure(..., kind="scatter" | "histogram" | "contour")`
 - `plot_odf(..., kind="scatter" | "contour" | "sections")`
@@ -39,6 +44,7 @@ PyTex currently exposes two closely related texture-estimation surfaces:
 Once that discrete model exists, the same support can be used to:
 
 - evaluate the ODF at query orientations
+- evaluate the expected density for arbitrary sample-direction grids
 - reconstruct pole figures from the estimated support
 - inspect the support in Euler space through scatter or contour views
 - inspect the estimated texture through kernel-smoothed Bunge-section plots
@@ -142,6 +148,7 @@ odf_sections = plot_odf(
 - The current method is appropriate for the present discrete kernel foundation. It should not yet be read as a replacement for broader harmonic or experimentally calibrated inversion frameworks.
 - Pole-figure contours are built from a smoothed projected density grid over the discrete pole data.
 - ODF section plots are kernel-smoothed Bunge-section inspection views over the current discrete support.
+- XRDML-backed inversion uses the same explicit `PoleFigure` and dictionary surfaces as the synthetic inversion path; vendor XML semantics are normalized at the adapter boundary instead of leaking into the stable texture model.
 
 ## Current Limits
 
@@ -153,5 +160,6 @@ odf_sections = plot_odf(
 ## Related Material
 
 - {doc}`../concepts/orientation_texture`
+- {doc}`xrdml_texture_import`
 - {doc}`../tutorials/notebooks`
 - [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)

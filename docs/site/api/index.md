@@ -41,6 +41,10 @@ See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`, and {do
 - `ODF`
 - `ODFInversionReport`
 - `KernelSpec`
+- `XRDMLPoleFigureMeasurement`
+- `read_xrdml_pole_figure`
+- `load_xrdml_pole_figure`
+- `invert_xrdml_pole_figures`
 
 See {doc}`../concepts/orientation_texture`.
 
@@ -88,6 +92,9 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 - `CrystalPlaneOverlay`
 - `CrystalDirectionOverlay`
 - `plot_vector_set`
+- `plot_wulff_net`
+- `plot_crystal_directions`
+- `plot_crystal_planes`
 - `plot_symmetry_orbit`
 - `plot_symmetry_elements`
 - `plot_euler_set`
@@ -109,7 +116,8 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 - `save_documentation_figure_svg`
 
 See {doc}`../workflows/ipf_colors`, {doc}`../workflows/plotting_primitives`,
-{doc}`../workflows/crystal_visualization`, and {doc}`../workflows/style_customization`.
+{doc}`../workflows/stereographic_projections`, {doc}`../workflows/crystal_visualization`,
+and {doc}`../workflows/style_customization`.
 
 `plot_pole_figure(...)` supports scatter, histogram, and contour rendering. `plot_odf(...)`
 supports scatter, contour, and classical Bunge-section rendering.

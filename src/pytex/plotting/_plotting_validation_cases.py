@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -11,13 +10,14 @@ from pytex import (
     CrystalDirectionOverlay,
     CrystalPlane,
     CrystalPlaneOverlay,
+    DirectionAnnotationStyle,
     FrameDomain,
     Handedness,
     InversePoleFigure,
+    MillerIndex,
     Orientation,
     OrientationSet,
     PlaneAnnotationStyle,
-    DirectionAnnotationStyle,
     ReferenceFrame,
     Rotation,
     ZoneAxis,
@@ -25,14 +25,14 @@ from pytex import (
     generate_saed_pattern,
     generate_xrd_pattern,
     get_phase_fixture,
+    plot_crystal_directions,
+    plot_crystal_planes,
     plot_crystal_structure_3d,
     plot_inverse_pole_figure,
     plot_saed_pattern,
+    plot_symmetry_elements,
     plot_xrd_pattern,
 )
-
-SVG_HASHSALT = "pytex-visual-regression"
-SVG_METADATA = {"Date": "2026-03-29T00:00:00"}
 
 
 def _make_crystal_frame() -> ReferenceFrame:
@@ -57,7 +57,7 @@ def _fixture_phase(fixture_id: str) -> Any:
     return get_phase_fixture(fixture_id).load_phase(crystal_frame=_make_crystal_frame())
 
 
-def build_visual_regression_figures() -> dict[str, Any]:
+def build_plotting_validation_figures() -> dict[str, Any]:
     ni_fcc = _fixture_phase("ni_fcc")
     zr_hcp = _fixture_phase("zr_hcp")
     specimen = _make_specimen_frame()
@@ -162,19 +162,39 @@ def build_visual_regression_figures() -> dict[str, Any]:
     )
     ipf_figure = plot_inverse_pole_figure(ipf)
 
+    direction_figure = plot_crystal_directions(
+        (
+            CrystalDirection(np.array([1.0, 0.0, 0.0]), phase=ni_fcc),
+            CrystalDirection(np.array([1.0, 1.0, 1.0]), phase=ni_fcc),
+            CrystalDirection(np.array([1.0, 1.0, 0.0]), phase=ni_fcc),
+        ),
+        labels=((1, 0, 0), (1, 1, 1), (1, 1, 0)),
+        theme="journal",
+        title="FCC Direction Stereonet",
+    )
+    plane_figure = plot_crystal_planes(
+        (
+            CrystalPlane(MillerIndex([1, 1, 1], phase=ni_fcc), phase=ni_fcc),
+            CrystalPlane(MillerIndex([1, 0, 0], phase=ni_fcc), phase=ni_fcc),
+        ),
+        labels=((1, 1, 1), (1, 0, 0)),
+        render="both",
+        theme="journal",
+        title="FCC Plane Traces",
+    )
+    symmetry_figure = plot_symmetry_elements(
+        ni_fcc.symmetry,
+        annotate_axes=True,
+        theme="journal",
+        title="FCC Symmetry Elements",
+    )
+
     return {
         "xrd_ni_fcc_journal": xrd_figure,
         "saed_ni_fcc_dark": saed_figure,
         "crystal_zr_hcp_journal": crystal_figure,
         "ipf_ni_fcc_journal": ipf_figure,
+        "stereonet_directions_ni_fcc_journal": direction_figure,
+        "stereonet_planes_ni_fcc_journal": plane_figure,
+        "symmetry_elements_ni_fcc_journal": symmetry_figure,
     }
-
-
-def save_visual_regression_svg(figure: Any, path: str | Path) -> Path:
-    import matplotlib
-
-    destination = Path(path)
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    matplotlib.rcParams["svg.hashsalt"] = SVG_HASHSALT
-    figure.savefig(destination, format="svg", bbox_inches="tight", metadata=SVG_METADATA)
-    return destination

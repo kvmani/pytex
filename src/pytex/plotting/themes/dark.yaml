@@ -24,3 +24,12 @@ crystal:
   plane_color: "#2dd4bf"
   atom_edgecolor: "#e2e8f0"
   axis_label_color: "#e2e8f0"
+spherical:
+  boundary_color: "#f8fafc"
+  net_major_color: "#64748b"
+  net_minor_color: "#334155"
+  label_color: "#f8fafc"
+  label_bbox_color: "#0b1220"
+  direction_colors: ["#f8fafc", "#fbbf24", "#6ee7b7", "#93c5fd"]
+  plane_colors: ["#93c5fd", "#f87171", "#2dd4bf", "#fbbf24"]
+  symmetry_edgecolor: "#f8fafc"

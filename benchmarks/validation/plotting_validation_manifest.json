@@ -3,9 +3,9 @@
   "schema_version": "1.0.0",
   "pytex_version": "0.1.0.dev0",
   "created_at": "2026-03-29T00:00:00Z",
-  "campaign_name": "plotting_visual_regression_validation",
+  "campaign_name": "plotting_structural_validation",
   "subsystem": "plotting",
-  "baseline_kind": "deterministic_runtime_svg_regression",
+  "baseline_kind": "structural_runtime_plot_validation",
   "status": "implemented",
   "reference_ids": [
     "PyTex_Runtime_Themes",
@@ -17,18 +17,15 @@
   ],
   "artifact_paths": [
     "docs/testing/plotting_validation_matrix.md",
-    "benchmarks/plotting/visual_regression_benchmark_manifest.json",
-    "fixtures/visual_regression/README.md",
-    "fixtures/visual_regression/xrd_ni_fcc_journal.svg",
-    "fixtures/visual_regression/saed_ni_fcc_dark.svg",
-    "fixtures/visual_regression/crystal_zr_hcp_journal.svg",
-    "fixtures/visual_regression/ipf_ni_fcc_journal.svg"
+    "benchmarks/plotting/plotting_structural_validation_benchmark_manifest.json",
+    "src/pytex/plotting/_plotting_validation_cases.py",
+    "tests/unit/test_plotting_structural_validation.py"
   ],
   "linked_benchmark_ids": [
-    "plotting_visual_regression_suite"
+    "plotting_structural_validation_suite"
   ],
   "notes": [
-    "This validation campaign tracks deterministic runtime SVG regressions for publication-facing plot families.",
-    "The current visual-regression surface is internal to PyTex rather than an external plotting parity claim."
+    "This validation campaign tracks structural runtime plotting validation for publication-facing plot families, including stereographic direction, plane, and symmetry-element plots.",
+    "The current validation surface is internal to PyTex rather than an external plotting parity claim."
   ]
 }

@@ -23,9 +23,11 @@ Status terms:
 | Powder XRD plotting | runtime plotting tests and style-config coverage | implemented | XRD figures are deterministic Matplotlib surfaces built on shared style resolution. |
 | SAED plotting | runtime plotting tests and style-config coverage | implemented | Detector-space spot plots are validated for figure creation and semantic labeling. |
 | 3D crystal visualization | scene-builder tests and runtime figure generation | implemented | Unit-cell atoms, heuristic bonds, repeated cell overlays, hexagonal-prism overlays, bounded plane overlays, direction overlays, and scientific Miller annotations are covered by current tests. |
-| IPF plotting | workflow docs, notebook examples, runtime plot coverage, and pinned SVG regression | implemented | Stable plotting now has deterministic regression coverage for a pinned runtime case. |
+| Stereographic direction and plane plotting | geometry tests, runtime plotting tests, and structural figure-property assertions | implemented | Wulff-net overlays, projected crystal directions, plane poles, and great-circle traces are validated without repo-tracked SVG baselines. |
+| Rotational symmetry-element plotting | order-specific symbol mapping tests plus structural figure-property assertions | implemented | Proper rotational axes are rendered with semantic dyad, triangle, square, and hexagon symbols together with shared Miller-style annotations. |
+| IPF plotting | workflow docs, notebook examples, and runtime figure-structure checks | implemented | Stable plotting coverage checks the structural output surface rather than byte-stable SVG artifacts. |
 | Visual parity against external tools | MTEX-style rendered comparisons and pinned image baselines | planned | Useful for future visual regression and semantics checks, but not yet a stable requirement. |
-| Publication presets and house styles | deterministic YAML themes plus pinned SVG regression artifacts | implemented | Journal, presentation, and dark presets are now validated through pinned publication-facing runtime artifacts. |
+| Publication presets and house styles | deterministic YAML themes plus structural plotting assertions | implemented | Journal, presentation, and dark presets are validated through shared style resolution and figure-surface checks rather than tracked runtime SVG baselines. |
 
 ## Interpretation Notes
 
@@ -48,3 +50,4 @@ Status terms:
 - `../site/workflows/xrd_generation.md`
 - `../site/workflows/saed_generation.md`
 - `../site/workflows/crystal_visualization.md`
+- `../site/workflows/stereographic_projections.md`

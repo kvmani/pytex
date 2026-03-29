@@ -1,0 +1,37 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-29T00:00:00Z",
+  "benchmark_id": "plotting_structural_validation_suite",
+  "subsystem": "plotting",
+  "baseline_kind": "structural_runtime_plot_validation",
+  "workflows": [
+    "xrd_publication_style_regression",
+    "saed_publication_style_regression",
+    "crystal_scene_publication_style_regression",
+    "ipf_runtime_style_validation",
+    "stereographic_direction_validation",
+    "stereographic_plane_validation",
+    "symmetry_element_symbol_validation"
+  ],
+  "fixture_ids": [
+    "ni_fcc",
+    "zr_hcp"
+  ],
+  "artifact_paths": [
+    "benchmarks/plotting/plotting_structural_validation_benchmark_manifest.json",
+    "src/pytex/plotting/_plotting_validation_cases.py",
+    "tests/unit/test_plotting_structural_validation.py",
+    "docs/testing/plotting_validation_matrix.md"
+  ],
+  "tolerances": {
+    "structural_plot_validation_atol": 0.0
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark records structural validation coverage for the highest-value publication-facing runtime plot families.",
+    "The covered surfaces include stereographic direction, plane-trace, and symmetry-element plots in addition to XRD, SAED, crystal-scene, and IPF surfaces.",
+    "Validation is expressed through deterministic figure-structure, annotation, and layer assertions rather than repo-tracked SVG byte baselines."
+  ]
+}

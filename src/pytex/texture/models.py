@@ -23,29 +23,27 @@ def _as_direction_array(vectors: np.ndarray | VectorSet) -> np.ndarray:
     return vectors
 
 
-def _orientation_dictionary_response(
+def _pole_density_response_matrix(
     dictionary: OrientationSet,
-    pole_figure: PoleFigure,
-    kernel: KernelSpec,
     *,
+    pole: CrystalPlane,
+    sample_directions: ArrayLike,
+    kernel: KernelSpec,
     include_symmetry_family: bool,
 ) -> np.ndarray:
-    if dictionary.crystal_frame != pole_figure.pole.phase.crystal_frame:
+    direction_array = normalize_vectors(sample_directions)
+    if dictionary.crystal_frame != pole.phase.crystal_frame:
         raise ValueError("PoleFigure inversion dictionary must use the pole phase crystal frame.")
-    if dictionary.phase is not None and dictionary.phase != pole_figure.pole.phase:
+    if dictionary.phase is not None and dictionary.phase != pole.phase:
         raise ValueError("PoleFigure inversion dictionary phase must match PoleFigure.pole.phase.")
-    if dictionary.symmetry is not None and dictionary.symmetry != pole_figure.pole.phase.symmetry:
+    if dictionary.symmetry is not None and dictionary.symmetry != pole.phase.symmetry:
         raise ValueError(
             "PoleFigure inversion dictionary symmetry must match PoleFigure.pole.phase.symmetry."
         )
-    if dictionary.specimen_frame != pole_figure.specimen_frame:
-        raise ValueError(
-            "PoleFigure inversion dictionary specimen_frame must match PoleFigure.specimen_frame."
-        )
     pole_family = (
-        pole_figure.pole.phase.symmetry.equivalent_vectors(pole_figure.pole.normal)
+        pole.phase.symmetry.equivalent_vectors(pole.normal)
         if include_symmetry_family
-        else pole_figure.pole.normal[None, :]
+        else pole.normal[None, :]
     )
     mapped_families = np.stack(
         [
@@ -56,7 +54,7 @@ def _orientation_dictionary_response(
     )
     cos_angles = np.einsum(
         "mk,nfk->mnf",
-        pole_figure.sample_directions,
+        direction_array,
         mapped_families,
         optimize=True,
     )
@@ -66,6 +64,26 @@ def _orientation_dictionary_response(
     block = np.ascontiguousarray(block)
     block.setflags(write=False)
     return block
+
+
+def _orientation_dictionary_response(
+    dictionary: OrientationSet,
+    pole_figure: PoleFigure,
+    kernel: KernelSpec,
+    *,
+    include_symmetry_family: bool,
+) -> np.ndarray:
+    if dictionary.specimen_frame != pole_figure.specimen_frame:
+        raise ValueError(
+            "PoleFigure inversion dictionary specimen_frame must match PoleFigure.specimen_frame."
+        )
+    return _pole_density_response_matrix(
+        dictionary,
+        pole=pole_figure.pole,
+        sample_directions=pole_figure.sample_directions,
+        kernel=kernel,
+        include_symmetry_family=include_symmetry_family,
+    )
 
 
 def _projected_gradient_nonnegative_weights(
@@ -473,6 +491,29 @@ class ODF:
             )
             for pole in poles
         )
+
+    def evaluate_pole_density(
+        self,
+        pole: CrystalPlane,
+        sample_directions: ArrayLike,
+        *,
+        include_symmetry_family: bool = True,
+    ) -> np.ndarray:
+        if self.orientations.crystal_frame != pole.phase.crystal_frame:
+            raise ValueError("Pole density evaluation requires the same crystal frame as the pole.")
+        if self.orientations.phase is not None and self.orientations.phase != pole.phase:
+            raise ValueError("Pole density evaluation requires the same phase as the ODF support.")
+        response = _pole_density_response_matrix(
+            self.orientations,
+            pole=pole,
+            sample_directions=sample_directions,
+            kernel=self.kernel,
+            include_symmetry_family=include_symmetry_family,
+        )
+        density = response @ self.normalized_weights
+        density = np.ascontiguousarray(density, dtype=np.float64)
+        density.setflags(write=False)
+        return density
 
     def volume_fraction(
         self,

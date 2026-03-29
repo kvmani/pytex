@@ -42,6 +42,39 @@ class ScatterLayer2D:
 
 
 @dataclass(frozen=True, slots=True)
+class MarkerLayer2D:
+    points: np.ndarray
+    marker: str = "o"
+    label: str | None = None
+    facecolors: str | np.ndarray | None = None
+    edgecolors: str | np.ndarray | None = "black"
+    sizes: float | np.ndarray = 30.0
+    alpha: float = 0.95
+    linewidths: float = 0.8
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "points", as_float_array(self.points, shape=(None, 2)))
+        if isinstance(self.facecolors, np.ndarray):
+            object.__setattr__(
+                self,
+                "facecolors",
+                as_float_array(self.facecolors, shape=(self.points.shape[0],)),
+            )
+        if isinstance(self.edgecolors, np.ndarray):
+            object.__setattr__(
+                self,
+                "edgecolors",
+                as_float_array(self.edgecolors, shape=(self.points.shape[0],)),
+            )
+        if isinstance(self.sizes, np.ndarray):
+            object.__setattr__(
+                self,
+                "sizes",
+                as_float_array(self.sizes, shape=(self.points.shape[0],)),
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class LineLayer2D:
     points: np.ndarray
     label: str | None = None
@@ -97,6 +130,11 @@ class TextLayer2D:
     fontsize: float = 10.0
     ha: str = "center"
     va: str = "center"
+    rotation: float = 0.0
+    bbox_facecolor: str | None = None
+    bbox_edgecolor: str | None = None
+    bbox_alpha: float = 0.0
+    zorder: float = 6.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "position", as_float_array(self.position, shape=(2,)))
@@ -111,8 +149,13 @@ class FigureSpec2D:
     ylim: tuple[float, float] | None = None
     equal_aspect: bool = True
     grid: bool = True
+    show_axes: bool = True
     boundary_circle_radius: float | None = None
+    boundary_circle_color: str = "dimgray"
+    boundary_circle_linewidth: float = 1.2
+    boundary_circle_linestyle: str = "--"
     scatter_layers: tuple[ScatterLayer2D, ...] = field(default_factory=tuple)
+    marker_layers: tuple[MarkerLayer2D, ...] = field(default_factory=tuple)
     line_layers: tuple[LineLayer2D, ...] = field(default_factory=tuple)
     image_layers: tuple[ImageLayer2D, ...] = field(default_factory=tuple)
     contour_layers: tuple[ContourLayer2D, ...] = field(default_factory=tuple)
@@ -287,6 +330,18 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
         if scatter_layer.values is not None and scatter_layer.colorbar_label is not None:
             colorbar = fig.colorbar(scatter_artist, ax=axes)
             colorbar.set_label(scatter_layer.colorbar_label)
+    for marker_layer in spec.marker_layers:
+        axes.scatter(
+            marker_layer.points[:, 0],
+            marker_layer.points[:, 1],
+            s=marker_layer.sizes,
+            marker=marker_layer.marker,
+            facecolors=marker_layer.facecolors,
+            edgecolors=marker_layer.edgecolors,
+            linewidths=marker_layer.linewidths,
+            alpha=marker_layer.alpha,
+            label=marker_layer.label,
+        )
     for line_layer in spec.line_layers:
         points = line_layer.points
         if line_layer.closed:
@@ -301,6 +356,14 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             label=line_layer.label,
         )
     for text_layer in spec.text_layers:
+        bbox: dict[str, Any] | None = None
+        if text_layer.bbox_facecolor is not None:
+            bbox = {
+                "facecolor": text_layer.bbox_facecolor,
+                "edgecolor": text_layer.bbox_edgecolor or "none",
+                "alpha": text_layer.bbox_alpha,
+                "boxstyle": "round,pad=0.18",
+            }
         axes.text(
             float(text_layer.position[0]),
             float(text_layer.position[1]),
@@ -309,6 +372,9 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             fontsize=text_layer.fontsize,
             ha=text_layer.ha,
             va=text_layer.va,
+            rotation=text_layer.rotation,
+            bbox=bbox,
+            zorder=text_layer.zorder,
         )
     if spec.boundary_circle_radius is not None:
         from matplotlib.patches import Circle
@@ -318,13 +384,21 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
                 (0.0, 0.0),
                 radius=spec.boundary_circle_radius,
                 fill=False,
-                linewidth=1.2,
-                linestyle="--",
-                color="dimgray",
+                linewidth=spec.boundary_circle_linewidth,
+                linestyle=spec.boundary_circle_linestyle,
+                color=spec.boundary_circle_color,
             )
         )
-    axes.set_xlabel(spec.xlabel)
-    axes.set_ylabel(spec.ylabel)
+    if spec.show_axes:
+        axes.set_xlabel(spec.xlabel)
+        axes.set_ylabel(spec.ylabel)
+    else:
+        axes.set_xlabel("")
+        axes.set_ylabel("")
+        axes.set_xticks([])
+        axes.set_yticks([])
+        for spine in axes.spines.values():
+            spine.set_visible(False)
     if spec.title is not None:
         axes.set_title(spec.title)
     if spec.equal_aspect:
@@ -333,9 +407,16 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
         axes.set_xlim(*spec.xlim)
     if spec.ylim is not None:
         axes.set_ylim(*spec.ylim)
-    axes.grid(spec.grid, alpha=0.3)
-    if any(layer.label is not None for layer in spec.scatter_layers) or any(
+    if spec.grid:
+        axes.grid(True, alpha=0.3)
+    else:
+        axes.grid(False)
+    if (
+        any(layer.label is not None for layer in spec.scatter_layers)
+        or any(layer.label is not None for layer in spec.marker_layers)
+        or any(
         layer.label is not None for layer in spec.line_layers
+        )
     ):
         axes.legend(loc="best")
     fig.tight_layout()
@@ -440,7 +521,10 @@ def render_figure_spec_3d(spec: FigureSpec3D, *, ax: Any | None = None) -> Any:
     axes.set_zlabel(spec.zlabel)
     if spec.title is not None:
         axes.set_title(spec.title)
-    axes.grid(spec.grid, alpha=0.3)
+    if spec.grid:
+        axes.grid(True, alpha=0.3)
+    else:
+        axes.grid(False)
     if all_points:
         _set_equal_aspect_3d(axes, np.vstack(all_points))
     if any(layer.label is not None for layer in spec.scatter_layers):

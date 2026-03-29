@@ -43,7 +43,9 @@ MTEX is not the only validation authority PyTex needs.
 - Powder XRD, SAED, and crystal-visualization workflows:
   Validation must cover geometry and unit invariants, deterministic style handling, and clear statement of which intensity and rendering choices are pedagogical approximations rather than full physical models.
 - Stable plotting and texture-inspection workflows:
-  Validation must be tracked in `plotting_validation_matrix.md` through semantic input checks, deterministic builder coverage, and future parity-oriented visual baselines.
+  Validation must be tracked in `plotting_validation_matrix.md` through semantic input checks, deterministic builder coverage, structural figure-property assertions, and future parity-oriented comparisons when scientifically justified.
+- XRDML texture import:
+  Validation must combine at least one pinned real vendor-style XML fixture with deterministic synthetic inversion cases so import semantics and reconstruction semantics can be audited separately.
 - Future phase-transformation workflows:
   Validation must be anchored to literature-backed orientation-relationship and variant-generation references, not only to tool parity.
 
@@ -57,8 +59,10 @@ builds for the immediate roadmap surface, but validation breadth is still uneven
   default test-suite coverage, but broader IUCr-style external baselines are still ahead
 - diffraction now has pinned open-source external baselines for one powder XRD case and one SAED
   case, but broader material and orientation coverage remains ahead
-- plotting now has deterministic SVG visual-regression coverage for the highest-value runtime
-  surfaces, but external visual-parity work remains ahead
+- plotting now has structural validation coverage for the highest-value runtime surfaces, but
+  external visual-parity work remains ahead
+- XRDML import now has a pinned open-source regression fixture plus synthetic ODF-inversion
+  coverage, but broader vendor and correction-workflow coverage remains ahead
 - the priority teaching notebooks now smoke-execute in the default suite, but the full notebook
   atlas still follows a lighter validation path than the primary roadmap sequence
 

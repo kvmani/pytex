@@ -82,6 +82,9 @@ def test_plotting_surface_is_part_of_stable_documented_surface() -> None:
     plotting_workflow = _read("docs/site/workflows/plotting_primitives.md")
     for symbol in (
         "plot_vector_set",
+        "plot_wulff_net",
+        "plot_crystal_directions",
+        "plot_crystal_planes",
         "plot_symmetry_orbit",
         "plot_symmetry_elements",
         "plot_euler_set",
@@ -100,6 +103,23 @@ def test_plotting_surface_is_part_of_stable_documented_surface() -> None:
         assert symbol in specifications
         assert symbol in api_guide
         assert symbol in plotting_workflow
+
+
+def test_xrdml_texture_surface_is_part_of_stable_documented_surface() -> None:
+    specifications = _read("specifications.md")
+    api_guide = _read("docs/site/api/index.md")
+    texture_workflow = _read("docs/site/workflows/texture_odf_inversion.md")
+    xrdml_workflow = _read("docs/site/workflows/xrdml_texture_import.md")
+    for symbol in (
+        "XRDMLPoleFigureMeasurement",
+        "read_xrdml_pole_figure",
+        "load_xrdml_pole_figure",
+        "invert_xrdml_pole_figures",
+    ):
+        assert symbol in specifications
+        assert symbol in api_guide
+        assert symbol in xrdml_workflow
+    assert "ODF.evaluate_pole_density" in texture_workflow
 
 
 def test_xrd_and_saed_surface_is_part_of_stable_documented_surface() -> None:

@@ -252,3 +252,18 @@ def test_odf_inversion_rejects_mismatched_specimen_frames() -> None:
             [pole_figure],
             orientation_dictionary=mismatched_dictionary,
         )
+
+
+def test_orientation_set_from_bunge_grid_builds_expected_support_size() -> None:
+    crystal, specimen, phase = make_orientation_context()
+    dictionary = OrientationSet.from_bunge_grid(
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+        phi1_step_deg=90.0,
+        big_phi_step_deg=45.0,
+        phi2_step_deg=90.0,
+    )
+    assert len(dictionary) == 12
+    assert dictionary.phase == phase

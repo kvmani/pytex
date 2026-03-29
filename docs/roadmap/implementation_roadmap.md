@@ -20,7 +20,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
 | EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
 | Diffraction foundations | implemented | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting now have pinned external-baseline cases for one powder XRD path and one SAED path; broader coverage still remains ahead. |
-| Scientific visualization | implemented | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now include deterministic SVG regression coverage for the highest-value publication-facing surfaces. |
+| Scientific visualization | implemented | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now include structural plotting validation for the highest-value publication-facing surfaces without tracked runtime SVG baselines. |
 | CIF and structure import | implemented | Core-model construction, space-group semantics, hash-pinned fixture integrity, and a manifest-backed fixture audit workflow now form the default reproducible structure-import baseline. |
 | Multimodal acquisition core | foundational | Acquisition geometry, calibration, quality, scattering, experiment manifests, and workflow entry points now exist, but broader modality coverage remains ahead. |
 | Phase-transformation foundation | foundational | Core transformation primitives now exist, but literature-backed validation and richer algorithms remain ahead. |
@@ -52,7 +52,7 @@ Current posture as of 2026-03-29:
 
 - Phase 1 is materially advanced through the pinned phase-fixture corpus, regenerated integrity hashes, and structure-import audit workflow.
 - Phase 2 is materially advanced through pinned open-source powder XRD and SAED baseline artifacts plus automated comparison tests.
-- Phase 3 is materially advanced through deterministic SVG visual-regression artifacts for XRD, SAED, crystal scenes, and IPF plotting.
+- Phase 3 is materially advanced through structural plotting validation for XRD, SAED, crystal scenes, IPF plotting, and the stereographic plotting surface.
 - Phase 4 is materially advanced through a coherent fixture-backed teaching path and smoke-executed priority notebooks.
 
 The governing rule for near-term execution is:
@@ -117,7 +117,7 @@ Goals:
 
 Expected implementation focus:
 
-- add pinned visual regression cases for core plots and crystal scenes
+- add structural plotting-validation cases for core plots and crystal scenes
 - grow stronger publication and lecture house styles on top of the shared YAML theme system
 - extend figure-quality validation around Miller annotation formatting, overlay clipping, and scene composition
 - continue auditing canonical SVG figures for scientific and layout correctness
@@ -125,7 +125,7 @@ Expected implementation focus:
 Definition of done for this phase:
 
 - core plots and crystal scenes support stable publication-style output
-- visual regressions catch broken labels, overlays, and style drift
+- structural plotting checks catch broken labels, overlays, and style drift
 - docs, notebooks, and runtime examples use the same higher-quality style presets
 
 ### Phase 4: Teaching Surface Consolidation
