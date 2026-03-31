@@ -32,11 +32,11 @@ Phase 3 should start by proving that EBSD workflows can reuse the same orientati
 
 ### Normative
 
-- `canonical_data_model.md`
-- `multimodal_characterization_foundation.md`
-- `../standards/reference_canon.md`
+- [Canonical Data Model](../site/architecture/canonical_data_model.md)
+- [Multimodal Characterization Foundation](../site/architecture/multimodal_characterization_foundation.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 
-- `../tex/algorithms/ebsd_kam_parameterization.tex`
-- `../tex/algorithms/ebsd_grain_segmentation_and_grod.tex`
+- <a href="../tex/algorithms/ebsd_kam_parameterization.tex">EBSD KAM Parameterization</a>
+- <a href="../tex/algorithms/ebsd_grain_segmentation_and_grod.tex">EBSD Grain Segmentation And GROD</a>

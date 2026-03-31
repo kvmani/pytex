@@ -171,8 +171,8 @@ orientation = Orientation(
 
 ## Related Material
 
-- `docs/architecture/canonical_data_model.md`
-- `docs/architecture/orientation_and_texture_foundation.md`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../architecture/orientation_and_texture_foundation`
 - [../../tex/theory/reference_frames.tex](../../tex/theory/reference_frames.tex)
 - [../../tex/theory/euler_convention_handling.tex](../../tex/theory/euler_convention_handling.tex)
 - [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
@@ -187,9 +187,9 @@ orientation = Orientation(
 
 ### Normative
 
-- `docs/standards/notation_and_conventions.md`
-- `docs/architecture/canonical_data_model.md`
-- `docs/architecture/orientation_and_texture_foundation.md`
+- {doc}`../standards/notation_and_conventions`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../architecture/orientation_and_texture_foundation`
 
 ### Informative
 

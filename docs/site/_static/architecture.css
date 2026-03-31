@@ -151,6 +151,17 @@ body {
   width: 100%;
 }
 
+.content img.architecture-poster-figure {
+  background: white;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: none;
+  display: block;
+  margin: 2rem 0;
+  padding: 0.9rem;
+  width: 100%;
+}
+
 .architecture-section-intro {
   color: #486581;
   font-size: 1.02rem;

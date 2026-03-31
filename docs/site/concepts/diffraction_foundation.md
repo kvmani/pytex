@@ -59,15 +59,15 @@ Diffraction is where PyTex has to keep geometry honest:
 
 - {doc}`../workflows/diffraction_geometry`
 - {doc}`../workflows/diffraction_spots`
-- `docs/architecture/diffraction_foundation.md`
-- `docs/architecture/multimodal_characterization_foundation.md`
+- {doc}`../architecture/diffraction_foundation`
+- {doc}`../architecture/multimodal_characterization_foundation`
 
 ## References
 
 ### Normative
 
-- `docs/architecture/diffraction_foundation.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/diffraction_foundation`
+- {doc}`../standards/reference_canon`
 
 ### Informative
 

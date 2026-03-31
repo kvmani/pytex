@@ -43,16 +43,14 @@ Documentation, figures, tests, ledgers, and benchmark placeholders are architect
 :::
 ::::
 
-:::{raw} html
-<div class="architecture-poster">
-  <img src="../../figures/pytex_architecture_poster.svg" alt="PyTex architecture poster"/>
-</div>
+:::{figure} ../../figures/pytex_architecture_poster.svg
+:alt: PyTex architecture poster
+:class: architecture-poster-figure
 :::
 
-:::{raw} html
-<div class="architecture-poster">
-  <img src="../../figures/pytex_architecture_evolution_poster.svg" alt="PyTex architecture evolution poster"/>
-</div>
+:::{figure} ../../figures/pytex_architecture_evolution_poster.svg
+:alt: PyTex architecture evolution poster
+:class: architecture-poster-figure
 :::
 
 ## Poster Series
@@ -376,18 +374,18 @@ That combination is what makes PyTex a scientific infrastructure project rather 
 - {doc}`texture_foundation`
 - {doc}`ebsd_foundation`
 - {doc}`diffraction_foundation`
-- `docs/architecture/overview.md`
-- `docs/architecture/multimodal_characterization_foundation.md`
-- `docs/architecture/phase_transformation_foundation.md`
+- {doc}`../architecture/overview`
+- {doc}`../architecture/multimodal_characterization_foundation`
+- {doc}`../architecture/phase_transformation_foundation`
 
 ## References
 
 ### Normative
 
-- `docs/architecture/overview.md`
-- `docs/architecture/canonical_data_model.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/overview`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../standards/reference_canon`
 
 ### Informative
 
-- `docs/architecture/repo_review_2026_foundation_audit.md`
+- {doc}`../architecture/repo_review_2026_foundation_audit`

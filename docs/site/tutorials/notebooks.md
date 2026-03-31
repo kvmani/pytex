@@ -68,9 +68,9 @@ diffraction generation, and manifest-backed reproducibility notes.
 
 ### Normative
 
-- `../../standards/documentation_architecture.md`
-- `../../standards/development_principles.md`
+- {doc}`../standards/documentation_architecture`
+- {doc}`../standards/development_principles`
 
 ### Informative
 
-- `../../architecture/overview.md`
+- {doc}`../architecture/overview`

@@ -40,12 +40,12 @@ Phase 4 should begin by making reciprocal-space and detector-space semantics exp
 
 ### Normative
 
-- `canonical_data_model.md`
-- `multimodal_characterization_foundation.md`
-- `../standards/reference_canon.md`
+- [Canonical Data Model](../site/architecture/canonical_data_model.md)
+- [Multimodal Characterization Foundation](../site/architecture/multimodal_characterization_foundation.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 
-- `../tex/algorithms/diffraction_geometry_and_bragg_rings.tex`
-- `../tex/algorithms/powder_xrd_and_saed.tex`
-- `../tex/algorithms/reciprocal_space_and_kinematic_spots.tex`
+- <a href="../tex/algorithms/diffraction_geometry_and_bragg_rings.tex">Diffraction Geometry And Bragg Rings</a>
+- <a href="../tex/algorithms/powder_xrd_and_saed.tex">Powder XRD And SAED</a>
+- <a href="../tex/algorithms/reciprocal_space_and_kinematic_spots.tex">Reciprocal Space And Kinematic Spots</a>

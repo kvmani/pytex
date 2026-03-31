@@ -13,4 +13,5 @@ ebsd_foundation
 diffraction_foundation
 multimodal_characterization_foundation
 phase_transformation_foundation
+repo_review_2026_foundation_audit
 ```

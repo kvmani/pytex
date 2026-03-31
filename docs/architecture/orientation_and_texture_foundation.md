@@ -34,10 +34,10 @@ The current implementation fixes the shared semantics that later harmonic, inver
 
 ### Normative
 
-- `canonical_data_model.md`
-- `../standards/reference_canon.md`
+- [Canonical Data Model](../site/architecture/canonical_data_model.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 
-- `../tex/theory/orientation_space_and_disorientation.tex`
-- `../tex/algorithms/discrete_odf_and_pole_figures.tex`
+- <a href="../tex/theory/orientation_space_and_disorientation.tex">Orientation Space And Disorientation</a>
+- <a href="../tex/algorithms/discrete_odf_and_pole_figures.tex">Discrete ODF And Pole Figures</a>

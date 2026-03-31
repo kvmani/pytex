@@ -58,17 +58,17 @@ The texture layer is where PyTex demonstrates that its canonical core is not abs
 ## Related Material
 
 - {doc}`orientation_texture`
-- `docs/architecture/orientation_and_texture_foundation.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/orientation_and_texture_foundation`
+- {doc}`../standards/reference_canon`
 
 ## References
 
 ### Normative
 
-- `docs/architecture/orientation_and_texture_foundation.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/orientation_and_texture_foundation`
+- {doc}`../standards/reference_canon`
 
 ### Informative
 
-- `docs/site/workflows/ipf_colors.md`
-- `docs/site/concepts/symmetry_and_fundamental_regions.md`
+- {doc}`../workflows/ipf_colors`
+- {doc}`symmetry_and_fundamental_regions`

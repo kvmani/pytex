@@ -9,30 +9,30 @@ surface, a library guide, and an entry point into the deeper research documentat
 
 ## Architecture
 
-- `../../architecture/overview.md`
-- `../../architecture/canonical_data_model.md`
-- `../../architecture/orientation_and_texture_foundation.md`
-- `../../architecture/ebsd_foundation.md`
-- `../../architecture/diffraction_foundation.md`
-- `../../architecture/multimodal_characterization_foundation.md`
+- {doc}`../architecture/overview`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../architecture/orientation_and_texture_foundation`
+- {doc}`../architecture/ebsd_foundation`
+- {doc}`../architecture/diffraction_foundation`
+- {doc}`../architecture/multimodal_characterization_foundation`
 
 ## Standards
 
-- `../../standards/engineering_governance.md`
-- `../../standards/notation_and_conventions.md`
-- `../../standards/hexagonal_and_trigonal_conventions.md`
-- `../../standards/documentation_architecture.md`
-- `../../standards/development_principles.md`
-- `../../standards/data_contracts_and_manifests.md`
-- `../../standards/terminology_and_symbol_registry.md`
+- {doc}`../standards/engineering_governance`
+- {doc}`../standards/notation_and_conventions`
+- {doc}`../standards/hexagonal_and_trigonal_conventions`
+- {doc}`../standards/documentation_architecture`
+- {doc}`../standards/development_principles`
+- {doc}`../standards/data_contracts_and_manifests`
+- {doc}`../standards/terminology_and_symbol_registry`
 
 ## Validation And Testing
 
-- `../../testing/strategy.md`
-- `../../testing/mtex_parity_matrix.md`
-- `../../testing/diffraction_validation_matrix.md`
-- `../../testing/plotting_validation_matrix.md`
-- `../../testing/structure_validation_matrix.md`
+- {doc}`../validation/testing_strategy`
+- {doc}`../validation/mtex_parity_matrix`
+- {doc}`../validation/diffraction_validation_matrix`
+- {doc}`../validation/plotting_validation_matrix`
+- {doc}`../validation/structure_validation_matrix`
 
 ## Canonical LaTeX Notes
 
@@ -40,6 +40,7 @@ The rendered site links these through {doc}`../theory/index`, but the full sourc
 under `docs/tex/`:
 
 - `../../tex/README.md`
+- <a href="../../tex/README.md">LaTeX README</a>
 - `../../tex/theory/`
 - `../../tex/algorithms/`
 - `../../tex/validation/`
@@ -57,9 +58,9 @@ under `docs/tex/`:
 
 ### Normative
 
-- `../../standards/documentation_architecture.md`
-- `../../standards/engineering_governance.md`
+- {doc}`../standards/documentation_architecture`
+- {doc}`../standards/engineering_governance`
 
 ### Informative
 
-- `../../README.md`
+- <a href="../../README.md">Repository README</a>

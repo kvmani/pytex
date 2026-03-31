@@ -117,9 +117,9 @@ objects when you need vectorized family math, explicit batch APIs, or JSON-contr
 
 ### Normative
 
-- `../../architecture/canonical_data_model.md`
-- `../../standards/notation_and_conventions.md`
-- `../../standards/hexagonal_and_trigonal_conventions.md`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../standards/notation_and_conventions`
+- {doc}`../standards/hexagonal_and_trigonal_conventions`
 
 ### Informative
 

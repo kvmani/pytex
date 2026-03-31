@@ -173,4 +173,4 @@ shared YAML style system. `plot_crystal_structure_3d(...)` provides a publicatio
 structure view while preserving PyTex lattice and plane semantics, including optional unit-cell and
 hexagonal-prism overlays where scientifically appropriate.
 
-For architectural context, see `docs/architecture/overview.md`.
+For architectural context, see {doc}`../architecture/overview`.

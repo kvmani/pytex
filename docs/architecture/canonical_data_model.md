@@ -78,9 +78,9 @@ Crystallographic structure import, including CIF-backed construction, should ter
 
 ### Normative
 
-- `../standards/notation_and_conventions.md`
-- `../standards/data_contracts_and_manifests.md`
-- `../standards/reference_canon.md`
+- [Notation And Conventions](../site/standards/notation_and_conventions.md)
+- [Data Contracts And Manifests](../site/standards/data_contracts_and_manifests.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 

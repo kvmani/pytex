@@ -150,10 +150,10 @@ Check that your TeX distribution includes `latexmk` and any packages needed by t
 
 ### Normative
 
-- `../../standards/documentation_architecture.md`
-- `../../standards/latex_and_figures.md`
+- {doc}`../standards/documentation_architecture`
+- {doc}`../standards/latex_and_figures`
 
 ### Informative
 
-- `../../development/local_development.md`
-- `../README.md`
+- <a href="../../development/local_development.md">Local Development</a>
+- <a href="../README.md">Sphinx Site README</a>

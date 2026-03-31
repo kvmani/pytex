@@ -57,15 +57,15 @@ EBSD is where PyTex must combine scientific semantics with measurement topology.
 
 - {doc}`../workflows/ebsd_grains`
 - {doc}`../workflows/ebsd_kam`
-- `docs/architecture/ebsd_foundation.md`
-- `docs/architecture/multimodal_characterization_foundation.md`
+- {doc}`../architecture/ebsd_foundation`
+- {doc}`../architecture/multimodal_characterization_foundation`
 
 ## References
 
 ### Normative
 
-- `docs/architecture/ebsd_foundation.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/ebsd_foundation`
+- {doc}`../standards/reference_canon`
 
 ### Informative
 

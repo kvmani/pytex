@@ -10,7 +10,7 @@ It exists to keep terminology, notation, and navigation stable across the docume
 - to fix the main mathematical symbols used across the docs
 - to make navigation easier when a page depends on concepts explained elsewhere
 
-For the standards-facing policy behind this page, see `docs/standards/terminology_and_symbol_registry.md`.
+For the standards-facing policy behind this page, see {doc}`../standards/terminology_and_symbol_registry`.
 
 ## Core Geometry And Frame Terms
 
@@ -160,9 +160,9 @@ See also: {doc}`../workflows/crystal_visualization`.
 
 ### Normative
 
-- `../../standards/terminology_and_symbol_registry.md`
-- `../../standards/notation_and_conventions.md`
+- {doc}`../standards/terminology_and_symbol_registry`
+- {doc}`../standards/notation_and_conventions`
 
 ### Informative
 
-- `../../architecture/canonical_data_model.md`
+- {doc}`../architecture/canonical_data_model`

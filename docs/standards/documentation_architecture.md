@@ -37,6 +37,9 @@ Use the LaTeX layer for:
 - Major scientific notes should point back to the relevant user-facing concept or workflow page when practical.
 - API docs should not stand alone; they should connect back to concepts or workflows where scientific meaning matters.
 - Pages that rely on defined terminology, notation, or installation prerequisites should link directly to the corresponding glossary, symbol-registry, or setup page.
+- References to other repository documents must be written as navigable Markdown links, not as backticked plain-text file paths.
+- Bare path listings are only acceptable inside code blocks that intentionally document filesystem layout rather than serving as navigation.
+- Foundational pages must prefer direct links to the relevant Sphinx page when one exists, and should keep source-document links clickable when referring to canonical Markdown or LaTeX files outside the rendered site.
 
 ## Explicitness Requirement
 
@@ -91,10 +94,10 @@ The Sphinx layer should eventually expose top-level sections for:
 
 ### Normative
 
-- `reference_canon.md`
-- `scientific_citation_policy.md`
-- `development_principles.md`
+- [Reference Canon](../site/standards/reference_canon.md)
+- [Scientific Citation Policy](../site/standards/scientific_citation_policy.md)
+- [Development Principles](../site/standards/development_principles.md)
 
 ### Informative
 
-- `../site/README.md`
+- <a href="../site/README.md">Sphinx Site README</a>

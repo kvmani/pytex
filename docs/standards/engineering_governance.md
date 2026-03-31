@@ -28,9 +28,9 @@
 
 ### Normative
 
-- `reference_canon.md`
-- `documentation_architecture.md`
+- [Reference Canon](../site/standards/reference_canon.md)
+- [Documentation Architecture](../site/standards/documentation_architecture.md)
 
 ### Informative
 
-- `../architecture/overview.md`
+- [Architecture Overview](../site/architecture/overview.md)

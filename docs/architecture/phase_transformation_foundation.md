@@ -69,8 +69,8 @@ If PyTex exposes habit-plane or direction-correspondence features, the stable AP
 
 ### Normative
 
-- `../standards/reference_canon.md`
-- `canonical_data_model.md`
+- [Reference Canon](../site/standards/reference_canon.md)
+- [Canonical Data Model](../site/architecture/canonical_data_model.md)
 
 ### Informative
 

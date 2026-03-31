@@ -192,9 +192,9 @@ The current roadmap intentionally deprioritizes the following until the hardenin
 
 ### Normative
 
-- `../standards/engineering_governance.md`
-- `../standards/reference_canon.md`
+- [Engineering Governance](../standards/engineering_governance.md)
+- [Reference Canon](../standards/reference_canon.md)
 
 ### Informative
 
-- `../architecture/repo_review_2026_foundation_audit.md`
+- [Repository Review 2026 Foundation Audit](../architecture/repo_review_2026_foundation_audit.md)

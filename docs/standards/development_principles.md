@@ -62,6 +62,7 @@ The repository default is no longer “text first, figures later” for foundati
 - Runtime plotting should reuse shared semantic builders rather than inventing ad hoc Matplotlib logic per workflow.
 - A code change that improves scientific capability but leaves the foundational documentation less clear than the implementation is incomplete.
 - Stable terms and symbols should be added to the shared terminology registry and linked from affected docs rather than redefined independently.
+- When a document names another repository document as required reading or related material, it should link to it directly rather than listing an unlinked path.
 
 ## Review Questions
 
@@ -77,9 +78,9 @@ Before merging a substantial change, answer these questions explicitly:
 
 ### Normative
 
-- `engineering_governance.md`
-- `reference_canon.md`
+- [Engineering Governance](../site/standards/engineering_governance.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 
-- `../roadmap/implementation_roadmap.md`
+- <a href="../roadmap/implementation_roadmap.md">Implementation Roadmap</a>

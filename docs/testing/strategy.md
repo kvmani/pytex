@@ -82,13 +82,13 @@ builds for the immediate roadmap surface, but validation breadth is still uneven
 
 ### Normative
 
-- `mtex_parity_matrix.md`
-- `diffraction_validation_matrix.md`
-- `structure_validation_matrix.md`
-- `plotting_validation_matrix.md`
-- `phase_transformation_validation_matrix.md`
-- `../standards/reference_canon.md`
+- [MTEX Parity Matrix](../site/validation/mtex_parity_matrix.md)
+- [Diffraction Validation Matrix](../site/validation/diffraction_validation_matrix.md)
+- [Structure Validation Matrix](../site/validation/structure_validation_matrix.md)
+- [Plotting Validation Matrix](../site/validation/plotting_validation_matrix.md)
+- [Phase Transformation Validation Matrix](../site/validation/phase_transformation_validation_matrix.md)
+- [Reference Canon](../site/standards/reference_canon.md)
 
 ### Informative
 
-- `../tex/validation/validation_program.tex`
+- <a href="../tex/validation/validation_program.tex">Validation Program</a>

@@ -70,12 +70,12 @@ Primary risks:
 
 ### Normative
 
-- `overview.md`
-- `canonical_data_model.md`
-- `../standards/reference_canon.md`
+- [Architecture Overview](overview.md)
+- [Canonical Data Model](canonical_data_model.md)
+- [Reference Canon](../standards/reference_canon.md)
 
 ### Informative
 
-- `orientation_and_texture_foundation.md`
-- `ebsd_foundation.md`
-- `diffraction_foundation.md`
+- [Orientation And Texture Foundation](orientation_and_texture_foundation.md)
+- [EBSD Foundation](ebsd_foundation.md)
+- [Diffraction Foundation](diffraction_foundation.md)

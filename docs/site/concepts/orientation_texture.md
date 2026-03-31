@@ -112,7 +112,7 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 
 ## Related Material
 
-- `docs/architecture/orientation_and_texture_foundation.md`
+- {doc}`../architecture/orientation_and_texture_foundation`
 - [../../tex/theory/euler_convention_handling.tex](../../tex/theory/euler_convention_handling.tex)
 - [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
 - [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
@@ -129,8 +129,8 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 
 ### Normative
 
-- `docs/standards/notation_and_conventions.md`
-- `docs/architecture/orientation_and_texture_foundation.md`
+- {doc}`../standards/notation_and_conventions`
+- {doc}`../architecture/orientation_and_texture_foundation`
 
 ### Informative
 

@@ -55,16 +55,16 @@ flowchart TB
 ## Related Material
 
 - {doc}`core_model`
-- `docs/architecture/canonical_data_model.md`
-- `docs/architecture/overview.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../architecture/overview`
+- {doc}`../standards/reference_canon`
 
 ## References
 
 ### Normative
 
-- `docs/architecture/canonical_data_model.md`
-- `docs/standards/reference_canon.md`
+- {doc}`../architecture/canonical_data_model`
+- {doc}`../standards/reference_canon`
 
 ### Informative
 
