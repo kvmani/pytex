@@ -62,6 +62,13 @@ from pytex.adapters.orix import (
     to_orix_rotation,
     to_orix_symmetry,
 )
+from pytex.adapters.orix_miller import (
+    from_orix_miller,
+    to_orix_miller_direction,
+    to_orix_miller_phase,
+    to_orix_miller_plane,
+    to_orix_phase,
+)
 from pytex.adapters.xrdml import (
     XRDML_NAMESPACE,
     XRDMLPoleFigureMeasurement,
@@ -95,6 +102,7 @@ __all__ = [
     "benchmark_manifest_schema_path",
     "direction_from_orix_miller",
     "experiment_manifest_schema_path",
+    "from_orix_miller",
     "from_orix_orientation",
     "from_orix_rotation",
     "from_orix_symmetry",
@@ -119,7 +127,11 @@ __all__ = [
     "read_xrdml_pole_figure",
     "refine_orientations",
     "to_orix_direction",
+    "to_orix_miller_direction",
+    "to_orix_miller_phase",
+    "to_orix_miller_plane",
     "to_orix_orientation",
+    "to_orix_phase",
     "to_orix_plane",
     "to_orix_rotation",
     "to_orix_symmetry",

@@ -35,6 +35,10 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `UnitCell`
 - `Phase`
 - `MillerIndex`
+- `MillerPlane`
+- `MillerDirection`
+- `MillerPlaneSet`
+- `MillerDirectionSet`
 - `CrystalDirection`
 - `CrystalPlane`
 - `ReciprocalLatticeVector`

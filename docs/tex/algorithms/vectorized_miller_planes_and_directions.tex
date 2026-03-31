@@ -1,0 +1,160 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Vectorized Miller Planes and Directions in PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scope}
+
+This note records the scientific contract for the first-class PyTex Miller surface:
+
+\begin{itemize}
+  \item scalar \texttt{MillerPlane} and \texttt{MillerDirection},
+  \item batch \texttt{MillerPlaneSet} and \texttt{MillerDirectionSet},
+  \item vectorized conversion between integer indices and cartesian direct or reciprocal vectors,
+  \item family canonicalization, antipodal handling, and symmetry-equivalent expansion.
+\end{itemize}
+
+The design goal is to preserve exact integer input while making family operations explicit and
+vectorized.
+
+\section{Stored Indices And Bases}
+
+PyTex stores plane indices as integer reciprocal-basis coordinates $(h, k, l)$ and direction
+indices as integer direct-basis coordinates $(u, v, w)$. The basis matrices are:
+
+\[
+\mathbf{A} = [\mathbf{a}\ \mathbf{b}\ \mathbf{c}],
+\qquad
+\mathbf{B} = \mathbf{A}^{-\mathsf{T}}.
+\]
+
+The reciprocal convention is the crystallographer convention without a $2\pi$ factor, so
+
+\[
+\mathbf{a}_i^* \cdot \mathbf{a}_j = \delta_{ij}.
+\]
+
+For a direction index row vector $\mathbf{u}$ and plane index row vector $\mathbf{h}$, the
+cartesian vectors are
+
+\[
+\mathbf{r} = \mathbf{u}\mathbf{A}^{\mathsf{T}},
+\qquad
+\mathbf{g} = \mathbf{h}\mathbf{B}^{\mathsf{T}}.
+\]
+
+\section{Normals, d-Spacings, And Angles}
+
+Plane normals are the normalized reciprocal vectors:
+
+\[
+\hat{\mathbf{n}} = \frac{\mathbf{g}}{\lVert \mathbf{g} \rVert}.
+\]
+
+The interplanar spacing is
+
+\[
+d = \frac{1}{\lVert \mathbf{g} \rVert},
+\]
+
+reported by PyTex in angstroms.
+
+Direction unit vectors are
+
+\[
+\hat{\mathbf{r}} = \frac{\mathbf{r}}{\lVert \mathbf{r} \rVert}.
+\]
+
+For angle calculations, PyTex uses
+
+\[
+\theta = \arccos\!\left(\operatorname{clip}(\hat{\mathbf{x}} \cdot \hat{\mathbf{y}}, -1, 1)\right),
+\]
+
+with antipodal handling applied by replacing the dot product with its absolute value where the
+family semantics require it.
+
+\section{Family Canonicalization}
+
+Exact indices are preserved at construction time. Family operations are explicit:
+
+\begin{itemize}
+  \item row-wise GCD reduction,
+  \item deterministic sign canonicalization by requiring the first non-zero component to be positive,
+  \item antipodal family keys given by reduced-and-sign-canonicalized indices.
+\end{itemize}
+
+This separation matters because $(2, 0, 0)$ and $(1, 0, 0)$ do not carry the same spacing even
+though they belong to the same geometric family.
+
+\section{Hexagonal Four-Index Conversions}
+
+For hexagonal axes, PyTex exposes vectorized integer conversions:
+
+\[
+(h, k, l) \leftrightarrow (h, k, i, l), \qquad i = -(h + k),
+\]
+
+\[
+(u, v, w) \leftrightarrow (U, V, T, W), \qquad U + V + T = 0.
+\]
+
+The implementation avoids per-row rational arithmetic objects and performs the batch conversion with
+integer formulas plus row-wise GCD reduction.
+
+\section{Symmetry Expansion}
+
+Symmetry operators act on non-normalized cartesian lattice vectors before conversion back to integer
+indices:
+
+\[
+\mathbf{g}' = \mathbf{R}\mathbf{g}, \qquad
+\mathbf{h}' = \operatorname{round}\!\left(\mathbf{g}'\mathbf{B}^{- \mathsf{T}}\right),
+\]
+
+\[
+\mathbf{r}' = \mathbf{R}\mathbf{r}, \qquad
+\mathbf{u}' = \operatorname{round}\!\left(\mathbf{r}'\mathbf{A}^{- \mathsf{T}}\right).
+\]
+
+PyTex rejects the conversion if the recovered coordinates are not within tolerance of an integer
+index. Family reduction and optional antipodal canonicalization are applied after the integer
+recovery step.
+
+\section{Projection Onto Planes}
+
+Direction projection onto a plane uses unit cartesian direction vectors and unit plane normals:
+
+\[
+\mathbf{p} = \hat{\mathbf{r}} - (\hat{\mathbf{r}} \cdot \hat{\mathbf{n}})\hat{\mathbf{n}}.
+\]
+
+Degenerate rows with $\lVert \mathbf{p} \rVert \approx 0$ are not raised as batch-fatal errors.
+PyTex instead returns a boolean degenerate mask alongside the projected vectors.
+
+\section{Normative References}
+
+\begin{thebibliography}{9}
+\bibitem{bunge}
+H.-J. Bunge,
+\textit{Texture Analysis in Materials Science: Mathematical Methods},
+Butterworths, 1969.
+DOI: \url{https://doi.org/10.1016/C2013-0-11769-2}.
+
+\bibitem{mtex}
+R. Hielscher and collaborators,
+\textit{MTEX documentation},
+\url{https://mtex-toolbox.github.io/}.
+
+\bibitem{orix}
+orix documentation,
+\url{https://orix.readthedocs.io/}.
+\end{thebibliography}
+
+\end{document}

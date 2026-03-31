@@ -16,6 +16,16 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `AtomicSite`
 - `UnitCell`
 - `Phase`
+- `MillerPlane`
+- `MillerDirection`
+- `MillerPlaneSet`
+- `MillerDirectionSet`
+- `reduce_indices(...)`
+- `canonicalize_sign(...)`
+- `antipodal_keys(...)`
+- `angle_plane_plane_rad(...)`
+- `angle_dir_dir_rad(...)`
+- `project_directions_onto_planes(...)`
 - `ReciprocalLatticeVector`
 - `ZoneAxis`
 - `EulerSet`
@@ -36,7 +46,8 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `TransformationVariant`
 - `PhaseTransformationRecord`
 
-See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`, and {doc}`../concepts/orientation_texture`.
+See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`,
+{doc}`../concepts/miller_planes_directions`, and {doc}`../concepts/orientation_texture`.
 
 ## Texture
 
@@ -74,6 +85,10 @@ See {doc}`../concepts/orientation_texture`.
 - `normalize_ebsd(...)`
 - `index_hough(...)`
 - `refine_orientations(...)`
+- `to_orix_phase(...)`
+- `to_orix_miller_plane(...)`
+- `to_orix_miller_direction(...)`
+- `from_orix_miller(...)`
 - `to_orix_rotation(...)`
 - `from_orix_rotation(...)`
 - `to_orix_orientation(...)`

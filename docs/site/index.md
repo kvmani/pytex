@@ -13,6 +13,7 @@ concepts/core_foundation
 concepts/library_structure
 concepts/how_pytex_differs
 concepts/reference_frames_and_conventions
+concepts/miller_planes_directions
 concepts/technical_glossary_and_symbols
 concepts/orientation_texture
 concepts/texture_foundation
@@ -38,6 +39,8 @@ workflows/ebsd_kam
 workflows/ebsd_grains
 workflows/ebsd_import_normalization
 workflows/ebsd_to_texture_outputs
+workflows/vectorized_miller_workflows
+workflows/orix_kikuchipy_interop
 workflows/phases_and_cif
 workflows/texture_odf_inversion
 workflows/plotting_primitives

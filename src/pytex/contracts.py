@@ -20,7 +20,11 @@ from pytex.core import (
     Handedness,
     Lattice,
     MeasurementQuality,
+    MillerDirection,
+    MillerDirectionSet,
     MillerIndex,
+    MillerPlane,
+    MillerPlaneSet,
     Misorientation,
     Orientation,
     OrientationSet,
@@ -582,6 +586,70 @@ def _deserialize_zone_axis(payload: dict[str, Any]) -> ZoneAxis:
     )
 
 
+def _serialize_miller_plane(plane: MillerPlane) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_plane"),
+        "indices": _as_int_list(plane.indices),
+        "phase": _serialize_phase(plane.phase),
+    }
+
+
+def _deserialize_miller_plane(payload: dict[str, Any]) -> MillerPlane:
+    _require_schema(payload, "pytex.core.miller_plane")
+    return MillerPlane(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
+def _serialize_miller_direction(direction: MillerDirection) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_direction"),
+        "indices": _as_int_list(direction.indices),
+        "phase": _serialize_phase(direction.phase),
+    }
+
+
+def _deserialize_miller_direction(payload: dict[str, Any]) -> MillerDirection:
+    _require_schema(payload, "pytex.core.miller_direction")
+    return MillerDirection(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
+def _serialize_miller_plane_set(planes: MillerPlaneSet) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_plane_set"),
+        "indices": _as_int_list(planes.indices),
+        "phase": _serialize_phase(planes.phase),
+    }
+
+
+def _deserialize_miller_plane_set(payload: dict[str, Any]) -> MillerPlaneSet:
+    _require_schema(payload, "pytex.core.miller_plane_set")
+    return MillerPlaneSet(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
+def _serialize_miller_direction_set(directions: MillerDirectionSet) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_direction_set"),
+        "indices": _as_int_list(directions.indices),
+        "phase": _serialize_phase(directions.phase),
+    }
+
+
+def _deserialize_miller_direction_set(payload: dict[str, Any]) -> MillerDirectionSet:
+    _require_schema(payload, "pytex.core.miller_direction_set")
+    return MillerDirectionSet(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
 def _serialize_rotation(rotation: Rotation) -> dict[str, Any]:
     return {
         **_base_payload("pytex.core.rotation"),
@@ -951,6 +1019,10 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     AtomicSite: _serialize_atomic_site,
     UnitCell: _serialize_unit_cell,
     Phase: _serialize_phase,
+    MillerPlane: _serialize_miller_plane,
+    MillerDirection: _serialize_miller_direction,
+    MillerPlaneSet: _serialize_miller_plane_set,
+    MillerDirectionSet: _serialize_miller_direction_set,
     MillerIndex: _serialize_miller_index,
     CrystalDirection: _serialize_crystal_direction,
     CrystalPlane: _serialize_crystal_plane,
@@ -984,6 +1056,10 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.atomic_site": _deserialize_atomic_site,
     "pytex.core.unit_cell": _deserialize_unit_cell,
     "pytex.core.phase": _deserialize_phase,
+    "pytex.core.miller_plane": _deserialize_miller_plane,
+    "pytex.core.miller_direction": _deserialize_miller_direction,
+    "pytex.core.miller_plane_set": _deserialize_miller_plane_set,
+    "pytex.core.miller_direction_set": _deserialize_miller_direction_set,
     "pytex.core.miller_index": _deserialize_miller_index,
     "pytex.core.crystal_direction": _deserialize_crystal_direction,
     "pytex.core.crystal_plane": _deserialize_crystal_plane,

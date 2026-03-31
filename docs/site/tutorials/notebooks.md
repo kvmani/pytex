@@ -37,6 +37,7 @@ notebooks/13_crystal_visualization_workflows
 notebooks/14_yaml_style_customization
 notebooks/15_structure_diffraction_visualization_pipeline
 notebooks/16_ebsd_to_texture_outputs
+notebooks/17_miller_vectorized_workflows
 ```
 
 ## How To Use These
