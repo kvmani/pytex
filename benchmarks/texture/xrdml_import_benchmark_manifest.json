@@ -21,12 +21,13 @@
   ],
   "tolerances": {
     "synthetic_odf_weight_atol": 0.05,
+    "synthetic_relative_residual_atol": 0.05,
     "xrdml_grid_shape_atol": 0.0
   },
   "status": "implemented",
   "notes": [
     "This benchmark combines one pinned real XRDML pole-figure import case with deterministic synthetic inversion cases.",
-    "The open-source Ge(113) pole figure from xrayutilities validates vendor-style XML parsing and compressed-file handling.",
-    "Synthetic fixtures validate that XRDML-backed pole figures pass cleanly into the current discrete kernel ODF inversion surface."
+    "The open-source Ge(113) pole figure from xrayutilities validates vendor-style XML parsing, axis-alias normalization, compressed-file handling, and explicit import metadata.",
+    "Synthetic fixtures validate that XRDML-backed pole figures pass cleanly into the current discrete kernel ODF inversion surface and expose auditable residual diagnostics."
   ]
 }

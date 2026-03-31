@@ -5,11 +5,16 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytex.core import (
+    CrystalDirection,
+    CrystalPlane,
     EulerSet,
     FrameDomain,
     Handedness,
+    Lattice,
+    MillerIndex,
     Orientation,
     OrientationSet,
+    Phase,
     ProvenanceRecord,
     ReferenceFrame,
     Rotation,
@@ -33,6 +38,14 @@ def make_orientation_frames() -> tuple[ReferenceFrame, ReferenceFrame]:
         handedness=Handedness.RIGHT,
     )
     return crystal, specimen
+
+
+def make_phase_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
+    crystal, specimen = make_orientation_frames()
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase = Phase(name="fcc-demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    return crystal, specimen, phase
 
 
 def test_bunge_zero_yields_identity_rotation() -> None:
@@ -207,3 +220,120 @@ def test_orientation_set_maps_vector_set_pairwise() -> None:
     mapped = orientation_set.map_crystal_directions(vectors)
     assert isinstance(mapped, VectorSet)
     assert mapped.reference_frame == specimen
+
+
+def test_orientation_set_from_axes_angles_preserves_phase_and_symmetry() -> None:
+    crystal, specimen, phase = make_phase_context()
+    orientations = OrientationSet.from_axes_angles(
+        axes=np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]]),
+        angles_rad=np.array([np.pi / 2.0, np.pi / 3.0]),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    axes, angles = orientations.to_axes_angles()
+    recovered = OrientationSet.from_axes_angles(
+        axes,
+        angles,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert recovered.phase == phase
+    assert recovered.symmetry == phase.symmetry
+    assert_allclose(recovered.as_matrices(), orientations.as_matrices(), atol=1e-8)
+
+
+def test_orientation_set_named_quaternion_and_matrix_constructors_match() -> None:
+    crystal, specimen, phase = make_phase_context()
+    base = OrientationSet.from_euler_angles(
+        [[0.0, 0.0, 0.0], [35.0, 25.0, 10.0]],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    from_quaternions = OrientationSet.from_quaternions(
+        base.quaternions,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    from_matrices = OrientationSet.from_matrices(
+        base.as_matrices(),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert_allclose(from_quaternions.as_matrices(), base.as_matrices(), atol=1e-8)
+    assert_allclose(from_matrices.as_matrices(), base.as_matrices(), atol=1e-8)
+
+
+def test_orientation_from_plane_direction_maps_cube_component_to_identity() -> None:
+    _, specimen, phase = make_phase_context()
+    plane = CrystalPlane(miller=MillerIndex([0, 0, 1], phase=phase), phase=phase)
+    direction = CrystalDirection([1.0, 0.0, 0.0], phase=phase)
+    orientation = Orientation.from_plane_direction(
+        plane,
+        direction,
+        specimen_frame=specimen,
+    )
+    assert_allclose(orientation.as_matrix(), np.eye(3), atol=1e-8)
+    assert_allclose(orientation.map_crystal_vector(plane.normal), [0.0, 0.0, 1.0], atol=1e-8)
+    assert_allclose(
+        orientation.map_crystal_vector(direction.unit_vector),
+        [1.0, 0.0, 0.0],
+        atol=1e-8,
+    )
+
+
+def test_orientation_from_plane_direction_projects_direction_into_plane() -> None:
+    _, specimen, phase = make_phase_context()
+    plane = CrystalPlane(miller=MillerIndex([0, 0, 1], phase=phase), phase=phase)
+    direction = CrystalDirection([1.0, 0.0, 1.0], phase=phase)
+    orientation = Orientation.from_plane_direction(
+        plane,
+        direction,
+        specimen_frame=specimen,
+    )
+    projected = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    assert_allclose(orientation.map_crystal_vector(plane.normal), [0.0, 0.0, 1.0], atol=1e-8)
+    assert_allclose(orientation.map_crystal_vector(projected), [1.0, 0.0, 0.0], atol=1e-8)
+
+
+def test_orientation_set_from_plane_direction_vectorized_path_preserves_invariants() -> None:
+    _, specimen, phase = make_phase_context()
+    planes = [
+        CrystalPlane(miller=MillerIndex([0, 0, 1], phase=phase), phase=phase),
+        CrystalPlane(miller=MillerIndex([0, 0, 1], phase=phase), phase=phase),
+    ]
+    directions = [
+        CrystalDirection([1.0, 0.0, 0.0], phase=phase),
+        CrystalDirection([0.0, 1.0, 0.0], phase=phase),
+    ]
+    orientations = OrientationSet.from_plane_direction(
+        planes,
+        directions,
+        specimen_frame=specimen,
+    )
+    matrices = orientations.as_matrices()
+    mapped_normals = orientations.map_crystal_directions(
+        np.vstack([plane.normal for plane in planes])
+    )
+    mapped_directions = orientations.map_crystal_directions(
+        np.vstack([direction.unit_vector for direction in directions])
+    )
+    assert_allclose(mapped_normals, [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]], atol=1e-8)
+    assert_allclose(mapped_directions, [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]], atol=1e-8)
+    assert_allclose(np.linalg.det(matrices), [1.0, 1.0], atol=1e-8)
+    assert_allclose(
+        np.einsum("nij,nkj->nik", matrices, matrices),
+        np.broadcast_to(np.eye(3), matrices.shape),
+        atol=1e-8,
+    )
+    raw = OrientationSet.from_plane_direction(
+        plane=np.array([[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]]),
+        direction=np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert_allclose(raw.as_matrices(), matrices, atol=1e-8)

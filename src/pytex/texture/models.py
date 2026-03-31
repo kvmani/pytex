@@ -572,10 +572,12 @@ class ODF:
             max_iterations=max_iterations,
             tolerance=tolerance,
         )
+        predicted = np.ascontiguousarray(system_matrix @ weights, dtype=np.float64)
+        residual = predicted - observations
+        residual_norm = float(np.linalg.norm(residual))
         common_sample_symmetry = pole_figures[0].sample_symmetry
         if any(
-            pole_figure.sample_symmetry != common_sample_symmetry
-            for pole_figure in pole_figures
+            pole_figure.sample_symmetry != common_sample_symmetry for pole_figure in pole_figures
         ):
             common_sample_symmetry = None
         odf = cls(
@@ -587,13 +589,22 @@ class ODF:
         )
         return ODFInversionReport(
             odf=odf,
-            residual_norm=float(np.linalg.norm(system_matrix @ weights - observations)),
+            residual_norm=residual_norm,
             objective_history=objective_history,
             iterations=int(objective_history.shape[0]),
             converged=converged,
             regularization=regularization,
             observation_count=int(observations.size),
-            dictionary_size=int(len(orientation_dictionary)),
+            dictionary_size=len(orientation_dictionary),
+            relative_residual_norm=float(
+                residual_norm / max(float(np.linalg.norm(observations)), 1e-12)
+            ),
+            mean_absolute_error=float(np.mean(np.abs(residual))),
+            max_absolute_error=float(np.max(np.abs(residual))),
+            predicted_intensities=predicted,
+            dictionary_coverage_ratio=float(
+                observations.size / max(1, len(orientation_dictionary))
+            ),
             provenance=provenance,
         )
 
@@ -608,14 +619,26 @@ class ODFInversionReport:
     regularization: float
     observation_count: int
     dictionary_size: int
+    relative_residual_norm: float
+    mean_absolute_error: float
+    max_absolute_error: float
+    predicted_intensities: np.ndarray
+    dictionary_coverage_ratio: float
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
         history = as_float_array(self.objective_history, shape=(None,))
+        predicted = as_float_array(self.predicted_intensities, shape=(self.observation_count,))
         if history.size == 0:
             raise ValueError("ODFInversionReport.objective_history must not be empty.")
         if self.residual_norm < 0.0:
             raise ValueError("ODFInversionReport.residual_norm must be non-negative.")
+        if self.relative_residual_norm < 0.0:
+            raise ValueError("ODFInversionReport.relative_residual_norm must be non-negative.")
+        if self.mean_absolute_error < 0.0:
+            raise ValueError("ODFInversionReport.mean_absolute_error must be non-negative.")
+        if self.max_absolute_error < 0.0:
+            raise ValueError("ODFInversionReport.max_absolute_error must be non-negative.")
         if self.iterations <= 0:
             raise ValueError("ODFInversionReport.iterations must be strictly positive.")
         if self.regularization < 0.0:
@@ -624,4 +647,7 @@ class ODFInversionReport:
             raise ValueError("ODFInversionReport.observation_count must be strictly positive.")
         if self.dictionary_size <= 0:
             raise ValueError("ODFInversionReport.dictionary_size must be strictly positive.")
+        if self.dictionary_coverage_ratio <= 0.0:
+            raise ValueError("ODFInversionReport.dictionary_coverage_ratio must be positive.")
         object.__setattr__(self, "objective_history", history)
+        object.__setattr__(self, "predicted_intensities", predicted)

@@ -149,7 +149,9 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
     seen_ids: set[str] = set()
     for entry in fixtures:
         if not isinstance(entry, dict):
-            issues.append("INVALID: fixtures/phases/catalog.json contains a non-object fixture entry.")
+            issues.append(
+                "INVALID: fixtures/phases/catalog.json contains a non-object fixture entry."
+            )
             continue
         fixture_id = entry.get("fixture_id")
         artifact_path = entry.get("artifact_path")
@@ -157,7 +159,9 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
         artifact_sha256 = entry.get("artifact_sha256")
         metadata_sha256 = entry.get("metadata_sha256")
         if not isinstance(fixture_id, str) or not fixture_id:
-            issues.append("INVALID: fixtures/phases/catalog.json fixture entries must define fixture_id.")
+            issues.append(
+                "INVALID: fixtures/phases/catalog.json fixture entries must define fixture_id."
+            )
             continue
         if fixture_id in seen_ids:
             issues.append(f"INVALID: duplicate phase fixture id '{fixture_id}'.")
@@ -173,11 +177,13 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
         elif artifact_full_path is not None:
             if not isinstance(artifact_sha256, str) or len(artifact_sha256) != 64:
                 issues.append(
-                    f"INVALID: phase fixture '{fixture_id}' must define a 64-character artifact_sha256."
+                    "INVALID: phase fixture "
+                    f"'{fixture_id}' must define a 64-character artifact_sha256."
                 )
             elif _sha256(artifact_full_path) != artifact_sha256:
                 issues.append(
-                    f"INVALID: {artifact_path} sha256 does not match catalog entry for '{fixture_id}'."
+                    f"INVALID: {artifact_path} sha256 does not match catalog entry for "
+                    f"'{fixture_id}'."
                 )
         if not isinstance(metadata_path, str) or not metadata_path:
             issues.append(f"INVALID: phase fixture '{fixture_id}' must define metadata_path.")
@@ -209,7 +215,8 @@ def _check_phase_fixture_catalog(repo_root: Path) -> list[str]:
             issues.append(f"INVALID: {metadata_path} intended_uses must be a non-empty list.")
         elif "structure_import_validation" not in intended_uses:
             issues.append(
-                f"INVALID: {metadata_path} must include 'structure_import_validation' in intended_uses."
+                f"INVALID: {metadata_path} must include "
+                "'structure_import_validation' in intended_uses."
             )
     return issues
 
@@ -228,7 +235,8 @@ def _check_manifest_artifacts_and_fixtures(repo_root: Path) -> list[str]:
         for fixture_id in manifest_fixture_ids:
             if fixture_id not in fixture_ids and not (repo_root / fixture_id).exists():
                 issues.append(
-                    f"INVALID: {relative_manifest_path} references unknown fixture id '{fixture_id}'."
+                    f"INVALID: {relative_manifest_path} references unknown fixture id "
+                    f"'{fixture_id}'."
                 )
         artifact_paths = payload.get("artifact_paths", [])
         if not isinstance(artifact_paths, list):
@@ -241,23 +249,25 @@ def _check_manifest_artifacts_and_fixtures(repo_root: Path) -> list[str]:
             if not (repo_root / artifact_path).exists():
                 issues.append(f"MISSING: {artifact_path}")
     structure_fixture_ids = tuple(
-        _read_json(repo_root / "benchmarks/structure_import/foundation_benchmark_manifest.json").get(
-            "fixture_ids", []
-        )
+        _read_json(
+            repo_root / "benchmarks/structure_import/foundation_benchmark_manifest.json"
+        ).get("fixture_ids", [])
     )
     validation_fixture_ids = tuple(
-        _read_json(repo_root / "benchmarks/validation/structure_import_validation_manifest.json").get(
-            "fixture_ids", []
-        )
+        _read_json(
+            repo_root / "benchmarks/validation/structure_import_validation_manifest.json"
+        ).get("fixture_ids", [])
     )
     expected_fixture_ids = tuple(sorted(fixture_ids))
     if tuple(sorted(structure_fixture_ids)) != expected_fixture_ids:
         issues.append(
-            "INVALID: structure_import foundation benchmark manifest fixture_ids must match the pinned phase fixture catalog."
+            "INVALID: structure_import foundation benchmark manifest fixture_ids "
+            "must match the pinned phase fixture catalog."
         )
     if tuple(sorted(validation_fixture_ids)) != expected_fixture_ids:
         issues.append(
-            "INVALID: structure_import validation manifest fixture_ids must match the pinned phase fixture catalog."
+            "INVALID: structure_import validation manifest fixture_ids must match "
+            "the pinned phase fixture catalog."
         )
     return issues
 
@@ -270,16 +280,19 @@ def _check_structure_import_fixture_audit(repo_root: Path) -> list[str]:
     payload = _read_json(audit_path)
     if payload.get("schema_id") != "pytex.structure_import_fixture_audit":
         issues.append(
-            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must use schema_id 'pytex.structure_import_fixture_audit'."
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json "
+            "must use schema_id 'pytex.structure_import_fixture_audit'."
         )
     if payload.get("schema_version") != "1.0.0":
         issues.append(
-            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must use schema_version '1.0.0'."
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json "
+            "must use schema_version '1.0.0'."
         )
     fixtures = payload.get("fixtures")
     if not isinstance(fixtures, list) or not fixtures:
         issues.append(
-            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json must contain a non-empty fixtures list."
+            "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json "
+            "must contain a non-empty fixtures list."
         )
         return issues
     catalog = _read_json(repo_root / "fixtures/phases/catalog.json")
@@ -287,19 +300,22 @@ def _check_structure_import_fixture_audit(repo_root: Path) -> list[str]:
     audit_fixture_ids = tuple(sorted(str(entry.get("fixture_id")) for entry in fixtures))
     if audit_fixture_ids != expected_fixture_ids:
         issues.append(
-            "INVALID: structure-import fixture audit summary fixture_ids must match the pinned phase fixture catalog."
+            "INVALID: structure-import fixture audit summary fixture_ids must "
+            "match the pinned phase fixture catalog."
         )
     for entry in fixtures:
         if not isinstance(entry, dict):
             issues.append(
-                "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json contains a non-object fixture entry."
+                "INVALID: benchmarks/structure_import/phase_fixture_audit_summary.json "
+                "contains a non-object fixture entry."
             )
             continue
         for key in ("artifact_path", "metadata_path"):
             value = entry.get(key)
             if not isinstance(value, str) or not value:
                 issues.append(
-                    f"INVALID: structure-import fixture audit entry '{entry.get('fixture_id')}' must define {key}."
+                    "INVALID: structure-import fixture audit entry "
+                    f"'{entry.get('fixture_id')}' must define {key}."
                 )
                 continue
             if not (repo_root / value).exists():
@@ -308,7 +324,8 @@ def _check_structure_import_fixture_audit(repo_root: Path) -> list[str]:
             value = entry.get(key)
             if not isinstance(value, dict):
                 issues.append(
-                    f"INVALID: structure-import fixture audit entry '{entry.get('fixture_id')}' must define {key}."
+                    "INVALID: structure-import fixture audit entry "
+                    f"'{entry.get('fixture_id')}' must define {key}."
                 )
     return issues
 

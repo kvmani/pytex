@@ -33,7 +33,9 @@ class CrystalAtomGlyph:
     alpha: float
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "position_angstrom", as_float_array(self.position_angstrom, shape=(3,)))
+        object.__setattr__(
+            self, "position_angstrom", as_float_array(self.position_angstrom, shape=(3,))
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,11 +63,17 @@ class CrystalCellOverlay:
     face_alpha: float | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "anchor_fractional", as_float_array(self.anchor_fractional, shape=(3,)))
+        object.__setattr__(
+            self, "anchor_fractional", as_float_array(self.anchor_fractional, shape=(3,))
+        )
         if self.kind not in {"parallelepiped", "hexagonal_prism"}:
-            raise ValueError("CrystalCellOverlay.kind must be either 'parallelepiped' or 'hexagonal_prism'.")
+            raise ValueError(
+                "CrystalCellOverlay.kind must be either 'parallelepiped' or 'hexagonal_prism'."
+            )
         if any(value <= 0 for value in self.span_cells):
-            raise ValueError("CrystalCellOverlay.span_cells must contain strictly positive integers.")
+            raise ValueError(
+                "CrystalCellOverlay.span_cells must contain strictly positive integers."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,9 +113,13 @@ class CrystalDirectionOverlay:
     arrow_length_scale: float = 0.92
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "anchor_fractional", as_float_array(self.anchor_fractional, shape=(3,)))
+        object.__setattr__(
+            self, "anchor_fractional", as_float_array(self.anchor_fractional, shape=(3,))
+        )
         if not 0.0 < self.arrow_length_scale <= 1.0:
-            raise ValueError("CrystalDirectionOverlay.arrow_length_scale must lie in the interval (0, 1].")
+            raise ValueError(
+                "CrystalDirectionOverlay.arrow_length_scale must lie in the interval (0, 1]."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,8 +132,12 @@ class CrystalPlaneGlyph:
     annotation_style: PlaneAnnotationStyle
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "vertices_angstrom", as_float_array(self.vertices_angstrom, shape=(None, 3)))
-        object.__setattr__(self, "normal_angstrom", as_float_array(self.normal_angstrom, shape=(3,)))
+        object.__setattr__(
+            self, "vertices_angstrom", as_float_array(self.vertices_angstrom, shape=(None, 3))
+        )
+        object.__setattr__(
+            self, "normal_angstrom", as_float_array(self.normal_angstrom, shape=(3,))
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +166,9 @@ class CrystalCellGlyph:
 
     def __post_init__(self) -> None:
         normalized_edges = tuple(as_float_array(edge, shape=(2, 3)) for edge in self.edges_angstrom)
-        normalized_faces = tuple(as_float_array(face, shape=(None, 3)) for face in self.faces_angstrom)
+        normalized_faces = tuple(
+            as_float_array(face, shape=(None, 3)) for face in self.faces_angstrom
+        )
         object.__setattr__(self, "edges_angstrom", normalized_edges)
         object.__setattr__(self, "faces_angstrom", normalized_faces)
 
@@ -171,14 +189,19 @@ class CrystalScene:
         points.extend(edge for edge in self.lattice_edges)
         points.extend(edge for cell in self.cells for edge in cell.edges_angstrom)
         points.extend(atom.position_angstrom[None, :] for atom in self.atoms)
-        points.extend(np.vstack([direction.start_angstrom, direction.end_angstrom]) for direction in self.directions)
+        points.extend(
+            np.vstack([direction.start_angstrom, direction.end_angstrom])
+            for direction in self.directions
+        )
         if self.planes:
             points.extend(plane.vertices_angstrom for plane in self.planes)
         stacked = np.vstack(points) if points else np.zeros((1, 3), dtype=np.float64)
         return np.vstack([np.min(stacked, axis=0), np.max(stacked, axis=0)])
 
 
-def _supercell_atom_positions(phase: Phase, repeats: tuple[int, int, int]) -> list[tuple[str, np.ndarray]]:
+def _supercell_atom_positions(
+    phase: Phase, repeats: tuple[int, int, int]
+) -> list[tuple[str, np.ndarray]]:
     if phase.unit_cell is None or not phase.unit_cell.sites:
         raise ValueError("Crystal visualization requires phase.unit_cell with atomic sites.")
     direct_basis = phase.lattice.direct_basis().matrix
@@ -201,11 +224,18 @@ def _supercell_box_edges(phase: Phase, repeats: tuple[int, int, int]) -> tuple[n
 
 def _polyhedron_edges_from_corners(corners: np.ndarray) -> tuple[np.ndarray, ...]:
     edge_pairs = (
-        (0, 1), (0, 2), (0, 3),
-        (1, 4), (1, 5),
-        (2, 4), (2, 6),
-        (3, 5), (3, 6),
-        (4, 7), (5, 7), (6, 7),
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (1, 4),
+        (1, 5),
+        (2, 4),
+        (2, 6),
+        (3, 5),
+        (3, 6),
+        (4, 7),
+        (5, 7),
+        (6, 7),
     )
     return tuple(np.vstack([corners[a], corners[b]]) for a, b in edge_pairs)
 
@@ -241,7 +271,7 @@ def _supercell_corners_fractional(repeats: tuple[int, int, int]) -> np.ndarray:
 def _supercell_corners_cartesian(phase: Phase, repeats: tuple[int, int, int]) -> np.ndarray:
     basis = phase.lattice.direct_basis().matrix
     corners_frac = _supercell_corners_fractional(repeats)
-    return (basis @ corners_frac.T).T
+    return np.asarray((basis @ corners_frac.T).T, dtype=np.float64)
 
 
 def _parallelepiped_corners_fractional(
@@ -272,7 +302,10 @@ def _cell_overlay_cartesian(
 ) -> tuple[tuple[np.ndarray, ...], tuple[np.ndarray, ...]]:
     basis = phase.lattice.direct_basis().matrix
     if overlay.kind == "parallelepiped":
-        corners = (basis @ _parallelepiped_corners_fractional(overlay.anchor_fractional, overlay.span_cells).T).T
+        corners = (
+            basis
+            @ _parallelepiped_corners_fractional(overlay.anchor_fractional, overlay.span_cells).T
+        ).T
         return _polyhedron_edges_from_corners(corners), _polyhedron_faces_from_corners(corners)
     return _hexagonal_prism_geometry(phase, overlay)
 
@@ -288,7 +321,10 @@ def _hexagonal_prism_geometry(
         and np.isclose(lattice.gamma_deg, 120.0, atol=1e-6)
         and np.isclose(lattice.a, lattice.b, atol=1e-6)
     ):
-        raise ValueError("hexagonal_prism cell overlays require a lattice with a=b, alpha=beta=90 deg, gamma=120 deg.")
+        raise ValueError(
+            "hexagonal_prism cell overlays require a lattice with a=b, "
+            "alpha=beta=90 deg, gamma=120 deg."
+        )
     basis = lattice.direct_basis().matrix
     a_vec = basis[:, 0]
     b_vec = basis[:, 1]
@@ -315,22 +351,25 @@ def _hexagonal_prism_geometry(
     )
     bottom = tuple(ordered_basal)
     top = tuple(point + c_vec for point in bottom)
-    edges = tuple(
-        np.vstack([bottom[index], bottom[(index + 1) % 6]])
-        for index in range(6)
-    ) + tuple(
-        np.vstack([top[index], top[(index + 1) % 6]])
-        for index in range(6)
-    ) + tuple(
-        np.vstack([bottom[index], top[index]])
-        for index in range(6)
+    edges = (
+        tuple(np.vstack([bottom[index], bottom[(index + 1) % 6]]) for index in range(6))
+        + tuple(np.vstack([top[index], top[(index + 1) % 6]]) for index in range(6))
+        + tuple(np.vstack([bottom[index], top[index]]) for index in range(6))
     )
     faces = (
         np.vstack(bottom),
         np.vstack(top),
-    ) + tuple(
-        np.vstack([bottom[index], bottom[(index + 1) % 6], top[(index + 1) % 6], top[index]])
-        for index in range(6)
+        *[
+            np.vstack(
+                [
+                    bottom[index],
+                    bottom[(index + 1) % 6],
+                    top[(index + 1) % 6],
+                    top[index],
+                ]
+            )
+            for index in range(6)
+        ],
     )
     return edges, faces
 
@@ -341,18 +380,25 @@ def _default_plane_offset(indices: np.ndarray) -> float:
 
 def _plane_polygon_for_box(
     phase: Phase,
-    hkl: tuple[int, int, int],
+    hkl: tuple[int, ...],
     repeats: tuple[int, int, int],
     offset: float,
 ) -> np.ndarray | None:
     basis = phase.lattice.direct_basis().matrix
     corners_frac = _supercell_corners_fractional(repeats)
     edge_pairs = (
-        (0, 1), (0, 2), (0, 3),
-        (1, 4), (1, 5),
-        (2, 4), (2, 6),
-        (3, 5), (3, 6),
-        (4, 7), (5, 7), (6, 7),
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (1, 4),
+        (1, 5),
+        (2, 4),
+        (2, 6),
+        (3, 5),
+        (3, 6),
+        (4, 7),
+        (5, 7),
+        (6, 7),
     )
     normal_frac = np.array(hkl, dtype=np.float64)
     if np.allclose(normal_frac, 0.0):
@@ -394,7 +440,9 @@ def _plane_polygon_for_box(
     return polygon
 
 
-def _coerce_plane_overlay(overlay: CrystalPlane | CrystalPlaneOverlay, *, phase: Phase) -> CrystalPlaneOverlay:
+def _coerce_plane_overlay(
+    overlay: CrystalPlane | CrystalPlaneOverlay, *, phase: Phase
+) -> CrystalPlaneOverlay:
     if isinstance(overlay, CrystalPlaneOverlay):
         if overlay.plane.phase != phase:
             raise ValueError("CrystalPlaneOverlay.plane.phase must match the scene phase.")
@@ -415,7 +463,9 @@ def _coerce_direction_overlay(
         return overlay
     if overlay.phase != phase:
         raise ValueError("CrystalDirection.phase must match the scene phase.")
-    return CrystalDirectionOverlay(direction=overlay, anchor_fractional=np.zeros(3, dtype=np.float64))
+    return CrystalDirectionOverlay(
+        direction=overlay, anchor_fractional=np.zeros(3, dtype=np.float64)
+    )
 
 
 def _coerce_cell_overlay(overlay: CrystalCellOverlay, *, phase: Phase) -> CrystalCellOverlay:
@@ -443,7 +493,9 @@ def _direction_endpoint_fractional(
 ) -> np.ndarray:
     fractional_vector = _direction_fractional_vector(direction)
     candidates: list[float] = []
-    for anchor_value, vector_value, repeat in zip(anchor_fractional, fractional_vector, repeats, strict=True):
+    for anchor_value, vector_value, repeat in zip(
+        anchor_fractional, fractional_vector, repeats, strict=True
+    ):
         if vector_value > 1e-12:
             candidates.append((repeat - anchor_value) / vector_value)
         elif vector_value < -1e-12:
@@ -500,7 +552,8 @@ def build_crystal_scene(
         CrystalAtomGlyph(
             position_angstrom=position,
             species=species,
-            radius_angstrom=covalent_radius_angstrom(species) * float(crystal_style["atom_radius_scale"]),
+            radius_angstrom=covalent_radius_angstrom(species)
+            * float(crystal_style["atom_radius_scale"]),
             color=cpk_color(species),
             alpha=float(crystal_style["atom_alpha"]),
         )
@@ -537,17 +590,29 @@ def build_crystal_scene(
         else ()
     ) + tuple(_coerce_cell_overlay(overlay, phase=phase) for overlay in cell_overlays)
     cells: list[CrystalCellGlyph] = []
-    for overlay in merged_cell_overlays:
-        edges, faces = _cell_overlay_cartesian(phase, overlay)
+    for cell_overlay in merged_cell_overlays:
+        edges, faces = _cell_overlay_cartesian(phase, cell_overlay)
         cells.append(
             CrystalCellGlyph(
-                kind=overlay.kind,
+                kind=cell_overlay.kind,
                 edges_angstrom=edges,
-                faces_angstrom=faces if overlay.show_faces else (),
-                color=overlay.color or crystal_style["cell_color"],
-                alpha=float(crystal_style["cell_alpha"] if overlay.alpha is None else overlay.alpha),
-                face_alpha=float(crystal_style["cell_face_alpha"] if overlay.face_alpha is None else overlay.face_alpha),
-                linewidth=float(crystal_style["cell_linewidth"] if overlay.linewidth is None else overlay.linewidth),
+                faces_angstrom=faces if cell_overlay.show_faces else (),
+                color=cell_overlay.color or crystal_style["cell_color"],
+                alpha=float(
+                    crystal_style["cell_alpha"]
+                    if cell_overlay.alpha is None
+                    else cell_overlay.alpha
+                ),
+                face_alpha=float(
+                    crystal_style["cell_face_alpha"]
+                    if cell_overlay.face_alpha is None
+                    else cell_overlay.face_alpha
+                ),
+                linewidth=float(
+                    crystal_style["cell_linewidth"]
+                    if cell_overlay.linewidth is None
+                    else cell_overlay.linewidth
+                ),
             )
         )
     merged_plane_overlays = tuple(
@@ -558,25 +623,34 @@ def build_crystal_scene(
         for hkl in plane_hkls
     ) + tuple(_coerce_plane_overlay(overlay, phase=phase) for overlay in plane_overlays)
     planes: list[CrystalPlaneGlyph] = []
-    for overlay in merged_plane_overlays:
-        display_indices = overlay.label_indices or _default_plane_indices(overlay.plane)
+    for plane_overlay in merged_plane_overlays:
+        display_indices = plane_overlay.label_indices or _default_plane_indices(plane_overlay.plane)
         polygon = _plane_polygon_for_box(
             phase,
-            tuple(int(value) for value in overlay.plane.miller.indices),
+            tuple(int(value) for value in plane_overlay.plane.miller.indices),
             repeats,
-            offset=_default_plane_offset(overlay.plane.miller.indices) if overlay.offset is None else float(overlay.offset),
+            offset=(
+                _default_plane_offset(plane_overlay.plane.miller.indices)
+                if plane_overlay.offset is None
+                else float(plane_overlay.offset)
+            ),
         )
         if polygon is None:
             continue
         planes.append(
             CrystalPlaneGlyph(
                 vertices_angstrom=polygon,
-                normal_angstrom=overlay.plane.normal,
-                color=overlay.color or crystal_style["plane_color"],
-                alpha=float(crystal_style["plane_alpha"] if overlay.alpha is None else overlay.alpha),
-                label=overlay.label or format_plane_indices(display_indices),
-                annotation_style=overlay.annotation_style or PlaneAnnotationStyle(
-                    color=overlay.color or crystal_style["plane_color"],
+                normal_angstrom=plane_overlay.plane.normal,
+                color=plane_overlay.color or crystal_style["plane_color"],
+                alpha=float(
+                    crystal_style["plane_alpha"]
+                    if plane_overlay.alpha is None
+                    else plane_overlay.alpha
+                ),
+                label=plane_overlay.label or format_plane_indices(display_indices),
+                annotation_style=plane_overlay.annotation_style
+                or PlaneAnnotationStyle(
+                    color=plane_overlay.color or crystal_style["plane_color"],
                     fontsize=float(crystal_style["plane_label_fontsize"]),
                     offset_fraction=float(crystal_style["plane_label_offset_fraction"]),
                 ),
@@ -584,28 +658,46 @@ def build_crystal_scene(
         )
     directions: list[CrystalDirectionGlyph] = []
     direct_basis = phase.lattice.direct_basis().matrix
-    for overlay in tuple(_coerce_direction_overlay(item, phase=phase) for item in direction_overlays):
+    for direction_overlay in tuple(
+        _coerce_direction_overlay(item, phase=phase) for item in direction_overlays
+    ):
         max_repeats = np.array(repeats, dtype=np.float64)
-        if np.any(overlay.anchor_fractional < -1e-9) or np.any(overlay.anchor_fractional > max_repeats + 1e-9):
-            raise ValueError("CrystalDirectionOverlay.anchor_fractional must lie within the repeated cell volume.")
+        if np.any(direction_overlay.anchor_fractional < -1e-9) or np.any(
+            direction_overlay.anchor_fractional > max_repeats + 1e-9
+        ):
+            raise ValueError(
+                "CrystalDirectionOverlay.anchor_fractional must lie within the "
+                "repeated cell volume."
+            )
         endpoint_fractional = _direction_endpoint_fractional(
-            overlay.direction,
-            anchor_fractional=overlay.anchor_fractional,
+            direction_overlay.direction,
+            anchor_fractional=direction_overlay.anchor_fractional,
             repeats=repeats,
-            arrow_length_scale=overlay.arrow_length_scale,
+            arrow_length_scale=direction_overlay.arrow_length_scale,
         )
-        display_indices = overlay.label_indices or _default_direction_indices(overlay.direction)
+        direction_display_indices: tuple[int, ...] | None = (
+            direction_overlay.label_indices
+            or _default_direction_indices(direction_overlay.direction)
+        )
         directions.append(
             CrystalDirectionGlyph(
-                start_angstrom=direct_basis @ overlay.anchor_fractional,
+                start_angstrom=direct_basis @ direction_overlay.anchor_fractional,
                 end_angstrom=direct_basis @ endpoint_fractional,
-                color=overlay.color or crystal_style["direction_color"],
-                alpha=float(crystal_style["direction_alpha"] if overlay.alpha is None else overlay.alpha),
-                label=overlay.label or (
-                    format_direction_indices(display_indices) if display_indices is not None else ""
+                color=direction_overlay.color or crystal_style["direction_color"],
+                alpha=float(
+                    crystal_style["direction_alpha"]
+                    if direction_overlay.alpha is None
+                    else direction_overlay.alpha
                 ),
-                annotation_style=overlay.annotation_style or DirectionAnnotationStyle(
-                    color=overlay.color or crystal_style["direction_color"],
+                label=direction_overlay.label
+                or (
+                    format_direction_indices(direction_display_indices)
+                    if direction_display_indices is not None
+                    else ""
+                ),
+                annotation_style=direction_overlay.annotation_style
+                or DirectionAnnotationStyle(
+                    color=direction_overlay.color or crystal_style["direction_color"],
                     fontsize=float(crystal_style["direction_label_fontsize"]),
                     offset_fraction=float(crystal_style["direction_label_offset_fraction"]),
                 ),
@@ -639,7 +731,9 @@ def _normalize_light_direction(direction: Any) -> np.ndarray:
     return vector / norm
 
 
-def _atom_surface_mesh(center: np.ndarray, radius: float, *, resolution: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def _atom_surface_mesh(
+    center: np.ndarray, radius: float, *, resolution: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     u = np.linspace(0.0, 2.0 * np.pi, resolution)
     v = np.linspace(0.0, np.pi, resolution)
     uu, vv = np.meshgrid(u, v, indexing="xy")
@@ -768,7 +862,9 @@ def plot_crystal_structure_3d(
     axes.set_facecolor(crystal_style["background"])
     light_direction = _normalize_light_direction(crystal_style["light_direction"])
     for edge in scene.lattice_edges:
-        axes.plot(edge[:, 0], edge[:, 1], edge[:, 2], color=crystal_style["lattice_color"], linewidth=1.2)
+        axes.plot(
+            edge[:, 0], edge[:, 1], edge[:, 2], color=crystal_style["lattice_color"], linewidth=1.2
+        )
     for cell in scene.cells:
         if cell.faces_angstrom:
             axes.add_collection3d(
@@ -778,7 +874,7 @@ def plot_crystal_structure_3d(
                     edgecolors="none",
                     linewidths=0.0,
                     alpha=cell.face_alpha,
-                    )
+                )
             )
         for edge in cell.edges_angstrom:
             axes.plot(
@@ -803,7 +899,9 @@ def plot_crystal_structure_3d(
     else:
         bond_resolution = int(crystal_style["bond_surface_resolution"])
         bond_shininess = float(crystal_style["bond_shininess"])
-        bond_specular = float(crystal_style["bond_specular_strength"]) * float(crystal_style["light_specular"])
+        bond_specular = float(crystal_style["bond_specular_strength"]) * float(
+            crystal_style["light_specular"]
+        )
         for bond in scene.bonds:
             x, y, z, normals = _cylinder_surface_mesh(
                 bond.start_angstrom,
@@ -836,7 +934,9 @@ def plot_crystal_structure_3d(
         atom_render_mode = str(crystal_style.get("atom_render_mode", "sphere")).lower()
         if atom_render_mode == "scatter":
             positions = np.vstack([atom.position_angstrom for atom in scene.atoms])
-            sizes = np.array([(atom.radius_angstrom * 175.0) ** 2 for atom in scene.atoms], dtype=np.float64)
+            sizes = np.array(
+                [(atom.radius_angstrom * 175.0) ** 2 for atom in scene.atoms], dtype=np.float64
+            )
             colors = [atom.color for atom in scene.atoms]
             axes.scatter(
                 positions[:, 0],
@@ -854,9 +954,13 @@ def plot_crystal_structure_3d(
             diffuse = float(crystal_style["light_diffuse"])
             specular = float(crystal_style["light_specular"])
             shininess = float(crystal_style["atom_shininess"])
-            edge_rgba = to_rgba(crystal_style["atom_edgecolor"], alpha=float(crystal_style["atom_alpha"]))
+            edge_rgba = to_rgba(
+                crystal_style["atom_edgecolor"], alpha=float(crystal_style["atom_alpha"])
+            )
             for atom in scene.atoms:
-                x, y, z, normals = _atom_surface_mesh(atom.position_angstrom, atom.radius_angstrom, resolution=resolution)
+                x, y, z, normals = _atom_surface_mesh(
+                    atom.position_angstrom, atom.radius_angstrom, resolution=resolution
+                )
                 facecolors = _lit_surface_facecolors(
                     atom.color,
                     normals,
@@ -939,7 +1043,9 @@ def plot_crystal_structure_3d(
         if isinstance(view_direction, CrystalDirection):
             elev_deg, azim_deg = _view_angles_from_direction(view_direction.unit_vector)
         else:
-            elev_deg, azim_deg = _view_angles_from_direction(np.asarray(view_direction, dtype=np.float64))
+            elev_deg, azim_deg = _view_angles_from_direction(
+                np.asarray(view_direction, dtype=np.float64)
+            )
     axes.view_init(elev=elev_deg, azim=azim_deg)
     if bool(crystal_style.get("hide_grid", True)):
         axes.grid(False)

@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from pytex import (
+    JSON_CONTRACT_SCHEMA_VERSION,
     AcquisitionGeometry,
     AtomicSite,
     CalibrationRecord,
@@ -16,7 +17,6 @@ from pytex import (
     FrameDomain,
     FrameTransform,
     Handedness,
-    JSON_CONTRACT_SCHEMA_VERSION,
     Lattice,
     MeasurementQuality,
     MillerIndex,
@@ -97,7 +97,7 @@ def _core_context() -> tuple[ReferenceFrame, ReferenceFrame, ReferenceFrame, Ref
 
 
 def _sample_diffraction_geometry() -> tuple[DiffractionGeometry, Phase]:
-    crystal, specimen, detector, lab, phase = _core_context()
+    _, specimen, detector, lab, phase = _core_context()
     acquisition = AcquisitionGeometry(
         specimen_frame=specimen,
         modality="tem",

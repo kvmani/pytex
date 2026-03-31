@@ -54,7 +54,12 @@ def _xrd_baseline(repo_root: Path) -> dict[str, object]:
             two_theta_range=(20.0, 120.0),
         )
     peaks: list[dict[str, object]] = []
-    for two_theta_deg, relative_intensity, hkl_rows in zip(pattern.x, pattern.y, pattern.hkls):
+    for two_theta_deg, relative_intensity, hkl_rows in zip(
+        pattern.x,
+        pattern.y,
+        pattern.hkls,
+        strict=True,
+    ):
         representative = tuple(int(value) for value in hkl_rows[0]["hkl"])
         peaks.append(
             {
@@ -100,8 +105,10 @@ def _xrd_baseline(repo_root: Path) -> dict[str, object]:
         "reference_peaks": peaks,
         "pytex_reference_families": list(families.values()),
         "notes": [
-            "Peak positions and multiplicities come from pymatgen's XRDCalculator using the pinned ni_fcc fixture.",
-            "PyTex comparisons should treat peak-position agreement as the hard external baseline and intensity differences as informative only.",
+            "Peak positions and multiplicities come from pymatgen's "
+            "XRDCalculator using the pinned ni_fcc fixture.",
+            "PyTex comparisons should treat peak-position agreement as the hard "
+            "external baseline and intensity differences as informative only.",
         ],
     }
 
@@ -121,6 +128,7 @@ def _saed_baseline(repo_root: Path) -> dict[str, object]:
         simulation.indices,
         simulation.coordinates,
         simulation.intensities,
+        strict=True,
     ):
         family = _canonical_family(tuple(int(value) for value in indices))
         spot_shells[family].append(
@@ -161,7 +169,9 @@ def _saed_baseline(repo_root: Path) -> dict[str, object]:
     baseline_shells: list[dict[str, object]] = []
     for family, spots in sorted(spot_shells.items()):
         radii = [
-            float(np.linalg.norm(np.asarray(spot["reciprocal_coordinates_inv_angstrom"], dtype=float)))
+            float(
+                np.linalg.norm(np.asarray(spot["reciprocal_coordinates_inv_angstrom"], dtype=float))
+            )
             for spot in spots
         ]
         baseline_shells.append(
@@ -190,8 +200,11 @@ def _saed_baseline(repo_root: Path) -> dict[str, object]:
         "reference_shells": baseline_shells,
         "pytex_reference_shells": list(pytex_shells.values()),
         "notes": [
-            "The diffsims baseline records shell radii and indexed spots for the ni_fcc [001] SAED case.",
-            "PyTex comparisons should treat shell geometry and indexed-family coverage as the hard external baseline while allowing in-plane detector-basis rotations.",
+            "The diffsims baseline records shell radii and indexed spots for "
+            "the ni_fcc [001] SAED case.",
+            "PyTex comparisons should treat shell geometry and indexed-family "
+            "coverage as the hard external baseline while allowing in-plane "
+            "detector-basis rotations.",
         ],
     }
 

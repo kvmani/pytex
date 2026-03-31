@@ -118,10 +118,13 @@ def build_notebooks() -> dict[str, dict[str, object]]:
         PlaneAnnotationStyle,
         generate_saed_pattern,
         generate_xrd_pattern,
+        normalize_ebsd,
         plot_odf,
         plot_crystal_structure_3d,
         plot_inverse_pole_figure,
+        plot_ipf_map,
         plot_orientations,
+        plot_kam_map,
         plot_pole_figure,
         plot_saed_pattern,
         plot_symmetry_elements,
@@ -1554,6 +1557,135 @@ crystal:
                 The figures are stable teaching and publication surfaces for the current
                 implementation, but the XRD and SAED intensity models remain intentionally modest
                 compared with full physical scattering engines.
+                """
+            ),
+        ],
+    }
+
+    notebooks["16_ebsd_to_texture_outputs.ipynb"] = {
+        "title": "EBSD To Texture Outputs",
+        "cells": [
+            markdown_cell(
+                """
+                # EBSD To Texture Outputs
+
+                This notebook demonstrates the new practical path from vectorized orientation
+                construction through a normalized EBSD-like dataset into ODF, PF, and IPF outputs.
+
+                The example is intentionally self-contained: it uses an in-memory phase definition
+                and a stub KikuchiPy-like signal so the workflow can be read as pure PyTex surface
+                area rather than as package-integration ceremony.
+                """
+            ),
+            code_cell(common_setup),
+            code_cell(
+                """
+                crystal = make_crystal_frame()
+                specimen = ReferenceFrame(
+                    "specimen",
+                    FrameDomain.SPECIMEN,
+                    ("x", "y", "z"),
+                    Handedness.RIGHT,
+                )
+                symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+                lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
+                phase = Phase("fcc_demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+
+                orientations = OrientationSet.from_plane_direction(
+                    plane=np.array(
+                        [
+                            [0, 0, 1],
+                            [0, 0, 1],
+                            [1, 1, 1],
+                            [1, 1, 1],
+                        ]
+                    ),
+                    direction=np.array(
+                        [
+                            [1, 0, 0],
+                            [0, 1, 0],
+                            [1, -1, 0],
+                            [1, 0, -1],
+                        ]
+                    ),
+                    specimen_frame=specimen,
+                    phase=phase,
+                )
+
+                axes, angles = orientations.to_axes_angles()
+                rodrigues = orientations.as_rotation_set().to_rodrigues(frank=True)
+
+                print("orientation count:", len(orientations))
+                print("first axis-angle:", axes[0], angles[0])
+                print("first Rodrigues-Frank:", rodrigues[0])
+                """
+            ),
+            code_cell(
+                """
+                class XMapStub:
+                    def __init__(self, quaternions):
+                        self.rotations = quaternions
+                        self.x = np.array([0.0, 1.0, 0.0, 1.0], dtype=np.float64)
+                        self.y = np.array([0.0, 0.0, 1.0, 1.0], dtype=np.float64)
+                        self.shape = (2, 2)
+                        self.dx = 1.0
+                        self.dy = 1.0
+                        self.source_file = "stub-indexed.h5"
+
+
+                class SignalStub:
+                    def __init__(self, xmap):
+                        self.xmap = xmap
+
+
+                dataset = normalize_ebsd(
+                    SignalStub(XMapStub(orientations.quaternions)),
+                    frames=(crystal, specimen, specimen),
+                    phase=phase,
+                )
+
+                print(dataset.manifest.phase_name)
+                print(dataset.crystal_map.grid_shape)
+                """
+            ),
+            code_cell(
+                """
+                report = dataset.crystal_map.texture_report(
+                    poles=([1, 0, 0], [1, 1, 1]),
+                    sample_directions=("x", "z"),
+                    plot=False,
+                )
+
+                print("pole figures:", len(report.pole_figures))
+                print("inverse pole figures:", len(report.inverse_pole_figures))
+                print("ODF weights:", report.odf.normalized_weights)
+                """
+            ),
+            code_cell(
+                """
+                odf_figure = plot_odf(report.odf, kind="sections", section_phi2_deg=(0.0, 45.0))
+                pole_figure = plot_pole_figure(report.pole_figures[0], kind="contour")
+                inverse_pole_figure = plot_inverse_pole_figure(report.inverse_pole_figures[0])
+                ipf_map = plot_ipf_map(dataset.crystal_map, direction="z")
+                kam_map = plot_kam_map(dataset.crystal_map)
+
+                odf_figure
+                """
+            ),
+            code_cell("pole_figure"),
+            code_cell("inverse_pole_figure"),
+            code_cell("ipf_map"),
+            code_cell("kam_map"),
+            markdown_cell(
+                """
+                The important part is the continuity of semantic objects:
+
+                - plane/direction pairs construct orientations without dropping phase or symmetry
+                - `normalize_ebsd(...)` returns a `NormalizedEBSDDataset`
+                - `CrystalMap` produces ODF, PF, and IPF outputs directly
+                - the same `CrystalMap` also feeds IPF-map and KAM-map plotting
+
+                That keeps the whole EBSD-to-texture path inside one explicit PyTex data model.
                 """
             ),
         ],

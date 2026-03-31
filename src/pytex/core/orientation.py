@@ -7,6 +7,7 @@ from numpy.typing import ArrayLike
 
 from pytex.core._arrays import (
     as_float_array,
+    is_rotation_matrix,
     normalize_quaternion,
     normalize_quaternions,
     normalize_vector,
@@ -15,7 +16,7 @@ from pytex.core._arrays import (
 from pytex.core.batches import EulerSet, RotationSet, VectorSet, normalize_euler_convention_name
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import Phase
+from pytex.core.lattice import CrystalDirection, CrystalPlane, Phase
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
@@ -147,6 +148,46 @@ def quaternion_to_matrix(quaternion: np.ndarray) -> np.ndarray:
     )
 
 
+def quaternions_to_matrices(quaternions: ArrayLike) -> np.ndarray:
+    quaternion_array = normalize_quaternions(quaternions)
+    w = quaternion_array[:, 0]
+    x = quaternion_array[:, 1]
+    y = quaternion_array[:, 2]
+    z = quaternion_array[:, 3]
+    matrices = np.stack(
+        [
+            np.stack(
+                [
+                    1.0 - 2.0 * (y * y + z * z),
+                    2.0 * (x * y - z * w),
+                    2.0 * (x * z + y * w),
+                ],
+                axis=1,
+            ),
+            np.stack(
+                [
+                    2.0 * (x * y + z * w),
+                    1.0 - 2.0 * (x * x + z * z),
+                    2.0 * (y * z - x * w),
+                ],
+                axis=1,
+            ),
+            np.stack(
+                [
+                    2.0 * (x * z - y * w),
+                    2.0 * (y * z + x * w),
+                    1.0 - 2.0 * (x * x + y * y),
+                ],
+                axis=1,
+            ),
+        ],
+        axis=1,
+    )
+    matrices = np.ascontiguousarray(matrices, dtype=np.float64)
+    matrices.setflags(write=False)
+    return matrices
+
+
 def matrix_to_quaternion(matrix: ArrayLike) -> np.ndarray:
     array = as_float_array(matrix, shape=(3, 3))
     trace = float(np.trace(array))
@@ -180,11 +221,225 @@ def matrix_to_quaternion(matrix: ArrayLike) -> np.ndarray:
     return normalize_quaternion([w, x, y, z])
 
 
+def matrices_to_quaternions(matrices: ArrayLike) -> np.ndarray:
+    matrix_array = np.asarray(matrices, dtype=np.float64)
+    if matrix_array.shape == (3, 3):
+        matrix_array = matrix_array[None, :, :]
+    if matrix_array.ndim != 3 or matrix_array.shape[1:] != (3, 3):
+        raise ValueError("Rotation matrices must have shape (3, 3) or (n, 3, 3).")
+    for matrix in matrix_array:
+        if not is_rotation_matrix(matrix):
+            raise ValueError("All matrices must be proper rotation matrices.")
+    quaternions = np.empty((matrix_array.shape[0], 4), dtype=np.float64)
+    trace = np.trace(matrix_array, axis1=1, axis2=2)
+    positive_trace = trace > 0.0
+    if np.any(positive_trace):
+        s = np.sqrt(trace[positive_trace] + 1.0) * 2.0
+        quaternions[positive_trace, 0] = 0.25 * s
+        quaternions[positive_trace, 1] = (
+            matrix_array[positive_trace, 2, 1] - matrix_array[positive_trace, 1, 2]
+        ) / s
+        quaternions[positive_trace, 2] = (
+            matrix_array[positive_trace, 0, 2] - matrix_array[positive_trace, 2, 0]
+        ) / s
+        quaternions[positive_trace, 3] = (
+            matrix_array[positive_trace, 1, 0] - matrix_array[positive_trace, 0, 1]
+        ) / s
+    non_positive = ~positive_trace
+    if np.any(non_positive):
+        diagonal = np.stack(
+            [
+                matrix_array[non_positive, 0, 0],
+                matrix_array[non_positive, 1, 1],
+                matrix_array[non_positive, 2, 2],
+            ],
+            axis=1,
+        )
+        dominant = np.argmax(diagonal, axis=1)
+        dominant_x = non_positive.copy()
+        dominant_x[non_positive] = dominant == 0
+        dominant_y = non_positive.copy()
+        dominant_y[non_positive] = dominant == 1
+        dominant_z = non_positive.copy()
+        dominant_z[non_positive] = dominant == 2
+        if np.any(dominant_x):
+            s = np.sqrt(
+                1.0
+                + matrix_array[dominant_x, 0, 0]
+                - matrix_array[dominant_x, 1, 1]
+                - matrix_array[dominant_x, 2, 2]
+            ) * 2.0
+            quaternions[dominant_x, 0] = (
+                matrix_array[dominant_x, 2, 1] - matrix_array[dominant_x, 1, 2]
+            ) / s
+            quaternions[dominant_x, 1] = 0.25 * s
+            quaternions[dominant_x, 2] = (
+                matrix_array[dominant_x, 0, 1] + matrix_array[dominant_x, 1, 0]
+            ) / s
+            quaternions[dominant_x, 3] = (
+                matrix_array[dominant_x, 0, 2] + matrix_array[dominant_x, 2, 0]
+            ) / s
+        if np.any(dominant_y):
+            s = np.sqrt(
+                1.0
+                + matrix_array[dominant_y, 1, 1]
+                - matrix_array[dominant_y, 0, 0]
+                - matrix_array[dominant_y, 2, 2]
+            ) * 2.0
+            quaternions[dominant_y, 0] = (
+                matrix_array[dominant_y, 0, 2] - matrix_array[dominant_y, 2, 0]
+            ) / s
+            quaternions[dominant_y, 1] = (
+                matrix_array[dominant_y, 0, 1] + matrix_array[dominant_y, 1, 0]
+            ) / s
+            quaternions[dominant_y, 2] = 0.25 * s
+            quaternions[dominant_y, 3] = (
+                matrix_array[dominant_y, 1, 2] + matrix_array[dominant_y, 2, 1]
+            ) / s
+        if np.any(dominant_z):
+            s = np.sqrt(
+                1.0
+                + matrix_array[dominant_z, 2, 2]
+                - matrix_array[dominant_z, 0, 0]
+                - matrix_array[dominant_z, 1, 1]
+            ) * 2.0
+            quaternions[dominant_z, 0] = (
+                matrix_array[dominant_z, 1, 0] - matrix_array[dominant_z, 0, 1]
+            ) / s
+            quaternions[dominant_z, 1] = (
+                matrix_array[dominant_z, 0, 2] + matrix_array[dominant_z, 2, 0]
+            ) / s
+            quaternions[dominant_z, 2] = (
+                matrix_array[dominant_z, 1, 2] + matrix_array[dominant_z, 2, 1]
+            ) / s
+            quaternions[dominant_z, 3] = 0.25 * s
+    quaternions = normalize_quaternions(quaternions)
+    quaternions.setflags(write=False)
+    return quaternions
+
+
 def quaternion_from_axis_angle(axis: ArrayLike, angle_rad: float) -> np.ndarray:
     unit_axis = normalize_vector(axis)
     half = angle_rad / 2.0
     sin_half = np.sin(half)
     return normalize_quaternion([np.cos(half), *(unit_axis * sin_half)])
+
+
+def _broadcast_rotation_inputs(
+    vectors: ArrayLike,
+    scalars: ArrayLike,
+    *,
+    vector_name: str,
+    scalar_name: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    vector_array = np.asarray(vectors, dtype=np.float64)
+    if vector_array.shape == (3,):
+        vector_array = vector_array[None, :]
+    if vector_array.ndim != 2 or vector_array.shape[1] != 3:
+        raise ValueError(f"{vector_name} must have shape (3,) or (n, 3).")
+    scalar_array = np.asarray(scalars, dtype=np.float64)
+    if scalar_array.ndim == 0:
+        scalar_array = scalar_array.reshape(1)
+    if scalar_array.ndim != 1:
+        raise ValueError(f"{scalar_name} must be a scalar or a 1D array.")
+    vector_count = int(vector_array.shape[0])
+    scalar_count = int(scalar_array.shape[0])
+    if vector_count == 1 and scalar_count > 1:
+        vector_array = np.broadcast_to(vector_array, (scalar_count, 3))
+    elif scalar_count == 1 and vector_count > 1:
+        scalar_array = np.broadcast_to(scalar_array, (vector_count,))
+    elif vector_count != scalar_count:
+        raise ValueError(
+            f"{vector_name} and {scalar_name} must broadcast to the same leading length."
+        )
+    return np.ascontiguousarray(vector_array), np.ascontiguousarray(scalar_array)
+
+
+def quaternions_to_axes_angles(quaternions: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
+    quaternion_array = normalize_quaternions(quaternions)
+    canonical = np.array(quaternion_array, copy=True)
+    canonical[canonical[:, 0] < 0.0] *= -1.0
+    angles = 2.0 * np.arccos(np.clip(canonical[:, 0], -1.0, 1.0))
+    sin_half = np.linalg.norm(canonical[:, 1:], axis=1)
+    axes = np.zeros((canonical.shape[0], 3), dtype=np.float64)
+    axes[:, 2] = 1.0
+    non_identity = sin_half > 1e-12
+    if np.any(non_identity):
+        axes[non_identity] = canonical[non_identity, 1:] / sin_half[non_identity, None]
+        axes[non_identity] = normalize_vectors(axes[non_identity])
+    axes = np.ascontiguousarray(axes)
+    angles = np.ascontiguousarray(angles)
+    axes.setflags(write=False)
+    angles.setflags(write=False)
+    return axes, angles
+
+
+def quaternions_from_axes_angles(axes: ArrayLike, angles_rad: ArrayLike) -> np.ndarray:
+    axis_array, angle_array = _broadcast_rotation_inputs(
+        axes,
+        angles_rad,
+        vector_name="axes",
+        scalar_name="angles_rad",
+    )
+    if np.any(~np.isfinite(angle_array)):
+        raise ValueError("angles_rad must contain only finite values.")
+    unit_axes = normalize_vectors(axis_array)
+    half_angles = angle_array / 2.0
+    sin_half = np.sin(half_angles)
+    quaternions = np.column_stack(
+        [
+            np.cos(half_angles),
+            unit_axes[:, 0] * sin_half,
+            unit_axes[:, 1] * sin_half,
+            unit_axes[:, 2] * sin_half,
+        ]
+    )
+    quaternions = normalize_quaternions(quaternions)
+    quaternions.setflags(write=False)
+    return quaternions
+
+
+def quaternions_to_rodrigues(quaternions: ArrayLike, *, frank: bool = False) -> np.ndarray:
+    axes, angles = quaternions_to_axes_angles(quaternions)
+    tan_half = np.tan(angles / 2.0)
+    if not frank:
+        rodrigues = axes * tan_half[:, None]
+    else:
+        frank_scale = np.where(np.isclose(angles, np.pi, atol=1e-12), np.inf, tan_half)
+        rodrigues = np.column_stack([axes, frank_scale])
+    rodrigues = np.ascontiguousarray(rodrigues, dtype=np.float64)
+    rodrigues.setflags(write=False)
+    return rodrigues
+
+
+def quaternions_from_rodrigues(rodrigues: ArrayLike, *, frank: bool = False) -> np.ndarray:
+    rodrigues_array = np.asarray(rodrigues, dtype=np.float64)
+    if rodrigues_array.shape == (4 if frank else 3,):
+        rodrigues_array = rodrigues_array[None, :]
+    expected_dim = 4 if frank else 3
+    if rodrigues_array.ndim != 2 or rodrigues_array.shape[1] != expected_dim:
+        raise ValueError(
+            "Rodrigues input must have shape "
+            + f"({expected_dim},) or (n, {expected_dim}) for the selected convention."
+        )
+    if frank:
+        axes = normalize_vectors(rodrigues_array[:, :3])
+        scale = rodrigues_array[:, 3]
+        angles = 2.0 * np.arctan(scale)
+        infinite = np.isinf(scale)
+        if np.any(infinite):
+            angles = np.array(angles, copy=True)
+            angles[infinite] = np.sign(scale[infinite]) * np.pi
+        return quaternions_from_axes_angles(axes, angles)
+    scale = np.linalg.norm(rodrigues_array, axis=1)
+    axes = np.zeros_like(rodrigues_array)
+    axes[:, 2] = 1.0
+    non_identity = scale > 1e-12
+    if np.any(non_identity):
+        axes[non_identity] = rodrigues_array[non_identity] / scale[non_identity, None]
+        axes[non_identity] = normalize_vectors(axes[non_identity])
+    angles = 2.0 * np.arctan(scale)
+    return quaternions_from_axes_angles(axes, angles)
 
 
 def _grid_axis_values(
@@ -207,6 +462,118 @@ def _grid_axis_values(
     values = np.ascontiguousarray(values, dtype=np.float64)
     values.setflags(write=False)
     return values
+
+
+def _resolve_phase_symmetry(
+    *,
+    phase: Phase | None,
+    symmetry: SymmetrySpec | None,
+    crystal_frame: ReferenceFrame,
+) -> tuple[Phase | None, SymmetrySpec | None]:
+    resolved_symmetry = symmetry
+    if phase is not None:
+        if phase.crystal_frame != crystal_frame:
+            raise ValueError("phase.crystal_frame must match the target crystal_frame.")
+        if resolved_symmetry is None:
+            resolved_symmetry = phase.symmetry
+    return phase, resolved_symmetry
+
+
+def _coerce_direction_array(
+    direction: ArrayLike,
+    *,
+    size: int,
+    name: str,
+) -> np.ndarray:
+    array = np.asarray(direction, dtype=np.float64)
+    if array.shape == (3,):
+        array = array[None, :]
+    if array.ndim != 2 or array.shape[1] != 3:
+        raise ValueError(f"{name} must have shape (3,) or (n, 3).")
+    if array.shape[0] == 1 and size > 1:
+        array = np.broadcast_to(array, (size, 3))
+    elif array.shape[0] != size:
+        raise ValueError(f"{name} must broadcast to the number of orientations.")
+    return normalize_vectors(array)
+
+
+def _project_directions_onto_planes(
+    directions: np.ndarray,
+    normals: np.ndarray,
+    *,
+    name: str,
+) -> np.ndarray:
+    projected = directions - np.sum(directions * normals, axis=1, keepdims=True) * normals
+    norms = np.linalg.norm(projected, axis=1)
+    if np.any(np.isclose(norms, 0.0)):
+        raise ValueError(
+            f"{name} must not be parallel to the corresponding plane normal after projection."
+        )
+    projected = projected / norms[:, None]
+    projected = np.ascontiguousarray(projected, dtype=np.float64)
+    projected.setflags(write=False)
+    return projected
+
+
+def _orthonormal_frames_from_normals_and_directions(
+    normals: np.ndarray,
+    directions: np.ndarray,
+    *,
+    name: str,
+) -> np.ndarray:
+    x_axis = _project_directions_onto_planes(directions, normals, name=name)
+    y_axis = np.cross(normals, x_axis)
+    y_norm = np.linalg.norm(y_axis, axis=1)
+    if np.any(np.isclose(y_norm, 0.0)):
+        raise ValueError(f"{name} does not define a non-degenerate right-handed basis.")
+    y_axis = y_axis / y_norm[:, None]
+    frames = np.stack([x_axis, y_axis, normals], axis=2)
+    frames = np.ascontiguousarray(frames, dtype=np.float64)
+    frames.setflags(write=False)
+    return frames
+
+
+def _plane_direction_rotation_matrices(
+    *,
+    crystal_normals: np.ndarray,
+    crystal_directions: np.ndarray,
+    specimen_normals: np.ndarray,
+    specimen_directions: np.ndarray,
+) -> np.ndarray:
+    crystal_frames = _orthonormal_frames_from_normals_and_directions(
+        crystal_normals,
+        crystal_directions,
+        name="Crystal directions",
+    )
+    specimen_frames = _orthonormal_frames_from_normals_and_directions(
+        specimen_normals,
+        specimen_directions,
+        name="Specimen directions",
+    )
+    matrices = np.einsum("nij,nkj->nik", specimen_frames, crystal_frames, optimize=True)
+    matrices = np.ascontiguousarray(matrices, dtype=np.float64)
+    matrices.setflags(write=False)
+    return matrices
+
+
+def _phase_from_plane_direction_objects(
+    planes: tuple[CrystalPlane, ...],
+    directions: tuple[CrystalDirection, ...],
+    *,
+    phase: Phase | None,
+) -> Phase:
+    if len(planes) != len(directions):
+        raise ValueError("Plane and direction sequences must have the same length.")
+    if not planes:
+        raise ValueError("At least one plane/direction pair is required.")
+    resolved_phase = phase or planes[0].phase
+    for plane in planes:
+        if plane.phase != resolved_phase:
+            raise ValueError("All CrystalPlane inputs must share the same phase.")
+    for direction in directions:
+        if direction.phase != resolved_phase:
+            raise ValueError("All CrystalDirection inputs must share the same phase.")
+    return resolved_phase
 
 
 @dataclass(frozen=True, slots=True)
@@ -382,6 +749,42 @@ class Orientation:
                 raise ValueError("Orientation.phase.crystal_frame must match crystal_frame.")
             if self.symmetry is not None and self.phase.symmetry != self.symmetry:
                 raise ValueError("Orientation.phase.symmetry must match Orientation.symmetry.")
+
+    @classmethod
+    def from_plane_direction(
+        cls,
+        plane: CrystalPlane,
+        direction: CrystalDirection,
+        *,
+        specimen_frame: ReferenceFrame,
+        specimen_plane_normal: ArrayLike = (0.0, 0.0, 1.0),
+        specimen_direction: ArrayLike = (1.0, 0.0, 0.0),
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if plane.phase != direction.phase:
+            raise ValueError("plane.phase must match direction.phase.")
+        matrices = _plane_direction_rotation_matrices(
+            crystal_normals=plane.normal[None, :],
+            crystal_directions=direction.unit_vector[None, :],
+            specimen_normals=_coerce_direction_array(
+                specimen_plane_normal,
+                size=1,
+                name="specimen_plane_normal",
+            ),
+            specimen_directions=_coerce_direction_array(
+                specimen_direction,
+                size=1,
+                name="specimen_direction",
+            ),
+        )
+        return cls(
+            rotation=Rotation.from_matrix(matrices[0]),
+            crystal_frame=plane.phase.crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=plane.phase.symmetry,
+            phase=plane.phase,
+            provenance=provenance,
+        )
 
     def as_matrix(self) -> np.ndarray:
         return self.rotation.as_matrix()
@@ -715,6 +1118,11 @@ class OrientationSet:
         degrees: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
         if isinstance(angles, EulerSet):
             angle_array = angles.angles
             convention = angles.convention
@@ -732,11 +1140,180 @@ class OrientationSet:
             )
         ).quaternions
         return cls(
-            quaternions=quaternions,
+            quaternions=np.asarray(quaternions, dtype=np.float64),
             crystal_frame=crystal_frame,
             specimen_frame=specimen_frame,
             symmetry=symmetry,
             phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_quaternions(
+        cls,
+        quaternions: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            quaternions=np.asarray(quaternions, dtype=np.float64),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_axes_angles(
+        cls,
+        axes: ArrayLike,
+        angles_rad: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            quaternions=RotationSet.from_axes_angles(axes, angles_rad).quaternions,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_matrices(
+        cls,
+        matrices: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            quaternions=RotationSet.from_matrices(matrices).quaternions,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_plane_direction(
+        cls,
+        plane: CrystalPlane | list[CrystalPlane] | tuple[CrystalPlane, ...] | ArrayLike,
+        direction: CrystalDirection
+        | list[CrystalDirection]
+        | tuple[CrystalDirection, ...]
+        | ArrayLike,
+        *,
+        specimen_frame: ReferenceFrame,
+        phase: Phase | None = None,
+        specimen_plane_normal: ArrayLike = (0.0, 0.0, 1.0),
+        specimen_direction: ArrayLike = (1.0, 0.0, 0.0),
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        if isinstance(plane, CrystalPlane):
+            if not isinstance(direction, CrystalDirection):
+                raise ValueError(
+                    "A scalar CrystalPlane input requires a matching scalar CrystalDirection."
+                )
+            resolved_phase = _phase_from_plane_direction_objects(
+                (plane,),
+                (direction,),
+                phase=phase,
+            )
+            crystal_normals = plane.normal[None, :]
+            crystal_directions = direction.unit_vector[None, :]
+        elif (
+            isinstance(plane, (list, tuple))
+            and isinstance(direction, (list, tuple))
+            and all(isinstance(item, CrystalPlane) for item in plane)
+            and all(isinstance(item, CrystalDirection) for item in direction)
+        ):
+            planes = tuple(plane)
+            directions = tuple(direction)
+            resolved_phase = _phase_from_plane_direction_objects(planes, directions, phase=phase)
+            crystal_normals = normalize_vectors(np.vstack([item.normal for item in planes]))
+            crystal_directions = normalize_vectors(
+                np.vstack([item.unit_vector for item in directions])
+            )
+        else:
+            if phase is None:
+                raise ValueError(
+                    "phase is required when constructing orientations from raw plane and "
+                    "direction index arrays."
+                )
+            plane_indices = np.asarray(plane, dtype=np.float64)
+            direction_indices = np.asarray(direction, dtype=np.float64)
+            if plane_indices.shape == (3,):
+                plane_indices = plane_indices[None, :]
+            if direction_indices.shape == (3,):
+                direction_indices = direction_indices[None, :]
+            if plane_indices.ndim != 2 or plane_indices.shape[1] != 3:
+                raise ValueError("plane index arrays must have shape (3,) or (n, 3).")
+            if direction_indices.ndim != 2 or direction_indices.shape[1] != 3:
+                raise ValueError("direction index arrays must have shape (3,) or (n, 3).")
+            if plane_indices.shape[0] == 1 and direction_indices.shape[0] > 1:
+                plane_indices = np.broadcast_to(plane_indices, direction_indices.shape)
+            elif direction_indices.shape[0] == 1 and plane_indices.shape[0] > 1:
+                direction_indices = np.broadcast_to(direction_indices, plane_indices.shape)
+            elif plane_indices.shape[0] != direction_indices.shape[0]:
+                raise ValueError(
+                    "Raw plane and direction index arrays must broadcast to the same length."
+                )
+            reciprocal_basis = phase.lattice.reciprocal_basis().matrix
+            direct_basis = phase.lattice.direct_basis().matrix
+            crystal_normals = normalize_vectors(plane_indices @ reciprocal_basis.T)
+            crystal_directions = normalize_vectors(direction_indices @ direct_basis.T)
+            resolved_phase = phase
+        specimen_count = int(crystal_normals.shape[0])
+        matrices = _plane_direction_rotation_matrices(
+            crystal_normals=crystal_normals,
+            crystal_directions=crystal_directions,
+            specimen_normals=_coerce_direction_array(
+                specimen_plane_normal,
+                size=specimen_count,
+                name="specimen_plane_normal",
+            ),
+            specimen_directions=_coerce_direction_array(
+                specimen_direction,
+                size=specimen_count,
+                name="specimen_direction",
+            ),
+        )
+        return cls.from_matrices(
+            matrices,
+            crystal_frame=resolved_phase.crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=resolved_phase.symmetry,
+            phase=resolved_phase,
             provenance=provenance,
         )
 
@@ -806,6 +1383,9 @@ class OrientationSet:
         matrices = np.ascontiguousarray(matrices)
         matrices.setflags(write=False)
         return matrices
+
+    def to_axes_angles(self) -> tuple[np.ndarray, np.ndarray]:
+        return self.as_rotation_set().to_axes_angles()
 
     def as_euler(
         self,

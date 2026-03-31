@@ -1,18 +1,123 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
+from pytex.core._arrays import normalize_vector
 from pytex.core.acquisition import AcquisitionGeometry, CalibrationRecord, MeasurementQuality
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
+from pytex.core.lattice import CrystalPlane, MillerIndex, Phase
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.symmetry import SymmetrySpec
 
 if TYPE_CHECKING:
     from pytex.adapters import ExperimentManifest
+    from pytex.texture import ODF, InversePoleFigure, KernelSpec, PoleFigure
+
+
+def _specimen_direction_vector(
+    direction: str | ArrayLike,
+    specimen_frame: ReferenceFrame,
+) -> np.ndarray:
+    if isinstance(direction, str):
+        normalized = direction.strip().lower()
+        axis_lookup = {label.lower(): index for index, label in enumerate(specimen_frame.axes)}
+        axis_lookup.update({"x": 0, "y": 1, "z": 2})
+        if normalized not in axis_lookup:
+            raise ValueError(
+                "Sample direction labels must be one of the specimen-frame axis labels or "
+                "'x', 'y', 'z'."
+            )
+        vector = np.zeros(3, dtype=np.float64)
+        vector[axis_lookup[normalized]] = 1.0
+        return vector
+    return normalize_vector(direction)
+
+
+def _coerce_pole(
+    pole: CrystalPlane | ArrayLike,
+    *,
+    phase: Phase | None,
+) -> CrystalPlane:
+    if isinstance(pole, CrystalPlane):
+        return pole
+    if phase is None:
+        raise ValueError(
+            "CrystalMap.pole_figure() requires OrientationSet.phase when poles are passed as "
+            "raw Miller indices."
+        )
+    indices = np.asarray(pole, dtype=np.int64)
+    if indices.shape != (3,):
+        raise ValueError("Raw pole indices must have shape (3,).")
+    return CrystalPlane(miller=MillerIndex(indices, phase=phase), phase=phase)
+
+
+def _coerce_pole_sequence(
+    poles: (
+        CrystalPlane
+        | ArrayLike
+        | tuple[CrystalPlane | ArrayLike, ...]
+        | list[CrystalPlane | ArrayLike]
+    ),
+    *,
+    phase: Phase | None,
+) -> tuple[CrystalPlane, ...]:
+    if isinstance(poles, CrystalPlane):
+        return (poles,)
+    if isinstance(poles, np.ndarray) and poles.shape == (3,):
+        return (_coerce_pole(poles, phase=phase),)
+    if isinstance(poles, (list, tuple)):
+        return tuple(_coerce_pole(pole, phase=phase) for pole in poles)
+    return (_coerce_pole(poles, phase=phase),)
+
+
+def _coerce_sample_direction_sequence(
+    sample_directions: str
+    | ArrayLike
+    | tuple[str | ArrayLike, ...]
+    | list[str | ArrayLike],
+    specimen_frame: ReferenceFrame,
+) -> tuple[np.ndarray, ...]:
+    if isinstance(sample_directions, str):
+        return (_specimen_direction_vector(sample_directions, specimen_frame),)
+    if isinstance(sample_directions, np.ndarray) and sample_directions.shape == (3,):
+        return (_specimen_direction_vector(sample_directions, specimen_frame),)
+    if isinstance(sample_directions, (list, tuple)):
+        if len(sample_directions) == 3 and not isinstance(sample_directions[0], str):
+            candidate = np.asarray(sample_directions, dtype=np.float64)
+            if candidate.shape == (3,):
+                return (_specimen_direction_vector(candidate, specimen_frame),)
+        return tuple(
+            _specimen_direction_vector(direction, specimen_frame)
+            for direction in sample_directions
+        )
+    return (_specimen_direction_vector(sample_directions, specimen_frame),)
+
+
+@dataclass(frozen=True, slots=True)
+class TextureReport:
+    odf: ODF
+    pole_figures: tuple[PoleFigure, ...] = ()
+    inverse_pole_figures: tuple[InversePoleFigure, ...] = ()
+    odf_figure: Any | None = None
+    pole_figure_figures: tuple[Any, ...] = ()
+    inverse_pole_figure_figures: tuple[Any, ...] = ()
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "pole_figures", tuple(self.pole_figures))
+        object.__setattr__(self, "inverse_pole_figures", tuple(self.inverse_pole_figures))
+        object.__setattr__(self, "pole_figure_figures", tuple(self.pole_figure_figures))
+        object.__setattr__(
+            self,
+            "inverse_pole_figure_figures",
+            tuple(self.inverse_pole_figure_figures),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -598,6 +703,153 @@ class CrystalMap:
             phase=phase,
             referenced_files=referenced_files,
             metadata=merged_metadata,
+        )
+
+    def to_odf(
+        self,
+        *,
+        weights: ArrayLike | None = None,
+        kernel: KernelSpec | None = None,
+        specimen_symmetry: SymmetrySpec | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> ODF:
+        from pytex.texture import ODF
+
+        return ODF.from_orientations(
+            self.orientations,
+            weights=weights,
+            kernel=kernel,
+            specimen_symmetry=specimen_symmetry,
+            provenance=self.provenance if provenance is None else provenance,
+        )
+
+    def pole_figure(
+        self,
+        pole: CrystalPlane | ArrayLike,
+        *,
+        weights: ArrayLike | None = None,
+        include_symmetry_family: bool = True,
+        antipodal: bool = True,
+        sample_symmetry: SymmetrySpec | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> PoleFigure:
+        from pytex.texture import PoleFigure
+
+        return PoleFigure.from_orientations(
+            self.orientations,
+            _coerce_pole(pole, phase=self.orientations.phase),
+            weights=weights,
+            include_symmetry_family=include_symmetry_family,
+            antipodal=antipodal,
+            sample_symmetry=sample_symmetry,
+            provenance=self.provenance if provenance is None else provenance,
+        )
+
+    def inverse_pole_figure(
+        self,
+        sample_direction: str | ArrayLike = "z",
+        *,
+        weights: ArrayLike | None = None,
+        reduce_by_symmetry: bool = True,
+        antipodal: bool = True,
+        provenance: ProvenanceRecord | None = None,
+    ) -> InversePoleFigure:
+        from pytex.texture import InversePoleFigure
+
+        return InversePoleFigure.from_orientations(
+            self.orientations,
+            _specimen_direction_vector(sample_direction, self.orientations.specimen_frame),
+            weights=weights,
+            reduce_by_symmetry=reduce_by_symmetry,
+            antipodal=antipodal,
+            provenance=self.provenance if provenance is None else provenance,
+        )
+
+    def texture_report(
+        self,
+        *,
+        poles: CrystalPlane
+        | ArrayLike
+        | tuple[CrystalPlane | ArrayLike, ...]
+        | list[CrystalPlane | ArrayLike] = (),
+        sample_directions: str
+        | ArrayLike
+        | tuple[str | ArrayLike, ...]
+        | list[str | ArrayLike] = ("x", "y", "z"),
+        weights: ArrayLike | None = None,
+        kernel: KernelSpec | None = None,
+        specimen_symmetry: SymmetrySpec | None = None,
+        include_symmetry_family: bool = True,
+        reduce_by_symmetry: bool = True,
+        antipodal: bool = True,
+        plot: bool = False,
+        provenance: ProvenanceRecord | None = None,
+        pole_figure_plot_kwargs: dict[str, Any] | None = None,
+        inverse_pole_figure_plot_kwargs: dict[str, Any] | None = None,
+        odf_plot_kwargs: dict[str, Any] | None = None,
+    ) -> TextureReport:
+        report_provenance = self.provenance if provenance is None else provenance
+        odf = self.to_odf(
+            weights=weights,
+            kernel=kernel,
+            specimen_symmetry=specimen_symmetry,
+            provenance=report_provenance,
+        )
+        if isinstance(poles, (list, tuple)) and len(poles) == 0:
+            pole_sequence: tuple[CrystalPlane, ...] = ()
+        else:
+            pole_sequence = _coerce_pole_sequence(poles, phase=self.orientations.phase)
+        direction_sequence = _coerce_sample_direction_sequence(
+            sample_directions,
+            self.orientations.specimen_frame,
+        )
+        pole_figures = tuple(
+            self.pole_figure(
+                pole,
+                weights=weights,
+                include_symmetry_family=include_symmetry_family,
+                antipodal=antipodal,
+                sample_symmetry=specimen_symmetry,
+                provenance=report_provenance,
+            )
+            for pole in pole_sequence
+        )
+        inverse_pole_figures = tuple(
+            self.inverse_pole_figure(
+                sample_direction=direction,
+                weights=weights,
+                reduce_by_symmetry=reduce_by_symmetry,
+                antipodal=antipodal,
+                provenance=report_provenance,
+            )
+            for direction in direction_sequence
+        )
+        odf_figure: Any | None = None
+        pole_figure_figures: tuple[Any, ...] = ()
+        inverse_pole_figure_figures: tuple[Any, ...] = ()
+        if plot:
+            from pytex.plotting import plot_inverse_pole_figure, plot_odf, plot_pole_figure
+
+            odf_figure = plot_odf(odf, **(odf_plot_kwargs or {}))
+            pole_figure_figures = tuple(
+                plot_pole_figure(pole_figure, **(pole_figure_plot_kwargs or {}))
+                for pole_figure in pole_figures
+            )
+            inverse_pole_figure_figures = tuple(
+                plot_inverse_pole_figure(
+                    inverse_pole_figure,
+                    **(inverse_pole_figure_plot_kwargs or {}),
+                )
+                for inverse_pole_figure in inverse_pole_figures
+            )
+        return TextureReport(
+            odf=odf,
+            pole_figures=pole_figures,
+            inverse_pole_figures=inverse_pole_figures,
+            odf_figure=odf_figure,
+            pole_figure_figures=pole_figure_figures,
+            inverse_pole_figure_figures=inverse_pole_figure_figures,
+            provenance=report_provenance,
         )
 
     def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:

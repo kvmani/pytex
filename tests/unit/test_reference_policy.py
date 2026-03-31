@@ -115,10 +115,16 @@ def test_xrdml_texture_surface_is_part_of_stable_documented_surface() -> None:
         "read_xrdml_pole_figure",
         "load_xrdml_pole_figure",
         "invert_xrdml_pole_figures",
+        "LaboTexPoleFigureMeasurement",
+        "read_labotex_pole_figures",
+        "load_labotex_pole_figures",
+        "invert_labotex_pole_figures",
     ):
         assert symbol in specifications
         assert symbol in api_guide
-        assert symbol in xrdml_workflow
+        assert symbol in xrdml_workflow or symbol in _read(
+            "docs/site/workflows/labotex_open_pole_figures.md"
+        )
     assert "ODF.evaluate_pole_density" in texture_workflow
 
 

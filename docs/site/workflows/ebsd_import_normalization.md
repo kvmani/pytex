@@ -70,5 +70,6 @@ The manifest is now not just an in-memory dataclass. It is also a stable interch
 
 ## Related Material
 
+- {doc}`ebsd_to_texture_outputs`
 - `docs/standards/data_contracts_and_manifests.md`
 - [../../../schemas/ebsd_import_manifest.schema.json](../../../schemas/ebsd_import_manifest.schema.json)

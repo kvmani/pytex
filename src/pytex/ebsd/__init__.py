@@ -6,14 +6,16 @@ from pytex.ebsd.models import (
     GrainGraph,
     GrainGraphEdge,
     GrainSegmentation,
+    TextureReport,
 )
 
 __all__ = [
     "CrystalMap",
     "Grain",
-    "GrainGraph",
-    "GrainGraphEdge",
     "GrainBoundaryNetwork",
     "GrainBoundarySegment",
+    "GrainGraph",
+    "GrainGraphEdge",
     "GrainSegmentation",
+    "TextureReport",
 ]

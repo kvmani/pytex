@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class BasisKind(str, Enum):
+class BasisKind(StrEnum):
     DIRECT = "direct"
     RECIPROCAL = "reciprocal"
 
 
-class FrameDomain(str, Enum):
+class FrameDomain(StrEnum):
     CRYSTAL = "crystal"
     SPECIMEN = "specimen"
     MAP = "map"
@@ -18,18 +18,18 @@ class FrameDomain(str, Enum):
     RECIPROCAL = "reciprocal"
 
 
-class Handedness(str, Enum):
+class Handedness(StrEnum):
     RIGHT = "right"
     LEFT = "left"
 
 
-class AngleConvention(str, Enum):
+class AngleConvention(StrEnum):
     BUNGE_ZXZ = "bunge_zxz"
     MATTHIES_ZYZ = "matthies_zyz"
     ABG_ZYZ = "abg_zyz"
 
 
-class ReciprocalConvention(str, Enum):
+class ReciprocalConvention(StrEnum):
     KRONECKER_DELTA = "kronecker_delta"
 
 

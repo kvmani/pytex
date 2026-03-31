@@ -24,6 +24,10 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `RotationSet`
 - `Orientation`
 - `OrientationSet`
+- `OrientationSet.from_axes_angles(...)`
+- `OrientationSet.from_matrices(...)`
+- `OrientationSet.from_plane_direction(...)`
+- `OrientationSet.from_quaternions(...)`
 - `ScatteringSetup`
 - `format_miller_indices`
 - `format_plane_indices`
@@ -42,9 +46,13 @@ See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`, and {do
 - `ODFInversionReport`
 - `KernelSpec`
 - `XRDMLPoleFigureMeasurement`
+- `LaboTexPoleFigureMeasurement`
 - `read_xrdml_pole_figure`
 - `load_xrdml_pole_figure`
 - `invert_xrdml_pole_figures`
+- `read_labotex_pole_figures`
+- `load_labotex_pole_figures`
+- `invert_labotex_pole_figures`
 
 See {doc}`../concepts/orientation_texture`.
 
@@ -62,8 +70,16 @@ See {doc}`../concepts/orientation_texture`.
 - `ValidationManifest`
 - `WorkflowResultManifest`
 - `NormalizedEBSDDataset`
+- `TextureReport`
+- `normalize_ebsd(...)`
+- `index_hough(...)`
+- `refine_orientations(...)`
+- `to_orix_rotation(...)`
+- `from_orix_rotation(...)`
+- `to_orix_orientation(...)`
+- `from_orix_orientation(...)`
 
-See {doc}`../workflows/ebsd_kam` and {doc}`../workflows/ebsd_grains`.
+See {doc}`../workflows/ebsd_kam`, {doc}`../workflows/ebsd_grains`, and {doc}`../workflows/ebsd_to_texture_outputs`.
 
 ## Diffraction
 
@@ -103,6 +119,8 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 - `plot_orientations`
 - `plot_pole_figure`
 - `plot_inverse_pole_figure`
+- `plot_ipf_map`
+- `plot_kam_map`
 - `plot_odf`
 - `plot_xrd_pattern`
 - `plot_saed_pattern`
@@ -117,7 +135,7 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 
 See {doc}`../workflows/ipf_colors`, {doc}`../workflows/plotting_primitives`,
 {doc}`../workflows/stereographic_projections`, {doc}`../workflows/crystal_visualization`,
-and {doc}`../workflows/style_customization`.
+{doc}`../workflows/ebsd_to_texture_outputs`, and {doc}`../workflows/style_customization`.
 
 `plot_pole_figure(...)` supports scatter, histogram, and contour rendering. `plot_odf(...)`
 supports scatter, contour, and classical Bunge-section rendering.

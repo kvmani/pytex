@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import warnings
 from pathlib import Path
 
@@ -152,7 +152,9 @@ def test_phase_fixture_cif_string_round_trips_into_phase(entry: dict) -> None:
 def test_phase_fixture_loader_api_exposes_catalog_and_loaders() -> None:
     records = list_phase_fixtures()
     assert phase_fixture_catalog_path() == CATALOG_PATH
-    assert {record.fixture_id for record in records} == {entry["fixture_id"] for entry in _fixture_entries()}
+    assert {record.fixture_id for record in records} == {
+        entry["fixture_id"] for entry in _fixture_entries()
+    }
 
     record = get_phase_fixture("zr_hcp")
     assert record.display_name == "Zirconium (HCP)"
@@ -189,9 +191,9 @@ def test_structure_import_manifests_cover_full_phase_fixture_catalog() -> None:
         )
     )
     validation = json.loads(
-        (
-            REPO_ROOT / "benchmarks/validation/structure_import_validation_manifest.json"
-        ).read_text(encoding="utf-8")
+        (REPO_ROOT / "benchmarks/validation/structure_import_validation_manifest.json").read_text(
+            encoding="utf-8"
+        )
     )
     expected_ids = sorted(entry["fixture_id"] for entry in _fixture_entries())
     assert sorted(benchmark["fixture_ids"]) == expected_ids
@@ -249,7 +251,9 @@ def test_structure_import_fixture_audit_summary_matches_loaded_phase_semantics()
         assert row["conventional"]["space_group_number"] == conventional.space_group_number
         assert row["conventional"]["point_group"] == conventional.symmetry.point_group
         assert row["conventional"]["chemical_formula"] == metadata["chemical_formula"]
-        assert row["conventional"]["site_count"] == metadata["expected_conventional_cell_site_count"]
+        assert (
+            row["conventional"]["site_count"] == metadata["expected_conventional_cell_site_count"]
+        )
         assert row["primitive"]["space_group_symbol"] == primitive.space_group_symbol
         assert row["primitive"]["space_group_number"] == primitive.space_group_number
         assert row["primitive"]["point_group"] == primitive.symmetry.point_group

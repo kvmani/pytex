@@ -1,0 +1,32 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-30T00:00:00Z",
+  "benchmark_id": "texture_labotex_open_pole_figure_validation",
+  "subsystem": "texture",
+  "baseline_kind": "open_external_multi_material_pole_figure_validation",
+  "workflows": [
+    "labotex_ppf_import",
+    "labotex_epf_import",
+    "labotex_multi_material_odf_reconstruction"
+  ],
+  "fixture_ids": [],
+  "artifact_paths": [
+    "benchmarks/texture/labotex_open_pole_figure_benchmark_manifest.json",
+    "benchmarks/texture/README.md",
+    "docs/site/workflows/labotex_open_pole_figures.md",
+    "src/pytex/adapters/labotex.py",
+    "tests/unit/test_labotex_texture.py",
+    "scripts/run_open_labotex_validation.py"
+  ],
+  "tolerances": {
+    "synthetic_labotex_odf_weight_atol": 0.05
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark defines the open LaboTex validation path for Cu, Fe, and Al pole-figure datasets fetched on demand from the public exercises archive.",
+    "The datasets are not bundled in-repo because the source site exposes them publicly but does not state redistribution terms explicitly.",
+    "The stable repo surface covers parser correctness, deterministic synthetic inversion tests, and the external script used to generate measured-versus-reconstructed inspection outputs."
+  ]
+}

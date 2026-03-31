@@ -6,11 +6,11 @@ import numpy as np
 from numpy.testing import assert_allclose
 
 from pytex import (
+    ODF,
     FrameDomain,
     Handedness,
     KernelSpec,
     Lattice,
-    ODF,
     Orientation,
     OrientationSet,
     Phase,
@@ -47,6 +47,10 @@ def write_xrdml_fixture(
     phi_deg: np.ndarray,
     psi_deg: np.ndarray,
     intensity_grid: np.ndarray,
+    use_counts: bool = False,
+    count_time_sec: float = 1.0,
+    phi_axis_name: str = "Phi",
+    psi_axis_name: str = "Psi",
     wavelength_angstrom: float = 1.5406,
     two_theta_deg: float = 45.0,
     omega_deg: float = 22.5,
@@ -57,9 +61,10 @@ def write_xrdml_fixture(
         "  <sample>",
         "    <name>synthetic_pf</name>",
         "  </sample>",
-        '  <xrdMeasurement measurementType="Area measurement" measurementStepAxis="Psi" sampleMode="Reflection">',
+        '  <xrdMeasurement measurementType="Area measurement" '
+        'measurementStepAxis="Psi" sampleMode="Reflection">',
         "    <usedWavelength>",
-        f"      <kAlpha1 unit=\"Angstrom\">{wavelength_angstrom:.6f}</kAlpha1>",
+        f'      <kAlpha1 unit="Angstrom">{wavelength_angstrom:.6f}</kAlpha1>',
         "    </usedWavelength>",
     ]
     for phi_row, psi_row, intensity_row in zip(phi_deg, psi_deg, intensity_grid, strict=True):
@@ -67,21 +72,29 @@ def write_xrdml_fixture(
             [
                 '    <scan mode="Continuous" scanAxis="Phi" status="Completed">',
                 "      <dataPoints>",
-                "        <commonCountingTime>1.0</commonCountingTime>",
-                "        <intensities>"
-                + " ".join(f"{value:.8f}" for value in intensity_row)
-                + "</intensities>",
+                f"        <commonCountingTime>{count_time_sec:.6f}</commonCountingTime>",
+                (
+                    "        <counts>"
+                    + " ".join(f"{value * count_time_sec:.8f}" for value in intensity_row)
+                    + "</counts>"
+                )
+                if use_counts
+                else (
+                    "        <intensities>"
+                    + " ".join(f"{value:.8f}" for value in intensity_row)
+                    + "</intensities>"
+                ),
                 '        <positions axis="2Theta">',
                 f"          <commonPosition>{two_theta_deg:.4f}</commonPosition>",
                 "        </positions>",
                 '        <positions axis="Omega">',
                 f"          <commonPosition>{omega_deg:.4f}</commonPosition>",
                 "        </positions>",
-                '        <positions axis="Phi">',
+                f'        <positions axis="{phi_axis_name}">',
                 f"          <startPosition>{float(phi_row[0]):.4f}</startPosition>",
                 f"          <endPosition>{float(phi_row[-1]):.4f}</endPosition>",
                 "        </positions>",
-                '        <positions axis="Psi">',
+                f'        <positions axis="{psi_axis_name}">',
                 f"          <commonPosition>{float(psi_row[0]):.4f}</commonPosition>",
                 "        </positions>",
                 "      </dataPoints>",
@@ -113,6 +126,34 @@ def test_read_xrdml_pole_figure_parses_grid_and_metadata(tmp_path: Path) -> None
     assert measurement.wavelength_angstrom is not None
     assert_allclose(measurement.sample_directions[0], [0.0, 0.0, 1.0], atol=1e-8)
     assert_allclose(measurement.flattened_intensities[:4], intensities[0], atol=1e-8)
+    assert measurement.metadata["axis_phi"] == "Phi"
+    assert measurement.metadata["axis_psi"] == "Psi"
+
+
+def test_read_xrdml_pole_figure_supports_count_based_input_and_chi_alias(tmp_path: Path) -> None:
+    phi = np.tile(np.array([0.0, 90.0, 180.0]), (2, 1))
+    psi = np.repeat(np.array([[5.0], [35.0]]), 3, axis=1)
+    intensities = np.array([[2.0, 1.0, 0.5], [1.5, 1.2, 0.8]], dtype=np.float64)
+    path = tmp_path / "counts_pf.xrdml"
+    write_xrdml_fixture(
+        path,
+        phi_deg=phi,
+        psi_deg=psi,
+        intensity_grid=intensities,
+        use_counts=True,
+        count_time_sec=2.5,
+        psi_axis_name="Chi",
+    )
+    measurement = read_xrdml_pole_figure(path)
+    assert measurement.metadata["axis_psi"] == "Chi"
+    assert_allclose(measurement.intensity_grid, intensities, atol=1e-8)
+    normalized = measurement.normalized_intensity_grid(mode="max")
+    assert_allclose(float(np.max(normalized)), 1.0, atol=1e-12)
+    assert_allclose(
+        measurement.normalized_flattened_intensities(mode="sum").sum(),
+        1.0,
+        atol=1e-12,
+    )
 
 
 def test_load_xrdml_pole_figure_builds_pytex_pole_figure(tmp_path: Path) -> None:
@@ -123,10 +164,19 @@ def test_load_xrdml_pole_figure_builds_pytex_pole_figure(tmp_path: Path) -> None
     path = tmp_path / "single_pf.xrdml"
     write_xrdml_fixture(path, phi_deg=phi, psi_deg=psi, intensity_grid=intensities)
     pole = CrystalPlane(MillerIndex([1, 0, 0], phase=phase), phase=phase)
-    pole_figure = load_xrdml_pole_figure(path, pole=pole, specimen_frame=specimen, antipodal=False)
+    pole_figure = load_xrdml_pole_figure(
+        path,
+        pole=pole,
+        specimen_frame=specimen,
+        antipodal=False,
+        intensity_normalization="max",
+    )
     assert pole_figure.sample_directions.shape == (6, 3)
     assert pole_figure.pole == pole
     assert pole_figure.specimen_frame == specimen
+    assert_allclose(np.max(pole_figure.intensities), 1.0, atol=1e-12)
+    assert pole_figure.provenance is not None
+    assert pole_figure.provenance.metadata["intensity_normalization"] == "max"
 
 
 def test_invert_xrdml_pole_figures_recovers_synthetic_dictionary_weights(tmp_path: Path) -> None:
@@ -182,6 +232,11 @@ def test_invert_xrdml_pole_figures_recovers_synthetic_dictionary_weights(tmp_pat
         tolerance=1e-10,
     )
     assert_allclose(report.odf.normalized_weights, true_odf.normalized_weights, atol=5e-2)
+    assert report.relative_residual_norm <= 5e-2
+    assert report.mean_absolute_error <= 5e-3
+    assert report.max_absolute_error <= 5e-2
+    assert report.predicted_intensities.shape == (report.observation_count,)
+    assert report.dictionary_coverage_ratio == report.observation_count / report.dictionary_size
 
 
 def test_real_xrdml_fixture_from_xrayutilities_is_readable() -> None:

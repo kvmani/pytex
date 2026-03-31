@@ -197,9 +197,7 @@ def build_symmetry_orbit_figure_spec(
 ) -> FigureSpec2D:
     if isinstance(seed_vector, VectorSet):
         if seed_vector.reference_frame != symmetry.reference_frame:
-            raise ValueError(
-                "VectorSet.reference_frame must match SymmetrySpec.reference_frame."
-            )
+            raise ValueError("VectorSet.reference_frame must match SymmetrySpec.reference_frame.")
         if len(seed_vector) != 1:
             raise ValueError("Symmetry orbit plotting requires exactly one seed vector.")
         vector = seed_vector.values[0]
@@ -273,7 +271,7 @@ def build_euler_figure_spec(
                 points=np.column_stack([x, y]),
                 values=values,
                 sizes=36.0 if sizes is None else sizes,
-                colorbar_label=color_label if title is None else color_label,
+                colorbar_label=color_label,
             ),
         ),
     )
@@ -403,8 +401,7 @@ def build_pole_figure_spec(
     if kind == "contour":
         histogram, xedges, yedges = pole_figure.histogram(bins=bins, method=method)
         return FigureSpec2D(
-            title=title
-            or f"Pole Figure Contours {_miller_label(pole_figure.pole.miller.indices)}",
+            title=title or f"Pole Figure Contours {_miller_label(pole_figure.pole.miller.indices)}",
             xlabel="projection x",
             ylabel="projection y",
             xlim=(-radius, radius),

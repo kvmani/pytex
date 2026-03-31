@@ -50,18 +50,26 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `Orientation`
 - `Misorientation`
 - `OrientationSet`
+- `TextureReport`
 - `PoleFigure`
 - `InversePoleFigure`
 - `ODF`
 - `ODFInversionReport`
 - `XRDMLPoleFigureMeasurement`
+- `LaboTexPoleFigureMeasurement`
 - `read_xrdml_pole_figure`
 - `load_xrdml_pole_figure`
 - `invert_xrdml_pole_figures`
+- `read_labotex_pole_figures`
+- `load_labotex_pole_figures`
+- `invert_labotex_pole_figures`
 
 ### Mapping And Measurement
 
 - `CrystalMap`
+- `normalize_ebsd`
+- `index_hough`
+- `refine_orientations`
 - `AcquisitionGeometry`
 - `CalibrationRecord`
 - `MeasurementQuality`
@@ -101,6 +109,8 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `plot_orientations`
 - `plot_pole_figure`
 - `plot_inverse_pole_figure`
+- `plot_ipf_map`
+- `plot_kam_map`
 - `plot_odf`
 - `plot_xrd_pattern`
 - `plot_saed_pattern`

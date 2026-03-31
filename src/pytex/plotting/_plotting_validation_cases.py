@@ -174,8 +174,14 @@ def build_plotting_validation_figures() -> dict[str, Any]:
     )
     plane_figure = plot_crystal_planes(
         (
-            CrystalPlane(MillerIndex([1, 1, 1], phase=ni_fcc), phase=ni_fcc),
-            CrystalPlane(MillerIndex([1, 0, 0], phase=ni_fcc), phase=ni_fcc),
+            CrystalPlane(
+                MillerIndex(np.array([1, 1, 1], dtype=np.int64), phase=ni_fcc),
+                phase=ni_fcc,
+            ),
+            CrystalPlane(
+                MillerIndex(np.array([1, 0, 0], dtype=np.int64), phase=ni_fcc),
+                phase=ni_fcc,
+            ),
         ),
         labels=((1, 1, 1), (1, 0, 0)),
         render="both",

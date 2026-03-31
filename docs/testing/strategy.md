@@ -21,6 +21,12 @@ A stable feature is not complete without:
 - deterministic automated tests
 - example workflow
 
+For pinned phase fixtures, deterministic repository hygiene also includes the catalog digests in
+`fixtures/phases/catalog.json`. When those hashes must be refreshed, use
+`python scripts/regenerate_phase_fixture_catalog_hashes.py`; the script rewrites only the digest
+fields in catalog order with stable JSON formatting so `python scripts/check_repo_integrity.py`
+remains reproducible across contributors and CI.
+
 ## Scientific Validation Policy
 
 - MTEX is the floor for relevant validation.
@@ -46,6 +52,8 @@ MTEX is not the only validation authority PyTex needs.
   Validation must be tracked in `plotting_validation_matrix.md` through semantic input checks, deterministic builder coverage, structural figure-property assertions, and future parity-oriented comparisons when scientifically justified.
 - XRDML texture import:
   Validation must combine at least one pinned real vendor-style XML fixture with deterministic synthetic inversion cases so import semantics and reconstruction semantics can be audited separately.
+- Open legacy pole-figure formats:
+  Validation may use public multi-material `PPF` or `EPF` exercise datasets through external acquisition scripts when redistribution terms are unclear, but the provenance, format semantics, and non-bundled status must be documented explicitly.
 - Future phase-transformation workflows:
   Validation must be anchored to literature-backed orientation-relationship and variant-generation references, not only to tool parity.
 

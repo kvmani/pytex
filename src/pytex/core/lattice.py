@@ -16,7 +16,7 @@ from pytex.core.symmetry import SymmetrySpec
 
 def _require_pymatgen() -> tuple[Any, Any]:
     try:
-        from pymatgen.core import Structure
+        from pymatgen.core.structure import Structure
         from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
     except ImportError as exc:
         raise ImportError(

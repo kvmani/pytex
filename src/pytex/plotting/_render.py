@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -46,8 +47,8 @@ class MarkerLayer2D:
     points: np.ndarray
     marker: str = "o"
     label: str | None = None
-    facecolors: str | np.ndarray | None = None
-    edgecolors: str | np.ndarray | None = "black"
+    facecolors: str | Sequence[str] | np.ndarray | None = None
+    edgecolors: str | Sequence[str] | np.ndarray | None = "black"
     sizes: float | np.ndarray = 30.0
     alpha: float = 0.95
     linewidths: float = 0.8
@@ -313,9 +314,7 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             colorbar.set_label(contour_layer.colorbar_label)
     scatter_artist: Any | None = None
     for scatter_layer in spec.scatter_layers:
-        color_input = (
-            scatter_layer.colors if scatter_layer.values is None else scatter_layer.values
-        )
+        color_input = scatter_layer.colors if scatter_layer.values is None else scatter_layer.values
         scatter_artist = axes.scatter(
             scatter_layer.points[:, 0],
             scatter_layer.points[:, 1],
@@ -414,9 +413,7 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
     if (
         any(layer.label is not None for layer in spec.scatter_layers)
         or any(layer.label is not None for layer in spec.marker_layers)
-        or any(
-        layer.label is not None for layer in spec.line_layers
-        )
+        or any(layer.label is not None for layer in spec.line_layers)
     ):
         axes.legend(loc="best")
     fig.tight_layout()
@@ -454,9 +451,7 @@ def render_figure_spec_3d(spec: FigureSpec3D, *, ax: Any | None = None) -> Any:
     scatter_artist: Any | None = None
     all_points: list[np.ndarray] = []
     for scatter_layer in spec.scatter_layers:
-        color_input = (
-            scatter_layer.colors if scatter_layer.values is None else scatter_layer.values
-        )
+        color_input = scatter_layer.colors if scatter_layer.values is None else scatter_layer.values
         scatter_artist = axes.scatter(
             scatter_layer.points[:, 0],
             scatter_layer.points[:, 1],

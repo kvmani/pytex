@@ -217,7 +217,11 @@ def build_crystal_direction_figure_spec(
         linewidths=float(spherical_style.get("direction_linewidth", 1.0)),
         label="directions",
     )
-    line_layers = _wulff_net_layers(method=method, spherical_style=spherical_style) if include_wulff_net else ()
+    line_layers = (
+        _wulff_net_layers(method=method, spherical_style=spherical_style)
+        if include_wulff_net
+        else ()
+    )
     radius = projection_boundary_radius(method)
     return FigureSpec2D(
         title=title or "Crystal Directions",
@@ -350,8 +354,12 @@ def _symmetry_axes_by_order(symmetry: SymmetrySpec) -> dict[int, tuple[np.ndarra
         if np.isclose(rotation.angle_deg, 0.0, atol=1e-8):
             continue
         axis = _canonical_axis(rotation.axis)
-        order = max(2, int(round(360.0 / rotation.angle_deg)))
-        key = tuple(float(np.round(value, 8)) for value in axis)
+        order = max(2, round(360.0 / rotation.angle_deg))
+        key = (
+            float(np.round(axis[0], 8)),
+            float(np.round(axis[1], 8)),
+            float(np.round(axis[2], 8)),
+        )
         if key not in order_by_axis or order > order_by_axis[key]:
             order_by_axis[key] = order
             vector_by_axis[key] = axis
@@ -377,7 +385,11 @@ def build_symmetry_elements_figure_spec(
         style_path=style_path,
         style_overrides=style_overrides,
     )
-    line_layers = _wulff_net_layers(method=method, spherical_style=spherical_style) if include_wulff_net else ()
+    line_layers = (
+        _wulff_net_layers(method=method, spherical_style=spherical_style)
+        if include_wulff_net
+        else ()
+    )
     marker_layers: list[MarkerLayer2D] = []
     text_layers: list[TextLayer2D] = []
     grouped = _symmetry_axes_by_order(symmetry)
@@ -408,7 +420,9 @@ def build_symmetry_elements_figure_spec(
                         position=_radial_label_position(point, offset=label_offset),
                         text=format_direction_indices(indices),
                         color=str(spherical_style.get("label_color", "#111111")),
-                        fontsize=float(spherical_style.get("label_fontsize", common["font"]["size"])),
+                        fontsize=float(
+                            spherical_style.get("label_fontsize", common["font"]["size"])
+                        ),
                         bbox_facecolor=str(spherical_style.get("label_bbox_color", "#ffffff")),
                         bbox_alpha=float(spherical_style.get("label_bbox_alpha", 0.82)),
                     )

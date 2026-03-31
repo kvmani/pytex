@@ -558,7 +558,7 @@ def test_odf_requires_non_negative_weights() -> None:
 
 
 def test_diffraction_geometry_produces_positive_wavelength() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -803,7 +803,7 @@ def test_diffraction_pattern_validates_lengths() -> None:
 
 
 def test_diffraction_geometry_center_pixel_has_zero_scattering_angle() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -829,7 +829,7 @@ def test_diffraction_geometry_center_pixel_has_zero_scattering_angle() -> None:
 
 
 def test_diffraction_geometry_accepts_specimen_to_lab_rotation_matrix() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -862,7 +862,7 @@ def test_diffraction_geometry_accepts_specimen_to_lab_rotation_matrix() -> None:
 
 
 def test_diffraction_geometry_rejects_non_positive_pattern_center_depth() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -886,7 +886,7 @@ def test_diffraction_geometry_rejects_non_positive_pattern_center_depth() -> Non
 
 
 def test_diffraction_geometry_rejects_pattern_center_outside_detector_extent() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -910,7 +910,7 @@ def test_diffraction_geometry_rejects_pattern_center_outside_detector_extent() -
 
 
 def test_diffraction_geometry_reports_expected_azimuth_and_positive_two_theta() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -938,7 +938,7 @@ def test_diffraction_geometry_reports_expected_azimuth_and_positive_two_theta() 
 
 
 def test_diffraction_geometry_rejects_projection_behind_detector_plane() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -1002,7 +1002,7 @@ def test_diffraction_geometry_predicts_bragg_ring_radius_from_plane_spacing() ->
 
 
 def test_diffraction_geometry_clips_bragg_argument_at_numerical_boundary() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,
@@ -1281,7 +1281,7 @@ def test_kinematic_simulation_marks_off_detector_spots_without_invalid_angles() 
 
 
 def test_detector_acceptance_mask_filters_by_radius_and_inset() -> None:
-    crystal, specimen, _ = make_foundation()
+    _, specimen, _ = make_foundation()
     detector = ReferenceFrame(
         name="detector",
         domain=FrameDomain.DETECTOR,

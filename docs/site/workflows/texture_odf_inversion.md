@@ -144,7 +144,7 @@ odf_sections = plot_odf(
 ## Interpretation Notes
 
 - The dictionary is explicit. PyTex does not hide the orientation support over which the inversion is performed.
-- The inversion report is explicit. Residual norm, iteration count, and convergence state are part of the returned surface.
+- The inversion report is explicit. Residual norm, relative residual, mean and maximum absolute error, iteration count, convergence state, and predicted intensities are part of the returned surface.
 - The current method is appropriate for the present discrete kernel foundation. It should not yet be read as a replacement for broader harmonic or experimentally calibrated inversion frameworks.
 - Pole-figure contours are built from a smoothed projected density grid over the discrete pole data.
 - ODF section plots are kernel-smoothed Bunge-section inspection views over the current discrete support.

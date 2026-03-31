@@ -33,17 +33,17 @@ from pytex import (
     read_experiment_manifest,
     read_validation_manifest,
     read_workflow_result_manifest,
-    validation_manifest_schema_path,
     validate_benchmark_manifest,
     validate_validation_manifest,
     validate_workflow_result_manifest,
+    validation_manifest_schema_path,
     workflow_result_manifest_schema_path,
 )
 
 
-def make_foundation() -> (
-    tuple[ReferenceFrame, ReferenceFrame, ReferenceFrame, ReferenceFrame, Phase]
-):
+def make_foundation() -> tuple[
+    ReferenceFrame, ReferenceFrame, ReferenceFrame, ReferenceFrame, Phase
+]:
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
@@ -75,7 +75,7 @@ def make_foundation() -> (
 
 
 def test_experiment_manifest_round_trip_for_acquisition_geometry(tmp_path: Path) -> None:
-    crystal, specimen, detector, lab, phase = make_foundation()
+    _, specimen, detector, lab, phase = make_foundation()
     acquisition = AcquisitionGeometry(
         specimen_frame=specimen,
         modality="ebsd",

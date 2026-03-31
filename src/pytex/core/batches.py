@@ -189,19 +189,54 @@ class RotationSet:
         )
         return cls(quaternions=quaternions, provenance=euler_set.provenance)
 
+    @classmethod
+    def from_axes_angles(
+        cls,
+        axes: ArrayLike,
+        angles_rad: ArrayLike,
+        *,
+        provenance: ProvenanceRecord | None = None,
+    ) -> RotationSet:
+        from pytex.core.orientation import quaternions_from_axes_angles
+
+        return cls(
+            quaternions=quaternions_from_axes_angles(axes, angles_rad),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_rodrigues(
+        cls,
+        rodrigues: ArrayLike,
+        *,
+        frank: bool = False,
+        provenance: ProvenanceRecord | None = None,
+    ) -> RotationSet:
+        from pytex.core.orientation import quaternions_from_rodrigues
+
+        return cls(
+            quaternions=quaternions_from_rodrigues(rodrigues, frank=frank),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_matrices(
+        cls,
+        matrices: ArrayLike,
+        *,
+        provenance: ProvenanceRecord | None = None,
+    ) -> RotationSet:
+        from pytex.core.orientation import matrices_to_quaternions
+
+        return cls(quaternions=matrices_to_quaternions(matrices), provenance=provenance)
+
     def as_quaternion_set(self) -> QuaternionSet:
         return QuaternionSet(quaternions=self.quaternions, provenance=self.provenance)
 
     def as_matrices(self) -> np.ndarray:
-        from pytex.core.orientation import quaternion_to_matrix
+        from pytex.core.orientation import quaternions_to_matrices
 
-        matrices = np.stack(
-            [quaternion_to_matrix(quaternion) for quaternion in self.quaternions],
-            axis=0,
-        )
-        matrices = np.ascontiguousarray(matrices)
-        matrices.setflags(write=False)
-        return matrices
+        return quaternions_to_matrices(self.quaternions)
 
     def as_euler_set(
         self,
@@ -224,6 +259,16 @@ class RotationSet:
             degrees=degrees,
             provenance=self.provenance,
         )
+
+    def to_axes_angles(self) -> tuple[np.ndarray, np.ndarray]:
+        from pytex.core.orientation import quaternions_to_axes_angles
+
+        return quaternions_to_axes_angles(self.quaternions)
+
+    def to_rodrigues(self, frank: bool = False) -> np.ndarray:
+        from pytex.core.orientation import quaternions_to_rodrigues
+
+        return quaternions_to_rodrigues(self.quaternions, frank=frank)
 
     def apply(self, vectors: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         matrices = self.as_matrices()

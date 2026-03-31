@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -66,3 +67,35 @@ def test_rotation_set_rejects_mismatched_vector_count() -> None:
     rotation_set = EulerSet(angles=[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]]).to_rotation_set()
     with pytest.raises(ValueError):
         rotation_set.apply([[1.0, 0.0, 0.0]])
+
+
+def test_rotation_set_axis_angle_round_trip_is_vectorized() -> None:
+    rotation_set = RotationSet.from_axes_angles(
+        axes=np.array([[0.0, 0.0, 1.0], [1.0, 1.0, 0.0]]),
+        angles_rad=np.array([np.pi / 2.0, np.pi / 3.0]),
+    )
+    axes, angles = rotation_set.to_axes_angles()
+    recovered = RotationSet.from_axes_angles(axes, angles)
+    assert_allclose(recovered.as_matrices(), rotation_set.as_matrices(), atol=1e-8)
+
+
+def test_rotation_set_rodrigues_round_trip_matches_axis_angle_behavior() -> None:
+    rotation_set = RotationSet.from_axes_angles(
+        axes=np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]]),
+        angles_rad=np.array([np.pi / 2.0, np.pi]),
+    )
+    standard = rotation_set.to_rodrigues()
+    frank = rotation_set.to_rodrigues(frank=True)
+    recovered_standard = RotationSet.from_rodrigues(standard)
+    recovered_frank = RotationSet.from_rodrigues(frank, frank=True)
+    assert_allclose(recovered_standard.as_matrices(), rotation_set.as_matrices(), atol=1e-8)
+    assert_allclose(recovered_frank.as_matrices(), rotation_set.as_matrices(), atol=1e-8)
+    assert_allclose(standard[0], [0.0, 0.0, 1.0], atol=1e-8)
+    assert_allclose(frank[0], [0.0, 0.0, 1.0, 1.0], atol=1e-8)
+    assert np.isinf(frank[1, 3])
+
+
+def test_rotation_set_from_matrices_matches_original_rotations() -> None:
+    original = EulerSet(angles=[[45.0, 35.0, 15.0], [90.0, 0.0, 0.0]]).to_rotation_set()
+    recovered = RotationSet.from_matrices(original.as_matrices())
+    assert_allclose(recovered.as_matrices(), original.as_matrices(), atol=1e-8)

@@ -18,6 +18,8 @@ The adapter lives under `pytex.adapters` because XRDML is a vendor XML format. T
 - PyTex reads `Phi` and `Psi` positions from PANalytical-style pole-figure XRDML scans.
 - The imported measurement is converted into explicit specimen directions on the unit sphere.
 - The crystallographic pole is **not** inferred from the file. Callers must provide the corresponding `CrystalPlane` explicitly when converting imported data into a `PoleFigure`.
+- Intensity normalization is explicit. PyTex preserves imported intensities by default and only normalizes when the caller asks for `intensity_normalization="max"` or `"sum"`.
+- Vendor axis aliases such as `Chi` are normalized onto the same PyTex `psi` semantics at the adapter boundary, and the alias actually used is retained in measurement metadata for auditability.
 - Current ODF reconstruction remains the existing discrete kernel inversion model. PyTex does not yet claim full harmonic MTEX-class XRD texture inversion parity.
 
 ## Import Example
@@ -46,6 +48,7 @@ pole_figure = load_xrdml_pole_figure(
     "fixtures/xrdml/polefig_Ge113_xrayutilities.xrdml.bz2",
     pole=pole,
     specimen_frame=specimen,
+    intensity_normalization="max",
 )
 ```
 
@@ -78,18 +81,23 @@ report = invert_xrdml_pole_figures(
     kernel=KernelSpec(name="von_mises_fisher", halfwidth_deg=10.0),
     include_symmetry_family=False,
 )
+
+print(report.relative_residual_norm)
+print(report.mean_absolute_error)
 ```
 
 ## Synthetic Benchmarking Support
 
 `ODF.evaluate_pole_density(...)` exists so imported or synthetic measurement grids can be compared against the current discrete ODF model without detouring through plotting code. This is used internally for the synthetic XRDML inversion benchmark and is also useful for teaching or debugging the current inversion doctrine.
 
+`ODFInversionReport` now records not only the residual norm and convergence flag, but also relative residual, mean absolute error, max absolute error, predicted intensities, and the observation-to-dictionary coverage ratio. That makes it easier to distinguish import correctness, dictionary adequacy, and inversion quality during workflow review.
+
 ## Current Limits
 
 - the implemented parser targets pole-figure-style `Phi` and `Psi` scans, not every XRDML measurement family
 - PyTex does not currently infer reflection metadata from free-text file comments
 - the reconstruction path is dictionary-based and kernel-based, not harmonic
-- intensity normalization and defocusing corrections remain the caller's responsibility unless encoded in the supplied data
+- intensity normalization is explicit but still caller-controlled; PyTex does not silently apply defocusing or instrument corrections
 
 ## Related Material
 

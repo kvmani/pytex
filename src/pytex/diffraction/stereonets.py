@@ -157,7 +157,12 @@ def generate_stereonet_grid(
         return circle
 
     major_meridians = np.arange(0.0, 180.0, float(major_step_deg), dtype=np.float64)
-    major_parallels = np.arange(float(major_step_deg), 90.0, float(major_step_deg), dtype=np.float64)
+    major_parallels = np.arange(
+        float(major_step_deg),
+        90.0,
+        float(major_step_deg),
+        dtype=np.float64,
+    )
     for azimuth_deg in major_meridians:
         major_lines.append(_meridian_line(float(azimuth_deg)))
     for polar_deg in major_parallels:
@@ -165,7 +170,12 @@ def generate_stereonet_grid(
 
     if minor_step_deg is not None and not np.isclose(minor_step_deg, major_step_deg):
         minor_meridians = np.arange(0.0, 180.0, float(minor_step_deg), dtype=np.float64)
-        minor_parallels = np.arange(float(minor_step_deg), 90.0, float(minor_step_deg), dtype=np.float64)
+        minor_parallels = np.arange(
+            float(minor_step_deg),
+            90.0,
+            float(minor_step_deg),
+            dtype=np.float64,
+        )
         for azimuth_deg in minor_meridians:
             if np.isclose(np.mod(float(azimuth_deg), float(major_step_deg)), 0.0, atol=1e-8):
                 continue

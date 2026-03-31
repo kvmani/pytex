@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, cast
 
 import numpy as np
 
@@ -48,16 +49,28 @@ JSON_CONTRACT_SCHEMA_VERSION = "1.0.0"
 
 
 def _as_float_list(array: np.ndarray) -> list[float] | list[list[float]] | list[list[list[float]]]:
-    return np.asarray(array, dtype=np.float64).tolist()
+    return cast(
+        list[float] | list[list[float]] | list[list[list[float]]],
+        np.asarray(array, dtype=np.float64).tolist(),
+    )
 
 
 def _as_int_list(array: np.ndarray) -> list[int] | list[list[int]]:
-    return np.asarray(array, dtype=np.int64).tolist()
+    return cast(list[int] | list[list[int]], np.asarray(array, dtype=np.int64).tolist())
+
+
+def _serialize_provenance_record(provenance: ProvenanceRecord) -> dict[str, Any]:
+    payload = _serialize_provenance(provenance)
+    if payload is None:
+        raise TypeError("ProvenanceRecord serialization unexpectedly returned None.")
+    return payload
 
 
 def _require_schema(payload: dict[str, Any], schema_id: str) -> None:
     if payload.get("schema_id") != schema_id:
-        raise ValueError(f"Expected schema_id '{schema_id}', received '{payload.get('schema_id')}'.")
+        raise ValueError(
+            f"Expected schema_id '{schema_id}', received '{payload.get('schema_id')}'."
+        )
     if payload.get("schema_version") != JSON_CONTRACT_SCHEMA_VERSION:
         raise ValueError(
             "Unsupported schema_version "
@@ -227,7 +240,9 @@ def _serialize_acquisition_geometry(geometry: AcquisitionGeometry) -> dict[str, 
         **_base_payload("pytex.core.acquisition_geometry"),
         "specimen_frame": _serialize_reference_frame(geometry.specimen_frame),
         "modality": geometry.modality,
-        "map_frame": None if geometry.map_frame is None else _serialize_reference_frame(geometry.map_frame),
+        "map_frame": None
+        if geometry.map_frame is None
+        else _serialize_reference_frame(geometry.map_frame),
         "detector_frame": None
         if geometry.detector_frame is None
         else _serialize_reference_frame(geometry.detector_frame),
@@ -265,7 +280,9 @@ def _deserialize_acquisition_geometry(payload: dict[str, Any]) -> AcquisitionGeo
     return AcquisitionGeometry(
         specimen_frame=_deserialize_reference_frame(payload["specimen_frame"]),
         modality=payload.get("modality", "generic"),
-        map_frame=None if payload.get("map_frame") is None else _deserialize_reference_frame(payload["map_frame"]),
+        map_frame=None
+        if payload.get("map_frame") is None
+        else _deserialize_reference_frame(payload["map_frame"]),
         detector_frame=None
         if payload.get("detector_frame") is None
         else _deserialize_reference_frame(payload["detector_frame"]),
@@ -433,7 +450,9 @@ def _deserialize_unit_cell(payload: dict[str, Any]) -> UnitCell:
     _require_schema(payload, "pytex.core.unit_cell")
     return UnitCell(
         lattice=_deserialize_lattice(payload["lattice"]),
-        sites=tuple(_deserialize_atomic_site(site_payload) for site_payload in payload.get("sites", [])),
+        sites=tuple(
+            _deserialize_atomic_site(site_payload) for site_payload in payload.get("sites", [])
+        ),
         provenance=_deserialize_provenance(payload.get("provenance")),
     )
 
@@ -464,7 +483,9 @@ def _deserialize_phase(payload: dict[str, Any]) -> Phase:
         lattice=_deserialize_lattice(payload["lattice"]),
         symmetry=_deserialize_symmetry(payload["symmetry"]),
         crystal_frame=_deserialize_reference_frame(payload["crystal_frame"]),
-        unit_cell=None if payload.get("unit_cell") is None else _deserialize_unit_cell(payload["unit_cell"]),
+        unit_cell=None
+        if payload.get("unit_cell") is None
+        else _deserialize_unit_cell(payload["unit_cell"]),
         space_group=None
         if payload.get("space_group") is None
         else _deserialize_space_group(payload["space_group"]),
@@ -555,7 +576,10 @@ def _serialize_zone_axis(axis: ZoneAxis) -> dict[str, Any]:
 
 def _deserialize_zone_axis(payload: dict[str, Any]) -> ZoneAxis:
     _require_schema(payload, "pytex.core.zone_axis")
-    return ZoneAxis(indices=np.asarray(payload["indices"], dtype=np.int64), phase=_deserialize_phase(payload["phase"]))
+    return ZoneAxis(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
 
 
 def _serialize_rotation(rotation: Rotation) -> dict[str, Any]:
@@ -580,7 +604,9 @@ def _serialize_orientation(orientation: Orientation) -> dict[str, Any]:
         "rotation": _serialize_rotation(orientation.rotation),
         "crystal_frame": _serialize_reference_frame(orientation.crystal_frame),
         "specimen_frame": _serialize_reference_frame(orientation.specimen_frame),
-        "symmetry": None if orientation.symmetry is None else _serialize_symmetry(orientation.symmetry),
+        "symmetry": None
+        if orientation.symmetry is None
+        else _serialize_symmetry(orientation.symmetry),
         "phase": None if orientation.phase is None else _serialize_phase(orientation.phase),
         "provenance": _serialize_provenance(orientation.provenance),
     }
@@ -639,7 +665,9 @@ def _serialize_orientation_set(orientations: OrientationSet) -> dict[str, Any]:
         "quaternions_wxyz": _as_float_list(orientations.quaternions),
         "crystal_frame": _serialize_reference_frame(orientations.crystal_frame),
         "specimen_frame": _serialize_reference_frame(orientations.specimen_frame),
-        "symmetry": None if orientations.symmetry is None else _serialize_symmetry(orientations.symmetry),
+        "symmetry": None
+        if orientations.symmetry is None
+        else _serialize_symmetry(orientations.symmetry),
         "phase": None if orientations.phase is None else _serialize_phase(orientations.phase),
         "provenance": _serialize_provenance(orientations.provenance),
     }
@@ -674,7 +702,9 @@ def _serialize_radiation(radiation: RadiationSpec) -> dict[str, Any]:
 
 def _deserialize_radiation(payload: dict[str, Any]) -> RadiationSpec:
     _require_schema(payload, "pytex.diffraction.radiation_spec")
-    return RadiationSpec(name=payload["name"], wavelength_angstrom=float(payload["wavelength_angstrom"]))
+    return RadiationSpec(
+        name=payload["name"], wavelength_angstrom=float(payload["wavelength_angstrom"])
+    )
 
 
 def _serialize_powder_reflection(reflection: PowderReflection) -> dict[str, Any]:
@@ -706,7 +736,9 @@ def _serialize_powder_pattern(pattern: PowderPattern) -> dict[str, Any]:
         **_base_payload("pytex.diffraction.powder_pattern"),
         "phase": _serialize_phase(pattern.phase),
         "radiation": _serialize_radiation(pattern.radiation),
-        "reflections": [_serialize_powder_reflection(reflection) for reflection in pattern.reflections],
+        "reflections": [
+            _serialize_powder_reflection(reflection) for reflection in pattern.reflections
+        ],
         "two_theta_grid_deg": _as_float_list(pattern.two_theta_grid_deg),
         "intensity_grid": _as_float_list(pattern.intensity_grid),
         "broadening_fwhm_deg": pattern.broadening_fwhm_deg,
@@ -719,7 +751,9 @@ def _deserialize_powder_pattern(payload: dict[str, Any]) -> PowderPattern:
     return PowderPattern(
         phase=_deserialize_phase(payload["phase"]),
         radiation=_deserialize_radiation(payload["radiation"]),
-        reflections=tuple(_deserialize_powder_reflection(item) for item in payload.get("reflections", [])),
+        reflections=tuple(
+            _deserialize_powder_reflection(item) for item in payload.get("reflections", [])
+        ),
         two_theta_grid_deg=np.asarray(payload["two_theta_grid_deg"], dtype=np.float64),
         intensity_grid=np.asarray(payload["intensity_grid"], dtype=np.float64),
         broadening_fwhm_deg=payload.get("broadening_fwhm_deg"),
@@ -744,8 +778,12 @@ def _deserialize_saed_spot(payload: dict[str, Any]) -> SAEDSpot:
     _require_schema(payload, "pytex.diffraction.saed_spot")
     return SAEDSpot(
         miller_indices=np.asarray(payload["miller_indices"], dtype=np.int64),
-        reciprocal_vector_crystal=np.asarray(payload["reciprocal_vector_crystal"], dtype=np.float64),
-        reciprocal_vector_detector=np.asarray(payload["reciprocal_vector_detector"], dtype=np.float64),
+        reciprocal_vector_crystal=np.asarray(
+            payload["reciprocal_vector_crystal"], dtype=np.float64
+        ),
+        reciprocal_vector_detector=np.asarray(
+            payload["reciprocal_vector_detector"], dtype=np.float64
+        ),
         detector_coordinates=np.asarray(payload["detector_coordinates"], dtype=np.float64),
         intensity=float(payload["intensity"]),
         excitation_error_inv_angstrom=float(payload["excitation_error_inv_angstrom"]),
@@ -820,11 +858,21 @@ def _deserialize_diffraction_geometry(payload: dict[str, Any]) -> DiffractionGeo
         beam_energy_kev=float(payload["beam_energy_kev"]),
         camera_length_mm=float(payload["camera_length_mm"]),
         pattern_center=np.asarray(payload["pattern_center"], dtype=np.float64),
-        detector_pixel_size_um=tuple(float(v) for v in payload["detector_pixel_size_um"]),
-        detector_shape=tuple(int(v) for v in payload["detector_shape"]),
+        detector_pixel_size_um=(
+            float(payload["detector_pixel_size_um"][0]),
+            float(payload["detector_pixel_size_um"][1]),
+        ),
+        detector_shape=(
+            int(payload["detector_shape"][0]),
+            int(payload["detector_shape"][1]),
+        ),
         beam_direction_lab=np.asarray(payload["beam_direction_lab"], dtype=np.float64),
         specimen_to_lab_matrix=np.asarray(payload["specimen_to_lab_matrix"], dtype=np.float64),
-        tilt_degrees=tuple(float(v) for v in payload.get("tilt_degrees", (0.0, 0.0, 0.0))),
+        tilt_degrees=(
+            float(payload.get("tilt_degrees", (0.0, 0.0, 0.0))[0]),
+            float(payload.get("tilt_degrees", (0.0, 0.0, 0.0))[1]),
+            float(payload.get("tilt_degrees", (0.0, 0.0, 0.0))[2]),
+        ),
         acquisition_geometry=None
         if payload.get("acquisition_geometry") is None
         else _deserialize_acquisition_geometry(payload["acquisition_geometry"]),
@@ -848,7 +896,9 @@ def _serialize_diffraction_pattern(pattern: DiffractionPattern) -> dict[str, Any
         "intensities": _as_float_list(pattern.intensities),
         "geometry": _serialize_diffraction_geometry(pattern.geometry),
         "phase": _serialize_phase(pattern.phase),
-        "orientation": None if pattern.orientation is None else _serialize_orientation(pattern.orientation),
+        "orientation": None
+        if pattern.orientation is None
+        else _serialize_orientation(pattern.orientation),
         "provenance": _serialize_provenance(pattern.provenance),
     }
 
@@ -887,7 +937,7 @@ def _deserialize_diffraction_pattern(payload: dict[str, Any]) -> DiffractionPatt
 
 
 _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
-    ProvenanceRecord: _serialize_provenance,
+    ProvenanceRecord: _serialize_provenance_record,
     ReferenceFrame: _serialize_reference_frame,
     FrameTransform: _serialize_frame_transform,
     MeasurementQuality: _serialize_measurement_quality,
@@ -975,7 +1025,9 @@ def from_json_contract(payload: dict[str, Any]) -> Any:
 
 def write_json_contract(obj: Any, path: str | Path) -> Path:
     output_path = Path(path)
-    output_path.write_text(json.dumps(to_json_contract(obj), indent=2, sort_keys=True), encoding="utf-8")
+    output_path.write_text(
+        json.dumps(to_json_contract(obj), indent=2, sort_keys=True), encoding="utf-8"
+    )
     return output_path
 
 

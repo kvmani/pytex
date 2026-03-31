@@ -7,11 +7,13 @@ import numpy as np
 import pytest
 
 from pytex import (
+    CrystalDirection,
     CrystalMap,
     EBSDImportManifest,
     FrameDomain,
     Handedness,
     IPFColorKey,
+    KikuchiPyWorkflowResult,
     Lattice,
     NormalizedEBSDDataset,
     Orientation,
@@ -19,13 +21,30 @@ from pytex import (
     Phase,
     ReferenceFrame,
     Rotation,
+    RotationSet,
     SymmetrySpec,
+    TextureReport,
+    direction_from_orix_miller,
+    from_orix_orientation,
+    from_orix_rotation,
+    from_orix_symmetry,
+    index_hough,
     manifest_schema_path,
+    normalize_ebsd,
     normalize_kikuchipy_dataset,
     normalize_kikuchipy_payload,
     normalize_pyebsdindex_payload,
     normalize_pyebsdindex_result,
+    plane_from_orix_miller,
+    plot_ipf_map,
+    plot_kam_map,
     read_ebsd_import_manifest,
+    refine_orientations,
+    to_orix_direction,
+    to_orix_orientation,
+    to_orix_plane,
+    to_orix_rotation,
+    to_orix_symmetry,
     validate_ebsd_import_manifest,
 )
 
@@ -47,8 +66,47 @@ def make_foundation() -> tuple[ReferenceFrame, ReferenceFrame, SymmetrySpec]:
     return crystal, specimen, symmetry
 
 
+def make_phase() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
+    crystal, specimen, symmetry = make_foundation()
+    lattice = Lattice(3.0, 3.0, 3.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase = Phase("fcc_demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    return crystal, specimen, phase
+
+
+def make_crystal_map() -> tuple[CrystalMap, Phase]:
+    crystal, specimen, phase = make_phase()
+    orientations = OrientationSet.from_euler_angles(
+        np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [45.0, 0.0, 0.0],
+                [0.0, 45.0, 0.0],
+                [45.0, 45.0, 0.0],
+            ]
+        ),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    crystal_map = CrystalMap(
+        coordinates=np.array(
+            [
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [1.0, 1.0],
+            ]
+        ),
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(2, 2),
+        step_sizes=(1.0, 1.0),
+    )
+    return crystal_map, phase
+
+
 def test_ipf_color_key_maps_sector_vertices_to_rgb_primaries() -> None:
-    crystal, _, symmetry = make_foundation()
+    _, _, symmetry = make_foundation()
     key = IPFColorKey(
         crystal_symmetry=symmetry,
         specimen_direction=np.array([0.0, 0.0, 1.0]),
@@ -271,3 +329,145 @@ def test_normalize_pyebsdindex_result_extracts_from_object_bridge() -> None:
     assert dataset.manifest.source_system == "pyebsdindex"
     assert dataset.manifest.source_file == "scan.ang"
     assert len(dataset.crystal_map.orientations) == 1
+
+
+def test_crystal_map_texture_methods_build_odf_pf_and_ipf() -> None:
+    crystal_map, phase = make_crystal_map()
+    odf = crystal_map.to_odf(weights=[4.0, 3.0, 2.0, 1.0])
+    pole_figure = crystal_map.pole_figure(np.array([1, 0, 0]))
+    inverse_pole_figure = crystal_map.inverse_pole_figure("z")
+    report = crystal_map.texture_report(
+        poles=[np.array([1, 0, 0])],
+        sample_directions=("x", "z"),
+        plot=True,
+    )
+    assert odf.orientations.phase == phase
+    assert pole_figure.pole.phase == phase
+    assert inverse_pole_figure.crystal_frame == phase.crystal_frame
+    assert isinstance(report, TextureReport)
+    assert len(report.pole_figures) == 1
+    assert len(report.inverse_pole_figures) == 2
+    assert report.odf_figure is not None
+    for figure in (*report.pole_figure_figures, *report.inverse_pole_figure_figures):
+        assert figure is not None
+
+
+def test_plot_ipf_map_and_kam_map_return_matplotlib_figures() -> None:
+    crystal_map, _ = make_crystal_map()
+    ipf_figure = plot_ipf_map(crystal_map, direction="z")
+    kam_figure = plot_kam_map(crystal_map)
+    assert ipf_figure.axes[0].get_title() == "IPF Map (z)"
+    assert kam_figure.axes[0].get_title() == "Kernel Average Misorientation"
+
+
+def test_orix_rotation_and_orientation_adapters_round_trip() -> None:
+    pytest.importorskip("orix")
+    crystal_map, phase = make_crystal_map()
+    orix_rotation = to_orix_rotation(crystal_map.orientations.as_rotation_set())
+    recovered_rotation = from_orix_rotation(orix_rotation)
+    assert isinstance(recovered_rotation, RotationSet)
+    assert np.allclose(recovered_rotation.as_matrices(), crystal_map.orientations.as_matrices())
+    orix_orientation = to_orix_orientation(crystal_map.orientations)
+    recovered_orientation = from_orix_orientation(
+        orix_orientation,
+        crystal_frame=phase.crystal_frame,
+        specimen_frame=crystal_map.orientations.specimen_frame,
+        phase=phase,
+    )
+    assert isinstance(recovered_orientation, OrientationSet)
+    assert np.allclose(recovered_orientation.as_matrices(), crystal_map.orientations.as_matrices())
+    recovered_symmetry = from_orix_symmetry(
+        to_orix_symmetry(phase.symmetry),
+        reference_frame=phase.crystal_frame,
+    )
+    assert recovered_symmetry.proper_point_group == phase.symmetry.proper_point_group
+    plane = crystal_map.pole_figure(np.array([1, 0, 0])).pole
+    orix_plane = to_orix_plane(plane)
+    recovered_plane = plane_from_orix_miller(orix_plane, phase=phase)
+    direction = CrystalDirection([1.0, 0.0, 0.0], phase=phase)
+    orix_direction = to_orix_direction(direction)
+    recovered_direction = direction_from_orix_miller(orix_direction, phase=phase)
+    assert np.array_equal(recovered_plane.miller.indices, plane.miller.indices)
+    assert np.allclose(recovered_direction.coordinates, direction.coordinates)
+
+
+def test_kikuchipy_workflow_wrappers_normalize_hough_and_refinement_results() -> None:
+    crystal, specimen, phase = make_phase()
+
+    class XMapStub:
+        def __init__(self, quaternions: np.ndarray, *, source_file: str) -> None:
+            self.rotations = quaternions
+            self.x = np.array([0.0, 1.0], dtype=np.float64)
+            self.y = np.array([0.0, 0.0], dtype=np.float64)
+            self.shape = (1, 2)
+            self.dx = 1.0
+            self.dy = 1.0
+            self.source_file = source_file
+
+    indexed_xmap = XMapStub(
+        np.array(
+            [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.92387953, 0.0, 0.0, 0.38268343],
+            ]
+        ),
+        source_file="indexed.h5",
+    )
+    refined_xmap = XMapStub(
+        np.array(
+            [
+                [0.98078528, 0.0, 0.0, 0.19509032],
+                [0.92387953, 0.0, 0.0, 0.38268343],
+            ]
+        ),
+        source_file="refined.h5",
+    )
+
+    class SignalStub:
+        def __init__(self) -> None:
+            self.xmap = indexed_xmap
+
+        def hough_indexing(
+            self,
+            phase_list: object,
+            indexer: object,
+            **kwargs: object,
+        ) -> tuple[object, np.ndarray, np.ndarray]:
+            del phase_list, indexer, kwargs
+            return indexed_xmap, np.array([1.0]), np.array([2.0])
+
+        def refine_orientation(self, xmap: object, **kwargs: object) -> object:
+            del xmap, kwargs
+            return refined_xmap
+
+    signal = SignalStub()
+    dataset = normalize_ebsd(
+        signal,
+        frames=(crystal, specimen, specimen),
+        phase=phase,
+    )
+    assert dataset.manifest.phase_name == phase.name
+    result = index_hough(
+        signal,
+        phase_list=object(),
+        indexer=object(),
+        frames=(crystal, specimen, specimen),
+        phase=phase,
+    )
+    assert isinstance(result, KikuchiPyWorkflowResult)
+    assert result.index_data is not None
+    assert result.band_data is not None
+    refined = refine_orientations(
+        signal,
+        result,
+        frames=(crystal, specimen, specimen),
+        phase=phase,
+        detector=object(),
+        master_pattern=object(),
+        energy=20.0,
+    )
+    assert refined.dataset.manifest.metadata["workflow"] == "orientation_refinement"
+    assert not np.allclose(
+        refined.dataset.crystal_map.orientations.quaternions,
+        result.dataset.crystal_map.orientations.quaternions,
+    )

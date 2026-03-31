@@ -24,7 +24,7 @@
     "texture_xrdml_import_and_inversion"
   ],
   "notes": [
-    "The implemented validation surface covers PANalytical-style XRDML import, compressed-file handling, and deterministic handoff into PyTex ODF inversion.",
+    "The implemented validation surface covers PANalytical-style XRDML import, compressed-file handling, explicit intensity-normalization policy, and deterministic handoff into PyTex ODF inversion.",
     "PyTex currently validates geometric and import semantics, not full harmonic MTEX-class ODF reconstruction parity."
   ]
 }

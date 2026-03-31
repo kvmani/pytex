@@ -216,6 +216,11 @@ def test_odf_inversion_recovers_dictionary_weights_from_synthetic_pole_figures()
     assert report.observation_count == sum(
         len(pole_figure.intensities) for pole_figure in pole_figures
     )
+    assert report.predicted_intensities.shape == (report.observation_count,)
+    assert report.relative_residual_norm >= 0.0
+    assert report.mean_absolute_error >= 0.0
+    assert report.max_absolute_error >= 0.0
+    assert report.dictionary_coverage_ratio == report.observation_count / report.dictionary_size
     assert_allclose(report.odf.normalized_weights, true_odf.normalized_weights, atol=5e-2)
 
 

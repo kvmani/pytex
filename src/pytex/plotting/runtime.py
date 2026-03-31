@@ -27,8 +27,14 @@ from pytex.plotting.builders import (
 )
 from pytex.plotting.spherical import (
     plot_crystal_directions as _plot_crystal_directions,
+)
+from pytex.plotting.spherical import (
     plot_crystal_planes as _plot_crystal_planes,
+)
+from pytex.plotting.spherical import (
     plot_symmetry_elements as _plot_symmetry_elements,
+)
+from pytex.plotting.spherical import (
     plot_wulff_net as _plot_wulff_net,
 )
 from pytex.texture.models import ODF, InversePoleFigure, PoleFigure

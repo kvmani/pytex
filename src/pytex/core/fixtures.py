@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
@@ -20,7 +20,10 @@ def phase_fixture_catalog_path() -> Path:
 
 @lru_cache(maxsize=1)
 def _phase_fixture_catalog_payload() -> dict[str, Any]:
-    return json.loads(phase_fixture_catalog_path().read_text(encoding="utf-8"))
+    payload = json.loads(phase_fixture_catalog_path().read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("fixtures/phases/catalog.json must decode to a JSON object.")
+    return cast(dict[str, Any], payload)
 
 
 @dataclass(frozen=True, slots=True)
