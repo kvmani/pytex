@@ -70,6 +70,8 @@ See {doc}`../concepts/orientation_texture`.
 ## EBSD
 
 - `CrystalMap`
+- `CrystalMapPhase`
+- `CoordinateNeighborGraph`
 - `Grain`
 - `GrainSegmentation`
 - `GrainBoundarySegment`
@@ -78,6 +80,7 @@ See {doc}`../concepts/orientation_texture`.
 - `EBSDImportManifest`
 - `ExperimentManifest`
 - `BenchmarkManifest`
+- `TransformationManifest`
 - `ValidationManifest`
 - `WorkflowResultManifest`
 - `NormalizedEBSDDataset`
@@ -95,6 +98,16 @@ See {doc}`../concepts/orientation_texture`.
 - `from_orix_orientation(...)`
 
 See {doc}`../workflows/ebsd_kam`, {doc}`../workflows/ebsd_grains`, and {doc}`../workflows/ebsd_to_texture_outputs`.
+
+## Experimental
+
+The following surfaces are intentionally outside the stable API contract but are documented because
+they are useful for research workflows:
+
+- `pytex.experimental.score_parent_orientations(...)`
+- `pytex.experimental.ParentReconstructionResult`
+
+See {doc}`../workflows/phase_transformation_manifests_and_scoring`.
 
 ## Diffraction
 

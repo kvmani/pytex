@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.transformation_manifest",
+  "title": "PyTex Transformation Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "created_at",
+    "transformation_id",
+    "orientation_relationship_name",
+    "parent_phase",
+    "child_phase",
+    "specimen_frame",
+    "variant_count",
+    "observed_child_count",
+    "has_variant_assignments",
+    "referenced_files",
+    "notes",
+    "metadata"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.transformation_manifest" },
+    "schema_version": { "const": "1.0.0" },
+    "pytex_version": { "type": "string", "minLength": 1 },
+    "created_at": { "type": "string", "minLength": 1 },
+    "transformation_id": { "type": "string", "minLength": 1 },
+    "orientation_relationship_name": { "type": "string", "minLength": 1 },
+    "parent_phase": { "$ref": "#/$defs/phase_declaration" },
+    "child_phase": { "$ref": "#/$defs/phase_declaration" },
+    "specimen_frame": { "$ref": "#/$defs/frame_declaration" },
+    "variant_count": { "type": "integer", "minimum": 0 },
+    "observed_child_count": { "type": "integer", "minimum": 0 },
+    "has_variant_assignments": { "type": "boolean" },
+    "referenced_files": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "$defs": {
+    "frame_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "domain", "axis_1", "axis_2", "axis_3", "handedness", "convention"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string", "minLength": 1 },
+        "axis_1": { "type": "string", "minLength": 1 },
+        "axis_2": { "type": "string", "minLength": 1 },
+        "axis_3": { "type": "string", "minLength": 1 },
+        "handedness": { "type": "string", "minLength": 1 },
+        "convention": { "type": "string", "minLength": 1 }
+      }
+    },
+    "provenance": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["source_system", "metadata", "notes"],
+      "properties": {
+        "source_system": { "type": "string", "minLength": 1 },
+        "source_identifier": { "type": ["string", "null"] },
+        "source_path": { "type": ["string", "null"] },
+        "source_version": { "type": ["string", "null"] },
+        "imported_at": { "type": ["string", "null"] },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "phase_declaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "point_group",
+        "space_group_symbol",
+        "space_group_number",
+        "chemical_formula",
+        "crystal_frame",
+        "provenance"
+      ],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "point_group": { "type": "string", "minLength": 1 },
+        "space_group_symbol": { "type": ["string", "null"] },
+        "space_group_number": { "type": ["integer", "null"] },
+        "chemical_formula": { "type": ["string", "null"] },
+        "crystal_frame": { "$ref": "#/$defs/frame_declaration" },
+        "provenance": { "$ref": "#/$defs/provenance" }
+      }
+    }
+  }
+}

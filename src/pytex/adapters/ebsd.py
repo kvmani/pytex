@@ -8,9 +8,10 @@ from typing import Any
 
 from pytex.core.conventions import PYTEX_CANONICAL_CONVENTIONS
 from pytex.core.frames import ReferenceFrame
+from pytex.core.lattice import Phase
 from pytex.core.orientation import OrientationSet
 from pytex.core.symmetry import SymmetrySpec
-from pytex.ebsd import CrystalMap
+from pytex.ebsd import CrystalMap, CrystalMapPhase
 
 EBSD_IMPORT_MANIFEST_SCHEMA_ID = "pytex.ebsd_import_manifest"
 EBSD_IMPORT_MANIFEST_SCHEMA_VERSION = "1.0.0"
@@ -38,10 +39,11 @@ def _validate_mapping_string(
 class EBSDImportManifest:
     source_system: str
     source_file: str
-    phase_name: str
-    point_group: str
     crystal_frame: dict[str, str]
     specimen_frame: dict[str, str]
+    phase_name: str | None = None
+    point_group: str | None = None
+    phases: tuple[dict[str, str], ...] = ()
     orientation_convention: str = "bunge"
     angle_unit: str = "degree"
     schema_id: str = EBSD_IMPORT_MANIFEST_SCHEMA_ID
@@ -52,10 +54,25 @@ class EBSDImportManifest:
     metadata: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        for name in ("source_system", "source_file", "phase_name", "point_group"):
+        for name in ("source_system", "source_file"):
             value = getattr(self, name)
             if not isinstance(value, str) or not value:
                 raise ValueError(f"EBSDImportManifest.{name} must be a non-empty string.")
+        if (self.phase_name is None) != (self.point_group is None):
+            raise ValueError(
+                "EBSDImportManifest.phase_name and point_group must either both be provided "
+                "or both be omitted."
+            )
+        if self.phase_name is None and not self.phases:
+            raise ValueError(
+                "EBSDImportManifest requires either phase_name/point_group "
+                "or a non-empty phases table."
+            )
+        if self.phase_name is not None:
+            if not isinstance(self.phase_name, str) or not self.phase_name:
+                raise ValueError("EBSDImportManifest.phase_name must be a non-empty string.")
+            if not isinstance(self.point_group, str) or not self.point_group:
+                raise ValueError("EBSDImportManifest.point_group must be a non-empty string.")
         if self.schema_id != EBSD_IMPORT_MANIFEST_SCHEMA_ID:
             raise ValueError(
                 "EBSDImportManifest.schema_id must match the stable schema identifier."
@@ -81,9 +98,25 @@ class EBSDImportManifest:
         for key, value in self.metadata.items():
             if not isinstance(key, str) or not isinstance(value, str):
                 raise ValueError("EBSDImportManifest.metadata keys and values must be strings.")
+        normalized_phases: list[dict[str, str]] = []
+        seen_ids: set[str] = set()
+        for phase in self.phases:
+            if not isinstance(phase, dict):
+                raise ValueError("EBSDImportManifest.phases entries must be string mappings.")
+            required = {"phase_id", "name", "point_group"}
+            if required - set(phase):
+                raise ValueError(
+                    "EBSDImportManifest.phases entries require phase_id, name, and point_group."
+                )
+            normalized = {str(key): str(value) for key, value in phase.items()}
+            if normalized["phase_id"] in seen_ids:
+                raise ValueError("EBSDImportManifest.phases phase_id values must be unique.")
+            seen_ids.add(normalized["phase_id"])
+            normalized_phases.append(normalized)
+        object.__setattr__(self, "phases", tuple(normalized_phases))
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
             "pytex_version": self.pytex_version,
@@ -91,14 +124,18 @@ class EBSDImportManifest:
             "created_at": self.created_at,
             "source_system": self.source_system,
             "source_file": self.source_file,
-            "phase_name": self.phase_name,
-            "point_group": self.point_group,
             "orientation_convention": self.orientation_convention,
             "angle_unit": self.angle_unit,
             "crystal_frame": dict(self.crystal_frame),
             "specimen_frame": dict(self.specimen_frame),
             "metadata": dict(self.metadata),
         }
+        if self.phase_name is not None:
+            payload["phase_name"] = self.phase_name
+            payload["point_group"] = self.point_group
+        if self.phases:
+            payload["phases"] = [dict(phase) for phase in self.phases]
+        return payload
 
     def write_json(self, path: str | Path) -> Path:
         output_path = Path(path)
@@ -118,8 +155,9 @@ class EBSDImportManifest:
             created_at=payload["created_at"],
             source_system=payload["source_system"],
             source_file=payload["source_file"],
-            phase_name=payload["phase_name"],
-            point_group=payload["point_group"],
+            phase_name=payload.get("phase_name"),
+            point_group=payload.get("point_group"),
+            phases=tuple(dict(phase) for phase in payload.get("phases", [])),
             orientation_convention=payload["orientation_convention"],
             angle_unit=payload["angle_unit"],
             crystal_frame=dict(payload["crystal_frame"]),
@@ -136,7 +174,14 @@ class NormalizedEBSDDataset:
 
     def __post_init__(self) -> None:
         map_phase = self.crystal_map.orientations.phase
-        if map_phase is not None and map_phase.name != self.manifest.phase_name:
+        if self.crystal_map.is_multiphase:
+            manifest_phase_names = {phase["name"] for phase in self.manifest.phases}
+            map_phase_names = {entry.name for entry in self.crystal_map.resolved_phase_entries}
+            if manifest_phase_names != map_phase_names:
+                raise ValueError(
+                    "NormalizedEBSDDataset manifest phases must match crystal_map phase entries."
+                )
+        elif map_phase is not None and map_phase.name != self.manifest.phase_name:
             raise ValueError(
                 "NormalizedEBSDDataset manifest phase_name must match "
                 "crystal_map.orientations.phase.name."
@@ -156,8 +201,6 @@ def validate_ebsd_import_manifest(payload: dict[str, Any]) -> None:
         "created_at",
         "source_system",
         "source_file",
-        "phase_name",
-        "point_group",
         "orientation_convention",
         "angle_unit",
         "crystal_frame",
@@ -175,8 +218,9 @@ def validate_ebsd_import_manifest(payload: dict[str, Any]) -> None:
         created_at=payload["created_at"],
         source_system=payload["source_system"],
         source_file=payload["source_file"],
-        phase_name=payload["phase_name"],
-        point_group=payload["point_group"],
+        phase_name=payload.get("phase_name"),
+        point_group=payload.get("point_group"),
+        phases=tuple(dict(phase) for phase in payload.get("phases", [])),
         orientation_convention=payload["orientation_convention"],
         angle_unit=payload["angle_unit"],
         crystal_frame=dict(payload["crystal_frame"]),
@@ -232,12 +276,15 @@ def _payload_from_object(
     angle_unit_paths: tuple[str, ...] = (),
     metadata_paths: tuple[str, ...] = (),
     phase_alias_paths: tuple[str, ...] = (),
+    phase_table_paths: tuple[str, ...] = (),
+    phase_id_paths: tuple[str, ...] = (),
 ) -> dict[str, Any]:
-    payload: dict[str, Any] = {
-        "coordinates": _extract_from_object_paths(obj, coordinate_paths),
-        "point_group": _extract_from_object_paths(obj, point_group_paths),
-        "phase_name": _extract_from_object_paths(obj, phase_name_paths),
-    }
+    payload: dict[str, Any] = {"coordinates": _extract_from_object_paths(obj, coordinate_paths)}
+    point_group = _extract_from_object_paths(obj, point_group_paths, required=False)
+    phase_name = _extract_from_object_paths(obj, phase_name_paths, required=False)
+    if point_group is not _MISSING and phase_name is not _MISSING:
+        payload["point_group"] = point_group
+        payload["phase_name"] = phase_name
     angle_value = _extract_from_object_paths(obj, angle_paths)
     angle_key = (
         "euler_angles_deg" if any("deg" in path.lower() for path in angle_paths) else "euler_angles"
@@ -251,6 +298,8 @@ def _payload_from_object(
         ("angle_unit", angle_unit_paths),
         ("metadata", metadata_paths),
         ("phase_aliases", phase_alias_paths),
+        ("phases", phase_table_paths),
+        ("phase_ids", phase_id_paths),
     )
     for key, paths in optional_mappings:
         if not paths:
@@ -261,6 +310,36 @@ def _payload_from_object(
     return payload
 
 
+def _build_phase_lookups(
+    phase: Phase | None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None,
+) -> tuple[dict[str, Phase], dict[int, Phase]]:
+    by_name: dict[str, Phase] = {}
+    by_id: dict[int, Phase] = {}
+    if phase is not None:
+        by_name[phase.name] = phase
+        for alias in phase.aliases:
+            by_name[alias] = phase
+    if phases is None:
+        return by_name, by_id
+    if isinstance(phases, dict):
+        for key, value in phases.items():
+            if isinstance(key, int):
+                by_id[key] = value
+            else:
+                by_name[str(key)] = value
+            by_name[value.name] = value
+            for alias in value.aliases:
+                by_name[alias] = value
+    else:
+        for index, value in enumerate(phases):
+            by_id[index] = value
+            by_name[value.name] = value
+            for alias in value.aliases:
+                by_name[alias] = value
+    return by_name, by_id
+
+
 def _normalize_vendor_payload(
     payload: dict[str, Any],
     *,
@@ -269,6 +348,8 @@ def _normalize_vendor_payload(
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
     angle_key_candidates: tuple[str, ...],
+    phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
     angle_key = next(
         (candidate for candidate in angle_key_candidates if candidate in payload), None
@@ -276,36 +357,105 @@ def _normalize_vendor_payload(
     if angle_key is None:
         raise ValueError(
             f"{source_system} payload must contain one of: {', '.join(angle_key_candidates)}"
-        )
+    )
     if "coordinates" not in payload:
         raise ValueError(f"{source_system} payload must contain 'coordinates'.")
-    if "point_group" not in payload or "phase_name" not in payload:
-        raise ValueError(f"{source_system} payload must contain 'point_group' and 'phase_name'.")
     convention = str(payload.get("orientation_convention", "bunge"))
     degrees = str(payload.get("angle_unit", "degree")) == "degree"
-    symmetry = SymmetrySpec.from_point_group(
-        str(payload["point_group"]), reference_frame=crystal_frame
-    )
-    orientations = OrientationSet.from_euler_angles(
-        payload[angle_key],
-        crystal_frame=crystal_frame,
-        specimen_frame=specimen_frame,
-        symmetry=symmetry,
-        convention=convention,
-        degrees=degrees,
-    )
+    phase_name_lookup, phase_id_lookup = _build_phase_lookups(phase, phases)
+    manifest_phase_name: str | None
+    manifest_point_group: str | None
+    manifest_phases: tuple[dict[str, str], ...]
+    phase_entries: tuple[CrystalMapPhase, ...] = ()
+    phase_ids = None
+    if "phases" in payload:
+        if "phase_ids" not in payload:
+            raise ValueError(f"{source_system} payload must contain 'phase_ids' with 'phases'.")
+        raw_phase_entries = tuple(payload["phases"])
+        built_entries: list[CrystalMapPhase] = []
+        for raw_entry in raw_phase_entries:
+            phase_id = int(raw_entry["phase_id"])
+            phase_name = str(raw_entry["name"])
+            point_group = str(raw_entry["point_group"])
+            resolved_phase = phase_id_lookup.get(phase_id) or phase_name_lookup.get(phase_name)
+            symmetry = (
+                resolved_phase.symmetry
+                if resolved_phase is not None
+                else SymmetrySpec.from_point_group(point_group, reference_frame=crystal_frame)
+            )
+            built_entries.append(
+                CrystalMapPhase(
+                    phase_id=phase_id,
+                    name=phase_name,
+                    symmetry=symmetry,
+                    phase=resolved_phase,
+                )
+            )
+        phase_entries = tuple(built_entries)
+        phase_ids = payload["phase_ids"]
+        orientations = OrientationSet.from_euler_angles(
+            payload[angle_key],
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=None,
+            convention=convention,
+            degrees=degrees,
+        )
+        manifest_phase_name = None
+        manifest_point_group = None
+        manifest_phases = tuple(
+            {
+                "phase_id": str(entry.phase_id),
+                "name": entry.name,
+                "point_group": entry.point_group,
+            }
+            for entry in phase_entries
+        )
+    else:
+        resolved_phase = phase
+        if "point_group" not in payload or "phase_name" not in payload:
+            if resolved_phase is None:
+                raise ValueError(
+                    f"{source_system} payload must contain 'point_group' and 'phase_name' "
+                    "unless a PyTex phase is supplied."
+                )
+            manifest_phase_name = resolved_phase.name
+            manifest_point_group = resolved_phase.symmetry.point_group
+        else:
+            manifest_phase_name = str(payload["phase_name"])
+            manifest_point_group = str(payload["point_group"])
+            if resolved_phase is None:
+                resolved_phase = phase_name_lookup.get(manifest_phase_name)
+        symmetry = (
+            resolved_phase.symmetry
+            if resolved_phase is not None
+            else SymmetrySpec.from_point_group(manifest_point_group, reference_frame=crystal_frame)
+        )
+        orientations = OrientationSet.from_euler_angles(
+            payload[angle_key],
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=None if resolved_phase is not None else symmetry,
+            phase=resolved_phase,
+            convention=convention,
+            degrees=degrees,
+        )
+        manifest_phases = ()
     crystal_map = CrystalMap(
         coordinates=payload["coordinates"],
         orientations=orientations,
         map_frame=map_frame,
+        phase_entries=phase_entries,
+        phase_ids=phase_ids,
         grid_shape=tuple(payload["grid_shape"]) if "grid_shape" in payload else None,
         step_sizes=tuple(payload["step_sizes"]) if "step_sizes" in payload else None,
     )
     manifest = EBSDImportManifest(
         source_system=source_system,
         source_file=str(payload.get("source_file", f"{source_system}_in_memory")),
-        phase_name=str(payload["phase_name"]),
-        point_group=str(payload["point_group"]),
+        phase_name=manifest_phase_name,
+        point_group=manifest_point_group,
+        phases=manifest_phases,
         orientation_convention=convention,
         angle_unit="degree" if degrees else "radian",
         crystal_frame={
@@ -336,6 +486,8 @@ def normalize_kikuchipy_payload(
     crystal_frame: ReferenceFrame,
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
+    phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
     return _normalize_vendor_payload(
         payload,
@@ -344,6 +496,8 @@ def normalize_kikuchipy_payload(
         specimen_frame=specimen_frame,
         map_frame=map_frame,
         angle_key_candidates=("euler_angles_deg", "euler_angles"),
+        phase=phase,
+        phases=phases,
     )
 
 
@@ -353,6 +507,8 @@ def normalize_kikuchipy_dataset(
     crystal_frame: ReferenceFrame,
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
+    phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
     payload = _payload_from_object(
         dataset,
@@ -374,12 +530,16 @@ def normalize_kikuchipy_dataset(
         angle_unit_paths=("angle_unit", "xmap.angle_unit"),
         metadata_paths=("metadata", "xmap.metadata"),
         phase_alias_paths=("phase_aliases",),
+        phase_table_paths=("phases", "xmap.phases"),
+        phase_id_paths=("phase_ids", "xmap.phase_id"),
     )
     return normalize_kikuchipy_payload(
         payload,
         crystal_frame=crystal_frame,
         specimen_frame=specimen_frame,
         map_frame=map_frame,
+        phase=phase,
+        phases=phases,
     )
 
 
@@ -389,6 +549,8 @@ def normalize_pyebsdindex_payload(
     crystal_frame: ReferenceFrame,
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
+    phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
     return _normalize_vendor_payload(
         payload,
@@ -397,6 +559,8 @@ def normalize_pyebsdindex_payload(
         specimen_frame=specimen_frame,
         map_frame=map_frame,
         angle_key_candidates=("phi1_Phi_phi2_deg", "euler_angles_deg", "euler_angles"),
+        phase=phase,
+        phases=phases,
     )
 
 
@@ -406,6 +570,8 @@ def normalize_pyebsdindex_result(
     crystal_frame: ReferenceFrame,
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
+    phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
     payload = _payload_from_object(
         result,
@@ -427,10 +593,14 @@ def normalize_pyebsdindex_result(
         angle_unit_paths=("angle_unit", "scan.angle_unit"),
         metadata_paths=("metadata", "scan.metadata"),
         phase_alias_paths=("phase_aliases",),
+        phase_table_paths=("phases", "scan.phases"),
+        phase_id_paths=("phase_ids", "scan.phase_id"),
     )
     return normalize_pyebsdindex_payload(
         payload,
         crystal_frame=crystal_frame,
         specimen_frame=specimen_frame,
         map_frame=map_frame,
+        phase=phase,
+        phases=phases,
     )

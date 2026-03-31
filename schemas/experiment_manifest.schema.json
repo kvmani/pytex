@@ -37,6 +37,10 @@
     "measurement_quality": { "$ref": "#/$defs/measurement_quality" },
     "scattering_setup": { "$ref": "#/$defs/scattering_setup" },
     "phase": { "$ref": "#/$defs/phase_declaration" },
+    "phases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/phase_declaration" }
+    },
     "referenced_files": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 }

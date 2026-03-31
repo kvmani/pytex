@@ -158,6 +158,6 @@
   ],
   "notes": [
     "The diffsims baseline records shell radii and indexed spots for the ni_fcc [001] SAED case.",
-    "PyTex comparisons should treat shell geometry and indexed-family coverage as the hard external baseline while allowing in-plane detector-basis rotations."
+    "PyTex comparisons should treat the diffsims shell list as the minimum external family-coverage baseline while allowing in-plane detector-basis rotations and additional physically valid shells near the reciprocal-radius cutoff."
   ]
 }

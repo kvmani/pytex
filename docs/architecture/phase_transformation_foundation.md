@@ -24,6 +24,9 @@ PyTex now treats the following as stable foundational primitives:
   Represents one generated or selected variant within a parent-child transformation family.
 - `PhaseTransformationRecord`
   Stores provenance, assumptions, and workflow context for a transformation analysis.
+- `TransformationManifest`
+  Records dedicated machine-readable transformation workflow context rather than forcing that
+  context into generic result metadata.
 
 ## Parent-Child Semantics
 
@@ -54,9 +57,13 @@ If PyTex exposes habit-plane or direction-correspondence features, the stable AP
 
 ## Current Limits
 
-- The primitive family now exists, but variant-generation validation is still weak.
-- No dedicated transformation manifest schema exists yet; current workflow-result and validation manifests must carry that context until a richer transformation contract is justified.
-- Parent reconstruction should remain outside the stable algorithmic surface until the primitive family has stronger literature-backed validation.
+- The primitive family now exists and has a dedicated manifest schema, but literature-backed
+  validation is still foundational rather than broad.
+- Variant generation and variant-indexed prediction are now benchmarked and validated in-repo, but
+  broader transformation-family coverage remains ahead.
+- Parent reconstruction remains outside the stable algorithmic surface. PyTex now stages bounded
+  candidate-parent scoring under `pytex.experimental` so research workflows can proceed without
+  overstating stability.
 
 ## References
 

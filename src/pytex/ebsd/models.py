@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -97,6 +97,246 @@ def _coerce_sample_direction_sequence(
             for direction in sample_directions
         )
     return (_specimen_direction_vector(sample_directions, specimen_frame),)
+
+
+def _canonical_phase_name(name: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise ValueError("Phase names must be non-empty strings.")
+    return normalized
+
+
+def _readonly_int_array(
+    array: ArrayLike,
+    *,
+    shape: tuple[int | None, ...],
+    name: str,
+) -> np.ndarray:
+    values = np.asarray(array, dtype=np.int64)
+    if values.ndim != len(shape):
+        raise ValueError(f"{name} must have shape {shape}.")
+    for axis, expected in enumerate(shape):
+        if expected is not None and values.shape[axis] != expected:
+            raise ValueError(f"{name} must have shape {shape}.")
+    values = np.ascontiguousarray(values)
+    values.setflags(write=False)
+    return values
+
+
+def _readonly_float_array(
+    array: ArrayLike, *, shape: tuple[int | None, ...], name: str
+) -> np.ndarray:
+    values = np.asarray(array, dtype=np.float64)
+    if values.ndim != len(shape):
+        raise ValueError(f"{name} must have shape {shape}.")
+    for axis, expected in enumerate(shape):
+        if expected is not None and values.shape[axis] != expected:
+            raise ValueError(f"{name} must have shape {shape}.")
+    values = np.ascontiguousarray(values)
+    values.setflags(write=False)
+    return values
+
+
+def _rotation_angles_from_matrices(matrices: np.ndarray) -> np.ndarray:
+    traces = np.trace(matrices, axis1=1, axis2=2)
+    cos_theta = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
+    return np.asarray(np.arccos(cos_theta), dtype=np.float64)
+
+
+def _relative_rotation_matrices(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    return np.asarray(
+        np.einsum("nij,nkj->nik", right, left, optimize=True),
+        dtype=np.float64,
+    )
+
+
+def _disorientation_angles_from_relative_matrices(
+    relative_matrices: np.ndarray,
+    *,
+    left_symmetry: SymmetrySpec | None,
+    right_symmetry: SymmetrySpec | None,
+) -> np.ndarray:
+    left_ops = (
+        left_symmetry.operators
+        if left_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    right_ops = (
+        right_symmetry.operators
+        if right_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    left_applied = np.einsum("aij,njk->naik", left_ops, relative_matrices, optimize=True)
+    candidates = np.einsum(
+        "naij,bkj->nabik",
+        left_applied,
+        right_ops,
+        optimize=True,
+    )
+    candidate_matrices = candidates.reshape(-1, 3, 3)
+    angles = _rotation_angles_from_matrices(candidate_matrices).reshape(
+        relative_matrices.shape[0],
+        left_ops.shape[0] * right_ops.shape[0],
+    )
+    return np.asarray(np.min(angles, axis=1), dtype=np.float64)
+
+
+def _pairwise_distances(coordinates: np.ndarray) -> np.ndarray:
+    deltas = coordinates[:, None, :] - coordinates[None, :, :]
+    return np.asarray(np.linalg.norm(deltas, axis=2), dtype=np.float64)
+
+
+def _inferred_base_spacing(coordinates: np.ndarray, step_sizes: tuple[float, ...] | None) -> float:
+    if step_sizes is not None:
+        return float(min(step_sizes))
+    distances = _pairwise_distances(coordinates)
+    positive = distances[distances > 1e-12]
+    if positive.size == 0:
+        raise ValueError(
+            "CrystalMap requires at least two distinct coordinates for graph workflows."
+        )
+    return float(np.min(positive))
+
+
+def _vectorized_regular_grid_pairs(
+    rows: int,
+    cols: int,
+    *,
+    connectivity: int,
+    order: int,
+) -> np.ndarray:
+    if connectivity not in {4, 8}:
+        raise ValueError("connectivity must be either 4 or 8.")
+    if order <= 0:
+        raise ValueError("order must be strictly positive.")
+    grid = np.arange(rows * cols, dtype=np.int64).reshape(rows, cols)
+    offsets: list[tuple[int, int]] = []
+    for drow in range(-order, order + 1):
+        for dcol in range(-order, order + 1):
+            if drow == 0 and dcol == 0:
+                continue
+            if connectivity == 4 and abs(drow) + abs(dcol) > order:
+                continue
+            if connectivity == 8 and max(abs(drow), abs(dcol)) > order:
+                continue
+            if drow < 0 or (drow == 0 and dcol <= 0):
+                continue
+            offsets.append((drow, dcol))
+    pair_blocks: list[np.ndarray] = []
+    for drow, dcol in offsets:
+        row_from = slice(0, rows - drow)
+        row_to = slice(drow, rows)
+        if dcol >= 0:
+            col_from = slice(0, cols - dcol)
+            col_to = slice(dcol, cols)
+        else:
+            col_from = slice(-dcol, cols)
+            col_to = slice(0, cols + dcol)
+        sources = grid[row_from, col_from].reshape(-1)
+        targets = grid[row_to, col_to].reshape(-1)
+        if sources.size == 0:
+            continue
+        pair_blocks.append(np.column_stack([sources, targets]))
+    if not pair_blocks:
+        return np.empty((0, 2), dtype=np.int64)
+    pairs = np.concatenate(pair_blocks, axis=0)
+    pairs = np.ascontiguousarray(pairs, dtype=np.int64)
+    pairs.setflags(write=False)
+    return pairs
+
+
+@dataclass(frozen=True, slots=True)
+class CrystalMapPhase:
+    phase_id: int
+    name: str
+    symmetry: SymmetrySpec
+    phase: Phase | None = None
+    aliases: tuple[str, ...] = ()
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        normalized_name = _canonical_phase_name(self.name)
+        if self.phase_id < 0:
+            raise ValueError("CrystalMapPhase.phase_id must be non-negative.")
+        if self.symmetry.reference_frame is None:
+            raise ValueError(
+                "CrystalMapPhase.symmetry.reference_frame must be set for phase-resolved maps."
+            )
+        if self.phase is not None:
+            if self.phase.name != normalized_name and normalized_name not in self.phase.aliases:
+                raise ValueError(
+                    "CrystalMapPhase.name must match phase.name or one of phase.aliases."
+                )
+            if self.phase.symmetry != self.symmetry:
+                raise ValueError(
+                    "CrystalMapPhase.phase.symmetry must match CrystalMapPhase.symmetry."
+                )
+            if self.phase.crystal_frame != self.symmetry.reference_frame:
+                raise ValueError(
+                    "CrystalMapPhase.phase.crystal_frame must match symmetry.reference_frame."
+                )
+        object.__setattr__(self, "name", normalized_name)
+        object.__setattr__(
+            self,
+            "aliases",
+            tuple(_canonical_phase_name(alias) for alias in self.aliases),
+        )
+
+    @property
+    def crystal_frame(self) -> ReferenceFrame:
+        if self.phase is not None:
+            return self.phase.crystal_frame
+        return cast(ReferenceFrame, self.symmetry.reference_frame)
+
+    @property
+    def point_group(self) -> str:
+        return self.symmetry.point_group
+
+    def matches(self, selector: int | str | Phase | CrystalMapPhase) -> bool:
+        if isinstance(selector, CrystalMapPhase):
+            return selector.phase_id == self.phase_id
+        if isinstance(selector, Phase):
+            if self.phase is not None:
+                return self.phase == selector
+            return selector.name == self.name or selector.name in self.aliases
+        if isinstance(selector, int):
+            return self.phase_id == selector
+        normalized = selector.strip()
+        return normalized == self.name or normalized in self.aliases
+
+
+@dataclass(frozen=True, slots=True)
+class CoordinateNeighborGraph:
+    pairs: np.ndarray
+    distances: np.ndarray
+    connectivity: int
+    order: int
+    mode: str
+    max_distance: float | None = None
+
+    def __post_init__(self) -> None:
+        pairs = _readonly_int_array(
+            self.pairs,
+            shape=(None, 2),
+            name="CoordinateNeighborGraph.pairs",
+        )
+        distances = _readonly_float_array(
+            self.distances,
+            shape=(pairs.shape[0],),
+            name="CoordinateNeighborGraph.distances",
+        )
+        if self.connectivity not in {4, 8}:
+            raise ValueError("CoordinateNeighborGraph.connectivity must be either 4 or 8.")
+        if self.order <= 0:
+            raise ValueError("CoordinateNeighborGraph.order must be strictly positive.")
+        if self.max_distance is not None and self.max_distance <= 0.0:
+            raise ValueError("CoordinateNeighborGraph.max_distance must be positive when provided.")
+        if self.mode not in {"regular_grid", "coordinate_radius"}:
+            raise ValueError(
+                "CoordinateNeighborGraph.mode must be 'regular_grid' or 'coordinate_radius'."
+            )
+        object.__setattr__(self, "pairs", pairs)
+        object.__setattr__(self, "distances", distances)
 
 
 @dataclass(frozen=True, slots=True)
@@ -408,9 +648,9 @@ class GrainSegmentation:
         if min_misorientation_deg < 0.0:
             raise ValueError("min_misorientation_deg must be non-negative.")
         segments: list[GrainBoundarySegment] = []
-        for left_index, right_index in self.crystal_map.neighbor_pairs(
-            connectivity=self.connectivity
-        ):
+        neighbor_pairs = self.crystal_map.neighbor_pairs(connectivity=self.connectivity)
+        neighbor_pairs = neighbor_pairs[self.crystal_map._same_phase_pair_mask(neighbor_pairs)]
+        for left_index, right_index in neighbor_pairs:
             left_label = int(self.labels[int(left_index)])
             right_label = int(self.labels[int(right_index)])
             if left_label == right_label:
@@ -477,6 +717,7 @@ class GrainSegmentation:
         self.crystal_map._require_regular_2d_grid()
         labels = np.array(self.labels, copy=True)
         neighbor_pairs = self.crystal_map.neighbor_pairs(connectivity=self.connectivity)
+        neighbor_pairs = neighbor_pairs[self.crystal_map._same_phase_pair_mask(neighbor_pairs)]
         adjacency: dict[int, list[int]] = {index: [] for index in range(len(labels))}
         for left_index, right_index in neighbor_pairs:
             adjacency[int(left_index)].append(int(right_index))
@@ -539,9 +780,11 @@ class GrainSegmentation:
                 return current
             grain = small_grains[0]
             adjacency: dict[int, tuple[int, float]] = {}
-            for left_index, right_index in current.crystal_map.neighbor_pairs(
-                connectivity=current.connectivity
-            ):
+            neighbor_pairs = current.crystal_map.neighbor_pairs(connectivity=current.connectivity)
+            neighbor_pairs = neighbor_pairs[
+                current.crystal_map._same_phase_pair_mask(neighbor_pairs)
+            ]
+            for left_index, right_index in neighbor_pairs:
                 left_label = int(current.labels[int(left_index)])
                 right_label = int(current.labels[int(right_index)])
                 if left_label == right_label:
@@ -592,6 +835,8 @@ class CrystalMap:
     coordinates: np.ndarray
     orientations: OrientationSet
     map_frame: ReferenceFrame
+    phase_entries: tuple[CrystalMapPhase, ...] = ()
+    phase_ids: np.ndarray | None = None
     grid_shape: tuple[int, ...] | None = None
     step_sizes: tuple[float, ...] | None = None
     acquisition_geometry: AcquisitionGeometry | None = None
@@ -607,6 +852,62 @@ class CrystalMap:
             raise ValueError("CrystalMap coordinates and orientations must have matching lengths.")
         if self.map_frame.domain not in {FrameDomain.MAP, FrameDomain.SPECIMEN}:
             raise ValueError("CrystalMap.map_frame must belong to the map or specimen domain.")
+        phase_entries = tuple(self.phase_entries)
+        if phase_entries:
+            phase_ids_seen: set[int] = set()
+            phase_names_seen: set[str] = set()
+            for entry in phase_entries:
+                if entry.phase_id in phase_ids_seen:
+                    raise ValueError("CrystalMap.phase_entries phase_id values must be unique.")
+                if entry.name in phase_names_seen:
+                    raise ValueError("CrystalMap.phase_entries names must be unique.")
+                if entry.crystal_frame != self.orientations.crystal_frame:
+                    raise ValueError(
+                        "CrystalMap.phase_entries must share OrientationSet.crystal_frame."
+                    )
+                phase_ids_seen.add(entry.phase_id)
+                phase_names_seen.add(entry.name)
+            if len(phase_entries) > 1 and (
+                self.orientations.phase is not None or self.orientations.symmetry is not None
+            ):
+                raise ValueError(
+                    "Multiphase CrystalMap instances require OrientationSet.phase and "
+                    "OrientationSet.symmetry to be None so phase semantics remain attached "
+                    "explicitly through CrystalMap.phase_entries."
+                )
+        phase_ids = None
+        if self.phase_ids is not None:
+            phase_ids = np.asarray(self.phase_ids, dtype=np.int64)
+            if phase_ids.shape != (len(self.orientations),):
+                raise ValueError("CrystalMap.phase_ids must have one entry per orientation.")
+            if np.any(phase_ids < 0):
+                raise ValueError("CrystalMap.phase_ids must be non-negative.")
+            if not phase_entries:
+                raise ValueError(
+                    "CrystalMap.phase_ids requires CrystalMap.phase_entries to be provided."
+                )
+            available_ids = {entry.phase_id for entry in phase_entries}
+            if any(int(value) not in available_ids for value in np.unique(phase_ids)):
+                raise ValueError("CrystalMap.phase_ids must refer only to declared phase_ids.")
+            phase_ids = np.ascontiguousarray(phase_ids)
+            phase_ids.setflags(write=False)
+        elif phase_entries:
+            if len(phase_entries) == 1:
+                phase_ids = np.zeros(len(self.orientations), dtype=np.int64)
+                phase_ids.setflags(write=False)
+            else:
+                raise ValueError(
+                    "Multiphase CrystalMap instances require CrystalMap.phase_ids to be provided."
+                )
+        if (
+            self.orientations.phase is not None
+            and phase_entries
+            and phase_entries[0].phase is not None
+            and self.orientations.phase != phase_entries[0].phase
+        ):
+            raise ValueError(
+                "Single-phase CrystalMap.phase_entries[0].phase must match OrientationSet.phase."
+            )
         if self.acquisition_geometry is not None:
             if self.acquisition_geometry.specimen_frame != self.orientations.specimen_frame:
                 raise ValueError(
@@ -645,6 +946,8 @@ class CrystalMap:
         coordinates = np.ascontiguousarray(coordinates)
         coordinates.setflags(write=False)
         object.__setattr__(self, "coordinates", coordinates)
+        object.__setattr__(self, "phase_entries", phase_entries)
+        object.__setattr__(self, "phase_ids", phase_ids)
         coordinate_dims = int(coordinates.shape[1])
         if self.grid_shape is not None:
             if len(self.grid_shape) != coordinate_dims:
@@ -658,6 +961,209 @@ class CrystalMap:
             if any(step <= 0.0 for step in step_sizes):
                 raise ValueError("CrystalMap.step_sizes entries must be strictly positive.")
             object.__setattr__(self, "step_sizes", step_sizes)
+
+    @property
+    def is_multiphase(self) -> bool:
+        return len(self.phase_entries) > 1
+
+    @property
+    def has_phase_assignments(self) -> bool:
+        return bool(self.phase_entries) or self.orientations.phase is not None
+
+    @property
+    def phase_id_array(self) -> np.ndarray | None:
+        if self.phase_ids is not None:
+            return self.phase_ids
+        if self.orientations.phase is None and self.orientations.symmetry is None:
+            return None
+        values = np.zeros(len(self.orientations), dtype=np.int64)
+        values.setflags(write=False)
+        return values
+
+    @property
+    def resolved_phase_entries(self) -> tuple[CrystalMapPhase, ...]:
+        if self.phase_entries:
+            return self.phase_entries
+        if self.orientations.phase is None and self.orientations.symmetry is None:
+            return ()
+        resolved_symmetry = (
+            self.orientations.phase.symmetry
+            if self.orientations.phase is not None
+            else self.orientations.symmetry
+        )
+        if resolved_symmetry is None:
+            raise ValueError(
+                "CrystalMap requires phase-resolved symmetry when phase entries are synthesized."
+            )
+        return (
+            CrystalMapPhase(
+                phase_id=0,
+                name=(
+                    self.orientations.phase.name
+                    if self.orientations.phase is not None
+                    else "unresolved_phase"
+                ),
+                symmetry=resolved_symmetry,
+                phase=self.orientations.phase,
+                provenance=self.provenance,
+            ),
+        )
+
+    @property
+    def primary_phase(self) -> Phase | None:
+        if self.orientations.phase is not None and not self.phase_entries:
+            return self.orientations.phase
+        if len(self.resolved_phase_entries) == 1:
+            return self.resolved_phase_entries[0].phase
+        return None
+
+    def phase_summary(self) -> dict[str, int]:
+        phase_entries = self.resolved_phase_entries
+        phase_ids = self.phase_id_array
+        if not phase_entries or phase_ids is None:
+            return {}
+        return {
+            entry.name: int(np.count_nonzero(phase_ids == entry.phase_id))
+            for entry in phase_entries
+        }
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "point_count": len(self.orientations),
+            "coordinate_dimensions": int(self.coordinates.shape[1]),
+            "grid_shape": (
+                None
+                if self.grid_shape is None
+                else tuple(int(value) for value in self.grid_shape)
+            ),
+            "step_sizes": (
+                None
+                if self.step_sizes is None
+                else tuple(float(value) for value in self.step_sizes)
+            ),
+            "is_multiphase": self.is_multiphase,
+            "phases": self.phase_summary(),
+            "map_frame": self.map_frame.name,
+            "specimen_frame": self.orientations.specimen_frame.name,
+        }
+
+    def validate(self) -> tuple[str, ...]:
+        notes: list[str] = []
+        if self.is_multiphase:
+            unresolved = [
+                entry.name for entry in self.resolved_phase_entries if entry.phase is None
+            ]
+            if unresolved:
+                notes.append(
+                    "Full Phase objects are not attached for phases: " + ", ".join(unresolved)
+                )
+        if self.grid_shape is None:
+            notes.append("Map is operating in graph mode rather than regular-grid mode.")
+        return tuple(notes)
+
+    def _phase_entry_by_id(self) -> dict[int, CrystalMapPhase]:
+        return {entry.phase_id: entry for entry in self.resolved_phase_entries}
+
+    def _resolve_phase_entry(
+        self, selector: int | str | Phase | CrystalMapPhase
+    ) -> CrystalMapPhase:
+        for entry in self.resolved_phase_entries:
+            if entry.matches(selector):
+                return entry
+        raise ValueError(f"Unknown phase selector: {selector!r}.")
+
+    def phase_mask(self, selector: int | str | Phase | CrystalMapPhase) -> np.ndarray:
+        phase_ids = self.phase_id_array
+        if phase_ids is None:
+            raise ValueError("CrystalMap does not carry explicit phase assignments.")
+        entry = self._resolve_phase_entry(selector)
+        mask = np.ascontiguousarray(phase_ids == entry.phase_id)
+        mask.setflags(write=False)
+        return mask
+
+    def phase_entry_for_index(self, index: int) -> CrystalMapPhase | None:
+        phase_ids = self.phase_id_array
+        if phase_ids is None:
+            return None
+        return self._phase_entry_by_id()[int(phase_ids[int(index)])]
+
+    def select_phase(self, selector: int | str | Phase | CrystalMapPhase) -> CrystalMap:
+        mask = np.asarray(self.phase_mask(selector), dtype=bool)
+        if not np.any(mask):
+            raise ValueError("Selected phase has no points in this CrystalMap.")
+        entry = self._resolve_phase_entry(selector)
+        provenance = self.provenance
+        phase = entry.phase
+        if phase is not None:
+            orientations = OrientationSet.from_quaternions(
+                self.orientations.quaternions[mask],
+                crystal_frame=self.orientations.crystal_frame,
+                specimen_frame=self.orientations.specimen_frame,
+                phase=phase,
+                provenance=provenance,
+            )
+        else:
+            orientations = OrientationSet.from_quaternions(
+                self.orientations.quaternions[mask],
+                crystal_frame=self.orientations.crystal_frame,
+                specimen_frame=self.orientations.specimen_frame,
+                symmetry=entry.symmetry,
+                provenance=provenance,
+            )
+        full_selection = bool(np.all(mask))
+        return CrystalMap(
+            coordinates=self.coordinates[mask],
+            orientations=orientations,
+            map_frame=self.map_frame,
+            grid_shape=self.grid_shape if full_selection else None,
+            step_sizes=self.step_sizes,
+            acquisition_geometry=self.acquisition_geometry,
+            calibration_record=self.calibration_record,
+            measurement_quality=self.measurement_quality,
+            provenance=provenance,
+        )
+
+    def _same_phase_pair_mask(self, pairs: np.ndarray) -> np.ndarray:
+        phase_ids = self.phase_id_array
+        if phase_ids is None:
+            return np.ones(pairs.shape[0], dtype=bool)
+        return np.asarray(phase_ids[pairs[:, 0]] == phase_ids[pairs[:, 1]], dtype=bool)
+
+    def _pair_misorientation_rad(
+        self,
+        pairs: np.ndarray,
+        *,
+        symmetry_aware: bool,
+    ) -> np.ndarray:
+        if pairs.size == 0:
+            return np.empty(0, dtype=np.float64)
+        matrices = self.orientations.as_matrices()
+        relative = _relative_rotation_matrices(matrices[pairs[:, 0]], matrices[pairs[:, 1]])
+        if not symmetry_aware:
+            return _rotation_angles_from_matrices(relative)
+        phase_ids = self.phase_id_array
+        if phase_ids is None:
+            return _disorientation_angles_from_relative_matrices(
+                relative,
+                left_symmetry=self.orientations.symmetry,
+                right_symmetry=self.orientations.symmetry,
+            )
+        angles = np.full(pairs.shape[0], np.nan, dtype=np.float64)
+        phase_lookup = self._phase_entry_by_id()
+        left_ids = phase_ids[pairs[:, 0]]
+        right_ids = phase_ids[pairs[:, 1]]
+        same_phase = left_ids == right_ids
+        if not np.any(same_phase):
+            return angles
+        for phase_id in np.unique(left_ids[same_phase]):
+            mask = same_phase & (left_ids == phase_id)
+            entry = phase_lookup[int(phase_id)]
+            angles[mask] = _disorientation_angles_from_relative_matrices(
+                relative[mask],
+                left_symmetry=entry.symmetry,
+                right_symmetry=entry.symmetry,
+            )
+        return angles
 
     def _require_regular_2d_grid(self) -> tuple[int, int]:
         if self.grid_shape is None or len(self.grid_shape) != 2:
@@ -689,25 +1195,46 @@ class CrystalMap:
                 measurement_quality=self.measurement_quality,
                 provenance=self.provenance,
             )
-        phase = self.orientations.phase
         merged_metadata: dict[str, str] = {}
         if self.grid_shape is not None:
             merged_metadata["grid_shape"] = "x".join(str(value) for value in self.grid_shape)
         if self.step_sizes is not None:
             merged_metadata["step_sizes"] = ",".join(f"{value:g}" for value in self.step_sizes)
+        if self.is_multiphase:
+            merged_metadata["phase_names"] = ",".join(
+                entry.name for entry in self.resolved_phase_entries
+            )
         if metadata is not None:
             merged_metadata.update(metadata)
         return ExperimentManifest.from_acquisition_geometry(
             acquisition_geometry,
             source_system=source_system,
-            phase=phase,
+            phase=self.primary_phase,
+            phases=tuple(
+                entry.phase for entry in self.resolved_phase_entries if entry.phase is not None
+            ),
             referenced_files=referenced_files,
             metadata=merged_metadata,
         )
 
+    def _phase_resolved_view(
+        self,
+        *,
+        phase: int | str | Phase | CrystalMapPhase | None,
+        operation: str,
+    ) -> CrystalMap:
+        if phase is None:
+            if self.is_multiphase:
+                raise ValueError(
+                    f"CrystalMap.{operation}() requires a phase selector for multiphase maps."
+                )
+            return self
+        return self.select_phase(phase)
+
     def to_odf(
         self,
         *,
+        phase: int | str | Phase | CrystalMapPhase | None = None,
         weights: ArrayLike | None = None,
         kernel: KernelSpec | None = None,
         specimen_symmetry: SymmetrySpec | None = None,
@@ -715,18 +1242,20 @@ class CrystalMap:
     ) -> ODF:
         from pytex.texture import ODF
 
+        phase_view = self._phase_resolved_view(phase=phase, operation="to_odf")
         return ODF.from_orientations(
-            self.orientations,
+            phase_view.orientations,
             weights=weights,
             kernel=kernel,
             specimen_symmetry=specimen_symmetry,
-            provenance=self.provenance if provenance is None else provenance,
+            provenance=phase_view.provenance if provenance is None else provenance,
         )
 
     def pole_figure(
         self,
         pole: CrystalPlane | ArrayLike,
         *,
+        phase: int | str | Phase | CrystalMapPhase | None = None,
         weights: ArrayLike | None = None,
         include_symmetry_family: bool = True,
         antipodal: bool = True,
@@ -735,20 +1264,22 @@ class CrystalMap:
     ) -> PoleFigure:
         from pytex.texture import PoleFigure
 
+        phase_view = self._phase_resolved_view(phase=phase, operation="pole_figure")
         return PoleFigure.from_orientations(
-            self.orientations,
-            _coerce_pole(pole, phase=self.orientations.phase),
+            phase_view.orientations,
+            _coerce_pole(pole, phase=phase_view.orientations.phase),
             weights=weights,
             include_symmetry_family=include_symmetry_family,
             antipodal=antipodal,
             sample_symmetry=sample_symmetry,
-            provenance=self.provenance if provenance is None else provenance,
+            provenance=phase_view.provenance if provenance is None else provenance,
         )
 
     def inverse_pole_figure(
         self,
         sample_direction: str | ArrayLike = "z",
         *,
+        phase: int | str | Phase | CrystalMapPhase | None = None,
         weights: ArrayLike | None = None,
         reduce_by_symmetry: bool = True,
         antipodal: bool = True,
@@ -756,13 +1287,14 @@ class CrystalMap:
     ) -> InversePoleFigure:
         from pytex.texture import InversePoleFigure
 
+        phase_view = self._phase_resolved_view(phase=phase, operation="inverse_pole_figure")
         return InversePoleFigure.from_orientations(
-            self.orientations,
-            _specimen_direction_vector(sample_direction, self.orientations.specimen_frame),
+            phase_view.orientations,
+            _specimen_direction_vector(sample_direction, phase_view.orientations.specimen_frame),
             weights=weights,
             reduce_by_symmetry=reduce_by_symmetry,
             antipodal=antipodal,
-            provenance=self.provenance if provenance is None else provenance,
+            provenance=phase_view.provenance if provenance is None else provenance,
         )
 
     def texture_report(
@@ -776,6 +1308,7 @@ class CrystalMap:
         | ArrayLike
         | tuple[str | ArrayLike, ...]
         | list[str | ArrayLike] = ("x", "y", "z"),
+        phase: int | str | Phase | CrystalMapPhase | None = None,
         weights: ArrayLike | None = None,
         kernel: KernelSpec | None = None,
         specimen_symmetry: SymmetrySpec | None = None,
@@ -788,8 +1321,9 @@ class CrystalMap:
         inverse_pole_figure_plot_kwargs: dict[str, Any] | None = None,
         odf_plot_kwargs: dict[str, Any] | None = None,
     ) -> TextureReport:
-        report_provenance = self.provenance if provenance is None else provenance
-        odf = self.to_odf(
+        phase_view = self._phase_resolved_view(phase=phase, operation="texture_report")
+        report_provenance = phase_view.provenance if provenance is None else provenance
+        odf = phase_view.to_odf(
             weights=weights,
             kernel=kernel,
             specimen_symmetry=specimen_symmetry,
@@ -798,13 +1332,13 @@ class CrystalMap:
         if isinstance(poles, (list, tuple)) and len(poles) == 0:
             pole_sequence: tuple[CrystalPlane, ...] = ()
         else:
-            pole_sequence = _coerce_pole_sequence(poles, phase=self.orientations.phase)
+            pole_sequence = _coerce_pole_sequence(poles, phase=phase_view.orientations.phase)
         direction_sequence = _coerce_sample_direction_sequence(
             sample_directions,
-            self.orientations.specimen_frame,
+            phase_view.orientations.specimen_frame,
         )
         pole_figures = tuple(
-            self.pole_figure(
+            phase_view.pole_figure(
                 pole,
                 weights=weights,
                 include_symmetry_family=include_symmetry_family,
@@ -815,7 +1349,7 @@ class CrystalMap:
             for pole in pole_sequence
         )
         inverse_pole_figures = tuple(
-            self.inverse_pole_figure(
+            phase_view.inverse_pole_figure(
                 sample_direction=direction,
                 weights=weights,
                 reduce_by_symmetry=reduce_by_symmetry,
@@ -852,52 +1386,61 @@ class CrystalMap:
             provenance=report_provenance,
         )
 
-    def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:
-        rows, cols = self._require_regular_2d_grid()
+    def neighbor_graph(
+        self,
+        *,
+        connectivity: int = 4,
+        order: int = 1,
+        max_distance: float | None = None,
+    ) -> CoordinateNeighborGraph:
         if connectivity not in {4, 8}:
             raise ValueError("connectivity must be either 4 or 8.")
-        offsets = [(0, 1), (1, 0)]
-        if connectivity == 8:
-            offsets.extend([(1, 1), (1, -1)])
-        pairs: list[tuple[int, int]] = []
-        for row in range(rows):
-            for col in range(cols):
-                source = row * cols + col
-                for drow, dcol in offsets:
-                    next_row = row + drow
-                    next_col = col + dcol
-                    if 0 <= next_row < rows and 0 <= next_col < cols:
-                        pairs.append((source, next_row * cols + next_col))
-        array = np.asarray(pairs, dtype=np.int64)
-        array = np.ascontiguousarray(array)
-        array.setflags(write=False)
-        return array
-
-    def kam_neighbor_pairs(self, *, order: int = 1) -> np.ndarray:
-        rows, cols = self._require_regular_2d_grid()
         if order <= 0:
             raise ValueError("order must be strictly positive.")
-        pairs: list[tuple[int, int]] = []
-        for row in range(rows):
-            for col in range(cols):
-                source = row * cols + col
-                for drow in range(-order, order + 1):
-                    for dcol in range(-order, order + 1):
-                        if drow == 0 and dcol == 0:
-                            continue
-                        if abs(drow) + abs(dcol) > order:
-                            continue
-                        next_row = row + drow
-                        next_col = col + dcol
-                        if not (0 <= next_row < rows and 0 <= next_col < cols):
-                            continue
-                        target = next_row * cols + next_col
-                        if source < target:
-                            pairs.append((source, target))
-        array = np.asarray(pairs, dtype=np.int64)
-        array = np.ascontiguousarray(array)
-        array.setflags(write=False)
-        return array
+        if self.grid_shape is not None and len(self.grid_shape) == 2:
+            rows, cols = self._require_regular_2d_grid()
+            if max_distance is None:
+                pairs = _vectorized_regular_grid_pairs(
+                    rows,
+                    cols,
+                    connectivity=connectivity,
+                    order=order,
+                )
+                distances = np.linalg.norm(
+                    self.coordinates[pairs[:, 0]] - self.coordinates[pairs[:, 1]],
+                    axis=1,
+                )
+                return CoordinateNeighborGraph(
+                    pairs=pairs,
+                    distances=distances,
+                    connectivity=connectivity,
+                    order=order,
+                    mode="regular_grid",
+                )
+        radius = max_distance
+        if radius is None:
+            base_spacing = _inferred_base_spacing(self.coordinates, self.step_sizes)
+            radius_scale = float(order) * (np.sqrt(2.0) if connectivity == 8 else 1.0)
+            radius = base_spacing * radius_scale + 1e-9
+        distances = _pairwise_distances(self.coordinates)
+        upper_mask = np.triu(np.ones_like(distances, dtype=bool), k=1)
+        pair_mask = upper_mask & (distances <= radius)
+        indices = np.column_stack(np.nonzero(pair_mask)).astype(np.int64)
+        pair_distances = np.asarray(distances[pair_mask], dtype=np.float64)
+        return CoordinateNeighborGraph(
+            pairs=indices,
+            distances=pair_distances,
+            connectivity=connectivity,
+            order=order,
+            mode="coordinate_radius",
+            max_distance=radius,
+        )
+
+    def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:
+        return self.neighbor_graph(connectivity=connectivity, order=1).pairs
+
+    def kam_neighbor_pairs(self, *, order: int = 1) -> np.ndarray:
+        return self.neighbor_graph(connectivity=4, order=order).pairs
 
     def kernel_average_misorientation_deg(
         self,
@@ -917,35 +1460,44 @@ class CrystalMap:
             raise ValueError("statistic must be either 'mean' or 'max'.")
         if segmentation is not None and segmentation.crystal_map is not self:
             raise ValueError("segmentation.crystal_map must be this CrystalMap instance.")
-        neighbor_pairs = self.kam_neighbor_pairs(order=order)
+        graph = self.neighbor_graph(connectivity=connectivity, order=order)
+        neighbor_pairs = graph.pairs
+        valid_mask = self._same_phase_pair_mask(neighbor_pairs)
+        if segmentation is not None:
+            valid_mask &= (
+                segmentation.labels[neighbor_pairs[:, 0]]
+                == segmentation.labels[neighbor_pairs[:, 1]]
+            )
+        filtered_pairs = neighbor_pairs[valid_mask]
         sums = np.zeros(len(self.orientations), dtype=np.float64)
         counts = np.zeros(len(self.orientations), dtype=np.int64)
         maxima = np.zeros(len(self.orientations), dtype=np.float64)
-        rows, cols = self._require_regular_2d_grid()
-        for left_index, right_index in neighbor_pairs:
-            if (
-                segmentation is not None
-                and segmentation.labels[int(left_index)] != segmentation.labels[int(right_index)]
-            ):
-                continue
-            if connectivity == 8:
-                row_left, col_left = divmod(int(left_index), cols)
-                row_right, col_right = divmod(int(right_index), cols)
-                if max(abs(row_left - row_right), abs(col_left - col_right)) > order:
-                    continue
-            angle_deg = self.orientations[left_index].distance_to(
-                self.orientations[right_index],
-                symmetry_aware=symmetry_aware,
+        if filtered_pairs.size:
+            angle_deg = np.rad2deg(
+                self._pair_misorientation_rad(filtered_pairs, symmetry_aware=symmetry_aware)
             )
-            angle_deg = float(np.rad2deg(angle_deg))
-            if threshold_deg is not None and angle_deg > threshold_deg:
-                continue
-            sums[left_index] += angle_deg
-            sums[right_index] += angle_deg
-            counts[left_index] += 1
-            counts[right_index] += 1
-            maxima[left_index] = max(maxima[left_index], angle_deg)
-            maxima[right_index] = max(maxima[right_index], angle_deg)
+            finite_mask = np.isfinite(angle_deg)
+            if threshold_deg is not None:
+                finite_mask &= angle_deg <= threshold_deg
+            filtered_pairs = filtered_pairs[finite_mask]
+            angle_deg = angle_deg[finite_mask]
+            if filtered_pairs.size:
+                pair_indices = np.concatenate([filtered_pairs[:, 0], filtered_pairs[:, 1]])
+                pair_values = np.concatenate([angle_deg, angle_deg])
+                sums = np.asarray(
+                    np.bincount(
+                        pair_indices,
+                        weights=pair_values,
+                        minlength=len(self.orientations),
+                    ),
+                    dtype=np.float64,
+                )
+                counts = np.asarray(
+                    np.bincount(pair_indices, minlength=len(self.orientations)),
+                    dtype=np.int64,
+                )
+                np.maximum.at(maxima, filtered_pairs[:, 0], angle_deg)
+                np.maximum.at(maxima, filtered_pairs[:, 1], angle_deg)
         if statistic == "mean":
             with np.errstate(divide="ignore", invalid="ignore"):
                 values = np.divide(
@@ -956,7 +1508,10 @@ class CrystalMap:
                 )
         else:
             values = maxima
-        values = np.ascontiguousarray(values.reshape((rows, cols)))
+        if self.grid_shape is not None and len(self.grid_shape) == 2:
+            rows, cols = self._require_regular_2d_grid()
+            values = values.reshape((rows, cols))
+        values = np.ascontiguousarray(values)
         values.setflags(write=False)
         return values
 
@@ -1032,7 +1587,9 @@ class CrystalMap:
     ) -> GrainSegmentation:
         if max_misorientation_deg < 0.0:
             raise ValueError("max_misorientation_deg must be non-negative.")
-        neighbor_pairs = self.neighbor_pairs(connectivity=connectivity)
+        neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs
+        same_phase = self._same_phase_pair_mask(neighbor_pairs)
+        neighbor_pairs = neighbor_pairs[same_phase]
         parent = np.arange(len(self.orientations), dtype=np.int64)
 
         def find(index: int) -> int:
@@ -1051,16 +1608,14 @@ class CrystalMap:
             if left_root != right_root:
                 parent[right_root] = left_root
 
-        for left_index, right_index in neighbor_pairs:
-            angle_deg = float(
-                np.rad2deg(
-                    self.orientations[int(left_index)].distance_to(
-                        self.orientations[int(right_index)],
-                        symmetry_aware=symmetry_aware,
-                    )
-                )
+        if neighbor_pairs.size:
+            angles_deg = np.rad2deg(
+                self._pair_misorientation_rad(neighbor_pairs, symmetry_aware=symmetry_aware)
             )
-            if angle_deg <= max_misorientation_deg:
+            valid_pairs = neighbor_pairs[
+                np.isfinite(angles_deg) & (angles_deg <= max_misorientation_deg)
+            ]
+            for left_index, right_index in valid_pairs:
                 union(int(left_index), int(right_index))
 
         component_map: dict[int, list[int]] = {}

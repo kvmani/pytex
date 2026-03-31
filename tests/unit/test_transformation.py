@@ -147,3 +147,58 @@ def test_transformation_variant_rejects_wrong_phase_planes() -> None:
             parent_to_child_rotation=Rotation.identity(),
             habit_plane_pairs=((child_plane, bad_plane),),
         )
+
+
+def test_phase_transformation_record_predicted_orientations_follow_variant_indices() -> None:
+    crystal_parent, crystal_child, parent, child = make_phases()
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    relationship = OrientationRelationship(
+        name="demo_or",
+        parent_phase=parent,
+        child_phase=child,
+        parent_to_child_rotation=Rotation.from_axis_angle([0.0, 0.0, 1.0], np.pi / 4.0),
+    )
+    variants = relationship.generate_variants()
+    parent_orientation = Orientation(
+        rotation=Rotation.identity(),
+        crystal_frame=crystal_parent,
+        specimen_frame=specimen,
+        symmetry=parent.symmetry,
+        phase=parent,
+    )
+    child_orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                rotation=Rotation.identity(),
+                crystal_frame=crystal_child,
+                specimen_frame=specimen,
+                symmetry=child.symmetry,
+                phase=child,
+            ),
+            Orientation(
+                rotation=Rotation.identity(),
+                crystal_frame=crystal_child,
+                specimen_frame=specimen,
+                symmetry=child.symmetry,
+                phase=child,
+            ),
+        ]
+    )
+    record = PhaseTransformationRecord(
+        name="variant_record",
+        orientation_relationship=relationship,
+        parent_orientation=parent_orientation,
+        child_orientations=child_orientations,
+        variant_indices=np.array([variants[0].variant_index, variants[-1].variant_index]),
+    )
+    predicted = record.predicted_child_orientations()
+    assert predicted.quaternions.shape == (2, 4)
+    expected_first = variants[0].parent_to_child_rotation.compose(parent_orientation.rotation)
+    expected_last = variants[-1].parent_to_child_rotation.compose(parent_orientation.rotation)
+    assert_allclose(predicted.quaternions[0], expected_first.quaternion, atol=1e-8)
+    assert_allclose(predicted.quaternions[1], expected_last.quaternion, atol=1e-8)

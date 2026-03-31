@@ -27,8 +27,10 @@ from pytex.core import (
     MillerPlaneSet,
     Misorientation,
     Orientation,
+    OrientationRelationship,
     OrientationSet,
     Phase,
+    PhaseTransformationRecord,
     ProvenanceRecord,
     ReciprocalLatticeVector,
     ReferenceFrame,
@@ -36,6 +38,7 @@ from pytex.core import (
     ScatteringSetup,
     SpaceGroupSpec,
     SymmetrySpec,
+    TransformationVariant,
     UnitCell,
     ZoneAxis,
 )
@@ -760,6 +763,141 @@ def _deserialize_orientation_set(payload: dict[str, Any]) -> OrientationSet:
     )
 
 
+def _serialize_orientation_relationship(
+    relationship: OrientationRelationship,
+) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.orientation_relationship"),
+        "name": relationship.name,
+        "parent_phase": _serialize_phase(relationship.parent_phase),
+        "child_phase": _serialize_phase(relationship.child_phase),
+        "parent_to_child_rotation": _serialize_rotation(relationship.parent_to_child_rotation),
+        "parallel_directions": [
+            {
+                "parent": _as_float_list(parent),
+                "child": _as_float_list(child),
+            }
+            for parent, child in relationship.parallel_directions
+        ],
+        "parallel_planes": [
+            {
+                "parent": _serialize_crystal_plane(parent),
+                "child": _serialize_crystal_plane(child),
+            }
+            for parent, child in relationship.parallel_planes
+        ],
+        "provenance": _serialize_provenance(relationship.provenance),
+    }
+
+
+def _deserialize_orientation_relationship(payload: dict[str, Any]) -> OrientationRelationship:
+    _require_schema(payload, "pytex.core.orientation_relationship")
+    parent_phase = _deserialize_phase(payload["parent_phase"])
+    child_phase = _deserialize_phase(payload["child_phase"])
+    return OrientationRelationship(
+        name=payload["name"],
+        parent_phase=parent_phase,
+        child_phase=child_phase,
+        parent_to_child_rotation=_deserialize_rotation(payload["parent_to_child_rotation"]),
+        parallel_directions=tuple(
+            (
+                np.asarray(item["parent"], dtype=np.float64),
+                np.asarray(item["child"], dtype=np.float64),
+            )
+            for item in payload.get("parallel_directions", [])
+        ),
+        parallel_planes=tuple(
+            (
+                _deserialize_crystal_plane(item["parent"]),
+                _deserialize_crystal_plane(item["child"]),
+            )
+            for item in payload.get("parallel_planes", [])
+        ),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_transformation_variant(variant: TransformationVariant) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.transformation_variant"),
+        "orientation_relationship": _serialize_orientation_relationship(
+            variant.orientation_relationship
+        ),
+        "variant_index": variant.variant_index,
+        "parent_operator_index": variant.parent_operator_index,
+        "child_operator_index": variant.child_operator_index,
+        "parent_to_child_rotation": _serialize_rotation(variant.parent_to_child_rotation),
+        "habit_plane_pairs": [
+            {
+                "parent": _serialize_crystal_plane(parent),
+                "child": _serialize_crystal_plane(child),
+            }
+            for parent, child in variant.habit_plane_pairs
+        ],
+        "provenance": _serialize_provenance(variant.provenance),
+    }
+
+
+def _deserialize_transformation_variant(payload: dict[str, Any]) -> TransformationVariant:
+    _require_schema(payload, "pytex.core.transformation_variant")
+    return TransformationVariant(
+        orientation_relationship=_deserialize_orientation_relationship(
+            payload["orientation_relationship"]
+        ),
+        variant_index=int(payload["variant_index"]),
+        parent_operator_index=int(payload["parent_operator_index"]),
+        child_operator_index=int(payload["child_operator_index"]),
+        parent_to_child_rotation=_deserialize_rotation(payload["parent_to_child_rotation"]),
+        habit_plane_pairs=tuple(
+            (
+                _deserialize_crystal_plane(item["parent"]),
+                _deserialize_crystal_plane(item["child"]),
+            )
+            for item in payload.get("habit_plane_pairs", [])
+        ),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_phase_transformation_record(
+    record: PhaseTransformationRecord,
+) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.phase_transformation_record"),
+        "name": record.name,
+        "orientation_relationship": _serialize_orientation_relationship(
+            record.orientation_relationship
+        ),
+        "parent_orientation": _serialize_orientation(record.parent_orientation),
+        "child_orientations": _serialize_orientation_set(record.child_orientations),
+        "variant_indices": None
+        if record.variant_indices is None
+        else _as_int_list(record.variant_indices),
+        "provenance": _serialize_provenance(record.provenance),
+        "notes": list(record.notes),
+    }
+
+
+def _deserialize_phase_transformation_record(
+    payload: dict[str, Any]
+) -> PhaseTransformationRecord:
+    _require_schema(payload, "pytex.core.phase_transformation_record")
+    variant_indices = payload.get("variant_indices")
+    return PhaseTransformationRecord(
+        name=payload["name"],
+        orientation_relationship=_deserialize_orientation_relationship(
+            payload["orientation_relationship"]
+        ),
+        parent_orientation=_deserialize_orientation(payload["parent_orientation"]),
+        child_orientations=_deserialize_orientation_set(payload["child_orientations"]),
+        variant_indices=None
+        if variant_indices is None
+        else np.asarray(variant_indices, dtype=np.int64),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+        notes=tuple(payload.get("notes", [])),
+    )
+
+
 def _serialize_radiation(radiation: RadiationSpec) -> dict[str, Any]:
     return {
         **_base_payload("pytex.diffraction.radiation_spec"),
@@ -1032,6 +1170,9 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     Orientation: _serialize_orientation,
     Misorientation: _serialize_misorientation,
     OrientationSet: _serialize_orientation_set,
+    OrientationRelationship: _serialize_orientation_relationship,
+    TransformationVariant: _serialize_transformation_variant,
+    PhaseTransformationRecord: _serialize_phase_transformation_record,
     RadiationSpec: _serialize_radiation,
     PowderReflection: _serialize_powder_reflection,
     PowderPattern: _serialize_powder_pattern,
@@ -1069,6 +1210,9 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.orientation": _deserialize_orientation,
     "pytex.core.misorientation": _deserialize_misorientation,
     "pytex.core.orientation_set": _deserialize_orientation_set,
+    "pytex.core.orientation_relationship": _deserialize_orientation_relationship,
+    "pytex.core.transformation_variant": _deserialize_transformation_variant,
+    "pytex.core.phase_transformation_record": _deserialize_phase_transformation_record,
     "pytex.diffraction.radiation_spec": _deserialize_radiation,
     "pytex.diffraction.powder_reflection": _deserialize_powder_reflection,
     "pytex.diffraction.powder_pattern": _deserialize_powder_pattern,

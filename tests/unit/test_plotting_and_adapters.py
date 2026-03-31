@@ -246,6 +246,45 @@ def test_normalize_kikuchipy_payload_builds_normalized_dataset() -> None:
     assert len(dataset.crystal_map.orientations) == 2
 
 
+def test_normalize_kikuchipy_payload_preserves_multiphase_assignments() -> None:
+    crystal, specimen, _ = make_foundation()
+    lattice_a = Lattice(3.0, 3.0, 3.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    lattice_b = Lattice(2.9, 2.9, 2.9, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase_a = Phase(
+        "fcc_demo",
+        lattice=lattice_a,
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+        crystal_frame=crystal,
+    )
+    phase_b = Phase(
+        "bcc_demo",
+        lattice=lattice_b,
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+        crystal_frame=crystal,
+    )
+    payload = {
+        "coordinates": np.array([[0.0, 0.0], [1.0, 0.0]]),
+        "euler_angles_deg": np.array([[0.0, 0.0, 0.0], [10.0, 20.0, 30.0]]),
+        "phases": (
+            {"phase_id": "0", "name": phase_a.name, "point_group": phase_a.symmetry.point_group},
+            {"phase_id": "1", "name": phase_b.name, "point_group": phase_b.symmetry.point_group},
+        ),
+        "phase_ids": np.array([0, 1], dtype=np.int64),
+        "grid_shape": (1, 2),
+        "step_sizes": (1.0, 1.0),
+    }
+    dataset = normalize_kikuchipy_payload(
+        payload,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        map_frame=specimen,
+        phases={0: phase_a, 1: phase_b},
+    )
+    assert dataset.crystal_map.is_multiphase
+    assert dataset.crystal_map.phase_summary() == {"fcc_demo": 1, "bcc_demo": 1}
+    assert {phase["name"] for phase in dataset.manifest.phases} == {"fcc_demo", "bcc_demo"}
+
+
 def test_normalize_pyebsdindex_payload_accepts_vendor_angle_key() -> None:
     crystal, specimen, symmetry = make_foundation()
     payload = {

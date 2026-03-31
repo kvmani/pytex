@@ -26,51 +26,51 @@ These are related, but they do not live in the same geometric space and they are
 
 Let
 
-\[
+$$
 g : \text{crystal} \rightarrow \text{specimen}
-\]
+$$
 
 denote an orientation. In PyTex, `Orientation` stores this mapping explicitly through a rotation together with crystal and specimen frames.
 
 Let
 
-\[
+$$
 \mathbf{d}_c \in S^2
-\]
+$$
 
 be a unit crystal direction. Under the orientation, it maps into specimen space as
 
-\[
+$$
 \mathbf{d}_s = g \mathbf{d}_c.
-\]
+$$
 
 Let
 
-\[
+$$
 \mathcal{C} = \{c_1, c_2, \dots\}
-\]
+$$
 
 be the crystal symmetry group, and optionally
 
-\[
+$$
 \mathcal{S} = \{s_1, s_2, \dots\}
-\]
+$$
 
 be a specimen symmetry group.
 
 Then symmetry-equivalent orientations are
 
-\[
+$$
 g' = s g c,
 \qquad s \in \mathcal{S}, \; c \in \mathcal{C}.
-\]
+$$
 
 Symmetry-equivalent directions are
 
-\[
+$$
 \mathbf{d}'_c = c \mathbf{d}_c,
 \qquad c \in \mathcal{C}.
-\]
+$$
 
 That difference matters: directions are acted on directly in direction space, while orientations are acted on through left and right multiplication in orientation space.
 
@@ -80,19 +80,19 @@ That difference matters: directions are acted on directly in direction space, wh
 
 Inverse pole figure reduction is a direction-space problem.
 
-Given one crystal direction \(\mathbf{d}_c\), PyTex:
+Given one crystal direction $\mathbf{d}_c$, PyTex:
 
-1. generates its symmetry orbit \(\{c \mathbf{d}_c\}\)
-2. optionally applies antipodal identification when the workflow treats \(\mathbf{d}\) and \(-\mathbf{d}\) as equivalent
+1. generates its symmetry orbit $\{c \mathbf{d}_c\}$
+2. optionally applies antipodal identification when the workflow treats $\mathbf{d}$ and $-\mathbf{d}$ as equivalent
 3. selects the representative that lies in the supported fundamental sector for the crystal class
 
 This produces a unique representative direction
 
-\[
+$$
 \mathbf{d}_{\mathrm{FR}} \in \mathcal{F}_{\mathrm{dir}}.
-\]
+$$
 
-For cubic symmetry, this sector is more accurately understood as the spherical sector or wedge with corner directions \([001]\), \([101]\), and \([111]\). It is often flattened into a triangular sketch for teaching, but the reduction itself lives on direction space on the sphere. For other supported classes, the wedge geometry changes, but the reduction logic is the same: the representative must lie inside the declared sector.
+For cubic symmetry, this sector is more accurately understood as the spherical sector or wedge with corner directions $[001]$, $[101]$, and $[111]$. It is often flattened into a triangular sketch for teaching, but the reduction itself lives on direction space on the sphere. For other supported classes, the wedge geometry changes, but the reduction logic is the same: the representative must lie inside the declared sector.
 
 ### What PyTex Means By “In Sector”
 
@@ -108,19 +108,19 @@ That is why the direction reduction can be used safely for IPF construction and 
 
 ## Orientation Reduction: Symmetry Orbits In Orientation Space
 
-Orientation reduction is not a direction-space problem. The object being reduced is the orientation \(g\) itself.
+Orientation reduction is not a direction-space problem. The object being reduced is the orientation $g$ itself.
 
 The orbit is
 
-\[
+$$
 \mathcal{O}(g) = \{s g c \; | \; s \in \mathcal{S},\; c \in \mathcal{C}\}.
-\]
+$$
 
 The question is not “which pole lies in the flattened sketch?” but rather:
 
-\[
+$$
 \text{which element of } \mathcal{O}(g) \text{ should be the stable representative?}
-\]
+$$
 
 PyTex now answers that in two different modes.
 
@@ -128,25 +128,25 @@ PyTex now answers that in two different modes.
 
 When no explicit reference orientation is supplied, PyTex reduces the full symmetry orbit exactly in the unit-quaternion hemisphere.
 
-Let the orientation be represented by a unit quaternion \(q\), with the sign convention fixed to the upper hemisphere:
+Let the orientation be represented by a unit quaternion $q$, with the sign convention fixed to the upper hemisphere:
 
-\[
+$$
 q \sim -q,
 \qquad
 q_0 \ge 0.
-\]
+$$
 
-For crystal symmetry \(\mathcal{C}\), PyTex forms the right-action orbit
+For crystal symmetry $\mathcal{C}$, PyTex forms the right-action orbit
 
-\[
+$$
 \mathcal{O}(q) = \{ q \cdot c \; | \; c \in \mathcal{C} \},
-\]
+$$
 
-canonicalizes each representative back into the upper hemisphere, and then selects the representative with maximal scalar part \(q_0\). Because
+canonicalizes each representative back into the upper hemisphere, and then selects the representative with maximal scalar part $q_0$. Because
 
-\[
+$$
 \omega = 2 \arccos(q_0)
-\]
+$$
 
 on that hemisphere, this is exactly the same as choosing the symmetry-equivalent representative with minimum rotation angle to the identity.
 
@@ -158,14 +158,14 @@ PyTex still applies a deterministic lexicographic tie-break after the exact mini
 
 ### Mode 2: Reference-Aware Projection
 
-When a workflow supplies a reference orientation \(g_{\mathrm{ref}}\), PyTex instead chooses the symmetry-equivalent representative minimizing the unsymmetrized orientation distance to that reference:
+When a workflow supplies a reference orientation $g_{\mathrm{ref}}$, PyTex instead chooses the symmetry-equivalent representative minimizing the unsymmetrized orientation distance to that reference:
 
-\[
+$$
 g_{\mathrm{proj}}
 =
 \arg\min_{g' \in \mathcal{O}(g)}
 d(g', g_{\mathrm{ref}}).
-\]
+$$
 
 This is useful for workflows where “closest to the reference” is scientifically more meaningful than “first by deterministic ordering”.
 
@@ -173,28 +173,28 @@ This is useful for workflows where “closest to the reference” is scientifica
 
 ## Misorientation And Disorientation
 
-Given two orientations \(g_1\) and \(g_2\), the base misorientation is
+Given two orientations $g_1$ and $g_2$, the base misorientation is
 
-\[
+$$
 \Delta = g_2 g_1^{-1}.
-\]
+$$
 
 Under symmetry, PyTex considers the orbit
 
-\[
+$$
 \Delta' = c_L \, \Delta \, c_R^{T},
 \qquad
 c_L \in \mathcal{C}_L,\;
 c_R \in \mathcal{C}_R.
-\]
+$$
 
 The disorientation is then the representative with minimum rotation angle:
 
-\[
+$$
 \Delta_{\mathrm{dis}}
 =
 \arg\min_{\Delta'} \omega(\Delta').
-\]
+$$
 
 This is the quantity used in symmetry-aware misorientation distance, EBSD KAM, GROD, and grain-boundary misorientation.
 

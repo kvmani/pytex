@@ -1,107 +1,57 @@
 # EBSD: Kernel-Average Misorientation
 
-Kernel-average misorientation (KAM) is a local orientation-gradient metric on an EBSD map. PyTex implements a regular-grid KAM workflow that is intentionally explicit about neighborhood order, thresholding, and symmetry handling.
+Kernel-average misorientation (KAM) is a local orientation-gradient metric on an EBSD map. PyTex
+now computes it on a shared neighbor-graph substrate rather than only on a fixed regular-grid
+implementation path.
 
 ## Definition
 
-For an orientation field \(o_{i,j}\) on a regular grid and a neighborhood set \(N(i,j)\), PyTex uses the standard local-average form
+For a measurement site $i$ with neighbor set $\mathcal{N}(i)$, PyTex uses
 
 ```{math}
-\mathrm{KAM}_{i,j} =
-\frac{1}{|N(i,j)|}
-\sum_{(k,l) \in N(i,j)}
-\omega\!\left(o_{i,j}, o_{k,l}\right),
+\mathrm{KAM}(i) =
+\frac{1}{|\mathcal{N}(i)|}
+\sum_{j \in \mathcal{N}(i)} \omega\!\left(g_i, g_j\right),
 ```
 
-where \(\omega\) is the misorientation or disorientation angle, depending on whether symmetry-aware reduction is enabled.
+where $\omega$ is the misorientation angle or the symmetry-reduced disorientation angle,
+depending on `symmetry_aware`.
 
 ## What PyTex Exposes
 
-- regular 2D `CrystalMap` validation through `grid_shape`
-- deterministic neighbor-pair generation for 4- and 8-connectivity
-- neighbor order control for first-, second-, and higher-order neighborhoods
-- optional misorientation thresholding
-- symmetry-aware or symmetry-disabled evaluation
+- regular-grid adjacency for 4- and 8-connectivity
+- graph-backed adjacency for irregular coordinate sets
+- explicit neighbor order
+- optional thresholding
+- symmetry-aware or raw-angle evaluation
 - mean-style and max-style aggregation
-
-## Why The Parameters Matter
-
-### Neighbor Order
-
-Larger neighborhoods suppress some noise but also smooth away strongly local structure. PyTex therefore makes the order an explicit parameter rather than silently fixing it.
-
-### Threshold
-
-A threshold can suppress very large cross-boundary misorientations when the user wants an intra-grain local-gradient view instead of a boundary-dominated field.
-
-### Symmetry Awareness
-
-For crystallographic interpretation, the relevant quantity is often the disorientation angle after crystal symmetry reduction. For debugging imported data or checking raw rotational differences, symmetry-disabled behavior can also be useful.
-
-![EBSD Grain Workflow](../../figures/ebsd_grain_workflow.svg)
+- automatic exclusion of cross-phase pairs on multiphase maps
+- optional restriction to an existing grain segmentation
 
 ## Example
 
 ```python
-import numpy as np
-
-from pytex import (
-    CrystalMap,
-    FrameDomain,
-    Handedness,
-    Orientation,
-    OrientationSet,
-    ReferenceFrame,
-    Rotation,
-    SymmetrySpec,
-)
-
-crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
-specimen = ReferenceFrame("specimen", FrameDomain.SPECIMEN, ("x", "y", "z"), Handedness.RIGHT)
-symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
-
-orientations = OrientationSet.from_orientations(
-    [
-        Orientation(Rotation.identity(), crystal, specimen, symmetry=symmetry),
-        Orientation(Rotation.from_bunge_euler(3.0, 0.0, 0.0), crystal, specimen, symmetry=symmetry),
-        Orientation(Rotation.from_bunge_euler(6.0, 0.0, 0.0), crystal, specimen, symmetry=symmetry),
-        Orientation(Rotation.from_bunge_euler(9.0, 0.0, 0.0), crystal, specimen, symmetry=symmetry),
-    ]
-)
-
-crystal_map = CrystalMap(
-    coordinates=np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
-    orientations=orientations,
-    map_frame=specimen,
-    grid_shape=(2, 2),
-    step_sizes=(1.0, 1.0),
-)
-
 kam = crystal_map.kernel_average_misorientation_deg(
     order=1,
     threshold_deg=5.0,
     symmetry_aware=True,
     statistic="mean",
 )
-print(kam)
 ```
 
-## Interpretation Notes
+If `grid_shape` is not available, PyTex falls back to graph mode and infers a neighborhood radius
+from the scan geometry.
 
-- high KAM often marks sharp local orientation gradients, but it is not itself a grain-reconstruction algorithm
-- KAM responds strongly to noise if the orientation field is noisy
-- KAM maps become much more interpretable when shown together with grain boundaries or after well-documented denoising
+## Phase Semantics
+
+For multiphase maps, PyTex preserves the full coordinate graph but only evaluates KAM on
+same-phase pairs. This keeps topology visible without mixing physically incompatible crystal
+symmetries into one local-angular metric.
 
 ## Related Material
 
-- `docs/architecture/ebsd_foundation.md`
+- {doc}`ebsd_import_normalization`
+- {doc}`ebsd_grains`
 - [../../tex/algorithms/ebsd_local_misorientation.tex](../../tex/algorithms/ebsd_local_misorientation.tex)
 - [../../tex/algorithms/ebsd_kam_parameterization.tex](../../tex/algorithms/ebsd_kam_parameterization.tex)
-- [../../figures/ebsd_grain_workflow.svg](../../figures/ebsd_grain_workflow.svg)
-
-## References
-
-### Informative
-
-- MTEX documentation: [Kernel Average Misorientation (KAM)](https://mtex-toolbox.github.io/EBSDKAM.html)
-- MTEX documentation: [Grain Orientation Parameters](https://mtex-toolbox.github.io/GrainOrientationParameters.html)
+- [../../tex/algorithms/multiphase_ebsd_graph_workflows.tex](../../tex/algorithms/multiphase_ebsd_graph_workflows.tex)

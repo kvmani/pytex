@@ -26,6 +26,8 @@ VALIDATION_MANIFEST_SCHEMA_ID = "pytex.validation_manifest"
 VALIDATION_MANIFEST_SCHEMA_VERSION = "1.0.0"
 WORKFLOW_RESULT_MANIFEST_SCHEMA_ID = "pytex.workflow_result_manifest"
 WORKFLOW_RESULT_MANIFEST_SCHEMA_VERSION = "1.0.0"
+TRANSFORMATION_MANIFEST_SCHEMA_ID = "pytex.transformation_manifest"
+TRANSFORMATION_MANIFEST_SCHEMA_VERSION = "1.0.0"
 _PYTEX_VERSION = "0.1.0.dev0"
 
 
@@ -143,6 +145,18 @@ def _phase_declaration(phase: Phase | None) -> dict[str, Any] | None:
     }
 
 
+def _mapping_declaration(value: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    return dict(value)
+
+
+def _mapping_sequence_declaration(
+    values: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    return tuple(dict(value) for value in values)
+
+
 @dataclass(frozen=True, slots=True)
 class ExperimentManifest:
     source_system: str
@@ -160,6 +174,7 @@ class ExperimentManifest:
     measurement_quality: Mapping[str, Any] | None = None
     scattering_setup: Mapping[str, Any] | None = None
     phase: Mapping[str, Any] | None = None
+    phases: tuple[Mapping[str, Any], ...] = ()
     referenced_files: tuple[str, ...] = ()
     schema_id: str = EXPERIMENT_MANIFEST_SCHEMA_ID
     schema_version: str = EXPERIMENT_MANIFEST_SCHEMA_VERSION
@@ -187,6 +202,9 @@ class ExperimentManifest:
         object.__setattr__(
             self, "metadata", _string_mapping(self.metadata, name="ExperimentManifest.metadata")
         )
+        if self.phase is not None:
+            object.__setattr__(self, "phase", _mapping_declaration(self.phase))
+        object.__setattr__(self, "phases", _mapping_sequence_declaration(self.phases))
 
     @classmethod
     def from_acquisition_geometry(
@@ -195,10 +213,16 @@ class ExperimentManifest:
         *,
         source_system: str,
         phase: Phase | None = None,
+        phases: Sequence[Phase] = (),
         scattering_setup: ScatteringSetup | None = None,
         referenced_files: Sequence[str] = (),
         metadata: Mapping[str, str] | None = None,
     ) -> ExperimentManifest:
+        phase_declarations = tuple(
+            declaration
+            for declaration in (_phase_declaration(candidate) for candidate in phases)
+            if declaration is not None
+        )
         return cls(
             source_system=source_system,
             modality=acquisition_geometry.modality,
@@ -233,6 +257,7 @@ class ExperimentManifest:
             ),
             scattering_setup=_scattering_setup_declaration(scattering_setup),
             phase=_phase_declaration(phase),
+            phases=phase_declarations,
             referenced_files=tuple(referenced_files),
             metadata={} if metadata is None else dict(metadata),
         )
@@ -250,23 +275,25 @@ class ExperimentManifest:
             "referenced_files": list(self.referenced_files),
             "metadata": dict(self.metadata),
         }
-        optional = {
-            "map_frame": self.map_frame,
-            "detector_frame": self.detector_frame,
-            "laboratory_frame": self.laboratory_frame,
-            "reciprocal_frame": self.reciprocal_frame,
-            "specimen_to_map": self.specimen_to_map,
-            "specimen_to_detector": self.specimen_to_detector,
-            "specimen_to_laboratory": self.specimen_to_laboratory,
-            "laboratory_to_reciprocal": self.laboratory_to_reciprocal,
-            "calibration_record": self.calibration_record,
-            "measurement_quality": self.measurement_quality,
-            "scattering_setup": self.scattering_setup,
-            "phase": self.phase,
-        }
-        for key, value in optional.items():
-            if value is not None:
-                payload[key] = dict(value)
+        for key, value in (
+            ("map_frame", self.map_frame),
+            ("detector_frame", self.detector_frame),
+            ("laboratory_frame", self.laboratory_frame),
+            ("reciprocal_frame", self.reciprocal_frame),
+            ("specimen_to_map", self.specimen_to_map),
+            ("specimen_to_detector", self.specimen_to_detector),
+            ("specimen_to_laboratory", self.specimen_to_laboratory),
+            ("laboratory_to_reciprocal", self.laboratory_to_reciprocal),
+            ("calibration_record", self.calibration_record),
+            ("measurement_quality", self.measurement_quality),
+            ("scattering_setup", self.scattering_setup),
+            ("phase", self.phase),
+        ):
+            declaration = _mapping_declaration(value)
+            if declaration is not None:
+                payload[key] = declaration
+        if self.phases:
+            payload["phases"] = [dict(item) for item in self.phases]
         return payload
 
     @classmethod
@@ -516,6 +543,119 @@ class WorkflowResultManifest:
         return output_path
 
 
+@dataclass(frozen=True, slots=True)
+class TransformationManifest:
+    transformation_id: str
+    orientation_relationship_name: str
+    parent_phase: Mapping[str, Any]
+    child_phase: Mapping[str, Any]
+    specimen_frame: Mapping[str, Any]
+    variant_count: int
+    observed_child_count: int
+    has_variant_assignments: bool
+    referenced_files: tuple[str, ...] = ()
+    notes: tuple[str, ...] = ()
+    metadata: Mapping[str, str] = field(default_factory=dict)
+    schema_id: str = TRANSFORMATION_MANIFEST_SCHEMA_ID
+    schema_version: str = TRANSFORMATION_MANIFEST_SCHEMA_VERSION
+    pytex_version: str = _PYTEX_VERSION
+    created_at: str = field(default_factory=_iso8601_now)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "transformation_id",
+            _validate_non_empty_string("transformation_id", self.transformation_id),
+        )
+        object.__setattr__(
+            self,
+            "orientation_relationship_name",
+            _validate_non_empty_string(
+                "orientation_relationship_name", self.orientation_relationship_name
+            ),
+        )
+        if self.schema_id != TRANSFORMATION_MANIFEST_SCHEMA_ID:
+            raise ValueError(
+                "TransformationManifest.schema_id must match the stable schema identifier."
+            )
+        if self.schema_version != TRANSFORMATION_MANIFEST_SCHEMA_VERSION:
+            raise ValueError(
+                "TransformationManifest.schema_version must match the stable schema version."
+            )
+        if self.variant_count < 0:
+            raise ValueError("TransformationManifest.variant_count must be non-negative.")
+        if self.observed_child_count < 0:
+            raise ValueError("TransformationManifest.observed_child_count must be non-negative.")
+        object.__setattr__(
+            self,
+            "referenced_files",
+            _string_tuple(self.referenced_files, name="referenced_files"),
+        )
+        object.__setattr__(
+            self,
+            "notes",
+            _string_tuple(self.notes, name="notes") if self.notes else (),
+        )
+        object.__setattr__(
+            self,
+            "metadata",
+            _string_mapping(self.metadata, name="TransformationManifest.metadata"),
+        )
+
+    @classmethod
+    def from_phase_transformation_record(
+        cls,
+        record: Any,
+        *,
+        referenced_files: Sequence[str] = (),
+        metadata: Mapping[str, str] | None = None,
+    ) -> TransformationManifest:
+        return cls(
+            transformation_id=record.name,
+            orientation_relationship_name=record.orientation_relationship.name,
+            parent_phase=_phase_declaration(record.orientation_relationship.parent_phase) or {},
+            child_phase=_phase_declaration(record.orientation_relationship.child_phase) or {},
+            specimen_frame=_frame_declaration(record.parent_orientation.specimen_frame),
+            variant_count=record.variant_count,
+            observed_child_count=len(record.child_orientations),
+            has_variant_assignments=record.variant_indices is not None,
+            referenced_files=tuple(referenced_files),
+            notes=tuple(record.notes),
+            metadata={} if metadata is None else dict(metadata),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "schema_id": self.schema_id,
+            "schema_version": self.schema_version,
+            "pytex_version": self.pytex_version,
+            "created_at": self.created_at,
+            "transformation_id": self.transformation_id,
+            "orientation_relationship_name": self.orientation_relationship_name,
+            "parent_phase": dict(self.parent_phase),
+            "child_phase": dict(self.child_phase),
+            "specimen_frame": dict(self.specimen_frame),
+            "variant_count": self.variant_count,
+            "observed_child_count": self.observed_child_count,
+            "has_variant_assignments": self.has_variant_assignments,
+            "referenced_files": list(self.referenced_files),
+            "notes": list(self.notes),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> TransformationManifest:
+        validate_transformation_manifest(payload)
+        return cls(**payload)
+
+    def write_json(self, path: str | Path) -> Path:
+        output_path = Path(path)
+        output_path.write_text(
+            json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
+        )
+        return output_path
+
+
 def _require_fields(payload: Mapping[str, Any], required: set[str], *, name: str) -> None:
     missing = sorted(required - set(payload))
     if missing:
@@ -610,6 +750,31 @@ def validate_workflow_result_manifest(payload: dict[str, Any]) -> None:
     WorkflowResultManifest(**payload)
 
 
+def validate_transformation_manifest(payload: dict[str, Any]) -> None:
+    _require_fields(
+        payload,
+        {
+            "schema_id",
+            "schema_version",
+            "pytex_version",
+            "created_at",
+            "transformation_id",
+            "orientation_relationship_name",
+            "parent_phase",
+            "child_phase",
+            "specimen_frame",
+            "variant_count",
+            "observed_child_count",
+            "has_variant_assignments",
+            "referenced_files",
+            "notes",
+            "metadata",
+        },
+        name="Transformation manifest",
+    )
+    TransformationManifest(**payload)
+
+
 def _schema_path(filename: str) -> Path:
     return Path(__file__).resolve().parents[3] / "schemas" / filename
 
@@ -628,6 +793,10 @@ def validation_manifest_schema_path() -> Path:
 
 def workflow_result_manifest_schema_path() -> Path:
     return _schema_path("workflow_result_manifest.schema.json")
+
+
+def transformation_manifest_schema_path() -> Path:
+    return _schema_path("transformation_manifest.schema.json")
 
 
 def _read_manifest(path: str | Path) -> dict[str, Any]:
@@ -651,3 +820,7 @@ def read_validation_manifest(path: str | Path) -> ValidationManifest:
 
 def read_workflow_result_manifest(path: str | Path) -> WorkflowResultManifest:
     return WorkflowResultManifest.from_dict(_read_manifest(path))
+
+
+def read_transformation_manifest(path: str | Path) -> TransformationManifest:
+    return TransformationManifest.from_dict(_read_manifest(path))

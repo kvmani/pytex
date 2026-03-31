@@ -25,8 +25,10 @@ from pytex import (
     MillerPlane,
     MillerPlaneSet,
     Orientation,
+    OrientationRelationship,
     OrientationSet,
     Phase,
+    PhaseTransformationRecord,
     ProvenanceRecord,
     ReferenceFrame,
     Rotation,
@@ -181,11 +183,66 @@ def test_core_json_contract_round_trip() -> None:
         orientation,
         orientation.misorientation_to(orientation, reduce_by_symmetry=False),
         orientation_set,
+        OrientationRelationship(
+            name="demo_or",
+            parent_phase=phase,
+            child_phase=Phase(
+                name="bcc-child",
+                lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=crystal),
+                symmetry=phase.symmetry,
+                crystal_frame=crystal,
+            ),
+            parent_to_child_rotation=Rotation.identity(),
+        ),
     ]
 
     for obj in objects:
         payload = to_json_contract(obj)
         assert payload["schema_version"] == JSON_CONTRACT_SCHEMA_VERSION
+        restored = from_json_contract(payload)
+        assert to_json_contract(restored) == payload
+
+
+def test_transformation_json_contract_round_trip() -> None:
+    crystal, specimen, _, _, phase = _core_context()
+    child_phase = Phase(
+        name="bcc-child",
+        lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=crystal),
+        symmetry=phase.symmetry,
+        crystal_frame=crystal,
+    )
+    relationship = OrientationRelationship(
+        name="demo_or",
+        parent_phase=phase,
+        child_phase=child_phase,
+        parent_to_child_rotation=Rotation.from_bunge_euler(10.0, 5.0, 0.0),
+    )
+    variant = relationship.generate_variants()[0]
+    record = PhaseTransformationRecord(
+        name="demo_record",
+        orientation_relationship=relationship,
+        parent_orientation=Orientation(
+            rotation=Rotation.identity(),
+            crystal_frame=crystal,
+            specimen_frame=specimen,
+            symmetry=phase.symmetry,
+            phase=phase,
+        ),
+        child_orientations=OrientationSet.from_orientations(
+            [
+                Orientation(
+                    rotation=variant.parent_to_child_rotation,
+                    crystal_frame=crystal,
+                    specimen_frame=specimen,
+                    symmetry=child_phase.symmetry,
+                    phase=child_phase,
+                )
+            ]
+        ),
+        variant_indices=np.array([variant.variant_index], dtype=np.int64),
+    )
+    for obj in (relationship, variant, record):
+        payload = to_json_contract(obj)
         restored = from_json_contract(payload)
         assert to_json_contract(restored) == payload
 

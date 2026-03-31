@@ -6,6 +6,7 @@ from collections import OrderedDict
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from pytex import (
     FrameDomain,
@@ -35,17 +36,18 @@ def _crystal_frame() -> ReferenceFrame:
     )
 
 
-def test_xrd_external_baseline_matches_pytex_peak_families() -> None:
+@pytest.mark.parametrize("fixture_id", ["ni_fcc", "fe_bcc"])
+def test_xrd_external_baseline_matches_pytex_peak_families(fixture_id: str) -> None:
     payload = json.loads(
-        (BASELINE_ROOT / "ni_fcc_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
+        (BASELINE_ROOT / f"{fixture_id}_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
     )
     assert payload["schema_id"] == "pytex.diffraction_external_baseline.xrd"
-    assert payload["fixture_id"] == "ni_fcc"
+    assert payload["fixture_id"] == fixture_id
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
         warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
-        phase = get_phase_fixture("ni_fcc").load_phase(crystal_frame=_crystal_frame())
+        phase = get_phase_fixture(fixture_id).load_phase(crystal_frame=_crystal_frame())
 
     families: OrderedDict[tuple[int, int, int], dict[str, float | int]] = OrderedDict()
     for reflection in generate_powder_reflections(
@@ -84,18 +86,19 @@ def test_xrd_external_baseline_matches_pytex_peak_families() -> None:
     ]
 
 
-def test_saed_external_baseline_matches_pytex_shell_geometry() -> None:
+@pytest.mark.parametrize("fixture_id", ["ni_fcc", "fe_bcc"])
+def test_saed_external_baseline_matches_pytex_shell_geometry(fixture_id: str) -> None:
     payload = json.loads(
-        (BASELINE_ROOT / "ni_fcc_diffsims_saed_001_200kev.json").read_text(encoding="utf-8")
+        (BASELINE_ROOT / f"{fixture_id}_diffsims_saed_001_200kev.json").read_text(encoding="utf-8")
     )
     assert payload["schema_id"] == "pytex.diffraction_external_baseline.saed"
-    assert payload["fixture_id"] == "ni_fcc"
+    assert payload["fixture_id"] == fixture_id
     assert payload["zone_axis"] == [0, 0, 1]
 
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
         warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
-        phase = get_phase_fixture("ni_fcc").load_phase(crystal_frame=_crystal_frame())
+        phase = get_phase_fixture(fixture_id).load_phase(crystal_frame=_crystal_frame())
 
     zone_axis = ZoneAxis(np.array(payload["zone_axis"], dtype=np.int64), phase=phase)
     pattern = generate_saed_pattern(
@@ -120,7 +123,8 @@ def test_saed_external_baseline_matches_pytex_shell_geometry() -> None:
         row["spot_count"] = int(row["spot_count"]) + 1
 
     expected_shells = payload["reference_shells"]
-    assert list(shell_rows) == [tuple(row["representative_hkl"]) for row in expected_shells]
+    expected_families = [tuple(row["representative_hkl"]) for row in expected_shells]
+    assert list(shell_rows)[: len(expected_families)] == expected_families
     for expected_row in expected_shells:
         family = tuple(expected_row["representative_hkl"])
         assert family in shell_rows

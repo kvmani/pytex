@@ -17,6 +17,7 @@ extensions = [
     "myst_nb",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
+    "sphinx.ext.mathjax",
     "sphinx_design",
     "sphinxcontrib.mermaid",
 ]
@@ -31,8 +32,10 @@ html_static_path = ["_static"]
 html_css_files = ["architecture.css"]
 
 myst_enable_extensions = [
+    "amsmath",
     "colon_fence",
     "deflist",
+    "dollarmath",
 ]
 
 nb_execution_mode = "off"

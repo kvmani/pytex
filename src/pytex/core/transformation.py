@@ -13,6 +13,17 @@ from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
 
 
+def _phase_semantically_matches(left: Phase | None, right: Phase) -> bool:
+    if left is None:
+        return False
+    return (
+        left.name == right.name
+        and left.crystal_frame == right.crystal_frame
+        and left.lattice == right.lattice
+        and left.symmetry.point_group == right.symmetry.point_group
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class OrientationRelationship:
     name: str
@@ -27,7 +38,7 @@ class OrientationRelationship:
         normalized_name = self.name.strip()
         if not normalized_name:
             raise ValueError("OrientationRelationship.name must be non-empty.")
-        if self.parent_phase == self.child_phase:
+        if _phase_semantically_matches(self.parent_phase, self.child_phase):
             raise ValueError("OrientationRelationship requires distinct parent and child phases.")
         direction_pairs: list[tuple[np.ndarray, np.ndarray]] = []
         for parent_direction, child_direction in self.parallel_directions:
@@ -210,12 +221,18 @@ class PhaseTransformationRecord:
         normalized_name = self.name.strip()
         if not normalized_name:
             raise ValueError("PhaseTransformationRecord.name must be non-empty.")
-        if self.parent_orientation.phase != self.orientation_relationship.parent_phase:
+        if not _phase_semantically_matches(
+            self.parent_orientation.phase,
+            self.orientation_relationship.parent_phase,
+        ):
             raise ValueError(
                 "PhaseTransformationRecord.parent_orientation.phase must match "
                 "the relationship parent phase."
             )
-        if self.child_orientations.phase != self.orientation_relationship.child_phase:
+        if not _phase_semantically_matches(
+            self.child_orientations.phase,
+            self.orientation_relationship.child_phase,
+        ):
             raise ValueError(
                 "PhaseTransformationRecord.child_orientations.phase must match "
                 "the relationship child phase."
@@ -244,11 +261,36 @@ class PhaseTransformationRecord:
         return int(np.unique(self.variant_indices).size)
 
     def predicted_child_orientations(self) -> OrientationSet:
-        predicted_rotation = self.orientation_relationship.parent_to_child_rotation
+        if self.variant_indices is None:
+            predicted_rotations = [self.orientation_relationship.parent_to_child_rotation] * len(
+                self.child_orientations
+            )
+        else:
+            variant_lookup = {
+                variant.variant_index: variant.parent_to_child_rotation
+                for variant in self.orientation_relationship.generate_variants()
+            }
+            missing = sorted(
+                {
+                    int(index)
+                    for index in np.unique(self.variant_indices)
+                    if int(index) not in variant_lookup
+                }
+            )
+            if missing:
+                raise ValueError(
+                    "PhaseTransformationRecord.variant_indices contain values not produced by "
+                    "OrientationRelationship.generate_variants(): "
+                    + ", ".join(str(value) for value in missing)
+                )
+            variant_indices = np.asarray(self.variant_indices, dtype=np.int64)
+            predicted_rotations = [
+                variant_lookup[int(index)] for index in variant_indices
+            ]
         quaternions = np.stack(
             [
                 predicted_rotation.compose(self.parent_orientation.rotation).quaternion
-                for _ in range(len(self.child_orientations))
+                for predicted_rotation in predicted_rotations
             ],
             axis=0,
         )

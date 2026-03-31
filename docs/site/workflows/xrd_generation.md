@@ -16,17 +16,17 @@ reciprocal-space semantics used elsewhere in the library.
 
 ## Scientific Model
 
-For a reflection with spacing \(d_{hkl}\) and wavelength \(\lambda\), PyTex applies Bragg's law
+For a reflection with spacing $d_{hkl}$ and wavelength $\lambda$, PyTex applies Bragg's law
 
 $$
 2 d_{hkl} \sin \theta = \lambda,
 $$
 
-then reports the observable angle \(2\theta\). The current implementation computes
+then reports the observable angle $2\theta$. The current implementation computes
 
-- the reciprocal-lattice vector magnitude \(||\mathbf{g}_{hkl}||\)
-- \(d_{hkl} = 1 / ||\mathbf{g}_{hkl}||\)
-- \(2\theta = 2 \arcsin(\lambda / 2d_{hkl})\)
+- the reciprocal-lattice vector magnitude $||\mathbf{g}_{hkl}||$
+- $d_{hkl} = 1 / ||\mathbf{g}_{hkl}||$
+- $2\theta = 2 \arcsin(\lambda / 2d_{hkl})$
 
 The current intensity model is intentionally modest. It uses:
 

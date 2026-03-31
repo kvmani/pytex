@@ -1,0 +1,33 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-31T00:00:00Z",
+  "benchmark_id": "ebsd_multiphase_graph_foundation",
+  "subsystem": "ebsd",
+  "baseline_kind": "semantic_and_graph_internal",
+  "workflows": [
+    "multiphase_phase_selection",
+    "graph_neighbor_generation",
+    "graph_kam",
+    "multiphase_segmentation"
+  ],
+  "fixture_ids": [
+    "tests/unit/test_ebsd_multiphase.py"
+  ],
+  "artifact_paths": [
+    "benchmarks/ebsd/multiphase_graph_benchmark_manifest.json",
+    "tests/unit/test_ebsd_multiphase.py",
+    "docs/site/workflows/ebsd_import_normalization.md",
+    "docs/site/workflows/ebsd_kam.md",
+    "docs/site/workflows/ebsd_grains.md"
+  ],
+  "tolerances": {
+    "misorientation_atol_deg": 1e-06
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark manifest anchors the graph-backed and multiphase EBSD hardening surface.",
+    "Cross-phase adjacency is preserved topologically but excluded from same-phase misorientation workflows."
+  ]
+}

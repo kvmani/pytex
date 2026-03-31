@@ -41,8 +41,8 @@ def _make_crystal_frame() -> ReferenceFrame:
     )
 
 
-def _xrd_baseline(repo_root: Path) -> dict[str, object]:
-    fixture = get_phase_fixture("ni_fcc")
+def _xrd_baseline(repo_root: Path, *, fixture_id: str) -> dict[str, object]:
+    fixture = get_phase_fixture(fixture_id)
     fixture_path = repo_root / fixture.artifact_path.relative_to(repo_root)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
@@ -106,15 +106,15 @@ def _xrd_baseline(repo_root: Path) -> dict[str, object]:
         "pytex_reference_families": list(families.values()),
         "notes": [
             "Peak positions and multiplicities come from pymatgen's "
-            "XRDCalculator using the pinned ni_fcc fixture.",
+            f"XRDCalculator using the pinned {fixture_id} fixture.",
             "PyTex comparisons should treat peak-position agreement as the hard "
             "external baseline and intensity differences as informative only.",
         ],
     }
 
 
-def _saed_baseline(repo_root: Path) -> dict[str, object]:
-    fixture = get_phase_fixture("ni_fcc")
+def _saed_baseline(repo_root: Path, *, fixture_id: str) -> dict[str, object]:
+    fixture = get_phase_fixture(fixture_id)
     fixture_path = repo_root / fixture.artifact_path.relative_to(repo_root)
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="CUDA Toolkit .* unsupported.*")
@@ -201,10 +201,11 @@ def _saed_baseline(repo_root: Path) -> dict[str, object]:
         "pytex_reference_shells": list(pytex_shells.values()),
         "notes": [
             "The diffsims baseline records shell radii and indexed spots for "
-            "the ni_fcc [001] SAED case.",
-            "PyTex comparisons should treat shell geometry and indexed-family "
-            "coverage as the hard external baseline while allowing in-plane "
-            "detector-basis rotations.",
+            f"the {fixture_id} [001] SAED case.",
+            "PyTex comparisons should treat the diffsims shell list as the "
+            "minimum external family-coverage baseline while allowing in-plane "
+            "detector-basis rotations and additional physically valid shells "
+            "near the reciprocal-radius cutoff.",
         ],
     }
 
@@ -213,14 +214,15 @@ def main() -> int:
     repo_root = _repo_root()
     output_root = repo_root / "fixtures/diffraction"
     output_root.mkdir(parents=True, exist_ok=True)
-    (output_root / "ni_fcc_pymatgen_xrd_cuka.json").write_text(
-        json.dumps(_xrd_baseline(repo_root), indent=2) + "\n",
-        encoding="utf-8",
-    )
-    (output_root / "ni_fcc_diffsims_saed_001_200kev.json").write_text(
-        json.dumps(_saed_baseline(repo_root), indent=2) + "\n",
-        encoding="utf-8",
-    )
+    for fixture_id in ("ni_fcc", "fe_bcc"):
+        (output_root / f"{fixture_id}_pymatgen_xrd_cuka.json").write_text(
+            json.dumps(_xrd_baseline(repo_root, fixture_id=fixture_id), indent=2) + "\n",
+            encoding="utf-8",
+        )
+        (output_root / f"{fixture_id}_diffsims_saed_001_200kev.json").write_text(
+            json.dumps(_saed_baseline(repo_root, fixture_id=fixture_id), indent=2) + "\n",
+            encoding="utf-8",
+        )
     print(f"Wrote diffraction baseline artifacts to {output_root}")
     return 0
 

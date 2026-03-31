@@ -25,6 +25,8 @@
     "fixtures/diffraction/README.md",
     "fixtures/diffraction/ni_fcc_pymatgen_xrd_cuka.json",
     "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
+    "fixtures/diffraction/fe_bcc_pymatgen_xrd_cuka.json",
+    "fixtures/diffraction/fe_bcc_diffsims_saed_001_200kev.json",
     "fixtures/phases/catalog.json",
     "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/zr_hcp/metadata.json",
@@ -37,7 +39,7 @@
     "diffraction_external_baseline_cases"
   ],
   "notes": [
-    "Internal invariants are implemented and the first pinned external-baseline cases now exist for powder XRD and SAED.",
+    "Internal invariants are implemented and pinned external-baseline cases now exist for powder XRD and SAED across both ni_fcc and fe_bcc starter materials.",
     "Bundled phase-fixture metadata tie the starter diffraction corpus to pinned crystallographic provenance.",
     "The current external-baseline surface is geometry-first and intentionally separates peak-position or shell-geometry agreement from stronger intensity-model claims."
   ]

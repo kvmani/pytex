@@ -19,21 +19,27 @@ from pytex import (
     Lattice,
     MeasurementQuality,
     Orientation,
+    OrientationRelationship,
     OrientationSet,
     Phase,
+    PhaseTransformationRecord,
     ReferenceFrame,
     Rotation,
     ScatteringSetup,
     SymmetrySpec,
+    TransformationManifest,
     ValidationManifest,
     WorkflowResultManifest,
     benchmark_manifest_schema_path,
     experiment_manifest_schema_path,
     read_benchmark_manifest,
     read_experiment_manifest,
+    read_transformation_manifest,
     read_validation_manifest,
     read_workflow_result_manifest,
+    transformation_manifest_schema_path,
     validate_benchmark_manifest,
+    validate_transformation_manifest,
     validate_validation_manifest,
     validate_workflow_result_manifest,
     validation_manifest_schema_path,
@@ -197,6 +203,7 @@ def test_manifest_schema_files_match_stable_identifiers() -> None:
     schema_paths = {
         experiment_manifest_schema_path(): "pytex.experiment_manifest",
         benchmark_manifest_schema_path(): "pytex.benchmark_manifest",
+        transformation_manifest_schema_path(): "pytex.transformation_manifest",
         validation_manifest_schema_path(): "pytex.validation_manifest",
         workflow_result_manifest_schema_path(): "pytex.workflow_result_manifest",
     }
@@ -215,6 +222,88 @@ def test_benchmark_manifest_rejects_negative_tolerance() -> None:
             workflows=("spots",),
             tolerances={"projection_atol": -1.0},
         )
+
+
+def test_experiment_manifest_can_store_multiple_phases() -> None:
+    _, specimen, detector, lab, phase = make_foundation()
+    sibling_phase = Phase(
+        name="bcc",
+        lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=phase.crystal_frame),
+        symmetry=phase.symmetry,
+        crystal_frame=phase.crystal_frame,
+    )
+    acquisition = AcquisitionGeometry(
+        specimen_frame=specimen,
+        modality="ebsd",
+        detector_frame=detector,
+        laboratory_frame=lab,
+        specimen_to_detector=FrameTransform(
+            source=specimen,
+            target=detector,
+            rotation_matrix=np.eye(3),
+        ),
+        specimen_to_laboratory=FrameTransform(
+            source=specimen,
+            target=lab,
+            rotation_matrix=np.eye(3),
+        ),
+    )
+    manifest = ExperimentManifest.from_acquisition_geometry(
+        acquisition,
+        source_system="pytex",
+        phases=(phase, sibling_phase),
+    )
+    payload = manifest.to_dict()
+    assert "phases" in payload
+    assert [item["name"] for item in payload["phases"]] == ["fcc", "bcc"]
+
+
+def test_transformation_manifest_round_trip(tmp_path: Path) -> None:
+    crystal, specimen, _, _, phase = make_foundation()
+    child_phase = Phase(
+        name="bcc_child",
+        lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=crystal),
+        symmetry=phase.symmetry,
+        crystal_frame=crystal,
+    )
+    relationship = OrientationRelationship(
+        name="demo_or",
+        parent_phase=phase,
+        child_phase=child_phase,
+        parent_to_child_rotation=Rotation.identity(),
+    )
+    parent_orientation = Orientation(
+        rotation=Rotation.identity(),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    child_orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                rotation=Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=child_phase.symmetry,
+                phase=child_phase,
+            )
+        ]
+    )
+    record = PhaseTransformationRecord(
+        name="demo_record",
+        orientation_relationship=relationship,
+        parent_orientation=parent_orientation,
+        child_orientations=child_orientations,
+        variant_indices=np.array([1]),
+    )
+    manifest = TransformationManifest.from_phase_transformation_record(record)
+    payload = manifest.to_dict()
+    validate_transformation_manifest(payload)
+    path = tmp_path / "transformation.json"
+    manifest.write_json(path)
+    restored = read_transformation_manifest(path)
+    assert restored.to_dict() == payload
 
 
 def test_workflow_result_manifest_requires_non_empty_artifact_paths() -> None:
@@ -240,6 +329,9 @@ def test_repo_manifests_are_schema_valid_and_readable() -> None:
         elif schema_id == "pytex.validation_manifest":
             validate_validation_manifest(payload)
             assert read_validation_manifest(manifest_path).to_dict() == payload
+        elif schema_id == "pytex.transformation_manifest":
+            validate_transformation_manifest(payload)
+            assert read_transformation_manifest(manifest_path).to_dict() == payload
         elif schema_id == "pytex.workflow_result_manifest":
             validate_workflow_result_manifest(payload)
             assert read_workflow_result_manifest(manifest_path).to_dict() == payload

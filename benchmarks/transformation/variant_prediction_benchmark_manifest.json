@@ -1,0 +1,36 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-03-31T00:00:00Z",
+  "benchmark_id": "phase_transformation_variant_prediction",
+  "subsystem": "transformation",
+  "baseline_kind": "internal_variant_semantics_and_research_staging",
+  "workflows": [
+    "orientation_relationship_variant_generation",
+    "variant_indexed_child_prediction",
+    "experimental_parent_candidate_scoring"
+  ],
+  "fixture_ids": [
+    "tests/unit/test_transformation.py",
+    "tests/unit/test_experimental_phase_transformation.py"
+  ],
+  "artifact_paths": [
+    "benchmarks/transformation/variant_prediction_benchmark_manifest.json",
+    "benchmarks/transformation/README.md",
+    "docs/testing/phase_transformation_validation_matrix.md",
+    "src/pytex/core/transformation.py",
+    "src/pytex/experimental/phase_transformation.py",
+    "tests/unit/test_transformation.py",
+    "tests/unit/test_experimental_phase_transformation.py"
+  ],
+  "tolerances": {
+    "prediction_atol_rad": 1e-10,
+    "candidate_score_atol_rad": 1e-10
+  },
+  "status": "implemented",
+  "notes": [
+    "This benchmark anchors the stable transformation primitive family and the bounded experimental parent-scoring surface.",
+    "Full parent reconstruction remains intentionally outside the stable API and therefore outside this benchmark claim."
+  ]
+}

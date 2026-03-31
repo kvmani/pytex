@@ -28,11 +28,11 @@ The direct-lattice crystallographic frame attached to the phase and used for cry
 
 ### Reciprocal Frame
 
-The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule \( \mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij} \).
+The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule $ \mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij} $.
 
 ### Detector Frame
 
-The frame in which detector coordinates such as \(u\) and \(v\) live for diffraction geometry and SAED plotting.
+The frame in which detector coordinates such as $u$ and $v$ live for diffraction geometry and SAED plotting.
 
 See also: {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/saed_generation`.
 
@@ -72,21 +72,21 @@ See also: {doc}`orientation_texture`, {doc}`../workflows/texture_odf_inversion`.
 
 ## Diffraction Terms
 
-### Miller Indices \((hkl)\)
+### Miller Indices $(hkl)$
 
 Integer triplet identifying a crystal plane or reciprocal-lattice direction in three-index notation.
 
-### Reciprocal-Lattice Vector \(\mathbf{g}_{hkl}\)
+### Reciprocal-Lattice Vector $\mathbf{g}_{hkl}$
 
-The reciprocal-space vector associated with Miller indices \((hkl)\):
+The reciprocal-space vector associated with Miller indices $(hkl)$:
 
 $$
 \mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}.
 $$
 
-### Interplanar Spacing \(d_{hkl}\)
+### Interplanar Spacing $d_{hkl}$
 
-The spacing associated with the \((hkl)\) reflection family:
+The spacing associated with the $(hkl)$ reflection family:
 
 $$
 d_{hkl} = \frac{1}{\lVert \mathbf{g}_{hkl} \rVert}.
@@ -94,7 +94,7 @@ $$
 
 ### Powder Pattern
 
-A broadened XRD spectrum built from discrete reflections and sampled over a \(2\theta\) grid.
+A broadened XRD spectrum built from discrete reflections and sampled over a $2\theta$ grid.
 
 ![Powder XRD Example](../../figures/powder_xrd_demo.svg)
 
@@ -120,7 +120,7 @@ A reusable geometry bundle containing atoms, bonds, lattice edges, and plane ove
 
 ### Plane Overlay
 
-A rendered polygon representing the intersection of a crystallographic plane \((hkl)\) with a repeated unit-cell or supercell box.
+A rendered polygon representing the intersection of a crystallographic plane $(hkl)$ with a repeated unit-cell or supercell box.
 
 ### View Direction
 
@@ -134,19 +134,19 @@ See also: {doc}`../workflows/crystal_visualization`.
 
 | Symbol | Meaning |
 | --- | --- |
-| \(\mathbf{v}\) | Generic vector in an explicitly named frame |
-| \(\mathbf{R}\) | Rotation matrix |
-| \(q\) | Unit quaternion |
-| \((\phi_1, \Phi, \phi_2)\) | Bunge Euler angles |
-| \(\mathbf{a}, \mathbf{b}, \mathbf{c}\) | Direct-lattice basis vectors |
-| \(\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}\) | Reciprocal-lattice basis vectors |
-| \(\mathbf{g}_{hkl}\) | Reciprocal-lattice vector |
-| \(d_{hkl}\) | Interplanar spacing |
-| \(\theta\) | Bragg half-angle |
-| \(2\theta\) | Powder-diffraction scattering angle |
-| \(F_{hkl}\) | Structure-factor quantity or current proxy |
-| \(u, v\) | Detector-plane coordinates |
-| \(\hat{\mathbf{z}}\) | Unit zone-axis direction |
+| $\mathbf{v}$ | Generic vector in an explicitly named frame |
+| $\mathbf{R}$ | Rotation matrix |
+| $q$ | Unit quaternion |
+| $(\phi_1, \Phi, \phi_2)$ | Bunge Euler angles |
+| $\mathbf{a}, \mathbf{b}, \mathbf{c}$ | Direct-lattice basis vectors |
+| $\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}$ | Reciprocal-lattice basis vectors |
+| $\mathbf{g}_{hkl}$ | Reciprocal-lattice vector |
+| $d_{hkl}$ | Interplanar spacing |
+| $\theta$ | Bragg half-angle |
+| $2\theta$ | Powder-diffraction scattering angle |
+| $F_{hkl}$ | Structure-factor quantity or current proxy |
+| $u, v$ | Detector-plane coordinates |
+| $\hat{\mathbf{z}}$ | Unit zone-axis direction |
 
 ## Related Material
 

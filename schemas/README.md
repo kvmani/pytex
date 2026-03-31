@@ -9,5 +9,6 @@ Current stable schemas:
 - `benchmark_manifest.schema.json`
 - `validation_manifest.schema.json`
 - `workflow_result_manifest.schema.json`
+- `transformation_manifest.schema.json`
 
 Stable schemas must remain versioned here so adapters and workflows do not invent incompatible ad hoc locations.

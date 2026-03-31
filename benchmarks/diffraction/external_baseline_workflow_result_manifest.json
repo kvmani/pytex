@@ -16,6 +16,10 @@
     "fixtures/diffraction/README.md",
     "fixtures/diffraction/ni_fcc_pymatgen_xrd_cuka.json",
     "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
+    "fixtures/diffraction/fe_bcc_pymatgen_xrd_cuka.json",
+    "fixtures/diffraction/fe_bcc_diffsims_saed_001_200kev.json",
+    "fixtures/phases/fe_bcc/phase.cif",
+    "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/ni_fcc/phase.cif",
     "fixtures/phases/ni_fcc/metadata.json"
   ],
@@ -24,7 +28,7 @@
     "The baseline artifacts are versioned in-repo so geometry comparisons stay deterministic in the default test suite."
   ],
   "metadata": {
-    "fixture_id": "ni_fcc",
+    "fixture_ids": "ni_fcc,fe_bcc",
     "xrd_reference_package": "pymatgen",
     "saed_reference_package": "diffsims"
   }

@@ -15,7 +15,8 @@ from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
 from pytex.core.orientation import OrientationSet
 from pytex.core.provenance import ProvenanceRecord
-from pytex.ebsd import CrystalMap
+from pytex.core.symmetry import SymmetrySpec
+from pytex.ebsd import CrystalMap, CrystalMapPhase
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,20 +92,80 @@ def _coordinates_from_xmap(
     return np.column_stack([x_array, y_array]), grid_shape, step_sizes
 
 
-def _phase_metadata_from_inputs(
-    xmap: Any,
-    phase: Phase | None,
-) -> tuple[str, str]:
-    if phase is not None:
-        return phase.name, phase.symmetry.point_group
-    phase_name = _first_string_attribute(xmap, ("phase_name",))
-    point_group = _first_string_attribute(xmap, ("point_group",))
-    if phase_name is None or point_group is None:
-        raise ValueError(
-            "normalize_ebsd() requires a PyTex phase or a KikuchiPy/orix crystal map exposing "
-            "phase_name and point_group metadata."
+def _phase_table_payload(xmap: Any) -> tuple[tuple[dict[str, str], ...], np.ndarray | None]:
+    phase_ids_raw = getattr(xmap, "phase_id", getattr(xmap, "phase_ids", None))
+    phase_table_raw = getattr(xmap, "phases", None)
+    if phase_ids_raw is None or phase_table_raw is None:
+        return (), None
+    phase_ids = np.asarray(phase_ids_raw, dtype=np.int64).reshape(-1)
+    if isinstance(phase_table_raw, dict):
+        phase_items = [(int(key), value) for key, value in phase_table_raw.items()]
+    else:
+        phase_items = list(enumerate(phase_table_raw))
+    phases: list[dict[str, str]] = []
+    for fallback_id, entry in phase_items:
+        entry_phase_id = getattr(entry, "phase_id", getattr(entry, "id", None))
+        phase_id = fallback_id if entry_phase_id is None else int(entry_phase_id)
+        name = None
+        point_group = None
+        if isinstance(entry, dict):
+            name = entry.get("name")
+            point_group = entry.get("point_group")
+        else:
+            name = getattr(entry, "name", None)
+            point_group = getattr(entry, "point_group", None)
+        if not isinstance(name, str) or not isinstance(point_group, str):
+            raise ValueError(
+                "KikuchiPy/orix phase-table entries must expose string name and point_group fields."
+            )
+        phases.append(
+            {
+                "phase_id": str(phase_id),
+                "name": name,
+                "point_group": point_group,
+            }
         )
-    return phase_name, point_group
+    return tuple(phases), phase_ids
+
+
+def _phase_lookups(
+    phase: Phase | None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None,
+) -> tuple[dict[str, Phase], dict[int, Phase]]:
+    by_name: dict[str, Phase] = {}
+    by_id: dict[int, Phase] = {}
+    if phase is not None:
+        by_name[phase.name] = phase
+        for alias in phase.aliases:
+            by_name[alias] = phase
+    if phases is None:
+        return by_name, by_id
+    if isinstance(phases, dict):
+        for key, value in phases.items():
+            if isinstance(key, int):
+                by_id[key] = value
+            else:
+                by_name[str(key)] = value
+            by_name[value.name] = value
+            for alias in value.aliases:
+                by_name[alias] = value
+    else:
+        for index, value in enumerate(phases):
+            by_id[index] = value
+            by_name[value.name] = value
+            for alias in value.aliases:
+                by_name[alias] = value
+    return by_name, by_id
+
+
+def _resolved_phase_from_lookups(
+    phase_id_lookup: dict[int, Phase],
+    phase_name_lookup: dict[str, Phase],
+    *,
+    phase_id: int,
+    phase_name: str,
+) -> Phase | None:
+    return phase_id_lookup.get(phase_id) or phase_name_lookup.get(phase_name)
 
 
 def _dataset_from_xmap(
@@ -114,6 +175,7 @@ def _dataset_from_xmap(
     specimen_frame: ReferenceFrame,
     map_frame: ReferenceFrame,
     phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
     source_file: str | None = None,
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
@@ -125,48 +187,135 @@ def _dataset_from_xmap(
     if quaternions.ndim != 2 or quaternions.shape[1] != 4:
         raise ValueError("KikuchiPy crystal-map rotations must have quaternion shape (n, 4).")
     coordinates, grid_shape, step_sizes = _coordinates_from_xmap(xmap)
-    phase_name, point_group = _phase_metadata_from_inputs(xmap, phase)
+    phase_table, phase_ids = _phase_table_payload(xmap)
+    source_file_value = (
+        source_file
+        or _first_string_attribute(xmap, ("source_file", "path", "filename"))
+        or "kikuchipy_in_memory"
+    )
+    metadata_value = dict(metadata or {})
     resolved_provenance = provenance or ProvenanceRecord.minimal(
         "kikuchipy",
         note="Normalized from a KikuchiPy/orix crystal map.",
     )
-    orientations = OrientationSet.from_quaternions(
-        quaternions,
-        crystal_frame=crystal_frame,
-        specimen_frame=specimen_frame,
-        phase=phase,
-        provenance=resolved_provenance,
+    phase_name_lookup, phase_id_lookup = _phase_lookups(phase, phases)
+    if phase_table:
+        orientations = OrientationSet.from_quaternions(
+            quaternions,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            provenance=resolved_provenance,
+        )
+        phase_entries: list[CrystalMapPhase] = []
+        for raw_phase in phase_table:
+            phase_id = int(raw_phase["phase_id"])
+            phase_entry_name = raw_phase["name"]
+            phase_entry_point_group = raw_phase["point_group"]
+            resolved_phase = (
+                phase_id_lookup.get(phase_id) or phase_name_lookup.get(phase_entry_name)
+            )
+            symmetry = (
+                resolved_phase.symmetry
+                if resolved_phase is not None
+                else SymmetrySpec.from_point_group(
+                    phase_entry_point_group,
+                    reference_frame=crystal_frame,
+                )
+            )
+            phase_entries.append(
+                CrystalMapPhase(
+                    phase_id=phase_id,
+                    name=phase_entry_name,
+                    symmetry=symmetry,
+                    phase=resolved_phase,
+                    provenance=resolved_provenance,
+                )
+            )
+        return NormalizedEBSDDataset(
+            crystal_map=CrystalMap(
+                coordinates=coordinates,
+                orientations=orientations,
+                map_frame=map_frame,
+                phase_entries=tuple(phase_entries),
+                phase_ids=phase_ids,
+                grid_shape=grid_shape,
+                step_sizes=step_sizes,
+                provenance=resolved_provenance,
+            ),
+            manifest=EBSDImportManifest(
+                source_system="kikuchipy",
+                source_file=source_file_value,
+                phases=phase_table,
+                crystal_frame={
+                    "name": crystal_frame.name,
+                    "axis_1": crystal_frame.axes[0],
+                    "axis_2": crystal_frame.axes[1],
+                    "axis_3": crystal_frame.axes[2],
+                },
+                specimen_frame={
+                    "name": specimen_frame.name,
+                    "axis_1": specimen_frame.axes[0],
+                    "axis_2": specimen_frame.axes[1],
+                    "axis_3": specimen_frame.axes[2],
+                },
+                metadata=metadata_value,
+            ),
+        )
+    phase_name: str | None = (
+        phase.name if phase is not None else _first_string_attribute(xmap, ("phase_name",))
     )
-    crystal_map = CrystalMap(
-        coordinates=coordinates,
-        orientations=orientations,
-        map_frame=map_frame,
-        grid_shape=grid_shape,
-        step_sizes=step_sizes,
-        provenance=resolved_provenance,
+    point_group: str | None = (
+        phase.symmetry.point_group
+        if phase is not None
+        else _first_string_attribute(xmap, ("point_group",))
     )
-    manifest = EBSDImportManifest(
-        source_system="kikuchipy",
-        source_file=source_file
-        or _first_string_attribute(xmap, ("source_file", "path", "filename"))
-        or "kikuchipy_in_memory",
-        phase_name=phase_name,
-        point_group=point_group,
-        crystal_frame={
-            "name": crystal_frame.name,
-            "axis_1": crystal_frame.axes[0],
-            "axis_2": crystal_frame.axes[1],
-            "axis_3": crystal_frame.axes[2],
-        },
-        specimen_frame={
-            "name": specimen_frame.name,
-            "axis_1": specimen_frame.axes[0],
-            "axis_2": specimen_frame.axes[1],
-            "axis_3": specimen_frame.axes[2],
-        },
-        metadata=dict(metadata or {}),
+    if phase_name is None or point_group is None:
+        raise ValueError(
+            "normalize_ebsd() requires a PyTex phase or a KikuchiPy/orix crystal map exposing "
+            "phase_name and point_group metadata."
+        )
+    resolved_phase = phase or phase_name_lookup.get(phase_name)
+    resolved_symmetry = (
+        resolved_phase.symmetry
+        if resolved_phase is not None
+        else SymmetrySpec.from_point_group(point_group, reference_frame=crystal_frame)
     )
-    return NormalizedEBSDDataset(crystal_map=crystal_map, manifest=manifest)
+    return NormalizedEBSDDataset(
+        crystal_map=CrystalMap(
+            coordinates=coordinates,
+            orientations=OrientationSet.from_quaternions(
+                quaternions,
+                crystal_frame=crystal_frame,
+                specimen_frame=specimen_frame,
+                phase=resolved_phase,
+                symmetry=None if resolved_phase is not None else resolved_symmetry,
+                provenance=resolved_provenance,
+            ),
+            map_frame=map_frame,
+            grid_shape=grid_shape,
+            step_sizes=step_sizes,
+            provenance=resolved_provenance,
+        ),
+        manifest=EBSDImportManifest(
+            source_system="kikuchipy",
+            source_file=source_file_value,
+            phase_name=phase_name,
+            point_group=point_group,
+            crystal_frame={
+                "name": crystal_frame.name,
+                "axis_1": crystal_frame.axes[0],
+                "axis_2": crystal_frame.axes[1],
+                "axis_3": crystal_frame.axes[2],
+            },
+            specimen_frame={
+                "name": specimen_frame.name,
+                "axis_1": specimen_frame.axes[0],
+                "axis_2": specimen_frame.axes[1],
+                "axis_3": specimen_frame.axes[2],
+            },
+            metadata=metadata_value,
+        ),
+    )
 
 
 def _experiment_manifest_for_dataset(dataset: NormalizedEBSDDataset) -> ExperimentManifest:
@@ -186,11 +335,80 @@ def _dataset_with_overrides(
     dataset: NormalizedEBSDDataset,
     *,
     phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
     source_file: str | None = None,
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> NormalizedEBSDDataset:
     resolved_provenance = provenance or dataset.crystal_map.provenance
+    if dataset.crystal_map.is_multiphase:
+        if phase is not None:
+            raise ValueError(
+                "Single-phase overrides are not supported for multiphase datasets; supply phases."
+            )
+        phase_name_lookup, phase_id_lookup = _phase_lookups(None, phases)
+        updated_entries: list[CrystalMapPhase] = []
+        for entry in dataset.crystal_map.phase_entries:
+            resolved_phase = (
+                _resolved_phase_from_lookups(
+                    phase_id_lookup,
+                    phase_name_lookup,
+                    phase_id=entry.phase_id,
+                    phase_name=entry.name,
+                )
+                or entry.phase
+            )
+            updated_entries.append(
+                CrystalMapPhase(
+                    phase_id=entry.phase_id,
+                    name=entry.name,
+                    symmetry=(
+                        resolved_phase.symmetry
+                        if resolved_phase is not None
+                        else entry.symmetry
+                    ),
+                    phase=resolved_phase,
+                    aliases=entry.aliases,
+                    provenance=resolved_provenance,
+                )
+            )
+        phase_entries = tuple(updated_entries)
+        crystal_map = CrystalMap(
+            coordinates=dataset.crystal_map.coordinates,
+            orientations=OrientationSet.from_quaternions(
+                dataset.crystal_map.orientations.quaternions,
+                crystal_frame=dataset.crystal_map.orientations.crystal_frame,
+                specimen_frame=dataset.crystal_map.orientations.specimen_frame,
+                provenance=resolved_provenance,
+            ),
+            map_frame=dataset.crystal_map.map_frame,
+            phase_entries=phase_entries,
+            phase_ids=dataset.crystal_map.phase_ids,
+            grid_shape=dataset.crystal_map.grid_shape,
+            step_sizes=dataset.crystal_map.step_sizes,
+            acquisition_geometry=dataset.crystal_map.acquisition_geometry,
+            calibration_record=dataset.crystal_map.calibration_record,
+            measurement_quality=dataset.crystal_map.measurement_quality,
+            provenance=resolved_provenance,
+        )
+        manifest = EBSDImportManifest(
+            source_system=dataset.manifest.source_system,
+            source_file=source_file or dataset.manifest.source_file,
+            phases=tuple(
+                {
+                    "phase_id": str(entry.phase_id),
+                    "name": entry.name,
+                    "point_group": entry.point_group,
+                }
+                for entry in phase_entries
+            ),
+            orientation_convention=dataset.manifest.orientation_convention,
+            angle_unit=dataset.manifest.angle_unit,
+            crystal_frame=dict(dataset.manifest.crystal_frame),
+            specimen_frame=dict(dataset.manifest.specimen_frame),
+            metadata={**dataset.manifest.metadata, **(metadata or {})},
+        )
+        return NormalizedEBSDDataset(crystal_map=crystal_map, manifest=manifest)
     resolved_phase = phase or dataset.crystal_map.orientations.phase
     if resolved_phase is not None:
         orientations = OrientationSet.from_quaternions(
@@ -251,6 +469,7 @@ def normalize_ebsd(
     specimen_frame: ReferenceFrame | None = None,
     map_frame: ReferenceFrame | None = None,
     phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
     source_file: str | None = None,
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
@@ -270,6 +489,7 @@ def normalize_ebsd(
             specimen_frame=specimen_frame,
             map_frame=map_frame,
             phase=phase,
+            phases=phases,
             source_file=source_file,
             metadata=metadata,
             provenance=provenance,
@@ -279,12 +499,21 @@ def normalize_ebsd(
         crystal_frame=crystal_frame,
         specimen_frame=specimen_frame,
         map_frame=map_frame,
+        phase=phase,
+        phases=phases,
     )
-    if phase is None and metadata is None and source_file is None and provenance is None:
+    if (
+        phase is None
+        and phases is None
+        and metadata is None
+        and source_file is None
+        and provenance is None
+    ):
         return dataset
     return _dataset_with_overrides(
         dataset,
         phase=phase,
+        phases=phases,
         source_file=source_file,
         metadata=metadata,
         provenance=provenance,
@@ -303,6 +532,7 @@ def index_hough(
     specimen_frame: ReferenceFrame | None = None,
     map_frame: ReferenceFrame | None = None,
     phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
     source_file: str | None = None,
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
@@ -324,6 +554,7 @@ def index_hough(
         specimen_frame=specimen_frame,
         map_frame=map_frame,
         phase=phase,
+        phases=phases,
         source_file=source_file,
         metadata={**(metadata or {}), "workflow": "hough_indexing"},
         provenance=provenance,
@@ -348,6 +579,7 @@ def refine_orientations(
     specimen_frame: ReferenceFrame | None = None,
     map_frame: ReferenceFrame | None = None,
     phase: Phase | None = None,
+    phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
     source_file: str | None = None,
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
@@ -362,6 +594,7 @@ def refine_orientations(
         specimen_frame=specimen_frame,
         map_frame=map_frame,
         phase=phase,
+        phases=phases,
         source_file=source_file,
         metadata={**(metadata or {}), "workflow": "orientation_refinement"},
         provenance=provenance,

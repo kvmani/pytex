@@ -65,12 +65,16 @@ builds for the immediate roadmap surface, but validation breadth is still uneven
 - texture and EBSD have explicit MTEX-backed ledgers
 - structure import now has a hash-pinned fixture corpus, manifest-backed audit workflow, and
   default test-suite coverage, but broader IUCr-style external baselines are still ahead
-- diffraction now has pinned open-source external baselines for one powder XRD case and one SAED
-  case, but broader material and orientation coverage remains ahead
+- diffraction now has pinned open-source external baselines for one powder XRD workflow family and
+  one SAED workflow family across `ni_fcc` and `fe_bcc`, but broader material and orientation
+  coverage remains ahead
 - plotting now has structural validation coverage for the highest-value runtime surfaces, but
   external visual-parity work remains ahead
 - XRDML import now has a pinned open-source regression fixture plus synthetic ODF-inversion
   coverage, but broader vendor and correction-workflow coverage remains ahead
+- phase transformation now has a dedicated manifest schema, benchmark identity, validation ledger,
+  and experimental parent-candidate scoring surface, but literature breadth and full
+  reconstruction workflows remain ahead
 - the priority teaching notebooks now smoke-execute in the default suite, but the full notebook
   atlas still follows a lighter validation path than the primary roadmap sequence
 
@@ -82,6 +86,7 @@ builds for the immediate roadmap surface, but validation breadth is still uneven
 - `diffraction_validation_matrix.md`
 - `structure_validation_matrix.md`
 - `plotting_validation_matrix.md`
+- `phase_transformation_validation_matrix.md`
 - `../standards/reference_canon.md`
 
 ### Informative

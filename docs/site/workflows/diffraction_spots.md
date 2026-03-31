@@ -176,7 +176,7 @@ PyTex now includes a simple but explicit local refinement routine:
 
 1. start from a seed orientation
 2. convert it into Bunge Euler angles
-3. evaluate a local Cartesian grid in \((\phi_1, \Phi, \phi_2)\) space
+3. evaluate a local Cartesian grid in $(\phi_1, \Phi, \phi_2)$ space
 4. score each candidate through the same detector-space association workflow
 5. keep the best candidate and shrink the search window
 

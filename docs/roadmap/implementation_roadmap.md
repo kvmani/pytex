@@ -18,19 +18,19 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | Subsystem | Status | Notes |
 | --- | --- | --- |
 | Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
-| EBSD regular-grid workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, and manifest-backed normalization exist. |
+| EBSD map workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, multiphase phase selection, and manifest-backed normalization now cover both regular-grid and graph-backed coordinate modes. |
 | Diffraction foundations | implemented | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting now have pinned external-baseline cases for one powder XRD path and one SAED path; broader coverage still remains ahead. |
 | Scientific visualization | implemented | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now include structural plotting validation for the highest-value publication-facing surfaces without tracked runtime SVG baselines. |
 | CIF and structure import | implemented | Core-model construction, space-group semantics, hash-pinned fixture integrity, and a manifest-backed fixture audit workflow now form the default reproducible structure-import baseline. |
 | Multimodal acquisition core | foundational | Acquisition geometry, calibration, quality, scattering, experiment manifests, and workflow entry points now exist, but broader modality coverage remains ahead. |
-| Phase-transformation foundation | foundational | Core transformation primitives now exist, but literature-backed validation and richer algorithms remain ahead. |
+| Phase-transformation foundation | foundational | Core transformation primitives, dedicated transformation manifests, and experimental parent-candidate scoring now exist, but literature-backed validation and richer algorithms remain ahead. |
 
 ### Research-Grade Algorithmic Expansion
 
 | Subsystem | Status | Notes |
 | --- | --- | --- |
 | Exact orientation-space boundary catalogs | planned | Required for broader class-by-class parity claims. |
-| Harmonic ODF inversion and richer reconstruction | planned | Discrete/kernel foundations exist; harmonic inversion remains ahead. |
+| Harmonic ODF inversion and richer reconstruction | planned | Discrete/kernel foundations exist; harmonic inversion remains ahead and should continue to stage under `pytex.experimental` until benchmark and validation doctrine are stronger. |
 | Rich diffraction refinement and intensity models | planned | Current implementation is geometric and kinematic, not full physical modeling. |
 | Phase transformation and parent reconstruction | planned | Stable transformation semantics now exist; algorithmic breadth and validation remain ahead. |
 
@@ -38,7 +38,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 
 | Subsystem | Status | Notes |
 | --- | --- | --- |
-| Sphinx concepts and workflows | implemented | Public entry point is live and buildable, and the priority roadmap notebooks now smoke-execute as part of the default validation surface. |
+| Sphinx concepts and workflows | implemented | Public entry point is live and buildable, and the site now renders concepts, workflows, architecture, standards, validation, and benchmark context from one browsable surface. |
 | Canonical LaTeX theory notes | implemented | Major foundation notes exist and are cross-linked from the site. |
 | SVG geometry figures | implemented | Core orientation, diffraction, and EBSD figures exist. |
 | Multimodal and transformation teaching notes | foundational | Architectural prose is now defined; broader workflow coverage remains ahead. |

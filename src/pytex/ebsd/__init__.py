@@ -1,5 +1,7 @@
 from pytex.ebsd.models import (
+    CoordinateNeighborGraph,
     CrystalMap,
+    CrystalMapPhase,
     Grain,
     GrainBoundaryNetwork,
     GrainBoundarySegment,
@@ -10,7 +12,9 @@ from pytex.ebsd.models import (
 )
 
 __all__ = [
+    "CoordinateNeighborGraph",
     "CrystalMap",
+    "CrystalMapPhase",
     "Grain",
     "GrainBoundaryNetwork",
     "GrainBoundarySegment",
