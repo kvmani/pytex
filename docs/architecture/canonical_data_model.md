@@ -46,7 +46,7 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 - `ScatteringSetup`: shared scattering-experiment context
 - `OrientationRelationship`, `TransformationVariant`, `PhaseTransformationRecord`: phase-transformation foundation primitives
 - `Rotation`, `RotationSet`, `Orientation`, `Misorientation`, `OrientationSet`: orientation-domain primitives
-- `CrystalMap`, `PoleFigure`, `InversePoleFigure`, `ODF`, `ODFInversionReport`: higher-level texture and EBSD models
+- `CrystalMap`, `PoleFigure`, `InversePoleFigure`, `ODF`, `HarmonicODF`, `ODFInversionReport`, `HarmonicODFReconstructionReport`: higher-level texture and EBSD models
 - `DiffractionGeometry`, `DiffractionPattern`: diffraction-facing models
 - `ProvenanceRecord`: source-system and transform traceability
 - `ExperimentManifest`, `BenchmarkManifest`, `ValidationManifest`, `WorkflowResultManifest`: stable workflow-interchange and evidence artifacts
@@ -78,9 +78,9 @@ Crystallographic structure import, including CIF-backed construction, should ter
 
 ### Normative
 
-- [Notation And Conventions](../site/standards/notation_and_conventions.md)
-- [Data Contracts And Manifests](../site/standards/data_contracts_and_manifests.md)
-- [Reference Canon](../site/standards/reference_canon.md)
+- [Notation And Conventions](../standards/notation_and_conventions.md)
+- [Data Contracts And Manifests](../standards/data_contracts_and_manifests.md)
+- [Reference Canon](../standards/reference_canon.md)
 
 ### Informative
 

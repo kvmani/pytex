@@ -16,6 +16,7 @@ At this stage, PyTex provides a coherent orientation foundation for:
 - classical contour pole-figure rendering on projected density grids
 - classical Bunge-section ODF rendering for contour-style inspection
 - discrete pole-figure inversion over an explicit orientation dictionary
+- band-limited harmonic ODF reconstruction with explicit crystal and specimen symmetry handling
 - explicit IPF color-key generation from symmetry-reduced crystal directions
 
 ## Why Conventions Matter
@@ -103,11 +104,12 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 - contour pole-figure rendering from smoothed projected densities
 - contour ODF visualization in Euler space and as Bunge sections
 - discrete dictionary-based pole-figure inversion with an explicit `ODFInversionReport`
+- harmonic PF-to-ODF inversion with an explicit `HarmonicODFReconstructionReport`
 
 ## Still Ahead
 
 - closed-form class-by-class boundary catalogs for the exact orientation-space regions
-- harmonic ODF expansion and broader experimentally calibrated PF-to-ODF inversion
+- broader experimentally calibrated PF-to-ODF inversion doctrine and higher-order validation breadth
 - full MTEX-level parity for IPF color coding and richer publication-grade defaults or parity coverage across the plotting surface
 
 ## Related Material
@@ -117,6 +119,7 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 - [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
 - [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
 - [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
+- [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
 - [../../figures/crystal_symmetry_actions.svg](../../figures/crystal_symmetry_actions.svg)
 - [../../figures/ipf_sector_reduction.svg](../../figures/ipf_sector_reduction.svg)
 - [../../figures/disorientation_fundamental_region.svg](../../figures/disorientation_fundamental_region.svg)

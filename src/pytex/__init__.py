@@ -225,7 +225,16 @@ from pytex.plotting import (
     resolve_style,
     save_documentation_figure_svg,
 )
-from pytex.texture import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
+from pytex.texture import (
+    HarmonicBasisTerm,
+    HarmonicODF,
+    HarmonicODFReconstructionReport,
+    ODF,
+    InversePoleFigure,
+    KernelSpec,
+    ODFInversionReport,
+    PoleFigure,
+)
 
 __all__ = [
     "BENCHMARK_MANIFEST_SCHEMA_ID",
@@ -285,6 +294,9 @@ __all__ = [
     "GrainGraphEdge",
     "GrainSegmentation",
     "Handedness",
+    "HarmonicBasisTerm",
+    "HarmonicODF",
+    "HarmonicODFReconstructionReport",
     "IPFColorKey",
     "IndexingCandidate",
     "InversePoleFigure",

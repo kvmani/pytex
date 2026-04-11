@@ -54,7 +54,9 @@ See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`,
 - `PoleFigure`
 - `InversePoleFigure`
 - `ODF`
+- `HarmonicODF`
 - `ODFInversionReport`
+- `HarmonicODFReconstructionReport`
 - `KernelSpec`
 - `XRDMLPoleFigureMeasurement`
 - `LaboTexPoleFigureMeasurement`
@@ -166,7 +168,8 @@ See {doc}`../workflows/ipf_colors`, {doc}`../workflows/plotting_primitives`,
 {doc}`../workflows/ebsd_to_texture_outputs`, and {doc}`../workflows/style_customization`.
 
 `plot_pole_figure(...)` supports scatter, histogram, and contour rendering. `plot_odf(...)`
-supports scatter, contour, and classical Bunge-section rendering.
+supports scatter, contour, and classical Bunge-section rendering for both the discrete
+`ODF` surface and the harmonic `HarmonicODF` surface.
 
 `plot_xrd_pattern(...)` and `plot_saed_pattern(...)` return ordinary Matplotlib figures using the
 shared YAML style system. `plot_crystal_structure_3d(...)` provides a publication-oriented 3D

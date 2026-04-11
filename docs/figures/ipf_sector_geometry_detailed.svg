@@ -1,43 +1,104 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="800" viewBox="0 0 1320 800">
-  <rect width="1320" height="800" fill="#fbf8ef"/>
-  <text x="60" y="72" font-size="34" font-family="Georgia, serif" fill="#17324a">Inverse pole figure sector geometry</text>
-  <text x="60" y="110" font-size="20" font-family="Georgia, serif" fill="#35526b">
-    Direction reduction lives on the unit sphere. The cubic IPF domain is a spherical sector,
+<svg xmlns="http://www.w3.org/2000/svg" width="1340" height="820" viewBox="0 0 1340 820">
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#1f3144"/>
+    </marker>
+  </defs>
+
+  <rect width="1340" height="820" fill="#fbf8ef"/>
+
+  <text x="56" y="62" font-size="34" font-family="Georgia, serif" fill="#17314a">Inverse pole figure sector geometry</text>
+  <text x="56" y="96" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#55626e">
+    The cubic inverse pole figure sector is defined on the direction sphere first, then projected for plotting.
   </text>
-  <text x="60" y="136" font-size="20" font-family="Georgia, serif" fill="#35526b">
-    not a flat orientation-space triangle.
+
+  <rect x="42" y="132" width="1256" height="630" rx="26" fill="#fffdf8" stroke="#d8d0c3" stroke-width="1.8"/>
+
+  <text x="86" y="172" font-size="24" font-family="Georgia, serif" fill="#17314a">A. Spherical sector on the unit sphere</text>
+  <text x="734" y="172" font-size="24" font-family="Georgia, serif" fill="#17314a">B. Stereographic projection of the same sector</text>
+
+  <g transform="translate(350,442)">
+    <circle cx="0" cy="0" r="214" fill="#eef4fb" stroke="#1f3144" stroke-width="3"/>
+    <path d="M0 -214 A214 214 0 0 1 151 151" fill="none" stroke="#2f6f59" stroke-width="4"/>
+    <path d="M0 -214 A214 214 0 0 1 -151 151" fill="none" stroke="#2f6f59" stroke-width="4"/>
+    <path d="M-151 151 A214 214 0 0 0 151 151" fill="none" stroke="#2f6f59" stroke-width="4"/>
+
+    <line x1="0" y1="0" x2="0" y2="-214" stroke="#8093a5" stroke-width="2.2" stroke-dasharray="10 7"/>
+    <line x1="0" y1="0" x2="151" y2="151" stroke="#8093a5" stroke-width="2.2" stroke-dasharray="10 7"/>
+    <line x1="0" y1="0" x2="-151" y2="151" stroke="#8093a5" stroke-width="2.2" stroke-dasharray="10 7"/>
+
+    <circle cx="0" cy="-214" r="8" fill="#2f6f59"/>
+    <circle cx="151" cy="151" r="8" fill="#2f6f59"/>
+    <circle cx="-151" cy="151" r="8" fill="#2f6f59"/>
+
+    <text x="-18" y="-236" font-size="22" font-family="Georgia, serif" fill="#1b5541">[001]</text>
+    <text x="164" y="164" font-size="22" font-family="Georgia, serif" fill="#1b5541">[101]</text>
+    <text x="-236" y="164" font-size="22" font-family="Georgia, serif" fill="#1b5541">[111]</text>
+
+    <circle cx="74" cy="-78" r="10" fill="#d94d2b"/>
+    <line x1="0" y1="0" x2="74" y2="-78" stroke="#d94d2b" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="94" y="-82" font-size="20" font-family="Georgia, serif" fill="#8b2e1d">reduced direction</text>
+
+    <circle cx="-72" cy="-92" r="8" fill="#8a70b6"/>
+    <circle cx="126" cy="40" r="8" fill="#8a70b6"/>
+    <circle cx="-34" cy="154" r="8" fill="#8a70b6"/>
+    <text x="-236" y="-244" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4f5d69">
+      symmetry orbit -> choose the member inside the sector
+    </text>
+  </g>
+
+  <g transform="translate(980,438)">
+    <circle cx="0" cy="0" r="4" fill="#1f3144"/>
+    <path d="M0 -214 Q100 -40 214 0" fill="none" stroke="#1f3144" stroke-width="3"/>
+    <path d="M0 -214 Q-128 -40 -178 112" fill="none" stroke="#1f3144" stroke-width="3"/>
+    <path d="M-178 112 Q12 188 214 0" fill="none" stroke="#1f3144" stroke-width="3"/>
+
+    <path d="M0 -214 Q52 -126 98 -46" fill="none" stroke="#2f6f59" stroke-width="4"/>
+    <path d="M0 -214 Q-92 -124 -178 112" fill="none" stroke="#2f6f59" stroke-width="4"/>
+    <path d="M-178 112 Q12 188 214 0" fill="none" stroke="#2f6f59" stroke-width="4"/>
+
+    <circle cx="0" cy="-214" r="8" fill="#2f6f59"/>
+    <circle cx="214" cy="0" r="8" fill="#2f6f59"/>
+    <circle cx="-178" cy="112" r="8" fill="#2f6f59"/>
+
+    <text x="-20" y="-238" font-size="22" font-family="Georgia, serif" fill="#1b5541">[001]</text>
+    <text x="226" y="6" font-size="22" font-family="Georgia, serif" fill="#1b5541">[101]</text>
+    <text x="-258" y="122" font-size="22" font-family="Georgia, serif" fill="#1b5541">[111]</text>
+
+    <circle cx="88" cy="-72" r="10" fill="#d94d2b"/>
+    <text x="108" y="-76" font-size="20" font-family="Georgia, serif" fill="#8b2e1d">projected reduced direction</text>
+
+    <circle cx="-52" cy="-86" r="8" fill="#8a70b6"/>
+    <circle cx="98" cy="42" r="8" fill="#8a70b6"/>
+    <circle cx="-16" cy="126" r="8" fill="#8a70b6"/>
+    <text x="-90" y="230" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#4f5d69">
+      curved boundaries remain tied to the sphere geometry
+    </text>
+  </g>
+
+  <g transform="translate(92,208)">
+    <rect x="0" y="0" width="500" height="126" rx="18" fill="#efe4c8" stroke="#b58c39" stroke-width="1.6"/>
+    <text x="24" y="34" font-size="23" font-family="Georgia, serif" fill="#5a4213">Key point</text>
+    <text x="24" y="66" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#5a4213">
+      IPF reduction acts on direction vectors on the unit sphere.
+    </text>
+    <text x="24" y="92" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#5a4213">
+      The plotted triangle is a projection of that spherical sector, not a free-standing planar search region.
+    </text>
+  </g>
+
+  <g transform="translate(742,208)">
+    <rect x="0" y="0" width="486" height="126" rx="18" fill="#e5edf6" stroke="#4b718f" stroke-width="1.6"/>
+    <text x="24" y="34" font-size="23" font-family="Georgia, serif" fill="#17314a">Interpretation rule</text>
+    <text x="24" y="66" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#274659">
+      Symmetry first generates an orbit of equivalent directions.
+    </text>
+    <text x="24" y="92" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#274659">
+      Reduction then selects the orbit member that lies inside the cubic sector F_dir.
+    </text>
+  </g>
+
+  <text x="92" y="790" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#55626e">
+    Source alignment: Randle and Engler for pole-figure and inverse-pole-figure interpretation; the cubic labels [001], [101], and [111] define the standard reduced sector.
   </text>
-
-  <rect x="72" y="154" width="370" height="160" rx="18" fill="#efe5c8" stroke="#b38a3a"/>
-  <text x="96" y="194" font-size="22" font-family="Georgia, serif" fill="#5b4215">Key geometric point</text>
-  <text x="96" y="234" font-size="18" font-family="Georgia, serif" fill="#5b4215">All candidates lie on the unit sphere.</text>
-  <text x="96" y="264" font-size="18" font-family="Georgia, serif" fill="#5b4215">Symmetry rotates direction vectors on that sphere.</text>
-  <text x="96" y="294" font-size="18" font-family="Georgia, serif" fill="#5b4215">Reduction asks which orbit point lies inside 𝓕_dir.</text>
-
-  <rect x="884" y="150" width="300" height="142" rx="18" fill="#e6edf5" stroke="#4a708b"/>
-  <text x="938" y="186" font-size="22" font-family="Georgia, serif" fill="#24445c">Not this</text>
-  <text x="914" y="222" font-size="18" font-family="Georgia, serif" fill="#24445c">IPF reduction is not a search in SO(3)</text>
-  <text x="914" y="250" font-size="18" font-family="Georgia, serif" fill="#24445c">or a planar triangle test detached</text>
-  <text x="914" y="278" font-size="18" font-family="Georgia, serif" fill="#24445c">from the direction sphere.</text>
-
-  <path d="M156 650 Q248 244 600 180 Q884 136 1088 322 Q1186 412 1236 650" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
-  <path d="M314 650 Q468 410 620 244 Q700 172 760 198 Q860 242 948 334 Q1068 458 1148 650" fill="#dfeee7" stroke="#2d6b55" stroke-width="3"/>
-  <path d="M314 650 Q748 588 1148 650" fill="none" stroke="#2d6b55" stroke-width="3"/>
-  <line x1="726" y1="650" x2="726" y2="182" stroke="#214761" stroke-width="2.5" stroke-dasharray="10 6"/>
-
-  <text x="732" y="176" font-size="19" font-family="Georgia, serif" fill="#17324a">sphere apex</text>
-  <text x="684" y="238" font-size="18" font-family="Georgia, serif" fill="#1b5541">[111]</text>
-  <text x="292" y="678" font-size="18" font-family="Georgia, serif" fill="#1b5541">[001]</text>
-  <text x="1152" y="678" font-size="18" font-family="Georgia, serif" fill="#1b5541">[101]</text>
-
-  <circle cx="870" cy="506" r="12" fill="#d94f2b"/>
-  <text x="892" y="498" font-size="19" font-family="Georgia, serif" fill="#7d2f1f">reduced direction</text>
-  <text x="892" y="524" font-size="17" font-family="Georgia, serif" fill="#7d2f1f">inside 𝓕_dir</text>
-
-  <circle cx="518" cy="370" r="10" fill="#8a6fb5"/>
-  <circle cx="628" cy="580" r="10" fill="#8a6fb5"/>
-  <circle cx="1040" cy="420" r="10" fill="#8a6fb5"/>
-  <text x="1022" y="448" font-size="17" font-family="Georgia, serif" fill="#554075">other orbit points</text>
-
-  <text x="598" y="634" font-size="20" font-family="Georgia, serif" fill="#1b5541">sector boundary lives on the sphere</text>
 </svg>

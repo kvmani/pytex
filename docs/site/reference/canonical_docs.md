@@ -29,6 +29,7 @@ surface, a library guide, and an entry point into the deeper research documentat
 ## Validation And Testing
 
 - {doc}`../validation/testing_strategy`
+- {doc}`../validation/automated_test_cases`
 - {doc}`../validation/mtex_parity_matrix`
 - {doc}`../validation/diffraction_validation_matrix`
 - {doc}`../validation/plotting_validation_matrix`

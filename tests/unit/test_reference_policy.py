@@ -31,6 +31,7 @@ def test_foundational_docs_declare_normative_and_informative_references() -> Non
         "docs/standards/data_contracts_and_manifests.md",
         "docs/standards/reference_canon.md",
         "docs/testing/strategy.md",
+        "docs/testing/automated_test_cases.md",
         "docs/testing/mtex_parity_matrix.md",
         "docs/testing/diffraction_validation_matrix.md",
         "docs/testing/structure_validation_matrix.md",
@@ -74,6 +75,12 @@ def test_texture_inversion_surface_is_part_of_stable_documented_surface() -> Non
     assert "ODFInversionReport" in specifications
     assert "ODFInversionReport" in api_guide
     assert "ODFInversionReport" in canonical_data_model
+    assert "HarmonicODF" in specifications
+    assert "HarmonicODF" in api_guide
+    assert "HarmonicODF" in canonical_data_model
+    assert "HarmonicODFReconstructionReport" in specifications
+    assert "HarmonicODFReconstructionReport" in api_guide
+    assert "HarmonicODFReconstructionReport" in canonical_data_model
 
 
 def test_plotting_surface_is_part_of_stable_documented_surface() -> None:
@@ -185,3 +192,29 @@ def test_manifest_family_is_part_of_stable_documented_surface() -> None:
         assert primitive in specifications
         assert primitive in canonical_data_model
         assert primitive in manifest_policy
+
+
+def test_reference_working_corpus_assets_exist_and_are_linked_from_core_docs() -> None:
+    reference_index = _read("references/reference_index.md")
+    formulation_summary = _read("references/formulation_summary.md")
+    feature_opportunities = _read("references/feature_opportunities.md")
+    testing_strategy = _read("docs/testing/strategy.md")
+    development_principles = _read("docs/standards/development_principles.md")
+    reference_canon = _read("docs/standards/reference_canon.md")
+
+    assert "Aspect" in reference_index
+    assert "Future tasks should consult this document" in formulation_summary
+    assert "High-Value Opportunities" in feature_opportunities
+    assert "Automated Test Cases" in testing_strategy
+    assert "formulation_summary" in development_principles
+    assert "Repository Working Corpus" in reference_canon
+
+
+def test_validation_site_exposes_automated_test_case_docs() -> None:
+    validation_index = _read("docs/site/validation/index.md")
+    site_case_page = _read("docs/site/validation/automated_test_cases.md")
+    canonical_docs = _read("docs/site/reference/canonical_docs.md")
+
+    assert "automated_test_cases" in validation_index
+    assert "automated_test_cases.md" in site_case_page
+    assert "validation/automated_test_cases" in canonical_docs

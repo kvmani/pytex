@@ -18,7 +18,7 @@ Status terms:
 | Documentation SVG policy | documentation policy tests and `save_documentation_figure_svg(...)` coverage | implemented | Repo-tracked docs figures remain SVG while runtime plotting stays backend-native. |
 | Pole-figure contour rendering | builder and runtime tests for contour layers | implemented | Contour pole figures are rendered from smoothed projected density grids with deterministic builder behavior. |
 | ODF contour rendering | builder and runtime tests for Euler-space contour layers | implemented | The current contour path is a discrete support inspection surface in Euler space. |
-| ODF Bunge-section rendering | builder and runtime tests for multi-panel section figures | implemented | Section plots are kernel-smoothed inspection views over the discrete support, not harmonic ODF sections. |
+| ODF Bunge-section rendering | builder and runtime tests for multi-panel section figures | implemented | Section plots now support both the discrete ODF inspection path and the harmonic ODF evaluation path on explicit Bunge-section grids. |
 | YAML theme loading and merging | unit tests over theme catalogs, overrides, and invalid payloads | implemented | Runtime plotting style is centralized rather than distributed across plotting routines. |
 | Powder XRD plotting | runtime plotting tests and style-config coverage | implemented | XRD figures are deterministic Matplotlib surfaces built on shared style resolution. |
 | SAED plotting | runtime plotting tests and style-config coverage | implemented | Detector-space spot plots are validated for figure creation and semantic labeling. |
@@ -32,7 +32,7 @@ Status terms:
 ## Interpretation Notes
 
 - Plot validation is not only about pixels. The higher priority is that plotted geometry respects the same frame, symmetry, and reduction contracts as the computational API.
-- The current contour and section plots are scientifically meaningful inspection surfaces for the implemented discrete model.
+- The current contour and section plots are scientifically meaningful inspection surfaces for the implemented discrete and harmonic texture models, but they are still review plots rather than claims of full external visual parity.
 - PyTex does not yet claim visual parity with MTEX or any other plotting package across every rendered detail.
 
 ## References

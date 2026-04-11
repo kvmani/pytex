@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360">
+  <defs>
+    <style>
+      .title { font: 700 24px Arial, sans-serif; fill: #102a43; }
+      .label { font: 600 18px Arial, sans-serif; fill: #243b53; }
+      .body { font: 16px Arial, sans-serif; fill: #334e68; }
+      .math { font: italic 20px "Times New Roman", serif; fill: #102a43; }
+      .panel { fill: #f8fbff; stroke: #486581; stroke-width: 2; rx: 14; ry: 14; }
+      .panel-accent { fill: #eef4f8; stroke: #334e68; stroke-width: 2; rx: 12; ry: 12; }
+      .left { fill: #e3f2fd; stroke: #1d4ed8; stroke-width: 2; rx: 12; ry: 12; }
+      .center { fill: #ecfdf5; stroke: #047857; stroke-width: 2; rx: 12; ry: 12; }
+      .right { fill: #fff7ed; stroke: #c2410c; stroke-width: 2; rx: 12; ry: 12; }
+      .arrow-blue { stroke: #1d4ed8; stroke-width: 3; fill: none; marker-end: url(#arrowBlue); }
+      .arrow-orange { stroke: #c2410c; stroke-width: 3; fill: none; marker-end: url(#arrowOrange); }
+      .arrow-gray { stroke: #627d98; stroke-width: 3; fill: none; marker-end: url(#arrowGray); }
+    </style>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#c2410c"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L9,3 L0,6 Z" fill="#627d98"/>
+    </marker>
+  </defs>
+
+  <rect x="18" y="18" width="884" height="324" class="panel"/>
+  <text x="42" y="54" class="title">Harmonic ODF Symmetry Projection</text>
+  <text x="42" y="84" class="body">PyTex enforces specimen symmetry on the left and crystal symmetry on the right when projecting the harmonic basis.</text>
+
+  <rect x="48" y="122" width="232" height="120" class="left"/>
+  <text x="164" y="152" text-anchor="middle" class="label">Specimen Symmetry</text>
+  <text x="164" y="182" text-anchor="middle" class="math">s g</text>
+  <text x="164" y="212" text-anchor="middle" class="body">left action</text>
+  <text x="164" y="236" text-anchor="middle" class="body">changes specimen frame</text>
+
+  <rect x="344" y="122" width="232" height="120" class="center"/>
+  <text x="460" y="152" text-anchor="middle" class="label">Orientation State</text>
+  <text x="460" y="182" text-anchor="middle" class="math">g</text>
+  <text x="460" y="212" text-anchor="middle" class="body">Bunge orientation in</text>
+  <text x="460" y="236" text-anchor="middle" class="body">the canonical PyTex frame model</text>
+
+  <rect x="640" y="122" width="232" height="120" class="right"/>
+  <text x="756" y="152" text-anchor="middle" class="label">Crystal Symmetry</text>
+  <text x="756" y="182" text-anchor="middle" class="math">g h</text>
+  <text x="756" y="212" text-anchor="middle" class="body">right action</text>
+  <text x="756" y="236" text-anchor="middle" class="body">changes crystal basis</text>
+
+  <path d="M280 182 C310 182 316 182 344 182" class="arrow-blue"/>
+  <path d="M576 182 C606 182 612 182 640 182" class="arrow-orange"/>
+  <text x="310" y="168" class="body" fill="#1d4ed8">apply sample operator</text>
+  <text x="612" y="168" class="body" fill="#c2410c">apply crystal operator</text>
+
+  <rect x="228" y="270" width="464" height="48" class="panel-accent"/>
+  <text x="460" y="300" text-anchor="middle" class="math">Psi&#772;(g) = (1 / (|S| |C|)) &#8721;<tspan baseline-shift="sub" font-style="normal">s&#8712;S</tspan> &#8721;<tspan baseline-shift="sub" font-style="normal">h&#8712;C</tspan> Psi(s g h)</text>
+
+  <path d="M164 242 C164 260 230 264 320 270" class="arrow-gray"/>
+  <path d="M460 242 C460 258 460 260 460 270" class="arrow-gray"/>
+  <path d="M756 242 C756 260 690 264 600 270" class="arrow-gray"/>
+</svg>

@@ -14,6 +14,16 @@ Every scientific rule in PyTex must be classified as one of:
 
 If a rule is informative only, it must not silently fix stable API semantics.
 
+## Repository Working Corpus
+
+PyTex maintains a working reference corpus under `../../references/` to make authoritative formulas and examples discoverable during implementation.
+
+- [Reference Index](../../references/reference_index.md) is the page-level discovery index.
+- [Formulation Summary](../../references/formulation_summary.md) is the first-stop summary for formulas, notation crosswalks, and ready-to-use examples.
+- [Feature Opportunities](../../references/feature_opportunities.md) records source-grounded implementation ideas and gap analysis.
+
+These files are repository guidance tools, not a replacement for the source hierarchy below. When they summarize a source, contributors should still verify the cited pages before fixing stable semantics.
+
 ## Normative Corpus By Topic
 
 ### Symmetry And Crystallographic Structure
@@ -90,4 +100,6 @@ PyTex may adopt a tool convention from MTEX, ORIX, KikuchiPy, diffsims, or vendo
 ### Informative
 
 - `scientific_citation_policy.md`
+- [Reference Index](../../references/reference_index.md)
+- [Formulation Summary](../../references/formulation_summary.md)
 - MTEX documentation: <https://mtex-toolbox.github.io/>

@@ -20,6 +20,7 @@ Use the Sphinx layer for:
 - tutorials
 - workflow guides
 - executable notebook tutorials
+- human-auditable automated test documentation
 - installation and contributor guidance
 - curated API reference
 - links to deeper scientific notes
@@ -36,6 +37,7 @@ Use the LaTeX layer for:
 - Every major concept or workflow page should link to the deeper theory or algorithm note where one exists.
 - Major scientific notes should point back to the relevant user-facing concept or workflow page when practical.
 - API docs should not stand alone; they should connect back to concepts or workflows where scientific meaning matters.
+- Validation and testing pages that document formulas or numerical outputs should link to the corresponding concept, workflow, or theory page rather than standing alone as opaque QA notes.
 - Pages that rely on defined terminology, notation, or installation prerequisites should link directly to the corresponding glossary, symbol-registry, or setup page.
 - References to other repository documents must be written as navigable Markdown links, not as backticked plain-text file paths.
 - Bare path listings are only acceptable inside code blocks that intentionally document filesystem layout rather than serving as navigation.
@@ -48,6 +50,7 @@ For major conventions, frame relationships, symmetry actions, and core algorithm
 - prose that states the scientific meaning in plain language
 - mathematics that fixes the convention, mapping, or reduction unambiguously
 - annotated figures that make the geometry or transformation legible at a glance
+- for automated validation pages, explicit test-case evidence that shows what was checked numerically and against which cited source
 
 If one of these surfaces is missing for a stable foundational feature, the documentation is incomplete even if the code and tests exist.
 
@@ -59,6 +62,7 @@ The intended docs surfaces are:
 - executable notebook tutorials rendered or linked through the Sphinx layer
 - downloadable PDF scientific notes built from LaTeX
 - reusable SVG figures shared across both surfaces
+- validation pages that pair automated assertions with cited formulas and last verified outputs
 - mathematics-and-graphics-backed convention pages for foundational semantics
 - runtime plotting APIs that expose the same semantic objects directly to users
 

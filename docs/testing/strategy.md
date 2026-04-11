@@ -19,6 +19,7 @@ A stable feature is not complete without:
 - validation note
 - benchmark fixture or explicit placeholder
 - deterministic automated tests
+- human-auditable automated test documentation for major formulas, conventions, or workflows
 - example workflow
 
 For pinned phase fixtures, deterministic repository hygiene also includes the catalog digests in
@@ -35,6 +36,19 @@ remains reproducible across contributors and CI.
 - Non-applicability requires explanation, not omission.
 - PyTex must also cover cases MTEX does not, especially provenance, interoperability, and explicit convention handling.
 - Numerical tolerances and benchmark governance are centralized in `../standards/benchmark_and_tolerance_governance.md`.
+
+## Human-Auditable Automated Test Documentation
+
+Important tests should be readable by domain experts who do not want to reverse-engineer the implementation first.
+
+- The Sphinx validation surface must include documented test cases for major formulas, conversions, and conventions.
+- Each documented test case should identify the code surface, the authoritative reference, the governing formula, at least one worked example, the expected automated assertion, and the last verified code output.
+- For formula-heavy pathways, the documented case should include a domain-audit table with at least:
+  quantity, source-derived expected value, current code output, and interpretation.
+- When reference notation and PyTex notation differ, the documented case should state the mismatch explicitly instead of silently rewriting the source into PyTex terminology.
+- When current code output differs from the most obvious textbook expression only by mapping direction, transpose, basis choice, or another convention issue, the documentation should explain that distinction directly.
+- When a future task changes a cited numerical pathway, the corresponding test documentation should be updated in the same change set.
+- The working reference corpus for such documentation is indexed in `references/reference_index.md`, and future tasks should consult `references/formulation_summary.md` before introducing new formulations or examples.
 
 ## External-Baseline Policy Beyond MTEX
 
@@ -63,6 +77,7 @@ As of the current hardening pass, the repository has passing integrity checks, t
 builds for the immediate roadmap surface, but validation breadth is still uneven:
 
 - texture and EBSD have explicit MTEX-backed ledgers
+- texture now includes both explicit dictionary inversion and a first harmonic PF-to-ODF reconstruction path, but higher-order external parity and correction workflows remain ahead
 - structure import now has a hash-pinned fixture corpus, manifest-backed audit workflow, and
   default test-suite coverage, but broader IUCr-style external baselines are still ahead
 - diffraction now has pinned open-source external baselines for one powder XRD workflow family and
@@ -82,12 +97,13 @@ builds for the immediate roadmap surface, but validation breadth is still uneven
 
 ### Normative
 
-- [MTEX Parity Matrix](../site/validation/mtex_parity_matrix.md)
-- [Diffraction Validation Matrix](../site/validation/diffraction_validation_matrix.md)
-- [Structure Validation Matrix](../site/validation/structure_validation_matrix.md)
-- [Plotting Validation Matrix](../site/validation/plotting_validation_matrix.md)
-- [Phase Transformation Validation Matrix](../site/validation/phase_transformation_validation_matrix.md)
-- [Reference Canon](../site/standards/reference_canon.md)
+- <a href="mtex_parity_matrix.html">MTEX Parity Matrix</a>
+- <a href="diffraction_validation_matrix.html">Diffraction Validation Matrix</a>
+- <a href="structure_validation_matrix.html">Structure Validation Matrix</a>
+- <a href="plotting_validation_matrix.html">Plotting Validation Matrix</a>
+- <a href="phase_transformation_validation_matrix.html">Phase Transformation Validation Matrix</a>
+- <a href="automated_test_cases.html">Automated Test Cases</a>
+- <a href="../standards/reference_canon.html">Reference Canon</a>
 
 ### Informative
 
