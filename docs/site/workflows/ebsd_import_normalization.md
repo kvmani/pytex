@@ -23,6 +23,20 @@ step.
 - per-point phase identifiers for multiphase crystal maps
 - reproducible manifest IO through stable JSON schemas
 
+## What Is Verified Today
+
+The current validation surface checks three different things separately:
+
+- manifest schema stability and JSON round-trips
+- payload normalization into canonical PyTex frames, phases, and crystal-map semantics
+- downstream EBSD-to-texture behavior such as phase-aware ODF, PF, and IPF extraction
+
+The highest-signal executable coverage currently lives in:
+
+- `tests/unit/test_plotting_and_adapters.py`
+- `tests/integration/test_cli_and_optional_adapters.py`
+- {doc}`../validation/index`
+
 ## Single-Phase Example
 
 ```python
@@ -73,6 +87,15 @@ Normalized EBSD datasets can now feed the broader manifest family directly:
 - detector-pattern semantics are still outside the normalized EBSD dataset contract
 - live dependency-pinned integration tests against specific KikuchiPy releases remain ahead
 - per-point confidence weighting is not yet part of graph construction or segmentation
+- ORIX and KikuchiPy bridge coverage is strongest at the canonicalization boundary, not yet as a
+  broad package-version compatibility matrix
+
+## Interpretation Rule
+
+Treat `normalize_ebsd(...)` as the point where PyTex fixes scientific meaning, not as a guarantee
+that every source-system nuance has been preserved or validated. If a workflow depends on
+vendor-specific metadata, detector calibration state, or package-version-specific behavior, record
+that dependency explicitly and add validation before treating it as stable.
 
 ## Related Material
 

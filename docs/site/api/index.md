@@ -2,6 +2,40 @@
 
 PyTex keeps the stable API centered on named scientific primitives. This page is intentionally curated rather than exhaustive: the goal is to show the public objects users should build around, then point back to the concept and workflow pages that explain their meaning.
 
+## How To Read This Page
+
+This is not a replacement for the concept and workflow docs.
+
+Use it in this order:
+
+1. identify the scientific object family you need
+2. read the linked concept or workflow page that defines its meaning
+3. come back here to find the stable constructor or helper surface
+
+If a type below would be ambiguous to you without knowing its frame, symmetry, provenance, or
+reduction rules, do not start from the API list alone. Follow the linked concept page first.
+
+## Recommended Entry Points
+
+- Start with `ReferenceFrame`, `SymmetrySpec`, `Phase`, and `Orientation` if you are building core
+  crystallographic objects from scratch.
+- Start with `Phase.from_cif(...)` and the phase or diffraction workflows if your data begins from
+  structure definitions.
+- Start with `normalize_ebsd(...)` and `CrystalMap` if your data begins from EBSD tooling.
+- Start with `DiffractionGeometry`, `RadiationSpec`, `PowderPattern`, or `SAEDPattern` if your
+  work begins in detector or reciprocal-space reasoning.
+- Start with the manifest family when workflow context, provenance, validation, or interchange must
+  survive beyond one Python call boundary.
+
+## Current Interpretation Rule
+
+The stable PyTex surface prefers semantically explicit objects over raw arrays. In practice that
+means:
+
+- use domain types when frame or symmetry meaning matters
+- use semantic batch types when vectorized data shares one scientific interpretation
+- use manifests or JSON contracts when results must remain reconstructible outside in-memory use
+
 ## Core
 
 - `ReferenceFrame`
@@ -43,6 +77,9 @@ PyTex keeps the stable API centered on named scientific primitives. This page is
 - `format_plane_indices`
 - `format_direction_indices`
 - `OrientationRelationship`
+- `OrientationRelationship.from_parallel_plane_direction(...)`
+- `OrientationRelationship.from_bain_correspondence(...)`
+- `OrientationRelationship.from_nishiyama_wassermann_correspondence(...)`
 - `TransformationVariant`
 - `PhaseTransformationRecord`
 
@@ -90,6 +127,9 @@ See {doc}`../concepts/orientation_texture`.
 - `normalize_ebsd(...)`
 - `index_hough(...)`
 - `refine_orientations(...)`
+
+Adapter-boundary utilities:
+
 - `to_orix_phase(...)`
 - `to_orix_miller_plane(...)`
 - `to_orix_miller_direction(...)`
@@ -100,6 +140,10 @@ See {doc}`../concepts/orientation_texture`.
 - `from_orix_orientation(...)`
 
 See {doc}`../workflows/ebsd_kam`, {doc}`../workflows/ebsd_grains`, and {doc}`../workflows/ebsd_to_texture_outputs`.
+
+Those adapter helpers are intentionally grouped as boundary utilities rather than as the center of
+the EBSD API. They preserve PyTex semantics at the edge of optional ORIX or KikuchiPy
+interoperability, but they should not be read as a blanket parity claim for the external packages.
 
 ## Experimental
 
@@ -177,3 +221,10 @@ structure view while preserving PyTex lattice and plane semantics, including opt
 hexagonal-prism overlays where scientifically appropriate.
 
 For architectural context, see {doc}`../architecture/overview`.
+
+## Limits Of This Guide
+
+- This page is curated, not exhaustive API documentation.
+- A symbol appearing here does not mean every downstream workflow built on it is equally validated.
+- Use {doc}`../validation/index` to check current parity, evidence, and limitations before relying
+  on a surface for stronger scientific claims.

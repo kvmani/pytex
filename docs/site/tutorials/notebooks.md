@@ -64,6 +64,30 @@ validation artifacts used elsewhere in the repository:
 That sequence takes one pinned phase from CIF-backed construction through structure visualization,
 diffraction generation, and manifest-backed reproducibility notes.
 
+## Stable Teaching Sequence
+
+For contributors and new users, the default reading and execution path during the current hardening
+phase is:
+
+1. `01_reference_frames_and_transforms`
+2. `02_rotations_orientations_and_batch_primitives`
+3. `04_phases_lattices_space_groups_and_cif`
+4. `05_multimodal_acquisition_and_manifests`
+5. `06_texture_odf_and_pole_figure_inversion`
+6. `07_ebsd_regular_grid_workflows`
+7. `08_diffraction_geometry_and_kinematic_spots`
+8. `10_plotting_semantic_primitives`
+
+That path mirrors the intended public learning route: canonical frames and orientations first,
+structure and provenance second, then texture, EBSD, diffraction, and plotting.
+
+## How This Relates To Validation
+
+- The roadmap-priority notebooks are smoke-executed in the default test suite.
+- Notebook examples are expected to agree with the public concept, workflow, and validation pages.
+- If a notebook shows a pedagogical simplification, the corresponding workflow page should say so
+  explicitly rather than leaving the distinction implicit in code cells.
+
 ## References
 
 ### Normative

@@ -31,6 +31,7 @@ Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The
 - [../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex](../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
 - [../../tex/algorithms/ebsd_boundaries_and_cleanup.tex](../../tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [../../tex/algorithms/experimental_parent_candidate_scoring.tex](../../tex/algorithms/experimental_parent_candidate_scoring.tex)
+- [../../tex/algorithms/phase_transformation_relationship_construction.tex](../../tex/algorithms/phase_transformation_relationship_construction.tex)
 - [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
 - [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
 - [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
