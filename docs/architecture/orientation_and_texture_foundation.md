@@ -17,27 +17,29 @@ This document records the current implementation posture for Phase 2.
 - explicit orientation projection to a symmetry-reduced representative
 - kernel-backed ODF evaluation and simple volume-fraction queries
 - discrete pole-figure inversion over an explicit orientation dictionary with a regularized non-negative solver
+- band-limited harmonic ODF reconstruction with explicit crystal and specimen symmetry handling
 - construction-time validation of frame, phase, and symmetry consistency across the orientation and texture domain models
 - cached proper point-group operator generation to keep repeated symmetry construction cheap
 
 ## Deliberate Current Limits
 
 - exact polyhedral fundamental-region boundaries for every crystal class are not yet implemented
-- harmonic ODF expansion and broad experimentally calibrated PF inversion doctrine are not yet implemented
+- broad experimentally calibrated PF inversion doctrine beyond the current kernel-regularized harmonic model is still ahead
 - exact orientation-space polyhedral regions for all crystal classes are not yet implemented
 
 ## Why This Still Moves The Project Forward
 
-The current implementation fixes the shared semantics that later harmonic, inversion, EBSD, and plotting work will depend on. It is intentionally more concerned with explicit meaning and reproducibility than with fully optimized texture algorithms at this stage.
+The current implementation now covers both explicit discrete inversion and a first harmonic reconstruction path. The remaining work is therefore no longer semantic groundwork alone; it is broader validation, benchmark depth, and higher-fidelity experimental doctrine.
 
 ## References
 
 ### Normative
 
-- [Canonical Data Model](../site/architecture/canonical_data_model.md)
-- [Reference Canon](../site/standards/reference_canon.md)
+- [Canonical Data Model](canonical_data_model.md)
+- [Reference Canon](../standards/reference_canon.md)
 
 ### Informative
 
 - <a href="../tex/theory/orientation_space_and_disorientation.tex">Orientation Space And Disorientation</a>
 - <a href="../tex/algorithms/discrete_odf_and_pole_figures.tex">Discrete ODF And Pole Figures</a>
+- <a href="../tex/algorithms/harmonic_odf_reconstruction.tex">Harmonic ODF Reconstruction</a>

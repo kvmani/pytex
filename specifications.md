@@ -58,7 +58,9 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `PoleFigure`
 - `InversePoleFigure`
 - `ODF`
+- `HarmonicODF`
 - `ODFInversionReport`
+- `HarmonicODFReconstructionReport`
 - `XRDMLPoleFigureMeasurement`
 - `LaboTexPoleFigureMeasurement`
 - `read_xrdml_pole_figure`

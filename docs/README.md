@@ -20,6 +20,7 @@
 ## Testing And Validation
 
 - [Testing Strategy](testing/strategy.md)
+- [Automated Test Cases](testing/automated_test_cases.md)
 - [MTEX Parity Matrix](testing/mtex_parity_matrix.md)
 - [Diffraction Validation Matrix](testing/diffraction_validation_matrix.md)
 - [Structure Validation Matrix](testing/structure_validation_matrix.md)
@@ -60,6 +61,7 @@
 - [Reference Frames](tex/theory/reference_frames.tex)
 - [Crystal Visualization Geometry](tex/theory/crystal_visualization_geometry.tex)
 - [Discrete ODF And Pole Figures](tex/algorithms/discrete_odf_and_pole_figures.tex)
+- [Harmonic ODF Reconstruction](tex/algorithms/harmonic_odf_reconstruction.tex)
 - [EBSD KAM Parameterization](tex/algorithms/ebsd_kam_parameterization.tex)
 - [EBSD Local Misorientation](tex/algorithms/ebsd_local_misorientation.tex)
 - [EBSD Grain Segmentation And GROD](tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
@@ -78,6 +80,7 @@
 - [Orientation Mapping Semantics](figures/orientation_mapping_semantics.svg)
 - [Active Passive Rotation](figures/active_passive_rotation.svg)
 - [Crystal Symmetry Actions](figures/crystal_symmetry_actions.svg)
+- [Harmonic ODF Symmetry Projection](figures/harmonic_odf_symmetry_projection.svg)
 - [IPF Sector Reduction](figures/ipf_sector_reduction.svg)
 - [Disorientation Fundamental Region](figures/disorientation_fundamental_region.svg)
 - [Diffraction Geometry](figures/diffraction_geometry.svg)

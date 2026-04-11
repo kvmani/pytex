@@ -19,6 +19,7 @@ from pytex.plotting._render import (
     ScatterLayer3D,
     TextLayer2D,
 )
+from pytex.texture.harmonics import HarmonicODF
 from pytex.texture.models import ODF, InversePoleFigure, PoleFigure
 
 
@@ -137,7 +138,7 @@ def _masked_projection_density(
 
 
 def _bunge_section_grid(
-    odf: ODF,
+    odf: ODF | HarmonicODF,
     *,
     phi2_deg: float,
     phi1_steps: int,
@@ -146,6 +147,31 @@ def _bunge_section_grid(
     phi1 = np.linspace(0.0, 360.0, phi1_steps, dtype=np.float64)
     big_phi = np.linspace(0.0, 90.0, big_phi_steps, dtype=np.float64)
     phi1_mesh, big_phi_mesh = np.meshgrid(phi1, big_phi, indexing="xy")
+    if isinstance(odf, HarmonicODF):
+        angles_deg = np.column_stack(
+            [
+                phi1_mesh.reshape(-1),
+                big_phi_mesh.reshape(-1),
+                np.full(phi1_mesh.size, float(phi2_deg), dtype=np.float64),
+            ]
+        )
+        section_orientations = OrientationSet.from_euler_angles(
+            angles_deg,
+            crystal_frame=odf.crystal_frame,
+            specimen_frame=odf.specimen_frame,
+            symmetry=odf.crystal_symmetry,
+            phase=odf.phase,
+            convention="bunge",
+            degrees=True,
+            provenance=odf.provenance,
+        )
+        values = np.asarray(odf.evaluate(section_orientations), dtype=np.float64).reshape(
+            big_phi_steps,
+            phi1_steps,
+        )
+        values = np.ascontiguousarray(values, dtype=np.float64)
+        values.setflags(write=False)
+        return phi1, big_phi, values
     support = odf.orientations.as_euler_set(convention="bunge", degrees=True).angles
     support_phi1 = support[:, 0][None, None, :]
     support_big_phi = support[:, 1][None, None, :]
@@ -471,7 +497,7 @@ def build_inverse_pole_figure_spec(
 
 
 def build_odf_figure_spec(
-    odf: ODF,
+    odf: ODF | HarmonicODF,
     *,
     kind: str = "scatter",
     bins: int = 72,
@@ -482,14 +508,23 @@ def build_odf_figure_spec(
     section_big_phi_steps: int = 91,
     title: str | None = None,
 ) -> FigureSpec2D | MultiFigureSpec2D:
-    euler_set = odf.orientations.as_euler_set(convention="bunge", degrees=True)
-    weights = odf.normalized_weights
+    if isinstance(odf, HarmonicODF):
+        euler_set = odf.quadrature_orientations.as_euler_set(convention="bunge", degrees=True)
+        weights = odf.quadrature_densities
+    else:
+        euler_set = odf.orientations.as_euler_set(convention="bunge", degrees=True)
+        weights = odf.normalized_weights
     if kind == "scatter":
         return build_euler_figure_spec(
             euler_set,
             values=weights,
-            sizes=_weights_to_sizes(weights),
-            title=title or "ODF Support In Euler Space",
+            sizes=(
+                _angles_to_sizes(np.abs(weights), min_size=20.0, max_size=120.0)
+                if isinstance(odf, HarmonicODF)
+                else _weights_to_sizes(weights)
+            ),
+            title=title
+            or ("Harmonic ODF Samples In Euler Space" if isinstance(odf, HarmonicODF) else "ODF Support In Euler Space"),
         )
     if kind == "contour":
         angles = euler_set.angles if euler_set.degrees else np.rad2deg(euler_set.angles)

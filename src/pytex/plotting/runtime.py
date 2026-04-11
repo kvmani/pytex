@@ -37,6 +37,7 @@ from pytex.plotting.spherical import (
 from pytex.plotting.spherical import (
     plot_wulff_net as _plot_wulff_net,
 )
+from pytex.texture.harmonics import HarmonicODF
 from pytex.texture.models import ODF, InversePoleFigure, PoleFigure
 
 
@@ -274,7 +275,7 @@ def plot_inverse_pole_figure(
 
 
 def plot_odf(
-    odf: ODF,
+    odf: ODF | HarmonicODF,
     *,
     kind: str = "scatter",
     bins: int = 72,

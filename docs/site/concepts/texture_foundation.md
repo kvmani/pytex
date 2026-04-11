@@ -10,6 +10,7 @@ This page drills into the texture subsystem as a scientific layer on top of the 
 - orientation-space reduction and fundamental-region keys
 - kernel-based ODF evaluation
 - discrete pole-figure inversion over an explicit orientation dictionary
+- band-limited harmonic ODF reconstruction over the same canonical texture objects
 - IPF color-key generation
 
 ## Texture Flow
@@ -44,7 +45,7 @@ The texture layer is where PyTex demonstrates that its canonical core is not abs
 - orientations must reduce correctly under symmetry
 - pole figures must reflect the chosen crystal directions and specimen directions
 - ODF evaluation must remain deterministic and interpretable
-- pole-figure inversion must stay explicit about its dictionary, kernel, and convergence report
+- pole-figure inversion must stay explicit about its dictionary, kernel, harmonic bandlimit, and convergence report
 - IPF color mappings must stay tied to explicit symmetry semantics
 
 ## Current State
@@ -53,7 +54,8 @@ The texture layer is where PyTex demonstrates that its canonical core is not abs
 - symmetry-aware misorientation and disorientation are implemented
 - PF/IPF and ODF foundations are implemented
 - discrete dictionary-based PF inversion is implemented
-- exact harmonic inversion and exhaustive orientation-region boundaries remain ahead
+- band-limited harmonic PF-to-ODF inversion is implemented
+- exhaustive orientation-region boundaries and broader experimental correction doctrine remain ahead
 
 ## Related Material
 

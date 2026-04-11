@@ -1,0 +1,180 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\title{Harmonic ODF Reconstruction in PyTex}
+\author{PyTex Contributors}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section{Scope}
+
+This note documents the band-limited harmonic ODF reconstruction implemented in PyTex for
+pole-figure inversion. It is the canonical mathematical companion to the public
+\texttt{HarmonicODF} API.
+
+\section{Reference Posture}
+
+Randle and Engler describe the classical series-expansion route by expressing the
+orientation distribution function in symmetrized generalized spherical harmonics and the
+pole figures in matching harmonic coefficients linked by a linear relation. They also
+note the practical effects of truncation and the missing odd coefficients in diffraction
+pole figures (\textit{Introduction to Texture Analysis}, pp.\ 105--107).
+
+PyTex follows that scientific posture while keeping the implementation aligned with its
+existing explicit frame, symmetry, phase, and pole-figure data model.
+
+\section{Band-Limited Basis}
+
+PyTex uses the Bunge Euler ordering
+\[
+  (\phi_1, \Phi, \phi_2)
+\]
+and the standard Wigner-\(D\) building block
+\[
+  D^l_{mn}(\phi_1,\Phi,\phi_2)
+  =
+  e^{- i m \phi_1}
+  d^l_{mn}(\Phi)
+  e^{- i n \phi_2}.
+\]
+
+The implemented real basis is constructed from
+\[
+  \Re D^l_{mn}
+  =
+  d^l_{mn}(\Phi)\cos(m\phi_1 + n\phi_2),
+\]
+\[
+  \Im D^l_{mn}
+  =
+  d^l_{mn}(\Phi)\sin(m\phi_1 + n\phi_2),
+\]
+truncated at a user-selected degree bandlimit \(l_{\max}\).
+
+\section{Symmetry Handling}
+
+The ODF must satisfy
+\[
+  f(g h) = f(g)
+  \qquad \forall h \in C
+\]
+for crystal symmetry and
+\[
+  f(s g) = f(g)
+  \qquad \forall s \in S
+\]
+for specimen symmetry.
+
+PyTex enforces these invariance relations by explicit group averaging of each basis
+function:
+\[
+  \bar{\Psi}(g)
+  =
+  \frac{1}{|S||C|}
+  \sum_{s \in S}
+  \sum_{h \in C}
+  \Psi(s g h).
+\]
+
+This left/right split is not optional bookkeeping. It is the mechanism that keeps the
+harmonic surface consistent with the canonical PyTex frame and symmetry model.
+
+\section{Quadrature And Orthonormalization}
+
+PyTex evaluates the projected basis on a full Bunge grid over \(SO(3)\) using midpoint
+quadrature and Haar weights proportional to
+\[
+  \sin\Phi.
+\]
+
+Let the quadrature orientations be \(g_q\) with normalized weights \(w_q\). The raw
+projected basis matrix is
+\[
+  B_{q\alpha} = \bar{\Psi}_{\alpha}(g_q).
+\]
+
+PyTex forms the weighted Gram matrix
+\[
+  G = B^{\mathsf T} W B
+\]
+with \(W = \mathrm{diag}(w_q)\), then retains the numerically non-singular eigenspace and
+constructs an orthonormal basis on the quadrature grid.
+
+\section{Forward Operator}
+
+PyTex does not introduce a second incompatible pole-figure object for harmonic inversion.
+Instead it uses the current measured-direction \texttt{PoleFigure} semantics and builds a
+regularized pole-density operator against the harmonic ODF sampled on the quadrature grid:
+\[
+  I_m
+  \approx
+  \sum_q
+  w_q f(g_q) A_{mq}.
+\]
+
+For a pole family \(H\) and a measurement direction \(y_m\),
+\[
+  A_{mq}
+  =
+  \frac{1}{|H|}
+  \sum_{u \in H}
+  K\!\left(\angle(y_m, g_q u)\right),
+\]
+where \(K\) is the configured pole-density kernel.
+
+\section{Inverse Problem}
+
+Writing the band-limited ODF as
+\[
+  f(g) \approx \sum_{\alpha} c_{\alpha}\Phi_{\alpha}(g),
+\]
+PyTex solves the regularized least-squares problem
+\[
+  \min_{\mathbf{c}}
+  \frac{1}{2}
+  \lVert A\mathbf{c} - \mathbf{b} \rVert_2^2
+  +
+  \frac{\lambda}{2}
+  \lVert \mathbf{c} \rVert_2^2.
+\]
+
+The implementation uses dense linear least squares on the augmented system. This is
+appropriate for the present band-limited and explicitly auditable scientific scope.
+
+\section{Even-Degree Handling}
+
+When all input pole figures are antipodal, PyTex defaults to retaining even degrees only.
+This follows the classical diffraction-texture limitation that odd coefficients are not
+uniquely observable from antipodal pole figures.
+
+\section{Interpretation Notes}
+
+\begin{itemize}
+  \item Harmonic reconstruction is now implemented, but it remains a band-limited model.
+  \item Symmetry handling is explicit through the repository point-group operators, not a
+        separate harmonic-specific symmetry abstraction.
+  \item Negative ODF lobes can still appear because truncated harmonic expansions are not
+        positivity preserving.
+  \item Degree selection, quadrature density, and kernel halfwidth are scientific inputs,
+        not hidden tuning constants.
+\end{itemize}
+
+\section{References}
+
+\begin{thebibliography}{9}
+\bibitem{randle}
+V. Randle and O. Engler,
+\textit{Introduction to Texture Analysis: Macrotexture, Microtexture and Orientation Mapping},
+CRC Press, 2000.
+
+\bibitem{bunge}
+H.-J. Bunge,
+\textit{Texture Analysis in Materials Science: Mathematical Methods},
+Butterworths, 1969.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,165 +1,189 @@
-# Texture: ODF Evaluation And Pole-Figure Inversion
+# Texture: Discrete And Harmonic ODF Reconstruction
 
-PyTex now supports a richer texture workflow surface than the earlier ODF-evaluation-only foundation.
+PyTex now supports two explicit PF-to-ODF reconstruction surfaces:
 
-Current scope:
+- `ODF.invert_pole_figures(...)` for dictionary-based non-negative inversion over an
+  explicit orientation support
+- `HarmonicODF.invert_pole_figures(...)` for band-limited harmonic reconstruction with
+  explicit crystal and specimen symmetry handling
+- `ODF.evaluate_pole_density(...)` and `HarmonicODF.evaluate_pole_density(...)` for
+  comparing reconstructed ODFs against explicit sample-direction measurement grids
 
-- `PoleFigure.from_orientations(...)`
-- `InversePoleFigure.from_orientations(...)`
-- `ODF.from_orientations(...)`
-- `OrientationSet.from_bunge_grid(...)`
-- `ODF.evaluate(...)`
-- `ODF.evaluate_pole_density(...)`
-- `ODF.reconstruct_pole_figure(...)`
-- `ODF.reconstruct_pole_figures(...)`
-- `ODF.invert_pole_figures(...)`
-- `read_xrdml_pole_figure(...)`
-- `load_xrdml_pole_figure(...)`
-- `invert_xrdml_pole_figures(...)`
-- `ODFInversionReport`
-- `plot_pole_figure(..., kind="scatter" | "histogram" | "contour")`
-- `plot_odf(..., kind="scatter" | "contour" | "sections")`
+Both methods use the same `PoleFigure` object, the same phase and symmetry semantics, and
+the same plotting and validation surfaces. The distinction is algorithmic, not semantic.
 
-## Discrete Inversion Model
+## Choosing Between The Two
 
-The current inversion path is intentionally explicit and dictionary-based.
+Use the discrete dictionary path when:
 
-Given an orientation dictionary `g_j`, measurement directions `s_m`, and a pole family `H`, PyTex builds the forward model
+- the orientation support should remain fully explicit and inspectable
+- a teaching workflow needs direct support-point reasoning
+- the inversion is naturally posed on a known orientation dictionary
 
-$$
-A_{mj} = \frac{1}{|H|}\sum_{h \in H} K\bigl(\angle(s_m, g_j h)\bigr),
-$$
+Use the harmonic path when:
 
-then solves a regularized nonnegative least-squares problem for the dictionary weights.
+- a band-limited ODF field is the desired output
+- crystal and specimen symmetry should be enforced directly in the reconstruction basis
+- Bunge-section inspection and PF refitting are the primary review surfaces
 
-This is not yet a harmonic inversion framework or a claim of full experimental PF inversion breadth. It is a scientifically explicit discrete inversion surface that fits the current PyTex data model.
+## Discrete Dictionary Inversion
 
-## Estimation And Inspection Surface
+The discrete path builds a forward matrix over an orientation dictionary `g_j`:
 
-PyTex currently exposes two closely related texture-estimation surfaces:
+```text
+A_mj = (1 / |H|) sum_{u in H} K(angle(y_m, g_j u))
+```
 
-- a discrete ODF represented by an explicit orientation support together with non-negative weights
-- a dictionary-based inversion path that estimates those weights from one or more pole figures
-
-Once that discrete model exists, the same support can be used to:
-
-- evaluate the ODF at query orientations
-- evaluate the expected density for arbitrary sample-direction grids
-- reconstruct pole figures from the estimated support
-- inspect the support in Euler space through scatter or contour views
-- inspect the estimated texture through kernel-smoothed Bunge-section plots
-
-That means plotting is part of the texture interpretation workflow, not an unrelated presentation layer.
-
-## Example
+and solves for non-negative weights over that explicit support. This remains the most
+inspectable reconstruction route in the library.
 
 ```python
-import numpy as np
-
-from pytex import (
-    CrystalPlane,
-    FrameDomain,
-    Handedness,
-    KernelSpec,
-    Lattice,
-    MillerIndex,
-    ODF,
-    OrientationSet,
-    Phase,
-    ReferenceFrame,
-    SymmetrySpec,
-)
-
-crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
-specimen = ReferenceFrame("specimen", FrameDomain.SPECIMEN, ("x", "y", "z"), Handedness.RIGHT)
-symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
-lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
-phase = Phase("fcc_demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
-
-dictionary = OrientationSet.from_euler_angles(
-    np.array(
-        [
-            [0.0, 0.0, 0.0],
-            [90.0, 0.0, 0.0],
-            [35.0, 25.0, 10.0],
-        ]
-    ),
-    crystal_frame=crystal,
-    specimen_frame=specimen,
-    symmetry=symmetry,
-    phase=phase,
-)
-
-true_odf = ODF.from_orientations(
-    dictionary,
-    weights=[4.0, 2.0, 1.0],
-    kernel=KernelSpec(name="von_mises_fisher", halfwidth_deg=10.0),
-)
-
-poles = (
-    CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase),
-    CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase),
-)
-pole_figures = true_odf.reconstruct_pole_figures(
-    poles,
-    include_symmetry_family=False,
-    antipodal=False,
-)
-
 report = ODF.invert_pole_figures(
     pole_figures,
     orientation_dictionary=dictionary,
-    kernel=true_odf.kernel,
+    kernel=KernelSpec(name="von_mises_fisher", halfwidth_deg=10.0),
     regularization=1e-8,
-    include_symmetry_family=False,
+    include_symmetry_family=True,
 )
-
-print(report.converged)
-print(report.odf.normalized_weights)
 ```
 
-## Plotting The Estimated Texture
+## Harmonic Reconstruction
+
+The harmonic path expands the ODF in a truncated symmetry-projected harmonic basis and
+solves a regularized least-squares system for the retained coefficients.
 
 ```python
-from pytex import plot_odf, plot_pole_figure
-
-pole_figure_plot = plot_pole_figure(
-    pole_figures[0],
-    kind="contour",
-    bins=81,
-    sigma_bins=1.5,
-    levels=12,
+harmonic_report = HarmonicODF.invert_pole_figures(
+    pole_figures,
+    degree_bandlimit=6,
+    regularization=1e-6,
+    include_symmetry_family=True,
+    specimen_symmetry=sample_symmetry,
+    pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=7.5),
+    phi1_step_deg=30.0,
+    big_phi_step_deg=20.0,
+    phi2_step_deg=30.0,
 )
+```
 
-odf_sections = plot_odf(
+See {doc}`harmonic_odf_reconstruction` for the full mathematical explanation.
+
+## Common Inspection Surface
+
+Both inversion reports are intended to be review objects, not opaque success tokens.
+
+Discrete report:
+
+- residual norm
+- relative residual
+- mean and maximum absolute error
+- predicted intensities
+- observation-to-dictionary coverage ratio
+
+Harmonic report:
+
+- residual norm
+- relative residual
+- mean and maximum absolute error
+- matrix rank
+- condition number
+- retained basis size and raw basis size
+- quadrature size
+- mean, minimum, and maximum reconstructed density
+
+## Plotting The Result
+
+Discrete ODF:
+
+```python
+discrete_sections = plot_odf(
     report.odf,
+    kind="sections",
+    section_phi2_deg=(0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
+)
+```
+
+Harmonic ODF:
+
+```python
+harmonic_sections = plot_odf(
+    harmonic_report.odf,
     kind="sections",
     section_phi2_deg=(0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
     section_phi1_steps=121,
     section_big_phi_steps=61,
-    levels=10,
 )
 ```
 
-## Interpretation Notes
+For harmonic reconstructions, Bunge sections are the preferred first review surface.
 
-- The dictionary is explicit. PyTex does not hide the orientation support over which the inversion is performed.
-- The inversion report is explicit. Residual norm, relative residual, mean and maximum absolute error, iteration count, convergence state, and predicted intensities are part of the returned surface.
-- The current method is appropriate for the present discrete kernel foundation. It should not yet be read as a replacement for broader harmonic or experimentally calibrated inversion frameworks.
-- Pole-figure contours are built from a smoothed projected density grid over the discrete pole data.
-- ODF section plots are kernel-smoothed Bunge-section inspection views over the current discrete support.
-- XRDML-backed inversion uses the same explicit `PoleFigure` and dictionary surfaces as the synthetic inversion path; vendor XML semantics are normalized at the adapter boundary instead of leaking into the stable texture model.
+## Example Workflow
 
-## Current Limits
+```python
+from pytex import (
+    CrystalPlane,
+    HarmonicODF,
+    KernelSpec,
+    MillerIndex,
+    ODF,
+    OrientationSet,
+    plot_odf,
+)
 
-- the inversion path is dictionary-based, not harmonic
-- sample-symmetry handling is currently conservative and explicit rather than aggressively implicit
-- ODF section plots are inspection surfaces for the current discrete model, not a harmonic ODF implementation
-- richer experimental PF inversion doctrine and benchmarking are still ahead
+dictionary = OrientationSet.from_bunge_grid(
+    crystal_frame=crystal,
+    specimen_frame=specimen,
+    symmetry=symmetry,
+    phase=phase,
+    phi1_step_deg=15.0,
+    big_phi_step_deg=15.0,
+    phi2_step_deg=15.0,
+)
+
+discrete_report = ODF.invert_pole_figures(
+    pole_figures,
+    orientation_dictionary=dictionary,
+    kernel=KernelSpec(name="von_mises_fisher", halfwidth_deg=10.0),
+)
+
+harmonic_report = HarmonicODF.invert_pole_figures(
+    pole_figures,
+    degree_bandlimit=6,
+    specimen_symmetry=sample_symmetry,
+    pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=7.5),
+)
+
+print(discrete_report.relative_residual_norm)
+print(harmonic_report.relative_residual_norm)
+
+figure = plot_odf(harmonic_report.odf, kind="sections")
+```
+
+## Scientific Review Guidance
+
+- Do not compare the discrete and harmonic routes only by residual norm. Compare also the
+  conditioning, basis size, PF refit behavior, and section smoothness.
+- For antipodal diffraction pole figures, remember that the harmonic path defaults to
+  even degrees only.
+- Treat kernel halfwidth, quadrature density, and degree bandlimit as declared scientific
+  choices in reports, notebooks, and publications.
 
 ## Related Material
 
-- {doc}`../concepts/orientation_texture`
+- {doc}`harmonic_odf_reconstruction`
 - {doc}`xrdml_texture_import`
-- {doc}`../tutorials/notebooks`
+- {doc}`../validation/automated_test_cases`
 - [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
+- [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
+
+## References
+
+### Normative
+
+- {doc}`../concepts/orientation_texture`
+- {doc}`../validation/mtex_parity_matrix`
+
+### Informative
+
+- `references/reference_index.md`
+- `references/formulation_summary.md`

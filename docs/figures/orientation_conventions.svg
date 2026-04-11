@@ -1,44 +1,96 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620">
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="720" viewBox="0 0 1240 720">
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="#233241"/>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#203243"/>
     </marker>
   </defs>
-  <rect width="1120" height="620" fill="#fffdf8"/>
-  <text x="44" y="54" font-size="30" font-family="Georgia, serif" fill="#16202c">Orientation Conventions In PyTex</text>
-  <text x="44" y="86" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#475569">
-    Canonical public semantics: explicit Euler convention labels plus canonical quaternion storage in (w, x, y, z) order.
+
+  <rect width="1240" height="720" fill="#fcfaf5"/>
+
+  <text x="54" y="58" font-size="32" font-family="Georgia, serif" fill="#193149">Orientation conventions</text>
+  <text x="54" y="90" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#54616d">
+    PyTex keeps orientation notation close to the standard texture-analysis references: right-handed frames,
+  </text>
+  <text x="54" y="114" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#54616d">
+    Bunge Euler labels (phi1, Phi, phi2), explicit mapping direction, and canonical quaternion storage in (w, x, y, z).
   </text>
 
-  <rect x="58" y="140" width="296" height="196" rx="24" fill="#dcebd9" stroke="#4c7a57" stroke-width="2.5"/>
-  <text x="88" y="182" font-size="24" font-family="Georgia, serif" fill="#183123">Bunge</text>
-  <text x="88" y="214" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#183123">public label: `bunge`</text>
-  <text x="88" y="242" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#183123">angles: (\u03c61, \u03a6, \u03c62)</text>
-  <text x="88" y="270" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#183123">used as the stable convenience path</text>
-  <text x="88" y="298" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#183123">for texture-facing workflows</text>
-
-  <rect x="412" y="140" width="296" height="196" rx="24" fill="#f6e9c5" stroke="#a88a2f" stroke-width="2.5"/>
-  <text x="442" y="182" font-size="24" font-family="Georgia, serif" fill="#4c3909">Matthies / ABG</text>
-  <text x="442" y="214" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#4c3909">public labels: `matthies`, `abg`</text>
-  <text x="442" y="242" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#4c3909">same underlying convention family</text>
-  <text x="442" y="270" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#4c3909">but explicit naming matters at tool</text>
-  <text x="442" y="298" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#4c3909">boundaries and in parity tests</text>
-
-  <rect x="766" y="140" width="296" height="196" rx="24" fill="#e4edf8" stroke="#396890" stroke-width="2.5"/>
-  <text x="796" y="182" font-size="24" font-family="Georgia, serif" fill="#17314a">Quaternion storage</text>
-  <text x="796" y="228" font-size="36" font-family="Courier New, monospace" fill="#17314a">(w, x, y, z)</text>
-  <text x="796" y="264" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#17314a">unit norm enforced</text>
-  <text x="796" y="292" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#17314a">canonicalized for parity stability</text>
-
-  <rect x="168" y="420" width="784" height="132" rx="22" fill="#fffaf0" stroke="#d7c7a1" stroke-width="1.8"/>
-  <text x="196" y="458" font-size="22" font-family="Georgia, serif" fill="#16202c">Practical rule</text>
-  <text x="196" y="492" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#374151">
-    Use convention-aware Euler APIs at import or export boundaries and keep rotations internally in canonical quaternion form.
-  </text>
-  <text x="196" y="520" font-size="18" font-family="Helvetica, Arial, sans-serif" fill="#374151">
-    This keeps teaching examples readable while preserving a stable scientific representation for parity and workflow composition.
+  <rect x="42" y="146" width="1156" height="230" rx="24" fill="#fffdf8" stroke="#d7d0c3" stroke-width="1.8"/>
+  <text x="68" y="184" font-size="25" font-family="Georgia, serif" fill="#193149">1. Orientation is a typed crystal-to-specimen mapping</text>
+  <text x="68" y="212" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#54616d">
+    The matrix or quaternion is not self-explanatory on its own; the source frame, target frame, and convention are part of the meaning.
   </text>
 
-  <line x1="354" y1="238" x2="412" y2="238" stroke="#233241" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <line x1="708" y1="238" x2="766" y2="238" stroke="#233241" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <g transform="translate(230,300)">
+    <circle cx="0" cy="0" r="4" fill="#1e2937"/>
+    <line x1="0" y1="0" x2="110" y2="-14" stroke="#4b7a57" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-42" y2="-102" stroke="#4b7a57" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="26" y2="108" stroke="#4b7a57" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="122" y="-12" font-size="24" font-family="Georgia, serif" fill="#22402b">a</text>
+    <text x="-64" y="-108" font-size="24" font-family="Georgia, serif" fill="#22402b">b</text>
+    <text x="38" y="130" font-size="24" font-family="Georgia, serif" fill="#22402b">c</text>
+    <text x="-52" y="160" font-size="23" font-family="Georgia, serif" fill="#22402b">crystal frame</text>
+  </g>
+
+  <g transform="translate(594,300)">
+    <circle cx="0" cy="0" r="4" fill="#1e2937"/>
+    <line x1="0" y1="0" x2="112" y2="-10" stroke="#b58a2e" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="-66" y2="-86" stroke="#b58a2e" stroke-width="4" marker-end="url(#arrow)"/>
+    <line x1="0" y1="0" x2="0" y2="116" stroke="#b58a2e" stroke-width="4" marker-end="url(#arrow)"/>
+    <text x="124" y="-8" font-size="24" font-family="Georgia, serif" fill="#5a4109">x</text>
+    <text x="-92" y="-92" font-size="24" font-family="Georgia, serif" fill="#5a4109">y</text>
+    <text x="12" y="138" font-size="24" font-family="Georgia, serif" fill="#5a4109">z</text>
+    <text x="-60" y="160" font-size="23" font-family="Georgia, serif" fill="#5a4109">specimen frame</text>
+  </g>
+
+  <path d="M330 292 C410 230, 470 228, 532 274" fill="none" stroke="#203243" stroke-width="3.8" marker-end="url(#arrow)"/>
+  <text x="390" y="226" font-size="22" font-family="Georgia, serif" fill="#203243">orientation g</text>
+  <text x="360" y="252" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#54616d">maps crystal vectors into specimen vectors</text>
+
+  <g transform="translate(860,228)">
+    <rect x="0" y="0" width="286" height="114" rx="18" fill="#f5efdd" stroke="#cbb98b" stroke-width="1.5"/>
+    <text x="22" y="34" font-size="22" font-family="Georgia, serif" fill="#213140">Reference-reading rule</text>
+    <text x="22" y="62" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4d5966">
+      When formulas are quoted, name both the symbol
+    </text>
+    <text x="22" y="84" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#4d5966">
+      convention and the frame mapping direction.
+    </text>
+  </g>
+
+  <rect x="42" y="406" width="1156" height="262" rx="24" fill="#fffdf8" stroke="#d7d0c3" stroke-width="1.8"/>
+  <text x="68" y="446" font-size="25" font-family="Georgia, serif" fill="#193149">2. Public convenience path: Bunge Euler angles, canonical quaternions</text>
+
+  <g transform="translate(84,492)">
+    <rect x="0" y="0" width="522" height="136" rx="18" fill="#deead8" stroke="#507c5a" stroke-width="1.8"/>
+    <text x="24" y="34" font-size="23" font-family="Georgia, serif" fill="#1c3424">Bunge Euler tuple</text>
+    <text x="24" y="68" font-size="21" font-family="Courier New, monospace" fill="#1c3424">(phi1, Phi, phi2)</text>
+    <text x="24" y="98" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#294533">
+      Sequence used in the texture references: z, then x', then z''.
+    </text>
+    <text x="24" y="122" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#294533">
+      Keep these labels unchanged in docs, examples, and parity notes.
+    </text>
+  </g>
+
+  <g transform="translate(638,492)">
+    <rect x="0" y="0" width="520" height="136" rx="18" fill="#e4eef8" stroke="#48708f" stroke-width="1.8"/>
+    <text x="24" y="34" font-size="23" font-family="Georgia, serif" fill="#16314a">Quaternion storage</text>
+    <text x="24" y="68" font-size="25" font-family="Courier New, monospace" fill="#16314a">(w, x, y, z)</text>
+    <text x="24" y="98" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#27455d">
+      Unit norm is enforced and an equivalent sign representative is chosen for stability.
+    </text>
+    <text x="24" y="122" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#27455d">
+      This keeps matrix, Euler, and quaternion conversions reproducible across tests.
+    </text>
+  </g>
+
+  <line x1="304" y1="560" x2="528" y2="560" stroke="#1e4f3d" stroke-width="3.2" marker-end="url(#arrow)"/>
+  <text x="330" y="544" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#294533">z</text>
+  <text x="412" y="544" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#294533">x'</text>
+  <text x="494" y="544" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#294533">z''</text>
+
+  <text x="68" y="690" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#54616d">
+    Source alignment: Rowenhorst et al. for rotation conventions; Randle and Engler for texture-facing Euler notation.
+  </text>
 </svg>

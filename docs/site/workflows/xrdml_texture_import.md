@@ -8,6 +8,7 @@ Current entry points:
 - `read_xrdml_pole_figure(...)`
 - `load_xrdml_pole_figure(...)`
 - `invert_xrdml_pole_figures(...)`
+- `HarmonicODF.invert_pole_figures(...)`
 - `OrientationSet.from_bunge_grid(...)`
 - `ODF.evaluate_pole_density(...)`
 
@@ -20,7 +21,7 @@ The adapter lives under `pytex.adapters` because XRDML is a vendor XML format. T
 - The crystallographic pole is **not** inferred from the file. Callers must provide the corresponding `CrystalPlane` explicitly when converting imported data into a `PoleFigure`.
 - Intensity normalization is explicit. PyTex preserves imported intensities by default and only normalizes when the caller asks for `intensity_normalization="max"` or `"sum"`.
 - Vendor axis aliases such as `Chi` are normalized onto the same PyTex `psi` semantics at the adapter boundary, and the alias actually used is retained in measurement metadata for auditability.
-- Current ODF reconstruction remains the existing discrete kernel inversion model. PyTex does not yet claim full harmonic MTEX-class XRD texture inversion parity.
+- Imported `PoleFigure` objects can now feed either the discrete dictionary inversion path or the harmonic reconstruction path. PyTex still does not claim full harmonic MTEX-class XRD texture inversion parity, but a stable band-limited harmonic reconstruction surface now exists.
 
 ## Import Example
 
@@ -55,7 +56,7 @@ pole_figure = load_xrdml_pole_figure(
 ## Reconstruction Example
 
 ```python
-from pytex import KernelSpec, OrientationSet, invert_xrdml_pole_figures
+from pytex import HarmonicODF, KernelSpec, OrientationSet, invert_xrdml_pole_figures
 
 dictionary = OrientationSet.from_bunge_grid(
     crystal_frame=crystal,
@@ -86,6 +87,38 @@ print(report.relative_residual_norm)
 print(report.mean_absolute_error)
 ```
 
+## Harmonic Reconstruction From Imported Pole Figures
+
+```python
+from pytex import HarmonicODF, read_xrdml_pole_figure
+
+measurements = [
+    read_xrdml_pole_figure("measurements/pf_100.xrdml"),
+    read_xrdml_pole_figure("measurements/pf_110.xrdml"),
+    read_xrdml_pole_figure("measurements/pf_111.xrdml"),
+]
+
+pole_figures = [
+    measurement.to_pole_figure(
+        pole,
+        specimen_frame=specimen,
+        intensity_normalization="max",
+        sample_symmetry=sample_symmetry,
+    )
+    for measurement, pole in zip(measurements, [pole_100, pole_110, pole_111], strict=True)
+]
+
+harmonic_report = HarmonicODF.invert_pole_figures(
+    pole_figures,
+    degree_bandlimit=6,
+    specimen_symmetry=sample_symmetry,
+    pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=7.5),
+)
+
+print(harmonic_report.relative_residual_norm)
+print(harmonic_report.condition_number)
+```
+
 ## Synthetic Benchmarking Support
 
 `ODF.evaluate_pole_density(...)` exists so imported or synthetic measurement grids can be compared against the current discrete ODF model without detouring through plotting code. This is used internally for the synthetic XRDML inversion benchmark and is also useful for teaching or debugging the current inversion doctrine.
@@ -96,7 +129,7 @@ print(report.mean_absolute_error)
 
 - the implemented parser targets pole-figure-style `Phi` and `Psi` scans, not every XRDML measurement family
 - PyTex does not currently infer reflection metadata from free-text file comments
-- the reconstruction path is dictionary-based and kernel-based, not harmonic
+- the adapter helper `invert_xrdml_pole_figures(...)` is still the dictionary-based convenience route; harmonic reconstruction is reached by converting the imported measurements to `PoleFigure` and then calling `HarmonicODF.invert_pole_figures(...)`
 - intensity normalization is explicit but still caller-controlled; PyTex does not silently apply defocusing or instrument corrections
 
 ## Related Material

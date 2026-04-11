@@ -1,12 +1,8 @@
 # PyTex
 
-PyTex is a pure-Python-first crystallographic texture and diffraction library built around an
-explicit canonical data model for frames, symmetry, orientations, EBSD maps, diffraction geometry,
-and research-grade provenance.
+PyTex is a pure-Python-first crystallographic texture and diffraction library built around an explicit canonical data model for frames, symmetry, orientations, EBSD maps, and diffraction geometry.
 
-PyTex is intentionally opinionated about scientific semantics. Stable APIs are expected to make
-frame, basis, symmetry, and provenance meaning explicit instead of hiding that meaning inside
-arrays or import-time conventions.
+PyTex is intentionally opinionated about scientific semantics. Stable APIs are expected to make frame, basis, symmetry, and provenance meaning explicit instead of hiding that meaning in arrays or import-time conventions.
 
 ```{toctree}
 :maxdepth: 2
@@ -39,15 +35,15 @@ tutorials/notebooks
 :maxdepth: 2
 :caption: Workflows
 
-workflows/ebsd_import_normalization
 workflows/ebsd_kam
 workflows/ebsd_grains
+workflows/ebsd_import_normalization
 workflows/ebsd_to_texture_outputs
-workflows/phase_transformation_manifests_and_scoring
 workflows/vectorized_miller_workflows
 workflows/orix_kikuchipy_interop
 workflows/phases_and_cif
 workflows/texture_odf_inversion
+workflows/harmonic_odf_reconstruction
 workflows/plotting_primitives
 workflows/stereographic_projections
 workflows/diffraction_geometry
@@ -64,87 +60,92 @@ workflows/labotex_open_pole_figures
 
 ```{toctree}
 :maxdepth: 2
-:caption: Architecture
+:caption: Reference
 
-architecture/index
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: Standards
-
-standards/index
-```
-
-```{toctree}
-:maxdepth: 2
-:caption: Validation And Research
-
-validation/index
-benchmarks/index
-theory/index
-reference/canonical_docs
 api/index
+reference/canonical_docs
+theory/index
+validation/index
 ```
 
 ## Why PyTex Exists
 
-Many texture and diffraction workflows are scientifically fragile at tool boundaries. A rotation
-matrix, a quaternion, or an EBSD map is not self-describing unless the associated frame, symmetry,
-phase, and convention choices remain attached to it. PyTex treats those choices as part of the
-stable product surface.
+Many texture and diffraction workflows are scientifically fragile at tool boundaries. A rotation matrix, a quaternion, or an EBSD map is not self-describing unless the associated frame, symmetry, and convention choices remain attached to it. PyTex treats those choices as part of the stable product surface.
 
-This leads to four concrete design commitments:
+This leads to three concrete design commitments:
 
 - semantic types before convenience arrays
-- one shared frame and symmetry model across texture, EBSD, diffraction, and transformation work
-- validation and benchmark manifests treated as part of feature completion
-- teaching-grade and research-grade documentation served from the same browsable site
+- one shared frame and symmetry model across texture, EBSD, and diffraction
+- documentation and validation artifacts treated as part of feature completion
+
+## How PyTex Differs
+
+If you are evaluating PyTex against MTEX, orix, LaboTex, or vendor EBSD environments, read {doc}`concepts/how_pytex_differs`. That page is the dedicated comparison surface and explains the specific design choices that make PyTex a different kind of project rather than just another feature checklist.
+
+```{note}
+PyTex is designed to serve both research and teaching. The Sphinx pages explain concepts and workflows; the LaTeX notes under `docs/tex/` remain the canonical deep scientific source for theory, algorithms, and validation posture.
+```
 
 ## Current Scope
 
-- Stable core primitives for frames, transforms, symmetry, lattice semantics, provenance, batch
-  semantics, rotations, orientations, Miller objects, and transformation records.
-- Foundational texture-domain support for pole figures, inverse pole figures, IPF color keys, and
-  discrete kernel ODF evaluation.
-- Runtime semantic plotting support for vectors, symmetry elements, EBSD maps, PF/IPF objects, and
-  discrete ODF views.
-- Multiphase and graph-backed EBSD workflows with phase-aware normalization, KAM, grain
-  segmentation, boundary extraction, and direct ODF/PF/IPF outputs from normalized crystal maps.
-- Dedicated manifest families for import, experiment, benchmark, validation, workflow result, and
-  transformation interchange.
-- Bounded experimental parent-candidate scoring staged under `pytex.experimental` rather than
-  overstated as a stable reconstruction API.
-- Diffraction-domain containers for geometry and pattern data, with powder XRD generation, SAED
-  spot simulation, and pinned external-baseline starter cases.
+- Stable core primitives for frames, symmetry, lattice semantics, provenance, batch semantics, rotations, orientations, and transformation records.
+- Foundational texture-domain support for pole figures, inverse pole figures, IPF color keys, discrete dictionary ODF workflows, and band-limited harmonic ODF reconstruction.
+- Runtime semantic plotting support for vectors, symmetry elements and orbits, rotations, orientations, PF/IPF objects, and discrete or harmonic ODF views.
+- Publication-grade stereographic plotting for Wulff nets, crystal directions, crystal planes, and rotational symmetry elements.
+- Real EBSD workflow support for regular-grid neighbor relationships, KAM, grain segmentation, GROD, boundary extraction, cleanup, import-manifest normalization contracts, and direct ODF / PF / IPF outputs from normalized crystal maps.
+- Core-model phase creation from crystallographic structures and CIF files, with explicit point-group and space-group semantics.
+- Shared multimodal acquisition primitives for geometry, calibration, quality, scattering, and experiment-manifest emission.
+- Stable manifest families for import, experiment, benchmark, validation, and workflow-result interchange.
+- Diffraction-domain containers for geometry and pattern data, with foundational experiment-context integration, powder XRD generation, and SAED spot simulation.
+- Shared YAML-driven plotting styles plus runtime XRD, SAED, and 3D crystal-structure visualization surfaces.
+- XRDML pole-figure import plus dictionary-based or harmonic ODF reconstruction from vendor-style texture measurements.
+- Executable notebook tutorials that mirror the implemented features and their mathematical contracts.
 
 ## Recommended Reading Path
 
 ### If You Are New To Texture Or EBSD
 
 1. Start with {doc}`tutorials/quickstart`.
-2. Read {doc}`concepts/core_model` and {doc}`concepts/technical_glossary_and_symbols`.
-3. Continue to {doc}`concepts/orientation_texture` and {doc}`concepts/ebsd_foundation`.
-4. Then move to {doc}`workflows/ebsd_import_normalization`,
-   {doc}`workflows/ebsd_kam`, and {doc}`workflows/ebsd_to_texture_outputs`.
+2. Read {doc}`concepts/core_model` to understand why frames and symmetry are explicit.
+3. Continue to {doc}`concepts/technical_glossary_and_symbols` so the core terminology and symbols are fixed early.
+4. Continue to {doc}`concepts/orientation_texture` for Euler, quaternion, and symmetry-reduction semantics.
+5. Then move to {doc}`workflows/ebsd_kam` and {doc}`workflows/ebsd_grains`.
 
 ### If You Are Evaluating Scientific Rigor
 
-1. Read {doc}`architecture/index`.
-2. Read {doc}`standards/index`.
-3. Check {doc}`validation/index` and {doc}`benchmarks/index`.
-4. Follow the linked theory notes in {doc}`theory/index`.
+1. Read {doc}`concepts/core_model`.
+2. Check {doc}`validation/index`.
+3. Follow the linked architecture notes and LaTeX theory or algorithm notes.
+4. Review the MTEX parity ledger in `docs/testing/mtex_parity_matrix.md`.
 
-```{note}
-PyTex is designed to serve both research and teaching. The Sphinx pages explain concepts and
-workflows; the LaTeX notes under `docs/tex/` remain the canonical deep scientific source for
-theory, algorithms, and validation posture.
-```
+## Canonical Assets
+
+- Architecture overview: `docs/architecture/overview.md`
+- Canonical data model: `docs/architecture/canonical_data_model.md`
+- Orientation and texture foundation: `docs/architecture/orientation_and_texture_foundation.md`
+- EBSD foundation: `docs/architecture/ebsd_foundation.md`
+- Diffraction foundation: `docs/architecture/diffraction_foundation.md`
+- Multimodal characterization foundation: `docs/architecture/multimodal_characterization_foundation.md`
+- Validation program: `docs/testing/strategy.md`
 
 ![Reference Frames](../figures/reference_frames_vectors.svg)
 
 ## Scientific Posture
 
-PyTex does not treat external-tool agreement as a vague aspiration. For covered areas, MTEX is the
-validation floor, not the ceiling. Fixture-backed parity tests, benchmark manifests, validation
-ledgers, and theory notes are all part of the definition of a stable feature.
+PyTex does not treat external-tool agreement as a vague aspiration. For currently covered areas, MTEX is the validation floor, not the ceiling. Fixture-backed parity tests, unit tests, and theory notes are all part of the definition of a stable feature.
+
+See {doc}`validation/index` for the current validation surface and explicit current limits.
+
+## Normative And Informative References
+
+### Normative For PyTex Conventions
+
+- `docs/standards/notation_and_conventions.md`
+- `docs/standards/hexagonal_and_trigonal_conventions.md`
+- `docs/architecture/canonical_data_model.md`
+
+### Informative External References
+
+- Hielscher, Schaeben and collaborators, [MTEX documentation](https://mtex-toolbox.github.io/).
+- Nolze et al., [Texture measurements on quartz single crystals to validate coordinate systems for neutron time-of-flight texture analysis](https://journals.iucr.org/j/issues/2023/06/00/xx5024/), *Journal of Applied Crystallography*.
+- Bunge, *Texture Analysis in Materials Science* (1982).

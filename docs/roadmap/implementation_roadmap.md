@@ -17,7 +17,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 
 | Subsystem | Status | Notes |
 | --- | --- | --- |
-| Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
+| Orientation and texture | implemented | Rotations, misorientation, PF/IPF, symmetry reduction, discrete ODF foundations, band-limited harmonic ODF reconstruction, and runtime contour or section plotting surfaces exist with tests and MTEX-backed ledgers. |
 | EBSD map workflows | implemented | KAM, segmentation, GROD, boundaries, cleanup, graph aggregation, multiphase phase selection, and manifest-backed normalization now cover both regular-grid and graph-backed coordinate modes. |
 | Diffraction foundations | implemented | Geometry, powder XRD generation, SAED spot workflows, and diffraction plotting now have pinned external-baseline cases for one powder XRD path and one SAED path; broader coverage still remains ahead. |
 | Scientific visualization | implemented | Shared YAML style themes, runtime diffraction plotting, and VESTA-like crystal visualization now include structural plotting validation for the highest-value publication-facing surfaces without tracked runtime SVG baselines. |
@@ -30,7 +30,7 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | Subsystem | Status | Notes |
 | --- | --- | --- |
 | Exact orientation-space boundary catalogs | planned | Required for broader class-by-class parity claims. |
-| Harmonic ODF inversion and richer reconstruction | planned | Discrete/kernel foundations exist; harmonic inversion remains ahead and should continue to stage under `pytex.experimental` until benchmark and validation doctrine are stronger. |
+| Harmonic ODF inversion and richer reconstruction | foundational | A stable band-limited harmonic reconstruction surface now exists; broader experimental correction doctrine, higher-order validation breadth, and stronger external parity are still ahead. |
 | Rich diffraction refinement and intensity models | planned | Current implementation is geometric and kinematic, not full physical modeling. |
 | Phase transformation and parent reconstruction | planned | Stable transformation semantics now exist; algorithmic breadth and validation remain ahead. |
 
@@ -159,7 +159,7 @@ Goals:
 
 Expected implementation focus:
 
-- extend theory and algorithm notes for harmonic ODF inversion, richer diffraction intensity/refinement, parent reconstruction, and exact orientation-space boundary catalogs
+- extend theory and algorithm notes for richer diffraction intensity/refinement, parent reconstruction, higher-order harmonic validation, and exact orientation-space boundary catalogs
 - define benchmark placeholders and validation plans before major new algorithmic releases
 - choose the next algorithmic feature based on scientific leverage and validation feasibility
 

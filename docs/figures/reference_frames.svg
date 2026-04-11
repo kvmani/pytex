@@ -1,128 +1,124 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760">
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="760" viewBox="0 0 1320 760">
   <defs>
     <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
-      <path d="M0,0 L12,6 L0,12 z" fill="#243342"/>
-    </marker>
-    <marker id="thin-arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="#5b6570"/>
+      <path d="M0,0 L12,6 L0,12 z" fill="#213243"/>
     </marker>
   </defs>
 
-  <rect width="1200" height="760" fill="#fcfbf7"/>
+  <rect width="1320" height="760" fill="#fcfaf5"/>
 
-  <text x="48" y="54" font-size="30" font-family="Georgia, serif" fill="#18212b">PyTex Reference Frames</text>
-  <text x="48" y="84" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
-    Foundational vector-diagram view: crystal, specimen, map, and detector frames are distinct geometric objects with different scientific roles.
+  <text x="52" y="56" font-size="32" font-family="Georgia, serif" fill="#183047">Reference-frame chain</text>
+  <text x="52" y="88" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56636f">
+    PyTex keeps crystal, specimen, map, detector, laboratory, and reciprocal domains distinct.
+  </text>
+  <text x="52" y="112" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#56636f">
+    The arrows below show scientific relationships, not permission to collapse the frames into one unlabeled coordinate system.
   </text>
 
-  <rect x="38" y="112" width="1124" height="286" rx="26" fill="#fffdf9" stroke="#ded7ca" stroke-width="1.5"/>
-  <text x="62" y="148" font-size="24" font-family="Georgia, serif" fill="#18212b">1. Orientation maps the crystal basis into the specimen basis</text>
-  <text x="62" y="176" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
-    In the PyTex public model, an orientation is not an anonymous rotation. It is a typed mapping from crystal frame to specimen frame.
-  </text>
+  <rect x="40" y="140" width="1240" height="500" rx="26" fill="#fffdf8" stroke="#d8d0c3" stroke-width="1.8"/>
 
-  <g transform="translate(170,305)">
-    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
-    <line x1="0" y1="0" x2="110" y2="-18" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="-34" y2="-104" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="26" y2="112" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="120" y="-18" font-size="22" font-family="Georgia, serif" fill="#22412c">a</text>
-    <text x="-60" y="-112" font-size="22" font-family="Georgia, serif" fill="#22412c">b</text>
-    <text x="34" y="132" font-size="22" font-family="Georgia, serif" fill="#22412c">c</text>
-    <text x="-28" y="154" font-size="22" font-family="Georgia, serif" fill="#22412c">Crystal frame</text>
+  <g transform="translate(108,236)">
+    <rect x="0" y="0" width="164" height="300" rx="18" fill="#e0ecd9" stroke="#507b59" stroke-width="1.6"/>
+    <text x="34" y="34" font-size="23" font-family="Georgia, serif" fill="#21402a">crystal</text>
+    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
+    <line x1="82" y1="136" x2="136" y2="126" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="60" y2="76" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="92" y2="198" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <text x="142" y="126" font-size="20" font-family="Georgia, serif" fill="#21402a">a</text>
+    <text x="44" y="72" font-size="20" font-family="Georgia, serif" fill="#21402a">b</text>
+    <text x="98" y="220" font-size="20" font-family="Georgia, serif" fill="#21402a">c</text>
+    <text x="24" y="264" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#31443a">lattice-fixed basis</text>
   </g>
 
-  <g transform="translate(512,305)">
-    <circle cx="0" cy="0" r="4" fill="#1f2937"/>
-    <line x1="0" y1="0" x2="114" y2="-12" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="-68" y2="-86" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="0" y1="0" x2="0" y2="118" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="124" y="-12" font-size="22" font-family="Georgia, serif" fill="#5b4308">x</text>
-    <text x="-96" y="-92" font-size="22" font-family="Georgia, serif" fill="#5b4308">y</text>
-    <text x="10" y="138" font-size="22" font-family="Georgia, serif" fill="#5b4308">z</text>
-    <text x="-42" y="154" font-size="22" font-family="Georgia, serif" fill="#5b4308">Specimen frame</text>
+  <g transform="translate(318,236)">
+    <rect x="0" y="0" width="164" height="300" rx="18" fill="#f3ecd8" stroke="#b58b2e" stroke-width="1.6"/>
+    <text x="24" y="34" font-size="23" font-family="Georgia, serif" fill="#5c4208">specimen</text>
+    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
+    <line x1="82" y1="136" x2="138" y2="130" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="48" y2="84" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="82" y2="202" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <text x="146" y="130" font-size="20" font-family="Georgia, serif" fill="#5c4208">x</text>
+    <text x="28" y="80" font-size="20" font-family="Georgia, serif" fill="#5c4208">y</text>
+    <text x="92" y="224" font-size="20" font-family="Georgia, serif" fill="#5c4208">z</text>
+    <text x="18" y="264" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#66511f">macroscopic sample frame</text>
   </g>
 
-  <path d="M250 284 C320 220, 370 214, 438 264" fill="none" stroke="#243342" stroke-width="3.5" marker-end="url(#arrow)"/>
-  <text x="300" y="228" font-size="20" font-family="Georgia, serif" fill="#243342">orientation g</text>
-  <text x="276" y="252" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#56616d">crystal → specimen</text>
-
-  <g transform="translate(828,252)">
-    <rect x="0" y="0" width="276" height="104" rx="18" fill="#f6f0de" stroke="#cab889" stroke-width="1.5"/>
-    <text x="20" y="34" font-size="21" font-family="Georgia, serif" fill="#28313a">Reading rule</text>
-    <text x="20" y="62" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
-      If an orientation is stored in PyTex, the frame
-    </text>
-    <text x="20" y="84" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#47515c">
-      relationship is part of the stable meaning.
-    </text>
-  </g>
-
-  <rect x="38" y="426" width="1124" height="286" rx="26" fill="#fffdf9" stroke="#ded7ca" stroke-width="1.5"/>
-  <text x="62" y="462" font-size="24" font-family="Georgia, serif" fill="#18212b">2. Map and detector frames are separate geometric domains</text>
-  <text x="62" y="490" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
-    EBSD scan layout, specimen axes, and diffraction geometry are related, but they are not interchangeable coordinate systems.
-  </text>
-
-  <g transform="translate(148,626)">
-    <rect x="0" y="0" width="210" height="54" rx="10" fill="#f3f6fb" stroke="#7d8ea3" stroke-width="1.5"/>
-    <text x="28" y="34" font-size="22" font-family="Georgia, serif" fill="#243342">Map frame origin</text>
-    <circle cx="102" cy="-28" r="4" fill="#1f2937"/>
-    <line x1="102" y1="-28" x2="194" y2="-28" stroke="#8f4f4f" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="102" y1="-28" x2="102" y2="-116" stroke="#8f4f4f" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="204" y="-28" font-size="22" font-family="Georgia, serif" fill="#6b2f2f">scan x</text>
-    <text x="114" y="-122" font-size="22" font-family="Georgia, serif" fill="#6b2f2f">scan y</text>
-
-    <g transform="translate(8,-8)">
-      <line x1="118" y1="-20" x2="118" y2="-144" stroke="#d6c7c7" stroke-width="1.2"/>
-      <line x1="58" y1="-20" x2="58" y2="-144" stroke="#d6c7c7" stroke-width="1.2"/>
-      <line x1="178" y1="-20" x2="178" y2="-144" stroke="#d6c7c7" stroke-width="1.2"/>
-      <line x1="58" y1="-144" x2="178" y2="-144" stroke="#d6c7c7" stroke-width="1.2"/>
-      <line x1="58" y1="-84" x2="178" y2="-84" stroke="#d6c7c7" stroke-width="1.2"/>
-      <line x1="58" y1="-24" x2="178" y2="-24" stroke="#d6c7c7" stroke-width="1.2"/>
-      <circle cx="58" cy="-144" r="4.5" fill="#c84a4a"/>
-      <circle cx="118" cy="-144" r="4.5" fill="#c84a4a"/>
-      <circle cx="178" cy="-144" r="4.5" fill="#c84a4a"/>
-      <circle cx="58" cy="-84" r="4.5" fill="#c84a4a"/>
-      <circle cx="118" cy="-84" r="4.5" fill="#c84a4a"/>
-      <circle cx="178" cy="-84" r="4.5" fill="#c84a4a"/>
-      <circle cx="58" cy="-24" r="4.5" fill="#c84a4a"/>
-      <circle cx="118" cy="-24" r="4.5" fill="#c84a4a"/>
-      <circle cx="178" cy="-24" r="4.5" fill="#c84a4a"/>
+  <g transform="translate(528,236)">
+    <rect x="0" y="0" width="164" height="300" rx="18" fill="#f4e6e6" stroke="#946060" stroke-width="1.6"/>
+    <text x="48" y="34" font-size="23" font-family="Georgia, serif" fill="#5d3030">map</text>
+    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
+    <line x1="82" y1="136" x2="138" y2="136" stroke="#946060" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="82" y2="80" stroke="#946060" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <text x="144" y="136" font-size="20" font-family="Georgia, serif" fill="#5d3030">scan x</text>
+    <text x="92" y="78" font-size="20" font-family="Georgia, serif" fill="#5d3030">scan y</text>
+    <g transform="translate(36,186)">
+      <rect x="0" y="0" width="92" height="64" fill="#fff7f7" stroke="#d1b3b3" stroke-width="1.2"/>
+      <line x1="0" y1="21" x2="92" y2="21" stroke="#d1b3b3" stroke-width="1"/>
+      <line x1="0" y1="43" x2="92" y2="43" stroke="#d1b3b3" stroke-width="1"/>
+      <line x1="30" y1="0" x2="30" y2="64" stroke="#d1b3b3" stroke-width="1"/>
+      <line x1="61" y1="0" x2="61" y2="64" stroke="#d1b3b3" stroke-width="1"/>
+      <circle cx="15" cy="11" r="4" fill="#bf4747"/>
+      <circle cx="46" cy="32" r="4" fill="#bf4747"/>
+      <circle cx="76" cy="53" r="4" fill="#bf4747"/>
     </g>
+    <text x="24" y="278" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#613737">sampling and image grid</text>
   </g>
 
-  <g transform="translate(574,628)">
-    <rect x="0" y="0" width="214" height="54" rx="10" fill="#f6f3fb" stroke="#8a7aa4" stroke-width="1.5"/>
-    <text x="26" y="34" font-size="22" font-family="Georgia, serif" fill="#243342">Specimen axes</text>
-    <circle cx="104" cy="-30" r="4" fill="#1f2937"/>
-    <line x1="104" y1="-30" x2="194" y2="-30" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="104" y1="-30" x2="44" y2="-108" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <line x1="104" y1="-30" x2="104" y2="-126" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="202" y="-30" font-size="22" font-family="Georgia, serif" fill="#5b4308">x</text>
-    <text x="18" y="-114" font-size="22" font-family="Georgia, serif" fill="#5b4308">y</text>
-    <text x="114" y="-132" font-size="22" font-family="Georgia, serif" fill="#5b4308">z</text>
+  <g transform="translate(738,236)">
+    <rect x="0" y="0" width="164" height="300" rx="18" fill="#e4edf7" stroke="#4b718f" stroke-width="1.6"/>
+    <text x="34" y="34" font-size="23" font-family="Georgia, serif" fill="#173149">detector</text>
+    <rect x="30" y="92" width="104" height="86" rx="10" fill="#d6e6f4" stroke="#4b718f" stroke-width="1.6"/>
+    <circle cx="82" cy="135" r="5" fill="#213243"/>
+    <line x1="82" y1="135" x2="122" y2="135" stroke="#4b718f" stroke-width="3.4" marker-end="url(#arrow)"/>
+    <line x1="82" y1="135" x2="82" y2="100" stroke="#4b718f" stroke-width="3.4" marker-end="url(#arrow)"/>
+    <text x="128" y="135" font-size="19" font-family="Georgia, serif" fill="#173149">u</text>
+    <text x="90" y="98" font-size="19" font-family="Georgia, serif" fill="#173149">v</text>
+    <text x="22" y="274" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#274659">pattern-plane coordinates</text>
   </g>
 
-  <g transform="translate(920,626)">
-    <rect x="0" y="0" width="198" height="54" rx="10" fill="#eef5fb" stroke="#7ba1bf" stroke-width="1.5"/>
-    <text x="23" y="34" font-size="22" font-family="Georgia, serif" fill="#243342">Detector frame</text>
-    <rect x="24" y="-146" width="132" height="96" rx="10" fill="#dceaf6" stroke="#4e7ea7" stroke-width="2"/>
-    <circle cx="90" cy="-98" r="6" fill="#244561"/>
-    <line x1="90" y1="-98" x2="138" y2="-98" stroke="#356891" stroke-width="3.5" marker-end="url(#thin-arrow)"/>
-    <line x1="90" y1="-98" x2="90" y2="-138" stroke="#356891" stroke-width="3.5" marker-end="url(#thin-arrow)"/>
-    <text x="144" y="-98" font-size="18" font-family="Georgia, serif" fill="#17314a">u</text>
-    <text x="98" y="-140" font-size="18" font-family="Georgia, serif" fill="#17314a">v</text>
-    <text x="46" y="-60" font-size="16" font-family="Helvetica, Arial, sans-serif" fill="#17314a">pattern plane</text>
+  <g transform="translate(948,236)">
+    <rect x="0" y="0" width="164" height="300" rx="18" fill="#eef1f5" stroke="#7a8792" stroke-width="1.6"/>
+    <text x="26" y="34" font-size="23" font-family="Georgia, serif" fill="#283340">laboratory</text>
+    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
+    <line x1="82" y1="136" x2="138" y2="126" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="52" y2="82" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <line x1="82" y1="136" x2="92" y2="198" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
+    <text x="144" y="126" font-size="20" font-family="Georgia, serif" fill="#283340">Lx</text>
+    <text x="28" y="78" font-size="20" font-family="Georgia, serif" fill="#283340">Ly</text>
+    <text x="98" y="220" font-size="20" font-family="Georgia, serif" fill="#283340">Lz</text>
+    <text x="30" y="274" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#47505a">instrument geometry</text>
   </g>
 
-  <line x1="360" y1="570" x2="570" y2="570" stroke="#5b6570" stroke-width="2.8" stroke-dasharray="10 8" marker-end="url(#thin-arrow)"/>
-  <text x="390" y="552" font-size="18" font-family="Georgia, serif" fill="#4b5563">registration may relate map to specimen</text>
+  <g transform="translate(1158,236)">
+    <rect x="0" y="0" width="104" height="300" rx="18" fill="#ebe7f7" stroke="#7761a2" stroke-width="1.6"/>
+    <text x="16" y="34" font-size="23" font-family="Georgia, serif" fill="#3b2a58">reciprocal</text>
+    <circle cx="52" cy="136" r="4" fill="#1f2937"/>
+    <line x1="52" y1="136" x2="82" y2="108" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
+    <line x1="52" y1="136" x2="30" y2="88" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
+    <line x1="52" y1="136" x2="58" y2="194" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
+    <text x="84" y="108" font-size="18" font-family="Georgia, serif" fill="#3b2a58">a*</text>
+    <text x="8" y="84" font-size="18" font-family="Georgia, serif" fill="#3b2a58">b*</text>
+    <text x="64" y="216" font-size="18" font-family="Georgia, serif" fill="#3b2a58">c*</text>
+    <text x="10" y="274" font-size="14" font-family="Helvetica, Arial, sans-serif" fill="#4d4166">dual basis</text>
+  </g>
 
-  <line x1="788" y1="570" x2="920" y2="570" stroke="#5b6570" stroke-width="2.8" stroke-dasharray="10 8" marker-end="url(#thin-arrow)"/>
-  <text x="794" y="552" font-size="18" font-family="Georgia, serif" fill="#4b5563">geometry relates specimen to detector</text>
+  <line x1="272" y1="388" x2="318" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
+  <text x="278" y="366" font-size="18" font-family="Georgia, serif" fill="#213243">orientation g</text>
 
-  <text x="62" y="728" font-size="15" font-family="Helvetica, Arial, sans-serif" fill="#56616d">
-    Teaching note: the same numerical orientation data can become ambiguous if these frames are collapsed into a single unlabeled coordinate system.
+  <line x1="482" y1="388" x2="528" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
+  <text x="474" y="366" font-size="18" font-family="Georgia, serif" fill="#213243">registration</text>
+
+  <line x1="692" y1="388" x2="738" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
+  <text x="706" y="366" font-size="18" font-family="Georgia, serif" fill="#213243">detector geometry</text>
+
+  <line x1="902" y1="388" x2="948" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
+  <text x="916" y="366" font-size="18" font-family="Georgia, serif" fill="#213243">instrument pose</text>
+
+  <line x1="272" y1="474" x2="1158" y2="474" stroke="#8a95a0" stroke-width="2.6" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+  <text x="514" y="458" font-size="18" font-family="Georgia, serif" fill="#596673">crystal geometry can also be expressed in reciprocal space</text>
+
+  <rect x="86" y="666" width="1148" height="52" rx="16" fill="#f7f2e8" stroke="#d8c7a8" stroke-width="1.4"/>
+  <text x="114" y="698" font-size="17" font-family="Helvetica, Arial, sans-serif" fill="#4f5d69">
+    Do not let raw arrays erase these distinctions. The same numbers can mean different physics depending on whether they belong to crystal, specimen, map, detector, laboratory, or reciprocal domains.
   </text>
 </svg>

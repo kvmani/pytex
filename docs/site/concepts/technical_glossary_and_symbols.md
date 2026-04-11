@@ -66,7 +66,7 @@ A distribution of specimen directions expressed in crystal coordinates, commonly
 
 ### ODF
 
-Orientation distribution function over orientation space. In the current PyTex implementation, the stable user-facing surface is a discrete kernel-supported ODF rather than a full harmonic expansion.
+Orientation distribution function over orientation space. PyTex now exposes two stable user-facing ODF surfaces: a discrete kernel-supported `ODF` over an explicit orientation support, and a band-limited `HarmonicODF` reconstructed in a symmetry-projected harmonic basis.
 
 See also: {doc}`orientation_texture`, {doc}`../workflows/texture_odf_inversion`.
 

@@ -7,6 +7,7 @@ considered scientifically settled merely because it executes without error.
 :maxdepth: 1
 
 testing_strategy
+automated_test_cases
 mtex_parity_matrix
 diffraction_validation_matrix
 structure_validation_matrix
@@ -17,6 +18,7 @@ phase_transformation_validation_matrix
 ## What Validation Means Here
 
 - deterministic unit tests for invariants and public API behavior
+- human-auditable documented test cases for important formulas and conversions
 - parity ledgers where MTEX is the correct scientific floor
 - benchmark manifests that pin workflow identity and tolerances
 - validation manifests that record what is and is not scientifically claimed
@@ -25,6 +27,7 @@ phase_transformation_validation_matrix
 ## Explicitly Checked Today
 
 - Euler, quaternion, matrix, axis-angle, and Miller-surface semantics
+- harmonic ODF reconstruction invariance, retained-basis diagnostics, and synthetic PF refit behavior
 - regular-grid and graph-backed EBSD neighborhood workflows
 - multiphase EBSD normalization, phase selection, and phase-aware texture extraction
 - stable import, experiment, transformation, benchmark, validation, and workflow-result manifests
