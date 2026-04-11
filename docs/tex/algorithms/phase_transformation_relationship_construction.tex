@@ -1,0 +1,83 @@
+\section{Phase-Transformation Relationship Construction From Plane-Direction Correspondence}
+
+PyTex supports a stable constructor for an orientation relationship when the user can state one
+parent-plane / child-plane correspondence together with one parent-direction / child-direction
+correspondence.
+
+\subsection{Defining Data}
+
+The constructor consumes:
+
+\begin{itemize}
+  \item a parent-plane normal in the parent crystal frame
+  \item a child-plane normal in the child crystal frame
+  \item a parent direction in the parent crystal frame
+  \item a child direction in the child crystal frame
+\end{itemize}
+
+The direction inputs are interpreted as in-plane guidance vectors. PyTex projects them into the
+corresponding plane before constructing the final basis, so the stable contract is parallelism, not
+pre-normalized basis coordinates.
+
+\subsection{Construction Rule}
+
+For each phase, PyTex builds a right-handed orthonormal frame:
+
+\begin{align}
+\hat{\mathbf{x}} &= \mathrm{normalize}\left(\mathbf{d} - (\mathbf{d}\cdot\hat{\mathbf{n}})\hat{\mathbf{n}}\right) \\
+\hat{\mathbf{y}} &= \mathrm{normalize}\left(\hat{\mathbf{n}} \times \hat{\mathbf{x}}\right) \\
+\hat{\mathbf{z}} &= \hat{\mathbf{n}}
+\end{align}
+
+where $\hat{\mathbf{n}}$ is the unit plane normal and $\mathbf{d}$ is the supplied direction.
+
+Let $F_p$ be the parent frame assembled from the parent correspondence and $F_c$ be the child
+frame assembled from the child correspondence. The parent-to-child rotation returned by PyTex is
+
+\begin{equation}
+R_{p \rightarrow c} = F_c F_p^\mathsf{T}.
+\end{equation}
+
+This is the same basis-construction doctrine already used for orientation construction from plane
+and direction correspondence elsewhere in the library, but here both sides are crystal frames
+rather than crystal-to-specimen mapping.
+
+\subsection{Assumptions And Failure Modes}
+
+\begin{itemize}
+  \item The parent plane and parent direction must belong to the same parent phase.
+  \item The child plane and child direction must belong to the same child phase.
+  \item The projected direction must not become degenerate after projection into the plane.
+  \item The constructor currently treats one plane plus one direction as the defining evidence. It
+  does not yet reconcile redundant, noisy, or conflicting correspondence sets.
+\end{itemize}
+
+\subsection{Interpretation}
+
+The resulting rotation is a crystal-to-crystal mapping between the parent and child phases. It is
+not, by itself, a full parent reconstruction algorithm or a named literature catalog. Those broader
+surfaces remain separate concerns.
+
+\subsection{Current Named Example: Bain}
+
+PyTex currently exposes one named helper, the Bain correspondence constructor for cubic parent and
+child phases. In the present implementation this helper encodes
+
+\begin{align}
+(001)_p &\parallel (001)_c \\
+[110]_p &\parallel [100]_c
+\end{align}
+
+and then delegates to the same plane-direction basis construction described above.
+
+\subsection{Current Named Example: Nishiyama--Wassermann}
+
+PyTex also exposes a Nishiyama--Wassermann helper for cubic parent and child phases. In the present
+implementation this helper encodes
+
+\begin{align}
+(111)_p &\parallel (011)_c \\
+[1\bar{1}0]_p &\parallel [100]_c
+\end{align}
+
+and again delegates to the same plane-direction basis construction described above.

@@ -15,6 +15,9 @@ This document is the authoritative validation ledger for PyTex phase-transformat
 | Area | Baseline | Status | Notes |
 | --- | --- | --- | --- |
 | Orientation-relationship semantic contracts | Core invariant tests and canonical data-model doctrine | implemented | Parent and child phases, frames, and provenance are checked through automated tests. |
+| Orientation-relationship construction from explicit plane-direction correspondence | Deterministic right-handed basis construction plus unit tests | implemented | `OrientationRelationship.from_parallel_plane_direction(...)` is covered for matrix recovery and phase mismatch rejection. |
+| Named Bain correspondence helper | Deterministic correspondence construction plus cubic-phase guards | implemented | `OrientationRelationship.from_bain_correspondence(...)` is covered for the stated `(001)_p || (001)_c`, `[110]_p || [100]_c` mapping and rejects non-cubic parents. |
+| Named Nishiyama-Wassermann helper | Deterministic correspondence construction plus cubic-phase guards | implemented | `OrientationRelationship.from_nishiyama_wassermann_correspondence(...)` is covered for the stated `(111)_p || (011)_c`, `[1-10]_p || [100]_c` mapping and rejects non-cubic children. |
 | Variant generation and uniqueness | Internal deterministic tests plus symmetry-backed invariants | implemented | `TransformationVariant` generation is covered by unit tests and benchmark manifests. |
 | Variant-indexed predicted child orientations | Internal deterministic tests and manifest-backed workflow identity | implemented | `PhaseTransformationRecord.predicted_child_orientations()` now respects explicit variant assignments. |
 | Transformation manifest schema | Stable JSON schema plus round-trip tests | implemented | `TransformationManifest` now records dedicated transformation workflow context. |

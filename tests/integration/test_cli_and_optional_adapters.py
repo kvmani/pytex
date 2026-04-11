@@ -3,7 +3,21 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from pytex import FrameDomain, Handedness, Phase, ReferenceFrame
+from pytex import (
+    FrameDomain,
+    Handedness,
+    MillerDirection,
+    MillerPlane,
+    Phase,
+    ReferenceFrame,
+    Rotation,
+    SymmetrySpec,
+    from_orix_miller,
+    from_orix_rotation,
+    to_orix_miller_direction,
+    to_orix_miller_plane,
+    to_orix_rotation,
+)
 
 NACL_CIF = """
 data_NaCl
@@ -50,3 +64,29 @@ def test_phase_from_cif_string_optional_adapter_integration() -> None:
     assert phase.name == "nacl"
     assert phase.space_group_number == 225
     assert phase.unit_cell is not None
+
+
+def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
+    pytest = __import__("pytest")
+    pytest.importorskip("orix")
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    phase = Phase.from_cif_string(NACL_CIF, crystal_frame=crystal, phase_name="nacl")
+    rotation = Rotation.from_bunge_euler(35.0, 25.0, 10.0)
+    recovered_rotation = from_orix_rotation(to_orix_rotation(rotation))
+    assert recovered_rotation.quaternion.tolist() == pytest.approx(rotation.quaternion.tolist())
+
+    plane = MillerPlane((1, 1, 1), phase=phase)
+    recovered_plane = from_orix_miller(to_orix_miller_plane(plane), phase=phase)
+    assert recovered_plane.phase.name == phase.name
+    assert recovered_plane.indices.tolist() == [1, 1, 1]
+
+    direction = MillerDirection((1, 0, 0), phase=phase)
+    recovered_direction = from_orix_miller(to_orix_miller_direction(direction), phase=phase)
+    assert recovered_direction.phase.name == phase.name
+    assert recovered_direction.indices.tolist() == [1, 0, 0]

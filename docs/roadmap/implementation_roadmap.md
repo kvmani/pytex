@@ -1,6 +1,287 @@
 # Implementation Roadmap
 
-The roadmap is now expressed as capability ladders rather than only chronological phases.
+This roadmap is split into two layers:
+
+1. the immediate development program for the next phase
+2. the longer-horizon capability ladder that keeps the project aligned with the mission
+
+The immediate phase is intentionally corrective. The repository already has substantial scientific
+implementation depth, but the next phase must restore reproducibility guarantees, clean up the
+rendered documentation surface, and raise the quality of validation evidence before new features
+are added aggressively.
+
+## Immediate Development Roadmap
+
+### Phase 0: Trustworthiness And Documentation Hardening
+
+Priority: highest
+
+Goals:
+
+- restore repository integrity and fixture pinning
+- remove broken Sphinx/MyST link hygiene from the canonical docs
+- turn validation pages into evidence-backed scientific references rather than policy summaries
+- make the public docs easier to use for scientific understanding and implementation onboarding
+- prove optional interoperability claims with live integration tests where dependencies are available
+
+This phase is the default governing program for the next development cycle. New feature work should
+only land when it is required to complete one of the workstreams below or when it clearly removes a
+blocker inside this phase.
+
+#### Phase 0 Operating Rules
+
+- Do not add new stable public surface area unless it is required for a hardening task in this
+  phase.
+- Treat `pytest -q`, repository integrity checks, and Sphinx HTML builds as release-blocking gates
+  during this phase.
+- If a task changes scientific meaning, update code, tests, Sphinx docs, validation notes, and
+  theory assets in the same change.
+- Prefer changes that reduce ambiguity in claims, validation posture, or user interpretation over
+  changes that merely broaden surface area.
+
+#### Phase 0 Milestones
+
+| Milestone | Purpose | Required outcome |
+| --- | --- | --- |
+| M0.1 | restore trust in pinned scientific assets | fixture corpus and integrity checks are green |
+| M0.2 | make the docs build a reliable scientific surface | Sphinx build is warning-free for roadmap-targeted pages |
+| M0.3 | upgrade validation from policy to evidence | high-value validation pages contain worked evidence blocks |
+| M0.4 | align public claims with executable reality | optional adapters and workflow claims are backed by tests |
+| M0.5 | make the learning path coherent | quickstart, concepts, notebooks, and validation form one teaching route |
+
+#### Phase 0 Release Gates
+
+The immediate roadmap is not complete until all of the following are true:
+
+- `pytest -q` passes in the default repository environment
+- repository integrity checks pass from a clean checkout
+- the Sphinx HTML build completes without unresolved cross-reference warnings for the targeted docs
+- the roadmap-targeted validation pages show source-backed numerical evidence rather than only
+  policy text
+- the public docs surface explains current limitations where validation or physics is still
+  foundational
+- adapter-facing claims in docs are no stronger than the available integration coverage
+
+#### Workstream 0.1: Reproducibility Backbone
+
+Tasks:
+
+- refresh the phase fixture catalog hashes and keep the pinned CIF corpus synchronized with the
+  actual repository contents
+- keep the repo-integrity script as a hard gate for fixture, metadata, and manifest drift
+- ensure every bundled phase fixture is referenced by tests, manifests, and at least one user-facing
+  doc or workflow path
+
+Primary repository surfaces:
+
+- `fixtures/phases/catalog.json`
+- `fixtures/phases/*/phase.cif`
+- `fixtures/phases/*/metadata.json`
+- `benchmarks/structure_import/`
+- `scripts/check_repo_integrity.py`
+- `scripts/regenerate_phase_fixture_catalog_hashes.py`
+
+Verification gates:
+
+- fixture hash tests pass
+- repo-integrity script passes
+- structure-import manifests refer only to pinned, present, and documented assets
+
+Implementation notes:
+
+- refresh digests only after confirming the underlying fixture content is intentional
+- if fixture contents changed, update the corresponding metadata, benchmark references, and docs in
+  the same change
+- do not weaken integrity assertions to make the suite pass; fix the asset graph instead
+
+Exit criteria:
+
+- `pytest -q` passes with no integrity failures
+- the phase fixture catalog and metadata digests are reproducible from a clean checkout
+- repository integrity checks fail loudly when fixture contents drift
+
+#### Workstream 0.2: Documentation Link Hygiene
+
+Tasks:
+
+- fix unresolved MyST/Sphinx cross-references in canonical architecture and standards docs
+- prefer navigable repository-relative Markdown links or proper Sphinx `:doc:` links over bare file
+  paths in prose
+- expose the roadmap itself from the public Sphinx entry points so contributors can find the active
+  development plan without hunting through source files
+
+Primary repository surfaces:
+
+- `docs/architecture/*.md`
+- `docs/standards/*.md`
+- `docs/site/index.md`
+- `docs/site/reference/canonical_docs.md`
+- `docs/site/validation/index.md`
+
+Verification gates:
+
+- `python -m sphinx -b html docs/site docs/_build/html` completes without unresolved cross-reference
+  warnings for targeted pages
+- roadmap, validation, and architecture pages are mutually reachable from the rendered HTML
+
+Implementation notes:
+
+- fix the canonical source documents rather than silencing warnings in build configuration
+- convert source-doc links that currently point at `../site/...` or non-rendered relative targets
+  into links that remain valid from the rendered site
+- use this workstream to enforce the documentation architecture rule that required-reading docs are
+  linked, not merely named
+
+Exit criteria:
+
+- the Sphinx HTML build completes without unresolved cross-reference warnings
+- the public site exposes the roadmap as a discoverable navigation target
+- readers can move from overview, concept, validation, and roadmap pages without dead links
+
+#### Workstream 0.3: Validation Evidence And User Guidance
+
+Tasks:
+
+- expand documented test cases so major validation pages show source, formula, worked example,
+  expected result, current output, and tolerance
+- add clearer “what this object means” and “why this convention exists” introductions to the core
+  concept pages
+- revise quickstart and API guide pages so they teach the canonical scientific path instead of only
+  listing symbols
+- add explicit limitations and approximation callouts to validation and workflow pages where the
+  implementation is geometric, kinematic, or pedagogical rather than physically complete
+
+Primary repository surfaces:
+
+- `docs/site/validation/automated_test_cases.md`
+- `docs/site/validation/index.md`
+- `docs/testing/automated_test_cases.md`
+- `docs/site/tutorials/quickstart.md`
+- `docs/site/api/index.md`
+- the highest-value concept and workflow pages referenced by those docs
+
+Verification gates:
+
+- validation pages include at least one worked numerical evidence block for each targeted major area
+- quickstart and API guide can be read in isolation by a technically competent new user
+- targeted pages state current approximation boundaries explicitly
+
+Implementation notes:
+
+- start with the highest-risk scientific surfaces: structure import, diffraction, texture
+  reconstruction, and frame/convention handling
+- each evidence block should name the code surface, governing source, expected value, current code
+  output, tolerance, and interpretation
+- when a page explains a scientific object, lead with meaning and usage before exhaustive API lists
+
+Exit criteria:
+
+- a new contributor can follow the HTML docs from concept to workflow to validation without needing
+  hidden repository context
+- validation pages answer “what was checked?” and “what does the result mean?” directly
+- onboarding pages explain frames, conventions, and failure modes before advanced API catalogs
+
+#### Workstream 0.4: Optional Interoperability Reality Check
+
+Tasks:
+
+- add live integration coverage for optional adapters where the dependency is available in CI or a
+  dedicated environment
+- keep adapter docs honest about what is normalized, what is validated, and what is still
+  dependency-limited
+- verify EBSD and structure-import bridge paths against representative external payloads rather than
+  only against object construction
+
+Primary repository surfaces:
+
+- `tests/integration/`
+- `tests/unit/test_plotting_and_adapters.py`
+- `tests/unit/test_orix_miller_adapter.py`
+- adapter docs and workflow pages that currently describe interoperability
+
+Verification gates:
+
+- each claimed stable adapter path has at least one executable integration test or an explicit
+  documented limitation
+- adapter docs distinguish optional runtime dependency from canonical PyTex semantics
+
+Implementation notes:
+
+- prefer narrow, high-signal integration tests over broad but brittle environment-dependent suites
+- if a dependency cannot be made reliable in default CI, keep the doc claim conservative and note
+  the test environment required
+- use representative external payloads where they validate boundary normalization rather than only
+  constructor round-trips
+
+Exit criteria:
+
+- optional adapter claims are backed by executable integration tests
+- adapter documentation distinguishes canonical PyTex semantics from source-library semantics
+- dependency-limited paths are called out explicitly instead of implied by stable API exports
+
+#### Workstream 0.5: Teaching-Surface Consolidation
+
+Tasks:
+
+- refresh the highest-value tutorials, especially the quickstart, core-model path, validation path,
+  and notebook index
+- make the notebook atlas mirror the documented learning sequence instead of acting as a parallel
+  browse-only tree
+- standardize visual and explanatory callouts so pedagogical examples are clearly labeled as such
+
+Primary repository surfaces:
+
+- `docs/site/tutorials/quickstart.md`
+- `docs/site/tutorials/notebooks.md`
+- `docs/site/concepts/*.md`
+- priority notebook files under `docs/site/tutorials/notebooks/`
+
+Verification gates:
+
+- the recommended reading path matches the actual notebook and workflow sequence
+- priority notebooks still smoke-execute after doc and example updates
+- terminology and notation match the registry and concept pages
+
+Implementation notes:
+
+- keep the teaching path anchored to the implemented, validated surfaces rather than aspirational
+  future features
+- add “pedagogical approximation” callouts anywhere plots, intensities, or reconstructions are
+  intentionally simplified
+- prefer one coherent path from phase/structure to orientation/texture to diffraction/validation
+  rather than many lightly explained entry points
+
+Exit criteria:
+
+- the HTML site presents one coherent learning path from core model to workflow to validation
+- notebooks, concepts, workflows, and theory notes agree on terminology and notation
+- the main tutorials explain the scientific model clearly enough for teaching and self-service use
+
+### Phase 0 Suggested Execution Sequence
+
+The workstreams above are coupled. The recommended implementation order is:
+
+1. Workstream 0.1 first, because fixture integrity and repository trust must be restored before
+   validation or docs can make stronger claims.
+2. Workstream 0.2 second, because warning-heavy docs builds make every later documentation task
+   harder to verify.
+3. Workstream 0.3 third, because once the docs graph is healthy, validation pages can be upgraded
+   into evidence-backed scientific guidance.
+4. Workstream 0.4 fourth, because interoperability claims should be tightened only after the
+   validation and docs posture is clearer.
+5. Workstream 0.5 fifth, because teaching-surface consolidation should consume the corrected docs,
+   validation, and interoperability posture rather than racing ahead of them.
+
+### Phase 0 Deliverables By End Of Cycle
+
+The repository should have all of the following by the end of this immediate phase:
+
+- a passing fixture-integrity and repo-integrity baseline
+- a warning-free or materially warning-reduced Sphinx build for the roadmap-targeted docs
+- upgraded validation pages with explicit evidence blocks and limitations
+- a public roadmap visible from the documentation entry points
+- conservative, test-backed adapter claims
+- a coherent teaching path across quickstart, concepts, workflows, and notebook atlas
 
 ## Capability Ladders
 
@@ -43,141 +324,17 @@ The roadmap is now expressed as capability ladders rather than only chronologica
 | SVG geometry figures | implemented | Core orientation, diffraction, and EBSD figures exist. |
 | Multimodal and transformation teaching notes | foundational | Architectural prose is now defined; broader workflow coverage remains ahead. |
 
-## Immediate Execution Roadmap
-
-This section is the active near-term development program for the next few days and weeks.
-Unless an explicit decision supersedes it, immediate implementation work should align to this sequence rather than expanding breadth opportunistically.
-
-Current posture as of 2026-03-29:
-
-- Phase 1 is materially advanced through the pinned phase-fixture corpus, regenerated integrity hashes, and structure-import audit workflow.
-- Phase 2 is materially advanced through pinned open-source powder XRD and SAED baseline artifacts plus automated comparison tests.
-- Phase 3 is materially advanced through structural plotting validation for XRD, SAED, crystal scenes, IPF plotting, and the stereographic plotting surface.
-- Phase 4 is materially advanced through a coherent fixture-backed teaching path and smoke-executed priority notebooks.
-
-The governing rule for near-term execution is:
-
-1. strengthen scientific defensibility before adding major new surface area
-2. strengthen reproducibility before making stronger public claims
-3. strengthen publication and teaching quality alongside runtime implementation
-
-### Phase 1: Validation Corpus And Reproducibility Backbone
-
-Priority: highest
-
-Goals:
-
-- formalize the bundled phase fixtures as the default structure-validation corpus
-- make benchmark and validation manifests first-class in real workflows
-- tighten repo-integrity checks around scientific assets
-
-Expected implementation focus:
-
-- expand the bundled CIF fixture corpus and fixture metadata contracts
-- enrich structure-import benchmark and validation manifests with real fixture references and expected semantics
-- ensure every bundled phase fixture is consumed by tests, benchmark manifests, and at least one documentation or workflow surface
-- keep repo-integrity checks strict for provenance, metadata completeness, and manifest references
-
-Definition of done for this phase:
-
-- every bundled phase fixture has provenance, citation, redistribution status, and expected symmetry metadata
-- structure-import benchmarks run from pinned in-repo assets
-- fixture and manifest integrity failures are enforced automatically
-
-### Phase 2: Diffraction External-Baseline Program
-
-Priority: very high
-
-Goals:
-
-- move diffraction from internally coherent to externally benchmarked
-- establish pinned validation cases for powder XRD and SAED
-
-Expected implementation focus:
-
-- expand diffraction benchmark and validation manifests
-- add canonical benchmark cases derived from the pinned fixture corpus where appropriate
-- record expected peak-position and spot-geometry reference data from literature or trusted open datasets
-- add comparison tests that clearly separate geometric agreement from physical-intensity limitations
-
-Definition of done for this phase:
-
-- at least one powder XRD case has pinned external baseline data
-- at least one SAED case has pinned external baseline data
-- diffraction validation status can advance beyond purely foundational internal checks
-
-### Phase 3: Publication-Grade Visualization Program
-
-Priority: high
-
-Goals:
-
-- make plotting and crystal visualization consistently publication-ready
-- tighten alignment between scientific semantics and visual presentation
-
-Expected implementation focus:
-
-- add structural plotting-validation cases for core plots and crystal scenes
-- grow stronger publication and lecture house styles on top of the shared YAML theme system
-- extend figure-quality validation around Miller annotation formatting, overlay clipping, and scene composition
-- continue auditing canonical SVG figures for scientific and layout correctness
-
-Definition of done for this phase:
-
-- core plots and crystal scenes support stable publication-style output
-- structural plotting checks catch broken labels, overlays, and style drift
-- docs, notebooks, and runtime examples use the same higher-quality style presets
-
-### Phase 4: Teaching Surface Consolidation
-
-Priority: high
-
-Goals:
-
-- make notebooks and Sphinx workflows behave as one coherent teaching system
-- demonstrate the richer visualization and validation surface through canonical examples
-
-Expected implementation focus:
-
-- upgrade the highest-value notebooks for symmetry, phases/CIF, diffraction, and crystal visualization
-- add explicit callouts when a figure or workflow is pedagogical rather than exact
-- improve cross-linking between concept pages, workflows, notebooks, theory notes, and validation pages
-- standardize publication-quality figure export patterns in tutorial material
-
-Definition of done for this phase:
-
-- the main learning path from canonical structure to visualization to diffraction to manifest-backed workflow is coherent
-- major notebooks and pages no longer depend on outdated visuals or terminology
-
-### Phase 5: Algorithmic Expansion Preparation
-
-Priority: after Phases 1-4 are materially advanced
-
-Goals:
-
-- prepare the next research-grade algorithm tier without rushing implementation ahead of validation
-
-Expected implementation focus:
-
-- extend theory and algorithm notes for richer diffraction intensity/refinement, parent reconstruction, higher-order harmonic validation, and exact orientation-space boundary catalogs
-- define benchmark placeholders and validation plans before major new algorithmic releases
-- choose the next algorithmic feature based on scientific leverage and validation feasibility
-
-Definition of done for this phase:
-
-- the next major algorithmic feature has theory, benchmark shape, and validation plan defined before implementation
-
 ## Immediate Default Development Order
 
 Unless explicitly redirected, immediate development should follow this order:
 
-1. engineering hygiene: keep tests, docs build, and repository integrity green
-2. structure-import benchmark hardening and fixture-corpus strengthening
-3. diffraction external-baseline validation
-4. manifest-backed reproducibility expansion
-5. publication-grade plotting and visual validation
-6. teaching-surface consolidation
-7. next algorithmic expansion only after the above are materially stronger
+1. engineering hygiene: restore fixture integrity, keep tests green, and make the docs build warning-free
+2. documentation link hygiene: fix cross-references and expose the roadmap in the public site
+3. validation evidence expansion: upgrade high-value validation pages and documented test cases
+4. reproducibility and manifest hardening: tighten pinned assets, schemas, and workflow contracts
+5. interoperability verification: add live adapter coverage where dependencies allow it
+6. teaching-surface consolidation: improve quickstart, concepts, notebooks, and validation navigation
+7. only then expand algorithmic breadth or new stable feature surface area
 
 ## Near-Term Non-Goals
 

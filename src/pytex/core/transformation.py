@@ -8,8 +8,13 @@ from numpy.typing import ArrayLike
 from pytex.core._arrays import as_int_array
 from pytex.core.batches import VectorSet
 from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import CrystalPlane, Phase
-from pytex.core.orientation import Orientation, OrientationSet, Rotation
+from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex, Phase
+from pytex.core.orientation import (
+    Orientation,
+    OrientationSet,
+    Rotation,
+    _plane_direction_rotation_matrices,
+)
 from pytex.core.provenance import ProvenanceRecord
 
 
@@ -22,6 +27,13 @@ def _phase_semantically_matches(left: Phase | None, right: Phase) -> bool:
         and left.lattice == right.lattice
         and left.symmetry.point_group == right.symmetry.point_group
     )
+
+
+def _require_cubic_phase_for_bain(phase: Phase, *, role: str) -> None:
+    if phase.symmetry.proper_point_group != "432":
+        raise ValueError(
+            f"Bain correspondence requires a cubic {role} phase with proper point group 432."
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +87,83 @@ class OrientationRelationship:
     @property
     def child_crystal_frame(self) -> ReferenceFrame:
         return self.child_phase.crystal_frame
+
+    @classmethod
+    def from_parallel_plane_direction(
+        cls,
+        *,
+        name: str,
+        parent_plane: CrystalPlane,
+        child_plane: CrystalPlane,
+        parent_direction: CrystalDirection,
+        child_direction: CrystalDirection,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        if parent_plane.phase != parent_direction.phase:
+            raise ValueError("parent_plane.phase must match parent_direction.phase.")
+        if child_plane.phase != child_direction.phase:
+            raise ValueError("child_plane.phase must match child_direction.phase.")
+        matrices = _plane_direction_rotation_matrices(
+            crystal_normals=parent_plane.normal[None, :],
+            crystal_directions=parent_direction.unit_vector[None, :],
+            specimen_normals=child_plane.normal[None, :],
+            specimen_directions=child_direction.unit_vector[None, :],
+        )
+        return cls(
+            name=name,
+            parent_phase=parent_plane.phase,
+            child_phase=child_plane.phase,
+            parent_to_child_rotation=Rotation.from_matrix(matrices[0]),
+            parallel_directions=((parent_direction.unit_vector, child_direction.unit_vector),),
+            parallel_planes=((parent_plane, child_plane),),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_bain_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "bain",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        _require_cubic_phase_for_bain(parent_phase, role="parent")
+        _require_cubic_phase_for_bain(child_phase, role="child")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(MillerIndex((0, 0, 1), phase=parent_phase), phase=parent_phase),
+            child_plane=CrystalPlane(MillerIndex((0, 0, 1), phase=child_phase), phase=child_phase),
+            parent_direction=CrystalDirection((1.0, 1.0, 0.0), phase=parent_phase),
+            child_direction=CrystalDirection((1.0, 0.0, 0.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_nishiyama_wassermann_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "nishiyama_wassermann",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        _require_cubic_phase_for_bain(parent_phase, role="parent")
+        _require_cubic_phase_for_bain(child_phase, role="child")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(
+                MillerIndex((1, 1, 1), phase=parent_phase),
+                phase=parent_phase,
+            ),
+            child_plane=CrystalPlane(
+                MillerIndex((0, 1, 1), phase=child_phase),
+                phase=child_phase,
+            ),
+            parent_direction=CrystalDirection((1.0, -1.0, 0.0), phase=parent_phase),
+            child_direction=CrystalDirection((1.0, 0.0, 0.0), phase=child_phase),
+            provenance=provenance,
+        )
 
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         if isinstance(vector, VectorSet):

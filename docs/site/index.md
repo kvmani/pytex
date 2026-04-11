@@ -54,6 +54,7 @@ workflows/crystal_visualization
 workflows/style_customization
 workflows/combined_structure_diffraction_visualization
 workflows/ipf_colors
+workflows/phase_transformation_manifests_and_scoring
 workflows/xrdml_texture_import
 workflows/labotex_open_pole_figures
 ```
@@ -62,7 +63,11 @@ workflows/labotex_open_pole_figures
 :maxdepth: 2
 :caption: Reference
 
+architecture/index
+standards/index
+benchmarks/index
 api/index
+roadmap/implementation_roadmap
 reference/canonical_docs
 theory/index
 validation/index
@@ -126,6 +131,7 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 - EBSD foundation: `docs/architecture/ebsd_foundation.md`
 - Diffraction foundation: `docs/architecture/diffraction_foundation.md`
 - Multimodal characterization foundation: `docs/architecture/multimodal_characterization_foundation.md`
+- Implementation roadmap: {doc}`roadmap/implementation_roadmap`
 - Validation program: `docs/testing/strategy.md`
 
 ![Reference Frames](../figures/reference_frames_vectors.svg)

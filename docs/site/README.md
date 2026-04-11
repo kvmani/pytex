@@ -23,6 +23,7 @@ For full platform-specific install, notebook, and PDF-build guidance, see
 - `api/`: curated API navigation
 - `theory/`: pointers into the canonical LaTeX notes
 - `validation/`: testing strategy and parity posture
+- [Implementation roadmap](../roadmap/implementation_roadmap.md): active development guide for the next phase
 
 ## Policy
 

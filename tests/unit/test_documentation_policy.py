@@ -74,3 +74,20 @@ def test_site_index_references_glossary_and_installation_pages() -> None:
     content = _read("docs/site/index.md")
     assert "concepts/technical_glossary_and_symbols" in content
     assert "tutorials/installation_and_build" in content
+
+
+def test_site_index_and_readme_expose_active_roadmap() -> None:
+    site_index = _read("docs/site/index.md").lower()
+    site_readme = _read("docs/site/README.md").lower()
+    assert "roadmap/implementation_roadmap" in site_index
+    assert "implementation roadmap" in site_readme
+
+
+def test_interop_docs_state_validation_boundaries_explicitly() -> None:
+    interop = _read("docs/site/workflows/orix_kikuchipy_interop.md").lower()
+    ebsd = _read("docs/site/workflows/ebsd_import_normalization.md").lower()
+    assert "what is executable today" in interop
+    assert "what is not being claimed" in interop
+    assert "current limits" in interop
+    assert "what is verified today" in ebsd
+    assert "interpretation rule" in ebsd

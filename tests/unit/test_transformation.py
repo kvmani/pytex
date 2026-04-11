@@ -5,6 +5,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from pytex.core import (
+    CrystalDirection,
     CrystalPlane,
     FrameDomain,
     Handedness,
@@ -64,6 +65,164 @@ def test_orientation_relationship_maps_parent_vectors_to_child_frame() -> None:
     mapped = relationship.map_parent_vector_to_child(vector_set)
     assert mapped.reference_frame == crystal_child
     assert_allclose(mapped.values[0], [0.0, 1.0, 0.0], atol=1e-8)
+
+
+def test_orientation_relationship_can_be_built_from_parallel_plane_direction() -> None:
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_parallel_plane_direction(
+        name="plane_direction_or",
+        parent_plane=CrystalPlane(
+            miller=MillerIndex(indices=np.array([0, 0, 1]), phase=parent),
+            phase=parent,
+        ),
+        child_plane=CrystalPlane(
+            miller=MillerIndex(indices=np.array([0, 0, 1]), phase=child),
+            phase=child,
+        ),
+        parent_direction=CrystalDirection([1.0, 0.0, 0.0], phase=parent),
+        child_direction=CrystalDirection([0.0, 1.0, 0.0], phase=child),
+    )
+    assert relationship.parent_phase == parent
+    assert relationship.child_phase == child
+    assert len(relationship.parallel_planes) == 1
+    assert len(relationship.parallel_directions) == 1
+    assert_allclose(
+        relationship.parent_to_child_rotation.as_matrix(),
+        Rotation.from_axis_angle([0.0, 0.0, 1.0], np.pi / 2.0).as_matrix(),
+        atol=1e-8,
+    )
+
+
+def test_orientation_relationship_from_parallel_plane_direction_rejects_phase_mismatch() -> None:
+    _, _, parent, child = make_phases()
+    with pytest.raises(ValueError, match="parent_plane.phase must match parent_direction.phase"):
+        OrientationRelationship.from_parallel_plane_direction(
+            name="bad_or",
+            parent_plane=CrystalPlane(
+                miller=MillerIndex(indices=np.array([0, 0, 1]), phase=parent),
+                phase=parent,
+            ),
+            child_plane=CrystalPlane(
+                miller=MillerIndex(indices=np.array([0, 0, 1]), phase=child),
+                phase=child,
+            ),
+            parent_direction=CrystalDirection([1.0, 0.0, 0.0], phase=child),
+            child_direction=CrystalDirection([0.0, 1.0, 0.0], phase=child),
+        )
+
+
+def test_orientation_relationship_can_build_named_bain_correspondence() -> None:
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent,
+        child_phase=child,
+    )
+    assert relationship.name == "bain"
+    assert_allclose(
+        relationship.parallel_planes[0][0].miller.indices,
+        np.array([0, 0, 1]),
+    )
+    assert_allclose(
+        relationship.parallel_planes[0][1].miller.indices,
+        np.array([0, 0, 1]),
+    )
+    mapped = relationship.map_parent_vector_to_child(
+        VectorSet(values=np.array([[1.0, 1.0, 0.0]]), reference_frame=parent.crystal_frame)
+    )
+    assert_allclose(
+        mapped.values[0] / np.linalg.norm(mapped.values[0]),
+        [1.0, 0.0, 0.0],
+        atol=1e-8,
+    )
+
+
+def test_bain_correspondence_rejects_non_cubic_phases() -> None:
+    crystal_parent = ReferenceFrame(
+        name="hcp_parent",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    crystal_child = ReferenceFrame(
+        name="bcc_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    parent = Phase(
+        "hcp_parent",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_parent),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_parent),
+        crystal_frame=crystal_parent,
+    )
+    child = Phase(
+        "bcc_child",
+        lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=crystal_child),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal_child),
+        crystal_frame=crystal_child,
+    )
+    with pytest.raises(ValueError, match="cubic parent phase"):
+        OrientationRelationship.from_bain_correspondence(
+            parent_phase=parent,
+            child_phase=child,
+        )
+
+
+def test_orientation_relationship_can_build_named_nw_correspondence() -> None:
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent,
+        child_phase=child,
+    )
+    assert relationship.name == "nishiyama_wassermann"
+    assert_allclose(
+        relationship.parallel_planes[0][0].miller.indices,
+        np.array([1, 1, 1]),
+    )
+    assert_allclose(
+        relationship.parallel_planes[0][1].miller.indices,
+        np.array([0, 1, 1]),
+    )
+    mapped = relationship.map_parent_vector_to_child(
+        VectorSet(values=np.array([[1.0, -1.0, 0.0]]), reference_frame=parent.crystal_frame)
+    )
+    assert_allclose(
+        mapped.values[0] / np.linalg.norm(mapped.values[0]),
+        [1.0, 0.0, 0.0],
+        atol=1e-8,
+    )
+
+
+def test_nw_correspondence_rejects_non_cubic_child() -> None:
+    crystal_parent = ReferenceFrame(
+        name="fcc_parent",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    crystal_child = ReferenceFrame(
+        name="hcp_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    parent = Phase(
+        "fcc_parent",
+        lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal_parent),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal_parent),
+        crystal_frame=crystal_parent,
+    )
+    child = Phase(
+        "hcp_child",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_child),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_child),
+        crystal_frame=crystal_child,
+    )
+    with pytest.raises(ValueError, match="cubic child phase"):
+        OrientationRelationship.from_nishiyama_wassermann_correspondence(
+            parent_phase=parent,
+            child_phase=child,
+        )
 
 
 def test_orientation_relationship_generates_unique_variants() -> None:

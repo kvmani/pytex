@@ -177,6 +177,9 @@ def test_transformation_primitives_are_part_of_stable_documented_surface() -> No
         assert primitive in specifications
         assert primitive in api_guide
         assert primitive in canonical_data_model
+    assert "OrientationRelationship.from_parallel_plane_direction" in api_guide
+    assert "OrientationRelationship.from_bain_correspondence" in api_guide
+    assert "OrientationRelationship.from_nishiyama_wassermann_correspondence" in api_guide
 
 
 def test_manifest_family_is_part_of_stable_documented_surface() -> None:

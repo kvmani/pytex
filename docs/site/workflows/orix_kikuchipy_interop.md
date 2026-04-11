@@ -3,6 +3,24 @@
 PyTex keeps ORIX and KikuchiPy behind adapters so external-tool semantics do not leak into the
 stable public model.
 
+## What Is Executable Today
+
+The current hardening phase treats this workflow as a narrow interoperability boundary, not as a
+claim that PyTex is a drop-in replacement for either external package.
+
+Today PyTex explicitly supports:
+
+- Miller plane and direction transfer through dedicated ORIX adapter helpers
+- scalar-first quaternion transfer for rotations and orientations
+- point-group and phase preservation at the adapter boundary
+- multiphase crystal-map normalization when the incoming payload exposes a phase table plus
+  per-point `phase_id` values
+
+These paths are covered by executable tests in:
+
+- `tests/unit/test_orix_miller_adapter.py`
+- `tests/unit/test_plotting_and_adapters.py`
+
 ## What PyTex Preserves
 
 - the owning `Phase`
@@ -58,6 +76,24 @@ odf = dataset.crystal_map.to_odf(phase="ferrite")
 - PyTex keeps one canonical frame and symmetry model
 - optional dependencies remain optional
 - JSON contracts and manifests remain reconstructible without hidden ORIX state
+
+## What Is Not Being Claimed
+
+- PyTex does not claim broad live-package parity across all ORIX or KikuchiPy workflow surfaces.
+- Support for an adapter function does not imply validation of every higher-level workflow that can
+  be built on top of it.
+- KikuchiPy detector-pattern semantics and package-version-specific behavior are still outside this
+  page's validated scope.
+
+## Current Limits
+
+- The validated ORIX boundary is strongest on Miller, rotation, orientation, symmetry, and phase
+  transfer, not on the full ORIX workflow stack.
+- KikuchiPy-facing normalization is validated primarily through PyTex canonicalization behavior and
+  xmap-like payload normalization, not through a full dependency-pinned external environment matrix.
+- If you need release-specific package interoperability guarantees, treat the tests above as the
+  current controlling evidence and add environment-pinned integration coverage before making
+  stronger claims.
 
 ## Related Pages
 
