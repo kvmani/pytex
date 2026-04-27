@@ -23,6 +23,7 @@ Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The
 
 - [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
 - [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
+- [../../tex/algorithms/foundation_feature_priorities.tex](../../tex/algorithms/foundation_feature_priorities.tex)
 - [../../tex/algorithms/vectorized_miller_planes_and_directions.tex](../../tex/algorithms/vectorized_miller_planes_and_directions.tex)
 - [../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex](../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex)
 - [../../tex/algorithms/ebsd_kam_parameterization.tex](../../tex/algorithms/ebsd_kam_parameterization.tex)

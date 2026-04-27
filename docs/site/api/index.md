@@ -45,6 +45,8 @@ means:
 - `CalibrationRecord`
 - `MeasurementQuality`
 - `SymmetrySpec`
+- `IPFSectorBoundary`
+- `OrientationFundamentalRegion`
 - `SpaceGroupSpec`
 - `Lattice`
 - `AtomicSite`
@@ -63,6 +65,7 @@ means:
 - `ReciprocalLatticeVector`
 - `ZoneAxis`
 - `EulerSet`
+- `EulerConventionTransform`
 - `QuaternionSet`
 - `Rotation`
 - `RotationSet`
@@ -77,11 +80,16 @@ means:
 - `format_plane_indices`
 - `format_direction_indices`
 - `OrientationRelationship`
+- `OrientationRelationshipCatalog`
 - `OrientationRelationship.from_parallel_plane_direction(...)`
 - `OrientationRelationship.from_bain_correspondence(...)`
 - `OrientationRelationship.from_nishiyama_wassermann_correspondence(...)`
 - `TransformationVariant`
 - `PhaseTransformationRecord`
+- `ParentReconstructionConfig`
+- `ParentReconstructionReport`
+- `VariantSelectionReport`
+- `reconstruct_parent_orientation(...)`
 
 See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`,
 {doc}`../concepts/miller_planes_directions`, and {doc}`../concepts/orientation_texture`.
@@ -94,6 +102,10 @@ See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`,
 - `HarmonicODF`
 - `ODFInversionReport`
 - `HarmonicODFReconstructionReport`
+- `ODFReconstructionConfig`
+- `PoleFigureCorrectionSpec`
+- `PoleFigureResidualReport`
+- `residual_reports_for_pole_figures(...)`
 - `KernelSpec`
 - `XRDMLPoleFigureMeasurement`
 - `LaboTexPoleFigureMeasurement`
@@ -124,6 +136,9 @@ See {doc}`../concepts/orientation_texture`.
 - `WorkflowResultManifest`
 - `NormalizedEBSDDataset`
 - `TextureReport`
+- `OrientationQualityWeights`
+- `EBSDTextureWorkflow`
+- `EBSDTextureWorkflowResult`
 - `normalize_ebsd(...)`
 - `index_hough(...)`
 - `refine_orientations(...)`
@@ -161,6 +176,10 @@ See {doc}`../workflows/phase_transformation_manifests_and_scoring`.
 - `DiffractionGeometry`
 - `DiffractionPattern`
 - `RadiationSpec`
+- `ScatteringFactorTable`
+- `StructureFactor`
+- `ReflectionCondition`
+- `DiffractionIntensityModel`
 - `PowderReflection`
 - `PowderPattern`
 - `SAEDSpot`

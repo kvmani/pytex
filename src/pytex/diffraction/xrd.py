@@ -110,6 +110,10 @@ class PowderReflection:
     intensity: float
     structure_factor_amplitude: float
     multiplicity: int
+    structure_factor_real: float | None = None
+    structure_factor_imag: float | None = None
+    lorentz_polarization_factor: float | None = None
+    intensity_model: str = "xray_atomic_number"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "miller_indices", as_int_array(self.miller_indices, shape=(3,)))
@@ -128,6 +132,15 @@ class PowderReflection:
             )
         if self.multiplicity <= 0:
             raise ValueError("PowderReflection.multiplicity must be strictly positive.")
+        for name, value in (
+            ("structure_factor_real", self.structure_factor_real),
+            ("structure_factor_imag", self.structure_factor_imag),
+            ("lorentz_polarization_factor", self.lorentz_polarization_factor),
+        ):
+            if value is not None and not np.isfinite(value):
+                raise ValueError(f"PowderReflection.{name} must be finite when provided.")
+        if not self.intensity_model.strip():
+            raise ValueError("PowderReflection.intensity_model must be non-empty.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,9 +209,8 @@ def generate_powder_reflections(
             structure_factor = _structure_factor_xray(phase, hkl)
         amplitude = float(abs(structure_factor))
         multiplicity = _reflection_multiplicity(phase, hkl)
-        intensity = multiplicity * amplitude * amplitude * _lorentz_polarization(
-            np.deg2rad(two_theta_deg)
-        )
+        lorentz_polarization = _lorentz_polarization(np.deg2rad(two_theta_deg))
+        intensity = multiplicity * amplitude * amplitude * lorentz_polarization
         if intensity <= 1e-14:
             continue
         reflections.append(
@@ -209,6 +221,10 @@ def generate_powder_reflections(
                 intensity=intensity,
                 structure_factor_amplitude=amplitude,
                 multiplicity=multiplicity,
+                structure_factor_real=float(structure_factor.real),
+                structure_factor_imag=float(structure_factor.imag),
+                lorentz_polarization_factor=lorentz_polarization,
+                intensity_model=intensity_model,
             )
         )
     reflections.sort(

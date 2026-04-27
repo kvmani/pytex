@@ -12,6 +12,13 @@ from pytex.diffraction.models import (
     ReflectionFamily,
     SpotAssignment,
 )
+from pytex.diffraction.physics import (
+    DiffractionIntensityModel,
+    ReflectionCondition,
+    ScatteringFactorTable,
+    StructureFactor,
+    lorentz_polarization_factor,
+)
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
 from pytex.diffraction.stereonets import (
     StereonetGrid,
@@ -36,6 +43,7 @@ __all__ = [
     "DetectedSpotCluster",
     "DetectorAcceptanceMask",
     "DiffractionGeometry",
+    "DiffractionIntensityModel",
     "DiffractionPattern",
     "FamilyIndexingReport",
     "IndexingCandidate",
@@ -46,17 +54,21 @@ __all__ = [
     "PowderPattern",
     "PowderReflection",
     "RadiationSpec",
+    "ReflectionCondition",
     "ReflectionFamily",
     "SAEDPattern",
     "SAEDSpot",
+    "ScatteringFactorTable",
     "SpotAssignment",
     "StereonetGrid",
+    "StructureFactor",
     "directions_to_spherical_angles",
     "flatten_direction_grid",
     "generate_powder_reflections",
     "generate_saed_pattern",
     "generate_stereonet_grid",
     "generate_xrd_pattern",
+    "lorentz_polarization_factor",
     "project_great_circle_trace",
     "projection_boundary_radius",
     "sample_great_circle",
