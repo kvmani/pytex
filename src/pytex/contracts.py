@@ -51,6 +51,16 @@ from pytex.diffraction import (
     SAEDPattern,
     SAEDSpot,
 )
+from pytex.ebsd import CrystalMap, CrystalMapPhase, TextureReport
+from pytex.texture import (
+    ODF,
+    HarmonicBasisTerm,
+    HarmonicODF,
+    InversePoleFigure,
+    KernelSpec,
+    ODFInversionReport,
+    PoleFigure,
+)
 
 JSON_CONTRACT_SCHEMA_VERSION = "1.0.0"
 
@@ -763,6 +773,326 @@ def _deserialize_orientation_set(payload: dict[str, Any]) -> OrientationSet:
     )
 
 
+def _serialize_kernel(kernel: KernelSpec) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.kernel_spec"),
+        "name": kernel.name,
+        "halfwidth_deg": kernel.halfwidth_deg,
+    }
+
+
+def _deserialize_kernel(payload: dict[str, Any]) -> KernelSpec:
+    _require_schema(payload, "pytex.texture.kernel_spec")
+    return KernelSpec(name=str(payload["name"]), halfwidth_deg=float(payload["halfwidth_deg"]))
+
+
+def _serialize_pole_figure(pole_figure: PoleFigure) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.pole_figure"),
+        "pole": _serialize_crystal_plane(pole_figure.pole),
+        "sample_directions": _as_float_list(pole_figure.sample_directions),
+        "intensities": _as_float_list(pole_figure.intensities),
+        "specimen_frame": _serialize_reference_frame(pole_figure.specimen_frame),
+        "antipodal": pole_figure.antipodal,
+        "sample_symmetry": None
+        if pole_figure.sample_symmetry is None
+        else _serialize_symmetry(pole_figure.sample_symmetry),
+        "provenance": _serialize_provenance(pole_figure.provenance),
+    }
+
+
+def _deserialize_pole_figure(payload: dict[str, Any]) -> PoleFigure:
+    _require_schema(payload, "pytex.texture.pole_figure")
+    return PoleFigure(
+        pole=_deserialize_crystal_plane(payload["pole"]),
+        sample_directions=np.asarray(payload["sample_directions"], dtype=np.float64),
+        intensities=np.asarray(payload["intensities"], dtype=np.float64),
+        specimen_frame=_deserialize_reference_frame(payload["specimen_frame"]),
+        antipodal=bool(payload["antipodal"]),
+        sample_symmetry=None
+        if payload.get("sample_symmetry") is None
+        else _deserialize_symmetry(payload["sample_symmetry"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_inverse_pole_figure(ipf: InversePoleFigure) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.inverse_pole_figure"),
+        "sample_direction": _as_float_list(ipf.sample_direction),
+        "crystal_directions": _as_float_list(ipf.crystal_directions),
+        "intensities": _as_float_list(ipf.intensities),
+        "crystal_frame": _serialize_reference_frame(ipf.crystal_frame),
+        "specimen_frame": _serialize_reference_frame(ipf.specimen_frame),
+        "antipodal": ipf.antipodal,
+        "crystal_symmetry": None
+        if ipf.crystal_symmetry is None
+        else _serialize_symmetry(ipf.crystal_symmetry),
+        "provenance": _serialize_provenance(ipf.provenance),
+    }
+
+
+def _deserialize_inverse_pole_figure(payload: dict[str, Any]) -> InversePoleFigure:
+    _require_schema(payload, "pytex.texture.inverse_pole_figure")
+    return InversePoleFigure(
+        sample_direction=np.asarray(payload["sample_direction"], dtype=np.float64),
+        crystal_directions=np.asarray(payload["crystal_directions"], dtype=np.float64),
+        intensities=np.asarray(payload["intensities"], dtype=np.float64),
+        crystal_frame=_deserialize_reference_frame(payload["crystal_frame"]),
+        specimen_frame=_deserialize_reference_frame(payload["specimen_frame"]),
+        antipodal=bool(payload["antipodal"]),
+        crystal_symmetry=None
+        if payload.get("crystal_symmetry") is None
+        else _deserialize_symmetry(payload["crystal_symmetry"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_odf(odf: ODF) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.odf"),
+        "orientations": _serialize_orientation_set(odf.orientations),
+        "weights": _as_float_list(odf.weights),
+        "kernel": _serialize_kernel(odf.kernel),
+        "specimen_symmetry": None
+        if odf.specimen_symmetry is None
+        else _serialize_symmetry(odf.specimen_symmetry),
+        "provenance": _serialize_provenance(odf.provenance),
+    }
+
+
+def _deserialize_odf(payload: dict[str, Any]) -> ODF:
+    _require_schema(payload, "pytex.texture.odf")
+    return ODF(
+        orientations=_deserialize_orientation_set(payload["orientations"]),
+        weights=np.asarray(payload["weights"], dtype=np.float64),
+        kernel=_deserialize_kernel(payload["kernel"]),
+        specimen_symmetry=None
+        if payload.get("specimen_symmetry") is None
+        else _deserialize_symmetry(payload["specimen_symmetry"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_odf_inversion_report(report: ODFInversionReport) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.odf_inversion_report"),
+        "odf": _serialize_odf(report.odf),
+        "residual_norm": report.residual_norm,
+        "objective_history": _as_float_list(report.objective_history),
+        "iterations": report.iterations,
+        "converged": report.converged,
+        "regularization": report.regularization,
+        "observation_count": report.observation_count,
+        "dictionary_size": report.dictionary_size,
+        "relative_residual_norm": report.relative_residual_norm,
+        "mean_absolute_error": report.mean_absolute_error,
+        "max_absolute_error": report.max_absolute_error,
+        "predicted_intensities": _as_float_list(report.predicted_intensities),
+        "dictionary_coverage_ratio": report.dictionary_coverage_ratio,
+        "provenance": _serialize_provenance(report.provenance),
+    }
+
+
+def _deserialize_odf_inversion_report(payload: dict[str, Any]) -> ODFInversionReport:
+    _require_schema(payload, "pytex.texture.odf_inversion_report")
+    return ODFInversionReport(
+        odf=_deserialize_odf(payload["odf"]),
+        residual_norm=float(payload["residual_norm"]),
+        objective_history=np.asarray(payload["objective_history"], dtype=np.float64),
+        iterations=int(payload["iterations"]),
+        converged=bool(payload["converged"]),
+        regularization=float(payload["regularization"]),
+        observation_count=int(payload["observation_count"]),
+        dictionary_size=int(payload["dictionary_size"]),
+        relative_residual_norm=float(payload["relative_residual_norm"]),
+        mean_absolute_error=float(payload["mean_absolute_error"]),
+        max_absolute_error=float(payload["max_absolute_error"]),
+        predicted_intensities=np.asarray(payload["predicted_intensities"], dtype=np.float64),
+        dictionary_coverage_ratio=float(payload["dictionary_coverage_ratio"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_harmonic_odf(odf: HarmonicODF) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.harmonic_odf"),
+        "coefficients": _as_float_list(odf.coefficients),
+        "basis_terms": [
+            {
+                "degree": term.degree,
+                "sample_order": term.sample_order,
+                "crystal_order": term.crystal_order,
+                "component": term.component,
+            }
+            for term in odf.basis_terms
+        ],
+        "basis_transform": _as_float_list(odf.basis_transform),
+        "quadrature_orientations": _serialize_orientation_set(odf.quadrature_orientations),
+        "quadrature_weights": _as_float_list(odf.quadrature_weights),
+        "quadrature_basis_values": _as_float_list(odf.quadrature_basis_values),
+        "degree_bandlimit": odf.degree_bandlimit,
+        "crystal_symmetry": None
+        if odf.crystal_symmetry is None
+        else _serialize_symmetry(odf.crystal_symmetry),
+        "specimen_symmetry": None
+        if odf.specimen_symmetry is None
+        else _serialize_symmetry(odf.specimen_symmetry),
+        "phase": None if odf.phase is None else _serialize_phase(odf.phase),
+        "pole_kernel": _serialize_kernel(odf.pole_kernel),
+        "even_degrees_only": odf.even_degrees_only,
+        "provenance": _serialize_provenance(odf.provenance),
+    }
+
+
+def _deserialize_harmonic_odf(payload: dict[str, Any]) -> HarmonicODF:
+    _require_schema(payload, "pytex.texture.harmonic_odf")
+    return HarmonicODF(
+        coefficients=np.asarray(payload["coefficients"], dtype=np.float64),
+        basis_terms=tuple(
+            HarmonicBasisTerm(
+                degree=int(term["degree"]),
+                sample_order=int(term["sample_order"]),
+                crystal_order=int(term["crystal_order"]),
+                component=str(term["component"]),
+            )
+            for term in payload["basis_terms"]
+        ),
+        basis_transform=np.asarray(payload["basis_transform"], dtype=np.float64),
+        quadrature_orientations=_deserialize_orientation_set(payload["quadrature_orientations"]),
+        quadrature_weights=np.asarray(payload["quadrature_weights"], dtype=np.float64),
+        quadrature_basis_values=np.asarray(payload["quadrature_basis_values"], dtype=np.float64),
+        degree_bandlimit=int(payload["degree_bandlimit"]),
+        crystal_symmetry=None
+        if payload.get("crystal_symmetry") is None
+        else _deserialize_symmetry(payload["crystal_symmetry"]),
+        specimen_symmetry=None
+        if payload.get("specimen_symmetry") is None
+        else _deserialize_symmetry(payload["specimen_symmetry"]),
+        phase=None if payload.get("phase") is None else _deserialize_phase(payload["phase"]),
+        pole_kernel=_deserialize_kernel(payload["pole_kernel"]),
+        even_degrees_only=bool(payload["even_degrees_only"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_crystal_map_phase(entry: CrystalMapPhase) -> dict[str, Any]:
+    return {
+        "phase_id": entry.phase_id,
+        "name": entry.name,
+        "symmetry": _serialize_symmetry(entry.symmetry),
+        "phase": None if entry.phase is None else _serialize_phase(entry.phase),
+        "aliases": list(entry.aliases),
+        "provenance": _serialize_provenance(entry.provenance),
+    }
+
+
+def _deserialize_crystal_map_phase(payload: dict[str, Any]) -> CrystalMapPhase:
+    phase = None if payload.get("phase") is None else _deserialize_phase(payload["phase"])
+    symmetry = phase.symmetry if phase is not None else _deserialize_symmetry(payload["symmetry"])
+    return CrystalMapPhase(
+        phase_id=int(payload["phase_id"]),
+        name=str(payload["name"]),
+        symmetry=symmetry,
+        phase=phase,
+        aliases=tuple(str(value) for value in payload.get("aliases", ())),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_crystal_map(crystal_map: CrystalMap) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.ebsd.crystal_map"),
+        "coordinates": _as_float_list(crystal_map.coordinates),
+        "orientations": _serialize_orientation_set(crystal_map.orientations),
+        "map_frame": _serialize_reference_frame(crystal_map.map_frame),
+        "phase_entries": [
+            _serialize_crystal_map_phase(entry) for entry in crystal_map.phase_entries
+        ],
+        "phase_ids": None
+        if crystal_map.phase_ids is None
+        else _as_int_list(crystal_map.phase_ids),
+        "grid_shape": None
+        if crystal_map.grid_shape is None
+        else [int(value) for value in crystal_map.grid_shape],
+        "step_sizes": None
+        if crystal_map.step_sizes is None
+        else [float(value) for value in crystal_map.step_sizes],
+        "acquisition_geometry": None
+        if crystal_map.acquisition_geometry is None
+        else _serialize_acquisition_geometry(crystal_map.acquisition_geometry),
+        "calibration_record": None
+        if crystal_map.calibration_record is None
+        else _serialize_calibration_record(crystal_map.calibration_record),
+        "measurement_quality": None
+        if crystal_map.measurement_quality is None
+        else _serialize_measurement_quality(crystal_map.measurement_quality),
+        "provenance": _serialize_provenance(crystal_map.provenance),
+    }
+
+
+def _deserialize_crystal_map(payload: dict[str, Any]) -> CrystalMap:
+    _require_schema(payload, "pytex.ebsd.crystal_map")
+    return CrystalMap(
+        coordinates=np.asarray(payload["coordinates"], dtype=np.float64),
+        orientations=_deserialize_orientation_set(payload["orientations"]),
+        map_frame=_deserialize_reference_frame(payload["map_frame"]),
+        phase_entries=tuple(
+            _deserialize_crystal_map_phase(entry)
+            for entry in payload.get("phase_entries", ())
+        ),
+        phase_ids=None
+        if payload.get("phase_ids") is None
+        else np.asarray(payload["phase_ids"], dtype=np.int64),
+        grid_shape=None
+        if payload.get("grid_shape") is None
+        else tuple(int(value) for value in payload["grid_shape"]),
+        step_sizes=None
+        if payload.get("step_sizes") is None
+        else tuple(float(value) for value in payload["step_sizes"]),
+        acquisition_geometry=None
+        if payload.get("acquisition_geometry") is None
+        else _deserialize_acquisition_geometry(payload["acquisition_geometry"]),
+        calibration_record=None
+        if payload.get("calibration_record") is None
+        else _deserialize_calibration_record(payload["calibration_record"]),
+        measurement_quality=None
+        if payload.get("measurement_quality") is None
+        else _deserialize_measurement_quality(payload["measurement_quality"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_texture_report(report: TextureReport) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.ebsd.texture_report"),
+        "odf": _serialize_odf(report.odf),
+        "pole_figures": [
+            _serialize_pole_figure(pole_figure) for pole_figure in report.pole_figures
+        ],
+        "inverse_pole_figures": [
+            _serialize_inverse_pole_figure(ipf) for ipf in report.inverse_pole_figures
+        ],
+        "provenance": _serialize_provenance(report.provenance),
+    }
+
+
+def _deserialize_texture_report(payload: dict[str, Any]) -> TextureReport:
+    _require_schema(payload, "pytex.ebsd.texture_report")
+    return TextureReport(
+        odf=_deserialize_odf(payload["odf"]),
+        pole_figures=tuple(
+            _deserialize_pole_figure(pole_figure)
+            for pole_figure in payload.get("pole_figures", ())
+        ),
+        inverse_pole_figures=tuple(
+            _deserialize_inverse_pole_figure(ipf)
+            for ipf in payload.get("inverse_pole_figures", ())
+        ),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
 def _serialize_orientation_relationship(
     relationship: OrientationRelationship,
 ) -> dict[str, Any]:
@@ -922,6 +1252,10 @@ def _serialize_powder_reflection(reflection: PowderReflection) -> dict[str, Any]
         "intensity": reflection.intensity,
         "structure_factor_amplitude": reflection.structure_factor_amplitude,
         "multiplicity": reflection.multiplicity,
+        "structure_factor_real": reflection.structure_factor_real,
+        "structure_factor_imag": reflection.structure_factor_imag,
+        "lorentz_polarization_factor": reflection.lorentz_polarization_factor,
+        "intensity_model": reflection.intensity_model,
     }
 
 
@@ -934,6 +1268,16 @@ def _deserialize_powder_reflection(payload: dict[str, Any]) -> PowderReflection:
         intensity=float(payload["intensity"]),
         structure_factor_amplitude=float(payload["structure_factor_amplitude"]),
         multiplicity=int(payload["multiplicity"]),
+        structure_factor_real=None
+        if payload.get("structure_factor_real") is None
+        else float(payload["structure_factor_real"]),
+        structure_factor_imag=None
+        if payload.get("structure_factor_imag") is None
+        else float(payload["structure_factor_imag"]),
+        lorentz_polarization_factor=None
+        if payload.get("lorentz_polarization_factor") is None
+        else float(payload["lorentz_polarization_factor"]),
+        intensity_model=str(payload.get("intensity_model", "xray_atomic_number")),
     )
 
 
@@ -1170,6 +1514,14 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     Orientation: _serialize_orientation,
     Misorientation: _serialize_misorientation,
     OrientationSet: _serialize_orientation_set,
+    KernelSpec: _serialize_kernel,
+    PoleFigure: _serialize_pole_figure,
+    InversePoleFigure: _serialize_inverse_pole_figure,
+    ODF: _serialize_odf,
+    ODFInversionReport: _serialize_odf_inversion_report,
+    HarmonicODF: _serialize_harmonic_odf,
+    CrystalMap: _serialize_crystal_map,
+    TextureReport: _serialize_texture_report,
     OrientationRelationship: _serialize_orientation_relationship,
     TransformationVariant: _serialize_transformation_variant,
     PhaseTransformationRecord: _serialize_phase_transformation_record,
@@ -1210,6 +1562,14 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.orientation": _deserialize_orientation,
     "pytex.core.misorientation": _deserialize_misorientation,
     "pytex.core.orientation_set": _deserialize_orientation_set,
+    "pytex.texture.kernel_spec": _deserialize_kernel,
+    "pytex.texture.pole_figure": _deserialize_pole_figure,
+    "pytex.texture.inverse_pole_figure": _deserialize_inverse_pole_figure,
+    "pytex.texture.odf": _deserialize_odf,
+    "pytex.texture.odf_inversion_report": _deserialize_odf_inversion_report,
+    "pytex.texture.harmonic_odf": _deserialize_harmonic_odf,
+    "pytex.ebsd.crystal_map": _deserialize_crystal_map,
+    "pytex.ebsd.texture_report": _deserialize_texture_report,
     "pytex.core.orientation_relationship": _deserialize_orientation_relationship,
     "pytex.core.transformation_variant": _deserialize_transformation_variant,
     "pytex.core.phase_transformation_record": _deserialize_phase_transformation_record,

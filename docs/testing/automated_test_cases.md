@@ -554,6 +554,88 @@ direction grid.
   between measured PF sampling and harmonic ODF reconstruction, or should a closed-form
   coefficient transform be added later for parity and benchmarking?
 
+## Foundation Feature Priority Audit
+
+`Code surface`
+
+- `src/pytex/texture/reconstruction.py`
+- `src/pytex/core/orientation_geometry.py`
+- `src/pytex/diffraction/physics.py`
+- `src/pytex/ebsd/texture_workflow.py`
+- `src/pytex/core/parent_reconstruction.py`
+- `tests/unit/test_foundation_feature_priorities.py`
+
+`Reference basis`
+
+- Bunge and derivative Euler-convention relationships follow the notation discussion used in
+  Randle and Engler, *Introduction to Texture Analysis*, pp. 47-49.
+- The pole-density and harmonic reconstruction pathways follow the ODF/PF formulation summarized
+  in `references/formulation_summary.md`.
+- Structure-factor and reflection-condition behavior follows the crystallographic diffraction
+  formulation summarized in `docs/tex/algorithms/foundation_feature_priorities.tex`.
+
+`Formulas under automated review`
+
+Pole-figure correction:
+
+$$
+I_i^{\mathrm{corr}} = s \left(\frac{I_i}{d_i} - b\right)
+$$
+
+Pole-figure residual:
+
+$$
+r_i = I_i^{\mathrm{fit}} - I_i^{\mathrm{obs}},
+\qquad
+\rho = \frac{\lVert r\rVert_2}{\max(\lVert I^{\mathrm{obs}}\rVert_2,\epsilon)}
+$$
+
+Bunge to Kocks:
+
+$$
+(\Psi,\Theta,\Phi)_{\mathrm{Kocks}}
+=
+(\phi_1 - 90^\circ,\Phi,90^\circ-\phi_2)
+$$
+
+Structure-factor intensity:
+
+$$
+I_{hkl} = m_{hkl}|F_{hkl}|^2 L_p(2\theta)
+$$
+
+EBSD texture weights:
+
+$$
+w_i^{\mathrm{norm}} = \frac{m_i w_i}{\sum_j m_j w_j}
+$$
+
+Parent candidate score:
+
+$$
+s_m = R(\Delta\theta_{m1},\Delta\theta_{m2},\ldots,\Delta\theta_{mn})
+$$
+
+`Current automated assertions`
+
+| Area | Input | Expected output | Current code output |
+| --- | --- | --- | --- |
+| Texture V2 correction | PF intensities with `scale=2`, `background=0.25` | corrected intensities are finite and non-negative | passed |
+| Texture V2 residual report | fitted ODF and corrected PF | residual count equals PF observation count | passed |
+| Texture JSON contracts | `PoleFigure`, `ODF`, `ODFInversionReport` | round-trip payload equality | passed |
+| Euler transform | Bunge `(301.0, 36.7, 26.63)` | Kocks `(211.0, 36.7, 63.37)` and Roe `(211.0, 36.7, 116.63)` | passed |
+| IPF sector boundary | cubic `m-3m` symmetry | `[001]` lies inside the sector and equations are exposed | passed |
+| Diffraction physics | fcc Ni-like phase | `(100)` forbidden, `(111)` allowed, positive intensity for `(111)` | passed |
+| EBSD texture workflow | three-orientation `CrystalMap` with weights `(0.2, 0.3, 0.5)` | normalized weights sum to `1.0`; one PF produced | passed |
+| EBSD JSON contracts | `CrystalMap`, `TextureReport` | round-trip payload equality | passed |
+| Parent reconstruction | identity parent-child relationship | identity candidate has best score near `0 deg` | passed |
+
+`Interpretation`
+
+This audit confirms that the new foundation surfaces are wired, typed, and reconstructible. It does
+not claim complete physical diffraction modeling, complete orientation-space boundary catalogs, or
+full parent-reconstruction capability. Those remain explicit later expansion targets.
+
 ## Current Audit Findings
 
 The documented cases above already show issues that are scientifically important even when

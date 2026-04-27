@@ -64,6 +64,18 @@ from pytex.core.notation import (
     format_plane_indices,
 )
 from pytex.core.orientation import Misorientation, Orientation, OrientationSet, Rotation
+from pytex.core.orientation_geometry import (
+    EulerConventionTransform,
+    IPFSectorBoundary,
+    OrientationFundamentalRegion,
+)
+from pytex.core.parent_reconstruction import (
+    OrientationRelationshipCatalog,
+    ParentReconstructionConfig,
+    ParentReconstructionReport,
+    VariantSelectionReport,
+    reconstruct_parent_orientation,
+)
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
@@ -83,11 +95,13 @@ __all__ = [
     "ConventionSet",
     "CrystalDirection",
     "CrystalPlane",
+    "EulerConventionTransform",
     "EulerSet",
     "FrameDomain",
     "FrameTransform",
     "FundamentalSector",
     "Handedness",
+    "IPFSectorBoundary",
     "Lattice",
     "MeasurementQuality",
     "MillerDirection",
@@ -97,8 +111,12 @@ __all__ = [
     "MillerPlaneSet",
     "Misorientation",
     "Orientation",
+    "OrientationFundamentalRegion",
     "OrientationRelationship",
+    "OrientationRelationshipCatalog",
     "OrientationSet",
+    "ParentReconstructionConfig",
+    "ParentReconstructionReport",
     "Phase",
     "PhaseFixtureRecord",
     "PhaseTransformationRecord",
@@ -113,6 +131,7 @@ __all__ = [
     "SymmetrySpec",
     "TransformationVariant",
     "UnitCell",
+    "VariantSelectionReport",
     "VectorSet",
     "ZoneAxis",
     "angle_dir_dir_rad",
@@ -137,5 +156,6 @@ __all__ = [
     "plane_hkl_to_hkil",
     "plane_hkl_to_hkil_array",
     "project_directions_onto_planes",
+    "reconstruct_parent_orientation",
     "reduce_indices",
 ]

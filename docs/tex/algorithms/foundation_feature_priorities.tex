@@ -1,0 +1,81 @@
+\section{Foundation Feature Priorities}
+
+This note records the mathematical contract for the first implementation slice of the next PyTex
+foundation cycle. The aim is to make reconstruction, symmetry, diffraction physics, EBSD texture
+workflows, and parent reconstruction inspectable and serializable before adding broader algorithmic
+breadth.
+
+\subsection{Pole-Figure Correction And Residual Auditing}
+
+For a pole-figure observation $I_i$, scale $s$, background $b$, and optional defocussing factor
+$d_i$, PyTex applies
+\[
+I_i^{\mathrm{corr}} = s\left(\frac{I_i}{d_i} - b\right).
+\]
+Negative values are either clipped or rejected according to the correction policy.
+
+Given a fitted ODF-derived pole density $I_i^{\mathrm{fit}}$, the residual report records
+\[
+r_i = I_i^{\mathrm{fit}} - I_i^{\mathrm{obs}},
+\qquad
+\rho = \frac{\|r\|_2}{\max(\|I^{\mathrm{obs}}\|_2,\epsilon)}.
+\]
+
+\subsection{Euler Convention Transforms}
+
+For Bunge angles $(\phi_1,\Phi,\phi_2)$, the implemented Roe-style transform is
+\[
+(\Psi,\Theta,\Phi)_{\mathrm{Roe}}
+=
+(\phi_1 - 90^\circ,\Phi,\phi_2 + 90^\circ),
+\]
+and the implemented Kocks-style transform is
+\[
+(\Psi,\Theta,\Phi)_{\mathrm{Kocks}}
+=
+(\phi_1 - 90^\circ,\Phi,90^\circ-\phi_2).
+\]
+These formulas are exposed through a named public transform so validation pages can distinguish
+Roe/ABG-style behavior from Kocks notation.
+
+\subsection{Structure Factors And Powder Intensity}
+
+For reciprocal vector $\mathbf{g}_{hkl}$ and fractional site coordinates $\mathbf{x}_j$, the
+implemented structure-factor surface evaluates
+\[
+F_{hkl}
+=
+\sum_j o_j f_j(|\mathbf{g}_{hkl}|)
+\exp\!\left(-\frac{B_j|\mathbf{g}_{hkl}|^2}{16\pi^2}\right)
+\exp\!\left(2\pi i\,\mathbf{h}\cdot\mathbf{x}_j\right).
+\]
+The initial scattering-factor tables are deliberately limited to unit, atomic-number, and smooth
+proxy models. The powder intensity model records
+\[
+I_{hkl} = m_{hkl}|F_{hkl}|^2 L_p(2\theta),
+\qquad
+L_p(2\theta)=
+\frac{1+\cos^2(2\theta)}{\sin^2\theta\cos\theta}.
+\]
+
+\subsection{EBSD Texture Weights}
+
+For raw orientation weights $w_i$ and validity mask $m_i$, the workflow normalizes
+\[
+w_i^{\mathrm{norm}} =
+\frac{m_i w_i}{\sum_j m_j w_j}.
+\]
+These normalized weights are then passed to ODF, pole-figure, and inverse-pole-figure construction.
+
+\subsection{Parent Candidate Scoring}
+
+For candidate parent orientation $p_m$, observed child orientations, and a selected orientation
+relationship or variant family, PyTex computes child residual angles $\Delta\theta_{mi}$ and
+reports
+\[
+s_m = R(\Delta\theta_{m1},\Delta\theta_{m2},\ldots,\Delta\theta_{mn}),
+\qquad
+R \in \{\mathrm{mean},\mathrm{median},\max\}.
+\]
+Candidates within the configured ambiguity tolerance of the best score are retained in the
+`ParentReconstructionReport`.

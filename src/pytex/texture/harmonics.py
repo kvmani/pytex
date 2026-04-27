@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import factorial
 
 import numpy as np
@@ -36,7 +36,7 @@ def _midpoint_axis_values(start_deg: float, stop_deg: float, step_deg: float) ->
     if step_deg <= 0.0:
         raise ValueError("Quadrature steps must be strictly positive.")
     span = stop_deg - start_deg
-    count = int(round(span / step_deg))
+    count = round(span / step_deg)
     if count <= 0 or not np.isclose(count * step_deg, span, atol=1e-8):
         raise ValueError("Quadrature step must partition the requested angular range exactly.")
     centers = start_deg + (np.arange(count, dtype=np.float64) + 0.5) * step_deg
@@ -105,7 +105,11 @@ class HarmonicBasisTerm:
             raise ValueError("component must be either 'real' or 'imag'.")
 
 
-def _enumerate_terms(*, degree_bandlimit: int, even_degrees_only: bool) -> tuple[HarmonicBasisTerm, ...]:
+def _enumerate_terms(
+    *,
+    degree_bandlimit: int,
+    even_degrees_only: bool,
+) -> tuple[HarmonicBasisTerm, ...]:
     if degree_bandlimit < 0:
         raise ValueError("degree_bandlimit must be non-negative.")
     terms: list[HarmonicBasisTerm] = []
@@ -134,7 +138,12 @@ def _enumerate_terms(*, degree_bandlimit: int, even_degrees_only: bool) -> tuple
     return tuple(terms)
 
 
-def _wigner_small_d(degree: int, sample_order: int, crystal_order: int, beta_rad: np.ndarray) -> np.ndarray:
+def _wigner_small_d(
+    degree: int,
+    sample_order: int,
+    crystal_order: int,
+    beta_rad: np.ndarray,
+) -> np.ndarray:
     prefactor = np.sqrt(
         factorial(degree + sample_order)
         * factorial(degree - sample_order)
@@ -175,7 +184,11 @@ def _evaluate_raw_terms(angles_rad: np.ndarray, terms: Sequence[HarmonicBasisTer
         else:
             column = d_values * np.sin(phase)
         columns.append(np.asarray(column, dtype=np.float64))
-    basis = np.column_stack(columns) if columns else np.zeros((angles_rad.shape[0], 0), dtype=np.float64)
+    basis = (
+        np.column_stack(columns)
+        if columns
+        else np.zeros((angles_rad.shape[0], 0), dtype=np.float64)
+    )
     basis = np.ascontiguousarray(basis, dtype=np.float64)
     basis.setflags(write=False)
     return basis
@@ -235,7 +248,8 @@ def _orthonormalize_weighted_basis(
     keep = eigenvalues > tolerance
     if not np.any(keep):
         raise ValueError(
-            "The symmetry-projected harmonic basis is numerically rank-deficient at the requested bandlimit."
+            "The symmetry-projected harmonic basis is numerically rank-deficient "
+            "at the requested bandlimit."
         )
     kept_values = eigenvalues[keep]
     kept_vectors = eigenvectors[:, keep]
@@ -297,7 +311,9 @@ class HarmonicODF:
     crystal_symmetry: SymmetrySpec | None = None
     specimen_symmetry: SymmetrySpec | None = None
     phase: Phase | None = None
-    pole_kernel: KernelSpec = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=7.5)
+    pole_kernel: KernelSpec = field(
+        default_factory=lambda: KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=7.5)
+    )
     even_degrees_only: bool = True
     provenance: ProvenanceRecord | None = None
 
@@ -317,14 +333,22 @@ class HarmonicODF:
         if self.degree_bandlimit < 0:
             raise ValueError("degree_bandlimit must be non-negative.")
         if self.crystal_symmetry is not None:
-            if self.crystal_symmetry.reference_frame != self.quadrature_orientations.crystal_frame:
+            if (
+                self.crystal_symmetry.reference_frame
+                != self.quadrature_orientations.crystal_frame
+            ):
                 raise ValueError(
-                    "crystal_symmetry.reference_frame must match quadrature_orientations.crystal_frame."
+                    "crystal_symmetry.reference_frame must match "
+                    "quadrature_orientations.crystal_frame."
                 )
         if self.specimen_symmetry is not None:
-            if self.specimen_symmetry.reference_frame != self.quadrature_orientations.specimen_frame:
+            if (
+                self.specimen_symmetry.reference_frame
+                != self.quadrature_orientations.specimen_frame
+            ):
                 raise ValueError(
-                    "specimen_symmetry.reference_frame must match quadrature_orientations.specimen_frame."
+                    "specimen_symmetry.reference_frame must match "
+                    "quadrature_orientations.specimen_frame."
                 )
         if not np.isclose(float(np.sum(quadrature_weights)), 1.0, atol=1e-8):
             quadrature_weights = _normalized_weights(quadrature_weights)
@@ -347,7 +371,7 @@ class HarmonicODF:
 
     @property
     def raw_basis_size(self) -> int:
-        return int(len(self.basis_terms))
+        return len(self.basis_terms)
 
     @property
     def quadrature_size(self) -> int:
@@ -465,7 +489,10 @@ class HarmonicODF:
                 raise ValueError("All pole figures must reference the same phase.")
         if specimen_symmetry is None:
             common_sample_symmetry = first.sample_symmetry
-            if any(pole_figure.sample_symmetry != common_sample_symmetry for pole_figure in pole_figures):
+            if any(
+                pole_figure.sample_symmetry != common_sample_symmetry
+                for pole_figure in pole_figures
+            ):
                 common_sample_symmetry = None
         else:
             if specimen_symmetry.reference_frame != specimen_frame:
@@ -588,6 +615,9 @@ class HarmonicODF:
             specimen_symmetry_order=(
                 1 if common_sample_symmetry is None else common_sample_symmetry.order
             ),
+            coefficient_l2_norm=float(np.linalg.norm(coefficients)),
+            coefficient_max_abs=float(np.max(np.abs(coefficients))),
+            negative_density_fraction=float(np.mean(harmonic_odf.quadrature_densities < 0.0)),
             provenance=provenance,
         )
 
@@ -614,6 +644,9 @@ class HarmonicODFReconstructionReport:
     maximum_density: float
     crystal_symmetry_order: int
     specimen_symmetry_order: int
+    coefficient_l2_norm: float = 0.0
+    coefficient_max_abs: float = 0.0
+    negative_density_fraction: float = 0.0
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -644,6 +677,12 @@ class HarmonicODFReconstructionReport:
             raise ValueError("crystal_symmetry_order must be strictly positive.")
         if self.specimen_symmetry_order <= 0:
             raise ValueError("specimen_symmetry_order must be strictly positive.")
+        if self.coefficient_l2_norm < 0.0:
+            raise ValueError("coefficient_l2_norm must be non-negative.")
+        if self.coefficient_max_abs < 0.0:
+            raise ValueError("coefficient_max_abs must be non-negative.")
+        if not 0.0 <= self.negative_density_fraction <= 1.0:
+            raise ValueError("negative_density_fraction must lie in [0, 1].")
         object.__setattr__(self, "predicted_intensities", predicted)
 
 

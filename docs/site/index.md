@@ -44,6 +44,7 @@ workflows/orix_kikuchipy_interop
 workflows/phases_and_cif
 workflows/texture_odf_inversion
 workflows/harmonic_odf_reconstruction
+workflows/foundation_feature_priorities
 workflows/plotting_primitives
 workflows/stereographic_projections
 workflows/diffraction_geometry
