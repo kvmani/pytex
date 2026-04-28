@@ -54,6 +54,13 @@ def _audit_summary() -> dict:
     return json.loads(AUDIT_SUMMARY_PATH.read_text(encoding="utf-8"))
 
 
+def _require_pymatgen() -> None:
+    pytest.importorskip(
+        "pymatgen.core",
+        reason="CIF-backed phase fixture loading requires the optional pymatgen dependency.",
+    )
+
+
 @pytest.mark.parametrize("entry", _fixture_entries(), ids=lambda entry: entry["fixture_id"])
 def test_phase_fixture_metadata_is_complete(entry: dict) -> None:
     metadata = _metadata(entry)
@@ -97,6 +104,7 @@ def test_phase_fixture_catalog_is_hash_pinned(entry: dict) -> None:
 
 @pytest.mark.parametrize("entry", _fixture_entries(), ids=lambda entry: entry["fixture_id"])
 def test_phase_fixture_cif_round_trips_into_phase(entry: dict) -> None:
+    _require_pymatgen()
     metadata = _metadata(entry)
     fixture_path = REPO_ROOT / entry["artifact_path"]
     crystal = _crystal_frame()
@@ -129,6 +137,7 @@ def test_phase_fixture_cif_round_trips_into_phase(entry: dict) -> None:
 
 @pytest.mark.parametrize("entry", _fixture_entries(), ids=lambda entry: entry["fixture_id"])
 def test_phase_fixture_cif_string_round_trips_into_phase(entry: dict) -> None:
+    _require_pymatgen()
     metadata = _metadata(entry)
     cif_text = (REPO_ROOT / entry["artifact_path"]).read_text(encoding="utf-8")
     crystal = _crystal_frame()
@@ -150,6 +159,7 @@ def test_phase_fixture_cif_string_round_trips_into_phase(entry: dict) -> None:
 
 
 def test_phase_fixture_loader_api_exposes_catalog_and_loaders() -> None:
+    _require_pymatgen()
     records = list_phase_fixtures()
     assert phase_fixture_catalog_path() == CATALOG_PATH
     assert {record.fixture_id for record in records} == {
@@ -231,6 +241,7 @@ def test_structure_import_fixture_audit_summary_covers_full_phase_fixture_catalo
 
 
 def test_structure_import_fixture_audit_summary_matches_loaded_phase_semantics() -> None:
+    _require_pymatgen()
     fixture_rows = {row["fixture_id"]: row for row in _audit_summary()["fixtures"]}
     crystal = _crystal_frame()
     for entry in _fixture_entries():

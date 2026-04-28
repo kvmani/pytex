@@ -63,7 +63,13 @@ from pytex.core.notation import (
     format_miller_indices,
     format_plane_indices,
 )
-from pytex.core.orientation import Misorientation, Orientation, OrientationSet, Rotation
+from pytex.core.orientation import (
+    Misorientation,
+    Orientation,
+    OrientationSet,
+    Rotation,
+    specimen_direction_vector,
+)
 from pytex.core.orientation_geometry import (
     EulerConventionTransform,
     IPFSectorBoundary,
@@ -158,4 +164,5 @@ __all__ = [
     "project_directions_onto_planes",
     "reconstruct_parent_orientation",
     "reduce_indices",
+    "specimen_direction_vector",
 ]

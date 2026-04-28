@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from pytex import (
     AtomicSite,
     CrystalMap,
     CrystalPlane,
     EBSDTextureWorkflow,
+    EBSDTextureWorkflowResult,
     EulerConventionTransform,
     FrameDomain,
     Handedness,
@@ -19,6 +21,7 @@ from pytex import (
     OrientationRelationship,
     OrientationSet,
     ParentReconstructionConfig,
+    ParentReconstructionReport,
     Phase,
     PhaseTransformationRecord,
     PoleFigure,
@@ -32,7 +35,9 @@ from pytex import (
     StructureFactor,
     SymmetrySpec,
     UnitCell,
+    VariantSelectionReport,
     from_json_contract,
+    lorentz_polarization_factor,
     reconstruct_parent_orientation,
     to_json_contract,
 )
@@ -155,6 +160,29 @@ def test_structure_to_diffraction_physics_layer() -> None:
     assert model.intensity(phase, [1, 0, 0], two_theta_rad=np.deg2rad(20.0)) == 0.0
 
 
+def test_diffraction_physics_rejects_invalid_inputs() -> None:
+    _, _, phase = _phase()
+    table = ScatteringFactorTable(model="unit")
+    model = DiffractionIntensityModel(scattering_table=table)
+
+    with pytest.raises(ValueError, match="g_magnitude"):
+        table.scattering_factor("Ni", -1.0)
+    with pytest.raises(ValueError, match="two_theta_rad"):
+        lorentz_polarization_factor(0.0)
+    with pytest.raises(ValueError, match="two_theta_rad"):
+        model.intensity(phase, [1, 1, 1], two_theta_rad=np.pi)
+    with pytest.raises(ValueError, match="multiplicity"):
+        model.intensity(phase, [1, 1, 1], two_theta_rad=np.deg2rad(44.0), multiplicity=0)
+    with pytest.raises(ValueError, match="finite real and imaginary"):
+        StructureFactor(
+            miller_indices=[1, 1, 1],
+            value=complex(np.nan, 0.0),
+            amplitude=1.0,
+            phase_rad=0.0,
+            phase=phase,
+        )
+
+
 def test_workflow_grade_ebsd_to_texture_pipeline_and_contracts() -> None:
     orientations = _orientations()
     coordinates = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=np.float64)
@@ -178,6 +206,34 @@ def test_workflow_grade_ebsd_to_texture_pipeline_and_contracts() -> None:
     for obj in (crystal_map, result.texture_report):
         payload = to_json_contract(obj)
         assert to_json_contract(from_json_contract(payload)) == payload
+
+
+def test_ebsd_texture_workflow_rejects_invalid_weight_and_threshold_states() -> None:
+    orientations = _orientations()
+    coordinates = np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]], dtype=np.float64)
+    crystal_map = CrystalMap(
+        coordinates=coordinates,
+        orientations=orientations,
+        map_frame=orientations.specimen_frame,
+    )
+    phase = orientations.phase
+    assert phase is not None
+    pole = CrystalPlane(MillerIndex([1, 1, 1], phase=phase), phase=phase)
+    report = crystal_map.texture_report(poles=(pole,))
+
+    with pytest.raises(ValueError, match="segmentation_threshold_deg"):
+        EBSDTextureWorkflow(segmentation_threshold_deg=0.0)
+    with pytest.raises(ValueError, match="sample_directions"):
+        EBSDTextureWorkflow(sample_directions=())
+    with pytest.raises(ValueError, match="No valid positive orientation weights"):
+        OrientationQualityWeights([1.0, 1.0, 1.0], valid_mask=[False, False, False]).for_count(3)
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        EBSDTextureWorkflowResult(
+            crystal_map=crystal_map,
+            texture_report=report,
+            odf=report.odf,
+            weights=np.array([1.0, np.nan, 0.0]),
+        )
 
 
 def test_stable_parent_reconstruction_track() -> None:
@@ -233,3 +289,55 @@ def test_stable_parent_reconstruction_track() -> None:
     )
     assert report.best_index == 0
     assert report.best_score_deg <= 1e-8
+
+
+def test_parent_reconstruction_reports_reject_invalid_states() -> None:
+    crystal, specimen, parent_phase = _phase("parent")
+    child_phase = Phase(
+        name="child",
+        lattice=parent_phase.lattice,
+        symmetry=parent_phase.symmetry,
+        crystal_frame=crystal,
+    )
+    parent = Orientation(
+        rotation=Rotation.identity(),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=parent_phase.symmetry,
+        phase=parent_phase,
+    )
+    child = Orientation(
+        rotation=Rotation.identity(),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=child_phase.symmetry,
+        phase=child_phase,
+    )
+    candidate_parents = OrientationSet.from_orientations([parent])
+    record = PhaseTransformationRecord(
+        name="demo",
+        orientation_relationship=OrientationRelationship(
+            name="identity_demo",
+            parent_phase=parent_phase,
+            child_phase=child_phase,
+            parent_to_child_rotation=Rotation.identity(),
+        ),
+        parent_orientation=parent,
+        child_orientations=OrientationSet.from_orientations([child]),
+    )
+
+    with pytest.raises(ValueError, match="ambiguity_tolerance_deg"):
+        ParentReconstructionConfig(ambiguity_tolerance_deg=np.inf)
+    with pytest.raises(ValueError, match="variant_indices"):
+        VariantSelectionReport(variant_indices=[0], scores_deg=[0.0])
+    with pytest.raises(ValueError, match="scores_deg"):
+        ParentReconstructionReport(
+            record=record,
+            candidate_parents=candidate_parents,
+            scores_deg=np.array([np.nan]),
+            best_index=0,
+            best_score_deg=0.0,
+            ambiguous_indices=(0,),
+            reduction="mean",
+            symmetry_aware=True,
+        )

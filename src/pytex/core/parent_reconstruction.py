@@ -23,8 +23,8 @@ class ParentReconstructionConfig:
     def __post_init__(self) -> None:
         if self.reduction not in {"mean", "median", "max"}:
             raise ValueError("reduction must be 'mean', 'median', or 'max'.")
-        if self.ambiguity_tolerance_deg < 0.0:
-            raise ValueError("ambiguity_tolerance_deg must be non-negative.")
+        if not np.isfinite(self.ambiguity_tolerance_deg) or self.ambiguity_tolerance_deg < 0.0:
+            raise ValueError("ambiguity_tolerance_deg must be finite and non-negative.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +66,8 @@ class ParentReconstructionReport:
         scores = np.asarray(self.scores_deg, dtype=np.float64).reshape(-1)
         if scores.shape != (len(self.candidate_parents),):
             raise ValueError("scores_deg must contain one score per candidate parent.")
+        if np.any(~np.isfinite(scores)) or np.any(scores < 0.0):
+            raise ValueError("scores_deg must be finite and non-negative.")
         if not 0 <= self.best_index < len(self.candidate_parents):
             raise ValueError("best_index is out of range.")
         if not np.isclose(float(scores[self.best_index]), self.best_score_deg, atol=1e-10):
@@ -111,6 +113,8 @@ def reconstruct_parent_orientation(
     config: ParentReconstructionConfig | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> ParentReconstructionReport:
+    if len(candidate_parents) == 0:
+        raise ValueError("candidate_parents must contain at least one orientation.")
     reconstruction_config = ParentReconstructionConfig() if config is None else config
     result = score_parent_orientations(
         record,

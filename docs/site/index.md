@@ -39,6 +39,7 @@ workflows/ebsd_kam
 workflows/ebsd_grains
 workflows/ebsd_import_normalization
 workflows/ebsd_to_texture_outputs
+workflows/orientation_grids_and_constructors
 workflows/vectorized_miller_workflows
 workflows/orix_kikuchipy_interop
 workflows/phases_and_cif

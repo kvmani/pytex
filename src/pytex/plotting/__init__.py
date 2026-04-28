@@ -16,7 +16,7 @@ from pytex.plotting.crystal3d import (
 )
 from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
 from pytex.plotting.ebsd import plot_ipf_map, plot_kam_map
-from pytex.plotting.ipf import IPFColorKey
+from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors
 from pytex.plotting.runtime import (
     plot_crystal_directions,
     plot_crystal_planes,
@@ -53,6 +53,8 @@ __all__ = [
     "IPFColorKey",
     "PlaneAnnotationStyle",
     "build_crystal_scene",
+    "ipf_color",
+    "ipf_colors",
     "list_style_themes",
     "load_style_theme",
     "plot_crystal_directions",

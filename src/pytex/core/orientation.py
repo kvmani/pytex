@@ -31,9 +31,29 @@ _EULER_CONVENTION_ALIASES = {
     "zyz": "abg",
 }
 
+_SPECIMEN_DIRECTION_ALIASES = {
+    "rd": np.array([1.0, 0.0, 0.0], dtype=np.float64),
+    "x": np.array([1.0, 0.0, 0.0], dtype=np.float64),
+    "td": np.array([0.0, 1.0, 0.0], dtype=np.float64),
+    "y": np.array([0.0, 1.0, 0.0], dtype=np.float64),
+    "nd": np.array([0.0, 0.0, 1.0], dtype=np.float64),
+    "z": np.array([0.0, 0.0, 1.0], dtype=np.float64),
+}
+
 
 def _normalize_euler_convention(convention: str) -> str:
     return normalize_euler_convention_name(convention)
+
+
+def specimen_direction_vector(direction: str | ArrayLike) -> np.ndarray:
+    """Return a normalized specimen direction from a named alias or vector."""
+
+    if isinstance(direction, str):
+        normalized = direction.strip().lower()
+        if normalized not in _SPECIMEN_DIRECTION_ALIASES:
+            raise ValueError("Specimen direction must be one of RD, TD, ND, x, y, z, or a vector.")
+        return as_float_array(_SPECIMEN_DIRECTION_ALIASES[normalized], shape=(3,))
+    return normalize_vector(direction)
 
 
 def _axis_angle_quaternion_for_axis(axis_name: str, angle_rad: float) -> np.ndarray:
@@ -464,6 +484,69 @@ def _grid_axis_values(
     return values
 
 
+def _require_grid_spacing(spacing_deg: float) -> float:
+    spacing = float(spacing_deg)
+    if not np.isfinite(spacing) or spacing <= 0.0 or spacing > 360.0:
+        raise ValueError("spacing_deg must be finite and satisfy 0 < spacing_deg <= 360.")
+    return spacing
+
+
+def _orientation_grid_provenance(
+    *,
+    method: str,
+    spacing_deg: float,
+    note: str,
+    provenance: ProvenanceRecord | None,
+) -> ProvenanceRecord | None:
+    if provenance is not None:
+        return provenance
+    return ProvenanceRecord(
+        source_system="pytex.orientation_grid",
+        metadata={
+            "method": method,
+            "spacing_deg": f"{float(spacing_deg):.12g}",
+        },
+        notes=(note,),
+    )
+
+
+def _canonicalize_quaternion_rows(quaternions: np.ndarray) -> np.ndarray:
+    canonical = np.asarray(quaternions, dtype=np.float64).copy()
+    canonical[canonical[:, 0] < 0.0] *= -1.0
+    canonical = normalize_quaternions(canonical)
+    canonical = np.ascontiguousarray(canonical, dtype=np.float64)
+    canonical.setflags(write=False)
+    return canonical
+
+
+def _deduplicate_orientation_set(orientations: OrientationSet) -> OrientationSet:
+    keys = np.round(orientations.exact_fundamental_region_keys(), decimals=10)
+    _, first_indices = np.unique(keys, axis=0, return_index=True)
+    ordered = np.sort(first_indices)
+    return orientations.subset(ordered)
+
+
+def _deterministic_s3_quaternions(count: int) -> np.ndarray:
+    if count <= 0:
+        raise ValueError("count must be positive.")
+    indices = np.arange(count, dtype=np.float64) + 0.5
+    golden = (np.sqrt(5.0) - 1.0) / 2.0
+    u1 = np.mod(indices * golden, 1.0)
+    u2 = np.mod(indices * (np.sqrt(3.0) - 1.0), 1.0)
+    u3 = np.mod(indices * (np.sqrt(2.0) - 1.0), 1.0)
+    root_a = np.sqrt(1.0 - u1)
+    root_b = np.sqrt(u1)
+    quaternions = np.column_stack(
+        [
+            root_b * np.cos(2.0 * np.pi * u3),
+            root_a * np.sin(2.0 * np.pi * u2),
+            root_a * np.cos(2.0 * np.pi * u2),
+            root_b * np.sin(2.0 * np.pi * u3),
+        ]
+    )
+    return _canonicalize_quaternion_rows(quaternions)
+
+
 def _resolve_phase_symmetry(
     *,
     phase: Phase | None,
@@ -751,6 +834,134 @@ class Orientation:
                 raise ValueError("Orientation.phase.symmetry must match Orientation.symmetry.")
 
     @classmethod
+    def from_euler(
+        cls,
+        angle1: float,
+        angle2: float,
+        angle3: float,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        convention: str = "bunge",
+        degrees: bool = True,
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            rotation=Rotation.from_euler(
+                angle1,
+                angle2,
+                angle3,
+                convention=convention,
+                degrees=degrees,
+            ),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_axis_angle(
+        cls,
+        axis: str | ArrayLike,
+        angle_rad: float,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        axis_vector = specimen_direction_vector(axis) if isinstance(axis, str) else axis
+        return cls(
+            rotation=Rotation.from_axis_angle(axis_vector, angle_rad),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_matrix(
+        cls,
+        matrix: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            rotation=Rotation.from_matrix(matrix),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_quaternion(
+        cls,
+        quaternion: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            rotation=Rotation(quaternion=np.asarray(quaternion, dtype=np.float64)),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
     def from_plane_direction(
         cls,
         plane: CrystalPlane,
@@ -785,6 +996,31 @@ class Orientation:
             phase=plane.phase,
             provenance=provenance,
         )
+
+    @classmethod
+    def from_miller(
+        cls,
+        plane: CrystalPlane | ArrayLike,
+        direction: CrystalDirection | ArrayLike,
+        *,
+        specimen_frame: ReferenceFrame,
+        phase: Phase | None = None,
+        specimen_plane_normal: str | ArrayLike = "ND",
+        specimen_direction: str | ArrayLike = "RD",
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        orientations = OrientationSet.from_plane_direction(
+            plane,
+            direction,
+            specimen_frame=specimen_frame,
+            phase=phase,
+            specimen_plane_normal=specimen_direction_vector(specimen_plane_normal),
+            specimen_direction=specimen_direction_vector(specimen_direction),
+            provenance=provenance,
+        )
+        if len(orientations) != 1:
+            raise ValueError("Orientation.from_miller requires scalar plane and direction inputs.")
+        return orientations[0]
 
     def as_matrix(self) -> np.ndarray:
         return self.rotation.as_matrix()
@@ -1110,7 +1346,7 @@ class OrientationSet:
         cls,
         angles: ArrayLike | EulerSet,
         *,
-        crystal_frame: ReferenceFrame,
+        crystal_frame: ReferenceFrame | None = None,
         specimen_frame: ReferenceFrame,
         symmetry: SymmetrySpec | None = None,
         phase: Phase | None = None,
@@ -1118,6 +1354,10 @@ class OrientationSet:
         degrees: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
         phase, symmetry = _resolve_phase_symmetry(
             phase=phase,
             symmetry=symmetry,
@@ -1153,12 +1393,16 @@ class OrientationSet:
         cls,
         quaternions: ArrayLike,
         *,
-        crystal_frame: ReferenceFrame,
+        crystal_frame: ReferenceFrame | None = None,
         specimen_frame: ReferenceFrame,
         symmetry: SymmetrySpec | None = None,
         phase: Phase | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
         phase, symmetry = _resolve_phase_symmetry(
             phase=phase,
             symmetry=symmetry,
@@ -1179,12 +1423,16 @@ class OrientationSet:
         axes: ArrayLike,
         angles_rad: ArrayLike,
         *,
-        crystal_frame: ReferenceFrame,
+        crystal_frame: ReferenceFrame | None = None,
         specimen_frame: ReferenceFrame,
         symmetry: SymmetrySpec | None = None,
         phase: Phase | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
         phase, symmetry = _resolve_phase_symmetry(
             phase=phase,
             symmetry=symmetry,
@@ -1204,12 +1452,16 @@ class OrientationSet:
         cls,
         matrices: ArrayLike,
         *,
-        crystal_frame: ReferenceFrame,
+        crystal_frame: ReferenceFrame | None = None,
         specimen_frame: ReferenceFrame,
         symmetry: SymmetrySpec | None = None,
         phase: Phase | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
         phase, symmetry = _resolve_phase_symmetry(
             phase=phase,
             symmetry=symmetry,
@@ -1374,6 +1626,136 @@ class OrientationSet:
             degrees=True,
             provenance=provenance,
         )
+
+    @classmethod
+    def from_so2_grid(
+        cls,
+        axis: str | ArrayLike = "ND",
+        spacing_deg: float = 5.0,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        spacing = _require_grid_spacing(spacing_deg)
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        angles_deg = np.arange(0.0, 360.0, spacing, dtype=np.float64)
+        if angles_deg.size == 0:
+            raise ValueError("SO2 grid generation produced no support orientations.")
+        axis_vector = specimen_direction_vector(axis)
+        quaternions = RotationSet.from_axes_angles(
+            np.broadcast_to(axis_vector, (angles_deg.shape[0], 3)),
+            np.deg2rad(angles_deg),
+        ).quaternions
+        return cls(
+            quaternions=quaternions,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=_orientation_grid_provenance(
+                method="so2_axis_grid",
+                spacing_deg=spacing,
+                note=f"SO2 grid around specimen axis at {spacing:g} degree spacing.",
+                provenance=provenance,
+            ),
+        )
+
+    @classmethod
+    def from_regular_so3_grid(
+        cls,
+        spacing_deg: float,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        phi1_range_deg: tuple[float, float] = (0.0, 360.0),
+        big_phi_range_deg: tuple[float, float] = (0.0, 180.0),
+        phi2_range_deg: tuple[float, float] = (0.0, 360.0),
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        spacing = _require_grid_spacing(spacing_deg)
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        return cls.from_bunge_grid(
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            phi1_range_deg=phi1_range_deg,
+            big_phi_range_deg=big_phi_range_deg,
+            phi2_range_deg=phi2_range_deg,
+            phi1_step_deg=spacing,
+            big_phi_step_deg=spacing,
+            phi2_step_deg=spacing,
+            provenance=_orientation_grid_provenance(
+                method="regular_so3_bunge_grid",
+                spacing_deg=spacing,
+                note=(
+                    "Regular SO3 grid generated in Bunge Euler coordinates; "
+                    "MTEX-inspired, not a parity claim."
+                ),
+                provenance=provenance,
+            ),
+        )
+
+    @classmethod
+    def from_equispaced_so3_grid(
+        cls,
+        spacing_deg: float,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        reduce_to_fundamental_region: bool = True,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        spacing = _require_grid_spacing(spacing_deg)
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        spacing_rad = np.deg2rad(spacing)
+        count = max(1, int(np.ceil((8.0 * np.pi * np.pi) / (spacing_rad**3))))
+        orientations = cls(
+            quaternions=_deterministic_s3_quaternions(count),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=_orientation_grid_provenance(
+                method="equispaced_so3_quaternion_grid",
+                spacing_deg=spacing,
+                note=(
+                    "Deterministic low-discrepancy SO3 quaternion grid; "
+                    "MTEX-inspired, not a parity claim."
+                ),
+                provenance=provenance,
+            ),
+        )
+        if reduce_to_fundamental_region and symmetry is not None:
+            orientations = orientations.projected_to_fundamental_region()
+            orientations = _deduplicate_orientation_set(orientations)
+        return orientations
 
     def as_matrices(self) -> np.ndarray:
         matrices = np.stack(

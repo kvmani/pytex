@@ -626,15 +626,20 @@ $$
 | Euler transform | Bunge `(301.0, 36.7, 26.63)` | Kocks `(211.0, 36.7, 63.37)` and Roe `(211.0, 36.7, 116.63)` | passed |
 | IPF sector boundary | cubic `m-3m` symmetry | `[001]` lies inside the sector and equations are exposed | passed |
 | Diffraction physics | fcc Ni-like phase | `(100)` forbidden, `(111)` allowed, positive intensity for `(111)` | passed |
+| Diffraction guardrails | invalid scattering vector, angle, multiplicity, and structure-factor values | construction or evaluation raises `ValueError` before producing nonphysical intensity output | passed |
 | EBSD texture workflow | three-orientation `CrystalMap` with weights `(0.2, 0.3, 0.5)` | normalized weights sum to `1.0`; one PF produced | passed |
+| EBSD workflow guardrails | invalid segmentation threshold, empty sample-direction list, all-masked weights, and nonfinite result weights | construction or normalization raises `ValueError` | passed |
 | EBSD JSON contracts | `CrystalMap`, `TextureReport` | round-trip payload equality | passed |
 | Parent reconstruction | identity parent-child relationship | identity candidate has best score near `0 deg` | passed |
+| Parent reconstruction guardrails | nonfinite ambiguity tolerance, invalid variant indices, and nonfinite report scores | construction raises `ValueError` | passed |
 
 `Interpretation`
 
 This audit confirms that the new foundation surfaces are wired, typed, and reconstructible. It does
 not claim complete physical diffraction modeling, complete orientation-space boundary catalogs, or
-full parent-reconstruction capability. Those remain explicit later expansion targets.
+full parent-reconstruction capability. The added guardrail cases confirm that the staged public
+surfaces reject invalid metadata and nonphysical numerical inputs before downstream interpretation.
+Algorithmic breadth remains an explicit later expansion target.
 
 ## Current Audit Findings
 

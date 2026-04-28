@@ -62,20 +62,20 @@ Imports from vendors or external scientific libraries should be normalized into 
 
 ## Adjacent Architecture Notes
 
-- [Multimodal Characterization Foundation](../site/architecture/multimodal_characterization_foundation.md) defines the shared semantic backbone across EBSD, XRD, neutron, and TEM.
-- [Phase Transformation Foundation](../site/architecture/phase_transformation_foundation.md) defines the parent-child and variant contracts that now anchor the stable transformation primitive family.
-- [Repository Review 2026 Foundation Audit](../site/architecture/repo_review_2026_foundation_audit.md) records the current state of the repository and the immediate hardening priorities.
+- [Multimodal Characterization Foundation](multimodal_characterization_foundation.md) defines the shared semantic backbone across EBSD, XRD, neutron, and TEM.
+- [Phase Transformation Foundation](phase_transformation_foundation.md) defines the parent-child and variant contracts that now anchor the stable transformation primitive family.
+- [Repository Review 2026 Foundation Audit](repo_review_2026_foundation_audit.md) records the current state of the repository and the immediate hardening priorities.
 
 ## References
 
 ### Normative
 
-- [Canonical Data Model](../site/architecture/canonical_data_model.md)
-- [Reference Canon](../site/standards/reference_canon.md)
-- [Engineering Governance](../site/standards/engineering_governance.md)
+- [Canonical Data Model](canonical_data_model.md)
+- [Reference Canon](../standards/reference_canon.md)
+- [Engineering Governance](../standards/engineering_governance.md)
 
 ### Informative
 
-- [Orientation And Texture Foundation](../site/architecture/orientation_and_texture_foundation.md)
-- [EBSD Foundation](../site/architecture/ebsd_foundation.md)
-- [Diffraction Foundation](../site/architecture/diffraction_foundation.md)
+- [Orientation And Texture Foundation](orientation_and_texture_foundation.md)
+- [EBSD Foundation](ebsd_foundation.md)
+- [Diffraction Foundation](diffraction_foundation.md)

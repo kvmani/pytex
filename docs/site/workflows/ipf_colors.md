@@ -1,6 +1,7 @@
 # Texture: IPF Color Keys
 
-PyTex now includes a first stable plotting-side surface for inverse pole figure color assignment through `IPFColorKey`.
+PyTex now includes a first stable plotting-side surface for inverse pole figure color assignment
+through `IPFColorKey`, plus convenience helpers `ipf_color(...)` and `ipf_colors(...)`.
 
 ## Scope
 
@@ -8,6 +9,7 @@ PyTex now includes a first stable plotting-side surface for inverse pole figure 
 - symmetry-aware reduction of crystal directions into the supported IPF sector
 - deterministic RGB assignment from sector-vertex barycentric weights
 - color generation directly from `Orientation`, `OrientationSet`, or crystal directions
+- named specimen directions through `RD`, `TD`, `ND`, `x`, `y`, and `z`
 
 ## Why This Exists
 
@@ -25,14 +27,15 @@ PyTex keeps those choices explicit by making the color key a named public object
 ```python
 import numpy as np
 
-from pytex import IPFColorKey
+from pytex import IPFColorKey, ipf_colors
 
 color_key = IPFColorKey(
     crystal_symmetry=orientations.symmetry,
-    specimen_direction=np.array([0.0, 0.0, 1.0]),
+    specimen_direction="ND",
 )
 
 rgb = color_key.colors_from_orientations(orientations)
+rgb_direct = ipf_colors(orientations, direction="ND")
 ```
 
 ## Current Interpretation

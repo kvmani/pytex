@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 from pytex import (
     FrameDomain,
@@ -39,12 +41,26 @@ loop_
   Cl Cl 0.5 0.5 0.5
 """
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = REPO_ROOT / "src"
+
+
+def _subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    existing = env.get("PYTHONPATH")
+    paths = [str(SRC_ROOT), str(REPO_ROOT)]
+    if existing:
+        paths.append(existing)
+    env["PYTHONPATH"] = os.pathsep.join(paths)
+    return env
+
 
 def test_python_m_pytex_info_runs() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "pytex", "info"],
         check=True,
         capture_output=True,
+        env=_subprocess_env(),
         text=True,
     )
     assert "PyTex 0.1.0.dev0" in result.stdout
@@ -69,6 +85,7 @@ def test_phase_from_cif_string_optional_adapter_integration() -> None:
 def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
     pytest = __import__("pytest")
     pytest.importorskip("orix")
+    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
