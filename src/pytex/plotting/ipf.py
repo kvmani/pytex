@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import ArrayLike
 
-from pytex.core._arrays import as_float_array, normalize_vector, normalize_vectors
+from pytex.core._arrays import as_float_array, normalize_vectors
 from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
-from pytex.core.orientation import Orientation, OrientationSet
+from pytex.core.orientation import Orientation, OrientationSet, specimen_direction_vector
 from pytex.core.symmetry import SymmetrySpec
 
 
@@ -22,7 +22,7 @@ def _normalize_rgb_vertices(vertices: ArrayLike) -> np.ndarray:
 @dataclass(frozen=True, slots=True)
 class IPFColorKey:
     crystal_symmetry: SymmetrySpec
-    specimen_direction: np.ndarray
+    specimen_direction: str | np.ndarray
     antipodal: bool = True
     saturation_gamma: float = 0.5
     color_vertices: np.ndarray = field(
@@ -43,7 +43,11 @@ class IPFColorKey:
             raise ValueError(
                 "IPFColorKey.crystal_symmetry must use a crystal-domain reference frame."
             )
-        object.__setattr__(self, "specimen_direction", normalize_vector(self.specimen_direction))
+        object.__setattr__(
+            self,
+            "specimen_direction",
+            specimen_direction_vector(self.specimen_direction),
+        )
         object.__setattr__(self, "color_vertices", _normalize_rgb_vertices(self.color_vertices))
         if not np.isfinite(self.saturation_gamma) or self.saturation_gamma <= 0.0:
             raise ValueError("IPFColorKey.saturation_gamma must be finite and strictly positive.")
@@ -98,3 +102,70 @@ class IPFColorKey:
             self.colors_from_crystal_directions(crystal_direction_array[None, :])[0],
             shape=(3,),
         )
+
+
+def _key_for_orientation(
+    orientation: Orientation,
+    *,
+    direction: str | ArrayLike,
+    key: IPFColorKey | None,
+) -> IPFColorKey:
+    if key is not None:
+        return key
+    if orientation.symmetry is None:
+        raise ValueError("orientation.symmetry is required when key is not provided.")
+    return IPFColorKey(
+        crystal_symmetry=orientation.symmetry,
+        specimen_direction=specimen_direction_vector(direction),
+    )
+
+
+def _key_for_orientations(
+    orientations: OrientationSet,
+    *,
+    direction: str | ArrayLike,
+    key: IPFColorKey | None,
+) -> IPFColorKey:
+    if key is not None:
+        return key
+    if orientations.symmetry is None:
+        raise ValueError("orientations.symmetry is required when key is not provided.")
+    return IPFColorKey(
+        crystal_symmetry=orientations.symmetry,
+        specimen_direction=specimen_direction_vector(direction),
+    )
+
+
+def ipf_color(
+    orientation: Orientation,
+    *,
+    direction: str | ArrayLike = "ND",
+    key: IPFColorKey | None = None,
+) -> np.ndarray:
+    """Return the IPF RGB color for one orientation and specimen direction."""
+
+    return _key_for_orientation(orientation, direction=direction, key=key).color_from_orientation(
+        orientation
+    )
+
+
+def ipf_colors(
+    orientations: OrientationSet,
+    *,
+    direction: str | ArrayLike = "ND",
+    key: IPFColorKey | None = None,
+) -> np.ndarray:
+    """Return IPF RGB colors for an orientation set and specimen direction."""
+
+    return _key_for_orientations(
+        orientations,
+        direction=direction,
+        key=key,
+    ).colors_from_orientations(orientations)
+
+
+__all__ = [
+    "IPFColorKey",
+    "ipf_color",
+    "ipf_colors",
+]

@@ -70,6 +70,10 @@ class EBSDTextureWorkflowResult:
 
     def __post_init__(self) -> None:
         weights = as_float_array(self.weights, shape=(len(self.crystal_map.orientations),))
+        if np.any(~np.isfinite(weights)) or np.any(weights < 0.0):
+            raise ValueError("EBSDTextureWorkflowResult.weights must be finite and non-negative.")
+        if float(np.sum(weights)) <= 0.0:
+            raise ValueError("EBSDTextureWorkflowResult.weights must sum to a positive value.")
         object.__setattr__(self, "weights", weights)
         object.__setattr__(self, "metadata", {str(k): str(v) for k, v in self.metadata.items()})
 
@@ -105,6 +109,15 @@ class EBSDTextureWorkflow:
     segment_grains: bool = False
     segmentation_threshold_deg: float = 5.0
     provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            not np.isfinite(self.segmentation_threshold_deg)
+            or self.segmentation_threshold_deg <= 0.0
+        ):
+            raise ValueError("segmentation_threshold_deg must be positive and finite.")
+        if len(self.sample_directions) == 0:
+            raise ValueError("sample_directions must contain at least one direction.")
 
     def run(self, crystal_map: CrystalMap) -> EBSDTextureWorkflowResult:
         phase_view = crystal_map.select_phase(self.phase) if self.phase is not None else crystal_map

@@ -98,9 +98,9 @@ The Sphinx layer should eventually expose top-level sections for:
 
 ### Normative
 
-- [Reference Canon](../site/standards/reference_canon.md)
-- [Scientific Citation Policy](../site/standards/scientific_citation_policy.md)
-- [Development Principles](../site/standards/development_principles.md)
+- [Reference Canon](reference_canon.md)
+- [Scientific Citation Policy](scientific_citation_policy.md)
+- [Development Principles](development_principles.md)
 
 ### Informative
 

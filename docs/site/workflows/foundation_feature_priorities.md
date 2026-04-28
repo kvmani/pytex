@@ -200,8 +200,13 @@ The tests assert:
 - Roe and Kocks convention transforms from the reference Bunge example
 - IPF sector boundary membership and exposed equations
 - structure-factor amplitude, face-centered reflection conditions, and intensity calculation
+- diffraction guardrails for invalid scattering-vector magnitude, angle, multiplicity, and
+  nonfinite structure-factor values
 - workflow-grade EBSD-to-texture execution and JSON round trips
+- EBSD workflow guardrails for invalid segmentation thresholds, empty sample-direction lists,
+  all-masked weights, and nonfinite result weights
 - stable parent candidate scoring and ambiguity reporting
+- parent-reconstruction guardrails for invalid tolerances, variant indices, and report scores
 
 ## Current Limits
 

@@ -18,6 +18,8 @@ IntensityCorrectionName = Literal["none", "lorentz_polarization"]
 
 def lorentz_polarization_factor(two_theta_rad: float) -> float:
     theta = 0.5 * float(two_theta_rad)
+    if not np.isfinite(two_theta_rad) or two_theta_rad <= 0.0 or two_theta_rad >= np.pi:
+        raise ValueError("two_theta_rad must be finite and satisfy 0 < two_theta_rad < pi.")
     sin_theta = max(float(np.sin(theta)), 1e-8)
     cos_theta = max(float(np.cos(theta)), 1e-8)
     cos_two_theta = float(np.cos(two_theta_rad))
@@ -37,6 +39,8 @@ class ScatteringFactorTable:
             )
 
     def scattering_factor(self, species: str, g_magnitude_inv_angstrom: float) -> float:
+        if not np.isfinite(g_magnitude_inv_angstrom) or g_magnitude_inv_angstrom < 0.0:
+            raise ValueError("g_magnitude_inv_angstrom must be finite and non-negative.")
         if self.model == "unit":
             return 1.0
         z = float(atomic_number(species))
@@ -58,6 +62,8 @@ class StructureFactor:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "miller_indices", as_int_array(self.miller_indices, shape=(3,)))
+        if not np.isfinite(self.value.real) or not np.isfinite(self.value.imag):
+            raise ValueError("StructureFactor.value must have finite real and imaginary parts.")
         if not np.isfinite(self.amplitude) or self.amplitude < 0.0:
             raise ValueError("StructureFactor.amplitude must be finite and non-negative.")
         if not np.isfinite(self.phase_rad):
@@ -164,6 +170,10 @@ class DiffractionIntensityModel:
         radiation: RadiationSpec | None = None,
     ) -> float:
         del radiation
+        if not np.isfinite(two_theta_rad) or two_theta_rad <= 0.0 or two_theta_rad >= np.pi:
+            raise ValueError("two_theta_rad must be finite and satisfy 0 < two_theta_rad < pi.")
+        if int(multiplicity) != multiplicity or multiplicity <= 0:
+            raise ValueError("multiplicity must be a positive integer.")
         condition = self.reflection_condition or ReflectionCondition.from_phase(phase)
         if not condition.is_allowed(hkl):
             return 0.0

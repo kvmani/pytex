@@ -151,6 +151,7 @@ from pytex.core import (
     project_directions_onto_planes,
     reconstruct_parent_orientation,
     reduce_indices,
+    specimen_direction_vector,
 )
 from pytex.diffraction import (
     DetectedSpotCluster,
@@ -217,6 +218,8 @@ from pytex.plotting import (
     IPFColorKey,
     PlaneAnnotationStyle,
     build_crystal_scene,
+    ipf_color,
+    ipf_colors,
     list_style_themes,
     load_style_theme,
     plot_crystal_directions,
@@ -420,6 +423,8 @@ __all__ = [
     "generate_xrd_pattern",
     "get_phase_fixture",
     "index_hough",
+    "ipf_color",
+    "ipf_colors",
     "invert_labotex_pole_figures",
     "invert_xrdml_pole_figures",
     "list_phase_fixtures",
@@ -480,6 +485,7 @@ __all__ = [
     "sample_small_circle",
     "save_documentation_figure_svg",
     "spherical_angles_to_directions",
+    "specimen_direction_vector",
     "to_json_contract",
     "to_orix_direction",
     "to_orix_miller_direction",

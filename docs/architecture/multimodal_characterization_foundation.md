@@ -87,12 +87,12 @@ These concepts must not be trapped inside vendor-specific adapters.
 
 ### Normative
 
-- [Reference Canon](../site/standards/reference_canon.md)
-- [Notation And Conventions](../site/standards/notation_and_conventions.md)
-- [Canonical Data Model](../site/architecture/canonical_data_model.md)
+- [Reference Canon](../standards/reference_canon.md)
+- [Notation And Conventions](../standards/notation_and_conventions.md)
+- [Canonical Data Model](canonical_data_model.md)
 
 ### Informative
 
-- [EBSD Foundation](../site/architecture/ebsd_foundation.md)
-- [Diffraction Foundation](../site/architecture/diffraction_foundation.md)
+- [EBSD Foundation](ebsd_foundation.md)
+- [Diffraction Foundation](diffraction_foundation.md)
 - Nolze et al. (2023), DOI: <https://doi.org/10.1107/S1600576723009275>

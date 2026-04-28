@@ -20,7 +20,7 @@ This document makes the repository's engineering posture explicit so future stag
    Frame rules, indexing conventions, symmetry choices, and tolerance policy belong in shared standards documents and core utilities.
 
 5. Consult the reference working corpus before changing formulas
-   When a task depends on crystallographic formulas, worked examples, or geometry figures, consult [Formulation Summary](../../references/formulation_summary.md) and [Reference Index](../../references/reference_index.md) before changing code or docs.
+   When a task depends on crystallographic formulas, worked examples, or geometry figures, consult `references/formulation_summary.md` and `references/reference_index.md` before changing code or docs.
 
 6. Separate stable and experimental work
    `src/pytex/experimental/` may explore new methods, but it must not redefine stable semantics or weaken validation requirements.
@@ -83,8 +83,8 @@ Before merging a substantial change, answer these questions explicitly:
 
 ### Normative
 
-- [Engineering Governance](../site/standards/engineering_governance.md)
-- [Reference Canon](../site/standards/reference_canon.md)
+- [Engineering Governance](engineering_governance.md)
+- [Reference Canon](reference_canon.md)
 
 ### Informative
 

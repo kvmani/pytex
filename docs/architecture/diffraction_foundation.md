@@ -40,9 +40,9 @@ Phase 4 should begin by making reciprocal-space and detector-space semantics exp
 
 ### Normative
 
-- [Canonical Data Model](../site/architecture/canonical_data_model.md)
-- [Multimodal Characterization Foundation](../site/architecture/multimodal_characterization_foundation.md)
-- [Reference Canon](../site/standards/reference_canon.md)
+- [Canonical Data Model](canonical_data_model.md)
+- [Multimodal Characterization Foundation](multimodal_characterization_foundation.md)
+- [Reference Canon](../standards/reference_canon.md)
 
 ### Informative
 

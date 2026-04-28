@@ -70,11 +70,20 @@ means:
 - `Rotation`
 - `RotationSet`
 - `Orientation`
+- `Orientation.from_euler(...)`
+- `Orientation.from_axis_angle(...)`
+- `Orientation.from_matrix(...)`
+- `Orientation.from_quaternion(...)`
+- `Orientation.from_miller(...)`
 - `OrientationSet`
 - `OrientationSet.from_axes_angles(...)`
+- `OrientationSet.from_equispaced_so3_grid(...)`
 - `OrientationSet.from_matrices(...)`
 - `OrientationSet.from_plane_direction(...)`
 - `OrientationSet.from_quaternions(...)`
+- `OrientationSet.from_regular_so3_grid(...)`
+- `OrientationSet.from_so2_grid(...)`
+- `specimen_direction_vector(...)`
 - `ScatteringSetup`
 - `format_miller_indices`
 - `format_plane_indices`
@@ -197,6 +206,8 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 ## Plotting
 
 - `IPFColorKey`
+- `ipf_color(...)`
+- `ipf_colors(...)`
 - `CrystalCellOverlay`
 - `CrystalPlaneOverlay`
 - `CrystalDirectionOverlay`
