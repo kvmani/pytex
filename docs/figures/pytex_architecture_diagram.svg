@@ -1,0 +1,289 @@
+<svg viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <!-- Gradient for Core module (deep blue to cyan) -->
+    <linearGradient id="coreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Texture module (purple to violet) -->
+    <linearGradient id="textureGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6d28d9;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for EBSD module (emerald to teal) -->
+    <linearGradient id="ebsdGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Diffraction module (amber to orange) -->
+    <linearGradient id="diffractionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d97706;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Plotting module (rose to red) -->
+    <linearGradient id="plottingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#dc2626;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f43f5e;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Adapters module (indigo to blue) -->
+    <linearGradient id="adaptersGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Experimental module (slate to gray) -->
+    <linearGradient id="experimentalGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64748b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#94a3b8;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for Contracts module (cyan to blue) -->
+    <linearGradient id="contractsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Arrow marker -->
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#4b5563" />
+    </marker>
+    
+    <!-- Subtle drop shadow -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="3" flood-opacity="0.15" />
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1400" height="900" fill="#f8fafc" />
+  
+  <!-- Title -->
+  <text x="700" y="40" font-size="32" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    PyTex Module Architecture
+  </text>
+  
+  <!-- ===== CORE FOUNDATION LAYER ===== -->
+  
+  <!-- Core Module (Foundation) -->
+  <g filter="url(#shadow)">
+    <rect x="525" y="100" width="350" height="120" rx="12" fill="url(#coreGradient)" />
+    <text x="700" y="140" font-size="20" font-weight="bold" text-anchor="middle" fill="white">
+      Core
+    </text>
+    <text x="700" y="165" font-size="13" text-anchor="middle" fill="#ffffff">
+      Canonical Data Model
+    </text>
+    <text x="700" y="185" font-size="13" text-anchor="middle" fill="#ffffff">
+      Frames, Symmetry, Orientations
+    </text>
+    <text x="700" y="205" font-size="13" text-anchor="middle" fill="#ffffff">
+      Vectorized Primitives
+    </text>
+  </g>
+  
+  <!-- ===== DOMAIN MODULES LAYER ===== -->
+  
+  <!-- Texture Module -->
+  <g filter="url(#shadow)">
+    <rect x="100" y="300" width="280" height="140" rx="12" fill="url(#textureGradient)" />
+    <text x="240" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+      Texture
+    </text>
+    <text x="240" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+      Pole Figures, IPF
+    </text>
+    <text x="240" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+      ODF, Fibers
+    </text>
+    <text x="240" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+      Orientation Analysis
+    </text>
+    <text x="240" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+      Texture Visualization
+    </text>
+  </g>
+  
+  <!-- EBSD Module -->
+  <g filter="url(#shadow)">
+    <rect x="460" y="300" width="280" height="140" rx="12" fill="url(#ebsdGradient)" />
+    <text x="600" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+      EBSD
+    </text>
+    <text x="600" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+      Crystal Maps
+    </text>
+    <text x="600" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+      Grain Analysis
+    </text>
+    <text x="600" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+      KAM, Segmentation
+    </text>
+    <text x="600" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+      Workflow Pipelines
+    </text>
+  </g>
+  
+  <!-- Diffraction Module -->
+  <g filter="url(#shadow)">
+    <rect x="820" y="300" width="280" height="140" rx="12" fill="url(#diffractionGradient)" />
+    <text x="960" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+      Diffraction
+    </text>
+    <text x="960" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+      Geometry, Reciprocal Space
+    </text>
+    <text x="960" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+      XRD, SAED
+    </text>
+    <text x="960" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+      Reflection Families
+    </text>
+    <text x="960" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+      Simulation
+    </text>
+  </g>
+  
+  <!-- ===== CONNECTION ARROWS: Core to Domain ===== -->
+  
+  <!-- Core to Texture -->
+  <line x1="600" y1="220" x2="240" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="5,5" opacity="0.6" marker-end="url(#arrowhead)" />
+  
+  <!-- Core to EBSD -->
+  <line x1="700" y1="220" x2="600" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="5,5" opacity="0.6" marker-end="url(#arrowhead)" />
+  
+  <!-- Core to Diffraction -->
+  <line x1="800" y1="220" x2="960" y2="300" stroke="#4b5563" stroke-width="3" stroke-dasharray="5,5" opacity="0.6" marker-end="url(#arrowhead)" />
+  
+  <!-- ===== SUPPORTING MODULES LAYER ===== -->
+  
+  <!-- Plotting Module (Cross-cutting) -->
+  <g filter="url(#shadow)">
+    <rect x="1180" y="300" width="200" height="140" rx="12" fill="url(#plottingGradient)" />
+    <text x="1280" y="345" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+      Plotting
+    </text>
+    <text x="1280" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+      Scientific
+    </text>
+    <text x="1280" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+      Visualization
+    </text>
+    <text x="1280" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+      Stereographic
+    </text>
+    <text x="1280" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+      3D Rendering
+    </text>
+  </g>
+  
+  <!-- Texture to Plotting -->
+  <path d="M 380 370 Q 750 300 1180 370" stroke="#f43f5e" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="3,3" />
+  
+  <!-- EBSD to Plotting -->
+  <path d="M 740 370 Q 1000 280 1180 370" stroke="#f43f5e" stroke-width="2" fill="none" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="3,3" />
+  
+  <!-- Diffraction to Plotting -->
+  <line x1="1050" y1="370" x2="1180" y2="370" stroke="#f43f5e" stroke-width="2" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="3,3" />
+  
+  <!-- ===== BOTTOM LAYER ===== -->
+  
+  <!-- Contracts Module (Infrastructure) -->
+  <g filter="url(#shadow)">
+    <rect x="100" y="560" width="280" height="120" rx="12" fill="url(#contractsGradient)" />
+    <text x="240" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+      Contracts &amp; Manifests
+    </text>
+    <text x="240" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+      Import, Experiment
+    </text>
+    <text x="240" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+      Benchmark, Validation
+    </text>
+    <text x="240" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+      Data Interchange
+    </text>
+  </g>
+  
+  <!-- Adapters Module (External Integration) -->
+  <g filter="url(#shadow)">
+    <rect x="460" y="560" width="280" height="120" rx="12" fill="url(#adaptersGradient)" />
+    <text x="600" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+      Adapters
+    </text>
+    <text x="600" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+      ORIX, KikuchiPy
+    </text>
+    <text x="600" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+      PyEBSDIndex, pymatgen
+    </text>
+    <text x="600" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+      diffsims, External Tools
+    </text>
+  </g>
+  
+  <!-- Experimental Module (Unstable Research) -->
+  <g filter="url(#shadow)">
+    <rect x="820" y="560" width="280" height="120" rx="12" fill="url(#experimentalGradient)" />
+    <text x="960" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+      Experimental
+    </text>
+    <text x="960" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+      Research Algorithms
+    </text>
+    <text x="960" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+      Unstable Methods
+    </text>
+    <text x="960" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+      Future Development
+    </text>
+  </g>
+  
+  <!-- ===== CONNECTION ARROWS: Domain to Supporting ===== -->
+  
+  <!-- Texture to Contracts -->
+  <line x1="240" y1="440" x2="240" y2="560" stroke="#4b5563" stroke-width="2" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="4,4" />
+  
+  <!-- EBSD to Contracts -->
+  <path d="M 550 440 Q 450 500 320 560" stroke="#4b5563" stroke-width="2" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="4,4" />
+  
+  <!-- EBSD to Adapters -->
+  <line x1="600" y1="440" x2="600" y2="560" stroke="#4b5563" stroke-width="2" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="4,4" />
+  
+  <!-- Diffraction to Experimental -->
+  <line x1="960" y1="440" x2="960" y2="560" stroke="#4b5563" stroke-width="2" opacity="0.5" marker-end="url(#arrowhead)" stroke-dasharray="4,4" />
+  
+  <!-- ===== LEGEND &amp; ANNOTATIONS ===== -->
+  
+  <!-- Legend Box -->
+  <rect x="1100" y="560" width="260" height="180" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" opacity="0.95" />
+  
+  <text x="1230" y="585" font-size="14" font-weight="bold" text-anchor="middle" fill="#0f172a">
+    Architecture Tiers
+  </text>
+  
+  <!-- Legend items -->
+  <rect x="1115" y="600" width="12" height="12" rx="2" fill="url(#coreGradient)" />
+  <text x="1135" y="609" font-size="12" fill="#1e293b">Foundation</text>
+  
+  <rect x="1115" y="630" width="12" height="12" rx="2" fill="url(#textureGradient)" />
+  <text x="1135" y="639" font-size="12" fill="#1e293b">Domain Modules</text>
+  
+  <rect x="1115" y="660" width="12" height="12" rx="2" fill="url(#contractsGradient)" />
+  <text x="1135" y="669" font-size="12" fill="#1e293b">Infrastructure</text>
+  
+  <rect x="1115" y="690" width="12" height="12" rx="2" fill="url(#plottingGradient)" />
+  <text x="1135" y="699" font-size="12" fill="#1e293b">Cross-cutting</text>
+  
+  <rect x="1115" y="720" width="12" height="12" rx="2" fill="url(#adaptersGradient)" />
+  <text x="1135" y="729" font-size="12" fill="#1e293b">External Integration</text>
+  
+  <!-- Footer note -->
+  <text x="700" y="850" font-size="11" text-anchor="middle" fill="#64748b" font-style="italic">
+    All domain modules depend on Core; Plotting is consumed across the stack; Contracts enable interoperability
+  </text>
+</svg>
