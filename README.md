@@ -16,27 +16,47 @@ The repository is being built around four non-negotiable foundations:
 - explicit reference canon governance, so conventions are fixed from authoritative sources and not
   re-litigated locally
 
+## Architecture Overview
+
+![PyTex Architecture Diagram](docs/figures/pytex_architecture_diagram.svg)
+
+The PyTex library is organized into complementary, layered modules:
+
+- **Core**: The foundational canonical data model supporting frames, symmetry, orientations, and vectorized primitives
+- **Domain Modules** (Texture, EBSD, Diffraction): Specialized semantic operations built on Core
+- **Plotting**: Cross-cutting visualization layer supporting scientific figures, stereographic plots, and 3D crystal rendering
+- **Infrastructure** (Contracts & Manifests): Machine-readable schemas for reproducible data interchange
+- **Adapters**: Optional bridges to ORIX, KikuchiPy, PyEBSDIndex, pymatgen, and other tools
+- **Experimental**: Research-stage algorithms and unstable methods staged for future stabilization
+
 ## Start Here
 
-- `mission.md`
-- `specifications.md`
-- `AGENTS.md`
-- `docs/README.md`
-- `docs/architecture/overview.md`
-- `docs/architecture/canonical_data_model.md`
-- `docs/testing/strategy.md`
-- `docs/testing/mtex_parity_matrix.md`
-- `docs/testing/diffraction_validation_matrix.md`
-- `docs/roadmap/implementation_roadmap.md`
-- `docs/standards/notation_and_conventions.md`
-- `docs/standards/latex_and_figures.md`
-- `docs/standards/documentation_architecture.md`
-- `docs/standards/scientific_citation_policy.md`
-- `docs/standards/benchmark_and_tolerance_governance.md`
-- `docs/standards/hexagonal_and_trigonal_conventions.md`
-- `docs/standards/development_principles.md`
-- `docs/standards/data_contracts_and_manifests.md`
-- `docs/standards/reference_canon.md`
+**Core Project Documentation**
+- [mission.md](mission.md) — Project mission and long-term vision
+- [specifications.md](specifications.md) — Technical specifications and requirements
+- [AGENTS.md](AGENTS.md) — Automation and contribution guidelines
+
+**Architecture & Design**
+- [docs/README.md](docs/README.md) — Documentation overview and site structure
+- [docs/architecture/overview.md](docs/architecture/overview.md) — High-level architecture
+- [docs/architecture/canonical_data_model.md](docs/architecture/canonical_data_model.md) — Core data model
+
+**Testing & Validation**
+- [docs/testing/strategy.md](docs/testing/strategy.md) — Testing strategy and approach
+- [docs/testing/mtex_parity_matrix.md](docs/testing/mtex_parity_matrix.md) — MTEX parity validation
+- [docs/testing/diffraction_validation_matrix.md](docs/testing/diffraction_validation_matrix.md) — Diffraction validation
+
+**Roadmap & Standards**
+- [docs/roadmap/implementation_roadmap.md](docs/roadmap/implementation_roadmap.md) — Implementation roadmap
+- [docs/standards/notation_and_conventions.md](docs/standards/notation_and_conventions.md) — Notation and conventions
+- [docs/standards/latex_and_figures.md](docs/standards/latex_and_figures.md) — LaTeX and figure standards
+- [docs/standards/documentation_architecture.md](docs/standards/documentation_architecture.md) — Documentation architecture
+- [docs/standards/scientific_citation_policy.md](docs/standards/scientific_citation_policy.md) — Citation policy
+- [docs/standards/benchmark_and_tolerance_governance.md](docs/standards/benchmark_and_tolerance_governance.md) — Benchmark governance
+- [docs/standards/hexagonal_and_trigonal_conventions.md](docs/standards/hexagonal_and_trigonal_conventions.md) — Hexagonal/trigonal conventions
+- [docs/standards/development_principles.md](docs/standards/development_principles.md) — Development principles
+- [docs/standards/data_contracts_and_manifests.md](docs/standards/data_contracts_and_manifests.md) — Data contracts
+- [docs/standards/reference_canon.md](docs/standards/reference_canon.md) — Reference canon
 
 ## Current Status
 
