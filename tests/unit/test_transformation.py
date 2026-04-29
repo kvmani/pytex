@@ -95,7 +95,10 @@ def test_orientation_relationship_can_be_built_from_parallel_plane_direction() -
 
 def test_orientation_relationship_from_parallel_plane_direction_rejects_phase_mismatch() -> None:
     _, _, parent, child = make_phases()
-    with pytest.raises(ValueError, match="parent_plane.phase must match parent_direction.phase"):
+    with pytest.raises(
+        ValueError,
+        match=r"parent_plane\.phase must match parent_direction\.phase",
+    ):
         OrientationRelationship.from_parallel_plane_direction(
             name="bad_or",
             parent_plane=CrystalPlane(

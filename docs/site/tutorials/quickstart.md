@@ -66,8 +66,8 @@ dataset. PyTex is designed to force that ambiguity into the open early.
 1. Read {doc}`../concepts/core_model` and {doc}`../concepts/reference_frames_and_conventions` if
    you need the frame and mapping semantics first.
 2. Use `OrientationSet.from_euler_angles()` when your input is naturally vectorized.
-3. Use `Phase.from_cif(...)` or `Phase.from_cif_string(...)` when the workflow starts from
-   crystallographic structure data rather than from orientations alone.
-4. Move to {doc}`../workflows/ebsd_import_normalization` if your data comes from EBSD tooling.
-5. Move to {doc}`../validation/index` if you want to inspect what PyTex has actually validated so
-   far before building on a workflow surface.
+3. Move to {doc}`../validation/index` before broadening this example into a larger workflow so you
+   know which surfaces are `implemented` and which remain `foundational`.
+4. Use {doc}`../workflows/phases_and_cif` when the workflow starts from crystallographic structure
+   data rather than from orientations alone. That path requires the full scientific lane.
+5. Move to {doc}`../workflows/ebsd_import_normalization` if your data comes from EBSD tooling.

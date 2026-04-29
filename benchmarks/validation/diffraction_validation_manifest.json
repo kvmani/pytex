@@ -2,7 +2,7 @@
   "schema_id": "pytex.validation_manifest",
   "schema_version": "1.0.0",
   "pytex_version": "0.1.0.dev0",
-  "created_at": "2026-03-26T00:00:00Z",
+  "created_at": "2026-04-29T00:00:00Z",
   "campaign_name": "diffraction_foundation_validation",
   "subsystem": "diffraction",
   "baseline_kind": "internal_plus_literature_growth",
@@ -41,6 +41,7 @@
   "notes": [
     "Internal invariants are implemented and pinned external-baseline cases now exist for powder XRD and SAED across both ni_fcc and fe_bcc starter materials.",
     "Bundled phase-fixture metadata tie the starter diffraction corpus to pinned crystallographic provenance.",
-    "The current external-baseline surface is geometry-first and intentionally separates peak-position or shell-geometry agreement from stronger intensity-model claims."
+    "The current external-baseline surface is geometry-first and intentionally separates peak-position or shell-geometry agreement from stronger intensity-model claims.",
+    "The controlling execution environment for these external-baseline cases is the full scientific lane."
   ]
 }

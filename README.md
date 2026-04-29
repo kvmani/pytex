@@ -60,7 +60,7 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-The repository is now best described as a strong foundation build rather than a pure scaffold:
+The repository is now best described as a validated foundation build rather than a pure scaffold:
 
 - modern Python packaging and CI skeleton
 - canonical core data structures under `src/pytex/`
@@ -100,15 +100,28 @@ build so they do not invent conflicting conventions.
 
 ## Quick Start
 
-Install the package in editable mode with development tools. This standard contributor bootstrap
-includes the CIF-backed structure-import support exercised by the normal test suite:
+PyTex now uses two documented contributor lanes:
+
+- `base lane`: core development, docs, integrity, and the default test suite
+- `full scientific lane`: base lane plus optional scientific adapters such as `pymatgen`, ORIX, KikuchiPy, and diffsims
+
+Install the base lane in editable mode with development tools:
 
 ```bash
-python -m pip install -e '.[dev]'
+python -m pip install -e '.[dev,docs]'
 python scripts/check_repo_integrity.py
-ruff check .
-mypy src
-pytest
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
+python -m sphinx -b html docs/site docs/_build/html
+```
+
+Install the full scientific lane when you need the CIF-backed structure-import path and the
+optional interoperability coverage exercised by the heavier validation surfaces:
+
+```bash
+python -m pip install -e '.[dev,docs,adapters]'
+python -m pytest -q -rs
 ```
 
 Inspect the documentation inventory from the CLI:
@@ -171,10 +184,12 @@ pytex/
 
 - Keep README, roadmap, CI, manifests, and validation ledgers synchronized with the actual
   repository state.
-- Broaden the current first-wave structure-import and diffraction baselines into larger
-  literature-backed programs without weakening the pinned in-repo reproducibility path.
-- Preserve the current core-model clarity while expanding multimodal workflow depth and
-  transformation algorithms on top of the new validated foundations.
+- Maintain one explicit base lane and one explicit full scientific lane so optional-dependency
+  expectations are executable rather than implicit.
+- Broaden the current first-wave structure-import, diffraction, and transformation validation
+  programs without weakening the pinned in-repo reproducibility path.
+- Preserve the current core-model clarity while raising MTEX-foundational coverage in orientation,
+  Miller, and harmonic reconstruction surfaces before broad new feature work.
 
 ## Architecture Snapshot
 

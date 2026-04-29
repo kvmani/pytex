@@ -18,6 +18,14 @@ from pytex.core.orientation import (
 from pytex.core.provenance import ProvenanceRecord
 
 
+def _miller_index(values: tuple[int, int, int], *, phase: Phase) -> MillerIndex:
+    return MillerIndex(np.asarray(values, dtype=np.int64), phase=phase)
+
+
+def _crystal_direction(values: tuple[float, float, float], *, phase: Phase) -> CrystalDirection:
+    return CrystalDirection(np.asarray(values, dtype=np.float64), phase=phase)
+
+
 def _phase_semantically_matches(left: Phase | None, right: Phase) -> bool:
     if left is None:
         return False
@@ -132,10 +140,16 @@ class OrientationRelationship:
         _require_cubic_phase_for_bain(child_phase, role="child")
         return cls.from_parallel_plane_direction(
             name=name,
-            parent_plane=CrystalPlane(MillerIndex((0, 0, 1), phase=parent_phase), phase=parent_phase),
-            child_plane=CrystalPlane(MillerIndex((0, 0, 1), phase=child_phase), phase=child_phase),
-            parent_direction=CrystalDirection((1.0, 1.0, 0.0), phase=parent_phase),
-            child_direction=CrystalDirection((1.0, 0.0, 0.0), phase=child_phase),
+            parent_plane=CrystalPlane(
+                _miller_index((0, 0, 1), phase=parent_phase),
+                phase=parent_phase,
+            ),
+            child_plane=CrystalPlane(
+                _miller_index((0, 0, 1), phase=child_phase),
+                phase=child_phase,
+            ),
+            parent_direction=_crystal_direction((1.0, 1.0, 0.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 0.0, 0.0), phase=child_phase),
             provenance=provenance,
         )
 
@@ -153,15 +167,15 @@ class OrientationRelationship:
         return cls.from_parallel_plane_direction(
             name=name,
             parent_plane=CrystalPlane(
-                MillerIndex((1, 1, 1), phase=parent_phase),
+                _miller_index((1, 1, 1), phase=parent_phase),
                 phase=parent_phase,
             ),
             child_plane=CrystalPlane(
-                MillerIndex((0, 1, 1), phase=child_phase),
+                _miller_index((0, 1, 1), phase=child_phase),
                 phase=child_phase,
             ),
-            parent_direction=CrystalDirection((1.0, -1.0, 0.0), phase=parent_phase),
-            child_direction=CrystalDirection((1.0, 0.0, 0.0), phase=child_phase),
+            parent_direction=_crystal_direction((1.0, -1.0, 0.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 0.0, 0.0), phase=child_phase),
             provenance=provenance,
         )
 

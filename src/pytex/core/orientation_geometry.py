@@ -161,7 +161,8 @@ class OrientationFundamentalRegion:
             symmetry=self.crystal_symmetry,
             phase=reduced.phase,
         )
-        index = int(np.argmin(candidate_set.misorientation_angles_to(identity)))
+        identity_set = OrientationSet.from_orientations([identity])
+        index = int(np.argmin(candidate_set.misorientation_angles_to(identity_set)[:, 0]))
         return candidate_set[index]
 
     def contains(self, orientation: Orientation, *, tolerance_rad: float = 1e-8) -> bool:

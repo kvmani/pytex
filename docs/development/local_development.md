@@ -7,12 +7,22 @@ PyTex targets Python `3.11+` and should remain friendly to normal local developm
 ```bash
 python -m pip install -e '.[dev,docs]'
 python scripts/check_repo_integrity.py
-pytest
-sphinx-build -b html docs/site docs/_build/html
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
+python -m sphinx -b html docs/site docs/_build/html
 ```
 
-This default local-development install includes the CIF-backed structure-import path used by the
-normal unit suite, so a clean `pytest` run does not depend on a second undocumented install step.
+This is the base lane. It is the default contributor environment for integrity checks, docs builds,
+type checking, linting, and the lightweight test suite.
+
+Install the full scientific lane when you need the optional CIF-backed structure-import path and
+the heavier interoperability or external-baseline tests:
+
+```bash
+python -m pip install -e '.[dev,docs,adapters]'
+python -m pytest -q -rs
+```
 
 For a fuller user-facing setup guide, including Windows activation details, notebook use, and PDF build notes, see [Installation And Build](../site/tutorials/installation_and_build.md).
 

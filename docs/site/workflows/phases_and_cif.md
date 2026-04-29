@@ -88,21 +88,13 @@ with explicit frame ownership and stable invariants from the start.
 
 ## Installation
 
-The standard contributor and documentation installs now include the CIF-backed structure-import
-stack used by this workflow:
+This workflow belongs to the full scientific lane:
 
 ```bash
-python -m pip install -e '.[dev]'
+python -m pip install -e '.[dev,docs,adapters]'
 ```
 
-For the docs build path:
-
-```bash
-python -m pip install -e '.[dev,docs]'
-```
-
-The broader `adapters` extra remains optional for heavier interoperability work outside the normal
-structure-import baseline.
+The lightweight base lane intentionally excludes the optional structure-import parser stack.
 
 ## Minimal Example: From CIF Text
 
@@ -200,6 +192,8 @@ This keeps the public `AtomicSite` type explicit and avoids smuggling site disor
 ## Current Limits
 
 - CIF import currently depends on `pymatgen` rather than a native PyTex parser
+- CIF-backed examples should be treated as full-scientific-lane workflows rather than as guarantees
+  of the lightweight base environment
 - space-group information is retained on `Phase`, but PyTex symmetry algorithms still operate on the proper point-group layer implemented in `SymmetrySpec`
 - magnetic symmetry, modulated structures, and richer crystallographic metadata are still ahead
 - broader literature-backed structure-import benchmarking is still ahead of the current invariant-driven baseline

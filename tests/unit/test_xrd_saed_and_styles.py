@@ -240,7 +240,10 @@ def test_hexagonal_miller_bravais_helpers_construct_primitives() -> None:
 def test_hexagonal_prism_cell_overlay_is_constructed_for_hexagonal_axes() -> None:
     pytest.importorskip(
         "pymatgen.core",
-        reason="CIF-backed crystal-scene fixture loading requires the optional pymatgen dependency.",
+        reason=(
+            "CIF-backed crystal-scene fixture loading requires the optional "
+            "pymatgen dependency."
+        ),
     )
     crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
     phase = Phase.from_cif("fixtures/phases/zr_hcp/phase.cif", crystal_frame=crystal)
