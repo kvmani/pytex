@@ -1,6 +1,7 @@
 # Testing Strategy
 
-PyTex treats automated testing, validation ledgers, stable benchmark and validation manifests, and documentation integrity as one scientific quality system.
+PyTex treats automated testing, validation ledgers, stable benchmark and validation manifests, and
+documentation integrity as one scientific quality system.
 
 ## Layers
 
@@ -9,6 +10,17 @@ PyTex treats automated testing, validation ledgers, stable benchmark and validat
 - integration tests for optional adapters and command-line entry points
 - documentation policy tests for references and documentation architecture rules
 - benchmark fixtures and manifests for comparison-oriented workflows
+
+## Execution Lanes
+
+PyTex now treats the test and quality surface as two explicit lanes:
+
+- `base lane`: `.[dev,docs]` for integrity, linting, typing, docs builds, and the default lightweight test suite
+- `full scientific lane`: `.[dev,docs,adapters]` for CIF-backed structure import, pinned diffraction external baselines, and adapter-heavy interoperability coverage
+
+The base lane is the default contributor environment. The full scientific lane is the controlling
+environment for claims that depend on optional scientific packages such as `pymatgen`, ORIX,
+KikuchiPy, PyEBSDIndex, or diffsims.
 
 ## Stable Feature Exit Criteria
 
@@ -39,12 +51,12 @@ remains reproducible across contributors and CI.
 
 ## Human-Auditable Automated Test Documentation
 
-Important tests should be readable by domain experts who do not want to reverse-engineer the implementation first.
+Important tests should be readable by domain experts who do not want to reverse-engineer the
+implementation first.
 
 - The Sphinx validation surface must include documented test cases for major formulas, conversions, and conventions.
 - Each documented test case should identify the code surface, the authoritative reference, the governing formula, at least one worked example, the expected automated assertion, and the last verified code output.
-- For formula-heavy pathways, the documented case should include a domain-audit table with at least:
-  quantity, source-derived expected value, current code output, and interpretation.
+- For formula-heavy pathways, the documented case should include a domain-audit table with at least: quantity, source-derived expected value, current code output, and interpretation.
 - When reference notation and PyTex notation differ, the documented case should state the mismatch explicitly instead of silently rewriting the source into PyTex terminology.
 - When current code output differs from the most obvious textbook expression only by mapping direction, transpose, basis choice, or another convention issue, the documentation should explain that distinction directly.
 - When a future task changes a cited numerical pathway, the corresponding test documentation should be updated in the same change set.
@@ -73,25 +85,22 @@ MTEX is not the only validation authority PyTex needs.
 
 ## Current Review Note
 
-As of the current hardening pass, the repository has passing integrity checks, tests, and docs
-builds for the immediate roadmap surface, but validation breadth is still uneven:
+The repository now has passing integrity checks, tests, docs builds, and a passing full
+scientific lane for the immediate roadmap surface, but validation breadth is still uneven:
 
 - texture and EBSD have explicit MTEX-backed ledgers
 - texture now includes both explicit dictionary inversion and a first harmonic PF-to-ODF reconstruction path, but higher-order external parity and correction workflows remain ahead
-- structure import now has a hash-pinned fixture corpus, manifest-backed audit workflow, and
-  default test-suite coverage, but broader IUCr-style external baselines are still ahead
-- diffraction now has pinned open-source external baselines for one powder XRD workflow family and
-  one SAED workflow family across `ni_fcc` and `fe_bcc`, but broader material and orientation
-  coverage remains ahead
-- plotting now has structural validation coverage for the highest-value runtime surfaces, but
-  external visual-parity work remains ahead
-- XRDML import now has a pinned open-source regression fixture plus synthetic ODF-inversion
-  coverage, but broader vendor and correction-workflow coverage remains ahead
-- phase transformation now has a dedicated manifest schema, benchmark identity, validation ledger,
-  and experimental parent-candidate scoring surface, but literature breadth and full
-  reconstruction workflows remain ahead
-- the priority teaching notebooks now smoke-execute in the default suite, but the full notebook
-  atlas still follows a lighter validation path than the primary roadmap sequence
+- structure import now has a hash-pinned fixture corpus, manifest-backed audit workflow, and default test-suite coverage, but broader IUCr-style external baselines are still ahead
+- diffraction now has pinned open-source external baselines for one powder XRD workflow family and one SAED workflow family across `ni_fcc` and `fe_bcc`, but broader material and orientation coverage remains ahead
+- plotting now has structural validation coverage for the highest-value runtime surfaces, but external visual-parity work remains ahead
+- XRDML import now has a pinned open-source regression fixture plus synthetic ODF-inversion coverage, but broader vendor and correction-workflow coverage remains ahead
+- phase transformation now has a dedicated manifest schema, benchmark identity, validation ledger, and experimental parent-candidate scoring surface, but literature breadth and full reconstruction workflows remain ahead
+- the priority teaching notebooks now smoke-execute in the default suite, but the full notebook atlas still follows a lighter validation path than the primary roadmap sequence
+
+The main quality-gap question is therefore no longer whether the repo can build and test at all, or
+whether the optional `pymatgen`-gated paths execute end to end. The remaining question is how far
+the current evidence justifies broader scientific claims for structure import, diffraction,
+transformation, and interoperability.
 
 ## References
 

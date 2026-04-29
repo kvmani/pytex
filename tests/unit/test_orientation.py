@@ -11,7 +11,11 @@ from pytex.core import (
     FrameDomain,
     Handedness,
     Lattice,
+    MillerDirection,
+    MillerDirectionSet,
     MillerIndex,
+    MillerPlane,
+    MillerPlaneSet,
     Orientation,
     OrientationSet,
     Phase,
@@ -268,6 +272,44 @@ def test_orientation_set_named_quaternion_and_matrix_constructors_match() -> Non
     assert_allclose(from_matrices.as_matrices(), base.as_matrices(), atol=1e-8)
 
 
+def test_rotation_and_orientation_rodrigues_constructors_match_existing_surface() -> None:
+    _, specimen, phase = make_phase_context()
+    base = Rotation.from_axis_angle([0.0, 0.0, 1.0], np.pi / 3.0)
+    rodrigues = base.to_rodrigues()
+    frank = base.to_rodrigues(frank=True)
+    assert_allclose(Rotation.from_rodrigues(rodrigues).as_matrix(), base.as_matrix(), atol=1e-8)
+    assert_allclose(
+        Rotation.from_rodrigues(frank, frank=True).as_matrix(),
+        base.as_matrix(),
+        atol=1e-8,
+    )
+    orientation = Orientation.from_rodrigues(
+        rodrigues,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert orientation.phase == phase
+    assert_allclose(orientation.as_matrix(), base.as_matrix(), atol=1e-8)
+
+
+def test_orientation_set_from_rodrigues_preserves_phase_and_matches_matrices() -> None:
+    crystal, specimen, phase = make_phase_context()
+    base = OrientationSet.from_euler_angles(
+        [[0.0, 0.0, 0.0], [35.0, 25.0, 10.0]],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    rodrigues = base.as_rotation_set().to_rodrigues()
+    from_rodrigues = OrientationSet.from_rodrigues(
+        rodrigues,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert from_rodrigues.phase == phase
+    assert_allclose(from_rodrigues.as_matrices(), base.as_matrices(), atol=1e-8)
+
+
 def test_orientation_from_plane_direction_maps_cube_component_to_identity() -> None:
     _, specimen, phase = make_phase_context()
     plane = CrystalPlane(miller=MillerIndex([0, 0, 1], phase=phase), phase=phase)
@@ -337,3 +379,59 @@ def test_orientation_set_from_plane_direction_vectorized_path_preserves_invarian
         phase=phase,
     )
     assert_allclose(raw.as_matrices(), matrices, atol=1e-8)
+
+
+def test_orientation_set_from_miller_accepts_scalar_and_vectorized_miller_objects() -> None:
+    _, specimen, phase = make_phase_context()
+    scalar = OrientationSet.from_miller(
+        MillerPlane.from_hkl([0, 0, 1], phase=phase),
+        MillerDirection.from_uvw([1, 0, 0], phase=phase),
+        specimen_frame=specimen,
+    )
+    vectorized = OrientationSet.from_miller(
+        MillerPlaneSet.from_hkl([[0, 0, 1], [0, 0, 1]], phase=phase),
+        MillerDirectionSet.from_uvw([[1, 0, 0], [0, 1, 0]], phase=phase),
+        specimen_frame=specimen,
+    )
+    assert len(scalar) == 1
+    assert_allclose(scalar.as_matrices()[0], np.eye(3), atol=1e-8)
+    assert_allclose(
+        vectorized.map_crystal_directions(
+            np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=np.float64)
+        ),
+        [[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
+        atol=1e-8,
+    )
+
+
+def test_orientation_set_from_miller_accepts_hexagonal_four_index_raw_arrays() -> None:
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    symmetry = SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal)
+    lattice = Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal)
+    phase = Phase(name="hcp-demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    orientations = OrientationSet.from_miller(
+        plane=[[0, 0, 0, 1], [0, 0, 0, 1]],
+        direction=[[2, -1, -1, 0], [-1, 2, -1, 0]],
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    mapped_normals = orientations.map_crystal_directions(
+        np.vstack(
+            [
+                MillerPlane.from_hkil([0, 0, 0, 1], phase=phase).normal_cartesian,
+                MillerPlane.from_hkil([0, 0, 0, 1], phase=phase).normal_cartesian,
+            ]
+        )
+    )
+    assert_allclose(mapped_normals, [[0.0, 0.0, 1.0], [0.0, 0.0, 1.0]], atol=1e-8)

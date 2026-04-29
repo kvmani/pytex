@@ -24,7 +24,7 @@ Each fixture directory contains:
 - `metadata.json`
   Machine-readable provenance, citation, redistribution, symmetry, lattice, and usage metadata.
 
-The top-level [`catalog.json`](/Users/anantatamukalaamrutha/pytex/fixtures/phases/catalog.json) file is the authoritative manifest for this corpus.
+The top-level [`catalog.json`](catalog.json) file is the authoritative manifest for this corpus.
 Catalog entries are hash-pinned so the repo can verify fixture integrity as part of the reproducibility contract.
 
 PyTex also exposes this corpus through the public loader helpers:

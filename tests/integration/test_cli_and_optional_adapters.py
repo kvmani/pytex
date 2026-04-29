@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 from pytex import (
@@ -11,11 +13,13 @@ from pytex import (
     MillerDirection,
     MillerPlane,
     Phase,
+    RadiationSpec,
     ReferenceFrame,
     Rotation,
-    SymmetrySpec,
     from_orix_miller,
     from_orix_rotation,
+    generate_powder_reflections,
+    get_phase_fixture,
     to_orix_miller_direction,
     to_orix_miller_plane,
     to_orix_rotation,
@@ -43,6 +47,7 @@ loop_
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = REPO_ROOT / "src"
+DIFFRACTION_FIXTURE_ROOT = REPO_ROOT / "fixtures" / "diffraction"
 
 
 def _subprocess_env() -> dict[str, str]:
@@ -53,6 +58,10 @@ def _subprocess_env() -> dict[str, str]:
         paths.append(existing)
     env["PYTHONPATH"] = os.pathsep.join(paths)
     return env
+
+
+def _canonical_family(indices: tuple[int, int, int] | list[int]) -> tuple[int, int, int]:
+    return tuple(sorted((abs(int(value)) for value in indices), reverse=True))
 
 
 def test_python_m_pytex_info_runs() -> None:
@@ -92,7 +101,6 @@ def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
         axes=("a", "b", "c"),
         handedness=Handedness.RIGHT,
     )
-    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
     phase = Phase.from_cif_string(NACL_CIF, crystal_frame=crystal, phase_name="nacl")
     rotation = Rotation.from_bunge_euler(35.0, 25.0, 10.0)
     recovered_rotation = from_orix_rotation(to_orix_rotation(rotation))
@@ -107,3 +115,33 @@ def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
     recovered_direction = from_orix_miller(to_orix_miller_direction(direction), phase=phase)
     assert recovered_direction.phase.name == phase.name
     assert recovered_direction.indices.tolist() == [1, 0, 0]
+
+
+def test_fixture_backed_powder_xrd_optional_integration_matches_pinned_baseline() -> None:
+    pytest = __import__("pytest")
+    pytest.importorskip("pymatgen.core")
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    payload = json.loads(
+        (DIFFRACTION_FIXTURE_ROOT / "ni_fcc_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
+    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
+        warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
+        phase = get_phase_fixture("ni_fcc").load_phase(crystal_frame=crystal)
+
+    reflections = generate_powder_reflections(
+        phase,
+        radiation=RadiationSpec.cu_ka(),
+        two_theta_range_deg=(20.0, 120.0),
+        max_index=6,
+    )
+    first = reflections[0]
+    expected = payload["reference_peaks"][0]
+    assert _canonical_family(first.miller_indices.tolist()) == tuple(expected["representative_hkl"])
+    assert first.multiplicity == expected["multiplicity"]
+    assert abs(first.two_theta_deg - expected["two_theta_deg"]) <= 0.15

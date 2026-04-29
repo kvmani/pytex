@@ -25,14 +25,13 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 ```
 
-Install the full local development toolchain:
+Install the base contributor lane:
 
 ```bash
 python -m pip install -e ".[dev,docs]"
 ```
-This standard development install includes the CIF-backed structure-import stack used by the
-default test suite. The broader `adapters` extra remains optional for heavier interoperability
-work beyond the normal contributor workflow.
+This base lane covers repository integrity, docs builds, linting, type checking, and the default
+lightweight test suite.
 
 ## Install On Windows
 
@@ -44,9 +43,8 @@ py -3.11 -m venv .venv
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev,docs]"
 ```
-This standard development install includes the CIF-backed structure-import stack used by the
-default test suite. The broader `adapters` extra remains optional for heavier interoperability
-work beyond the normal contributor workflow.
+This base lane covers repository integrity, docs builds, linting, type checking, and the default
+lightweight test suite.
 
 If PowerShell script execution is blocked, activate from `cmd.exe` with:
 
@@ -54,15 +52,42 @@ If PowerShell script execution is blocked, activate from `cmd.exe` with:
 .venv\\Scripts\\activate.bat
 ```
 
+## Contributor Lanes
+
+### Base Lane
+
+Use the base lane for normal contributor work:
+
+```bash
+python scripts/check_repo_integrity.py
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
+python -m sphinx -b html docs/site docs/_build/html
+```
+
+### Full Scientific Lane
+
+Use the full scientific lane when you need optional structure-import or interoperability coverage:
+
+```bash
+python -m pip install -e ".[dev,docs,adapters]"
+python -m pytest -q -rs
+```
+
+The full scientific lane now runs without the previous `pymatgen`-gated skips and is the
+controlling environment for CIF-backed phase construction, pinned diffraction external baselines,
+and the heavier notebook smoke path.
+
 ## Run The Core Quality Gates
 
 These commands should work the same way on Windows, macOS, and Linux once the environment is active:
 
 ```bash
 python scripts/check_repo_integrity.py
-ruff check .
-mypy src
-pytest -q
+python -m ruff check .
+python -m mypy src
+python -m pytest -q
 ```
 
 ## Build The Sphinx HTML Docs
@@ -121,11 +146,12 @@ python -m jupyter lab docs/site/tutorials/notebooks
 
 ### `ImportError` from broader optional adapters
 
-The default development install already includes the CIF-backed structure-import support used by
-the normal test suite. For heavier optional interoperability adapters, install:
+The base lane intentionally excludes the heavier optional scientific adapters. Install the full
+scientific lane when you need CIF-backed phase loading, ORIX bridges, or other adapter-heavy
+validation:
 
 ```bash
-python -m pip install -e ".[adapters]"
+python -m pip install -e ".[dev,docs,adapters]"
 ```
 
 ### Sphinx builds but notebook content looks stale

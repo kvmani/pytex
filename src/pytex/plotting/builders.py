@@ -524,7 +524,11 @@ def build_odf_figure_spec(
                 else _weights_to_sizes(weights)
             ),
             title=title
-            or ("Harmonic ODF Samples In Euler Space" if isinstance(odf, HarmonicODF) else "ODF Support In Euler Space"),
+            or (
+                "Harmonic ODF Samples In Euler Space"
+                if isinstance(odf, HarmonicODF)
+                else "ODF Support In Euler Space"
+            ),
         )
     if kind == "contour":
         angles = euler_set.angles if euler_set.degrees else np.rad2deg(euler_set.angles)

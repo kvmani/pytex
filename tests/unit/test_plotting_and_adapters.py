@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from numpy.testing import assert_allclose
 
 from pytex import (
     CrystalDirection,
@@ -138,6 +139,26 @@ def test_ipf_color_key_generates_finite_colors_from_orientations() -> None:
     assert colors.shape == (2, 3)
     assert np.all(np.isfinite(colors))
     assert np.all((colors >= 0.0) & (colors <= 1.0))
+
+
+def test_orix_orientation_adapter_round_trip_preserves_orientation_set_payload() -> None:
+    pytest.importorskip("orix")
+    crystal, specimen, phase = make_phase()
+    orientations = OrientationSet.from_rodrigues(
+        np.array([[0.0, 0.0, 0.0], [0.0, 0.0, np.tan(np.pi / 8.0)]], dtype=np.float64),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    recovered = from_orix_orientation(
+        to_orix_orientation(orientations),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    assert isinstance(recovered, OrientationSet)
+    assert recovered.phase == phase
+    assert_allclose(recovered.as_matrices(), orientations.as_matrices(), atol=1e-8)
 
 
 def test_ebsd_import_manifest_round_trip_and_validation() -> None:

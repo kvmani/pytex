@@ -20,9 +20,9 @@ Reference baseline:
 | Area | MTEX reference examples/tests | PyTex status | Notes |
 | --- | --- | --- | --- |
 | Euler/quaternion conversions | `check_eulerquat.m` | implemented | Baseline conversion and normalization tests are present, and the public rotation surface now also covers vectorized axis-angle, matrix, and Rodrigues / Rodrigues--Frank conversions. |
-| Orientation construction and grids | `orientation.byEuler`, `orientation.byAxisAngle`, `orientation.byMiller`, `regularSO3Grid`, `equispacedSO3Grid` | foundational | Scalar orientation constructors, SO2 grids, regular Bunge SO3 grids, and deterministic quaternion SO3 grids now exist with PyTex frame and symmetry metadata. MTEX numerical parity is intentionally not claimed while external validation is paused. |
-| Miller planes, directions, and family expansion | MTEX `Miller` object workflows and indexing examples | foundational | First-class `MillerPlane` / `MillerDirection` scalar and batch objects now cover vectorized reciprocal/direct vectors, d-spacings, hexagonal index conversion, angle relations, projection, symmetry-family expansion, JSON contracts, and orix interop. Broader MTEX parity for plotting idioms and every crystal-class helper remains ahead. |
-| Fundamental regions | `check_fundamentalRegion.m` | foundational | Exact orbit-based minimum-angle reduction is implemented for the supported proper point groups, but broader class-by-class boundary catalogs are still ahead. |
+| Orientation construction and grids | `orientation.byEuler`, `orientation.byAxisAngle`, `orientation.byMiller`, `regularSO3Grid`, `equispacedSO3Grid` | foundational | Scalar and batch orientation constructors now cover Euler, axis-angle, matrix, quaternion, Rodrigues / Rodrigues-Frank, Miller plane-direction correspondences, regular Bunge SO3 grids, and deterministic quaternion SO3 grids with shared frame and symmetry checks. External parity breadth remains ahead. |
+| Miller planes, directions, and family expansion | MTEX `Miller` object workflows and indexing examples | foundational | First-class `MillerPlane` / `MillerDirection` scalar and batch objects now cover vectorized reciprocal/direct vectors, d-spacings, hexagonal index conversion, angle relations, projection, symmetry-family expansion, JSON contracts, orix interop, and Miller-backed orientation construction from three- or four-index inputs. Broader MTEX parity for plotting idioms and every crystal-class helper remains ahead. |
+| Fundamental regions | `check_fundamentalRegion.m` | foundational | Exact orbit-based minimum-angle reduction is implemented and now regression-tested across the supported proper point groups, but broader class-by-class closed-form boundary catalogs are still ahead. |
 | Symmetry operators and SO(3) basics | `SO3FunTests`, `check_WignerD.m`, symmetry-related checks | foundational | Common proper point-group generation, exact orbit reduction, symmetry actions, and a first Wigner-basis harmonic reconstruction surface are implemented; broader external parity is still ahead. |
 | Spherical projections and stereonets | public spherical-projection examples and plotting workflows | foundational | Wulff-net plotting, stereographic direction/plane projection, great-circle traces, and rotational symmetry-axis symbols are implemented with deterministic regression coverage, but full MTEX visual-parity claims are still ahead. |
 | EBSD container basics | `check_ebsd.m` | implemented | `CrystalMap` plus fixture-backed regular-grid segmentation coverage are implemented. |
@@ -42,6 +42,18 @@ The following categories must exceed MTEX coverage:
 - adapter interoperability with ORIX, KikuchiPy, PyEBSDIndex, pymatgen, and diffsims
 - LaTeX/SVG documentation asset integrity
 - workflow-level reproducibility from CLI entry points
+
+## Current Hardening Priorities
+
+The highest-value remaining MTEX-facing hardening work is concentrated in the foundational rows
+that underpin multiple downstream subsystems:
+
+- orientation construction and deterministic SO(3) grid coverage
+- Miller plane and direction workflows beyond the current starter families
+- broader class-by-class fundamental-region coverage
+- richer symmetry and harmonic parity breadth
+- broader ODF/PF reconstruction breadth
+- stronger interface and import or export parity at the adapter boundary
 
 ## References
 

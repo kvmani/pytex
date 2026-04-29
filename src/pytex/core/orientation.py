@@ -17,6 +17,12 @@ from pytex.core.batches import EulerSet, RotationSet, VectorSet, normalize_euler
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalDirection, CrystalPlane, Phase
+from pytex.core.miller import (
+    MillerDirection,
+    MillerDirectionSet,
+    MillerPlane,
+    MillerPlaneSet,
+)
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
@@ -659,6 +665,127 @@ def _phase_from_plane_direction_objects(
     return resolved_phase
 
 
+def _phase_from_miller_objects(
+    planes: tuple[MillerPlane | MillerPlaneSet, ...],
+    directions: tuple[MillerDirection | MillerDirectionSet, ...],
+    *,
+    phase: Phase | None,
+) -> Phase:
+    if len(planes) != len(directions):
+        raise ValueError("Plane and direction sequences must have the same length.")
+    if not planes:
+        raise ValueError("At least one plane/direction pair is required.")
+    resolved_phase = phase or planes[0].phase
+    for plane in planes:
+        if plane.phase != resolved_phase:
+            raise ValueError("All Miller-plane inputs must share the same phase.")
+    for direction in directions:
+        if direction.phase != resolved_phase:
+            raise ValueError("All Miller-direction inputs must share the same phase.")
+    return resolved_phase
+
+
+def _coerce_plane_direction_vectors(
+    plane: CrystalPlane
+    | list[CrystalPlane]
+    | tuple[CrystalPlane, ...]
+    | MillerPlane
+    | MillerPlaneSet
+    | ArrayLike,
+    direction: CrystalDirection
+    | list[CrystalDirection]
+    | tuple[CrystalDirection, ...]
+    | MillerDirection
+    | MillerDirectionSet
+    | ArrayLike,
+    *,
+    phase: Phase | None,
+) -> tuple[np.ndarray, np.ndarray, Phase]:
+    if isinstance(plane, CrystalPlane):
+        if not isinstance(direction, CrystalDirection):
+            raise ValueError(
+                "A scalar CrystalPlane input requires a matching scalar CrystalDirection."
+            )
+        resolved_phase = _phase_from_plane_direction_objects((plane,), (direction,), phase=phase)
+        return plane.normal[None, :], direction.unit_vector[None, :], resolved_phase
+    if (
+        isinstance(plane, tuple)
+        and isinstance(direction, tuple)
+        and all(isinstance(item, CrystalPlane) for item in plane)
+        and all(isinstance(item, CrystalDirection) for item in direction)
+    ):
+        planes = plane
+        directions = direction
+        resolved_phase = _phase_from_plane_direction_objects(planes, directions, phase=phase)
+        return (
+            normalize_vectors(np.vstack([item.normal for item in planes])),
+            normalize_vectors(np.vstack([item.unit_vector for item in directions])),
+            resolved_phase,
+        )
+    if isinstance(plane, MillerPlane):
+        if not isinstance(direction, MillerDirection):
+            raise ValueError(
+                "A scalar MillerPlane input requires a matching scalar MillerDirection."
+            )
+        resolved_phase = _phase_from_miller_objects((plane,), (direction,), phase=phase)
+        return (
+            plane.normal_cartesian[None, :],
+            direction.unit_vector_cartesian[None, :],
+            resolved_phase,
+        )
+    if isinstance(plane, MillerPlaneSet):
+        if not isinstance(direction, MillerDirectionSet):
+            raise ValueError(
+                "A MillerPlaneSet input requires a matching MillerDirectionSet."
+            )
+        if plane.indices.shape[0] != direction.indices.shape[0]:
+            raise ValueError("MillerPlaneSet and MillerDirectionSet must have matching lengths.")
+        resolved_phase = _phase_from_miller_objects((plane,), (direction,), phase=phase)
+        return plane.normals_cartesian(), direction.unit_vectors_cartesian(), resolved_phase
+
+    if phase is None:
+        raise ValueError(
+            "phase is required when constructing orientations from raw plane and "
+            "direction index arrays."
+        )
+    plane_indices = np.asarray(plane, dtype=np.float64)
+    direction_indices = np.asarray(direction, dtype=np.float64)
+    if plane_indices.ndim == 1:
+        plane_indices = plane_indices[None, :]
+    if direction_indices.ndim == 1:
+        direction_indices = direction_indices[None, :]
+    if plane_indices.ndim != 2 or direction_indices.ndim != 2:
+        raise ValueError(
+            "Raw plane and direction index arrays must have shape (3,), (4,), (n, 3), or (n, 4)."
+        )
+    if plane_indices.shape[1] not in {3, 4}:
+        raise ValueError("plane index arrays must have 3 or 4 columns.")
+    if direction_indices.shape[1] not in {3, 4}:
+        raise ValueError("direction index arrays must have 3 or 4 columns.")
+    if plane_indices.shape[0] == 1 and direction_indices.shape[0] > 1:
+        plane_indices = np.broadcast_to(plane_indices, direction_indices.shape)
+    elif direction_indices.shape[0] == 1 and plane_indices.shape[0] > 1:
+        direction_indices = np.broadcast_to(direction_indices, plane_indices.shape)
+    elif plane_indices.shape[0] != direction_indices.shape[0]:
+        raise ValueError("Raw plane and direction index arrays must broadcast to the same length.")
+    if plane_indices.shape[1] == 4:
+        plane_rows = MillerPlaneSet.from_hkil(plane_indices.astype(np.int64), phase=phase)
+        crystal_normals = plane_rows.normals_cartesian()
+    else:
+        reciprocal_basis = phase.lattice.reciprocal_basis().matrix
+        crystal_normals = normalize_vectors(plane_indices @ reciprocal_basis.T)
+    if direction_indices.shape[1] == 4:
+        direction_rows = MillerDirectionSet.from_UVTW(
+            direction_indices.astype(np.int64),
+            phase=phase,
+        )
+        crystal_directions = direction_rows.unit_vectors_cartesian()
+    else:
+        direct_basis = phase.lattice.direct_basis().matrix
+        crystal_directions = normalize_vectors(direction_indices @ direct_basis.T)
+    return crystal_normals, crystal_directions, phase
+
+
 @dataclass(frozen=True, slots=True)
 class Rotation:
     quaternion: np.ndarray
@@ -678,6 +805,11 @@ class Rotation:
     @classmethod
     def from_axis_angle(cls, axis: ArrayLike, angle_rad: float) -> Rotation:
         return cls(quaternion=quaternion_from_axis_angle(axis, angle_rad))
+
+    @classmethod
+    def from_rodrigues(cls, rodrigues: ArrayLike, *, frank: bool = False) -> Rotation:
+        quaternions = quaternions_from_rodrigues(rodrigues, frank=frank)
+        return cls(quaternion=quaternions[0])
 
     @classmethod
     def from_euler(
@@ -759,6 +891,12 @@ class Rotation:
 
     def to_abg_euler(self, *, degrees: bool = True) -> tuple[float, float, float]:
         return self.to_euler(convention="abg", degrees=degrees)
+
+    def to_rodrigues(self, *, frank: bool = False) -> np.ndarray:
+        return as_float_array(
+            quaternions_to_rodrigues(self.quaternion[None, :], frank=frank)[0],
+            shape=(4 if frank else 3,),
+        )
 
     def compose(self, other: Rotation) -> Rotation:
         return Rotation(quaternion=quaternion_multiply(self.quaternion, other.quaternion))
@@ -954,6 +1092,36 @@ class Orientation:
         )
         return cls(
             rotation=Rotation(quaternion=np.asarray(quaternion, dtype=np.float64)),
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_rodrigues(
+        cls,
+        rodrigues: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        frank: bool = False,
+        provenance: ProvenanceRecord | None = None,
+    ) -> Orientation:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            rotation=Rotation.from_rodrigues(rodrigues, frank=frank),
             crystal_frame=crystal_frame,
             specimen_frame=specimen_frame,
             symmetry=symmetry,
@@ -1477,10 +1645,73 @@ class OrientationSet:
         )
 
     @classmethod
+    def from_rodrigues(
+        cls,
+        rodrigues: ArrayLike,
+        *,
+        crystal_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame,
+        symmetry: SymmetrySpec | None = None,
+        phase: Phase | None = None,
+        frank: bool = False,
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        if crystal_frame is None:
+            if phase is None:
+                raise ValueError("crystal_frame is required when phase is not provided.")
+            crystal_frame = phase.crystal_frame
+        phase, symmetry = _resolve_phase_symmetry(
+            phase=phase,
+            symmetry=symmetry,
+            crystal_frame=crystal_frame,
+        )
+        return cls(
+            quaternions=RotationSet.from_rodrigues(
+                rodrigues,
+                frank=frank,
+                provenance=provenance,
+            ).quaternions,
+            crystal_frame=crystal_frame,
+            specimen_frame=specimen_frame,
+            symmetry=symmetry,
+            phase=phase,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_miller(
+        cls,
+        plane: MillerPlane | MillerPlaneSet | ArrayLike,
+        direction: MillerDirection | MillerDirectionSet | ArrayLike,
+        *,
+        specimen_frame: ReferenceFrame,
+        phase: Phase | None = None,
+        specimen_plane_normal: str | ArrayLike = "ND",
+        specimen_direction: str | ArrayLike = "RD",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationSet:
+        return cls.from_plane_direction(
+            plane=plane,
+            direction=direction,
+            specimen_frame=specimen_frame,
+            phase=phase,
+            specimen_plane_normal=specimen_direction_vector(specimen_plane_normal),
+            specimen_direction=specimen_direction_vector(specimen_direction),
+            provenance=provenance,
+        )
+
+    @classmethod
     def from_plane_direction(
         cls,
-        plane: CrystalPlane | list[CrystalPlane] | tuple[CrystalPlane, ...] | ArrayLike,
+        plane: CrystalPlane
+        | MillerPlane
+        | MillerPlaneSet
+        | list[CrystalPlane]
+        | tuple[CrystalPlane, ...]
+        | ArrayLike,
         direction: CrystalDirection
+        | MillerDirection
+        | MillerDirectionSet
         | list[CrystalDirection]
         | tuple[CrystalDirection, ...]
         | ArrayLike,
@@ -1491,60 +1722,19 @@ class OrientationSet:
         specimen_direction: ArrayLike = (1.0, 0.0, 0.0),
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationSet:
-        if isinstance(plane, CrystalPlane):
-            if not isinstance(direction, CrystalDirection):
-                raise ValueError(
-                    "A scalar CrystalPlane input requires a matching scalar CrystalDirection."
-                )
-            resolved_phase = _phase_from_plane_direction_objects(
-                (plane,),
-                (direction,),
-                phase=phase,
-            )
-            crystal_normals = plane.normal[None, :]
-            crystal_directions = direction.unit_vector[None, :]
-        elif (
-            isinstance(plane, (list, tuple))
-            and isinstance(direction, (list, tuple))
+        if (
+            isinstance(plane, list)
+            and isinstance(direction, list)
             and all(isinstance(item, CrystalPlane) for item in plane)
             and all(isinstance(item, CrystalDirection) for item in direction)
         ):
-            planes = tuple(plane)
-            directions = tuple(direction)
-            resolved_phase = _phase_from_plane_direction_objects(planes, directions, phase=phase)
-            crystal_normals = normalize_vectors(np.vstack([item.normal for item in planes]))
-            crystal_directions = normalize_vectors(
-                np.vstack([item.unit_vector for item in directions])
-            )
-        else:
-            if phase is None:
-                raise ValueError(
-                    "phase is required when constructing orientations from raw plane and "
-                    "direction index arrays."
-                )
-            plane_indices = np.asarray(plane, dtype=np.float64)
-            direction_indices = np.asarray(direction, dtype=np.float64)
-            if plane_indices.shape == (3,):
-                plane_indices = plane_indices[None, :]
-            if direction_indices.shape == (3,):
-                direction_indices = direction_indices[None, :]
-            if plane_indices.ndim != 2 or plane_indices.shape[1] != 3:
-                raise ValueError("plane index arrays must have shape (3,) or (n, 3).")
-            if direction_indices.ndim != 2 or direction_indices.shape[1] != 3:
-                raise ValueError("direction index arrays must have shape (3,) or (n, 3).")
-            if plane_indices.shape[0] == 1 and direction_indices.shape[0] > 1:
-                plane_indices = np.broadcast_to(plane_indices, direction_indices.shape)
-            elif direction_indices.shape[0] == 1 and plane_indices.shape[0] > 1:
-                direction_indices = np.broadcast_to(direction_indices, plane_indices.shape)
-            elif plane_indices.shape[0] != direction_indices.shape[0]:
-                raise ValueError(
-                    "Raw plane and direction index arrays must broadcast to the same length."
-                )
-            reciprocal_basis = phase.lattice.reciprocal_basis().matrix
-            direct_basis = phase.lattice.direct_basis().matrix
-            crystal_normals = normalize_vectors(plane_indices @ reciprocal_basis.T)
-            crystal_directions = normalize_vectors(direction_indices @ direct_basis.T)
-            resolved_phase = phase
+            plane = tuple(plane)
+            direction = tuple(direction)
+        crystal_normals, crystal_directions, resolved_phase = _coerce_plane_direction_vectors(
+            plane,
+            direction,
+            phase=phase,
+        )
         specimen_count = int(crystal_normals.shape[0])
         matrices = _plane_direction_rotation_matrices(
             crystal_normals=crystal_normals,

@@ -29,6 +29,7 @@ docs/_build/
 # OS-specific noise
 Thumbs.db
 .codex_previews/
+.codex_presentation/
 .DS_Store
 output/*.png
 output/*.svg

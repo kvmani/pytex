@@ -2,7 +2,7 @@
   "schema_id": "pytex.validation_manifest",
   "schema_version": "1.0.0",
   "pytex_version": "0.1.0.dev0",
-  "created_at": "2026-03-31T00:00:00Z",
+  "created_at": "2026-04-29T00:00:00Z",
   "campaign_name": "phase_transformation_foundation_validation",
   "subsystem": "transformation",
   "baseline_kind": "internal_semantics_plus_literature_tracked_foundation",
@@ -29,6 +29,7 @@
   ],
   "notes": [
     "PyTex now validates transformation semantics, variant-indexed prediction, and bounded experimental parent scoring in-repo.",
+    "Named Bain and Nishiyama-Wassermann starter correspondences are now part of the literature-tracked validation surface.",
     "The campaign remains foundational because broad literature-backed transformation families and curated reconstruction datasets are still ahead."
   ]
 }

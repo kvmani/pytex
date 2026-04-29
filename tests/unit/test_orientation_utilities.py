@@ -181,3 +181,60 @@ def test_orientation_from_miller_accepts_objects_and_raw_indices() -> None:
     )
     assert_allclose(from_objects.as_matrix(), np.eye(3), atol=1e-8)
     assert_allclose(from_raw.as_matrix(), np.eye(3), atol=1e-8)
+
+
+@pytest.mark.parametrize(
+    ("point_group", "specimen_point_group"),
+    [
+        ("1", None),
+        ("2", None),
+        ("222", None),
+        ("3", None),
+        ("32", None),
+        ("4", None),
+        ("422", None),
+        ("6", None),
+        ("622", None),
+        ("23", None),
+        ("432", "222"),
+    ],
+)
+def test_orientation_projection_is_idempotent_across_supported_point_groups(
+    point_group: str,
+    specimen_point_group: str | None,
+) -> None:
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    crystal_symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal)
+    specimen_symmetry = (
+        None
+        if specimen_point_group is None
+        else SymmetrySpec.from_point_group(specimen_point_group, reference_frame=specimen)
+    )
+    lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase = Phase("phase", lattice=lattice, symmetry=crystal_symmetry, crystal_frame=crystal)
+    orientation = Orientation.from_euler(
+        35.0,
+        25.0,
+        10.0,
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    projected = orientation.project_to_exact_fundamental_region(
+        specimen_symmetry=specimen_symmetry
+    )
+    reprojection = projected.project_to_exact_fundamental_region(
+        specimen_symmetry=specimen_symmetry
+    )
+    assert projected.is_in_fundamental_region(specimen_symmetry=specimen_symmetry)
+    assert_allclose(reprojection.as_matrix(), projected.as_matrix(), atol=1e-10)

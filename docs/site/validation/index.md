@@ -33,8 +33,8 @@ Read the validation surface in this order:
 3. check whether the result is `implemented`, `foundational`, or still limited
 4. read the linked workflow or theory note before treating a numerical match as a broad scientific claim
 
-The key question is not only “does a test pass?” The key question is “what exact scientific claim
-does this passing test justify?”
+The key question is not only "does a test pass?" The key question is "what exact scientific claim
+does this passing test justify?"
 
 ## Explicitly Checked Today
 
@@ -48,6 +48,8 @@ does this passing test justify?”
 - CIF-backed phase creation, point-group preservation, and space-group preservation
 - runtime plotting semantics for the highest-value publication-facing surfaces
 - transformation-variant prediction and bounded experimental parent-candidate scoring
+- the bundled phase-fixture corpus through pinned conventional and primitive audit expectations in the full scientific lane
+- pinned diffraction external-baseline payloads for starter powder-XRD and SAED cases in the full scientific lane
 
 ## What Is Still Limited
 
@@ -55,6 +57,7 @@ does this passing test justify?”
 - Diffraction coverage is still stronger on geometry and kinematics than on full physical intensity
   modeling.
 - Adapter support is not automatically equivalent to broad live-package interoperability coverage.
+- CIF-backed phase construction and pinned diffraction baseline claims belong to the full scientific lane, not the lightweight base lane.
 - A passing validation page does not imply every neighboring workflow variant is equally mature.
 
 For optional interoperability specifically, the controlling question is: which semantic boundary has

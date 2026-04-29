@@ -17,7 +17,7 @@ from pytex.core import (
 )
 from pytex.diffraction.stereonets import spherical_angles_to_directions
 from pytex.plotting.builders import build_odf_figure_spec
-from pytex.texture import HarmonicODF, KernelSpec
+from pytex.texture import HarmonicODF, KernelSpec, residual_reports_for_pole_figures
 from pytex.texture.harmonics import (
     _bunge_quadrature,
     _enumerate_terms,
@@ -42,7 +42,12 @@ def make_harmonic_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase, Symm
     crystal_symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
     specimen_symmetry = SymmetrySpec.from_point_group("mmm", reference_frame=specimen)
     lattice = Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=crystal)
-    phase = Phase(name="fcc-demo", lattice=lattice, symmetry=crystal_symmetry, crystal_frame=crystal)
+    phase = Phase(
+        name="fcc-demo",
+        lattice=lattice,
+        symmetry=crystal_symmetry,
+        crystal_frame=crystal,
+    )
     return crystal, specimen, phase, specimen_symmetry
 
 
@@ -175,3 +180,66 @@ def test_harmonic_odf_section_plot_builder_returns_panel_grid() -> None:
         section_big_phi_steps=13,
     )
     assert len(spec.panels) == 2
+
+
+def test_harmonic_reconstruction_report_exposes_basis_and_density_diagnostics() -> None:
+    harmonic_odf = make_synthetic_harmonic_odf()
+    sample_directions = make_measurement_grid()
+    phase = harmonic_odf.phase
+    assert phase is not None
+    pole = CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase)
+    report = HarmonicODF.invert_pole_figures(
+        (
+            harmonic_odf.reconstruct_pole_figure(
+                pole,
+                sample_directions=sample_directions,
+                include_symmetry_family=True,
+                antipodal=True,
+            ),
+        ),
+        degree_bandlimit=2,
+        regularization=1e-8,
+        include_symmetry_family=True,
+        pole_kernel=harmonic_odf.pole_kernel,
+        specimen_symmetry=harmonic_odf.specimen_symmetry,
+        phi1_step_deg=60.0,
+        big_phi_step_deg=60.0,
+        phi2_step_deg=60.0,
+        basis_tolerance=1e-10,
+    )
+    assert report.basis_size > 0
+    assert report.raw_basis_size >= report.basis_size
+    assert report.matrix_rank > 0
+    assert report.quadrature_size == len(report.odf.quadrature_orientations)
+    assert report.crystal_symmetry_order == harmonic_odf.crystal_symmetry.order
+    assert report.specimen_symmetry_order == harmonic_odf.specimen_symmetry.order
+    assert report.coefficient_l2_norm >= 0.0
+    assert report.coefficient_max_abs >= 0.0
+    assert 0.0 <= report.negative_density_fraction <= 1.0
+
+
+def test_harmonic_residual_reports_match_reconstruction_surface() -> None:
+    harmonic_odf = make_synthetic_harmonic_odf()
+    sample_directions = make_measurement_grid()
+    phase = harmonic_odf.phase
+    assert phase is not None
+    poles = (
+        CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase),
+        CrystalPlane(miller=MillerIndex([1, 1, 0], phase=phase), phase=phase),
+    )
+    pole_figures = tuple(
+        harmonic_odf.reconstruct_pole_figure(
+            pole,
+            sample_directions=sample_directions,
+            include_symmetry_family=True,
+            antipodal=True,
+        )
+        for pole in poles
+    )
+    reports = residual_reports_for_pole_figures(harmonic_odf, pole_figures)
+    assert len(reports) == 2
+    for report, pole_figure in zip(reports, pole_figures, strict=True):
+        assert report.observation_count == pole_figure.intensities.size
+        assert_allclose(report.predicted_intensities, pole_figure.intensities, atol=1e-8)
+        assert_allclose(report.residuals, np.zeros_like(report.residuals), atol=1e-8)
+        assert report.relative_residual_norm <= 1e-8

@@ -13,8 +13,10 @@ They are also expected to track the current runtime API closely. When plotting, 
 batch behavior changes in code, the notebook generator and the built notebooks must be updated in
 the same change so the executable examples stay trustworthy.
 
-The priority roadmap notebooks are also smoke-executed in the default test suite. PyTex therefore
-treats them as stable teaching artifacts rather than as unverified examples.
+The priority roadmap notebooks are smoke-executed in the default suite when they stay within the
+lightweight surface, and the heavier structure or diffraction notebooks are controlled by the full
+scientific lane. PyTex therefore treats them as stable teaching artifacts rather than as unverified
+examples.
 
 ## Notebook Atlas
 
@@ -81,9 +83,17 @@ phase is:
 That path mirrors the intended public learning route: canonical frames and orientations first,
 structure and provenance second, then texture, EBSD, diffraction, and plotting.
 
+For the validated fixture-to-diffraction route in the full scientific lane, continue with:
+
+9. `11_powder_xrd_workflows`
+10. `12_saed_workflows`
+11. `13_crystal_visualization_workflows`
+12. `15_structure_diffraction_visualization_pipeline`
+
 ## How This Relates To Validation
 
-- The roadmap-priority notebooks are smoke-executed in the default test suite.
+- The lightweight notebooks are smoke-executed in the base lane, and the fixture-backed
+  structure/diffraction notebooks are controlled by the full scientific lane.
 - Notebook examples are expected to agree with the public concept, workflow, and validation pages.
 - If a notebook shows a pedagogical simplification, the corresponding workflow page should say so
   explicitly rather than leaving the distinction implicit in code cells.
