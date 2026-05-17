@@ -1,0 +1,265 @@
+{
+  "schema_id": "pytex.parity_case_campaign",
+  "schema_version": "0.1.0",
+  "campaign_id": "orientation_core_v1",
+  "title": "Orientation construction and operation parity",
+  "description": "Shared MTEX/PyTex cases for orientation construction from Euler angles, axis-angle, quaternion, matrix, Miller plane-direction correspondences, and basic operations.",
+  "target_baseline": {
+    "system": "mtex",
+    "version": "6.0.0",
+    "release_date": "November 2024",
+    "reference_url": "https://mtex-toolbox.github.io/download"
+  },
+  "conventions": {
+    "euler_convention": "bunge_zxz",
+    "angles_unit": "degree",
+    "quaternion_order": "wxyz",
+    "matrix_storage": "row_major",
+    "orientation_mapping": "crystal_to_specimen",
+    "rotation_sense": "active",
+    "specimen_axes": ["RD", "TD", "ND"],
+    "crystal_axes": ["a", "b", "c"]
+  },
+  "cases": [
+    {
+      "case_id": "cubic_bunge_euler_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_from_euler",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "euler_deg": [35.0, 45.0, 10.0],
+        "map_crystal_vectors": [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]
+      },
+      "requested_outputs": [
+        "quaternion_wxyz",
+        "rotation_matrix",
+        "euler_bunge_deg",
+        "axis_angle",
+        "mapped_crystal_vectors",
+        "symmetry_equivalent_count"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Primary Bunge Euler construction case for the cubic crystal frame."
+      ]
+    },
+    {
+      "case_id": "hex_axis_angle_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_from_axis_angle",
+      "phase": {
+        "phase_id": "zr_hcp",
+        "crystal_system": "hexagonal",
+        "point_group": "6/mmm",
+        "lattice_parameters": {
+          "a": 3.23,
+          "b": 3.23,
+          "c": 5.15,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 120.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "axis": [0.0, 0.0, 1.0],
+        "angle_deg": 60.0,
+        "map_crystal_vectors": [[1.0, 0.0, 0.0]]
+      },
+      "requested_outputs": [
+        "quaternion_wxyz",
+        "rotation_matrix",
+        "euler_bunge_deg",
+        "axis_angle",
+        "mapped_crystal_vectors",
+        "symmetry_equivalent_count"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Hexagonal axis-angle case for a basal-axis rotation."
+      ]
+    },
+    {
+      "case_id": "cubic_quaternion_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_from_quaternion",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "quaternion_wxyz": [0.9238795325112867, 0.0, 0.3826834323650898, 0.0]
+      },
+      "requested_outputs": [
+        "quaternion_wxyz",
+        "rotation_matrix",
+        "euler_bunge_deg",
+        "axis_angle"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10
+      },
+      "notes": [
+        "Quaternion order is explicitly wxyz."
+      ]
+    },
+    {
+      "case_id": "cubic_matrix_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_from_matrix",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "rotation_matrix": [
+          [0.0, -1.0, 0.0],
+          [1.0, 0.0, 0.0],
+          [0.0, 0.0, 1.0]
+        ]
+      },
+      "requested_outputs": [
+        "quaternion_wxyz",
+        "rotation_matrix",
+        "euler_bunge_deg",
+        "axis_angle"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10
+      },
+      "notes": [
+        "Row-major matrix storage is part of the shared contract."
+      ]
+    },
+    {
+      "case_id": "cubic_miller_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_from_miller",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "plane_hkl": [0, 0, 1],
+        "direction_uvw": [1, 0, 0],
+        "specimen_plane_normal": "ND",
+        "specimen_direction": "RD"
+      },
+      "requested_outputs": [
+        "quaternion_wxyz",
+        "rotation_matrix",
+        "euler_bunge_deg",
+        "axis_angle",
+        "mapped_plane_normal",
+        "mapped_direction"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Miller construction aligns (001) with ND and [100] with RD."
+      ]
+    },
+    {
+      "case_id": "cubic_orientation_operations_001",
+      "status": "active",
+      "operation_family": "orientation",
+      "operation": "orientation_operations",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "left_euler_deg": [0.0, 45.0, 0.0],
+        "right_euler_deg": [90.0, 0.0, 0.0],
+        "test_vector_crystal": [1.0, 1.0, 0.0]
+      },
+      "requested_outputs": [
+        "left_quaternion_wxyz",
+        "right_quaternion_wxyz",
+        "composed_quaternion_wxyz",
+        "inverse_left_quaternion_wxyz",
+        "misorientation_angle_deg",
+        "mapped_test_vector"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "matrix_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Composition and inverse use PyTex's active crystal-to-specimen rotation convention."
+      ]
+    }
+  ]
+}

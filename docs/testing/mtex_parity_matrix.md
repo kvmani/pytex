@@ -4,9 +4,13 @@ This document is the authoritative ledger for PyTex parity against public MTEX t
 
 Reference baseline:
 
-- MTEX `6.1.1`
+- MTEX `6.0.0`
 - public repository `tests/` tree
 - public documentation examples where they expose behavior not captured by tests
+
+The campaign-based parity runner targets MTEX `6.0.0`, released in November 2024, so validation
+does not depend on the newest MTEX release line. Regeneration scripts live under
+`scripts/mtex_generators/`, and shared campaign inputs live under `fixtures/mtex_parity/campaigns/`.
 
 ## Status Keys
 
@@ -19,9 +23,9 @@ Reference baseline:
 
 | Area | MTEX reference examples/tests | PyTex status | Notes |
 | --- | --- | --- | --- |
-| Euler/quaternion conversions | `check_eulerquat.m` | implemented | Baseline conversion and normalization tests are present, and the public rotation surface now also covers vectorized axis-angle, matrix, and Rodrigues / Rodrigues--Frank conversions. |
-| Orientation construction and grids | `orientation.byEuler`, `orientation.byAxisAngle`, `orientation.byMiller`, `regularSO3Grid`, `equispacedSO3Grid` | foundational | Scalar and batch orientation constructors now cover Euler, axis-angle, matrix, quaternion, Rodrigues / Rodrigues-Frank, Miller plane-direction correspondences, regular Bunge SO3 grids, and deterministic quaternion SO3 grids with shared frame and symmetry checks. External parity breadth remains ahead. |
-| Miller planes, directions, and family expansion | MTEX `Miller` object workflows and indexing examples | foundational | First-class `MillerPlane` / `MillerDirection` scalar and batch objects now cover vectorized reciprocal/direct vectors, d-spacings, hexagonal index conversion, angle relations, projection, symmetry-family expansion, JSON contracts, orix interop, and Miller-backed orientation construction from three- or four-index inputs. Broader MTEX parity for plotting idioms and every crystal-class helper remains ahead. |
+| Euler/quaternion conversions | `check_eulerquat.m`; `fixtures/mtex_parity/campaigns/orientation_core_cases.json` | implemented | Baseline conversion and normalization tests are present, and the public rotation surface now also covers vectorized axis-angle, matrix, and Rodrigues / Rodrigues--Frank conversions. The campaign runner adds shared JSON inputs and MTEX/PyTex result JSON for Euler, matrix, quaternion, axis-angle, Miller construction, composition, inverse, and misorientation cases. |
+| Orientation construction and grids | `orientation.byEuler`, `orientation.byAxisAngle`, `orientation.byMiller`, `regularSO3Grid`, `equispacedSO3Grid` | foundational | Scalar and batch orientation constructors now cover Euler, axis-angle, matrix, quaternion, Rodrigues / Rodrigues-Frank, Miller plane-direction correspondences, regular Bunge SO3 grids, and deterministic quaternion SO3 grids with shared frame and symmetry checks. Campaign coverage exists for scalar construction and operations; external grid parity breadth remains ahead. |
+| Miller planes, directions, and family expansion | MTEX `Miller` object workflows and indexing examples; `fixtures/mtex_parity/campaigns/miller_geometry_cases.json` | foundational | First-class `MillerPlane` / `MillerDirection` scalar and batch objects now cover vectorized reciprocal/direct vectors, d-spacings, hexagonal index conversion, angle relations, projection, symmetry-family expansion, JSON contracts, orix interop, and Miller-backed orientation construction from three- or four-index inputs. The campaign runner adds compact cubic and hexagonal geometry/family checks. Broader MTEX parity for plotting idioms and every crystal-class helper remains ahead. |
 | Fundamental regions | `check_fundamentalRegion.m` | foundational | Exact orbit-based minimum-angle reduction is implemented and now regression-tested across the supported proper point groups, but broader class-by-class closed-form boundary catalogs are still ahead. |
 | Symmetry operators and SO(3) basics | `SO3FunTests`, `check_WignerD.m`, symmetry-related checks | foundational | Common proper point-group generation, exact orbit reduction, symmetry actions, and a first Wigner-basis harmonic reconstruction surface are implemented; broader external parity is still ahead. |
 | Spherical projections and stereonets | public spherical-projection examples and plotting workflows | foundational | Wulff-net plotting, stereographic direction/plane projection, great-circle traces, and rotational symmetry-axis symbols are implemented with deterministic regression coverage, but full MTEX visual-parity claims are still ahead. |
@@ -29,9 +33,9 @@ Reference baseline:
 | KAM-related behavior | `testKAM2.m` | implemented | Fixture-backed regular-grid KAM support covers order, threshold, and max-style aggregation. |
 | GROD and grain-local orientation metrics | public EBSD workflow examples | implemented | Fixture-backed GROD relative to a representative grain orientation is implemented. |
 | Grain-boundary and cleanup workflows | public EBSD segmentation examples | implemented | Fixture-backed boundary extraction and adjacency-based small-grain merging are implemented for regular grids. |
-| IPF color coding | `checkIpfColorCoding.m` | foundational | `IPFColorKey` exists and is symmetry-aware, but full MTEX color-key parity is not yet claimed. |
-| ODF and PF reconstruction | `check_FourierODF.m`, PF reconstruction examples | foundational | Discrete/kernel ODF evaluation, PF/IPF synthesis, explicit dictionary-based PF inversion, and a band-limited harmonic ODF inversion surface are implemented; broader MTEX-class correction workflows and parity breadth remain ahead. |
-| Interfaces/import-export | `checkInterfaces.m` | foundational | Stable EBSD import manifests, manifest IO, object-backed vendor bridge adapters, CIF-backed phase creation, XRDML pole-figure import, LaboTex PPF/EPF pole-figure import, and lightweight orix / KikuchiPy bridge surfaces now exist, but dependency-pinned live-package parity is still ahead. |
+| IPF color coding | `checkIpfColorCoding.m`; `fixtures/mtex_parity/campaigns/ipf_color_cases.json` | foundational | `IPFColorKey` exists and is symmetry-aware. The campaign runner now emits comparable RGB and reduced-direction JSON for cubic and hexagonal cases, but full MTEX color-key visual parity is not yet claimed. |
+| ODF and PF reconstruction | `check_FourierODF.m`, PF reconstruction examples; `fixtures/mtex_parity/campaigns/odf_discrete_cases.json` | foundational | Discrete/kernel ODF evaluation, PF/IPF synthesis, explicit dictionary-based PF inversion, and a band-limited harmonic ODF inversion surface are implemented. The campaign runner currently covers sampled discrete ODF density from weighted Euler orientations. XRDML PF and reconstruction campaigns are defined as pending until cubic and hexagonal fixtures are supplied. |
+| Interfaces/import-export | `checkInterfaces.m`; `fixtures/mtex_parity/campaigns/xrdml_pole_figure_cases.json` | foundational | Stable EBSD import manifests, manifest IO, object-backed vendor bridge adapters, CIF-backed phase creation, XRDML pole-figure import, LaboTex PPF/EPF pole-figure import, and lightweight orix / KikuchiPy bridge surfaces now exist. Shared XRDML parity campaign inputs are present but pending real cubic and hexagonal XRDML fixtures. |
 
 ## PyTex-Only Extensions
 
@@ -54,6 +58,24 @@ that underpin multiple downstream subsystems:
 - richer symmetry and harmonic parity breadth
 - broader ODF/PF reconstruction breadth
 - stronger interface and import or export parity at the adapter boundary
+
+## Campaign Regeneration Workflow
+
+On a MATLAB system with MTEX started:
+
+```matlab
+addpath("scripts/mtex_generators")
+run_mtex_parity_campaign("fixtures/mtex_parity/campaigns/orientation_core_cases.json", ...
+                         "fixtures/mtex_parity/results/mtex")
+```
+
+Repeat for each campaign file, bring `fixtures/mtex_parity/results/mtex/` back to the PyTex
+machine, then run:
+
+```powershell
+python scripts/generate_pytex_parity_campaign.py fixtures/mtex_parity/campaigns fixtures/mtex_parity/results/pytex
+python scripts/compare_parity_results.py fixtures/mtex_parity/results/mtex fixtures/mtex_parity/results/pytex
+```
 
 ## References
 

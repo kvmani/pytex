@@ -18,11 +18,27 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.mathjax",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
     "sphinx_design",
     "sphinxcontrib.mermaid",
 ]
 
 autosummary_generate = True
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "special-members": "__len__, __getitem__",
+    "show-inheritance": True,
+    "member-order": "bysource",
+}
+autodoc_class_signature = "separated"
+autodoc_member_order = "bysource"
+autodoc_typehints = "signature"
+autodoc_typehints_format = "short"
+autodoc_preserve_defaults = True
+napoleon_numpy_docstring = True
+napoleon_google_docstring = True
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "README.md"]
 

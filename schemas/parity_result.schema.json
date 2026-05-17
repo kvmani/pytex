@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.parity_result",
+  "title": "PyTex External Parity Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "campaign_id",
+    "case_id",
+    "case_status",
+    "producer",
+    "conventions",
+    "phase",
+    "tolerances",
+    "results",
+    "artifacts",
+    "provenance",
+    "notes"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.parity_result" },
+    "schema_version": { "const": "0.1.0" },
+    "campaign_id": { "type": "string", "minLength": 1 },
+    "case_id": { "type": "string", "minLength": 1 },
+    "case_status": { "enum": ["active", "pending", "skipped", "failed"] },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "system_version", "runtime", "script", "created_utc"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "system_version": { "type": "string", "minLength": 1 },
+        "runtime": { "type": "string", "minLength": 1 },
+        "script": { "type": "string", "minLength": 1 },
+        "created_utc": { "type": "string", "minLength": 1 }
+      }
+    },
+    "conventions": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "phase": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "tolerances": {
+      "type": "object",
+      "additionalProperties": { "type": "number", "exclusiveMinimum": 0 }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_id", "kind", "format", "path", "sha256"],
+        "properties": {
+          "artifact_id": { "type": "string", "minLength": 1 },
+          "kind": { "type": "string", "minLength": 1 },
+          "format": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["input_sha256", "case_file", "target_baseline"],
+      "properties": {
+        "input_sha256": { "type": "string", "minLength": 1 },
+        "case_file": { "type": "string", "minLength": 1 },
+        "target_baseline": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

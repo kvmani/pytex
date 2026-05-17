@@ -2,6 +2,12 @@
 
 PyTex keeps the stable API centered on named scientific primitives. This page is intentionally curated rather than exhaustive: the goal is to show the public objects users should build around, then point back to the concept and workflow pages that explain their meaning.
 
+```{toctree}
+:maxdepth: 2
+
+full_reference
+```
+
 ## How To Read This Page
 
 This is not a replacement for the concept and workflow docs.
@@ -255,6 +261,7 @@ For architectural context, see {doc}`../architecture/overview`.
 ## Limits Of This Guide
 
 - This page is curated, not exhaustive API documentation.
+- The exhaustive module, class, method, and function reference is available at {doc}`full_reference`.
 - A symbol appearing here does not mean every downstream workflow built on it is equally validated.
 - Use {doc}`../validation/index` to check current parity, evidence, and limitations before relying
   on a surface for stronger scientific claims.

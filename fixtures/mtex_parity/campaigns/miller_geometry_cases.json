@@ -1,0 +1,108 @@
+{
+  "schema_id": "pytex.parity_case_campaign",
+  "schema_version": "0.1.0",
+  "campaign_id": "miller_geometry_v1",
+  "title": "Miller geometry and symmetry parity",
+  "description": "Shared MTEX/PyTex cases for critical Miller plane, direction, angle, and symmetry-family calculations.",
+  "target_baseline": {
+    "system": "mtex",
+    "version": "6.0.0",
+    "release_date": "November 2024",
+    "reference_url": "https://mtex-toolbox.github.io/download"
+  },
+  "conventions": {
+    "euler_convention": "bunge_zxz",
+    "angles_unit": "degree",
+    "quaternion_order": "wxyz",
+    "matrix_storage": "row_major",
+    "orientation_mapping": "crystal_to_specimen",
+    "rotation_sense": "active",
+    "specimen_axes": ["RD", "TD", "ND"],
+    "crystal_axes": ["a", "b", "c"]
+  },
+  "cases": [
+    {
+      "case_id": "cubic_miller_angles_001",
+      "status": "active",
+      "operation_family": "miller_geometry",
+      "operation": "miller_metrics",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "plane_hkl_a": [1, 0, 0],
+        "plane_hkl_b": [1, 1, 1],
+        "direction_uvw_a": [1, 0, 0],
+        "direction_uvw_b": [1, 1, 0]
+      },
+      "requested_outputs": [
+        "plane_plane_angle_deg",
+        "direction_direction_angle_deg",
+        "plane_a_d_spacing_angstrom",
+        "plane_a_family_hkl",
+        "direction_a_family_uvw"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "length_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Miller-family expansion is a compact high-value symmetry check."
+      ]
+    },
+    {
+      "case_id": "hex_miller_four_index_001",
+      "status": "active",
+      "operation_family": "miller_geometry",
+      "operation": "miller_metrics",
+      "phase": {
+        "phase_id": "zr_hcp",
+        "crystal_system": "hexagonal",
+        "point_group": "6/mmm",
+        "lattice_parameters": {
+          "a": 3.23,
+          "b": 3.23,
+          "c": 5.15,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 120.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "plane_hkil_a": [1, 0, -1, 0],
+        "plane_hkil_b": [0, 0, 0, 1],
+        "direction_uvtw_a": [2, -1, -1, 0],
+        "direction_uvtw_b": [0, 0, 0, 1]
+      },
+      "requested_outputs": [
+        "plane_plane_angle_deg",
+        "direction_direction_angle_deg",
+        "plane_a_hkl",
+        "direction_a_uvw",
+        "plane_a_family_hkl",
+        "direction_a_family_uvw"
+      ],
+      "tolerances": {
+        "angle_deg": 1e-7,
+        "length_abs": 1e-10,
+        "vector_abs": 1e-10
+      },
+      "notes": [
+        "Hexagonal four-index conversion case."
+      ]
+    }
+  ]
+}

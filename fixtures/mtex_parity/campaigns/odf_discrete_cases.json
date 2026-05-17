@@ -1,0 +1,124 @@
+{
+  "schema_id": "pytex.parity_case_campaign",
+  "schema_version": "0.1.0",
+  "campaign_id": "odf_discrete_v1",
+  "title": "Discrete Euler ODF parity",
+  "description": "Shared MTEX/PyTex cases for deterministic ODF density evaluation from weighted discrete Euler orientations.",
+  "target_baseline": {
+    "system": "mtex",
+    "version": "6.0.0",
+    "release_date": "November 2024",
+    "reference_url": "https://mtex-toolbox.github.io/download"
+  },
+  "conventions": {
+    "euler_convention": "bunge_zxz",
+    "angles_unit": "degree",
+    "quaternion_order": "wxyz",
+    "matrix_storage": "row_major",
+    "orientation_mapping": "crystal_to_specimen",
+    "rotation_sense": "active",
+    "odf_normalization": "weights_sum_one",
+    "specimen_axes": ["RD", "TD", "ND"],
+    "crystal_axes": ["a", "b", "c"]
+  },
+  "cases": [
+    {
+      "case_id": "cubic_discrete_odf_001",
+      "status": "active",
+      "operation_family": "odf",
+      "operation": "odf_from_discrete_euler",
+      "phase": {
+        "phase_id": "ni_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "support_euler_deg": [
+          [0.0, 0.0, 0.0],
+          [45.0, 35.0, 10.0],
+          [90.0, 45.0, 0.0]
+        ],
+        "weights": [3.0, 1.0, 2.0],
+        "query_euler_deg": [
+          [0.0, 0.0, 0.0],
+          [45.0, 35.0, 10.0],
+          [20.0, 70.0, 30.0]
+        ],
+        "kernel": {
+          "type": "de_la_vallee_poussin",
+          "halfwidth_deg": 15.0
+        }
+      },
+      "requested_outputs": [
+        "normalized_weights",
+        "query_density",
+        "summary"
+      ],
+      "tolerances": {
+        "density_abs": 5e-3,
+        "weight_abs": 1e-12
+      },
+      "notes": [
+        "This is a deterministic sampled-density comparison, not a full MTEX Fourier reconstruction parity claim."
+      ]
+    },
+    {
+      "case_id": "hex_discrete_odf_001",
+      "status": "active",
+      "operation_family": "odf",
+      "operation": "odf_from_discrete_euler",
+      "phase": {
+        "phase_id": "zr_hcp",
+        "crystal_system": "hexagonal",
+        "point_group": "6/mmm",
+        "lattice_parameters": {
+          "a": 3.23,
+          "b": 3.23,
+          "c": 5.15,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 120.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "support_euler_deg": [
+          [0.0, 0.0, 0.0],
+          [30.0, 60.0, 15.0],
+          [120.0, 20.0, 45.0]
+        ],
+        "weights": [1.0, 2.0, 1.0],
+        "query_euler_deg": [
+          [0.0, 0.0, 0.0],
+          [30.0, 60.0, 15.0],
+          [75.0, 40.0, 10.0]
+        ],
+        "kernel": {
+          "type": "de_la_vallee_poussin",
+          "halfwidth_deg": 20.0
+        }
+      },
+      "requested_outputs": [
+        "normalized_weights",
+        "query_density",
+        "summary"
+      ],
+      "tolerances": {
+        "density_abs": 5e-3,
+        "weight_abs": 1e-12
+      },
+      "notes": [
+        "Hexagonal sampled ODF evaluation from weighted Euler orientations."
+      ]
+    }
+  ]
+}

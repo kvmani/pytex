@@ -1,0 +1,110 @@
+{
+  "schema_id": "pytex.parity_case_campaign",
+  "schema_version": "0.1.0",
+  "campaign_id": "xrdml_odf_reconstruction_v1",
+  "title": "XRDML ODF reconstruction parity",
+  "description": "Pending cases for ODF reconstruction from cubic and hexagonal XRDML pole figures. The sampled JSON result contract is ready, but the cases should stay pending until real XRDML fixtures and aligned reconstruction parameters are available.",
+  "target_baseline": {
+    "system": "mtex",
+    "version": "6.0.0",
+    "release_date": "November 2024",
+    "reference_url": "https://mtex-toolbox.github.io/download"
+  },
+  "conventions": {
+    "euler_convention": "bunge_zxz",
+    "angles_unit": "degree",
+    "quaternion_order": "wxyz",
+    "matrix_storage": "row_major",
+    "orientation_mapping": "crystal_to_specimen",
+    "rotation_sense": "active",
+    "odf_normalization": "integral_one",
+    "specimen_axes": ["RD", "TD", "ND"],
+    "crystal_axes": ["a", "b", "c"]
+  },
+  "cases": [
+    {
+      "case_id": "cubic_xrdml_odf_pending",
+      "status": "pending",
+      "reason_pending": "Waiting for cubic XRDML pole-figure fixtures and agreed MTEX/PyTex reconstruction parameters.",
+      "operation_family": "odf",
+      "operation": "odf_from_xrdml",
+      "phase": {
+        "phase_id": "cubic_phase_pending",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.52,
+          "b": 3.52,
+          "c": 3.52,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "xrdml_paths": ["fixtures/xrdml/cubic_case_to_be_added.xrdml"],
+        "poles_hkl": [[1, 1, 1]],
+        "query_euler_deg": [[0.0, 0.0, 0.0]],
+        "reconstruction": {
+          "algorithm": "harmonic",
+          "degree_bandlimit": 6,
+          "halfwidth_deg": 10.0
+        }
+      },
+      "requested_outputs": [
+        "query_density",
+        "summary",
+        "odf_contour_svg"
+      ],
+      "tolerances": {
+        "density_relative": 0.1
+      },
+      "notes": [
+        "Do not promote this to active until the MTEX and PyTex reconstruction settings are scientifically aligned."
+      ]
+    },
+    {
+      "case_id": "hex_xrdml_odf_pending",
+      "status": "pending",
+      "reason_pending": "Waiting for hexagonal XRDML pole-figure fixtures and agreed MTEX/PyTex reconstruction parameters.",
+      "operation_family": "odf",
+      "operation": "odf_from_xrdml",
+      "phase": {
+        "phase_id": "hex_phase_pending",
+        "crystal_system": "hexagonal",
+        "point_group": "6/mmm",
+        "lattice_parameters": {
+          "a": 3.23,
+          "b": 3.23,
+          "c": 5.15,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 120.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "xrdml_paths": ["fixtures/xrdml/hex_case_to_be_added.xrdml"],
+        "poles_hkil": [[1, 0, -1, 0]],
+        "query_euler_deg": [[0.0, 0.0, 0.0]],
+        "reconstruction": {
+          "algorithm": "harmonic",
+          "degree_bandlimit": 6,
+          "halfwidth_deg": 10.0
+        }
+      },
+      "requested_outputs": [
+        "query_density",
+        "summary",
+        "odf_contour_svg"
+      ],
+      "tolerances": {
+        "density_relative": 0.1
+      },
+      "notes": [
+        "Do not promote this to active until the MTEX and PyTex reconstruction settings are scientifically aligned."
+      ]
+    }
+  ]
+}
