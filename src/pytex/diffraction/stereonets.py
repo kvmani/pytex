@@ -5,8 +5,24 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import ArrayLike
 
-from pytex.core._arrays import as_float_array, normalize_vector, normalize_vectors
+from pytex.core._arrays import as_float_array, normalize_vector
+from pytex.core.sphere import (
+    directions_to_spherical_angles,
+    spherical_angles_to_directions,
+)
 from pytex.texture.projections import project_directions
+
+__all__ = [
+    "StereonetGrid",
+    "directions_to_spherical_angles",
+    "flatten_direction_grid",
+    "generate_stereonet_grid",
+    "project_great_circle_trace",
+    "projection_boundary_radius",
+    "sample_great_circle",
+    "sample_small_circle",
+    "spherical_angles_to_directions",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,47 +39,6 @@ def projection_boundary_radius(method: str) -> float:
     if method == "stereographic":
         return 1.0
     raise ValueError("Projection method must be 'equal_area' or 'stereographic'.")
-
-
-def spherical_angles_to_directions(
-    polar_deg: ArrayLike,
-    azimuth_deg: ArrayLike,
-) -> np.ndarray:
-    polar, azimuth = np.broadcast_arrays(
-        np.asarray(polar_deg, dtype=np.float64),
-        np.asarray(azimuth_deg, dtype=np.float64),
-    )
-    polar_rad = np.deg2rad(polar)
-    azimuth_rad = np.deg2rad(azimuth)
-    directions = np.stack(
-        [
-            np.sin(polar_rad) * np.cos(azimuth_rad),
-            np.sin(polar_rad) * np.sin(azimuth_rad),
-            np.cos(polar_rad),
-        ],
-        axis=-1,
-    )
-    directions = np.ascontiguousarray(directions, dtype=np.float64)
-    directions.setflags(write=False)
-    return directions
-
-
-def directions_to_spherical_angles(
-    directions: ArrayLike,
-    *,
-    antipodal: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
-    vectors = np.array(normalize_vectors(directions), copy=True)
-    if antipodal:
-        mask = vectors[..., 2] < 0.0
-        vectors[mask] *= -1.0
-    polar = np.rad2deg(np.arccos(np.clip(vectors[..., 2], -1.0, 1.0)))
-    azimuth = np.mod(np.rad2deg(np.arctan2(vectors[..., 1], vectors[..., 0])), 360.0)
-    polar = np.ascontiguousarray(polar, dtype=np.float64)
-    azimuth = np.ascontiguousarray(azimuth, dtype=np.float64)
-    polar.setflags(write=False)
-    azimuth.setflags(write=False)
-    return polar, azimuth
 
 
 def sample_great_circle(

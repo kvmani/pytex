@@ -93,6 +93,12 @@ from pytex.core.parent_reconstruction import (
     reconstruct_parent_orientation,
 )
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.sphere import (
+    S2Grid,
+    SphericalVectorSet,
+    directions_to_spherical_angles,
+    spherical_angles_to_directions,
+)
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
     OrientationRelationship,
@@ -147,8 +153,10 @@ __all__ = [
     "ReferenceFrame",
     "Rotation",
     "RotationSet",
+    "S2Grid",
     "ScatteringSetup",
     "SpaceGroupSpec",
+    "SphericalVectorSet",
     "SymmetrySpec",
     "TransformationVariant",
     "UnitCell",
@@ -163,6 +171,7 @@ __all__ = [
     "canonicalize_family_indices",
     "canonicalize_sign",
     "direct_to_reciprocal_components",
+    "directions_to_spherical_angles",
     "direction_uvtw_to_uvw",
     "direction_uvtw_to_uvw_array",
     "direction_uvw_to_uvtw",
@@ -184,5 +193,6 @@ __all__ = [
     "reconstruct_parent_orientation",
     "reduce_indices",
     "specimen_direction_vector",
+    "spherical_angles_to_directions",
     "zone_law_value_hkil_uvtw",
 ]
