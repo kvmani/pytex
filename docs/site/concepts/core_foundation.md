@@ -14,28 +14,10 @@ The core is not a convenience layer around arrays. It is the semantic contract t
 
 ## Core Object Map
 
-```{mermaid}
-flowchart TB
-    conventions["conventions.py<br/>Canonical convention set and frame domains"]
-    frames["frames.py<br/>ReferenceFrame and FrameTransform"]
-    symmetry["symmetry.py<br/>SymmetrySpec and symmetry reduction"]
-    lattice["lattice.py<br/>Lattice, Basis, UnitCell, Phase,<br/>directions, planes, reciprocal vectors"]
-    orientation["orientation.py<br/>Rotation, Orientation, Misorientation, OrientationSet"]
-    provenance["provenance.py<br/>ProvenanceRecord"]
-
-    conventions --> frames
-    conventions --> lattice
-    frames --> lattice
-    frames --> orientation
-    symmetry --> orientation
-    lattice --> orientation
-    provenance --> frames
-    provenance --> lattice
-    provenance --> orientation
-
-    classDef core fill:#f0f4f8,stroke:#334e68,color:#102a43,stroke-width:1.5px;
-    class conventions,frames,symmetry,lattice,orientation,provenance core;
-```
+:::{figure} ../../figures/core_foundation_map.svg
+:alt: Core foundation map showing conventions, frames, symmetry, lattice, orientation, and provenance around the canonical core.
+:class: architecture-poster-figure
+:::
 
 ## Design Principles
 

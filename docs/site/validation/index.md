@@ -9,6 +9,7 @@ considered scientifically settled merely because it executes without error.
 testing_strategy
 automated_test_cases
 mtex_parity_matrix
+mtex_regeneration
 diffraction_validation_matrix
 structure_validation_matrix
 plotting_validation_matrix

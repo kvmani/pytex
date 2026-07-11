@@ -11,6 +11,8 @@ from pytex.diffraction.models import (
     OrientationRefinementResult,
     ReflectionFamily,
     SpotAssignment,
+    estimate_zone_axis,
+    index_saed_pattern,
 )
 from pytex.diffraction.physics import (
     DiffractionIntensityModel,
@@ -63,11 +65,13 @@ __all__ = [
     "StereonetGrid",
     "StructureFactor",
     "directions_to_spherical_angles",
+    "estimate_zone_axis",
     "flatten_direction_grid",
     "generate_powder_reflections",
     "generate_saed_pattern",
     "generate_stereonet_grid",
     "generate_xrd_pattern",
+    "index_saed_pattern",
     "lorentz_polarization_factor",
     "project_great_circle_trace",
     "projection_boundary_radius",

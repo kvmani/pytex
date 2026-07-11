@@ -15,6 +15,7 @@ from pytex.adapters import (
     read_validation_manifest,
     read_workflow_result_manifest,
 )
+from pytex.contracts import JSON_CONTRACT_SCHEMA_VERSION
 from pytex.core import (
     PYTEX_CANONICAL_CONVENTIONS,
     FrameDomain,
@@ -25,6 +26,7 @@ from pytex.core import (
     ReferenceFrame,
     Rotation,
     SymmetrySpec,
+    list_phase_fixtures,
 )
 
 
@@ -148,6 +150,41 @@ def _cmd_bench_inventory(_: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_phases_inventory(_: argparse.Namespace) -> int:
+    for fixture in list_phase_fixtures():
+        crystal_system = str(fixture.metadata.get("crystal_system", "unknown"))
+        print(f"{fixture.fixture_id}: {fixture.phase_name} [{crystal_system}]")
+    return 0
+
+
+def _cmd_contracts_inventory(_: argparse.Namespace) -> int:
+    print(f"JSON contract schema version: {JSON_CONTRACT_SCHEMA_VERSION}")
+    for schema_id in (
+        "pytex.core.miller_bravais_plane",
+        "pytex.core.miller_bravais_direction",
+        "pytex.core.pattern_center",
+        "pytex.core.ebsd_detector_geometry",
+        "pytex.core.ebsd_calibration_geometry",
+        "pytex.diffraction.diffraction_pattern",
+    ):
+        print(f"  - {schema_id}")
+    return 0
+
+
+def _cmd_examples_inventory(_: argparse.Namespace) -> int:
+    repo_root = _repo_root()
+    examples = sorted((repo_root / "examples").glob("**/*"))
+    notebooks = sorted((repo_root / "docs" / "site" / "tutorials" / "notebooks").glob("*.ipynb"))
+    print("Examples:")
+    for path in examples:
+        if path.is_file():
+            print(f"  - {path.relative_to(repo_root)}")
+    print("Tutorial notebooks:")
+    for path in notebooks:
+        print(f"  - {path.relative_to(repo_root)}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pytex")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -201,6 +238,33 @@ def build_parser() -> argparse.ArgumentParser:
         help="List benchmark and validation manifest files.",
     )
     benchmarks_inventory_parser.set_defaults(func=_cmd_bench_inventory)
+
+    phases_parser = subparsers.add_parser("phases", help="Inspect built-in phase fixtures.")
+    phases_subparsers = phases_parser.add_subparsers(dest="phases_command", required=True)
+    phases_inventory_parser = phases_subparsers.add_parser(
+        "inventory",
+        help="List built-in phase fixtures.",
+    )
+    phases_inventory_parser.set_defaults(func=_cmd_phases_inventory)
+
+    contracts_parser = subparsers.add_parser("contracts", help="Inspect JSON contract surfaces.")
+    contracts_subparsers = contracts_parser.add_subparsers(
+        dest="contracts_command",
+        required=True,
+    )
+    contracts_inventory_parser = contracts_subparsers.add_parser(
+        "inventory",
+        help="List high-value public JSON contract schema ids.",
+    )
+    contracts_inventory_parser.set_defaults(func=_cmd_contracts_inventory)
+
+    examples_parser = subparsers.add_parser("examples", help="Inspect example assets.")
+    examples_subparsers = examples_parser.add_subparsers(dest="examples_command", required=True)
+    examples_inventory_parser = examples_subparsers.add_parser(
+        "inventory",
+        help="List examples and tutorial notebooks.",
+    )
+    examples_inventory_parser.set_defaults(func=_cmd_examples_inventory)
 
     return parser
 

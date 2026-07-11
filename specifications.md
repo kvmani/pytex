@@ -191,6 +191,8 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - `docs/tex/` is the canonical source for major scientific notes.
 - `docs/figures/` contains canonical SVG figure sources.
 - Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
+- Canonical architecture, process-flow, validation, workflow, and teaching diagrams must follow the
+  centralized visualization style guide.
 - Plot styling policy must support shared YAML themes, theme inheritance, and user overrides without burying visual defaults inside computation code.
 - Stable crystallographic graphics must support shared, publication-grade formatting for Miller planes and directions, including negative-index bar notation in annotations.
 - Stable plotting docs must describe the supported rendering modes for each public plotting function, especially when a routine exposes both discrete and contour-style views.

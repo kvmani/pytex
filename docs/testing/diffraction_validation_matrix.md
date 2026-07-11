@@ -39,6 +39,16 @@ In practical terms:
 - shell geometry and family coverage are the hard SAED claims
 - intensity differences remain informative rather than normative
 
+## Evidence Hardening Queue
+
+Before stronger diffraction claims are made, the next validation pass should add:
+
+- additional open material fixtures that exercise low-symmetry, non-cubic, and multi-family
+  reflection behavior
+- separate ledgers for geometric agreement, shell/family agreement, and intensity-model limitations
+- pinned external-baseline regeneration metadata for each new `pymatgen` or `diffsims` comparison
+  artifact
+
 ## References
 
 ### Normative

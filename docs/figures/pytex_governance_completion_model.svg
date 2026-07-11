@@ -1,0 +1,59 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">PyTex Governance And Completion Model</title>
+  <desc id="desc">Process diagram showing how a new scientific capability moves through standards, architecture, implementation, documentation, validation, and stable feature claim.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fbfdff"/><stop offset="1" stop-color="#eef6ff"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#07122f" flood-opacity="0.14"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#07122f"/></marker>
+    <marker id="roseArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M2,2 L10,6 L2,10 Z" fill="#e11d48"/></marker>
+    <style>.title{font:700 42px Arial, Helvetica, sans-serif;fill:#07122f}.subtitle{font:20px Arial, Helvetica, sans-serif;fill:#40506f}.label{font:700 20px Arial, Helvetica, sans-serif;fill:#07122f}.body{font:15px Arial, Helvetica, sans-serif;fill:#40506f}.card{rx:8;filter:url(#shadow);stroke-width:2}.arrow{fill:none;stroke:#07122f;stroke-width:2.6;marker-end:url(#arrow)}.reject{fill:none;stroke:#e11d48;stroke-width:2.5;marker-end:url(#roseArrow)}.gate{fill:#fffbeb;stroke:#f59e0b;stroke-width:2;filter:url(#shadow)}</style>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <text x="600" y="62" text-anchor="middle" class="title">Governance And Completion Model</text>
+  <text x="600" y="96" text-anchor="middle" class="subtitle">A feature claim is earned by semantics, documentation, figures, and validation together</text>
+  <rect x="510" y="118" width="180" height="5" rx="3" fill="#2563eb"/><rect x="600" y="118" width="90" height="5" rx="3" fill="#7c3aed"/>
+
+  <rect x="68" y="210" width="170" height="98" class="card" fill="#fffbeb" stroke="#f59e0b"/>
+  <circle cx="112" cy="258" r="24" fill="#fef3c7"/><text x="112" y="266" text-anchor="middle" class="label">1</text>
+  <text x="154" y="246" class="label">Capability</text><text x="154" y="270" class="body">new scientific behavior</text>
+
+  <rect x="292" y="170" width="190" height="98" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
+  <circle cx="336" cy="218" r="24" fill="#ede9fe"/><text x="336" y="226" text-anchor="middle" class="label">2</text>
+  <text x="378" y="206" class="label">Standards</text><text x="378" y="230" class="body">notation, references, manifests</text>
+  <rect x="292" y="340" width="190" height="98" class="card" fill="#eff6ff" stroke="#2563eb"/>
+  <circle cx="336" cy="388" r="24" fill="#dbeafe"/><text x="336" y="396" text-anchor="middle" class="label">3</text>
+  <text x="378" y="376" class="label">Architecture</text><text x="378" y="400" class="body">canonical model alignment</text>
+
+  <rect x="552" y="250" width="190" height="98" class="card" fill="#ecfdf5" stroke="#16a34a"/>
+  <circle cx="596" cy="298" r="24" fill="#dcfce7"/><text x="596" y="306" text-anchor="middle" class="label">4</text>
+  <text x="638" y="286" class="label">Implementation</text><text x="638" y="310" class="body">core, domains, adapters</text>
+
+  <rect x="812" y="170" width="190" height="98" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
+  <circle cx="856" cy="218" r="24" fill="#ede9fe"/><text x="856" y="226" text-anchor="middle" class="label">5</text>
+  <text x="898" y="206" class="label">Docs + Figures</text><text x="898" y="230" class="body">Sphinx, LaTeX, SVG</text>
+  <rect x="812" y="340" width="190" height="98" class="card" fill="#ecfeff" stroke="#0f9f9f"/>
+  <circle cx="856" cy="388" r="24" fill="#ccfbf1"/><text x="856" y="396" text-anchor="middle" class="label">6</text>
+  <text x="898" y="376" class="label">Validation</text><text x="898" y="400" class="body">tests, parity, evidence</text>
+
+  <path d="M1072 248 L1134 300 L1072 352 L1010 300 Z" class="gate"/>
+  <text x="1072" y="294" text-anchor="middle" class="label">Complete?</text><text x="1072" y="318" text-anchor="middle" class="body">claim gate</text>
+
+  <rect x="482" y="558" width="236" height="82" class="card" fill="#ecfdf5" stroke="#16a34a"/>
+  <text x="600" y="592" text-anchor="middle" class="label">Stable Feature Claim</text><text x="600" y="616" text-anchor="middle" class="body">implemented, explained, validated</text>
+  <rect x="160" y="558" width="236" height="82" class="card" fill="#fff1f2" stroke="#e11d48"/>
+  <text x="278" y="592" text-anchor="middle" class="label">Return To Hardening</text><text x="278" y="616" text-anchor="middle" class="body">missing docs, figures, tests, evidence</text>
+
+  <path class="arrow" d="M238 258 C258 226 270 220 292 220"/>
+  <path class="arrow" d="M238 258 C258 342 270 390 292 390"/>
+  <path class="arrow" d="M482 220 C515 226 530 256 552 286"/>
+  <path class="arrow" d="M482 390 C515 374 530 340 552 314"/>
+  <path class="arrow" d="M742 286 C780 246 790 220 812 220"/>
+  <path class="arrow" d="M742 314 C780 348 790 390 812 390"/>
+  <path class="arrow" d="M1002 220 C1034 236 1048 260 1058 278"/>
+  <path class="arrow" d="M1002 390 C1034 366 1048 340 1058 322"/>
+  <path class="arrow" d="M1072 352 C1048 514 730 516 640 558"/>
+  <path class="reject" d="M1030 332 C850 520 510 510 396 592"/>
+  <path class="reject" d="M278 558 C260 460 270 338 292 220"/>
+</svg>
+
+

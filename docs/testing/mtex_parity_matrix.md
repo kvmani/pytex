@@ -61,7 +61,12 @@ that underpin multiple downstream subsystems:
 
 ## Campaign Regeneration Workflow
 
-On a MATLAB system with MTEX started:
+The detailed step-by-step workflow is documented in:
+
+- `docs/site/validation/mtex_regeneration.md`
+- `scripts/mtex_generators/README.md`
+
+Minimal example on a MATLAB system with MTEX started:
 
 ```matlab
 addpath("scripts/mtex_generators")

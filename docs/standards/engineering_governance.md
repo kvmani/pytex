@@ -23,6 +23,9 @@
 - Do not depend on external scientific libraries for basic importability of the core package.
 - When a subsystem depends on a scientific convention, update the corresponding standards document in the same change.
 - When a change affects a foundational frame, symmetry, reduction, or algorithm contract, update the Sphinx concept or workflow page, the LaTeX note, and the canonical SVG figures in the same change.
+- When a canonical architecture, process-flow, workflow, validation, or teaching diagram is added or
+  materially changed, apply the visualization style guide and prefer authored SVG over complex
+  Mermaid.
 
 ## References
 
@@ -30,6 +33,7 @@
 
 - [Reference Canon](reference_canon.md)
 - [Documentation Architecture](documentation_architecture.md)
+- [Visualization Style Guide](visualization_style_guide.md)
 
 ### Informative
 

@@ -7,6 +7,8 @@ PyTex uses a hybrid documentation architecture so the project can be both scient
 - Sphinx is the primary browsable and searchable documentation surface.
 - LaTeX is the canonical source for major scientific notes.
 - SVG is the canonical source for scientific figures and geometry schematics.
+- The visual language for canonical architecture, process-flow, validation, workflow, and teaching
+  illustrations is governed centrally by `visualization_style_guide.md`.
 - Executable notebook tutorials are part of the Sphinx-facing documentation system when stepwise exposition materially improves understanding.
 - Runtime plotting APIs may return ordinary Matplotlib figures; the canonical SVG rule applies to repository-tracked documentation assets rather than all user plots.
 
@@ -62,6 +64,7 @@ The intended docs surfaces are:
 - executable notebook tutorials rendered or linked through the Sphinx layer
 - downloadable PDF scientific notes built from LaTeX
 - reusable SVG figures shared across both surfaces
+- authored visual-reference diagrams that follow the repository visualization style guide
 - validation pages that pair automated assertions with cited formulas and last verified outputs
 - mathematics-and-graphics-backed convention pages for foundational semantics
 - runtime plotting APIs that expose the same semantic objects directly to users
@@ -87,6 +90,8 @@ The Sphinx layer should eventually expose top-level sections for:
 - Citations in the HTML layer should use a BibTeX-backed workflow.
 - The LaTeX layer should remain suitable for publication-grade mathematical exposition.
 - Stable symbols and glossary terms should be defined once in the shared terminology registry and reused across docs layers rather than reintroduced with drifting local notation.
+- Complex Mermaid diagrams that become reusable public references should be replaced by authored
+  SVG assets that follow the visualization style guide.
 
 ## Cross-Platform Requirement
 
@@ -101,6 +106,7 @@ The Sphinx layer should eventually expose top-level sections for:
 - [Reference Canon](reference_canon.md)
 - [Scientific Citation Policy](scientific_citation_policy.md)
 - [Development Principles](development_principles.md)
+- [Visualization Style Guide](visualization_style_guide.md)
 
 ### Informative
 

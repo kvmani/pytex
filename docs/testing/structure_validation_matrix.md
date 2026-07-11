@@ -39,6 +39,16 @@ The repo does not yet claim:
 - broad parity against large external CIF corpora
 - comprehensive literature-backed structure families beyond the starter set
 
+## Evidence Hardening Queue
+
+Before stronger public claims are made, the next validation pass should add:
+
+- at least one curated literature-backed structure family beyond the current starter fixtures
+- a small open CIF-corpus subset with pinned redistribution notes, fixture digests, and benchmark
+  manifest entries
+- documented comparison tables that separate parser behavior, canonical PyTex normalization, and
+  space-group interpretation
+
 ## References
 
 ### Normative

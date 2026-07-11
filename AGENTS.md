@@ -19,6 +19,7 @@ Read these first when working on the repository:
 - `docs/standards/notation_and_conventions.md`
 - `docs/standards/documentation_architecture.md`
 - `docs/standards/latex_and_figures.md`
+- `docs/standards/visualization_style_guide.md`
 - `docs/standards/terminology_and_symbol_registry.md`
 - `docs/standards/development_principles.md`
 - `docs/standards/data_contracts_and_manifests.md`
@@ -37,6 +38,8 @@ If implementation choices conflict with these documents, stop and reconcile the 
 - Sphinx is the primary browsable and searchable documentation surface.
 - LaTeX is the canonical source for major scientific notes.
 - Publication-quality SVG figures are mandatory where reference frames, geometry, or conventions matter.
+- Canonical architecture, process-flow, validation, workflow, and teaching diagrams must follow the
+  central visualization style guide.
 - MTEX parity is the validation floor for relevant functionality, not the ceiling.
 - Major scientific docs must cite normative sources explicitly.
 - The preferred source hierarchy is: IUCr and International Tables, other formal standards, canonical textbooks, peer-reviewed papers, maintained tool documentation, then vendor notes.

@@ -80,6 +80,140 @@ class CalibrationRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class PatternCenter:
+    x_fraction: float
+    y_fraction: float
+    detector_distance_fraction: float
+    convention: str = "fractional_detector"
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("x_fraction", self.x_fraction),
+            ("y_fraction", self.y_fraction),
+        ):
+            if not np.isfinite(value) or not 0.0 <= value <= 1.0:
+                raise ValueError(f"PatternCenter.{name} must lie in [0, 1].")
+        if (
+            not np.isfinite(self.detector_distance_fraction)
+            or self.detector_distance_fraction <= 0.0
+        ):
+            raise ValueError("PatternCenter.detector_distance_fraction must be positive.")
+        convention = self.convention.strip().lower()
+        if not convention:
+            raise ValueError("PatternCenter.convention must be non-empty.")
+        object.__setattr__(self, "x_fraction", float(self.x_fraction))
+        object.__setattr__(self, "y_fraction", float(self.y_fraction))
+        object.__setattr__(
+            self,
+            "detector_distance_fraction",
+            float(self.detector_distance_fraction),
+        )
+        object.__setattr__(self, "convention", convention)
+
+    def as_array(self) -> np.ndarray:
+        values = np.array(
+            [self.x_fraction, self.y_fraction, self.detector_distance_fraction],
+            dtype=np.float64,
+        )
+        values.setflags(write=False)
+        return values
+
+
+@dataclass(frozen=True, slots=True)
+class EBSDDetectorGeometry:
+    detector_frame: ReferenceFrame
+    pattern_center: PatternCenter
+    detector_distance_mm: float
+    pixel_size_um: tuple[float, float]
+    detector_shape: tuple[int, int]
+    tilt_degrees: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    calibration_record: CalibrationRecord | None = None
+    measurement_quality: MeasurementQuality | None = None
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if self.detector_frame.domain is not FrameDomain.DETECTOR:
+            raise ValueError("EBSDDetectorGeometry.detector_frame must belong to detector domain.")
+        if not np.isfinite(self.detector_distance_mm) or self.detector_distance_mm <= 0.0:
+            raise ValueError("EBSDDetectorGeometry.detector_distance_mm must be positive.")
+        if len(self.pixel_size_um) != 2 or any(value <= 0.0 for value in self.pixel_size_um):
+            raise ValueError("EBSDDetectorGeometry.pixel_size_um must contain two positive values.")
+        if len(self.detector_shape) != 2 or any(value <= 0 for value in self.detector_shape):
+            raise ValueError("EBSDDetectorGeometry.detector_shape must contain two positive ints.")
+        if len(self.tilt_degrees) != 3:
+            raise ValueError("EBSDDetectorGeometry.tilt_degrees must contain three values.")
+        object.__setattr__(self, "detector_distance_mm", float(self.detector_distance_mm))
+        object.__setattr__(
+            self,
+            "pixel_size_um",
+            tuple(float(value) for value in self.pixel_size_um),
+        )
+        object.__setattr__(
+            self,
+            "detector_shape",
+            tuple(int(value) for value in self.detector_shape),
+        )
+        object.__setattr__(self, "tilt_degrees", tuple(float(value) for value in self.tilt_degrees))
+
+    @property
+    def pattern_center_array(self) -> np.ndarray:
+        return self.pattern_center.as_array()
+
+    @property
+    def pattern_center_px(self) -> np.ndarray:
+        height, width = self.detector_shape
+        values = np.array(
+            [
+                self.pattern_center.x_fraction * (width - 1),
+                self.pattern_center.y_fraction * (height - 1),
+            ],
+            dtype=np.float64,
+        )
+        values.setflags(write=False)
+        return values
+
+
+@dataclass(frozen=True, slots=True)
+class EBSDCalibrationGeometry:
+    acquisition_geometry: AcquisitionGeometry
+    detector_geometry: EBSDDetectorGeometry
+    map_to_specimen: FrameTransform | None = None
+    calibration_record: CalibrationRecord | None = None
+    measurement_quality: MeasurementQuality | None = None
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if self.acquisition_geometry.modality != "ebsd":
+            raise ValueError("EBSDCalibrationGeometry.acquisition_geometry.modality must be ebsd.")
+        if self.acquisition_geometry.detector_frame != self.detector_geometry.detector_frame:
+            raise ValueError(
+                "EBSDCalibrationGeometry detector frame must match acquisition geometry."
+            )
+        if self.map_to_specimen is not None:
+            if self.acquisition_geometry.map_frame is None:
+                raise ValueError("map_to_specimen requires acquisition_geometry.map_frame.")
+            if self.map_to_specimen.source != self.acquisition_geometry.map_frame:
+                raise ValueError("map_to_specimen.source must match acquisition map_frame.")
+            if self.map_to_specimen.target != self.acquisition_geometry.specimen_frame:
+                raise ValueError("map_to_specimen.target must match acquisition specimen_frame.")
+        if (
+            self.calibration_record is not None
+            and self.detector_geometry.calibration_record is not None
+            and self.calibration_record != self.detector_geometry.calibration_record
+        ):
+            raise ValueError("calibration_record must match detector geometry when both exist.")
+
+    @property
+    def pattern_center(self) -> PatternCenter:
+        return self.detector_geometry.pattern_center
+
+    @property
+    def detector_distance_mm(self) -> float:
+        return self.detector_geometry.detector_distance_mm
+
+
+@dataclass(frozen=True, slots=True)
 class ScatteringSetup:
     laboratory_frame: ReferenceFrame
     radiation_type: str = "electron"

@@ -30,9 +30,13 @@ docs/_build/
 Thumbs.db
 .codex_previews/
 .codex_presentation/
+.playwright-cli/
 .DS_Store
 output/*.png
 output/*.svg
+output/**/*.png
+output/**/*.svg
+outputs/
 inspection_outputs/
 artifacts/inspection/
 reports/inspection/

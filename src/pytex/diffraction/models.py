@@ -1392,3 +1392,96 @@ class OrientationRefinementResult:
             )
         if self.final_step_deg <= 0.0:
             raise ValueError("OrientationRefinementResult.final_step_deg must be positive.")
+
+
+def _candidate_zone_axes(max_index: int) -> np.ndarray:
+    if max_index <= 0:
+        raise ValueError("max_index must be strictly positive.")
+    rows = [
+        (u, v, w)
+        for u in range(-max_index, max_index + 1)
+        for v in range(-max_index, max_index + 1)
+        for w in range(-max_index, max_index + 1)
+        if not (u == 0 and v == 0 and w == 0)
+    ]
+    values = np.asarray(rows, dtype=np.int64)
+    gcds = np.gcd.reduce(np.abs(values), axis=1)
+    values = values // gcds[:, None]
+    signs = np.sign(values[np.arange(values.shape[0]), np.argmax(values != 0, axis=1)])
+    values = values * signs[:, None]
+    values = np.unique(values, axis=0)
+    return as_int_array(values, shape=(values.shape[0], 3))
+
+
+def estimate_zone_axis(
+    pattern: DiffractionPattern,
+    *,
+    max_index: int = 4,
+    min_intensity_fraction: float = 0.0,
+) -> ZoneAxis:
+    if not 0.0 <= min_intensity_fraction <= 1.0:
+        raise ValueError("min_intensity_fraction must lie in [0, 1].")
+    scattering_vectors = pattern.geometry.lab_vectors_to_specimen(pattern.scattering_vectors_lab())
+    intensities = pattern.intensities
+    if intensities.size == 0:
+        raise ValueError("pattern must contain at least one spot.")
+    if min_intensity_fraction > 0.0:
+        threshold = float(np.max(intensities)) * min_intensity_fraction
+        mask = intensities >= threshold
+        if not np.any(mask):
+            raise ValueError("No pattern spots remain after intensity filtering.")
+        scattering_vectors = scattering_vectors[mask]
+    norms = np.linalg.norm(scattering_vectors, axis=1)
+    valid = norms > _INTENSITY_EPSILON
+    if not np.any(valid):
+        raise ValueError("pattern scattering vectors must contain a non-zero vector.")
+    scattering_vectors = scattering_vectors[valid]
+    norms = norms[valid]
+    direct_basis = pattern.phase.lattice.direct_basis().matrix
+    candidates = _candidate_zone_axes(max_index)
+    best_axis: np.ndarray | None = None
+    best_score = np.inf
+    for candidate in candidates:
+        direction = normalize_vector(direct_basis @ candidate.astype(np.float64))
+        residuals = np.abs(scattering_vectors @ direction) / np.maximum(norms, 1.0)
+        score = float(np.mean(residuals))
+        if score < best_score:
+            best_score = score
+            best_axis = candidate
+    if best_axis is None:
+        raise ValueError("No zone-axis candidate could be estimated.")
+    return ZoneAxis(best_axis, phase=pattern.phase)
+
+
+def index_saed_pattern(
+    pattern: DiffractionPattern,
+    miller_indices: np.ndarray,
+    *,
+    orientation: Orientation | None = None,
+    zone_axis: ZoneAxis | None = None,
+    max_excitation_error_inv_angstrom: float = 5e-2,
+    intensity_model: str = "kinematic_proxy",
+    excitation_sigma_inv_angstrom: float = 5e-2,
+    acceptance_mask: DetectorAcceptanceMask | None = None,
+    max_distance_px: float = 10.0,
+    cluster_radius_px: float = 5.0,
+    use_only_accepted: bool = True,
+) -> IndexingCandidate:
+    selected_zone_axis = zone_axis if zone_axis is not None else estimate_zone_axis(pattern)
+    simulation = KinematicSimulation.simulate_spots(
+        pattern.geometry,
+        pattern.phase,
+        miller_indices,
+        orientation=orientation,
+        zone_axis=selected_zone_axis,
+        max_excitation_error_inv_angstrom=max_excitation_error_inv_angstrom,
+        intensity_model=intensity_model,
+        excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+        acceptance_mask=acceptance_mask,
+    )
+    return simulation.associate_to_pattern(
+        pattern,
+        max_distance_px=max_distance_px,
+        cluster_radius_px=cluster_radius_px,
+        use_only_accepted=use_only_accepted,
+    )

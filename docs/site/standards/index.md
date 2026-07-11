@@ -11,6 +11,7 @@ notation_and_conventions
 hexagonal_and_trigonal_conventions
 documentation_architecture
 latex_and_figures
+visualization_style_guide
 scientific_citation_policy
 development_principles
 data_contracts_and_manifests

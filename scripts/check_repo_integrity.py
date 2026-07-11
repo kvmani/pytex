@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -31,6 +32,7 @@ REQUIRED_PATHS = [
     "docs/standards/notation_and_conventions.md",
     "docs/standards/documentation_architecture.md",
     "docs/standards/latex_and_figures.md",
+    "docs/standards/visualization_style_guide.md",
     "docs/standards/scientific_citation_policy.md",
     "docs/standards/benchmark_and_tolerance_governance.md",
     "docs/standards/hexagonal_and_trigonal_conventions.md",
@@ -50,6 +52,14 @@ REQUIRED_PATHS = [
     "docs/figures/reference_frames.svg",
     "docs/figures/hcp_reference_frame.svg",
     "docs/figures/pole_figure_construction.svg",
+    "docs/figures/pytex_system_structure.svg",
+    "docs/figures/pytex_scientific_data_flow.svg",
+    "docs/figures/pytex_governance_completion_model.svg",
+    "docs/figures/pytex_current_state_expansion.svg",
+    "docs/figures/core_foundation_map.svg",
+    "docs/figures/texture_foundation_flow.svg",
+    "docs/figures/ebsd_foundation_flow.svg",
+    "docs/figures/diffraction_foundation_flow.svg",
     "docs/site/README.md",
     "docs/site/conf.py",
     "docs/site/index.md",
@@ -94,6 +104,25 @@ REQUIRED_PATHS = [
     "schemas/experiment_manifest.schema.json",
     "schemas/validation_manifest.schema.json",
     "schemas/workflow_result_manifest.schema.json",
+]
+
+CANONICAL_VISUAL_REFERENCE_PAGES = [
+    "docs/site/concepts/library_structure.md",
+    "docs/site/concepts/core_foundation.md",
+    "docs/site/concepts/texture_foundation.md",
+    "docs/site/concepts/ebsd_foundation.md",
+    "docs/site/concepts/diffraction_foundation.md",
+]
+
+CANONICAL_VISUAL_REFERENCE_SVGS = [
+    "docs/figures/pytex_system_structure.svg",
+    "docs/figures/pytex_scientific_data_flow.svg",
+    "docs/figures/pytex_governance_completion_model.svg",
+    "docs/figures/pytex_current_state_expansion.svg",
+    "docs/figures/core_foundation_map.svg",
+    "docs/figures/texture_foundation_flow.svg",
+    "docs/figures/ebsd_foundation_flow.svg",
+    "docs/figures/diffraction_foundation_flow.svg",
 ]
 
 
@@ -330,12 +359,58 @@ def _check_structure_import_fixture_audit(repo_root: Path) -> list[str]:
     return issues
 
 
+def _tracked_files(repo_root: Path) -> tuple[str, ...]:
+    try:
+        result = subprocess.run(
+            ["git", "ls-files"],
+            cwd=repo_root,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return ()
+    return tuple(line.strip() for line in result.stdout.splitlines() if line.strip())
+
+
+def _check_documentation_visual_hygiene(repo_root: Path) -> list[str]:
+    issues: list[str] = []
+    tracked_files = _tracked_files(repo_root)
+    for tracked_path in tracked_files:
+        normalized = tracked_path.replace("\\", "/")
+        if normalized.startswith("output/") and normalized.lower().endswith((".png", ".svg")):
+            issues.append(
+                "INVALID: local inspection artifact is tracked and should be untracked: "
+                f"{normalized}"
+            )
+
+    for page in CANONICAL_VISUAL_REFERENCE_PAGES:
+        content = (repo_root / page).read_text(encoding="utf-8")
+        if "```{mermaid}" in content:
+            issues.append(f"INVALID: canonical visual reference page still uses Mermaid: {page}")
+
+    docs_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore")
+        for path in (repo_root / "docs").rglob("*.md")
+    )
+    for figure in CANONICAL_VISUAL_REFERENCE_SVGS:
+        figure_path = repo_root / figure
+        content = figure_path.read_text(encoding="utf-8", errors="ignore")
+        if "<title" not in content or "<desc" not in content:
+            issues.append(f"INVALID: canonical SVG must define title and desc metadata: {figure}")
+        figure_name = Path(figure).name
+        if figure_name not in docs_text:
+            issues.append(f"INVALID: canonical SVG is not referenced from docs: {figure}")
+    return issues
+
+
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[1]
     issues = [path for path in REQUIRED_PATHS if not (repo_root / path).exists()]
     issues.extend(_check_phase_fixture_catalog(repo_root))
     issues.extend(_check_manifest_artifacts_and_fixtures(repo_root))
     issues.extend(_check_structure_import_fixture_audit(repo_root))
+    issues.extend(_check_documentation_visual_hygiene(repo_root))
     if issues:
         for issue in issues:
             print(issue if issue.startswith(("MISSING:", "INVALID:")) else f"MISSING: {issue}")

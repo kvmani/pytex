@@ -195,6 +195,54 @@ class Lattice:
             unit="1/angstrom",
         )
 
+    def metric_tensor(self) -> np.ndarray:
+        return metric_tensor(self)
+
+    def reciprocal_metric_tensor(self) -> np.ndarray:
+        return reciprocal_metric_tensor(self)
+
+    def direct_to_reciprocal_components(self, components: Any) -> np.ndarray:
+        return direct_to_reciprocal_components(components, self)
+
+    def reciprocal_to_direct_components(self, components: Any) -> np.ndarray:
+        return reciprocal_to_direct_components(components, self)
+
+
+def metric_tensor(lattice: Lattice) -> np.ndarray:
+    basis = lattice.direct_basis().matrix
+    tensor = basis.T @ basis
+    tensor = np.ascontiguousarray(tensor, dtype=np.float64)
+    tensor.setflags(write=False)
+    return tensor
+
+
+def reciprocal_metric_tensor(lattice: Lattice) -> np.ndarray:
+    basis = lattice.reciprocal_basis().matrix
+    tensor = basis.T @ basis
+    tensor = np.ascontiguousarray(tensor, dtype=np.float64)
+    tensor.setflags(write=False)
+    return tensor
+
+
+def direct_to_reciprocal_components(components: Any, lattice: Lattice) -> np.ndarray:
+    array = np.asarray(components, dtype=np.float64)
+    if array.shape[-1] != 3:
+        raise ValueError("direct components must end with dimension 3.")
+    transformed = np.asarray(array, dtype=np.float64) @ metric_tensor(lattice)
+    transformed = np.ascontiguousarray(transformed)
+    transformed.setflags(write=False)
+    return transformed
+
+
+def reciprocal_to_direct_components(components: Any, lattice: Lattice) -> np.ndarray:
+    array = np.asarray(components, dtype=np.float64)
+    if array.shape[-1] != 3:
+        raise ValueError("reciprocal components must end with dimension 3.")
+    transformed = np.asarray(array, dtype=np.float64) @ reciprocal_metric_tensor(lattice)
+    transformed = np.ascontiguousarray(transformed)
+    transformed.setflags(write=False)
+    return transformed
+
 
 @dataclass(frozen=True, slots=True)
 class AtomicSite:

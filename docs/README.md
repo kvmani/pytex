@@ -32,6 +32,7 @@
 - [Notation And Conventions](standards/notation_and_conventions.md)
 - [Documentation Architecture](standards/documentation_architecture.md)
 - [LaTeX And Figures](standards/latex_and_figures.md)
+- [Visualization Style Guide](standards/visualization_style_guide.md)
 - [Terminology And Symbol Registry](standards/terminology_and_symbol_registry.md)
 - [Scientific Citation Policy](standards/scientific_citation_policy.md)
 - [Benchmark And Tolerance Governance](standards/benchmark_and_tolerance_governance.md)
@@ -88,6 +89,14 @@
 - [Kinematic Spot Projection](figures/kinematic_spot_projection.svg)
 - [HCP Reference Frame](figures/hcp_reference_frame.svg)
 - [Pole Figure Construction](figures/pole_figure_construction.svg)
+- [PyTex System Structure](figures/pytex_system_structure.svg)
+- [PyTex Scientific Data Flow](figures/pytex_scientific_data_flow.svg)
+- [PyTex Governance And Completion Model](figures/pytex_governance_completion_model.svg)
+- [PyTex Current State And Planned Expansion](figures/pytex_current_state_expansion.svg)
+- [Core Foundation Map](figures/core_foundation_map.svg)
+- [Texture Foundation Flow](figures/texture_foundation_flow.svg)
+- [EBSD Foundation Flow](figures/ebsd_foundation_flow.svg)
+- [Diffraction Foundation Flow](figures/diffraction_foundation_flow.svg)
 
 ## Documentation Rules
 

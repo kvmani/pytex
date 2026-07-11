@@ -15,28 +15,10 @@ This page drills into the texture subsystem as a scientific layer on top of the 
 
 ## Texture Flow
 
-```{mermaid}
-flowchart LR
-    core["Canonical core<br/>Frames, symmetry, lattice, orientation"]
-    rotations["Rotation and Orientation<br/>Quaternion-backed semantics"]
-    symmetry["Symmetry reduction<br/>Fundamental sector and orbit logic"]
-    pfipf["PF / IPF<br/>PoleFigure and InversePoleFigure"]
-    odf["ODF<br/>Kernel evaluation and density queries"]
-    colors["IPFColorKey<br/>Symmetry-aware presentation semantics"]
-
-    core --> rotations
-    rotations --> symmetry
-    symmetry --> pfipf
-    rotations --> pfipf
-    symmetry --> odf
-    symmetry --> colors
-    rotations --> colors
-
-    classDef core fill:#f0f4f8,stroke:#334e68,color:#102a43,stroke-width:1.5px;
-    classDef domain fill:#d9f2e6,stroke:#2d6a4f,color:#1b4332,stroke-width:1.5px;
-    class core core;
-    class rotations,symmetry,pfipf,odf,colors domain;
-```
+:::{figure} ../../figures/texture_foundation_flow.svg
+:alt: Texture foundation flow from canonical core semantics through rotations, symmetry reduction, PF/IPF, ODF, harmonic reconstruction, and teaching outputs.
+:class: architecture-poster-figure
+:::
 
 ## Why This Layer Matters
 

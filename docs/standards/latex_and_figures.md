@@ -3,6 +3,8 @@
 LaTeX remains the canonical source for major scientific notes, while SVG remains the canonical source for scientific figures.
 
 This standard works together with `documentation_architecture.md`, where Sphinx is defined as the primary browsable and searchable documentation surface.
+Canonical SVG assets that explain architecture, process flow, governance, validation, workflow, or
+teaching material must also follow `visualization_style_guide.md`.
 
 ## Canonical Sources
 
@@ -26,6 +28,8 @@ Where geometry or conventions matter, figures must:
 - label vectors, planes, poles, angles, and units
 - be suitable for papers, lectures, and documentation reuse
 - cite the scientific convention or source they are illustrating when the figure fixes a standard
+- follow the central visualization style guide when the figure is an architecture, process-flow,
+  workflow, validation, or teaching illustration
 
 This SVG rule is for repository assets and documentation figures. It does not require every user-generated runtime plot to be exported as SVG.
 
@@ -52,6 +56,7 @@ A major scientifically substantial stable feature is incomplete until its LaTeX 
 
 - `documentation_architecture.md`
 - `reference_canon.md`
+- `visualization_style_guide.md`
 
 ### Informative
 

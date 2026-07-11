@@ -163,6 +163,19 @@ def direction_uvtw_to_uvw_array(uvtw: Any) -> IntArray:
     return as_int_array(reduced, shape=(rows.shape[0], 3))
 
 
+def zone_law_value_hkil_uvtw(hkil: Any, uvtw: Any) -> IntArray:
+    planes = plane_hkil_to_hkl_array(hkil)
+    directions = direction_uvtw_to_uvw_array(uvtw)
+    plane_rows, direction_rows = _broadcast_rows(
+        planes,
+        directions,
+        left_name="hkil",
+        right_name="UVTW",
+    )
+    values = np.einsum("ni,ni->n", plane_rows, direction_rows, optimize=True)
+    return as_int_array(values.astype(np.int64), shape=(values.shape[0],))
+
+
 def _family_unique_rows(values: IntArray) -> tuple[IntArray, IntArray]:
     if values.shape[0] == 0:
         empty_rows = np.empty((0, values.shape[1]), dtype=np.int64)
@@ -477,6 +490,49 @@ class MillerPlane:
     def to_crystal_plane(self) -> CrystalPlane:
         return CrystalPlane.from_miller_bravais(self.hkil, phase=self.phase)
 
+    def to_miller_bravais(self) -> MillerBravaisPlane:
+        return MillerBravaisPlane(indices=self.hkil, phase=self.phase)
+
+
+@dataclass(frozen=True, slots=True)
+class MillerBravaisPlane:
+    indices: np.ndarray
+    phase: Phase
+
+    def __post_init__(self) -> None:
+        rows = plane_hkil_to_hkl_array(self.indices)
+        hkil = plane_hkl_to_hkil_array(rows)[0]
+        if not np.any(rows[0]):
+            raise ValueError("MillerBravaisPlane indices must not be the zero quartet.")
+        object.__setattr__(self, "indices", as_int_array(hkil, shape=(4,)))
+
+    @classmethod
+    def from_hkil(cls, indices: Any, *, phase: Phase) -> MillerBravaisPlane:
+        return cls(indices=indices, phase=phase)
+
+    @classmethod
+    def from_hkl(cls, indices: Any, *, phase: Phase) -> MillerBravaisPlane:
+        return cls(indices=plane_hkl_to_hkil_array(indices)[0], phase=phase)
+
+    @property
+    def hkl(self) -> IntArray:
+        return as_int_array(plane_hkil_to_hkl_array(self.indices)[0], shape=(3,))
+
+    @property
+    def reduced_indices(self) -> IntArray:
+        return as_int_array(plane_hkl_to_hkil_array(reduce_indices(self.hkl))[0], shape=(4,))
+
+    def zone_law_value(self, direction: MillerBravaisDirection) -> int:
+        if direction.phase != self.phase:
+            raise ValueError("direction.phase must match MillerBravaisPlane.phase.")
+        return int(zone_law_value_hkil_uvtw(self.indices, direction.indices)[0])
+
+    def contains_direction(self, direction: MillerBravaisDirection) -> bool:
+        return self.zone_law_value(direction) == 0
+
+    def to_miller_plane(self) -> MillerPlane:
+        return MillerPlane.from_hkl(self.hkl, phase=self.phase)
+
 
 @dataclass(frozen=True, slots=True)
 class MillerDirection:
@@ -558,6 +614,49 @@ class MillerDirection:
 
     def to_zone_axis(self) -> ZoneAxis:
         return ZoneAxis(indices=self.indices, phase=self.phase)
+
+    def to_miller_bravais(self) -> MillerBravaisDirection:
+        return MillerBravaisDirection(indices=self.UVTW, phase=self.phase)
+
+
+@dataclass(frozen=True, slots=True)
+class MillerBravaisDirection:
+    indices: np.ndarray
+    phase: Phase
+
+    def __post_init__(self) -> None:
+        rows = direction_uvtw_to_uvw_array(self.indices)
+        uvtw = direction_uvw_to_uvtw_array(rows)[0]
+        if not np.any(rows[0]):
+            raise ValueError("MillerBravaisDirection indices must not be the zero quartet.")
+        object.__setattr__(self, "indices", as_int_array(uvtw, shape=(4,)))
+
+    @classmethod
+    def from_UVTW(cls, indices: Any, *, phase: Phase) -> MillerBravaisDirection:  # noqa: N802
+        return cls(indices=indices, phase=phase)
+
+    @classmethod
+    def from_uvw(cls, indices: Any, *, phase: Phase) -> MillerBravaisDirection:
+        return cls(indices=direction_uvw_to_uvtw_array(indices)[0], phase=phase)
+
+    @property
+    def uvw(self) -> IntArray:
+        return as_int_array(direction_uvtw_to_uvw_array(self.indices)[0], shape=(3,))
+
+    @property
+    def reduced_indices(self) -> IntArray:
+        return as_int_array(direction_uvw_to_uvtw_array(reduce_indices(self.uvw))[0], shape=(4,))
+
+    def zone_law_value(self, plane: MillerBravaisPlane) -> int:
+        if plane.phase != self.phase:
+            raise ValueError("plane.phase must match MillerBravaisDirection.phase.")
+        return int(zone_law_value_hkil_uvtw(plane.indices, self.indices)[0])
+
+    def lies_in_plane(self, plane: MillerBravaisPlane) -> bool:
+        return self.zone_law_value(plane) == 0
+
+    def to_miller_direction(self) -> MillerDirection:
+        return MillerDirection.from_uvw(self.uvw, phase=self.phase)
 
 
 @dataclass(frozen=True, slots=True)
@@ -855,6 +954,8 @@ def project_directions_onto_planes(
 
 
 __all__ = [
+    "MillerBravaisDirection",
+    "MillerBravaisPlane",
     "MillerDirection",
     "MillerDirectionSet",
     "MillerPlane",
@@ -872,4 +973,5 @@ __all__ = [
     "plane_hkl_to_hkil_array",
     "project_directions_onto_planes",
     "reduce_indices",
+    "zone_law_value_hkil_uvtw",
 ]

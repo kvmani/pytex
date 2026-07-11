@@ -4,7 +4,7 @@
       .title { font: 700 24px Arial, sans-serif; fill: #102a43; }
       .label { font: 600 18px Arial, sans-serif; fill: #243b53; }
       .body { font: 16px Arial, sans-serif; fill: #334e68; }
-      .math { font: italic 20px "Times New Roman", serif; fill: #102a43; }
+      .math { font: italic 20px Arial, Helvetica, sans-serif; fill: #102a43; }
       .panel { fill: #f8fbff; stroke: #486581; stroke-width: 2; rx: 14; ry: 14; }
       .panel-accent { fill: #eef4f8; stroke: #334e68; stroke-width: 2; rx: 12; ry: 12; }
       .left { fill: #e3f2fd; stroke: #1d4ed8; stroke-width: 2; rx: 12; ry: 12; }

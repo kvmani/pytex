@@ -54,6 +54,8 @@ A stable feature is not complete until all of the following exist:
 - a canonical JSON contract for major outputs that are intended to cross workflow or tool boundaries
 - explicit mathematical definitions for major conventions, mappings, reductions, and algorithms
 - SVG figures when frames, vectors, geometry, or reduction logic matter
+- authored SVG process and architecture diagrams when a Mermaid block would become cramped,
+  single-row, single-column, or reused as a canonical public reference
 
 ## Documentation Escalation Rule
 
@@ -65,6 +67,8 @@ The repository default is no longer “text first, figures later” for foundati
 - Notebook tutorials should agree with the formal docs and must not introduce private conventions, hidden helper assumptions, or unexplained magic numbers.
 - Automated test documentation should expose source-backed formulas, expected outputs, and last verified code outputs for major numerical pathways.
 - Runtime plotting should reuse shared semantic builders rather than inventing ad hoc Matplotlib logic per workflow.
+- Canonical documentation graphics should follow the visualization style guide so architecture,
+  workflow, validation, and teaching diagrams share one visual language.
 - A code change that improves scientific capability but leaves the foundational documentation less clear than the implementation is incomplete.
 - Stable terms and symbols should be added to the shared terminology registry and linked from affected docs rather than redefined independently.
 - When a document names another repository document as required reading or related material, it should link to it directly rather than listing an unlinked path.
@@ -85,6 +89,7 @@ Before merging a substantial change, answer these questions explicitly:
 
 - [Engineering Governance](engineering_governance.md)
 - [Reference Canon](reference_canon.md)
+- [Visualization Style Guide](visualization_style_guide.md)
 
 ### Informative
 

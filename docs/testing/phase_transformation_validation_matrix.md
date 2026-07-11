@@ -32,6 +32,17 @@ starter correspondences, and a bounded experimental reconstruction-scoring surfa
 are no longer ad hoc, but the validation posture is still foundational because broad
 literature-backed families and curated reconstruction datasets are not yet in place.
 
+## Evidence Hardening Queue
+
+Before broader transformation algorithms move out of experimental scope, the next validation pass
+should add:
+
+- a curated orientation-relationship family ledger that records source convention, plane-direction
+  correspondences, and PyTex canonical mapping
+- literature-backed variant-count and variant-orbit checks beyond the starter Bain and
+  Nishiyama-Wassermann helpers
+- at least one small parent-reconstruction benchmark with explicit ambiguity and failure-mode notes
+
 ## References
 
 ### Normative

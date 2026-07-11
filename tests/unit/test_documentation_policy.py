@@ -17,6 +17,7 @@ def test_foundational_docs_agree_on_hybrid_documentation_policy() -> None:
         "AGENTS.md",
         "docs/standards/documentation_architecture.md",
         "docs/standards/terminology_and_symbol_registry.md",
+        "docs/standards/visualization_style_guide.md",
     ]
     for path in foundational_docs:
         content = _read(path).lower()
@@ -37,7 +38,14 @@ def test_docs_site_placeholder_encodes_public_entry_point() -> None:
 def test_latex_standard_points_back_to_documentation_architecture() -> None:
     content = _read("docs/standards/latex_and_figures.md").lower()
     assert "documentation_architecture.md" in content
+    assert "visualization_style_guide.md" in content
     assert "sphinx" in content
+
+
+def test_visualization_style_guide_defines_canonical_svg_policy() -> None:
+    content = _read("docs/standards/visualization_style_guide.md").lower()
+    for token in ("#07122f", "#2563eb", "#7c3aed", "mermaid", "title", "desc"):
+        assert token in content
 
 
 def test_foundational_docs_encode_notebook_policy() -> None:

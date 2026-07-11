@@ -15,11 +15,15 @@ from pytex.core import (
     CalibrationRecord,
     CrystalDirection,
     CrystalPlane,
+    EBSDCalibrationGeometry,
+    EBSDDetectorGeometry,
     FrameDomain,
     FrameTransform,
     Handedness,
     Lattice,
     MeasurementQuality,
+    MillerBravaisDirection,
+    MillerBravaisPlane,
     MillerDirection,
     MillerDirectionSet,
     MillerIndex,
@@ -29,6 +33,7 @@ from pytex.core import (
     Orientation,
     OrientationRelationship,
     OrientationSet,
+    PatternCenter,
     Phase,
     PhaseTransformationRecord,
     ProvenanceRecord,
@@ -631,6 +636,38 @@ def _deserialize_miller_direction(payload: dict[str, Any]) -> MillerDirection:
     )
 
 
+def _serialize_miller_bravais_plane(plane: MillerBravaisPlane) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_bravais_plane"),
+        "indices": _as_int_list(plane.indices),
+        "phase": _serialize_phase(plane.phase),
+    }
+
+
+def _deserialize_miller_bravais_plane(payload: dict[str, Any]) -> MillerBravaisPlane:
+    _require_schema(payload, "pytex.core.miller_bravais_plane")
+    return MillerBravaisPlane(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
+def _serialize_miller_bravais_direction(direction: MillerBravaisDirection) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.miller_bravais_direction"),
+        "indices": _as_int_list(direction.indices),
+        "phase": _serialize_phase(direction.phase),
+    }
+
+
+def _deserialize_miller_bravais_direction(payload: dict[str, Any]) -> MillerBravaisDirection:
+    _require_schema(payload, "pytex.core.miller_bravais_direction")
+    return MillerBravaisDirection(
+        indices=np.asarray(payload["indices"], dtype=np.int64),
+        phase=_deserialize_phase(payload["phase"]),
+    )
+
+
 def _serialize_miller_plane_set(planes: MillerPlaneSet) -> dict[str, Any]:
     return {
         **_base_payload("pytex.core.miller_plane_set"),
@@ -769,6 +806,102 @@ def _deserialize_orientation_set(payload: dict[str, Any]) -> OrientationSet:
         specimen_frame=_deserialize_reference_frame(payload["specimen_frame"]),
         symmetry=symmetry,
         phase=phase,
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_pattern_center(center: PatternCenter) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.pattern_center"),
+        "x_fraction": center.x_fraction,
+        "y_fraction": center.y_fraction,
+        "detector_distance_fraction": center.detector_distance_fraction,
+        "convention": center.convention,
+        "provenance": _serialize_provenance(center.provenance),
+    }
+
+
+def _deserialize_pattern_center(payload: dict[str, Any]) -> PatternCenter:
+    _require_schema(payload, "pytex.core.pattern_center")
+    return PatternCenter(
+        x_fraction=payload["x_fraction"],
+        y_fraction=payload["y_fraction"],
+        detector_distance_fraction=payload["detector_distance_fraction"],
+        convention=payload.get("convention", "fractional_detector"),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_ebsd_detector_geometry(geometry: EBSDDetectorGeometry) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.ebsd_detector_geometry"),
+        "detector_frame": _serialize_reference_frame(geometry.detector_frame),
+        "pattern_center": _serialize_pattern_center(geometry.pattern_center),
+        "detector_distance_mm": geometry.detector_distance_mm,
+        "pixel_size_um": list(geometry.pixel_size_um),
+        "detector_shape": list(geometry.detector_shape),
+        "tilt_degrees": list(geometry.tilt_degrees),
+        "calibration_record": None
+        if geometry.calibration_record is None
+        else _serialize_calibration_record(geometry.calibration_record),
+        "measurement_quality": None
+        if geometry.measurement_quality is None
+        else _serialize_measurement_quality(geometry.measurement_quality),
+        "provenance": _serialize_provenance(geometry.provenance),
+    }
+
+
+def _deserialize_ebsd_detector_geometry(payload: dict[str, Any]) -> EBSDDetectorGeometry:
+    _require_schema(payload, "pytex.core.ebsd_detector_geometry")
+    return EBSDDetectorGeometry(
+        detector_frame=_deserialize_reference_frame(payload["detector_frame"]),
+        pattern_center=_deserialize_pattern_center(payload["pattern_center"]),
+        detector_distance_mm=payload["detector_distance_mm"],
+        pixel_size_um=tuple(payload["pixel_size_um"]),
+        detector_shape=tuple(payload["detector_shape"]),
+        tilt_degrees=tuple(payload.get("tilt_degrees", (0.0, 0.0, 0.0))),
+        calibration_record=None
+        if payload.get("calibration_record") is None
+        else _deserialize_calibration_record(payload["calibration_record"]),
+        measurement_quality=None
+        if payload.get("measurement_quality") is None
+        else _deserialize_measurement_quality(payload["measurement_quality"]),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_ebsd_calibration_geometry(geometry: EBSDCalibrationGeometry) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.core.ebsd_calibration_geometry"),
+        "acquisition_geometry": _serialize_acquisition_geometry(geometry.acquisition_geometry),
+        "detector_geometry": _serialize_ebsd_detector_geometry(geometry.detector_geometry),
+        "map_to_specimen": None
+        if geometry.map_to_specimen is None
+        else _serialize_frame_transform(geometry.map_to_specimen),
+        "calibration_record": None
+        if geometry.calibration_record is None
+        else _serialize_calibration_record(geometry.calibration_record),
+        "measurement_quality": None
+        if geometry.measurement_quality is None
+        else _serialize_measurement_quality(geometry.measurement_quality),
+        "provenance": _serialize_provenance(geometry.provenance),
+    }
+
+
+def _deserialize_ebsd_calibration_geometry(payload: dict[str, Any]) -> EBSDCalibrationGeometry:
+    _require_schema(payload, "pytex.core.ebsd_calibration_geometry")
+    return EBSDCalibrationGeometry(
+        acquisition_geometry=_deserialize_acquisition_geometry(payload["acquisition_geometry"]),
+        detector_geometry=_deserialize_ebsd_detector_geometry(payload["detector_geometry"]),
+        map_to_specimen=None
+        if payload.get("map_to_specimen") is None
+        else _deserialize_frame_transform(payload["map_to_specimen"]),
+        calibration_record=None
+        if payload.get("calibration_record") is None
+        else _deserialize_calibration_record(payload["calibration_record"]),
+        measurement_quality=None
+        if payload.get("measurement_quality") is None
+        else _deserialize_measurement_quality(payload["measurement_quality"]),
         provenance=_deserialize_provenance(payload.get("provenance")),
     )
 
@@ -1492,6 +1625,9 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     FrameTransform: _serialize_frame_transform,
     MeasurementQuality: _serialize_measurement_quality,
     CalibrationRecord: _serialize_calibration_record,
+    PatternCenter: _serialize_pattern_center,
+    EBSDDetectorGeometry: _serialize_ebsd_detector_geometry,
+    EBSDCalibrationGeometry: _serialize_ebsd_calibration_geometry,
     ScatteringSetup: _serialize_scattering_setup,
     AcquisitionGeometry: _serialize_acquisition_geometry,
     SymmetrySpec: _serialize_symmetry,
@@ -1503,6 +1639,8 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     Phase: _serialize_phase,
     MillerPlane: _serialize_miller_plane,
     MillerDirection: _serialize_miller_direction,
+    MillerBravaisPlane: _serialize_miller_bravais_plane,
+    MillerBravaisDirection: _serialize_miller_bravais_direction,
     MillerPlaneSet: _serialize_miller_plane_set,
     MillerDirectionSet: _serialize_miller_direction_set,
     MillerIndex: _serialize_miller_index,
@@ -1540,6 +1678,9 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.frame_transform": _deserialize_frame_transform,
     "pytex.core.measurement_quality": _deserialize_measurement_quality,
     "pytex.core.calibration_record": _deserialize_calibration_record,
+    "pytex.core.pattern_center": _deserialize_pattern_center,
+    "pytex.core.ebsd_detector_geometry": _deserialize_ebsd_detector_geometry,
+    "pytex.core.ebsd_calibration_geometry": _deserialize_ebsd_calibration_geometry,
     "pytex.core.scattering_setup": _deserialize_scattering_setup,
     "pytex.core.acquisition_geometry": _deserialize_acquisition_geometry,
     "pytex.core.symmetry_spec": _deserialize_symmetry,
@@ -1551,6 +1692,8 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.phase": _deserialize_phase,
     "pytex.core.miller_plane": _deserialize_miller_plane,
     "pytex.core.miller_direction": _deserialize_miller_direction,
+    "pytex.core.miller_bravais_plane": _deserialize_miller_bravais_plane,
+    "pytex.core.miller_bravais_direction": _deserialize_miller_bravais_direction,
     "pytex.core.miller_plane_set": _deserialize_miller_plane_set,
     "pytex.core.miller_direction_set": _deserialize_miller_direction_set,
     "pytex.core.miller_index": _deserialize_miller_index,

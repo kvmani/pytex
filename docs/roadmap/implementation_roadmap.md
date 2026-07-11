@@ -12,6 +12,25 @@ features are added aggressively.
 
 ## Immediate Development Roadmap
 
+### Current Status Snapshot
+
+As of 2026-07-11, the current working baseline adds the next interim feature slice while keeping
+Phase 1 claim discipline intact: EBSD calibration geometry primitives, Miller-Bravais
+plane/direction wrappers, lattice metric helpers, and a first SAED zone-axis indexing helper are
+implemented with deterministic unit coverage and JSON-contract round trips. The documentation
+surface has also moved the primary architecture and foundation maps from inline Mermaid sketches to
+canonical SVG figures governed by the visualization style guide. Runtime inspection screenshots are
+treated as local artifacts rather than repository assets.
+
+### Interim Feature-Build Track While External Validation Is Pending
+
+Until local MTEX and broader external validation tooling are available, development may proceed on
+non-validation features that strengthen PyTex's explicit semantic model without broadening external
+equivalence claims. The preferred work is first-class named primitives, local deterministic unit
+coverage, JSON-contract round trips, and teaching/workflow ergonomics for existing foundations.
+This track must not claim MTEX parity or full physical equivalence, and parent reconstruction
+should remain experimental until validation work resumes.
+
 ### Phase 1: Validation And Interoperability Hardening
 
 Priority: highest
