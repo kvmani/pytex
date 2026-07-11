@@ -1,15 +1,27 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from pytex.core._arrays import as_float_array, normalize_vectors
+from pytex.core._arrays import as_float_array, freeze_array, normalize_vectors
 from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.orientation import Orientation, OrientationSet, specimen_direction_vector
-from pytex.core.symmetry import SymmetrySpec
+from pytex.core.sphere import spherical_angles_to_directions
+from pytex.core.symmetry import FundamentalSector, SymmetrySpec
+from pytex.texture.projections import project_directions
+
+_DEFAULT_ANCHOR_DIRECTIONS = np.array(
+    [
+        [0.0, 0.0, 1.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+    ],
+    dtype=np.float64,
+)
 
 
 def _normalize_rgb_vertices(vertices: ArrayLike) -> np.ndarray:
@@ -53,8 +65,17 @@ class IPFColorKey:
             raise ValueError("IPFColorKey.saturation_gamma must be finite and strictly positive.")
 
     @property
+    def sector(self) -> FundamentalSector:
+        return self.crystal_symmetry.fundamental_sector(antipodal=self.antipodal)
+
+    @property
     def sector_vertices(self) -> np.ndarray:
-        return self.crystal_symmetry.fundamental_sector(antipodal=self.antipodal).vertices
+        vertices = self.sector.vertices
+        if vertices.shape == (3, 3):
+            return vertices
+        # Low-symmetry sectors (hemisphere or wedge) have fewer than three
+        # corners; anchor the barycentric color basis on the reference octant.
+        return as_float_array(_DEFAULT_ANCHOR_DIRECTIONS, shape=(3, 3))
 
     def colors_from_crystal_directions(self, crystal_directions: ArrayLike) -> np.ndarray:
         directions = normalize_vectors(crystal_directions)
@@ -77,6 +98,43 @@ class IPFColorKey:
         colors = np.ascontiguousarray(colors)
         colors.setflags(write=False)
         return colors
+
+    def boundary_points_2d(
+        self,
+        *,
+        method: str = "stereographic",
+        samples_per_edge: int = 64,
+    ) -> np.ndarray:
+        trace = self.sector.boundary_trace(samples_per_edge=samples_per_edge)
+        projected = project_directions(trace, method=method, antipodal=self.antipodal)
+        return freeze_array(np.ascontiguousarray(projected))
+
+    def legend_mesh(
+        self,
+        *,
+        resolution_deg: float = 2.0,
+        method: str = "stereographic",
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if not 0.0 < float(resolution_deg) <= 15.0:
+            raise ValueError("legend_mesh resolution_deg must lie in (0, 15] degrees.")
+        polar = np.arange(0.0, 90.0 + resolution_deg, resolution_deg)
+        azimuth = np.arange(0.0, 360.0, resolution_deg)
+        polar_grid, azimuth_grid = np.meshgrid(polar, azimuth, indexing="ij")
+        directions = spherical_angles_to_directions(
+            polar_grid.ravel(),
+            azimuth_grid.ravel(),
+        ).reshape(-1, 3)
+        sector = self.sector
+        mask = np.asarray(sector.contains(directions, atol=1e-6))
+        selected = directions[mask]
+        if selected.shape[0] == 0:
+            raise ValueError("legend_mesh produced no in-sector directions.")
+        points = project_directions(selected, method=method, antipodal=self.antipodal)
+        colors = self.colors_from_crystal_directions(selected)
+        return (
+            freeze_array(np.ascontiguousarray(points)),
+            freeze_array(np.ascontiguousarray(colors)),
+        )
 
     def colors_from_orientations(self, orientations: OrientationSet) -> np.ndarray:
         if orientations.symmetry is None or orientations.symmetry != self.crystal_symmetry:
@@ -164,8 +222,39 @@ def ipf_colors(
     ).colors_from_orientations(orientations)
 
 
+def plot_ipf_key(
+    key: IPFColorKey,
+    *,
+    method: str = "stereographic",
+    resolution_deg: float = 1.0,
+    marker_size: float = 4.0,
+    ax: Any | None = None,
+    title: str | None = None,
+) -> tuple[Any, Any]:
+    """Render the IPF color key legend for one crystal symmetry and direction."""
+
+    import matplotlib.pyplot as plt
+
+    if ax is None:
+        fig, axis = plt.subplots(figsize=(4.0, 4.0))
+    else:
+        axis = ax
+        fig = axis.figure
+    points, colors = key.legend_mesh(resolution_deg=resolution_deg, method=method)
+    axis.scatter(points[:, 0], points[:, 1], c=colors, s=marker_size, linewidths=0.0)
+    boundary = key.boundary_points_2d(method=method)
+    axis.plot(boundary[:, 0], boundary[:, 1], color="black", linewidth=1.0)
+    axis.set_aspect("equal")
+    axis.set_axis_off()
+    if title is None:
+        title = f"IPF key {key.crystal_symmetry.point_group}"
+    axis.set_title(title)
+    return fig, axis
+
+
 __all__ = [
     "IPFColorKey",
     "ipf_color",
     "ipf_colors",
+    "plot_ipf_key",
 ]

@@ -16,7 +16,7 @@ from pytex.plotting.crystal3d import (
 )
 from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
 from pytex.plotting.ebsd import plot_ipf_map, plot_kam_map
-from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors
+from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
 from pytex.plotting.runtime import (
     plot_crystal_directions,
     plot_crystal_planes,
@@ -62,6 +62,7 @@ __all__ = [
     "plot_crystal_structure_3d",
     "plot_euler_set",
     "plot_inverse_pole_figure",
+    "plot_ipf_key",
     "plot_ipf_map",
     "plot_kam_map",
     "plot_odf",

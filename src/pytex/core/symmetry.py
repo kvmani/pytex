@@ -123,86 +123,79 @@ def _normalized_proper_point_group(point_group: str) -> str:
     return proper_subgroup_symbol_for(normalize_point_group_symbol(point_group))
 
 
-def _angle_in_wedge(vector: np.ndarray, wedge_angle_rad: float) -> bool:
-    angle = float(np.mod(np.arctan2(vector[1], vector[0]), 2.0 * np.pi))
-    return angle <= wedge_angle_rad + _SECTOR_TOLERANCE
+def _sector_array(rows: list[list[float]]) -> np.ndarray:
+    if not rows:
+        return as_float_array(np.zeros((0, 3), dtype=np.float64), shape=(None, 3))
+    return normalize_vectors(np.array(rows, dtype=np.float64))
+
+
+@cache
+def _sector_geometry_table() -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    # Exact Laue-reduced (antipodal, upper hemisphere) sector polygons per
+    # proper rotation group. Vertices are ordered loops; edge i is the great
+    # circle arc from vertex i to vertex i+1 with the given inward normal.
+    # Sector area is 4*pi / (2 * group order).
+    half = 0.5
+    root3_half = np.sqrt(3.0) / 2.0
+    z_axis = [0.0, 0.0, 1.0]
+    x_axis = [1.0, 0.0, 0.0]
+    y_axis = [0.0, 1.0, 0.0]
+    y_normal = [0.0, 1.0, 0.0]
+    octant_vertices = _sector_array([z_axis, x_axis, [0.0, 1.0, 0.0]])
+    octant_normals = _sector_array([y_normal, z_axis, x_axis])
+    return {
+        "1": (_sector_array([]), _sector_array([z_axis])),
+        "2": (
+            _sector_array([x_axis, [-1.0, 0.0, 0.0]]),
+            _sector_array([z_axis, y_normal]),
+        ),
+        "222": (octant_vertices, octant_normals),
+        "4": (octant_vertices, octant_normals),
+        "422": (
+            _sector_array([z_axis, x_axis, [1.0, 1.0, 0.0]]),
+            _sector_array([y_normal, z_axis, [1.0, -1.0, 0.0]]),
+        ),
+        "3": (
+            _sector_array([z_axis, x_axis, [-half, root3_half, 0.0]]),
+            _sector_array([y_normal, z_axis, [root3_half, half, 0.0]]),
+        ),
+        # For D3 the antipodal-composed two-fold axes at azimuths 0/120/240
+        # induce mirror lines at azimuths 30/90/150, so the fundamental wedge
+        # is [30, 90] degrees rather than a wedge anchored at azimuth 0.
+        "32": (
+            _sector_array([z_axis, [root3_half, half, 0.0], y_axis]),
+            _sector_array([[-half, root3_half, 0.0], z_axis, x_axis]),
+        ),
+        "6": (
+            _sector_array([z_axis, x_axis, [half, root3_half, 0.0]]),
+            _sector_array([y_normal, z_axis, [root3_half, -half, 0.0]]),
+        ),
+        "622": (
+            _sector_array([z_axis, x_axis, [root3_half, half, 0.0]]),
+            _sector_array([y_normal, z_axis, [half, -root3_half, 0.0]]),
+        ),
+        "23": (
+            _sector_array([z_axis, x_axis, [1.0, 1.0, 1.0]]),
+            _sector_array([y_normal, [0.0, -1.0, 1.0], [1.0, -1.0, 0.0]]),
+        ),
+        "432": (
+            _sector_array([z_axis, [1.0, 0.0, 1.0], [1.0, 1.0, 1.0]]),
+            _sector_array([y_normal, [-1.0, 0.0, 1.0], [1.0, -1.0, 0.0]]),
+        ),
+    }
 
 
 def _sector_vertices_for_group(proper_group: str) -> np.ndarray:
-    if proper_group in {"23", "432"}:
-        vertices = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 1.0],
-                [1.0, 1.0, 1.0],
-            ],
-            dtype=np.float64,
-        )
-    elif proper_group in {"4", "422"}:
-        vertices = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [1.0, 1.0, 0.0],
-            ],
-            dtype=np.float64,
-        )
-    elif proper_group in {"3", "32"}:
-        vertices = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.5, np.sqrt(3.0) / 2.0, 0.0],
-            ],
-            dtype=np.float64,
-        )
-    elif proper_group in {"6", "622"}:
-        vertices = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [np.sqrt(3.0) / 2.0, 0.5, 0.0],
-            ],
-            dtype=np.float64,
-        )
-    else:
-        vertices = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-            ],
-            dtype=np.float64,
-        )
-    return normalize_vectors(vertices)
+    return _sector_geometry_table()[proper_group][0]
+
+
+def _sector_edge_normals_for_group(proper_group: str) -> np.ndarray:
+    return _sector_geometry_table()[proper_group][1]
 
 
 def _vector_in_fundamental_sector(vector: np.ndarray, proper_group: str) -> bool:
-    x, y, z = (float(value) for value in vector)
-    if proper_group in {"23", "432"}:
-        return (
-            z >= -_SECTOR_TOLERANCE
-            and y >= -_SECTOR_TOLERANCE
-            and x >= y - _SECTOR_TOLERANCE
-            and z >= x - _SECTOR_TOLERANCE
-        )
-    if proper_group in {"4", "422"}:
-        return z >= -_SECTOR_TOLERANCE and y >= -_SECTOR_TOLERANCE and x >= y - _SECTOR_TOLERANCE
-    if proper_group in {"3", "32"}:
-        return (
-            z >= -_SECTOR_TOLERANCE
-            and x >= -_SECTOR_TOLERANCE
-            and _angle_in_wedge(vector, np.deg2rad(60.0))
-        )
-    if proper_group in {"6", "622"}:
-        return (
-            z >= -_SECTOR_TOLERANCE
-            and x >= -_SECTOR_TOLERANCE
-            and _angle_in_wedge(vector, np.deg2rad(30.0))
-        )
-    if proper_group in {"2", "222"}:
-        return x >= -_SECTOR_TOLERANCE and y >= -_SECTOR_TOLERANCE and z >= -_SECTOR_TOLERANCE
-    return z >= -_SECTOR_TOLERANCE
+    normals = _sector_edge_normals_for_group(proper_group)
+    return bool(np.all(normals @ np.asarray(vector, dtype=np.float64) >= -_SECTOR_TOLERANCE))
 
 
 def _sector_sort_key(vector: np.ndarray) -> tuple[float, float, float]:
@@ -432,6 +425,7 @@ class SymmetrySpec:
             proper_point_group=self.proper_point_group,
             antipodal=antipodal,
             vertices=_sector_vertices_for_group(self.proper_point_group),
+            edge_normals=_sector_edge_normals_for_group(self.proper_point_group),
         )
 
     def vector_in_fundamental_sector(self, vector: ArrayLike, *, antipodal: bool = True) -> bool:
@@ -497,6 +491,75 @@ class FundamentalSector:
     proper_point_group: str
     antipodal: bool
     vertices: np.ndarray
+    edge_normals: np.ndarray = field(default_factory=lambda: np.zeros((0, 3)))
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "vertices", normalize_vectors(self.vertices))
+        vertices = as_float_array(self.vertices, shape=(None, 3))
+        if vertices.shape[0] > 0:
+            vertices = normalize_vectors(vertices)
+        edge_normals = as_float_array(self.edge_normals, shape=(None, 3))
+        if edge_normals.shape[0] > 0:
+            edge_normals = normalize_vectors(edge_normals)
+        object.__setattr__(self, "vertices", vertices)
+        object.__setattr__(self, "edge_normals", edge_normals)
+
+    def contains(self, vectors: ArrayLike, *, atol: float = _SECTOR_TOLERANCE) -> np.ndarray:
+        array = np.asarray(vectors, dtype=np.float64)
+        squeeze = array.ndim == 1
+        rows = np.atleast_2d(array)
+        if rows.shape[-1] != 3:
+            raise ValueError("Input vectors must end with dimension 3.")
+        if self.edge_normals.shape[0] == 0:
+            mask = np.ones(rows.shape[0], dtype=bool)
+        else:
+            mask = np.all(rows @ self.edge_normals.T >= -atol, axis=1)
+        if squeeze:
+            return np.asarray(mask[0])
+        mask = np.ascontiguousarray(mask)
+        mask.setflags(write=False)
+        return mask
+
+    def center(self) -> np.ndarray:
+        if self.vertices.shape[0] == 0:
+            return as_float_array([0.0, 0.0, 1.0], shape=(3,))
+        if self.vertices.shape[0] >= 3:
+            return normalize_vector(self.vertices.sum(axis=0))
+        trace = self.boundary_trace()
+        return normalize_vector(trace.sum(axis=0))
+
+    def boundary_trace(self, *, samples_per_edge: int = 64) -> np.ndarray:
+        if samples_per_edge < 2:
+            raise ValueError("boundary_trace requires at least two samples per edge.")
+        if self.vertices.shape[0] == 0:
+            angles = np.linspace(0.0, 2.0 * np.pi, 4 * samples_per_edge)
+            trace = np.column_stack(
+                [np.cos(angles), np.sin(angles), np.zeros_like(angles)]
+            )
+            return as_float_array(np.ascontiguousarray(trace), shape=(None, 3))
+        if self.edge_normals.shape[0] != self.vertices.shape[0]:
+            raise ValueError(
+                "boundary_trace requires one edge normal per vertex of the sector loop."
+            )
+        segments: list[np.ndarray] = []
+        vertex_count = self.vertices.shape[0]
+        for index in range(vertex_count):
+            start = self.vertices[index]
+            end = self.vertices[(index + 1) % vertex_count]
+            normal = self.edge_normals[index]
+            tangent = np.cross(normal, start)
+            tangent_norm = float(np.linalg.norm(tangent))
+            if np.isclose(tangent_norm, 0.0):
+                raise ValueError(
+                    "Sector edge normal must be perpendicular to its starting vertex."
+                )
+            tangent = tangent / tangent_norm
+            sweep = float(
+                np.mod(np.arctan2(float(tangent @ end), float(start @ end)), 2.0 * np.pi)
+            )
+            angles = np.linspace(0.0, sweep, samples_per_edge, endpoint=False)
+            segments.append(
+                np.outer(np.cos(angles), start) + np.outer(np.sin(angles), tangent)
+            )
+        segments.append(self.vertices[:1])
+        trace = np.concatenate(segments, axis=0)
+        return as_float_array(np.ascontiguousarray(trace), shape=(None, 3))
