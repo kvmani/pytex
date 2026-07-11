@@ -75,6 +75,12 @@ from pytex.adapters.orix_miller import (
     to_orix_miller_plane,
     to_orix_phase,
 )
+from pytex.adapters.scan_files import (
+    EBSDScanFileResult,
+    default_ebsd_frames,
+    read_ang,
+    read_ctf,
+)
 from pytex.adapters.xrdml import (
     XRDML_NAMESPACE,
     XRDMLPoleFigureMeasurement,
@@ -99,6 +105,7 @@ __all__ = [
     "XRDML_NAMESPACE",
     "BenchmarkManifest",
     "EBSDImportManifest",
+    "EBSDScanFileResult",
     "ExperimentManifest",
     "KikuchiPyWorkflowResult",
     "LaboTexPoleFigureDescriptor",
@@ -109,6 +116,7 @@ __all__ = [
     "WorkflowResultManifest",
     "XRDMLPoleFigureMeasurement",
     "benchmark_manifest_schema_path",
+    "default_ebsd_frames",
     "direction_from_orix_miller",
     "experiment_manifest_schema_path",
     "from_orix_miller",
@@ -127,7 +135,9 @@ __all__ = [
     "normalize_pyebsdindex_payload",
     "normalize_pyebsdindex_result",
     "plane_from_orix_miller",
+    "read_ang",
     "read_benchmark_manifest",
+    "read_ctf",
     "read_ebsd_import_manifest",
     "read_experiment_manifest",
     "read_labotex_pole_figures",
