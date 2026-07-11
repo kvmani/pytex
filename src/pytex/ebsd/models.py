@@ -71,7 +71,7 @@ def _coerce_pole_sequence(
         return (poles,)
     if isinstance(poles, np.ndarray) and poles.shape == (3,):
         return (_coerce_pole(poles, phase=phase),)
-    if isinstance(poles, (list, tuple)):
+    if isinstance(poles, list | tuple):
         return tuple(_coerce_pole(pole, phase=phase) for pole in poles)
     return (_coerce_pole(poles, phase=phase),)
 
@@ -87,7 +87,7 @@ def _coerce_sample_direction_sequence(
         return (_specimen_direction_vector(sample_directions, specimen_frame),)
     if isinstance(sample_directions, np.ndarray) and sample_directions.shape == (3,):
         return (_specimen_direction_vector(sample_directions, specimen_frame),)
-    if isinstance(sample_directions, (list, tuple)):
+    if isinstance(sample_directions, list | tuple):
         if len(sample_directions) == 3 and not isinstance(sample_directions[0], str):
             candidate = np.asarray(sample_directions, dtype=np.float64)
             if candidate.shape == (3,):
@@ -1329,7 +1329,7 @@ class CrystalMap:
             specimen_symmetry=specimen_symmetry,
             provenance=report_provenance,
         )
-        if isinstance(poles, (list, tuple)) and len(poles) == 0:
+        if isinstance(poles, list | tuple) and len(poles) == 0:
             pole_sequence: tuple[CrystalPlane, ...] = ()
         else:
             pole_sequence = _coerce_pole_sequence(poles, phase=phase_view.orientations.phase)

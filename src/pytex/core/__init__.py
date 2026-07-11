@@ -92,6 +92,12 @@ from pytex.core.parent_reconstruction import (
     VariantSelectionReport,
     reconstruct_parent_orientation,
 )
+from pytex.core.point_groups import (
+    PointGroup,
+    all_point_group_symbols,
+    laue_class_symbols,
+    normalize_point_group_symbol,
+)
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.sphere import (
     S2Grid,
@@ -145,6 +151,7 @@ __all__ = [
     "ParentReconstructionReport",
     "PatternCenter",
     "Phase",
+    "PointGroup",
     "PhaseFixtureRecord",
     "PhaseTransformationRecord",
     "ProvenanceRecord",
@@ -163,6 +170,7 @@ __all__ = [
     "VariantSelectionReport",
     "VectorSet",
     "ZoneAxis",
+    "all_point_group_symbols",
     "angle_dir_dir_rad",
     "angle_dir_plane_inclination_rad",
     "angle_dir_plane_normal_rad",
@@ -180,7 +188,9 @@ __all__ = [
     "format_miller_indices",
     "format_plane_indices",
     "get_phase_fixture",
+    "laue_class_symbols",
     "list_phase_fixtures",
+    "normalize_point_group_symbol",
     "metric_tensor",
     "phase_fixture_catalog_path",
     "plane_hkil_to_hkl",

@@ -33,7 +33,7 @@ _SYMMETRY_MARKERS = {
 
 
 def _as_tuple(items: Any) -> tuple[Any, ...]:
-    if isinstance(items, Sequence) and not isinstance(items, (str, bytes)):
+    if isinstance(items, Sequence) and not isinstance(items, str | bytes):
         return tuple(items)
     return (items,)
 
@@ -50,7 +50,7 @@ def _style_bundle(
 
 def _palette(section: dict[str, Any], key: str, fallback: tuple[str, ...]) -> tuple[str, ...]:
     values = section.get(key, fallback)
-    if not isinstance(values, (list, tuple)) or not values:
+    if not isinstance(values, list | tuple) or not values:
         return fallback
     return tuple(str(value) for value in values)
 

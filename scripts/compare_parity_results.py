@@ -51,7 +51,7 @@ def _numeric_tolerance(tolerances: dict[str, float], field_path: str) -> tuple[f
 
 
 def _as_array(value: Any) -> np.ndarray | None:
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return np.asarray(value, dtype=np.float64)
     if isinstance(value, list):
         try:

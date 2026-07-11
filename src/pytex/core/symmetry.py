@@ -15,7 +15,20 @@ from pytex.core._arrays import (
 from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
+from pytex.core.point_groups import (
+    PointGroup,
+    laue_class_symbol_for,
+    normalize_point_group_symbol,
+    proper_subgroup_symbol_for,
+)
 from pytex.core.provenance import ProvenanceRecord
+
+_SPECIMEN_SYMMETRY_POINT_GROUPS = {
+    "triclinic": "1",
+    "monoclinic": "2",
+    "orthorhombic": "222",
+    "orthotropic": "222",
+}
 
 
 def _rotation_matrix_from_axis_angle(axis: ArrayLike, angle_deg: float) -> np.ndarray:
@@ -103,41 +116,11 @@ def _point_group_generators() -> dict[str, list[np.ndarray]]:
     }
 
 
-_PROPER_POINT_GROUP_ALIASES = {
-    "1": "1",
-    "-1": "1",
-    "2": "2",
-    "2/m": "2",
-    "222": "222",
-    "mmm": "222",
-    "4": "4",
-    "4/m": "4",
-    "422": "422",
-    "4/mmm": "422",
-    "3": "3",
-    "-3": "3",
-    "32": "32",
-    "-3m": "32",
-    "6": "6",
-    "6/m": "6",
-    "622": "622",
-    "6/mmm": "622",
-    "23": "23",
-    "m-3": "23",
-    "432": "432",
-    "m-3m": "432",
-}
-
 _SECTOR_TOLERANCE = 1e-8
 
 
 def _normalized_proper_point_group(point_group: str) -> str:
-    normalized = point_group.replace(" ", "").lower()
-    proper_group = _PROPER_POINT_GROUP_ALIASES.get(normalized)
-    if proper_group is None:
-        supported = ", ".join(sorted(_PROPER_POINT_GROUP_ALIASES))
-        raise ValueError(f"Unsupported point group '{point_group}'. Supported groups: {supported}")
-    return proper_group
+    return proper_subgroup_symbol_for(normalize_point_group_symbol(point_group))
 
 
 def _angle_in_wedge(vector: np.ndarray, wedge_angle_rad: float) -> bool:
@@ -274,6 +257,25 @@ class SymmetrySpec:
     def proper_point_group(self) -> str:
         return _normalized_proper_point_group(self.point_group)
 
+    @property
+    def laue_group_symbol(self) -> str:
+        return laue_class_symbol_for(self.point_group)
+
+    @property
+    def is_laue(self) -> bool:
+        return normalize_point_group_symbol(self.point_group) == self.laue_group_symbol
+
+    def to_point_group(self) -> PointGroup:
+        return PointGroup.from_symbol(self.point_group)
+
+    def laue_symmetry(self) -> SymmetrySpec:
+        return SymmetrySpec.from_point_group(
+            self.laue_group_symbol,
+            reference_frame=self.reference_frame,
+            specimen_symmetry=self.specimen_symmetry,
+            provenance=self.provenance,
+        )
+
     @classmethod
     def identity(
         cls,
@@ -305,6 +307,40 @@ class SymmetrySpec:
             point_group=point_group,
             operators=operators,
             specimen_symmetry=specimen_symmetry,
+            reference_frame=reference_frame,
+            provenance=provenance,
+        )
+
+    @classmethod
+    def specimen(
+        cls,
+        name: str = "triclinic",
+        *,
+        reference_frame: ReferenceFrame | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> SymmetrySpec:
+        normalized = name.strip().lower()
+        point_group = _SPECIMEN_SYMMETRY_POINT_GROUPS.get(normalized)
+        if point_group is None:
+            supported = ", ".join(sorted(_SPECIMEN_SYMMETRY_POINT_GROUPS))
+            raise ValueError(
+                f"Unsupported specimen symmetry '{name}'. Supported names: {supported}."
+            )
+        if reference_frame is not None and reference_frame.domain != FrameDomain.SPECIMEN:
+            raise ValueError(
+                "SymmetrySpec.specimen reference_frame must belong to the specimen domain."
+            )
+        spec = cls.from_point_group(
+            point_group,
+            reference_frame=reference_frame,
+            specimen_symmetry=normalized,
+            provenance=provenance,
+        )
+        return cls(
+            name=f"specimen-{normalized}",
+            point_group=spec.point_group,
+            operators=spec.operators,
+            specimen_symmetry=normalized,
             reference_frame=reference_frame,
             provenance=provenance,
         )

@@ -503,7 +503,10 @@ def _direction_endpoint_fractional(
     positive_candidates = [value for value in candidates if value > 1e-12]
     if not positive_candidates:
         raise ValueError("CrystalDirection overlay does not intersect the repeated cell volume.")
-    return anchor_fractional + arrow_length_scale * min(positive_candidates) * fractional_vector
+    return np.asarray(
+        anchor_fractional + arrow_length_scale * min(positive_candidates) * fractional_vector,
+        dtype=np.float64,
+    )
 
 
 def _default_direction_indices(direction: CrystalDirection) -> tuple[int, ...] | None:
