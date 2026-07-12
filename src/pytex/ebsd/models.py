@@ -666,6 +666,82 @@ class GrainSegmentation:
         deviations.setflags(write=False)
         return deviations
 
+    def grain_mean_orientation(self, grain: Grain) -> Orientation:
+        return self.crystal_map.orientations.subset(grain.member_indices).mean_orientation()
+
+    def grain_mean_orientations(self) -> dict[int, Orientation]:
+        return {grain.grain_id: self.grain_mean_orientation(grain) for grain in self.grains}
+
+    def grain_orientation_spread_deg(self) -> dict[int, float]:
+        """Grain Orientation Spread (GOS): mean deviation of members from the grain mean."""
+
+        spreads: dict[int, float] = {}
+        for grain in self.grains:
+            member_set = self.crystal_map.orientations.subset(grain.member_indices)
+            mean = member_set.mean_orientation()
+            angles = member_set.spread_angles_deg(
+                reference=mean,
+                symmetry_aware=self.symmetry_aware,
+            )
+            spreads[grain.grain_id] = float(np.mean(angles))
+        return spreads
+
+    def _broadcast_grain_values_to_points(self, values: dict[int, float]) -> np.ndarray:
+        per_point = np.zeros(len(self.crystal_map.orientations), dtype=np.float64)
+        for grain in self.grains:
+            per_point[grain.member_indices] = values[grain.grain_id]
+        return per_point
+
+    def _reshape_to_grid_if_regular(self, per_point: np.ndarray) -> np.ndarray:
+        if self.crystal_map.grid_shape is not None and len(self.crystal_map.grid_shape) == 2:
+            rows, cols = self.crystal_map._require_regular_2d_grid()
+            per_point = per_point.reshape((rows, cols))
+        per_point = np.ascontiguousarray(per_point)
+        per_point.setflags(write=False)
+        return per_point
+
+    def gos_map_deg(self) -> np.ndarray:
+        return self._reshape_to_grid_if_regular(
+            self._broadcast_grain_values_to_points(self.grain_orientation_spread_deg())
+        )
+
+    def grain_average_misorientation_deg(self) -> dict[int, float]:
+        """Grain Average Misorientation (GAM): mean intragranular KAM per grain."""
+
+        kam = np.asarray(
+            self.crystal_map.kernel_average_misorientation_deg(
+                symmetry_aware=self.symmetry_aware,
+                connectivity=self.connectivity,
+                segmentation=self,
+            ),
+            dtype=np.float64,
+        ).ravel()
+        return {
+            grain.grain_id: float(np.mean(kam[grain.member_indices])) for grain in self.grains
+        }
+
+    def gam_map_deg(self) -> np.ndarray:
+        return self._reshape_to_grid_if_regular(
+            self._broadcast_grain_values_to_points(self.grain_average_misorientation_deg())
+        )
+
+    def grain_equivalent_diameters(self) -> dict[int, float]:
+        """Equivalent circular diameter per grain from member pixel area."""
+
+        if self.crystal_map.step_sizes is None or len(self.crystal_map.step_sizes) != 2:
+            raise ValueError(
+                "grain_equivalent_diameters requires a CrystalMap with 2-D step_sizes."
+            )
+        dx, dy = self.crystal_map.step_sizes
+        pixel_area = float(dx) * float(dy)
+        return {
+            grain.grain_id: float(2.0 * np.sqrt(grain.size * pixel_area / np.pi))
+            for grain in self.grains
+        }
+
+    def grain_sizes(self) -> dict[int, int]:
+        return {grain.grain_id: grain.size for grain in self.grains}
+
     def boundary_network(
         self,
         *,

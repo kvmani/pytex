@@ -250,6 +250,103 @@ def test_crystal_map_segment_grains_splits_components_by_threshold() -> None:
     assert np.array_equal(segmentation.label_grid[1], np.array([1, 1]))
 
 
+def _two_grain_map(euler_deg: list[list[float]]) -> CrystalMap:
+    crystal, specimen, symmetry = make_foundation()
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.from_bunge_euler(*angles),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            )
+            for angles in euler_deg
+        ]
+    )
+    return CrystalMap(
+        coordinates=np.array(
+            [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+            dtype=np.float64,
+        ),
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(2, 2),
+        step_sizes=(2.0, 2.0),
+    )
+
+
+def test_grain_scalar_metrics_gos_gam_and_equivalent_diameter() -> None:
+    # Two grains (top row / bottom row). Grain 0 has a 2 deg internal spread,
+    # grain 1 is perfectly uniform.
+    crystal_map = _two_grain_map(
+        [
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
+        ]
+    )
+    segmentation = crystal_map.segment_grains(
+        max_misorientation_deg=5.0,
+        symmetry_aware=False,
+        connectivity=4,
+    )
+    assert len(segmentation.grains) == 2
+
+    gos = segmentation.grain_orientation_spread_deg()
+    # Grain 0 mean sits ~1 deg from each member; grain 1 has zero spread.
+    assert gos[0] == pytest.approx(1.0, abs=0.05)
+    assert gos[1] == pytest.approx(0.0, abs=1e-6)
+
+    gam = segmentation.grain_average_misorientation_deg()
+    # Grain 0 neighbors differ by 2 deg; grain 1 by 0.
+    assert gam[0] == pytest.approx(2.0, abs=0.05)
+    assert gam[1] == pytest.approx(0.0, abs=1e-6)
+
+    # Each grain has two 2x2 um pixels -> area 8 um^2 -> d = 2 sqrt(8/pi).
+    diameters = segmentation.grain_equivalent_diameters()
+    expected = 2.0 * np.sqrt(8.0 / np.pi)
+    assert diameters[0] == pytest.approx(expected)
+    assert diameters[1] == pytest.approx(expected)
+
+    gos_map = segmentation.gos_map_deg()
+    assert gos_map.shape == (2, 2)
+    assert np.allclose(gos_map[1], 0.0)
+
+    means = segmentation.grain_mean_orientations()
+    assert set(means) == {0, 1}
+    # Grain 1's mean recovers its single orientation (25, 0, 0).
+    assert means[1].rotation.to_bunge_euler(degrees=True)[0] == pytest.approx(25.0, abs=1e-3)
+
+
+def test_grain_equivalent_diameters_requires_step_sizes() -> None:
+    crystal, specimen, symmetry = make_foundation()
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            ),
+        ]
+    )
+    crystal_map = CrystalMap(
+        coordinates=np.array([[0.0, 0.0], [1.0, 0.0]], dtype=np.float64),
+        orientations=orientations,
+        map_frame=specimen,
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    with pytest.raises(ValueError, match="step_sizes"):
+        segmentation.grain_equivalent_diameters()
+
+
 def test_grain_segmentation_grod_map_is_zero_at_reference_orientations() -> None:
     crystal, specimen, symmetry = make_foundation()
     orientations = OrientationSet.from_orientations(
