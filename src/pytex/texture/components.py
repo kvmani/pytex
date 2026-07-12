@@ -152,9 +152,9 @@ __all__ = [
     "GOSS",
     "ROTATED_CUBE",
     "ROTATED_GOSS",
-    "S_COMPONENT",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
+    "S_COMPONENT",
     "TextureComponent",
     "component_volume_fractions",
 ]

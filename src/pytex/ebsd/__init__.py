@@ -27,10 +27,10 @@ from pytex.ebsd.texture_workflow import (
 )
 
 __all__ = [
-    "CSLMatch",
-    "CSLType",
     "CUBIC_CSL_TYPES",
     "CUBIC_TWIN_LAWS",
+    "CSLMatch",
+    "CSLType",
     "CoordinateNeighborGraph",
     "CrystalMap",
     "CrystalMapPhase",

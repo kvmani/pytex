@@ -349,7 +349,7 @@ class S2Grid:
         resolution = _require_resolution(resolution_deg)
         hemisphere = _require_hemisphere(hemisphere)
         polar_max = 90.0 if hemisphere == "upper" else 180.0
-        ring_count = int(round(polar_max / resolution))
+        ring_count = round(polar_max / resolution)
         polar_rings = np.linspace(0.0, polar_max, ring_count + 1)
 
         ring_polar: list[np.ndarray] = []
@@ -357,7 +357,7 @@ class S2Grid:
         counts = np.empty(polar_rings.shape[0], dtype=np.int64)
         for ring_index, polar_deg in enumerate(polar_rings):
             circumference_deg = 360.0 * float(np.sin(np.deg2rad(polar_deg)))
-            count = max(1, int(round(circumference_deg / resolution)))
+            count = max(1, round(circumference_deg / resolution))
             counts[ring_index] = count
             azimuths = np.linspace(0.0, 360.0, count, endpoint=False)
             ring_polar.append(np.full(count, float(polar_deg)))
@@ -407,9 +407,9 @@ class S2Grid:
             )
         hemisphere = _require_hemisphere(hemisphere)
         polar_max = 90.0 if hemisphere == "upper" else 180.0
-        ring_count = int(round(polar_max / polar_step))
+        ring_count = round(polar_max / polar_step)
         polar_rings = np.linspace(0.0, polar_max, ring_count + 1)
-        azimuth_count = int(round(360.0 / azimuth_step))
+        azimuth_count = round(360.0 / azimuth_step)
 
         ring_polar: list[np.ndarray] = []
         ring_azimuth: list[np.ndarray] = []

@@ -15,7 +15,7 @@ push the result.
 - Started: 2026-07-12
 - Branch: `main` (tracking `origin/main`)
 - Baseline commit: `cdc5fd53` (`Add interim semantic primitives and canonical visual docs`)
-- Phase: verified; commit and push pending
+- Phase: rebased and verified; final lint follow-up commit and push pending
 - Pre-existing untracked files to preserve and exclude unless intentionally brought into scope:
   `docs/presentations/`, `package.json`, and `references/britton_up_down_ebsd.pdf`
 
@@ -63,12 +63,19 @@ push the result.
 - `python -m sphinx -b html docs/site docs/_build/html`: passed.
 - Parsed all benchmark and diffraction fixture JSON files successfully (23 files).
 - `git diff --check`: passed; only Git's expected LF-to-CRLF worktree notices were emitted.
+- Initial task commit was rebased onto 37 newer `origin/main` commits as `aff1dd82`. The only
+  conflict was in the newly vectorized XRD enumeration; the resolution preserves vectorized
+  geometry and structure-factor evaluation while deduplicating symmetry families first.
+- Post-rebase full test suite, strict mypy (71 source files), repository integrity, and Sphinx HTML
+  build passed.
+- Cleared 12 mechanical Ruff regressions introduced by the incoming commits (sorted export lists,
+  redundant integer casts, and unused test tuple members); final lint verification is pending.
 
 ## Next Actions
 
-1. Stage only the intended implementation, validation, documentation, policy, and progress files.
-2. Review the staged diff and commit.
-3. Push `main` to `origin` and record the resulting commit identifier here if another task resumes
+1. Run final Ruff, mypy, integrity, and diff checks after the mechanical lint cleanup.
+2. Commit the lint cleanup and this updated handoff separately.
+3. Push `main` to `origin` and record the resulting commit identifiers here if another task resumes
    from this handoff.
 
 ## Resume Command Checklist

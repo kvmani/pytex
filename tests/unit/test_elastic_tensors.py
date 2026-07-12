@@ -181,7 +181,7 @@ def test_cubic_modulus_surface_extremes_and_anisotropy() -> None:
     assert surface.minimum == pytest.approx(stiffness.youngs_modulus((1, 0, 0)), abs=0.2)
     assert surface.maximum == pytest.approx(stiffness.youngs_modulus((1, 1, 1)), abs=0.2)
     assert surface.anisotropy_ratio > 2.5
-    x, y, z = surface.cartesian_surface()
+    x, _y, _z = surface.cartesian_surface()
     assert x.shape == (60, 120)
 
 

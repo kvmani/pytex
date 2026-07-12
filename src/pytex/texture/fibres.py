@@ -187,7 +187,7 @@ def fibre_axis_alignment_quaternion(source: ArrayLike, target: ArrayLike) -> np.
 
 
 __all__ = [
-    "Fibre",
     "NAMED_BCC_FIBRES",
+    "Fibre",
     "fibre_axis_alignment_quaternion",
 ]
