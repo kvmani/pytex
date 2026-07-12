@@ -392,6 +392,54 @@ def test_grain_fitted_ellipse_is_isotropic_for_square_grain() -> None:
     assert ellipse.aspect_ratio == pytest.approx(1.0, abs=1e-9)
 
 
+def test_grain_perimeter_and_shape_factor_for_square_grain() -> None:
+    # One grain filling a 2x2 grid: staircase perimeter 8, area 4.
+    crystal, specimen, symmetry = make_foundation()
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            )
+            for _ in range(4)
+        ]
+    )
+    crystal_map = CrystalMap(
+        coordinates=np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(2, 2),
+        step_sizes=(1.0, 1.0),
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    assert len(segmentation.grains) == 1
+    assert segmentation.grain_perimeters()[0] == pytest.approx(8.0)
+    assert segmentation.grain_areas()[0] == pytest.approx(4.0)
+    # shape factor of a 2x2 square is 2/sqrt(pi)
+    assert segmentation.grain_shape_factors()[0] == pytest.approx(2.0 / np.sqrt(np.pi))
+
+
+def test_grain_perimeter_respects_rectangular_steps() -> None:
+    # Two 1x2 horizontal strips on a 2x2 grid with dx=dy=2: perimeter 12 each.
+    crystal_map = _two_grain_map(
+        [
+            [0.0, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
+            [25.0, 0.0, 0.0],
+        ]
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    assert len(segmentation.grains) == 2
+    perimeters = segmentation.grain_perimeters()
+    assert perimeters[0] == pytest.approx(12.0)
+    assert perimeters[1] == pytest.approx(12.0)
+    # a strip is less compact than a square: shape factor exceeds it
+    assert min(segmentation.grain_shape_factors().values()) > 2.0 / np.sqrt(np.pi)
+
+
 def test_grain_shape_orientation_tracks_vertical_elongation() -> None:
     # A vertical 4x1 strip is elongated along y, so the major axis is at 90 deg.
     crystal_map = _single_grain_map(

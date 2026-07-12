@@ -936,6 +936,63 @@ class GrainSegmentation:
     def grain_shape_orientations_deg(self) -> dict[int, float]:
         return {grain.grain_id: self._fitted_ellipse(grain).angle_deg for grain in self.grains}
 
+    def _grid_step_sizes(self) -> tuple[float, float]:
+        if self.crystal_map.step_sizes is not None and len(self.crystal_map.step_sizes) == 2:
+            return float(self.crystal_map.step_sizes[0]), float(self.crystal_map.step_sizes[1])
+        coordinates = self.crystal_map.coordinates
+        x_values = np.unique(coordinates[:, 0])
+        y_values = np.unique(coordinates[:, 1])
+        dx = float(np.min(np.diff(x_values))) if x_values.size > 1 else 1.0
+        dy = float(np.min(np.diff(y_values))) if y_values.size > 1 else 1.0
+        return dx, dy
+
+    def grain_perimeters(self) -> dict[int, float]:
+        """True staircase perimeter of each grain on a regular 2-D grid.
+
+        Sums the lengths of the pixel faces on each grain's boundary, including
+        faces on the map edge. Horizontal (column) neighbours share a vertical
+        face of length ``dy``; vertical (row) neighbours share a face of length
+        ``dx``; step sizes are honoured for rectangular grids.
+        """
+
+        label_grid = self.label_grid
+        rows, cols = label_grid.shape
+        dx, dy = self._grid_step_sizes()
+        perimeters: dict[int, float] = {grain.grain_id: 0.0 for grain in self.grains}
+        for row in range(rows):
+            for col in range(cols):
+                label = int(label_grid[row, col])
+                # Column neighbours (left/right) contribute vertical faces (length dy).
+                for neighbor_col in (col - 1, col + 1):
+                    if neighbor_col < 0 or neighbor_col >= cols:
+                        perimeters[label] += dy
+                    elif int(label_grid[row, neighbor_col]) != label:
+                        perimeters[label] += dy
+                # Row neighbours (up/down) contribute horizontal faces (length dx).
+                for neighbor_row in (row - 1, row + 1):
+                    if neighbor_row < 0 or neighbor_row >= rows:
+                        perimeters[label] += dx
+                    elif int(label_grid[neighbor_row, col]) != label:
+                        perimeters[label] += dx
+        return perimeters
+
+    def grain_areas(self) -> dict[int, float]:
+        """Area of each grain (member pixel count times the pixel area)."""
+
+        dx, dy = self._grid_step_sizes()
+        pixel_area = dx * dy
+        return {grain.grain_id: grain.size * pixel_area for grain in self.grains}
+
+    def grain_shape_factors(self) -> dict[int, float]:
+        """Shape factor ``P / (2 sqrt(pi A))`` (1 for a circle, larger otherwise)."""
+
+        perimeters = self.grain_perimeters()
+        areas = self.grain_areas()
+        return {
+            grain_id: float(perimeters[grain_id] / (2.0 * np.sqrt(np.pi * areas[grain_id])))
+            for grain_id in perimeters
+        }
+
     def grain_bounding_boxes(self) -> dict[int, tuple[float, float]]:
         """Axis-aligned (width, height) of each grain's member-pixel extent."""
 
