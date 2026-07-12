@@ -273,3 +273,77 @@ def test_as_euler_matches_per_orientation_reference_including_gimbal_lock() -> N
                 ]
             )
             assert_allclose(vectorized, reference, atol=1e-9)
+
+
+def test_batched_fundamental_region_matches_per_orientation_reference() -> None:
+    from pytex.core._arrays import normalize_quaternions
+    from pytex.core.misorientation_distribution import _haar_uniform_quaternions
+
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    quaternions = _haar_uniform_quaternions(40, np.random.default_rng(42))
+    for point_group in ("m-3m", "6/mmm", "2/m", "-1"):
+        crystal_symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal)
+        for specimen_point_group in (None, "mmm"):
+            specimen_symmetry = (
+                None
+                if specimen_point_group is None
+                else SymmetrySpec.from_point_group(specimen_point_group, reference_frame=specimen)
+            )
+            orientation_set = OrientationSet.from_quaternions(
+                quaternions,
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=crystal_symmetry,
+            )
+            fast_canonical = orientation_set.canonicalized(
+                specimen_symmetry=specimen_symmetry
+            ).quaternions
+            fast_projected = orientation_set.projected_to_fundamental_region(
+                specimen_symmetry=specimen_symmetry
+            ).quaternions
+            fast_keys = orientation_set.exact_fundamental_region_keys(
+                specimen_symmetry=specimen_symmetry
+            )
+            reference_canonical = []
+            reference_projected = []
+            reference_keys = []
+            for quaternion in quaternions:
+                orientation = Orientation(
+                    rotation=Rotation(quaternion),
+                    crystal_frame=crystal,
+                    specimen_frame=specimen,
+                    symmetry=crystal_symmetry,
+                )
+                reference_canonical.append(
+                    orientation.canonicalize(specimen_symmetry=specimen_symmetry).rotation.quaternion
+                )
+                reference_projected.append(
+                    orientation.project_to_fundamental_region(
+                        specimen_symmetry=specimen_symmetry
+                    ).rotation.quaternion
+                )
+                reference_keys.append(
+                    orientation.fundamental_region_key(specimen_symmetry=specimen_symmetry)
+                )
+            assert_allclose(
+                normalize_quaternions(fast_canonical),
+                normalize_quaternions(np.array(reference_canonical)),
+                atol=1e-10,
+            )
+            assert_allclose(
+                normalize_quaternions(fast_projected),
+                normalize_quaternions(np.array(reference_projected)),
+                atol=1e-10,
+            )
+            assert_allclose(fast_keys, np.array(reference_keys), atol=1e-10)

@@ -49,7 +49,7 @@ is auditable, not skipped silently.
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
 | ebsd/models.py | done | 5 | 5 | c30efbe + this |
-| core/orientation.py (rest) | in progress | 3 done, 2 deferred | 3 | 35a3ca9 |
+| core/orientation.py (rest) | done | 6 | 6 | 35a3ca9 + this |
 | diffraction/models.py | done | 1 HOT (simulate_spots) | 1 | this commit |
 | texture/harmonics.py | reviewed - COLD | 0 | 0 | - |
 | texture/models.py | reviewed - COLD | 0 | 0 | - |
@@ -184,12 +184,39 @@ intensity and family-key stay in the assembly loop. Validated against a
 identical spot counts, max diff ~5.7e-14. Regression test asserts the
 excitation cutoff, monotonic spot-count vs cutoff, and zone orthogonality.
 
-RESUME HERE next session (only lower-value deferred items remain):
-1. core/orientation.py deferred: `canonicalize` map (~2125) and
-   `project_to_exact_fundamental_region` map (~2155/2181) - batch the
-   per-orientation symmetry reduction with captured golden outputs. These are
-   the last per-element numerical loops; everything else is COLD.
-Each: capture golden -> rewrite vectorised -> assert bit-equivalence + suite.
+Fundamental-region maps: DONE and validated (exact match to the per-orientation
+scalar path across m-3m / 6/mmm / 2/m / -1 x {none, mmm}; full suite 625 passed).
+What was done:
+- New module helper `_batched_fundamental_representatives(quaternions, *,
+  crystal_operators, specimen_operators)` in `core/orientation.py`: builds the
+  full symmetry orbit `specimen_op @ R @ crystal_op` for all orientations via
+  `einsum`, converts with the batch `matrices_to_quaternions`, and selects the
+  lexicographically-largest canonical quaternion per row (mask-narrowing over
+  w,x,y,z) - exactly `_canonical_quaternion_index` / min `_fundamental_region_key`.
+- `OrientationSet.canonicalized`, `projected_to_fundamental_region` (no-reference
+  path; the reference-guided path keeps its per-orientation loop), and
+  `exact_fundamental_region_keys` rewritten to use it, plus a shared
+  `_orbit_operators` validator.
+- Regression test appended:
+  `test_orientation_utilities.py::test_batched_fundamental_region_matches_per_orientation_reference`
+  compares the batched output against a per-orientation scalar loop across
+  m-3m / 6/mmm / 2/m / -1 crystal symmetry x {none, mmm} specimen symmetry.
+
+## Audit Complete (2026-07-12)
+
+Every per-element numerical hot path in the repo has now been vectorised and
+validated exact. Total converted across the campaign (11 hot paths):
+`OrientationSet.misorientation_angles_to`, `as_matrices`, `as_euler`,
+`matrices_to_quaternions` validation, the fundamental-region maps
+(`canonicalized` / `projected_to_fundamental_region` / `exact_fundamental_
+region_keys`), `ebsd/models.py` (`grod_map_deg`, `boundary_network`,
+`_representative_orientation_index`, `grain_perimeters`, `remove_wild_spikes`
+detection), `diffraction/xrd.py::generate_powder_reflections`, and
+`diffraction/models.py::simulate_spots`. Every remaining loop in all 70 source
+files is classified COLD with rationale (small fixed-size point-group / tensor /
+Voigt maps, iterative solvers, and object / metadata / parsing construction).
+Full suite 625 passed, ruff + mypy green; wall-clock ~30% faster than at the
+start of the audit.
 
 Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
 dict comprehensions (grain count is small; inner ops already vectorised),

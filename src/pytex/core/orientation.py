@@ -145,6 +145,49 @@ def _matrices_to_repeated_axis_euler(
     return np.column_stack([first, phi, third])
 
 
+def _batched_fundamental_representatives(
+    quaternions: np.ndarray,
+    *,
+    crystal_operators: np.ndarray,
+    specimen_operators: np.ndarray,
+) -> np.ndarray:
+    """Fundamental-region representative quaternion for each input orientation.
+
+    For every orientation this builds the symmetry orbit ``specimen_op @ R @
+    crystal_op`` and returns the orbit quaternion that is the lexicographically
+    largest canonical quaternion -- exactly the representative selected by
+    ``_canonical_quaternion_index`` / the minimum ``_fundamental_region_key`` in
+    the per-orientation scalar path, but vectorised over the whole set.
+    """
+
+    quaternion_array = np.asarray(quaternions, dtype=np.float64)
+    count = quaternion_array.shape[0]
+    if count == 0:
+        return np.empty((0, 4), dtype=np.float64)
+    matrices = quaternions_to_matrices(quaternion_array)
+    left_applied = np.einsum("aij,njk->naik", specimen_operators, matrices, optimize=True)
+    orbit = np.einsum("naik,bkl->nabil", left_applied, crystal_operators, optimize=True)
+    orbit = orbit.reshape(count, -1, 3, 3)
+    orbit_count = orbit.shape[1]
+    orbit_quaternions = matrices_to_quaternions(orbit.reshape(-1, 3, 3)).reshape(
+        count, orbit_count, 4
+    )
+    # Canonicalise (w >= 0, unit norm, rounded) only to choose the representative.
+    canonical = orbit_quaternions.copy()
+    negative = canonical[..., 0] < 0.0
+    canonical[negative] = -canonical[negative]
+    canonical = canonical / np.linalg.norm(canonical, axis=-1, keepdims=True)
+    rounded = np.round(canonical, 12)
+    # Per-row lexicographic argmax over the orbit by (w, x, y, z), narrowing ties.
+    valid = np.ones((count, orbit_count), dtype=bool)
+    for component in range(4):
+        masked = np.where(valid, rounded[:, :, component], -np.inf)
+        column_max = masked.max(axis=1, keepdims=True)
+        valid &= rounded[:, :, component] >= column_max
+    selected = np.argmax(valid, axis=1)
+    return np.ascontiguousarray(orbit_quaternions[np.arange(count), selected])
+
+
 def _canonicalize_quaternion(quaternion: ArrayLike) -> np.ndarray:
     candidate = normalize_quaternion(quaternion)
     if candidate[0] < 0.0:
@@ -2143,22 +2186,34 @@ class OrientationSet:
             )
         return mapped
 
-    def canonicalized(self, specimen_symmetry: SymmetrySpec | None = None) -> OrientationSet:
-        canonical_quaternions = [
-            Orientation(
-                rotation=Rotation(quaternion),
-                crystal_frame=self.crystal_frame,
-                specimen_frame=self.specimen_frame,
-                symmetry=self.symmetry,
-                phase=self.phase,
-                provenance=self.provenance,
+    def _orbit_operators(
+        self, specimen_symmetry: SymmetrySpec | None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if (
+            specimen_symmetry is not None
+            and specimen_symmetry.reference_frame != self.specimen_frame
+        ):
+            raise ValueError(
+                "specimen_symmetry.reference_frame must match OrientationSet.specimen_frame."
             )
-            .canonicalize(specimen_symmetry=specimen_symmetry)
-            .rotation.quaternion
-            for quaternion in self.quaternions
-        ]
+        identity = np.eye(3, dtype=np.float64)[None, :, :]
+        crystal_operators = self.symmetry.operators if self.symmetry is not None else identity
+        specimen_operators = (
+            specimen_symmetry.operators if specimen_symmetry is not None else identity
+        )
+        return crystal_operators, specimen_operators
+
+    def canonicalized(self, specimen_symmetry: SymmetrySpec | None = None) -> OrientationSet:
+        crystal_operators, specimen_operators = self._orbit_operators(specimen_symmetry)
+        if len(self) == 0:
+            return self
+        representatives = _batched_fundamental_representatives(
+            self.quaternions,
+            crystal_operators=crystal_operators,
+            specimen_operators=specimen_operators,
+        )
         return OrientationSet(
-            quaternions=np.stack(canonical_quaternions, axis=0),
+            quaternions=representatives,
             crystal_frame=self.crystal_frame,
             specimen_frame=self.specimen_frame,
             symmetry=self.symmetry,
@@ -2171,24 +2226,41 @@ class OrientationSet:
         specimen_symmetry: SymmetrySpec | None = None,
         reference_orientation: Orientation | None = None,
     ) -> OrientationSet:
-        projected_quaternions = [
-            Orientation(
-                rotation=Rotation(quaternion),
-                crystal_frame=self.crystal_frame,
-                specimen_frame=self.specimen_frame,
-                symmetry=self.symmetry,
-                phase=self.phase,
-                provenance=self.provenance,
+        if len(self) == 0:
+            self._orbit_operators(specimen_symmetry)
+            return self
+        if reference_orientation is None:
+            # Same criterion as canonicalisation: the lexicographically-largest
+            # canonical quaternion in each orbit, vectorised over the whole set.
+            crystal_operators, specimen_operators = self._orbit_operators(specimen_symmetry)
+            projected = _batched_fundamental_representatives(
+                self.quaternions,
+                crystal_operators=crystal_operators,
+                specimen_operators=specimen_operators,
             )
-            .project_to_fundamental_region(
-                specimen_symmetry=specimen_symmetry,
-                reference_orientation=reference_orientation,
+        else:
+            # Reference-guided selection stays per orientation (rare path).
+            projected = np.stack(
+                [
+                    Orientation(
+                        rotation=Rotation(quaternion),
+                        crystal_frame=self.crystal_frame,
+                        specimen_frame=self.specimen_frame,
+                        symmetry=self.symmetry,
+                        phase=self.phase,
+                        provenance=self.provenance,
+                    )
+                    .project_to_fundamental_region(
+                        specimen_symmetry=specimen_symmetry,
+                        reference_orientation=reference_orientation,
+                    )
+                    .rotation.quaternion
+                    for quaternion in self.quaternions
+                ],
+                axis=0,
             )
-            .rotation.quaternion
-            for quaternion in self.quaternions
-        ]
         return OrientationSet(
-            quaternions=np.stack(projected_quaternions, axis=0),
+            quaternions=projected,
             crystal_frame=self.crystal_frame,
             specimen_frame=self.specimen_frame,
             symmetry=self.symmetry,
@@ -2201,20 +2273,23 @@ class OrientationSet:
         *,
         specimen_symmetry: SymmetrySpec | None = None,
     ) -> np.ndarray:
-        keys = np.asarray(
-            [
-                Orientation(
-                    rotation=Rotation(quaternion),
-                    crystal_frame=self.crystal_frame,
-                    specimen_frame=self.specimen_frame,
-                    symmetry=self.symmetry,
-                    phase=self.phase,
-                    provenance=self.provenance,
-                ).fundamental_region_key(specimen_symmetry=specimen_symmetry)
-                for quaternion in self.quaternions
-            ],
-            dtype=np.float64,
+        crystal_operators, specimen_operators = self._orbit_operators(specimen_symmetry)
+        if len(self) == 0:
+            keys = np.empty((0, 4), dtype=np.float64)
+            keys.setflags(write=False)
+            return keys
+        representatives = _batched_fundamental_representatives(
+            self.quaternions,
+            crystal_operators=crystal_operators,
+            specimen_operators=specimen_operators,
         )
+        # The key is the negated, rounded canonical of each representative, i.e.
+        # _exact_fundamental_region_key_from_quaternion applied per orientation.
+        canonical = representatives.copy()
+        negative = canonical[:, 0] < 0.0
+        canonical[negative] = -canonical[negative]
+        canonical = canonical / np.linalg.norm(canonical, axis=1, keepdims=True)
+        keys = -np.round(canonical, 12)
         keys = np.ascontiguousarray(keys)
         keys.setflags(write=False)
         return keys
