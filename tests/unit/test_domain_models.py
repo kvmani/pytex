@@ -347,6 +347,61 @@ def test_grain_equivalent_diameters_requires_step_sizes() -> None:
         segmentation.grain_equivalent_diameters()
 
 
+def _single_grain_map(coordinates: np.ndarray) -> CrystalMap:
+    crystal, specimen, symmetry = make_foundation()
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.identity(),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            )
+            for _ in range(len(coordinates))
+        ]
+    )
+    return CrystalMap(
+        coordinates=np.asarray(coordinates, dtype=np.float64),
+        orientations=orientations,
+        map_frame=specimen,
+        step_sizes=(1.0, 1.0),
+    )
+
+
+def test_grain_fitted_ellipse_captures_elongation_and_orientation() -> None:
+    # A horizontal 1x4 strip forms one grain elongated along x.
+    crystal_map = _single_grain_map(
+        np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]])
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    assert len(segmentation.grains) == 1
+    ellipse = segmentation.grain_fitted_ellipse(segmentation.grains[0])
+    assert ellipse.semi_axes[0] > ellipse.semi_axes[1]
+    assert ellipse.semi_axes[1] == pytest.approx(0.0, abs=1e-9)
+    assert ellipse.aspect_ratio == float("inf")
+    assert ellipse.angle_deg == pytest.approx(0.0, abs=1e-6)
+    assert segmentation.grain_bounding_boxes()[0] == (3.0, 0.0)
+
+
+def test_grain_fitted_ellipse_is_isotropic_for_square_grain() -> None:
+    crystal_map = _single_grain_map(
+        np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    ellipse = segmentation.grain_fitted_ellipse(segmentation.grains[0])
+    assert ellipse.aspect_ratio == pytest.approx(1.0, abs=1e-9)
+
+
+def test_grain_shape_orientation_tracks_vertical_elongation() -> None:
+    # A vertical 4x1 strip is elongated along y, so the major axis is at 90 deg.
+    crystal_map = _single_grain_map(
+        np.array([[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]])
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
+    angle = segmentation.grain_shape_orientations_deg()[0]
+    assert angle == pytest.approx(90.0, abs=1e-6)
+
+
 def test_remove_wild_spikes_corrects_isolated_pixel() -> None:
     crystal, specimen, symmetry = make_foundation()
     # 3x3 grid: uniform orientation except a single wild spike in the center.

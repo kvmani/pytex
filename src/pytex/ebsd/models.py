@@ -388,6 +388,30 @@ class TextureReport:
 
 
 @dataclass(frozen=True, slots=True)
+class FittedEllipse:
+    """Second-moment equivalent ellipse of a grain's member pixel positions.
+
+    ``semi_axes`` are ordered major-first (``a >= b``), computed from the
+    covariance eigenvalues as ``2 * sqrt(lambda)`` so a uniformly filled
+    ellipse recovers its own semi-axes. ``angle_deg`` is the major-axis
+    orientation measured counter-clockwise from the map x-axis in [0, 180).
+    """
+
+    grain_id: int
+    centroid: np.ndarray
+    semi_axes: tuple[float, float]
+    angle_deg: float
+    aspect_ratio: float
+
+    def __post_init__(self) -> None:
+        centroid = np.ascontiguousarray(np.asarray(self.centroid, dtype=np.float64))
+        centroid.setflags(write=False)
+        object.__setattr__(self, "centroid", centroid)
+        if self.semi_axes[0] < self.semi_axes[1]:
+            raise ValueError("FittedEllipse.semi_axes must be ordered major-axis first.")
+
+
+@dataclass(frozen=True, slots=True)
 class Grain:
     grain_id: int
     member_indices: np.ndarray
@@ -741,6 +765,61 @@ class GrainSegmentation:
 
     def grain_sizes(self) -> dict[int, int]:
         return {grain.grain_id: grain.size for grain in self.grains}
+
+    def _fitted_ellipse(self, grain: Grain) -> FittedEllipse:
+        coordinates = self.crystal_map.coordinates[grain.member_indices, :2]
+        centroid = np.mean(coordinates, axis=0)
+        if grain.size < 2:
+            return FittedEllipse(
+                grain_id=grain.grain_id,
+                centroid=centroid,
+                semi_axes=(0.0, 0.0),
+                angle_deg=0.0,
+                aspect_ratio=1.0,
+            )
+        covariance = np.cov(coordinates, rowvar=False, bias=True)
+        eigenvalues, eigenvectors = np.linalg.eigh(covariance)
+        # eigh returns ascending eigenvalues; take the major axis last.
+        order = np.argsort(eigenvalues)[::-1]
+        eigenvalues = np.clip(eigenvalues[order], 0.0, None)
+        major_vector = eigenvectors[:, order[0]]
+        semi_major = float(2.0 * np.sqrt(eigenvalues[0]))
+        semi_minor = float(2.0 * np.sqrt(eigenvalues[1]))
+        angle = float(np.degrees(np.arctan2(major_vector[1], major_vector[0])) % 180.0)
+        aspect_ratio = (
+            float(np.sqrt(eigenvalues[0] / eigenvalues[1]))
+            if eigenvalues[1] > 1e-12
+            else float("inf")
+        )
+        return FittedEllipse(
+            grain_id=grain.grain_id,
+            centroid=centroid,
+            semi_axes=(semi_major, semi_minor),
+            angle_deg=angle,
+            aspect_ratio=aspect_ratio,
+        )
+
+    def grain_fitted_ellipse(self, grain: Grain) -> FittedEllipse:
+        return self._fitted_ellipse(grain)
+
+    def grain_fitted_ellipses(self) -> dict[int, FittedEllipse]:
+        return {grain.grain_id: self._fitted_ellipse(grain) for grain in self.grains}
+
+    def grain_aspect_ratios(self) -> dict[int, float]:
+        return {grain.grain_id: self._fitted_ellipse(grain).aspect_ratio for grain in self.grains}
+
+    def grain_shape_orientations_deg(self) -> dict[int, float]:
+        return {grain.grain_id: self._fitted_ellipse(grain).angle_deg for grain in self.grains}
+
+    def grain_bounding_boxes(self) -> dict[int, tuple[float, float]]:
+        """Axis-aligned (width, height) of each grain's member-pixel extent."""
+
+        boxes: dict[int, tuple[float, float]] = {}
+        for grain in self.grains:
+            coordinates = self.crystal_map.coordinates[grain.member_indices, :2]
+            extent = np.ptp(coordinates, axis=0)
+            boxes[grain.grain_id] = (float(extent[0]), float(extent[1]))
+        return boxes
 
     def boundary_network(
         self,
