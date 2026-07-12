@@ -1646,34 +1646,36 @@ class CrystalMap:
             raise ValueError("connectivity must be either 4 or 8.")
         neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs
         neighbor_pairs = neighbor_pairs[self._same_phase_pair_mask(neighbor_pairs)]
-        adjacency: dict[int, list[int]] = {
-            index: [] for index in range(len(self.orientations))
-        }
+        point_count = len(self.orientations)
+        adjacency: dict[int, list[int]] = {index: [] for index in range(point_count)}
         for left_index, right_index in neighbor_pairs:
             adjacency[int(left_index)].append(int(right_index))
             adjacency[int(right_index)].append(int(left_index))
+        # Detect spikes in one batched reduction over all boundary edges rather
+        # than a separate misorientation call per point. The misorientation
+        # angle is symmetric in the pair, so each undirected edge contributes to
+        # the incident minimum of both endpoints.
         quaternions = np.array(self.orientations.quaternions, copy=True)
-        replaced_any = False
-        for index, neighbors in adjacency.items():
-            if not neighbors:
-                continue
-            neighbor_indices = np.asarray(neighbors, dtype=np.int64)
-            angles_deg = np.rad2deg(
-                self._pair_misorientation_rad(
-                    np.column_stack(
-                        [np.full(neighbor_indices.shape, index, dtype=np.int64), neighbor_indices]
-                    ),
-                    symmetry_aware=symmetry_aware,
-                )
+        min_incident = np.full(point_count, np.inf, dtype=np.float64)
+        has_neighbor = np.zeros(point_count, dtype=bool)
+        if neighbor_pairs.size:
+            edge_angles_deg = np.rad2deg(
+                self._pair_misorientation_rad(neighbor_pairs, symmetry_aware=symmetry_aware)
             )
-            finite = angles_deg[np.isfinite(angles_deg)]
-            if finite.size == 0 or float(np.min(finite)) <= threshold_deg:
-                continue
-            neighbor_mean = self.orientations.subset(neighbor_indices).mean_orientation()
-            quaternions[index] = neighbor_mean.rotation.quaternion
-            replaced_any = True
-        if not replaced_any:
+            finite = np.isfinite(edge_angles_deg)
+            finite_pairs = neighbor_pairs[finite]
+            finite_angles = edge_angles_deg[finite]
+            np.minimum.at(min_incident, finite_pairs[:, 0], finite_angles)
+            np.minimum.at(min_incident, finite_pairs[:, 1], finite_angles)
+            has_neighbor[finite_pairs[:, 0]] = True
+            has_neighbor[finite_pairs[:, 1]] = True
+        spike_mask = has_neighbor & (min_incident > threshold_deg)
+        if not np.any(spike_mask):
             return self
+        for index in np.flatnonzero(spike_mask):
+            neighbor_indices = np.asarray(adjacency[int(index)], dtype=np.int64)
+            neighbor_mean = self.orientations.subset(neighbor_indices).mean_orientation()
+            quaternions[int(index)] = neighbor_mean.rotation.quaternion
         orientations = OrientationSet.from_quaternions(
             quaternions,
             crystal_frame=self.orientations.crystal_frame,

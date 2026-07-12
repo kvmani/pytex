@@ -48,7 +48,7 @@ is auditable, not skipped silently.
 | File | Status | HOT loops found | Converted | Commit |
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
-| ebsd/models.py | in progress | 4 found so far | 4 | this commit |
+| ebsd/models.py | done | 5 | 5 | c30efbe + this |
 | diffraction/models.py | pending | - | - | - |
 | core/orientation.py (rest) | pending | - | - | - |
 | texture/harmonics.py | pending | - | - | - |
@@ -84,9 +84,16 @@ existing grain/EBSD/CSL test suites:
 4. `GrainSegmentation.grain_perimeters` - was a nested row x col x neighbour
    loop. Now: shifted-slice boundary masks + `bincount` per grain.
 
+5. `CrystalMap.remove_wild_spikes` - was an O(points) loop calling a separate
+   misorientation reduction per point for spike detection. Now: one batched
+   `_pair_misorientation_rad` over all boundary edges, incident-minimum via
+   `np.minimum.at` on both endpoints, and a vectorised spike mask; only the
+   (rare) spike points loop to compute their neighbourhood-mean replacement.
+   Verified equivalent by an independent per-point reference computation
+   (spike set identical) and the existing isolated-spike unit test.
+
 Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
 dict comprehensions (grain count is small; inner ops already vectorised),
 `majority_smoothed` / `merge_small_grains` label graph iterations (iterative
 graph algorithms, not per-element array math), dataclass/metadata construction,
-and validation loops. `remove_wild_spikes` still has a per-point adjacency loop
-building neighbour means -- flagged for a later pass (candidate HOT).
+and validation loops.
