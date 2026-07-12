@@ -68,6 +68,10 @@ from pytex.core.miller import (
     reduce_indices,
     zone_law_value_hkil_uvtw,
 )
+from pytex.core.misorientation_distribution import (
+    MisorientationDistribution,
+    random_disorientation_angles_deg,
+)
 from pytex.core.notation import (
     format_direction_indices,
     format_miller_indices,
@@ -142,6 +146,7 @@ __all__ = [
     "MillerPlane",
     "MillerPlaneSet",
     "Misorientation",
+    "MisorientationDistribution",
     "Orientation",
     "OrientationFundamentalRegion",
     "OrientationRelationship",
@@ -199,6 +204,7 @@ __all__ = [
     "plane_hkl_to_hkil_array",
     "project_directions_onto_planes",
     "reciprocal_metric_tensor",
+    "random_disorientation_angles_deg",
     "reciprocal_to_direct_components",
     "reconstruct_parent_orientation",
     "reduce_indices",

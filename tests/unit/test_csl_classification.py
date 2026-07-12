@@ -48,6 +48,22 @@ def test_classify_ideal_csl_misorientations() -> None:
     assert match5 is not None and match5.sigma == 5
 
 
+def test_classify_batch_preserves_per_row_assignment() -> None:
+    # A batch (n > 1) exercises the vectorized reduction; each row must be
+    # classified independently (regression against a batch-axis reshape bug).
+    operators = _cubic_operators()
+    batch = np.stack(
+        [
+            CSLType(3, 60.0, (1, 1, 1)).matrix(),
+            CSLType(5, 36.86, (1, 0, 0)).matrix(),
+            CSLType(9, 38.94, (1, 1, 0)).matrix(),
+        ]
+    )
+    matches = classify_misorientations(batch, operators=operators)
+    assert [m.sigma for m in matches if m is not None] == [3, 5, 9]
+    assert all(m is not None and m.deviation_deg == pytest.approx(0.0, abs=1e-6) for m in matches)
+
+
 def test_low_angle_boundary_is_unclassified_by_default() -> None:
     operators = _cubic_operators()
     low_angle = CSLType(1, 3.0, (1, 0, 0)).matrix()

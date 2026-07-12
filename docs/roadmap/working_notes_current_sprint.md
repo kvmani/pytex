@@ -38,7 +38,15 @@ repo-integrity hash mismatches remain deselected (tracked separately).
 | F | Moment-based grain shape descriptors (`FittedEllipse`, aspect ratio, bbox) | done, tests green | committed |
 | G | CSL/twin boundary classification (`ebsd/csl.py` + network wiring) | done, tests green | committed |
 | H | Slip systems + Schmid-factor maps (new `properties/` package) | done, tests green | committed |
-| I | Twin/CSL grain merging into parent grains (`merge_by_csl`/`twin_merge`) | done, tests green | this commit |
+| I | Twin/CSL grain merging into parent grains (`merge_by_csl`/`twin_merge`) | done, tests green | committed |
+| J | Misorientation distribution (MDF) + random baseline (`core/misorientation_distribution.py`) | done, tests green | this commit |
+
+Note (J): landing the MDF surfaced and fixed a latent batch-axis reshape bug
+in the vectorized symmetry reduction that also affected `ebsd/csl.py`
+(`classify_misorientations`). The bug was masked everywhere because every prior
+CSL test used a single row (S=1); a multi-row regression test now guards it in
+`test_csl_classification.py::test_classify_batch_preserves_per_row_assignment`.
+The reduction einsums now place the sample axis first (`saik`/`sabik`).
 
 Full suite after this continuation: `585 passed, 26 deselected`; ruff + mypy
 green. `FittedEllipse` lives in `ebsd/models.py`; the CSL registry, Brandon

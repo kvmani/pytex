@@ -139,8 +139,8 @@ def _reduced_deviation_deg(
     """
 
     ops_times_ct = np.einsum("bij,kj->bik", operators, ideal_matrix, optimize=True)
-    left = np.einsum("aij,sjk->asik", operators, misorientation_matrices, optimize=True)
-    products = np.einsum("asij,bjk->asbik", left, ops_times_ct, optimize=True)
+    left = np.einsum("aij,sjk->saik", operators, misorientation_matrices, optimize=True)
+    products = np.einsum("saij,bjk->sabik", left, ops_times_ct, optimize=True)
     traces = np.trace(products, axis1=3, axis2=4)
     cos_theta = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
     angles = np.arccos(cos_theta)
