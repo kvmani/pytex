@@ -14,6 +14,7 @@ from pytex.properties.tensors import (
     ElasticTensor,
     StiffnessTensor,
     homogenize_elastic,
+    linear_compressibility_surface,
     youngs_modulus_surface,
 )
 
@@ -27,6 +28,7 @@ __all__ = [
     "bcc_110_slip",
     "fcc_octahedral_slip",
     "homogenize_elastic",
+    "linear_compressibility_surface",
     "taylor_factors",
     "uniaxial_strain_tensor",
     "youngs_modulus_surface",

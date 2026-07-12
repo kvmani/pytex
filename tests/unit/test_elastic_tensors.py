@@ -208,3 +208,12 @@ def test_plot_youngs_modulus_surface_returns_figure() -> None:
 
     figure = plot_youngs_modulus_surface(_copper(), n_theta=30, n_phi=60)
     assert "Young's modulus surface" in figure.axes[0].get_title()
+
+
+def test_linear_compressibility_surface_is_isotropic_for_cubic() -> None:
+    from pytex import linear_compressibility_surface
+
+    surface = linear_compressibility_surface(_copper(), n_theta=40, n_phi=80)
+    assert surface.property_name == "linear_compressibility"
+    # linear compressibility is direction-independent for cubic symmetry
+    assert surface.anisotropy_ratio == pytest.approx(1.0, abs=1e-9)

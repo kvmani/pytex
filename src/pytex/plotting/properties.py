@@ -72,16 +72,19 @@ def plot_youngs_modulus_surface(
     axes.set_ylim(-limit, limit)
     axes.set_zlim(-limit, limit)
     axes.set_box_aspect((1, 1, 1))
-    axes.set_xlabel("E · x")
-    axes.set_ylabel("E · y")
-    axes.set_zlabel("E · z")
-    axes.set_title(
-        f"Young's modulus surface  (anisotropy {surface.anisotropy_ratio:.2f}x)"
-    )
+    display_names = {
+        "youngs_modulus": "Young's modulus",
+        "linear_compressibility": "linear compressibility",
+    }
+    label = display_names.get(surface.property_name, surface.property_name.replace("_", " "))
+    axes.set_xlabel("x")
+    axes.set_ylabel("y")
+    axes.set_zlabel("z")
+    axes.set_title(f"{label} surface  (anisotropy {surface.anisotropy_ratio:.2f}x)")
     mappable = plt.cm.ScalarMappable(cmap=colormap)
     mappable.set_array(values)
     colorbar = fig.colorbar(mappable, ax=axes, shrink=0.6, pad=0.1)
-    colorbar.set_label("Young's modulus")
+    colorbar.set_label(label)
     fig.tight_layout()
     return fig
 

@@ -9,6 +9,7 @@ tensor contraction ``1/E(n) = n_i n_j n_k n_l S_ijkl``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -336,18 +337,13 @@ class DirectionalModulusSurface:
         return x, y, z
 
 
-def youngs_modulus_surface(
-    tensor: StiffnessTensor | ComplianceTensor,
+def _directional_property_surface(
+    property_fn: Callable[[np.ndarray], np.ndarray | float],
+    property_name: str,
     *,
-    n_theta: int = 90,
-    n_phi: int = 180,
+    n_theta: int,
+    n_phi: int,
 ) -> DirectionalModulusSurface:
-    """Sample the directional Young's modulus over the unit sphere.
-
-    Returns a `DirectionalModulusSurface` with the modulus on a structured
-    ``(n_theta, n_phi)`` grid, ready for 3D plotting or anisotropy analysis.
-    """
-
     if n_theta < 2 or n_phi < 2:
         raise ValueError("n_theta and n_phi must each be at least 2.")
     theta = np.linspace(0.0, np.pi, n_theta)
@@ -361,8 +357,40 @@ def youngs_modulus_surface(
         ],
         axis=-1,
     ).reshape(-1, 3)
-    modulus = np.asarray(tensor.youngs_modulus(directions), dtype=np.float64)
-    return DirectionalModulusSurface(theta, phi, modulus.reshape(n_theta, n_phi))
+    values = np.asarray(property_fn(directions), dtype=np.float64)
+    return DirectionalModulusSurface(
+        theta, phi, values.reshape(n_theta, n_phi), property_name=property_name
+    )
+
+
+def youngs_modulus_surface(
+    tensor: StiffnessTensor | ComplianceTensor,
+    *,
+    n_theta: int = 90,
+    n_phi: int = 180,
+) -> DirectionalModulusSurface:
+    """Sample the directional Young's modulus over the unit sphere.
+
+    Returns a `DirectionalModulusSurface` with the modulus on a structured
+    ``(n_theta, n_phi)`` grid, ready for 3D plotting or anisotropy analysis.
+    """
+
+    return _directional_property_surface(
+        tensor.youngs_modulus, "youngs_modulus", n_theta=n_theta, n_phi=n_phi
+    )
+
+
+def linear_compressibility_surface(
+    tensor: StiffnessTensor | ComplianceTensor,
+    *,
+    n_theta: int = 90,
+    n_phi: int = 180,
+) -> DirectionalModulusSurface:
+    """Sample the directional linear compressibility over the unit sphere."""
+
+    return _directional_property_surface(
+        tensor.linear_compressibility, "linear_compressibility", n_theta=n_theta, n_phi=n_phi
+    )
 
 
 __all__ = [
@@ -371,5 +399,6 @@ __all__ = [
     "ElasticTensor",
     "StiffnessTensor",
     "homogenize_elastic",
+    "linear_compressibility_surface",
     "youngs_modulus_surface",
 ]
