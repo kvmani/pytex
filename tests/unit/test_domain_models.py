@@ -347,6 +347,45 @@ def test_grain_equivalent_diameters_requires_step_sizes() -> None:
         segmentation.grain_equivalent_diameters()
 
 
+def test_remove_wild_spikes_corrects_isolated_pixel() -> None:
+    crystal, specimen, symmetry = make_foundation()
+    # 3x3 grid: uniform orientation except a single wild spike in the center.
+    euler = [[0.0, 0.0, 0.0]] * 9
+    euler[4] = [40.0, 0.0, 0.0]
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.from_bunge_euler(*angles),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            )
+            for angles in euler
+        ]
+    )
+    coordinates = np.array(
+        [[float(c), float(r)] for r in range(3) for c in range(3)],
+        dtype=np.float64,
+    )
+    crystal_map = CrystalMap(
+        coordinates=coordinates,
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(3, 3),
+        step_sizes=(1.0, 1.0),
+        properties={"iq": np.arange(9, dtype=np.float64)},
+    )
+    cleaned = crystal_map.remove_wild_spikes(threshold_deg=10.0, symmetry_aware=False)
+    # the spike is pulled back to the uniform neighborhood orientation
+    spike_after = cleaned.orientations[4].rotation.to_bunge_euler(degrees=True)
+    assert spike_after[0] == pytest.approx(0.0, abs=1e-6)
+    # geometry and property channels are preserved
+    assert cleaned.grid_shape == (3, 3)
+    assert np.array_equal(cleaned.get_property("iq"), np.arange(9))
+    # a spike-free map is returned unchanged (same instance, no rebuild)
+    assert cleaned.remove_wild_spikes(threshold_deg=10.0, symmetry_aware=False) is cleaned
+
+
 def test_grain_segmentation_grod_map_is_zero_at_reference_orientations() -> None:
     crystal, specimen, symmetry = make_foundation()
     orientations = OrientationSet.from_orientations(

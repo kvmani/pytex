@@ -1281,6 +1281,148 @@ class CrystalMap:
             provenance=provenance,
         )
 
+    def select_points(self, mask: ArrayLike) -> CrystalMap:
+        """Return the sub-map of points where ``mask`` is True (graph mode).
+
+        Phase assignments and property channels are carried forward, masked to
+        the retained points. The result drops ``grid_shape`` unless every point
+        is selected, since an arbitrary mask is generally not a full raster.
+        """
+
+        mask_array = np.asarray(mask, dtype=bool)
+        if mask_array.shape != (len(self.orientations),):
+            raise ValueError("select_points mask must have one entry per orientation.")
+        if not np.any(mask_array):
+            raise ValueError("select_points mask must retain at least one point.")
+        full_selection = bool(np.all(mask_array))
+        indices = np.flatnonzero(mask_array)
+        orientations = self.orientations.subset(indices)
+        phase_ids = None if self.phase_ids is None else self.phase_ids[mask_array]
+        properties = {
+            name: values[mask_array]
+            for name, values in cast("Mapping[str, np.ndarray]", self.properties).items()
+        }
+        return CrystalMap(
+            coordinates=self.coordinates[mask_array],
+            orientations=orientations,
+            map_frame=self.map_frame,
+            phase_entries=self.phase_entries,
+            phase_ids=phase_ids,
+            grid_shape=self.grid_shape if full_selection else None,
+            step_sizes=self.step_sizes,
+            acquisition_geometry=self.acquisition_geometry,
+            calibration_record=self.calibration_record,
+            measurement_quality=self.measurement_quality,
+            properties=properties or None,
+            provenance=self.provenance,
+        )
+
+    def property_threshold_mask(
+        self,
+        name: str,
+        *,
+        minimum: float | None = None,
+        maximum: float | None = None,
+    ) -> np.ndarray:
+        """Boolean keep-mask for a property channel within ``[minimum, maximum]``."""
+
+        if minimum is None and maximum is None:
+            raise ValueError("property_threshold_mask requires at least one of minimum/maximum.")
+        values = self.get_property(name)
+        keep = np.ones(values.shape, dtype=bool)
+        if minimum is not None:
+            keep &= values >= minimum
+        if maximum is not None:
+            keep &= values <= maximum
+        keep = np.ascontiguousarray(keep)
+        keep.setflags(write=False)
+        return keep
+
+    def filter_by_property(
+        self,
+        name: str,
+        *,
+        minimum: float | None = None,
+        maximum: float | None = None,
+    ) -> CrystalMap:
+        """Drop points whose ``name`` channel falls outside ``[minimum, maximum]``."""
+
+        return self.select_points(
+            self.property_threshold_mask(name, minimum=minimum, maximum=maximum)
+        )
+
+    def remove_wild_spikes(
+        self,
+        *,
+        threshold_deg: float,
+        symmetry_aware: bool = True,
+        connectivity: int = 8,
+    ) -> CrystalMap:
+        """Replace isolated wild-spike points with their neighborhood mean orientation.
+
+        A point is a wild spike when its minimum disorientation to every one of
+        its same-phase neighbors exceeds ``threshold_deg``; such points are
+        overwritten with the symmetry-aware mean orientation of those neighbors.
+        The map geometry, phase assignments, and property channels are preserved.
+        """
+
+        if threshold_deg <= 0.0:
+            raise ValueError("threshold_deg must be strictly positive.")
+        if connectivity not in {4, 8}:
+            raise ValueError("connectivity must be either 4 or 8.")
+        neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs
+        neighbor_pairs = neighbor_pairs[self._same_phase_pair_mask(neighbor_pairs)]
+        adjacency: dict[int, list[int]] = {
+            index: [] for index in range(len(self.orientations))
+        }
+        for left_index, right_index in neighbor_pairs:
+            adjacency[int(left_index)].append(int(right_index))
+            adjacency[int(right_index)].append(int(left_index))
+        quaternions = np.array(self.orientations.quaternions, copy=True)
+        replaced_any = False
+        for index, neighbors in adjacency.items():
+            if not neighbors:
+                continue
+            neighbor_indices = np.asarray(neighbors, dtype=np.int64)
+            angles_deg = np.rad2deg(
+                self._pair_misorientation_rad(
+                    np.column_stack(
+                        [np.full(neighbor_indices.shape, index, dtype=np.int64), neighbor_indices]
+                    ),
+                    symmetry_aware=symmetry_aware,
+                )
+            )
+            finite = angles_deg[np.isfinite(angles_deg)]
+            if finite.size == 0 or float(np.min(finite)) <= threshold_deg:
+                continue
+            neighbor_mean = self.orientations.subset(neighbor_indices).mean_orientation()
+            quaternions[index] = neighbor_mean.rotation.quaternion
+            replaced_any = True
+        if not replaced_any:
+            return self
+        orientations = OrientationSet.from_quaternions(
+            quaternions,
+            crystal_frame=self.orientations.crystal_frame,
+            specimen_frame=self.orientations.specimen_frame,
+            symmetry=self.orientations.symmetry,
+            phase=self.orientations.phase,
+            provenance=self.provenance,
+        )
+        return CrystalMap(
+            coordinates=self.coordinates,
+            orientations=orientations,
+            map_frame=self.map_frame,
+            phase_entries=self.phase_entries,
+            phase_ids=self.phase_ids,
+            grid_shape=self.grid_shape,
+            step_sizes=self.step_sizes,
+            acquisition_geometry=self.acquisition_geometry,
+            calibration_record=self.calibration_record,
+            measurement_quality=self.measurement_quality,
+            properties=cast("Mapping[str, np.ndarray]", self.properties) or None,
+            provenance=self.provenance,
+        )
+
     def _same_phase_pair_mask(self, pairs: np.ndarray) -> np.ndarray:
         phase_ids = self.phase_id_array
         if phase_ids is None:
