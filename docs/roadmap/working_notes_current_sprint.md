@@ -13,9 +13,17 @@ Master plan: `docs/roadmap/mtex_parity_and_ebsd_feature_roadmap.md`, Section 3.2
 (EBSD features, immediate horizon). This sprint works that list end to end.
 
 Baseline at sprint start: `558 passed, 26 deselected` (deselecting the
-pre-existing phase-fixture/repo-integrity hash mismatches). Gates:
+pre-existing phase-fixture/repo-integrity hash mismatches). Current state after
+tasks A-L below: `607 passed, 26 deselected`, ruff + mypy green. Gates:
 `python -m ruff check .`, `python -m mypy src`, and
 `python -m pytest -q --deselect tests/unit/test_phase_fixtures.py --deselect tests/unit/test_repo_integrity.py`.
+
+This became a single long-horizon session spanning three groups of work:
+immediate-horizon EBSD (Tasks A-E), medium-horizon grains/boundaries/MDF
+(Tasks F, G, I, J), and a new physical-properties layer (Tasks H, K, L). Each
+task landed as its own commit with tests, docs, and parity-matrix updates.
+New modules this session: `ebsd/csl.py`, `core/misorientation_distribution.py`,
+and the `pytex/properties/` package (`slip.py`, `tensors.py`).
 
 ## Sprint Task List
 
