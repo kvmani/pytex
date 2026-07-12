@@ -10,13 +10,16 @@ from pytex.properties.taylor import (
 )
 from pytex.properties.tensors import (
     ComplianceTensor,
+    DirectionalModulusSurface,
     ElasticTensor,
     StiffnessTensor,
     homogenize_elastic,
+    youngs_modulus_surface,
 )
 
 __all__ = [
     "ComplianceTensor",
+    "DirectionalModulusSurface",
     "ElasticTensor",
     "SlipSystem",
     "SlipSystemFamily",
@@ -26,4 +29,5 @@ __all__ = [
     "homogenize_elastic",
     "taylor_factors",
     "uniaxial_strain_tensor",
+    "youngs_modulus_surface",
 ]

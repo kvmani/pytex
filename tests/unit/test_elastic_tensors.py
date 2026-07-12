@@ -13,6 +13,7 @@ from pytex import (
     StiffnessTensor,
     SymmetrySpec,
     homogenize_elastic,
+    youngs_modulus_surface,
 )
 from pytex.core.misorientation_distribution import _haar_uniform_quaternions
 
@@ -160,3 +161,50 @@ def test_hexagonal_stiffness_is_transversely_isotropic_in_basal_plane() -> None:
     assert basal_x == pytest.approx(basal_y)
     # the c-axis modulus differs from the basal-plane modulus
     assert stiffness.youngs_modulus((0, 0, 1)) != pytest.approx(basal_x)
+
+
+def test_batched_youngs_modulus_matches_scalar() -> None:
+    stiffness = _copper()
+    directions = np.array([[1, 0, 0], [1, 1, 0], [1, 1, 1], [2, 1, 3]], dtype=np.float64)
+    batched = stiffness.youngs_modulus(directions)
+    assert batched.shape == (4,)
+    for i, direction in enumerate(directions):
+        assert batched[i] == pytest.approx(stiffness.youngs_modulus(direction))
+    # scalar input still returns a float (backward compatible)
+    assert isinstance(stiffness.youngs_modulus((1, 0, 0)), float)
+
+
+def test_cubic_modulus_surface_extremes_and_anisotropy() -> None:
+    stiffness = _copper()
+    surface = youngs_modulus_surface(stiffness, n_theta=60, n_phi=120)
+    # copper is elastically compliant along <100> and stiff along <111>
+    assert surface.minimum == pytest.approx(stiffness.youngs_modulus((1, 0, 0)), abs=0.2)
+    assert surface.maximum == pytest.approx(stiffness.youngs_modulus((1, 1, 1)), abs=0.2)
+    assert surface.anisotropy_ratio > 2.5
+    x, y, z = surface.cartesian_surface()
+    assert x.shape == (60, 120)
+
+
+def test_isotropic_modulus_surface_is_a_sphere() -> None:
+    stiffness = StiffnessTensor.isotropic(youngs_modulus=210.0, poisson_ratio=0.29)
+    surface = youngs_modulus_surface(stiffness, n_theta=40, n_phi=80)
+    assert surface.anisotropy_ratio == pytest.approx(1.0, abs=1e-9)
+    assert surface.minimum == pytest.approx(210.0, abs=1e-6)
+
+
+def test_linear_compressibility_is_isotropic_for_cubic() -> None:
+    # linear compressibility is direction-independent for any cubic crystal
+    stiffness = _copper()
+    beta_100 = stiffness.linear_compressibility((1, 0, 0))
+    beta_111 = stiffness.linear_compressibility((1, 1, 1))
+    assert beta_100 == pytest.approx(beta_111, rel=1e-9)
+
+
+def test_plot_youngs_modulus_surface_returns_figure() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_youngs_modulus_surface
+
+    figure = plot_youngs_modulus_surface(_copper(), n_theta=30, n_phi=60)
+    assert "Young's modulus surface" in figure.axes[0].get_title()

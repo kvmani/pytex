@@ -23,6 +23,7 @@ from pytex.plotting.ebsd import (
     plot_property_map,
 )
 from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
+from pytex.plotting.properties import plot_youngs_modulus_surface
 from pytex.plotting.runtime import (
     plot_crystal_directions,
     plot_crystal_planes,
@@ -85,6 +86,7 @@ __all__ = [
     "plot_vector_set",
     "plot_wulff_net",
     "plot_xrd_pattern",
+    "plot_youngs_modulus_surface",
     "read_style_yaml",
     "resolve_style",
     "save_documentation_figure_svg",

@@ -266,12 +266,14 @@ from pytex.plotting import (
     plot_vector_set,
     plot_wulff_net,
     plot_xrd_pattern,
+    plot_youngs_modulus_surface,
     read_style_yaml,
     resolve_style,
     save_documentation_figure_svg,
 )
 from pytex.properties import (
     ComplianceTensor,
+    DirectionalModulusSurface,
     ElasticTensor,
     SlipSystem,
     SlipSystemFamily,
@@ -281,6 +283,7 @@ from pytex.properties import (
     homogenize_elastic,
     taylor_factors,
     uniaxial_strain_tensor,
+    youngs_modulus_surface,
 )
 from pytex.texture import (
     ODF,
@@ -352,6 +355,7 @@ __all__ = [
     "DiffractionIntensityModel",
     "DiffractionPattern",
     "DirectionAnnotationStyle",
+    "DirectionalModulusSurface",
     "EBSDCalibrationGeometry",
     "EBSDDetectorGeometry",
     "EBSDImportManifest",
@@ -542,6 +546,7 @@ __all__ = [
     "plot_vector_set",
     "plot_wulff_net",
     "plot_xrd_pattern",
+    "plot_youngs_modulus_surface",
     "project_directions_onto_planes",
     "project_great_circle_trace",
     "projection_boundary_radius",
@@ -590,6 +595,7 @@ __all__ = [
     "validate_workflow_result_manifest",
     "validation_manifest_schema_path",
     "workflow_result_manifest_schema_path",
+    "youngs_modulus_surface",
     "write_json_contract",
     "zone_law_value_hkil_uvtw",
 ]

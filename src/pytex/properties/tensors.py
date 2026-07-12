@@ -160,8 +160,11 @@ class StiffnessTensor(ElasticTensor):
         voigt_compliance = np.linalg.inv(self.voigt_matrix())
         return ComplianceTensor(tensor=_voigt_to_tensor(voigt_compliance, compliance=True))
 
-    def youngs_modulus(self, direction: ArrayLike) -> float:
+    def youngs_modulus(self, direction: ArrayLike) -> np.ndarray | float:
         return self.compliance().youngs_modulus(direction)
+
+    def linear_compressibility(self, direction: ArrayLike) -> np.ndarray | float:
+        return self.compliance().linear_compressibility(direction)
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,20 +186,44 @@ class ComplianceTensor(ElasticTensor):
         voigt_stiffness = np.linalg.inv(self.voigt_matrix())
         return StiffnessTensor(tensor=_voigt_to_tensor(voigt_stiffness, compliance=False))
 
-    def youngs_modulus(self, direction: ArrayLike) -> float:
-        """Directional Young's modulus ``E(n) = 1 / (n_i n_j n_k n_l S_ijkl)``."""
+    def youngs_modulus(self, direction: ArrayLike) -> np.ndarray | float:
+        """Directional Young's modulus ``E(n) = 1 / (n_i n_j n_k n_l S_ijkl)``.
+
+        Accepts a single ``(3,)`` direction (returns a float) or a batch of
+        ``(n, 3)`` directions (returns an ``(n,)`` array), fully vectorised.
+        """
 
         unit = np.asarray(direction, dtype=np.float64)
-        norm = float(np.linalg.norm(unit))
-        if norm == 0.0:
+        scalar = unit.ndim == 1
+        vectors = np.atleast_2d(unit)
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        if np.any(norms == 0.0):
             raise ValueError("direction must be a non-zero vector.")
-        unit = unit / norm
-        inverse_modulus = float(
-            np.einsum("i,j,k,l,ijkl->", unit, unit, unit, unit, self.tensor, optimize=True)
+        vectors = vectors / norms
+        inverse_modulus = np.einsum(
+            "ni,nj,nk,nl,ijkl->n", vectors, vectors, vectors, vectors, self.tensor, optimize=True
         )
-        if inverse_modulus <= 0.0:
+        if np.any(inverse_modulus <= 0.0):
             raise ValueError("Non-physical compliance produced a non-positive modulus.")
-        return 1.0 / inverse_modulus
+        modulus = 1.0 / inverse_modulus
+        return float(modulus[0]) if scalar else np.ascontiguousarray(modulus)
+
+    def linear_compressibility(self, direction: ArrayLike) -> np.ndarray | float:
+        """Linear compressibility ``beta(n) = n_i n_j S_ijkk`` under hydrostatic load.
+
+        Accepts a single ``(3,)`` direction (returns a float) or a batch of
+        ``(n, 3)`` directions (returns an ``(n,)`` array).
+        """
+
+        unit = np.asarray(direction, dtype=np.float64)
+        scalar = unit.ndim == 1
+        vectors = np.atleast_2d(unit)
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        if np.any(norms == 0.0):
+            raise ValueError("direction must be a non-zero vector.")
+        vectors = vectors / norms
+        beta = np.einsum("ni,nj,ijkk->n", vectors, vectors, self.tensor, optimize=True)
+        return float(beta[0]) if scalar else np.ascontiguousarray(beta)
 
 
 def _normalized_weights(count: int, weights: ArrayLike | None) -> np.ndarray:
@@ -267,9 +294,82 @@ def homogenize_elastic(
     return StiffnessTensor(tensor=hill_voigt)
 
 
+@dataclass(frozen=True, slots=True)
+class DirectionalModulusSurface:
+    """A directional elastic property sampled on a spherical (theta, phi) grid."""
+
+    theta: np.ndarray
+    phi: np.ndarray
+    values: np.ndarray
+    property_name: str = "youngs_modulus"
+
+    def __post_init__(self) -> None:
+        for name in ("theta", "phi", "values"):
+            array = np.ascontiguousarray(np.asarray(getattr(self, name), dtype=np.float64))
+            array.setflags(write=False)
+            object.__setattr__(self, name, array)
+        if self.values.shape != (self.theta.shape[0], self.phi.shape[0]):
+            raise ValueError("values must have shape (len(theta), len(phi)).")
+
+    @property
+    def minimum(self) -> float:
+        return float(np.min(self.values))
+
+    @property
+    def maximum(self) -> float:
+        return float(np.max(self.values))
+
+    @property
+    def anisotropy_ratio(self) -> float:
+        """Ratio of maximum to minimum directional value (1 for isotropy)."""
+
+        return self.maximum / self.minimum
+
+    def cartesian_surface(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return (X, Y, Z) grids with radius scaled by the property value."""
+
+        polar, azimuth = np.meshgrid(self.theta, self.phi, indexing="ij")
+        radius = self.values
+        x = radius * np.sin(polar) * np.cos(azimuth)
+        y = radius * np.sin(polar) * np.sin(azimuth)
+        z = radius * np.cos(polar)
+        return x, y, z
+
+
+def youngs_modulus_surface(
+    tensor: StiffnessTensor | ComplianceTensor,
+    *,
+    n_theta: int = 90,
+    n_phi: int = 180,
+) -> DirectionalModulusSurface:
+    """Sample the directional Young's modulus over the unit sphere.
+
+    Returns a `DirectionalModulusSurface` with the modulus on a structured
+    ``(n_theta, n_phi)`` grid, ready for 3D plotting or anisotropy analysis.
+    """
+
+    if n_theta < 2 or n_phi < 2:
+        raise ValueError("n_theta and n_phi must each be at least 2.")
+    theta = np.linspace(0.0, np.pi, n_theta)
+    phi = np.linspace(0.0, 2.0 * np.pi, n_phi)
+    polar, azimuth = np.meshgrid(theta, phi, indexing="ij")
+    directions = np.stack(
+        [
+            np.sin(polar) * np.cos(azimuth),
+            np.sin(polar) * np.sin(azimuth),
+            np.cos(polar),
+        ],
+        axis=-1,
+    ).reshape(-1, 3)
+    modulus = np.asarray(tensor.youngs_modulus(directions), dtype=np.float64)
+    return DirectionalModulusSurface(theta, phi, modulus.reshape(n_theta, n_phi))
+
+
 __all__ = [
     "ComplianceTensor",
+    "DirectionalModulusSurface",
     "ElasticTensor",
     "StiffnessTensor",
     "homogenize_elastic",
+    "youngs_modulus_surface",
 ]
