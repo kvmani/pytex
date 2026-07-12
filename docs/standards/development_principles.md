@@ -34,6 +34,9 @@ This document makes the repository's engineering posture explicit so future stag
 9. Optimize after semantics are fixed
    Performance work is welcome, but only after the canonical representation, failure modes, and validation criteria are clear.
 
+9a. Prefer highly vectorized implementations
+   Numerical routines that process populations (orientations, map points, boundary segments, quadrature nodes, tensor families) must be written as vectorized array operations — NumPy broadcasting/`einsum` and SciPy batch routines — rather than Python-level per-element loops, so map-scale and ODF-scale workloads stay performant. Reach for a Python loop only when a vectorized form is genuinely infeasible, and isolate it so the hot path stays array-based. SciPy is a first-class core dependency for exactly this purpose (linear algebra, optimization, spatial queries, special functions); prefer its vectorized primitives over hand-rolled scalar code.
+
 10. Treat machine-readable interchange as product surface
    Major stable outputs should not remain trapped in Python memory only. When a result is important for reproducibility, external tooling, validation, or workflow chaining, it should gain a versioned JSON contract that preserves enough scientific meaning for reconstruction.
 

@@ -90,6 +90,7 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 
 - Keep public types explicit and strongly named.
 - Prefer immutable metadata objects and contiguous NumPy-backed arrays for vectorized data.
+- Write numerical routines as highly vectorized array operations (NumPy `einsum`/broadcasting, SciPy batch primitives); avoid Python per-element loops on the hot path. SciPy is a core dependency for linear algebra, optimization, spatial queries, and special functions. See `docs/standards/development_principles.md` principle 9a.
 - Add tests with implementation, not afterward.
 - Update docs when behavior, conventions, or surface area changes.
 - Add or update cross-links when a page relies on terms, conventions, or workflows defined elsewhere in the docs.
