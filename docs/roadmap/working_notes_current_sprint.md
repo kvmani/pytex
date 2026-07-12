@@ -55,7 +55,8 @@ criterion, and matrix classifier live in the new `ebsd/csl.py`, with
 consumer surface. CSL matching uses the symmetry-reduced deviation
 `min over S_a,S_b of angle(S_a M S_b C^T)` (cubic-only for now).
 
-| K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | this commit |
+| K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | committed |
+| L | Polycrystal elastic homogenization (`homogenize_elastic`, Voigt/Reuss/Hill) | done, tests green | this commit |
 
 Note (K): slotted frozen dataclass subclasses cannot use zero-arg `super()`
 in `__post_init__` (dataclass(slots=True) rebuilds the class, breaking the

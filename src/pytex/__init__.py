@@ -278,6 +278,7 @@ from pytex.properties import (
     StiffnessTensor,
     bcc_110_slip,
     fcc_octahedral_slip,
+    homogenize_elastic,
 )
 from pytex.texture import (
     ODF,
@@ -492,6 +493,7 @@ __all__ = [
     "generate_stereonet_grid",
     "generate_xrd_pattern",
     "get_phase_fixture",
+    "homogenize_elastic",
     "index_hough",
     "index_saed_pattern",
     "invert_labotex_pole_figures",

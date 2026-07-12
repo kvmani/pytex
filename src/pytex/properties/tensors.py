@@ -10,9 +10,13 @@ tensor contraction ``1/E(n) = n_i n_j n_k n_l S_ijkl``.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike
+
+if TYPE_CHECKING:
+    from pytex.core.orientation import OrientationSet
 
 # Voigt index pairs: Voigt 0..5 -> (i, j) tensor indices.
 _VOIGT_PAIRS: tuple[tuple[int, int], ...] = ((0, 0), (1, 1), (2, 2), (1, 2), (0, 2), (0, 1))
@@ -195,8 +199,77 @@ class ComplianceTensor(ElasticTensor):
         return 1.0 / inverse_modulus
 
 
+def _normalized_weights(count: int, weights: ArrayLike | None) -> np.ndarray:
+    if weights is None:
+        return np.full(count, 1.0 / count, dtype=np.float64)
+    values = np.asarray(weights, dtype=np.float64)
+    if values.shape != (count,):
+        raise ValueError("weights must provide one value per orientation.")
+    if np.any(values < 0.0):
+        raise ValueError("weights must be non-negative.")
+    total = float(values.sum())
+    if np.isclose(total, 0.0):
+        raise ValueError("weights must not sum to zero.")
+    return values / total
+
+
+def homogenize_elastic(
+    stiffness: StiffnessTensor,
+    orientations: OrientationSet,
+    *,
+    weights: ArrayLike | None = None,
+    scheme: str = "hill",
+) -> StiffnessTensor:
+    """Orientation-weighted polycrystal elastic average of a single crystal.
+
+    Rotates the single-crystal stiffness into the sample frame for every
+    orientation and averages under the requested scheme:
+
+    - ``"voigt"``: arithmetic mean of the stiffness tensors (uniform strain),
+    - ``"reuss"``: inverse of the mean compliance (uniform stress),
+    - ``"hill"``: the Voigt-Reuss-Hill average ``(C_voigt + C_reuss) / 2``.
+
+    Returns the aggregate `StiffnessTensor` in the sample frame.
+    """
+
+    if scheme not in {"voigt", "reuss", "hill"}:
+        raise ValueError("scheme must be one of 'voigt', 'reuss', or 'hill'.")
+    matrices = orientations.as_matrices()
+    weight_values = _normalized_weights(matrices.shape[0], weights)
+    crystal_stiffness = stiffness.tensor
+    crystal_compliance = stiffness.compliance().tensor
+    rotated_c = np.einsum(
+        "nip,njq,nkr,nls,pqrs->nijkl",
+        matrices,
+        matrices,
+        matrices,
+        matrices,
+        crystal_stiffness,
+        optimize=True,
+    )
+    voigt_tensor = np.einsum("n,nijkl->ijkl", weight_values, rotated_c, optimize=True)
+    if scheme == "voigt":
+        return StiffnessTensor(tensor=voigt_tensor)
+    rotated_s = np.einsum(
+        "nip,njq,nkr,nls,pqrs->nijkl",
+        matrices,
+        matrices,
+        matrices,
+        matrices,
+        crystal_compliance,
+        optimize=True,
+    )
+    mean_compliance = np.einsum("n,nijkl->ijkl", weight_values, rotated_s, optimize=True)
+    reuss_stiffness = ComplianceTensor(tensor=mean_compliance).stiffness()
+    if scheme == "reuss":
+        return reuss_stiffness
+    hill_voigt = 0.5 * (voigt_tensor + reuss_stiffness.tensor)
+    return StiffnessTensor(tensor=hill_voigt)
+
+
 __all__ = [
     "ComplianceTensor",
     "ElasticTensor",
     "StiffnessTensor",
+    "homogenize_elastic",
 ]

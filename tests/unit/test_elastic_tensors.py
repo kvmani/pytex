@@ -3,12 +3,40 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from pytex import ComplianceTensor, StiffnessTensor
+from pytex import (
+    ComplianceTensor,
+    FrameDomain,
+    Handedness,
+    OrientationSet,
+    ReferenceFrame,
+    Rotation,
+    StiffnessTensor,
+    SymmetrySpec,
+    homogenize_elastic,
+)
+from pytex.core.misorientation_distribution import _haar_uniform_quaternions
 
 
 def _copper() -> StiffnessTensor:
     # Single-crystal copper elastic constants (GPa).
     return StiffnessTensor.cubic(168.4, 121.4, 75.4)
+
+
+def _cubic_frames() -> tuple[ReferenceFrame, ReferenceFrame, SymmetrySpec]:
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    return crystal, specimen, symmetry
 
 
 def test_voigt_round_trip_preserves_stiffness() -> None:
@@ -68,6 +96,60 @@ def test_compliance_from_voigt_matches_stiffness_inverse() -> None:
     np.testing.assert_allclose(
         compliance.voigt_matrix(), stiffness.compliance().voigt_matrix(), atol=1e-12
     )
+
+
+def test_homogenize_single_orientation_reproduces_crystal() -> None:
+    crystal, specimen, symmetry = _cubic_frames()
+    stiffness = _copper()
+    orientations = OrientationSet.from_quaternions(
+        Rotation.identity().quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    for scheme in ("voigt", "reuss", "hill"):
+        aggregate = homogenize_elastic(stiffness, orientations, scheme=scheme)
+        np.testing.assert_allclose(
+            aggregate.voigt_matrix(), stiffness.voigt_matrix(), atol=1e-9
+        )
+
+
+def test_homogenize_random_population_is_nearly_isotropic_with_bounds() -> None:
+    crystal, specimen, symmetry = _cubic_frames()
+    stiffness = _copper()
+    quaternions = _haar_uniform_quaternions(400, np.random.default_rng(0))
+    orientations = OrientationSet.from_quaternions(
+        quaternions,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    directions = [(1, 0, 0), (1, 1, 0), (1, 1, 1), (1, 2, 3)]
+    voigt = homogenize_elastic(stiffness, orientations, scheme="voigt")
+    reuss = homogenize_elastic(stiffness, orientations, scheme="reuss")
+    hill = homogenize_elastic(stiffness, orientations, scheme="hill")
+    voigt_e = [voigt.youngs_modulus(d) for d in directions]
+    # a random aggregate is nearly isotropic: modulus varies little with direction
+    assert (max(voigt_e) - min(voigt_e)) / np.mean(voigt_e) < 0.05
+    # Voigt (uniform strain) is stiffer than Reuss (uniform stress); Hill lies between
+    for direction in directions:
+        assert (
+            voigt.youngs_modulus(direction)
+            > hill.youngs_modulus(direction)
+            > reuss.youngs_modulus(direction)
+        )
+
+
+def test_homogenize_rejects_unknown_scheme() -> None:
+    crystal, specimen, symmetry = _cubic_frames()
+    orientations = OrientationSet.from_quaternions(
+        Rotation.identity().quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    with pytest.raises(ValueError, match="scheme"):
+        homogenize_elastic(_copper(), orientations, scheme="bogus")
 
 
 def test_hexagonal_stiffness_is_transversely_isotropic_in_basal_plane() -> None:

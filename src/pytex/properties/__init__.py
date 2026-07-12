@@ -8,6 +8,7 @@ from pytex.properties.tensors import (
     ComplianceTensor,
     ElasticTensor,
     StiffnessTensor,
+    homogenize_elastic,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "StiffnessTensor",
     "bcc_110_slip",
     "fcc_octahedral_slip",
+    "homogenize_elastic",
 ]
