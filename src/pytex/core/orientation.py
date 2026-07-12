@@ -7,7 +7,6 @@ from numpy.typing import ArrayLike
 
 from pytex.core._arrays import (
     as_float_array,
-    is_rotation_matrix,
     normalize_quaternion,
     normalize_quaternions,
     normalize_vector,
@@ -269,9 +268,14 @@ def matrices_to_quaternions(matrices: ArrayLike) -> np.ndarray:
         matrix_array = matrix_array[None, :, :]
     if matrix_array.ndim != 3 or matrix_array.shape[1:] != (3, 3):
         raise ValueError("Rotation matrices must have shape (3, 3) or (n, 3, 3).")
-    for matrix in matrix_array:
-        if not is_rotation_matrix(matrix):
-            raise ValueError("All matrices must be proper rotation matrices.")
+    # Vectorised proper-rotation validation: orthonormal (M^T M = I) and det = 1.
+    gram = np.einsum("nji,njk->nik", matrix_array, matrix_array, optimize=True)
+    determinants = np.linalg.det(matrix_array)
+    if not (
+        np.allclose(gram, np.eye(3, dtype=np.float64)[None, :, :], atol=1e-8)
+        and np.allclose(determinants, 1.0, atol=1e-8)
+    ):
+        raise ValueError("All matrices must be proper rotation matrices.")
     quaternions = np.empty((matrix_array.shape[0], 4), dtype=np.float64)
     trace = np.trace(matrix_array, axis1=1, axis2=2)
     positive_trace = trace > 0.0
@@ -2002,11 +2006,7 @@ class OrientationSet:
         return orientations
 
     def as_matrices(self) -> np.ndarray:
-        matrices = np.stack(
-            [quaternion_to_matrix(quaternion) for quaternion in self.quaternions],
-            axis=0,
-        )
-        matrices = np.ascontiguousarray(matrices)
+        matrices = np.ascontiguousarray(quaternions_to_matrices(self.quaternions))
         matrices.setflags(write=False)
         return matrices
 

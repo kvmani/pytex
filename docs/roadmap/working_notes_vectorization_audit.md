@@ -49,8 +49,8 @@ is auditable, not skipped silently.
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
 | ebsd/models.py | done | 5 | 5 | c30efbe + this |
-| diffraction/models.py | pending | - | - | - |
-| core/orientation.py (rest) | pending | - | - | - |
+| core/orientation.py (rest) | in progress | 2 done, 4 deferred | 2 | this commit |
+| diffraction/models.py | deferred (see notes) | 1 HOT (simulate_spots) | 0 | - |
 | texture/harmonics.py | pending | - | - | - |
 | texture/models.py | pending | - | - | - |
 | properties/tensors.py | pending | - | - | - |
@@ -91,6 +91,42 @@ existing grain/EBSD/CSL test suites:
    (rare) spike points loop to compute their neighbourhood-mean replacement.
    Verified equivalent by an independent per-point reference computation
    (spike set identical) and the existing isolated-spike unit test.
+
+### core/orientation.py (in progress)
+
+Converted (this commit), exact equivalence verified:
+
+1. `OrientationSet.as_matrices` - was a per-quaternion list comprehension via
+   `quaternion_to_matrix`; now the batch `quaternions_to_matrices`. Max diff
+   ~1e-15. High value: called by nearly every vectorized routine.
+2. `matrices_to_quaternions` proper-rotation validation - was a per-matrix
+   `is_rotation_matrix` loop; now a single batched `M^T M = I` (`einsum`) plus
+   `det = 1` check. Same atol (1e-8).
+
+Deferred HOT candidates in core/orientation.py (higher-risk batch refactors of
+per-orientation symmetry logic; each needs its own golden-equivalence pass):
+`as_euler` (per-quaternion Euler extraction), `canonicalize`-map at line ~2125,
+`project_to_exact_fundamental_region`-map at ~2155/2181, and the
+`matrix_to_quaternion` comprehension inside `disorientation`/fundamental-region
+key computation (~1308). These wrap non-trivial per-element symmetry reduction;
+convert with captured golden outputs when resumed.
+
+### diffraction/models.py (deferred with plan)
+
+`simulate_spots` (per-reflection loop, ~line 949) is genuinely HOT and
+vectorisable (batch reciprocal vectors = miller @ reciprocal_basis; single
+orientation matmul; mask-based Ewald/zone/detector filters; batched intensity)
+but it is a ~80-line, filter- and object-construction-heavy rewrite feeding
+externally-pinned SAED baselines (`test_diffraction_external_baselines.py`,
+`test_generate_saed_pattern_respects_zone_axis_geometry`). Plan for the
+resumed pass: (1) capture a golden fixture of the current spot list (positions,
+excitation errors, intensities, family keys) for a representative case; (2)
+rewrite with mask-based filtering keeping the surviving-spot dict assembly; (3)
+assert bit-for-bit equality against the golden capture and the external
+baselines before committing. The outer orientation-search loops
+(`index_pattern`, refinement grid) are algorithmic objective evaluations, not
+per-element array math -> COLD; they speed up for free once simulate_spots is
+vectorised.
 
 Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
 dict comprehensions (grain count is small; inner ops already vectorised),
