@@ -238,3 +238,38 @@ def test_orientation_projection_is_idempotent_across_supported_point_groups(
     )
     assert projected.is_in_fundamental_region(specimen_symmetry=specimen_symmetry)
     assert_allclose(reprojection.as_matrix(), projected.as_matrix(), atol=1e-10)
+
+
+def test_as_euler_matches_per_orientation_reference_including_gimbal_lock() -> None:
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    # random orientations plus gimbal-lock cases (PHI = 0 and PHI = 180 degrees)
+    rng = np.random.default_rng(11)
+    random_euler = rng.uniform([0.0, 0.0, 0.0], [360.0, 180.0, 360.0], size=(50, 3))
+    special = np.array(
+        [[30.0, 0.0, 0.0], [30.0, 180.0, 0.0], [355.0, 0.0, 15.0], [0.0, 0.0, 0.0]]
+    )
+    euler_deg = np.vstack([random_euler, special])
+    orientations = OrientationSet.from_euler_angles(
+        euler_deg, crystal_frame=crystal, specimen_frame=specimen
+    )
+    for convention in ("bunge", "matthies", "abg"):
+        for degrees in (True, False):
+            vectorized = orientations.as_euler(convention=convention, degrees=degrees)
+            reference = np.stack(
+                [
+                    Rotation(quaternion).to_euler(convention=convention, degrees=degrees)
+                    for quaternion in orientations.quaternions
+                ]
+            )
+            assert_allclose(vectorized, reference, atol=1e-9)

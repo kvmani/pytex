@@ -109,6 +109,42 @@ def _safe_arccos(value: ArrayLike) -> np.ndarray:
     return np.arccos(np.clip(array, -1.0, 1.0))
 
 
+def _matrices_to_repeated_axis_euler(
+    matrices: np.ndarray,
+    *,
+    convention: str,
+) -> np.ndarray:
+    """Vectorised counterpart of `_matrix_to_repeated_axis_euler` (shape (n, 3)).
+
+    Reproduces the scalar function's gimbal-lock branching exactly via masks so
+    per-orientation results are identical.
+    """
+
+    normalized = _normalize_euler_convention(convention)
+    phi = _safe_arccos(matrices[:, 2, 2])
+    near_zero = np.isclose(phi, 0.0, atol=1e-10)
+    near_pi = np.isclose(phi, np.pi, atol=1e-10)
+    first = np.empty(matrices.shape[0], dtype=np.float64)
+    third = np.zeros(matrices.shape[0], dtype=np.float64)
+    if normalized == "bunge":
+        regular = ~near_zero & ~near_pi
+        first[near_zero] = np.arctan2(
+            matrices[near_zero, 1, 0], matrices[near_zero, 0, 0]
+        )
+        first[near_pi] = np.arctan2(matrices[near_pi, 0, 1], matrices[near_pi, 0, 0])
+        first[regular] = np.arctan2(matrices[regular, 0, 2], -matrices[regular, 1, 2])
+        third[regular] = np.arctan2(matrices[regular, 2, 0], matrices[regular, 2, 1])
+    else:
+        degenerate = near_zero | near_pi
+        regular = ~degenerate
+        first[degenerate] = np.arctan2(
+            matrices[degenerate, 1, 0], matrices[degenerate, 0, 0]
+        )
+        first[regular] = np.arctan2(matrices[regular, 1, 2], matrices[regular, 0, 2])
+        third[regular] = np.arctan2(matrices[regular, 2, 1], -matrices[regular, 2, 0])
+    return np.column_stack([first, phi, third])
+
+
 def _canonicalize_quaternion(quaternion: ArrayLike) -> np.ndarray:
     candidate = normalize_quaternion(quaternion)
     if candidate[0] < 0.0:
@@ -2019,13 +2055,10 @@ class OrientationSet:
         convention: str = "bunge",
         degrees: bool = True,
     ) -> np.ndarray:
-        euler = np.stack(
-            [
-                Rotation(quaternion).to_euler(convention=convention, degrees=degrees)
-                for quaternion in self.quaternions
-            ],
-            axis=0,
-        )
+        raw = _matrices_to_repeated_axis_euler(self.as_matrices(), convention=convention)
+        euler = np.mod(raw, 2.0 * np.pi)
+        if degrees:
+            euler = np.rad2deg(euler)
         euler = np.ascontiguousarray(euler)
         euler.setflags(write=False)
         return euler

@@ -49,7 +49,7 @@ is auditable, not skipped silently.
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
 | ebsd/models.py | done | 5 | 5 | c30efbe + this |
-| core/orientation.py (rest) | in progress | 2 done, 4 deferred | 2 | this commit |
+| core/orientation.py (rest) | in progress | 3 done, 3 deferred | 3 | this commit |
 | diffraction/models.py | deferred (see notes) | 1 HOT (simulate_spots) | 0 | - |
 | texture/harmonics.py | pending | - | - | - |
 | texture/models.py | pending | - | - | - |
@@ -103,9 +103,17 @@ Converted (this commit), exact equivalence verified:
    `is_rotation_matrix` loop; now a single batched `M^T M = I` (`einsum`) plus
    `det = 1` check. Same atol (1e-8).
 
+3. `OrientationSet.as_euler` (and `as_bunge_euler`) - was a per-quaternion
+   `Rotation.to_euler` comprehension. Now a batched
+   `_matrices_to_repeated_axis_euler` that reproduces the scalar gimbal-lock
+   branching (PHI near 0 / near pi) exactly via boolean masks, followed by the
+   same `mod 2*pi` and optional `rad2deg`. Verified across bunge/matthies/abg,
+   degrees and radians, including gimbal-lock cases (max diff ~1e-14); permanent
+   regression test in `test_orientation_utilities.py`.
+
 Deferred HOT candidates in core/orientation.py (higher-risk batch refactors of
 per-orientation symmetry logic; each needs its own golden-equivalence pass):
-`as_euler` (per-quaternion Euler extraction), `canonicalize`-map at line ~2125,
+`canonicalize`-map at line ~2125,
 `project_to_exact_fundamental_region`-map at ~2155/2181, and the
 `matrix_to_quaternion` comprehension inside `disorientation`/fundamental-region
 key computation (~1308). These wrap non-trivial per-element symmetry reduction;
