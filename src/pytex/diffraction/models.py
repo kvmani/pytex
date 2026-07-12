@@ -18,7 +18,6 @@ from pytex.core.acquisition import (
     MeasurementQuality,
     ScatteringSetup,
 )
-from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import FrameTransform, ReferenceFrame
 from pytex.core.lattice import (
@@ -945,90 +944,82 @@ class KinematicSimulation:
         incident = geometry.incident_wavevector_lab
         incident_magnitude = float(np.linalg.norm(incident))
         zone_axis_vector = zone_axis.unit_vector if zone_axis is not None else None
+        # Vectorised over all candidate reflections. Only zone-axis
+        # orthogonality and excitation error remove reflections; on-detector /
+        # acceptance are stored fields, not filters. Geometry is batched; the
+        # trivial per-reflection intensity and family key are kept in the
+        # survivor assembly loop for an exact match with the scalar path.
         candidate_spots: list[_CandidateSpot] = []
-        for miller_triplet in miller_array:
-            miller_triplet_int = np.rint(miller_triplet).astype(np.int64)
-            reciprocal_vector = ReciprocalLatticeVector.from_miller_index(
-                MillerIndex(miller_triplet_int, phase=phase)
-            ).cartesian_vector
-            if orientation is not None:
-                reciprocal_vector_specimen = orientation.map_crystal_vector(reciprocal_vector)
-            else:
-                reciprocal_vector_specimen = reciprocal_vector
-            reciprocal_vector_specimen_array = (
-                reciprocal_vector_specimen.values[0]
-                if isinstance(reciprocal_vector_specimen, VectorSet)
-                else reciprocal_vector_specimen
-            )
-            if zone_axis_vector is not None:
-                zone_axis_dot = float(np.dot(zone_axis_vector, reciprocal_vector_specimen_array))
-                zone_axis_scale = max(1.0, float(np.linalg.norm(reciprocal_vector_specimen_array)))
-                if not np.isclose(
-                    zone_axis_dot,
-                    0.0,
-                    atol=_ZONE_AXIS_ORTHOGONALITY_ATOL * zone_axis_scale,
-                    rtol=_ZONE_AXIS_ORTHOGONALITY_RTOL,
-                ):
-                    continue
-            reciprocal_vector_lab = geometry.specimen_vectors_to_lab(
-                reciprocal_vector_specimen_array[None, :]
-            )[0]
-            outgoing_wavevector = incident + reciprocal_vector_lab
-            excitation_error = float(np.linalg.norm(outgoing_wavevector) - incident_magnitude)
-            if abs(excitation_error) > max_excitation_error_inv_angstrom:
-                continue
-            outgoing_direction = normalize_vector(outgoing_wavevector)
-            coordinates_px, valid = geometry.project_directions_to_detector_px(
-                outgoing_direction[None, :]
-            )
-            two_theta = float(
-                np.arccos(
-                    np.clip(
-                        float(np.dot(outgoing_direction, geometry.beam_direction_lab)), -1.0, 1.0
-                    )
-                )
+        miller_int_all = np.rint(miller_array).astype(np.int64)
+        reciprocal_basis = phase.lattice.reciprocal_basis().matrix
+        reciprocal_crystal = miller_int_all.astype(np.float64) @ reciprocal_basis.T
+        if orientation is not None:
+            reciprocal_specimen = reciprocal_crystal @ orientation.rotation.as_matrix().T
+        else:
+            reciprocal_specimen = reciprocal_crystal
+        if zone_axis_vector is not None:
+            zone_dot = reciprocal_specimen @ zone_axis_vector
+            zone_scale = np.maximum(1.0, np.linalg.norm(reciprocal_specimen, axis=1))
+            zone_ok = np.abs(zone_dot) <= _ZONE_AXIS_ORTHOGONALITY_ATOL * zone_scale
+        else:
+            zone_ok = np.ones(miller_int_all.shape[0], dtype=bool)
+        reciprocal_lab_all = geometry.specimen_vectors_to_lab(reciprocal_specimen)
+        outgoing_wavevectors = incident[None, :] + reciprocal_lab_all
+        excitation_all = np.linalg.norm(outgoing_wavevectors, axis=1) - incident_magnitude
+        excitation_ok = np.abs(excitation_all) <= max_excitation_error_inv_angstrom
+        survivors = np.flatnonzero(zone_ok & excitation_ok)
+        if survivors.size:
+            outgoing_directions = normalize_vectors(outgoing_wavevectors[survivors])
+            coordinates_px_all, valid_all = geometry.project_directions_to_detector_px(
+                outgoing_directions
             )
             basis = geometry.detector_basis_lab
-            azimuth = float(
-                np.arctan2(
-                    float(np.dot(outgoing_direction, basis[:, 1])),
-                    float(np.dot(outgoing_direction, basis[:, 0])),
-                )
+            two_theta_all = np.arccos(
+                np.clip(outgoing_directions @ geometry.beam_direction_lab, -1.0, 1.0)
             )
-            finite_coordinates = bool(np.all(np.isfinite(coordinates_px[0])))
-            on_detector = (
-                bool(valid[0])
-                and finite_coordinates
-                and 0.0 <= coordinates_px[0, 0] <= geometry.detector_shape[1] - 1
-                and 0.0 <= coordinates_px[0, 1] <= geometry.detector_shape[0] - 1
+            azimuth_all = np.arctan2(
+                outgoing_directions @ basis[:, 1], outgoing_directions @ basis[:, 0]
+            )
+            finite_all = np.all(np.isfinite(coordinates_px_all), axis=1)
+            on_detector_all = (
+                valid_all
+                & finite_all
+                & (coordinates_px_all[:, 0] >= 0.0)
+                & (coordinates_px_all[:, 0] <= geometry.detector_shape[1] - 1)
+                & (coordinates_px_all[:, 1] >= 0.0)
+                & (coordinates_px_all[:, 1] <= geometry.detector_shape[0] - 1)
             )
             if acceptance_mask is None:
-                accepted_by_mask = on_detector
+                accepted_all = on_detector_all
             else:
-                accepted_by_mask = (
-                    bool(acceptance_mask.contains(geometry, coordinates_px)[0]) and on_detector
+                accepted_all = (
+                    np.asarray(acceptance_mask.contains(geometry, coordinates_px_all), dtype=bool)
+                    & on_detector_all
                 )
-            intensity = _kinematic_intensity(
-                reciprocal_vector_lab,
-                excitation_error,
-                model=intensity_model,
-                excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
-            )
-            candidate_spots.append(
-                {
-                    "miller_indices": miller_triplet_int,
-                    "reciprocal_vector_lab": reciprocal_vector_lab,
-                    "outgoing_direction_lab": outgoing_direction,
-                    "detector_coordinates_px": coordinates_px[0],
-                    "excitation_error_inv_angstrom": excitation_error,
-                    "intensity": intensity,
-                    "two_theta_rad": two_theta,
-                    "azimuth_rad": azimuth,
-                    "on_detector": on_detector,
-                    "accepted_by_mask": accepted_by_mask,
-                    "family_key": _reflection_family_key(miller_triplet_int, phase),
-                }
-            )
+            reciprocal_lab_survivors = reciprocal_lab_all[survivors]
+            for local, global_index in enumerate(survivors):
+                miller_triplet_int = miller_int_all[global_index]
+                excitation_error = float(excitation_all[global_index])
+                candidate_spots.append(
+                    {
+                        "miller_indices": miller_triplet_int,
+                        "reciprocal_vector_lab": reciprocal_lab_survivors[local],
+                        "outgoing_direction_lab": outgoing_directions[local],
+                        "detector_coordinates_px": coordinates_px_all[local],
+                        "excitation_error_inv_angstrom": excitation_error,
+                        "intensity": _kinematic_intensity(
+                            reciprocal_lab_survivors[local],
+                            excitation_error,
+                            model=intensity_model,
+                            excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+                        ),
+                        "two_theta_rad": float(two_theta_all[local]),
+                        "azimuth_rad": float(azimuth_all[local]),
+                        "on_detector": bool(on_detector_all[local]),
+                        "accepted_by_mask": bool(accepted_all[local]),
+                        "family_key": _reflection_family_key(miller_triplet_int, phase),
+                    }
+                )
         family_index_by_key: dict[tuple[float, ...], int] = {}
         family_members: list[list[int]] = []
         for index, spot in enumerate(candidate_spots):

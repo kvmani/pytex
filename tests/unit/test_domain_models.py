@@ -1355,6 +1355,81 @@ def test_kinematic_simulation_projects_zone_axis_spots() -> None:
         assert spot.two_theta_rad >= 0.0
 
 
+def test_kinematic_simulation_vectorized_filters_are_consistent() -> None:
+    # Exercises the vectorized simulate_spots filters over a large hkl set:
+    # every returned spot must satisfy the excitation cutoff, tightening the
+    # cutoff cannot add spots, and zone-axis spots stay orthogonal to the axis.
+    crystal, specimen, symmetry = make_foundation()
+    detector = ReferenceFrame(
+        name="detector",
+        domain=FrameDomain.DETECTOR,
+        axes=("u", "v", "n"),
+        handedness=Handedness.RIGHT,
+    )
+    lab = ReferenceFrame(
+        name="lab", domain=FrameDomain.LABORATORY, axes=("X", "Y", "Z"), handedness=Handedness.RIGHT
+    )
+    geometry = DiffractionGeometry(
+        detector_frame=detector,
+        specimen_frame=specimen,
+        laboratory_frame=lab,
+        beam_energy_kev=200.0,
+        camera_length_mm=150.0,
+        pattern_center=np.array([0.5, 0.5, 0.7]),
+        detector_pixel_size_um=(50.0, 50.0),
+        detector_shape=(1024, 1024),
+    )
+    lattice = Lattice(3.0, 3.0, 3.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase = Phase(name="demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    orientation = Orientation(
+        rotation=Rotation.from_bunge_euler(10.0, 15.0, 20.0),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+        phase=phase,
+    )
+    hkls = np.array(
+        [
+            [h, k, ell]
+            for h in range(-3, 4)
+            for k in range(-3, 4)
+            for ell in range(-3, 4)
+            if (h, k, ell) != (0, 0, 0)
+        ],
+        dtype=np.int64,
+    )
+    wide = KinematicSimulation.simulate_spots(
+        geometry, phase, hkls, orientation=orientation, max_excitation_error_inv_angstrom=0.3
+    )
+    tight = KinematicSimulation.simulate_spots(
+        geometry, phase, hkls, orientation=orientation, max_excitation_error_inv_angstrom=0.1
+    )
+    assert len(wide.spots) > 0
+    for spot in wide.spots:
+        assert abs(spot.excitation_error_inv_angstrom) <= 0.3 + 1e-12
+    assert len(tight.spots) <= len(wide.spots)
+
+    zone = KinematicSimulation.simulate_spots(
+        geometry,
+        phase,
+        hkls,
+        orientation=Orientation(
+            rotation=Rotation.identity(),
+            crystal_frame=crystal,
+            specimen_frame=specimen,
+            symmetry=symmetry,
+            phase=phase,
+        ),
+        zone_axis=ZoneAxis(indices=np.array([0, 0, 1]), phase=phase),
+        max_excitation_error_inv_angstrom=0.5,
+    )
+    reciprocal = phase.lattice.reciprocal_basis().matrix
+    for spot in zone.spots:
+        g_specimen = reciprocal @ spot.miller_indices.astype(np.float64)
+        scale = max(1.0, float(np.linalg.norm(g_specimen)))
+        assert abs(float(g_specimen[2])) <= 1e-8 * scale
+
+
 def test_kinematic_simulation_rejects_mismatched_orientation_frame() -> None:
     crystal, specimen, symmetry = make_foundation()
     detector = ReferenceFrame(

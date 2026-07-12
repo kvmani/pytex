@@ -49,8 +49,8 @@ is auditable, not skipped silently.
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
 | ebsd/models.py | done | 5 | 5 | c30efbe + this |
-| core/orientation.py (rest) | in progress | 3 done, 3 deferred | 3 | this commit |
-| diffraction/models.py | deferred (see notes) | 1 HOT (simulate_spots) | 0 | - |
+| core/orientation.py (rest) | in progress | 3 done, 2 deferred | 3 | 35a3ca9 |
+| diffraction/models.py | done | 1 HOT (simulate_spots) | 1 | this commit |
 | texture/harmonics.py | reviewed - COLD | 0 | 0 | - |
 | texture/models.py | reviewed - COLD | 0 | 0 | - |
 | properties/tensors.py | reviewed - COLD | 0 | 0 | - |
@@ -175,12 +175,20 @@ equivalent reflections order deterministically by hkl instead of by FP-noise-
 level 2-theta, making the output reproducible. Regression test asserts the
 batched vs per-reflection structure factors agree.
 
-RESUME HERE next session, in priority order:
-1. `diffraction/models.py::simulate_spots` - golden-capture, then mask-based
-   vectorised rewrite (biggest remaining HOT win).
-2. core/orientation.py deferred: `canonicalize` map (~2125) and
+`diffraction/models.py::simulate_spots` DONE (this session): geometry batched
+over all reflections (reciprocal vectors = miller @ reciprocal_basis.T; single
+orientation matmul; batched zone/excitation masks; batched detector projection,
+two-theta, azimuth, on-detector, acceptance); only the trivial per-survivor
+intensity and family-key stay in the assembly loop. Validated against a
+4-branch golden capture (no-zone / zone / no-orientation / identity-zone):
+identical spot counts, max diff ~5.7e-14. Regression test asserts the
+excitation cutoff, monotonic spot-count vs cutoff, and zone orthogonality.
+
+RESUME HERE next session (only lower-value deferred items remain):
+1. core/orientation.py deferred: `canonicalize` map (~2125) and
    `project_to_exact_fundamental_region` map (~2155/2181) - batch the
-   per-orientation symmetry reduction with captured golden outputs.
+   per-orientation symmetry reduction with captured golden outputs. These are
+   the last per-element numerical loops; everything else is COLD.
 Each: capture golden -> rewrite vectorised -> assert bit-equivalence + suite.
 
 Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
