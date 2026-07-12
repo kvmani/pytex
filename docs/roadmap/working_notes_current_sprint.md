@@ -68,7 +68,16 @@ consumer surface. CSL matching uses the symmetry-reduced deviation
 | M | Grain perimeter / area / shape factor (staircase, regular grid) | done, tests green | committed |
 | N | Texture index + entropy on `HarmonicODF` (SO(3) quadrature) | done, tests green | committed |
 | O | scipy adopted as core dep + vectorization principle (9a) | done | committed |
-| P | Full-constraint Taylor factor (`properties/taylor.py`, scipy LP) | done, tests green | this commit |
+| P | Full-constraint Taylor factor (`properties/taylor.py`, scipy LP) | done, tests green | committed |
+| Q | Vectorize `OrientationSet.misorientation_angles_to` (principle 9a) | done, tests green | this commit |
+
+Note (Q): the core pairwise-disorientation method was an O(n*m) Python double
+loop constructing `Orientation` objects per pair -- the hottest scalar path,
+used by ODF evaluation and orientation spread. Replaced with a fully vectorized
+`einsum` symmetry reduction (`_reduced_pair_disorientation_angles`), processed
+in memory-bounded blocks. Bit-identical to the old result (max diff ~1e-14);
+an 80x80 matrix drops from tens of seconds to ~0.14 s. Equivalence regression
+test in `test_misorientation_angles_vectorized.py`.
 
 Note (O/P): scipy is now a first-class core dependency (`pyproject.toml`), with
 principle 9a in `docs/standards/development_principles.md` mandating highly

@@ -541,6 +541,41 @@ def _canonicalize_quaternion_rows(quaternions: np.ndarray) -> np.ndarray:
     return canonical
 
 
+def _reduced_pair_disorientation_angles(
+    relative_matrices: np.ndarray,
+    left_operators: np.ndarray,
+    right_operators: np.ndarray,
+    *,
+    max_block_elements: int = 2_000_000,
+) -> np.ndarray:
+    """Symmetry-reduced disorientation angle of each relative rotation.
+
+    Returns ``min over S_l, S_r of angle(S_l @ M @ S_r^T)`` per matrix ``M``,
+    fully vectorised over the operator groups and processed in memory-bounded
+    blocks over the leading (pair) axis.
+    """
+
+    total = relative_matrices.shape[0]
+    if total == 0:
+        return np.empty(0, dtype=np.float64)
+    left_count = left_operators.shape[0]
+    right_count = right_operators.shape[0]
+    per_row = max(left_count * right_count * 9, 1)
+    block = max(1, int(max_block_elements // per_row))
+    angles = np.empty(total, dtype=np.float64)
+    for start in range(0, total, block):
+        stop = min(start + block, total)
+        chunk = relative_matrices[start:stop]
+        # S_l @ M then (S_l M) @ S_r^T for every operator pair.
+        left = np.einsum("aij,sjk->saik", left_operators, chunk, optimize=True)
+        products = np.einsum("saij,bkj->sabik", left, right_operators, optimize=True)
+        traces = np.trace(products, axis1=3, axis2=4)
+        cos_theta = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
+        chunk_angles = np.arccos(cos_theta).reshape(stop - start, -1)
+        angles[start:stop] = np.min(chunk_angles, axis=1)
+    return angles
+
+
 def _deduplicate_orientation_set(orientations: OrientationSet) -> OrientationSet:
     keys = np.round(orientations.exact_fundamental_region_keys(), decimals=10)
     _, first_indices = np.unique(keys, axis=0, return_index=True)
@@ -2164,29 +2199,33 @@ class OrientationSet:
         *,
         symmetry_aware: bool = True,
     ) -> np.ndarray:
-        angles = np.empty((len(self), len(other)), dtype=np.float64)
-        for row, quaternion_a in enumerate(self.quaternions):
-            orientation_a = Orientation(
-                rotation=Rotation(quaternion_a),
-                crystal_frame=self.crystal_frame,
-                specimen_frame=self.specimen_frame,
-                symmetry=self.symmetry,
-                phase=self.phase,
-                provenance=self.provenance,
-            )
-            for column, quaternion_b in enumerate(other.quaternions):
-                orientation_b = Orientation(
-                    rotation=Rotation(quaternion_b),
-                    crystal_frame=other.crystal_frame,
-                    specimen_frame=other.specimen_frame,
-                    symmetry=other.symmetry,
-                    phase=other.phase,
-                    provenance=other.provenance,
-                )
-                angles[row, column] = orientation_a.distance_to(
-                    orientation_b,
-                    symmetry_aware=symmetry_aware,
-                )
+        if self.crystal_frame != other.crystal_frame:
+            raise ValueError("Misorientation requires the same crystal frame.")
+        if self.specimen_frame != other.specimen_frame:
+            raise ValueError("Misorientation requires the same specimen frame.")
+        if self.phase is not None and other.phase is not None and self.phase != other.phase:
+            raise ValueError("Misorientation requires matching phases when both are specified.")
+        rows, columns = len(self), len(other)
+        if rows == 0 or columns == 0:
+            angles = np.zeros((rows, columns), dtype=np.float64)
+            angles.setflags(write=False)
+            return angles
+        left = self.as_matrices()
+        right = other.as_matrices()
+        # Crystal-frame relative rotation inv(o_i) @ o_j = R_i^T @ R_j for every pair.
+        relative = np.einsum("iqp,jql->ijpl", left, right, optimize=True).reshape(
+            rows * columns, 3, 3
+        )
+        identity = np.eye(3, dtype=np.float64)[None, :, :]
+        left_operators = (
+            self.symmetry.operators if symmetry_aware and self.symmetry is not None else identity
+        )
+        right_operators = (
+            other.symmetry.operators if symmetry_aware and other.symmetry is not None else identity
+        )
+        angles = _reduced_pair_disorientation_angles(
+            relative, left_operators, right_operators
+        ).reshape(rows, columns)
         angles = np.ascontiguousarray(angles)
         angles.setflags(write=False)
         return angles
