@@ -799,19 +799,23 @@ class GrainSegmentation:
 
     def grod_map_deg(self) -> np.ndarray:
         rows, cols = self.crystal_map._require_regular_2d_grid()
-        deviations = np.zeros(len(self.crystal_map.orientations), dtype=np.float64)
+        point_count = len(self.crystal_map.orientations)
+        # Per-point reference-orientation index: each point takes its grain's
+        # representative orientation. Vectorised over all points at once.
+        reference_index = np.empty(point_count, dtype=np.int64)
         for grain in self.grains:
-            reference = self.reference_orientation(grain)
-            for index in grain.member_indices:
-                deviations[int(index)] = float(
-                    np.rad2deg(
-                        self.crystal_map.orientations[int(index)].distance_to(
-                            reference,
-                            symmetry_aware=self.symmetry_aware,
-                        )
-                    )
-                )
-        deviations = np.ascontiguousarray(deviations.reshape((rows, cols)))
+            reference_index[grain.member_indices] = grain.reference_orientation_index
+        matrices = self.crystal_map.orientations.as_matrices()
+        relative = _relative_rotation_matrices(matrices, matrices[reference_index])
+        if self.symmetry_aware:
+            angles_rad = _disorientation_angles_from_relative_matrices(
+                relative,
+                left_symmetry=self.crystal_map.orientations.symmetry,
+                right_symmetry=self.crystal_map.orientations.symmetry,
+            )
+        else:
+            angles_rad = _rotation_angles_from_matrices(relative)
+        deviations = np.ascontiguousarray(np.rad2deg(angles_rad).reshape((rows, cols)))
         deviations.setflags(write=False)
         return deviations
 
@@ -958,23 +962,25 @@ class GrainSegmentation:
         label_grid = self.label_grid
         rows, cols = label_grid.shape
         dx, dy = self._grid_step_sizes()
-        perimeters: dict[int, float] = {grain.grain_id: 0.0 for grain in self.grains}
-        for row in range(rows):
-            for col in range(cols):
-                label = int(label_grid[row, col])
-                # Column neighbours (left/right) contribute vertical faces (length dy).
-                for neighbor_col in (col - 1, col + 1):
-                    if neighbor_col < 0 or neighbor_col >= cols:
-                        perimeters[label] += dy
-                    elif int(label_grid[row, neighbor_col]) != label:
-                        perimeters[label] += dy
-                # Row neighbours (up/down) contribute horizontal faces (length dx).
-                for neighbor_row in (row - 1, row + 1):
-                    if neighbor_row < 0 or neighbor_row >= rows:
-                        perimeters[label] += dx
-                    elif int(label_grid[neighbor_row, col]) != label:
-                        perimeters[label] += dx
-        return perimeters
+        # A face is a boundary when the neighbour is off-grid or a different
+        # grain. Map-edge faces default to True; interior faces compare shifted
+        # label slices. Column neighbours give dy faces, row neighbours dx faces.
+        left_boundary = np.ones((rows, cols), dtype=bool)
+        left_boundary[:, 1:] = label_grid[:, 1:] != label_grid[:, :-1]
+        right_boundary = np.ones((rows, cols), dtype=bool)
+        right_boundary[:, :-1] = label_grid[:, :-1] != label_grid[:, 1:]
+        up_boundary = np.ones((rows, cols), dtype=bool)
+        up_boundary[1:, :] = label_grid[1:, :] != label_grid[:-1, :]
+        down_boundary = np.ones((rows, cols), dtype=bool)
+        down_boundary[:-1, :] = label_grid[:-1, :] != label_grid[1:, :]
+        per_cell = dy * (left_boundary.astype(np.float64) + right_boundary) + dx * (
+            up_boundary.astype(np.float64) + down_boundary
+        )
+        grain_count = len(self.grains)
+        totals = np.bincount(
+            label_grid.ravel(), weights=per_cell.ravel(), minlength=grain_count
+        )
+        return {grain.grain_id: float(totals[grain.grain_id]) for grain in self.grains}
 
     def grain_areas(self) -> dict[int, float]:
         """Area of each grain (member pixel count times the pixel area)."""
@@ -1014,41 +1020,48 @@ class GrainSegmentation:
         segments: list[GrainBoundarySegment] = []
         neighbor_pairs = self.crystal_map.neighbor_pairs(connectivity=self.connectivity)
         neighbor_pairs = neighbor_pairs[self.crystal_map._same_phase_pair_mask(neighbor_pairs)]
-        for left_index, right_index in neighbor_pairs:
-            left_label = int(self.labels[int(left_index)])
-            right_label = int(self.labels[int(right_index)])
-            if left_label == right_label:
-                continue
-            misorientation_deg = float(
-                np.rad2deg(
-                    self.crystal_map.orientations[int(left_index)].distance_to(
-                        self.crystal_map.orientations[int(right_index)],
-                        symmetry_aware=self.symmetry_aware,
+        # Keep only pairs that straddle a grain boundary, then compute their
+        # misorientations and geometry vectorised in one shot.
+        labels = self.labels
+        boundary_mask = labels[neighbor_pairs[:, 0]] != labels[neighbor_pairs[:, 1]]
+        boundary_pairs = neighbor_pairs[boundary_mask]
+        if boundary_pairs.size:
+            # Mirror Orientation.distance_to exactly (reduction by the set-level
+            # symmetry) so results are identical to the previous scalar path.
+            matrices = self.crystal_map.orientations.as_matrices()
+            relative = _relative_rotation_matrices(
+                matrices[boundary_pairs[:, 0]], matrices[boundary_pairs[:, 1]]
+            )
+            if self.symmetry_aware:
+                angles_rad = _disorientation_angles_from_relative_matrices(
+                    relative,
+                    left_symmetry=self.crystal_map.orientations.symmetry,
+                    right_symmetry=self.crystal_map.orientations.symmetry,
+                )
+            else:
+                angles_rad = _rotation_angles_from_matrices(relative)
+            misorientation_deg = np.rad2deg(angles_rad)
+            coordinates = self.crystal_map.coordinates
+            left_coordinates = coordinates[boundary_pairs[:, 0]]
+            right_coordinates = coordinates[boundary_pairs[:, 1]]
+            lengths = np.linalg.norm(left_coordinates - right_coordinates, axis=1)
+            midpoints = 0.5 * (left_coordinates + right_coordinates)
+            keep = misorientation_deg >= min_misorientation_deg
+            for position in np.flatnonzero(keep):
+                left_index = int(boundary_pairs[position, 0])
+                right_index = int(boundary_pairs[position, 1])
+                segments.append(
+                    GrainBoundarySegment(
+                        left_index=left_index,
+                        right_index=right_index,
+                        left_grain_id=int(labels[left_index]),
+                        right_grain_id=int(labels[right_index]),
+                        misorientation_deg=float(misorientation_deg[position]),
+                        length=float(lengths[position]),
+                        midpoint=midpoints[position],
+                        provenance=self.provenance,
                     )
                 )
-            )
-            if misorientation_deg < min_misorientation_deg:
-                continue
-            segments.append(
-                GrainBoundarySegment(
-                    left_index=int(left_index),
-                    right_index=int(right_index),
-                    left_grain_id=left_label,
-                    right_grain_id=right_label,
-                    misorientation_deg=misorientation_deg,
-                    length=float(
-                        np.linalg.norm(
-                            self.crystal_map.coordinates[int(left_index)]
-                            - self.crystal_map.coordinates[int(right_index)]
-                        )
-                    ),
-                    midpoint=np.mean(
-                        self.crystal_map.coordinates[[int(left_index), int(right_index)]],
-                        axis=0,
-                    ),
-                    provenance=self.provenance,
-                )
-            )
         return GrainBoundaryNetwork(
             segmentation=self,
             segments=tuple(segments),
@@ -2143,20 +2156,16 @@ class CrystalMap:
     ) -> int:
         if member_indices.size == 1:
             return int(member_indices[0])
-        best_index = int(member_indices[0])
-        best_score = float("inf")
-        for candidate in member_indices:
-            candidate_orientation = self.orientations[int(candidate)]
-            score = 0.0
-            for other in member_indices:
-                score += candidate_orientation.distance_to(
-                    self.orientations[int(other)],
-                    symmetry_aware=symmetry_aware,
-                )
-            if score < best_score:
-                best_index = int(candidate)
-                best_score = score
-        return best_index
+        # Representative = member with the least total disorientation to the
+        # others. The full pairwise matrix is vectorised; argmin keeps the first
+        # minimum, matching the previous sequential-scan tie-breaking.
+        member_set = self.orientations.subset(member_indices)
+        distances = member_set.misorientation_angles_to(
+            member_set, symmetry_aware=symmetry_aware
+        )
+        total_scores = distances.sum(axis=1)
+        best = int(np.argmin(total_scores))
+        return int(member_indices[best])
 
     def _segmentation_from_labels(
         self,

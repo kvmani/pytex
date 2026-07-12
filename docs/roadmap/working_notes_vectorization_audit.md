@@ -48,7 +48,7 @@ is auditable, not skipped silently.
 | File | Status | HOT loops found | Converted | Commit |
 | --- | --- | --- | --- | --- |
 | core/orientation.py :: misorientation_angles_to | done (prev session) | 1 | 1 | 0058aa4 |
-| ebsd/models.py | pending | - | - | - |
+| ebsd/models.py | in progress | 4 found so far | 4 | this commit |
 | diffraction/models.py | pending | - | - | - |
 | core/orientation.py (rest) | pending | - | - | - |
 | texture/harmonics.py | pending | - | - | - |
@@ -62,5 +62,31 @@ is auditable, not skipped silently.
 
 ## Per-File Findings
 
-(Filled in as each file is triaged. Each HOT conversion notes: what the loop
-did, the vectorized form, and how equivalence was proven.)
+### ebsd/models.py (in progress)
+
+HOT loops converted (this commit), all proven exactly equivalent by brute-force
+scratch checks (GROD max diff 0.0; boundary/representative match < 1e-9) and the
+existing grain/EBSD/CSL test suites:
+
+1. `GrainSegmentation.grod_map_deg` - was a nested grain x member per-point
+   `distance_to` loop. Now: gather each point's grain-reference index into an
+   array, compute all relative rotations with `_relative_rotation_matrices`, and
+   reduce once with `_disorientation_angles_from_relative_matrices` (or raw
+   angle when `symmetry_aware=False`).
+2. `GrainSegmentation.boundary_network` - was a per-neighbour-pair `distance_to`
+   loop. Now: vectorised boundary-pair mask, one batched relative-rotation +
+   disorientation reduction (mirrors `distance_to`'s set-level symmetry exactly,
+   NOT `_pair_misorientation_rad`'s per-phase reduction, to preserve results),
+   plus vectorised lengths/midpoints; only the dataclass construction loops.
+3. `CrystalMap._representative_orientation_index` - was an O(m^2) double
+   `distance_to` loop. Now: one `misorientation_angles_to` matrix, row-sum,
+   `argmin` (first-min tie-break matches the old sequential scan).
+4. `GrainSegmentation.grain_perimeters` - was a nested row x col x neighbour
+   loop. Now: shifted-slice boundary masks + `bincount` per grain.
+
+Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
+dict comprehensions (grain count is small; inner ops already vectorised),
+`majority_smoothed` / `merge_small_grains` label graph iterations (iterative
+graph algorithms, not per-element array math), dataclass/metadata construction,
+and validation loops. `remove_wild_spikes` still has a per-point adjacency loop
+building neighbour means -- flagged for a later pass (candidate HOT).
