@@ -144,8 +144,11 @@ def _rotation_angles_from_matrices(matrices: np.ndarray) -> np.ndarray:
 
 
 def _relative_rotation_matrices(left: np.ndarray, right: np.ndarray) -> np.ndarray:
+    # Crystal-frame relative rotation (left^T @ right): crystal symmetry then
+    # reduces through fixed left/right operator products in
+    # _disorientation_angles_from_relative_matrices.
     return np.asarray(
-        np.einsum("nij,nkj->nik", right, left, optimize=True),
+        np.einsum("nji,njk->nik", left, right, optimize=True),
         dtype=np.float64,
     )
 

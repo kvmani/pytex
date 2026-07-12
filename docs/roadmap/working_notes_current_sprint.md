@@ -18,12 +18,23 @@ horizon, Section 3).
 
 | # | Task | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | Working-notes file (this file) | done | pending |
-| 2 | Symmetry-aware `OrientationSet.mean_orientation()` + spread | todo | - |
-| 3 | Named texture components registry + volume fractions (`texture/components.py`) | todo | - |
-| 4 | `Fibre` class with named bcc/fcc fibres + fibre distances (`texture/fibres.py`) | todo | - |
-| 5 | de la Vallee Poussin kernel with halfwidth/kappa/Chebyshev coefficients (`texture/kernels.py`) | todo | - |
-| 6 | Parity-matrix + roadmap status updates, final notes update | todo | - |
+| 1 | Working-notes file (this file) | done | pushed |
+| 2 | Symmetry-aware `OrientationSet.mean_orientation()` + spread | done, tests green | this commit |
+| 2b | BUGFIX: crystal-frame misorientation convention | done, full suite green | this commit |
+| 3 | Named texture components registry + volume fractions (`texture/components.py`) | done, tests green | this commit |
+| 4 | `Fibre` class with named bcc fibres + fibre distances (`texture/fibres.py`) | done, tests green | this commit |
+| 5 | de la Vallee Poussin kernel (`texture/kernels.py`) | done, tests green | this commit |
+| 6 | Parity-matrix + notes updates | done | this commit |
+
+Sprint outcome: all six tasks landed. Full suite, ruff, and mypy green (only
+the pre-existing phase-fixture hash failures remain, tracked separately).
+Implementation notes worth keeping: the kernel uses log-gamma for the Beta
+normalization (plain gamma overflows for halfwidth < ~10 deg) and a manual
+trapezoid rule (numpy 1.x/2.x trapz/trapezoid rename). Next-sprint candidates,
+in order: per-point property channels on `CrystalMap` (+`plot_property_map`,
+fed by the `.ang`/`.ctf` reader property arrays), IPF-X/Y/Z map convenience
+call with key legends, phase-map plotting, wild-spike/CI cleanup filters, and
+wiring `DeLaValleePoussinKernel` into the discrete `ODF` evaluation path.
 
 Workflow per task: implement -> unit tests -> `ruff check .` + `mypy src` +
 targeted pytest -> commit -> push -> update this table.
@@ -46,6 +57,27 @@ targeted pytest -> commit -> push -> update this table.
 - Tests in `tests/unit/test_orientation_statistics.py`: cluster around a known
   orientation with symmetry-scattered representatives -> mean recovers it;
   spread near zero for identical orientations; works without symmetry too.
+
+### Task 2b (discovered during Task 2): misorientation convention bugfix
+
+Finding: `Orientation.misorientation_to` composed the delta in the specimen
+frame (`other * inv(self)`) but `Misorientation.disorientation()` reduces with
+crystal-symmetry operators as fixed left/right products, which is only valid
+for a crystal-frame delta (`inv(self) * other`, the MTEX `inv(o1)*o2`
+convention). Same flaw in `ebsd/models._relative_rotation_matrices`
+(`right @ left.T` -> changed to `left.T @ right`). Consequence of the old
+form: symmetry-equivalent orientations did not measure zero disorientation
+(observed 35.9 deg for a cubic case); small-angle results (KAM etc.) were
+unaffected because the identity operator dominates there. No pinned MTEX
+result files exist in `fixtures/mtex_parity/results/mtex/` (empty), so no
+external pins depended on the old numbers.
+
+Status: both files edited with explanatory comments; regression coverage is
+in `tests/unit/test_orientation_statistics.py`
+(`test_mean_is_symmetry_aware_for_scattered_equivalents` asserts equivalents
+measure ~0). If resuming: run the full suite; scrutinize any failures in
+grain/boundary tests that pinned high-angle misorientation values; small-angle
+values must be unchanged.
 
 ### Task 3: Named texture components
 

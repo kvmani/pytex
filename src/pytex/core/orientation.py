@@ -157,6 +157,22 @@ def quaternion_multiply(left: np.ndarray, right: np.ndarray) -> np.ndarray:
     )
 
 
+def quaternions_multiply(left: ArrayLike, right: ArrayLike) -> np.ndarray:
+    left_array = np.asarray(left, dtype=np.float64)
+    right_array = np.asarray(right, dtype=np.float64)
+    lw, lx, ly, lz = np.moveaxis(left_array, -1, 0)
+    rw, rx, ry, rz = np.moveaxis(right_array, -1, 0)
+    return np.stack(
+        [
+            lw * rw - lx * rx - ly * ry - lz * rz,
+            lw * rx + lx * rw + ly * rz - lz * ry,
+            lw * ry - lx * rz + ly * rw + lz * rx,
+            lw * rz + lx * ry - ly * rx + lz * rw,
+        ],
+        axis=-1,
+    )
+
+
 def quaternion_conjugate(quaternion: np.ndarray) -> np.ndarray:
     w, x, y, z = quaternion
     return np.array([w, -x, -y, -z], dtype=np.float64)
@@ -1362,7 +1378,10 @@ class Orientation:
             raise ValueError("Misorientation requires the same specimen frame.")
         if self.phase is not None and other.phase is not None and self.phase != other.phase:
             raise ValueError("Misorientation requires matching phases when both are specified.")
-        delta = other.rotation.compose(self.rotation.inverse())
+        # Crystal-frame misorientation (MTEX convention inv(o1) * o2): crystal
+        # symmetry then acts as fixed left/right operator products, which is
+        # what Misorientation.disorientation() enumerates.
+        delta = self.rotation.inverse().compose(other.rotation)
         misorientation = Misorientation(
             rotation=delta,
             left_symmetry=self.symmetry,
@@ -2171,6 +2190,92 @@ class OrientationSet:
         angles = np.ascontiguousarray(angles)
         angles.setflags(write=False)
         return angles
+
+    def _crystal_symmetry_quaternions(self) -> np.ndarray:
+        if self.symmetry is None:
+            return np.array([[1.0, 0.0, 0.0, 0.0]], dtype=np.float64)
+        return matrices_to_quaternions(self.symmetry.operators)
+
+    def mean_orientation(
+        self,
+        *,
+        weights: ArrayLike | None = None,
+        max_iterations: int = 10,
+    ) -> Orientation:
+        if len(self) == 0:
+            raise ValueError("mean_orientation requires at least one orientation.")
+        count = len(self)
+        if weights is None:
+            weight_values = np.full(count, 1.0 / count, dtype=np.float64)
+        else:
+            weight_values = np.asarray(weights, dtype=np.float64)
+            if weight_values.shape != (count,):
+                raise ValueError("weights must provide one value per orientation.")
+            if np.any(weight_values < 0.0):
+                raise ValueError("weights must be non-negative.")
+            total = float(weight_values.sum())
+            if np.isclose(total, 0.0):
+                raise ValueError("weights must not sum to zero.")
+            weight_values = weight_values / total
+        symmetry_quaternions = self._crystal_symmetry_quaternions()
+        candidates = quaternions_multiply(
+            self.quaternions[:, None, :],
+            symmetry_quaternions[None, :, :],
+        )
+        reference = self.quaternions[0]
+        row_indices = np.arange(count)
+        for _ in range(max_iterations):
+            dots = candidates @ reference
+            best = np.argmax(np.abs(dots), axis=1)
+            selected = candidates[row_indices, best]
+            signs = np.sign(dots[row_indices, best])
+            signs[signs == 0.0] = 1.0
+            selected = selected * signs[:, None]
+            accumulator = np.einsum("n,ni,nj->ij", weight_values, selected, selected)
+            eigenvalues, eigenvectors = np.linalg.eigh(accumulator)
+            updated = eigenvectors[:, int(np.argmax(eigenvalues))]
+            if float(updated @ reference) < 0.0:
+                updated = -updated
+            converged = bool(np.isclose(abs(float(updated @ reference)), 1.0, atol=1e-12))
+            reference = updated
+            if converged:
+                break
+        return Orientation(
+            rotation=Rotation(quaternion=_canonicalize_quaternion(reference)),
+            crystal_frame=self.crystal_frame,
+            specimen_frame=self.specimen_frame,
+            symmetry=self.symmetry,
+            phase=self.phase,
+            provenance=self.provenance,
+        )
+
+    def spread_angles_deg(
+        self,
+        *,
+        reference: Orientation | None = None,
+        symmetry_aware: bool = True,
+    ) -> np.ndarray:
+        resolved = reference if reference is not None else self.mean_orientation()
+        if resolved.crystal_frame != self.crystal_frame:
+            raise ValueError("spread reference must share the OrientationSet crystal frame.")
+        if resolved.specimen_frame != self.specimen_frame:
+            raise ValueError("spread reference must share the OrientationSet specimen frame.")
+        reference_set = OrientationSet(
+            quaternions=resolved.rotation.quaternion[None, :],
+            crystal_frame=self.crystal_frame,
+            specimen_frame=self.specimen_frame,
+            symmetry=self.symmetry,
+            phase=self.phase,
+            provenance=self.provenance,
+        )
+        angles_rad = self.misorientation_angles_to(
+            reference_set,
+            symmetry_aware=symmetry_aware,
+        )[:, 0]
+        angles_deg = np.rad2deg(angles_rad)
+        angles_deg = np.ascontiguousarray(angles_deg)
+        angles_deg.setflags(write=False)
+        return angles_deg
 
     def subset(self, indices: ArrayLike) -> OrientationSet:
         return OrientationSet(
