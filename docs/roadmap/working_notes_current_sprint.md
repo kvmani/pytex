@@ -36,7 +36,8 @@ repo-integrity hash mismatches remain deselected (tracked separately).
 | # | Task | Status | Commit |
 | --- | --- | --- | --- |
 | F | Moment-based grain shape descriptors (`FittedEllipse`, aspect ratio, bbox) | done, tests green | committed |
-| G | CSL/twin boundary classification (`ebsd/csl.py` + network wiring) | done, tests green | this commit |
+| G | CSL/twin boundary classification (`ebsd/csl.py` + network wiring) | done, tests green | committed |
+| H | Slip systems + Schmid-factor maps (new `properties/` package) | done, tests green | this commit |
 
 Full suite after this continuation: `585 passed, 26 deselected`; ruff + mypy
 green. `FittedEllipse` lives in `ebsd/models.py`; the CSL registry, Brandon

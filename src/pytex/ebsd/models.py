@@ -1976,6 +1976,30 @@ class CrystalMap:
         values.setflags(write=False)
         return values
 
+    def schmid_factor_map(
+        self,
+        family: Any,
+        stress_direction: str | ArrayLike,
+    ) -> np.ndarray:
+        """Per-point maximum Schmid factor for a slip-system family.
+
+        ``family`` is a `pytex.properties.SlipSystemFamily`; ``stress_direction``
+        is a specimen-frame axis (label such as ``"x"`` or an explicit vector).
+        The result is reshaped to the map grid when a regular 2-D grid exists.
+        """
+
+        stress = _specimen_direction_vector(stress_direction, self.orientations.specimen_frame)
+        values = np.asarray(
+            family.max_schmid_factor(self.orientations, stress),
+            dtype=np.float64,
+        )
+        if self.grid_shape is not None and len(self.grid_shape) == 2:
+            rows, cols = self._require_regular_2d_grid()
+            values = values.reshape((rows, cols))
+        values = np.ascontiguousarray(values)
+        values.setflags(write=False)
+        return values
+
     def _representative_orientation_index(
         self,
         member_indices: np.ndarray,

@@ -268,6 +268,12 @@ from pytex.plotting import (
     resolve_style,
     save_documentation_figure_svg,
 )
+from pytex.properties import (
+    SlipSystem,
+    SlipSystemFamily,
+    bcc_110_slip,
+    fcc_octahedral_slip,
+)
 from pytex.texture import (
     ODF,
     STANDARD_BCC_ROLLING_COMPONENTS,
@@ -426,6 +432,8 @@ __all__ = [
     "SpotAssignment",
     "StereonetGrid",
     "StructureFactor",
+    "SlipSystem",
+    "SlipSystemFamily",
     "SymmetrySpec",
     "TextureComponent",
     "TextureReport",
@@ -444,6 +452,7 @@ __all__ = [
     "angle_dir_plane_normal_rad",
     "angle_plane_plane_rad",
     "antipodal_keys",
+    "bcc_110_slip",
     "benchmark_manifest_schema_path",
     "brandon_tolerance_deg",
     "build_crystal_scene",
@@ -459,6 +468,7 @@ __all__ = [
     "directions_to_spherical_angles",
     "estimate_zone_axis",
     "experiment_manifest_schema_path",
+    "fcc_octahedral_slip",
     "flatten_direction_grid",
     "format_direction_indices",
     "format_miller_indices",
