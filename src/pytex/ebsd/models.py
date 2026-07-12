@@ -640,6 +640,49 @@ class GrainBoundaryNetwork:
             if match is not None and match.sigma == sigma
         )
 
+    def merge_by_csl(self, sigma: int, *, theta0_deg: float = 15.0) -> GrainSegmentation:
+        """Merge grains joined by the given CSL boundary type into parent grains.
+
+        Grains connected across a boundary classified as the requested CSL Sigma
+        are unioned; a new `GrainSegmentation` is returned in which each such
+        connected group carries a single label (an MTEX-style twin-merged parent
+        grain). The underlying crystal map is unchanged.
+        """
+
+        segmentation = self.segmentation
+        grain_ids = [grain.grain_id for grain in segmentation.grains]
+        parent = {grain_id: grain_id for grain_id in grain_ids}
+
+        def find(grain_id: int) -> int:
+            root = grain_id
+            while parent[root] != root:
+                root = parent[root]
+            while parent[grain_id] != root:
+                parent[grain_id], grain_id = root, parent[grain_id]
+            return root
+
+        matches = self.classify_csl(theta0_deg=theta0_deg)
+        for segment, match in zip(self.segments, matches, strict=True):
+            if match is not None and match.sigma == sigma:
+                left_root = find(segment.left_grain_id)
+                right_root = find(segment.right_grain_id)
+                if left_root != right_root:
+                    parent[right_root] = left_root
+        merged_labels = np.array(
+            [find(int(label)) for label in segmentation.labels], dtype=np.int64
+        )
+        return segmentation.crystal_map._segmentation_from_labels(
+            merged_labels,
+            max_misorientation_deg=segmentation.max_misorientation_deg,
+            symmetry_aware=segmentation.symmetry_aware,
+            connectivity=segmentation.connectivity,
+        )
+
+    def twin_merge(self, *, theta0_deg: float = 15.0) -> GrainSegmentation:
+        """Merge Sigma3-twin-related grains into parent grains."""
+
+        return self.merge_by_csl(3, theta0_deg=theta0_deg)
+
 
 @dataclass(frozen=True, slots=True)
 class GrainGraphEdge:

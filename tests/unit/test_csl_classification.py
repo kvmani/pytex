@@ -101,6 +101,16 @@ def test_boundary_network_classifies_sigma3_twin() -> None:
     assert len(network.select_csl(3)) == network.count
 
 
+def test_twin_merge_unions_sigma3_related_grains() -> None:
+    crystal_map = _sigma3_twin_map()
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=15.0, symmetry_aware=True)
+    assert len(segmentation.grains) == 2
+    merged = segmentation.boundary_network().twin_merge()
+    # the two Sigma3-related grains collapse into a single parent grain
+    assert len(merged.grains) == 1
+    assert merged.grains[0].size == 2
+
+
 def test_classify_csl_rejects_non_cubic_maps() -> None:
     crystal = ReferenceFrame(
         name="crystal",
