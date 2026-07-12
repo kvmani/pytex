@@ -14,6 +14,7 @@ from pytex.core.lattice import CrystalPlane
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
+from pytex.texture.kernels import DeLaValleePoussinKernel
 from pytex.texture.projections import project_directions
 
 
@@ -148,7 +149,7 @@ class KernelSpec:
         if self.halfwidth_deg <= 0.0:
             raise ValueError("Kernel halfwidth must be strictly positive.")
 
-    def evaluate(self, angles_rad: ArrayLike) -> np.ndarray:
+    def evaluate(self, angles_rad: ArrayLike, *, normalized: bool = False) -> np.ndarray:
         angle_array = np.asarray(angles_rad, dtype=np.float64)
         halfwidth_rad = np.deg2rad(self.halfwidth_deg)
         if self.name == "de_la_vallee_poussin":
@@ -158,12 +159,34 @@ class KernelSpec:
             )
             exponent = max(1.0, exponent)
             values = np.clip(np.cos(angle_array / 2.0), 0.0, 1.0) ** exponent
+            if normalized:
+                values = values * self.as_so3_kernel().normalization
         elif self.name == "von_mises_fisher":
             kappa = float(np.log(2.0) / (1.0 - np.cos(halfwidth_rad)))
             values = np.exp(kappa * (np.cos(angle_array) - 1.0))
         values = np.ascontiguousarray(values)
         values.setflags(write=False)
         return values
+
+    def as_so3_kernel(self) -> DeLaValleePoussinKernel:
+        """Return the normalized SO(3) kernel object for this spec.
+
+        Provides the halfwidth <-> bandwidth duality and Chebyshev coefficient
+        expansion. Only defined for the de la Vallee Poussin kernel, which is
+        the one with a closed-form SO(3) coefficient representation here.
+        """
+
+        if self.name != "de_la_vallee_poussin":
+            raise ValueError(
+                "as_so3_kernel() is only defined for the de la Vallee Poussin kernel; "
+                f"got '{self.name}'."
+            )
+        return DeLaValleePoussinKernel(halfwidth_deg=self.halfwidth_deg)
+
+    def bandwidth(self, *, threshold: float = 1e-3, max_bandwidth: int = 512) -> int:
+        """Harmonic bandwidth implied by the kernel halfwidth (dVP only)."""
+
+        return self.as_so3_kernel().bandwidth(threshold=threshold, max_bandwidth=max_bandwidth)
 
 
 @dataclass(frozen=True, slots=True)
@@ -423,6 +446,7 @@ class ODF:
         orientations: Orientation | OrientationSet,
         *,
         symmetry_aware: bool = True,
+        normalized: bool = False,
     ) -> np.ndarray | float:
         query_set: OrientationSet
         scalar_output = False
@@ -451,7 +475,7 @@ class ODF:
             self.orientations,
             symmetry_aware=symmetry_aware,
         )
-        kernel_values = self.kernel.evaluate(angles)
+        kernel_values = self.kernel.evaluate(angles, normalized=normalized)
         density = kernel_values @ self.normalized_weights
         density = np.ascontiguousarray(density)
         density.setflags(write=False)

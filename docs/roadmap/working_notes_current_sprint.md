@@ -21,11 +21,24 @@ pre-existing phase-fixture/repo-integrity hash mismatches). Gates:
 
 | # | Task | Status | Commit |
 | --- | --- | --- | --- |
-| A | Per-point property channels on `CrystalMap` + reader wiring | pending | — |
-| B | `plot_property_map`, `plot_phase_map`, IPF-XYZ triptych | pending | — |
-| C | Grain scalar metrics: mean orientation, GOS, GAM, eq. diameter | pending | — |
-| D | Cleanup filters: wild-spike removal, property thresholding | pending | — |
-| E | Wire dVP kernel into discrete ODF + docs/parity sync | pending | — |
+| A | Per-point property channels on `CrystalMap` + reader wiring | done, tests green | committed |
+| B | `plot_property_map`, `plot_phase_map`, IPF-XYZ triptych | done, tests green | committed |
+| C | Grain scalar metrics: mean orientation, GOS, GAM, eq. diameter | done, tests green | committed |
+| D | Cleanup filters: wild-spike removal, property thresholding | done, tests green | committed |
+| E | Wire dVP kernel into discrete ODF + docs/parity sync | done, tests green | this commit |
+
+Sprint outcome: all five tasks landed. Full suite (`577 passed, 26 deselected`),
+`ruff check .`, and `mypy src` green; only the pre-existing phase-fixture /
+repo-integrity hash mismatches remain deselected (tracked separately).
+
+Next-sprint candidates (medium-horizon, Section 4), in rough priority order:
+polyline grain-boundary geometry + shape descriptors (Grains 2.0), hex-grid
+`CrystalMap` support, CSL/twin boundary classification with Brandon criterion,
+`MisorientationDistribution` (MDF) with MacKenzie baseline, and the
+`SO3FunHarmonic` quadrature-from-orientations implementation that lets the dVP
+kernel drive full harmonic ODF estimation (the piece deliberately staged this
+sprint). `SlipSystem` + Schmid-factor maps are the highest-demand properties
+entry point once symmetry completion (already done) is leveraged.
 
 Workflow per task: implement -> unit tests -> `ruff check .` + `mypy src` +
 targeted pytest -> commit -> push if remote available -> update this table.

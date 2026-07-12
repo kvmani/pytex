@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
@@ -126,6 +127,47 @@ def test_odf_evaluation_is_larger_near_support_orientation() -> None:
         phase=orientations.phase,
     )
     assert odf.evaluate(near) > odf.evaluate(far)
+
+
+def test_kernel_spec_exposes_dvp_so3_kernel_and_bandwidth() -> None:
+    spec = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=10.0)
+    so3 = spec.as_so3_kernel()
+    assert so3.halfwidth_deg == 10.0
+    # sharper kernels need a higher harmonic bandwidth
+    sharp = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=5.0)
+    assert sharp.bandwidth() > spec.bandwidth()
+    # the SO(3) kernel is unavailable for the von Mises-Fisher spec
+    with pytest.raises(ValueError, match="de la Vallee Poussin"):
+        KernelSpec(name="von_mises_fisher", halfwidth_deg=10.0).as_so3_kernel()
+
+
+def test_normalized_dvp_evaluation_rescales_by_kernel_constant() -> None:
+    spec = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=12.0)
+    angles = np.deg2rad([0.0, 5.0, 20.0])
+    raw = spec.evaluate(angles)
+    normed = spec.evaluate(angles, normalized=True)
+    # normalization is a positive multiplicative constant equal to the
+    # dedicated SO(3) kernel's normalization factor
+    factor = spec.as_so3_kernel().normalization
+    assert_allclose(normed, raw * factor)
+
+
+def test_odf_normalized_evaluation_matches_unit_scaled_density() -> None:
+    orientations, _ = make_orientation_set()
+    kernel = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=15.0)
+    odf = ODF.from_orientations(orientations, kernel=kernel)
+    near = Orientation(
+        Rotation.identity(),
+        crystal_frame=orientations.crystal_frame,
+        specimen_frame=orientations.specimen_frame,
+        symmetry=orientations.symmetry,
+        phase=orientations.phase,
+    )
+    factor = kernel.as_so3_kernel().normalization
+    assert_allclose(
+        odf.evaluate(near, normalized=True),
+        odf.evaluate(near) * factor,
+    )
 
 
 def test_odf_volume_fraction_tracks_weighted_neighborhood() -> None:
