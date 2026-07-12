@@ -388,6 +388,24 @@ class HarmonicODF:
     def mean_density(self) -> float:
         return _weighted_mean(self.quadrature_densities, self.quadrature_weights)
 
+    @property
+    def texture_index(self) -> float:
+        """The texture index ``J = integral f(g)^2 dg`` (1 for a uniform ODF)."""
+
+        densities = self.quadrature_densities
+        return _weighted_mean(densities * densities, self.quadrature_weights)
+
+    def entropy(self, *, floor: float = 1e-12) -> float:
+        """Texture entropy ``integral f ln f dg`` (0 for a uniform ODF, positive otherwise).
+
+        Non-positive quadrature densities (harmonic ghost lobes) are floored to
+        ``floor`` before taking the logarithm so the integral stays finite.
+        """
+
+        densities = np.clip(self.quadrature_densities, floor, None)
+        integrand = densities * np.log(densities)
+        return _weighted_mean(integrand, self.quadrature_weights)
+
     def evaluate(self, orientations: Orientation | OrientationSet) -> np.ndarray | float:
         query_set, scalar_output = _coerce_query_orientations(
             orientations,

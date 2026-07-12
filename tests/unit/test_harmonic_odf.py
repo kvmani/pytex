@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytex.core import (
@@ -23,7 +24,100 @@ from pytex.texture.harmonics import (
     _enumerate_terms,
     _orthonormalize_weighted_basis,
     _symmetry_projected_raw_basis,
+    _weighted_mean,
 )
+
+
+def _build_harmonic_odf(perturbations: dict[int, float]) -> HarmonicODF:
+    """Build a valid (mean-density-1) HarmonicODF with identity symmetry.
+
+    ``perturbations`` maps non-constant orthonormal basis columns to their
+    coefficient; the constant column is set to 1 so the ODF integrates to 1.
+    """
+
+    crystal = ReferenceFrame(
+        name="crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    symmetry = SymmetrySpec.identity(reference_frame=crystal)
+    lattice = Lattice(3.0, 3.0, 3.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    phase = Phase(name="demo", lattice=lattice, symmetry=symmetry, crystal_frame=crystal)
+    quadrature_orientations, quadrature_weights = _bunge_quadrature(
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        crystal_symmetry=symmetry,
+        phase=phase,
+        phi1_step_deg=30.0,
+        big_phi_step_deg=30.0,
+        phi2_step_deg=30.0,
+        provenance=None,
+    )
+    basis_terms = _enumerate_terms(degree_bandlimit=2, even_degrees_only=False)
+    raw_basis = _symmetry_projected_raw_basis(
+        quadrature_orientations,
+        terms=basis_terms,
+        crystal_symmetry=symmetry,
+        specimen_symmetry=None,
+    )
+    quadrature_basis_values, basis_transform = _orthonormalize_weighted_basis(
+        raw_basis, quadrature_weights, tolerance=1e-10
+    )
+    means = np.array(
+        [
+            _weighted_mean(quadrature_basis_values[:, k], quadrature_weights)
+            for k in range(quadrature_basis_values.shape[1])
+        ]
+    )
+    constant_column = int(np.argmax(np.abs(means)))
+    coefficients = np.zeros(quadrature_basis_values.shape[1], dtype=np.float64)
+    coefficients[constant_column] = 1.0
+    for column, value in perturbations.items():
+        coefficients[column] = value
+    return HarmonicODF(
+        coefficients=coefficients,
+        basis_terms=basis_terms,
+        basis_transform=basis_transform,
+        quadrature_orientations=quadrature_orientations,
+        quadrature_weights=quadrature_weights,
+        quadrature_basis_values=quadrature_basis_values,
+        degree_bandlimit=2,
+        crystal_symmetry=symmetry,
+        specimen_symmetry=None,
+        phase=phase,
+        pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=10.0),
+        even_degrees_only=False,
+        provenance=None,
+    )
+
+
+def test_uniform_harmonic_odf_has_unit_texture_index_and_zero_entropy() -> None:
+    odf = _build_harmonic_odf({})
+    # small deviations from exactly 1 are coarse-quadrature artefacts
+    assert odf.mean_density == pytest.approx(1.0, abs=1e-3)
+    assert odf.texture_index == pytest.approx(1.0, abs=1e-3)
+    assert odf.entropy() == pytest.approx(0.0, abs=1e-6)
+
+
+def test_textured_harmonic_odf_index_and_entropy_grow_with_sharpness() -> None:
+    # Perturb two non-constant orthonormal columns; the texture index equals
+    # 1 + sum of squared perturbations (orthonormal basis).
+    mild = _build_harmonic_odf({0: 0.3, 1: -0.2})
+    sharp = _build_harmonic_odf({0: 0.6, 1: -0.4})
+    assert mild.mean_density == pytest.approx(1.0, abs=1e-2)
+    assert mild.texture_index == pytest.approx(1.0 + 0.3**2 + 0.2**2, abs=1e-3)
+    assert mild.texture_index > 1.0
+    assert mild.entropy() > 0.0
+    # a sharper texture has a larger index and entropy
+    assert sharp.texture_index > mild.texture_index
+    assert sharp.entropy() > mild.entropy()
 
 
 def make_harmonic_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase, SymmetrySpec]:

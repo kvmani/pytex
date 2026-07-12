@@ -65,7 +65,8 @@ consumer surface. CSL matching uses the symmetry-reduced deviation
 
 | K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | committed |
 | L | Polycrystal elastic homogenization (`homogenize_elastic`, Voigt/Reuss/Hill) | done, tests green | committed |
-| M | Grain perimeter / area / shape factor (staircase, regular grid) | done, tests green | this commit |
+| M | Grain perimeter / area / shape factor (staircase, regular grid) | done, tests green | committed |
+| N | Texture index + entropy on `HarmonicODF` (SO(3) quadrature) | done, tests green | this commit |
 
 Note (K): slotted frozen dataclass subclasses cannot use zero-arg `super()`
 in `__post_init__` (dataclass(slots=True) rebuilds the class, breaking the
