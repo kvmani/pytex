@@ -14,7 +14,7 @@ auditable.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -121,6 +121,16 @@ class EBSDScanFileResult:
             "header_metadata",
             MappingProxyType({str(k): str(v) for k, v in dict(self.header_metadata).items()}),
         )
+        # Attach the parsed per-point channels to the CrystalMap so downstream
+        # `result.crystal_map` carries them directly (e.g. plot_property_map),
+        # while `EBSDScanFileResult.properties` remains for back-compat access.
+        if frozen:
+            map_with_properties = self.dataset.crystal_map.with_properties(frozen)
+            object.__setattr__(
+                self,
+                "dataset",
+                replace(self.dataset, crystal_map=map_with_properties),
+            )
 
     @property
     def crystal_map(self) -> Any:

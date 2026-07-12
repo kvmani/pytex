@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, cast
 
 import numpy as np
@@ -135,6 +137,28 @@ def _readonly_float_array(
     values = np.ascontiguousarray(values)
     values.setflags(write=False)
     return values
+
+
+def _freeze_property_channels(
+    properties: Mapping[str, ArrayLike] | None,
+    *,
+    point_count: int,
+) -> MappingProxyType[str, np.ndarray]:
+    if properties is None:
+        return MappingProxyType({})
+    frozen: dict[str, np.ndarray] = {}
+    for name, values in dict(properties).items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("CrystalMap property channel names must be non-empty strings.")
+        array = np.ascontiguousarray(np.asarray(values, dtype=np.float64))
+        if array.shape != (point_count,):
+            raise ValueError(
+                f"CrystalMap property channel '{name}' must have one value per map point "
+                f"(expected shape ({point_count},), got {array.shape})."
+            )
+        array.setflags(write=False)
+        frozen[name] = array
+    return MappingProxyType(frozen)
 
 
 def _rotation_angles_from_matrices(matrices: np.ndarray) -> np.ndarray:
@@ -845,6 +869,7 @@ class CrystalMap:
     acquisition_geometry: AcquisitionGeometry | None = None
     calibration_record: CalibrationRecord | None = None
     measurement_quality: MeasurementQuality | None = None
+    properties: Mapping[str, ArrayLike] | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -951,6 +976,11 @@ class CrystalMap:
         object.__setattr__(self, "coordinates", coordinates)
         object.__setattr__(self, "phase_entries", phase_entries)
         object.__setattr__(self, "phase_ids", phase_ids)
+        object.__setattr__(
+            self,
+            "properties",
+            _freeze_property_channels(self.properties, point_count=len(self.orientations)),
+        )
         coordinate_dims = int(coordinates.shape[1])
         if self.grid_shape is not None:
             if len(self.grid_shape) != coordinate_dims:
@@ -1019,6 +1049,50 @@ class CrystalMap:
         if len(self.resolved_phase_entries) == 1:
             return self.resolved_phase_entries[0].phase
         return None
+
+    @property
+    def property_names(self) -> tuple[str, ...]:
+        properties = cast("Mapping[str, np.ndarray]", self.properties)
+        return tuple(properties.keys())
+
+    def get_property(self, name: str) -> np.ndarray:
+        properties = cast("Mapping[str, np.ndarray]", self.properties)
+        if name not in properties:
+            available = ", ".join(sorted(properties)) or "<none>"
+            raise KeyError(
+                f"CrystalMap has no property channel '{name}'. Available channels: {available}."
+            )
+        return properties[name]
+
+    def property_map(self, name: str) -> np.ndarray:
+        rows, cols = self._require_regular_2d_grid()
+        values = np.ascontiguousarray(self.get_property(name).reshape((rows, cols)))
+        values.setflags(write=False)
+        return values
+
+    def with_properties(
+        self,
+        properties: Mapping[str, ArrayLike],
+        *,
+        replace: bool = False,
+    ) -> CrystalMap:
+        existing = dict(cast("Mapping[str, np.ndarray]", self.properties))
+        merged: dict[str, ArrayLike] = {} if replace else dict(existing)
+        merged.update(dict(properties))
+        return CrystalMap(
+            coordinates=self.coordinates,
+            orientations=self.orientations,
+            map_frame=self.map_frame,
+            phase_entries=self.phase_entries,
+            phase_ids=self.phase_ids,
+            grid_shape=self.grid_shape,
+            step_sizes=self.step_sizes,
+            acquisition_geometry=self.acquisition_geometry,
+            calibration_record=self.calibration_record,
+            measurement_quality=self.measurement_quality,
+            properties=merged,
+            provenance=self.provenance,
+        )
 
     def phase_summary(self) -> dict[str, int]:
         phase_entries = self.resolved_phase_entries
@@ -1114,6 +1188,10 @@ class CrystalMap:
                 provenance=provenance,
             )
         full_selection = bool(np.all(mask))
+        properties = {
+            name: values[mask]
+            for name, values in cast("Mapping[str, np.ndarray]", self.properties).items()
+        }
         return CrystalMap(
             coordinates=self.coordinates[mask],
             orientations=orientations,
@@ -1123,6 +1201,7 @@ class CrystalMap:
             acquisition_geometry=self.acquisition_geometry,
             calibration_record=self.calibration_record,
             measurement_quality=self.measurement_quality,
+            properties=properties or None,
             provenance=provenance,
         )
 

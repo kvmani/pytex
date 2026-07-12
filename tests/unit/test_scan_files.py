@@ -180,3 +180,24 @@ def test_readers_feed_existing_map_workflows(tmp_path: Path) -> None:
     assert np.all(np.isfinite(kam))
     report = crystal_map.summary()
     assert report["point_count"] == 4
+
+
+def test_reader_attaches_property_channels_to_crystal_map(tmp_path: Path) -> None:
+    result = read_ang(write(tmp_path, "scan.ang", SINGLE_PHASE_ANG))
+    crystal_map = result.crystal_map
+    assert "image_quality" in crystal_map.property_names
+    assert "confidence_index" in crystal_map.property_names
+    assert_allclose(crystal_map.get_property("image_quality"), [60.0, 55.0, 50.0, 45.0])
+    # regular-grid reshape matches the (2, 2) scan grid
+    iq_map = crystal_map.property_map("image_quality")
+    assert iq_map.shape == (2, 2)
+    assert_allclose(iq_map, [[60.0, 55.0], [50.0, 45.0]])
+
+
+def test_ctf_reader_attaches_property_channels(tmp_path: Path) -> None:
+    result = read_ctf(write(tmp_path, "scan.ctf", TWO_PHASE_CTF))
+    crystal_map = result.crystal_map
+    assert_allclose(crystal_map.get_property("band_contrast"), [180.0, 170.0, 190.0])
+    # phase selection carries the channels forward, masked to the phase
+    nickel = crystal_map.select_phase("Nickel")
+    assert_allclose(nickel.get_property("band_contrast"), [180.0, 190.0])
