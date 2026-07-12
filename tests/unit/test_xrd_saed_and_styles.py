@@ -104,6 +104,18 @@ def test_generate_xrd_pattern_contains_expected_reflection() -> None:
     assert 0.0 <= np.max(pattern.intensity_grid) <= 1.0 + 1e-12
 
 
+def test_batched_structure_factor_matches_per_reflection() -> None:
+    from pytex.diffraction.xrd import _structure_factor_xray, _structure_factors_xray
+
+    phase = make_phase()
+    hkls = np.array(
+        [[1, 1, 1], [2, 0, 0], [2, 2, 0], [3, 1, 1], [1, 0, 0], [4, 0, 0]], dtype=np.int64
+    )
+    batched = _structure_factors_xray(phase, hkls)
+    per_reflection = np.array([_structure_factor_xray(phase, hkl) for hkl in hkls])
+    np.testing.assert_allclose(batched, per_reflection, atol=1e-12)
+
+
 def test_generate_saed_pattern_respects_zone_axis_geometry() -> None:
     phase = make_phase()
     zone_axis = ZoneAxis(np.array([0, 0, 1]), phase=phase)

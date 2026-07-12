@@ -29,23 +29,37 @@ def _lorentz_polarization(two_theta_rad: float) -> float:
     return float((1.0 + cos_two_theta * cos_two_theta) / (sin_theta * sin_theta * cos_theta))
 
 
-def _structure_factor_xray(phase: Phase, hkl: np.ndarray) -> complex:
+def _structure_factors_xray(phase: Phase, hkls: np.ndarray) -> np.ndarray:
+    """X-ray structure factors for a batch of ``hkls`` (shape (n, 3)) -> (n,) complex.
+
+    Vectorised over both reflections and unit-cell sites.
+    """
+
+    hkls_float = np.atleast_2d(np.asarray(hkls, dtype=np.float64))
     if phase.unit_cell is None or not phase.unit_cell.sites:
-        return complex(1.0, 0.0)
+        return np.ones(hkls_float.shape[0], dtype=np.complex128)
     reciprocal = phase.lattice.reciprocal_basis().matrix
-    g_cart = reciprocal @ hkl.astype(np.float64)
-    g_sq = float(np.dot(g_cart, g_cart))
-    total = 0.0j
-    for site in phase.unit_cell.sites:
-        z = float(atomic_number(site.species))
-        occupancy = float(site.occupancy)
-        b_iso = 0.0 if site.b_iso is None else float(site.b_iso)
-        debye_waller = np.exp(-(b_iso * g_sq) / max(16.0 * np.pi * np.pi, 1e-12))
-        phase_factor = np.exp(
-            2.0j * np.pi * float(np.dot(hkl.astype(np.float64), site.fractional_coordinates))
-        )
-        total += occupancy * z * debye_waller * phase_factor
-    return complex(total)
+    g_cart = hkls_float @ reciprocal.T  # (n, 3): reciprocal @ hkl per row
+    g_sq = np.sum(g_cart * g_cart, axis=1)  # (n,)
+    sites = phase.unit_cell.sites
+    z = np.array([float(atomic_number(site.species)) for site in sites], dtype=np.float64)
+    occupancy = np.array([float(site.occupancy) for site in sites], dtype=np.float64)
+    b_iso = np.array(
+        [0.0 if site.b_iso is None else float(site.b_iso) for site in sites], dtype=np.float64
+    )
+    fractional = np.array(
+        [np.asarray(site.fractional_coordinates, dtype=np.float64) for site in sites]
+    )  # (s, 3)
+    debye_waller = np.exp(
+        -(b_iso[None, :] * g_sq[:, None]) / max(16.0 * np.pi * np.pi, 1e-12)
+    )  # (n, s)
+    phase_factor = np.exp(2.0j * np.pi * (hkls_float @ fractional.T))  # (n, s)
+    contributions = (occupancy * z)[None, :] * debye_waller * phase_factor
+    return np.asarray(np.sum(contributions, axis=1), dtype=np.complex128)
+
+
+def _structure_factor_xray(phase: Phase, hkl: np.ndarray) -> complex:
+    return complex(_structure_factors_xray(phase, np.asarray(hkl)[None, :])[0])
 
 
 def _equivalent_hkls(phase: Phase, hkl: np.ndarray) -> tuple[np.ndarray, ...]:
@@ -186,29 +200,37 @@ def generate_powder_reflections(
     if not 0.0 <= min_two_theta < max_two_theta <= 180.0:
         raise ValueError("two_theta_range_deg must satisfy 0 <= min < max <= 180.")
 
+    # Vectorised geometric filtering over all candidate reflections at once.
+    all_hkls = _enumerate_hkls(max_index)
+    g_cartesian = all_hkls.astype(np.float64) @ phase.lattice.reciprocal_basis().matrix.T
+    g_magnitudes = np.linalg.norm(g_cartesian, axis=1)
+    nonzero = ~np.isclose(g_magnitudes, 0.0)
+    safe_magnitudes = np.where(nonzero, g_magnitudes, 1.0)
+    d_spacings = 1.0 / safe_magnitudes
+    arguments = radiation_spec.wavelength_angstrom / (2.0 * d_spacings)
+    two_theta_all = np.rad2deg(2.0 * np.arcsin(np.clip(arguments, -1.0, 1.0)))
+    keep = (
+        nonzero
+        & (arguments > 0.0)
+        & (arguments <= 1.0)
+        & (two_theta_all >= min_two_theta - _TWO_THETA_TOLERANCE_DEG)
+        & (two_theta_all <= max_two_theta + _TWO_THETA_TOLERANCE_DEG)
+    )
+    surviving_hkls = all_hkls[keep]
+    surviving_d = d_spacings[keep]
+    surviving_two_theta = two_theta_all[keep]
+    if intensity_model == "unit":
+        structure_factors = np.ones(surviving_hkls.shape[0], dtype=np.complex128)
+    else:
+        structure_factors = _structure_factors_xray(phase, surviving_hkls)
+
     reflections: list[PowderReflection] = []
-    for hkl in _enumerate_hkls(max_index):
-        d_spacing = phase.lattice.reciprocal_basis().matrix @ hkl.astype(np.float64)
-        g_magnitude = float(np.linalg.norm(d_spacing))
-        if np.isclose(g_magnitude, 0.0):
-            continue
-        d_spacing_angstrom = 1.0 / g_magnitude
-        argument = radiation_spec.wavelength_angstrom / (2.0 * d_spacing_angstrom)
-        if argument <= 0.0 or argument > 1.0:
-            continue
-        two_theta_deg = float(np.rad2deg(2.0 * np.arcsin(argument)))
-        if not (
-            min_two_theta - _TWO_THETA_TOLERANCE_DEG
-            <= two_theta_deg
-            <= max_two_theta + _TWO_THETA_TOLERANCE_DEG
-        ):
-            continue
-        if intensity_model == "unit":
-            structure_factor = complex(1.0, 0.0)
-        else:
-            structure_factor = _structure_factor_xray(phase, hkl)
+    for index in range(surviving_hkls.shape[0]):
+        hkl = surviving_hkls[index]
+        structure_factor = complex(structure_factors[index])
         amplitude = float(abs(structure_factor))
         multiplicity = _reflection_multiplicity(phase, hkl)
+        two_theta_deg = float(surviving_two_theta[index])
         lorentz_polarization = _lorentz_polarization(np.deg2rad(two_theta_deg))
         intensity = multiplicity * amplitude * amplitude * lorentz_polarization
         if intensity <= 1e-14:
@@ -216,7 +238,7 @@ def generate_powder_reflections(
         reflections.append(
             PowderReflection(
                 miller_indices=hkl,
-                d_spacing_angstrom=d_spacing_angstrom,
+                d_spacing_angstrom=float(surviving_d[index]),
                 two_theta_deg=two_theta_deg,
                 intensity=intensity,
                 structure_factor_amplitude=amplitude,
@@ -227,9 +249,12 @@ def generate_powder_reflections(
                 intensity_model=intensity_model,
             )
         )
+    # Round the primary key so reflections at the same 2-theta (symmetry
+    # equivalents whose 2-theta differs only by floating-point noise) tie and
+    # order deterministically by Miller indices, independent of FP rounding.
     reflections.sort(
         key=lambda reflection: (
-            reflection.two_theta_deg,
+            round(reflection.two_theta_deg, 9),
             tuple(int(value) for value in reflection.miller_indices),
         )
     )

@@ -57,7 +57,7 @@ is auditable, not skipped silently.
 | core/symmetry.py | reviewed - COLD | 0 | 0 | - |
 | core/point_groups.py | reviewed - COLD | 0 | 0 | - |
 | core/hexagonal.py | reviewed - COLD | 0 | 0 | - |
-| diffraction/xrd.py | reviewed - 1 HOT deferred | 1 | 0 | - |
+| diffraction/xrd.py | done | 1 | 1 | this commit |
 | diffraction/saed.py | reviewed - COLD/deferred | - | 0 | - |
 
 ## Per-File Findings
@@ -165,12 +165,20 @@ index, grain_perimeters, remove_wild_spikes detection) and core/orientation.py
 (as_matrices, matrices_to_quaternions validation, as_euler). Full suite green
 (622 passed) and ~30% faster wall-clock (30s -> 22s). All pushed.
 
+`diffraction/xrd.py::generate_powder_reflections` DONE (this session, after the
+checkpoint): geometric filtering (d-spacing, 2-theta, range) vectorised over all
+hkls; new batched `_structure_factors_xray` over reflections x sites (scalar
+`_structure_factor_xray` kept as a thin wrapper). Validated against a golden
+capture of the pre-change output: identical hkl set, per-hkl values match to
+1e-11 (FP norm noise). The final sort now rounds 2-theta (9 dp) so symmetry-
+equivalent reflections order deterministically by hkl instead of by FP-noise-
+level 2-theta, making the output reproducible. Regression test asserts the
+batched vs per-reflection structure factors agree.
+
 RESUME HERE next session, in priority order:
 1. `diffraction/models.py::simulate_spots` - golden-capture, then mask-based
    vectorised rewrite (biggest remaining HOT win).
-2. `diffraction/xrd.py::generate_powder_reflections` - batch structure factors
-   over all hkls; golden-capture the reflection list first.
-3. core/orientation.py deferred: `canonicalize` map (~2125) and
+2. core/orientation.py deferred: `canonicalize` map (~2125) and
    `project_to_exact_fundamental_region` map (~2155/2181) - batch the
    per-orientation symmetry reduction with captured golden outputs.
 Each: capture golden -> rewrite vectorised -> assert bit-equivalence + suite.
