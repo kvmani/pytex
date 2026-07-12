@@ -1,3 +1,12 @@
+from pytex.ebsd.csl import (
+    CUBIC_CSL_TYPES,
+    CUBIC_TWIN_LAWS,
+    CSLMatch,
+    CSLType,
+    TwinLaw,
+    brandon_tolerance_deg,
+    classify_misorientations,
+)
 from pytex.ebsd.models import (
     CoordinateNeighborGraph,
     CrystalMap,
@@ -18,12 +27,16 @@ from pytex.ebsd.texture_workflow import (
 )
 
 __all__ = [
+    "CSLMatch",
+    "CSLType",
+    "CUBIC_CSL_TYPES",
+    "CUBIC_TWIN_LAWS",
     "CoordinateNeighborGraph",
     "CrystalMap",
     "CrystalMapPhase",
     "EBSDTextureWorkflow",
-    "FittedEllipse",
     "EBSDTextureWorkflowResult",
+    "FittedEllipse",
     "Grain",
     "GrainBoundaryNetwork",
     "GrainBoundarySegment",
@@ -32,4 +45,7 @@ __all__ = [
     "GrainSegmentation",
     "OrientationQualityWeights",
     "TextureReport",
+    "TwinLaw",
+    "brandon_tolerance_deg",
+    "classify_misorientations",
 ]

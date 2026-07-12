@@ -558,6 +558,88 @@ class GrainBoundaryNetwork:
             provenance=self.provenance,
         )
 
+    def _segment_misorientation_matrices(self) -> np.ndarray:
+        matrices = self.segmentation.crystal_map.orientations.as_matrices()
+        left = np.array(
+            [matrices[segment.left_index] for segment in self.segments], dtype=np.float64
+        )
+        right = np.array(
+            [matrices[segment.right_index] for segment in self.segments], dtype=np.float64
+        )
+        if left.size == 0:
+            return np.empty((0, 3, 3), dtype=np.float64)
+        return _relative_rotation_matrices(left, right)
+
+    def _cubic_operators(self) -> np.ndarray:
+        crystal_map = self.segmentation.crystal_map
+        entries = crystal_map.resolved_phase_entries
+        if len(entries) != 1:
+            raise ValueError(
+                "CSL classification currently supports single-phase cubic maps only."
+            )
+        symmetry = entries[0].symmetry
+        if symmetry is None or symmetry.point_group not in {"m-3m", "m-3", "432", "23"}:
+            raise ValueError(
+                "CSL classification requires a cubic crystal symmetry "
+                "(point group 23, m-3, 432, or m-3m)."
+            )
+        return symmetry.operators
+
+    def classify_csl(
+        self,
+        *,
+        theta0_deg: float = 15.0,
+        include_sigma1: bool = False,
+    ) -> tuple[Any, ...]:
+        """Classify each boundary segment against the cubic CSL registry.
+
+        Returns one entry per segment: a ``CSLMatch`` (with the assigned Sigma
+        and deviation) or ``None`` when no CSL type fits within the Brandon
+        criterion. Requires a single-phase cubic map.
+        """
+
+        from pytex.ebsd.csl import classify_misorientations
+
+        matrices = self._segment_misorientation_matrices()
+        if matrices.shape[0] == 0:
+            return ()
+        return tuple(
+            classify_misorientations(
+                matrices,
+                operators=self._cubic_operators(),
+                theta0_deg=theta0_deg,
+                include_sigma1=include_sigma1,
+            )
+        )
+
+    def csl_fraction(self, sigma: int, *, theta0_deg: float = 15.0) -> float:
+        """Fraction of boundary length classified as the given CSL Sigma."""
+
+        matches = self.classify_csl(theta0_deg=theta0_deg)
+        if not matches:
+            return 0.0
+        total_length = self.total_length
+        if total_length <= 0.0:
+            return 0.0
+        matched_length = sum(
+            segment.length
+            for segment, match in zip(self.segments, matches, strict=True)
+            if match is not None and match.sigma == sigma
+        )
+        return float(matched_length / total_length)
+
+    def select_csl(
+        self, sigma: int, *, theta0_deg: float = 15.0
+    ) -> tuple[GrainBoundarySegment, ...]:
+        """Return the boundary segments classified as the given CSL Sigma."""
+
+        matches = self.classify_csl(theta0_deg=theta0_deg)
+        return tuple(
+            segment
+            for segment, match in zip(self.segments, matches, strict=True)
+            if match is not None and match.sigma == sigma
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class GrainGraphEdge:

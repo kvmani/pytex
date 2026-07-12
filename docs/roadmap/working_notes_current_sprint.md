@@ -31,14 +31,30 @@ Sprint outcome: all five tasks landed. Full suite (`577 passed, 26 deselected`),
 `ruff check .`, and `mypy src` green; only the pre-existing phase-fixture /
 repo-integrity hash mismatches remain deselected (tracked separately).
 
-Next-sprint candidates (medium-horizon, Section 4), in rough priority order:
-polyline grain-boundary geometry + shape descriptors (Grains 2.0), hex-grid
-`CrystalMap` support, CSL/twin boundary classification with Brandon criterion,
-`MisorientationDistribution` (MDF) with MacKenzie baseline, and the
-`SO3FunHarmonic` quadrature-from-orientations implementation that lets the dVP
-kernel drive full harmonic ODF estimation (the piece deliberately staged this
-sprint). `SlipSystem` + Schmid-factor maps are the highest-demand properties
-entry point once symmetry completion (already done) is leveraged.
+## Continuation Sprint: Medium Horizon (Section 4), same session
+
+| # | Task | Status | Commit |
+| --- | --- | --- | --- |
+| F | Moment-based grain shape descriptors (`FittedEllipse`, aspect ratio, bbox) | done, tests green | committed |
+| G | CSL/twin boundary classification (`ebsd/csl.py` + network wiring) | done, tests green | this commit |
+
+Full suite after this continuation: `585 passed, 26 deselected`; ruff + mypy
+green. `FittedEllipse` lives in `ebsd/models.py`; the CSL registry, Brandon
+criterion, and matrix classifier live in the new `ebsd/csl.py`, with
+`GrainBoundaryNetwork.classify_csl` / `csl_fraction` / `select_csl` as the
+consumer surface. CSL matching uses the symmetry-reduced deviation
+`min over S_a,S_b of angle(S_a M S_b C^T)` (cubic-only for now).
+
+Remaining medium-horizon candidates, in rough priority order:
+polyline grain-boundary geometry (true perimeter, convexity/paris shape factor,
+`smooth()`) as the rest of Grains 2.0; hex-grid `CrystalMap` support (offset-row
+indexing + honeycomb neighbors); twin-merging into parent grains built on the
+new CSL layer; `MisorientationDistribution` (MDF) with MacKenzie baseline and
+axis/angle marginals; and the `SO3FunHarmonic` quadrature-from-orientations
+implementation that lets the dVP kernel drive full harmonic ODF estimation (the
+piece deliberately staged in the immediate sprint). `SlipSystem` +
+Schmid-factor maps are the highest-demand properties entry point once symmetry
+completion (already done) is leveraged.
 
 Workflow per task: implement -> unit tests -> `ruff check .` + `mypy src` +
 targeted pytest -> commit -> push if remote available -> update this table.
