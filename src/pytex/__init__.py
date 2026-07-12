@@ -271,8 +271,11 @@ from pytex.plotting import (
     save_documentation_figure_svg,
 )
 from pytex.properties import (
+    ComplianceTensor,
+    ElasticTensor,
     SlipSystem,
     SlipSystemFamily,
+    StiffnessTensor,
     bcc_110_slip,
     fcc_octahedral_slip,
 )
@@ -323,6 +326,7 @@ __all__ = [
     "CSLMatch",
     "CSLType",
     "CalibrationRecord",
+    "ComplianceTensor",
     "ConventionSet",
     "CoordinateNeighborGraph",
     "CrystalAtomGlyph",
@@ -350,6 +354,7 @@ __all__ = [
     "EBSDImportManifest",
     "EBSDTextureWorkflow",
     "EBSDTextureWorkflowResult",
+    "ElasticTensor",
     "EulerConventionTransform",
     "EulerSet",
     "ExperimentManifest",
@@ -437,6 +442,7 @@ __all__ = [
     "StructureFactor",
     "SlipSystem",
     "SlipSystemFamily",
+    "StiffnessTensor",
     "SymmetrySpec",
     "TextureComponent",
     "TextureReport",

@@ -55,6 +55,13 @@ criterion, and matrix classifier live in the new `ebsd/csl.py`, with
 consumer surface. CSL matching uses the symmetry-reduced deviation
 `min over S_a,S_b of angle(S_a M S_b C^T)` (cubic-only for now).
 
+| K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | this commit |
+
+Note (K): slotted frozen dataclass subclasses cannot use zero-arg `super()`
+in `__post_init__` (dataclass(slots=True) rebuilds the class, breaking the
+`__class__` cell); call the base `__post_init__` explicitly instead. Young's
+modulus uses the tensor contraction `1/E(n) = n_i n_j n_k n_l S_ijkl`.
+
 Remaining medium-horizon candidates, in rough priority order:
 polyline grain-boundary geometry (true perimeter, convexity/paris shape factor,
 `smooth()`) as the rest of Grains 2.0; hex-grid `CrystalMap` support (offset-row
