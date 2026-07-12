@@ -38,7 +38,10 @@ from pytex import (
     normalize_pyebsdindex_result,
     plane_from_orix_miller,
     plot_ipf_map,
+    plot_ipf_xyz_maps,
     plot_kam_map,
+    plot_phase_map,
+    plot_property_map,
     read_ebsd_import_manifest,
     refine_orientations,
     to_orix_direction,
@@ -418,6 +421,34 @@ def test_plot_ipf_map_and_kam_map_return_matplotlib_figures() -> None:
     kam_figure = plot_kam_map(crystal_map)
     assert ipf_figure.axes[0].get_title() == "IPF Map (z)"
     assert kam_figure.axes[0].get_title() == "Kernel Average Misorientation"
+
+
+def test_plot_property_map_returns_figure_with_colorbar() -> None:
+    crystal_map, _ = make_crystal_map()
+    crystal_map = crystal_map.with_properties(
+        {"image_quality": np.array([60.0, 55.0, 50.0, 45.0])}
+    )
+    figure = plot_property_map(crystal_map, "image_quality")
+    assert figure.axes[0].get_title() == "Property Map (image_quality)"
+    # a colorbar axis is added alongside the map axis
+    assert len(figure.axes) == 2
+
+
+def test_plot_phase_map_returns_figure_with_legend() -> None:
+    crystal_map, _ = make_crystal_map()
+    figure = plot_phase_map(crystal_map)
+    assert figure.axes[0].get_title() == "Phase Map"
+    legend = figure.axes[0].get_legend()
+    assert legend is not None
+
+
+def test_plot_ipf_xyz_maps_returns_three_panels() -> None:
+    crystal_map, _ = make_crystal_map()
+    figure = plot_ipf_xyz_maps(crystal_map)
+    titles = [axis.get_title() for axis in figure.axes]
+    assert "IPF Map (x)" in titles
+    assert "IPF Map (y)" in titles
+    assert "IPF Map (z)" in titles
 
 
 def test_orix_rotation_and_orientation_adapters_round_trip() -> None:

@@ -15,7 +15,13 @@ from pytex.plotting.crystal3d import (
     plot_crystal_structure_3d,
 )
 from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
-from pytex.plotting.ebsd import plot_ipf_map, plot_kam_map
+from pytex.plotting.ebsd import (
+    plot_ipf_map,
+    plot_ipf_xyz_maps,
+    plot_kam_map,
+    plot_phase_map,
+    plot_property_map,
+)
 from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
 from pytex.plotting.runtime import (
     plot_crystal_directions,
@@ -64,7 +70,10 @@ __all__ = [
     "plot_inverse_pole_figure",
     "plot_ipf_key",
     "plot_ipf_map",
+    "plot_ipf_xyz_maps",
     "plot_kam_map",
+    "plot_phase_map",
+    "plot_property_map",
     "plot_odf",
     "plot_orientations",
     "plot_pole_figure",
