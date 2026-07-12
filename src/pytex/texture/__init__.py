@@ -7,7 +7,14 @@ from pytex.texture.components import (
 from pytex.texture.fibres import NAMED_BCC_FIBRES, Fibre, fibre_axis_alignment_quaternion
 from pytex.texture.harmonics import HarmonicBasisTerm, HarmonicODF, HarmonicODFReconstructionReport
 from pytex.texture.kernels import DeLaValleePoussinKernel
-from pytex.texture.models import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
+from pytex.texture.models import (
+    ODF,
+    InversePoleFigure,
+    KernelSpec,
+    ODFInversionReport,
+    ODFSectionData,
+    PoleFigure,
+)
 from pytex.texture.reconstruction import (
     ODFReconstructionConfig,
     PoleFigureCorrectionSpec,
@@ -29,6 +36,7 @@ __all__ = [
     "KernelSpec",
     "ODFInversionReport",
     "ODFReconstructionConfig",
+    "ODFSectionData",
     "PoleFigure",
     "PoleFigureCorrectionSpec",
     "PoleFigureResidualReport",

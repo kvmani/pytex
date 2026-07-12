@@ -389,6 +389,37 @@ class InversePoleFigure:
 
 
 @dataclass(frozen=True, slots=True)
+class ODFSectionData:
+    """ODF density sampled on constant-phi2 Bunge-Euler sections."""
+
+    phi2_deg: np.ndarray
+    phi1_deg: np.ndarray
+    big_phi_deg: np.ndarray
+    densities: np.ndarray
+    normalized: bool = False
+
+    def __post_init__(self) -> None:
+        for name in ("phi2_deg", "phi1_deg", "big_phi_deg", "densities"):
+            array = np.ascontiguousarray(np.asarray(getattr(self, name), dtype=np.float64))
+            array.setflags(write=False)
+            object.__setattr__(self, name, array)
+        expected = (self.phi2_deg.shape[0], self.big_phi_deg.shape[0], self.phi1_deg.shape[0])
+        if self.densities.shape != expected:
+            raise ValueError(
+                "ODFSectionData.densities must have shape "
+                "(n_sections, n_big_phi, n_phi1)."
+            )
+
+    @property
+    def section_count(self) -> int:
+        return int(self.phi2_deg.shape[0])
+
+    @property
+    def max_density(self) -> float:
+        return float(np.max(self.densities))
+
+
+@dataclass(frozen=True, slots=True)
 class ODF:
     orientations: OrientationSet
     weights: np.ndarray
@@ -482,6 +513,59 @@ class ODF:
         if scalar_output:
             return float(density[0])
         return density
+
+    def phi2_sections(
+        self,
+        *,
+        phi2_deg: ArrayLike = (0.0, 45.0, 65.0),
+        phi1_max_deg: float = 90.0,
+        big_phi_max_deg: float = 90.0,
+        resolution_deg: float = 5.0,
+        normalized: bool = False,
+    ) -> ODFSectionData:
+        """Sample the ODF density on constant-phi2 Bunge-Euler sections.
+
+        Returns an `ODFSectionData` with the density on a
+        ``(n_sections, n_big_phi, n_phi1)`` grid — the standard texture
+        visualisation. Ranges default to the cubic ``[0, 90] deg`` domain; widen
+        them for lower-symmetry crystals.
+        """
+
+        if resolution_deg <= 0.0:
+            raise ValueError("resolution_deg must be strictly positive.")
+        phi2_values = np.atleast_1d(np.asarray(phi2_deg, dtype=np.float64))
+        phi1 = np.arange(0.0, phi1_max_deg + 1e-9, resolution_deg)
+        big_phi = np.arange(0.0, big_phi_max_deg + 1e-9, resolution_deg)
+        grid_phi1, grid_big_phi = np.meshgrid(phi1, big_phi, indexing="xy")
+        sections = []
+        for phi2 in phi2_values:
+            euler = np.column_stack(
+                [
+                    grid_phi1.ravel(),
+                    grid_big_phi.ravel(),
+                    np.full(grid_phi1.size, float(phi2)),
+                ]
+            )
+            query = OrientationSet.from_euler_angles(
+                euler,
+                crystal_frame=self.orientations.crystal_frame,
+                specimen_frame=self.orientations.specimen_frame,
+                symmetry=self.orientations.symmetry,
+                phase=self.orientations.phase,
+                convention="bunge",
+                degrees=True,
+            )
+            density = np.asarray(
+                self.evaluate(query, normalized=normalized), dtype=np.float64
+            ).reshape(grid_big_phi.shape)
+            sections.append(density)
+        return ODFSectionData(
+            phi2_deg=phi2_values,
+            phi1_deg=phi1,
+            big_phi_deg=big_phi,
+            densities=np.stack(sections, axis=0),
+            normalized=normalized,
+        )
 
     def reconstruct_pole_figure(
         self,

@@ -314,3 +314,67 @@ def test_orientation_set_from_bunge_grid_builds_expected_support_size() -> None:
     )
     assert len(dictionary) == 12
     assert dictionary.phase == phase
+
+
+def test_odf_phi2_sections_peak_at_planted_component() -> None:
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(35.0, 45.0, 0.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(
+        component, kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=8.0)
+    )
+    sections = odf.phi2_sections(phi2_deg=[0.0, 45.0], resolution_deg=5.0)
+    assert sections.densities.shape == (2, 19, 19)
+    assert sections.section_count == 2
+    # the phi2 = 0 section must peak at the planted (phi1=35, Phi=45) component
+    peak = np.unravel_index(int(np.argmax(sections.densities[0])), sections.densities[0].shape)
+    assert sections.phi1_deg[peak[1]] == pytest.approx(35.0)
+    assert sections.big_phi_deg[peak[0]] == pytest.approx(45.0)
+
+
+def test_odf_phi2_sections_are_nonnegative_and_broaden_with_kernel() -> None:
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(0.0, 45.0, 0.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+
+    def peak_to_mean(halfwidth: float) -> float:
+        odf = ODF.from_orientations(
+            component, kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=halfwidth)
+        )
+        density = odf.phi2_sections(phi2_deg=[0.0], resolution_deg=10.0).densities
+        assert np.all(np.isfinite(density)) and np.all(density >= 0.0)
+        return float(np.max(density) / np.mean(density))
+
+    # a broader kernel spreads the texture out, lowering the peak-to-mean ratio
+    assert peak_to_mean(30.0) < peak_to_mean(8.0)
+
+
+def test_plot_odf_phi2_sections_returns_panel() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_odf_phi2_sections
+
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(0.0, 45.0, 0.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(component)
+    sections = odf.phi2_sections(phi2_deg=[0.0, 30.0, 60.0], resolution_deg=15.0)
+    figure = plot_odf_phi2_sections(sections)
+    # three section panels + one shared colorbar axis
+    assert len(figure.axes) == 4

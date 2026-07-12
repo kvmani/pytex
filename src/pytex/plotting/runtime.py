@@ -274,6 +274,52 @@ def plot_inverse_pole_figure(
     )
 
 
+def plot_odf_phi2_sections(
+    sections: Any,
+    *,
+    cmap: str = "viridis",
+    levels: int = 12,
+    title: str | None = None,
+) -> Any:
+    """Render a pre-computed `ODFSectionData` as a panel of phi2 contour maps.
+
+    Complements ``plot_odf(kind="sections")`` by plotting an already-sampled
+    `ODF.phi2_sections(...)` result, so the density grids can be computed once and
+    then analysed or plotted without recomputation.
+    """
+
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError(
+            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
+        ) from exc
+    count = sections.section_count
+    fig, axes_row = plt.subplots(1, count, figsize=(3.2 * count, 3.4), squeeze=False)
+    vmax = sections.max_density
+    for index in range(count):
+        axis = axes_row[0][index]
+        contour = axis.contourf(
+            sections.phi1_deg,
+            sections.big_phi_deg,
+            sections.densities[index],
+            levels=levels,
+            cmap=cmap,
+            vmin=0.0,
+            vmax=vmax,
+        )
+        axis.set_title(f"phi2 = {sections.phi2_deg[index]:.0f} deg", fontsize=10)
+        axis.set_xlabel("phi1 (deg)")
+        if index == 0:
+            axis.set_ylabel("Phi (deg)")
+        axis.set_aspect("equal", adjustable="box")
+        axis.invert_yaxis()
+    fig.colorbar(contour, ax=axes_row[0].tolist(), shrink=0.8, label="ODF density")
+    if title is not None:
+        fig.suptitle(title)
+    return fig
+
+
 def plot_odf(
     odf: ODF | HarmonicODF,
     *,
