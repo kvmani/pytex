@@ -90,6 +90,43 @@ def test_xrd_external_baseline_matches_pytex_peak_families(fixture_id: str) -> N
     ]
 
 
+def test_hcp_xrd_external_baseline_matches_unique_pytex_peaks() -> None:
+    pytest.importorskip(
+        "pymatgen.core",
+        reason="CIF-backed diffraction baseline tests require the optional pymatgen dependency.",
+    )
+    payload = json.loads(
+        (BASELINE_ROOT / "zr_hcp_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
+    )
+    assert payload["schema_id"] == "pytex.diffraction_external_baseline.xrd"
+    assert payload["fixture_id"] == "zr_hcp"
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
+        warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
+        phase = get_phase_fixture("zr_hcp").load_phase(crystal_frame=_crystal_frame())
+
+    reflections = generate_powder_reflections(
+        phase,
+        radiation=RadiationSpec.cu_ka(),
+        two_theta_range_deg=(20.0, 120.0),
+        max_index=6,
+    )
+    assert len(reflections) == len(payload["reference_peaks"])
+    for reflection, expected in zip(reflections, payload["reference_peaks"], strict=True):
+        assert reflection.multiplicity == expected["multiplicity"]
+        assert abs(reflection.two_theta_deg - expected["two_theta_deg"]) <= 0.2
+
+    assert payload["pytex_reference_families"] == [
+        {
+            "representative_hkl": [int(value) for value in reflection.miller_indices],
+            "two_theta_deg": round(float(reflection.two_theta_deg), 6),
+            "multiplicity": int(reflection.multiplicity),
+        }
+        for reflection in reflections
+    ]
+
+
 @pytest.mark.parametrize("fixture_id", ["ni_fcc", "fe_bcc"])
 def test_saed_external_baseline_matches_pytex_shell_geometry(fixture_id: str) -> None:
     pytest.importorskip(

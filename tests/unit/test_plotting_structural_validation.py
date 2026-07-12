@@ -39,9 +39,10 @@ def test_structural_plotting_validation_cases_match_expected_surface_properties(
     assert len(xrd.axes) == 1
     assert xrd_ax.get_xlabel() == r"2$\theta$ (deg)"
     assert xrd_ax.get_ylabel() == "normalized intensity"
-    assert len(xrd_ax.lines) >= 10
+    assert len(xrd_ax.lines) == 6
     assert len(xrd_ax.collections) == 1
-    assert len(xrd_ax.texts) >= 10
+    assert len(xrd_ax.texts) == 5
+    assert len(xrd_ax.lines) == len(xrd_ax.texts) + 1
 
     saed = figures["saed_ni_fcc_dark"]
     saed_ax = saed.axes[0]

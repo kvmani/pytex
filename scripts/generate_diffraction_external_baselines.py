@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import warnings
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from importlib.metadata import version
 from pathlib import Path
 
@@ -30,6 +30,13 @@ def _repo_root() -> Path:
 
 def _canonical_family(indices: tuple[int, int, int] | np.ndarray) -> tuple[int, int, int]:
     return tuple(sorted((abs(int(value)) for value in indices), reverse=True))
+
+
+def _baseline_indices(indices: tuple[int, ...] | np.ndarray) -> list[int]:
+    values = tuple(int(value) for value in indices)
+    if len(values) == 4:
+        return list(values)
+    return list(_canonical_family(np.asarray(values, dtype=np.int64)))
 
 
 def _make_crystal_frame() -> ReferenceFrame:
@@ -63,7 +70,7 @@ def _xrd_baseline(repo_root: Path, *, fixture_id: str) -> dict[str, object]:
         representative = tuple(int(value) for value in hkl_rows[0]["hkl"])
         peaks.append(
             {
-                "representative_hkl": list(_canonical_family(representative)),
+                "representative_hkl": _baseline_indices(representative),
                 "multiplicity": int(hkl_rows[0]["multiplicity"]),
                 "two_theta_deg": round(float(two_theta_deg), 6),
                 "relative_intensity": round(float(relative_intensity), 6),
@@ -72,21 +79,23 @@ def _xrd_baseline(repo_root: Path, *, fixture_id: str) -> dict[str, object]:
 
     crystal = _make_crystal_frame()
     phase = fixture.load_phase(crystal_frame=crystal)
-    families: OrderedDict[tuple[int, int, int], dict[str, object]] = OrderedDict()
+    families: list[dict[str, object]] = []
     for reflection in generate_powder_reflections(
         phase,
         radiation=RadiationSpec.cu_ka(),
         two_theta_range_deg=(20.0, 120.0),
         max_index=6,
     ):
-        family = _canonical_family(reflection.miller_indices)
-        families.setdefault(
-            family,
+        families.append(
             {
-                "representative_hkl": list(family),
+                "representative_hkl": (
+                    [int(value) for value in reflection.miller_indices]
+                    if fixture_id == "zr_hcp"
+                    else list(_canonical_family(reflection.miller_indices))
+                ),
                 "two_theta_deg": round(float(reflection.two_theta_deg), 6),
                 "multiplicity": int(reflection.multiplicity),
-            },
+            }
         )
 
     return {
@@ -103,7 +112,7 @@ def _xrd_baseline(repo_root: Path, *, fixture_id: str) -> dict[str, object]:
         "radiation": "CuKa",
         "two_theta_range_deg": [20.0, 120.0],
         "reference_peaks": peaks,
-        "pytex_reference_families": list(families.values()),
+        "pytex_reference_families": families,
         "notes": [
             "Peak positions and multiplicities come from pymatgen's "
             f"XRDCalculator using the pinned {fixture_id} fixture.",
@@ -223,6 +232,10 @@ def main() -> int:
             json.dumps(_saed_baseline(repo_root, fixture_id=fixture_id), indent=2) + "\n",
             encoding="utf-8",
         )
+    (output_root / "zr_hcp_pymatgen_xrd_cuka.json").write_text(
+        json.dumps(_xrd_baseline(repo_root, fixture_id="zr_hcp"), indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"Wrote diffraction baseline artifacts to {output_root}")
     return 0
 

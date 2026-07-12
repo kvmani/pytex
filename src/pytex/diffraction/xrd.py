@@ -82,6 +82,27 @@ def _reflection_multiplicity(phase: Phase, hkl: np.ndarray) -> int:
     return len(_equivalent_hkls(phase, hkl))
 
 
+def _reflection_family_key(phase: Phase, hkl: np.ndarray) -> tuple[tuple[int, int, int], ...]:
+    return tuple(
+        (int(equivalent[0]), int(equivalent[1]), int(equivalent[2]))
+        for equivalent in _equivalent_hkls(phase, hkl)
+    )
+
+
+def _reflection_family_representative(
+    family_key: tuple[tuple[int, int, int], ...],
+) -> np.ndarray:
+    representative = min(
+        family_key,
+        key=lambda indices: (
+            sum(value < 0 for value in indices),
+            tuple(abs(value) for value in indices),
+            indices,
+        ),
+    )
+    return np.asarray(representative, dtype=np.int64)
+
+
 def _enumerate_hkls(max_index: int) -> np.ndarray:
     values = range(-max_index, max_index + 1)
     hkls = [
@@ -216,9 +237,20 @@ def generate_powder_reflections(
         & (two_theta_all >= min_two_theta - _TWO_THETA_TOLERANCE_DEG)
         & (two_theta_all <= max_two_theta + _TWO_THETA_TOLERANCE_DEG)
     )
-    surviving_hkls = all_hkls[keep]
-    surviving_d = d_spacings[keep]
-    surviving_two_theta = two_theta_all[keep]
+    candidate_hkls = all_hkls[keep]
+    visited_families: set[tuple[tuple[int, int, int], ...]] = set()
+    representative_hkls: list[np.ndarray] = []
+    for hkl in candidate_hkls:
+        family_key = _reflection_family_key(phase, hkl)
+        if family_key in visited_families:
+            continue
+        visited_families.add(family_key)
+        representative_hkls.append(_reflection_family_representative(family_key))
+    surviving_hkls = np.asarray(representative_hkls, dtype=np.int64).reshape((-1, 3))
+    surviving_g = surviving_hkls.astype(np.float64) @ phase.lattice.reciprocal_basis().matrix.T
+    surviving_d = 1.0 / np.linalg.norm(surviving_g, axis=1)
+    surviving_arguments = radiation_spec.wavelength_angstrom / (2.0 * surviving_d)
+    surviving_two_theta = np.rad2deg(2.0 * np.arcsin(surviving_arguments))
     if intensity_model == "unit":
         structure_factors = np.ones(surviving_hkls.shape[0], dtype=np.complex128)
     else:

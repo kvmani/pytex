@@ -16,7 +16,7 @@ This document is the authoritative validation ledger for PyTex diffraction-facin
 | --- | --- | --- | --- |
 | Detector and beam geometry invariants | PyTex geometry tests and literature-backed conventions | implemented | Wavelength, detector projection, `2theta`, azimuth, and Bragg-ring geometry are directly tested. |
 | Powder XRD reflection enumeration | Internal invariant tests and Bragg-law checks | implemented | `d` spacing, `2theta` filtering, and wavelength configuration are exercised through automated tests. |
-| Powder XRD spectrum construction | Internal deterministic tests plus pinned `pymatgen` peak-position baselines | implemented | Broadening and plotting are stable, and pinned `ni_fcc` and `fe_bcc` Cu K-alpha reference cases now check peak positions and multiplicities. |
+| Powder XRD spectrum construction | Internal deterministic tests plus pinned `pymatgen` peak-position baselines | implemented | Broadening and plotting are stable; pinned `ni_fcc`, `fe_bcc`, and non-cubic `zr_hcp` Cu K-alpha cases check peak positions, multiplicities, and one emitted representative per symmetry family. |
 | Reciprocal-space primitives | IUCr-style crystallographic relations and internal invariant tests | implemented | `ReciprocalLatticeVector`, `CrystalPlane`, and `ZoneAxis` consistency is unit-tested. |
 | SAED zone-axis spot generation | Internal geometric invariants and detector-coordinate tests | implemented | Zone-axis filtering, reciprocal construction, and detector mapping are directly tested. |
 | Kinematic spot generation | Internal geometric invariants plus pinned `diffsims` shell-geometry baselines | implemented | Spot simulation, acceptance masks, and family grouping exist, and pinned `ni_fcc` and `fe_bcc` `[001]` shell-geometry cases now check external shell coverage. |
@@ -25,7 +25,7 @@ This document is the authoritative validation ledger for PyTex diffraction-facin
 | Orientation candidate ranking and local refinement | Internal workflow tests | foundational | Deterministic local ranking exists, but continuous or statistically calibrated refinement is not yet in scope. |
 | Intensity modeling | Literature-backed physical models | planned | Current intensity is a proxy ranking model, not a full physical simulation. |
 | XRD and SAED plotting | Runtime plotting tests and style-config tests | implemented | Plotters return Matplotlib figures and reuse the shared YAML style system. |
-| External package or literature parity | Pinned `pymatgen` XRD and `diffsims` SAED reference artifacts | foundational | Compact external-baseline cases are pinned in-repo for starter materials, but broader material and orientation coverage remains ahead. |
+| External package or literature parity | Pinned `pymatgen` XRD and `diffsims` SAED reference artifacts | foundational | Compact cubic and HCP external-baseline cases are pinned in-repo, but broader low-symmetry material and orientation coverage remains ahead. |
 
 ## Current Posture
 
@@ -43,8 +43,8 @@ In practical terms:
 
 Before stronger diffraction claims are made, the next validation pass should add:
 
-- additional open material fixtures that exercise low-symmetry, non-cubic, and multi-family
-  reflection behavior
+- additional open material fixtures beyond the new HCP starter case that exercise lower symmetry
+  and overlapping multi-family reflection behavior
 - separate ledgers for geometric agreement, shell/family agreement, and intensity-model limitations
 - pinned external-baseline regeneration metadata for each new `pymatgen` or `diffsims` comparison
   artifact

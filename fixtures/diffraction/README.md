@@ -11,6 +11,9 @@ Current scope:
 - `fe_bcc_pymatgen_xrd_cuka.json`
   Peak-position and multiplicity baseline for powder XRD using `pymatgen` and the pinned `fe_bcc`
   fixture.
+- `zr_hcp_pymatgen_xrd_cuka.json`
+  Non-cubic peak-position and multiplicity baseline for powder XRD using `pymatgen` and the pinned
+  `zr_hcp` fixture. This case guards symmetry-family uniqueness without cubic index sorting.
 - `ni_fcc_diffsims_saed_001_200kev.json`
   Indexed shell-geometry baseline for the `ni_fcc` `[001]` SAED case using `diffsims`.
 - `fe_bcc_diffsims_saed_001_200kev.json`

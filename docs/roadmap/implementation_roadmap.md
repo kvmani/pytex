@@ -14,8 +14,10 @@ features are added aggressively.
 
 ### Current Status Snapshot
 
-As of 2026-07-11, the current working baseline adds the next interim feature slice while keeping
-Phase 1 claim discipline intact: EBSD calibration geometry primitives, Miller-Bravais
+As of 2026-07-12, the current working baseline adds the next validation-hardening slice while keeping
+Phase 1 claim discipline intact: powder reflection enumeration now emits one representative per
+symmetry family, and a pinned HCP zirconium baseline extends external XRD evidence beyond cubic
+index canonicalization. The preceding interim slice added EBSD calibration geometry primitives, Miller-Bravais
 plane/direction wrappers, lattice metric helpers, and a first SAED zone-axis indexing helper are
 implemented with deterministic unit coverage and JSON-contract round trips. The documentation
 surface has also moved the primary architecture and foundation maps from inline Mermaid sketches to

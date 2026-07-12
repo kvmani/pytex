@@ -23,6 +23,11 @@ I_{hkl} \propto m_{hkl} \, |F_{hkl}|^2 \, L_{p}(2\theta),
 \]
 where $m_{hkl}$ is the multiplicity inferred from the phase point-group symmetry, $F_{hkl}$ is a simple atomic-number-based structure-factor proxy over the unit cell, and $L_p$ is a Lorentz-polarization term.
 
+Enumeration returns one deterministic representative for each symmetry orbit $\{hkl\}$, while
+$m_{hkl}$ records the size of that orbit. Emitting every equivalent index as a separate reflection
+would apply multiplicity twice when constructing a powder spectrum and is therefore excluded by the
+family-uniqueness invariant.
+
 This is suitable for foundational workflows and teaching. It is not yet a complete scattering-factor or instrument model.
 
 \subsection{Spectrum Construction}

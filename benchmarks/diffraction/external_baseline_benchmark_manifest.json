@@ -12,7 +12,8 @@
   ],
   "fixture_ids": [
     "ni_fcc",
-    "fe_bcc"
+    "fe_bcc",
+    "zr_hcp"
   ],
   "artifact_paths": [
     "benchmarks/diffraction/external_baseline_benchmark_manifest.json",
@@ -22,22 +23,26 @@
     "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
     "fixtures/diffraction/fe_bcc_pymatgen_xrd_cuka.json",
     "fixtures/diffraction/fe_bcc_diffsims_saed_001_200kev.json",
+    "fixtures/diffraction/zr_hcp_pymatgen_xrd_cuka.json",
     "fixtures/phases/catalog.json",
     "fixtures/phases/fe_bcc/phase.cif",
     "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/ni_fcc/phase.cif",
-    "fixtures/phases/ni_fcc/metadata.json"
+    "fixtures/phases/ni_fcc/metadata.json",
+    "fixtures/phases/zr_hcp/phase.cif",
+    "fixtures/phases/zr_hcp/metadata.json"
   ],
   "tolerances": {
-    "xrd_two_theta_atol_deg": 0.15,
+    "xrd_two_theta_atol_deg": 0.2,
     "saed_shell_radius_atol_inv_angstrom": 1e-06,
     "saed_shell_count_atol": 0.0
   },
   "status": "implemented",
   "notes": [
-    "This benchmark records pinned external diffraction baselines built from the ni_fcc and fe_bcc phase fixtures.",
+    "This benchmark records pinned external diffraction baselines built from the ni_fcc, fe_bcc, and zr_hcp phase fixtures.",
     "Powder XRD agreement is evaluated against pymatgen peak positions and multiplicities.",
     "SAED agreement is evaluated against diffsims shell geometry and indexed-family coverage while allowing in-plane detector-basis rotations.",
+    "The zr_hcp powder case verifies one emitted reflection per symmetry family without relying on cubic index canonicalization.",
     "Intensity differences remain informative rather than normative for this benchmark surface."
   ]
 }

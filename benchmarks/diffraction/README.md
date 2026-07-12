@@ -9,7 +9,8 @@ Current scope:
 - reflection-family grouping
 - orientation candidate ranking and local refinement
 - compact phase-backed diffraction demos and validation inputs derived from `fixtures/phases/`
-- pinned external-baseline reference artifacts for powder XRD and SAED derived from the `ni_fcc` fixture
+- pinned external-baseline reference artifacts for cubic powder XRD and SAED plus a non-cubic HCP
+  powder-XRD case derived from the phase-fixture corpus
 
 The external-baseline program currently uses compact pinned artifacts generated from independent
 open-source reference implementations and versioned in-repo so the default test suite can validate

@@ -1,0 +1,445 @@
+{
+  "schema_id": "pytex.diffraction_external_baseline.xrd",
+  "schema_version": "1.0.0",
+  "fixture_id": "zr_hcp",
+  "phase_name": "zirconium-hcp",
+  "source_kind": "open_source_reference_implementation",
+  "source_package": {
+    "name": "pymatgen",
+    "version": "2026.3.23",
+    "calculator": "XRDCalculator"
+  },
+  "radiation": "CuKa",
+  "two_theta_range_deg": [
+    20.0,
+    120.0
+  ],
+  "reference_peaks": [
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        0
+      ],
+      "multiplicity": 6,
+      "two_theta_deg": 31.974986,
+      "relative_intensity": 24.12861
+    },
+    {
+      "representative_hkl": [
+        0,
+        0,
+        0,
+        2
+      ],
+      "multiplicity": 2,
+      "two_theta_deg": 34.862464,
+      "relative_intensity": 25.355215
+    },
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        1
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 36.542926,
+      "relative_intensity": 100.0
+    },
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        2
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 48.025031,
+      "relative_intensity": 15.020566
+    },
+    {
+      "representative_hkl": [
+        2,
+        -1,
+        -1,
+        0
+      ],
+      "multiplicity": 6,
+      "two_theta_deg": 56.9864,
+      "relative_intensity": 17.749034
+    },
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        3
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 63.610947,
+      "relative_intensity": 18.861363
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        -2,
+        0
+      ],
+      "multiplicity": 6,
+      "two_theta_deg": 66.851384,
+      "relative_intensity": 2.692956
+    },
+    {
+      "representative_hkl": [
+        2,
+        -1,
+        -1,
+        2
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 68.569976,
+      "relative_intensity": 19.924348
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        -2,
+        1
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 69.619741,
+      "relative_intensity": 14.266565
+    },
+    {
+      "representative_hkl": [
+        0,
+        0,
+        0,
+        4
+      ],
+      "multiplicity": 2,
+      "two_theta_deg": 73.614057,
+      "relative_intensity": 2.684738
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        -2,
+        2
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 77.664015,
+      "relative_intensity": 3.46177
+    },
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        4
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 82.508133,
+      "relative_intensity": 2.961072
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        -2,
+        3
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 90.612954,
+      "relative_intensity": 7.294661
+    },
+    {
+      "representative_hkl": [
+        3,
+        -1,
+        -2,
+        0
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 93.55717,
+      "relative_intensity": 2.310409
+    },
+    {
+      "representative_hkl": [
+        3,
+        -1,
+        -2,
+        1
+      ],
+      "multiplicity": 24,
+      "two_theta_deg": 96.137383,
+      "relative_intensity": 13.373443
+    },
+    {
+      "representative_hkl": [
+        2,
+        -1,
+        -1,
+        4
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 99.965538,
+      "relative_intensity": 8.579502
+    },
+    {
+      "representative_hkl": [
+        3,
+        -1,
+        -2,
+        2
+      ],
+      "multiplicity": 24,
+      "two_theta_deg": 103.976147,
+      "relative_intensity": 4.195962
+    },
+    {
+      "representative_hkl": [
+        1,
+        0,
+        -1,
+        5
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 105.868466,
+      "relative_intensity": 6.266714
+    },
+    {
+      "representative_hkl": [
+        2,
+        0,
+        -2,
+        4
+      ],
+      "multiplicity": 12,
+      "two_theta_deg": 108.952032,
+      "relative_intensity": 2.090578
+    },
+    {
+      "representative_hkl": [
+        3,
+        0,
+        -3,
+        0
+      ],
+      "multiplicity": 6,
+      "two_theta_deg": 111.437478,
+      "relative_intensity": 4.211988
+    },
+    {
+      "representative_hkl": [
+        3,
+        -1,
+        -2,
+        3
+      ],
+      "multiplicity": 24,
+      "two_theta_deg": 117.765879,
+      "relative_intensity": 13.19438
+    }
+  ],
+  "pytex_reference_families": [
+    {
+      "representative_hkl": [
+        0,
+        1,
+        0
+      ],
+      "two_theta_deg": 31.948583,
+      "multiplicity": 6
+    },
+    {
+      "representative_hkl": [
+        0,
+        0,
+        2
+      ],
+      "two_theta_deg": 34.83353,
+      "multiplicity": 2
+    },
+    {
+      "representative_hkl": [
+        0,
+        1,
+        1
+      ],
+      "two_theta_deg": 36.5125,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        1,
+        2
+      ],
+      "two_theta_deg": 47.983978,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        1,
+        1,
+        0
+      ],
+      "two_theta_deg": 56.936382,
+      "multiplicity": 6
+    },
+    {
+      "representative_hkl": [
+        0,
+        1,
+        3
+      ],
+      "two_theta_deg": 63.553803,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        2,
+        0
+      ],
+      "two_theta_deg": 66.790568,
+      "multiplicity": 6
+    },
+    {
+      "representative_hkl": [
+        1,
+        1,
+        2
+      ],
+      "two_theta_deg": 68.507157,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        2,
+        1
+      ],
+      "two_theta_deg": 69.555678,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        0,
+        4
+      ],
+      "two_theta_deg": 73.545111,
+      "multiplicity": 2
+    },
+    {
+      "representative_hkl": [
+        0,
+        2,
+        2
+      ],
+      "two_theta_deg": 77.589852,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        1,
+        4
+      ],
+      "two_theta_deg": 82.427326,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        2,
+        3
+      ],
+      "two_theta_deg": 90.519843,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        1,
+        2,
+        0
+      ],
+      "two_theta_deg": 93.459149,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        1,
+        2,
+        1
+      ],
+      "two_theta_deg": 96.034835,
+      "multiplicity": 24
+    },
+    {
+      "representative_hkl": [
+        1,
+        1,
+        4
+      ],
+      "two_theta_deg": 99.855838,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        1,
+        2,
+        2
+      ],
+      "two_theta_deg": 103.858318,
+      "multiplicity": 24
+    },
+    {
+      "representative_hkl": [
+        0,
+        1,
+        5
+      ],
+      "two_theta_deg": 105.746545,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        2,
+        4
+      ],
+      "two_theta_deg": 108.823046,
+      "multiplicity": 12
+    },
+    {
+      "representative_hkl": [
+        0,
+        3,
+        0
+      ],
+      "two_theta_deg": 111.3024,
+      "multiplicity": 6
+    },
+    {
+      "representative_hkl": [
+        1,
+        2,
+        3
+      ],
+      "two_theta_deg": 117.613377,
+      "multiplicity": 24
+    }
+  ],
+  "notes": [
+    "Peak positions and multiplicities come from pymatgen's XRDCalculator using the pinned zr_hcp fixture.",
+    "PyTex comparisons should treat peak-position agreement as the hard external baseline and intensity differences as informative only."
+  ]
+}

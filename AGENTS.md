@@ -75,6 +75,21 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 
 ## Working Process
 
+### Durable progress and resumability
+
+- For every substantial multi-step task, keep a repository-local running progress note that records
+  the objective, decisions, completed work, verification results, current worktree state, and exact
+  next actions.
+- Update the note throughout the task, especially before long-running verification, commits,
+  pushes, or any likely interruption point, so another agent or a later session can resume without
+  reconstructing context from chat history.
+- Treat resumability as a primary working principle: leave the repository in an intelligible state,
+  distinguish completed work from planned work, and record blockers or unverified assumptions
+  explicitly.
+- Use `docs/development/active_task_progress.md` for the current task unless a more specific tracked
+  handoff document already exists. Archive or reset it only after the task is fully verified and its
+  durable outcomes have been incorporated into canonical documentation.
+
 ### Before coding
 
 - Read the closest authoritative docs for the affected subsystem.

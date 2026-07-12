@@ -247,6 +247,38 @@ PyTex currently:
   in addition to reconstruction outputs.
 - It does not yet claim full experimental correction doctrine or broad external harmonic parity.
 
+## Case 12: Powder Reflection Family-Uniqueness Audit
+
+### Scope
+
+This case verifies that powder enumeration returns one representative per symmetry family and
+applies the family multiplicity exactly once, including for a non-cubic HCP phase.
+
+### Code surface
+
+- `src/pytex/diffraction/xrd.py`
+- `tests/unit/test_diffraction_external_baselines.py`
+- `fixtures/diffraction/zr_hcp_pymatgen_xrd_cuka.json`
+
+### Reference basis
+
+- IUCr reciprocal-lattice and reflection-family conventions
+- `pymatgen.analysis.diffraction.xrd.XRDCalculator` applied to the hash-pinned `zr_hcp` CIF fixture
+
+### Algorithm used by PyTex
+
+PyTex enumerates integer Miller triplets, constructs the complete point-group orbit including the
+Friedel pair, records a deterministic representative once, and stores the orbit size as the
+reflection multiplicity. The HCP audit compares the resulting ordered `2theta` peaks and
+multiplicities against the pinned independent reference artifact without applying cubic-only index
+sorting.
+
+### Current claim boundary
+
+- The cubic and HCP starter cases support peak-position, multiplicity, and family-uniqueness claims.
+- They do not establish broad low-symmetry parity or validate the pedagogical intensity proxy as a
+  full physical intensity model.
+
 ## Current Audit Findings
 
 The documented cases above already show issues that are scientifically important even when the

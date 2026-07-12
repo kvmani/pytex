@@ -27,6 +27,7 @@
     "fixtures/diffraction/ni_fcc_diffsims_saed_001_200kev.json",
     "fixtures/diffraction/fe_bcc_pymatgen_xrd_cuka.json",
     "fixtures/diffraction/fe_bcc_diffsims_saed_001_200kev.json",
+    "fixtures/diffraction/zr_hcp_pymatgen_xrd_cuka.json",
     "fixtures/phases/catalog.json",
     "fixtures/phases/fe_bcc/metadata.json",
     "fixtures/phases/zr_hcp/metadata.json",
@@ -39,7 +40,8 @@
     "diffraction_external_baseline_cases"
   ],
   "notes": [
-    "Internal invariants are implemented and pinned external-baseline cases now exist for powder XRD and SAED across both ni_fcc and fe_bcc starter materials.",
+    "Internal invariants are implemented and pinned external-baseline cases now cover cubic powder XRD and SAED for ni_fcc and fe_bcc plus non-cubic powder XRD for zr_hcp.",
+    "Powder reflection enumeration emits one representative per symmetry family; the HCP baseline guards against duplicate family emission and multiplicity overcounting.",
     "Bundled phase-fixture metadata tie the starter diffraction corpus to pinned crystallographic provenance.",
     "The current external-baseline surface is geometry-first and intentionally separates peak-position or shell-geometry agreement from stronger intensity-model claims.",
     "The controlling execution environment for these external-baseline cases is the full scientific lane."
