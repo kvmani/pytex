@@ -51,14 +51,14 @@ is auditable, not skipped silently.
 | ebsd/models.py | done | 5 | 5 | c30efbe + this |
 | core/orientation.py (rest) | in progress | 3 done, 3 deferred | 3 | this commit |
 | diffraction/models.py | deferred (see notes) | 1 HOT (simulate_spots) | 0 | - |
-| texture/harmonics.py | pending | - | - | - |
-| texture/models.py | pending | - | - | - |
-| properties/tensors.py | pending | - | - | - |
-| core/symmetry.py | pending | - | - | - |
-| core/point_groups.py | pending | - | - | - |
-| core/hexagonal.py | pending | - | - | - |
-| diffraction/xrd.py | pending | - | - | - |
-| diffraction/saed.py | pending | - | - | - |
+| texture/harmonics.py | reviewed - COLD | 0 | 0 | - |
+| texture/models.py | reviewed - COLD | 0 | 0 | - |
+| properties/tensors.py | reviewed - COLD | 0 | 0 | - |
+| core/symmetry.py | reviewed - COLD | 0 | 0 | - |
+| core/point_groups.py | reviewed - COLD | 0 | 0 | - |
+| core/hexagonal.py | reviewed - COLD | 0 | 0 | - |
+| diffraction/xrd.py | reviewed - 1 HOT deferred | 1 | 0 | - |
+| diffraction/saed.py | reviewed - COLD/deferred | - | 0 | - |
 
 ## Per-File Findings
 
@@ -135,6 +135,45 @@ baselines before committing. The outer orientation-search loops
 (`index_pattern`, refinement grid) are algorithmic objective evaluations, not
 per-element array math -> COLD; they speed up for free once simulate_spots is
 vectorised.
+
+### Other files reviewed this session (classification + rationale)
+
+- `core/symmetry.py`, `core/point_groups.py`: loops operate on point-group
+  operator sets (<= 48 matrices) computed once at construction and small BFS
+  group closures. Fixed tiny size -> COLD (vectorising gives no benefit).
+- `properties/tensors.py`: Voigt <-> rank-4 loops are fixed 6x6 / 3x3x3x3
+  index maps; `homogenize_elastic` already uses `einsum`. COLD.
+- `texture/models.py`, `texture/harmonics.py`: numerical cores already use
+  `einsum`/matrix ops; remaining loops are over symmetry families (<=48),
+  pole-figure lists, or iterative solvers (projected-gradient) -> COLD.
+- `core/hexagonal.py`: small index-conversion helpers -> COLD.
+- `diffraction/xrd.py`: `_structure_factor_xray` site loop is tiny (few atoms;
+  attribute gathering stays scalar) -> low value. `generate_powder_reflections`
+  hkl loop (~(2n+1)^3 reflections) is a genuine HOT candidate but a moderate
+  refactor touching structure factors + multiplicity grouping -> DEFERRED with
+  a golden-capture plan (test coverage: `test_generate_xrd_pattern_contains_
+  expected_reflection`).
+- `diffraction/saed.py` + `diffraction/models.py::simulate_spots`: HOT,
+  DEFERRED (see the simulate_spots plan above); externally-pinned baselines
+  demand a golden-equivalence harness before rewriting.
+
+## Session Checkpoint (2026-07-12)
+
+Converted this session with verified exact equivalence (max diffs ~1e-14):
+ebsd/models.py (grod_map_deg, boundary_network, _representative_orientation_
+index, grain_perimeters, remove_wild_spikes detection) and core/orientation.py
+(as_matrices, matrices_to_quaternions validation, as_euler). Full suite green
+(622 passed) and ~30% faster wall-clock (30s -> 22s). All pushed.
+
+RESUME HERE next session, in priority order:
+1. `diffraction/models.py::simulate_spots` - golden-capture, then mask-based
+   vectorised rewrite (biggest remaining HOT win).
+2. `diffraction/xrd.py::generate_powder_reflections` - batch structure factors
+   over all hkls; golden-capture the reflection list first.
+3. core/orientation.py deferred: `canonicalize` map (~2125) and
+   `project_to_exact_fundamental_region` map (~2155/2181) - batch the
+   per-orientation symmetry reduction with captured golden outputs.
+Each: capture golden -> rewrite vectorised -> assert bit-equivalence + suite.
 
 Remaining ebsd/models.py loops reviewed and classified COLD (kept): per-grain
 dict comprehensions (grain count is small; inner ops already vectorised),
