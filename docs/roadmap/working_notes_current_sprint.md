@@ -66,7 +66,16 @@ consumer surface. CSL matching uses the symmetry-reduced deviation
 | K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | committed |
 | L | Polycrystal elastic homogenization (`homogenize_elastic`, Voigt/Reuss/Hill) | done, tests green | committed |
 | M | Grain perimeter / area / shape factor (staircase, regular grid) | done, tests green | committed |
-| N | Texture index + entropy on `HarmonicODF` (SO(3) quadrature) | done, tests green | this commit |
+| N | Texture index + entropy on `HarmonicODF` (SO(3) quadrature) | done, tests green | committed |
+| O | scipy adopted as core dep + vectorization principle (9a) | done | committed |
+| P | Full-constraint Taylor factor (`properties/taylor.py`, scipy LP) | done, tests green | this commit |
+
+Note (O/P): scipy is now a first-class core dependency (`pyproject.toml`), with
+principle 9a in `docs/standards/development_principles.md` mandating highly
+vectorized implementations. The Taylor model vectorizes all Schmid-tensor setup
+via `einsum` and solves the per-orientation minimum-slip LP with SciPy HiGHS
+(`scipy.optimize.linprog`). mypy needs `scipy.*` in the ignore-missing-imports
+overrides. Validated: cube orientation = sqrt(6) exactly, random fcc mean ~3.06.
 
 Note (K): slotted frozen dataclass subclasses cannot use zero-arg `super()`
 in `__post_init__` (dataclass(slots=True) rebuilds the class, breaking the

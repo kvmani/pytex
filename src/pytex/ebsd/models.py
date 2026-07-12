@@ -2100,6 +2100,41 @@ class CrystalMap:
         values.setflags(write=False)
         return values
 
+    def taylor_factor_map(
+        self,
+        family: Any,
+        *,
+        tension_axis: str | ArrayLike = "z",
+        strain_tensor: ArrayLike | None = None,
+    ) -> np.ndarray:
+        """Per-point full-constraint Taylor factor for a slip-system family.
+
+        ``family`` is a `pytex.properties.SlipSystemFamily`. Provide either a
+        ``tension_axis`` (specimen-frame label or vector, default ``"z"``) for
+        uniaxial tension or an explicit deviatoric ``strain_tensor``. The result
+        is reshaped to the map grid when a regular 2-D grid exists.
+        """
+
+        from pytex.properties.taylor import taylor_factors
+
+        if strain_tensor is not None:
+            values = np.asarray(
+                taylor_factors(family, self.orientations, strain_tensor=strain_tensor),
+                dtype=np.float64,
+            )
+        else:
+            axis = _specimen_direction_vector(tension_axis, self.orientations.specimen_frame)
+            values = np.asarray(
+                taylor_factors(family, self.orientations, tension_axis=axis),
+                dtype=np.float64,
+            )
+        if self.grid_shape is not None and len(self.grid_shape) == 2:
+            rows, cols = self._require_regular_2d_grid()
+            values = values.reshape((rows, cols))
+        values = np.ascontiguousarray(values)
+        values.setflags(write=False)
+        return values
+
     def _representative_orientation_index(
         self,
         member_indices: np.ndarray,

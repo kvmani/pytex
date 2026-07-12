@@ -279,6 +279,8 @@ from pytex.properties import (
     bcc_110_slip,
     fcc_octahedral_slip,
     homogenize_elastic,
+    taylor_factors,
+    uniaxial_strain_tensor,
 )
 from pytex.texture import (
     ODF,
@@ -567,6 +569,7 @@ __all__ = [
     "save_documentation_figure_svg",
     "specimen_direction_vector",
     "spherical_angles_to_directions",
+    "taylor_factors",
     "to_json_contract",
     "to_orix_direction",
     "to_orix_miller_direction",
@@ -578,6 +581,7 @@ __all__ = [
     "to_orix_rotation",
     "to_orix_symmetry",
     "transformation_manifest_schema_path",
+    "uniaxial_strain_tensor",
     "validate_benchmark_manifest",
     "validate_ebsd_import_manifest",
     "validate_experiment_manifest",

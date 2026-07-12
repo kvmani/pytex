@@ -104,3 +104,7 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = ["yaml", "yaml.*", "mpl_toolkits", "mpl_toolkits.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["scipy", "scipy.*"]
+ignore_missing_imports = true

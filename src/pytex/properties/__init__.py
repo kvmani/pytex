@@ -4,6 +4,10 @@ from pytex.properties.slip import (
     bcc_110_slip,
     fcc_octahedral_slip,
 )
+from pytex.properties.taylor import (
+    taylor_factors,
+    uniaxial_strain_tensor,
+)
 from pytex.properties.tensors import (
     ComplianceTensor,
     ElasticTensor,
@@ -20,4 +24,6 @@ __all__ = [
     "bcc_110_slip",
     "fcc_octahedral_slip",
     "homogenize_elastic",
+    "taylor_factors",
+    "uniaxial_strain_tensor",
 ]
