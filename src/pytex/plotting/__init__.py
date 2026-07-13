@@ -1,4 +1,12 @@
 from pytex.plotting._render import save_documentation_figure_svg
+from pytex.plotting.colormaps import (
+    OKABE_ITO_COLORS,
+    ColormapSpec,
+    categorical_colors,
+    get_pytex_colormap,
+    register_pytex_colormaps,
+    srgb_to_lightness,
+)
 from pytex.plotting.crystal3d import (
     CrystalAtomGlyph,
     CrystalBondGlyph,
@@ -48,6 +56,8 @@ from pytex.plotting.styles import (
 )
 
 __all__ = [
+    "OKABE_ITO_COLORS",
+    "ColormapSpec",
     "CrystalAtomGlyph",
     "CrystalBondGlyph",
     "CrystalCellGlyph",
@@ -61,6 +71,8 @@ __all__ = [
     "IPFColorKey",
     "PlaneAnnotationStyle",
     "build_crystal_scene",
+    "categorical_colors",
+    "get_pytex_colormap",
     "ipf_color",
     "ipf_colors",
     "list_style_themes",
@@ -90,6 +102,8 @@ __all__ = [
     "plot_xrd_pattern",
     "plot_youngs_modulus_surface",
     "read_style_yaml",
+    "register_pytex_colormaps",
     "resolve_style",
     "save_documentation_figure_svg",
+    "srgb_to_lightness",
 ]
