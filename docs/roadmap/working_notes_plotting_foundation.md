@@ -38,6 +38,33 @@ tests/unit/test_repo_integrity.py`. Commit + push per task.
   (`pytex.misorientation` default), and `scale_bar=` on IPF/KAM/property/
   phase maps.
 
+## Crystal Viewer Ledger (VESTA-class pass, 2026-07-13)
+
+| # | Task | Status | Commit |
+| --- | --- | --- | --- |
+| D | Unified depth-sorted mesh renderer + two-tone bonds + box-aspect fix | done, tests green | ae407a5 |
+| E | Coordination polyhedra (`polyhedra_species=`, Qhull, lit translucent faces) | done, tests green | b07fd0e |
+
+Architecture (documented in the `crystal3d` module docstring): strict
+two-layer split. `CrystalScene` is an immutable, renderer-independent scene
+graph of typed glyphs (atoms, bonds with per-end two-tone colors, cells,
+planes, directions, polyhedra) in Cartesian angstrom - the portable contract
+a future GUI/OpenGL backend consumes unchanged. The matplotlib renderer
+rasterizes atoms/bonds/polyhedra into ONE `Poly3DCollection` of Blinn-Phong-
+lit quads so every face is globally depth-sorted (correct mutual occlusion
+from any angle; per-artist painter's-order artifacts are impossible by
+construction). Unit-sphere meshes are cached per resolution (`lru_cache`).
+Ball-and-stick theme defaults: `atom_radius_scale 0.55`, opaque atoms/bonds,
+`bond_color_mode: two_tone`; `polyhedron_*` keys style the polyhedral view.
+Tests: `test_crystal3d_rendering.py` (two-tone glyph semantics, unified-mesh
+face counts, octahedron hull + outward normals, cached meshes).
+
+Crystal-viewer next candidates: periodic boundary atoms (VESTA shows
+translated copies of atoms on cell faces/corners so cells look complete);
+depth-cued fog option; orthographic default + crystallographic view presets
+(along a/b/c, [uvw]); SSAO-like rim darkening; anti-aliased polyhedron edge
+collection (Line3DCollection) inside the sorted mesh; per-species legend.
+
 ## Next Candidates (rough priority)
 
 1. Pole-figure / IPF publication upgrade: route `builders.py` contour paths
