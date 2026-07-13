@@ -277,28 +277,45 @@ def plot_inverse_pole_figure(
 def plot_odf_phi2_sections(
     sections: Any,
     *,
-    cmap: str = "viridis",
+    cmap: str = "pytex.texture",
     levels: int = 12,
+    max_cols: int = 3,
+    panel_labels: bool = True,
     title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
 ) -> Any:
-    """Render a pre-computed `ODFSectionData` as a panel of phi2 contour maps.
+    """Render a pre-computed `ODFSectionData` as a publication section panel.
 
     Complements ``plot_odf(kind="sections")`` by plotting an already-sampled
-    `ODF.phi2_sections(...)` result, so the density grids can be computed once and
-    then analysed or plotted without recomputation.
+    `ODF.phi2_sections(...)` result, so the density grids can be computed once
+    and then analysed or plotted without recomputation. Sections lay out on a
+    `PanelGrid` (at most ``max_cols`` per row) under the requested theme, with
+    Bunge-Euler math labels, optional (a), (b), (c) panel labels, a shared
+    density scale across sections, and an m.r.d. colorbar. The default
+    colormap is the white-anchored ``pytex.texture`` intensity ramp.
     """
 
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
-    count = sections.section_count
-    fig, axes_row = plt.subplots(1, count, figsize=(3.2 * count, 3.4), squeeze=False)
+    from pytex.plotting.colormaps import register_pytex_colormaps
+    from pytex.plotting.figure import PanelGrid, label_panels
+
+    register_pytex_colormaps()
+    count = int(sections.section_count)
+    cols = max(1, min(count, int(max_cols)))
+    rows = (count + cols - 1) // cols
+    grid = PanelGrid(
+        rows,
+        cols,
+        panel_size=(3.2, 3.0),
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+    )
     vmax = sections.max_density
+    contour = None
     for index in range(count):
-        axis = axes_row[0][index]
+        axis = grid.axes_flat[index]
         contour = axis.contourf(
             sections.phi1_deg,
             sections.big_phi_deg,
@@ -308,16 +325,25 @@ def plot_odf_phi2_sections(
             vmin=0.0,
             vmax=vmax,
         )
-        axis.set_title(f"phi2 = {sections.phi2_deg[index]:.0f} deg", fontsize=10)
-        axis.set_xlabel("phi1 (deg)")
-        if index == 0:
-            axis.set_ylabel("Phi (deg)")
+        axis.set_title(rf"$\varphi_2 = {sections.phi2_deg[index]:.0f}^\circ$")
+        if index // cols == rows - 1 or index + cols >= count:
+            axis.set_xlabel(r"$\varphi_1$ (deg)")
+        if index % cols == 0:
+            axis.set_ylabel(r"$\Phi$ (deg)")
         axis.set_aspect("equal", adjustable="box")
         axis.invert_yaxis()
-    fig.colorbar(contour, ax=axes_row[0].tolist(), shrink=0.8, label="ODF density")
+    grid.hide_unused(count)
+    if panel_labels and count > 1:
+        label_panels(grid.axes_flat[:count])
+    if contour is not None:
+        grid.shared_colorbar(
+            contour,
+            axes=grid.axes_flat[:count],
+            label="ODF density (m.r.d.)",
+        )
     if title is not None:
-        fig.suptitle(title)
-    return fig
+        grid.figure.suptitle(title)
+    return grid.figure
 
 
 def plot_odf(

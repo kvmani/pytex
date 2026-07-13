@@ -10,6 +10,8 @@ from pytex.ebsd.models import (
     GrainSegmentation,
     _specimen_direction_vector,
 )
+from pytex.plotting.colormaps import categorical_colors, register_pytex_colormaps
+from pytex.plotting.figure import add_scale_bar
 from pytex.plotting.ipf import IPFColorKey
 from pytex.plotting.styles import resolve_style
 
@@ -79,6 +81,7 @@ def plot_ipf_map(
     boundary_overlay: GrainSegmentation | GrainBoundaryNetwork | None = None,
     boundary_color: str = "#111111",
     boundary_linewidth: float = 0.85,
+    scale_bar: float | None = None,
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
@@ -131,6 +134,8 @@ def plot_ipf_map(
         color=boundary_color,
         linewidth=boundary_linewidth,
     )
+    if scale_bar is not None:
+        add_scale_bar(axes, scale_bar)
     direction_label = direction if isinstance(direction, str) else "custom"
     axes.set_xlabel(crystal_map.map_frame.axes[0])
     axes.set_ylabel(crystal_map.map_frame.axes[1])
@@ -153,13 +158,15 @@ def plot_kam_map(
     boundary_overlay: GrainSegmentation | GrainBoundaryNetwork | None = None,
     boundary_color: str = "#111111",
     boundary_linewidth: float = 0.85,
-    cmap: str = "viridis",
+    cmap: str = "pytex.misorientation",
+    scale_bar: float | None = None,
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
     plt, _ = _require_matplotlib()
+    register_pytex_colormaps()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     values = crystal_map.kernel_average_misorientation_deg(
@@ -196,6 +203,8 @@ def plot_kam_map(
         color=boundary_color,
         linewidth=boundary_linewidth,
     )
+    if scale_bar is not None:
+        add_scale_bar(axes, scale_bar)
     axes.set_xlabel(crystal_map.map_frame.axes[0])
     axes.set_ylabel(crystal_map.map_frame.axes[1])
     axes.set_title("Kernel Average Misorientation")
@@ -216,6 +225,7 @@ def plot_property_map(
     vmin: float | None = None,
     vmax: float | None = None,
     colorbar_label: str | None = None,
+    scale_bar: float | None = None,
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
@@ -267,6 +277,8 @@ def plot_property_map(
         color=boundary_color,
         linewidth=boundary_linewidth,
     )
+    if scale_bar is not None:
+        add_scale_bar(axes, scale_bar)
     axes.set_xlabel(crystal_map.map_frame.axes[0])
     axes.set_ylabel(crystal_map.map_frame.axes[1])
     axes.set_title(f"Property Map ({name})")
@@ -283,6 +295,7 @@ def plot_phase_map(
     boundary_overlay: GrainSegmentation | GrainBoundaryNetwork | None = None,
     boundary_color: str = "#111111",
     boundary_linewidth: float = 0.85,
+    scale_bar: float | None = None,
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
@@ -298,16 +311,9 @@ def plot_phase_map(
     if phase_ids is None:
         raise ValueError("plot_phase_map() requires a CrystalMap with phase assignments.")
     entries = crystal_map.resolved_phase_entries
-    default_cycle = (
-        "#4C72B0",
-        "#DD8452",
-        "#55A868",
-        "#C44E52",
-        "#8172B3",
-        "#937860",
-        "#DA8BC3",
-        "#8C8C8C",
-    )
+    # fixed-order CVD-safe identity palette; a phase keeps its color as
+    # maps gain or lose phases
+    default_cycle = categorical_colors(len(entries))
     ordered_ids = [entry.phase_id for entry in entries]
     id_to_index = {phase_id: index for index, phase_id in enumerate(ordered_ids)}
     palette: list[str] = []
@@ -315,7 +321,7 @@ def plot_phase_map(
         if colors is not None and entry.name in colors:
             palette.append(colors[entry.name])
         else:
-            palette.append(default_cycle[index % len(default_cycle)])
+            palette.append(default_cycle[index])
     indexed = np.array([id_to_index[int(value)] for value in phase_ids], dtype=np.float64)
     colormap = ListedColormap(palette)
     norm = BoundaryNorm(np.arange(-0.5, len(entries) + 0.5, 1.0), colormap.N)
@@ -363,6 +369,8 @@ def plot_phase_map(
         color=boundary_color,
         linewidth=boundary_linewidth,
     )
+    if scale_bar is not None:
+        add_scale_bar(axes, scale_bar)
     axes.set_xlabel(crystal_map.map_frame.axes[0])
     axes.set_ylabel(crystal_map.map_frame.axes[1])
     axes.set_title("Phase Map")

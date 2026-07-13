@@ -442,6 +442,32 @@ def test_plot_phase_map_returns_figure_with_legend() -> None:
     assert legend is not None
 
 
+def test_plot_phase_map_uses_okabe_ito_identity_palette() -> None:
+    from matplotlib.colors import to_hex
+
+    from pytex.plotting.colormaps import OKABE_ITO_COLORS
+
+    crystal_map, _ = make_crystal_map()
+    figure = plot_phase_map(crystal_map)
+    legend = figure.axes[0].get_legend()
+    patch_colors = [to_hex(patch.get_facecolor()) for patch in legend.get_patches()]
+    assert patch_colors == [color.lower() for color in OKABE_ITO_COLORS[: len(patch_colors)]]
+
+
+def test_plot_kam_map_defaults_to_pytex_misorientation_ramp() -> None:
+    crystal_map, _ = make_crystal_map()
+    figure = plot_kam_map(crystal_map)
+    assert figure.axes[0].images[0].get_cmap().name == "pytex.misorientation"
+
+
+def test_map_plots_accept_scale_bar() -> None:
+    crystal_map, _ = make_crystal_map()
+    figure = plot_kam_map(crystal_map, scale_bar=1.0)
+    assert len(figure.axes[0].artists) == 1
+    figure = plot_phase_map(crystal_map, scale_bar=1.0)
+    assert len(figure.axes[0].artists) == 1
+
+
 def test_plot_ipf_xyz_maps_returns_three_panels() -> None:
     crystal_map, _ = make_crystal_map()
     figure = plot_ipf_xyz_maps(crystal_map)

@@ -378,3 +378,32 @@ def test_plot_odf_phi2_sections_returns_panel() -> None:
     figure = plot_odf_phi2_sections(sections)
     # three section panels + one shared colorbar axis
     assert len(figure.axes) == 4
+
+
+def test_plot_odf_phi2_sections_publication_defaults() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_odf_phi2_sections
+
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(0.0, 45.0, 0.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(component)
+    sections = odf.phi2_sections(phi2_deg=[0.0, 30.0, 60.0, 90.0], resolution_deg=15.0)
+    figure = plot_odf_phi2_sections(sections, max_cols=2)
+    # 2x2 section grid + one shared colorbar axis
+    assert len(figure.axes) == 5
+    assert figure.axes[0].get_title() == r"$\varphi_2 = 0^\circ$"
+    assert figure.axes[0].get_ylabel() == r"$\Phi$ (deg)"
+    assert figure.axes[2].get_xlabel() == r"$\varphi_1$ (deg)"
+    # automatic panel labels
+    labels = [text.get_text() for axis in figure.axes[:4] for text in axis.texts]
+    assert "(a)" in labels and "(d)" in labels
+    # shared colorbar in multiples-of-random-density units
+    assert figure.axes[-1].get_ylabel() == "ODF density (m.r.d.)"
