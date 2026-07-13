@@ -6,9 +6,10 @@ publication-ready and rich enough to exceed MTEX (texture) and OVITO (atomic
 visualization) output quality. If the session is interrupted, resume by
 reading this file top to bottom.
 
-Gates per task (unchanged): `python -m ruff check .`, `python -m mypy src`,
-`python -m pytest -q --deselect tests/unit/test_phase_fixtures.py --deselect
-tests/unit/test_repo_integrity.py`. Commit + push per task.
+Gates per task: `python -m ruff check .`, `python -m mypy src`, and the full
+`python -m pytest -q` (the phase-fixture / repo-integrity hash pins were
+regenerated on 2026-07-13, so no deselects are needed anymore). Commit + push
+per task.
 
 ## Foundation Ledger
 
