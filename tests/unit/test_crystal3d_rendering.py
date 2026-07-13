@@ -97,6 +97,77 @@ def test_renderer_merges_atoms_and_bonds_into_one_depth_sorted_mesh() -> None:
     assert len(meshes[0].get_paths()) == expected_faces
 
 
+def make_octahedral_phase() -> Phase:
+    """One Ti center with six O face-center neighbors: ideal octahedron."""
+
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(4.0, 4.0, 4.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    oxygen_fractionals = (
+        (0.5, 0.5, 0.0),
+        (0.5, 0.5, 1.0),
+        (0.5, 0.0, 0.5),
+        (0.5, 1.0, 0.5),
+        (0.0, 0.5, 0.5),
+        (1.0, 0.5, 0.5),
+    )
+    sites = [
+        AtomicSite(label="Ti1", species="Ti", fractional_coordinates=np.array([0.5, 0.5, 0.5]))
+    ]
+    sites.extend(
+        AtomicSite(label=f"O{i}", species="O", fractional_coordinates=np.array(frac))
+        for i, frac in enumerate(oxygen_fractionals)
+    )
+    return Phase(
+        "octahedron_demo",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        unit_cell=UnitCell(lattice=lattice, sites=tuple(sites)),
+    )
+
+
+def test_coordination_polyhedron_is_octahedron_with_outward_normals() -> None:
+    scene = build_crystal_scene(make_octahedral_phase(), polyhedra_species=("Ti",))
+    assert len(scene.polyhedra) == 1
+    polyhedron = scene.polyhedra[0]
+    assert polyhedron.center_species == "Ti"
+    # an octahedron's convex hull has exactly eight triangular faces
+    assert polyhedron.triangles_angstrom.shape == (8, 3, 3)
+    centers = polyhedron.triangles_angstrom.mean(axis=1)
+    outward = np.einsum(
+        "ni,ni->n", centers - polyhedron.center_angstrom, polyhedron.face_normals
+    )
+    assert np.all(outward > 0.0)
+    assert polyhedron.color == cpk_color("Ti")
+
+
+def test_polyhedra_skip_low_coordination_centers() -> None:
+    scene = build_crystal_scene(make_two_species_phase(), polyhedra_species=("Na",))
+    assert scene.polyhedra == ()
+
+
+def test_renderer_draws_polyhedron_faces_in_unified_mesh() -> None:
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
+    figure = plot_crystal_structure_3d(
+        make_octahedral_phase(),
+        polyhedra_species=("Ti",),
+        style_overrides={
+            "crystal": {"atom_surface_resolution": 8, "bond_surface_resolution": 6}
+        },
+    )
+    figure.canvas.draw()
+    axes = figure.axes[0]
+    meshes = [
+        artist for artist in axes.collections if isinstance(artist, Poly3DCollection)
+    ]
+    assert len(meshes) == 1
+    atom_faces = 7 * (8 - 1) ** 2
+    bond_faces = 6 * 2 * (6 - 1)
+    assert len(meshes[0].get_paths()) == atom_faces + bond_faces + 8
+
+
 def test_unit_sphere_quads_are_cached_unit_normals() -> None:
     quads_a, normals_a = _unit_sphere_quads(16)
     quads_b, normals_b = _unit_sphere_quads(16)

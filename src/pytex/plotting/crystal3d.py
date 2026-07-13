@@ -100,6 +100,44 @@ class CrystalBondGlyph:
 
 
 @dataclass(frozen=True, slots=True)
+class CrystalPolyhedronGlyph:
+    """A coordination polyhedron around a central atom.
+
+    ``triangles_angstrom`` holds the convex-hull triangles of the bonded
+    neighbor positions as an ``(n_faces, 3, 3)`` array, with matching outward
+    unit ``face_normals`` ``(n_faces, 3)``. Renderers draw the faces
+    translucent over the ball-and-stick model (the classic VESTA polyhedral
+    view) and may outline the edges.
+    """
+
+    center_angstrom: np.ndarray
+    center_species: str
+    triangles_angstrom: np.ndarray
+    face_normals: np.ndarray
+    color: str
+    alpha: float
+    edge_color: str
+    edge_width: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "center_angstrom", as_float_array(self.center_angstrom, shape=(3,))
+        )
+        triangles = np.ascontiguousarray(
+            np.asarray(self.triangles_angstrom, dtype=np.float64)
+        )
+        normals = np.ascontiguousarray(np.asarray(self.face_normals, dtype=np.float64))
+        if triangles.ndim != 3 or triangles.shape[1:] != (3, 3):
+            raise ValueError("triangles_angstrom must have shape (n_faces, 3, 3).")
+        if normals.shape != (triangles.shape[0], 3):
+            raise ValueError("face_normals must have shape (n_faces, 3).")
+        triangles.setflags(write=False)
+        normals.setflags(write=False)
+        object.__setattr__(self, "triangles_angstrom", triangles)
+        object.__setattr__(self, "face_normals", normals)
+
+
+@dataclass(frozen=True, slots=True)
 class CrystalCellOverlay:
     kind: str = "parallelepiped"
     anchor_fractional: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float64))
@@ -223,6 +261,14 @@ class CrystalCellGlyph:
 
 @dataclass(frozen=True, slots=True)
 class CrystalScene:
+    """Immutable, renderer-independent scene graph for one crystal structure.
+
+    Produced by `build_crystal_scene`; consumed by `plot_crystal_structure_3d`
+    (matplotlib) and by any future backend. All geometry is Cartesian
+    angstrom in the crystal frame; glyph tuples are ordered but carry no
+    drawing order semantics (renderers depth-sort).
+    """
+
     phase: Phase
     atoms: tuple[CrystalAtomGlyph, ...]
     bonds: tuple[CrystalBondGlyph, ...]
@@ -231,6 +277,7 @@ class CrystalScene:
     directions: tuple[CrystalDirectionGlyph, ...]
     lattice_edges: tuple[np.ndarray, ...]
     repeats: tuple[int, int, int]
+    polyhedra: tuple[CrystalPolyhedronGlyph, ...] = ()
 
     def bounds(self) -> np.ndarray:
         points: list[np.ndarray] = []
@@ -568,12 +615,72 @@ def _default_plane_indices(plane: CrystalPlane) -> tuple[int, ...]:
     return tuple(int(value) for value in plane.miller.indices)
 
 
+def _coordination_polyhedra(
+    atoms: tuple[CrystalAtomGlyph, ...],
+    *,
+    species: tuple[str, ...],
+    bond_tolerance_angstrom: float,
+    crystal_style: dict[str, Any],
+) -> tuple[CrystalPolyhedronGlyph, ...]:
+    """Convex-hull coordination polyhedra around every atom of the species.
+
+    Neighbors are the atoms within the chemical bond cutoff of the center
+    (covalent-radius sum plus tolerance, the same rule bonds use). Centers
+    with fewer than four neighbors, or with degenerate (coplanar) neighbor
+    sets, produce no polyhedron.
+    """
+
+    from scipy.spatial import ConvexHull, QhullError
+
+    if not species:
+        return ()
+    positions = np.vstack([atom.position_angstrom for atom in atoms])
+    radii = np.array([covalent_radius_angstrom(atom.species) for atom in atoms])
+    polyhedra: list[CrystalPolyhedronGlyph] = []
+    for index, atom in enumerate(atoms):
+        if atom.species not in species:
+            continue
+        distances = np.linalg.norm(positions - positions[index], axis=1)
+        cutoffs = radii[index] + radii + bond_tolerance_angstrom
+        neighbor_mask = (distances <= cutoffs) & (distances > 1e-9)
+        neighbors = positions[neighbor_mask]
+        if neighbors.shape[0] < 4:
+            continue
+        try:
+            hull = ConvexHull(neighbors)
+        except QhullError:
+            continue
+        triangles = neighbors[hull.simplices]
+        centers = triangles.mean(axis=1)
+        normals = np.asarray(hull.equations[:, :3], dtype=np.float64)
+        lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+        normals = normals / np.where(lengths == 0.0, 1.0, lengths)
+        # orient outward from the central atom (hull equations point outward
+        # from the hull interior, which contains the center)
+        flip = np.einsum("ni,ni->n", centers - positions[index], normals) < 0.0
+        normals[flip] *= -1.0
+        polyhedra.append(
+            CrystalPolyhedronGlyph(
+                center_angstrom=positions[index],
+                center_species=atom.species,
+                triangles_angstrom=triangles,
+                face_normals=normals,
+                color=str(crystal_style.get("polyhedron_color") or atom.color),
+                alpha=float(crystal_style["polyhedron_alpha"]),
+                edge_color=str(crystal_style["polyhedron_edge_color"]),
+                edge_width=float(crystal_style["polyhedron_edge_width"]),
+            )
+        )
+    return tuple(polyhedra)
+
+
 def build_crystal_scene(
     phase: Phase,
     *,
     repeats: tuple[int, int, int] = (1, 1, 1),
     show_bonds: bool = True,
     bond_tolerance_angstrom: float = 0.45,
+    polyhedra_species: tuple[str, ...] = (),
     plane_hkls: tuple[tuple[int, int, int], ...] = (),
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
     direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
@@ -766,6 +873,12 @@ def build_crystal_scene(
         directions=tuple(directions),
         lattice_edges=_supercell_box_edges(phase, repeats),
         repeats=repeats,
+        polyhedra=_coordination_polyhedra(
+            atoms,
+            species=polyhedra_species,
+            bond_tolerance_angstrom=bond_tolerance_angstrom,
+            crystal_style=crystal_style,
+        ),
     )
 
 
@@ -882,6 +995,7 @@ def plot_crystal_structure_3d(
     *,
     repeats: tuple[int, int, int] = (1, 1, 1),
     show_bonds: bool = True,
+    polyhedra_species: tuple[str, ...] = (),
     plane_hkls: tuple[tuple[int, int, int], ...] = (),
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
     direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
@@ -909,6 +1023,7 @@ def plot_crystal_structure_3d(
             scene_or_phase,
             repeats=repeats,
             show_bonds=show_bonds,
+            polyhedra_species=polyhedra_species,
             plane_hkls=plane_hkls,
             plane_overlays=plane_overlays,
             direction_overlays=direction_overlays,
@@ -1041,6 +1156,33 @@ def plot_crystal_structure_3d(
                         shininess=shininess,
                     )
                 )
+    for polyhedron in scene.polyhedra:
+        # triangles ride in the same depth-sorted mesh as degenerate quads
+        triangles = polyhedron.triangles_angstrom
+        quads = np.concatenate([triangles, triangles[:, 2:3, :]], axis=1)
+        mesh_faces.append(quads)
+        mesh_colors.append(
+            _lit_face_colors(
+                polyhedron.color,
+                polyhedron.face_normals,
+                alpha=polyhedron.alpha,
+                light_direction=light_direction,
+                ambient=ambient,
+                diffuse=diffuse,
+                specular=0.0,
+                shininess=1.0,
+            )
+        )
+        for triangle in triangles:
+            closed = np.vstack([triangle, triangle[0]])
+            axes.plot(
+                closed[:, 0],
+                closed[:, 1],
+                closed[:, 2],
+                color=polyhedron.edge_color,
+                linewidth=polyhedron.edge_width,
+                alpha=min(1.0, polyhedron.alpha + 0.25),
+            )
     if mesh_faces:
         mesh = poly3d_collection(
             np.concatenate(mesh_faces, axis=0),

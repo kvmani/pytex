@@ -47,6 +47,10 @@ crystal:
   bond_specular_strength: 0.2
   bond_shininess: 10.0
   plane_color: "#0f766e"
+  polyhedron_color: null
+  polyhedron_alpha: 0.5
+  polyhedron_edge_color: "#1e293b"
+  polyhedron_edge_width: 0.5
   vector_colors: ["#1d4ed8", "#059669", "#dc2626"]
   atom_radius_scale: 0.55
   bond_radius: 1.2
