@@ -73,6 +73,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [tool.setuptools.package-data]
+"pytex" = ["py.typed"]
 "pytex.plotting.themes" = ["*.yaml"]
 
 [tool.pytest.ini_options]
