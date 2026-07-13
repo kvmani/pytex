@@ -217,3 +217,83 @@ def test_linear_compressibility_surface_is_isotropic_for_cubic() -> None:
     assert surface.property_name == "linear_compressibility"
     # linear compressibility is direction-independent for cubic symmetry
     assert surface.anisotropy_ratio == pytest.approx(1.0, abs=1e-9)
+
+
+def test_cubic_shear_modulus_on_cube_plane_equals_c44() -> None:
+    # shearing a {100} plane along a <010> direction probes c44 exactly
+    stiffness = _copper()
+    assert stiffness.shear_modulus((0, 0, 1), (1, 0, 0)) == pytest.approx(75.4)
+    assert stiffness.shear_modulus((1, 0, 0), (0, 1, 0)) == pytest.approx(75.4)
+
+
+def test_cubic_shear_modulus_on_110_plane_equals_c_prime() -> None:
+    # {110}<-110> shear probes the soft cubic shear constant C' = (c11 - c12) / 2
+    stiffness = _copper()
+    c_prime = 0.5 * (168.4 - 121.4)
+    assert stiffness.shear_modulus((1, 1, 0), (-1, 1, 0)) == pytest.approx(c_prime)
+
+
+def test_shear_modulus_requires_orthogonal_pair() -> None:
+    with pytest.raises(ValueError, match="orthogonal"):
+        _copper().shear_modulus((0, 0, 1), (0, 1, 1))
+
+
+def test_batched_shear_modulus_matches_scalar() -> None:
+    stiffness = _copper()
+    normals = np.array([[0, 0, 1], [1, 1, 0], [1, 0, 1]], dtype=np.float64)
+    shears = np.array([[1, 0, 0], [-1, 1, 0], [0, 1, 0]], dtype=np.float64)
+    batched = stiffness.shear_modulus(normals, shears)
+    assert batched.shape == (3,)
+    for i in range(3):
+        assert batched[i] == pytest.approx(stiffness.shear_modulus(normals[i], shears[i]))
+    assert isinstance(stiffness.shear_modulus((0, 0, 1), (1, 0, 0)), float)
+
+
+def test_isotropic_shear_modulus_matches_analytic_value() -> None:
+    stiffness = StiffnessTensor.isotropic(youngs_modulus=200.0, poisson_ratio=0.3)
+    expected = 200.0 / (2.0 * 1.3)
+    for normal, shear in [((0, 0, 1), (1, 0, 0)), ((1, 1, 0), (-1, 1, 0)), ((1, 1, 1), (-1, 1, 0))]:
+        assert stiffness.shear_modulus(normal, shear) == pytest.approx(expected)
+
+
+def test_cubic_shear_surface_extrema_match_analytic_constants() -> None:
+    from pytex import shear_modulus_surface
+
+    stiffness = _copper()
+    c_prime = 0.5 * (168.4 - 121.4)
+    # copper (Zener ratio > 1): stiffest shear is {100}<010> (c44), softest {110}<-110> (C')
+    surface_max = shear_modulus_surface(stiffness, mode="max", n_theta=61, n_phi=121)
+    assert surface_max.property_name == "shear_modulus_max"
+    assert surface_max.maximum == pytest.approx(75.4)
+    surface_min = shear_modulus_surface(stiffness, mode="min", n_theta=61, n_phi=121)
+    assert surface_min.minimum == pytest.approx(c_prime)
+    # per-normal, the min surface never exceeds the max surface
+    assert np.all(surface_min.values <= surface_max.values + 1e-12)
+
+
+def test_isotropic_shear_surface_is_a_sphere() -> None:
+    from pytex import shear_modulus_surface
+
+    stiffness = StiffnessTensor.isotropic(youngs_modulus=200.0, poisson_ratio=0.3)
+    for mode in ("min", "max"):
+        surface = shear_modulus_surface(stiffness, mode=mode, n_theta=30, n_phi=60)
+        assert surface.anisotropy_ratio == pytest.approx(1.0, abs=1e-9)
+        assert surface.minimum == pytest.approx(200.0 / 2.6, abs=1e-9)
+
+
+def test_shear_modulus_surface_rejects_unknown_mode() -> None:
+    from pytex import shear_modulus_surface
+
+    with pytest.raises(ValueError, match="mode"):
+        shear_modulus_surface(_copper(), mode="median")
+
+
+def test_plot_shear_modulus_surface_uses_display_label() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_youngs_modulus_surface, shear_modulus_surface
+
+    surface = shear_modulus_surface(_copper(), mode="min", n_theta=20, n_phi=40)
+    figure = plot_youngs_modulus_surface(surface)
+    assert "min shear modulus surface" in figure.axes[0].get_title()

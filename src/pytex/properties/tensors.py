@@ -167,6 +167,56 @@ class StiffnessTensor(ElasticTensor):
     def linear_compressibility(self, direction: ArrayLike) -> np.ndarray | float:
         return self.compliance().linear_compressibility(direction)
 
+    def shear_modulus(
+        self, plane_normal: ArrayLike, shear_direction: ArrayLike
+    ) -> np.ndarray | float:
+        return self.compliance().shear_modulus(plane_normal, shear_direction)
+
+
+def _unit_rows(direction: ArrayLike, name: str) -> tuple[np.ndarray, bool]:
+    """Normalize a single ``(3,)`` vector or an ``(n, 3)`` batch to unit rows."""
+
+    unit = np.asarray(direction, dtype=np.float64)
+    scalar = unit.ndim == 1
+    vectors = np.atleast_2d(unit)
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    if np.any(norms == 0.0):
+        raise ValueError(f"{name} must be a non-zero vector.")
+    return vectors / norms, scalar
+
+
+def _orthonormal_inplane_basis(normals: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return unit vectors (u, v) spanning the plane orthogonal to each unit normal."""
+
+    seed = np.zeros_like(normals)
+    seed[np.arange(normals.shape[0]), np.argmin(np.abs(normals), axis=1)] = 1.0
+    u = np.cross(normals, seed)
+    u /= np.linalg.norm(u, axis=1, keepdims=True)
+    v = np.cross(normals, u)
+    return u, v
+
+
+def _planar_quadratic_extrema(
+    matrices: np.ndarray, normals: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Exact (min, max) of ``m^T Q m`` over unit ``m`` orthogonal to each normal.
+
+    ``matrices`` has shape ``(n, 3, 3)``. Restricted to the plane, the quadratic
+    form becomes a symmetric 2x2 eigenproblem in an orthonormal in-plane basis,
+    so the extrema are its eigenvalues (closed form, no angular sweep).
+    """
+
+    u, v = _orthonormal_inplane_basis(normals)
+    q_uu = np.einsum("nj,njl,nl->n", u, matrices, u, optimize=True)
+    q_vv = np.einsum("nj,njl,nl->n", v, matrices, v, optimize=True)
+    q_uv = 0.5 * (
+        np.einsum("nj,njl,nl->n", u, matrices, v, optimize=True)
+        + np.einsum("nj,njl,nl->n", v, matrices, u, optimize=True)
+    )
+    center = 0.5 * (q_uu + q_vv)
+    radius = np.sqrt((0.5 * (q_uu - q_vv)) ** 2 + q_uv**2)
+    return center - radius, center + radius
+
 
 @dataclass(frozen=True, slots=True)
 class ComplianceTensor(ElasticTensor):
@@ -194,13 +244,7 @@ class ComplianceTensor(ElasticTensor):
         ``(n, 3)`` directions (returns an ``(n,)`` array), fully vectorised.
         """
 
-        unit = np.asarray(direction, dtype=np.float64)
-        scalar = unit.ndim == 1
-        vectors = np.atleast_2d(unit)
-        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-        if np.any(norms == 0.0):
-            raise ValueError("direction must be a non-zero vector.")
-        vectors = vectors / norms
+        vectors, scalar = _unit_rows(direction, "direction")
         inverse_modulus = np.einsum(
             "ni,nj,nk,nl,ijkl->n", vectors, vectors, vectors, vectors, self.tensor, optimize=True
         )
@@ -216,15 +260,36 @@ class ComplianceTensor(ElasticTensor):
         ``(n, 3)`` directions (returns an ``(n,)`` array).
         """
 
-        unit = np.asarray(direction, dtype=np.float64)
-        scalar = unit.ndim == 1
-        vectors = np.atleast_2d(unit)
-        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
-        if np.any(norms == 0.0):
-            raise ValueError("direction must be a non-zero vector.")
-        vectors = vectors / norms
+        vectors, scalar = _unit_rows(direction, "direction")
         beta = np.einsum("ni,nj,ijkk->n", vectors, vectors, self.tensor, optimize=True)
         return float(beta[0]) if scalar else np.ascontiguousarray(beta)
+
+    def shear_modulus(
+        self, plane_normal: ArrayLike, shear_direction: ArrayLike
+    ) -> np.ndarray | float:
+        """Directional shear modulus ``G(n, m) = 1 / (4 n_i m_j n_k m_l S_ijkl)``.
+
+        ``plane_normal`` is the shear-plane normal ``n`` and ``shear_direction``
+        the in-plane shear direction ``m``; the two must be orthogonal. Accepts
+        single ``(3,)`` vectors (returns a float) or matching ``(n, 3)`` batches
+        (returns an ``(n,)`` array), fully vectorised.
+        """
+
+        normals, scalar_n = _unit_rows(plane_normal, "plane_normal")
+        shears, scalar_m = _unit_rows(shear_direction, "shear_direction")
+        if normals.shape != shears.shape:
+            raise ValueError("plane_normal and shear_direction must have matching shapes.")
+        if np.any(np.abs(np.einsum("ni,ni->n", normals, shears)) > 1e-8):
+            raise ValueError(
+                "shear_direction must be orthogonal to plane_normal (lie in the shear plane)."
+            )
+        inverse_modulus = 4.0 * np.einsum(
+            "ni,nj,nk,nl,ijkl->n", normals, shears, normals, shears, self.tensor, optimize=True
+        )
+        if np.any(inverse_modulus <= 0.0):
+            raise ValueError("Non-physical compliance produced a non-positive shear modulus.")
+        modulus = 1.0 / inverse_modulus
+        return float(modulus[0]) if scalar_n and scalar_m else np.ascontiguousarray(modulus)
 
 
 def _normalized_weights(count: int, weights: ArrayLike | None) -> np.ndarray:
@@ -393,6 +458,43 @@ def linear_compressibility_surface(
     )
 
 
+def shear_modulus_surface(
+    tensor: StiffnessTensor | ComplianceTensor,
+    *,
+    mode: str = "min",
+    n_theta: int = 90,
+    n_phi: int = 180,
+) -> DirectionalModulusSurface:
+    """Sample the extremal directional shear modulus over the unit sphere.
+
+    For each shear-plane normal ``n``, the shear modulus still depends on the
+    in-plane shear direction ``m``; this returns, per normal, the exact minimum
+    (``mode="min"``) or maximum (``mode="max"``) of ``G(n, m)`` over all
+    in-plane directions. Because ``1/G`` is a quadratic form in ``m``, the
+    extremes are the eigenvalues of the form projected onto the plane -- no
+    angular sweep or sampling error.
+    """
+
+    if mode not in {"min", "max"}:
+        raise ValueError("mode must be 'min' or 'max'.")
+    compliance = tensor.compliance() if isinstance(tensor, StiffnessTensor) else tensor
+
+    def extremal_shear(directions: np.ndarray) -> np.ndarray:
+        normals = np.asarray(directions, dtype=np.float64)
+        forms = 4.0 * np.einsum(
+            "ni,nk,ijkl->njl", normals, normals, compliance.tensor, optimize=True
+        )
+        low, high = _planar_quadratic_extrema(forms, normals)
+        inverse_modulus = high if mode == "min" else low
+        if np.any(inverse_modulus <= 0.0):
+            raise ValueError("Non-physical compliance produced a non-positive shear modulus.")
+        return 1.0 / inverse_modulus
+
+    return _directional_property_surface(
+        extremal_shear, f"shear_modulus_{mode}", n_theta=n_theta, n_phi=n_phi
+    )
+
+
 __all__ = [
     "ComplianceTensor",
     "DirectionalModulusSurface",
@@ -400,5 +502,6 @@ __all__ = [
     "StiffnessTensor",
     "homogenize_elastic",
     "linear_compressibility_surface",
+    "shear_modulus_surface",
     "youngs_modulus_surface",
 ]

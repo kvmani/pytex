@@ -75,6 +75,8 @@ def plot_youngs_modulus_surface(
     display_names = {
         "youngs_modulus": "Young's modulus",
         "linear_compressibility": "linear compressibility",
+        "shear_modulus_min": "min shear modulus",
+        "shear_modulus_max": "max shear modulus",
     }
     label = display_names.get(surface.property_name, surface.property_name.replace("_", " "))
     axes.set_xlabel("x")
