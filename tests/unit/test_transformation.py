@@ -364,3 +364,145 @@ def test_phase_transformation_record_predicted_orientations_follow_variant_indic
     expected_last = variants[-1].parent_to_child_rotation.compose(parent_orientation.rotation)
     assert_allclose(predicted.quaternions[0], expected_first.quaternion, atol=1e-8)
     assert_allclose(predicted.quaternions[1], expected_last.quaternion, atol=1e-8)
+
+
+def make_hcp_child() -> Phase:
+    crystal_child = ReferenceFrame(
+        name="hcp_crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    symmetry_child = SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_child)
+    lattice_child = Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_child)
+    return Phase(
+        "alpha_titanium",
+        lattice=lattice_child,
+        symmetry=symmetry_child,
+        crystal_frame=crystal_child,
+    )
+
+
+def _symmetry_reduced_angle_deg(
+    relationship_a: OrientationRelationship,
+    relationship_b: OrientationRelationship,
+) -> float:
+    parent_ops = relationship_a.parent_phase.symmetry.operators
+    child_ops = relationship_a.child_phase.symmetry.operators
+    matrix_a = relationship_a.parent_to_child_rotation.as_matrix()
+    matrix_b = relationship_b.parent_to_child_rotation.as_matrix()
+    best = 180.0
+    for child_op in child_ops:
+        product_left = child_op @ matrix_a
+        for parent_op in parent_ops:
+            relative = product_left @ parent_op @ matrix_b.T
+            cosine = np.clip((np.trace(relative) - 1.0) / 2.0, -1.0, 1.0)
+            best = min(best, float(np.degrees(np.arccos(cosine))))
+    return best
+
+
+def test_named_or_variant_counts_match_literature() -> None:
+    _, _, parent, child = make_phases()
+    expected_counts = {
+        "bain": (OrientationRelationship.from_bain_correspondence, 3),
+        "kurdjumov_sachs": (OrientationRelationship.from_kurdjumov_sachs_correspondence, 24),
+        "nishiyama_wassermann": (
+            OrientationRelationship.from_nishiyama_wassermann_correspondence,
+            12,
+        ),
+        "greninger_troiano": (
+            OrientationRelationship.from_greninger_troiano_correspondence,
+            24,
+        ),
+        "pitsch": (OrientationRelationship.from_pitsch_correspondence, 12),
+    }
+    for name, (constructor, expected) in expected_counts.items():
+        relationship = constructor(parent_phase=parent, child_phase=child)
+        variants = relationship.generate_variants()
+        assert len(variants) == expected, name
+        assert [variant.variant_index for variant in variants] == list(
+            range(1, expected + 1)
+        )
+
+
+def test_burgers_or_requires_hexagonal_child_and_yields_12_variants() -> None:
+    _, _, parent, cubic_child = make_phases()
+    hcp_child = make_hcp_child()
+    relationship = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent, child_phase=hcp_child
+    )
+    assert len(relationship.generate_variants()) == 12
+    # the defining parallelism: {110}_bcc || (0001)_hcp and <-111> || <11-20>
+    basal_normal = relationship.parallel_planes[0][1].normal
+    mapped_normal = relationship.map_parent_vector_to_child(
+        relationship.parallel_planes[0][0].normal
+    )
+    assert abs(float(np.dot(mapped_normal, basal_normal))) == pytest.approx(1.0, abs=1e-9)
+    with pytest.raises(ValueError, match="hexagonal child"):
+        OrientationRelationship.from_burgers_correspondence(
+            parent_phase=parent, child_phase=cubic_child
+        )
+
+
+def test_ks_gt_pitsch_geometric_constants() -> None:
+    # the classic fcc->bcc OR triangle: KS-NW 5.26 deg, GT between them,
+    # Pitsch mirrored 5.26 deg from KS
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    nw = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    pitsch = OrientationRelationship.from_pitsch_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    assert _symmetry_reduced_angle_deg(ks, nw) == pytest.approx(5.264, abs=0.01)
+    assert _symmetry_reduced_angle_deg(gt, ks) == pytest.approx(2.404, abs=0.01)
+    assert _symmetry_reduced_angle_deg(gt, nw) == pytest.approx(2.861, abs=0.01)
+    assert _symmetry_reduced_angle_deg(pitsch, ks) == pytest.approx(5.264, abs=0.01)
+
+
+def test_generate_variants_child_symmetry_reduction_default() -> None:
+    _, _, parent, child = make_phases()
+    nw = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    reduced = nw.generate_variants()
+    raw = nw.generate_variants(reduce_by_child_symmetry=False)
+    assert len(reduced) == 12
+    # the historical raw enumeration counts every symmetry-equivalent
+    # description separately
+    assert len(raw) > len(reduced)
+    # each reduced variant is crystallographically distinct: no two are
+    # related by a child symmetry operator
+    child_ops = child.symmetry.operators
+    matrices = [variant.parent_to_child_rotation.as_matrix() for variant in reduced]
+    for i in range(len(matrices)):
+        for j in range(i + 1, len(matrices)):
+            for child_op in child_ops:
+                relative = child_op @ matrices[i] @ matrices[j].T
+                cosine = np.clip((np.trace(relative) - 1.0) / 2.0, -1.0, 1.0)
+                assert np.degrees(np.arccos(cosine)) > 1e-6
+
+
+def test_standard_catalogs_resolve_named_relationships() -> None:
+    from pytex.core import standard_bcc_hcp_relationships, standard_fcc_bcc_relationships
+
+    _, _, parent, child = make_phases()
+    catalog = standard_fcc_bcc_relationships(parent_phase=parent, child_phase=child)
+    assert set(catalog.names()) == {
+        "bain",
+        "kurdjumov_sachs",
+        "nishiyama_wassermann",
+        "greninger_troiano",
+        "pitsch",
+    }
+    assert len(catalog.get("kurdjumov_sachs").generate_variants()) == 24
+    hcp_catalog = standard_bcc_hcp_relationships(
+        parent_phase=parent, child_phase=make_hcp_child()
+    )
+    assert hcp_catalog.names() == ("burgers",)

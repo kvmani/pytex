@@ -5,6 +5,7 @@ from typing import Literal
 
 import numpy as np
 
+from pytex.core.lattice import Phase
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import OrientationRelationship, PhaseTransformationRecord
@@ -140,10 +141,69 @@ def reconstruct_parent_orientation(
     )
 
 
+def standard_fcc_bcc_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The standard named fcc->bcc orientation-relationship catalog.
+
+    Returns Bain, Kurdjumov-Sachs, Nishiyama-Wassermann, Greninger-Troiano,
+    and Pitsch bound to the given cubic parent (austenite-like) and child
+    (ferrite/martensite-like) phases, resolvable by their default names.
+    """
+
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_bain_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_kurdjumov_sachs_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_nishiyama_wassermann_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_greninger_troiano_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_pitsch_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+        ),
+        provenance=provenance,
+    )
+
+
+def standard_bcc_hcp_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The standard named bcc->hcp orientation-relationship catalog.
+
+    Returns the Burgers relationship (beta->alpha titanium/zirconium class)
+    bound to the given cubic parent and hexagonal child phases.
+    """
+
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_burgers_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+        ),
+        provenance=provenance,
+    )
+
+
 __all__ = [
     "OrientationRelationshipCatalog",
     "ParentReconstructionConfig",
     "ParentReconstructionReport",
     "VariantSelectionReport",
     "reconstruct_parent_orientation",
+    "standard_bcc_hcp_relationships",
+    "standard_fcc_bcc_relationships",
 ]

@@ -95,6 +95,8 @@ from pytex.core.parent_reconstruction import (
     ParentReconstructionReport,
     VariantSelectionReport,
     reconstruct_parent_orientation,
+    standard_bcc_hcp_relationships,
+    standard_fcc_bcc_relationships,
 )
 from pytex.core.point_groups import (
     PointGroup,
@@ -210,5 +212,7 @@ __all__ = [
     "reduce_indices",
     "specimen_direction_vector",
     "spherical_angles_to_directions",
+    "standard_bcc_hcp_relationships",
+    "standard_fcc_bcc_relationships",
     "zone_law_value_hkil_uvtw",
 ]

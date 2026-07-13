@@ -37,11 +37,19 @@ def _phase_semantically_matches(left: Phase | None, right: Phase) -> bool:
     )
 
 
-def _require_cubic_phase_for_bain(phase: Phase, *, role: str) -> None:
-    if phase.symmetry.proper_point_group != "432":
+def _require_proper_point_group(
+    phase: Phase, expected: str, *, role: str, relationship: str
+) -> None:
+    if phase.symmetry.proper_point_group != expected:
+        family = {"432": "cubic", "622": "hexagonal"}.get(expected, expected)
         raise ValueError(
-            f"Bain correspondence requires a cubic {role} phase with proper point group 432."
+            f"{relationship} correspondence requires a {family} {role} phase "
+            f"with proper point group {expected}."
         )
+
+
+def _require_cubic_phase_for_bain(phase: Phase, *, role: str) -> None:
+    _require_proper_point_group(phase, "432", role=role, relationship="Bain")
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,6 +187,131 @@ class OrientationRelationship:
             provenance=provenance,
         )
 
+    @classmethod
+    def from_kurdjumov_sachs_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "kurdjumov_sachs",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Kurdjumov-Sachs OR: {111}_p || {011}_c, <-101>_p || <-1-11>_c.
+
+        The classic fcc->bcc martensite relationship (24 variants). The
+        representative pairing matches the Morito et al. V1 convention.
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Kurdjumov-Sachs"
+        )
+        _require_proper_point_group(
+            child_phase, "432", role="child", relationship="Kurdjumov-Sachs"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((1, 1, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((0, 1, 1), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=_crystal_direction((-1.0, 0.0, 1.0), phase=parent_phase),
+            child_direction=_crystal_direction((-1.0, -1.0, 1.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_greninger_troiano_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "greninger_troiano",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Greninger-Troiano OR: {111}_p || {011}_c, <5 12 17>_p || <7 17 17>_c.
+
+        Sits between Kurdjumov-Sachs and Nishiyama-Wassermann: the
+        representative below is 2.40 deg from KS and 2.86 deg from NW (the
+        sign assignment was selected numerically so the pairing lands on the
+        published GT orbit rather than a symmetry-inequivalent sibling).
+        24 variants.
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Greninger-Troiano"
+        )
+        _require_proper_point_group(
+            child_phase, "432", role="child", relationship="Greninger-Troiano"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((1, 1, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((0, 1, 1), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=_crystal_direction((-17.0, 5.0, 12.0), phase=parent_phase),
+            child_direction=_crystal_direction((-7.0, 17.0, -17.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_pitsch_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "pitsch",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Pitsch OR: {001}_p || {-101}_c, <110>_p || <111>_c.
+
+        The thin-film fcc->bcc relationship (12 variants); its representative
+        lies 5.26 deg from Kurdjumov-Sachs, mirroring the KS-NW separation.
+        """
+
+        _require_proper_point_group(parent_phase, "432", role="parent", relationship="Pitsch")
+        _require_proper_point_group(child_phase, "432", role="child", relationship="Pitsch")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((0, 0, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((-1, 0, 1), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=_crystal_direction((1.0, 1.0, 0.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 1.0, 1.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_burgers_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "burgers",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Burgers OR: {110}_bcc || (0001)_hcp, <-111>_bcc || <11-20>_hcp.
+
+        The bcc->hcp transformation relationship (beta->alpha titanium,
+        zirconium; 12 variants). The parent must be cubic (proper group 432)
+        and the child hexagonal (proper group 622).
+        """
+
+        _require_proper_point_group(parent_phase, "432", role="parent", relationship="Burgers")
+        _require_proper_point_group(child_phase, "622", role="child", relationship="Burgers")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((1, 1, 0), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=child_phase),
+            parent_direction=_crystal_direction((-1.0, 1.0, 1.0), phase=parent_phase),
+            child_direction=CrystalDirection.from_miller_bravais(
+                (1, 1, -2, 0), phase=child_phase
+            ),
+            provenance=provenance,
+        )
+
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.parent_crystal_frame:
@@ -224,7 +357,22 @@ class OrientationRelationship:
             provenance=self.provenance,
         )
 
-    def generate_variants(self) -> tuple[TransformationVariant, ...]:
+    def generate_variants(
+        self, *, reduce_by_child_symmetry: bool = True
+    ) -> tuple[TransformationVariant, ...]:
+        """Enumerate the transformation variants of this relationship.
+
+        With ``reduce_by_child_symmetry`` (the default), variants are the
+        crystallographically distinct child orientations produced from one
+        fixed parent orientation: parent symmetry operators generate the
+        candidate rotations ``R S_p^T``, and candidates that differ only by a
+        child symmetry operator collapse into a single variant. This
+        reproduces the literature variant counts (Bain 3; NW, Pitsch, Burgers
+        12; KS, GT 24). Set it to ``False`` for the historical raw
+        enumeration of distinct operator products ``S_c R S_p^T``, which
+        counts every symmetry-equivalent description separately.
+        """
+
         parent_symmetry = self.parent_phase.symmetry
         child_symmetry = self.child_phase.symmetry
         parent_operators = (
@@ -237,20 +385,60 @@ class OrientationRelationship:
             if child_symmetry is not None
             else np.eye(3, dtype=np.float64)[None, :, :]
         )
+        base_matrix = self.parent_to_child_rotation.as_matrix()
+
+        def quaternion_key(matrix: np.ndarray) -> tuple[float, float, float, float]:
+            # q and -q describe the same rotation: canonicalize by taking the
+            # lexicographically larger of the two ROUNDED sign choices. This
+            # stays stable for 180-degree rotations (w ~ 0) and for
+            # equal-magnitude components, where pivot- or w-based sign
+            # conventions flip on floating-point noise.
+            quaternion = Rotation.from_matrix(matrix).quaternion
+            rounded_pos = np.round(quaternion, 10) + 0.0
+            rounded_neg = np.round(-quaternion, 10) + 0.0
+            positive = (
+                float(rounded_pos[0]),
+                float(rounded_pos[1]),
+                float(rounded_pos[2]),
+                float(rounded_pos[3]),
+            )
+            negative = (
+                float(rounded_neg[0]),
+                float(rounded_neg[1]),
+                float(rounded_neg[2]),
+                float(rounded_neg[3]),
+            )
+            return max(positive, negative)
+
         variants: list[TransformationVariant] = []
         seen: set[tuple[float, float, float, float]] = set()
+        if reduce_by_child_symmetry:
+            for parent_index, parent_operator in enumerate(parent_operators):
+                candidate = base_matrix @ parent_operator.T
+                orbit_key = min(
+                    quaternion_key(child_operator @ candidate)
+                    for child_operator in child_operators
+                )
+                if orbit_key in seen:
+                    continue
+                seen.add(orbit_key)
+                variants.append(
+                    TransformationVariant(
+                        orientation_relationship=self,
+                        variant_index=len(variants) + 1,
+                        parent_operator_index=parent_index,
+                        child_operator_index=0,
+                        parent_to_child_rotation=Rotation.from_matrix(candidate).canonicalized(),
+                        provenance=self.provenance,
+                    )
+                )
+            return tuple(variants)
         for parent_index, parent_operator in enumerate(parent_operators):
             for child_index, child_operator in enumerate(child_operators):
                 rotation = Rotation.from_matrix(
-                    child_operator @ self.parent_to_child_rotation.as_matrix() @ parent_operator.T
+                    child_operator @ base_matrix @ parent_operator.T
                 ).canonicalized()
-                rounded = np.round(rotation.quaternion, decimals=12)
-                key = (
-                    float(rounded[0]),
-                    float(rounded[1]),
-                    float(rounded[2]),
-                    float(rounded[3]),
-                )
+                key = quaternion_key(rotation.as_matrix())
                 if key in seen:
                     continue
                 seen.add(key)

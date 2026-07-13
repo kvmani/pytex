@@ -166,6 +166,8 @@ from pytex.core import (
     reconstruct_parent_orientation,
     reduce_indices,
     specimen_direction_vector,
+    standard_bcc_hcp_relationships,
+    standard_fcc_bcc_relationships,
     zone_law_value_hkil_uvtw,
 )
 from pytex.diffraction import (
@@ -604,6 +606,8 @@ __all__ = [
     "shear_modulus_surface",
     "specimen_direction_vector",
     "spherical_angles_to_directions",
+    "standard_bcc_hcp_relationships",
+    "standard_fcc_bcc_relationships",
     "taylor_factors",
     "to_json_contract",
     "to_orix_direction",
