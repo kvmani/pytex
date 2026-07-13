@@ -1,10 +1,35 @@
+"""VESTA-class 3D crystal-structure scenes and their matplotlib renderer.
+
+Architecture (kept strictly two-layer so the scene model stays portable):
+
+1. **Scene model** — `build_crystal_scene` turns a `Phase` (lattice + unit
+   cell + symmetry) into a `CrystalScene`: an immutable, renderer-independent
+   scene graph of typed glyphs (`CrystalAtomGlyph`, `CrystalBondGlyph`,
+   `CrystalCellGlyph`, `CrystalPlaneGlyph`, `CrystalDirectionGlyph`). Glyphs
+   carry only geometry (angstrom coordinates), colors, and annotation intent;
+   nothing matplotlib-specific. Any future backend (OpenGL/GUI, ray tracer,
+   web) can consume a `CrystalScene` unchanged.
+2. **Renderer** — `plot_crystal_structure_3d` rasterizes a scene with
+   matplotlib. Atoms and bonds become quad meshes lit by a Blinn-Phong-style
+   model (`_lit_face_colors`) and are drawn as ONE depth-sorted
+   `Poly3DCollection`, so atoms and bonds occlude each other correctly from
+   every viewing angle (per-artist painter's-order artifacts are avoided by
+   construction). Bonds render two-tone (each half in its atom's color, the
+   VESTA convention) whenever their glyphs carry per-end colors.
+
+Styling comes from the YAML theme system (`crystal` section); every knob used
+here (lighting strengths, mesh resolutions, render modes, bond color mode)
+has a theme default and can be overridden per call via ``style_overrides``.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from matplotlib.colors import to_rgb, to_rgba
+from matplotlib.colors import to_rgb
 
 from pytex.core._arrays import as_float_array
 from pytex.core._chemistry import covalent_radius_angstrom, cpk_color
@@ -26,6 +51,8 @@ def _require_matplotlib() -> tuple[Any, Any]:
 
 @dataclass(frozen=True, slots=True)
 class CrystalAtomGlyph:
+    """A rendered atom: position and display radius in angstrom, CPK color."""
+
     position_angstrom: np.ndarray
     species: str
     radius_angstrom: float
@@ -40,15 +67,36 @@ class CrystalAtomGlyph:
 
 @dataclass(frozen=True, slots=True)
 class CrystalBondGlyph:
+    """A rendered bond cylinder between two atom centers.
+
+    ``color`` is the uniform bond color; when ``start_color`` / ``end_color``
+    are set (the two-tone VESTA convention: each half in its atom's color),
+    renderers split the cylinder at the midpoint and color the halves
+    independently. One glyph always represents one physical bond.
+    """
+
     start_angstrom: np.ndarray
     end_angstrom: np.ndarray
     color: str
     alpha: float
     radius_angstrom: float
+    start_color: str | None = None
+    end_color: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "start_angstrom", as_float_array(self.start_angstrom, shape=(3,)))
         object.__setattr__(self, "end_angstrom", as_float_array(self.end_angstrom, shape=(3,)))
+
+    def half_segments(self) -> tuple[tuple[np.ndarray, np.ndarray, str], ...]:
+        """Return renderable (start, end, color) segments honoring two-tone."""
+
+        if self.start_color is None and self.end_color is None:
+            return ((self.start_angstrom, self.end_angstrom, self.color),)
+        midpoint = 0.5 * (self.start_angstrom + self.end_angstrom)
+        return (
+            (self.start_angstrom, midpoint, self.start_color or self.color),
+            (midpoint, self.end_angstrom, self.end_color or self.color),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -564,6 +612,7 @@ def build_crystal_scene(
     )
     bonds: list[CrystalBondGlyph] = []
     if show_bonds:
+        two_tone = str(crystal_style.get("bond_color_mode", "two_tone")).lower() == "two_tone"
         for i, atom_i in enumerate(atoms):
             for atom_j in atoms[i + 1 :]:
                 cutoff = (
@@ -580,6 +629,8 @@ def build_crystal_scene(
                             alpha=float(crystal_style["bond_alpha"]),
                             radius_angstrom=float(crystal_style["bond_radius_scale"])
                             * min(atom_i.radius_angstrom, atom_j.radius_angstrom),
+                            start_color=atom_i.color if two_tone else None,
+                            end_color=atom_j.color if two_tone else None,
                         )
                     )
     merged_cell_overlays = (
@@ -734,33 +785,44 @@ def _normalize_light_direction(direction: Any) -> np.ndarray:
     return vector / norm
 
 
-def _atom_surface_mesh(
-    center: np.ndarray, radius: float, *, resolution: int
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+@lru_cache(maxsize=8)
+def _unit_sphere_quads(resolution: int) -> tuple[np.ndarray, np.ndarray]:
+    """Quad faces and outward face normals of a unit sphere at the origin.
+
+    Cached per resolution: every atom reuses the same unit mesh, scaled and
+    translated by the renderer. Faces have shape ``(n_faces, 4, 3)``, normals
+    ``(n_faces, 3)``.
+    """
+
+    if resolution < 4:
+        raise ValueError("sphere mesh resolution must be at least 4.")
     u = np.linspace(0.0, 2.0 * np.pi, resolution)
     v = np.linspace(0.0, np.pi, resolution)
     uu, vv = np.meshgrid(u, v, indexing="xy")
-    x = center[0] + radius * np.cos(uu) * np.sin(vv)
-    y = center[1] + radius * np.sin(uu) * np.sin(vv)
-    z = center[2] + radius * np.cos(vv)
-    normals = np.stack(
-        [
-            np.cos(uu) * np.sin(vv),
-            np.sin(uu) * np.sin(vv),
-            np.cos(vv),
-        ],
-        axis=-1,
+    vertices = np.stack(
+        [np.cos(uu) * np.sin(vv), np.sin(uu) * np.sin(vv), np.cos(vv)], axis=-1
     )
-    return x, y, z, normals
+    quads = np.stack(
+        [vertices[:-1, :-1], vertices[:-1, 1:], vertices[1:, 1:], vertices[1:, :-1]],
+        axis=2,
+    ).reshape(-1, 4, 3)
+    centers = quads.mean(axis=1)
+    lengths = np.linalg.norm(centers, axis=1, keepdims=True)
+    normals = centers / np.where(lengths == 0.0, 1.0, lengths)
+    quads.setflags(write=False)
+    normals.setflags(write=False)
+    return quads, normals
 
 
-def _cylinder_surface_mesh(
+def _cylinder_quads(
     start: np.ndarray,
     end: np.ndarray,
     radius: float,
     *,
     resolution: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
+    """Quad faces and outward face normals of an open cylinder start -> end."""
+
     axis = end - start
     length = np.linalg.norm(axis)
     if np.isclose(length, 0.0):
@@ -773,18 +835,17 @@ def _cylinder_surface_mesh(
     u_axis /= np.linalg.norm(u_axis)
     v_axis = np.cross(direction, u_axis)
     theta = np.linspace(0.0, 2.0 * np.pi, resolution)
-    t = np.linspace(0.0, length, 2)
-    theta_grid, t_grid = np.meshgrid(theta, t, indexing="xy")
-    circle = radius * (
-        np.cos(theta_grid)[..., None] * u_axis[None, None, :]
-        + np.sin(theta_grid)[..., None] * v_axis[None, None, :]
-    )
-    points = start[None, None, :] + t_grid[..., None] * direction[None, None, :] + circle
-    normals = circle / radius
-    return points[..., 0], points[..., 1], points[..., 2], normals
+    ring = np.cos(theta)[:, None] * u_axis[None, :] + np.sin(theta)[:, None] * v_axis[None, :]
+    bottom = start[None, :] + radius * ring
+    top = end[None, :] + radius * ring
+    faces = np.stack([bottom[:-1], bottom[1:], top[1:], top[:-1]], axis=1)
+    normals = ring[:-1] + ring[1:]
+    lengths = np.linalg.norm(normals, axis=1, keepdims=True)
+    normals = normals / np.where(lengths == 0.0, 1.0, lengths)
+    return faces, normals
 
 
-def _lit_surface_facecolors(
+def _lit_face_colors(
     color: str,
     normals: np.ndarray,
     *,
@@ -795,18 +856,25 @@ def _lit_surface_facecolors(
     specular: float,
     shininess: float,
 ) -> np.ndarray:
+    """Blinn-Phong-style RGBA per face for ``(n, 3)`` outward unit normals.
+
+    Lambert diffuse plus a view-fixed specular highlight (viewer along +z of
+    the display frame), matching the ball-and-stick look of dedicated crystal
+    viewers. Returns ``(n, 4)`` facecolors.
+    """
+
     base_rgb = np.asarray(to_rgb(color), dtype=np.float64)
     lambert = np.clip(normals @ light_direction, 0.0, 1.0)
     view_direction = np.array([0.0, 0.0, 1.0], dtype=np.float64)
-    reflected = 2.0 * lambert[..., None] * normals - light_direction
+    reflected = 2.0 * lambert[:, None] * normals - light_direction
     reflected_norm = np.linalg.norm(reflected, axis=-1, keepdims=True)
     reflected = np.divide(reflected, np.where(reflected_norm == 0.0, 1.0, reflected_norm))
     specular_term = np.clip(reflected @ view_direction, 0.0, 1.0) ** shininess
     intensity = np.clip(ambient + diffuse * lambert, 0.0, 1.35)
-    color_grid = np.clip(base_rgb[None, None, :] * intensity[..., None], 0.0, 1.0)
-    color_grid = np.clip(color_grid + specular * specular_term[..., None], 0.0, 1.0)
-    alpha_grid = np.full((*normals.shape[:2], 1), alpha, dtype=np.float64)
-    return np.concatenate([color_grid, alpha_grid], axis=-1)
+    rgb = np.clip(base_rgb[None, :] * intensity[:, None], 0.0, 1.0)
+    rgb = np.clip(rgb + specular * specular_term[:, None], 0.0, 1.0)
+    alpha_column = np.full((normals.shape[0], 1), alpha, dtype=np.float64)
+    return np.concatenate([rgb, alpha_column], axis=-1)
 
 
 def plot_crystal_structure_3d(
@@ -888,51 +956,52 @@ def plot_crystal_structure_3d(
                 alpha=cell.alpha,
                 linewidth=cell.linewidth,
             )
+    # Atoms and bonds accumulate into ONE Poly3DCollection so matplotlib
+    # depth-sorts every face globally: bonds correctly disappear behind
+    # atoms (and vice versa) from any viewing angle, which per-artist
+    # painter's ordering cannot guarantee.
+    mesh_faces: list[np.ndarray] = []
+    mesh_colors: list[np.ndarray] = []
+    ambient = float(crystal_style["light_ambient"])
+    diffuse = float(crystal_style["light_diffuse"])
+    specular = float(crystal_style["light_specular"])
     bond_render_mode = str(crystal_style.get("bond_render_mode", "cylinder")).lower()
     if bond_render_mode == "line":
         for bond in scene.bonds:
-            axes.plot(
-                [bond.start_angstrom[0], bond.end_angstrom[0]],
-                [bond.start_angstrom[1], bond.end_angstrom[1]],
-                [bond.start_angstrom[2], bond.end_angstrom[2]],
-                color=bond.color,
-                alpha=bond.alpha,
-                linewidth=float(crystal_style["bond_radius"]),
-            )
+            for segment_start, segment_end, segment_color in bond.half_segments():
+                axes.plot(
+                    [segment_start[0], segment_end[0]],
+                    [segment_start[1], segment_end[1]],
+                    [segment_start[2], segment_end[2]],
+                    color=segment_color,
+                    alpha=bond.alpha,
+                    linewidth=float(crystal_style["bond_radius"]),
+                )
     else:
         bond_resolution = int(crystal_style["bond_surface_resolution"])
         bond_shininess = float(crystal_style["bond_shininess"])
-        bond_specular = float(crystal_style["bond_specular_strength"]) * float(
-            crystal_style["light_specular"]
-        )
+        bond_specular = float(crystal_style["bond_specular_strength"]) * specular
         for bond in scene.bonds:
-            x, y, z, normals = _cylinder_surface_mesh(
-                bond.start_angstrom,
-                bond.end_angstrom,
-                bond.radius_angstrom,
-                resolution=bond_resolution,
-            )
-            facecolors = _lit_surface_facecolors(
-                bond.color,
-                normals,
-                alpha=bond.alpha,
-                light_direction=light_direction,
-                ambient=float(crystal_style["light_ambient"]),
-                diffuse=float(crystal_style["light_diffuse"]),
-                specular=bond_specular,
-                shininess=bond_shininess,
-            )
-            axes.plot_surface(
-                x,
-                y,
-                z,
-                rstride=1,
-                cstride=1,
-                facecolors=facecolors,
-                linewidth=0.0,
-                antialiased=True,
-                shade=False,
-            )
+            for segment_start, segment_end, segment_color in bond.half_segments():
+                faces, normals = _cylinder_quads(
+                    segment_start,
+                    segment_end,
+                    bond.radius_angstrom,
+                    resolution=bond_resolution,
+                )
+                mesh_faces.append(faces)
+                mesh_colors.append(
+                    _lit_face_colors(
+                        segment_color,
+                        normals,
+                        alpha=bond.alpha,
+                        light_direction=light_direction,
+                        ambient=ambient,
+                        diffuse=diffuse,
+                        specular=bond_specular,
+                        shininess=bond_shininess,
+                    )
+                )
     if scene.atoms:
         atom_render_mode = str(crystal_style.get("atom_render_mode", "sphere")).lower()
         if atom_render_mode == "scatter":
@@ -953,39 +1022,34 @@ def plot_crystal_structure_3d(
             )
         else:
             resolution = int(crystal_style["atom_surface_resolution"])
-            ambient = float(crystal_style["light_ambient"])
-            diffuse = float(crystal_style["light_diffuse"])
-            specular = float(crystal_style["light_specular"])
             shininess = float(crystal_style["atom_shininess"])
-            edge_rgba = to_rgba(
-                crystal_style["atom_edgecolor"], alpha=float(crystal_style["atom_alpha"])
-            )
+            atom_specular = float(crystal_style["atom_specular_strength"]) * specular
+            unit_quads, unit_normals = _unit_sphere_quads(resolution)
             for atom in scene.atoms:
-                x, y, z, normals = _atom_surface_mesh(
-                    atom.position_angstrom, atom.radius_angstrom, resolution=resolution
+                mesh_faces.append(
+                    atom.position_angstrom[None, None, :] + atom.radius_angstrom * unit_quads
                 )
-                facecolors = _lit_surface_facecolors(
-                    atom.color,
-                    normals,
-                    alpha=float(crystal_style["atom_alpha"]),
-                    light_direction=light_direction,
-                    ambient=ambient,
-                    diffuse=diffuse,
-                    specular=float(crystal_style["atom_specular_strength"]) * specular,
-                    shininess=shininess,
+                mesh_colors.append(
+                    _lit_face_colors(
+                        atom.color,
+                        unit_normals,
+                        alpha=float(crystal_style["atom_alpha"]),
+                        light_direction=light_direction,
+                        ambient=ambient,
+                        diffuse=diffuse,
+                        specular=atom_specular,
+                        shininess=shininess,
+                    )
                 )
-                axes.plot_surface(
-                    x,
-                    y,
-                    z,
-                    rstride=1,
-                    cstride=1,
-                    facecolors=facecolors,
-                    linewidth=float(crystal_style["atom_edgewidth"]),
-                    edgecolor=edge_rgba,
-                    antialiased=True,
-                    shade=False,
-                )
+    if mesh_faces:
+        mesh = poly3d_collection(
+            np.concatenate(mesh_faces, axis=0),
+            facecolors=np.concatenate(mesh_colors, axis=0),
+            edgecolors="none",
+            linewidths=0.0,
+        )
+        mesh.set_zsort("average")
+        axes.add_collection3d(mesh)
     scene_span = float(np.max(scene.bounds()[1] - scene.bounds()[0]) + 1e-6)
     for plane in scene.planes:
         axes.add_collection3d(
@@ -1042,6 +1106,8 @@ def plot_crystal_structure_3d(
     axes.set_xlim(center[0] - radius, center[0] + radius)
     axes.set_ylim(center[1] - radius, center[1] + radius)
     axes.set_zlim(center[2] - radius, center[2] + radius)
+    # equal box aspect: spheres must render as spheres, not ellipsoids
+    axes.set_box_aspect((1.0, 1.0, 1.0))
     if view_direction is not None:
         if isinstance(view_direction, CrystalDirection):
             elev_deg, azim_deg = _view_angles_from_direction(view_direction.unit_vector)

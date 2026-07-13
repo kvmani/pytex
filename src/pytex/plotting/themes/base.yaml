@@ -35,11 +35,12 @@ saed:
   max_labels: 16
 crystal:
   background: "#ffffff"
-  atom_alpha: 0.95
-  bond_alpha: 0.45
+  atom_alpha: 1.0
+  bond_alpha: 1.0
   plane_alpha: 0.28
   lattice_color: "#334155"
   bond_color: "#64748b"
+  bond_color_mode: "two_tone"
   bond_render_mode: "cylinder"
   bond_radius_scale: 0.22
   bond_surface_resolution: 18
@@ -47,7 +48,7 @@ crystal:
   bond_shininess: 10.0
   plane_color: "#0f766e"
   vector_colors: ["#1d4ed8", "#059669", "#dc2626"]
-  atom_radius_scale: 1.0
+  atom_radius_scale: 0.55
   bond_radius: 1.2
   cell_color: "#94a3b8"
   cell_alpha: 0.85

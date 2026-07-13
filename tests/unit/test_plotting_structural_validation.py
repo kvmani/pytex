@@ -57,7 +57,9 @@ def test_structural_plotting_validation_cases_match_expected_surface_properties(
     assert len(crystal.axes) == 1
     assert crystal_ax.name == "3d"
     assert len(crystal_ax.lines) >= 50
-    assert len(crystal_ax.collections) >= 8
+    # atoms + bonds merge into ONE depth-sorted mesh collection; the rest are
+    # cell faces, plane overlays, and the direction quiver
+    assert 4 <= len(crystal_ax.collections) <= 7
     assert len(crystal_ax.texts) >= 3
 
     ipf = figures["ipf_ni_fcc_journal"]
