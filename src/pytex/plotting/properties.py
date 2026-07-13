@@ -27,6 +27,7 @@ def plot_youngs_modulus_surface(
     n_theta: int = 90,
     n_phi: int = 180,
     cmap: str = "viridis",
+    unit: str | None = "auto",
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
@@ -36,7 +37,10 @@ def plot_youngs_modulus_surface(
     ``tensor`` may be a `StiffnessTensor`/`ComplianceTensor` (sampled here) or a
     pre-computed `DirectionalModulusSurface`. The radius in each direction is the
     modulus along that direction; the colour also encodes the modulus, so elastic
-    anisotropy reads directly off the shape.
+    anisotropy reads directly off the shape. ``unit="auto"`` labels the colorbar
+    with the conventional unit for the property (GPa for moduli, 1/GPa for
+    compressibility, none for Poisson's ratio); pass a string or ``None`` to
+    override.
     """
 
     plt = _require_matplotlib()
@@ -80,7 +84,15 @@ def plot_youngs_modulus_surface(
         "poisson_ratio_min": "min Poisson's ratio",
         "poisson_ratio_max": "max Poisson's ratio",
     }
+    default_units = {
+        "youngs_modulus": "GPa",
+        "linear_compressibility": "1/GPa",
+        "shear_modulus_min": "GPa",
+        "shear_modulus_max": "GPa",
+    }
     label = display_names.get(surface.property_name, surface.property_name.replace("_", " "))
+    resolved_unit = default_units.get(surface.property_name) if unit == "auto" else unit
+    colorbar_label = f"{label} ({resolved_unit})" if resolved_unit else label
     axes.set_xlabel("x")
     axes.set_ylabel("y")
     axes.set_zlabel("z")
@@ -88,7 +100,7 @@ def plot_youngs_modulus_surface(
     mappable = plt.cm.ScalarMappable(cmap=colormap)
     mappable.set_array(values)
     colorbar = fig.colorbar(mappable, ax=axes, shrink=0.6, pad=0.1)
-    colorbar.set_label(label)
+    colorbar.set_label(colorbar_label)
     fig.tight_layout()
     return fig
 

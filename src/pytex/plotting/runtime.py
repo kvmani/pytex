@@ -281,6 +281,7 @@ def plot_odf_phi2_sections(
     levels: int = 12,
     max_cols: int = 3,
     panel_labels: bool = True,
+    colorbar_label: str = "ODF density (m.r.d.)",
     title: str | None = None,
     theme: str = "journal",
     style_path: str | None = None,
@@ -339,7 +340,7 @@ def plot_odf_phi2_sections(
         grid.shared_colorbar(
             contour,
             axes=grid.axes_flat[:count],
-            label="ODF density (m.r.d.)",
+            label=colorbar_label,
         )
     if title is not None:
         grid.figure.suptitle(title)

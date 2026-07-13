@@ -371,3 +371,20 @@ def test_plot_shear_modulus_surface_uses_display_label() -> None:
     surface = shear_modulus_surface(_copper(), mode="min", n_theta=20, n_phi=40)
     figure = plot_youngs_modulus_surface(surface)
     assert "min shear modulus surface" in figure.axes[0].get_title()
+
+
+def test_plot_modulus_surface_labels_conventional_units() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_youngs_modulus_surface, poisson_ratio_surface
+
+    figure = plot_youngs_modulus_surface(_copper(), n_theta=20, n_phi=40)
+    assert figure.axes[-1].get_ylabel() == "Young's modulus (GPa)"
+    # dimensionless properties carry no unit under unit="auto"
+    surface = poisson_ratio_surface(_copper(), mode="max", n_theta=20, n_phi=40)
+    figure = plot_youngs_modulus_surface(surface)
+    assert figure.axes[-1].get_ylabel() == "max Poisson's ratio"
+    # explicit override wins
+    figure = plot_youngs_modulus_surface(_copper(), n_theta=20, n_phi=40, unit="MPa")
+    assert figure.axes[-1].get_ylabel() == "Young's modulus (MPa)"
