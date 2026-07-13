@@ -288,6 +288,80 @@ def test_shear_modulus_surface_rejects_unknown_mode() -> None:
         shear_modulus_surface(_copper(), mode="median")
 
 
+def test_cubic_poisson_ratio_on_cube_axes_matches_compliance_ratio() -> None:
+    # for <100> loading and <010> transverse, nu = -s12 / s11 exactly
+    stiffness = _copper()
+    voigt = stiffness.compliance().voigt_matrix()
+    expected = -voigt[0, 1] / voigt[0, 0]
+    assert stiffness.poisson_ratio((1, 0, 0), (0, 1, 0)) == pytest.approx(expected)
+    assert stiffness.poisson_ratio((0, 0, 1), (1, 0, 0)) == pytest.approx(expected)
+
+
+def test_isotropic_poisson_ratio_is_direction_independent() -> None:
+    stiffness = StiffnessTensor.isotropic(youngs_modulus=200.0, poisson_ratio=0.3)
+    for normal, transverse in [
+        ((1, 0, 0), (0, 1, 0)),
+        ((1, 1, 0), (-1, 1, 0)),
+        ((1, 1, 1), (-1, 1, 0)),
+    ]:
+        assert stiffness.poisson_ratio(normal, transverse) == pytest.approx(0.3)
+
+
+def test_poisson_ratio_requires_orthogonal_pair() -> None:
+    with pytest.raises(ValueError, match="orthogonal"):
+        _copper().poisson_ratio((1, 0, 0), (1, 1, 0))
+
+
+def test_batched_poisson_ratio_matches_scalar() -> None:
+    stiffness = _copper()
+    normals = np.array([[1, 0, 0], [1, 1, 0], [1, 1, 1]], dtype=np.float64)
+    transverse = np.array([[0, 1, 0], [-1, 1, 0], [-1, 1, 0]], dtype=np.float64)
+    batched = stiffness.poisson_ratio(normals, transverse)
+    assert batched.shape == (3,)
+    for i in range(3):
+        assert batched[i] == pytest.approx(stiffness.poisson_ratio(normals[i], transverse[i]))
+    assert isinstance(stiffness.poisson_ratio((1, 0, 0), (0, 1, 0)), float)
+
+
+def test_cubic_poisson_surface_extrema_bracket_directional_values() -> None:
+    from pytex import poisson_ratio_surface
+
+    stiffness = _copper()
+    surface_min = poisson_ratio_surface(stiffness, mode="min", n_theta=61, n_phi=121)
+    surface_max = poisson_ratio_surface(stiffness, mode="max", n_theta=61, n_phi=121)
+    assert surface_min.property_name == "poisson_ratio_min"
+    # per loading direction, min <= max
+    assert np.all(surface_min.values <= surface_max.values + 1e-12)
+    # for <100> loading, nu is the same for every transverse direction: both
+    # surfaces equal -s12/s11 at the pole (theta = 0)
+    voigt = stiffness.compliance().voigt_matrix()
+    expected = -voigt[0, 1] / voigt[0, 0]
+    assert surface_min.values[0, 0] == pytest.approx(expected)
+    assert surface_max.values[0, 0] == pytest.approx(expected)
+    # copper is strongly anisotropic: <110> loading spans a wide nu range
+    exact_high = stiffness.poisson_ratio((1, 1, 0), (-1, 1, 0))
+    exact_low = stiffness.poisson_ratio((1, 1, 0), (0, 0, 1))
+    assert surface_max.maximum == pytest.approx(max(exact_high, exact_low))
+    assert surface_min.minimum == pytest.approx(min(exact_high, exact_low))
+
+
+def test_isotropic_poisson_surface_is_constant() -> None:
+    from pytex import poisson_ratio_surface
+
+    stiffness = StiffnessTensor.isotropic(youngs_modulus=200.0, poisson_ratio=0.3)
+    for mode in ("min", "max"):
+        surface = poisson_ratio_surface(stiffness, mode=mode, n_theta=30, n_phi=60)
+        assert surface.minimum == pytest.approx(0.3, abs=1e-9)
+        assert surface.maximum == pytest.approx(0.3, abs=1e-9)
+
+
+def test_poisson_ratio_surface_rejects_unknown_mode() -> None:
+    from pytex import poisson_ratio_surface
+
+    with pytest.raises(ValueError, match="mode"):
+        poisson_ratio_surface(_copper(), mode="mean")
+
+
 def test_plot_shear_modulus_surface_uses_display_label() -> None:
     import matplotlib
 

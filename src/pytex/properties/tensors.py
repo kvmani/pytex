@@ -172,6 +172,11 @@ class StiffnessTensor(ElasticTensor):
     ) -> np.ndarray | float:
         return self.compliance().shear_modulus(plane_normal, shear_direction)
 
+    def poisson_ratio(
+        self, direction: ArrayLike, transverse_direction: ArrayLike
+    ) -> np.ndarray | float:
+        return self.compliance().poisson_ratio(direction, transverse_direction)
+
 
 def _unit_rows(direction: ArrayLike, name: str) -> tuple[np.ndarray, bool]:
     """Normalize a single ``(3,)`` vector or an ``(n, 3)`` batch to unit rows."""
@@ -290,6 +295,41 @@ class ComplianceTensor(ElasticTensor):
             raise ValueError("Non-physical compliance produced a non-positive shear modulus.")
         modulus = 1.0 / inverse_modulus
         return float(modulus[0]) if scalar_n and scalar_m else np.ascontiguousarray(modulus)
+
+    def poisson_ratio(
+        self, direction: ArrayLike, transverse_direction: ArrayLike
+    ) -> np.ndarray | float:
+        """Directional Poisson's ratio for uniaxial stress along ``n``.
+
+        ``nu(n, m) = - (m_i m_j n_k n_l S_ijkl) / (n_i n_j n_k n_l S_ijkl)`` is
+        the negative ratio of the transverse strain along ``m`` to the axial
+        strain along ``n``; the two directions must be orthogonal. Accepts
+        single ``(3,)`` vectors (returns a float) or matching ``(n, 3)`` batches
+        (returns an ``(n,)`` array), fully vectorised.
+        """
+
+        normals, scalar_n = _unit_rows(direction, "direction")
+        transverse, scalar_m = _unit_rows(transverse_direction, "transverse_direction")
+        if normals.shape != transverse.shape:
+            raise ValueError("direction and transverse_direction must have matching shapes.")
+        if np.any(np.abs(np.einsum("ni,ni->n", normals, transverse)) > 1e-8):
+            raise ValueError("transverse_direction must be orthogonal to direction.")
+        axial = np.einsum(
+            "ni,nj,nk,nl,ijkl->n", normals, normals, normals, normals, self.tensor, optimize=True
+        )
+        if np.any(axial <= 0.0):
+            raise ValueError("Non-physical compliance produced a non-positive axial strain.")
+        coupling = np.einsum(
+            "ni,nj,nk,nl,ijkl->n",
+            transverse,
+            transverse,
+            normals,
+            normals,
+            self.tensor,
+            optimize=True,
+        )
+        ratio = -coupling / axial
+        return float(ratio[0]) if scalar_n and scalar_m else np.ascontiguousarray(ratio)
 
 
 def _normalized_weights(count: int, weights: ArrayLike | None) -> np.ndarray:
@@ -495,6 +535,51 @@ def shear_modulus_surface(
     )
 
 
+def poisson_ratio_surface(
+    tensor: StiffnessTensor | ComplianceTensor,
+    *,
+    mode: str = "min",
+    n_theta: int = 90,
+    n_phi: int = 180,
+) -> DirectionalModulusSurface:
+    """Sample the extremal directional Poisson's ratio over the unit sphere.
+
+    For each loading direction ``n``, Poisson's ratio still depends on the
+    transverse direction ``m``; this returns, per direction, the exact minimum
+    (``mode="min"``) or maximum (``mode="max"``) of ``nu(n, m)`` over all
+    transverse directions. Because ``nu`` is a quadratic form in ``m``, the
+    extremes are the eigenvalues of the form projected onto the transverse
+    plane -- no angular sweep. Negative minima flag auxetic response.
+    """
+
+    if mode not in {"min", "max"}:
+        raise ValueError("mode must be 'min' or 'max'.")
+    compliance = tensor.compliance() if isinstance(tensor, StiffnessTensor) else tensor
+
+    def extremal_poisson(directions: np.ndarray) -> np.ndarray:
+        normals = np.asarray(directions, dtype=np.float64)
+        axial = np.einsum(
+            "ni,nj,nk,nl,ijkl->n",
+            normals,
+            normals,
+            normals,
+            normals,
+            compliance.tensor,
+            optimize=True,
+        )
+        if np.any(axial <= 0.0):
+            raise ValueError("Non-physical compliance produced a non-positive axial strain.")
+        forms = -np.einsum(
+            "nk,nl,ijkl->nij", normals, normals, compliance.tensor, optimize=True
+        ) / axial[:, None, None]
+        low, high = _planar_quadratic_extrema(forms, normals)
+        return low if mode == "min" else high
+
+    return _directional_property_surface(
+        extremal_poisson, f"poisson_ratio_{mode}", n_theta=n_theta, n_phi=n_phi
+    )
+
+
 __all__ = [
     "ComplianceTensor",
     "DirectionalModulusSurface",
@@ -502,6 +587,7 @@ __all__ = [
     "StiffnessTensor",
     "homogenize_elastic",
     "linear_compressibility_surface",
+    "poisson_ratio_surface",
     "shear_modulus_surface",
     "youngs_modulus_surface",
 ]
