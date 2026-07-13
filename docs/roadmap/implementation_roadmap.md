@@ -5,6 +5,12 @@ This roadmap is split into two layers:
 1. the immediate development program for the next phase
 2. the longer-horizon capability ladder that keeps the project aligned with the mission
 
+The cross-domain feature program (XRD, TEM, orientation-relationship analysis,
+texture core, visualization, and engineering foundations, categorized by
+horizon) lives in the
+[World-Class Feature And Foundation Roadmap](world_class_feature_roadmap.md);
+this document remains the validation-hardening ledger.
+
 The immediate phase is still intentionally corrective, but it is no longer a foundation-rescue
 phase. Repository integrity, the default test suite, the rendered Sphinx surface, and the full
 scientific lane are now green. The next phase must broaden evidence-backed validation before new
@@ -285,3 +291,4 @@ The current roadmap intentionally deprioritizes the following until the hardenin
 ### Informative
 
 - [Repository Review 2026 Foundation Audit](../architecture/repo_review_2026_foundation_audit.md)
+- [World-Class Feature And Foundation Roadmap](world_class_feature_roadmap.md)
