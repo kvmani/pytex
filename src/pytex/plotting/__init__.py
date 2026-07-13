@@ -30,6 +30,14 @@ from pytex.plotting.ebsd import (
     plot_phase_map,
     plot_property_map,
 )
+from pytex.plotting.figure import (
+    PanelGrid,
+    add_scale_bar,
+    export_figure,
+    label_panels,
+    publication_style,
+    rc_params_from_style,
+)
 from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
 from pytex.plotting.properties import plot_youngs_modulus_surface
 from pytex.plotting.runtime import (
@@ -69,12 +77,16 @@ __all__ = [
     "CrystalScene",
     "DirectionAnnotationStyle",
     "IPFColorKey",
+    "PanelGrid",
     "PlaneAnnotationStyle",
+    "add_scale_bar",
     "build_crystal_scene",
     "categorical_colors",
+    "export_figure",
     "get_pytex_colormap",
     "ipf_color",
     "ipf_colors",
+    "label_panels",
     "list_style_themes",
     "load_style_theme",
     "plot_crystal_directions",
@@ -101,6 +113,8 @@ __all__ = [
     "plot_wulff_net",
     "plot_xrd_pattern",
     "plot_youngs_modulus_surface",
+    "publication_style",
+    "rc_params_from_style",
     "read_style_yaml",
     "register_pytex_colormaps",
     "resolve_style",
