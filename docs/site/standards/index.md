@@ -7,6 +7,7 @@ surfaces.
 :maxdepth: 1
 
 engineering_governance
+api_stability_and_deprecation
 notation_and_conventions
 hexagonal_and_trigonal_conventions
 documentation_architecture
