@@ -21,6 +21,48 @@ def _gaussian_profile(x: np.ndarray, center: float, sigma: float) -> np.ndarray:
     return profile
 
 
+def _lorentzian_profile(x: np.ndarray, center: float, gamma: float) -> np.ndarray:
+    """Area-normalized Lorentzian with half-width-at-half-maximum ``gamma``."""
+
+    profile = gamma / (np.pi * ((x - center) ** 2 + gamma * gamma))
+    profile = np.ascontiguousarray(profile, dtype=np.float64)
+    profile.setflags(write=False)
+    return profile
+
+
+def _pseudo_voigt_profile(x: np.ndarray, center: float, fwhm: float, eta: float) -> np.ndarray:
+    """Area-normalized pseudo-Voigt: ``eta`` Lorentzian + ``1 - eta`` Gaussian.
+
+    ``eta = 0`` recovers the pure Gaussian, ``eta = 1`` the pure Lorentzian,
+    both sharing the same full width at half maximum.
+    """
+
+    sigma = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+    gaussian = _gaussian_profile(x, center, sigma)
+    lorentzian = _lorentzian_profile(x, center, 0.5 * fwhm)
+    profile = eta * lorentzian + (1.0 - eta) * gaussian
+    profile = np.ascontiguousarray(profile, dtype=np.float64)
+    profile.setflags(write=False)
+    return profile
+
+
+def _caglioti_fwhm_deg(
+    two_theta_deg: float, caglioti_uvw: tuple[float, float, float]
+) -> float:
+    """Caglioti instrumental width: FWHM^2 = U tan^2(theta) + V tan(theta) + W (deg^2)."""
+
+    theta = np.deg2rad(0.5 * two_theta_deg)
+    tangent = float(np.tan(theta))
+    u, v, w = caglioti_uvw
+    fwhm_squared = u * tangent * tangent + v * tangent + w
+    if fwhm_squared <= 0.0:
+        raise ValueError(
+            "caglioti_uvw produced a non-positive squared FWHM at "
+            f"two-theta = {two_theta_deg:.3f} deg."
+        )
+    return float(np.sqrt(fwhm_squared))
+
+
 def _lorentz_polarization(two_theta_rad: float) -> float:
     theta = 0.5 * two_theta_rad
     sin_theta = max(float(np.sin(theta)), 1e-8)
@@ -29,10 +71,15 @@ def _lorentz_polarization(two_theta_rad: float) -> float:
     return float((1.0 + cos_two_theta * cos_two_theta) / (sin_theta * sin_theta * cos_theta))
 
 
-def _structure_factors_xray(phase: Phase, hkls: np.ndarray) -> np.ndarray:
+def _structure_factors_xray(
+    phase: Phase, hkls: np.ndarray, *, tabulated: bool = False
+) -> np.ndarray:
     """X-ray structure factors for a batch of ``hkls`` (shape (n, 3)) -> (n,) complex.
 
-    Vectorised over both reflections and unit-cell sites.
+    Vectorised over both reflections and unit-cell sites. With ``tabulated``
+    the atomic-number proxy ``f = Z`` is replaced by the tabulated
+    angle-dependent form factors ``f(s)`` from
+    `pytex.diffraction.scattering`.
     """
 
     hkls_float = np.atleast_2d(np.asarray(hkls, dtype=np.float64))
@@ -42,7 +89,15 @@ def _structure_factors_xray(phase: Phase, hkls: np.ndarray) -> np.ndarray:
     g_cart = hkls_float @ reciprocal.T  # (n, 3): reciprocal @ hkl per row
     g_sq = np.sum(g_cart * g_cart, axis=1)  # (n,)
     sites = phase.unit_cell.sites
-    z = np.array([float(atomic_number(site.species)) for site in sites], dtype=np.float64)
+    if tabulated:
+        from pytex.diffraction.scattering import xray_form_factor_matrix
+
+        s_values = 0.5 * np.sqrt(g_sq)  # s = sin(theta)/lambda = |g| / 2
+        z = xray_form_factor_matrix(
+            tuple(site.species for site in sites), s_values
+        )  # (n, s)
+    else:
+        z = np.array([float(atomic_number(site.species)) for site in sites], dtype=np.float64)
     occupancy = np.array([float(site.occupancy) for site in sites], dtype=np.float64)
     b_iso = np.array(
         [0.0 if site.b_iso is None else float(site.b_iso) for site in sites], dtype=np.float64
@@ -54,7 +109,8 @@ def _structure_factors_xray(phase: Phase, hkls: np.ndarray) -> np.ndarray:
         -(b_iso[None, :] * g_sq[:, None]) / max(16.0 * np.pi * np.pi, 1e-12)
     )  # (n, s)
     phase_factor = np.exp(2.0j * np.pi * (hkls_float @ fractional.T))  # (n, s)
-    contributions = (occupancy * z)[None, :] * debye_waller * phase_factor
+    form_factors = z if z.ndim == 2 else np.broadcast_to(z[None, :], phase_factor.shape)
+    contributions = occupancy[None, :] * form_factors * debye_waller * phase_factor
     return np.asarray(np.sum(contributions, axis=1), dtype=np.complex128)
 
 
@@ -119,22 +175,96 @@ def _enumerate_hkls(max_index: int) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class RadiationSpec:
+    """A diffraction radiation line (or K-alpha doublet).
+
+    ``wavelength_angstrom`` is the primary (K-alpha1) line. When
+    ``kalpha2_wavelength_angstrom`` is set, pattern generation superposes the
+    K-alpha2 contribution weighted by ``kalpha2_relative_intensity`` (the
+    conventional 0.5). ``anode`` records the X-ray tube target;
+    ``kind`` distinguishes X-ray from neutron radiation.
+    """
+
     name: str
     wavelength_angstrom: float
+    kalpha2_wavelength_angstrom: float | None = None
+    kalpha2_relative_intensity: float = 0.5
+    anode: str | None = None
+    kind: str = "xray"
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ValueError("RadiationSpec.name must be non-empty.")
         if self.wavelength_angstrom <= 0.0:
             raise ValueError("RadiationSpec.wavelength_angstrom must be strictly positive.")
+        if self.kalpha2_wavelength_angstrom is not None:
+            if self.kalpha2_wavelength_angstrom <= 0.0:
+                raise ValueError(
+                    "RadiationSpec.kalpha2_wavelength_angstrom must be strictly positive."
+                )
+            if not 0.0 < self.kalpha2_relative_intensity <= 1.0:
+                raise ValueError(
+                    "RadiationSpec.kalpha2_relative_intensity must lie in (0, 1]."
+                )
+        if self.kind not in {"xray", "neutron"}:
+            raise ValueError("RadiationSpec.kind must be 'xray' or 'neutron'.")
 
     @classmethod
     def cu_ka(cls) -> RadiationSpec:
-        return cls(name="Cu Ka", wavelength_angstrom=1.5406)
+        return cls(name="Cu Ka", wavelength_angstrom=1.5406, anode="Cu")
 
     @classmethod
     def mo_ka(cls) -> RadiationSpec:
-        return cls(name="Mo Ka", wavelength_angstrom=0.71073)
+        return cls(name="Mo Ka", wavelength_angstrom=0.71073, anode="Mo")
+
+    # Bearden (1967) K-alpha1 / K-alpha2 wavelengths for the common anodes.
+    @classmethod
+    def cu_ka_doublet(cls) -> RadiationSpec:
+        return cls(
+            name="Cu Ka1/Ka2",
+            wavelength_angstrom=1.540562,
+            kalpha2_wavelength_angstrom=1.544390,
+            anode="Cu",
+        )
+
+    @classmethod
+    def mo_ka_doublet(cls) -> RadiationSpec:
+        return cls(
+            name="Mo Ka1/Ka2",
+            wavelength_angstrom=0.709300,
+            kalpha2_wavelength_angstrom=0.713590,
+            anode="Mo",
+        )
+
+    @classmethod
+    def co_ka(cls) -> RadiationSpec:
+        return cls(
+            name="Co Ka1/Ka2",
+            wavelength_angstrom=1.788965,
+            kalpha2_wavelength_angstrom=1.792850,
+            anode="Co",
+        )
+
+    @classmethod
+    def cr_ka(cls) -> RadiationSpec:
+        return cls(
+            name="Cr Ka1/Ka2",
+            wavelength_angstrom=2.289700,
+            kalpha2_wavelength_angstrom=2.293606,
+            anode="Cr",
+        )
+
+    @classmethod
+    def fe_ka(cls) -> RadiationSpec:
+        return cls(
+            name="Fe Ka1/Ka2",
+            wavelength_angstrom=1.936042,
+            kalpha2_wavelength_angstrom=1.939980,
+            anode="Fe",
+        )
+
+    @classmethod
+    def neutron(cls, wavelength_angstrom: float, *, name: str = "neutron") -> RadiationSpec:
+        return cls(name=name, wavelength_angstrom=wavelength_angstrom, kind="neutron")
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,7 +342,9 @@ def generate_powder_reflections(
     radiation: RadiationSpec | None = None,
     two_theta_range_deg: tuple[float, float] = (5.0, 120.0),
     max_index: int = 6,
-    intensity_model: Literal["xray_atomic_number", "unit"] = "xray_atomic_number",
+    intensity_model: Literal["xray_atomic_number", "xray_tabulated", "unit"] = (
+        "xray_atomic_number"
+    ),
 ) -> tuple[PowderReflection, ...]:
     if max_index <= 0:
         raise ValueError("max_index must be strictly positive.")
@@ -254,7 +386,9 @@ def generate_powder_reflections(
     if intensity_model == "unit":
         structure_factors = np.ones(surviving_hkls.shape[0], dtype=np.complex128)
     else:
-        structure_factors = _structure_factors_xray(phase, surviving_hkls)
+        structure_factors = _structure_factors_xray(
+            phase, surviving_hkls, tabulated=intensity_model == "xray_tabulated"
+        )
 
     reflections: list[PowderReflection] = []
     for index in range(surviving_hkls.shape[0]):
@@ -293,6 +427,41 @@ def generate_powder_reflections(
     return tuple(reflections)
 
 
+def _accumulate_reflection_profiles(
+    grid: np.ndarray,
+    reflections: tuple[PowderReflection, ...],
+    *,
+    weight: float,
+    broadening_fwhm_deg: float | None,
+    profile: str,
+    pseudo_voigt_eta: float,
+    caglioti_uvw: tuple[float, float, float] | None,
+) -> np.ndarray:
+    """Sum weighted peak profiles for one radiation line onto the 2-theta grid."""
+
+    intensity_grid = np.zeros_like(grid)
+    if broadening_fwhm_deg is None and caglioti_uvw is None:
+        for reflection in reflections:
+            index = int(np.argmin(np.abs(grid - reflection.two_theta_deg)))
+            intensity_grid[index] += weight * reflection.intensity
+        return intensity_grid
+    for reflection in reflections:
+        fwhm = (
+            _caglioti_fwhm_deg(reflection.two_theta_deg, caglioti_uvw)
+            if caglioti_uvw is not None
+            else float(broadening_fwhm_deg)  # type: ignore[arg-type]
+        )
+        if profile == "pseudo_voigt":
+            peak = _pseudo_voigt_profile(
+                grid, reflection.two_theta_deg, fwhm, pseudo_voigt_eta
+            )
+        else:
+            sigma = fwhm / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+            peak = _gaussian_profile(grid, reflection.two_theta_deg, sigma)
+        intensity_grid += weight * reflection.intensity * peak
+    return intensity_grid
+
+
 def generate_xrd_pattern(
     phase: Phase,
     *,
@@ -300,14 +469,36 @@ def generate_xrd_pattern(
     two_theta_range_deg: tuple[float, float] = (5.0, 120.0),
     resolution_deg: float = 0.02,
     max_index: int = 6,
-    intensity_model: Literal["xray_atomic_number", "unit"] = "xray_atomic_number",
+    intensity_model: Literal["xray_atomic_number", "xray_tabulated", "unit"] = (
+        "xray_atomic_number"
+    ),
     broadening_fwhm_deg: float | None = 0.15,
+    profile: Literal["gaussian", "pseudo_voigt"] = "gaussian",
+    pseudo_voigt_eta: float = 0.5,
+    caglioti_uvw: tuple[float, float, float] | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> PowderPattern:
+    """Simulate a powder XRD pattern for ``phase``.
+
+    Peak shapes: ``profile="gaussian"`` (default) or ``"pseudo_voigt"`` with
+    mixing ``pseudo_voigt_eta``. Angular widths come from the constant
+    ``broadening_fwhm_deg`` or, when ``caglioti_uvw`` is given, from the
+    Caglioti relation ``FWHM^2 = U tan^2(theta) + V tan(theta) + W``. When the
+    radiation carries a K-alpha2 line, its pattern is superposed at
+    ``kalpha2_relative_intensity``; the returned ``reflections`` remain the
+    K-alpha1 list.
+    """
+
     if resolution_deg <= 0.0:
         raise ValueError("resolution_deg must be strictly positive.")
     if broadening_fwhm_deg is not None and broadening_fwhm_deg <= 0.0:
         raise ValueError("broadening_fwhm_deg must be strictly positive when provided.")
+    if profile not in {"gaussian", "pseudo_voigt"}:
+        raise ValueError("profile must be 'gaussian' or 'pseudo_voigt'.")
+    if not 0.0 <= pseudo_voigt_eta <= 1.0:
+        raise ValueError("pseudo_voigt_eta must lie in [0, 1].")
+    if caglioti_uvw is not None and len(caglioti_uvw) != 3:
+        raise ValueError("caglioti_uvw must provide (U, V, W).")
     radiation_spec = RadiationSpec.cu_ka() if radiation is None else radiation
     reflections = generate_powder_reflections(
         phase,
@@ -318,21 +509,40 @@ def generate_xrd_pattern(
     )
     min_two_theta, max_two_theta = map(float, two_theta_range_deg)
     grid = np.arange(min_two_theta, max_two_theta + 0.5 * resolution_deg, resolution_deg)
-    intensity_grid = np.zeros_like(grid)
-    if broadening_fwhm_deg is None:
-        for reflection in reflections:
-            index = int(np.argmin(np.abs(grid - reflection.two_theta_deg)))
-            intensity_grid[index] += reflection.intensity
-    else:
-        sigma = broadening_fwhm_deg / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-        for reflection in reflections:
-            intensity_grid += reflection.intensity * _gaussian_profile(
-                grid,
-                reflection.two_theta_deg,
-                sigma,
-            )
-        if intensity_grid.size > 0:
-            intensity_grid *= resolution_deg
+    intensity_grid = _accumulate_reflection_profiles(
+        grid,
+        reflections,
+        weight=1.0,
+        broadening_fwhm_deg=broadening_fwhm_deg,
+        profile=profile,
+        pseudo_voigt_eta=pseudo_voigt_eta,
+        caglioti_uvw=caglioti_uvw,
+    )
+    if radiation_spec.kalpha2_wavelength_angstrom is not None:
+        kalpha2_spec = RadiationSpec(
+            name=f"{radiation_spec.name} (Ka2)",
+            wavelength_angstrom=radiation_spec.kalpha2_wavelength_angstrom,
+            anode=radiation_spec.anode,
+            kind=radiation_spec.kind,
+        )
+        kalpha2_reflections = generate_powder_reflections(
+            phase,
+            radiation=kalpha2_spec,
+            two_theta_range_deg=two_theta_range_deg,
+            max_index=max_index,
+            intensity_model=intensity_model,
+        )
+        intensity_grid += _accumulate_reflection_profiles(
+            grid,
+            kalpha2_reflections,
+            weight=radiation_spec.kalpha2_relative_intensity,
+            broadening_fwhm_deg=broadening_fwhm_deg,
+            profile=profile,
+            pseudo_voigt_eta=pseudo_voigt_eta,
+            caglioti_uvw=caglioti_uvw,
+        )
+    if (broadening_fwhm_deg is not None or caglioti_uvw is not None) and intensity_grid.size > 0:
+        intensity_grid *= resolution_deg
     if np.max(intensity_grid) > 0.0:
         intensity_grid /= float(np.max(intensity_grid))
     intensity_grid = np.ascontiguousarray(intensity_grid, dtype=np.float64)

@@ -74,6 +74,7 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "pytex" = ["py.typed"]
+"pytex.diffraction._data" = ["*.json"]
 "pytex.plotting.themes" = ["*.yaml"]
 
 [tool.pytest.ini_options]
