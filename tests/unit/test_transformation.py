@@ -506,3 +506,98 @@ def test_standard_catalogs_resolve_named_relationships() -> None:
         parent_phase=parent, child_phase=make_hcp_child()
     )
     assert hcp_catalog.names() == ("burgers",)
+
+
+def test_ks_intervariant_angles_match_morito_table() -> None:
+    from pytex.core import intervariant_misorientation_angles_deg
+
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    angles = intervariant_misorientation_angles_deg(ks)
+    assert angles.shape == (24, 24)
+    assert_allclose(angles, angles.T, atol=1e-9)
+    assert_allclose(np.diag(angles), 0.0, atol=1e-9)
+    # the published KS intervariant disorientation classes (Morito et al.,
+    # Acta Mater. 51 (2003) 1789, Table 3)
+    expected_classes = np.array(
+        [10.53, 14.88, 20.61, 21.06, 47.11, 49.47, 50.51, 51.73, 57.21, 60.00]
+    )
+    off_diagonal = angles[~np.eye(24, dtype=bool)]
+    observed_classes = np.unique(np.round(off_diagonal, 2))
+    assert observed_classes.size == expected_classes.size
+    assert_allclose(observed_classes, expected_classes, atol=0.01)
+
+
+def test_intervariant_misorientations_axes_are_consistent() -> None:
+    from pytex.core import intervariant_misorientation_angles_deg, intervariant_misorientations
+
+    _, _, parent, child = make_phases()
+    nw = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    pairs = intervariant_misorientations(nw)
+    assert len(pairs) == 12 * 11 // 2
+    matrix = intervariant_misorientation_angles_deg(nw)
+    for pair in pairs:
+        assert pair.angle_deg == pytest.approx(
+            matrix[pair.variant_a - 1, pair.variant_b - 1], abs=1e-6
+        )
+        assert np.linalg.norm(pair.axis_child_frame) == pytest.approx(1.0)
+
+
+def test_select_variants_recovers_planted_assignments() -> None:
+    from pytex.core import select_variants
+
+    crystal_parent, crystal_child, parent, child = make_phases()
+    specimen = ReferenceFrame(
+        name="specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = ks.generate_variants()
+    parent_orientation = Orientation(
+        rotation=Rotation.from_bunge_euler(20.0, 35.0, 50.0),
+        crystal_frame=crystal_parent,
+        specimen_frame=specimen,
+        symmetry=parent.symmetry,
+        phase=parent,
+    )
+    planted = [3, 7, 3, 18]
+    perturbation = Rotation.from_axis_angle([0.0, 0.0, 1.0], np.deg2rad(0.5))
+    quaternions = np.stack(
+        [
+            perturbation.compose(
+                variants[index - 1].parent_to_child_rotation.compose(
+                    parent_orientation.rotation
+                )
+            ).quaternion
+            for index in planted
+        ]
+    )
+    children = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=crystal_child,
+        specimen_frame=specimen,
+        symmetry=child.symmetry,
+        phase=child,
+    )
+    record = PhaseTransformationRecord(
+        name="planted",
+        orientation_relationship=ks,
+        parent_orientation=parent_orientation,
+        child_orientations=children,
+    )
+    report = select_variants(record)
+    assert report.variant_indices.tolist() == planted
+    assert_allclose(report.scores_deg, 0.5, atol=1e-6)
+    frequencies = report.variant_frequencies(variant_count=24)
+    assert frequencies.sum() == 4
+    assert frequencies[2] == 2 and frequencies[6] == 1 and frequencies[17] == 1
+    with pytest.raises(ValueError, match="variant_count"):
+        report.variant_frequencies(variant_count=2)

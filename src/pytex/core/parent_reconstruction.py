@@ -50,6 +50,21 @@ class VariantSelectionReport:
         object.__setattr__(self, "variant_indices", indices)
         object.__setattr__(self, "scores_deg", scores)
 
+    def variant_frequencies(self, *, variant_count: int | None = None) -> np.ndarray:
+        """Occurrence count of each variant index (1-based).
+
+        Returns an array of length ``variant_count`` (defaults to the largest
+        selected index) whose entry ``k`` counts selections of variant
+        ``k + 1`` — the variant-selection histogram.
+        """
+
+        highest = int(self.variant_indices.max()) if self.variant_indices.size else 0
+        total = highest if variant_count is None else int(variant_count)
+        if total < highest:
+            raise ValueError("variant_count must cover the largest selected variant index.")
+        counts = np.bincount(self.variant_indices, minlength=total + 1)[1:]
+        return np.ascontiguousarray(counts)
+
 
 @dataclass(frozen=True, slots=True)
 class ParentReconstructionReport:
@@ -141,6 +156,55 @@ def reconstruct_parent_orientation(
     )
 
 
+def select_variants(
+    record: PhaseTransformationRecord,
+    *,
+    symmetry_aware: bool = True,
+    provenance: ProvenanceRecord | None = None,
+) -> VariantSelectionReport:
+    """Assign each observed child orientation to its nearest transformation variant.
+
+    For every child orientation in ``record``, predicts the child orientation
+    of each variant of the record's orientation relationship applied to the
+    parent orientation, and selects the variant with the smallest
+    (child-symmetry-reduced) misorientation. Returns a
+    `VariantSelectionReport` with the 1-based variant index and the residual
+    angle per child; ``report.variant_frequencies()`` gives the
+    variant-selection histogram.
+    """
+
+    variants = record.orientation_relationship.generate_variants()
+    parent_rotation = record.parent_orientation.rotation
+    children = record.child_orientations
+    if len(children) == 0:
+        raise ValueError("select_variants requires at least one child orientation.")
+    quaternions = np.stack(
+        [
+            variant.parent_to_child_rotation.compose(parent_rotation).quaternion
+            for variant in variants
+        ],
+        axis=0,
+    )
+    predicted = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=children.crystal_frame,
+        specimen_frame=children.specimen_frame,
+        symmetry=children.symmetry,
+        phase=children.phase,
+    )
+    angles_deg = np.degrees(
+        children.misorientation_angles_to(predicted, symmetry_aware=symmetry_aware)
+    )
+    best_columns = np.argmin(angles_deg, axis=1)
+    indices = np.array(
+        [variants[int(column)].variant_index for column in best_columns], dtype=np.int64
+    )
+    scores = angles_deg[np.arange(len(children)), best_columns]
+    return VariantSelectionReport(
+        variant_indices=indices, scores_deg=scores, provenance=provenance
+    )
+
+
 def standard_fcc_bcc_relationships(
     *,
     parent_phase: Phase,
@@ -204,6 +268,7 @@ __all__ = [
     "ParentReconstructionReport",
     "VariantSelectionReport",
     "reconstruct_parent_orientation",
+    "select_variants",
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
 ]

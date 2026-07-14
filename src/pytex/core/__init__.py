@@ -95,6 +95,7 @@ from pytex.core.parent_reconstruction import (
     ParentReconstructionReport,
     VariantSelectionReport,
     reconstruct_parent_orientation,
+    select_variants,
     standard_bcc_hcp_relationships,
     standard_fcc_bcc_relationships,
 )
@@ -113,9 +114,12 @@ from pytex.core.sphere import (
 )
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
+    IntervariantMisorientation,
     OrientationRelationship,
     PhaseTransformationRecord,
     TransformationVariant,
+    intervariant_misorientation_angles_deg,
+    intervariant_misorientations,
 )
 
 __all__ = [
@@ -138,6 +142,7 @@ __all__ = [
     "FundamentalSector",
     "Handedness",
     "IPFSectorBoundary",
+    "IntervariantMisorientation",
     "Lattice",
     "MeasurementQuality",
     "MillerBravaisDirection",
@@ -195,6 +200,8 @@ __all__ = [
     "format_miller_indices",
     "format_plane_indices",
     "get_phase_fixture",
+    "intervariant_misorientation_angles_deg",
+    "intervariant_misorientations",
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",
@@ -210,6 +217,7 @@ __all__ = [
     "reciprocal_to_direct_components",
     "reconstruct_parent_orientation",
     "reduce_indices",
+    "select_variants",
     "specimen_direction_vector",
     "spherical_angles_to_directions",
     "standard_bcc_hcp_relationships",

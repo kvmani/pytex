@@ -14,6 +14,7 @@ from pytex.core.orientation import (
     OrientationSet,
     Rotation,
     _plane_direction_rotation_matrices,
+    _reduced_pair_disorientation_angles,
 )
 from pytex.core.provenance import ProvenanceRecord
 
@@ -496,6 +497,109 @@ class TransformationVariant:
                 provenance=vector.provenance,
             )
         return self.parent_to_child_rotation.apply(vector)
+
+
+@dataclass(frozen=True, slots=True)
+class IntervariantMisorientation:
+    """The symmetry-reduced misorientation between two transformation variants.
+
+    ``axis_child_frame`` is the unit rotation axis of the minimal
+    (disorientation) representative, expressed in the child crystal frame.
+    """
+
+    variant_a: int
+    variant_b: int
+    angle_deg: float
+    axis_child_frame: np.ndarray
+
+    def __post_init__(self) -> None:
+        if self.variant_a <= 0 or self.variant_b <= 0:
+            raise ValueError("IntervariantMisorientation variant indices must be positive.")
+        axis = np.asarray(self.axis_child_frame, dtype=np.float64)
+        if axis.shape != (3,):
+            raise ValueError("axis_child_frame must have shape (3,).")
+        norm = float(np.linalg.norm(axis))
+        if not np.isclose(norm, 1.0, atol=1e-8):
+            raise ValueError("axis_child_frame must be a unit vector.")
+        axis = np.ascontiguousarray(axis)
+        axis.setflags(write=False)
+        object.__setattr__(self, "axis_child_frame", axis)
+
+
+def _child_operators(relationship: OrientationRelationship) -> np.ndarray:
+    symmetry = relationship.child_phase.symmetry
+    if symmetry is None:
+        return np.eye(3, dtype=np.float64)[None, :, :]
+    return np.asarray(symmetry.operators, dtype=np.float64)
+
+
+def intervariant_misorientation_angles_deg(
+    relationship: OrientationRelationship,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+) -> np.ndarray:
+    """Pairwise disorientation angles (deg) between all transformation variants.
+
+    Entry ``[i, j]`` is the child-symmetry-reduced misorientation angle
+    between variants ``i`` and ``j`` (zero diagonal, symmetric); the row/column
+    order follows ``generate_variants()``. For Kurdjumov-Sachs this reproduces
+    the published intervariant table (Morito et al.): angles from 10.53 deg up
+    to 60.00 deg.
+    """
+
+    resolved = relationship.generate_variants() if variants is None else variants
+    matrices = np.stack(
+        [variant.parent_to_child_rotation.as_matrix() for variant in resolved], axis=0
+    )
+    count = matrices.shape[0]
+    relative = np.einsum("ipq,jrq->ijpr", matrices, matrices, optimize=True).reshape(
+        count * count, 3, 3
+    )
+    operators = _child_operators(relationship)
+    angles = _reduced_pair_disorientation_angles(relative, operators, operators)
+    result = np.degrees(angles.reshape(count, count))
+    result = np.ascontiguousarray(result)
+    result.setflags(write=False)
+    return result
+
+
+def intervariant_misorientations(
+    relationship: OrientationRelationship,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+) -> tuple[IntervariantMisorientation, ...]:
+    """Disorientation angle and axis for every unordered variant pair.
+
+    Returns one `IntervariantMisorientation` per pair ``a < b`` in
+    ``generate_variants()`` order, with the axis of the minimal
+    symmetry-reduced representative in the child crystal frame.
+    """
+
+    resolved = relationship.generate_variants() if variants is None else variants
+    operators = _child_operators(relationship)
+    results: list[IntervariantMisorientation] = []
+    for a in range(len(resolved)):
+        matrix_a = resolved[a].parent_to_child_rotation.as_matrix()
+        for b in range(a + 1, len(resolved)):
+            matrix_b = resolved[b].parent_to_child_rotation.as_matrix()
+            relative = matrix_a @ matrix_b.T
+            products = np.einsum(
+                "aij,jk,blk->abil", operators, relative, operators, optimize=True
+            )
+            traces = np.trace(products, axis1=2, axis2=3)
+            cosines = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
+            flat = np.arccos(cosines).reshape(-1)
+            best = int(np.argmin(flat))
+            representative = Rotation.from_matrix(products.reshape(-1, 3, 3)[best])
+            results.append(
+                IntervariantMisorientation(
+                    variant_a=resolved[a].variant_index,
+                    variant_b=resolved[b].variant_index,
+                    angle_deg=representative.angle_deg,
+                    axis_child_frame=representative.axis,
+                )
+            )
+    return tuple(results)
 
 
 @dataclass(frozen=True, slots=True)
