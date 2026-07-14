@@ -45,6 +45,7 @@ per task.
 | --- | --- | --- | --- |
 | D | Unified depth-sorted mesh renderer + two-tone bonds + box-aspect fix | done, tests green | ae407a5 |
 | E | Coordination polyhedra (`polyhedra_species=`, Qhull, lit translucent faces) | done, tests green | b07fd0e |
+| F | Periodic boundary atoms (VESTA cell completion, deduped), view presets (a/b/c), species legend; ODF sigma sections + plotter labels | done, tests green | this commit |
 
 Architecture (documented in the `crystal3d` module docstring): strict
 two-layer split. `CrystalScene` is an immutable, renderer-independent scene

@@ -295,19 +295,48 @@ class CrystalScene:
 
 
 def _supercell_atom_positions(
-    phase: Phase, repeats: tuple[int, int, int]
+    phase: Phase,
+    repeats: tuple[int, int, int],
+    *,
+    include_boundary_atoms: bool = True,
 ) -> list[tuple[str, np.ndarray]]:
+    """Atom (species, Cartesian position) list for the repeated cell block.
+
+    With ``include_boundary_atoms`` (the VESTA convention), sites lying on
+    the supercell boundary also appear as translated copies on the opposite
+    faces/edges/corners, so the displayed block looks complete: a corner atom
+    of a single cell renders eight times. Coincident duplicates (e.g. a
+    boundary copy landing on an explicitly listed far-face site) are removed.
+    """
+
     if phase.unit_cell is None or not phase.unit_cell.sites:
         raise ValueError("Crystal visualization requires phase.unit_cell with atomic sites.")
     direct_basis = phase.lattice.direct_basis().matrix
+    tolerance = 1e-9
     atoms: list[tuple[str, np.ndarray]] = []
-    for i in range(repeats[0]):
-        for j in range(repeats[1]):
-            for k in range(repeats[2]):
-                translation = np.array([i, j, k], dtype=np.float64)
-                for site in phase.unit_cell.sites:
-                    frac = site.fractional_coordinates + translation
+    seen: set[tuple[str, tuple[float, float, float]]] = set()
+    for site in phase.unit_cell.sites:
+        base = np.asarray(site.fractional_coordinates, dtype=np.float64)
+        axis_translations = []
+        for axis in range(3):
+            if include_boundary_atoms:
+                low = int(np.ceil(-base[axis] - tolerance))
+                high = int(np.floor(repeats[axis] - base[axis] + tolerance))
+                axis_translations.append(range(low, high + 1))
+            else:
+                axis_translations.append(range(repeats[axis]))
+        for i in axis_translations[0]:
+            for j in axis_translations[1]:
+                for k in axis_translations[2]:
+                    frac = base + np.array([i, j, k], dtype=np.float64)
                     position = direct_basis @ frac
+                    key = (
+                        site.species,
+                        (round(position[0], 6), round(position[1], 6), round(position[2], 6)),
+                    )
+                    if key in seen:
+                        continue
+                    seen.add(key)
                     atoms.append((site.species, position))
     return atoms
 
@@ -680,6 +709,7 @@ def build_crystal_scene(
     repeats: tuple[int, int, int] = (1, 1, 1),
     show_bonds: bool = True,
     bond_tolerance_angstrom: float = 0.45,
+    include_boundary_atoms: bool = True,
     polyhedra_species: tuple[str, ...] = (),
     plane_hkls: tuple[tuple[int, int, int], ...] = (),
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
@@ -696,7 +726,9 @@ def build_crystal_scene(
         raise ValueError("repeats must contain strictly positive integers.")
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     crystal_style = style["crystal"]
-    atom_data = _supercell_atom_positions(phase, repeats)
+    atom_data = _supercell_atom_positions(
+        phase, repeats, include_boundary_atoms=include_boundary_atoms
+    )
     if slab_hkl is not None and slab_thickness_angstrom is not None:
         normal = phase.lattice.reciprocal_basis().matrix @ np.array(slab_hkl, dtype=np.float64)
         normal = normal / np.linalg.norm(normal)
@@ -727,7 +759,10 @@ def build_crystal_scene(
                     + covalent_radius_angstrom(atom_j.species)
                     + bond_tolerance_angstrom
                 )
-                if np.linalg.norm(atom_i.position_angstrom - atom_j.position_angstrom) <= cutoff:
+                pair_distance = float(
+                    np.linalg.norm(atom_i.position_angstrom - atom_j.position_angstrom)
+                )
+                if 1e-6 < pair_distance <= cutoff:
                     bonds.append(
                         CrystalBondGlyph(
                             start_angstrom=atom_i.position_angstrom,
@@ -995,6 +1030,7 @@ def plot_crystal_structure_3d(
     *,
     repeats: tuple[int, int, int] = (1, 1, 1),
     show_bonds: bool = True,
+    include_boundary_atoms: bool = True,
     polyhedra_species: tuple[str, ...] = (),
     plane_hkls: tuple[tuple[int, int, int], ...] = (),
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
@@ -1010,8 +1046,18 @@ def plot_crystal_structure_3d(
     azim_deg: float = 34.0,
     projection: str = "persp",
     view_direction: CrystalDirection | np.ndarray | None = None,
+    view_preset: str | None = None,
+    show_legend: bool = False,
     ax: Any | None = None,
 ) -> Any:
+    """Render a crystal scene (or phase) as a VESTA-class 3D figure.
+
+    ``view_preset`` selects a crystallographic viewing direction by name
+    ("a", "b", or "c": look along that lattice vector); ``view_direction``
+    accepts an arbitrary vector or `CrystalDirection` and wins over the
+    preset. ``show_legend`` adds a per-species color legend.
+    """
+
     plt, poly3d_collection = _require_matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
@@ -1023,6 +1069,7 @@ def plot_crystal_structure_3d(
             scene_or_phase,
             repeats=repeats,
             show_bonds=show_bonds,
+            include_boundary_atoms=include_boundary_atoms,
             polyhedra_species=polyhedra_species,
             plane_hkls=plane_hkls,
             plane_overlays=plane_overlays,
@@ -1257,7 +1304,36 @@ def plot_crystal_structure_3d(
             elev_deg, azim_deg = _view_angles_from_direction(
                 np.asarray(view_direction, dtype=np.float64)
             )
+    elif view_preset is not None:
+        axis_index = {"a": 0, "b": 1, "c": 2}.get(view_preset.lower())
+        if axis_index is None:
+            raise ValueError("view_preset must be one of 'a', 'b', or 'c'.")
+        lattice_vector = scene.phase.lattice.direct_basis().matrix[:, axis_index]
+        elev_deg, azim_deg = _view_angles_from_direction(
+            lattice_vector / np.linalg.norm(lattice_vector)
+        )
     axes.view_init(elev=elev_deg, azim=azim_deg)
+    if show_legend and scene.atoms:
+        from matplotlib.lines import Line2D
+
+        species_colors: dict[str, str] = {}
+        for atom in scene.atoms:
+            species_colors.setdefault(atom.species, atom.color)
+        handles = [
+            Line2D(
+                [0.0],
+                [0.0],
+                marker="o",
+                linestyle="none",
+                markersize=9,
+                markerfacecolor=color,
+                markeredgecolor="#334155",
+                markeredgewidth=0.4,
+                label=species,
+            )
+            for species, color in sorted(species_colors.items())
+        ]
+        axes.legend(handles=handles, loc="upper right", framealpha=0.85)
     if bool(crystal_style.get("hide_grid", True)):
         axes.grid(False)
     pane_rgba = (*to_rgb(crystal_style["background"]), float(crystal_style["pane_alpha"]))

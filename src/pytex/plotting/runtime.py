@@ -315,6 +315,9 @@ def plot_odf_phi2_sections(
     )
     vmax = sections.max_density
     contour = None
+    section_symbol = (
+        r"\sigma" if getattr(sections, "section_kind", "phi2") == "sigma" else r"\varphi_2"
+    )
     for index in range(count):
         axis = grid.axes_flat[index]
         contour = axis.contourf(
@@ -326,7 +329,7 @@ def plot_odf_phi2_sections(
             vmin=0.0,
             vmax=vmax,
         )
-        axis.set_title(rf"$\varphi_2 = {sections.phi2_deg[index]:.0f}^\circ$")
+        axis.set_title(rf"${section_symbol} = {sections.phi2_deg[index]:.0f}^\circ$")
         if index // cols == rows - 1 or index + cols >= count:
             axis.set_xlabel(r"$\varphi_1$ (deg)")
         if index % cols == 0:

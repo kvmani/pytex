@@ -45,7 +45,7 @@ def make_two_species_phase() -> Phase:
 
 
 def test_bond_glyphs_default_to_two_tone_atom_colors() -> None:
-    scene = build_crystal_scene(make_two_species_phase())
+    scene = build_crystal_scene(make_two_species_phase(), include_boundary_atoms=False)
     assert len(scene.bonds) == 1
     bond = scene.bonds[0]
     assert bond.start_color == cpk_color("Na")
@@ -62,6 +62,7 @@ def test_bond_glyphs_default_to_two_tone_atom_colors() -> None:
 def test_uniform_bond_mode_keeps_single_segment() -> None:
     scene = build_crystal_scene(
         make_two_species_phase(),
+        include_boundary_atoms=False,
         style_overrides={"crystal": {"bond_color_mode": "uniform"}},
     )
     bond = scene.bonds[0]
@@ -79,6 +80,7 @@ def test_renderer_merges_atoms_and_bonds_into_one_depth_sorted_mesh() -> None:
     bond_resolution = 12
     figure = plot_crystal_structure_3d(
         phase,
+        include_boundary_atoms=False,
         style_overrides={
             "crystal": {
                 "atom_surface_resolution": atom_resolution,
@@ -189,3 +191,56 @@ def test_cylinder_quads_geometry_and_degenerate_rejection() -> None:
     np.testing.assert_allclose(radii, 0.3, atol=1e-12)
     with pytest.raises(ValueError, match="distinct"):
         _cylinder_quads(start, start, 0.3, resolution=12)
+
+
+def make_corner_site_phase() -> Phase:
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    lattice = Lattice(4.0, 4.0, 4.0, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    unit_cell = UnitCell(
+        lattice=lattice,
+        sites=(AtomicSite(label="Na1", species="Na", fractional_coordinates=np.zeros(3)),),
+    )
+    return Phase(
+        "corner_demo",
+        lattice=lattice,
+        symmetry=symmetry,
+        crystal_frame=crystal,
+        unit_cell=unit_cell,
+    )
+
+
+def test_boundary_atoms_complete_the_cell_like_vesta() -> None:
+    phase = make_corner_site_phase()
+    # a corner atom renders at all eight corners of a single cell
+    scene = build_crystal_scene(phase, show_bonds=False)
+    assert len(scene.atoms) == 8
+    # and at 3 x 2 x 2 = 12 lattice points of a 2x1x1 block
+    block = build_crystal_scene(phase, repeats=(2, 1, 1), show_bonds=False)
+    assert len(block.atoms) == 12
+    # the historical behavior remains available
+    interior = build_crystal_scene(phase, show_bonds=False, include_boundary_atoms=False)
+    assert len(interior.atoms) == 1
+    # boundary copies landing on explicitly listed far-face sites deduplicate
+    octahedron = build_crystal_scene(make_octahedral_phase(), show_bonds=False)
+    assert len(octahedron.atoms) == 7
+
+
+def test_view_preset_sets_crystallographic_view() -> None:
+    phase = make_corner_site_phase()
+    figure = plot_crystal_structure_3d(phase, view_preset="c")
+    axes = figure.axes[0]
+    # looking along +c of a cubic lattice: elevation 90 deg
+    assert axes.elev == pytest.approx(90.0, abs=1e-6)
+    figure = plot_crystal_structure_3d(phase, view_preset="a")
+    assert figure.axes[0].elev == pytest.approx(0.0, abs=1e-6)
+    with pytest.raises(ValueError, match="view_preset"):
+        plot_crystal_structure_3d(phase, view_preset="d")
+
+
+def test_show_legend_lists_species() -> None:
+    figure = plot_crystal_structure_3d(make_octahedral_phase(), show_legend=True)
+    legend = figure.axes[0].get_legend()
+    assert legend is not None
+    labels = [text.get_text() for text in legend.get_texts()]
+    assert labels == ["O", "Ti"]

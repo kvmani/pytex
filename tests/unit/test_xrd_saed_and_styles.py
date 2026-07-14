@@ -150,7 +150,9 @@ def test_xrd_saed_and_crystal_plotters_return_figures() -> None:
 
 def test_crystal_scene_contains_atoms_and_plane() -> None:
     phase = make_phase()
-    scene = build_crystal_scene(phase, repeats=(2, 1, 1), plane_hkls=((1, 0, 0),))
+    scene = build_crystal_scene(
+        phase, repeats=(2, 1, 1), plane_hkls=((1, 0, 0),), include_boundary_atoms=False
+    )
     assert len(scene.atoms) == 2
     assert len(scene.planes) == 1
 
@@ -170,6 +172,7 @@ def test_crystal_scene_slab_filter_reduces_visible_atoms() -> None:
         repeats=(3, 1, 1),
         slab_hkl=(1, 0, 0),
         slab_thickness_angstrom=1.1,
+        include_boundary_atoms=False,
     )
     assert len(scene.atoms) < 3
 
@@ -192,8 +195,13 @@ def test_crystal_scene_preserves_species_dependent_colors_and_sizes() -> None:
         crystal_frame=crystal,
         unit_cell=unit_cell,
     )
-    scene = build_crystal_scene(phase, repeats=(1, 1, 1), show_bonds=False)
+    scene = build_crystal_scene(
+        phase, repeats=(1, 1, 1), show_bonds=False, include_boundary_atoms=False
+    )
     assert len(scene.atoms) == 2
+    # with boundary atoms (the default), the corner Na renders at all 8 corners
+    boundary_scene = build_crystal_scene(phase, repeats=(1, 1, 1), show_bonds=False)
+    assert len(boundary_scene.atoms) == 9
     assert scene.atoms[0].color != scene.atoms[1].color
     assert scene.atoms[0].radius_angstrom != scene.atoms[1].radius_angstrom
 
@@ -220,6 +228,7 @@ def test_crystal_scene_bonds_use_chemical_cutoffs_not_render_scale() -> None:
         phase,
         repeats=(1, 1, 1),
         show_bonds=True,
+        include_boundary_atoms=False,
         style_overrides={"crystal": {"atom_radius_scale": 0.05}},
     )
     assert len(scene.bonds) == 1

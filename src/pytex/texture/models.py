@@ -390,13 +390,21 @@ class InversePoleFigure:
 
 @dataclass(frozen=True, slots=True)
 class ODFSectionData:
-    """ODF density sampled on constant-phi2 Bunge-Euler sections."""
+    """ODF density sampled on constant-coordinate Bunge-Euler sections.
+
+    ``section_kind`` names the sectioning coordinate: ``"phi2"`` (the
+    default, constant-phi2 sections) or ``"sigma"`` (constant
+    sigma = phi1 + phi2 sections). Each section is a density grid over
+    (phi1, Phi); ``phi2_deg`` holds the per-section value of the sectioning
+    coordinate (aliased as `section_values_deg`).
+    """
 
     phi2_deg: np.ndarray
     phi1_deg: np.ndarray
     big_phi_deg: np.ndarray
     densities: np.ndarray
     normalized: bool = False
+    section_kind: str = "phi2"
 
     def __post_init__(self) -> None:
         for name in ("phi2_deg", "phi1_deg", "big_phi_deg", "densities"):
@@ -409,6 +417,14 @@ class ODFSectionData:
                 "ODFSectionData.densities must have shape "
                 "(n_sections, n_big_phi, n_phi1)."
             )
+        if self.section_kind not in {"phi2", "sigma"}:
+            raise ValueError("ODFSectionData.section_kind must be 'phi2' or 'sigma'.")
+
+    @property
+    def section_values_deg(self) -> np.ndarray:
+        """Per-section value of the sectioning coordinate (phi2 or sigma)."""
+
+        return self.phi2_deg
 
     @property
     def section_count(self) -> int:
@@ -565,6 +581,62 @@ class ODF:
             big_phi_deg=big_phi,
             densities=np.stack(sections, axis=0),
             normalized=normalized,
+        )
+
+    def sigma_sections(
+        self,
+        *,
+        sigma_deg: ArrayLike = (0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
+        phi1_max_deg: float = 90.0,
+        big_phi_max_deg: float = 90.0,
+        resolution_deg: float = 5.0,
+        normalized: bool = False,
+    ) -> ODFSectionData:
+        """Sample the ODF density on constant-sigma Bunge-Euler sections.
+
+        Sigma sections fix ``sigma = phi1 + phi2`` and show the density over
+        the (phi1, Phi) plane with ``phi2 = sigma - phi1`` (mod 360 deg) —
+        the classic view for gamma-fibre-dominated (e.g. bcc rolling)
+        textures. Returns an `ODFSectionData` with
+        ``section_kind = "sigma"``.
+        """
+
+        if resolution_deg <= 0.0:
+            raise ValueError("resolution_deg must be strictly positive.")
+        sigma_values = np.atleast_1d(np.asarray(sigma_deg, dtype=np.float64))
+        phi1 = np.arange(0.0, phi1_max_deg + 1e-9, resolution_deg)
+        big_phi = np.arange(0.0, big_phi_max_deg + 1e-9, resolution_deg)
+        grid_phi1, grid_big_phi = np.meshgrid(phi1, big_phi, indexing="xy")
+        sections = []
+        for sigma in sigma_values:
+            phi2_flat = np.mod(float(sigma) - grid_phi1.ravel(), 360.0)
+            euler = np.column_stack(
+                [
+                    grid_phi1.ravel(),
+                    grid_big_phi.ravel(),
+                    phi2_flat,
+                ]
+            )
+            query = OrientationSet.from_euler_angles(
+                euler,
+                crystal_frame=self.orientations.crystal_frame,
+                specimen_frame=self.orientations.specimen_frame,
+                symmetry=self.orientations.symmetry,
+                phase=self.orientations.phase,
+                convention="bunge",
+                degrees=True,
+            )
+            density = np.asarray(
+                self.evaluate(query, normalized=normalized), dtype=np.float64
+            ).reshape(grid_big_phi.shape)
+            sections.append(density)
+        return ODFSectionData(
+            phi2_deg=sigma_values,
+            phi1_deg=phi1,
+            big_phi_deg=big_phi,
+            densities=np.stack(sections, axis=0),
+            normalized=normalized,
+            section_kind="sigma",
         )
 
     def reconstruct_pole_figure(

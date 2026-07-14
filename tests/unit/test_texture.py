@@ -407,3 +407,46 @@ def test_plot_odf_phi2_sections_publication_defaults() -> None:
     assert "(a)" in labels and "(d)" in labels
     # shared colorbar in multiples-of-random-density units
     assert figure.axes[-1].get_ylabel() == "ODF density (m.r.d.)"
+
+
+def test_sigma_sections_peak_at_planted_component() -> None:
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(20.0, 45.0, 30.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(component)
+    sections = odf.sigma_sections(sigma_deg=[20.0, 50.0], resolution_deg=5.0)
+    assert sections.section_kind == "sigma"
+    assert sections.section_values_deg.tolist() == [20.0, 50.0]
+    # the component at (phi1, Phi, phi2) = (20, 45, 30) lives on the
+    # sigma = phi1 + phi2 = 50 section, peaked at (phi1=20, Phi=45)
+    density = sections.densities[1]
+    peak = np.unravel_index(int(np.argmax(density)), density.shape)
+    assert sections.big_phi_deg[peak[0]] == pytest.approx(45.0)
+    assert sections.phi1_deg[peak[1]] == pytest.approx(20.0)
+    assert density.max() > sections.densities[0].max()
+
+
+def test_plot_sigma_sections_uses_sigma_labels() -> None:
+    import matplotlib
+
+    matplotlib.use("Agg")
+    from pytex import plot_odf_phi2_sections
+
+    crystal, specimen, phase = make_orientation_context()
+    component = OrientationSet.from_quaternions(
+        Rotation.from_bunge_euler(20.0, 45.0, 30.0).quaternion[None, :],
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    sections = ODF.from_orientations(component).sigma_sections(
+        sigma_deg=[0.0, 45.0], resolution_deg=15.0
+    )
+    figure = plot_odf_phi2_sections(sections)
+    assert figure.axes[0].get_title() == r"$\sigma = 0^\circ$"
