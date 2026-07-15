@@ -53,6 +53,14 @@ crystal:
   polyhedron_edge_width: 0.5
   vector_colors: ["#1d4ed8", "#059669", "#dc2626"]
   atom_radius_scale: 0.55
+  atom_radius_kind: "covalent"
+  vacancy_color: "#ffffff"
+  atom_label_fontsize: 10
+  atom_label_color: "#111111"
+  site_vector_color: "#b91c1c"
+  site_vector_linewidth: 2.4
+  site_vector_arrow_ratio: 0.18
+  depth_cue_strength: 0.0
   bond_radius: 1.2
   cell_color: "#94a3b8"
   cell_alpha: 0.85

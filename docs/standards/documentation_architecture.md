@@ -7,6 +7,9 @@ PyTex uses a hybrid documentation architecture so the project can be both scient
 - Sphinx is the primary browsable and searchable documentation surface.
 - LaTeX is the canonical source for major scientific notes.
 - SVG is the canonical source for scientific figures and geometry schematics.
+- Executable worked examples are the canonical source for verified numerical
+  claims: their outputs are computed live from the code and checked against cited
+  reference values (see [Executable Worked Examples](executable_examples.md)).
 - The visual language for canonical architecture, process-flow, validation, workflow, and teaching
   illustrations is governed centrally by `visualization_style_guide.md`.
 - Executable notebook tutorials are part of the Sphinx-facing documentation system when stepwise exposition materially improves understanding.
@@ -22,6 +25,7 @@ Use the Sphinx layer for:
 - tutorials
 - workflow guides
 - executable notebook tutorials
+- executable worked examples that compute and verify numerical claims
 - human-auditable automated test documentation
 - installation and contributor guidance
 - curated API reference
@@ -47,14 +51,35 @@ Use the LaTeX layer for:
 
 ## Explicitness Requirement
 
-For major conventions, frame relationships, symmetry actions, and core algorithms, the documentation must expose all three of the following surfaces together:
+For major conventions, frame relationships, symmetry actions, and core algorithms, the documentation must expose all of the following surfaces together:
 
 - prose that states the scientific meaning in plain language
 - mathematics that fixes the convention, mapping, or reduction unambiguously
 - annotated figures that make the geometry or transformation legible at a glance
+- for stable public numerical behavior, at least one executable worked example
+  whose computed output is checked live against a cited reference value
 - for automated validation pages, explicit test-case evidence that shows what was checked numerically and against which cited source
 
 If one of these surfaces is missing for a stable foundational feature, the documentation is incomplete even if the code and tests exist.
+
+## Docstring Contract
+
+Docstrings on stable public functions, methods, and classes are part of the
+documentation surface, not an afterthought. A stable public numerical surface
+should state, in order:
+
+- **Purpose** — what scientific quantity or object the surface produces.
+- **When to use it** — the scenarios and workflows in which this surface is the
+  right tool, and how it relates to neighboring surfaces.
+- **Parameters** — each input, its frame/units/convention meaning where relevant.
+- **Returns** — the output object, its frame/units, and any symmetry or reduction
+  semantics already applied.
+- **Cross-references** — links to the governing concept or workflow page, the
+  theory or algorithm note, and at least one executable worked example when the
+  surface returns a verifiable number.
+
+The `angle_*` helpers in `pytex.core.miller` are maintained as the reference
+exemplar of this contract.
 
 ## Deliverables
 
@@ -62,6 +87,8 @@ The intended docs surfaces are:
 
 - HTML documentation built from Sphinx/MyST
 - executable notebook tutorials rendered or linked through the Sphinx layer
+- an executable worked-example gallery whose computed values are asserted in tests
+  and regenerated into the Sphinx layer from a single source of truth
 - downloadable PDF scientific notes built from LaTeX
 - reusable SVG figures shared across both surfaces
 - authored visual-reference diagrams that follow the repository visualization style guide
@@ -75,6 +102,7 @@ The Sphinx layer should eventually expose top-level sections for:
 
 - concepts
 - tutorials
+- worked examples
 - workflows
 - API reference
 - theory and standards index
@@ -107,6 +135,8 @@ The Sphinx layer should eventually expose top-level sections for:
 - [Scientific Citation Policy](scientific_citation_policy.md)
 - [Development Principles](development_principles.md)
 - [Visualization Style Guide](visualization_style_guide.md)
+- [Executable Worked Examples](executable_examples.md)
+- [Terminology and Symbol Registry](terminology_and_symbol_registry.md)
 
 ### Informative
 

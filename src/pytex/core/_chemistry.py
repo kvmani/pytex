@@ -106,3 +106,64 @@ def covalent_radius_angstrom(species: str) -> float:
 
 def cpk_color(species: str) -> str:
     return _FALLBACK_CPK_COLORS.get(normalize_species_symbol(species), "#64748b")
+
+
+def _element_data_radius(species: str, key: str) -> float | None:
+    """Read a radius entry from pymatgen's element data table, if available."""
+
+    symbol = normalize_species_symbol(species)
+    try:
+        from pymatgen.core.periodic_table import Element
+
+        value = Element(symbol).data.get(key)
+        if value is None:
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def atomic_radius_angstrom(species: str) -> float:
+    """Empirical atomic radius in angstrom (Slater), for space-filling display.
+
+    Falls back to 1.25x the covalent radius when pymatgen (or the element's
+    tabulated value) is unavailable, which keeps relative atom sizes sensible.
+    """
+
+    value = _element_data_radius(species, "Atomic radius")
+    if value is not None:
+        return value
+    return 1.25 * covalent_radius_angstrom(species)
+
+
+def van_der_waals_radius_angstrom(species: str) -> float:
+    """Van der Waals radius in angstrom, for molecular space-filling display.
+
+    Falls back to 1.8x the covalent radius when no tabulated value exists.
+    """
+
+    value = _element_data_radius(species, "Van der waals radius")
+    if value is not None:
+        return value
+    return 1.8 * covalent_radius_angstrom(species)
+
+
+_DISPLAY_RADIUS_KINDS = ("covalent", "atomic", "van_der_waals")
+
+
+def display_radius_angstrom(species: str, *, kind: str = "covalent") -> float:
+    """Radius used for *display* sizing of atoms (never for bond chemistry).
+
+    ``kind`` selects the radius system: ``"covalent"`` (ball-and-stick),
+    ``"atomic"`` (space-filling of crystals), or ``"van_der_waals"``
+    (space-filling of molecules). Bond detection always uses
+    `covalent_radius_angstrom` regardless of the display choice.
+    """
+
+    if kind == "covalent":
+        return covalent_radius_angstrom(species)
+    if kind == "atomic":
+        return atomic_radius_angstrom(species)
+    if kind == "van_der_waals":
+        return van_der_waals_radius_angstrom(species)
+    raise ValueError(f"display radius kind must be one of {_DISPLAY_RADIUS_KINDS!r}.")

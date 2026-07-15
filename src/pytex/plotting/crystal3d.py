@@ -24,6 +24,7 @@ has a theme default and can be overridden per call via ``style_overrides``.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any
@@ -32,10 +33,58 @@ import numpy as np
 from matplotlib.colors import to_rgb
 
 from pytex.core._arrays import as_float_array
-from pytex.core._chemistry import covalent_radius_angstrom, cpk_color
-from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex, Phase
+from pytex.core._chemistry import (
+    covalent_radius_angstrom,
+    cpk_color,
+    display_radius_angstrom,
+)
+from pytex.core.lattice import AtomicSite, CrystalDirection, CrystalPlane, MillerIndex, Phase
 from pytex.core.notation import format_direction_indices, format_plane_indices
-from pytex.plotting.styles import resolve_style
+from pytex.plotting.primitives import Transform3D
+from pytex.plotting.styles import _deep_merge, resolve_style
+
+# VESTA-style render presets: each maps to style overrides (and build behavior)
+# so one keyword switches the whole visual system. User style_overrides win.
+_RENDER_STYLE_OVERRIDES: dict[str, dict[str, Any]] = {
+    "ball_and_stick": {},
+    "space_filling": {
+        "atom_radius_scale": 1.0,
+        "atom_radius_kind": "atomic",
+    },
+    "stick": {
+        "atom_radius_scale": 0.24,
+        "bond_radius_scale": 1.0,
+    },
+    "wireframe": {
+        # VESTA wireframe: the bond network alone, no atom bodies
+        "bond_render_mode": "line",
+        "atom_render_mode": "none",
+        "atom_radius_scale": 0.3,
+    },
+    "polyhedral": {
+        "atom_radius_scale": 0.4,
+    },
+}
+
+
+def _merged_style_overrides(
+    render_style: str,
+    style_overrides: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    """Merge a render-style preset under any explicit user overrides."""
+
+    if render_style not in _RENDER_STYLE_OVERRIDES:
+        raise ValueError(
+            f"render_style must be one of {sorted(_RENDER_STYLE_OVERRIDES)!r}, "
+            f"received {render_style!r}."
+        )
+    preset = _RENDER_STYLE_OVERRIDES[render_style]
+    if not preset:
+        return style_overrides
+    merged: dict[str, Any] = {"crystal": dict(preset)}
+    if style_overrides is not None:
+        merged = _deep_merge(merged, style_overrides)
+    return merged
 
 
 def _require_matplotlib() -> tuple[Any, Any]:
@@ -51,17 +100,41 @@ def _require_matplotlib() -> tuple[Any, Any]:
 
 @dataclass(frozen=True, slots=True)
 class CrystalAtomGlyph:
-    """A rendered atom: position and display radius in angstrom, CPK color."""
+    """A rendered atom: position and display radius in angstrom, CPK color.
+
+    Partially occupied and shared (mixed-species) sites carry VESTA-style
+    sector metadata: the sphere is divided azimuthally, this glyph paints the
+    fraction ``[sector_start, sector_start + occupancy)`` of one full turn in
+    its species color, and ``vacancy_fraction`` (set on the last glyph of a
+    shared site) paints the unoccupied remainder in the theme vacancy color.
+    Fully occupied sites keep the defaults and render as plain spheres.
+    """
 
     position_angstrom: np.ndarray
     species: str
     radius_angstrom: float
     color: str
     alpha: float
+    occupancy: float = 1.0
+    sector_start: float = 0.0
+    vacancy_fraction: float = 0.0
+    label: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
             self, "position_angstrom", as_float_array(self.position_angstrom, shape=(3,))
+        )
+        if not 0.0 < self.occupancy <= 1.0:
+            raise ValueError("CrystalAtomGlyph.occupancy must lie in (0, 1].")
+        if self.vacancy_fraction < 0.0:
+            raise ValueError("CrystalAtomGlyph.vacancy_fraction must be non-negative.")
+
+    @property
+    def is_full_sphere(self) -> bool:
+        return (
+            self.occupancy >= 1.0 - 1e-9
+            and self.sector_start <= 1e-9
+            and self.vacancy_fraction <= 1e-9
         )
 
 
@@ -82,10 +155,16 @@ class CrystalBondGlyph:
     radius_angstrom: float
     start_color: str | None = None
     end_color: str | None = None
+    start_species: str | None = None
+    end_species: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "start_angstrom", as_float_array(self.start_angstrom, shape=(3,)))
         object.__setattr__(self, "end_angstrom", as_float_array(self.end_angstrom, shape=(3,)))
+
+    @property
+    def length_angstrom(self) -> float:
+        return float(np.linalg.norm(self.end_angstrom - self.start_angstrom))
 
     def half_segments(self) -> tuple[tuple[np.ndarray, np.ndarray, str], ...]:
         """Return renderable (start, end, color) segments honoring two-tone."""
@@ -283,7 +362,17 @@ class CrystalScene:
         points: list[np.ndarray] = []
         points.extend(edge for edge in self.lattice_edges)
         points.extend(edge for cell in self.cells for edge in cell.edges_angstrom)
-        points.extend(atom.position_angstrom[None, :] for atom in self.atoms)
+        # atoms contribute their full sphere extent (center +/- radius) so
+        # space-filling spheres are never clipped by the axis limits
+        points.extend(
+            np.vstack(
+                [
+                    atom.position_angstrom - atom.radius_angstrom,
+                    atom.position_angstrom + atom.radius_angstrom,
+                ]
+            )
+            for atom in self.atoms
+        )
         points.extend(
             np.vstack([direction.start_angstrom, direction.end_angstrom])
             for direction in self.directions
@@ -293,27 +382,169 @@ class CrystalScene:
         stacked = np.vstack(points) if points else np.zeros((1, 3), dtype=np.float64)
         return np.vstack([np.min(stacked, axis=0), np.max(stacked, axis=0)])
 
+    def bond_lengths_angstrom(self) -> np.ndarray:
+        """Length of every bond glyph in angstrom, aligned with `bonds`.
+
+        The programmatic analog of VESTA's interactive distance readout: every
+        detected bond becomes a measurable number, so bond statistics can be
+        scripted, tested, and tabulated instead of clicked one at a time.
+        """
+
+        if not self.bonds:
+            return as_float_array(np.zeros(0, dtype=np.float64), shape=(0,))
+        return as_float_array(
+            np.array([bond.length_angstrom for bond in self.bonds], dtype=np.float64),
+            shape=(len(self.bonds),),
+        )
+
+    def bond_length_summary(self) -> dict[tuple[str, str], dict[str, float]]:
+        """Per species-pair bond statistics: count, min, mean, max (angstrom).
+
+        Pairs are alphabetically ordered tuples such as ``("Cl", "Na")``. Bonds
+        whose glyphs carry no species metadata are grouped under ``("?", "?")``.
+        """
+
+        grouped: dict[tuple[str, str], list[float]] = {}
+        for bond in self.bonds:
+            pair = tuple(sorted((bond.start_species or "?", bond.end_species or "?")))
+            grouped.setdefault((pair[0], pair[1]), []).append(bond.length_angstrom)
+        return {
+            pair: {
+                "count": float(len(lengths)),
+                "min": float(np.min(lengths)),
+                "mean": float(np.mean(lengths)),
+                "max": float(np.max(lengths)),
+            }
+            for pair, lengths in sorted(grouped.items())
+        }
+
+    def transformed(self, transform: Transform3D) -> CrystalScene:
+        """Return a copy with all geometry placed by ``transform``.
+
+        Maps every glyph's world coordinates (atoms, bonds, cells, planes,
+        directions, lattice box, polyhedra) through the placement while keeping
+        colors, radii, and labels. Intended for **rigid** transforms (a
+        `Rotation`/`Orientation` plus a translation); with a rigid transform the
+        lit sphere/cylinder meshes stay geometrically exact, so a placed crystal
+        renders identically to one built in its own frame. This is what lets two
+        crystals in an orientation relationship share one scene.
+        """
+
+        if not transform.is_rigid:
+            raise ValueError(
+                "CrystalScene.transformed requires a rigid (rotation + translation) "
+                "Transform3D so atom spheres and bond cylinders stay undistorted."
+            )
+        return CrystalScene(
+            phase=self.phase,
+            atoms=tuple(
+                CrystalAtomGlyph(
+                    position_angstrom=transform.apply_points(atom.position_angstrom),
+                    species=atom.species,
+                    radius_angstrom=atom.radius_angstrom,
+                    color=atom.color,
+                    alpha=atom.alpha,
+                    occupancy=atom.occupancy,
+                    sector_start=atom.sector_start,
+                    vacancy_fraction=atom.vacancy_fraction,
+                    label=atom.label,
+                )
+                for atom in self.atoms
+            ),
+            bonds=tuple(
+                CrystalBondGlyph(
+                    start_angstrom=transform.apply_points(bond.start_angstrom),
+                    end_angstrom=transform.apply_points(bond.end_angstrom),
+                    color=bond.color,
+                    alpha=bond.alpha,
+                    radius_angstrom=bond.radius_angstrom,
+                    start_color=bond.start_color,
+                    end_color=bond.end_color,
+                    start_species=bond.start_species,
+                    end_species=bond.end_species,
+                )
+                for bond in self.bonds
+            ),
+            cells=tuple(
+                CrystalCellGlyph(
+                    kind=cell.kind,
+                    edges_angstrom=tuple(
+                        transform.apply_points(edge) for edge in cell.edges_angstrom
+                    ),
+                    faces_angstrom=tuple(
+                        transform.apply_points(face) for face in cell.faces_angstrom
+                    ),
+                    color=cell.color,
+                    alpha=cell.alpha,
+                    face_alpha=cell.face_alpha,
+                    linewidth=cell.linewidth,
+                )
+                for cell in self.cells
+            ),
+            planes=tuple(
+                CrystalPlaneGlyph(
+                    vertices_angstrom=transform.apply_points(plane.vertices_angstrom),
+                    normal_angstrom=transform.apply_normal(plane.normal_angstrom),
+                    color=plane.color,
+                    alpha=plane.alpha,
+                    label=plane.label,
+                    annotation_style=plane.annotation_style,
+                )
+                for plane in self.planes
+            ),
+            directions=tuple(
+                CrystalDirectionGlyph(
+                    start_angstrom=transform.apply_points(direction.start_angstrom),
+                    end_angstrom=transform.apply_points(direction.end_angstrom),
+                    color=direction.color,
+                    alpha=direction.alpha,
+                    label=direction.label,
+                    annotation_style=direction.annotation_style,
+                )
+                for direction in self.directions
+            ),
+            lattice_edges=tuple(transform.apply_points(edge) for edge in self.lattice_edges),
+            repeats=self.repeats,
+            polyhedra=tuple(
+                CrystalPolyhedronGlyph(
+                    center_angstrom=transform.apply_points(polyhedron.center_angstrom),
+                    center_species=polyhedron.center_species,
+                    triangles_angstrom=transform.apply_points(
+                        polyhedron.triangles_angstrom.reshape(-1, 3)
+                    ).reshape(polyhedron.triangles_angstrom.shape),
+                    face_normals=transform.apply_normal(polyhedron.face_normals),
+                    color=polyhedron.color,
+                    alpha=polyhedron.alpha,
+                    edge_color=polyhedron.edge_color,
+                    edge_width=polyhedron.edge_width,
+                )
+                for polyhedron in self.polyhedra
+            ),
+        )
+
 
 def _supercell_atom_positions(
     phase: Phase,
     repeats: tuple[int, int, int],
     *,
     include_boundary_atoms: bool = True,
-) -> list[tuple[str, np.ndarray]]:
-    """Atom (species, Cartesian position) list for the repeated cell block.
+) -> list[tuple[AtomicSite, np.ndarray]]:
+    """Atom (site, Cartesian position) list for the repeated cell block.
 
     With ``include_boundary_atoms`` (the VESTA convention), sites lying on
     the supercell boundary also appear as translated copies on the opposite
     faces/edges/corners, so the displayed block looks complete: a corner atom
     of a single cell renders eight times. Coincident duplicates (e.g. a
     boundary copy landing on an explicitly listed far-face site) are removed.
+    Distinct sites sharing one position (mixed occupancy) both survive, so the
+    renderer can draw them as occupancy sectors of one sphere.
     """
 
     if phase.unit_cell is None or not phase.unit_cell.sites:
         raise ValueError("Crystal visualization requires phase.unit_cell with atomic sites.")
     direct_basis = phase.lattice.direct_basis().matrix
     tolerance = 1e-9
-    atoms: list[tuple[str, np.ndarray]] = []
+    atoms: list[tuple[AtomicSite, np.ndarray]] = []
     seen: set[tuple[str, tuple[float, float, float]]] = set()
     for site in phase.unit_cell.sites:
         base = np.asarray(site.fractional_coordinates, dtype=np.float64)
@@ -330,6 +561,9 @@ def _supercell_atom_positions(
                 for k in axis_translations[2]:
                     frac = base + np.array([i, j, k], dtype=np.float64)
                     position = direct_basis @ frac
+                    # dedup by (species, position): boundary copies collapse onto
+                    # explicitly listed far-face sites of the same species, while
+                    # mixed-species shared sites survive for occupancy sectors
                     key = (
                         site.species,
                         (round(position[0], 6), round(position[1], 6), round(position[2], 6)),
@@ -337,7 +571,7 @@ def _supercell_atom_positions(
                     if key in seen:
                         continue
                     seen.add(key)
-                    atoms.append((site.species, position))
+                    atoms.append((site, position))
     return atoms
 
 
@@ -703,10 +937,67 @@ def _coordination_polyhedra(
     return tuple(polyhedra)
 
 
+def _atom_glyphs_from_sites(
+    atom_data: list[tuple[AtomicSite, np.ndarray]],
+    crystal_style: dict[str, Any],
+    *,
+    atom_label_mode: str,
+) -> tuple[CrystalAtomGlyph, ...]:
+    """Turn (site, position) pairs into atom glyphs with occupancy sectors.
+
+    Sites sharing one Cartesian position (mixed occupancy, the VESTA pie-sphere
+    case) become consecutive azimuthal sectors of one shared-radius sphere; a
+    total occupancy below one leaves a vacancy sector on the last glyph. Fully
+    occupied lone sites keep the plain full-sphere defaults.
+    """
+
+    if atom_label_mode not in {"none", "species", "site"}:
+        raise ValueError("atom_label_mode must be 'none', 'species', or 'site'.")
+    radius_scale = float(crystal_style["atom_radius_scale"])
+    radius_kind = str(crystal_style.get("atom_radius_kind", "covalent"))
+    alpha = float(crystal_style["atom_alpha"])
+    groups: dict[tuple[float, float, float], list[tuple[AtomicSite, np.ndarray]]] = {}
+    for site, position in atom_data:
+        key = (round(position[0], 6), round(position[1], 6), round(position[2], 6))
+        groups.setdefault(key, []).append((site, position))
+    glyphs: list[CrystalAtomGlyph] = []
+    for members in groups.values():
+        shared_radius = radius_scale * max(
+            display_radius_angstrom(site.species, kind=radius_kind) for site, _ in members
+        )
+        total_occupancy = sum(site.occupancy for site, _ in members)
+        plain = len(members) == 1 and total_occupancy >= 1.0 - 1e-9
+        cumulative = 0.0
+        for index, (site, position) in enumerate(members):
+            label: str | None = None
+            if atom_label_mode == "species":
+                label = site.species
+            elif atom_label_mode == "site":
+                label = site.label
+            is_last = index == len(members) - 1
+            vacancy = max(0.0, 1.0 - total_occupancy) if is_last and not plain else 0.0
+            glyphs.append(
+                CrystalAtomGlyph(
+                    position_angstrom=position,
+                    species=site.species,
+                    radius_angstrom=shared_radius,
+                    color=cpk_color(site.species),
+                    alpha=alpha,
+                    occupancy=1.0 if plain else site.occupancy,
+                    sector_start=0.0 if plain else cumulative,
+                    vacancy_fraction=vacancy,
+                    label=label,
+                )
+            )
+            cumulative += site.occupancy
+    return tuple(glyphs)
+
+
 def build_crystal_scene(
     phase: Phase,
     *,
     repeats: tuple[int, int, int] = (1, 1, 1),
+    render_style: str = "ball_and_stick",
     show_bonds: bool = True,
     bond_tolerance_angstrom: float = 0.45,
     include_boundary_atoms: bool = True,
@@ -718,37 +1009,46 @@ def build_crystal_scene(
     cell_overlays: tuple[CrystalCellOverlay, ...] = (),
     slab_hkl: tuple[int, int, int] | None = None,
     slab_thickness_angstrom: float | None = None,
+    atom_label_mode: str = "none",
+    site_vectors: Mapping[str, Any] | None = None,
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
 ) -> CrystalScene:
+    """Build a renderer-independent `CrystalScene` for one phase.
+
+    ``render_style`` selects a VESTA-style visual system in one keyword:
+    ``"ball_and_stick"`` (default), ``"space_filling"`` (atomic-radius spheres,
+    bonds suppressed), ``"stick"`` (uniform thin cylinders), ``"wireframe"``
+    (line bonds, marker atoms), or ``"polyhedral"`` (coordination polyhedra for
+    every eligible species unless ``polyhedra_species`` narrows it). Partially
+    occupied or mixed-species sites automatically render as VESTA-style
+    occupancy sectors. ``atom_label_mode`` stamps per-atom text labels
+    (``"species"`` or ``"site"``), and ``site_vectors`` maps site labels to
+    crystal-Cartesian vectors (angstrom) drawn as arrows on every periodic copy
+    of that site — the magnetic-moment / displacement-vector convention.
+    """
+
     if any(value <= 0 for value in repeats):
         raise ValueError("repeats must contain strictly positive integers.")
-    style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
+    effective_overrides = _merged_style_overrides(render_style, style_overrides)
+    style = resolve_style(theme=theme, style_path=style_path, overrides=effective_overrides)
     crystal_style = style["crystal"]
+    if render_style == "space_filling":
+        show_bonds = False
     atom_data = _supercell_atom_positions(
         phase, repeats, include_boundary_atoms=include_boundary_atoms
     )
     if slab_hkl is not None and slab_thickness_angstrom is not None:
         normal = phase.lattice.reciprocal_basis().matrix @ np.array(slab_hkl, dtype=np.float64)
         normal = normal / np.linalg.norm(normal)
-        filtered: list[tuple[str, np.ndarray]] = []
-        for species, position in atom_data:
+        filtered: list[tuple[AtomicSite, np.ndarray]] = []
+        for site, position in atom_data:
             distance = abs(float(np.dot(position, normal)) - 1.0 / np.linalg.norm(normal))
             if distance <= slab_thickness_angstrom:
-                filtered.append((species, position))
+                filtered.append((site, position))
         atom_data = filtered
-    atoms = tuple(
-        CrystalAtomGlyph(
-            position_angstrom=position,
-            species=species,
-            radius_angstrom=covalent_radius_angstrom(species)
-            * float(crystal_style["atom_radius_scale"]),
-            color=cpk_color(species),
-            alpha=float(crystal_style["atom_alpha"]),
-        )
-        for species, position in atom_data
-    )
+    atoms = _atom_glyphs_from_sites(atom_data, crystal_style, atom_label_mode=atom_label_mode)
     bonds: list[CrystalBondGlyph] = []
     if show_bonds:
         two_tone = str(crystal_style.get("bond_color_mode", "two_tone")).lower() == "two_tone"
@@ -773,6 +1073,8 @@ def build_crystal_scene(
                             * min(atom_i.radius_angstrom, atom_j.radius_angstrom),
                             start_color=atom_i.color if two_tone else None,
                             end_color=atom_j.color if two_tone else None,
+                            start_species=atom_i.species,
+                            end_species=atom_j.species,
                         )
                     )
     merged_cell_overlays = (
@@ -899,6 +1201,46 @@ def build_crystal_scene(
                 ),
             )
         )
+    if site_vectors:
+        # VESTA vector convention: every periodic copy of a labelled site
+        # carries the same arrow (magnetic moment, displacement, force),
+        # drawn from the atom center in crystal Cartesian angstrom.
+        vector_color = str(crystal_style.get("site_vector_color", "#b91c1c"))
+        vector_style = DirectionAnnotationStyle(
+            color=vector_color,
+            fontsize=float(crystal_style["direction_label_fontsize"]),
+            offset_fraction=float(crystal_style["direction_label_offset_fraction"]),
+        )
+        vectors_by_label = {
+            str(label): as_float_array(vector, shape=(3,))
+            for label, vector in site_vectors.items()
+        }
+        unknown_labels = set(vectors_by_label) - {site.label for site, _ in atom_data}
+        if unknown_labels:
+            raise ValueError(
+                f"site_vectors labels not present in the displayed cell: {sorted(unknown_labels)!r}"
+            )
+        for site, position in atom_data:
+            vector = vectors_by_label.get(site.label)
+            if vector is None:
+                continue
+            directions.append(
+                CrystalDirectionGlyph(
+                    start_angstrom=position,
+                    end_angstrom=position + vector,
+                    color=vector_color,
+                    alpha=float(crystal_style["direction_alpha"]),
+                    label="",
+                    annotation_style=vector_style,
+                )
+            )
+    effective_polyhedra_species = polyhedra_species
+    if render_style == "polyhedral" and not effective_polyhedra_species:
+        # VESTA polyhedral style: every species that achieves >= 4-coordination
+        # gets its coordination polyhedron unless the caller narrows the set.
+        effective_polyhedra_species = tuple(
+            dict.fromkeys(site.species for site, _ in atom_data)
+        )
     return CrystalScene(
         phase=phase,
         atoms=atoms,
@@ -910,7 +1252,7 @@ def build_crystal_scene(
         repeats=repeats,
         polyhedra=_coordination_polyhedra(
             atoms,
-            species=polyhedra_species,
+            species=effective_polyhedra_species,
             bond_tolerance_angstrom=bond_tolerance_angstrom,
             crystal_style=crystal_style,
         ),
@@ -960,6 +1302,68 @@ def _unit_sphere_quads(resolution: int) -> tuple[np.ndarray, np.ndarray]:
     quads.setflags(write=False)
     normals.setflags(write=False)
     return quads, normals
+
+
+def _sector_quad_mask(
+    quads: np.ndarray,
+    start_fraction: float,
+    span_fraction: float,
+) -> np.ndarray:
+    """Boolean mask of unit-sphere quads inside an azimuthal occupancy sector.
+
+    The sector covers ``[start, start + span)`` as fractions of one full turn
+    about +z (VESTA's pie-slice convention for partially occupied sites), with
+    wrap-around handled. Quads are selected by their center azimuth.
+    """
+
+    if span_fraction <= 0.0:
+        return np.zeros(quads.shape[0], dtype=bool)
+    if span_fraction >= 1.0 - 1e-12:
+        return np.ones(quads.shape[0], dtype=bool)
+    centers = quads.mean(axis=1)
+    azimuth_fraction = np.mod(np.arctan2(centers[:, 1], centers[:, 0]), 2.0 * np.pi) / (
+        2.0 * np.pi
+    )
+    offset = np.mod(azimuth_fraction - float(start_fraction), 1.0)
+    return np.asarray(offset < float(span_fraction))
+
+
+def _apply_depth_cue(
+    faces: np.ndarray,
+    colors: np.ndarray,
+    *,
+    elev_deg: float,
+    azim_deg: float,
+    strength: float,
+    background: str,
+) -> np.ndarray:
+    """Fade mesh face colors toward the background with distance from the viewer.
+
+    VESTA-style depth cueing ("fog") computed for the initial view direction:
+    faces farther along the line of sight blend toward the background color by
+    up to ``strength``. Static per render — an interactively rotated axes keeps
+    the fade of the export view, which is the publication use case.
+    """
+
+    if strength <= 0.0 or faces.shape[0] == 0:
+        return colors
+    elev = np.deg2rad(elev_deg)
+    azim = np.deg2rad(azim_deg)
+    # unit vector from the scene toward the viewer for matplotlib view angles
+    view = np.array(
+        [np.cos(elev) * np.cos(azim), np.cos(elev) * np.sin(azim), np.sin(elev)],
+        dtype=np.float64,
+    )
+    depth = faces.mean(axis=1) @ view
+    span = float(np.max(depth) - np.min(depth))
+    if span <= 1e-12:
+        return colors
+    nearness = (depth - float(np.min(depth))) / span
+    fade = float(np.clip(strength, 0.0, 1.0)) * (1.0 - nearness)
+    background_rgb = np.asarray(to_rgb(background), dtype=np.float64)
+    faded = colors.copy()
+    faded[:, :3] = colors[:, :3] * (1.0 - fade[:, None]) + background_rgb[None, :] * fade[:, None]
+    return faded
 
 
 def _cylinder_quads(
@@ -1025,75 +1429,10 @@ def _lit_face_colors(
     return np.concatenate([rgb, alpha_column], axis=-1)
 
 
-def plot_crystal_structure_3d(
-    scene_or_phase: CrystalScene | Phase,
-    *,
-    repeats: tuple[int, int, int] = (1, 1, 1),
-    show_bonds: bool = True,
-    include_boundary_atoms: bool = True,
-    polyhedra_species: tuple[str, ...] = (),
-    plane_hkls: tuple[tuple[int, int, int], ...] = (),
-    plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
-    direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
-    show_unit_cells: bool = False,
-    cell_overlays: tuple[CrystalCellOverlay, ...] = (),
-    slab_hkl: tuple[int, int, int] | None = None,
-    slab_thickness_angstrom: float | None = None,
-    theme: str = "journal",
-    style_path: str | None = None,
-    style_overrides: dict[str, Any] | None = None,
-    elev_deg: float = 22.0,
-    azim_deg: float = 34.0,
-    projection: str = "persp",
-    view_direction: CrystalDirection | np.ndarray | None = None,
-    view_preset: str | None = None,
-    show_legend: bool = False,
-    ax: Any | None = None,
-) -> Any:
-    """Render a crystal scene (or phase) as a VESTA-class 3D figure.
+def _draw_crystal_frame(axes: Any, scene: CrystalScene, crystal_style: dict[str, Any]) -> None:
+    """Draw the lattice box edges and any unit-cell overlays for one scene."""
 
-    ``view_preset`` selects a crystallographic viewing direction by name
-    ("a", "b", or "c": look along that lattice vector); ``view_direction``
-    accepts an arbitrary vector or `CrystalDirection` and wins over the
-    preset. ``show_legend`` adds a per-species color legend.
-    """
-
-    plt, poly3d_collection = _require_matplotlib()
-    style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
-    common = style["common"]
-    crystal_style = style["crystal"]
-    if isinstance(scene_or_phase, CrystalScene):
-        scene = scene_or_phase
-    else:
-        scene = build_crystal_scene(
-            scene_or_phase,
-            repeats=repeats,
-            show_bonds=show_bonds,
-            include_boundary_atoms=include_boundary_atoms,
-            polyhedra_species=polyhedra_species,
-            plane_hkls=plane_hkls,
-            plane_overlays=plane_overlays,
-            direction_overlays=direction_overlays,
-            show_unit_cells=show_unit_cells,
-            cell_overlays=cell_overlays,
-            slab_hkl=slab_hkl,
-            slab_thickness_angstrom=slab_thickness_angstrom,
-            theme=theme,
-            style_path=style_path,
-            style_overrides=style_overrides,
-        )
-    if ax is None:
-        fig = plt.figure(
-            figsize=tuple(common["figure"]["figsize"]),
-            dpi=int(common["figure"]["dpi"]),
-            facecolor=crystal_style["background"],
-        )
-        axes = fig.add_subplot(111, projection="3d", proj_type=projection)
-    else:
-        axes = ax
-        fig = axes.figure
-    axes.set_facecolor(crystal_style["background"])
-    light_direction = _normalize_light_direction(crystal_style["light_direction"])
+    _, poly3d_collection = _require_matplotlib()
     for edge in scene.lattice_edges:
         axes.plot(
             edge[:, 0], edge[:, 1], edge[:, 2], color=crystal_style["lattice_color"], linewidth=1.2
@@ -1118,10 +1457,24 @@ def plot_crystal_structure_3d(
                 alpha=cell.alpha,
                 linewidth=cell.linewidth,
             )
-    # Atoms and bonds accumulate into ONE Poly3DCollection so matplotlib
-    # depth-sorts every face globally: bonds correctly disappear behind
-    # atoms (and vice versa) from any viewing angle, which per-artist
-    # painter's ordering cannot guarantee.
+
+
+def _accumulate_crystal_mesh(
+    axes: Any,
+    scene: CrystalScene,
+    crystal_style: dict[str, Any],
+    *,
+    light_direction: np.ndarray,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Accumulate lit atom/bond/polyhedron faces for one scene.
+
+    Returns ``(mesh_faces, mesh_colors)`` lists that the caller concatenates into
+    a single depth-sorted `Poly3DCollection`; sharing one collection across every
+    scene in a composite figure is what keeps global occlusion correct. Line-mode
+    bonds, scatter-mode atoms, and polyhedron edges are per-scene artists and are
+    drawn directly onto ``axes`` here.
+    """
+
     mesh_faces: list[np.ndarray] = []
     mesh_colors: list[np.ndarray] = []
     ambient = float(crystal_style["light_ambient"])
@@ -1166,7 +1519,9 @@ def plot_crystal_structure_3d(
                 )
     if scene.atoms:
         atom_render_mode = str(crystal_style.get("atom_render_mode", "sphere")).lower()
-        if atom_render_mode == "scatter":
+        if atom_render_mode == "none":
+            pass  # wireframe convention: bond network only, no atom bodies
+        elif atom_render_mode == "scatter":
             positions = np.vstack([atom.position_angstrom for atom in scene.atoms])
             sizes = np.array(
                 [(atom.radius_angstrom * 175.0) ** 2 for atom in scene.atoms], dtype=np.float64
@@ -1186,15 +1541,19 @@ def plot_crystal_structure_3d(
             resolution = int(crystal_style["atom_surface_resolution"])
             shininess = float(crystal_style["atom_shininess"])
             atom_specular = float(crystal_style["atom_specular_strength"]) * specular
+            vacancy_color = str(crystal_style.get("vacancy_color", "#ffffff"))
             unit_quads, unit_normals = _unit_sphere_quads(resolution)
-            for atom in scene.atoms:
+
+            def _append_atom_sector(
+                atom: CrystalAtomGlyph, quads: np.ndarray, normals: np.ndarray, color: str
+            ) -> None:
                 mesh_faces.append(
-                    atom.position_angstrom[None, None, :] + atom.radius_angstrom * unit_quads
+                    atom.position_angstrom[None, None, :] + atom.radius_angstrom * quads
                 )
                 mesh_colors.append(
                     _lit_face_colors(
-                        atom.color,
-                        unit_normals,
+                        color,
+                        normals,
                         alpha=float(crystal_style["atom_alpha"]),
                         light_direction=light_direction,
                         ambient=ambient,
@@ -1202,6 +1561,41 @@ def plot_crystal_structure_3d(
                         specular=atom_specular,
                         shininess=shininess,
                     )
+                )
+
+            for atom in scene.atoms:
+                if atom.is_full_sphere:
+                    _append_atom_sector(atom, unit_quads, unit_normals, atom.color)
+                    continue
+                # VESTA occupancy pie: this glyph's species sector, plus the
+                # vacancy remainder when this glyph closes an underfilled site
+                occupied = _sector_quad_mask(unit_quads, atom.sector_start, atom.occupancy)
+                if np.any(occupied):
+                    _append_atom_sector(
+                        atom, unit_quads[occupied], unit_normals[occupied], atom.color
+                    )
+                if atom.vacancy_fraction > 1e-9:
+                    vacant = _sector_quad_mask(
+                        unit_quads,
+                        atom.sector_start + atom.occupancy,
+                        atom.vacancy_fraction,
+                    )
+                    if np.any(vacant):
+                        _append_atom_sector(
+                            atom, unit_quads[vacant], unit_normals[vacant], vacancy_color
+                        )
+        label_fontsize = float(crystal_style.get("atom_label_fontsize", 10.0))
+        label_color = str(crystal_style.get("atom_label_color", "#111111"))
+        for atom in scene.atoms:
+            if atom.label:
+                axes.text(
+                    atom.position_angstrom[0],
+                    atom.position_angstrom[1],
+                    atom.position_angstrom[2] + 1.15 * atom.radius_angstrom,
+                    atom.label,
+                    color=label_color,
+                    fontsize=label_fontsize,
+                    ha="center",
                 )
     for polyhedron in scene.polyhedra:
         # triangles ride in the same depth-sorted mesh as degenerate quads
@@ -1230,16 +1624,19 @@ def plot_crystal_structure_3d(
                 linewidth=polyhedron.edge_width,
                 alpha=min(1.0, polyhedron.alpha + 0.25),
             )
-    if mesh_faces:
-        mesh = poly3d_collection(
-            np.concatenate(mesh_faces, axis=0),
-            facecolors=np.concatenate(mesh_colors, axis=0),
-            edgecolors="none",
-            linewidths=0.0,
-        )
-        mesh.set_zsort("average")
-        axes.add_collection3d(mesh)
-    scene_span = float(np.max(scene.bounds()[1] - scene.bounds()[0]) + 1e-6)
+    return mesh_faces, mesh_colors
+
+
+def _draw_crystal_planes_and_directions(
+    axes: Any,
+    scene: CrystalScene,
+    crystal_style: dict[str, Any],
+    *,
+    scene_span: float,
+) -> None:
+    """Draw plane patches (with labels) and direction quivers (with labels)."""
+
+    _, poly3d_collection = _require_matplotlib()
     for plane in scene.planes:
         axes.add_collection3d(
             poly3d_collection(
@@ -1289,14 +1686,89 @@ def plot_crystal_structure_3d(
                 color=direction.annotation_style.color or direction.color,
                 fontsize=direction.annotation_style.fontsize,
             )
-    bounds = scene.bounds()
-    center = 0.5 * (bounds[0] + bounds[1])
-    radius = 0.55 * float(np.max(bounds[1] - bounds[0]) + 1e-6)
-    axes.set_xlim(center[0] - radius, center[0] + radius)
-    axes.set_ylim(center[1] - radius, center[1] + radius)
-    axes.set_zlim(center[2] - radius, center[2] + radius)
-    # equal box aspect: spheres must render as spheres, not ellipsoids
-    axes.set_box_aspect((1.0, 1.0, 1.0))
+
+
+def plot_crystal_structure_3d(
+    scene_or_phase: CrystalScene | Phase,
+    *,
+    repeats: tuple[int, int, int] = (1, 1, 1),
+    render_style: str = "ball_and_stick",
+    show_bonds: bool = True,
+    include_boundary_atoms: bool = True,
+    polyhedra_species: tuple[str, ...] = (),
+    plane_hkls: tuple[tuple[int, int, int], ...] = (),
+    plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
+    direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
+    show_unit_cells: bool = False,
+    cell_overlays: tuple[CrystalCellOverlay, ...] = (),
+    slab_hkl: tuple[int, int, int] | None = None,
+    slab_thickness_angstrom: float | None = None,
+    atom_label_mode: str = "none",
+    site_vectors: Mapping[str, Any] | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    elev_deg: float = 22.0,
+    azim_deg: float = 34.0,
+    projection: str = "persp",
+    view_direction: CrystalDirection | np.ndarray | None = None,
+    view_preset: str | None = None,
+    show_legend: bool = False,
+    ax: Any | None = None,
+) -> Any:
+    """Render a crystal scene (or phase) as a VESTA-class 3D figure.
+
+    ``render_style`` switches the whole visual system in one keyword:
+    ``"ball_and_stick"``, ``"space_filling"``, ``"stick"``, ``"wireframe"``, or
+    ``"polyhedral"`` (see `build_crystal_scene`). ``view_preset`` selects a
+    crystallographic viewing direction by name ("a", "b", or "c": look along
+    that lattice vector); ``view_direction`` accepts an arbitrary vector or
+    `CrystalDirection` and wins over the preset. ``show_legend`` adds a
+    per-species color legend. Set the ``depth_cue_strength`` style key above
+    zero for VESTA-style distance fog computed for the initial view.
+    """
+
+    plt, poly3d_collection = _require_matplotlib()
+    effective_overrides = _merged_style_overrides(render_style, style_overrides)
+    style = resolve_style(theme=theme, style_path=style_path, overrides=effective_overrides)
+    common = style["common"]
+    crystal_style = style["crystal"]
+    if isinstance(scene_or_phase, CrystalScene):
+        scene = scene_or_phase
+    else:
+        scene = build_crystal_scene(
+            scene_or_phase,
+            repeats=repeats,
+            render_style=render_style,
+            show_bonds=show_bonds,
+            include_boundary_atoms=include_boundary_atoms,
+            polyhedra_species=polyhedra_species,
+            plane_hkls=plane_hkls,
+            plane_overlays=plane_overlays,
+            direction_overlays=direction_overlays,
+            show_unit_cells=show_unit_cells,
+            cell_overlays=cell_overlays,
+            slab_hkl=slab_hkl,
+            slab_thickness_angstrom=slab_thickness_angstrom,
+            atom_label_mode=atom_label_mode,
+            site_vectors=site_vectors,
+            theme=theme,
+            style_path=style_path,
+            style_overrides=style_overrides,
+        )
+    if ax is None:
+        fig = plt.figure(
+            figsize=tuple(common["figure"]["figsize"]),
+            dpi=int(common["figure"]["dpi"]),
+            facecolor=crystal_style["background"],
+        )
+        axes = fig.add_subplot(111, projection="3d", proj_type=projection)
+    else:
+        axes = ax
+        fig = axes.figure
+    axes.set_facecolor(crystal_style["background"])
+    light_direction = _normalize_light_direction(crystal_style["light_direction"])
+    # resolve the viewing direction FIRST so depth cueing can fade along it
     if view_direction is not None:
         if isinstance(view_direction, CrystalDirection):
             elev_deg, azim_deg = _view_angles_from_direction(view_direction.unit_vector)
@@ -1312,6 +1784,42 @@ def plot_crystal_structure_3d(
         elev_deg, azim_deg = _view_angles_from_direction(
             lattice_vector / np.linalg.norm(lattice_vector)
         )
+    _draw_crystal_frame(axes, scene, crystal_style)
+    # Atoms and bonds accumulate into ONE Poly3DCollection so matplotlib
+    # depth-sorts every face globally: bonds correctly disappear behind
+    # atoms (and vice versa) from any viewing angle, which per-artist
+    # painter's ordering cannot guarantee.
+    mesh_faces, mesh_colors = _accumulate_crystal_mesh(
+        axes, scene, crystal_style, light_direction=light_direction
+    )
+    if mesh_faces:
+        all_faces = np.concatenate(mesh_faces, axis=0)
+        all_colors = _apply_depth_cue(
+            all_faces,
+            np.concatenate(mesh_colors, axis=0),
+            elev_deg=elev_deg,
+            azim_deg=azim_deg,
+            strength=float(crystal_style.get("depth_cue_strength", 0.0)),
+            background=str(crystal_style["background"]),
+        )
+        mesh = poly3d_collection(
+            all_faces,
+            facecolors=all_colors,
+            edgecolors="none",
+            linewidths=0.0,
+        )
+        mesh.set_zsort("average")
+        axes.add_collection3d(mesh)
+    scene_span = float(np.max(scene.bounds()[1] - scene.bounds()[0]) + 1e-6)
+    _draw_crystal_planes_and_directions(axes, scene, crystal_style, scene_span=scene_span)
+    bounds = scene.bounds()
+    center = 0.5 * (bounds[0] + bounds[1])
+    radius = 0.55 * float(np.max(bounds[1] - bounds[0]) + 1e-6)
+    axes.set_xlim(center[0] - radius, center[0] + radius)
+    axes.set_ylim(center[1] - radius, center[1] + radius)
+    axes.set_zlim(center[2] - radius, center[2] + radius)
+    # equal box aspect: spheres must render as spheres, not ellipsoids
+    axes.set_box_aspect((1.0, 1.0, 1.0))
     axes.view_init(elev=elev_deg, azim=azim_deg)
     if show_legend and scene.atoms:
         from matplotlib.lines import Line2D

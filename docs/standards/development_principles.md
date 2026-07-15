@@ -51,6 +51,7 @@ A stable feature is not complete until all of the following exist:
 - human-auditable automated test documentation for important formulas and conventions
 - a benchmark or parity note
 - an example workflow
+- at least one executable worked example whose output is computed live from the public API and checked against a cited reference value, for any stable public numerical surface (see [Executable Worked Examples](executable_examples.md))
 - an executable notebook tutorial when the feature benefits from staged interactive exposition
 - a reusable plotting path when the feature naturally produces scientific figures
 - citations and scientific documentation
@@ -69,6 +70,7 @@ The repository default is no longer “text first, figures later” for foundati
 - If a change alters a major algorithm, the corresponding docs update must explain the mathematical object being transformed, the reduction or selection rule, and the current implementation boundary.
 - Notebook tutorials should agree with the formal docs and must not introduce private conventions, hidden helper assumptions, or unexplained magic numbers.
 - Automated test documentation should expose source-backed formulas, expected outputs, and last verified code outputs for major numerical pathways.
+- Numerical claims in user-facing documentation should be backed by executable worked examples whose outputs are computed live from the code and compared with cited reference values, rather than by hand-written transcripts that can drift from the implementation.
 - Runtime plotting should reuse shared semantic builders rather than inventing ad hoc Matplotlib logic per workflow.
 - Canonical documentation graphics should follow the visualization style guide so architecture,
   workflow, validation, and teaching diagrams share one visual language.
@@ -93,6 +95,8 @@ Before merging a substantial change, answer these questions explicitly:
 - [Engineering Governance](engineering_governance.md)
 - [Reference Canon](reference_canon.md)
 - [Visualization Style Guide](visualization_style_guide.md)
+- [Documentation Architecture](documentation_architecture.md)
+- [Executable Worked Examples](executable_examples.md)
 
 ### Informative
 

@@ -20,6 +20,7 @@ concepts/texture_foundation
 concepts/ebsd_foundation
 concepts/diffraction_foundation
 concepts/symmetry_and_fundamental_regions
+concepts/visualization_primitives
 ```
 
 ```{toctree}
@@ -29,6 +30,13 @@ concepts/symmetry_and_fundamental_regions
 tutorials/quickstart
 tutorials/installation_and_build
 tutorials/notebooks
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Worked Examples
+
+examples/index
 ```
 
 ```{toctree}

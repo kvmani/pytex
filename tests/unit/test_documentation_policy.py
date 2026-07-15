@@ -91,6 +91,32 @@ def test_site_index_and_readme_expose_active_roadmap() -> None:
     assert "implementation roadmap" in site_readme
 
 
+def test_executable_examples_standard_is_encoded_and_cross_linked() -> None:
+    standard = _read("docs/standards/executable_examples.md").lower()
+    for token in ("worked example", "computed", "reference value", "tolerance", "citation"):
+        assert token in standard, token
+
+    agents = _read("AGENTS.md")
+    assert "docs/standards/executable_examples.md" in agents
+    assert "worked_examples/" in agents
+
+    doc_arch = _read("docs/standards/documentation_architecture.md").lower()
+    assert "executable worked example" in doc_arch
+    assert "docstring contract" in doc_arch
+
+    site_index = _read("docs/site/index.md")
+    assert "examples/index" in site_index
+
+    standards_index = _read("docs/site/standards/index.md")
+    assert "executable_examples" in standards_index
+
+
+def test_foundational_docs_encode_executable_example_policy() -> None:
+    for path in ("mission.md", "specifications.md", "AGENTS.md"):
+        content = _read(path).lower()
+        assert "worked example" in content, path
+
+
 def test_interop_docs_state_validation_boundaries_explicitly() -> None:
     interop = _read("docs/site/workflows/orix_kikuchipy_interop.md").lower()
     ebsd = _read("docs/site/workflows/ebsd_import_normalization.md").lower()

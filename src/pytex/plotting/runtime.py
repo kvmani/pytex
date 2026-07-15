@@ -32,6 +32,9 @@ from pytex.plotting.spherical import (
     plot_crystal_planes as _plot_crystal_planes,
 )
 from pytex.plotting.spherical import (
+    plot_stereographic_vectors as _plot_stereographic_vectors,
+)
+from pytex.plotting.spherical import (
     plot_symmetry_elements as _plot_symmetry_elements,
 )
 from pytex.plotting.spherical import (
@@ -164,6 +167,37 @@ def plot_crystal_planes(
         labels=labels,
         method=method,
         render=render,
+        include_wulff_net=include_wulff_net,
+        title=title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
+
+
+def plot_stereographic_vectors(
+    vectors: Any,
+    *,
+    labels: Sequence[str | None] | None = None,
+    colors: Sequence[str] | None = None,
+    method: str = "stereographic",
+    render: str = "pole",
+    antipodal: bool = True,
+    include_wulff_net: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    return _plot_stereographic_vectors(
+        vectors,
+        labels=labels,
+        colors=colors,
+        method=method,
+        render=render,
+        antipodal=antipodal,
         include_wulff_net=include_wulff_net,
         title=title,
         theme=theme,

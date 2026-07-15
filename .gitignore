@@ -45,3 +45,6 @@ fixtures/visual_regression/*.svg
 *.tmp
 *.bak
 .venv/
+
+# Session-local agent tooling config
+.claude/

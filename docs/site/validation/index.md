@@ -10,6 +10,7 @@ testing_strategy
 automated_test_cases
 mtex_parity_matrix
 mtex_regeneration
+vesta_parity_matrix
 diffraction_validation_matrix
 structure_validation_matrix
 plotting_validation_matrix

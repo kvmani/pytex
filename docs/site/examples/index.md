@@ -1,0 +1,47 @@
+<!-- GENERATED FILE. Do not edit by hand.
+     Source of truth: worked_examples/ (rendered by scripts/generate_worked_examples.py).
+     Run `python scripts/generate_worked_examples.py` to regenerate. -->
+# Worked Examples
+
+This section is PyTex's *documentation-as-test* surface. Each worked example bundles a scientific scenario, a runnable snippet, the value that snippet computes from the live code, and an independently known reference value. The examples are the single source of truth for both this gallery and the regression test `tests/unit/test_worked_examples.py`.
+
+```{note}
+Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
+```
+
+## Reference-value ledger
+
+The complete set of computed-versus-expected values at a glance:
+
+| Example | Computed (live) | Expected (reference) | Unit | Status |
+| --- | --- | --- | --- | --- |
+| `cubic-angle-100-110` | 45.0000 | 45.0000 | deg | ✅ |
+| `cubic-angle-100-111` | 54.7356 | 54.7356 | deg | ✅ |
+| `cubic-angle-dir-110-111` | 35.2644 | 35.2644 | deg | ✅ |
+| `cubic-dspacing-111` | 2.30940 | 2.30940 | angstrom | ✅ |
+| `cubic-plane-multiplicity` | [3, 6, 4, 24] | [3, 6, 4, 24] | &mdash; | ✅ |
+| `hex-angle-basal-prism` | 90.0000 | 90.0000 | deg | ✅ |
+| `hex-angle-prism-prism` | 60.0000 | 60.0000 | deg | ✅ |
+| `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | ✅ |
+| `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | ✅ |
+| `diffraction-ni-111-two-theta` | 44.496 | 44.496 | deg | ✅ |
+| `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
+| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
+| `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |
+
+## Example groups
+
+- {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
+- {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
+- {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles derived from PyTex interplanar spacings via Bragg's law, checked against a standard reference reflection position.
+- {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+generated/crystal_geometry
+generated/orientation
+generated/diffraction
+generated/visualization
+```

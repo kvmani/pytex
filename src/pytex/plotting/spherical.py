@@ -337,6 +337,162 @@ def build_crystal_plane_figure_spec(
     )
 
 
+def build_vector_stereogram_figure_spec(
+    vectors: Any,
+    *,
+    labels: Sequence[str | None] | None = None,
+    colors: Sequence[str] | None = None,
+    method: str = "stereographic",
+    render: str = "pole",
+    antipodal: bool = True,
+    include_wulff_net: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+) -> FigureSpec2D:
+    """Build a stereogram spec for arbitrary Cartesian direction vectors.
+
+    The frame-agnostic projection primitive behind `plot_stereographic_vectors`:
+    it plots any ``(n, 3)`` set of world-frame directions as poles and/or
+    great-circle traces on a Wulff net, without requiring a `CrystalDirection`.
+    Because the inputs are plain Cartesian vectors, directions from two crystals
+    that were placed in a common frame with a `Transform3D` can be overlaid on
+    one stereogram — the projection analog of a composite 3D scene.
+    """
+
+    if render not in {"pole", "trace", "both"}:
+        raise ValueError("render must be one of 'pole', 'trace', or 'both'.")
+    array = np.asarray(vectors, dtype=np.float64)
+    if array.ndim == 1:
+        array = array[None, :]
+    if array.ndim != 2 or array.shape[1] != 3:
+        raise ValueError("vectors must have shape (n, 3) or (3,).")
+    norms = np.linalg.norm(array, axis=1)
+    if np.any(np.isclose(norms, 0.0)):
+        raise ValueError("vectors must not contain a zero vector.")
+    unit_vectors = array / norms[:, None]
+    label_items = tuple(labels) if labels is not None else (None,) * unit_vectors.shape[0]
+    if len(label_items) != unit_vectors.shape[0]:
+        raise ValueError("labels must match the number of vectors.")
+    common, spherical_style = _style_bundle(
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+    )
+    palette = tuple(colors) if colors is not None else _palette(
+        spherical_style,
+        "direction_colors",
+        ("#1f3a5f", "#bc6c25", "#4c956c", "#7c3aed"),
+    )
+    points = project_directions(unit_vectors, method=method, antipodal=antipodal)
+    line_layers = list(
+        _wulff_net_layers(method=method, spherical_style=spherical_style)
+        if include_wulff_net
+        else ()
+    )
+    if render in {"trace", "both"}:
+        for index in range(unit_vectors.shape[0]):
+            line_layers.append(
+                LineLayer2D(
+                    points=project_great_circle_trace(unit_vectors[index], method=method),
+                    color=palette[index % len(palette)],
+                    linewidth=float(spherical_style.get("plane_trace_linewidth", 1.45)),
+                    alpha=float(spherical_style.get("plane_trace_alpha", 0.95)),
+                )
+            )
+    marker_layers: tuple[MarkerLayer2D, ...] = ()
+    if render in {"pole", "both"}:
+        marker_layers = (
+            MarkerLayer2D(
+                points=points,
+                marker=str(spherical_style.get("direction_marker", "o")),
+                facecolors=[
+                    palette[index % len(palette)] for index in range(unit_vectors.shape[0])
+                ],
+                edgecolors=str(spherical_style.get("direction_edgecolor", "#ffffff")),
+                sizes=float(spherical_style.get("direction_size", 88.0)),
+                linewidths=float(spherical_style.get("direction_linewidth", 1.0)),
+                label="directions",
+            ),
+        )
+    text_layers = []
+    label_offset = float(spherical_style.get("label_offset", 0.04))
+    for point, label in zip(points, label_items, strict=True):
+        if label is None:
+            continue
+        text_layers.append(
+            TextLayer2D(
+                position=_radial_label_position(point, offset=label_offset),
+                text=str(label),
+                color=str(spherical_style.get("label_color", "#111111")),
+                fontsize=float(spherical_style.get("label_fontsize", common["font"]["size"])),
+                bbox_facecolor=str(spherical_style.get("label_bbox_color", "#ffffff")),
+                bbox_alpha=float(spherical_style.get("label_bbox_alpha", 0.82)),
+            )
+        )
+    radius = projection_boundary_radius(method)
+    return FigureSpec2D(
+        title=title or "Direction Stereogram",
+        xlabel="projection x",
+        ylabel="projection y",
+        xlim=(-radius, radius),
+        ylim=(-radius, radius),
+        boundary_circle_radius=radius,
+        boundary_circle_color=str(spherical_style.get("boundary_color", "#0f172a")),
+        boundary_circle_linewidth=float(spherical_style.get("boundary_linewidth", 1.15)),
+        boundary_circle_linestyle="-",
+        equal_aspect=True,
+        grid=False,
+        show_axes=False,
+        marker_layers=marker_layers,
+        line_layers=tuple(line_layers),
+        text_layers=tuple(text_layers),
+    )
+
+
+def plot_stereographic_vectors(
+    vectors: Any,
+    *,
+    labels: Sequence[str | None] | None = None,
+    colors: Sequence[str] | None = None,
+    method: str = "stereographic",
+    render: str = "pole",
+    antipodal: bool = True,
+    include_wulff_net: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    """Plot arbitrary Cartesian direction vectors on a stereographic net.
+
+    The general, frame-agnostic stereographic primitive: give it any ``(n, 3)``
+    world-frame directions (a bare 3D vector, plane poles, or crystal directions
+    already rotated into a common frame) and it renders them as poles and/or
+    great-circle traces on a Wulff net. Overlay two crystals by concatenating
+    their world-frame directions and passing per-vector ``colors`` / ``labels``.
+    """
+
+    return render_figure_spec(
+        build_vector_stereogram_figure_spec(
+            vectors,
+            labels=labels,
+            colors=colors,
+            method=method,
+            render=render,
+            antipodal=antipodal,
+            include_wulff_net=include_wulff_net,
+            title=title,
+            theme=theme,
+            style_path=style_path,
+            style_overrides=style_overrides,
+        ),
+        ax=ax,
+    )
+
+
 def _canonical_axis(axis: np.ndarray) -> np.ndarray:
     canonical = np.array(axis, copy=True)
     nonzero = np.flatnonzero(np.abs(canonical) > 1e-10)
@@ -555,9 +711,11 @@ __all__ = [
     "build_crystal_direction_figure_spec",
     "build_crystal_plane_figure_spec",
     "build_symmetry_elements_figure_spec",
+    "build_vector_stereogram_figure_spec",
     "build_wulff_net_figure_spec",
     "plot_crystal_directions",
     "plot_crystal_planes",
+    "plot_stereographic_vectors",
     "plot_symmetry_elements",
     "plot_wulff_net",
 ]

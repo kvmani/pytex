@@ -11,6 +11,7 @@ api_stability_and_deprecation
 notation_and_conventions
 hexagonal_and_trigonal_conventions
 documentation_architecture
+executable_examples
 latex_and_figures
 visualization_style_guide
 scientific_citation_policy

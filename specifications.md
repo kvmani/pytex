@@ -198,10 +198,13 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 - Stable plotting docs must describe the supported rendering modes for each public plotting function, especially when a routine exposes both discrete and contour-style views.
 - Sphinx/MyST pages are the default home for concepts, tutorials, workflows, and curated API guidance.
 - Executable `.ipynb` notebooks are a first-class tutorial surface when a feature benefits from stepwise code-plus-math exposition.
+- Executable worked examples are a first-class documentation surface for stable public numerical behavior: their outputs are computed live from the code and checked against cited reference values, so documentation numbers cannot silently drift from the implementation. The source of truth is `worked_examples/`, rendered into `docs/site/examples/` and validated by `tests/unit/test_worked_examples.py`. See `docs/standards/executable_examples.md`.
 - Core documentation must explain both scalar and batched semantics when a primitive supports vectorized operations.
+- Documentation for a stable public surface must state its purpose, when and where it is used, its expected inputs, and its expected outputs, with a computed example for verifiable numerical behavior.
 - Every major stable feature requires:
   - a concept or workflow page in the Sphinx layer
   - a notebook tutorial when the feature is easier to learn through progressive executable examples
+  - an executable worked example when the feature exposes verifiable numerical behavior
   - a theory or architecture note
   - an algorithm or implementation note when algorithms exist
   - a validation and limitations note
@@ -269,6 +272,9 @@ The detailed implementation ladder lives in `docs/roadmap/implementation_roadmap
 - `docs/standards/reference_canon.md`
 - `docs/standards/notation_and_conventions.md`
 - `docs/standards/data_contracts_and_manifests.md`
+- `docs/standards/documentation_architecture.md`
+- `docs/standards/executable_examples.md`
+- `docs/standards/terminology_and_symbol_registry.md`
 
 ### Informative
 

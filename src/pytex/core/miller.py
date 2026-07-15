@@ -868,6 +868,44 @@ def angle_plane_plane_rad(
     left: MillerPlane | MillerPlaneSet,
     right: MillerPlane | MillerPlaneSet,
 ) -> float | FloatArray:
+    r"""Angle between crystallographic planes, computed from their normals.
+
+    Purpose
+    -------
+    Return the angle (radians) between the normals of ``(hkl)`` planes, evaluated
+    in the shared crystal frame through the reciprocal metric. Plane families are
+    treated with antipodal equivalence, so a normal and its opposite describe the
+    same plane and the returned angle lies in ``[0, pi/2]``.
+
+    When to use
+    -----------
+    Use this when relating indexed poles in a pole figure, checking Kikuchi band
+    intersections, or confirming that a phase's frame and symmetry are wired
+    correctly. For a cubic phase the ``(100)`` vs ``(110)`` angle is exactly
+    ``45`` degrees for any lattice parameter, a convenient first sanity check.
+
+    Parameters
+    ----------
+    left, right : MillerPlane or MillerPlaneSet
+        Planes on the same phase. Two sets give row-aligned pairwise angles.
+
+    Returns
+    -------
+    float or FloatArray
+        A ``float`` when both arguments are single planes; otherwise a 1-D array
+        of angles in radians.
+
+    See Also
+    --------
+    angle_dir_dir_rad : Angle between crystallographic directions.
+    angle_dir_plane_normal_rad : Angle between a direction and a plane normal.
+
+    Notes
+    -----
+    Verified live by the ``cubic-angle-100-110`` and ``hex-angle-basal-prism``
+    worked examples; see the executable-examples gallery under ``docs/site/examples/``.
+    """
+
     left_normals, left_phase = _plane_normals(left)
     right_normals, right_phase = _plane_normals(right)
     _require_matching_phases(left_phase, right_phase, left_name="left", right_name="right")
@@ -889,6 +927,45 @@ def angle_dir_dir_rad(
     *,
     antipodal: bool = True,
 ) -> float | FloatArray:
+    r"""Angle between crystallographic directions, computed in the crystal frame.
+
+    Purpose
+    -------
+    Return the angle (radians) between ``[uvw]`` directions, evaluated with the
+    direct-space metric. With ``antipodal=True`` (the default) a direction and its
+    reverse are equivalent and the angle lies in ``[0, pi/2]``; set
+    ``antipodal=False`` to keep signed directions and allow angles up to ``pi``.
+
+    When to use
+    -----------
+    Use this in slip-system and Schmid-factor work (angle between a slip direction
+    and a loading axis), when measuring the opening of a zone, or when validating
+    hexagonal four-index handling. In cubic metrics the ``[110]`` vs ``[111]``
+    angle is ``arccos(sqrt(2/3)) = 35.2644`` degrees.
+
+    Parameters
+    ----------
+    left, right : MillerDirection or MillerDirectionSet
+        Directions on the same phase. Two sets give row-aligned pairwise angles.
+    antipodal : bool, optional
+        If ``True`` (default) treat a direction and its reverse as equivalent.
+
+    Returns
+    -------
+    float or FloatArray
+        A ``float`` when both arguments are single directions; otherwise a 1-D
+        array of angles in radians.
+
+    See Also
+    --------
+    angle_plane_plane_rad : Angle between plane normals.
+
+    Notes
+    -----
+    Verified live by the ``cubic-angle-dir-110-111`` worked example; see the
+    executable-examples gallery under ``docs/site/examples/``.
+    """
+
     left_units, left_phase = _direction_units(left)
     right_units, right_phase = _direction_units(right)
     _require_matching_phases(left_phase, right_phase, left_name="left", right_name="right")
@@ -908,6 +985,38 @@ def angle_dir_plane_normal_rad(
     directions: MillerDirection | MillerDirectionSet,
     planes: MillerPlane | MillerPlaneSet,
 ) -> float | FloatArray:
+    r"""Angle between a direction and a plane normal.
+
+    Purpose
+    -------
+    Return the angle (radians) between ``[uvw]`` direction(s) and the normal(s) of
+    ``(hkl)`` plane(s), in ``[0, pi/2]`` under antipodal equivalence. This is the
+    complement of the inclination of the direction to the plane itself.
+
+    When to use
+    -----------
+    Use this to test whether a direction lies in a plane (angle ``= pi/2``) or is
+    parallel to its normal (angle ``= 0``), for example when checking zone-axis
+    conditions or resolving a Burgers vector against a slip-plane normal. For the
+    inclination to the plane surface, use :func:`angle_dir_plane_inclination_rad`.
+
+    Parameters
+    ----------
+    directions : MillerDirection or MillerDirectionSet
+        Directions on the same phase as ``planes``.
+    planes : MillerPlane or MillerPlaneSet
+        Planes on the same phase as ``directions``.
+
+    Returns
+    -------
+    float or FloatArray
+        A ``float`` for a single direction and plane; otherwise a 1-D array.
+
+    See Also
+    --------
+    angle_dir_plane_inclination_rad : Inclination of a direction to a plane.
+    """
+
     direction_units, direction_phase = _direction_units(directions)
     plane_normals, plane_phase = _plane_normals(planes)
     _require_matching_phases(
@@ -932,6 +1041,36 @@ def angle_dir_plane_inclination_rad(
     directions: MillerDirection | MillerDirectionSet,
     planes: MillerPlane | MillerPlaneSet,
 ) -> float | FloatArray:
+    r"""Inclination of a direction to a plane surface (radians).
+
+    Purpose
+    -------
+    Return ``pi/2`` minus the direction-to-normal angle, i.e. the angle between a
+    direction and the plane itself. A direction lying in the plane gives ``0``; a
+    direction along the plane normal gives ``pi/2``.
+
+    When to use
+    -----------
+    Use this when the natural quantity is how steeply a direction rises out of a
+    plane, such as the inclination of a slip or trace direction to a surface.
+
+    Parameters
+    ----------
+    directions : MillerDirection or MillerDirectionSet
+        Directions on the same phase as ``planes``.
+    planes : MillerPlane or MillerPlaneSet
+        Planes on the same phase as ``directions``.
+
+    Returns
+    -------
+    float or FloatArray
+        A ``float`` for a single direction and plane; otherwise a 1-D array.
+
+    See Also
+    --------
+    angle_dir_plane_normal_rad : Angle between a direction and a plane normal.
+    """
+
     normal_angles = angle_dir_plane_normal_rad(directions, planes)
     if isinstance(normal_angles, float):
         return float((np.pi / 2.0) - normal_angles)
