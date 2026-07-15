@@ -69,6 +69,19 @@ _FALLBACK_CPK_COLORS = {
     "Ni": "#10b981",
     "Cu": "#b45309",
     "Zn": "#94a3b8",
+    # Jmol/CPK colors for the remaining metals in the atomic-number table
+    "Co": "#f090a0",
+    "Cr": "#8a99c7",
+    "Mn": "#9c7ac7",
+    "Ga": "#c28f8f",
+    "Ge": "#668f8f",
+    "Zr": "#94e0e0",
+    "Mo": "#54b5b5",
+    "Ag": "#bfbfbf",
+    "Sn": "#668080",
+    "W": "#2194d6",
+    "Au": "#ffd123",
+    "Pb": "#575961",
 }
 
 
