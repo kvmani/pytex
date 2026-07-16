@@ -117,6 +117,7 @@ from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
     DirectionCorrespondence,
     IntervariantMisorientation,
+    ORDeviationReport,
     OrientationRelationship,
     PhaseTransformationRecord,
     PlaneCorrespondence,
@@ -125,6 +126,7 @@ from pytex.core.transformation import (
     intervariant_misorientations,
     map_direction_across_variants,
     map_plane_across_variants,
+    or_deviation,
 )
 
 __all__ = [
@@ -150,6 +152,7 @@ __all__ = [
     "IntervariantMisorientation",
     "PlaneCorrespondence",
     "DirectionCorrespondence",
+    "ORDeviationReport",
     "Lattice",
     "MeasurementQuality",
     "MillerBravaisDirection",
@@ -211,6 +214,7 @@ __all__ = [
     "intervariant_misorientations",
     "map_plane_across_variants",
     "map_direction_across_variants",
+    "or_deviation",
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",

@@ -63,6 +63,23 @@ Hexagonal phases participate with full index meaning: Burgers maps
 \([\bar{1}11]_{\beta}\) to \([11\bar{2}0]_{\alpha}\) (stored as the
 three-index \([110]\)).
 
+## The OR as a misorientation, and deviation from it
+
+`misorientation()` returns the symmetry-reduced (disorientation)
+representative of the relationship — the way ORs are measured and reported
+from EBSD boundary data. For Kurdjumov-Sachs this is the published
+\(42.85^{\circ}\) rotation about \(\langle 0.968\;0.178\;0.178 \rangle\);
+Nishiyama-Wassermann gives \(45.99^{\circ}\) and Bain \(45^{\circ}\) about
+\(\langle 100 \rangle\).
+
+`or_deviation(parents, children, relationship)` quantifies how well measured
+parent/child orientation pairs obey a nominal OR: for each pair it reports
+the smallest child-symmetry-reduced angle to any variant prediction, plus the
+winning variant index. Exact synthetic data returns zeros; children generated
+with Greninger-Troiano deviate by the documented \(2.40^{\circ}\) from
+Kurdjumov-Sachs and \(2.86^{\circ}\) from Nishiyama-Wassermann — the report's
+aggregate statistics are the entry point for OR fitting.
+
 ## Variants
 
 `generate_variants()` enumerates the crystallographically distinct child

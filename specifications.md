@@ -97,6 +97,19 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `OrientationRelationship`
 - `TransformationVariant`
 - `PhaseTransformationRecord`
+- `DirectionCorrespondence`
+- `PlaneCorrespondence`
+- `ORDeviationReport`
+- `map_direction_across_variants`
+- `map_plane_across_variants`
+- `or_deviation`
+- `IntervariantMisorientation`
+- `intervariant_misorientations`
+- `OrientationRelationshipCatalog`
+- `VariantSelectionReport`
+- `select_variants`
+- `standard_fcc_bcc_relationships`
+- `standard_bcc_hcp_relationships`
 
 ### Plotting
 

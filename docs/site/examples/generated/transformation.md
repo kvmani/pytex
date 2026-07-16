@@ -4,7 +4,7 @@
 
 # Orientation-relationship correspondence
 
-Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals.
+Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, and the misorientation representation used for EBSD comparison.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -169,5 +169,82 @@ result = np.concatenate(
 **Why this value**: The Bain correspondence is constructed from (001)_fcc || (001)_bcc with [110]_fcc || [100]_bcc, so mapping the defining parent direction must recover the defining child direction identically (analytic identity).
 
 **Citation**: Bain, Trans. AIME 70 (1924) 25.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Kurdjumov-Sachs as a misorientation: 42.85 deg about <0.968 0.178 0.178>
+
+Express the Kurdjumov-Sachs relationship the way it is measured from EBSD boundary data: as the minimal-angle symmetry-reduced misorientation. The published representative is a rotation of 42.85 deg about an axis with components <0.968 0.178 0.178>; the computed angle and sorted absolute axis components are compared against that tabulated value.
+
+**Symbols**
+
+- $(\mathbf{n}, \omega)$ &mdash; Axis-angle pair of the symmetry-reduced misorientation representative.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+misorientation = ks.misorientation()
+axis = np.sort(np.abs(misorientation.rotation.axis))[::-1]
+result = np.concatenate([[misorientation.angle_deg], axis])
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | 2.24e-03 | 5e-03 | ✅ pass |
+
+**Why this value**: The Kurdjumov-Sachs disorientation representative is tabulated as a 42.85 deg rotation about <0.968 0.178 0.178> in standard thermo-mechanical processing references.
+
+**Citation**: Verlinden, Driver, Samajdar, Doherty, Thermo-Mechanical Processing of Metallic Materials (2007); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

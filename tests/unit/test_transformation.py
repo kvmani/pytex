@@ -22,6 +22,7 @@ from pytex.core import (
     TransformationVariant,
     VectorSet,
     map_plane_across_variants,
+    or_deviation,
     phases_semantically_match,
 )
 
@@ -800,3 +801,120 @@ def test_index_mapping_validates_phase_and_variant_membership() -> None:
         ks.map_direction_to_child(
             CrystalDirection([1.0, 0.0, 0.0], phase=parent), variant=foreign_variant
         )
+
+
+def _paired_sets_for_deviation(
+    parent: Phase, child: Phase
+) -> tuple[OrientationSet, OrientationSet, OrientationRelationship]:
+    specimen = ReferenceFrame(
+        name="specimen_dev",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    parents = OrientationSet.from_orientations(
+        [
+            Orientation.from_euler(
+                20.0, 30.0, 40.0, specimen_frame=specimen, symmetry=parent.symmetry, phase=parent
+            ),
+            Orientation.from_euler(
+                70.0, 15.0, 5.0, specimen_frame=specimen, symmetry=parent.symmetry, phase=parent
+            ),
+        ]
+    )
+    variants = gt.generate_variants()
+    picked = (variants[0], variants[7])
+    quaternions = np.stack(
+        [
+            variant.parent_to_child_rotation.compose(parents[index].rotation).quaternion
+            for index, variant in enumerate(picked)
+        ],
+        axis=0,
+    )
+    children = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=child.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child.symmetry,
+        phase=child,
+    )
+    return parents, children, gt
+
+
+def test_named_or_misorientation_representations_match_literature() -> None:
+    _, _, parent, child = make_phases()
+    cases = {
+        "ks": (
+            OrientationRelationship.from_kurdjumov_sachs_correspondence(
+                parent_phase=parent, child_phase=child
+            ),
+            42.85,
+            (0.9679, 0.1776, 0.1776),
+        ),
+        "nw": (
+            OrientationRelationship.from_nishiyama_wassermann_correspondence(
+                parent_phase=parent, child_phase=child
+            ),
+            45.99,
+            (0.9761, 0.2007, 0.0831),
+        ),
+        "bain": (
+            OrientationRelationship.from_bain_correspondence(
+                parent_phase=parent, child_phase=child
+            ),
+            45.0,
+            (1.0, 0.0, 0.0),
+        ),
+    }
+    for _, (relationship, expected_angle, expected_axis) in cases.items():
+        misorientation = relationship.misorientation()
+        assert misorientation.angle_deg == pytest.approx(expected_angle, abs=0.01)
+        axis = np.sort(np.abs(misorientation.rotation.axis))[::-1]
+        assert_allclose(axis, expected_axis, atol=1e-3)
+
+
+def test_or_deviation_zero_for_exact_children_and_recovers_variants() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _paired_sets_for_deviation(parent, child)
+    report = or_deviation(parents, children, gt)
+    assert_allclose(report.deviations_deg, [0.0, 0.0], atol=1e-8)
+    assert tuple(report.best_variant_indices) == (1, 8)
+    assert report.mean_deviation_deg == pytest.approx(0.0, abs=1e-8)
+    assert report.relationship_name == "greninger_troiano"
+
+
+def test_or_deviation_measures_known_or_separations() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, _ = _paired_sets_for_deviation(parent, child)
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    nw = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    ks_report = or_deviation(parents, children, ks)
+    nw_report = or_deviation(parents, children, nw)
+    # Greninger-Troiano sits 2.40 deg from Kurdjumov-Sachs and 2.86 deg from
+    # Nishiyama-Wassermann; children generated with GT must reproduce those
+    # separations as their minimal deviations.
+    assert_allclose(ks_report.deviations_deg, [2.404, 2.404], atol=5e-3)
+    assert_allclose(nw_report.deviations_deg, [2.861, 2.861], atol=5e-3)
+
+
+def test_or_deviation_validates_pairing_and_phase_semantics() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _paired_sets_for_deviation(parent, child)
+    single_child = OrientationSet(
+        quaternions=children.quaternions[:1],
+        crystal_frame=children.crystal_frame,
+        specimen_frame=children.specimen_frame,
+        symmetry=children.symmetry,
+        phase=children.phase,
+    )
+    with pytest.raises(ValueError, match="paired"):
+        or_deviation(parents, single_child, gt)
+    with pytest.raises(ValueError, match="parent phase"):
+        or_deviation(children, children, gt)

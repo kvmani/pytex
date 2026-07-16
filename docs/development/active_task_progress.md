@@ -16,8 +16,9 @@ guide itself). The OR feature definitions (F1–F5) live in
 
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
-- Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`
-- Phase: 2 complete (committing), next Phase 3
+- Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
+  `cf8391e`
+- Phase: 3 complete (committing), next Phase 4
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -128,11 +129,31 @@ guide itself). The OR feature definitions (F1–F5) live in
   validation-matrix row (implemented).
 - Gates: 819 passed; ruff/mypy/integrity green; Sphinx build zero warnings.
 
+## Phase 3 outcomes (2026-07-16)
+
+- `OrientationRelationship.misorientation()` → `Misorientation` (built on the existing
+  deterministic `Misorientation.disorientation()` fundamental-zone representative; child
+  symmetry left, parent right). Verified against literature: KS 42.848 deg <0.968 0.178 0.178>,
+  NW 45.99 deg <0.976 0.201 0.083>, GT 44.23 deg, Bain 45 deg <100>.
+- `or_deviation(parents, children, relationship)` + `ORDeviationReport` (per-pair min-over-
+  variant child-symmetry-reduced deviations, best-variant indices, mean/median/max). Verified:
+  zero + planted-variant recovery on exact GT synthetic children; GT children deviate 2.404 deg
+  from KS and 2.861 deg from NW (the documented separations); Bain ≈ 10.15 deg.
+- Composition convention confirmed: predicted child = `V @ P` (matches
+  `predicted_child_orientations`; `Rotation.compose` is quaternion left-multiplication).
+- Note: `OrientationSet[slice]` does NOT return a sub-set (returns Orientation with bad shape)
+  — construct sliced sets manually from `.quaternions[...]`; potential later API improvement.
+- Docs: worked example `or-ks-misorientation-representation` (42.85/<0.968 0.178 0.178>,
+  Verlinden et al. citation); concept-page section; two validation-matrix rows;
+  specifications.md Transformation primitive list expanded to the full current surface.
+- Gates: 824 passed; ruff/mypy/integrity/Sphinx green.
+
 ## Next Actions
 
-1. Commit Phase 2, push.
-2. Phase 3 (F5): `misorientation()` on OrientationRelationship (symmetry-reduced axis/angle;
-   pin KS ≈ 42.85 deg about <0.968 0.178 0.178>, Morito convention) and
-   `or_deviation(parents, children, relationship)` (min-over-variants symmetry-reduced
-   residual; zero on synthetic data). Reuse `_reduced_pair_disorientation_angles` from
-   orientation.py; check its signature first.
+1. Commit Phase 3, push.
+2. Phase 4 (F4 + finding 16): parallelism finders over symmetry families (given OR + parent
+   plane/direction family, per-variant child (near-)parallels with deviations, typed report);
+   `describe()` doctrine on OrientationRelationship, DirectionCorrespondence/
+   PlaneCorrespondence, ORDeviationReport, VariantSelectionReport, ParentReconstructionReport,
+   intervariant results — convention-explicit prose with key numbers, tested via substring
+   assertions (not exact prose).

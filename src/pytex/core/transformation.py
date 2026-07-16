@@ -17,6 +17,7 @@ from pytex.core.lattice import (
     phases_semantically_match,
 )
 from pytex.core.orientation import (
+    Misorientation,
     Orientation,
     OrientationSet,
     Rotation,
@@ -734,6 +735,29 @@ class OrientationRelationship:
             variant_index=variant_index,
         )
 
+    def misorientation(self) -> Misorientation:
+        """The relationship as a symmetry-reduced misorientation (disorientation).
+
+        Purpose: expresses the OR the way it is measured and reported in the
+        literature — a minimal-angle axis/angle representative reduced by the
+        child symmetry (left) and parent symmetry (right). For Kurdjumov-Sachs
+        this is the published ~42.85 deg rotation about a <0.968 0.178 0.178>
+        axis. The representative's axis components are the same in both
+        crystal frames because the axis is the fixed eigenvector of the map.
+
+        Output: a ``Misorientation`` whose ``rotation`` is the deterministic
+        fundamental-zone representative; use ``.angle_deg`` and
+        ``.rotation.axis`` for reporting, and compare against boundary
+        misorientations from EBSD data.
+        """
+
+        return Misorientation(
+            rotation=self.parent_to_child_rotation,
+            left_symmetry=self.child_phase.symmetry,
+            right_symmetry=self.parent_phase.symmetry,
+            provenance=self.provenance,
+        ).disorientation()
+
     def inverse(self, *, name: str | None = None) -> OrientationRelationship:
         return OrientationRelationship(
             name=name or f"{self.child_phase.name}_to_{self.parent_phase.name}",
@@ -996,6 +1020,124 @@ def intervariant_misorientations(
                 )
             )
     return tuple(results)
+
+
+@dataclass(frozen=True, slots=True)
+class ORDeviationReport:
+    """Angular deviation of measured parent/child pairs from a nominal OR.
+
+    ``deviations_deg[i]`` is the child-symmetry-reduced misorientation angle
+    between observed child ``i`` and the closest variant prediction from
+    parent ``i``; ``best_variant_indices[i]`` is that variant's 1-based index.
+    A perfectly obeyed relationship gives zeros; systematic offsets measure
+    how far the operative OR sits from the nominal one (e.g. children built
+    with Greninger-Troiano deviate ~2.4 deg from Kurdjumov-Sachs).
+    """
+
+    relationship_name: str
+    deviations_deg: np.ndarray
+    best_variant_indices: np.ndarray
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        deviations = np.asarray(self.deviations_deg, dtype=np.float64).reshape(-1)
+        indices = np.asarray(self.best_variant_indices, dtype=np.int64).reshape(-1)
+        if deviations.shape != indices.shape:
+            raise ValueError(
+                "deviations_deg and best_variant_indices must have the same length."
+            )
+        if deviations.size == 0:
+            raise ValueError("ORDeviationReport requires at least one pair.")
+        if np.any(~np.isfinite(deviations)) or np.any(deviations < 0.0):
+            raise ValueError("deviations_deg must be finite and non-negative.")
+        if np.any(indices <= 0):
+            raise ValueError("best_variant_indices must be strictly positive.")
+        for array in (deviations, indices):
+            array.setflags(write=False)
+        object.__setattr__(self, "deviations_deg", deviations)
+        object.__setattr__(self, "best_variant_indices", indices)
+
+    @property
+    def mean_deviation_deg(self) -> float:
+        return float(np.mean(self.deviations_deg))
+
+    @property
+    def median_deviation_deg(self) -> float:
+        return float(np.median(self.deviations_deg))
+
+    @property
+    def max_deviation_deg(self) -> float:
+        return float(np.max(self.deviations_deg))
+
+
+def or_deviation(
+    parent_orientations: OrientationSet,
+    child_orientations: OrientationSet,
+    relationship: OrientationRelationship,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    provenance: ProvenanceRecord | None = None,
+) -> ORDeviationReport:
+    """Deviation of measured parent/child orientation pairs from a nominal OR.
+
+    Purpose: the quantitative test of "does this transformation follow OR X".
+    For each pair ``i``, every variant prediction ``V_k g_parent_i`` is
+    compared with the observed child under the child symmetry, and the
+    smallest disorientation angle (with the winning variant index) is
+    reported. Zero deviations mean the relationship is obeyed exactly;
+    the aggregate statistics quantify systematic departure and feed OR
+    fitting.
+
+    Inputs: paired ``OrientationSet`` objects (equal length, shared specimen
+    frame, phases matching the relationship's parent and child), and
+    optionally a precomputed variant tuple.
+
+    Output: an ``ORDeviationReport``.
+    """
+
+    if len(parent_orientations) != len(child_orientations):
+        raise ValueError(
+            "parent_orientations and child_orientations must be paired (equal length)."
+        )
+    if len(parent_orientations) == 0:
+        raise ValueError("or_deviation requires at least one orientation pair.")
+    if not phases_semantically_match(parent_orientations.phase, relationship.parent_phase):
+        raise ValueError("parent_orientations.phase must match the relationship parent phase.")
+    if not phases_semantically_match(child_orientations.phase, relationship.child_phase):
+        raise ValueError("child_orientations.phase must match the relationship child phase.")
+    if parent_orientations.specimen_frame != child_orientations.specimen_frame:
+        raise ValueError("Parent and child orientations must share a specimen frame.")
+    resolved = relationship.generate_variants() if variants is None else variants
+    variant_matrices = np.stack(
+        [variant.parent_to_child_rotation.as_matrix() for variant in resolved], axis=0
+    )
+    parent_matrices = parent_orientations.as_matrices()
+    child_matrices = child_orientations.as_matrices()
+    predicted = np.einsum("vij,njk->nvik", variant_matrices, parent_matrices, optimize=True)
+    relative = np.einsum(
+        "nij,nvkj->nvik", child_matrices, predicted, optimize=True
+    )
+    pair_count, variant_count = relative.shape[0], relative.shape[1]
+    child_symmetry = relationship.child_phase.symmetry
+    operators = (
+        child_symmetry.operators
+        if child_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    angles = _reduced_pair_disorientation_angles(
+        relative.reshape(pair_count * variant_count, 3, 3), operators, operators
+    ).reshape(pair_count, variant_count)
+    best_columns = np.argmin(angles, axis=1)
+    variant_indices = np.array(
+        [resolved[int(column)].variant_index for column in best_columns], dtype=np.int64
+    )
+    deviations_deg = np.degrees(angles[np.arange(pair_count), best_columns])
+    return ORDeviationReport(
+        relationship_name=relationship.name,
+        deviations_deg=deviations_deg,
+        best_variant_indices=variant_indices,
+        provenance=provenance or relationship.provenance,
+    )
 
 
 def map_direction_across_variants(

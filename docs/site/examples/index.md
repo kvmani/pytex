@@ -27,6 +27,7 @@ The complete set of computed-versus-expected values at a glance:
 | `diffraction-ni-111-two-theta` | 44.496 | 44.496 | deg | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
+| `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | ✅ |
 | `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
 | `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |
@@ -36,7 +37,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
 - {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles derived from PyTex interplanar spacings via Bragg's law, checked against a standard reference reflection position.
-- {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals.
+- {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, and the misorientation representation used for EBSD comparison.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
 
 ```{toctree}

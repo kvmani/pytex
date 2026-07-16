@@ -147,13 +147,63 @@ BAIN_DIRECTION_CORRESPONDENCE = WorkedExample(
 )
 
 
+_OMEGA = SymbolUse(
+    r"(\mathbf{n}, \omega)",
+    "Axis-angle pair of the symmetry-reduced misorientation representative.",
+)
+
+
+KS_MISORIENTATION_REPRESENTATION = WorkedExample(
+    id="or-ks-misorientation-representation",
+    title="Kurdjumov-Sachs as a misorientation: 42.85 deg about <0.968 0.178 0.178>",
+    domain="transformation",
+    scenario=(
+        "Express the Kurdjumov-Sachs relationship the way it is measured from "
+        "EBSD boundary data: as the minimal-angle symmetry-reduced "
+        "misorientation. The published representative is a rotation of "
+        "42.85 deg about an axis with components <0.968 0.178 0.178>; the "
+        "computed angle and sorted absolute axis components are compared "
+        "against that tabulated value."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=(
+        "ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "misorientation = ks.misorientation()\n"
+        "axis = np.sort(np.abs(misorientation.rotation.axis))[::-1]\n"
+        "result = np.concatenate([[misorientation.angle_deg], axis])"
+    ),
+    expected=[42.85, 0.9679, 0.1776, 0.1776],
+    unit="deg, axis components",
+    tolerance=5e-3,
+    reference=(
+        "The Kurdjumov-Sachs disorientation representative is tabulated as a "
+        "42.85 deg rotation about <0.968 0.178 0.178> in standard "
+        "thermo-mechanical processing references."
+    ),
+    citation=(
+        "Verlinden, Driver, Samajdar, Doherty, Thermo-Mechanical Processing of "
+        "Metallic Materials (2007); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325."
+    ),
+    symbols=(_OMEGA,),
+    see_also=(_OR_CONCEPT, _API),
+    result_format="{:.4f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
     summary=(
         "Index-correspondence identities for named orientation relationships: "
         "mapping parent planes and directions to their product-phase "
-        "counterparts, with rationalized indices and angular residuals."
+        "counterparts, with rationalized indices and angular residuals, and "
+        "the misorientation representation used for EBSD comparison."
     ),
-    examples=(KS_PLANE_CORRESPONDENCE, BAIN_DIRECTION_CORRESPONDENCE),
+    examples=(
+        KS_PLANE_CORRESPONDENCE,
+        BAIN_DIRECTION_CORRESPONDENCE,
+        KS_MISORIENTATION_REPRESENTATION,
+    ),
 )
