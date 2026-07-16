@@ -231,6 +231,12 @@ merge:
 
 - **2026-07:** Initial review and guide; OR-analysis flagship program established;
   explainable-results doctrine adopted.
+- **2026-07 (Cycle A executed):** Findings 1, 2, 6, 16, 17, 18, 23, 24 closed — index
+  correspondence (F1–F3), OR misorientation + deviation (F5), parallelism finders (F4),
+  `describe()` on all transformation reports, `SymmetrySpec` equality fix, unified phase
+  matching, typed parallel directions, warnings-as-errors with a figure-close fixture (suite
+  runs warning-free), and an 87% coverage ratchet in CI (measured 88%). Remaining Cycle A
+  spillover: none. Next per §3: Cycle B (findings 3, 4, 7, 19, 20).
 
 ## References
 

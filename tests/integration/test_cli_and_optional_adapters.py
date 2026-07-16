@@ -132,6 +132,7 @@ def test_fixture_backed_powder_xrd_optional_integration_matches_pinned_baseline(
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="No _symmetry_equiv_pos_as_xyz.*")
         warnings.filterwarnings("ignore", message="Issues encountered while parsing CIF:.*")
+        warnings.filterwarnings("ignore", message="dict interface is deprecated.*")
         phase = get_phase_fixture("ni_fcc").load_phase(crystal_frame=crystal)
 
     reflections = generate_powder_reflections(

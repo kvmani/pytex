@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import warnings
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,6 +16,25 @@ from pytex.core.hexagonal import direction_uvtw_to_uvw, plane_hkil_to_hkl
 from pytex.core.point_groups import normalize_point_group_symbol
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
+
+
+@contextmanager
+def _spglib_dict_shim_silenced() -> Iterator[None]:
+    """Silence spglib's force-enabled dict-interface DeprecationWarning.
+
+    Older pymatgen accessors read spglib's symmetry dataset through its dict
+    shim, which re-enables its own DeprecationWarning inside a private filter
+    context, so neither caller filters nor pytest configuration can silence
+    it. This adapter-boundary context records emissions and re-emits every
+    warning except that one shim message.
+    """
+
+    with warnings.catch_warnings(record=True) as captured:
+        warnings.simplefilter("always")
+        yield
+    for item in captured:
+        if not str(item.message).startswith("dict interface is deprecated"):
+            warnings.warn_explicit(item.message, item.category, item.filename, item.lineno)
 
 
 def _require_pymatgen() -> tuple[Any, Any]:
@@ -86,13 +108,14 @@ class SpaceGroupSpec:
         reference_frame: ReferenceFrame,
         provenance: ProvenanceRecord | None = None,
     ) -> SpaceGroupSpec:
-        return cls(
-            symbol=str(analyzer.get_space_group_symbol()),
-            number=int(analyzer.get_space_group_number()),
-            reference_frame=reference_frame,
-            crystal_system=str(analyzer.get_crystal_system()),
-            provenance=provenance,
-        )
+        with _spglib_dict_shim_silenced():
+            return cls(
+                symbol=str(analyzer.get_space_group_symbol()),
+                number=int(analyzer.get_space_group_number()),
+                reference_frame=reference_frame,
+                crystal_system=str(analyzer.get_crystal_system()),
+                provenance=provenance,
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -356,7 +379,8 @@ class Phase:
             symprec=float(symprec),
             angle_tolerance=float(angle_tolerance),
         )
-        point_group = str(analyzer.get_point_group_symbol())
+        with _spglib_dict_shim_silenced():
+            point_group = str(analyzer.get_point_group_symbol())
         symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal_frame)
         space_group = SpaceGroupSpec.from_pymatgen_analyzer(
             analyzer,

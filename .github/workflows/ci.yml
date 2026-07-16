@@ -24,8 +24,8 @@ jobs:
         run: python -m mypy src
       - name: Docs build
         run: python -m sphinx -b html docs/site docs/_build/html
-      - name: Test
-        run: python -m pytest -q
+      - name: Test with coverage ratchet
+        run: python -m pytest -q --cov=pytex --cov-report=term --cov-fail-under=87
 
   full-scientific:
     runs-on: ubuntu-latest

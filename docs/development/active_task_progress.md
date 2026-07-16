@@ -17,8 +17,8 @@ guide itself). The OR feature definitions (F1–F5) live in
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
-  `cf8391e`; Phase 3 as `cee9ee7`
-- Phase: 4 complete (committing), next Phase 5
+  `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`
+- Phase: 5 complete (committing) — **Cycle A of the development guide is fully executed.**
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -165,11 +165,29 @@ guide itself). The OR feature definitions (F1–F5) live in
   rows; specifications.md Transformation list extended.
 - Gates: 828 passed; ruff/mypy/integrity/Sphinx green.
 
-## Next Actions
+## Phase 5 outcomes (2026-07-16)
 
-1. Commit Phase 4, push.
-2. Phase 5 (findings 17, 18): autouse matplotlib figure-close fixture in tests/conftest.py
-   (check it exists); tighten filterwarnings (start with `error` + explicit exemptions —
-   inspect the 117 current warnings first: matplotlib figure leaks are the known bulk);
-   add coverage to CI base lane (`pytest --cov=pytex --cov-report=term --cov-fail-under=85`
-   as a starting ratchet; confirm actual number first).
+- `tests/conftest.py` autouse fixture closes all matplotlib figures per test (kills the
+  "More than 20 figures" leak class).
+- `filterwarnings = ["error", ...]` in pyproject with three narrow pymatgen exemptions
+  (CIF chatter + dict-interface deprecation).
+- **spglib gotcha:** spglib's dict-interface DeprecationWarning is force-enabled inside its own
+  filter context — caller/pytest filters cannot silence it. Solved at the adapter boundary:
+  `_spglib_dict_shim_silenced()` context in `core/lattice.py` (records, drops only that
+  message, re-emits everything else) wrapped around `get_point_group_symbol` and the
+  space-group accessor calls.
+- Suite now runs **828 passed, zero warnings**. CI base lane gained the coverage ratchet
+  (`--cov=pytex --cov-fail-under=87`; measured 88.01%). Ratchet-up policy: raise the floor
+  when measured coverage rises, never lower it.
+- Development-guide changelog updated: Cycle A findings 1, 2, 6, 16, 17, 18, 23, 24 all closed.
+
+## Next Actions (Cycle B, per the development guide §3)
+
+1. OR fitting from measured pairs (F6, finding 3) — symmetry-aware rotation averaging over
+   variant-aligned misorientations; parity floor MTEX `calcParent2Child`.
+2. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
+   grain-boundary network; synthetic + literature fixtures.
+3. Vectorize variant hot paths (finding 7): `intervariant_misorientations` pair loop,
+   `predicted_child_orientations` list building, `select_variants` per-variant loop.
+4. CI matrix ubuntu+macos × 3.11–3.13 (finding 19); first Hypothesis property suites
+   (finding 20: orientation algebra, index round-trips, variant orbit invariance).
