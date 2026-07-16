@@ -15,6 +15,7 @@
 - [Diffraction Foundation](architecture/diffraction_foundation.md)
 - [Multimodal Characterization Foundation](architecture/multimodal_characterization_foundation.md)
 - [Phase Transformation Foundation](architecture/phase_transformation_foundation.md)
+- [Orientation Relationship Analysis Foundation](architecture/orientation_relationship_analysis_foundation.md)
 - [Repository Review 2026 Foundation Audit](architecture/repo_review_2026_foundation_audit.md)
 
 ## Testing And Validation
@@ -25,6 +26,8 @@
 - [Diffraction Validation Matrix](testing/diffraction_validation_matrix.md)
 - [Structure Validation Matrix](testing/structure_validation_matrix.md)
 - [Plotting Validation Matrix](testing/plotting_validation_matrix.md)
+- [VESTA Parity Matrix](testing/vesta_parity_matrix.md)
+- [Phase Transformation Validation Matrix](testing/phase_transformation_validation_matrix.md)
 
 ## Standards
 
@@ -40,6 +43,8 @@
 - [Development Principles](standards/development_principles.md)
 - [Data Contracts And Manifests](standards/data_contracts_and_manifests.md)
 - [Reference Canon](standards/reference_canon.md)
+- [Executable Examples](standards/executable_examples.md)
+- [API Stability And Deprecation](standards/api_stability_and_deprecation.md)
 
 ## Development
 
@@ -48,7 +53,10 @@
 
 ## Roadmap
 
+- [Critical Review And Development Guide](roadmap/critical_review_and_development_guide.md) — the governing development guide
 - [Implementation Roadmap](roadmap/implementation_roadmap.md)
+- [World-Class Feature And Foundation Roadmap](roadmap/world_class_feature_roadmap.md)
+- [MTEX Parity And EBSD Feature Roadmap](roadmap/mtex_parity_and_ebsd_feature_roadmap.md)
 
 ## LaTeX Source Tree
 

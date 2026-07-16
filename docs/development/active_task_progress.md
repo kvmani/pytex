@@ -6,138 +6,85 @@ history.
 
 ## Objective
 
-Build a **thorough, robust core visualization-primitives layer** so that every basic
-crystallographic entity — a bare 3D vector, a Miller direction, a Miller plane, a unit cell, a
-reference-frame triad, a point/lattice cloud — is a first-class, *composable* scene primitive, in
-**both** real-space 3D and on stereographic / IPF projections. The layer must let complex composite
-figures (canonical example: **two crystals in a specific orientation relationship**) be assembled
-with minimal code by reusing these primitives, without rewriting the proven single-crystal
-`CrystalScene` / `plot_crystal_structure_3d` renderer.
+Execute **Cycle A of the Critical Review And Development Guide**
+(`docs/roadmap/critical_review_and_development_guide.md`), one phase per commit+push, as a
+long-horizon mission. Findings addressed: 1, 2, 6, 16, 17, 18 (23/24 already fixed with the
+guide itself). The OR feature definitions (F1–F5) live in
+`docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 ## Current Status
 
-- Started: 2026-07-15
-- Branch: `main` (tracking `origin/main`)
-- Baseline commit: `cd8834b`
-- Phase: implementation
+- Started: 2026-07-16
+- Branch: `main` (tracking `origin/main`, push after each phase)
+- Baseline commit: `d1a1561`
+- Phase: 0 (commit foundational-docs overhaul)
 
-## Key facts established (verified against live code)
+## Phase Plan (each phase = verified commit + push)
 
-- Existing 3D real-space stack: `pytex.plotting.crystal3d` — `CrystalScene` (atoms/bonds/cells/
-  planes/directions/polyhedra glyphs, all in a single Phase crystal Cartesian frame),
-  `build_crystal_scene`, `plot_crystal_structure_3d` (Blinn-Phong lit, ONE depth-sorted
-  `Poly3DCollection`). This is single-crystal, single-frame; there is no placement transform and no
-  composite/world scene — that is the core gap.
-- Existing generic 2D/3D scene specs: `pytex.plotting._render` (`FigureSpec2D`/`FigureSpec3D` +
-  layers, `render_figure_spec`).
-- Existing stereographic/IPF: `pytex.plotting.spherical` (`plot_crystal_directions/planes`,
-  `plot_wulff_net`, `plot_symmetry_elements`), `pytex.plotting.ipf` (`IPFColorKey`, `plot_ipf_key`).
-- Core data model: `CrystalDirection.unit_vector`, `CrystalPlane.normal`, `Lattice.direct_basis()`,
-  `Orientation.map_crystal_vector` (crystal->specimen = `g @ v`), `Rotation.as_matrix`.
-- **OR placement convention (verified numerically):** with world = parent crystal frame, place the
-  child crystal by `relationship.parent_to_child_rotation.inverse().as_matrix()`. This makes both
-  parallel directions AND parallel plane normals coincide exactly (dot = 1.0) — see KS fcc->bcc
-  check. This is the correctness anchor for composite OR figures.
+- **Phase 0 — Foundational docs overhaul (this commit).** New development guide + OR foundation
+  doc; mission/AGENTS refresh; docs index completion; stale phase-transformation claims fixed.
+- **Phase 1 — Consistency fixes (finding 6).** One shared phase-semantic-match helper (today
+  duplicated with different strictness in `core/transformation.py` vs
+  `experimental/phase_transformation.py`); type `OrientationRelationship.parallel_directions` as
+  `CrystalDirection` pairs instead of naked ndarrays (keep constructor compatibility).
+- **Phase 2 — Index correspondence (F1–F3, finding 1).** `correspondence_direct()` /
+  `correspondence_reciprocal()` on `OrientationRelationship`/`TransformationVariant`;
+  `map_direction_to_child` / `map_plane_to_child` and child→parent inverses with exact
+  components, rationalized nearest-low-integer indices (configurable bound), and angular
+  residual; all-variant table form. Worked example (Bain/KS known correspondences), LaTeX theory
+  note, validation-matrix row.
+- **Phase 3 — OR as misorientation + deviation (F5, finding 2).** `misorientation()` (symmetry-
+  reduced axis/angle; KS ≈ 42.85° about <0.968 0.178 0.178> as pinned test) and
+  `or_deviation(parents, children, relationship)` (min-over-variant symmetry-reduced residuals;
+  zero on synthetic data).
+- **Phase 4 — Parallelism finders (F4) + `describe()` doctrine start (finding 16).**
+  Family-orbit parallelism report; `describe()` on `OrientationRelationship`,
+  `VariantSelectionReport`, `ParentReconstructionReport`, intervariant results; tests assert
+  conventions + key numbers appear.
+- **Phase 5 — Hygiene gates (findings 17, 18).** Autouse matplotlib figure-close fixture;
+  `filterwarnings` policy; coverage report + ratchet in CI.
 
-## Design (renderer-independent primitives + world composition)
+## Verification Gates (every phase, before commit)
 
-New module `src/pytex/plotting/primitives.py`:
-- `Transform3D` (linear 3x3 + translation; `identity/from_rotation/from_orientation/from_matrix`,
-  `apply_points/apply_vector/compose/inverse`).
-- Immutable primitives in a shared world Cartesian (angstrom): `Arrow3D`, `PolyLine3D`,
-  `PlanePatch3D`, `PointCloud3D`, `Label3D`, `AxisTriad3D`.
-- `PrimitiveScene3D` container: `transformed`, `merge`, `bounds`.
-- Builders from crystallographic objects: `vector_arrow`, `direction_arrow`, `plane_normal_arrow`,
-  `crystal_plane_patch`, `reference_frame_triad`, `unit_cell_polylines`, `lattice_point_cloud`.
-- `render_primitive_scene_3d` (standalone or onto an existing 3D ax).
-
-Refactor `crystal3d.py` (behavior-preserving): extract `_accumulate_crystal_mesh` and
-`_draw_crystal_non_mesh`; add `CrystalScene.transformed(transform)` (rigid transforms only).
-
-New module `src/pytex/plotting/scene3d.py`:
-- `PlacedCrystal` (CrystalScene + Transform3D + label), `WorldScene3D` (placed crystals + primitives),
-  `WorldScene3D.from_orientation_relationship(...)`, `render_world_scene_3d` (ONE global
-  depth-sorted mesh across all crystals + primitive rendering + optional world/crystal triads).
-
-2D bridge (spherical.py): `plot_stereographic_vectors` — arbitrary world-frame unit vectors (poles
-and/or great-circle traces) on a Wulff net, so the SAME primitives project to a stereogram; enables
-a multi-crystal (parent+child) stereographic overlay analog of the OR figure.
-
-## Verification Gates (must all pass before done)
-
-- `python -m pytest -q`
+- `python -m pytest` (804+ passing, no new warnings)
 - `python scripts/check_repo_integrity.py`
 - `python -m ruff check .`
 - `python -m mypy src`
-- `python -m sphinx -b html docs/site docs/_build/html`
+- Sphinx build when docs/site content changes: `python -m sphinx -b html docs/site docs/_build/html`
+
+## Key facts established (verified against live code, 2026-07-16)
+
+- OR machinery lives in `src/pytex/core/transformation.py` (699 lines): named ORs (Bain, KS, NW,
+  GT, Pitsch, Burgers), `generate_variants` (child-symmetry orbit reduction, literature counts),
+  `intervariant_misorientation*`, `PhaseTransformationRecord`. Catalogs + variant selection in
+  `core/parent_reconstruction.py`; experimental scoring in `experimental/phase_transformation.py`.
+- `map_parent_vector_to_child` is Cartesian-only; **no** Miller-index correspondence exists.
+- `Lattice.direct_basis().matrix` / `reciprocal_basis().matrix` provide structure matrices;
+  `CrystalPlane.normal` goes through the reciprocal basis; Miller-Bravais conversion exists on
+  `MillerIndex`/`CrystalDirection`/`CrystalPlane`.
+- `_phase_semantically_matches`: transformation.py version compares `symmetry.point_group`;
+  experimental version compares full `symmetry` equality — must unify (single helper, decide
+  strictness: use full `SymmetrySpec` equality? No — transformation.py's laxer point-group form
+  exists so records constructed from phases with equal groups but distinct operator caches still
+  match; verify call sites before choosing).
+- Test suite: 804 passed, ~27 s, 117 warnings (matplotlib figure leaks among them). CI: ubuntu,
+  py3.11, two lanes, no coverage.
 
 ## Completed
 
-- Explored plotting subsystem, core model, tests, style themes; verified OR placement convention.
-- Implemented `src/pytex/plotting/primitives.py`: `Transform3D`; `Arrow3D`, `PolyLine3D`,
-  `PlanePatch3D`, `PointCloud3D`, `Label3D`, `AxisTriad3D`; `PrimitiveScene3D`; builders
-  (`vector_arrow`, `direction_arrow`, `plane_normal_arrow`, `crystal_plane_patch`,
-  `reference_frame_triad`, `unit_cell_polylines`, `lattice_point_cloud`); `render_primitive_scene_3d`
-  + shared `_draw_primitive_scene`.
-- Refactored `crystal3d.py` behavior-preservingly: extracted `_draw_crystal_frame`,
-  `_accumulate_crystal_mesh`, `_draw_crystal_planes_and_directions`; added `CrystalScene.transformed`
-  (rigid-only).
-- Implemented `src/pytex/plotting/scene3d.py`: `PlacedCrystal`, `WorldScene3D`,
-  `WorldScene3D.from_orientation_relationship`, `render_world_scene_3d` (ONE global depth-sorted mesh
-  across crystals).
-- Added `plot_stereographic_vectors` + `build_vector_stereogram_figure_spec` to `spherical.py`;
-  runtime wrapper.
-- Wired all exports through `plotting/__init__.py`, `runtime.py`, and top-level `pytex/__init__.py`.
-- Tests: `tests/unit/test_plotting_primitives.py` (15) and `tests/unit/test_scene3d_composition.py`
-  (17), incl. OR parallelism correctness and single-mesh depth-sort checks.
-- Worked examples: `worked_examples/examples/visualization_composition.py` (2 examples:
-  Transform3D↔map_crystal_vector identity = 0; KS parallel-direction cosine = 1); regenerated gallery
-  (`docs/site/examples/generated/visualization.md`).
-- Docs: `docs/site/concepts/visualization_primitives.md` + toctree wiring; registered symbol
-  \(\mathbf{T}\) in the terminology registry.
-
-## Phase 2: VESTA parity (2026-07-15, same session)
-
-User directive: match or exceed VESTA quality/functionality for the crystal viewer. Delivered:
-
-- **Render styles** (`render_style=` on `build_crystal_scene` / `plot_crystal_structure_3d`):
-  `ball_and_stick` (default), `space_filling` (Slater atomic radii via new
-  `_chemistry.atomic_radius_angstrom` / `display_radius_angstrom`, bonds suppressed), `stick`
-  (uniform cylinders), `wireframe` (bond lines only, `atom_render_mode="none"`), `polyhedral`
-  (auto species selection). Presets merge UNDER user style_overrides (user wins).
-- **Occupancy pie-spheres** (VESTA signature): sites sharing a position render as azimuthal sectors
-  of one shared-radius sphere; occupancy < 1 leaves a vacancy sector (`vacancy_color`). Automatic
-  from `AtomicSite.occupancy`; glyph fields `occupancy` / `sector_start` / `vacancy_fraction`.
-- **Atom labels** (`atom_label_mode="species"|"site"`), **site vectors** (`site_vectors={label: v}`,
-  moments/displacements on every periodic copy), **depth cueing** (`depth_cue_strength` theme key,
-  static per view, both single-crystal and world renderers).
-- **Measurement**: `CrystalScene.bond_lengths_angstrom()` + `bond_length_summary()` (species-pair
-  stats) — exceeds VESTA's click readout (scriptable/testable).
-- **Quality fixes found by visual inspection**: `CrystalScene.bounds()` now includes atom radii
-  (space-filling spheres no longer clipped); wireframe hides atom bodies (scatter discs removed).
-- **Governance**: `docs/testing/vesta_parity_matrix.md` (authoritative ledger, registered in
-  `check_repo_integrity.py` REQUIRED_PATHS + AGENTS.md refs + site validation toctree via include
-  stub `docs/site/validation/vesta_parity_matrix.md`); concept page section; worked example
-  `viz-scene-bond-length-halite-identity` (a/2 = 2.0 exact); gallery regenerated.
-- Known deferred (in matrix as planned): thermal ellipsoids (needs anisotropic ADPs in
-  `AtomicSite`), dashed/H-bond styles, angle/dihedral helpers, ionic radii. Spawned separate task
-  for the dead pymatgen path in `covalent_radius_angstrom` (changes bond chemistry; needs own
-  validation pass).
-
-## Verification Results (all gates green)
-
-- `python -m pytest`: 804 passed (+23 VESTA tests in tests/unit/test_vesta_parity_features.py).
-- `python -m ruff check .`: all checks passed.
-- `python -m mypy src`: success, 78 source files.
-- `python scripts/check_repo_integrity.py`: passed.
-- `python -m sphinx -b html docs/site docs/_build/html`: build succeeded.
-- Visual proof rendered and inspected: five-style gallery (clipping + wireframe fixed and
-  re-verified), occupancy/moments/labels/depth-cue figure, primitives showcase, KS two-crystal OR
-  scene, stereographic overlay.
+- Repo-wide critical review; wrote `docs/roadmap/critical_review_and_development_guide.md`
+  (25 findings, priorities, explainable-results doctrine, quality bars).
+- Wrote `docs/architecture/orientation_relationship_analysis_foundation.md` (doctrine: rotation
+  vs correspondence vs deformation; features F1–F14; validation program).
+- Refreshed `mission.md` (OR flagship, explainability principle 10, new success criteria) and
+  `AGENTS.md` (new primary references, explainability/warnings/convention-pinning rules).
+- Completed `docs/README.md` index; fixed stale variant-doctrine claims in
+  `docs/architecture/phase_transformation_foundation.md`.
+- Verified: integrity check passed, 804 tests passed, ruff clean.
 
 ## Next Actions
 
-1. Optional follow-ups (tracked in vesta_parity_matrix.md as planned): thermal ellipsoids,
-   dashed/hydrogen-bond styles, angle/dihedral measurement, ionic-radius space filling; promote a
-   canonical SVG of the OR schematic into `docs/figures/`.
-2. Commit and push when the user requests it (not yet requested).
+1. Commit Phase 0 (docs overhaul + this note), push to `origin/main`.
+2. Start Phase 1: read `_phase_semantically_matches` call sites, unify into one helper
+   (`core/transformation.py` exports it; experimental imports it), migrate
+   `parallel_directions` to `CrystalDirection` pairs, run gates, commit, push.

@@ -49,14 +49,20 @@ the derived rotation matrix.
 
 ## Variant Doctrine
 
-Variant generation must eventually state:
+Variant generation states:
 
-- which symmetry groups are acting
-- which equivalence relation defines a distinct variant
-- how variants are indexed and reproduced
-- what happens when multiple literature conventions exist
+- which symmetry groups are acting (parent operators generate candidates; child operators define
+  the equivalence orbit)
+- which equivalence relation defines a distinct variant (child-symmetry orbit reduction by
+  default, with the raw operator-product enumeration available explicitly)
+- how variants are indexed and reproduced (enumeration order of
+  `OrientationRelationship.generate_variants()`)
 
-Until that doctrine is implemented, transformation code should remain experimental.
+This doctrine is implemented and validated in `pytex.core.transformation` (literature-correct
+variant counts for Bain, KS, NW, GT, Pitsch, Burgers). Alignment of variant numbering with
+published conventions (e.g. Morito V1-V24) is tracked in the
+[Orientation Relationship Analysis Foundation](orientation_relationship_analysis_foundation.md),
+which is the normative program for all further OR-analysis work.
 
 ## Habit Planes And Direction Correspondence
 
@@ -91,6 +97,7 @@ each builder encodes one stated correspondence rather than hiding an unnamed mat
 
 - [Reference Canon](../standards/reference_canon.md)
 - [Canonical Data Model](canonical_data_model.md)
+- [Orientation Relationship Analysis Foundation](orientation_relationship_analysis_foundation.md)
 
 ### Informative
 

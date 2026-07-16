@@ -18,6 +18,12 @@ PyTex is not intended to be a thin Python clone of any single external tool. It 
 
 The differentiator is not breadth alone. It is semantic coherence across those domains.
 
+Within that scope, orientation-relationship (OR) analysis — moving between parent and product
+phases with explicit indices, orientations, variants, and map-scale reconstruction — is the
+designated flagship capability. PyTex should become the reference environment for OR and
+phase-transformation crystallography, per
+`docs/architecture/orientation_relationship_analysis_foundation.md`.
+
 ## Problem Statement
 
 Current crystallographic characterization workflows are fractured across tools that disagree or stay underspecified about:
@@ -41,7 +47,13 @@ Create a scientific library that enables users to:
 - normalize imported data once into canonical PyTex semantics without discarding source-system meaning
 - express core texture workflows through named domain primitives rather than naked arrays
 - express large vectorized workflows through first-class batch primitives rather than anonymous `(n, ...)` arrays
-- connect EBSD, diffraction, and future phase-transformation workflows through one shared crystallographic model
+- connect EBSD, diffraction, and phase-transformation workflows through one shared crystallographic model
+- analyze orientation relationships end to end: evaluate transformation rotations and index
+  correspondences, map parent planes and directions to their product-variant counterparts and
+  back, enumerate and classify variants, fit ORs from measured data, and reconstruct parent
+  microstructures at map scale
+- read every major result in plain scientific language: stable report objects explain what was
+  computed, under which conventions, and what the numbers mean, with citations
 - carry experiment, benchmark, validation, and workflow-result context through stable machine-readable manifests rather than ad hoc side channels
 - expose major stable scientific outputs through canonical machine-readable JSON contracts that preserve scientific meaning and support reconstruction
 - generate publication-quality and teaching-quality figures from the same scientifically explicit contracts
@@ -97,6 +109,11 @@ Create a scientific library that enables users to:
 9. Machine-readable scientific interchange matters
    Major stable outputs should be portable through versioned JSON contracts that preserve semantics strongly enough for reconstruction, validation, and external interoperability.
 
+10. Explainable results matter
+    Stable results must be able to explain themselves: report objects carry `describe()` prose
+    that states conventions, key numbers, scientific meaning, and limitations, tested like any
+    other output and kept in lockstep with the JSON contracts.
+
 ## Non-Negotiable Requirements
 
 - Pure-Python-first project structure
@@ -123,6 +140,8 @@ Create a scientific library that enables users to:
 - Validation artifacts make clear what has been checked against MTEX, literature, or future diffraction baselines.
 - Stable workflows can emit or consume manifests for experiment context, benchmark identity, validation evidence, and workflow outputs.
 - Future EBSD, neutron, XRD, TEM, and phase-transformation algorithms can be added without inventing local frame or symmetry semantics.
+- A researcher can perform a complete OR study — index correspondence, variant analysis, OR
+  fitting, parent reconstruction — inside PyTex with validated, explainable outputs.
 
 ## References
 
@@ -131,6 +150,8 @@ Create a scientific library that enables users to:
 - `docs/standards/reference_canon.md`
 - `docs/standards/notation_and_conventions.md`
 - `docs/architecture/canonical_data_model.md`
+- `docs/roadmap/critical_review_and_development_guide.md`
+- `docs/architecture/orientation_relationship_analysis_foundation.md`
 
 ### Informative
 

@@ -10,6 +10,10 @@ Read these first when working on the repository:
 
 - `mission.md`
 - `specifications.md`
+- `docs/roadmap/critical_review_and_development_guide.md` (the governing development guide:
+  current priorities, quality bars, and the explainable-results doctrine)
+- `docs/architecture/orientation_relationship_analysis_foundation.md` (the OR-analysis flagship
+  program)
 - `docs/README.md`
 - `docs/architecture/overview.md`
 - `docs/architecture/canonical_data_model.md`
@@ -32,6 +36,8 @@ If implementation choices conflict with these documents, stop and reconcile the 
 
 - Build a pure-Python-first, GPL-compatible texture and diffraction library.
 - Treat the canonical crystallographic data model as a first-class product surface.
+- Treat orientation-relationship analysis as the flagship capability; when priorities compete
+  within a horizon, OR-analysis work per the OR foundation document takes precedence.
 - Keep research-grade rigor and teaching-grade clarity in the same repo.
 - Use external libraries through adapters where practical, but do not leak their raw domain semantics into PyTex public APIs.
 
@@ -57,6 +63,14 @@ If implementation choices conflict with these documents, stop and reconcile the 
 - Stable features are incomplete until docs, figures, tests, and validation notes all exist.
 - Stable terminology and symbol meaning must be fixed centrally and reused across docs, theory notes, notebooks, code explanations, and figures.
 - Correctness, provenance, and interpretability take priority over premature optimization.
+- Stable report and result objects must be explainable: they carry a `describe()` surface
+  producing convention-explicit, citation-backed scientific prose, tested like any other output.
+  See the explainable-results doctrine in
+  `docs/roadmap/critical_review_and_development_guide.md`.
+- New test or runtime warnings are defects; matplotlib figures opened by tests must be closed;
+  measured coverage must not decrease.
+- Where a literature convention exists (variant numbering, axis/angle representatives, section
+  conventions), conform and pin it in tests, or document the deviation explicitly.
 - Construction-time invariant checks are preferred over downstream error recovery.
 - Any stable workflow that crosses a tool boundary must eventually have a machine-readable manifest and schema.
 
@@ -122,7 +136,11 @@ Speed matters, but only after semantics are explicit and scientifically defensib
   `worked_examples/`, regenerate the gallery with `python scripts/generate_worked_examples.py`, and
   keep `tests/unit/test_worked_examples.py` green. The example's expected value must have independent
   provenance (analytic identity or cited standard), never a copied prior program output.
-- Update docs when behavior, conventions, or surface area changes.
+- Update docs when behavior, conventions, or surface area changes — including `docs/README.md`
+  (the index must stay complete) and any foundation document whose claims the change affects;
+  stale foundational claims are treated as defects.
+- Give new stable report objects a `describe()` method per the explainable-results doctrine, and
+  keep JSON contracts and `describe()` in lockstep.
 - Add or update cross-links when a page relies on terms, conventions, or workflows defined elsewhere in the docs.
 - Add local module indexes or README files when a subsystem grows enough to need them.
 - Treat repository artifact hygiene as part of the implementation task: generated outputs, local inspection assets, caches, build products, screenshots, notebooks checkpoints, benchmark scratch files, and similar non-canonical artifacts must be excluded in `.gitignore` before or alongside the change that creates them.
