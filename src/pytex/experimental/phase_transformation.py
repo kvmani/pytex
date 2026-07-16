@@ -5,24 +5,13 @@ from typing import Literal
 
 import numpy as np
 
-from pytex.core.lattice import Phase
+from pytex.core.lattice import phases_semantically_match
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 from pytex.core.transformation import PhaseTransformationRecord
 
 ReductionMode = Literal["mean", "median", "max"]
-
-
-def _phase_semantically_matches(left: Phase | None, right: Phase | None) -> bool:
-    if left is None or right is None:
-        return left is right
-    return (
-        left.name == right.name
-        and left.crystal_frame == right.crystal_frame
-        and left.lattice == right.lattice
-        and left.symmetry == right.symmetry
-    )
 
 
 def _rotation_angles_from_matrices(matrices: np.ndarray) -> np.ndarray:
@@ -104,7 +93,7 @@ def _validate_candidate_parent_set(
         raise ValueError("Candidate parent orientations must use the parent crystal frame.")
     if candidate_parents.specimen_frame != reference_parent.specimen_frame:
         raise ValueError("Candidate parent orientations must use the parent specimen frame.")
-    if not _phase_semantically_matches(candidate_parents.phase, reference_parent.phase):
+    if not phases_semantically_match(candidate_parents.phase, reference_parent.phase):
         raise ValueError("Candidate parent orientations must match the parent phase semantics.")
     if candidate_parents.symmetry != reference_parent.symmetry:
         raise ValueError("Candidate parent orientations must match the parent symmetry.")

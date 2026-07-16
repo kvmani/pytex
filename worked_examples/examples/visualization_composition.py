@@ -182,10 +182,9 @@ OR_PARALLEL_DIRECTION_ALIGNMENT = WorkedExample(
         "    ks.parent_to_child_rotation.inverse().as_matrix()\n"
         ")\n"
         "parent_direction, child_direction = ks.parallel_directions[0]\n"
-        "placed = child_placement.apply_vector(child_direction)\n"
+        "placed = child_placement.apply_vector(child_direction.unit_vector)\n"
         "placed = placed / np.linalg.norm(placed)\n"
-        "parent_unit = parent_direction / np.linalg.norm(parent_direction)\n"
-        "result = float(parent_unit @ placed)"
+        "result = float(parent_direction.unit_vector @ placed)"
     ),
     expected=1.0,
     unit="",

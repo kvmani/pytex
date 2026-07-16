@@ -219,7 +219,7 @@ def _canonical_vector_index(vectors: np.ndarray) -> int:
     return int(np.lexsort((rounded[:, 1], rounded[:, 0], rounded[:, 2]))[-1])
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class SymmetrySpec:
     name: str
     point_group: str
@@ -227,6 +227,23 @@ class SymmetrySpec:
     specimen_symmetry: str | None = None
     reference_frame: ReferenceFrame | None = None
     provenance: ProvenanceRecord | None = None
+
+    def __eq__(self, other: object) -> bool:
+        # The generated dataclass __eq__ would compare the operator ndarray with
+        # `==` and raise on distinct-but-equal instances; equality here is the
+        # symmetry identity (provenance excluded).
+        if not isinstance(other, SymmetrySpec):
+            return NotImplemented
+        return (
+            self.name == other.name
+            and self.point_group == other.point_group
+            and self.specimen_symmetry == other.specimen_symmetry
+            and self.reference_frame == other.reference_frame
+            and bool(np.array_equal(self.operators, other.operators))
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.point_group, self.specimen_symmetry))
 
     def __post_init__(self) -> None:
         operators = as_float_array(self.operators, shape=(None, 3, 3))

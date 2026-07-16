@@ -234,9 +234,7 @@ def _orientation_relationship_primitives(
     patches: list[PlanePatch3D] = []
     if show_parallel_directions:
         for parent_direction, _child_direction in relationship.parallel_directions:
-            world_direction = parent_transform.apply_vector(
-                np.asarray(parent_direction, dtype=np.float64)
-            )
+            world_direction = parent_transform.apply_vector(parent_direction.unit_vector)
             world_direction = world_direction / np.linalg.norm(world_direction)
             arrows.append(
                 Arrow3D(

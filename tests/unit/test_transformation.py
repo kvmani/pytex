@@ -21,6 +21,7 @@ from pytex.core import (
     SymmetrySpec,
     TransformationVariant,
     VectorSet,
+    phases_semantically_match,
 )
 
 
@@ -601,3 +602,78 @@ def test_select_variants_recovers_planted_assignments() -> None:
     assert frequencies[2] == 2 and frequencies[6] == 1 and frequencies[17] == 1
     with pytest.raises(ValueError, match="variant_count"):
         report.variant_frequencies(variant_count=2)
+
+
+def test_phases_semantically_match_handles_independent_construction_and_none() -> None:
+    _, _, parent, child = make_phases()
+    _, _, parent_again, _ = make_phases()
+    assert phases_semantically_match(parent, parent_again)
+    assert not phases_semantically_match(parent, child)
+    assert not phases_semantically_match(parent, None)
+    assert phases_semantically_match(None, None)
+
+
+def test_parallel_directions_are_typed_crystal_directions_with_index_meaning() -> None:
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    parent_direction, child_direction = relationship.parallel_directions[0]
+    assert isinstance(parent_direction, CrystalDirection)
+    assert isinstance(child_direction, CrystalDirection)
+    assert_allclose(parent_direction.coordinates, [-1.0, 0.0, 1.0], atol=1e-12)
+    assert_allclose(child_direction.coordinates, [-1.0, -1.0, 1.0], atol=1e-12)
+
+
+def test_parallel_directions_accept_legacy_cartesian_vectors() -> None:
+    _, _, parent, child = make_phases()
+    base = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    legacy = OrientationRelationship(
+        name="legacy_bain",
+        parent_phase=parent,
+        child_phase=child,
+        parent_to_child_rotation=base.parent_to_child_rotation,
+        parallel_directions=((np.array([1.0, 1.0, 0.0]), np.array([1.0, 0.0, 0.0])),),
+    )
+    parent_direction, child_direction = legacy.parallel_directions[0]
+    assert isinstance(parent_direction, CrystalDirection)
+    assert_allclose(
+        parent_direction.unit_vector, np.array([1.0, 1.0, 0.0]) / np.sqrt(2.0), atol=1e-12
+    )
+    assert_allclose(child_direction.unit_vector, [1.0, 0.0, 0.0], atol=1e-12)
+
+
+def test_parallel_directions_reject_phase_mismatch() -> None:
+    _, _, parent, child = make_phases()
+    base = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    with pytest.raises(ValueError, match="parallel parent directions"):
+        OrientationRelationship(
+            name="mismatched",
+            parent_phase=parent,
+            child_phase=child,
+            parent_to_child_rotation=base.parent_to_child_rotation,
+            parallel_directions=(
+                (
+                    CrystalDirection([1.0, 1.0, 0.0], phase=child),
+                    CrystalDirection([1.0, 0.0, 0.0], phase=child),
+                ),
+            ),
+        )
+
+
+def test_burgers_parallel_directions_keep_miller_bravais_meaning() -> None:
+    crystal_parent, crystal_child, parent, _ = make_phases()
+    hex_symmetry = SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_child)
+    hex_lattice = Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_child)
+    alpha = Phase(
+        "alpha", lattice=hex_lattice, symmetry=hex_symmetry, crystal_frame=crystal_child
+    )
+    relationship = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent, child_phase=alpha
+    )
+    _, child_direction = relationship.parallel_directions[0]
+    assert_allclose(child_direction.coordinates, [1.0, 1.0, 0.0], atol=1e-12)

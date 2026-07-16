@@ -62,3 +62,14 @@ def test_reduce_vector_set_to_fundamental_sector_preserves_frame() -> None:
     assert isinstance(reduced, VectorSet)
     assert reduced.reference_frame == frame
     assert symmetry.vector_in_fundamental_sector(reduced.values[0], antipodal=True)
+
+
+def test_symmetry_spec_equality_is_well_defined_for_distinct_instances() -> None:
+    frame = make_crystal_frame()
+    left = SymmetrySpec.from_point_group("m-3m", reference_frame=frame)
+    right = SymmetrySpec.from_point_group("m-3m", reference_frame=frame)
+    assert left is not right
+    assert left == right
+    assert hash(left) == hash(right)
+    assert left != SymmetrySpec.from_point_group("6/mmm", reference_frame=frame)
+    assert {left: "cubic"}[right] == "cubic"

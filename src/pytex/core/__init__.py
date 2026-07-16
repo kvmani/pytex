@@ -43,6 +43,7 @@ from pytex.core.lattice import (
     ZoneAxis,
     direct_to_reciprocal_components,
     metric_tensor,
+    phases_semantically_match,
     reciprocal_metric_tensor,
     reciprocal_to_direct_components,
 )
@@ -205,6 +206,7 @@ __all__ = [
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",
+    "phases_semantically_match",
     "normalize_point_group_symbol",
     "phase_fixture_catalog_path",
     "plane_hkil_to_hkl",

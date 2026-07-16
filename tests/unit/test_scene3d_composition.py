@@ -165,10 +165,9 @@ def test_or_placement_makes_parallel_directions_and_planes_coincide() -> None:
     world = WorldScene3D.from_orientation_relationship(relationship)
     child_transform = world.crystals[1].transform
     for parent_direction, child_direction in relationship.parallel_directions:
-        placed = child_transform.apply_vector(np.asarray(child_direction, dtype=np.float64))
+        placed = child_transform.apply_vector(child_direction.unit_vector)
         placed = placed / np.linalg.norm(placed)
-        parent_unit = parent_direction / np.linalg.norm(parent_direction)
-        assert float(parent_unit @ placed) == pytest.approx(1.0, abs=1e-6)
+        assert float(parent_direction.unit_vector @ placed) == pytest.approx(1.0, abs=1e-6)
     for parent_plane, child_plane in relationship.parallel_planes:
         placed = child_transform.apply_normal(child_plane.normal)
         assert float(parent_plane.normal @ placed) == pytest.approx(1.0, abs=1e-6)

@@ -16,8 +16,8 @@ guide itself). The OR feature definitions (F1–F5) live in
 
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
-- Baseline commit: `d1a1561`
-- Phase: 0 (commit foundational-docs overhaul)
+- Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`
+- Phase: 1 complete (committing), next Phase 2
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -82,9 +82,35 @@ guide itself). The OR feature definitions (F1–F5) live in
   `docs/architecture/phase_transformation_foundation.md`.
 - Verified: integrity check passed, 804 tests passed, ruff clean.
 
+## Phase 1 outcomes (2026-07-16)
+
+- **Found and fixed a latent crash:** `SymmetrySpec.__eq__` (dataclass-generated) raised
+  `ValueError` on distinct-but-equal instances because of the ndarray `operators` field; it was
+  also unhashable. Now `eq=False` with explicit `__eq__` (name, point_group, specimen_symmetry,
+  reference_frame, `np.array_equal` operators; provenance excluded) and `__hash__`.
+- Unified phase identity into public `pytex.core.lattice.phases_semantically_match` (None-safe,
+  normalized point-group comparison; exported from `pytex.core` and top level). Both duplicated
+  `_phase_semantically_matches` copies deleted; all `plane.phase != phase` checks in
+  transformation.py now use the helper (avoids latent `Phase.__eq__` array ambiguity too).
+- `OrientationRelationship.parallel_directions` now stores typed
+  `CrystalDirection` pairs (index meaning preserved, e.g. KS <-101>/<-1-11>, Burgers
+  Miller-Bravais-derived [110]); raw Cartesian 3-vectors still accepted and wrapped via new
+  `CrystalDirection.from_cartesian` (public inverse of `unit_vector`). Phase membership
+  validated. JSON contract now emits typed crystal-direction payloads and still reads legacy
+  float-triple payloads.
+- Updated consumers: `plotting/scene3d.py`, scene3d test, visualization worked example
+  (gallery regenerated). New tests: SymmetrySpec equality/hash; phases_semantically_match;
+  typed/legacy/mismatch/Burgers parallel-direction cases. 810 passed; ruff/mypy/integrity green.
+- Note: `Phase.__eq__` (and other array-field dataclasses) still have the ambiguous-truth
+  hazard when comparing distinct-but-equal instances — flagged for a later dedicated pass.
+
 ## Next Actions
 
-1. Commit Phase 0 (docs overhaul + this note), push to `origin/main`.
-2. Start Phase 1: read `_phase_semantically_matches` call sites, unify into one helper
-   (`core/transformation.py` exports it; experimental imports it), migrate
-   `parallel_directions` to `CrystalDirection` pairs, run gates, commit, push.
+1. Commit Phase 1, push.
+2. Phase 2 (F1–F3): `correspondence_direct()`/`correspondence_reciprocal()` on
+   `OrientationRelationship` + `TransformationVariant`; `map_direction_to_child` /
+   `map_plane_to_child` + child→parent inverses returning exact components, rationalized
+   indices (bounded search), angular residual; all-variant table. Worked example (Bain/KS),
+   LaTeX theory note `docs/tex/algorithms/orientation_relationship_correspondence.tex`,
+   validation-matrix row, parity note. Key math: directions map via
+   `A_c^{-1} R A_p` (direct bases), plane normals via reciprocal bases (inverse-transpose).

@@ -132,10 +132,9 @@ child_placement = Transform3D.from_matrix(
     ks.parent_to_child_rotation.inverse().as_matrix()
 )
 parent_direction, child_direction = ks.parallel_directions[0]
-placed = child_placement.apply_vector(child_direction)
+placed = child_placement.apply_vector(child_direction.unit_vector)
 placed = placed / np.linalg.norm(placed)
-parent_unit = parent_direction / np.linalg.norm(parent_direction)
-result = float(parent_unit @ placed)
+result = float(parent_direction.unit_vector @ placed)
 ```
 
 **Result**

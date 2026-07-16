@@ -8,7 +8,13 @@ from numpy.typing import ArrayLike
 from pytex.core._arrays import as_int_array
 from pytex.core.batches import VectorSet
 from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex, Phase
+from pytex.core.lattice import (
+    CrystalDirection,
+    CrystalPlane,
+    MillerIndex,
+    Phase,
+    phases_semantically_match,
+)
 from pytex.core.orientation import (
     Orientation,
     OrientationSet,
@@ -27,15 +33,33 @@ def _crystal_direction(values: tuple[float, float, float], *, phase: Phase) -> C
     return CrystalDirection(np.asarray(values, dtype=np.float64), phase=phase)
 
 
-def _phase_semantically_matches(left: Phase | None, right: Phase) -> bool:
-    if left is None:
-        return False
-    return (
-        left.name == right.name
-        and left.crystal_frame == right.crystal_frame
-        and left.lattice == right.lattice
-        and left.symmetry.point_group == right.symmetry.point_group
-    )
+def _coerce_parallel_direction(
+    entry: CrystalDirection | ArrayLike, *, phase: Phase, role: str
+) -> CrystalDirection:
+    """Normalize one parallel-direction entry to a phase-checked CrystalDirection.
+
+    Raw 3-vectors are accepted for backward compatibility and are interpreted
+    as Cartesian directions in the crystal frame of ``phase``; they are
+    converted to direct-basis coordinates so the stored object keeps index
+    meaning.
+    """
+
+    if isinstance(entry, CrystalDirection):
+        if not phases_semantically_match(entry.phase, phase):
+            raise ValueError(
+                f"OrientationRelationship parallel {role} directions must belong to {role}_phase."
+            )
+        return entry
+    vector = np.asarray(entry, dtype=np.float64)
+    if vector.shape != (3,):
+        raise ValueError(
+            "OrientationRelationship.parallel_directions entries must each have shape (3,)."
+        )
+    if np.allclose(vector, 0.0):
+        raise ValueError(
+            "OrientationRelationship.parallel_directions must not include zero vectors."
+        )
+    return CrystalDirection.from_cartesian(vector, phase=phase)
 
 
 def _require_proper_point_group(
@@ -59,7 +83,7 @@ class OrientationRelationship:
     parent_phase: Phase
     child_phase: Phase
     parent_to_child_rotation: Rotation
-    parallel_directions: tuple[tuple[np.ndarray, np.ndarray], ...] = ()
+    parallel_directions: tuple[tuple[CrystalDirection, CrystalDirection], ...] = ()
     parallel_planes: tuple[tuple[CrystalPlane, CrystalPlane], ...] = ()
     provenance: ProvenanceRecord | None = None
 
@@ -67,28 +91,27 @@ class OrientationRelationship:
         normalized_name = self.name.strip()
         if not normalized_name:
             raise ValueError("OrientationRelationship.name must be non-empty.")
-        if _phase_semantically_matches(self.parent_phase, self.child_phase):
+        if phases_semantically_match(self.parent_phase, self.child_phase):
             raise ValueError("OrientationRelationship requires distinct parent and child phases.")
-        direction_pairs: list[tuple[np.ndarray, np.ndarray]] = []
+        direction_pairs: list[tuple[CrystalDirection, CrystalDirection]] = []
         for parent_direction, child_direction in self.parallel_directions:
-            parent_array = np.asarray(parent_direction, dtype=np.float64)
-            child_array = np.asarray(child_direction, dtype=np.float64)
-            if parent_array.shape != (3,) or child_array.shape != (3,):
-                raise ValueError(
-                    "OrientationRelationship.parallel_directions entries must each have shape (3,)."
+            direction_pairs.append(
+                (
+                    _coerce_parallel_direction(
+                        parent_direction, phase=self.parent_phase, role="parent"
+                    ),
+                    _coerce_parallel_direction(
+                        child_direction, phase=self.child_phase, role="child"
+                    ),
                 )
-            if np.allclose(parent_array, 0.0) or np.allclose(child_array, 0.0):
-                raise ValueError(
-                    "OrientationRelationship.parallel_directions must not include zero vectors."
-                )
-            direction_pairs.append((parent_array, child_array))
+            )
         plane_pairs: list[tuple[CrystalPlane, CrystalPlane]] = []
         for parent_plane, child_plane in self.parallel_planes:
-            if parent_plane.phase != self.parent_phase:
+            if not phases_semantically_match(parent_plane.phase, self.parent_phase):
                 raise ValueError(
                     "OrientationRelationship parallel parent planes must belong to parent_phase."
                 )
-            if child_plane.phase != self.child_phase:
+            if not phases_semantically_match(child_plane.phase, self.child_phase):
                 raise ValueError(
                     "OrientationRelationship parallel child planes must belong to child_phase."
                 )
@@ -116,9 +139,9 @@ class OrientationRelationship:
         child_direction: CrystalDirection,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationRelationship:
-        if parent_plane.phase != parent_direction.phase:
+        if not phases_semantically_match(parent_plane.phase, parent_direction.phase):
             raise ValueError("parent_plane.phase must match parent_direction.phase.")
-        if child_plane.phase != child_direction.phase:
+        if not phases_semantically_match(child_plane.phase, child_direction.phase):
             raise ValueError("child_plane.phase must match child_direction.phase.")
         matrices = _plane_direction_rotation_matrices(
             crystal_normals=parent_plane.normal[None, :],
@@ -131,7 +154,7 @@ class OrientationRelationship:
             parent_phase=parent_plane.phase,
             child_phase=child_plane.phase,
             parent_to_child_rotation=Rotation.from_matrix(matrices[0]),
-            parallel_directions=((parent_direction.unit_vector, child_direction.unit_vector),),
+            parallel_directions=((parent_direction, child_direction),),
             parallel_planes=((parent_plane, child_plane),),
             provenance=provenance,
         )
@@ -473,11 +496,15 @@ class TransformationVariant:
             raise ValueError("TransformationVariant operator indices must be non-negative.")
         plane_pairs: list[tuple[CrystalPlane, CrystalPlane]] = []
         for parent_plane, child_plane in self.habit_plane_pairs:
-            if parent_plane.phase != self.orientation_relationship.parent_phase:
+            if not phases_semantically_match(
+                parent_plane.phase, self.orientation_relationship.parent_phase
+            ):
                 raise ValueError(
                     "TransformationVariant parent habit planes must belong to parent_phase."
                 )
-            if child_plane.phase != self.orientation_relationship.child_phase:
+            if not phases_semantically_match(
+                child_plane.phase, self.orientation_relationship.child_phase
+            ):
                 raise ValueError(
                     "TransformationVariant child habit planes must belong to child_phase."
                 )
@@ -616,7 +643,7 @@ class PhaseTransformationRecord:
         normalized_name = self.name.strip()
         if not normalized_name:
             raise ValueError("PhaseTransformationRecord.name must be non-empty.")
-        if not _phase_semantically_matches(
+        if not phases_semantically_match(
             self.parent_orientation.phase,
             self.orientation_relationship.parent_phase,
         ):
@@ -624,7 +651,7 @@ class PhaseTransformationRecord:
                 "PhaseTransformationRecord.parent_orientation.phase must match "
                 "the relationship parent phase."
             )
-        if not _phase_semantically_matches(
+        if not phases_semantically_match(
             self.child_orientations.phase,
             self.orientation_relationship.child_phase,
         ):

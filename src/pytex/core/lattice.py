@@ -10,6 +10,7 @@ from pytex.core._arrays import as_float_array, as_int_array, normalize_vector
 from pytex.core.conventions import PYTEX_CANONICAL_CONVENTIONS, BasisKind, FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.hexagonal import direction_uvtw_to_uvw, plane_hkil_to_hkl
+from pytex.core.point_groups import normalize_point_group_symbol
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
@@ -453,6 +454,37 @@ class Phase:
         )
 
 
+def phases_semantically_match(left: Phase | None, right: Phase | None) -> bool:
+    """Whether two phases carry the same crystallographic identity.
+
+    Purpose: the single, shared definition of phase-identity used by
+    transformation, reconstruction, and workflow validation code when deciding
+    whether two ``Phase`` objects describe the same material phase.
+
+    When to use: prefer this over ``Phase == Phase`` whenever the two objects
+    may have been constructed independently. Identity is defined as equal phase
+    name, crystal frame, lattice parameters, and normalized point-group symbol;
+    provenance, aliases, and unit-cell contents are deliberately excluded, and
+    symmetry is compared through its normalized point-group symbol rather than
+    operator arrays so equivalent specs constructed separately still match.
+
+    Inputs: two ``Phase`` objects or ``None``. Two ``None`` values match; a
+    ``None`` never matches a real phase.
+
+    Output: ``bool``.
+    """
+
+    if left is None or right is None:
+        return left is right
+    return (
+        left.name == right.name
+        and left.crystal_frame == right.crystal_frame
+        and left.lattice == right.lattice
+        and normalize_point_group_symbol(left.symmetry.point_group)
+        == normalize_point_group_symbol(right.symmetry.point_group)
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class MillerIndex:
     indices: np.ndarray
@@ -495,6 +527,26 @@ class CrystalDirection:
     @classmethod
     def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> CrystalDirection:
         return cls(coordinates=direction_uvtw_to_uvw(indices).astype(np.float64), phase=phase)
+
+    @classmethod
+    def from_cartesian(cls, vector: Any, *, phase: Phase) -> CrystalDirection:
+        """Direction from a Cartesian vector expressed in the phase crystal frame.
+
+        Purpose: the inverse of ``unit_vector`` — converts a crystal-frame
+        Cartesian vector into direct-basis ``[uvw]`` coordinates so the stored
+        direction keeps index meaning.
+
+        Inputs: a nonzero 3-vector in the crystal Cartesian frame of ``phase``.
+
+        Output: a ``CrystalDirection`` whose ``unit_vector`` reproduces the
+        normalized input vector.
+        """
+
+        cartesian = as_float_array(vector, shape=(3,))
+        if np.allclose(cartesian, 0.0):
+            raise ValueError("CrystalDirection.from_cartesian requires a nonzero vector.")
+        coordinates = np.linalg.solve(phase.lattice.direct_basis().matrix, cartesian)
+        return cls(coordinates=coordinates, phase=phase)
 
 
 @dataclass(frozen=True, slots=True)

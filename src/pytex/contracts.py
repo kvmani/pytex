@@ -1237,8 +1237,8 @@ def _serialize_orientation_relationship(
         "parent_to_child_rotation": _serialize_rotation(relationship.parent_to_child_rotation),
         "parallel_directions": [
             {
-                "parent": _as_float_list(parent),
-                "child": _as_float_list(child),
+                "parent": _serialize_crystal_direction(parent),
+                "child": _serialize_crystal_direction(child),
             }
             for parent, child in relationship.parallel_directions
         ],
@@ -1262,10 +1262,16 @@ def _deserialize_orientation_relationship(payload: dict[str, Any]) -> Orientatio
         parent_phase=parent_phase,
         child_phase=child_phase,
         parent_to_child_rotation=_deserialize_rotation(payload["parent_to_child_rotation"]),
+        # Typed payloads carry crystal-direction dicts; legacy payloads carried
+        # bare Cartesian float triples in the respective crystal frames.
         parallel_directions=tuple(
             (
-                np.asarray(item["parent"], dtype=np.float64),
-                np.asarray(item["child"], dtype=np.float64),
+                _deserialize_crystal_direction(item["parent"])
+                if isinstance(item["parent"], dict)
+                else CrystalDirection.from_cartesian(item["parent"], phase=parent_phase),
+                _deserialize_crystal_direction(item["child"])
+                if isinstance(item["child"], dict)
+                else CrystalDirection.from_cartesian(item["child"], phase=child_phase),
             )
             for item in payload.get("parallel_directions", [])
         ),
