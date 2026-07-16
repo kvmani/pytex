@@ -21,9 +21,13 @@ from pytex.core import (
     SymmetrySpec,
     TransformationVariant,
     VectorSet,
+    find_parallel_directions,
+    find_parallel_planes,
     map_plane_across_variants,
     or_deviation,
     phases_semantically_match,
+    reconstruct_parent_orientation,
+    select_variants,
 )
 
 
@@ -918,3 +922,92 @@ def test_or_deviation_validates_pairing_and_phase_semantics() -> None:
         or_deviation(parents, single_child, gt)
     with pytest.raises(ValueError, match="parent phase"):
         or_deviation(children, children, gt)
+
+
+def test_find_parallel_planes_recovers_ks_close_packed_pairing() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = find_parallel_planes(
+        ks,
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent),
+        tolerance_deg=0.01,
+    )
+    assert len(report.matches) == 24
+    assert {tuple(sorted(np.abs(m.child_indices))) for m in report.matches} == {(0, 1, 1)}
+    per_variant: dict[int, int] = {}
+    for match in report.matches:
+        per_variant[match.variant_index] = per_variant.get(match.variant_index, 0) + 1
+    # Every variant pairs exactly one {111} member with a {011} child plane.
+    assert set(per_variant.values()) == {1}
+    assert len(per_variant) == 24
+    assert all(m.angular_deviation_deg < 1e-6 for m in report.matches)
+
+
+def test_find_parallel_directions_recovers_ks_close_packed_directions() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = find_parallel_directions(
+        ks, CrystalDirection([1.0, 1.0, 0.0], phase=parent), tolerance_deg=0.01
+    )
+    assert len(report.matches) == 24
+    assert {tuple(sorted(np.abs(m.child_indices))) for m in report.matches} == {(1, 1, 1)}
+
+
+def test_describe_surfaces_state_conventions_and_key_numbers() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    text = ks.describe()
+    assert "kurdjumov_sachs" in text
+    assert "(111) parent || (011) child" in text
+    assert "[-101] parent || [-1-11] child" in text
+    assert "42.85 deg" in text
+    assert "24 crystallographically distinct" in text
+
+    plane = ks.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    )
+    plane_text = plane.describe()
+    assert "(111)" in plane_text and "(011)" in plane_text
+    assert "residual of 0.0000 deg" in plane_text
+
+    direction = ks.map_direction_to_child(CrystalDirection([-1.0, 0.0, 1.0], phase=parent))
+    direction_text = direction.describe()
+    assert "[-101]" in direction_text and "[-1-11]" in direction_text
+
+    parents, children, gt = _paired_sets_for_deviation(parent, child)
+    deviation_text = or_deviation(parents, children, gt).describe()
+    assert "greninger_troiano" in deviation_text
+    assert "mean 0.000 deg" in deviation_text
+
+    parallels_text = find_parallel_planes(
+        ks,
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent),
+        tolerance_deg=0.01,
+    ).describe()
+    assert "24 match(es)" in parallels_text
+    assert "variant 1:" in parallels_text
+
+
+def test_variant_selection_and_reconstruction_describe() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _paired_sets_for_deviation(parent, child)
+    record = PhaseTransformationRecord(
+        name="gt_record",
+        orientation_relationship=gt,
+        parent_orientation=parents[0],
+        child_orientations=children,
+    )
+    selection = select_variants(record)
+    text = selection.describe()
+    assert "2 child orientation(s)" in text
+    assert "deg" in text
+    reconstruction = reconstruct_parent_orientation(record, parents)
+    recon_text = reconstruction.describe()
+    assert "gt_record" in recon_text
+    assert "best candidate index 0" in recon_text

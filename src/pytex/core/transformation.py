@@ -16,6 +16,7 @@ from pytex.core.lattice import (
     Phase,
     phases_semantically_match,
 )
+from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.orientation import (
     Misorientation,
     Orientation,
@@ -33,6 +34,11 @@ def _miller_index(values: tuple[int, int, int], *, phase: Phase) -> MillerIndex:
 
 def _crystal_direction(values: tuple[float, float, float], *, phase: Phase) -> CrystalDirection:
     return CrystalDirection(np.asarray(values, dtype=np.float64), phase=phase)
+
+
+def _index_tuple(values: np.ndarray) -> tuple[int, int, int]:
+    array = np.asarray(values, dtype=np.int64).reshape(3)
+    return (int(array[0]), int(array[1]), int(array[2]))
 
 
 def _coerce_parallel_direction(
@@ -163,6 +169,30 @@ class DirectionCorrespondence:
         object.__setattr__(self, "target_exact_coordinates", exact)
         object.__setattr__(self, "rational_indices", rational)
 
+    def describe(self) -> str:
+        """Prose summary: source direction, exact image, rationalization, residual."""
+
+        source_idx = np.rint(self.source.coordinates).astype(np.int64)
+        source_text = (
+            format_direction_indices(_index_tuple(source_idx), style="plain")
+            if np.allclose(self.source.coordinates, source_idx, atol=1e-8)
+            else np.array2string(self.source.coordinates, precision=4)
+        )
+        variant_text = (
+            f" through variant {self.variant_index}" if self.variant_index is not None else ""
+        )
+        exact = self.target_exact_coordinates
+        rational_text = format_direction_indices(
+            _index_tuple(self.rational_indices), style="plain"
+        )
+        return (
+            f"Direction correspondence{variant_text}: parent {source_text} maps to exact "
+            f"child components [{exact[0]:.4f} {exact[1]:.4f} {exact[2]:.4f}], rationalized "
+            f"to {rational_text} with an "
+            f"angular residual of {self.angular_residual_deg:.4f} deg (real-space angle; "
+            "indices in the target crystal direct basis)."
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class PlaneCorrespondence:
@@ -194,6 +224,26 @@ class PlaneCorrespondence:
             array.setflags(write=False)
         object.__setattr__(self, "target_exact_indices", exact)
         object.__setattr__(self, "rational_indices", rational)
+
+    def describe(self) -> str:
+        """Prose summary: source plane, exact image, rationalization, residual."""
+
+        variant_text = (
+            f" through variant {self.variant_index}" if self.variant_index is not None else ""
+        )
+        exact = self.target_exact_indices
+        source_text = format_plane_indices(
+            _index_tuple(self.source.miller.indices), style="plain"
+        )
+        rational_text = format_plane_indices(_index_tuple(self.rational_indices), style="plain")
+        return (
+            f"Plane correspondence{variant_text}: parent "
+            f"{source_text} maps to exact "
+            f"child components ({exact[0]:.4f} {exact[1]:.4f} {exact[2]:.4f}), rationalized "
+            f"to {rational_text} with an angular "
+            f"residual of {self.angular_residual_deg:.4f} deg (angle between plane normals; "
+            "indices in the target crystal reciprocal basis)."
+        )
 
 
 def _require_proper_point_group(
@@ -735,6 +785,65 @@ class OrientationRelationship:
             variant_index=variant_index,
         )
 
+    def describe(self) -> str:
+        """Convention-explicit prose summary of the relationship.
+
+        States the parent/child phases and point groups, the defining
+        parallelisms, the symmetry-reduced misorientation representative, and
+        the distinct-variant count. Angles are in degrees; indices are in the
+        respective crystal bases (three-index form).
+        """
+
+        parent_group = (
+            self.parent_phase.symmetry.point_group
+            if self.parent_phase.symmetry is not None
+            else "1"
+        )
+        child_group = (
+            self.child_phase.symmetry.point_group
+            if self.child_phase.symmetry is not None
+            else "1"
+        )
+        lines = [
+            f"Orientation relationship '{self.name}': parent phase "
+            f"'{self.parent_phase.name}' ({parent_group}) to child phase "
+            f"'{self.child_phase.name}' ({child_group})."
+        ]
+        for parent_plane, child_plane in self.parallel_planes:
+            parent_text = format_plane_indices(
+                _index_tuple(parent_plane.miller.indices), style="plain"
+            )
+            child_text = format_plane_indices(
+                _index_tuple(child_plane.miller.indices), style="plain"
+            )
+            lines.append(
+                f"Defining plane parallelism: {parent_text} parent || {child_text} child."
+            )
+        for parent_direction, child_direction in self.parallel_directions:
+            parent_idx = np.rint(parent_direction.coordinates).astype(np.int64)
+            child_idx = np.rint(child_direction.coordinates).astype(np.int64)
+            if np.allclose(parent_direction.coordinates, parent_idx, atol=1e-8) and np.allclose(
+                child_direction.coordinates, child_idx, atol=1e-8
+            ):
+                parent_text = format_direction_indices(_index_tuple(parent_idx), style="plain")
+                child_text = format_direction_indices(_index_tuple(child_idx), style="plain")
+                lines.append(
+                    f"Defining direction parallelism: {parent_text} parent || {child_text} child."
+                )
+        misorientation = self.misorientation()
+        axis = misorientation.rotation.axis
+        lines.append(
+            "Misorientation representative (child-symmetry and parent-symmetry "
+            f"reduced): {misorientation.angle_deg:.2f} deg about "
+            f"<{axis[0]:.3f} {axis[1]:.3f} {axis[2]:.3f}> "
+            "(axis components identical in both crystal frames)."
+        )
+        lines.append(
+            f"Variants: {len(self.generate_variants())} crystallographically distinct "
+            "child orientations from one parent (child-symmetry reduced)."
+        )
+        return "\n".join(lines)
+
     def misorientation(self) -> Misorientation:
         """The relationship as a symmetry-reduced misorientation (disorientation).
 
@@ -1069,6 +1178,23 @@ class ORDeviationReport:
     def max_deviation_deg(self) -> float:
         return float(np.max(self.deviations_deg))
 
+    def describe(self) -> str:
+        """Prose summary: pair count, deviation statistics, variants used."""
+
+        used = np.unique(self.best_variant_indices)
+        variant_list = ", ".join(str(int(index)) for index in used[:12])
+        if used.size > 12:
+            variant_list += ", ..."
+        return (
+            f"Deviation from orientation relationship '{self.relationship_name}' over "
+            f"{self.deviations_deg.size} parent/child pair(s): mean "
+            f"{self.mean_deviation_deg:.3f} deg, median {self.median_deviation_deg:.3f} deg, "
+            f"max {self.max_deviation_deg:.3f} deg (child-symmetry-reduced angles, minimum "
+            f"over variants). Best-matching variants used: {variant_list}. Deviations near "
+            "zero mean the relationship is obeyed; systematic offsets measure the distance "
+            "of the operative relationship from the nominal one."
+        )
+
 
 def or_deviation(
     parent_orientations: OrientationSet,
@@ -1137,6 +1263,253 @@ def or_deviation(
         deviations_deg=deviations_deg,
         best_variant_indices=variant_indices,
         provenance=provenance or relationship.provenance,
+    )
+
+
+def _integer_index_orbit(
+    indices: np.ndarray, *, phase: Phase, reciprocal: bool
+) -> np.ndarray:
+    """Symmetry-equivalent integer index triples of one plane or direction.
+
+    Operators act on the Cartesian image (reciprocal basis for planes, direct
+    basis for directions); the recovered components must be integers for
+    crystallographic operators. Antiparallel members collapse to a canonical
+    sign (first nonzero component positive), so each returned row names one
+    family member once.
+    """
+
+    basis = (
+        phase.lattice.reciprocal_basis().matrix
+        if reciprocal
+        else phase.lattice.direct_basis().matrix
+    )
+    operators = (
+        phase.symmetry.operators
+        if phase.symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    cartesian = basis @ np.asarray(indices, dtype=np.float64)
+    images = np.einsum("oij,j->oi", operators, cartesian, optimize=True)
+    recovered = np.linalg.solve(basis, images.T).T
+    rounded = np.rint(recovered)
+    if not np.allclose(recovered, rounded, atol=1e-8):
+        raise ValueError(
+            "Symmetry orbit did not recover integer indices; the phase symmetry "
+            "operators are inconsistent with the lattice."
+        )
+    members = rounded.astype(np.int64)
+    divisors = np.gcd.reduce(np.abs(members), axis=1)
+    members = members // np.maximum(divisors, 1)[:, None]
+    canonical: dict[tuple[int, int, int], np.ndarray] = {}
+    for row in members:
+        signed = row.copy()
+        nonzero = np.nonzero(signed)[0]
+        if signed[nonzero[0]] < 0:
+            signed = -signed
+        canonical[(int(signed[0]), int(signed[1]), int(signed[2]))] = signed
+    orbit = np.stack(list(canonical.values()), axis=0)
+    orbit = np.ascontiguousarray(orbit)
+    orbit.setflags(write=False)
+    return orbit
+
+
+@dataclass(frozen=True, slots=True)
+class ParallelismMatch:
+    """One near-parallelism between a parent family member and its child image."""
+
+    variant_index: int
+    parent_indices: np.ndarray
+    child_indices: np.ndarray
+    angular_deviation_deg: float
+
+    def __post_init__(self) -> None:
+        parent = np.asarray(self.parent_indices, dtype=np.int64)
+        child = np.asarray(self.child_indices, dtype=np.int64)
+        if parent.shape != (3,) or child.shape != (3,):
+            raise ValueError("ParallelismMatch indices must have shape (3,).")
+        if self.variant_index <= 0:
+            raise ValueError("ParallelismMatch.variant_index must be positive.")
+        if not np.isfinite(self.angular_deviation_deg) or self.angular_deviation_deg < 0.0:
+            raise ValueError("angular_deviation_deg must be finite and non-negative.")
+        for array in (parent, child):
+            array.setflags(write=False)
+        object.__setattr__(self, "parent_indices", parent)
+        object.__setattr__(self, "child_indices", child)
+
+
+@dataclass(frozen=True, slots=True)
+class ParallelismReport:
+    """Near-parallel plane or direction pairs across transformation variants.
+
+    ``matches`` holds every (variant, parent family member, rationalized child
+    image) whose angular deviation is within ``tolerance_deg``, sorted by
+    variant then deviation. The general machine behind statements like
+    "{111} parent is parallel to {011} child within 0 deg in every variant".
+    """
+
+    relationship_name: str
+    kind: str
+    tolerance_deg: float
+    matches: tuple[ParallelismMatch, ...]
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in {"plane", "direction"}:
+            raise ValueError("ParallelismReport.kind must be 'plane' or 'direction'.")
+        if not np.isfinite(self.tolerance_deg) or self.tolerance_deg < 0.0:
+            raise ValueError("tolerance_deg must be finite and non-negative.")
+        object.__setattr__(self, "matches", tuple(self.matches))
+
+    def describe(self) -> str:
+        formatter = format_plane_indices if self.kind == "plane" else format_direction_indices
+        noun = "plane" if self.kind == "plane" else "direction"
+        lines = [
+            f"Parallel {noun} search under orientation relationship "
+            f"'{self.relationship_name}': {len(self.matches)} match(es) within "
+            f"{self.tolerance_deg:.3f} deg (angles in degrees, indices in the "
+            "respective crystal bases)."
+        ]
+        for match in self.matches[:12]:
+            parent_text = formatter(_index_tuple(match.parent_indices), style="plain")
+            child_text = formatter(_index_tuple(match.child_indices), style="plain")
+            lines.append(
+                f"  variant {match.variant_index}: parent {parent_text} || child {child_text} "
+                f"(deviation {match.angular_deviation_deg:.4f} deg)"
+            )
+        if len(self.matches) > 12:
+            lines.append(f"  ... and {len(self.matches) - 12} more.")
+        return "\n".join(lines)
+
+
+def _find_parallels(
+    relationship: OrientationRelationship,
+    indices: np.ndarray,
+    *,
+    kind: str,
+    tolerance_deg: float,
+    include_family: bool,
+    variants: tuple[TransformationVariant, ...] | None,
+    max_index: int,
+    provenance: ProvenanceRecord | None,
+) -> ParallelismReport:
+    reciprocal = kind == "plane"
+    members = (
+        _integer_index_orbit(indices, phase=relationship.parent_phase, reciprocal=reciprocal)
+        if include_family
+        else np.asarray(indices, dtype=np.int64)[None, :]
+    )
+    resolved = relationship.generate_variants() if variants is None else variants
+    parent_phase = relationship.parent_phase
+    matches: list[ParallelismMatch] = []
+    for variant in resolved:
+        for member in members:
+            if reciprocal:
+                result: PlaneCorrespondence | DirectionCorrespondence = (
+                    relationship.map_plane_to_child(
+                        CrystalPlane(MillerIndex(member, phase=parent_phase), phase=parent_phase),
+                        variant=variant,
+                        max_index=max_index,
+                    )
+                )
+            else:
+                result = relationship.map_direction_to_child(
+                    CrystalDirection(member.astype(np.float64), phase=parent_phase),
+                    variant=variant,
+                    max_index=max_index,
+                )
+            if result.angular_residual_deg <= tolerance_deg:
+                matches.append(
+                    ParallelismMatch(
+                        variant_index=variant.variant_index,
+                        parent_indices=member,
+                        child_indices=result.rational_indices,
+                        angular_deviation_deg=result.angular_residual_deg,
+                    )
+                )
+    matches.sort(key=lambda match: (match.variant_index, match.angular_deviation_deg))
+    return ParallelismReport(
+        relationship_name=relationship.name,
+        kind=kind,
+        tolerance_deg=tolerance_deg,
+        matches=tuple(matches),
+        provenance=provenance or relationship.provenance,
+    )
+
+
+def find_parallel_planes(
+    relationship: OrientationRelationship,
+    parent_plane: CrystalPlane,
+    *,
+    tolerance_deg: float = 0.5,
+    include_family: bool = True,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    provenance: ProvenanceRecord | None = None,
+) -> ParallelismReport:
+    """Find child planes (near-)parallel to a parent plane family, per variant.
+
+    Purpose: answers "which child (hkl) is parallel to which member of this
+    parent plane family, in which variant, and how exactly" — e.g. under
+    Kurdjumov-Sachs each of the 24 variants pairs exactly one {111} parent
+    member with a {011} child plane at zero deviation (its close-packed
+    plane).
+
+    Inputs: the parent ``CrystalPlane`` (its symmetry family is enumerated
+    unless ``include_family=False``), an angular ``tolerance_deg``, and
+    optionally a variant tuple and rationalization bound.
+
+    Output: a ``ParallelismReport`` (see its ``describe()``).
+    """
+
+    if not phases_semantically_match(parent_plane.phase, relationship.parent_phase):
+        raise ValueError("parent_plane.phase must match the relationship parent phase.")
+    return _find_parallels(
+        relationship,
+        parent_plane.miller.indices,
+        kind="plane",
+        tolerance_deg=tolerance_deg,
+        include_family=include_family,
+        variants=variants,
+        max_index=max_index,
+        provenance=provenance,
+    )
+
+
+def find_parallel_directions(
+    relationship: OrientationRelationship,
+    parent_direction: CrystalDirection,
+    *,
+    tolerance_deg: float = 0.5,
+    include_family: bool = True,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    provenance: ProvenanceRecord | None = None,
+) -> ParallelismReport:
+    """Find child directions (near-)parallel to a parent direction family, per variant.
+
+    The direction-space counterpart of ``find_parallel_planes``; antiparallel
+    family members collapse to one canonical-sign representative. The parent
+    direction must have integer (index-like) coordinates, since the family is
+    enumerated as an integer orbit.
+    """
+
+    if not phases_semantically_match(parent_direction.phase, relationship.parent_phase):
+        raise ValueError("parent_direction.phase must match the relationship parent phase.")
+    coordinates = np.asarray(parent_direction.coordinates, dtype=np.float64)
+    rounded = np.rint(coordinates)
+    if not np.allclose(coordinates, rounded, atol=1e-8):
+        raise ValueError(
+            "find_parallel_directions requires integer direction coordinates."
+        )
+    return _find_parallels(
+        relationship,
+        rounded.astype(np.int64),
+        kind="direction",
+        tolerance_deg=tolerance_deg,
+        include_family=include_family,
+        variants=variants,
+        max_index=max_index,
+        provenance=provenance,
     )
 
 

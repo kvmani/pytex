@@ -100,6 +100,10 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `DirectionCorrespondence`
 - `PlaneCorrespondence`
 - `ORDeviationReport`
+- `ParallelismMatch`
+- `ParallelismReport`
+- `find_parallel_planes`
+- `find_parallel_directions`
 - `map_direction_across_variants`
 - `map_plane_across_variants`
 - `or_deviation`

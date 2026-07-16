@@ -65,6 +65,27 @@ class VariantSelectionReport:
         counts = np.bincount(self.variant_indices, minlength=total + 1)[1:]
         return np.ascontiguousarray(counts)
 
+    def describe(self) -> str:
+        """Prose summary: children assigned, variants used, residual statistics."""
+
+        frequencies = self.variant_frequencies()
+        order = np.argsort(frequencies)[::-1]
+        top = [
+            f"V{int(index) + 1} ({int(frequencies[index])}x)"
+            for index in order[:5]
+            if frequencies[index] > 0
+        ]
+        distinct = int(np.count_nonzero(frequencies))
+        return (
+            f"Variant selection over {self.variant_indices.size} child orientation(s): "
+            f"{distinct} distinct variant(s) selected; most frequent: {', '.join(top)}. "
+            f"Residual misorientation to the assigned variant: mean "
+            f"{float(np.mean(self.scores_deg)):.3f} deg, max "
+            f"{float(np.max(self.scores_deg)):.3f} deg (child-symmetry-reduced angles). "
+            "Uniform frequencies indicate no variant selection; strong imbalance "
+            "indicates selection relative to the equal-probability baseline."
+        )
+
 
 @dataclass(frozen=True, slots=True)
 class ParentReconstructionReport:
@@ -99,6 +120,26 @@ class ParentReconstructionReport:
 
     def best_parent_orientation(self) -> Orientation:
         return self.candidate_parents[self.best_index]
+
+    def describe(self) -> str:
+        """Prose summary: best candidate, score, reduction rule, ambiguity."""
+
+        ambiguity = (
+            f"AMBIGUOUS: {len(self.ambiguous_indices)} candidates lie within the "
+            "ambiguity tolerance of the best score; treat the selection as unresolved."
+            if self.is_ambiguous
+            else "The selection is unambiguous within the ambiguity tolerance."
+        )
+        symmetry_text = (
+            "child-symmetry-reduced" if self.symmetry_aware else "raw (not symmetry-reduced)"
+        )
+        return (
+            f"Parent reconstruction over {len(self.candidate_parents)} candidate parent "
+            f"orientation(s) for record '{self.record.name}': best candidate index "
+            f"{self.best_index} with a {self.reduction} residual of "
+            f"{self.best_score_deg:.3f} deg across the observed children "
+            f"({symmetry_text} angles). {ambiguity}"
+        )
 
 
 @dataclass(frozen=True, slots=True)

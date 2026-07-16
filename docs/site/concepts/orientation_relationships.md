@@ -80,6 +80,28 @@ with Greninger-Troiano deviate by the documented \(2.40^{\circ}\) from
 Kurdjumov-Sachs and \(2.86^{\circ}\) from Nishiyama-Wassermann — the report's
 aggregate statistics are the entry point for OR fitting.
 
+## Parallelism finders
+
+`find_parallel_planes(relationship, parent_plane)` enumerates the parent
+plane's symmetry family and reports, per variant, every child plane within an
+angular tolerance of exact parallelism — under Kurdjumov-Sachs each of the 24
+variants pairs exactly one \(\{111\}\) member with a \(\{011\}\) child plane
+at zero deviation (its close-packed plane), and
+`find_parallel_directions(...)` does the same for the
+\(\langle 110 \rangle \parallel \langle 111 \rangle\) directions. The result
+is a typed `ParallelismReport` whose `describe()` prints the parallelism
+table.
+
+## Explainable reports
+
+Every OR surface explains itself in convention-explicit prose:
+`OrientationRelationship.describe()` states the phases and point groups, the
+defining parallelisms, the misorientation representative, and the variant
+count; correspondence results, deviation reports, parallelism reports,
+variant selections, and parent reconstructions all carry `describe()`
+methods whose statements are validated by tests (the explainable-results
+doctrine of the development guide).
+
 ## Variants
 
 `generate_variants()` enumerates the crystallographically distinct child

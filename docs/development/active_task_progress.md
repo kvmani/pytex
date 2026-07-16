@@ -17,8 +17,8 @@ guide itself). The OR feature definitions (F1–F5) live in
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
-  `cf8391e`
-- Phase: 3 complete (committing), next Phase 4
+  `cf8391e`; Phase 3 as `cee9ee7`
+- Phase: 4 complete (committing), next Phase 5
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -148,12 +148,28 @@ guide itself). The OR feature definitions (F1–F5) live in
   specifications.md Transformation primitive list expanded to the full current surface.
 - Gates: 824 passed; ruff/mypy/integrity/Sphinx green.
 
+## Phase 4 outcomes (2026-07-16)
+
+- Parallelism finders: `find_parallel_planes` / `find_parallel_directions` +
+  `ParallelismMatch`/`ParallelismReport`, built on `_integer_index_orbit` (symmetry orbit of
+  integer indices via Cartesian operator action + integer recovery, antipodal-collapsed).
+  Verified: KS pairs exactly one {111} member with a {011} child per variant (24 matches,
+  0 deviation), same for <110>||<111> directions.
+- `describe()` doctrine landed on: `OrientationRelationship` (phases/point groups, defining
+  parallelisms via notation formatters, misorientation representative, variant count),
+  `DirectionCorrespondence`, `PlaneCorrespondence`, `ORDeviationReport`, `ParallelismReport`,
+  `VariantSelectionReport`, `ParentReconstructionReport`. Substring-validated in tests.
+- mypy pattern: notation formatters require `Sequence[int]` — wrap ndarrays with the
+  `_index_tuple` helper in transformation.py.
+- Docs: concept-page sections (parallelism finders, explainable reports); two validation-matrix
+  rows; specifications.md Transformation list extended.
+- Gates: 828 passed; ruff/mypy/integrity/Sphinx green.
+
 ## Next Actions
 
-1. Commit Phase 3, push.
-2. Phase 4 (F4 + finding 16): parallelism finders over symmetry families (given OR + parent
-   plane/direction family, per-variant child (near-)parallels with deviations, typed report);
-   `describe()` doctrine on OrientationRelationship, DirectionCorrespondence/
-   PlaneCorrespondence, ORDeviationReport, VariantSelectionReport, ParentReconstructionReport,
-   intervariant results — convention-explicit prose with key numbers, tested via substring
-   assertions (not exact prose).
+1. Commit Phase 4, push.
+2. Phase 5 (findings 17, 18): autouse matplotlib figure-close fixture in tests/conftest.py
+   (check it exists); tighten filterwarnings (start with `error` + explicit exemptions —
+   inspect the 117 current warnings first: matplotlib figure leaks are the known bulk);
+   add coverage to CI base lane (`pytest --cov=pytex --cov-report=term --cov-fail-under=85`
+   as a starting ratchet; confirm actual number first).
