@@ -23,6 +23,7 @@ This document is the authoritative validation ledger for PyTex phase-transformat
 | Transformation manifest schema | Stable JSON schema plus round-trip tests | implemented | `TransformationManifest` now records dedicated transformation workflow context. |
 | Experimental parent-candidate scoring | Internal deterministic tests and benchmark identity | implemented | Candidate-parent ranking is staged under `pytex.experimental` with explicit non-stable status. |
 | Literature-tracked starter transformation families | Textbook Bain and Nishiyama-Wassermann correspondences | foundational | PyTex now tracks named literature-facing helpers and tests, but broader family breadth and curated datasets remain ahead. |
+| Index correspondence (parent-child Miller mapping) | Analytic identities: defining parallelisms (KS, Bain, Burgers), inverse-transpose and zone-law invariants, round trips, KS close-packed-group counts across all 24 variants | implemented | `correspondence_direct`/`correspondence_reciprocal`, `map_plane_to_child`/`map_direction_to_child` and parent-inverses, variant tables; rationalized indices with atan2 angular residuals; hexagonal Miller-Bravais covered; worked examples in the transformation gallery. |
 | Full parent reconstruction workflows | Literature-backed reconstruction studies and curated datasets | planned | PyTex intentionally keeps full reconstruction outside the stable API until benchmark breadth is stronger. |
 
 ## Current Posture

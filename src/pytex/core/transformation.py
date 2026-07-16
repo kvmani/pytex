@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -60,6 +61,138 @@ def _coerce_parallel_direction(
             "OrientationRelationship.parallel_directions must not include zero vectors."
         )
     return CrystalDirection.from_cartesian(vector, phase=phase)
+
+
+#: Bound of the integer-triple search used when rationalizing mapped indices.
+#: 17 covers the full standard OR catalog, including the Greninger-Troiano
+#: <5 12 17> direction family.
+DEFAULT_RATIONALIZATION_MAX_INDEX = 17
+
+
+@lru_cache(maxsize=8)
+def _primitive_integer_triples(max_index: int) -> np.ndarray:
+    """All primitive (gcd = 1) signed integer triples with entries in [-max_index, max_index]."""
+
+    if max_index < 1:
+        raise ValueError("max_index must be at least 1.")
+    axis = np.arange(-max_index, max_index + 1, dtype=np.int64)
+    grid = np.stack(np.meshgrid(axis, axis, axis, indexing="ij"), axis=-1).reshape(-1, 3)
+    nonzero = grid[np.any(grid != 0, axis=1)]
+    primitive = nonzero[np.gcd.reduce(np.abs(nonzero), axis=1) == 1]
+    primitive = np.ascontiguousarray(primitive)
+    primitive.setflags(write=False)
+    return primitive
+
+
+def _rationalize_components(
+    components: np.ndarray, *, basis_matrix: np.ndarray, max_index: int
+) -> tuple[np.ndarray, float]:
+    """Nearest primitive integer triple to real basis components, by angle.
+
+    Candidate triples are compared with the exact components through their
+    Cartesian images under ``basis_matrix`` (direct basis for directions,
+    reciprocal basis for plane indices), so the returned residual is the true
+    angular deviation in the relevant space. The match is sign-sensitive: the
+    triple whose image points closest to the exact image wins.
+    """
+
+    target = basis_matrix @ np.asarray(components, dtype=np.float64)
+    magnitude = float(np.linalg.norm(target))
+    if np.isclose(magnitude, 0.0):
+        raise ValueError("Cannot rationalize components with a vanishing Cartesian image.")
+    target_unit = target / magnitude
+    candidates = _primitive_integer_triples(max_index)
+    images = candidates.astype(np.float64) @ basis_matrix.T
+    units = images / np.linalg.norm(images, axis=1)[:, None]
+    cosines = units @ target_unit
+    best = int(np.argmax(cosines))
+    # atan2 keeps full precision for near-zero angles where arccos floors out.
+    sine = float(np.linalg.norm(np.cross(units[best], target_unit)))
+    residual_deg = float(np.degrees(np.arctan2(sine, cosines[best])))
+    return candidates[best].copy(), residual_deg
+
+
+def _index_correspondence(
+    components: np.ndarray,
+    *,
+    rotation: np.ndarray,
+    source_basis: np.ndarray,
+    target_basis: np.ndarray,
+    max_index: int,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    exact = np.linalg.solve(
+        target_basis, rotation @ (source_basis @ np.asarray(components, dtype=np.float64))
+    )
+    rational, residual_deg = _rationalize_components(
+        exact, basis_matrix=target_basis, max_index=max_index
+    )
+    exact = np.ascontiguousarray(exact)
+    exact.setflags(write=False)
+    return exact, rational, residual_deg
+
+
+@dataclass(frozen=True, slots=True)
+class DirectionCorrespondence:
+    """The image of a crystal direction under an orientation relationship.
+
+    ``target_exact_coordinates`` are the generally irrational direct-basis
+    components of the mapped direction in the target phase;
+    ``rational_indices`` is the nearest primitive integer ``[uvw]`` (the
+    coordinates of ``target``), and ``angular_residual_deg`` is the real-space
+    angle between the exact image and its rationalization. ``variant_index``
+    is set when the mapping went through a specific transformation variant.
+    """
+
+    source: CrystalDirection
+    target: CrystalDirection
+    target_exact_coordinates: np.ndarray
+    rational_indices: np.ndarray
+    angular_residual_deg: float
+    variant_index: int | None = None
+
+    def __post_init__(self) -> None:
+        exact = np.asarray(self.target_exact_coordinates, dtype=np.float64)
+        rational = np.asarray(self.rational_indices, dtype=np.int64)
+        if exact.shape != (3,) or rational.shape != (3,):
+            raise ValueError("DirectionCorrespondence components must have shape (3,).")
+        if not np.isfinite(self.angular_residual_deg) or self.angular_residual_deg < 0.0:
+            raise ValueError("angular_residual_deg must be finite and non-negative.")
+        for array in (exact, rational):
+            array.setflags(write=False)
+        object.__setattr__(self, "target_exact_coordinates", exact)
+        object.__setattr__(self, "rational_indices", rational)
+
+
+@dataclass(frozen=True, slots=True)
+class PlaneCorrespondence:
+    """The image of a crystal plane under an orientation relationship.
+
+    ``target_exact_indices`` are the generally irrational reciprocal-basis
+    components ``(hkl)`` of the mapped plane in the target phase;
+    ``rational_indices`` is the nearest primitive integer ``(hkl)`` (the
+    Miller indices of ``target``), and ``angular_residual_deg`` is the angle
+    between the exact and rationalized plane normals. ``variant_index`` is set
+    when the mapping went through a specific transformation variant.
+    """
+
+    source: CrystalPlane
+    target: CrystalPlane
+    target_exact_indices: np.ndarray
+    rational_indices: np.ndarray
+    angular_residual_deg: float
+    variant_index: int | None = None
+
+    def __post_init__(self) -> None:
+        exact = np.asarray(self.target_exact_indices, dtype=np.float64)
+        rational = np.asarray(self.rational_indices, dtype=np.int64)
+        if exact.shape != (3,) or rational.shape != (3,):
+            raise ValueError("PlaneCorrespondence components must have shape (3,).")
+        if not np.isfinite(self.angular_residual_deg) or self.angular_residual_deg < 0.0:
+            raise ValueError("angular_residual_deg must be finite and non-negative.")
+        for array in (exact, rational):
+            array.setflags(write=False)
+        object.__setattr__(self, "target_exact_indices", exact)
+        object.__setattr__(self, "rational_indices", rational)
 
 
 def _require_proper_point_group(
@@ -365,6 +498,242 @@ class OrientationRelationship:
             )
         return inverse.apply(vector)
 
+    def _resolve_variant_rotation(
+        self, variant: TransformationVariant | None
+    ) -> tuple[np.ndarray, int | None]:
+        if variant is None:
+            return self.parent_to_child_rotation.as_matrix(), None
+        relationship = variant.orientation_relationship
+        if relationship is not self and not (
+            relationship.name == self.name
+            and phases_semantically_match(relationship.parent_phase, self.parent_phase)
+            and phases_semantically_match(relationship.child_phase, self.child_phase)
+        ):
+            raise ValueError(
+                "variant must belong to this OrientationRelationship "
+                "(same name, parent phase, and child phase)."
+            )
+        return variant.parent_to_child_rotation.as_matrix(), variant.variant_index
+
+    def correspondence_direct(
+        self, *, variant: TransformationVariant | None = None
+    ) -> np.ndarray:
+        """Direction-index correspondence matrix (parent ``[uvw]`` to child ``[uvw]``).
+
+        Purpose: the linear map that carries direct-basis direction components
+        across the relationship: ``u_child = M @ u_parent`` with
+        ``M = A_child^-1 R A_parent`` built from the phases' direct structure
+        matrices and the (variant) parent-to-child rotation. It is generally
+        not a rotation matrix and generally irrational; use
+        ``map_direction_to_child`` for rationalized indices with residuals.
+
+        Inputs: optionally a ``TransformationVariant`` of this relationship.
+
+        Output: a read-only ``(3, 3)`` float matrix.
+        """
+
+        rotation, _ = self._resolve_variant_rotation(variant)
+        parent_basis = self.parent_phase.lattice.direct_basis().matrix
+        child_basis = self.child_phase.lattice.direct_basis().matrix
+        matrix = np.linalg.solve(child_basis, rotation @ parent_basis)
+        matrix = np.ascontiguousarray(matrix)
+        matrix.setflags(write=False)
+        return matrix
+
+    def correspondence_reciprocal(
+        self, *, variant: TransformationVariant | None = None
+    ) -> np.ndarray:
+        """Plane-index correspondence matrix (parent ``(hkl)`` to child ``(hkl)``).
+
+        Purpose: the linear map that carries reciprocal-basis plane components
+        across the relationship: ``h_child = M* @ h_parent`` with
+        ``M* = B_child^-1 R B_parent`` built from the reciprocal structure
+        matrices. It equals the inverse-transpose of
+        ``correspondence_direct``, which preserves the zone law
+        ``h . u`` across the mapping.
+
+        Inputs: optionally a ``TransformationVariant`` of this relationship.
+
+        Output: a read-only ``(3, 3)`` float matrix.
+        """
+
+        rotation, _ = self._resolve_variant_rotation(variant)
+        parent_basis = self.parent_phase.lattice.reciprocal_basis().matrix
+        child_basis = self.child_phase.lattice.reciprocal_basis().matrix
+        matrix = np.linalg.solve(child_basis, rotation @ parent_basis)
+        matrix = np.ascontiguousarray(matrix)
+        matrix.setflags(write=False)
+        return matrix
+
+    def map_direction_to_child(
+        self,
+        direction: CrystalDirection,
+        *,
+        variant: TransformationVariant | None = None,
+        max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    ) -> DirectionCorrespondence:
+        """Map a parent crystal direction to its child-phase counterpart.
+
+        Purpose: answers "which child ``[uvw]`` corresponds to this parent
+        direction" for the relationship (or one of its variants), returning
+        the exact (irrational) child components, the nearest primitive integer
+        indices within ``max_index``, and the angular residual between them.
+
+        Inputs: a ``CrystalDirection`` belonging to the parent phase;
+        optionally a variant and the rationalization index bound.
+
+        Output: a ``DirectionCorrespondence``.
+        """
+
+        if not phases_semantically_match(direction.phase, self.parent_phase):
+            raise ValueError("direction.phase must match the relationship parent phase.")
+        rotation, variant_index = self._resolve_variant_rotation(variant)
+        return self._map_direction(
+            direction,
+            rotation=rotation,
+            source_phase=self.parent_phase,
+            target_phase=self.child_phase,
+            max_index=max_index,
+            variant_index=variant_index,
+        )
+
+    def map_direction_to_parent(
+        self,
+        direction: CrystalDirection,
+        *,
+        variant: TransformationVariant | None = None,
+        max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    ) -> DirectionCorrespondence:
+        """Map a child crystal direction back to its parent-phase counterpart.
+
+        The inverse of ``map_direction_to_child``: use it to interpret
+        product-phase measurements against parent-frame stereography.
+        """
+
+        if not phases_semantically_match(direction.phase, self.child_phase):
+            raise ValueError("direction.phase must match the relationship child phase.")
+        rotation, variant_index = self._resolve_variant_rotation(variant)
+        return self._map_direction(
+            direction,
+            rotation=rotation.T,
+            source_phase=self.child_phase,
+            target_phase=self.parent_phase,
+            max_index=max_index,
+            variant_index=variant_index,
+        )
+
+    def _map_direction(
+        self,
+        direction: CrystalDirection,
+        *,
+        rotation: np.ndarray,
+        source_phase: Phase,
+        target_phase: Phase,
+        max_index: int,
+        variant_index: int | None,
+    ) -> DirectionCorrespondence:
+        exact, rational, residual_deg = _index_correspondence(
+            direction.coordinates,
+            rotation=rotation,
+            source_basis=source_phase.lattice.direct_basis().matrix,
+            target_basis=target_phase.lattice.direct_basis().matrix,
+            max_index=max_index,
+        )
+        return DirectionCorrespondence(
+            source=direction,
+            target=CrystalDirection(rational.astype(np.float64), phase=target_phase),
+            target_exact_coordinates=exact,
+            rational_indices=rational,
+            angular_residual_deg=residual_deg,
+            variant_index=variant_index,
+        )
+
+    def map_plane_to_child(
+        self,
+        plane: CrystalPlane,
+        *,
+        variant: TransformationVariant | None = None,
+        max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    ) -> PlaneCorrespondence:
+        """Map a parent crystal plane to its child-phase counterpart.
+
+        Purpose: answers "which child ``(hkl)`` corresponds to this parent
+        plane" for the relationship (or one of its variants), returning the
+        exact (irrational) child plane components, the nearest primitive
+        integer Miller indices within ``max_index``, and the angular residual
+        between the exact and rationalized plane normals.
+
+        Inputs: a ``CrystalPlane`` belonging to the parent phase; optionally a
+        variant and the rationalization index bound.
+
+        Output: a ``PlaneCorrespondence``.
+        """
+
+        if not phases_semantically_match(plane.phase, self.parent_phase):
+            raise ValueError("plane.phase must match the relationship parent phase.")
+        rotation, variant_index = self._resolve_variant_rotation(variant)
+        return self._map_plane(
+            plane,
+            rotation=rotation,
+            source_phase=self.parent_phase,
+            target_phase=self.child_phase,
+            max_index=max_index,
+            variant_index=variant_index,
+        )
+
+    def map_plane_to_parent(
+        self,
+        plane: CrystalPlane,
+        *,
+        variant: TransformationVariant | None = None,
+        max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    ) -> PlaneCorrespondence:
+        """Map a child crystal plane back to its parent-phase counterpart.
+
+        The inverse of ``map_plane_to_child``: use it for habit-plane trace
+        analysis and for reading product-phase diffraction against the parent.
+        """
+
+        if not phases_semantically_match(plane.phase, self.child_phase):
+            raise ValueError("plane.phase must match the relationship child phase.")
+        rotation, variant_index = self._resolve_variant_rotation(variant)
+        return self._map_plane(
+            plane,
+            rotation=rotation.T,
+            source_phase=self.child_phase,
+            target_phase=self.parent_phase,
+            max_index=max_index,
+            variant_index=variant_index,
+        )
+
+    def _map_plane(
+        self,
+        plane: CrystalPlane,
+        *,
+        rotation: np.ndarray,
+        source_phase: Phase,
+        target_phase: Phase,
+        max_index: int,
+        variant_index: int | None,
+    ) -> PlaneCorrespondence:
+        exact, rational, residual_deg = _index_correspondence(
+            plane.miller.indices.astype(np.float64),
+            rotation=rotation,
+            source_basis=source_phase.lattice.reciprocal_basis().matrix,
+            target_basis=target_phase.lattice.reciprocal_basis().matrix,
+            max_index=max_index,
+        )
+        return PlaneCorrespondence(
+            source=plane,
+            target=CrystalPlane(
+                MillerIndex(rational, phase=target_phase), phase=target_phase
+            ),
+            target_exact_indices=exact,
+            rational_indices=rational,
+            angular_residual_deg=residual_deg,
+            variant_index=variant_index,
+        )
+
     def inverse(self, *, name: str | None = None) -> OrientationRelationship:
         return OrientationRelationship(
             name=name or f"{self.child_phase.name}_to_{self.parent_phase.name}",
@@ -627,6 +996,50 @@ def intervariant_misorientations(
                 )
             )
     return tuple(results)
+
+
+def map_direction_across_variants(
+    relationship: OrientationRelationship,
+    direction: CrystalDirection,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+) -> tuple[DirectionCorrespondence, ...]:
+    """Map one parent direction through every transformation variant.
+
+    Purpose: the variant-resolved answer to "what does this parent ``[uvw]``
+    become in the product phase" — one ``DirectionCorrespondence`` per variant
+    (in ``generate_variants()`` order unless ``variants`` is given), each
+    carrying exact components, rationalized indices, and the residual.
+    """
+
+    resolved = relationship.generate_variants() if variants is None else variants
+    return tuple(
+        relationship.map_direction_to_child(direction, variant=variant, max_index=max_index)
+        for variant in resolved
+    )
+
+
+def map_plane_across_variants(
+    relationship: OrientationRelationship,
+    plane: CrystalPlane,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+) -> tuple[PlaneCorrespondence, ...]:
+    """Map one parent plane through every transformation variant.
+
+    Purpose: the variant-resolved answer to "what does this parent ``(hkl)``
+    become in the product phase" — one ``PlaneCorrespondence`` per variant (in
+    ``generate_variants()`` order unless ``variants`` is given), each carrying
+    exact components, rationalized Miller indices, and the residual.
+    """
+
+    resolved = relationship.generate_variants() if variants is None else variants
+    return tuple(
+        relationship.map_plane_to_child(plane, variant=variant, max_index=max_index)
+        for variant in resolved
+    )
 
 
 @dataclass(frozen=True, slots=True)

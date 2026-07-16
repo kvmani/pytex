@@ -115,12 +115,16 @@ from pytex.core.sphere import (
 )
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
+    DirectionCorrespondence,
     IntervariantMisorientation,
     OrientationRelationship,
     PhaseTransformationRecord,
+    PlaneCorrespondence,
     TransformationVariant,
     intervariant_misorientation_angles_deg,
     intervariant_misorientations,
+    map_direction_across_variants,
+    map_plane_across_variants,
 )
 
 __all__ = [
@@ -144,6 +148,8 @@ __all__ = [
     "Handedness",
     "IPFSectorBoundary",
     "IntervariantMisorientation",
+    "PlaneCorrespondence",
+    "DirectionCorrespondence",
     "Lattice",
     "MeasurementQuality",
     "MillerBravaisDirection",
@@ -203,6 +209,8 @@ __all__ = [
     "get_phase_fixture",
     "intervariant_misorientation_angles_deg",
     "intervariant_misorientations",
+    "map_plane_across_variants",
+    "map_direction_across_variants",
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",

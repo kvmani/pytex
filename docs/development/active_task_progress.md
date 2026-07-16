@@ -16,8 +16,8 @@ guide itself). The OR feature definitions (F1–F5) live in
 
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
-- Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`
-- Phase: 1 complete (committing), next Phase 2
+- Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`
+- Phase: 2 complete (committing), next Phase 3
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -104,13 +104,35 @@ guide itself). The OR feature definitions (F1–F5) live in
 - Note: `Phase.__eq__` (and other array-field dataclasses) still have the ambiguous-truth
   hazard when comparing distinct-but-equal instances — flagged for a later dedicated pass.
 
+## Phase 2 outcomes (2026-07-16)
+
+- Index-correspondence surface landed in `core/transformation.py`:
+  `correspondence_direct()` (`M = A_c^-1 R A_p`), `correspondence_reciprocal()`
+  (`M* = M^-T`, zone-law preserving), `map_direction_to_child/parent`,
+  `map_plane_to_child/parent` (each optionally per `variant=`), module functions
+  `map_direction_across_variants` / `map_plane_across_variants`; result types
+  `DirectionCorrespondence` / `PlaneCorrespondence` with exact components, primitive-integer
+  rationalization (bounded search, default `DEFAULT_RATIONALIZATION_MAX_INDEX = 17` for GT
+  <5 12 17>), and atan2 angular residuals (arccos floors at ~8.5e-7 deg — use atan2 pattern
+  for any near-zero angle work).
+- Verified physics: KS (111)→(011) and [-101]→[-1-11] exact; Bain [110]→[100]; Burgers
+  (110)→(0001) and [-111]→[11-20]; inverse-transpose + zone-law identities; round trips;
+  across 24 KS variants exactly the 6 CP-group variants map (111)γ to {011} (residual 0),
+  the other 18 land on irrational images — pinned in tests (9 new tests).
+- Docs: registry symbols \(\mathbf{M}\), \(\mathbf{M}^{*}\); theory note
+  `docs/tex/algorithms/orientation_relationship_index_correspondence.tex`; concept page
+  `docs/site/concepts/orientation_relationships.md` (+ toctree); site include-stubs for the OR
+  foundation and the development guide (fixed all Sphinx xref warnings — root-level files are
+  referenced as backticked paths, not links, in site-rendered docs); worked-example group
+  `transformation` (KS plane + Bain direction identities, gallery regenerated);
+  validation-matrix row (implemented).
+- Gates: 819 passed; ruff/mypy/integrity green; Sphinx build zero warnings.
+
 ## Next Actions
 
-1. Commit Phase 1, push.
-2. Phase 2 (F1–F3): `correspondence_direct()`/`correspondence_reciprocal()` on
-   `OrientationRelationship` + `TransformationVariant`; `map_direction_to_child` /
-   `map_plane_to_child` + child→parent inverses returning exact components, rationalized
-   indices (bounded search), angular residual; all-variant table. Worked example (Bain/KS),
-   LaTeX theory note `docs/tex/algorithms/orientation_relationship_correspondence.tex`,
-   validation-matrix row, parity note. Key math: directions map via
-   `A_c^{-1} R A_p` (direct bases), plane normals via reciprocal bases (inverse-transpose).
+1. Commit Phase 2, push.
+2. Phase 3 (F5): `misorientation()` on OrientationRelationship (symmetry-reduced axis/angle;
+   pin KS ≈ 42.85 deg about <0.968 0.178 0.178>, Morito convention) and
+   `or_deviation(parents, children, relationship)` (min-over-variants symmetry-reduced
+   residual; zero on synthetic data). Reuse `_reduced_pair_disorientation_angles` from
+   orientation.py; check its signature first.

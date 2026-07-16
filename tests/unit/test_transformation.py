@@ -21,6 +21,7 @@ from pytex.core import (
     SymmetrySpec,
     TransformationVariant,
     VectorSet,
+    map_plane_across_variants,
     phases_semantically_match,
 )
 
@@ -677,3 +678,125 @@ def test_burgers_parallel_directions_keep_miller_bravais_meaning() -> None:
     )
     _, child_direction = relationship.parallel_directions[0]
     assert_allclose(child_direction.coordinates, [1.0, 1.0, 0.0], atol=1e-12)
+
+
+def test_ks_defining_parallelisms_map_exactly() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    plane = ks.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    )
+    assert_allclose(plane.rational_indices, [0, 1, 1])
+    assert plane.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    direction = ks.map_direction_to_child(CrystalDirection([-1.0, 0.0, 1.0], phase=parent))
+    assert_allclose(direction.rational_indices, [-1, -1, 1])
+    assert direction.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_bain_direction_correspondence_matches_literature() -> None:
+    _, _, parent, child = make_phases()
+    bain = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    mapped = bain.map_direction_to_child(CrystalDirection([1.0, 1.0, 0.0], phase=parent))
+    assert_allclose(mapped.rational_indices, [1, 0, 0])
+    assert mapped.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    cube_axis = bain.map_direction_to_child(CrystalDirection([1.0, 0.0, 0.0], phase=parent))
+    assert tuple(sorted(np.abs(cube_axis.rational_indices))) == (0, 1, 1)
+    assert cube_axis.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_correspondence_reciprocal_is_inverse_transpose_and_preserves_zone_law() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    direct = ks.correspondence_direct()
+    reciprocal = ks.correspondence_reciprocal()
+    assert_allclose(reciprocal, np.linalg.inv(direct).T, atol=1e-12)
+    plane_indices = np.array([1.0, 1.0, 1.0])
+    direction_indices = np.array([-1.0, 0.0, 1.0])
+    assert float((reciprocal @ plane_indices) @ (direct @ direction_indices)) == pytest.approx(
+        0.0, abs=1e-12
+    )
+
+
+def test_direction_round_trip_recovers_indices() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    forward = ks.map_direction_to_child(CrystalDirection([-1.0, 0.0, 1.0], phase=parent))
+    back = ks.map_direction_to_parent(forward.target)
+    assert_allclose(back.rational_indices, [-1, 0, 1])
+    assert back.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_ks_close_packed_group_membership_across_variants() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    plane = CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    results = map_plane_across_variants(ks, plane)
+    assert len(results) == 24
+    exact_images = [
+        result
+        for result in results
+        if result.angular_residual_deg < 1e-6
+        and tuple(sorted(np.abs(result.rational_indices))) == (0, 1, 1)
+    ]
+    # Exactly the six variants sharing (111) as their close-packed plane map
+    # it onto a {011} child plane; the other 18 land on irrational images.
+    assert len(exact_images) == 6
+    assert all(result.variant_index is not None for result in results)
+
+
+def test_burgers_hexagonal_correspondence_keeps_index_meaning() -> None:
+    crystal_parent, _, parent, _ = make_phases()
+    hex_frame = ReferenceFrame(
+        name="hex_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    alpha = Phase(
+        "alpha",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=hex_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+        crystal_frame=hex_frame,
+    )
+    burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent, child_phase=alpha
+    )
+    basal = burgers.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([1, 1, 0]), phase=parent), phase=parent)
+    )
+    assert_allclose(basal.rational_indices, [0, 0, 1])
+    assert basal.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    close_packed = burgers.map_direction_to_child(
+        CrystalDirection([-1.0, 1.0, 1.0], phase=parent)
+    )
+    assert_allclose(close_packed.rational_indices, [1, 1, 0])
+    assert close_packed.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_index_mapping_validates_phase_and_variant_membership() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    nw = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    with pytest.raises(ValueError, match="parent phase"):
+        ks.map_direction_to_child(CrystalDirection([1.0, 0.0, 0.0], phase=child))
+    with pytest.raises(ValueError, match="child phase"):
+        ks.map_direction_to_parent(CrystalDirection([1.0, 0.0, 0.0], phase=parent))
+    foreign_variant = nw.generate_variants()[0]
+    with pytest.raises(ValueError, match="must belong to this OrientationRelationship"):
+        ks.map_direction_to_child(
+            CrystalDirection([1.0, 0.0, 0.0], phase=parent), variant=foreign_variant
+        )

@@ -13,8 +13,8 @@ Companion documents introduced with this guide:
 
 - [Orientation Relationship Analysis Foundation](../architecture/orientation_relationship_analysis_foundation.md)
   — the feature and doctrine program for the OR-analysis flagship.
-- [AGENTS.md](../../AGENTS.md) and [mission.md](../../mission.md) — refreshed alongside this
-  review; the explainable-results doctrine below is now part of both.
+- `AGENTS.md` and `mission.md` (repository root) — refreshed alongside this review; the
+  explainable-results doctrine below is now part of both.
 
 ## 1. State Of The Repository (verified 2026-07)
 
@@ -236,8 +236,7 @@ merge:
 
 ### Normative
 
-- [Mission](../../mission.md)
-- [Specifications](../../specifications.md)
+- `mission.md` and `specifications.md` (repository root)
 - [Orientation Relationship Analysis Foundation](../architecture/orientation_relationship_analysis_foundation.md)
 - [Development Principles](../standards/development_principles.md)
 - [Engineering Governance](../standards/engineering_governance.md)

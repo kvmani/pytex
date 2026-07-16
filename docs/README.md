@@ -77,6 +77,7 @@
 - [EBSD Boundaries And Cleanup](tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [Diffraction Geometry And Bragg Rings](tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
 - [Powder XRD And SAED](tex/algorithms/powder_xrd_and_saed.tex)
+- [Orientation Relationship Index Correspondence](tex/algorithms/orientation_relationship_index_correspondence.tex)
 - [Reciprocal Space And Kinematic Spots](tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
 - [Validation Program](tex/validation/validation_program.tex)
 

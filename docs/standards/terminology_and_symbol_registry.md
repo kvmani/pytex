@@ -103,6 +103,8 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | \(\angle(\mathbf{n}_1, \mathbf{n}_2)\) | Angle between two plane normals (interplanar angle). |
 | \(\angle(\mathbf{d}_1, \mathbf{d}_2)\) | Angle between two lattice directions. |
 | \(m_{\{hkl\}}\) | Symmetry multiplicity of a plane family under the phase point group. |
+| \(\mathbf{M}\) | Direction-index correspondence matrix of an orientation relationship: \(\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}\) with \(\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}\) built from the direct structure matrices. |
+| \(\mathbf{M}^{*}\) | Plane-index correspondence matrix of an orientation relationship: \(\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}\), with \(\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}\) so the zone law \(\mathbf{h} \cdot \mathbf{u}\) is preserved. |
 
 ### Orientation and misorientation
 

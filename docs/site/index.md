@@ -20,6 +20,7 @@ concepts/texture_foundation
 concepts/ebsd_foundation
 concepts/diffraction_foundation
 concepts/symmetry_and_fundamental_regions
+concepts/orientation_relationships
 concepts/visualization_primitives
 ```
 
@@ -77,6 +78,7 @@ architecture/index
 standards/index
 benchmarks/index
 api/index
+roadmap/critical_review_and_development_guide
 roadmap/implementation_roadmap
 roadmap/world_class_feature_roadmap
 reference/canonical_docs
