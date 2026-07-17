@@ -19,8 +19,9 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
-- Phase 7 pushed as `d40fb14`
-- Phase: 8 complete (committing) — Cycle B in progress
+- Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`
+- Phase: 9 complete (committing) — **Cycle B of the development guide is fully executed**
+  (findings 3, 4, 7, 19, 20 closed; finding 4 at experimental/foundational status by design).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -225,15 +226,36 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   deadline disabled for CI stability.
 - Gates: 839 passed, zero warnings; ruff/mypy/integrity green.
 
-## Next Actions (Cycle B remainder, per the development guide §3)
+## Phase 9 outcomes (2026-07-17)
 
-1. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
-   grain-boundary network (`ebsd/models.py` grains + union-find as in `merge_by_csl`);
-   synthetic fixture first (planted parent grains -> variants -> reconstruct), literature
-   fixture second. Stage under `pytex.experimental` until validation breadth exists.
-   Building blocks now all exist: variants, or_deviation, fit_orientation_relationship,
-   vectorized select_variants. This is the last major Cycle B item — an L-size,
-   multi-session program; open a fresh session with this note as the entry point.
-2. Queued follow-ups recorded in ledgers: MTEX calcParent2Child parity fixture; OR-fitting
-   worked example; OrientationSet slicing API (returns malformed Orientation today);
-   broaden property suites to hexagonal phases and OrientationSet reductions.
+- **Finding 4 / F8 v1 landed (experimental):**
+  `pytex.experimental.reconstruct_parent_grains(children, adjacency, relationship)` +
+  `ParentGrainReconstructionResult` in `experimental/parent_grain_reconstruction.py`.
+  Pipeline: (1) edge test — child-symmetry-reduced boundary disorientation matches the
+  intervariant fingerprint (0 plus all distinct pair angles from
+  `intervariant_misorientation_angles_deg`) within tolerance; (2) union-find clustering over
+  linked edges; (3) per cluster, candidate parents `V_k^T C_first` scored against every member
+  (min-over-variants disorientation), best candidate wins; per-grain residuals + `describe()`
+  with explicit singleton-ambiguity and experimental-status caveats.
+- Verified: 3 planted KS parents × 5 children — exact partition recovery, both cross-parent
+  edges rejected, parents to 0 deg; 0.3-deg noise keeps the partition (parents within 1.5 deg —
+  v1 estimate carries first-member noise; averaging refinement is the queued v2 improvement).
+- Validation-matrix row moved planned → foundational with the remaining-work statement
+  (literature fixtures, EBSD grain-graph wiring, candidate averaging).
+- Gates: 843 passed, zero warnings; ruff/mypy/integrity green.
+
+## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+Cycle B is complete. The next horizon (guide findings 5, 8–15, 21, 22) is larger scientific
+breadth; suggested next phases in value order:
+
+1. Parent-reconstruction v2: per-cluster parent refinement by symmetry-aligned quaternion
+   averaging (reuse the `fit_orientation_relationship` alignment/eigen-mean machinery), EBSD
+   grain-graph wiring (`GrainGraphEdge` -> adjacency), and a literature fixture
+   (lath-martensite block). Then consider stabilization per the OR foundation doc.
+2. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
+   example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
+   property suites; variant pole-figure plotting (F10).
+3. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
+   (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
+   timing lane (finding 21), release engineering/CHANGELOG (finding 22).
