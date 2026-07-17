@@ -133,6 +133,7 @@ from pytex.core.transformation import (
     map_direction_across_variants,
     map_plane_across_variants,
     or_deviation,
+    variant_close_packed_groups,
 )
 
 __all__ = [
@@ -227,6 +228,7 @@ __all__ = [
     "find_parallel_planes",
     "map_direction_across_variants",
     "or_deviation",
+    "variant_close_packed_groups",
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",

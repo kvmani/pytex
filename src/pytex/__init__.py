@@ -185,6 +185,7 @@ from pytex.core import (
     specimen_direction_vector,
     standard_bcc_hcp_relationships,
     standard_fcc_bcc_relationships,
+    variant_close_packed_groups,
     zone_law_value_hkil_uvtw,
 )
 from pytex.diffraction import (
@@ -591,6 +592,7 @@ __all__ = [
     "find_parallel_planes",
     "map_direction_across_variants",
     "or_deviation",
+    "variant_close_packed_groups",
     "invert_labotex_pole_figures",
     "invert_xrdml_pole_figures",
     "ipf_color",

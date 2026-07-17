@@ -252,3 +252,109 @@ def test_reconstruction_from_ebsd_grain_graph() -> None:
     assert result.parent_count == 2
     assert result.cluster_sizes.tolist() == [2, 2]
     assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6)
+
+
+def test_lath_martensite_structure_full_24_variant_parent() -> None:
+    """Literature-structure fixture: one austenite grain, all 24 KS variants.
+
+    Reproduces the lath-martensite hierarchy of Morito et al.: 24 variants
+    from one parent form four close-packed packets of six variants; the
+    reconstruction must gather all 24 children into one parent, recover the
+    parent orientation exactly, and variant selection must recover every
+    planted index.
+    """
+
+    from pytex.core import (
+        CrystalPlane,
+        MillerIndex,
+        PhaseTransformationRecord,
+        select_variants,
+        variant_close_packed_groups,
+    )
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = ks.generate_variants()
+    assert len(variants) == 24
+    parent_orientation = Orientation.from_euler(
+        20.0, 30.0, 40.0, specimen_frame=specimen, symmetry=parent_phase.symmetry,
+        phase=parent_phase,
+    )
+    quaternions = np.stack(
+        [
+            parent_orientation.rotation.compose(
+                variant.parent_to_child_rotation.inverse()
+            ).quaternion
+            for variant in variants
+        ],
+        axis=0,
+    )
+    children = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=child_phase.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child_phase.symmetry,
+        phase=child_phase,
+    )
+    # Packet structure: four close-packed packets of six variants each.
+    packets = variant_close_packed_groups(
+        ks,
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent_phase), phase=parent_phase),
+    )
+    assert packets.shape == (24,)
+    assert np.bincount(packets).tolist() == [6, 6, 6, 6]
+    # Reconstruction: chain adjacency over all 24 children -> one parent.
+    adjacency = np.asarray(list(pairwise(range(24))), dtype=np.int64)
+    result = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=2.0)
+    assert result.parent_count == 1
+    assert result.cluster_sizes.tolist() == [24]
+    assert result.edges_linked == adjacency.shape[0]
+    assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-8)
+    distance = _symmetry_reduced_angle_between_deg(
+        result.parent_orientations.as_matrices()[0],
+        parent_orientation.rotation.as_matrix(),
+        child_operators=np.eye(3, dtype=np.float64)[None, :, :],
+        parent_operators=parent_phase.symmetry.operators,
+    )
+    assert distance == pytest.approx(0.0, abs=1e-6)
+    # Variant selection recovers every planted variant index.
+    record = PhaseTransformationRecord(
+        name="lath_block",
+        orientation_relationship=ks,
+        parent_orientation=parent_orientation,
+        child_orientations=children,
+    )
+    report = select_variants(record)
+    assert report.variant_indices.tolist() == [variant.variant_index for variant in variants]
+    assert report.scores_deg.max() == pytest.approx(0.0, abs=1e-8)
+
+
+def test_burgers_variant_groups_form_six_pairs() -> None:
+    from pytex.core import CrystalPlane, MillerIndex, variant_close_packed_groups
+
+    parent_phase, _, _ = _phases()
+    hex_frame = ReferenceFrame(
+        name="recon_hex_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    alpha = Phase(
+        "alpha_ti",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=hex_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+        crystal_frame=hex_frame,
+    )
+    burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent_phase, child_phase=alpha
+    )
+    groups = variant_close_packed_groups(
+        burgers,
+        CrystalPlane(MillerIndex(np.array([1, 1, 0]), phase=parent_phase), phase=parent_phase),
+    )
+    # Twelve Burgers variants inherit their basal plane from the six {110}
+    # parent planes: six groups of two.
+    assert groups.shape == (12,)
+    assert np.bincount(groups).tolist() == [2, 2, 2, 2, 2, 2]

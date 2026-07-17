@@ -20,8 +20,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
 - Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done);
-  Phase 10 as `de58dfe`; Phase 11 as `8ce6049`
-- Phase: 12 complete (committing) — canonical-convention fix across the transformation stack.
+  Phase 10 as `de58dfe`; Phase 11 as `8ce6049`; Phase 12 as `3266d21` (convention bug fix)
+- Phase: 13 complete (committing) — packet classification + lath-martensite fixture.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -298,12 +298,26 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   the finding with the lesson (synthetic tests must build inputs through the canonical
   convention, not the code-under-test's own composition).
 
+## Phase 13 outcomes (2026-07-17)
+
+- **F9 packet classification landed:** `variant_close_packed_groups(relationship,
+  parent_plane)` (stable surface, `core/transformation.py`) labels each variant by the parent
+  family member it carries into exact parallelism. Validated against the Morito hierarchy:
+  KS + {111} → four packets of six variants; Burgers + {110} → six groups of two.
+- **Lath-martensite literature-structure fixture:** one austenite parent with all 24 KS
+  variants as children — reconstruction gathers all 24 into one parent recovered exactly,
+  variant selection recovers every planted index 1..24, and packet labels come out 4x6.
+  End-to-end validation of reconstruction + selection + packet classification on one fixture
+  (external measured-data fixtures remain the queued step before stabilization).
+- Two validation-matrix rows; concept-page "Variant packets" section; specifications entry.
+- Gates: 847 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
-1. Literature fixture for reconstruction (lath-martensite block) toward stabilization.
-2. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
+1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
    example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
-   property suites; variant pole-figure plotting (F10).
-3. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
+   property suites; variant pole-figure plotting (F10); external measured-data
+   reconstruction fixture.
+2. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
    timing lane (finding 21), release engineering/CHANGELOG (finding 22).

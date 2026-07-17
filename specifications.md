@@ -109,6 +109,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `map_direction_across_variants`
 - `map_plane_across_variants`
 - `or_deviation`
+- `variant_close_packed_groups`
 - `IntervariantMisorientation`
 - `intervariant_misorientations`
 - `OrientationRelationshipCatalog`

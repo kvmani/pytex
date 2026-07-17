@@ -79,6 +79,14 @@ Hexagonal phases participate with full index meaning: Burgers maps
 \([\bar{1}11]_{\beta}\) to \([11\bar{2}0]_{\alpha}\) (stored as the
 three-index \([110]\)).
 
+## Variant packets
+
+`variant_close_packed_groups(relationship, parent_plane)` labels each variant
+by the parent family member it carries into exact parallelism — the packet
+classification of martensite crystallography. Kurdjumov-Sachs with the
+\(\{111\}\) family yields the four packets of six variants of lath martensite
+(Morito et al.); Burgers with \(\{110\}\) yields six groups of two.
+
 ## The OR as a misorientation, and deviation from it
 
 `misorientation()` returns the symmetry-reduced (disorientation)

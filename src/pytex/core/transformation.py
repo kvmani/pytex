@@ -1733,6 +1733,59 @@ def find_parallel_directions(
     )
 
 
+def variant_close_packed_groups(
+    relationship: OrientationRelationship,
+    parent_plane: CrystalPlane,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+) -> np.ndarray:
+    """Group variants by the parent family member they carry into exact parallelism.
+
+    Purpose: the packet classification of martensite crystallography — each
+    transformation variant maps exactly one member of the defining parent
+    plane family onto its low-index child plane (its close-packed / habit
+    packet plane). Variants sharing that member form one packet: for
+    Kurdjumov-Sachs and the {111} family this yields the four packets of six
+    variants of lath martensite (Morito et al.); for Burgers and the {110}
+    family, six groups of two.
+
+    Inputs: the relationship, the defining parent ``CrystalPlane`` (its
+    symmetry family is enumerated), and optionally a variant tuple.
+
+    Output: a read-only ``(n_variants,)`` int array of 0-based group labels in
+    ``generate_variants()`` order, relabeled by first occurrence.
+    """
+
+    if not phases_semantically_match(parent_plane.phase, relationship.parent_phase):
+        raise ValueError("parent_plane.phase must match the relationship parent phase.")
+    resolved = relationship.generate_variants() if variants is None else variants
+    members = _integer_index_orbit(
+        parent_plane.miller.indices, phase=relationship.parent_phase, reciprocal=True
+    )
+    parent_phase = relationship.parent_phase
+    member_planes = [
+        CrystalPlane(MillerIndex(member, phase=parent_phase), phase=parent_phase)
+        for member in members
+    ]
+    raw_labels = np.empty(len(resolved), dtype=np.int64)
+    for index, variant in enumerate(resolved):
+        residuals = [
+            relationship.map_plane_to_child(
+                plane, variant=variant, max_index=max_index
+            ).angular_residual_deg
+            for plane in member_planes
+        ]
+        raw_labels[index] = int(np.argmin(residuals))
+    relabel: dict[int, int] = {}
+    labels = np.empty_like(raw_labels)
+    for index, raw in enumerate(raw_labels):
+        labels[index] = relabel.setdefault(int(raw), len(relabel))
+    labels = np.ascontiguousarray(labels)
+    labels.setflags(write=False)
+    return labels
+
+
 def map_direction_across_variants(
     relationship: OrientationRelationship,
     direction: CrystalDirection,
