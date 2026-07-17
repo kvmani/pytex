@@ -556,6 +556,42 @@ class OrientationRelationship:
             provenance=provenance,
         )
 
+    @classmethod
+    def from_pitsch_schrader_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "pitsch_schrader",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Pitsch-Schrader OR: (0001)_hcp || {110}_bcc, <11-20>_hcp || <001>_bcc.
+
+        The hcp->bcc relationship of the ferrite/alpha systems (3 distinct
+        variants from one hexagonal parent); its representative sits 5.26 deg
+        from the inverse Burgers relationship — the hexagonal analogue of the
+        KS-Pitsch separation. The parent must be hexagonal (proper group 622)
+        and the child cubic (proper group 432).
+        """
+
+        _require_proper_point_group(
+            parent_phase, "622", role="parent", relationship="Pitsch-Schrader"
+        )
+        _require_proper_point_group(
+            child_phase, "432", role="child", relationship="Pitsch-Schrader"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((1, 1, 0), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=CrystalDirection.from_miller_bravais(
+                (1, 1, -2, 0), phase=parent_phase
+            ),
+            child_direction=_crystal_direction((0.0, 0.0, 1.0), phase=child_phase),
+            provenance=provenance,
+        )
+
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.parent_crystal_frame:

@@ -32,7 +32,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 21 pushed as `d34fef0`
 - Phase 22 pushed as `a120111`
 - Phase 23 pushed as `4567817`
-- Phase: 24 complete (committing) — F7 first stage: OR identification from boundaries.
+- Phase 24 pushed as `c6e68e3`
+- Phase: 25 complete (committing) — Pitsch-Schrader constructor (F14 slice, hex parent).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -345,6 +346,15 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 25 outcomes (2026-07-17)
+
+- **F14 slice:** `from_pitsch_schrader_correspondence` — the first hexagonal-PARENT
+  constructor ((0001)||{110}, <11-20>||<001>; 622-parent/432-child guards) +
+  `standard_hcp_bcc_relationships` catalog (PS + inverse Burgers). Pinned: exact basal
+  defining parallelism; **5.26 deg separation from inverse Burgers** (literature value, the
+  hexagonal analogue of KS-Pitsch); 3 variants (internally derived orbit count, noted as
+  such in the ledger). Remaining F14: Potter, Bagaryatsky/Isaichev. 872 passed; gates green.
 
 ## Phase 24 outcomes (2026-07-17)
 

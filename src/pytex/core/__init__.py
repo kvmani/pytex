@@ -100,6 +100,7 @@ from pytex.core.parent_reconstruction import (
     standard_bcc_hcp_relationships,
     standard_fcc_bcc_relationships,
     standard_fcc_hcp_relationships,
+    standard_hcp_bcc_relationships,
 )
 from pytex.core.point_groups import (
     PointGroup,
@@ -258,5 +259,6 @@ __all__ = [
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
     "standard_fcc_hcp_relationships",
+    "standard_hcp_bcc_relationships",
     "zone_law_value_hkil_uvtw",
 ]

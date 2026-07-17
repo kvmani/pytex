@@ -325,6 +325,32 @@ def standard_fcc_hcp_relationships(
     )
 
 
+def standard_hcp_bcc_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The standard named hcp->bcc orientation-relationship catalog.
+
+    Returns the Pitsch-Schrader relationship and the inverse Burgers
+    relationship bound to the given hexagonal parent and cubic child phases.
+    """
+
+    inverse_burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=child_phase, child_phase=parent_phase, provenance=provenance
+    ).inverse(name="burgers_inverse")
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_pitsch_schrader_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            inverse_burgers,
+        ),
+        provenance=provenance,
+    )
+
+
 __all__ = [
     "OrientationRelationshipCatalog",
     "ParentReconstructionConfig",
@@ -335,4 +361,5 @@ __all__ = [
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
     "standard_fcc_hcp_relationships",
+    "standard_hcp_bcc_relationships",
 ]

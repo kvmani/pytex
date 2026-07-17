@@ -1316,3 +1316,52 @@ def test_shoji_nishiyama_correspondence_and_catalog() -> None:
         OrientationRelationship.from_shoji_nishiyama_correspondence(
             parent_phase=parent, child_phase=parent
         )
+
+
+def test_pitsch_schrader_correspondence_and_hcp_bcc_catalog() -> None:
+    from pytex.core import standard_hcp_bcc_relationships
+    from pytex.core.transformation import _symmetry_reduced_angle_between_deg
+
+    _, _, _, cubic_child = make_phases()
+    hex_frame = ReferenceFrame(
+        name="ps_hex_parent",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    alpha = Phase(
+        "alpha_ti",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=hex_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+        crystal_frame=hex_frame,
+    )
+    ps = OrientationRelationship.from_pitsch_schrader_correspondence(
+        parent_phase=alpha, child_phase=cubic_child
+    )
+    # Three distinct variants: one per <11-20> axis of the hexagonal parent
+    # (internally derived orbit count; 12 proper parent operators over the
+    # order-4 stabilizer of the pairing).
+    assert len(ps.generate_variants()) == 3
+    # Defining parallelism maps exactly: basal (001)_hcp -> (110)_bcc.
+    basal = CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=alpha)
+    mapped = ps.map_plane_to_child(basal)
+    assert tuple(sorted(np.abs(mapped.rational_indices))) == (0, 1, 1)
+    assert mapped.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    # Literature separation: PS sits 5.26 deg from the inverse Burgers OR,
+    # the hexagonal analogue of the KS-Pitsch separation.
+    inverse_burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=cubic_child, child_phase=alpha
+    ).inverse()
+    separation = _symmetry_reduced_angle_between_deg(
+        ps.parent_to_child_rotation.as_matrix(),
+        inverse_burgers.parent_to_child_rotation.as_matrix(),
+        child_operators=cubic_child.symmetry.operators,
+        parent_operators=alpha.symmetry.operators,
+    )
+    assert separation == pytest.approx(5.26, abs=0.01)
+    catalog = standard_hcp_bcc_relationships(parent_phase=alpha, child_phase=cubic_child)
+    assert catalog.names() == ("pitsch_schrader", "burgers_inverse")
+    with pytest.raises(ValueError, match="hexagonal parent phase"):
+        OrientationRelationship.from_pitsch_schrader_correspondence(
+            parent_phase=cubic_child, child_phase=cubic_child
+        )

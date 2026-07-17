@@ -23,7 +23,7 @@ downstream analyses depend on them.
   (`fit_orientation_relationship`); variant packet classification
   (`variant_close_packed_groups`); variant pole figures
   (`variant_pole_figure`, `plot_variant_pole_figure`); named KS, GT, Pitsch,
-  Burgers, and Shoji-Nishiyama constructors with standard catalogs; intervariant
+  Burgers, Shoji-Nishiyama, and Pitsch-Schrader constructors with standard catalogs; intervariant
   misorientation tables.
 - Experimental OR identification from child-child boundaries
   (`pytex.experimental.identify_orientation_relationship`): ranks candidate
