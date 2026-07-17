@@ -14,7 +14,11 @@ from pytex.core.lattice import CrystalPlane
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
-from pytex.texture.kernels import DeLaValleePoussinKernel
+from pytex.texture.kernels import (
+    AbelPoissonKernel,
+    DeLaValleePoussinKernel,
+    GaussianSO3Kernel,
+)
 from pytex.texture.projections import project_directions
 
 
@@ -142,9 +146,15 @@ class KernelSpec:
     halfwidth_deg: float = 10.0
 
     def __post_init__(self) -> None:
-        if self.name not in {"de_la_vallee_poussin", "von_mises_fisher"}:
+        if self.name not in {
+            "de_la_vallee_poussin",
+            "von_mises_fisher",
+            "gaussian",
+            "abel_poisson",
+        }:
             raise ValueError(
-                "Kernel name must be either 'de_la_vallee_poussin' or 'von_mises_fisher'."
+                "Kernel name must be one of 'de_la_vallee_poussin', 'von_mises_fisher', "
+                "'gaussian', or 'abel_poisson'."
             )
         if self.halfwidth_deg <= 0.0:
             raise ValueError("Kernel halfwidth must be strictly positive.")
@@ -160,22 +170,37 @@ class KernelSpec:
             exponent = max(1.0, exponent)
             values = np.clip(np.cos(angle_array / 2.0), 0.0, 1.0) ** exponent
             if normalized:
-                values = values * self.as_so3_kernel().normalization
+                dlvp_kernel = self.as_so3_kernel()
+                assert isinstance(dlvp_kernel, DeLaValleePoussinKernel)
+                values = values * dlvp_kernel.normalization
         elif self.name == "von_mises_fisher":
             kappa = float(np.log(2.0) / (1.0 - np.cos(halfwidth_rad)))
             values = np.exp(kappa * (np.cos(angle_array) - 1.0))
+        else:
+            kernel = self.as_so3_kernel()
+            values = np.asarray(kernel.evaluate(angle_array), dtype=np.float64)
+            if not normalized:
+                values = values / float(kernel.evaluate(np.zeros(1))[0])
         values = np.ascontiguousarray(values)
         values.setflags(write=False)
         return values
 
-    def as_so3_kernel(self) -> DeLaValleePoussinKernel:
+    def as_so3_kernel(
+        self,
+    ) -> DeLaValleePoussinKernel | GaussianSO3Kernel | AbelPoissonKernel:
         """Return the normalized SO(3) kernel object for this spec.
 
         Provides the halfwidth <-> bandwidth duality and Chebyshev coefficient
-        expansion. Only defined for the de la Vallee Poussin kernel, which is
-        the one with a closed-form SO(3) coefficient representation here.
+        expansion for every kernel with an SO(3) coefficient representation:
+        de la Vallee Poussin (quadrature coefficients), Gaussian
+        (Gauss-Weierstrass spectrum), and Abel-Poisson (geometric spectrum).
+        The von Mises-Fisher spec remains an S2 evaluation-only kernel.
         """
 
+        if self.name == "gaussian":
+            return GaussianSO3Kernel(self.halfwidth_deg)
+        if self.name == "abel_poisson":
+            return AbelPoissonKernel(self.halfwidth_deg)
         if self.name != "de_la_vallee_poussin":
             raise ValueError(
                 "as_so3_kernel() is only defined for the de la Vallee Poussin kernel; "

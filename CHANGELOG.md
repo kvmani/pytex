@@ -31,6 +31,10 @@ downstream analyses depend on them.
   quaternion-averaged parent refinement, and EBSD grain-graph wiring.
 - Explainable-results doctrine: `describe()` prose on every stable
   transformation report, substring-validated in tests.
+- Texture kernel breadth: `GaussianSO3Kernel` (Gauss-Weierstrass spectrum)
+  and `AbelPoissonKernel` beside de la Vallee Poussin, with closed-form
+  Chebyshev coefficients and halfwidth-defined construction;
+  `KernelSpec.as_so3_kernel()` routes all three.
 - Engineering: warnings-as-errors test policy with zero-warning suite;
   coverage ratchet (87%) and ubuntu+macos x Python 3.11-3.13 CI matrix;
   Hypothesis property suites (rotation algebra, Miller-Bravais round trips,

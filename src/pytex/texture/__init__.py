@@ -6,7 +6,11 @@ from pytex.texture.components import (
 )
 from pytex.texture.fibres import NAMED_BCC_FIBRES, Fibre, fibre_axis_alignment_quaternion
 from pytex.texture.harmonics import HarmonicBasisTerm, HarmonicODF, HarmonicODFReconstructionReport
-from pytex.texture.kernels import DeLaValleePoussinKernel
+from pytex.texture.kernels import (
+    AbelPoissonKernel,
+    DeLaValleePoussinKernel,
+    GaussianSO3Kernel,
+)
 from pytex.texture.models import (
     ODF,
     InversePoleFigure,
@@ -27,7 +31,9 @@ __all__ = [
     "ODF",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
+    "AbelPoissonKernel",
     "DeLaValleePoussinKernel",
+    "GaussianSO3Kernel",
     "Fibre",
     "HarmonicBasisTerm",
     "HarmonicODF",

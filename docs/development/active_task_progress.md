@@ -26,8 +26,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 15 pushed as `551791e`
 - Phase 16 pushed as `20dd2dd`
 - Phase 17 pushed as `e621fe4`
-- Phase: 18 complete (committing) — release engineering: CHANGELOG + release policy
-  (finding 22).
+- Phase 18 pushed as `8247554`
+- Phase: 19 complete (committing) — texture kernel breadth (finding 8, first slice).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -340,6 +340,18 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 19 outcomes (2026-07-17)
+
+- **Finding 8 (kernel breadth) first slice landed:** `GaussianSO3Kernel` (spectral
+  Gauss-Weierstrass, `A_l = (2l+1) exp(-l(l+1) eps)`) and `AbelPoissonKernel`
+  (`A_l = (2l+1) kappa^(2l)`) in `texture/kernels.py`; halfwidth solved by bisection on
+  psi(halfwidth)=psi(0)/2; series evaluation via SO(3) characters with the omega->0 limit;
+  `KernelSpec` accepts names "gaussian"/"abel_poisson" and `as_so3_kernel()` routes all
+  three. Tests: normalization (A_0=1 exact), halfwidth property, quadrature round trip of
+  the spectrum, bandwidth monotonicity, Gaussian-vs-Abel tail comparison, spec routing.
+  Remaining finding-8 scope: bump/fibre kernels + SO3FunHarmonic integration (with
+  finding 9). Parity-ledger and CHANGELOG entries updated. 863 passed; all gates green.
 
 ## Phase 18 outcomes (2026-07-17)
 

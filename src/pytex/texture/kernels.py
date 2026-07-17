@@ -15,6 +15,7 @@ so ``A_0 = 1`` exactly for a normalized kernel.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 
@@ -113,4 +114,230 @@ class DeLaValleePoussinKernel:
         return int(below[0])
 
 
-__all__ = ["DeLaValleePoussinKernel"]
+
+
+def _character_values(orders: np.ndarray, omega: np.ndarray) -> np.ndarray:
+    """SO(3) characters chi_l(omega) = sin((2l+1) omega/2) / sin(omega/2)."""
+
+    half = omega / 2.0
+    sin_half = np.sin(half)
+    numerators = np.sin((2.0 * orders[:, None] + 1.0) * half[None, :])
+    limits = np.broadcast_to((2.0 * orders[:, None] + 1.0), numerators.shape)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = numerators / sin_half[None, :]
+    return np.asarray(np.where(np.abs(sin_half)[None, :] > 1e-12, ratio, limits))
+
+
+def _series_evaluate(coefficients: np.ndarray, omega: np.ndarray) -> np.ndarray:
+    orders = np.arange(coefficients.shape[0], dtype=np.float64)
+    characters = _character_values(orders, omega)
+    return np.asarray(coefficients @ characters, dtype=np.float64)
+
+
+def _truncated_coefficients(
+    coefficient_of_order: Callable[[int], float],
+    *,
+    tail_threshold: float = 1e-10,
+    max_order: int = 2048,
+) -> np.ndarray:
+    values = []
+    for order in range(max_order + 1):
+        value = float(coefficient_of_order(order))
+        values.append(value)
+        if order > 4 and abs(value) < tail_threshold:
+            break
+    return np.asarray(values, dtype=np.float64)
+
+
+def _solve_halfwidth_parameter(
+    halfwidth_rad: float,
+    coefficients_for: Callable[[float], np.ndarray],
+    *,
+    low: float,
+    high: float,
+    broader_is_larger: bool,
+) -> float:
+    """Bisection on the defining property psi(halfwidth) = psi(0) / 2."""
+
+    target = np.asarray([0.0, halfwidth_rad], dtype=np.float64)
+
+    def ratio(parameter: float) -> float:
+        coefficients = coefficients_for(parameter)
+        values = _series_evaluate(coefficients, target)
+        return float(values[1] / values[0])
+
+    low_value, high_value = ratio(low), ratio(high)
+    if not min(low_value, high_value) <= 0.5 <= max(low_value, high_value):
+        raise ValueError("Kernel halfwidth is outside the solvable parameter range.")
+    for _ in range(200):
+        middle = 0.5 * (low + high)
+        middle_value = ratio(middle)
+        if (middle_value < 0.5) == (low_value < 0.5):
+            low, low_value = middle, middle_value
+        else:
+            high, high_value = middle, middle_value
+        if abs(high - low) < 1e-14 * max(1.0, abs(high)):
+            break
+    return 0.5 * (low + high)
+
+
+@dataclass(frozen=True)
+class GaussianSO3Kernel:
+    """Gauss-Weierstrass kernel on SO(3), defined spectrally.
+
+    Purpose: the "Gaussian" texture kernel — Chebyshev (character)
+    coefficients ``A_l = (2l + 1) exp(-l (l + 1) epsilon)`` with the spread
+    ``epsilon`` solved from the halfwidth via the defining property
+    ``psi(halfwidth) = psi(0) / 2``. Being the heat-kernel spectrum, it is
+    the smoothest kernel for a given halfwidth; ``A_0 = 1`` exactly, so the
+    kernel is normalized over SO(3).
+
+    Inputs: ``halfwidth_deg`` in (0, 180).
+
+    Output surface mirrors ``DeLaValleePoussinKernel``: ``evaluate`` /
+    ``evaluate_deg``, closed-form ``chebyshev_coefficients``, ``bandwidth``.
+    """
+
+    halfwidth_deg: float
+
+    def __post_init__(self) -> None:
+        halfwidth = float(self.halfwidth_deg)
+        if not 0.0 < halfwidth < 180.0 or not np.isfinite(halfwidth):
+            raise ValueError("GaussianSO3Kernel.halfwidth_deg must lie in (0, 180) degrees.")
+        object.__setattr__(self, "halfwidth_deg", halfwidth)
+
+    @property
+    def halfwidth_rad(self) -> float:
+        return math.radians(self.halfwidth_deg)
+
+    @cached_property
+    def epsilon(self) -> float:
+        return _solve_halfwidth_parameter(
+            self.halfwidth_rad,
+            lambda parameter: _truncated_coefficients(
+                lambda order: (2 * order + 1) * math.exp(-order * (order + 1) * parameter)
+            ),
+            low=1e-8,
+            high=5.0,
+            broader_is_larger=True,
+        )
+
+    @cached_property
+    def _coefficients(self) -> np.ndarray:
+        epsilon = self.epsilon
+        values = _truncated_coefficients(
+            lambda order: (2 * order + 1) * math.exp(-order * (order + 1) * epsilon)
+        )
+        values.setflags(write=False)
+        return values
+
+    def evaluate(self, omega_rad: ArrayLike) -> np.ndarray:
+        omega = np.asarray(omega_rad, dtype=np.float64)
+        if np.any(np.abs(omega) > np.pi + 1e-12):
+            raise ValueError("Kernel angles must lie in [-pi, pi] radians.")
+        values = _series_evaluate(self._coefficients, np.atleast_1d(omega)).reshape(omega.shape)
+        values = np.ascontiguousarray(values)
+        values.setflags(write=False)
+        return values
+
+    def evaluate_deg(self, omega_deg: ArrayLike) -> np.ndarray:
+        return self.evaluate(np.deg2rad(np.asarray(omega_deg, dtype=np.float64)))
+
+    def chebyshev_coefficients(self, bandwidth: int) -> np.ndarray:
+        if bandwidth < 0:
+            raise ValueError("bandwidth must be non-negative.")
+        orders = np.arange(bandwidth + 1, dtype=np.float64)
+        coefficients = (2.0 * orders + 1.0) * np.exp(-orders * (orders + 1.0) * self.epsilon)
+        coefficients = np.ascontiguousarray(coefficients)
+        coefficients.setflags(write=False)
+        return coefficients
+
+    def bandwidth(self, *, threshold: float = 1e-3, max_bandwidth: int = 512) -> int:
+        if not 0.0 < threshold < 1.0:
+            raise ValueError("threshold must lie in (0, 1).")
+        coefficients = self.chebyshev_coefficients(max_bandwidth)
+        below = np.nonzero(np.abs(coefficients) < threshold)[0]
+        if below.size == 0:
+            return max_bandwidth
+        return int(below[0])
+
+
+@dataclass(frozen=True)
+class AbelPoissonKernel:
+    """Abel-Poisson kernel on SO(3), defined spectrally.
+
+    Purpose: the classical Abel-Poisson texture kernel — Chebyshev
+    coefficients ``A_l = (2l + 1) kappa^(2l)`` with ``kappa`` in (0, 1)
+    solved from the halfwidth via ``psi(halfwidth) = psi(0) / 2``. Its
+    geometric coefficient decay makes it broader-tailed than the Gaussian at
+    equal halfwidth; ``A_0 = 1`` exactly (normalized over SO(3)).
+
+    Inputs: ``halfwidth_deg`` in (0, 180). Surface mirrors
+    ``DeLaValleePoussinKernel``.
+    """
+
+    halfwidth_deg: float
+
+    def __post_init__(self) -> None:
+        halfwidth = float(self.halfwidth_deg)
+        if not 0.0 < halfwidth < 180.0 or not np.isfinite(halfwidth):
+            raise ValueError("AbelPoissonKernel.halfwidth_deg must lie in (0, 180) degrees.")
+        object.__setattr__(self, "halfwidth_deg", halfwidth)
+
+    @property
+    def halfwidth_rad(self) -> float:
+        return math.radians(self.halfwidth_deg)
+
+    @cached_property
+    def kappa(self) -> float:
+        return _solve_halfwidth_parameter(
+            self.halfwidth_rad,
+            lambda parameter: _truncated_coefficients(
+                lambda order: (2 * order + 1) * parameter ** (2 * order)
+            ),
+            low=1e-6,
+            high=1.0 - 1e-9,
+            broader_is_larger=False,
+        )
+
+    @cached_property
+    def _coefficients(self) -> np.ndarray:
+        kappa = self.kappa
+        values = _truncated_coefficients(
+            lambda order: (2 * order + 1) * kappa ** (2 * order)
+        )
+        values.setflags(write=False)
+        return values
+
+    def evaluate(self, omega_rad: ArrayLike) -> np.ndarray:
+        omega = np.asarray(omega_rad, dtype=np.float64)
+        if np.any(np.abs(omega) > np.pi + 1e-12):
+            raise ValueError("Kernel angles must lie in [-pi, pi] radians.")
+        values = _series_evaluate(self._coefficients, np.atleast_1d(omega)).reshape(omega.shape)
+        values = np.ascontiguousarray(values)
+        values.setflags(write=False)
+        return values
+
+    def evaluate_deg(self, omega_deg: ArrayLike) -> np.ndarray:
+        return self.evaluate(np.deg2rad(np.asarray(omega_deg, dtype=np.float64)))
+
+    def chebyshev_coefficients(self, bandwidth: int) -> np.ndarray:
+        if bandwidth < 0:
+            raise ValueError("bandwidth must be non-negative.")
+        orders = np.arange(bandwidth + 1, dtype=np.float64)
+        coefficients = (2.0 * orders + 1.0) * self.kappa ** (2.0 * orders)
+        coefficients = np.ascontiguousarray(coefficients)
+        coefficients.setflags(write=False)
+        return coefficients
+
+    def bandwidth(self, *, threshold: float = 1e-3, max_bandwidth: int = 512) -> int:
+        if not 0.0 < threshold < 1.0:
+            raise ValueError("threshold must lie in (0, 1).")
+        coefficients = self.chebyshev_coefficients(max_bandwidth)
+        below = np.nonzero(np.abs(coefficients) < threshold)[0]
+        if below.size == 0:
+            return max_bandwidth
+        return int(below[0])
+
+
+__all__ = ["AbelPoissonKernel", "DeLaValleePoussinKernel", "GaussianSO3Kernel"]
