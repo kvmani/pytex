@@ -244,6 +244,15 @@ merge:
   reconstruction with quaternion-averaged parent refinement (synthetic planted-parent
   validation; literature fixtures and EBSD grain-graph wiring queued before stabilization).
   Next per §3: Cycle C+ (findings 5, 8–15, 21, 22), plus the queued ledger follow-ups.
+- **2026-07 (finding 26, found and fixed):** The transformation stack composed predicted
+  children as ``V @ P``, which contradicts the normative crystal-to-specimen orientation
+  convention (correct: ``g_child = g_parent ∘ V^T``); internally self-consistent synthetic
+  validations masked it, and it would have produced wrong variant assignments on real
+  measured orientations (14–16 deg spurious residuals on canonically built data). Fixed
+  across prediction, deviation, fitting, scoring, and reconstruction; a regression test now
+  pins the specimen-space parallelism identity. Lesson recorded: synthetic round-trip tests
+  must build inputs through the *canonical convention*, never through the code under test's
+  own composition.
 
 ## References
 

@@ -116,8 +116,9 @@ def _predicted_child_matrices(
     candidate_parent_matrices: np.ndarray,
 ) -> np.ndarray:
     variant_matrices = _variant_rotation_matrices(record)
+    # Canonical crystal->specimen convention: C = P @ V^T per candidate/child.
     return np.asarray(
-        np.einsum("nij,mjk->mnik", variant_matrices, candidate_parent_matrices, optimize=True),
+        np.einsum("mij,nkj->mnik", candidate_parent_matrices, variant_matrices, optimize=True),
         dtype=np.float64,
     )
 
@@ -216,11 +217,12 @@ def score_parent_orientations(
     parent_matrices = candidate_parents.as_matrices()
     predicted_child_matrices = _predicted_child_matrices(record, parent_matrices)
     observed_child_matrices = record.child_orientations.as_matrices()
+    # Crystal-frame relative rotation per pair: M = C_observed^T C_predicted.
     relative = np.asarray(
         np.einsum(
-            "nij,mnjk->mnik",
+            "nji,mnjk->mnik",
             observed_child_matrices,
-            np.swapaxes(predicted_child_matrices, -1, -2),
+            predicted_child_matrices,
             optimize=True,
         ),
         dtype=np.float64,

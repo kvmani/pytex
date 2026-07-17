@@ -80,14 +80,14 @@ def test_experimental_parent_scoring_ranks_true_parent_best() -> None:
     observed_children = OrientationSet.from_orientations(
         [
             Orientation(
-                rotation=variants[0].parent_to_child_rotation.compose(true_parent.rotation),
+                rotation=true_parent.rotation.compose(variants[0].parent_to_child_rotation.inverse()),
                 crystal_frame=crystal_child,
                 specimen_frame=specimen,
                 symmetry=child.symmetry,
                 phase=child,
             ),
             Orientation(
-                rotation=variants[-1].parent_to_child_rotation.compose(true_parent.rotation),
+                rotation=true_parent.rotation.compose(variants[-1].parent_to_child_rotation.inverse()),
                 crystal_frame=crystal_child,
                 specimen_frame=specimen,
                 symmetry=child.symmetry,

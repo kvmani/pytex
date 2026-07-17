@@ -1252,9 +1252,9 @@ def or_deviation(
     )
     parent_matrices = parent_orientations.as_matrices()
     child_matrices = child_orientations.as_matrices()
-    predicted = np.einsum("vij,njk->nvik", variant_matrices, parent_matrices, optimize=True)
+    predicted = np.einsum("nij,vkj->nvik", parent_matrices, variant_matrices, optimize=True)
     relative = np.einsum(
-        "nij,nvkj->nvik", child_matrices, predicted, optimize=True
+        "nji,nvjk->nvik", child_matrices, predicted, optimize=True
     )
     pair_count, variant_count = relative.shape[0], relative.shape[1]
     child_symmetry = relationship.child_phase.symmetry
@@ -1420,9 +1420,11 @@ def fit_orientation_relationship(
     )
     parent_matrices = parent_orientations.as_matrices()
     child_matrices = child_orientations.as_matrices()
-    measured = np.einsum("nij,nkj->nik", child_matrices, parent_matrices, optimize=True)
+    # Canonical crystal->specimen convention: C = P V^T, so the measured
+    # parent-to-child rotation per pair is V = C^T P.
+    measured = np.einsum("nji,njk->nik", child_matrices, parent_matrices, optimize=True)
     # All symmetry-equivalent descriptions of every measurement, computed once:
-    # S_c (C P^T) S_p over both groups.
+    # S_c (C^T P) S_p over both groups.
     candidates = np.einsum(
         "aij,njk,bkl->nabil", child_operators, measured, parent_operators, optimize=True
     )
@@ -1432,6 +1434,7 @@ def fit_orientation_relationship(
     iterations = 0
     converged = False
     aligned = flat_candidates[:, 0]
+    previous_best: np.ndarray | None = None
     while iterations < max_iterations and not converged:
         iterations += 1
         relative = np.einsum("ncij,kj->ncik", flat_candidates, estimate, optimize=True)
@@ -1447,7 +1450,14 @@ def fit_orientation_relationship(
             (updated @ estimate.T)[None, :, :]
         )[0]
         estimate = updated
-        converged = step_angle <= convergence_tol_deg
+        # Fixed point: alignment assignments stable (the mean is then a
+        # deterministic function of them), or the step under the angular
+        # tolerance. The assignment test is robust to the ~1e-6 deg
+        # matrix->quaternion->matrix round-trip noise floor.
+        converged = (
+            previous_best is not None and bool(np.array_equal(best, previous_best))
+        ) or step_angle <= convergence_tol_deg
+        previous_best = best
     residuals = _rotation_angles_deg_from_matrices(
         np.einsum("nij,kj->nik", aligned, estimate, optimize=True)
     )
@@ -1850,7 +1860,9 @@ class PhaseTransformationRecord:
             )
             variant_matrices = unique_matrices[inverse]
         parent_matrix = self.parent_orientation.rotation.as_matrix()
-        predicted = np.einsum("nij,jk->nik", variant_matrices, parent_matrix, optimize=True)
+        # Canonical crystal->specimen orientation convention: the child
+        # orientation is g_child = g_parent o V^T, i.e. C = P @ V^T.
+        predicted = np.einsum("ij,nkj->nik", parent_matrix, variant_matrices, optimize=True)
         return OrientationSet.from_matrices(
             predicted,
             crystal_frame=self.child_orientations.crystal_frame,

@@ -148,8 +148,8 @@ def _member_deviations_deg(
 ) -> np.ndarray:
     """Min-over-variants disorientation of each member to one parent estimate."""
 
-    predicted = np.einsum("lij,jk->lik", variant_matrices, parent_matrix, optimize=True)
-    relative = np.einsum("nij,lkj->nlik", cluster_children, predicted, optimize=True)
+    predicted = np.einsum("ij,lkj->lik", parent_matrix, variant_matrices, optimize=True)
+    relative = np.einsum("nji,ljk->nlik", cluster_children, predicted, optimize=True)
     member_count, variant_count = relative.shape[:2]
     angles = np.degrees(
         _reduced_pair_disorientation_angles(relative.reshape(-1, 3, 3), operators, operators)
@@ -166,7 +166,7 @@ def _refine_cluster_parent(
 ) -> np.ndarray:
     """Average every member's parent estimate around the seed (noise reduction).
 
-    Each member contributes the candidate descriptions ``S_p V_k^T C_i`` over
+    Each member contributes the candidate descriptions ``C_i V_k S_p`` over
     all variants and parent symmetry operators; the description with the
     largest trace against the seed is that member's aligned parent estimate,
     and the quaternion eigen-mean of the aligned estimates is the refined
@@ -175,10 +175,12 @@ def _refine_cluster_parent(
     """
 
     estimates = np.einsum(
-        "vji,njk->nvik", variant_matrices, cluster_children, optimize=True
+        "nij,vjk->nvik", cluster_children, variant_matrices, optimize=True
     )
+    # Crystal-symmetry equivalents of a crystal->specimen orientation act by
+    # right multiplication: P' = P S_p.
     described = np.einsum(
-        "aij,nvjk->navik", parent_operators, estimates, optimize=True
+        "nvij,ajk->navik", estimates, parent_operators, optimize=True
     )
     member_count = cluster_children.shape[0]
     flat = described.reshape(member_count, -1, 3, 3)
@@ -251,8 +253,10 @@ def reconstruct_parent_grains(
     # Edge test: boundary disorientation matches the intervariant fingerprint.
     linked = np.zeros(edges.shape[0], dtype=bool)
     if edges.shape[0]:
+        # Crystal-frame boundary relative under the canonical crystal->specimen
+        # orientation convention: M = C_i^T C_j.
         relative = np.einsum(
-            "eij,ekj->eik",
+            "eji,ejk->eik",
             child_matrices[edges[:, 0]],
             child_matrices[edges[:, 1]],
             optimize=True,
@@ -293,14 +297,15 @@ def reconstruct_parent_grains(
         members = np.flatnonzero(labels == cluster)
         sizes[cluster] = members.size
         cluster_children = child_matrices[members]
-        # Candidate parents from the first member: P_k = V_k^T C_first.
+        # Candidate parents from the first member: P_k = C_first @ V_k
+        # (canonical convention C = P V^T).
         candidates = np.einsum(
-            "vji,jk->vik", variant_matrices, cluster_children[0], optimize=True
+            "ij,vjk->vik", cluster_children[0], variant_matrices, optimize=True
         )
-        # Predicted children for every (candidate, variant): V_l P_k.
-        predicted = np.einsum("lij,vjk->vlik", variant_matrices, candidates, optimize=True)
+        # Predicted children for every (candidate, variant): P_k V_l^T.
+        predicted = np.einsum("vij,lkj->vlik", candidates, variant_matrices, optimize=True)
         relative = np.einsum(
-            "nij,vlkj->nvlik", cluster_children, predicted, optimize=True
+            "nji,vljk->nvlik", cluster_children, predicted, optimize=True
         )
         member_count, candidate_count, variant_count = relative.shape[:3]
         angles = np.degrees(

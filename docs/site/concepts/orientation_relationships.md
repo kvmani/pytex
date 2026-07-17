@@ -28,6 +28,22 @@ for the full doctrine):
 3. **The transformation deformation** (Bain strain and friends) — reserved for
    a future release; the API name space is planned so nothing needs renaming.
 
+## Composition convention
+
+PyTex orientations map **crystal to specimen** (the normative convention in
+the notation standard). The child orientation produced by a variant is
+therefore
+
+\[ g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}, \]
+
+so that corresponding parent and child crystal directions
+(\(\mathbf{d}_{c} = \mathbf{V}\,\mathbf{d}_{p}\)) point along the same
+specimen direction — the physical meaning of an OR parallelism. Every
+prediction, deviation, fitting, and reconstruction surface uses this
+composition, crystal-symmetry equivalents act by right multiplication
+(\(g' = g\,S\)), and a regression test pins the convention against the
+specimen-space parallelism identity.
+
 ## Constructing named relationships
 
 `OrientationRelationship` ships literature constructors — Bain,

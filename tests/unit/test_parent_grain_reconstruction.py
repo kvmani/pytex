@@ -77,8 +77,8 @@ def _planted_microstructure(
     for parent_index, parent_orientation in enumerate(parent_orientations):
         picks = rng.choice(len(variants), size=5, replace=False)
         for pick in picks:
-            rotation = variants[int(pick)].parent_to_child_rotation.compose(
-                parent_orientation.rotation
+            rotation = parent_orientation.rotation.compose(
+                variants[int(pick)].parent_to_child_rotation.inverse()
             )
             if noise_deg > 0.0:
                 axis = rng.normal(size=3)
@@ -129,11 +129,13 @@ def test_reconstruction_recovers_planted_partition_and_parents_exactly() -> None
     parent_symmetry = ks.parent_phase.symmetry
     for parent_index, parent_orientation in enumerate(parents):
         cluster = int(result.parent_labels[np.flatnonzero(planted == parent_index)[0]])
+        # Canonical crystal->specimen parents are equivalent up to RIGHT
+        # multiplication by parent crystal operators: P' = P S_p.
         distance = _symmetry_reduced_angle_between_deg(
             result.parent_orientations.as_matrices()[cluster],
             parent_orientation.rotation.as_matrix(),
-            child_operators=parent_symmetry.operators,
-            parent_operators=np.eye(3, dtype=np.float64)[None, :, :],
+            child_operators=np.eye(3, dtype=np.float64)[None, :, :],
+            parent_operators=parent_symmetry.operators,
         )
         assert distance == pytest.approx(0.0, abs=1e-6)
 
@@ -149,11 +151,13 @@ def test_reconstruction_tolerates_orientation_noise() -> None:
     parent_symmetry = ks.parent_phase.symmetry
     for parent_index, parent_orientation in enumerate(parents):
         cluster = int(result.parent_labels[np.flatnonzero(planted == parent_index)[0]])
+        # Canonical crystal->specimen parents are equivalent up to RIGHT
+        # multiplication by parent crystal operators: P' = P S_p.
         distance = _symmetry_reduced_angle_between_deg(
             result.parent_orientations.as_matrices()[cluster],
             parent_orientation.rotation.as_matrix(),
-            child_operators=parent_symmetry.operators,
-            parent_operators=np.eye(3, dtype=np.float64)[None, :, :],
+            child_operators=np.eye(3, dtype=np.float64)[None, :, :],
+            parent_operators=parent_symmetry.operators,
         )
         assert distance < 0.5
 
@@ -211,10 +215,10 @@ def test_reconstruction_from_ebsd_grain_graph() -> None:
     # 2x4 pixel map: columns 0-1 are two variants of parent 0, columns 2-3 two
     # variants of parent 1; each column is one grain (two identical pixels).
     column_rotations = [
-        variants[0].parent_to_child_rotation.compose(parent_orientations[0].rotation),
-        variants[7].parent_to_child_rotation.compose(parent_orientations[0].rotation),
-        variants[2].parent_to_child_rotation.compose(parent_orientations[1].rotation),
-        variants[11].parent_to_child_rotation.compose(parent_orientations[1].rotation),
+        parent_orientations[0].rotation.compose(variants[0].parent_to_child_rotation.inverse()),
+        parent_orientations[0].rotation.compose(variants[7].parent_to_child_rotation.inverse()),
+        parent_orientations[1].rotation.compose(variants[2].parent_to_child_rotation.inverse()),
+        parent_orientations[1].rotation.compose(variants[11].parent_to_child_rotation.inverse()),
     ]
     pixel_orientations = [
         Orientation(

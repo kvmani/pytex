@@ -20,8 +20,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
 - Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done);
-  Phase 10 as `de58dfe`
-- Phase: 11 complete (committing) — EBSD grain-graph wiring for parent reconstruction.
+  Phase 10 as `de58dfe`; Phase 11 as `8ce6049`
+- Phase: 12 complete (committing) — canonical-convention fix across the transformation stack.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -274,13 +274,36 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   relative-rotation conventions coexist; determine whether both are intended semantics
   (orientation-space vs boundary misorientation) and document, or reconcile.
 
+## Phase 12 outcomes (2026-07-17) — REAL BUG FOUND AND FIXED
+
+- The Phase 11 follow-up investigation resolved decisively: PyTex's normative convention is
+  **orientation = crystal→specimen** (notation standard; `map_crystal_vector = R @ v`), so
+  `misorientation_angles_to` (relative `R_i^T R_j`) was correct, and the transformation
+  stack's `child = V @ P` composition was **wrong** (correct: `g_child = g_parent ∘ V^T`,
+  which makes corresponding crystal directions coincide in specimen space). Diagnostic on
+  canonically built children showed wrong variant selections with 14–16 deg residuals.
+- Fixed compositions/relatives in: `predicted_child_orientations`, `select_variants`,
+  `or_deviation` (also crystal-frame relative `C^T pred`), `fit_orientation_relationship`
+  (measured `V = C^T P`), experimental scoring, parent-grain reconstruction (edge relative
+  `C_i^T C_j`; candidates `P = C V`; refinement equivalents right-multiplied `P S_p`).
+- Boundary/intervariant tables are convention-invariant (`C_i^T C_j = V_a V_b^T`), so all
+  Morito/literature pins stand unchanged.
+- Fit convergence made robust: fixed-point criterion = stable alignment assignments (the
+  quaternion↔matrix round trip has a ~1.2e-6 deg noise floor that the step-angle test alone
+  can't cross).
+- Tests: all synthetic builders now construct children canonically; parent-equivalence
+  comparisons use RIGHT multiplication (`P S_p`); new regression test pins the
+  specimen-space parallelism identity + planted-variant recovery. 845 passed, zero warnings.
+- Docs: concept-page "Composition convention" section; development-guide changelog records
+  the finding with the lesson (synthetic tests must build inputs through the canonical
+  convention, not the code-under-test's own composition).
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
-1. Investigate the misorientation-convention discrepancy above; document or fix.
-2. Literature fixture for reconstruction (lath-martensite block) toward stabilization.
-3. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
+1. Literature fixture for reconstruction (lath-martensite block) toward stabilization.
+2. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
    example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
    property suites; variant pole-figure plotting (F10).
-4. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
+3. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
    timing lane (finding 21), release engineering/CHANGELOG (finding 22).

@@ -368,8 +368,12 @@ def test_phase_transformation_record_predicted_orientations_follow_variant_indic
     )
     predicted = record.predicted_child_orientations()
     assert predicted.quaternions.shape == (2, 4)
-    expected_first = variants[0].parent_to_child_rotation.compose(parent_orientation.rotation)
-    expected_last = variants[-1].parent_to_child_rotation.compose(parent_orientation.rotation)
+    expected_first = parent_orientation.rotation.compose(
+        variants[0].parent_to_child_rotation.inverse()
+    )
+    expected_last = parent_orientation.rotation.compose(
+        variants[-1].parent_to_child_rotation.inverse()
+    )
     # q and -q describe the same rotation; compare up to the double cover so
     # the pinned behavior is the rotation itself, not an incidental sign.
     assert abs(float(predicted.quaternions[0] @ expected_first.quaternion)) == pytest.approx(
@@ -587,8 +591,8 @@ def test_select_variants_recovers_planted_assignments() -> None:
     quaternions = np.stack(
         [
             perturbation.compose(
-                variants[index - 1].parent_to_child_rotation.compose(
-                    parent_orientation.rotation
+                parent_orientation.rotation.compose(
+                    variants[index - 1].parent_to_child_rotation.inverse()
                 )
             ).quaternion
             for index in planted
@@ -840,7 +844,7 @@ def _paired_sets_for_deviation(
     picked = (variants[0], variants[7])
     quaternions = np.stack(
         [
-            variant.parent_to_child_rotation.compose(parents[index].rotation).quaternion
+            parents[index].rotation.compose(variant.parent_to_child_rotation.inverse()).quaternion
             for index, variant in enumerate(picked)
         ],
         axis=0,
@@ -1046,8 +1050,8 @@ def _random_gt_pairs(
     picks = rng.integers(0, len(variants), size=count)
     quaternions = np.stack(
         [
-            variants[int(picks[index])]
-            .parent_to_child_rotation.compose(parents[index].rotation)
+            parents[index]
+            .rotation.compose(variants[int(picks[index])].parent_to_child_rotation.inverse())
             .quaternion
             for index in range(count)
         ],
@@ -1139,3 +1143,65 @@ def test_fit_validates_pairing_and_phases() -> None:
     parents, children, gt = _random_gt_pairs(parent, child, count=4)
     with pytest.raises(ValueError, match="parent phase"):
         fit_orientation_relationship(children, children, gt)
+
+
+def test_child_composition_follows_canonical_crystal_to_specimen_convention() -> None:
+    """Regression for the V @ P convention bug (development-guide Phase 12).
+
+    Under the canonical crystal->specimen orientation convention, the child
+    orientation is g_child = g_parent o V^T: corresponding parent and child
+    crystal directions must then map to the SAME specimen direction, and
+    variant selection must recover planted variants from canonically built
+    children.
+    """
+
+    _, _, parent, child = make_phases()
+    specimen = ReferenceFrame(
+        name="specimen_conv",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = ks.generate_variants()
+    parent_orientation = Orientation.from_euler(
+        20.0, 30.0, 40.0, specimen_frame=specimen, symmetry=parent.symmetry, phase=parent
+    )
+    # Physics: the defining parallel directions coincide in specimen space.
+    child_rotation = parent_orientation.rotation.compose(
+        variants[0].parent_to_child_rotation.inverse()
+    )
+    parent_direction = np.array([1.0, 1.0, 1.0]) / np.sqrt(3.0)
+    child_direction = variants[0].parent_to_child_rotation.as_matrix() @ parent_direction
+    specimen_from_parent = parent_orientation.rotation.as_matrix() @ parent_direction
+    specimen_from_child = child_rotation.as_matrix() @ child_direction
+    assert_allclose(specimen_from_parent, specimen_from_child, atol=1e-12)
+    # Workflow: planted variants are recovered from canonically built children.
+    picks = (1, 6, 12)
+    quaternions = np.stack(
+        [
+            parent_orientation.rotation.compose(
+                variants[index - 1].parent_to_child_rotation.inverse()
+            ).quaternion
+            for index in picks
+        ],
+        axis=0,
+    )
+    children = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=child.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child.symmetry,
+        phase=child,
+    )
+    record = PhaseTransformationRecord(
+        name="convention_record",
+        orientation_relationship=ks,
+        parent_orientation=parent_orientation,
+        child_orientations=children,
+    )
+    report = select_variants(record)
+    assert tuple(report.variant_indices) == picks
+    assert report.scores_deg.max() == pytest.approx(0.0, abs=1e-8)

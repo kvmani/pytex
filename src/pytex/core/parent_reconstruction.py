@@ -222,8 +222,9 @@ def select_variants(
         [variant.parent_to_child_rotation.as_matrix() for variant in variants], axis=0
     )
     parent_matrix = record.parent_orientation.rotation.as_matrix()
+    # Canonical crystal->specimen convention: C = P @ V^T per variant.
     predicted_matrices = np.einsum(
-        "vij,jk->vik", variant_matrices, parent_matrix, optimize=True
+        "ij,vkj->vik", parent_matrix, variant_matrices, optimize=True
     )
     predicted = OrientationSet.from_matrices(
         predicted_matrices,
