@@ -73,6 +73,7 @@ from pytex.plotting.runtime import (
     plot_stereographic_vectors,
     plot_symmetry_elements,
     plot_symmetry_orbit,
+    plot_variant_pole_figure,
     plot_vector_set,
     plot_wulff_net,
 )
@@ -148,6 +149,7 @@ __all__ = [
     "plot_rotations",
     "plot_saed_pattern",
     "plot_stereographic_vectors",
+    "plot_variant_pole_figure",
     "plot_symmetry_elements",
     "plot_symmetry_orbit",
     "plot_vector_set",

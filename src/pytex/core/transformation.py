@@ -1786,6 +1786,116 @@ def variant_close_packed_groups(
     return labels
 
 
+@dataclass(frozen=True, slots=True)
+class VariantPoleFigure:
+    """Specimen-frame pole positions of a child plane family for every variant.
+
+    ``poles`` holds one specimen-frame unit vector per (variant, family
+    member) pair, in variant-major order; ``variant_indices`` gives the
+    1-based variant of each row. This is the prediction layer behind variant
+    pole figures: overlay it on a measured child pole figure to identify
+    which variants are present and how strongly variant selection acts.
+    """
+
+    relationship_name: str
+    child_plane: CrystalPlane
+    poles: VectorSet
+    variant_indices: np.ndarray
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        indices = np.asarray(self.variant_indices, dtype=np.int64).reshape(-1)
+        if indices.shape != (len(self.poles.values),):
+            raise ValueError("variant_indices must have one entry per pole row.")
+        if indices.size == 0:
+            raise ValueError("VariantPoleFigure requires at least one pole.")
+        if np.any(indices <= 0):
+            raise ValueError("variant_indices must be strictly positive.")
+        indices.setflags(write=False)
+        object.__setattr__(self, "variant_indices", indices)
+
+    @property
+    def variant_count(self) -> int:
+        return int(np.unique(self.variant_indices).size)
+
+    def describe(self) -> str:
+        """Prose summary: plane family, variants, and pole counts."""
+
+        per_variant = int(
+            np.count_nonzero(self.variant_indices == int(self.variant_indices[0]))
+        )
+        plane_text = format_plane_indices(
+            _index_tuple(self.child_plane.miller.indices), style="plain"
+        )
+        return (
+            f"Variant pole figure for orientation relationship "
+            f"'{self.relationship_name}': specimen-frame poles of the child "
+            f"{plane_text} family for {self.variant_count} variant(s), "
+            f"{per_variant} family member(s) per variant "
+            f"({self.variant_indices.size} poles total, unit vectors in the "
+            "specimen frame; overlay on a measured child pole figure to "
+            "identify operative variants)."
+        )
+
+
+def variant_pole_figure(
+    parent_orientation: Orientation,
+    relationship: OrientationRelationship,
+    child_plane: CrystalPlane,
+    *,
+    variants: tuple[TransformationVariant, ...] | None = None,
+    provenance: ProvenanceRecord | None = None,
+) -> VariantPoleFigure:
+    """Predict the child-plane pole figure of every transformation variant.
+
+    Purpose: given a parent orientation, computes where each variant's child
+    plane family lands on the specimen sphere — the standard overlay for
+    reading measured product-phase pole figures (which variants formed, and
+    whether selection favors some). Uses the canonical composition
+    ``g_child = g_parent o V^T`` and the child plane's full symmetry family
+    (antipodal-collapsed integer orbit).
+
+    Inputs: the parent ``Orientation`` (phase must match the relationship
+    parent phase), the relationship, the child ``CrystalPlane`` whose family
+    is plotted, and optionally a variant tuple.
+
+    Output: a ``VariantPoleFigure`` (see its ``describe()``); plot it with
+    ``pytex.plot_variant_pole_figure``.
+    """
+
+    if not phases_semantically_match(parent_orientation.phase, relationship.parent_phase):
+        raise ValueError("parent_orientation.phase must match the relationship parent phase.")
+    if not phases_semantically_match(child_plane.phase, relationship.child_phase):
+        raise ValueError("child_plane.phase must match the relationship child phase.")
+    resolved = relationship.generate_variants() if variants is None else variants
+    child_phase = relationship.child_phase
+    members = _integer_index_orbit(
+        child_plane.miller.indices, phase=child_phase, reciprocal=True
+    )
+    reciprocal_basis = child_phase.lattice.reciprocal_basis().matrix
+    normals = members.astype(np.float64) @ reciprocal_basis.T
+    normals /= np.linalg.norm(normals, axis=1)[:, None]
+    parent_matrix = parent_orientation.rotation.as_matrix()
+    pole_rows: list[np.ndarray] = []
+    index_rows: list[int] = []
+    for variant in resolved:
+        child_matrix = parent_matrix @ variant.parent_to_child_rotation.as_matrix().T
+        pole_rows.append(normals @ child_matrix.T)
+        index_rows.extend([variant.variant_index] * normals.shape[0])
+    poles = VectorSet(
+        values=np.concatenate(pole_rows, axis=0),
+        reference_frame=parent_orientation.specimen_frame,
+        provenance=provenance or relationship.provenance,
+    )
+    return VariantPoleFigure(
+        relationship_name=relationship.name,
+        child_plane=child_plane,
+        poles=poles,
+        variant_indices=np.asarray(index_rows, dtype=np.int64),
+        provenance=provenance or relationship.provenance,
+    )
+
+
 def map_direction_across_variants(
     relationship: OrientationRelationship,
     direction: CrystalDirection,

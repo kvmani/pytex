@@ -79,6 +79,16 @@ Hexagonal phases participate with full index meaning: Burgers maps
 \([\bar{1}11]_{\beta}\) to \([11\bar{2}0]_{\alpha}\) (stored as the
 three-index \([110]\)).
 
+## Variant pole figures
+
+`variant_pole_figure(parent_orientation, relationship, child_plane)` predicts
+where every variant's child plane family lands on the specimen sphere, and
+`plot_variant_pole_figure(...)` renders the color-per-variant stereographic
+overlay — the standard way to read measured product-phase pole figures for
+operative variants and variant selection. The prediction is pinned by the
+packet-plane coincidence: each KS variant's \(\{011\}\) pole set contains the
+specimen-frame normal of its packet's parent \(\{111\}\) member.
+
 ## Variant packets
 
 `variant_close_packed_groups(relationship, parent_plane)` labels each variant

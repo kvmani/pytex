@@ -22,7 +22,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done);
   Phase 10 as `de58dfe`; Phase 11 as `8ce6049`; Phase 12 as `3266d21` (convention bug fix)
 - Phase 13 pushed as `cf91ce9`
-- Phase: 14 complete (committing) — OrientationSet slicing API fix.
+- Phase 14 pushed as `ee72419`
+- Phase: 15 complete (committing) — variant pole figures (F10) + OR-fitting worked example.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -319,10 +320,25 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `OrientationSet`; typed via `@overload`, int still returns `Orientation`). Closes the
   API wart logged in Phase 3. Gates: 848 passed, zero warnings; mypy/ruff/integrity green.
 
+## Phase 15 outcomes (2026-07-17)
+
+- **F10 landed:** `variant_pole_figure(parent, relationship, child_plane)` (stable core
+  surface) computes specimen-frame poles of the child plane family per variant under the
+  canonical composition `C = P V^T`, returned as a typed `VariantPoleFigure` with
+  `describe()`; `plot_variant_pole_figure(...)` (plotting/runtime) renders the
+  color-per-variant stereographic overlay on `plot_stereographic_vectors`.
+- Pinned physics: every KS variant's predicted {011} pole set contains the specimen-frame
+  normal of its packet's parent {111} member (all 24 variants exact) — ties F10 to the
+  packet classification.
+- **OR-fitting worked example** `or-fit-recovers-gt-from-ks-nominal` added to the
+  transformation gallery (zero residual + 2.4037 deg KS-GT separation, computed live);
+  closes the queued docs gap. Gallery regenerated.
+- Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
-1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
-   example; hexagonal property suites; variant pole-figure plotting (F10); external
+1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture (needs MATLAB-generated
+   fixture data — see scripts/mtex_generators); hexagonal property suites; external
    measured-data reconstruction fixture.
 2. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark

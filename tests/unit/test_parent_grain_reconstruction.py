@@ -358,3 +358,83 @@ def test_burgers_variant_groups_form_six_pairs() -> None:
     # parent planes: six groups of two.
     assert groups.shape == (12,)
     assert np.bincount(groups).tolist() == [2, 2, 2, 2, 2, 2]
+
+
+def test_variant_pole_figure_predicts_packet_plane_coincidence() -> None:
+    """Each variant's child {011} pole set contains its packet's parent {111} pole.
+
+    The defining KS parallelism ties every variant's (011) child plane to its
+    close-packed parent {111} member, so the predicted specimen-frame poles
+    must coincide — the textbook signature read off variant pole figures.
+    """
+
+    from pytex.core import CrystalPlane, MillerIndex, variant_pole_figure
+    from pytex.core.transformation import _integer_index_orbit
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    parent_orientation = Orientation.from_euler(
+        20.0, 30.0, 40.0, specimen_frame=specimen, symmetry=parent_phase.symmetry,
+        phase=parent_phase,
+    )
+    child_plane = CrystalPlane(
+        MillerIndex(np.array([0, 1, 1]), phase=child_phase), phase=child_phase
+    )
+    prediction = variant_pole_figure(parent_orientation, ks, child_plane)
+    assert prediction.poles.values.shape == (24 * 6, 3)
+    assert np.allclose(np.linalg.norm(prediction.poles.values, axis=1), 1.0)
+    assert prediction.poles.reference_frame == specimen
+    assert prediction.variant_count == 24
+    members = _integer_index_orbit(
+        np.array([1, 1, 1]), phase=parent_phase, reciprocal=True
+    )
+    reciprocal = parent_phase.lattice.reciprocal_basis().matrix
+    parent_normals = members.astype(np.float64) @ reciprocal.T
+    parent_normals /= np.linalg.norm(parent_normals, axis=1)[:, None]
+    specimen_normals = parent_normals @ parent_orientation.rotation.as_matrix().T
+    for variant in ks.generate_variants():
+        rows = prediction.poles.values[
+            np.flatnonzero(prediction.variant_indices == variant.variant_index)
+        ]
+        residuals = [
+            ks.map_plane_to_child(
+                CrystalPlane(MillerIndex(member, phase=parent_phase), phase=parent_phase),
+                variant=variant,
+            ).angular_residual_deg
+            for member in members
+        ]
+        target = specimen_normals[int(np.argmin(residuals))]
+        assert float(np.max(np.abs(rows @ target))) == pytest.approx(1.0, abs=1e-9)
+    text = prediction.describe()
+    assert "24 variant(s)" in text
+    assert "(011)" in text
+
+
+def test_variant_pole_figure_validates_phases_and_plots() -> None:
+    from pytex.core import CrystalPlane, MillerIndex, variant_pole_figure
+    from pytex.plotting import plot_variant_pole_figure
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    parent_orientation = Orientation.from_euler(
+        10.0, 20.0, 30.0, specimen_frame=specimen, symmetry=parent_phase.symmetry,
+        phase=parent_phase,
+    )
+    with pytest.raises(ValueError, match="child phase"):
+        variant_pole_figure(
+            parent_orientation,
+            ks,
+            CrystalPlane(MillerIndex(np.array([0, 1, 1]), phase=parent_phase),
+                         phase=parent_phase),
+        )
+    prediction = variant_pole_figure(
+        parent_orientation,
+        ks,
+        CrystalPlane(MillerIndex(np.array([0, 1, 1]), phase=child_phase), phase=child_phase),
+    )
+    axes = plot_variant_pole_figure(prediction)
+    assert axes is not None

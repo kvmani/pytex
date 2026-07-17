@@ -125,6 +125,7 @@ from pytex.core.transformation import (
     PhaseTransformationRecord,
     PlaneCorrespondence,
     TransformationVariant,
+    VariantPoleFigure,
     find_parallel_directions,
     find_parallel_planes,
     fit_orientation_relationship,
@@ -134,6 +135,7 @@ from pytex.core.transformation import (
     map_plane_across_variants,
     or_deviation,
     variant_close_packed_groups,
+    variant_pole_figure,
 )
 
 __all__ = [
@@ -162,6 +164,7 @@ __all__ = [
     "ORDeviationReport",
     "OrientationRelationshipFitReport",
     "ParallelismMatch",
+    "VariantPoleFigure",
     "ParallelismReport",
     "Lattice",
     "MeasurementQuality",
@@ -229,6 +232,7 @@ __all__ = [
     "map_direction_across_variants",
     "or_deviation",
     "variant_close_packed_groups",
+    "variant_pole_figure",
     "laue_class_symbols",
     "list_phase_fixtures",
     "metric_tensor",

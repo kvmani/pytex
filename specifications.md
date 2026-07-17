@@ -110,6 +110,8 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `map_plane_across_variants`
 - `or_deviation`
 - `variant_close_packed_groups`
+- `VariantPoleFigure`
+- `variant_pole_figure`
 - `IntervariantMisorientation`
 - `intervariant_misorientations`
 - `OrientationRelationshipCatalog`
@@ -140,6 +142,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `plot_odf`
 - `plot_xrd_pattern`
 - `plot_saed_pattern`
+- `plot_variant_pole_figure`
 - `CrystalScene`
 - `CrystalCellOverlay`
 - `build_crystal_scene`

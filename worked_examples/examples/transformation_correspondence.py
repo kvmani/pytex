@@ -192,6 +192,88 @@ KS_MISORIENTATION_REPRESENTATION = WorkedExample(
 )
 
 
+OR_FITTING_SETUP = CORRESPONDENCE_SETUP + """
+from pytex import (
+    Orientation,
+    OrientationSet,
+    fit_orientation_relationship,
+)
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+gt = OrientationRelationship.from_greninger_troiano_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+gt_variants = gt.generate_variants()
+rng = np.random.default_rng(11)
+eulers = rng.uniform(0.0, 60.0, size=(20, 3))
+parents = OrientationSet.from_orientations(
+    [
+        Orientation.from_euler(
+            *euler, specimen_frame=specimen, symmetry=austenite.symmetry, phase=austenite
+        )
+        for euler in eulers
+    ]
+)
+picks = rng.integers(0, len(gt_variants), size=20)
+children = OrientationSet(
+    quaternions=np.stack(
+        [
+            parents[index]
+            .rotation.compose(gt_variants[int(picks[index])].parent_to_child_rotation.inverse())
+            .quaternion
+            for index in range(20)
+        ],
+        axis=0,
+    ),
+    crystal_frame=ferrite.crystal_frame,
+    specimen_frame=specimen,
+    symmetry=ferrite.symmetry,
+    phase=ferrite,
+)
+"""
+
+
+OR_FITTING_RECOVERS_GT = WorkedExample(
+    id="or-fit-recovers-gt-from-ks-nominal",
+    title="OR fitting recovers Greninger-Troiano from a Kurdjumov-Sachs start",
+    domain="transformation",
+    scenario=(
+        "Twenty parent/child pairs are generated with the Greninger-Troiano "
+        "relationship, then fitted starting from a Kurdjumov-Sachs nominal. "
+        "The fit must land on the operative relationship exactly (zero mean "
+        "residual) while reporting the documented 2.40 deg separation between "
+        "the fitted relationship and the assumed KS nominal."
+    ),
+    setup=OR_FITTING_SETUP,
+    code=(
+        "ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "report = fit_orientation_relationship(parents, children, ks)\n"
+        "result = np.array([report.deviation_from_nominal_deg, report.mean_residual_deg])"
+    ),
+    expected=[2.4037, 0.0],
+    unit="deg",
+    tolerance=5e-3,
+    reference=(
+        "Exact GT-generated pairs must refit GT identically (zero residual is "
+        "an analytic identity), and the reported distance from the KS nominal "
+        "is the documented KS-GT representative separation of 2.40 deg."
+    ),
+    citation=(
+        "Greninger and Troiano, Trans. AIME 185 (1949) 590; "
+        "Kurdjumov and Sachs, Z. Phys. 64 (1930) 325."
+    ),
+    symbols=(_OMEGA,),
+    see_also=(_OR_CONCEPT, _API),
+)
+
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
@@ -205,5 +287,6 @@ GROUP = ExampleGroup(
         KS_PLANE_CORRESPONDENCE,
         BAIN_DIRECTION_CORRESPONDENCE,
         KS_MISORIENTATION_REPRESENTATION,
+        OR_FITTING_RECOVERS_GT,
     ),
 )

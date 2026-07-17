@@ -270,6 +270,64 @@ def plot_orientations(
     raise ValueError("representation must be 'axis_angle' or 'euler'.")
 
 
+def plot_variant_pole_figure(
+    variant_poles: Any,
+    *,
+    method: str = "stereographic",
+    antipodal: bool = True,
+    include_wulff_net: bool = True,
+    label_variants: bool = True,
+    title: str | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    """Plot a ``VariantPoleFigure`` as a color-per-variant stereographic overlay.
+
+    Purpose: renders the predicted specimen-frame child-plane poles of every
+    transformation variant (from ``pytex.variant_pole_figure``) on a Wulff
+    net, cycling one color per variant so the overlay can be read against a
+    measured child pole figure. With ``label_variants`` the first pole of
+    each variant carries a ``V<k>`` label.
+
+    Output: the Matplotlib axes from ``plot_stereographic_vectors``.
+    """
+
+    indices = variant_poles.variant_indices
+    palette = [
+        "#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#8c564b",
+        "#e377c2", "#17becf", "#bcbd22", "#7f7f7f", "#aec7e8", "#98df8a",
+    ]
+    unique = {int(index): position for position, index in enumerate(dict.fromkeys(indices))}
+    colors = [palette[unique[int(index)] % len(palette)] for index in indices]
+    labels: list[str | None] | None = None
+    if label_variants:
+        seen: set[int] = set()
+        labels = []
+        for index in indices:
+            value = int(index)
+            labels.append(f"V{value}" if value not in seen else None)
+            seen.add(value)
+    resolved_title = title or (
+        f"{variant_poles.relationship_name}: variant poles"
+    )
+    return _plot_stereographic_vectors(
+        variant_poles.poles.values,
+        labels=labels,
+        colors=colors,
+        method=method,
+        render="pole",
+        antipodal=antipodal,
+        include_wulff_net=include_wulff_net,
+        title=resolved_title,
+        theme=theme,
+        style_path=style_path,
+        style_overrides=style_overrides,
+        ax=ax,
+    )
+
+
 def plot_pole_figure(
     pole_figure: PoleFigure,
     *,

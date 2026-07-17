@@ -248,3 +248,122 @@ result = np.concatenate([[misorientation.angle_deg], axis])
 **Citation**: Verlinden, Driver, Samajdar, Doherty, Thermo-Mechanical Processing of Metallic Materials (2007); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## OR fitting recovers Greninger-Troiano from a Kurdjumov-Sachs start
+
+Twenty parent/child pairs are generated with the Greninger-Troiano relationship, then fitted starting from a Kurdjumov-Sachs nominal. The fit must land on the operative relationship exactly (zero mean residual) while reporting the documented 2.40 deg separation between the fitted relationship and the assumed KS nominal.
+
+**Symbols**
+
+- $(\mathbf{n}, \omega)$ &mdash; Axis-angle pair of the symmetry-reduced misorientation representative.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+
+from pytex import (
+    Orientation,
+    OrientationSet,
+    fit_orientation_relationship,
+)
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+gt = OrientationRelationship.from_greninger_troiano_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+gt_variants = gt.generate_variants()
+rng = np.random.default_rng(11)
+eulers = rng.uniform(0.0, 60.0, size=(20, 3))
+parents = OrientationSet.from_orientations(
+    [
+        Orientation.from_euler(
+            *euler, specimen_frame=specimen, symmetry=austenite.symmetry, phase=austenite
+        )
+        for euler in eulers
+    ]
+)
+picks = rng.integers(0, len(gt_variants), size=20)
+children = OrientationSet(
+    quaternions=np.stack(
+        [
+            parents[index]
+            .rotation.compose(gt_variants[int(picks[index])].parent_to_child_rotation.inverse())
+            .quaternion
+            for index in range(20)
+        ],
+        axis=0,
+    ),
+    crystal_frame=ferrite.crystal_frame,
+    specimen_frame=specimen,
+    symmetry=ferrite.symmetry,
+    phase=ferrite,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+report = fit_orientation_relationship(parents, children, ks)
+result = np.array([report.deviation_from_nominal_deg, report.mean_residual_deg])
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-fit-recovers-gt-from-ks-nominal` | [2.4037, 0.0000] | [2.4037, 0.0000] | deg | 1.70e-05 | 5e-03 | ✅ pass |
+
+**Why this value**: Exact GT-generated pairs must refit GT identically (zero residual is an analytic identity), and the reported distance from the KS nominal is the documented KS-GT representative separation of 2.40 deg.
+
+**Citation**: Greninger and Troiano, Trans. AIME 185 (1949) 590; Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
