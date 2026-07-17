@@ -23,6 +23,7 @@ from pytex.core import (
     VectorSet,
     find_parallel_directions,
     find_parallel_planes,
+    fit_orientation_relationship,
     map_plane_across_variants,
     or_deviation,
     phases_semantically_match,
@@ -1017,3 +1018,124 @@ def test_variant_selection_and_reconstruction_describe() -> None:
     recon_text = reconstruction.describe()
     assert "gt_record" in recon_text
     assert "best candidate index 0" in recon_text
+
+
+def _random_gt_pairs(
+    parent: Phase, child: Phase, *, count: int = 30, seed: int = 42
+) -> tuple[OrientationSet, OrientationSet, OrientationRelationship]:
+    specimen = ReferenceFrame(
+        name="specimen_fit",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    rng = np.random.default_rng(seed)
+    eulers = rng.uniform(0.0, 60.0, size=(count, 3))
+    parents = OrientationSet.from_orientations(
+        [
+            Orientation.from_euler(
+                *euler, specimen_frame=specimen, symmetry=parent.symmetry, phase=parent
+            )
+            for euler in eulers
+        ]
+    )
+    variants = gt.generate_variants()
+    picks = rng.integers(0, len(variants), size=count)
+    quaternions = np.stack(
+        [
+            variants[int(picks[index])]
+            .parent_to_child_rotation.compose(parents[index].rotation)
+            .quaternion
+            for index in range(count)
+        ],
+        axis=0,
+    )
+    children = OrientationSet(
+        quaternions=quaternions,
+        crystal_frame=child.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child.symmetry,
+        phase=child,
+    )
+    return parents, children, gt
+
+
+def _symmetry_reduced_distance_deg(
+    left: OrientationRelationship, right: OrientationRelationship
+) -> float:
+    from pytex.core.transformation import _symmetry_reduced_angle_between_deg
+
+    return _symmetry_reduced_angle_between_deg(
+        left.parent_to_child_rotation.as_matrix(),
+        right.parent_to_child_rotation.as_matrix(),
+        child_operators=left.child_phase.symmetry.operators,
+        parent_operators=left.parent_phase.symmetry.operators,
+    )
+
+
+def test_fit_recovers_exact_relationship_from_matching_nominal() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _random_gt_pairs(parent, child)
+    report = fit_orientation_relationship(parents, children, gt)
+    assert report.converged
+    assert report.deviation_from_nominal_deg == pytest.approx(0.0, abs=1e-8)
+    assert report.mean_residual_deg == pytest.approx(0.0, abs=1e-8)
+
+
+def test_fit_recovers_gt_from_ks_nominal_start() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _random_gt_pairs(parent, child)
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = fit_orientation_relationship(parents, children, ks)
+    assert report.converged
+    # The fit must land on the true (GT) relationship even though the
+    # starting nominal was KS, and must report the documented KS-GT distance.
+    assert _symmetry_reduced_distance_deg(report.relationship, gt) == pytest.approx(
+        0.0, abs=1e-6
+    )
+    assert report.deviation_from_nominal_deg == pytest.approx(2.404, abs=5e-3)
+    assert report.mean_residual_deg == pytest.approx(0.0, abs=1e-8)
+    assert report.relationship.name == "kurdjumov_sachs_fitted"
+
+
+def test_fit_averages_noise_toward_true_relationship() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _random_gt_pairs(parent, child, count=40)
+    rng = np.random.default_rng(7)
+    noisy = []
+    for index in range(len(children)):
+        axis = rng.normal(size=3)
+        axis /= np.linalg.norm(axis)
+        perturbation = Rotation.from_axis_angle(axis, np.deg2rad(rng.normal(0.0, 0.5)))
+        noisy.append(
+            perturbation.compose(Rotation(quaternion=children.quaternions[index])).quaternion
+        )
+    children_noisy = OrientationSet(
+        quaternions=np.stack(noisy, axis=0),
+        crystal_frame=child.crystal_frame,
+        specimen_frame=children.specimen_frame,
+        symmetry=child.symmetry,
+        phase=child,
+    )
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = fit_orientation_relationship(parents, children_noisy, ks)
+    # Averaging must pull the estimate well inside the noise level.
+    assert _symmetry_reduced_distance_deg(report.relationship, gt) < 0.15
+    assert 0.1 < report.mean_residual_deg < 1.0
+    text = report.describe()
+    assert "kurdjumov_sachs_fitted" in text
+    assert "Per-pair residuals" in text
+
+
+def test_fit_validates_pairing_and_phases() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, gt = _random_gt_pairs(parent, child, count=4)
+    with pytest.raises(ValueError, match="parent phase"):
+        fit_orientation_relationship(children, children, gt)

@@ -80,6 +80,19 @@ with Greninger-Troiano deviate by the documented \(2.40^{\circ}\) from
 Kurdjumov-Sachs and \(2.86^{\circ}\) from Nishiyama-Wassermann — the report's
 aggregate statistics are the entry point for OR fitting.
 
+## Fitting the operative relationship
+
+`fit_orientation_relationship(parents, children, nominal)` goes one step
+further and refines the relationship itself: each measured parent-to-child
+map is aligned to the current estimate through both symmetry groups, the
+aligned rotations are averaged with the quaternion eigen-mean, and the steps
+iterate to convergence. Starting from a Kurdjumov-Sachs nominal on
+Greninger-Troiano data, the fit recovers GT exactly and reports the
+\(2.40^{\circ}\) distance from the assumed nominal; on noisy data the
+residual statistics quantify the fit. The returned
+`OrientationRelationshipFitReport` carries the fitted
+`OrientationRelationship` and a `describe()` summary.
+
 ## Parallelism finders
 
 `find_parallel_planes(relationship, parent_plane)` enumerates the parent

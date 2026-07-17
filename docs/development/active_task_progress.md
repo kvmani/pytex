@@ -17,8 +17,9 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
-  `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done)
-- Phase: 6 complete (committing) — Cycle B in progress
+  `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
+  Phase 6 as `b10d3b7`
+- Phase: 7 complete (committing) — Cycle B in progress
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -196,19 +197,33 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   (fail-fast off; docs build gated to ubuntu/3.11); classifiers extended to 3.12/3.13.
 - Gates: 828 passed, zero warnings; ruff/mypy/integrity green.
 
+## Phase 7 outcomes (2026-07-17)
+
+- **Finding 3 / F6 landed: `fit_orientation_relationship(parents, children, nominal)`** in
+  `core/transformation.py` + `OrientationRelationshipFitReport` (fitted OR named
+  `<nominal>_fitted`, per-pair residuals, iterations/convergence, symmetry-reduced
+  `deviation_from_nominal_deg`, `describe()`).
+- Algorithm: precompute all symmetry-equivalent descriptions `S_c (C P^T) S_p` per pair once;
+  iterate [align each pair to current estimate by max trace → quaternion eigen-mean (Markley,
+  scatter-matrix eigenvector — sign-free) → update] until step < tol.
+- Verified: exact GT pairs + GT nominal → zero everything, 1 iteration; exact GT pairs + **KS
+  nominal → recovers GT exactly** (distance to true GT = 0, reported nominal distance 2.404
+  deg); seeded 0.5-deg noise → fit within 0.15 deg of truth, residuals ≈ noise. 4 new tests.
+- Docs: validation-matrix row (MTEX `calcParent2Child` parity comparison + worked example
+  explicitly queued); concept-page section; specifications list. Gates: 832 passed, zero
+  warnings; ruff/mypy/integrity/Sphinx green.
+
 ## Next Actions (Cycle B remainder, per the development guide §3)
 
-1. OR fitting from measured pairs (F6, finding 3) — symmetry-aware rotation averaging over
-   variant-aligned misorientations (quaternion mean of per-pair best-variant-aligned
-   parent-to-child rotations, outlier rejection, residual statistics report with describe());
-   validate: recover GT exactly from exact GT pairs; recover GT from KS-nominal start;
-   parity floor MTEX `calcParent2Child`. Suggested surface:
-   `fit_orientation_relationship(parents, children, initial=...)` in `core/transformation.py`.
-2. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
+1. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
    grain-boundary network (`ebsd/models.py` grains + union-find as in `merge_by_csl`);
    synthetic fixture first (planted parent grains -> variants -> reconstruct), literature
    fixture second. Stage under `pytex.experimental` until validation breadth exists.
-3. First Hypothesis property suites (finding 20): orientation algebra (compose/inverse),
+   Building blocks now all exist: variants, or_deviation, fit_orientation_relationship,
+   vectorized select_variants.
+2. First Hypothesis property suites (finding 20): orientation algebra (compose/inverse),
    index round-trips (Miller-Bravais), variant orbit invariance (mapping a plane's family
    members across variants yields permutations of one child family set). Requires adding
    `hypothesis` to the dev extra.
+3. Queued follow-ups recorded in ledgers: MTEX calcParent2Child parity fixture; OR-fitting
+   worked example; OrientationSet slicing API (returns malformed Orientation today).

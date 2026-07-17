@@ -24,6 +24,7 @@ from pytex.core.orientation import (
     Rotation,
     _plane_direction_rotation_matrices,
     _reduced_pair_disorientation_angles,
+    matrices_to_quaternions,
 )
 from pytex.core.provenance import ProvenanceRecord
 
@@ -1275,6 +1276,203 @@ def or_deviation(
         deviations_deg=deviations_deg,
         best_variant_indices=variant_indices,
         provenance=provenance or relationship.provenance,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class OrientationRelationshipFitReport:
+    """Result of fitting an orientation relationship to measured pairs.
+
+    ``relationship`` is the fitted OR (same phases as the nominal one, name
+    suffixed ``_fitted``, defining parallelisms deliberately not carried over
+    because the fit is matrix-level). ``residuals_deg`` are the per-pair
+    angles between each symmetry-aligned measurement and the fitted rotation;
+    ``deviation_from_nominal_deg`` is the symmetry-reduced distance between
+    the fitted and nominal relationships.
+    """
+
+    relationship: OrientationRelationship
+    nominal_name: str
+    residuals_deg: np.ndarray
+    iterations: int
+    converged: bool
+    deviation_from_nominal_deg: float
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        residuals = np.asarray(self.residuals_deg, dtype=np.float64).reshape(-1)
+        if residuals.size == 0:
+            raise ValueError("OrientationRelationshipFitReport requires at least one pair.")
+        if np.any(~np.isfinite(residuals)) or np.any(residuals < 0.0):
+            raise ValueError("residuals_deg must be finite and non-negative.")
+        if self.iterations <= 0:
+            raise ValueError("iterations must be positive.")
+        residuals.setflags(write=False)
+        object.__setattr__(self, "residuals_deg", residuals)
+
+    @property
+    def mean_residual_deg(self) -> float:
+        return float(np.mean(self.residuals_deg))
+
+    @property
+    def max_residual_deg(self) -> float:
+        return float(np.max(self.residuals_deg))
+
+    def describe(self) -> str:
+        """Prose summary: fit quality, convergence, and distance from nominal."""
+
+        convergence = (
+            f"converged in {self.iterations} iteration(s)"
+            if self.converged
+            else f"did NOT converge within {self.iterations} iteration(s)"
+        )
+        misorientation = self.relationship.misorientation()
+        axis = misorientation.rotation.axis
+        return (
+            f"Fitted orientation relationship '{self.relationship.name}' from "
+            f"{self.residuals_deg.size} parent/child pair(s), starting from nominal "
+            f"'{self.nominal_name}': {convergence}. Fitted misorientation representative: "
+            f"{misorientation.angle_deg:.2f} deg about "
+            f"<{axis[0]:.3f} {axis[1]:.3f} {axis[2]:.3f}>. Per-pair residuals: mean "
+            f"{self.mean_residual_deg:.3f} deg, max {self.max_residual_deg:.3f} deg "
+            f"(symmetry-aligned angles). The fit sits "
+            f"{self.deviation_from_nominal_deg:.3f} deg from the nominal relationship; "
+            "a large value means the operative relationship differs systematically "
+            "from the assumed one."
+        )
+
+
+def _rotation_angles_deg_from_matrices(matrices: np.ndarray) -> np.ndarray:
+    traces = np.trace(matrices, axis1=-2, axis2=-1)
+    cosines = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
+    return np.asarray(np.degrees(np.arccos(cosines)), dtype=np.float64)
+
+
+def _symmetry_reduced_angle_between_deg(
+    left: np.ndarray,
+    right: np.ndarray,
+    *,
+    child_operators: np.ndarray,
+    parent_operators: np.ndarray,
+) -> float:
+    candidates = np.einsum(
+        "aij,jk,bkl->abil", child_operators, left, parent_operators, optimize=True
+    )
+    relative = np.einsum("abij,kj->abik", candidates, right, optimize=True)
+    return float(np.min(_rotation_angles_deg_from_matrices(relative.reshape(-1, 3, 3))))
+
+
+def fit_orientation_relationship(
+    parent_orientations: OrientationSet,
+    child_orientations: OrientationSet,
+    nominal: OrientationRelationship,
+    *,
+    max_iterations: int = 20,
+    convergence_tol_deg: float = 1e-8,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipFitReport:
+    """Fit the operative orientation relationship to measured pairs.
+
+    Purpose: estimates the parent-to-child rotation that best explains
+    measured parent/child orientation pairs — the step beyond
+    ``or_deviation``: instead of only quantifying departure from a nominal
+    relationship, it refines the relationship itself (e.g. starting from
+    Kurdjumov-Sachs and recovering the operative Greninger-Troiano-like OR).
+
+    Algorithm: each pair's measured crystal-to-crystal map ``C P^T`` is
+    aligned to the current estimate through the parent and child symmetry
+    groups (the equivalent description nearest the estimate), the aligned
+    rotations are averaged with the quaternion eigen-mean (Markley), and the
+    align/average steps iterate to convergence. This is the standard
+    symmetry-aware rotation-averaging route used for parent/child OR
+    refinement (MTEX ``calcParent2Child`` is the parity reference).
+
+    Inputs: paired ``OrientationSet`` objects matching the nominal
+    relationship's phases and sharing a specimen frame; the nominal
+    relationship supplies the starting estimate, phases, and symmetry groups.
+
+    Output: an ``OrientationRelationshipFitReport`` (see its ``describe()``).
+    """
+
+    if len(parent_orientations) != len(child_orientations):
+        raise ValueError(
+            "parent_orientations and child_orientations must be paired (equal length)."
+        )
+    if len(parent_orientations) == 0:
+        raise ValueError("fit_orientation_relationship requires at least one pair.")
+    if not phases_semantically_match(parent_orientations.phase, nominal.parent_phase):
+        raise ValueError("parent_orientations.phase must match the nominal parent phase.")
+    if not phases_semantically_match(child_orientations.phase, nominal.child_phase):
+        raise ValueError("child_orientations.phase must match the nominal child phase.")
+    if parent_orientations.specimen_frame != child_orientations.specimen_frame:
+        raise ValueError("Parent and child orientations must share a specimen frame.")
+    parent_symmetry = nominal.parent_phase.symmetry
+    child_symmetry = nominal.child_phase.symmetry
+    parent_operators = (
+        parent_symmetry.operators
+        if parent_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    child_operators = (
+        child_symmetry.operators
+        if child_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
+    parent_matrices = parent_orientations.as_matrices()
+    child_matrices = child_orientations.as_matrices()
+    measured = np.einsum("nij,nkj->nik", child_matrices, parent_matrices, optimize=True)
+    # All symmetry-equivalent descriptions of every measurement, computed once:
+    # S_c (C P^T) S_p over both groups.
+    candidates = np.einsum(
+        "aij,njk,bkl->nabil", child_operators, measured, parent_operators, optimize=True
+    )
+    pair_count = measured.shape[0]
+    flat_candidates = candidates.reshape(pair_count, -1, 3, 3)
+    estimate = nominal.parent_to_child_rotation.as_matrix()
+    iterations = 0
+    converged = False
+    aligned = flat_candidates[:, 0]
+    while iterations < max_iterations and not converged:
+        iterations += 1
+        relative = np.einsum("ncij,kj->ncik", flat_candidates, estimate, optimize=True)
+        traces = np.trace(relative, axis1=-2, axis2=-1)
+        best = np.argmax(traces, axis=1)
+        aligned = flat_candidates[np.arange(pair_count), best]
+        quaternions = matrices_to_quaternions(aligned)
+        scatter = quaternions.T @ quaternions
+        eigenvalues, eigenvectors = np.linalg.eigh(scatter)
+        mean_quaternion = eigenvectors[:, int(np.argmax(eigenvalues))]
+        updated = Rotation(quaternion=mean_quaternion).as_matrix()
+        step_angle = _rotation_angles_deg_from_matrices(
+            (updated @ estimate.T)[None, :, :]
+        )[0]
+        estimate = updated
+        converged = step_angle <= convergence_tol_deg
+    residuals = _rotation_angles_deg_from_matrices(
+        np.einsum("nij,kj->nik", aligned, estimate, optimize=True)
+    )
+    fitted_rotation = Rotation.from_matrix(estimate).canonicalized()
+    fitted = OrientationRelationship(
+        name=f"{nominal.name}_fitted",
+        parent_phase=nominal.parent_phase,
+        child_phase=nominal.child_phase,
+        parent_to_child_rotation=fitted_rotation,
+        provenance=provenance or nominal.provenance,
+    )
+    deviation = _symmetry_reduced_angle_between_deg(
+        estimate,
+        nominal.parent_to_child_rotation.as_matrix(),
+        child_operators=child_operators,
+        parent_operators=parent_operators,
+    )
+    return OrientationRelationshipFitReport(
+        relationship=fitted,
+        nominal_name=nominal.name,
+        residuals_deg=residuals,
+        iterations=iterations,
+        converged=converged,
+        deviation_from_nominal_deg=deviation,
+        provenance=provenance or nominal.provenance,
     )
 
 
