@@ -6,19 +6,19 @@ history.
 
 ## Objective
 
-Execute **Cycle A of the Critical Review And Development Guide**
-(`docs/roadmap/critical_review_and_development_guide.md`), one phase per commit+push, as a
-long-horizon mission. Findings addressed: 1, 2, 6, 16, 17, 18 (23/24 already fixed with the
-guide itself). The OR feature definitions (F1–F5) live in
-`docs/architecture/orientation_relationship_analysis_foundation.md`.
+Execute the **Critical Review And Development Guide**
+(`docs/roadmap/critical_review_and_development_guide.md`) cycle by cycle, one phase per
+commit+push, as a long-horizon mission. Cycle A (findings 1, 2, 6, 16, 17, 18, 23, 24) is fully
+executed; now working Cycle B (findings 3, 4, 7, 19, 20). The OR feature definitions (F1–F14)
+live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 ## Current Status
 
 - Started: 2026-07-16
 - Branch: `main` (tracking `origin/main`, push after each phase)
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
-  `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`
-- Phase: 5 complete (committing) — **Cycle A of the development guide is fully executed.**
+  `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done)
+- Phase: 6 complete (committing) — Cycle B in progress
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -181,13 +181,34 @@ guide itself). The OR feature definitions (F1–F5) live in
   when measured coverage rises, never lower it.
 - Development-guide changelog updated: Cycle A findings 1, 2, 6, 16, 17, 18, 23, 24 all closed.
 
-## Next Actions (Cycle B, per the development guide §3)
+## Phase 6 outcomes (2026-07-17, Cycle B start)
+
+- **Finding 7 closed (vectorization):** `intervariant_misorientations` now computes all pair
+  relatives and the full symmetry-product tensor in single einsums (`triu_indices` pairs;
+  representative-selection axis order preserved, so results are bit-identical to the historical
+  per-pair enumeration); `PhaseTransformationRecord.predicted_child_orientations` and
+  `select_variants` now compose variant × parent in matrix space (`einsum` +
+  `OrientationSet.from_matrices`) instead of per-element quaternion loops.
+- One test updated with justification: predicted-quaternion comparison is now sign-insensitive
+  (q and -q are the same rotation; matrix→quaternion conversion picks the canonical branch).
+  The pinned behavior is the rotation, not the incidental sign.
+- **Finding 19 closed (CI matrix):** base lane now runs ubuntu+macos × Python 3.11–3.13
+  (fail-fast off; docs build gated to ubuntu/3.11); classifiers extended to 3.12/3.13.
+- Gates: 828 passed, zero warnings; ruff/mypy/integrity green.
+
+## Next Actions (Cycle B remainder, per the development guide §3)
 
 1. OR fitting from measured pairs (F6, finding 3) — symmetry-aware rotation averaging over
-   variant-aligned misorientations; parity floor MTEX `calcParent2Child`.
+   variant-aligned misorientations (quaternion mean of per-pair best-variant-aligned
+   parent-to-child rotations, outlier rejection, residual statistics report with describe());
+   validate: recover GT exactly from exact GT pairs; recover GT from KS-nominal start;
+   parity floor MTEX `calcParent2Child`. Suggested surface:
+   `fit_orientation_relationship(parents, children, initial=...)` in `core/transformation.py`.
 2. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
-   grain-boundary network; synthetic + literature fixtures.
-3. Vectorize variant hot paths (finding 7): `intervariant_misorientations` pair loop,
-   `predicted_child_orientations` list building, `select_variants` per-variant loop.
-4. CI matrix ubuntu+macos × 3.11–3.13 (finding 19); first Hypothesis property suites
-   (finding 20: orientation algebra, index round-trips, variant orbit invariance).
+   grain-boundary network (`ebsd/models.py` grains + union-find as in `merge_by_csl`);
+   synthetic fixture first (planted parent grains -> variants -> reconstruct), literature
+   fixture second. Stage under `pytex.experimental` until validation breadth exists.
+3. First Hypothesis property suites (finding 20): orientation algebra (compose/inverse),
+   index round-trips (Miller-Bravais), variant orbit invariance (mapping a plane's family
+   members across variants yields permutations of one child family set). Requires adding
+   `hypothesis` to the dev extra.

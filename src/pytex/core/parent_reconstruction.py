@@ -215,19 +215,18 @@ def select_variants(
     """
 
     variants = record.orientation_relationship.generate_variants()
-    parent_rotation = record.parent_orientation.rotation
     children = record.child_orientations
     if len(children) == 0:
         raise ValueError("select_variants requires at least one child orientation.")
-    quaternions = np.stack(
-        [
-            variant.parent_to_child_rotation.compose(parent_rotation).quaternion
-            for variant in variants
-        ],
-        axis=0,
+    variant_matrices = np.stack(
+        [variant.parent_to_child_rotation.as_matrix() for variant in variants], axis=0
     )
-    predicted = OrientationSet(
-        quaternions=quaternions,
+    parent_matrix = record.parent_orientation.rotation.as_matrix()
+    predicted_matrices = np.einsum(
+        "vij,jk->vik", variant_matrices, parent_matrix, optimize=True
+    )
+    predicted = OrientationSet.from_matrices(
+        predicted_matrices,
         crystal_frame=children.crystal_frame,
         specimen_frame=children.specimen_frame,
         symmetry=children.symmetry,

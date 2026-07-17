@@ -369,8 +369,14 @@ def test_phase_transformation_record_predicted_orientations_follow_variant_indic
     assert predicted.quaternions.shape == (2, 4)
     expected_first = variants[0].parent_to_child_rotation.compose(parent_orientation.rotation)
     expected_last = variants[-1].parent_to_child_rotation.compose(parent_orientation.rotation)
-    assert_allclose(predicted.quaternions[0], expected_first.quaternion, atol=1e-8)
-    assert_allclose(predicted.quaternions[1], expected_last.quaternion, atol=1e-8)
+    # q and -q describe the same rotation; compare up to the double cover so
+    # the pinned behavior is the rotation itself, not an incidental sign.
+    assert abs(float(predicted.quaternions[0] @ expected_first.quaternion)) == pytest.approx(
+        1.0, abs=1e-8
+    )
+    assert abs(float(predicted.quaternions[1] @ expected_last.quaternion)) == pytest.approx(
+        1.0, abs=1e-8
+    )
 
 
 def make_hcp_child() -> Phase:

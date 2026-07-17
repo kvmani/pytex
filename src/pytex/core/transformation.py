@@ -1106,28 +1106,40 @@ def intervariant_misorientations(
 
     resolved = relationship.generate_variants() if variants is None else variants
     operators = _child_operators(relationship)
+    count = len(resolved)
+    if count < 2:
+        return ()
+    matrices = np.stack(
+        [variant.parent_to_child_rotation.as_matrix() for variant in resolved], axis=0
+    )
+    row_indices, column_indices = np.triu_indices(count, k=1)
+    relative = np.einsum(
+        "nij,nkj->nik", matrices[row_indices], matrices[column_indices], optimize=True
+    )
+    # One symmetry-product tensor for every pair at once; axis order (a, b)
+    # matches the historical per-pair enumeration so representative selection
+    # is unchanged.
+    products = np.einsum(
+        "aij,njk,blk->nabil", operators, relative, operators, optimize=True
+    )
+    traces = np.trace(products, axis1=3, axis2=4)
+    cosines = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
+    angles = np.arccos(cosines).reshape(len(row_indices), -1)
+    best = np.argmin(angles, axis=1)
+    representatives = products.reshape(len(row_indices), -1, 3, 3)[
+        np.arange(len(row_indices)), best
+    ]
     results: list[IntervariantMisorientation] = []
-    for a in range(len(resolved)):
-        matrix_a = resolved[a].parent_to_child_rotation.as_matrix()
-        for b in range(a + 1, len(resolved)):
-            matrix_b = resolved[b].parent_to_child_rotation.as_matrix()
-            relative = matrix_a @ matrix_b.T
-            products = np.einsum(
-                "aij,jk,blk->abil", operators, relative, operators, optimize=True
+    for pair, (a, b) in enumerate(zip(row_indices, column_indices, strict=True)):
+        representative = Rotation.from_matrix(representatives[pair])
+        results.append(
+            IntervariantMisorientation(
+                variant_a=resolved[int(a)].variant_index,
+                variant_b=resolved[int(b)].variant_index,
+                angle_deg=representative.angle_deg,
+                axis_child_frame=representative.axis,
             )
-            traces = np.trace(products, axis1=2, axis2=3)
-            cosines = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
-            flat = np.arccos(cosines).reshape(-1)
-            best = int(np.argmin(flat))
-            representative = Rotation.from_matrix(products.reshape(-1, 3, 3)[best])
-            results.append(
-                IntervariantMisorientation(
-                    variant_a=resolved[a].variant_index,
-                    variant_b=resolved[b].variant_index,
-                    angle_deg=representative.angle_deg,
-                    axis_child_frame=representative.axis,
-                )
-            )
+        )
     return tuple(results)
 
 
@@ -1611,13 +1623,13 @@ class PhaseTransformationRecord:
         return int(np.unique(self.variant_indices).size)
 
     def predicted_child_orientations(self) -> OrientationSet:
+        child_count = len(self.child_orientations)
         if self.variant_indices is None:
-            predicted_rotations = [self.orientation_relationship.parent_to_child_rotation] * len(
-                self.child_orientations
-            )
+            base = self.orientation_relationship.parent_to_child_rotation.as_matrix()
+            variant_matrices = np.repeat(base[None, :, :], child_count, axis=0)
         else:
             variant_lookup = {
-                variant.variant_index: variant.parent_to_child_rotation
+                variant.variant_index: variant.parent_to_child_rotation.as_matrix()
                 for variant in self.orientation_relationship.generate_variants()
             }
             missing = sorted(
@@ -1634,18 +1646,15 @@ class PhaseTransformationRecord:
                     + ", ".join(str(value) for value in missing)
                 )
             variant_indices = np.asarray(self.variant_indices, dtype=np.int64)
-            predicted_rotations = [
-                variant_lookup[int(index)] for index in variant_indices
-            ]
-        quaternions = np.stack(
-            [
-                predicted_rotation.compose(self.parent_orientation.rotation).quaternion
-                for predicted_rotation in predicted_rotations
-            ],
-            axis=0,
-        )
-        return OrientationSet(
-            quaternions=quaternions,
+            unique_indices, inverse = np.unique(variant_indices, return_inverse=True)
+            unique_matrices = np.stack(
+                [variant_lookup[int(index)] for index in unique_indices], axis=0
+            )
+            variant_matrices = unique_matrices[inverse]
+        parent_matrix = self.parent_orientation.rotation.as_matrix()
+        predicted = np.einsum("nij,jk->nik", variant_matrices, parent_matrix, optimize=True)
+        return OrientationSet.from_matrices(
+            predicted,
             crystal_frame=self.child_orientations.crystal_frame,
             specimen_frame=self.child_orientations.specimen_frame,
             symmetry=self.child_orientations.symmetry,
