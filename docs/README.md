@@ -3,6 +3,7 @@
 ## Core Documents
 
 - [Mission](../mission.md)
+- [Changelog](../CHANGELOG.md)
 - [Specifications](../specifications.md)
 - [Agent Instructions](../AGENTS.md)
 

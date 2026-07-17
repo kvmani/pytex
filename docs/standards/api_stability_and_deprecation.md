@@ -78,6 +78,20 @@ Rules:
 2. Delete the surface, its tests, and its `__all__` entries in one commit.
 3. Note the removal in the commit message ("removes X, deprecated since Y").
 
+## Release And Changelog Policy
+
+- `CHANGELOG.md` (repository root, Keep-a-Changelog format) is the durable
+  user-facing record of behavior changes; the `Unreleased` section accumulates
+  entries as features land and is cut into a version section at release time.
+- Scientific behavior changes must be stated explicitly and categorized
+  honestly: correctness fixes under **Fixed** (even when embarrassing),
+  convention or semantics changes under **Changed** — downstream analyses
+  depend on them, and silence is a correctness bug of the documentation.
+- A release consists of: version bump in `pyproject.toml`, changelog section
+  cut, a git tag `vX.Y.Z`, and green CI on the tagged commit. Pre-1.0, minor
+  versions may break with deprecation warnings per the stability guarantees
+  above; patch versions must not.
+
 ## References
 
 ### Normative

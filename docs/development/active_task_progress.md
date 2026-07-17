@@ -25,7 +25,9 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 14 pushed as `ee72419`
 - Phase 15 pushed as `551791e`
 - Phase 16 pushed as `20dd2dd`
-- Phase: 17 complete (committing) — transformation performance benchmark lane (finding 21).
+- Phase 17 pushed as `e621fe4`
+- Phase: 18 complete (committing) — release engineering: CHANGELOG + release policy
+  (finding 22).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -339,6 +341,14 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
+## Phase 18 outcomes (2026-07-17)
+
+- **Finding 22 landed:** root `CHANGELOG.md` (Keep-a-Changelog; Unreleased section captures
+  the whole recent program at feature level, with the convention bug honestly under Fixed);
+  "Release And Changelog Policy" section added to the API-stability standard (version bump +
+  changelog cut + tag + green CI; scientific behavior changes must be categorized honestly);
+  changelog linked from the docs index. 855 passed; all gates green.
+
 ## Phase 17 outcomes (2026-07-17)
 
 - **Finding 21 (benchmark lane) landed for the transformation stack:**
@@ -361,6 +371,6 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture (needs MATLAB-generated
    fixture data — see scripts/mtex_generators); external measured-data reconstruction
    fixture.
-2. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
-   (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
-   timing lane (finding 21), release engineering/CHANGELOG (finding 22).
+2. Larger Cycle C programs remaining (per the roadmap sequencing): texture kernel breadth
+   (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14). Findings
+   21 (benchmark lane) and 22 (release engineering) are now closed.
