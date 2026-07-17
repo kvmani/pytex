@@ -62,7 +62,7 @@ Primary risks:
 | Scientific visualization | strong foundation | moderate | strong | foundational | Shared plotting, YAML styles, and 3D crystal viewing now exist, but publication presets and external visual regression are still thinner than the core semantics. |
 | CIF and structure import | strong | moderate | strong | foundational | Space-group semantics and a dedicated validation ledger now exist; broader external validation is still ahead. |
 | Multimodal acquisition | strong | moderate | strong | foundational | Core primitives, experiment manifests, and workflow entry points now exist; broader modality depth is still ahead. |
-| Phase transformation | foundational | weak | strong | foundational | Primitive family now exists; validation and algorithm breadth are still ahead. |
+| Phase transformation | strong | strong | strong | foundationally ready | (Updated 2026-07-17.) Full OR-analysis surface implemented and literature-pinned per the OR foundation doc; map-scale reconstruction remains experimental pending measured-data fixtures. |
 
 ## Learnings
 

@@ -27,7 +27,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 16 pushed as `20dd2dd`
 - Phase 17 pushed as `e621fe4`
 - Phase 18 pushed as `8247554`
-- Phase: 19 complete (committing) — texture kernel breadth (finding 8, first slice).
+- Phase 19 pushed as `05baa47`
+- Phase: 20 complete (committing) — foundational-docs truth sync.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -340,6 +341,16 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 20 outcomes (2026-07-17) — docs truth sync
+
+- Stale foundational claims corrected per the stale-claims-are-defects rule:
+  OR foundation doc §1 rewritten to the post-Cycles-A/B implemented surface and §5 limits
+  updated (only F7/F12/F13/F14 + reconstruction stabilization remain);
+  phase-transformation foundation "Current Limits" now defers to the OR foundation;
+  repo-audit scorecard row for phase transformation moved to strong/foundationally-ready
+  (dated); specifications executive summary updated to the current posture.
+- All gates green (863 passed; integrity; Sphinx clean).
 
 ## Phase 19 outcomes (2026-07-17)
 

@@ -77,19 +77,15 @@ constructor, starting with `OrientationRelationship.from_bain_correspondence(...
 `OrientationRelationship.from_nishiyama_wassermann_correspondence(...)`. The goal is explicitness:
 each builder encodes one stated correspondence rather than hiding an unnamed matrix.
 
-## Current Limits
+## Current Limits (updated 2026-07-17)
 
-- The primitive family now exists and has a dedicated manifest schema, but literature-backed
-  validation is still foundational rather than broad.
-- Relationship construction from one explicit plane-direction correspondence is now implemented, but
-  broader named literature families and competing convention catalogs remain ahead.
-- A small named cubic transformation-helper layer now exists, but this is still the start of the
-  catalog, not the catalog itself.
-- Variant generation and variant-indexed prediction are now benchmarked and validated in-repo, but
-  broader transformation-family coverage remains ahead.
-- Parent reconstruction remains outside the stable algorithmic surface. PyTex now stages bounded
-  candidate-parent scoring under `pytex.experimental` so research workflows can proceed without
-  overstating stability.
+The full current-state statement lives in the
+[Orientation Relationship Analysis Foundation](orientation_relationship_analysis_foundation.md)
+(§1 implemented, §5 limits) — index correspondence, misorientation representation, deviation,
+fitting, parallelism finders, packet classification, and variant pole figures are stable and
+literature-pinned; map-scale parent-grain reconstruction is experimental pending
+measured-data fixtures and MTEX parity; deformation gradients, habit-plane/PTMC analysis,
+OR-from-boundaries determination, and the broader named-OR catalog remain future work.
 
 ## References
 

@@ -10,22 +10,36 @@ It extends, and is normative over, the transformation portions of the
 live in the
 [Critical Review And Development Guide](../roadmap/critical_review_and_development_guide.md).
 
-## 1. What Exists Today (2026-07)
+## 1. What Exists Today (updated 2026-07-17, post Cycles A-B)
 
 Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_reconstruction`, and
-`pytex.experimental.phase_transformation`:
+`pytex.experimental`:
 
 - `OrientationRelationship` with named constructors: Bain, Kurdjumov-Sachs (KS),
   Nishiyama-Wassermann (NW), Greninger-Troiano (GT), Pitsch (fcc↔bcc) and Burgers (bcc↔hcp),
-  plus the generic `from_parallel_plane_direction(...)` correspondence constructor.
-- Symmetry-reduced variant generation with literature-correct counts (Bain 3; NW, Pitsch,
-  Burgers 12; KS, GT 24), intervariant misorientation tables (angles and axes; KS validated
-  against the Morito intervariant set), variant-selection scoring with frequency histograms, and
-  standard-catalog builders (`standard_fcc_bcc_relationships`, `standard_bcc_hcp_relationships`).
-- Cartesian parent↔child vector mapping (`map_parent_vector_to_child` and inverse), including
-  `VectorSet` batch mapping with frame checks.
-- Experimental candidate-parent scoring (`score_parent_orientations`) and the bounded
-  `reconstruct_parent_orientation` report layer.
+  plus the generic `from_parallel_plane_direction(...)` correspondence constructor and standard
+  catalogs.
+- Variant machinery: symmetry-reduced generation with literature-correct counts, intervariant
+  misorientation tables (Morito-validated), variant-selection scoring, and packet
+  classification (`variant_close_packed_groups`: KS 4x6 packets, Burgers 6x2).
+- **F1-F3 (index correspondence):** `correspondence_direct`/`correspondence_reciprocal`,
+  `map_plane_to_child`/`map_direction_to_child` and parent-inverses, across-variant tables,
+  with rationalized indices and atan2 angular residuals; hexagonal Miller-Bravais preserved.
+- **F4 (parallelism finders):** `find_parallel_planes`/`find_parallel_directions` over
+  symmetry families with typed reports.
+- **F5 (misorientation + deviation):** `misorientation()` representatives (KS 42.85 deg
+  <0.968 0.178 0.178> pinned) and `or_deviation` with best-variant assignment.
+- **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean
+  with iterative realignment; recovers GT exactly from a KS nominal.
+- **F8 (reconstruction, experimental):** `reconstruct_parent_grains` /
+  `reconstruct_parent_grains_from_graph` — intervariant-fingerprint edges, union-find
+  clustering, averaged parent refinement, EBSD grain-graph wiring; validated on the
+  24-variant lath-martensite structure fixture.
+- **F10 (variant pole figures):** `variant_pole_figure` + `plot_variant_pole_figure`, pinned
+  by the packet-plane coincidence.
+- Explainable `describe()` prose on every report; the canonical composition
+  `g_child = g_parent ∘ V^T` is regression-pinned (see the development-guide changelog for
+  the convention correction).
 
 ## 2. Doctrine
 
@@ -172,12 +186,15 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 - Property-based: random lattices and ORs — mapping a plane and its symmetric equivalents must
   produce the same child family; rationalization residuals must be invariant to index scaling.
 
-## 5. Current Limits (honest statement)
+## 5. Current Limits (honest statement, updated 2026-07-17)
 
-Until the phases above land: index correspondence, OR fitting, parent reconstruction at map
-scale, habit planes, and deformation gradients are **not available**, and no PyTex document may
-imply otherwise. The stable surface today is: named ORs, variants, intervariant tables, variant
-selection against a known parent, and Cartesian vector mapping.
+Phases 1-3 (F1-F11 except F7) are implemented and validated as listed in §1. Still **not
+available**, and no PyTex document may imply otherwise: OR determination from child-child
+boundaries without the parent (F7), transformation deformation gradients (F12), habit-plane /
+PTMC analysis (F13), and the broader OR catalog (F14). Parent-grain reconstruction (F8) is
+experimental: synthetic and literature-structure validation exists, but external measured-data
+fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
+report objects (F11) are partial.
 
 ## References
 

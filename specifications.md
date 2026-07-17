@@ -15,7 +15,7 @@ PyTex is a modular Python package with:
 - optional adapters under `src/pytex/adapters/`
 - unstable research methods under `src/pytex/experimental/`
 
-The present repository is beyond a pure scaffold. Core, texture, EBSD, diffraction, and manifest foundations exist today, but the project still requires broader foundational doctrine before it can credibly claim world-class multimodal scope.
+The present repository is beyond a pure scaffold. Core, texture, EBSD, diffraction, transformation, and manifest foundations exist today with literature-pinned validation; the orientation-relationship analysis flagship is implemented through variant pole figures per its foundation document. Remaining breadth toward world-class multimodal scope is tracked in the Critical Review And Development Guide.
 
 ## 3. Stable Public Primitive Set
 
