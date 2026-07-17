@@ -28,7 +28,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 17 pushed as `e621fe4`
 - Phase 18 pushed as `8247554`
 - Phase 19 pushed as `05baa47`
-- Phase: 20 complete (committing) — foundational-docs truth sync.
+- Phase 20 pushed as `2faa0e7`
+- Phase: 21 complete (committing) — texture-kernels worked-example group.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -341,6 +342,24 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 21 outcomes (2026-07-17)
+
+- New worked-example gallery group `texture` with
+  `texture-gaussian-kernel-normalization-and-halfwidth` (A_0 = 1 and
+  psi(halfwidth) = psi(0)/2 computed live — analytic identities), closing the quality-bar
+  worked-example obligation for the new kernel surface. Gallery regenerated; 864 passed;
+  all gates green.
+
+## Session hand-off summary (2026-07-17, end of session)
+
+Phases 16-21 this session: hexagonal property suites, transformation performance benchmark
+lane (finding 21), CHANGELOG + release policy (finding 22), Gaussian/Abel-Poisson kernels
+(finding 8 first slice), foundational-docs truth sync, kernel worked example. Remaining
+program, in order: finding 8 remainder (bump/fibre kernels, SO3FunHarmonic), finding 9
+(PF->ODF zero-range/ghost correction), finding 14 (Kikuchi geometry), F7/F12/F13/F14 of the
+OR foundation, reconstruction stabilization (measured-data fixture + MTEX parity), findings
+5, 10-13, 15 per the development guide. Resume from this note.
 
 ## Phase 20 outcomes (2026-07-17) — docs truth sync
 
