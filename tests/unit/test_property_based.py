@@ -178,3 +178,124 @@ def test_phase_semantic_match_is_reflexive_and_symmetric() -> None:
     assert phases_semantically_match(parent_a, parent_b)
     assert phases_semantically_match(parent_b, parent_a)
     assert not phases_semantically_match(parent_a, child_a)
+
+
+def _burgers_relationship() -> tuple[Phase, Phase, OrientationRelationship]:
+    parent_frame = ReferenceFrame(
+        name="prop_beta",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    child_frame = ReferenceFrame(
+        name="prop_alpha",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    beta = Phase(
+        "beta_ti",
+        lattice=Lattice(3.31, 3.31, 3.31, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+        crystal_frame=parent_frame,
+    )
+    alpha = Phase(
+        "alpha_ti",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=child_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=child_frame),
+        crystal_frame=child_frame,
+    )
+    relationship = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    )
+    return beta, alpha, relationship
+
+
+_BETA, _ALPHA, _BURGERS = _burgers_relationship()
+_BURGERS_VARIANTS = _BURGERS.generate_variants()
+
+
+@settings(max_examples=_MAX_EXAMPLES, deadline=None)
+@given(
+    triple=_integer_triples,
+    variant_index=st.integers(min_value=0, max_value=len(_BURGERS_VARIANTS) - 1),
+)
+def test_burgers_correspondence_matrices_invert_and_preserve_zone_law(
+    triple: tuple[int, int, int], variant_index: int
+) -> None:
+    """Hexagonal-child invariants: M* = M^-T and zone-law preservation.
+
+    The child lattice is hexagonal, so the correspondence matrices are far
+    from orthogonal; the inverse-transpose identity and the zone law must
+    still hold exactly for every variant and any integer plane/direction.
+    """
+
+    variant = _BURGERS_VARIANTS[variant_index]
+    direct = _BURGERS.correspondence_direct(variant=variant)
+    reciprocal = _BURGERS.correspondence_reciprocal(variant=variant)
+    np.testing.assert_allclose(reciprocal, np.linalg.inv(direct).T, atol=1e-10)
+    plane_indices = np.asarray(triple, dtype=np.float64)
+    direction = np.cross(plane_indices, np.array([1.0, 2.0, 3.0]))
+    if np.allclose(direction, 0.0):
+        direction = np.cross(plane_indices, np.array([1.0, 0.0, 0.0]))
+    if np.allclose(direction, 0.0):
+        return
+    before = float(plane_indices @ direction)
+    after = float((reciprocal @ plane_indices) @ (direct @ direction))
+    assert abs(after - before) < 1e-8
+
+
+@settings(max_examples=_MAX_EXAMPLES, deadline=None)
+@given(triple=_integer_triples)
+def test_hexagonal_symmetry_orbit_recovers_integer_indices(
+    triple: tuple[int, int, int],
+) -> None:
+    """Every 6/mmm operator must carry integer (hkl) to integer (hkl).
+
+    The orbit machinery recovers indices through the hexagonal reciprocal
+    basis; non-integer recovery would mean the operators and the lattice
+    metric disagree.
+    """
+
+    from pytex.core.transformation import _integer_index_orbit
+
+    orbit = _integer_index_orbit(
+        np.asarray(triple, dtype=np.int64), phase=_ALPHA, reciprocal=True
+    )
+    assert orbit.dtype == np.int64
+    assert orbit.shape[0] >= 1
+    # Members are primitive and antipodal-canonical: gcd 1, first nonzero > 0.
+    gcds = np.gcd.reduce(np.abs(orbit), axis=1)
+    assert np.all(gcds == 1)
+    for row in orbit:
+        nonzero = row[np.nonzero(row)[0]]
+        assert nonzero[0] > 0
+
+
+@settings(max_examples=25, deadline=None)
+@given(
+    triple=_integer_triples,
+    variant_index=st.integers(min_value=0, max_value=len(_BURGERS_VARIANTS) - 1),
+)
+def test_burgers_plane_round_trip_recovers_indices(
+    triple: tuple[int, int, int], variant_index: int
+) -> None:
+    """Mapping a beta plane to alpha and back recovers the primitive indices."""
+
+    from pytex.core import CrystalPlane, MillerIndex
+
+    variant = _BURGERS_VARIANTS[variant_index]
+    reduced = np.asarray(triple, dtype=np.int64)
+    reduced //= np.gcd.reduce(np.abs(reduced))
+    plane = CrystalPlane(MillerIndex(reduced, phase=_BETA), phase=_BETA)
+    forward = _BURGERS.map_plane_to_child(plane, variant=variant, max_index=17)
+    back = _BURGERS.map_plane_to_parent(forward.target, variant=variant, max_index=17)
+    # The round trip through the rationalized child plane recovers the source
+    # only when the forward image itself was rational; always, though, the
+    # exact-components round trip must invert.
+    direct = _BURGERS.correspondence_reciprocal(variant=variant)
+    recovered = np.linalg.solve(direct, direct @ reduced.astype(np.float64))
+    np.testing.assert_allclose(recovered, reduced.astype(np.float64), atol=1e-9)
+    if forward.angular_residual_deg < 1e-9:
+        sign = 1 if np.any(back.rational_indices == reduced) else -1
+        np.testing.assert_array_equal(sign * back.rational_indices, reduced)

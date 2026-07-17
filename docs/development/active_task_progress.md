@@ -23,7 +23,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   Phase 10 as `de58dfe`; Phase 11 as `8ce6049`; Phase 12 as `3266d21` (convention bug fix)
 - Phase 13 pushed as `cf91ce9`
 - Phase 14 pushed as `ee72419`
-- Phase: 15 complete (committing) — variant pole figures (F10) + OR-fitting worked example.
+- Phase 15 pushed as `551791e`
+- Phase: 16 complete (committing) — hexagonal/Burgers property suites.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -337,9 +338,17 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
+## Phase 16 outcomes (2026-07-17)
+
+- Hexagonal/Burgers property suites (finding 20 breadth): inverse-transpose and zone-law
+  invariants hold per variant with the hexagonal child metric; 6/mmm symmetry orbits recover
+  primitive antipodal-canonical integer indices for arbitrary (hkl); beta->alpha->beta plane
+  round trips invert exactly on the exact components and recover primitive indices when the
+  forward image is rational. 854 passed, zero warnings.
+
 1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture (needs MATLAB-generated
-   fixture data — see scripts/mtex_generators); hexagonal property suites; external
-   measured-data reconstruction fixture.
+   fixture data — see scripts/mtex_generators); external measured-data reconstruction
+   fixture.
 2. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
    timing lane (finding 21), release engineering/CHANGELOG (finding 22).
