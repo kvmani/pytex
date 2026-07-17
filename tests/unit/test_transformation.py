@@ -1205,3 +1205,20 @@ def test_child_composition_follows_canonical_crystal_to_specimen_convention() ->
     report = select_variants(record)
     assert tuple(report.variant_indices) == picks
     assert report.scores_deg.max() == pytest.approx(0.0, abs=1e-8)
+
+
+def test_orientation_set_slicing_returns_metadata_preserving_subset() -> None:
+    _, _, parent, child = make_phases()
+    parents, children, _ = _paired_sets_for_deviation(parent, child)
+    sliced = children[:1]
+    assert isinstance(sliced, OrientationSet)
+    assert len(sliced) == 1
+    assert sliced.phase is children.phase
+    assert sliced.symmetry == children.symmetry
+    assert sliced.specimen_frame == children.specimen_frame
+    assert_allclose(sliced.quaternions, children.quaternions[:1])
+    single = children[-1]
+    assert isinstance(single, Orientation)
+    assert_allclose(
+        np.abs(float(single.rotation.quaternion @ children.quaternions[-1])), 1.0, atol=1e-12
+    )

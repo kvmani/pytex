@@ -21,7 +21,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   Phase 6 as `b10d3b7`
 - Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done);
   Phase 10 as `de58dfe`; Phase 11 as `8ce6049`; Phase 12 as `3266d21` (convention bug fix)
-- Phase: 13 complete (committing) — packet classification + lath-martensite fixture.
+- Phase 13 pushed as `cf91ce9`
+- Phase: 14 complete (committing) — OrientationSet slicing API fix.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -312,12 +313,17 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Two validation-matrix rows; concept-page "Variant packets" section; specifications entry.
 - Gates: 847 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
+## Phase 14 outcomes (2026-07-17)
+
+- `OrientationSet.__getitem__` now supports slices (returns a metadata-preserving
+  `OrientationSet`; typed via `@overload`, int still returns `Orientation`). Closes the
+  API wart logged in Phase 3. Gates: 848 passed, zero warnings; mypy/ruff/integrity green.
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
 1. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
-   example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
-   property suites; variant pole-figure plotting (F10); external measured-data
-   reconstruction fixture.
+   example; hexagonal property suites; variant pole-figure plotting (F10); external
+   measured-data reconstruction fixture.
 2. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
    timing lane (finding 21), release engineering/CHANGELOG (finding 22).

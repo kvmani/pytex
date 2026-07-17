@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import overload
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -1635,7 +1636,22 @@ class OrientationSet:
     def __len__(self) -> int:
         return int(self.quaternions.shape[0])
 
-    def __getitem__(self, index: int) -> Orientation:
+    @overload
+    def __getitem__(self, index: int) -> Orientation: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> OrientationSet: ...
+
+    def __getitem__(self, index: int | slice) -> Orientation | OrientationSet:
+        if isinstance(index, slice):
+            return OrientationSet(
+                quaternions=self.quaternions[index],
+                crystal_frame=self.crystal_frame,
+                specimen_frame=self.specimen_frame,
+                symmetry=self.symmetry,
+                phase=self.phase,
+                provenance=self.provenance,
+            )
         quaternion = as_float_array(self.quaternions[index], shape=(4,))
         return Orientation(
             rotation=Rotation(quaternion=quaternion),
