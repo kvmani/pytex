@@ -16,7 +16,7 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
 `pytex.experimental`:
 
 - `OrientationRelationship` with named constructors: Bain, Kurdjumov-Sachs (KS),
-  Nishiyama-Wassermann (NW), Greninger-Troiano (GT), Pitsch (fcc↔bcc) and Burgers (bcc↔hcp),
+  Nishiyama-Wassermann (NW), Greninger-Troiano (GT), Pitsch (fcc↔bcc), Burgers (bcc↔hcp), and Shoji-Nishiyama (fcc↔hcp, 4 variants),
   plus the generic `from_parallel_plane_direction(...)` correspondence constructor and standard
   catalogs.
 - Variant machinery: symmetry-reduced generation with literature-correct counts, intervariant
@@ -194,8 +194,8 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 
 F1-F12 (except F7) are implemented and validated as listed in §1. Still **not
 available**, and no PyTex document may imply otherwise: OR determination from child-child
-boundaries without the parent (F7), habit-plane / PTMC analysis (F13), and the broader OR
-catalog (F14). Parent-grain reconstruction (F8) is
+boundaries without the parent (F7), habit-plane / PTMC analysis (F13), and the remaining OR
+catalog breadth (F14: Pitsch-Schrader, Potter, Bagaryatsky/Isaichev; Shoji-Nishiyama landed). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data
 fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
 report objects (F11) are partial.

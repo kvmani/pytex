@@ -120,6 +120,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `select_variants`
 - `standard_fcc_bcc_relationships`
 - `standard_bcc_hcp_relationships`
+- `standard_fcc_hcp_relationships`
 
 ### Plotting
 

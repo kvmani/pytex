@@ -303,6 +303,28 @@ def standard_bcc_hcp_relationships(
     )
 
 
+def standard_fcc_hcp_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The standard named fcc->hcp orientation-relationship catalog.
+
+    Returns the Shoji-Nishiyama relationship (austenite -> epsilon-martensite
+    class) bound to the given cubic parent and hexagonal child phases.
+    """
+
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_shoji_nishiyama_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+        ),
+        provenance=provenance,
+    )
+
+
 __all__ = [
     "OrientationRelationshipCatalog",
     "ParentReconstructionConfig",
@@ -312,4 +334,5 @@ __all__ = [
     "select_variants",
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
+    "standard_fcc_hcp_relationships",
 ]

@@ -1275,3 +1275,44 @@ def test_ks_class_relationships_share_bain_stretches_with_literature_rotations()
     assert "+25.71%" in text
     assert "-11.11%" in text
     assert "11.06 deg" in text
+
+
+def test_shoji_nishiyama_correspondence_and_catalog() -> None:
+    from pytex.core import standard_fcc_hcp_relationships, variant_close_packed_groups
+
+    crystal_parent, _, parent, _ = make_phases()
+    hex_frame = ReferenceFrame(
+        name="sn_hex_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    epsilon = Phase(
+        "epsilon",
+        lattice=Lattice(2.53, 2.53, 4.13, 90.0, 90.0, 120.0, crystal_frame=hex_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+        crystal_frame=hex_frame,
+    )
+    sn = OrientationRelationship.from_shoji_nishiyama_correspondence(
+        parent_phase=parent, child_phase=epsilon
+    )
+    # Literature variant count: one variant per {111} close-packed plane.
+    variants = sn.generate_variants()
+    assert len(variants) == 4
+    # Defining parallelisms map exactly: (111)_fcc -> (0001)_hcp, i.e. (001).
+    basal = sn.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    )
+    assert_allclose(basal.rational_indices, [0, 0, 1])
+    assert basal.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    # Each variant descends from its own {111} plane: four packets of one.
+    packets = variant_close_packed_groups(
+        sn, CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    )
+    assert np.bincount(packets).tolist() == [1, 1, 1, 1]
+    catalog = standard_fcc_hcp_relationships(parent_phase=parent, child_phase=epsilon)
+    assert catalog.names() == ("shoji_nishiyama",)
+    with pytest.raises(ValueError, match="hexagonal child phase"):
+        OrientationRelationship.from_shoji_nishiyama_correspondence(
+            parent_phase=parent, child_phase=parent
+        )

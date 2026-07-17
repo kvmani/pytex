@@ -492,6 +492,41 @@ class OrientationRelationship:
         )
 
     @classmethod
+    def from_shoji_nishiyama_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "shoji_nishiyama",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Shoji-Nishiyama OR: {111}_fcc || (0001)_hcp, <-110>_fcc || <11-20>_hcp.
+
+        The fcc->hcp epsilon-martensite relationship (austenite to
+        epsilon in high-Mn steels and Co; 4 variants, one per {111}
+        close-packed parent plane). The parent must be cubic (proper group
+        432) and the child hexagonal (proper group 622).
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Shoji-Nishiyama"
+        )
+        _require_proper_point_group(
+            child_phase, "622", role="child", relationship="Shoji-Nishiyama"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((1, 1, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=child_phase),
+            parent_direction=_crystal_direction((-1.0, 1.0, 0.0), phase=parent_phase),
+            child_direction=CrystalDirection.from_miller_bravais(
+                (1, 1, -2, 0), phase=child_phase
+            ),
+            provenance=provenance,
+        )
+
+    @classmethod
     def from_burgers_correspondence(
         cls,
         *,

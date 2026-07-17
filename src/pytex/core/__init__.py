@@ -99,6 +99,7 @@ from pytex.core.parent_reconstruction import (
     select_variants,
     standard_bcc_hcp_relationships,
     standard_fcc_bcc_relationships,
+    standard_fcc_hcp_relationships,
 )
 from pytex.core.point_groups import (
     PointGroup,
@@ -256,5 +257,6 @@ __all__ = [
     "spherical_angles_to_directions",
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
+    "standard_fcc_hcp_relationships",
     "zone_law_value_hkil_uvtw",
 ]

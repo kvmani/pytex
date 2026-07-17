@@ -30,7 +30,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 19 pushed as `05baa47`
 - Phase 20 pushed as `2faa0e7`
 - Phase 21 pushed as `d34fef0`
-- Phase: 22 complete (committing) — F12 transformation deformation gradients.
+- Phase 22 pushed as `a120111`
+- Phase: 23 complete (committing) — Shoji-Nishiyama constructor (F14 slice).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -343,6 +344,15 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 23 outcomes (2026-07-17)
+
+- **F14 slice:** `from_shoji_nishiyama_correspondence` (fcc->hcp epsilon-martensite;
+  {111}||{0001}, <-110>||<11-20>; cubic/hex guards) + `standard_fcc_hcp_relationships`
+  catalog. Pinned: 4 variants (one per {111} parent plane, the literature count), exact
+  defining-parallelism mapping, one-variant-per-packet structure. Remaining F14: Pitsch-
+  Schrader, Potter, Bagaryatsky/Isaichev. Docs synced (validation row, foundation, concept
+  page, spec, CHANGELOG). 867 passed; all gates green.
 
 ## Phase 22 outcomes (2026-07-17)
 

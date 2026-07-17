@@ -51,11 +51,12 @@ specimen-space parallelism identity.
 ## Constructing named relationships
 
 `OrientationRelationship` ships literature constructors — Bain,
-Kurdjumov-Sachs, Nishiyama-Wassermann, Greninger-Troiano, Pitsch (fcc-bcc)
-and Burgers (bcc-hcp) — plus the generic
+Kurdjumov-Sachs, Nishiyama-Wassermann, Greninger-Troiano, Pitsch (fcc-bcc),
+Burgers (bcc-hcp), and Shoji-Nishiyama (fcc-hcp, the epsilon-martensite
+relationship with 4 variants) — plus the generic
 `from_parallel_plane_direction(...)` builder for user-defined ORs. Catalogs
-(`standard_fcc_bcc_relationships`, `standard_bcc_hcp_relationships`) bundle
-them per phase pair.
+(`standard_fcc_bcc_relationships`, `standard_bcc_hcp_relationships`,
+`standard_fcc_hcp_relationships`) bundle them per phase pair.
 
 ## Mapping indices across the relationship
 

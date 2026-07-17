@@ -23,7 +23,7 @@ downstream analyses depend on them.
   (`fit_orientation_relationship`); variant packet classification
   (`variant_close_packed_groups`); variant pole figures
   (`variant_pole_figure`, `plot_variant_pole_figure`); named KS, GT, Pitsch,
-  and Burgers constructors with standard catalogs; intervariant
+  Burgers, and Shoji-Nishiyama constructors with standard catalogs; intervariant
   misorientation tables.
 - Experimental map-scale parent-grain reconstruction
   (`pytex.experimental.reconstruct_parent_grains`, `..._from_graph`) with
