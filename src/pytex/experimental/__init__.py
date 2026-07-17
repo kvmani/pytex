@@ -1,5 +1,9 @@
 """Unstable research methods live here and are outside the stable API contract."""
 
+from pytex.experimental.or_identification import (
+    ORIdentificationReport,
+    identify_orientation_relationship,
+)
 from pytex.experimental.parent_grain_reconstruction import (
     ParentGrainReconstructionResult,
     reconstruct_parent_grains,
@@ -11,8 +15,10 @@ from pytex.experimental.phase_transformation import (
 )
 
 __all__ = [
+    "ORIdentificationReport",
     "ParentGrainReconstructionResult",
     "ParentReconstructionResult",
+    "identify_orientation_relationship",
     "reconstruct_parent_grains",
     "reconstruct_parent_grains_from_graph",
     "score_parent_orientations",

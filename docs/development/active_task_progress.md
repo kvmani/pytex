@@ -31,7 +31,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 20 pushed as `2faa0e7`
 - Phase 21 pushed as `d34fef0`
 - Phase 22 pushed as `a120111`
-- Phase: 23 complete (committing) — Shoji-Nishiyama constructor (F14 slice).
+- Phase 23 pushed as `4567817`
+- Phase: 24 complete (committing) — F7 first stage: OR identification from boundaries.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -344,6 +345,21 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 24 outcomes (2026-07-17)
+
+- **F7 first stage (experimental):** `pytex.experimental.identify_orientation_relationship`
+  + `ORIdentificationReport`. Key derivation: same-parent boundary misorientations populate
+  the double coset `G_c (R S_p R^T) G_c` (parent symmetry conjugated by the OR rotation,
+  child symmetry both sides); the fingerprint set is generated once per candidate
+  (quaternion-key deduped), and per-edge distances need only elementwise traces
+  (`einsum("eij,kij->ek")`) — no matrix products at scoring time.
+- Verified: KS- and GT-generated microstructures identify their generating OR at 0.000 deg
+  mean with >1 deg (KS: 3.67 deg) margins over all other fcc-bcc candidates; 0.3-deg noise
+  preserves the ranking. describe() states the honest limit (identification only; rotation
+  refinement from boundaries not implemented).
+- Docs synced: foundation §5 (F7 first stage), validation row (foundational), CHANGELOG.
+  871 passed; all gates green.
 
 ## Phase 23 outcomes (2026-07-17)
 

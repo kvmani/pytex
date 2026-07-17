@@ -25,6 +25,10 @@ downstream analyses depend on them.
   (`variant_pole_figure`, `plot_variant_pole_figure`); named KS, GT, Pitsch,
   Burgers, and Shoji-Nishiyama constructors with standard catalogs; intervariant
   misorientation tables.
+- Experimental OR identification from child-child boundaries
+  (`pytex.experimental.identify_orientation_relationship`): ranks candidate
+  relationships by their double-coset intervariant fingerprint, no parent
+  orientations required.
 - Experimental map-scale parent-grain reconstruction
   (`pytex.experimental.reconstruct_parent_grains`, `..._from_graph`) with
   intervariant-fingerprint edge testing, union-find clustering,

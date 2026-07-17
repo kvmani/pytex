@@ -192,10 +192,13 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 
 ## 5. Current Limits (honest statement, updated 2026-07-17)
 
-F1-F12 (except F7) are implemented and validated as listed in §1. Still **not
-available**, and no PyTex document may imply otherwise: OR determination from child-child
-boundaries without the parent (F7), habit-plane / PTMC analysis (F13), and the remaining OR
-catalog breadth (F14: Pitsch-Schrader, Potter, Bagaryatsky/Isaichev; Shoji-Nishiyama landed). Parent-grain reconstruction (F8) is
+F1-F12 are implemented and validated as listed in §1, with F7 at its first (identification)
+stage: `pytex.experimental.identify_orientation_relationship` ranks candidate ORs against
+child-child boundary misorientations via the double-coset intervariant fingerprint, no parent
+required. Still **not available**, and no PyTex document may imply otherwise: boundary-based
+*refinement* of the OR rotation (F7 second stage), habit-plane / PTMC analysis (F13), and the
+remaining OR catalog breadth (F14: Pitsch-Schrader, Potter, Bagaryatsky/Isaichev;
+Shoji-Nishiyama landed). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data
 fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
 report objects (F11) are partial.
