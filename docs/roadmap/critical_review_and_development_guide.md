@@ -237,6 +237,13 @@ merge:
   matching, typed parallel directions, warnings-as-errors with a figure-close fixture (suite
   runs warning-free), and an 87% coverage ratchet in CI (measured 88%). Remaining Cycle A
   spillover: none. Next per §3: Cycle B (findings 3, 4, 7, 19, 20).
+- **2026-07 (Cycle B executed):** Findings 3, 7, 19, 20 closed; finding 4 delivered at its
+  planned experimental stage — variant hot paths vectorized, CI matrix (ubuntu+macos ×
+  3.11–3.13), OR fitting (`fit_orientation_relationship`, recovers GT exactly from a KS
+  nominal), first Hypothesis property suites, and experimental map-scale parent-grain
+  reconstruction with quaternion-averaged parent refinement (synthetic planted-parent
+  validation; literature fixtures and EBSD grain-graph wiring queued before stabilization).
+  Next per §3: Cycle C+ (findings 5, 8–15, 21, 22), plus the queued ledger follow-ups.
 
 ## References
 

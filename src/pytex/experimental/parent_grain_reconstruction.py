@@ -21,7 +21,9 @@ from pytex.core._arrays import as_int_array
 from pytex.core.lattice import phases_semantically_match
 from pytex.core.orientation import (
     OrientationSet,
+    Rotation,
     _reduced_pair_disorientation_angles,
+    matrices_to_quaternions,
 )
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import (
@@ -128,6 +130,58 @@ def _reference_angles_deg(relationship: OrientationRelationship) -> np.ndarray:
     return np.asarray(reference, dtype=np.float64)
 
 
+def _member_deviations_deg(
+    cluster_children: np.ndarray,
+    parent_matrix: np.ndarray,
+    *,
+    variant_matrices: np.ndarray,
+    operators: np.ndarray,
+) -> np.ndarray:
+    """Min-over-variants disorientation of each member to one parent estimate."""
+
+    predicted = np.einsum("lij,jk->lik", variant_matrices, parent_matrix, optimize=True)
+    relative = np.einsum("nij,lkj->nlik", cluster_children, predicted, optimize=True)
+    member_count, variant_count = relative.shape[:2]
+    angles = np.degrees(
+        _reduced_pair_disorientation_angles(relative.reshape(-1, 3, 3), operators, operators)
+    ).reshape(member_count, variant_count)
+    return np.asarray(np.min(angles, axis=1), dtype=np.float64)
+
+
+def _refine_cluster_parent(
+    cluster_children: np.ndarray,
+    seed_parent: np.ndarray,
+    *,
+    variant_matrices: np.ndarray,
+    parent_operators: np.ndarray,
+) -> np.ndarray:
+    """Average every member's parent estimate around the seed (noise reduction).
+
+    Each member contributes the candidate descriptions ``S_p V_k^T C_i`` over
+    all variants and parent symmetry operators; the description with the
+    largest trace against the seed is that member's aligned parent estimate,
+    and the quaternion eigen-mean of the aligned estimates is the refined
+    parent. On exact data this reproduces the seed; on noisy data it averages
+    the per-member noise instead of inheriting the first member's.
+    """
+
+    estimates = np.einsum(
+        "vji,njk->nvik", variant_matrices, cluster_children, optimize=True
+    )
+    described = np.einsum(
+        "aij,nvjk->navik", parent_operators, estimates, optimize=True
+    )
+    member_count = cluster_children.shape[0]
+    flat = described.reshape(member_count, -1, 3, 3)
+    scores = np.einsum("ncij,ij->nc", flat, seed_parent, optimize=True)
+    aligned = flat[np.arange(member_count), np.argmax(scores, axis=1)]
+    quaternions = matrices_to_quaternions(aligned)
+    scatter = quaternions.T @ quaternions
+    eigenvalues, eigenvectors = np.linalg.eigh(scatter)
+    mean_quaternion = eigenvectors[:, int(np.argmax(eigenvalues))]
+    return Rotation(quaternion=mean_quaternion).as_matrix()
+
+
 def reconstruct_parent_grains(
     child_orientations: OrientationSet,
     adjacency: ArrayLike,
@@ -174,6 +228,12 @@ def reconstruct_parent_grains(
 
     child_matrices = child_orientations.as_matrices()
     operators = _child_operators(relationship)
+    parent_symmetry = relationship.parent_phase.symmetry
+    parent_operators = (
+        parent_symmetry.operators
+        if parent_symmetry is not None
+        else np.eye(3, dtype=np.float64)[None, :, :]
+    )
     reference = _reference_angles_deg(relationship)
 
     # Edge test: boundary disorientation matches the intervariant fingerprint.
@@ -238,8 +298,16 @@ def reconstruct_parent_grains(
         ).reshape(member_count, candidate_count, variant_count)
         per_member = np.min(angles, axis=2)
         best_candidate = int(np.argmin(np.mean(per_member, axis=0)))
-        parent_matrices[cluster] = candidates[best_candidate]
-        deviations[members] = per_member[:, best_candidate]
+        refined = _refine_cluster_parent(
+            cluster_children,
+            candidates[best_candidate],
+            variant_matrices=variant_matrices,
+            parent_operators=parent_operators,
+        )
+        parent_matrices[cluster] = refined
+        deviations[members] = _member_deviations_deg(
+            cluster_children, refined, variant_matrices=variant_matrices, operators=operators
+        )
 
     parent_phase = relationship.parent_phase
     parent_set = OrientationSet.from_matrices(

@@ -19,9 +19,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
-- Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`
-- Phase: 9 complete (committing) — **Cycle B of the development guide is fully executed**
-  (findings 3, 4, 7, 19, 20 closed; finding 4 at experimental/foundational status by design).
+- Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done)
+- Phase: 10 complete (committing) — parent refinement v2 + guide changelog for Cycle B.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -244,15 +243,21 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   (literature fixtures, EBSD grain-graph wiring, candidate averaging).
 - Gates: 843 passed, zero warnings; ruff/mypy/integrity green.
 
+## Phase 10 outcomes (2026-07-17)
+
+- Parent-reconstruction refinement landed: `_refine_cluster_parent` aligns every member's
+  candidate descriptions `S_p V_k^T C_i` to the seed (max trace) and quaternion-eigen-means
+  them. Noise-case parent errors drop from ~1.5 deg (first-member inheritance) to
+  0.08–0.20 deg (sigma/sqrt(n) behavior); test assertions tightened to <0.5 deg parents,
+  <1.0 deg mean residual. Exact case remains exact.
+- Development-guide changelog records Cycle B as executed.
+- Gates: 843 passed, zero warnings; ruff/mypy/integrity green.
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
-Cycle B is complete. The next horizon (guide findings 5, 8–15, 21, 22) is larger scientific
-breadth; suggested next phases in value order:
-
-1. Parent-reconstruction v2: per-cluster parent refinement by symmetry-aligned quaternion
-   averaging (reuse the `fit_orientation_relationship` alignment/eigen-mean machinery), EBSD
-   grain-graph wiring (`GrainGraphEdge` -> adjacency), and a literature fixture
-   (lath-martensite block). Then consider stabilization per the OR foundation doc.
+1. Parent-reconstruction v3 toward stabilization: EBSD grain-graph wiring
+   (`GrainGraphEdge` -> adjacency helper so `CrystalMap` grains feed
+   `reconstruct_parent_grains` directly) and a literature fixture (lath-martensite block).
 2. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
    example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
    property suites; variant pole-figure plotting (F10).

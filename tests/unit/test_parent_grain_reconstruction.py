@@ -143,9 +143,9 @@ def test_reconstruction_tolerates_orientation_noise() -> None:
     result = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=3.0)
     assert result.parent_count == 3
     assert _partitions_equal(result.parent_labels, planted)
-    # Residuals sit at the noise level; the parent estimate carries only the
-    # first member's noise in this v1, so allow a few times the noise scale.
-    assert result.mean_deviation_deg < 1.5
+    # Residuals sit at the noise level, and the quaternion-averaged parent
+    # estimate must beat any single member's noise (sigma/sqrt(n) behavior).
+    assert result.mean_deviation_deg < 1.0
     parent_symmetry = ks.parent_phase.symmetry
     for parent_index, parent_orientation in enumerate(parents):
         cluster = int(result.parent_labels[np.flatnonzero(planted == parent_index)[0]])
@@ -155,7 +155,7 @@ def test_reconstruction_tolerates_orientation_noise() -> None:
             child_operators=parent_symmetry.operators,
             parent_operators=np.eye(3, dtype=np.float64)[None, :, :],
         )
-        assert distance < 1.5
+        assert distance < 0.5
 
 
 def test_singleton_grains_are_reported_as_ambiguous() -> None:
