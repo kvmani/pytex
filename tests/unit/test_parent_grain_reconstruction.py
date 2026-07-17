@@ -187,3 +187,64 @@ def test_reconstruction_validates_inputs() -> None:
         reconstruct_parent_grains(children, np.array([[0, 99]]), ks)
     with pytest.raises(ValueError, match="tolerance_deg"):
         reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=0.0)
+
+
+def test_reconstruction_from_ebsd_grain_graph() -> None:
+    from pytex.ebsd import CrystalMap
+    from pytex.experimental import reconstruct_parent_grains_from_graph
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = ks.generate_variants()
+    parent_orientations = [
+        Orientation.from_euler(
+            *euler, specimen_frame=specimen, symmetry=parent_phase.symmetry, phase=parent_phase
+        )
+        # General orientations: a cube-oriented parent makes some variant
+        # pairs symmetry-degenerate as child orientations, and the second
+        # parent is chosen so the cross-parent boundary disorientation sits
+        # ~5 deg from every intervariant fingerprint angle.
+        for euler in [(20.0, 30.0, 40.0), (65.0, 20.0, 50.0)]
+    ]
+    # 2x4 pixel map: columns 0-1 are two variants of parent 0, columns 2-3 two
+    # variants of parent 1; each column is one grain (two identical pixels).
+    column_rotations = [
+        variants[0].parent_to_child_rotation.compose(parent_orientations[0].rotation),
+        variants[7].parent_to_child_rotation.compose(parent_orientations[0].rotation),
+        variants[2].parent_to_child_rotation.compose(parent_orientations[1].rotation),
+        variants[11].parent_to_child_rotation.compose(parent_orientations[1].rotation),
+    ]
+    pixel_orientations = [
+        Orientation(
+            rotation=column_rotations[x],
+            crystal_frame=child_phase.crystal_frame,
+            specimen_frame=specimen,
+            symmetry=child_phase.symmetry,
+            phase=child_phase,
+        )
+        for _y in range(2)
+        for x in range(4)
+    ]
+    coordinates = np.array(
+        [[float(x), float(y)] for y in range(2) for x in range(4)], dtype=np.float64
+    )
+    crystal_map = CrystalMap(
+        coordinates=coordinates,
+        orientations=OrientationSet.from_orientations(pixel_orientations),
+        map_frame=specimen,
+        grid_shape=(2, 4),
+        step_sizes=(1.0, 1.0),
+    )
+    segmentation = crystal_map.segment_grains(
+        max_misorientation_deg=2.0, symmetry_aware=True, connectivity=4
+    )
+    graph = segmentation.grain_graph()
+    assert len(graph.node_grain_ids) == 4
+    result = reconstruct_parent_grains_from_graph(graph, ks, tolerance_deg=2.0)
+    assert result.grain_ids is not None
+    assert result.grain_ids.shape == result.parent_labels.shape
+    assert result.parent_count == 2
+    assert result.cluster_sizes.tolist() == [2, 2]
+    assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6)

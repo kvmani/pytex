@@ -19,8 +19,9 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
-- Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done)
-- Phase: 10 complete (committing) — parent refinement v2 + guide changelog for Cycle B.
+- Phase 7 pushed as `d40fb14`; Phase 8 as `801af7e`; Phase 9 as `a5e3d73` (Cycle B done);
+  Phase 10 as `de58dfe`
+- Phase: 11 complete (committing) — EBSD grain-graph wiring for parent reconstruction.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -253,14 +254,33 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Development-guide changelog records Cycle B as executed.
 - Gates: 843 passed, zero warnings; ruff/mypy/integrity green.
 
+## Phase 11 outcomes (2026-07-17)
+
+- **EBSD wiring landed:** `reconstruct_parent_grains_from_graph(graph, relationship)` takes a
+  `GrainSegmentation.grain_graph()` directly — grain-mean orientations become children, graph
+  edges become adjacency; result rows follow `graph.node_grain_ids` and the new optional
+  `grain_ids` field records the mapping. Phase check relaxed for phase-less map data (accepts
+  matching point-group symmetry).
+- End-to-end map test: 2x4 pixel `CrystalMap` -> segment_grains -> grain_graph ->
+  reconstruction recovers the two planted parents with the cross-parent boundary rejected.
+- **Fixture-design learnings (important):** (a) a cube-oriented parent makes some KS variant
+  pairs symmetry-degenerate as child orientations — use general parent Eulers in fixtures;
+  (b) cross-parent boundaries can coincidentally sit within tolerance of the intervariant
+  fingerprint (real reconstruction ambiguity) — fixtures must pick parents whose cross
+  boundary is verified far from the fingerprint (used (20,30,40) and (65,20,50): 5.0 deg away).
+- **Follow-up to investigate:** `OrientationSet.misorientation_angles_to(symmetry_aware=True)`
+  returned 39.92 deg for a same-parent variant pair whose boundary disorientation (C_i C_j^T,
+  child ops both sides — the intervariant/table convention) is 57.21 deg. Two different
+  relative-rotation conventions coexist; determine whether both are intended semantics
+  (orientation-space vs boundary misorientation) and document, or reconcile.
+
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
 
-1. Parent-reconstruction v3 toward stabilization: EBSD grain-graph wiring
-   (`GrainGraphEdge` -> adjacency helper so `CrystalMap` grains feed
-   `reconstruct_parent_grains` directly) and a literature fixture (lath-martensite block).
-2. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
+1. Investigate the misorientation-convention discrepancy above; document or fix.
+2. Literature fixture for reconstruction (lath-martensite block) toward stabilization.
+3. Queued ledger follow-ups: MTEX `calcParent2Child` parity fixture; OR-fitting worked
    example; OrientationSet slicing API (returns malformed Orientation today); hexagonal
    property suites; variant pole-figure plotting (F10).
-3. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
+4. Larger Cycle C programs (pick one per the roadmap sequencing): texture kernel breadth
    (finding 8), PF→ODF ghost correction (finding 9), Kikuchi geometry (finding 14), benchmark
    timing lane (finding 21), release engineering/CHANGELOG (finding 22).

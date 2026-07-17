@@ -25,11 +25,13 @@ from pytex.core.orientation import (
     _reduced_pair_disorientation_angles,
     matrices_to_quaternions,
 )
+from pytex.core.point_groups import normalize_point_group_symbol
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import (
     OrientationRelationship,
     intervariant_misorientation_angles_deg,
 )
+from pytex.ebsd.models import GrainGraph
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +56,7 @@ class ParentGrainReconstructionResult:
     edges_tested: int
     edges_linked: int
     tolerance_deg: float
+    grain_ids: np.ndarray | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -75,6 +78,12 @@ class ParentGrainReconstructionResult:
         object.__setattr__(self, "parent_labels", labels)
         object.__setattr__(self, "per_grain_deviation_deg", deviations)
         object.__setattr__(self, "cluster_sizes", sizes)
+        if self.grain_ids is not None:
+            grain_ids = np.asarray(self.grain_ids, dtype=np.int64).reshape(-1)
+            if grain_ids.shape != labels.shape:
+                raise ValueError("grain_ids must align with parent_labels.")
+            grain_ids.setflags(write=False)
+            object.__setattr__(self, "grain_ids", grain_ids)
 
     @property
     def parent_count(self) -> int:
@@ -213,8 +222,11 @@ def reconstruct_parent_grains(
     Output: a ``ParentGrainReconstructionResult`` (see its ``describe()``).
     """
 
-    if not phases_semantically_match(child_orientations.phase, relationship.child_phase):
-        raise ValueError("child_orientations.phase must match the relationship child phase.")
+    if not _child_semantics_match(child_orientations, relationship):
+        raise ValueError(
+            "child_orientations must match the relationship child phase "
+            "(or, for phase-less map data, carry the child point-group symmetry)."
+        )
     grain_count = len(child_orientations)
     if grain_count == 0:
         raise ValueError("reconstruct_parent_grains requires at least one child grain.")
@@ -328,4 +340,76 @@ def reconstruct_parent_grains(
         edges_linked=int(np.count_nonzero(linked)),
         tolerance_deg=float(tolerance_deg),
         provenance=provenance or relationship.provenance,
+    )
+
+
+def _child_semantics_match(
+    child_orientations: OrientationSet, relationship: OrientationRelationship
+) -> bool:
+    if phases_semantically_match(child_orientations.phase, relationship.child_phase):
+        return True
+    child_symmetry = relationship.child_phase.symmetry
+    return (
+        child_orientations.phase is None
+        and child_orientations.symmetry is not None
+        and child_symmetry is not None
+        and normalize_point_group_symbol(child_orientations.symmetry.point_group)
+        == normalize_point_group_symbol(child_symmetry.point_group)
+    )
+
+
+def reconstruct_parent_grains_from_graph(
+    graph: GrainGraph,
+    relationship: OrientationRelationship,
+    *,
+    tolerance_deg: float = 3.0,
+    provenance: ProvenanceRecord | None = None,
+) -> ParentGrainReconstructionResult:
+    """Reconstruct parent grains directly from an EBSD grain graph.
+
+    Purpose: the map-facing entry point — takes the ``GrainGraph`` produced by
+    ``GrainSegmentation.grain_graph()``, uses each grain's mean orientation as
+    the child orientation and each graph edge as adjacency, and runs
+    ``reconstruct_parent_grains``. Result rows follow ``graph.node_grain_ids``
+    order, and the returned ``grain_ids`` field records that mapping.
+
+    Inputs: a grain graph over the transformed (child) phase and the nominal
+    orientation relationship; the map's orientations must carry the child
+    phase, or a symmetry whose point group matches it.
+
+    Output: a ``ParentGrainReconstructionResult`` with ``grain_ids`` set.
+    """
+
+    segmentation = graph.segmentation
+    means = segmentation.grain_mean_orientations()
+    grain_ids = np.asarray(graph.node_grain_ids, dtype=np.int64)
+    children = OrientationSet.from_orientations(
+        [means[int(grain_id)] for grain_id in grain_ids]
+    )
+    node_index = {int(grain_id): index for index, grain_id in enumerate(grain_ids)}
+    adjacency = np.asarray(
+        [
+            [node_index[int(edge.left_grain_id)], node_index[int(edge.right_grain_id)]]
+            for edge in graph.edges
+        ],
+        dtype=np.int64,
+    ).reshape(-1, 2)
+    result = reconstruct_parent_grains(
+        children,
+        adjacency,
+        relationship,
+        tolerance_deg=tolerance_deg,
+        provenance=provenance,
+    )
+    return ParentGrainReconstructionResult(
+        relationship_name=result.relationship_name,
+        parent_labels=result.parent_labels,
+        parent_orientations=result.parent_orientations,
+        per_grain_deviation_deg=result.per_grain_deviation_deg,
+        cluster_sizes=result.cluster_sizes,
+        edges_tested=result.edges_tested,
+        edges_linked=result.edges_linked,
+        tolerance_deg=result.tolerance_deg,
+        grain_ids=grain_ids,
+        provenance=result.provenance,
     )
