@@ -19,7 +19,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Baseline commit: `d1a1561`; Phase 0 pushed as `84a9767`; Phase 1 as `557d5e1`; Phase 2 as
   `cf8391e`; Phase 3 as `cee9ee7`; Phase 4 as `2680679`; Phase 5 as `c3e34bf` (Cycle A done);
   Phase 6 as `b10d3b7`
-- Phase: 7 complete (committing) — Cycle B in progress
+- Phase 7 pushed as `d40fb14`
+- Phase: 8 complete (committing) — Cycle B in progress
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -213,6 +214,17 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   explicitly queued); concept-page section; specifications list. Gates: 832 passed, zero
   warnings; ruff/mypy/integrity/Sphinx green.
 
+## Phase 8 outcomes (2026-07-17)
+
+- **Finding 20 started (property-based testing):** `tests/unit/test_property_based.py` with
+  Hypothesis (added to the dev extra, >=6.100): rotation composition-inverse law, proper
+  orthogonality of quaternion-derived matrices, Miller-Bravais direction round trips (ray
+  preserved under GCD reduction; plane round trips exact), correspondence-matrix inversion on
+  arbitrary integer planes through any KS variant, zone-law preservation for arbitrary
+  plane/zone-direction pairs, and phase-match reflexivity/symmetry. 50 examples per property,
+  deadline disabled for CI stability.
+- Gates: 839 passed, zero warnings; ruff/mypy/integrity green.
+
 ## Next Actions (Cycle B remainder, per the development guide §3)
 
 1. Map-scale parent-grain reconstruction v1 (F8, finding 4) — variant-graph voting on the
@@ -220,10 +232,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
    synthetic fixture first (planted parent grains -> variants -> reconstruct), literature
    fixture second. Stage under `pytex.experimental` until validation breadth exists.
    Building blocks now all exist: variants, or_deviation, fit_orientation_relationship,
-   vectorized select_variants.
-2. First Hypothesis property suites (finding 20): orientation algebra (compose/inverse),
-   index round-trips (Miller-Bravais), variant orbit invariance (mapping a plane's family
-   members across variants yields permutations of one child family set). Requires adding
-   `hypothesis` to the dev extra.
-3. Queued follow-ups recorded in ledgers: MTEX calcParent2Child parity fixture; OR-fitting
-   worked example; OrientationSet slicing API (returns malformed Orientation today).
+   vectorized select_variants. This is the last major Cycle B item — an L-size,
+   multi-session program; open a fresh session with this note as the entry point.
+2. Queued follow-ups recorded in ledgers: MTEX calcParent2Child parity fixture; OR-fitting
+   worked example; OrientationSet slicing API (returns malformed Orientation today);
+   broaden property suites to hexagonal phases and OrientationSet reductions.
