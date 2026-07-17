@@ -25,8 +25,12 @@ for the full doctrine):
    \(\mathbf{h} \cdot \mathbf{u}\), so a direction lying in a plane stays in
    the mapped plane. Correspondence matrices are generally not rotations and
    generally irrational.
-3. **The transformation deformation** (Bain strain and friends) — reserved for
-   a future release; the API name space is planned so nothing needs renaming.
+3. **The transformation deformation** — `deformation_gradient()` builds the
+   nearest-integer lattice correspondence and returns the parent-frame
+   gradient with its polar decomposition: for fcc-bcc steel parameters the
+   textbook Bain principal strains, and for KS/NW the literature rigid-body
+   rotations relative to Bain (\(11.06^{\circ}\)/\(9.74^{\circ}\)) as the
+   residual polar rotation.
 
 ## Composition convention
 

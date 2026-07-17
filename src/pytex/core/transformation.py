@@ -845,6 +845,73 @@ class OrientationRelationship:
         )
         return "\n".join(lines)
 
+    def deformation_gradient(
+        self,
+        *,
+        variant: TransformationVariant | None = None,
+    ) -> DeformationGradientReport:
+        """Lattice-correspondence deformation gradient (Bain-strain analysis).
+
+        Purpose: the third object of the OR doctrine — the physical lattice
+        distortion of the transformation. The exact index correspondence's
+        images of the three parent basis vectors are rationalized to the
+        integer lattice correspondence; the parent-frame deformation is then
+        ``F = R^T A_c M_rat A_p^-1`` (rigid rotation removed), whose
+        symmetric right-stretch gives the principal transformation strains.
+        For Bain with a_fcc = 3.6 and a_bcc = 2.87 the principal stretches
+        are the textbook (1.127, 1.127, 0.797) with a +1.3% volume change;
+        every KS/NW/GT variant shares the same principal stretches because
+        they differ from Bain only by rigid rotation.
+
+        Inputs: optionally a variant and the rationalization bound.
+
+        Output: a ``DeformationGradientReport`` (see its ``describe()``).
+        """
+
+        rotation, variant_index = self._resolve_variant_rotation(variant)
+        parent_basis = self.parent_phase.lattice.direct_basis().matrix
+        child_basis = self.child_phase.lattice.direct_basis().matrix
+        exact = np.linalg.solve(child_basis, rotation @ parent_basis)
+        # The lattice correspondence is the nearest INTEGER matrix: magnitudes
+        # matter for strain, so ray-based rationalization would be wrong here.
+        correspondence = np.rint(exact).astype(np.int64)
+        if int(round(float(np.linalg.det(correspondence.astype(np.float64))))) == 0:
+            raise ValueError(
+                "The nearest-integer lattice correspondence is singular; the "
+                "relationship's exact correspondence is too far from an integer "
+                "matrix for Bain-strain analysis."
+            )
+        component_error = float(np.max(np.abs(exact - correspondence)))
+        gradient = (
+            rotation.T
+            @ child_basis
+            @ correspondence.astype(np.float64)
+            @ np.linalg.inv(parent_basis)
+        )
+        right_cauchy_green = gradient.T @ gradient
+        eigenvalues, eigenvectors = np.linalg.eigh(right_cauchy_green)
+        order = np.argsort(eigenvalues)[::-1]
+        stretches = np.sqrt(eigenvalues[order])
+        directions = eigenvectors[:, order].T
+        stretch_tensor = eigenvectors @ np.diag(np.sqrt(eigenvalues)) @ eigenvectors.T
+        polar_rotation = gradient @ np.linalg.inv(stretch_tensor)
+        polar_angle = float(
+            _rotation_angles_deg_from_matrices(polar_rotation[None, :, :])[0]
+        )
+        return DeformationGradientReport(
+            relationship_name=self.name,
+            variant_index=variant_index,
+            deformation_gradient=gradient,
+            stretch_tensor=stretch_tensor,
+            principal_stretches=stretches,
+            principal_directions=directions,
+            volume_ratio=float(np.linalg.det(gradient)),
+            correspondence=correspondence,
+            polar_rotation_deg=polar_angle,
+            correspondence_max_component_error=component_error,
+            provenance=self.provenance,
+        )
+
     def misorientation(self) -> Misorientation:
         """The relationship as a symmetry-reduced misorientation (disorientation).
 
@@ -1784,6 +1851,81 @@ def variant_close_packed_groups(
     labels = np.ascontiguousarray(labels)
     labels.setflags(write=False)
     return labels
+
+
+@dataclass(frozen=True, slots=True)
+class DeformationGradientReport:
+    """Lattice-correspondence deformation of a transformation (Bain-strain family).
+
+    ``deformation_gradient`` is the parent-frame map carrying parent lattice
+    vectors onto their corresponding child lattice vectors under the integer
+    lattice correspondence (nearest-integer matrix of the exact index
+    correspondence); ``stretch_tensor`` is its symmetric right-stretch factor
+    with ``principal_stretches`` / ``principal_directions`` (parent crystal
+    frame) and ``volume_ratio = det F``. ``polar_rotation_deg`` is the angle
+    of the residual rotation in the polar decomposition ``F = R_polar U`` —
+    zero when the relationship equals the pure correspondence distortion
+    (Bain), and the classic rigid-body rotation relative to Bain for KS-class
+    relationships. ``correspondence_max_component_error`` is the largest
+    entry-wise distance of the exact correspondence from the integer one.
+    """
+
+    relationship_name: str
+    variant_index: int | None
+    deformation_gradient: np.ndarray
+    stretch_tensor: np.ndarray
+    principal_stretches: np.ndarray
+    principal_directions: np.ndarray
+    volume_ratio: float
+    correspondence: np.ndarray
+    polar_rotation_deg: float
+    correspondence_max_component_error: float
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        gradient = np.asarray(self.deformation_gradient, dtype=np.float64)
+        stretch = np.asarray(self.stretch_tensor, dtype=np.float64)
+        stretches = np.asarray(self.principal_stretches, dtype=np.float64).reshape(-1)
+        directions = np.asarray(self.principal_directions, dtype=np.float64)
+        correspondence = np.asarray(self.correspondence, dtype=np.int64)
+        if gradient.shape != (3, 3) or stretch.shape != (3, 3) or correspondence.shape != (3, 3):
+            raise ValueError("Deformation matrices must have shape (3, 3).")
+        if stretches.shape != (3,) or directions.shape != (3, 3):
+            raise ValueError("Principal quantities must have three entries.")
+        if np.any(stretches <= 0.0) or self.volume_ratio <= 0.0:
+            raise ValueError("Principal stretches and volume ratio must be positive.")
+        if self.polar_rotation_deg < 0.0 or self.correspondence_max_component_error < 0.0:
+            raise ValueError("Polar rotation and component error must be non-negative.")
+        for array in (gradient, stretch, stretches, directions, correspondence):
+            array.setflags(write=False)
+        object.__setattr__(self, "deformation_gradient", gradient)
+        object.__setattr__(self, "stretch_tensor", stretch)
+        object.__setattr__(self, "principal_stretches", stretches)
+        object.__setattr__(self, "principal_directions", directions)
+        object.__setattr__(self, "correspondence", correspondence)
+
+    def describe(self) -> str:
+        """Prose summary: principal strains, volume change, correspondence quality."""
+
+        strains = (self.principal_stretches - 1.0) * 100.0
+        variant_text = (
+            f" (variant {self.variant_index})" if self.variant_index is not None else ""
+        )
+        columns = ", ".join(
+            format_direction_indices(_index_tuple(self.correspondence[:, i]), style="plain")
+            for i in range(3)
+        )
+        return (
+            f"Transformation deformation for '{self.relationship_name}'{variant_text}: "
+            f"principal strains {strains[0]:+.2f}%, {strains[1]:+.2f}%, {strains[2]:+.2f}% "
+            f"(principal directions in the parent crystal frame), volume change "
+            f"{(self.volume_ratio - 1.0) * 100.0:+.2f}%. Integer lattice correspondence maps "
+            f"the parent basis to {columns} (child indices; largest entry-wise deviation "
+            f"{self.correspondence_max_component_error:.3f}). Residual polar rotation "
+            f"{self.polar_rotation_deg:.2f} deg — zero for the pure correspondence "
+            "distortion (Bain), and the rigid-body rotation relative to it for "
+            "KS-class relationships."
+        )
 
 
 @dataclass(frozen=True, slots=True)

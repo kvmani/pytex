@@ -1222,3 +1222,56 @@ def test_orientation_set_slicing_returns_metadata_preserving_subset() -> None:
     assert_allclose(
         np.abs(float(single.rotation.quaternion @ children.quaternions[-1])), 1.0, atol=1e-12
     )
+
+
+def test_bain_deformation_gradient_matches_textbook_strains() -> None:
+    _, _, parent, child = make_phases()
+    bain = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = bain.deformation_gradient()
+    ratio = 3.2 / 3.6
+    expected = sorted([np.sqrt(2.0) * ratio, np.sqrt(2.0) * ratio, ratio], reverse=True)
+    assert_allclose(report.principal_stretches, expected, atol=1e-10)
+    assert report.volume_ratio == pytest.approx(2.0 * ratio**3, abs=1e-10)
+    # Bain IS the pure correspondence distortion: no residual rigid rotation.
+    assert report.polar_rotation_deg == pytest.approx(0.0, abs=1e-8)
+    assert_allclose(report.stretch_tensor, report.stretch_tensor.T, atol=1e-12)
+
+
+def test_ks_class_relationships_share_bain_stretches_with_literature_rotations() -> None:
+    _, _, parent, child = make_phases()
+    bain = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=child
+    ).deformation_gradient()
+    cases = {
+        "ks": (
+            OrientationRelationship.from_kurdjumov_sachs_correspondence(
+                parent_phase=parent, child_phase=child
+            ),
+            11.06,
+        ),
+        "nw": (
+            OrientationRelationship.from_nishiyama_wassermann_correspondence(
+                parent_phase=parent, child_phase=child
+            ),
+            9.74,
+        ),
+    }
+    for _, (relationship, expected_rotation) in cases.items():
+        report = relationship.deformation_gradient()
+        # Same lattice distortion as Bain: KS-class ORs differ only rigidly.
+        assert_allclose(report.principal_stretches, bain.principal_stretches, atol=1e-10)
+        assert report.volume_ratio == pytest.approx(bain.volume_ratio, abs=1e-10)
+        # The polar rotation is the literature rigid-body rotation from Bain.
+        assert report.polar_rotation_deg == pytest.approx(expected_rotation, abs=0.01)
+        # F = R_polar U reconstructs the gradient.
+        polar = report.deformation_gradient @ np.linalg.inv(report.stretch_tensor)
+        assert_allclose(
+            polar @ report.stretch_tensor, report.deformation_gradient, atol=1e-10
+        )
+        assert_allclose(polar @ polar.T, np.eye(3), atol=1e-10)
+    text = cases["ks"][0].deformation_gradient().describe()
+    assert "+25.71%" in text
+    assert "-11.11%" in text
+    assert "11.06 deg" in text

@@ -115,6 +115,7 @@ from pytex.core.sphere import (
 )
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
+    DeformationGradientReport,
     DirectionCorrespondence,
     IntervariantMisorientation,
     ORDeviationReport,
@@ -160,6 +161,7 @@ __all__ = [
     "IPFSectorBoundary",
     "IntervariantMisorientation",
     "PlaneCorrespondence",
+    "DeformationGradientReport",
     "DirectionCorrespondence",
     "ORDeviationReport",
     "OrientationRelationshipFitReport",

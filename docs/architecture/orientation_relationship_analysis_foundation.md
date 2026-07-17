@@ -37,6 +37,10 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   24-variant lath-martensite structure fixture.
 - **F10 (variant pole figures):** `variant_pole_figure` + `plot_variant_pole_figure`, pinned
   by the packet-plane coincidence.
+- **F12 (deformation gradients):** `deformation_gradient()` — nearest-integer lattice
+  correspondence, parent-frame gradient with polar decomposition; Bain stretches
+  (1.127, 1.127, 0.797) and the literature rigid rotations (KS 11.06 deg, NW 9.74 deg from
+  Bain) pinned.
 - Explainable `describe()` prose on every report; the canonical composition
   `g_child = g_parent ∘ V^T` is regression-pinned (see the development-guide changelog for
   the convention correction).
@@ -188,10 +192,10 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 
 ## 5. Current Limits (honest statement, updated 2026-07-17)
 
-Phases 1-3 (F1-F11 except F7) are implemented and validated as listed in §1. Still **not
+F1-F12 (except F7) are implemented and validated as listed in §1. Still **not
 available**, and no PyTex document may imply otherwise: OR determination from child-child
-boundaries without the parent (F7), transformation deformation gradients (F12), habit-plane /
-PTMC analysis (F13), and the broader OR catalog (F14). Parent-grain reconstruction (F8) is
+boundaries without the parent (F7), habit-plane / PTMC analysis (F13), and the broader OR
+catalog (F14). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data
 fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
 report objects (F11) are partial.

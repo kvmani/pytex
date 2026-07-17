@@ -31,6 +31,10 @@ downstream analyses depend on them.
   quaternion-averaged parent refinement, and EBSD grain-graph wiring.
 - Explainable-results doctrine: `describe()` prose on every stable
   transformation report, substring-validated in tests.
+- Transformation deformation gradients (`deformation_gradient()`,
+  `DeformationGradientReport`): nearest-integer lattice correspondence, polar
+  decomposition, textbook Bain stretches and the literature KS/NW rigid
+  rotations pinned.
 - Texture kernel breadth: `GaussianSO3Kernel` (Gauss-Weierstrass spectrum)
   and `AbelPoissonKernel` beside de la Vallee Poussin, with closed-form
   Chebyshev coefficients and halfwidth-defined construction;

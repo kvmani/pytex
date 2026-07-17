@@ -29,7 +29,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 18 pushed as `8247554`
 - Phase 19 pushed as `05baa47`
 - Phase 20 pushed as `2faa0e7`
-- Phase: 21 complete (committing) — texture-kernels worked-example group.
+- Phase 21 pushed as `d34fef0`
+- Phase: 22 complete (committing) — F12 transformation deformation gradients.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -342,6 +343,22 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 22 outcomes (2026-07-17)
+
+- **F12 landed:** `OrientationRelationship.deformation_gradient()` +
+  `DeformationGradientReport` — nearest-integer lattice correspondence (rint of the exact
+  index correspondence; ray rationalization is WRONG here because magnitudes carry the
+  strain), parent-frame gradient `F = R^T A_c M_int A_p^-1`, right-stretch via eigh, polar
+  decomposition.
+- Pinned physics: Bain principal stretches (sqrt(2) a_c/a_p, x2, a_c/a_p) and volume ratio
+  2(a_c/a_p)^3 exact with zero polar rotation; KS/NW/GT all share the identical Bain
+  stretches with polar rotations 11.06 / 9.74 / 10.15 deg — the literature rigid-body
+  rotations relative to Bain, falling out of the decomposition.
+- Docs synced: OR foundation §1/§5 (F12 moved to implemented; remaining gaps now
+  F7/F13/F14 + reconstruction stabilization), concept page doctrine item 3, validation-matrix
+  row, spec list, CHANGELOG. Gates: 866 passed, zero warnings; ruff/mypy/integrity/Sphinx
+  green.
 
 ## Phase 21 outcomes (2026-07-17)
 

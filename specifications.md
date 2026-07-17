@@ -100,6 +100,7 @@ Stable APIs must compose from named scientific primitives rather than naked arra
 - `DirectionCorrespondence`
 - `PlaneCorrespondence`
 - `ORDeviationReport`
+- `DeformationGradientReport`
 - `OrientationRelationshipFitReport`
 - `fit_orientation_relationship`
 - `ParallelismMatch`
