@@ -24,7 +24,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 13 pushed as `cf91ce9`
 - Phase 14 pushed as `ee72419`
 - Phase 15 pushed as `551791e`
-- Phase: 16 complete (committing) — hexagonal/Burgers property suites.
+- Phase 16 pushed as `20dd2dd`
+- Phase: 17 complete (committing) — transformation performance benchmark lane (finding 21).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -337,6 +338,17 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 17 outcomes (2026-07-17)
+
+- **Finding 21 (benchmark lane) landed for the transformation stack:**
+  `scripts/benchmark_transformation_performance.py` — pinned cases (seed 20260717): KS
+  intervariant table (276 pairs), or_deviation + fitting on 5000 pairs, reconstruction on
+  400 grains; `--quick` smoke sizes covered by `tests/unit/test_benchmark_lane.py`. Reference
+  timings this machine: deviation 1.41 s / fitting 0.18 s (5000 pairs), reconstruction 3.4 s
+  (400 grains). Results JSON is local/git-ignored; `benchmarks/` stays reserved for
+  schema-validated manifests (the manifest gate globs every JSON there — learned the hard
+  way). No CI timing gate by design (noisy runners); the evidence is the runnable lane.
 
 ## Phase 16 outcomes (2026-07-17)
 

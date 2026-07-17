@@ -48,3 +48,4 @@ fixtures/visual_regression/*.svg
 
 # Session-local agent tooling config
 .claude/
+performance_results.json
