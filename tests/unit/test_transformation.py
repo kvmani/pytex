@@ -1360,8 +1360,66 @@ def test_pitsch_schrader_correspondence_and_hcp_bcc_catalog() -> None:
     )
     assert separation == pytest.approx(5.26, abs=0.01)
     catalog = standard_hcp_bcc_relationships(parent_phase=alpha, child_phase=cubic_child)
-    assert catalog.names() == ("pitsch_schrader", "burgers_inverse")
+    assert catalog.names() == ("pitsch_schrader", "burgers_inverse", "potter")
     with pytest.raises(ValueError, match="hexagonal parent phase"):
         OrientationRelationship.from_pitsch_schrader_correspondence(
+            parent_phase=cubic_child, child_phase=cubic_child
+        )
+
+
+def test_potter_correspondence_pins_pyramidal_parallelism_and_burgers_proximity() -> None:
+    from pytex.core.transformation import _symmetry_reduced_angle_between_deg
+
+    _, _, _, cubic_child = make_phases()
+    hex_frame = ReferenceFrame(
+        name="potter_hex_parent",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    alpha = Phase(
+        "alpha_ti",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=hex_frame),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+        crystal_frame=hex_frame,
+    )
+    potter = OrientationRelationship.from_potter_correspondence(
+        parent_phase=alpha, child_phase=cubic_child
+    )
+    # Twelve distinct variants (internally derived orbit count: trivial
+    # stabilizer of the pyramidal-plane/close-packed-direction pairing).
+    assert len(potter.generate_variants()) == 12
+    # Defining parallelism maps exactly: (01-11)_hcp -> {110}_bcc.
+    pyramidal = CrystalPlane.from_miller_bravais((0, 1, -1, 1), phase=alpha)
+    mapped = potter.map_plane_to_child(pyramidal)
+    assert tuple(sorted(np.abs(mapped.rational_indices))) == (0, 1, 1)
+    assert mapped.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    # The basal plane is NOT exactly parallel to {110}: it sits the small
+    # Potter rotation away from its Burgers partner. The residual of the
+    # basal-plane image equals the symmetry-reduced separation from the
+    # inverse Burgers OR (the "rotation of Burgers about the shared
+    # close-packed direction" structure; literature quotes ~2 deg, the exact
+    # value is c/a-dependent — 1.370 deg at c/a = 4.68/2.95).
+    basal = CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=alpha)
+    basal_mapped = potter.map_plane_to_child(basal)
+    inverse_burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=cubic_child, child_phase=alpha
+    ).inverse()
+    separation = _symmetry_reduced_angle_between_deg(
+        potter.parent_to_child_rotation.as_matrix(),
+        inverse_burgers.parent_to_child_rotation.as_matrix(),
+        child_operators=cubic_child.symmetry.operators,
+        parent_operators=alpha.symmetry.operators,
+    )
+    assert separation == pytest.approx(1.370, abs=0.005)
+    assert basal_mapped.angular_residual_deg == pytest.approx(separation, abs=1e-6)
+    assert 0.5 < separation < 3.0
+    # The shared close-packed direction maps exactly, as in Burgers.
+    direction = CrystalDirection.from_miller_bravais((2, -1, -1, 0), phase=alpha)
+    mapped_direction = potter.map_direction_to_child(direction)
+    assert tuple(sorted(np.abs(mapped_direction.rational_indices))) == (1, 1, 1)
+    assert mapped_direction.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    with pytest.raises(ValueError, match="hexagonal parent phase"):
+        OrientationRelationship.from_potter_correspondence(
             parent_phase=cubic_child, child_phase=cubic_child
         )

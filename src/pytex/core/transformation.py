@@ -592,6 +592,42 @@ class OrientationRelationship:
             provenance=provenance,
         )
 
+    @classmethod
+    def from_potter_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "potter",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Potter OR: {10-11}_hcp || {110}_bcc, <11-20>_hcp || <111>_bcc.
+
+        The hcp->bcc precipitate/matrix relationship of Potter (V2N/V3N
+        nitrides in alpha-vanadium; J. Less-Common Metals 31 (1973) 299).
+        The close-packed directions coincide exactly as in the Burgers
+        relationship, but the exact plane parallelism is carried by the
+        pyramidal {10-11} plane against a cubic {110} plane; the basal plane
+        is left a small, c/a-dependent rotation (~2 deg for typical metal
+        ratios) from its Burgers {110} partner about the shared close-packed
+        direction. The parent must be hexagonal (proper group 622) and the
+        child cubic (proper group 432).
+        """
+
+        _require_proper_point_group(parent_phase, "622", role="parent", relationship="Potter")
+        _require_proper_point_group(child_phase, "432", role="child", relationship="Potter")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane.from_miller_bravais((0, 1, -1, 1), phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((1, 1, 0), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=CrystalDirection.from_miller_bravais(
+                (2, -1, -1, 0), phase=parent_phase
+            ),
+            child_direction=_crystal_direction((1.0, -1.0, 1.0), phase=child_phase),
+            provenance=provenance,
+        )
+
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.parent_crystal_frame:

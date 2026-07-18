@@ -33,7 +33,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 22 pushed as `a120111`
 - Phase 23 pushed as `4567817`
 - Phase 24 pushed as `c6e68e3`
-- Phase: 25 complete (committing) — Pitsch-Schrader constructor (F14 slice, hex parent).
+- Phase 25 pushed as `32b225b`
+- Phase: 26 complete (committing) — Potter constructor (F14 slice, hcp parent).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -346,6 +347,19 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 26 outcomes (2026-07-18)
+
+- **F14 slice:** `from_potter_correspondence` — exact pyramidal parallelism
+  {10-11}_hcp || {110}_bcc with the Burgers close-packed direction pairing
+  <2-1-10>_hcp || <111>_bcc (Potter 1973, V-N precipitates in alpha-vanadium;
+  622-parent/432-child guards); appended to `standard_hcp_bcc_relationships`
+  (names now PS, inverse Burgers, Potter). Pinned: exact pyramidal + direction
+  parallelisms; basal-image residual == symmetry-reduced separation from
+  inverse Burgers (1.370 deg at c/a = 4.68/2.95 — the literature "~2 deg" is
+  c/a-dependent, recorded as such); 12 variants (internally derived orbit
+  count). Remaining F14: Bagaryatsky/Isaichev (need orthorhombic cementite
+  support — assess before implementing).
 
 ## Phase 25 outcomes (2026-07-17)
 

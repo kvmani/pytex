@@ -17,7 +17,10 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
 
 - `OrientationRelationship` with named constructors: Bain, Kurdjumov-Sachs (KS),
   Nishiyama-Wassermann (NW), Greninger-Troiano (GT), Pitsch (fcc↔bcc), Burgers (bcc↔hcp), Shoji-Nishiyama (fcc↔hcp, 4 variants), and
-  Pitsch-Schrader (hcp↔bcc, 3 variants, 5.26 deg from inverse Burgers), plus the generic `from_parallel_plane_direction(...)` correspondence constructor and standard
+  Pitsch-Schrader (hcp↔bcc, 3 variants, 5.26 deg from inverse Burgers), and
+  Potter (hcp↔bcc, 12 variants, exact {10-11}||{110} pyramidal parallelism a
+  c/a-dependent ~1-2 deg from inverse Burgers), plus the generic
+  `from_parallel_plane_direction(...)` correspondence constructor and standard
   catalogs.
 - Variant machinery: symmetry-reduced generation with literature-correct counts, intervariant
   misorientation tables (Morito-validated), variant-selection scoring, and packet
@@ -197,8 +200,8 @@ stage: `pytex.experimental.identify_orientation_relationship` ranks candidate OR
 child-child boundary misorientations via the double-coset intervariant fingerprint, no parent
 required. Still **not available**, and no PyTex document may imply otherwise: boundary-based
 *refinement* of the OR rotation (F7 second stage), habit-plane / PTMC analysis (F13), and the
-remaining OR catalog breadth (F14: Potter, Bagaryatsky/Isaichev; Shoji-Nishiyama and
-Pitsch-Schrader landed). Parent-grain reconstruction (F8) is
+remaining OR catalog breadth (F14: Bagaryatsky/Isaichev; Shoji-Nishiyama,
+Pitsch-Schrader, and Potter landed). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data
 fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
 report objects (F11) are partial.
