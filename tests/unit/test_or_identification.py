@@ -98,7 +98,7 @@ def test_identification_survives_orientation_noise() -> None:
     text = report.describe()
     assert "no parent orientations used" in text
     assert "kurdjumov_sachs" in text
-    assert "refinement of the rotation itself is not implemented" in text
+    assert "refine_orientation_relationship_from_boundaries" in text
 
 
 def test_identification_validates_inputs() -> None:

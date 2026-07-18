@@ -197,12 +197,13 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 
 ## 5. Current Limits (honest statement, updated 2026-07-18)
 
-F1-F12 and F14 are implemented and validated as listed in §1, with F7 at its first
-(identification) stage: `pytex.experimental.identify_orientation_relationship` ranks candidate
+F1-F12 and F14 are implemented and validated as listed in §1. F7 is implemented at both stages
+as experimental surfaces: `pytex.experimental.identify_orientation_relationship` ranks candidate
 ORs against child-child boundary misorientations via the double-coset intervariant fingerprint,
-no parent required. Still **not available**, and no PyTex document may imply otherwise:
-boundary-based
-*refinement* of the OR rotation (F7 second stage) and habit-plane / PTMC analysis (F13). The
+and `pytex.experimental.refine_orientation_relationship_from_boundaries` refines the winning
+rotation by alternating nearest-coset-element assignment with least-squares rotation updates —
+both with no parent orientations required. Still **not available**, and no PyTex document may
+imply otherwise: habit-plane / PTMC analysis (F13). The
 F14 catalog breadth is complete (Shoji-Nishiyama, Pitsch-Schrader, Potter, Bagaryatsky, and
 Isaichev all landed). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data

@@ -35,7 +35,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 24 pushed as `c6e68e3`
 - Phase 25 pushed as `32b225b`
 - Phase 26 pushed as `8dd8a81`
-- Phase: 27 complete (committing) — Bagaryatsky/Isaichev constructors (F14 COMPLETE).
+- Phase 27 pushed as `d43bc9e` (F14 COMPLETE)
+- Phase: 28 complete (committing) — F7 second stage: boundary-based OR rotation refinement.
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -348,6 +349,29 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 28 outcomes (2026-07-18) — F7 complete (both stages)
+
+- **F7 second stage (experimental):**
+  `pytex.experimental.refine_orientation_relationship_from_boundaries` +
+  `ORRefinementReport` in new `experimental/or_refinement.py`. Algorithm:
+  alternate (1) per-edge nearest-element assignment over the FULL
+  (child-op, parent-op, child-op) coset triple enumeration at the current
+  rotation (edge-blocked einsum traces) with (2) scipy LM least-squares on a
+  3-parameter left-rotation update, residuals = 2 sin(theta/2) chordal form
+  (smooth at zero — exact data is a regular point, unlike arccos);
+  convergence = stable assignments + step below tolerance. Rotation
+  identifiable only up to coset symmetry: all reported distances
+  symmetry-reduced.
+- Verified: exact GT boundaries + KS nominal -> recovers the true GT
+  rotation (distance ~1.2e-6 deg, the known matrix<->quaternion round-trip
+  noise floor; tolerance 1e-5) with the 2.404 deg KS-GT update reported;
+  0.3-deg-noise KS boundaries + NW nominal -> within 0.5 deg of true KS.
+- Stale-claims sync: or_identification docstring + describe() now point to
+  the refinement surface instead of denying it exists (test substring
+  updated); foundation §5 marks F7 complete at both stages; validation row.
+  Remaining OR program: F13 (habit planes/PTMC), reconstruction
+  stabilization (measured-data fixtures, MTEX parity).
 
 ## Phase 27 outcomes (2026-07-18) — F14 complete
 

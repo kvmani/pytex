@@ -30,6 +30,10 @@ downstream analyses depend on them.
   (`pytex.experimental.identify_orientation_relationship`): ranks candidate
   relationships by their double-coset intervariant fingerprint, no parent
   orientations required.
+- Experimental boundary-based OR rotation refinement
+  (`pytex.experimental.refine_orientation_relationship_from_boundaries`):
+  recovers the operative rotation from child-child boundary misorientations
+  alone by alternating coset-element assignment with least-squares updates.
 - Experimental map-scale parent-grain reconstruction
   (`pytex.experimental.reconstruct_parent_grains`, `..._from_graph`) with
   intervariant-fingerprint edge testing, union-find clustering,

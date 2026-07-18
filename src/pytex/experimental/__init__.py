@@ -4,6 +4,10 @@ from pytex.experimental.or_identification import (
     ORIdentificationReport,
     identify_orientation_relationship,
 )
+from pytex.experimental.or_refinement import (
+    ORRefinementReport,
+    refine_orientation_relationship_from_boundaries,
+)
 from pytex.experimental.parent_grain_reconstruction import (
     ParentGrainReconstructionResult,
     reconstruct_parent_grains,
@@ -16,9 +20,11 @@ from pytex.experimental.phase_transformation import (
 
 __all__ = [
     "ORIdentificationReport",
+    "ORRefinementReport",
     "ParentGrainReconstructionResult",
     "ParentReconstructionResult",
     "identify_orientation_relationship",
+    "refine_orientation_relationship_from_boundaries",
     "reconstruct_parent_grains",
     "reconstruct_parent_grains_from_graph",
     "score_parent_orientations",

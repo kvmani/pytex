@@ -6,8 +6,9 @@ from the relationship's intervariant set — the double coset
 ``G_c (R S_p R^T) G_c`` of the parent symmetry conjugated by the OR rotation.
 Scoring measured boundaries against each candidate's fingerprint set answers
 "which orientation relationship is operative" without any parent orientation
-(OR-foundation F7, first stage; full boundary-based *refinement* of the
-rotation remains future work and this module must not claim it).
+(OR-foundation F7, first stage). The second stage — boundary-based
+*refinement* of the winning rotation — lives in
+``pytex.experimental.or_refinement``.
 """
 
 from __future__ import annotations
@@ -96,8 +97,9 @@ class ORIdentificationReport:
             f"{float(np.min(self.mean_distances_deg)):.3f} deg "
             f"(per-edge max {float(np.max(self.best_edge_distances_deg)):.3f} deg). "
             f"Ranking: {ranking}.{margin_text} Experimental surface: identification "
-            "among supplied candidates only — boundary-based refinement of the "
-            "rotation itself is not implemented."
+            "among supplied candidates only — for boundary-based refinement of the "
+            "rotation itself, pass the winner to "
+            "refine_orientation_relationship_from_boundaries."
         )
 
 
