@@ -41,6 +41,7 @@ notebooks/15_structure_diffraction_visualization_pipeline
 notebooks/16_ebsd_to_texture_outputs
 notebooks/17_miller_vectorized_workflows
 notebooks/18_orientation_relationships_fundamentals
+notebooks/19_lattice_correspondence_and_transformation_strain
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -53,6 +54,10 @@ pages.
 1. `18_orientation_relationships_fundamentals` — conventions, the KS
    relationship, variants, intervariant spectrum, packets, variant pole
    figures, OR deviation and fitting.
+2. `19_lattice_correspondence_and_transformation_strain` — index
+   correspondence with rationalized indices and residuals, the Bain strain
+   computed and rendered in 3D, KS/NW/GT polar rotations, and the Burgers
+   basal-on-(110) overlay computed from the actual rotation.
 
 ## How To Use These
 
