@@ -37,6 +37,11 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 26 pushed as `8dd8a81`
 - Phase 27 pushed as `d43bc9e` (F14 COMPLETE)
 - Phase 28 pushed as `1e47c9b` (F7 COMPLETE, both stages)
+- NEW GOAL (2026-07-18): OR scientific documentation program — plan and ledger in
+  `docs/roadmap/working_notes_or_documentation_program.md` (phases 29-32: SVG diagram
+  assets, three executed OR tutorial notebooks, cross-linking).
+- Phase: 29 complete (committing) — program plan + 5 scientific SVG diagrams in
+  `docs/site/_static/or/`.
 - Next phase candidates (in roadmap order): F13 habit planes / PTMC (large; needs its own
   working notes), reconstruction stabilization (measured-data fixture + MTEX
   `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre
