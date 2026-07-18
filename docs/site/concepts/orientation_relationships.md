@@ -170,3 +170,23 @@ The executable worked examples in the
 [transformation gallery](../examples/generated/transformation.md) compute the
 Kurdjumov-Sachs plane correspondence and the Bain direction correspondence
 live from the code and check them against their defining parallelisms.
+
+## The notebook teaching track
+
+Three executed tutorial notebooks walk this whole surface with rendered
+outputs, diagrams, and the underlying equations:
+
+- {doc}`../tutorials/notebooks/18_orientation_relationships_fundamentals` —
+  conventions, KS variants, intervariant spectrum, packets, variant pole
+  figures, deviation and fitting;
+- {doc}`../tutorials/notebooks/19_lattice_correspondence_and_transformation_strain`
+  — index correspondence, the Bain strain rendered in 3D, polar rotations,
+  the Burgers basal-on-(110) overlay;
+- {doc}`../tutorials/notebooks/20_or_catalogs_identification_and_reconstruction`
+  — every standard catalog with computed separations, then identification,
+  rotation refinement, and parent-grain reconstruction end to end.
+
+The scientific diagrams they embed (doctrine pipeline, variant-generation
+algorithm, Bain correspondence cells, the F7/F8 pipeline, and the Burgers
+family geometry) live under `docs/site/_static/or/` and are reusable in
+reports and slides.

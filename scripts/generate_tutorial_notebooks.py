@@ -2325,6 +2325,313 @@ crystal:
         ],
     }
 
+    notebooks["20_or_catalogs_identification_and_reconstruction.ipynb"] = {
+        "title": "OR Catalogs, Identification, And Parent Reconstruction",
+        "cells": [
+            markdown_cell(
+                """
+                # OR Catalogs, Identification, And Parent Reconstruction
+
+                The final notebook of the orientation-relationship track tours the
+                **standard catalogs** (fcc-bcc, bcc-hcp, fcc-hcp, hcp-bcc,
+                ferrite-cementite) and then runs the **experimental analysis pipeline**
+                end to end on a synthetic lath-martensite microstructure:
+
+                1. *identify* the operative OR from child-child boundary
+                   misorientations alone,
+                2. *refine* its rotation against those boundaries,
+                3. *reconstruct* the parent grains.
+
+                ![F7/F8 pipeline](../../_static/or/f7_identification_refinement_pipeline.svg)
+                """
+            ),
+            code_cell(or_setup),
+            code_cell(
+                """
+                from pytex import (
+                    PhaseTransformationRecord,
+                    standard_ferrite_cementite_relationships,
+                    standard_hcp_bcc_relationships,
+                )
+                from pytex.experimental import (
+                    identify_orientation_relationship,
+                    refine_orientation_relationship_from_boundaries,
+                    reconstruct_parent_grains,
+                )
+
+                austenite, martensite, specimen = make_or_context()
+                catalog = standard_fcc_bcc_relationships(
+                    parent_phase=austenite, child_phase=martensite
+                )
+
+                def separation_deg(relationship_a, relationship_b):
+                    \"\"\"Symmetry-reduced angle between two ORs of the same phase pair.
+
+                    Builds one exact child of relationship_b and asks or_deviation how
+                    far it sits from relationship_a - the min-over-variants,
+                    child-symmetry-reduced distance, i.e. the double-coset separation.
+                    \"\"\"
+                    identity_parent = OrientationSet.from_orientations([Orientation(
+                        rotation=Rotation.identity(),
+                        crystal_frame=relationship_b.parent_phase.crystal_frame,
+                        specimen_frame=specimen,
+                        symmetry=relationship_b.parent_phase.symmetry,
+                        phase=relationship_b.parent_phase,
+                    )])
+                    child = OrientationSet.from_orientations([Orientation(
+                        rotation=Rotation.identity().compose(
+                            relationship_b.generate_variants()[0]
+                            .parent_to_child_rotation.inverse()
+                        ),
+                        crystal_frame=relationship_b.child_phase.crystal_frame,
+                        specimen_frame=specimen,
+                        symmetry=relationship_b.child_phase.symmetry,
+                        phase=relationship_b.child_phase,
+                    )])
+                    return or_deviation(identity_parent, child, relationship_a
+                                        ).mean_deviation_deg
+
+                print("fcc->bcc catalog:")
+                for relationship in catalog.relationships:
+                    print(f"  {relationship.name:24s} "
+                          f"{len(relationship.generate_variants()):3d} variants")
+                ks = catalog.get("kurdjumov_sachs")
+                print()
+                for name in ("nishiyama_wassermann", "greninger_troiano", "pitsch", "bain"):
+                    print(f"  separation KS <-> {name:22s} "
+                          f"{separation_deg(ks, catalog.get(name)):6.2f} deg")
+                """
+            ),
+            markdown_cell(
+                """
+                The same pattern covers every implemented family. The hexagonal and
+                cementite catalogs reproduce the literature separations discussed in
+                notebooks 18-19 - Pitsch-Schrader at 5.26 deg from inverse Burgers,
+                Potter a c/a-dependent ~1.4 deg from it, and Isaichev 3.59 deg from
+                Bagaryatsky about the cementite a-axis:
+                """
+            ),
+            code_cell(
+                """
+                hex_frame = ReferenceFrame(
+                    "hcp_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+                )
+                alpha = Phase(
+                    "alpha_ti",
+                    lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0,
+                                    crystal_frame=hex_frame),
+                    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=hex_frame),
+                    crystal_frame=hex_frame,
+                )
+                hcp_bcc = standard_hcp_bcc_relationships(
+                    parent_phase=alpha, child_phase=martensite
+                )
+                inverse_burgers = hcp_bcc.get("burgers_inverse")
+                for name in ("pitsch_schrader", "potter"):
+                    print(f"  separation {name:16s} <-> inverse Burgers  "
+                          f"{separation_deg(hcp_bcc.get(name), inverse_burgers):5.2f} deg")
+
+                cementite_frame = ReferenceFrame(
+                    "cementite_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"),
+                    Handedness.RIGHT,
+                )
+                cementite = Phase(
+                    "cementite",
+                    lattice=Lattice(5.0883, 6.7416, 4.5241, 90.0, 90.0, 90.0,
+                                    crystal_frame=cementite_frame),
+                    symmetry=SymmetrySpec.from_point_group("mmm",
+                                                           reference_frame=cementite_frame),
+                    crystal_frame=cementite_frame,
+                )
+                ferrite_cementite = standard_ferrite_cementite_relationships(
+                    parent_phase=martensite, child_phase=cementite
+                )
+                bag_isa = separation_deg(
+                    ferrite_cementite.get("bagaryatsky"),
+                    ferrite_cementite.get("isaichev"),
+                )
+                print(f"  separation bagaryatsky      <-> isaichev         "
+                      f"{bag_isa:5.2f} deg")
+                """
+            ),
+            markdown_cell(
+                r"""
+                ## A synthetic lath-martensite microstructure
+
+                One austenite parent transformed into all 24 KS variants (plus two more
+                parents with a random subset each), with 0.25 deg of orientation noise —
+                a miniature of the real problem: only the *child* phase is measured, and
+                the parent must be inferred.
+
+                Same-parent boundary misorientations can only populate the double coset
+                $G_c\,(R\,S_p\,R^{\mathsf T})\,G_c$ of the operative rotation $R$. That
+                is the fingerprint everything below runs on.
+                """
+            ),
+            code_cell(
+                """
+                rng = np.random.default_rng(20260719)
+                parent_eulers = [(20.0, 30.0, 40.0), (10.0, 50.0, 20.0), (65.0, 20.0, 50.0)]
+                ks_variants = ks.generate_variants()
+
+                child_orientations, parent_labels = [], []
+                for parent_index, eulers in enumerate(parent_eulers):
+                    parent = Orientation.from_euler(
+                        *eulers, specimen_frame=specimen,
+                        symmetry=austenite.symmetry, phase=austenite,
+                    )
+                    picks = (range(24) if parent_index == 0
+                             else rng.choice(24, size=8, replace=False))
+                    for pick in picks:
+                        rotation = parent.rotation.compose(
+                            ks_variants[int(pick)].parent_to_child_rotation.inverse()
+                        )
+                        axis = rng.normal(size=3)
+                        axis /= np.linalg.norm(axis)
+                        rotation = Rotation.from_axis_angle(
+                            axis, np.deg2rad(rng.normal(0.0, 0.25))
+                        ).compose(rotation)
+                        child_orientations.append(Orientation(
+                            rotation=rotation,
+                            crystal_frame=martensite.crystal_frame,
+                            specimen_frame=specimen,
+                            symmetry=martensite.symmetry,
+                            phase=martensite,
+                        ))
+                        parent_labels.append(parent_index)
+                children = OrientationSet.from_orientations(child_orientations)
+                parent_labels = np.asarray(parent_labels)
+
+                edges = []
+                for parent_index in range(len(parent_eulers)):
+                    members = np.flatnonzero(parent_labels == parent_index)
+                    edges.extend(
+                        (int(a), int(b))
+                        for a, b in zip(members[:-1], members[1:], strict=False)
+                    )
+                    edges.extend(
+                        (int(members[i]), int(members[i + 2]))
+                        for i in range(len(members) - 2)
+                    )
+                edges = np.asarray(edges, dtype=np.int64)
+                print(f"{len(children)} child grains, {len(edges)} same-parent boundaries")
+                """
+            ),
+            code_cell(
+                """
+                report = identify_orientation_relationship(
+                    children, edges, catalog.relationships
+                )
+                print(report.describe())
+
+                fig, ax = plt.subplots(figsize=(7.4, 3.8))
+                order = np.argsort(report.mean_distances_deg)
+                bars = ax.bar(
+                    [report.candidate_names[int(i)].replace("_", "\\n") for i in order],
+                    report.mean_distances_deg[order],
+                    color=["#00897b"] + ["#c5cae9"] * (len(order) - 1),
+                )
+                ax.bar_label(bars, fmt="%.2f")
+                ax.set_ylabel("mean fingerprint distance (deg)")
+                ax.set_title("OR identification: boundary evidence per candidate")
+                fig.tight_layout()
+                """
+            ),
+            markdown_cell(
+                """
+                ## Refining the rotation from the boundaries
+
+                Starting deliberately from the *wrong* nominal (NW), the refinement
+                alternates nearest-coset-element assignment with least-squares rotation
+                updates until it locks onto the operative rotation - KS here, recovered
+                to well inside the noise level:
+                """
+            ),
+            code_cell(
+                """
+                nw = catalog.get("nishiyama_wassermann")
+                refinement = refine_orientation_relationship_from_boundaries(
+                    children, edges, nw
+                )
+                print(refinement.describe())
+                print()
+                print(f"distance of the refined rotation to true KS: "
+                      f"{separation_deg(refinement.relationship, ks):.3f} deg")
+                """
+            ),
+            markdown_cell(
+                """
+                ## Reconstructing the parent grains
+
+                With the relationship known, the reconstruction tests every boundary
+                against the intervariant fingerprint, clusters linked grains
+                (union-find), and scores candidate parents per cluster. On this
+                microstructure it recovers the planted partition and parents:
+                """
+            ),
+            code_cell(
+                """
+                reconstruction = reconstruct_parent_grains(children, edges, ks)
+                print(reconstruction.describe())
+
+                recovered = reconstruction.parent_labels
+                agreement = np.array([
+                    len(set(np.flatnonzero(parent_labels == planted)) ^
+                        set(np.flatnonzero(recovered == recovered[
+                            np.flatnonzero(parent_labels == planted)[0]])))
+                    for planted in range(len(parent_eulers))
+                ])
+                print("per-parent membership mismatches vs planted:", agreement)
+
+                record = PhaseTransformationRecord(
+                    name="parent_1_children",
+                    orientation_relationship=ks,
+                    parent_orientation=Orientation.from_euler(
+                        *parent_eulers[0], specimen_frame=specimen,
+                        symmetry=austenite.symmetry, phase=austenite,
+                    ),
+                    child_orientations=OrientationSet.from_orientations(
+                        [child_orientations[i]
+                         for i in np.flatnonzero(parent_labels == 0)]
+                    ),
+                )
+                selection = select_variants(record)
+                counts = np.bincount(selection.variant_indices, minlength=25)[1:]
+                fig, ax = plt.subplots(figsize=(8.6, 3.6))
+                ax.bar(np.arange(1, 25), counts, color="#3f51b5")
+                ax.set_xlabel("KS variant index")
+                ax.set_ylabel("children")
+                ax.set_xticks(np.arange(1, 25, 2))
+                ax.set_title("Variant selection, parent 1: all 24 variants present once")
+                fig.tight_layout()
+                """
+            ),
+            markdown_cell(
+                """
+                ## Honest limits, and where to go deeper
+
+                The identification, refinement, and reconstruction surfaces live in
+                `pytex.experimental` deliberately: they are validated on synthetic and
+                literature-structure fixtures, while external measured-data fixtures
+                and MTEX parity comparisons are still queued before stabilization.
+                Every `describe()` above states its own caveats - singleton clusters
+                are ambiguous, a far-off nominal can converge to a wrong assignment,
+                and margins comparable to the noise mean the data cannot discriminate
+                candidates.
+
+                Deeper material:
+
+                - scientific foundation:
+                  `docs/architecture/orientation_relationship_analysis_foundation.md`
+                - validation ledger with every pinned number:
+                  `docs/testing/phase_transformation_validation_matrix.md`
+                - concept page: `docs/site/concepts/orientation_relationships.md`
+                - notebooks 18 (rotation pillar) and 19 (correspondence + strain).
+                """
+            ),
+        ],
+    }
+
     return notebooks
 
 

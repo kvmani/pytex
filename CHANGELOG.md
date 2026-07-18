@@ -30,6 +30,12 @@ downstream analyses depend on them.
   (`pytex.experimental.identify_orientation_relationship`): ranks candidate
   relationships by their double-coset intervariant fingerprint, no parent
   orientations required.
+- Orientation-relationship documentation program: executed tutorial notebooks
+  18-20 (fundamentals; lattice correspondence and transformation strain;
+  catalogs, identification, and reconstruction) with equations, rendered
+  figures, and five reusable scientific SVG diagrams under
+  `docs/site/_static/or/`; `scripts/execute_notebooks.py` executes notebooks
+  in place so the site renders their outputs.
 - Experimental boundary-based OR rotation refinement
   (`pytex.experimental.refine_orientation_relationship_from_boundaries`):
   recovers the operative rotation from child-child boundary misorientations

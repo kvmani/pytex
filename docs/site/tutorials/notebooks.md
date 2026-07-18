@@ -42,6 +42,7 @@ notebooks/16_ebsd_to_texture_outputs
 notebooks/17_miller_vectorized_workflows
 notebooks/18_orientation_relationships_fundamentals
 notebooks/19_lattice_correspondence_and_transformation_strain
+notebooks/20_or_catalogs_identification_and_reconstruction
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -58,6 +59,10 @@ pages.
    correspondence with rationalized indices and residuals, the Bain strain
    computed and rendered in 3D, KS/NW/GT polar rotations, and the Burgers
    basal-on-(110) overlay computed from the actual rotation.
+3. `20_or_catalogs_identification_and_reconstruction` — the standard catalogs
+   with computed variant counts and literature separations, then the
+   experimental pipeline end to end: OR identification from boundaries,
+   rotation refinement, and parent-grain reconstruction.
 
 ## How To Use These
 

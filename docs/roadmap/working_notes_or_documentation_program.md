@@ -70,9 +70,14 @@ child-crystal frames); all reported inter-OR distances are symmetry-reduced.
 | --- | --- | --- | --- |
 | 29 | Program plan (this file) + 5 SVG diagram assets | done | `b125d40` |
 | 30 | Notebook 18 (fundamentals, executed) + executor script | done | `5a308f5` |
-| 31 | Notebook 19 (correspondence/strain, executed) | done, committing | — |
-| 31 | Notebook 19 (correspondence/strain, executed) | pending | — |
-| 32 | Notebook 20 (catalogs/pipeline, executed) + final wiring | pending | — |
+| 31 | Notebook 19 (correspondence/strain, executed) | done | `89ae8ad` |
+| 32 | Notebook 20 (catalogs/pipeline, executed) + final wiring | done, committing | — |
+
+Program v1 complete: all three notebooks executed and committed, five SVG
+assets in use, concept page cross-linked. Natural follow-ons (not scheduled):
+a LaTeX theory note consolidating the notebook math, an interactive variant
+explorer, and measured-data notebook sections once the reconstruction
+fixtures land.
 
 Verification gates per phase: `ruff check .`, `mypy src`,
 `python scripts/check_repo_integrity.py`, full pytest, and
