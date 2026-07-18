@@ -68,8 +68,8 @@ child-crystal frames); all reported inter-OR distances are symmetry-reduced.
 
 | Phase | Deliverable | Status | Commit |
 | --- | --- | --- | --- |
-| 29 | Program plan (this file) + 5 SVG diagram assets | in progress | — |
-| 30 | Notebook 18 (fundamentals, executed) + executor script | pending | — |
+| 29 | Program plan (this file) + 5 SVG diagram assets | done | `b125d40` |
+| 30 | Notebook 18 (fundamentals, executed) + executor script | done, committing | — |
 | 31 | Notebook 19 (correspondence/strain, executed) | pending | — |
 | 32 | Notebook 20 (catalogs/pipeline, executed) + final wiring | pending | — |
 

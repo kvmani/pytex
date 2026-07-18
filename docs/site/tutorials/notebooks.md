@@ -40,7 +40,19 @@ notebooks/14_yaml_style_customization
 notebooks/15_structure_diffraction_visualization_pipeline
 notebooks/16_ebsd_to_texture_outputs
 notebooks/17_miller_vectorized_workflows
+notebooks/18_orientation_relationships_fundamentals
 ```
+
+## Orientation-Relationship Teaching Track
+
+The orientation-relationship notebooks are committed *executed*: their pole
+figures, spectra, and reports render directly in this site. They pair with the
+scientific diagrams under `_static/or/` and the OR concept and foundation
+pages.
+
+1. `18_orientation_relationships_fundamentals` — conventions, the KS
+   relationship, variants, intervariant spectrum, packets, variant pole
+   figures, OR deviation and fitting.
 
 ## How To Use These
 
