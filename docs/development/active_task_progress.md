@@ -36,7 +36,11 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 25 pushed as `32b225b`
 - Phase 26 pushed as `8dd8a81`
 - Phase 27 pushed as `d43bc9e` (F14 COMPLETE)
-- Phase: 28 complete (committing) — F7 second stage: boundary-based OR rotation refinement.
+- Phase 28 pushed as `1e47c9b` (F7 COMPLETE, both stages)
+- Next phase candidates (in roadmap order): F13 habit planes / PTMC (large; needs its own
+  working notes), reconstruction stabilization (measured-data fixture + MTEX
+  `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre
+  kernels + SO3FunHarmonic), finding 9 (PF->ODF ghost correction), finding 14 (Kikuchi).
 
 ## Phase Plan (each phase = verified commit + push)
 
