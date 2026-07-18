@@ -34,7 +34,8 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Phase 23 pushed as `4567817`
 - Phase 24 pushed as `c6e68e3`
 - Phase 25 pushed as `32b225b`
-- Phase: 26 complete (committing) — Potter constructor (F14 slice, hcp parent).
+- Phase 26 pushed as `8dd8a81`
+- Phase: 27 complete (committing) — Bagaryatsky/Isaichev constructors (F14 COMPLETE).
 
 ## Phase Plan (each phase = verified commit + push)
 
@@ -347,6 +348,24 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - Gates: 851 passed, zero warnings; ruff/mypy/integrity/Sphinx green.
 
 ## Next Actions (Cycle C+, per the development guide §3 and world-class roadmap)
+
+## Phase 27 outcomes (2026-07-18) — F14 complete
+
+- **F14 final slice:** `from_bagaryatsky_correspondence` and
+  `from_isaichev_correspondence` — the first orthorhombic-child constructors
+  (cementite, Pnma/Lipson-Petch setting b > a > c; guard dict gained
+  "222": "orthorhombic"). Bagaryatsky pins all three Bhadeshia (MST 34, 2018)
+  axis parallelisms exactly ([1-1-1]->[100], [211]->[010], (0-11)->(001));
+  Isaichev pins (101)->(031) + shared [1-1-1]->[100]. Symmetry-reduced
+  separation 3.586 deg about EXACTLY the cementite a-axis (eigenvector pin;
+  literature ~3.8 deg is axial-ratio-dependent). Variants: 12 (Bagaryatsky:
+  parent 180@[0-11] pairs with child 180@c) and 24 (Isaichev: irrational
+  (031) breaks that stabilizer) — internally derived counts, recorded as
+  such. New `standard_ferrite_cementite_relationships` catalog, exported
+  from `pytex.core` and top level. The F14 OR catalog program (S-N, PS,
+  Potter, Bagaryatsky, Isaichev) is now COMPLETE; foundation doc §5 updated.
+  Remaining OR program: F7 second stage (boundary-based rotation
+  refinement), F13 (habit planes / PTMC), reconstruction stabilization.
 
 ## Phase 26 outcomes (2026-07-18)
 

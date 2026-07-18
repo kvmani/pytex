@@ -1423,3 +1423,117 @@ def test_potter_correspondence_pins_pyramidal_parallelism_and_burgers_proximity(
         OrientationRelationship.from_potter_correspondence(
             parent_phase=cubic_child, child_phase=cubic_child
         )
+
+
+def _make_ferrite_and_cementite() -> tuple[Phase, Phase]:
+    ferrite_frame = ReferenceFrame(
+        name="ferrite_crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    cementite_frame = ReferenceFrame(
+        name="cementite_crystal",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    # Pnma (Lipson-Petch) cementite setting, b > a > c; parameters as used by
+    # Bhadeshia, Mater. Sci. Technol. 34 (2018) 1666.
+    ferrite = Phase(
+        "ferrite",
+        lattice=Lattice(2.8662, 2.8662, 2.8662, 90.0, 90.0, 90.0, crystal_frame=ferrite_frame),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=ferrite_frame),
+        crystal_frame=ferrite_frame,
+    )
+    cementite = Phase(
+        "cementite",
+        lattice=Lattice(5.0883, 6.7416, 4.5241, 90.0, 90.0, 90.0, crystal_frame=cementite_frame),
+        symmetry=SymmetrySpec.from_point_group("mmm", reference_frame=cementite_frame),
+        crystal_frame=cementite_frame,
+    )
+    return ferrite, cementite
+
+
+def test_bagaryatsky_correspondence_pins_all_three_axis_parallelisms() -> None:
+    from pytex.core.transformation import _crystal_direction
+
+    ferrite, cementite = _make_ferrite_and_cementite()
+    bag = OrientationRelationship.from_bagaryatsky_correspondence(
+        parent_phase=ferrite, child_phase=cementite
+    )
+    # Twelve distinct variants (internally derived orbit count: the parent
+    # 180-deg rotation about [0-11] pairs with the child 180-deg rotation
+    # about c to stabilize the correspondence).
+    assert len(bag.generate_variants()) == 12
+    # All three Bagaryatsky axis parallelisms map exactly (Pnma setting):
+    # [1-1-1]_a -> [100]_th, [211]_a -> [010]_th, (0-11)_a -> (001)_th.
+    mapped_a = bag.map_direction_to_child(_crystal_direction((1, -1, -1), phase=ferrite))
+    assert_allclose(mapped_a.rational_indices, [1, 0, 0])
+    assert mapped_a.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    mapped_b = bag.map_direction_to_child(_crystal_direction((2, 1, 1), phase=ferrite))
+    assert_allclose(mapped_b.rational_indices, [0, 1, 0])
+    assert mapped_b.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    mapped_c = bag.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([0, -1, 1]), phase=ferrite), phase=ferrite)
+    )
+    assert_allclose(mapped_c.rational_indices, [0, 0, 1])
+    assert mapped_c.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    with pytest.raises(ValueError, match="orthorhombic child phase"):
+        OrientationRelationship.from_bagaryatsky_correspondence(
+            parent_phase=ferrite, child_phase=ferrite
+        )
+
+
+def test_isaichev_correspondence_and_ferrite_cementite_catalog() -> None:
+    from pytex.core import standard_ferrite_cementite_relationships
+    from pytex.core.transformation import (
+        _crystal_direction,
+        _symmetry_reduced_angle_between_deg,
+    )
+
+    ferrite, cementite = _make_ferrite_and_cementite()
+    isa = OrientationRelationship.from_isaichev_correspondence(
+        parent_phase=ferrite, child_phase=cementite
+    )
+    # The irrational (031) pairing breaks the Bagaryatsky stabilizer:
+    # twenty-four distinct variants (internally derived orbit count).
+    assert len(isa.generate_variants()) == 24
+    # Defining parallelisms exact: (101)_a -> (031)_th, [1-1-1]_a -> [100]_th.
+    mapped_plane = isa.map_plane_to_child(
+        CrystalPlane(MillerIndex(np.array([1, 0, 1]), phase=ferrite), phase=ferrite)
+    )
+    assert_allclose(mapped_plane.rational_indices, [0, 3, 1])
+    assert mapped_plane.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    mapped_direction = isa.map_direction_to_child(
+        _crystal_direction((1, -1, -1), phase=ferrite)
+    )
+    assert_allclose(mapped_direction.rational_indices, [1, 0, 0])
+    assert mapped_direction.angular_residual_deg == pytest.approx(0.0, abs=1e-9)
+    # Isaichev is the Bagaryatsky orientation rotated about the cementite
+    # a-axis; the magnitude depends on the cementite axial ratios (3.586 deg
+    # for these lattice parameters; the modern literature quotes ~3.8 deg).
+    bag = OrientationRelationship.from_bagaryatsky_correspondence(
+        parent_phase=ferrite, child_phase=cementite
+    )
+    separation = _symmetry_reduced_angle_between_deg(
+        bag.parent_to_child_rotation.as_matrix(),
+        isa.parent_to_child_rotation.as_matrix(),
+        child_operators=cementite.symmetry.operators,
+        parent_operators=ferrite.symmetry.operators,
+    )
+    assert separation == pytest.approx(3.586, abs=0.005)
+    relative = (
+        isa.parent_to_child_rotation.as_matrix() @ bag.parent_to_child_rotation.as_matrix().T
+    )
+    eigenvalues, eigenvectors = np.linalg.eig(relative)
+    axis = np.real(eigenvectors[:, np.argmin(np.abs(eigenvalues - 1.0))])
+    assert_allclose(np.abs(axis), [1.0, 0.0, 0.0], atol=1e-9)
+    catalog = standard_ferrite_cementite_relationships(
+        parent_phase=ferrite, child_phase=cementite
+    )
+    assert catalog.names() == ("bagaryatsky", "isaichev")
+    with pytest.raises(ValueError, match="cubic parent phase"):
+        OrientationRelationship.from_isaichev_correspondence(
+            parent_phase=cementite, child_phase=cementite
+        )

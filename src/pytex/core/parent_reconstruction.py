@@ -355,6 +355,32 @@ def standard_hcp_bcc_relationships(
     )
 
 
+def standard_ferrite_cementite_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The standard named ferrite->cementite orientation-relationship catalog.
+
+    Returns the Bagaryatsky and Isaichev relationships (tempered-martensite /
+    pearlite carbide precipitation class, Pnma cementite setting) bound to
+    the given cubic parent and orthorhombic child phases.
+    """
+
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_bagaryatsky_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_isaichev_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+        ),
+        provenance=provenance,
+    )
+
+
 __all__ = [
     "OrientationRelationshipCatalog",
     "ParentReconstructionConfig",
@@ -365,5 +391,6 @@ __all__ = [
     "standard_bcc_hcp_relationships",
     "standard_fcc_bcc_relationships",
     "standard_fcc_hcp_relationships",
+    "standard_ferrite_cementite_relationships",
     "standard_hcp_bcc_relationships",
 ]

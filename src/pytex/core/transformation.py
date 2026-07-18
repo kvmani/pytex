@@ -251,7 +251,9 @@ def _require_proper_point_group(
     phase: Phase, expected: str, *, role: str, relationship: str
 ) -> None:
     if phase.symmetry.proper_point_group != expected:
-        family = {"432": "cubic", "622": "hexagonal"}.get(expected, expected)
+        family = {"432": "cubic", "622": "hexagonal", "222": "orthorhombic"}.get(
+            expected, expected
+        )
         raise ValueError(
             f"{relationship} correspondence requires a {family} {role} phase "
             f"with proper point group {expected}."
@@ -625,6 +627,83 @@ class OrientationRelationship:
                 (2, -1, -1, 0), phase=parent_phase
             ),
             child_direction=_crystal_direction((1.0, -1.0, 1.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_bagaryatsky_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "bagaryatsky",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Bagaryatsky OR: (0-11)_bcc || (001)_cem, [1-1-1]_bcc || [100]_cem.
+
+        The classical ferrite->cementite tempering/pearlite relationship
+        (Bagaryatskii 1950), stated in the Pnma cementite setting
+        (b > a > c; Lipson-Petch axes): [100]_theta || [1-1-1]_alpha,
+        [010]_theta || [211]_alpha, [001]_theta || [0-11]_alpha. The parent
+        must be cubic (proper group 432) and the child orthorhombic (proper
+        group 222). Precise measurements suggest observed orientations are
+        actually Isaichev (see ``from_isaichev_correspondence``), a ~3.8 deg
+        rotation about the cementite a-axis.
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Bagaryatsky"
+        )
+        _require_proper_point_group(
+            child_phase, "222", role="child", relationship="Bagaryatsky"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((0, -1, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((0, 0, 1), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=_crystal_direction((1.0, -1.0, -1.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 0.0, 0.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_isaichev_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "isaichev",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Isaichev OR: (101)_bcc || (031)_cem, [1-1-1]_bcc || [100]_cem.
+
+        The ferrite->cementite relationship of Isaichev (1947), stated in the
+        Pnma cementite setting (b > a > c): it shares the Bagaryatsky
+        close-packed direction pairing [100]_theta || [1-1-1]_alpha but pins
+        the (031)_theta || (101)_alpha plane parallelism instead, a rotation
+        of Bagaryatsky about the cementite a-axis whose magnitude depends on
+        the cementite axial ratios (~3.6-3.8 deg for literature lattice
+        parameters). Precise diffraction work identifies Isaichev, not
+        Bagaryatsky, on tempered martensite. The parent must be cubic (proper
+        group 432) and the child orthorhombic (proper group 222).
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Isaichev"
+        )
+        _require_proper_point_group(
+            child_phase, "222", role="child", relationship="Isaichev"
+        )
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(_miller_index((1, 0, 1), phase=parent_phase),
+                                      phase=parent_phase),
+            child_plane=CrystalPlane(_miller_index((0, 3, 1), phase=child_phase),
+                                     phase=child_phase),
+            parent_direction=_crystal_direction((1.0, -1.0, -1.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 0.0, 0.0), phase=child_phase),
             provenance=provenance,
         )
 

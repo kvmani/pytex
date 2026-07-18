@@ -19,7 +19,9 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   Nishiyama-Wassermann (NW), Greninger-Troiano (GT), Pitsch (fcc↔bcc), Burgers (bcc↔hcp), Shoji-Nishiyama (fcc↔hcp, 4 variants), and
   Pitsch-Schrader (hcp↔bcc, 3 variants, 5.26 deg from inverse Burgers), and
   Potter (hcp↔bcc, 12 variants, exact {10-11}||{110} pyramidal parallelism a
-  c/a-dependent ~1-2 deg from inverse Burgers), plus the generic
+  c/a-dependent ~1-2 deg from inverse Burgers), and Bagaryatsky and Isaichev
+  (ferrite↔cementite in the Pnma setting, 12 and 24 variants, separated by a
+  ~3.6 deg rotation about the cementite a-axis), plus the generic
   `from_parallel_plane_direction(...)` correspondence constructor and standard
   catalogs.
 - Variant machinery: symmetry-reduced generation with literature-correct counts, intervariant
@@ -193,15 +195,16 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 - Property-based: random lattices and ORs — mapping a plane and its symmetric equivalents must
   produce the same child family; rationalization residuals must be invariant to index scaling.
 
-## 5. Current Limits (honest statement, updated 2026-07-17)
+## 5. Current Limits (honest statement, updated 2026-07-18)
 
-F1-F12 are implemented and validated as listed in §1, with F7 at its first (identification)
-stage: `pytex.experimental.identify_orientation_relationship` ranks candidate ORs against
-child-child boundary misorientations via the double-coset intervariant fingerprint, no parent
-required. Still **not available**, and no PyTex document may imply otherwise: boundary-based
-*refinement* of the OR rotation (F7 second stage), habit-plane / PTMC analysis (F13), and the
-remaining OR catalog breadth (F14: Bagaryatsky/Isaichev; Shoji-Nishiyama,
-Pitsch-Schrader, and Potter landed). Parent-grain reconstruction (F8) is
+F1-F12 and F14 are implemented and validated as listed in §1, with F7 at its first
+(identification) stage: `pytex.experimental.identify_orientation_relationship` ranks candidate
+ORs against child-child boundary misorientations via the double-coset intervariant fingerprint,
+no parent required. Still **not available**, and no PyTex document may imply otherwise:
+boundary-based
+*refinement* of the OR rotation (F7 second stage) and habit-plane / PTMC analysis (F13). The
+F14 catalog breadth is complete (Shoji-Nishiyama, Pitsch-Schrader, Potter, Bagaryatsky, and
+Isaichev all landed). Parent-grain reconstruction (F8) is
 experimental: synthetic and literature-structure validation exists, but external measured-data
 fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
 report objects (F11) are partial.
