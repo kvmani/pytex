@@ -1,20 +1,19 @@
 """Execute tutorial notebooks in place so committed outputs render on the site.
 
+The ``.ipynb`` files under ``docs/site/tutorials/notebooks`` are the source of
+truth: they are hand-authored and edited directly, like any other source file.
+There is no generator step.
+
 The Sphinx site builds with ``nb_execution_mode = "off"`` (myst-nb renders the
-stored outputs), so notebooks whose figures should appear on the site must be
-committed *executed*. Regenerate sources first with
-``python scripts/generate_tutorial_notebooks.py``, then run::
+stored outputs), so a notebook's figures and printed results appear on the site
+only if it is committed *executed*. After editing a notebook, run::
 
-    python scripts/execute_notebooks.py --only 18 19 20 21
+    python scripts/execute_notebooks.py --only 21
 
-.. warning::
-
-   ``generate_tutorial_notebooks.py`` rewrites **every** notebook with empty
-   outputs. Running it therefore discards the stored outputs of notebooks you
-   did not intend to touch, and the site silently loses those figures. After
-   any regeneration, re-execute every notebook whose outputs must render —
-   check with ``git status`` which notebooks the generator modified and pass
-   all of them to ``--only``.
+``--only`` matches filename prefixes; omit it to execute every notebook.
+``tests/unit/test_notebooks.py`` enforces that committed notebooks are executed
+and error-free, so a forgotten run fails CI rather than silently shipping a
+tutorial page with no outputs.
 
 ``--only`` matches filename prefixes; with no argument every notebook under
 ``docs/site/tutorials/notebooks`` is executed. Execution runs with the

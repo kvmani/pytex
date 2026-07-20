@@ -11,8 +11,25 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Fixed
+
+- Notebook 07 (`07_ebsd_regular_grid_workflows`) built a `CrystalMap` whose
+  orientations lived in the specimen frame while its grid lived in the map
+  frame, then called `to_experiment_manifest()`, which raises because the
+  specimen-to-map relationship is undefined. The notebook now supplies an
+  explicit `AcquisitionGeometry` with a `specimen_to_map` `FrameTransform`.
+  The defect was latent because the notebook had never been executed.
+
 ### Added
 
+- Tutorial notebooks are now hand-authored `.ipynb` files edited directly.
+  `scripts/generate_tutorial_notebooks.py` has been **removed**: it constrained
+  how notebooks could be written and rewrote every notebook with empty outputs
+  on each run. Removing it exposed that notebooks 01-17 had never been executed
+  and were publishing as bare code listings; all 21 notebooks are now committed
+  executed (59 images render across the site, up from 13). Two guard tests
+  (`test_every_notebook_is_committed_executed`,
+  `test_no_notebook_contains_error_output`) now enforce this.
 - Burgers beta->alpha (bcc -> hcp) is now a canonical case alongside
   Kurdjumov-Sachs across the composite-diffraction tests, examples and
   documentation. Hexagonal phases are labelled in four-index Miller-Bravais

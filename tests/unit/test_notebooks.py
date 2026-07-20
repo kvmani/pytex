@@ -85,3 +85,41 @@ def test_priority_teaching_notebooks_smoke_execute() -> None:
     pytest.importorskip("pymatgen.core")
     for notebook_name in PRIORITY_NOTEBOOKS:
         _execute_notebook_code_cells(NOTEBOOK_ROOT / notebook_name)
+
+
+def test_every_notebook_is_committed_executed() -> None:
+    """Committed notebooks must carry their outputs.
+
+    The Sphinx site builds with ``nb_execution_mode = "off"``, so myst-nb
+    renders only what is stored in the file: an unexecuted notebook silently
+    publishes as a bare code listing. Regenerate outputs with
+    ``python scripts/execute_notebooks.py --only <prefix>``.
+    """
+
+    unexecuted: list[str] = []
+    for notebook_path in sorted(NOTEBOOK_ROOT.glob("*.ipynb")):
+        payload = _notebook_payload(notebook_path)
+        for index, cell in enumerate(payload["cells"]):
+            if cell["cell_type"] != "code" or not _cell_source(cell).strip():
+                continue
+            if cell.get("execution_count") is None:
+                unexecuted.append(f"{notebook_path.name} cell {index}")
+    assert not unexecuted, (
+        "These notebook code cells were committed without being executed, so their "
+        "outputs will not render on the documentation site: " + ", ".join(unexecuted)
+    )
+
+
+def test_no_notebook_contains_error_output() -> None:
+    """A committed notebook must not ship a traceback as documentation."""
+
+    failures: list[str] = []
+    for notebook_path in sorted(NOTEBOOK_ROOT.glob("*.ipynb")):
+        payload = _notebook_payload(notebook_path)
+        for index, cell in enumerate(payload["cells"]):
+            for output in cell.get("outputs", []):
+                if output.get("output_type") == "error":
+                    failures.append(
+                        f"{notebook_path.name} cell {index}: {output.get('ename')}"
+                    )
+    assert not failures, "Notebooks committed with error outputs: " + ", ".join(failures)

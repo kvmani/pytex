@@ -401,6 +401,51 @@ first time: nb18 4 images, nb19 5, nb20 3, nb21 6 in the built HTML.
 A warning documenting the regeneration hazard was added to
 `scripts/execute_notebooks.py`.
 
+### CD8b — Notebook generator retired; notebooks are hand-authored
+
+Decision (2026-07-20, requested by the repository owner): remove
+`scripts/generate_tutorial_notebooks.py` entirely. The `.ipynb` files under
+`docs/site/tutorials/notebooks/` are now the source of truth and are edited
+directly. Rationale: the generator constrained how notebooks could be
+written, added a rewrite-then-execute round trip to every edit, and provided
+no benefit that the notebooks themselves did not already provide (the test
+suite always read the `.ipynb` files, never the generator).
+
+An audit taken while removing it justified the decision beyond the
+ergonomics: **notebooks 01-17 had never been executed at all** — zero
+outputs, zero figures — so 17 of the 21 tutorial pages had been rendering on
+the Sphinx site as bare code listings. The generator's rewrite-everything
+behaviour is what kept resetting them, and because nothing asserted that
+notebooks carry outputs, the gap was invisible. Removing the generator,
+executing every notebook, and adding an executed-notebook regression test
+(`tests/unit/test_notebooks.py`) replaces illusory automation with an actual
+guarantee.
+
+Cleaned references: `pyproject.toml` (ruff per-file-ignore),
+`docs/site/tutorials/installation_and_build.md` (build instructions rewritten
+around editing and executing notebooks), `scripts/execute_notebooks.py`
+(docstring), and both roadmap ledgers.
+
+Outcome:
+
+- **All 21 notebooks now execute and are committed executed** — 54 stored
+  figures, 59 images rendered across the built site (previously 13), plus
+  printed outputs on the text-oriented notebooks. Notebooks 01-17 render
+  real results for the first time.
+- **One genuine API-drift bug surfaced and was fixed** in notebook 07: its
+  `CrystalMap` put orientations in the specimen frame and the grid in the map
+  frame, then called `to_experiment_manifest()`, which now (correctly) refuses
+  to guess the relationship and demands an `AcquisitionGeometry` carrying an
+  explicit `specimen_to_map` transform. The notebook now constructs that
+  transform, which also makes the frame contract visible to the reader. This
+  bug had been latent precisely because the notebook was never executed.
+- **Two guard tests added** (`tests/unit/test_notebooks.py`):
+  `test_every_notebook_is_committed_executed` (every non-empty code cell has
+  an `execution_count`) and `test_no_notebook_contains_error_output`. Both
+  were verified to actually fail when a notebook is sabotaged, and they name
+  the offending notebook and cell. This is the durable replacement for the
+  generator's illusory guarantee.
+
 ## Program v1 outcome and follow-ons
 
 All six phases (CD0-CD6) landed as verified commits. The library now

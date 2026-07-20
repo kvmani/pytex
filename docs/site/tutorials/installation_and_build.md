@@ -102,15 +102,25 @@ Open the built site at:
 
 See also: {doc}`../concepts/library_structure`, {doc}`../concepts/technical_glossary_and_symbols`.
 
-## Regenerate Tutorial Notebooks
+## Work On Tutorial Notebooks
 
-The checked-in notebooks are generated from the canonical notebook generator:
+The `.ipynb` files under `docs/site/tutorials/notebooks/` are the source of truth. Edit them
+directly — in Jupyter, in your editor, or by hand — like any other source file. There is no
+generator step.
+
+The Sphinx site builds with `nb_execution_mode = "off"`, so myst-nb renders whatever outputs are
+stored in the file. A notebook's figures and printed results therefore appear on the site only if
+it is committed **executed**. After editing one, run it:
 
 ```bash
-python scripts/generate_tutorial_notebooks.py
+python scripts/execute_notebooks.py --only 21
 ```
 
-After regenerating notebooks, rebuild the Sphinx site so the rendered notebook pages stay synchronized with the runtime API.
+`--only` matches filename prefixes; omit it to execute every notebook. `tests/unit/test_notebooks.py`
+enforces that committed notebooks are executed and error-free, so a forgotten run fails the test
+suite instead of silently publishing a tutorial page with no outputs.
+
+Then rebuild the Sphinx site so the rendered pages pick up the new outputs.
 
 ## Build LaTeX Or PDF Notes
 
@@ -154,12 +164,12 @@ validation:
 python -m pip install -e ".[dev,docs,adapters]"
 ```
 
-### Sphinx builds but notebook content looks stale
+### Sphinx builds but a notebook page shows code with no outputs
 
-Regenerate the notebooks first:
+The site renders stored outputs, so the notebook needs executing:
 
 ```bash
-python scripts/generate_tutorial_notebooks.py
+python scripts/execute_notebooks.py --only 12
 ```
 
 ### LaTeX PDF build fails
