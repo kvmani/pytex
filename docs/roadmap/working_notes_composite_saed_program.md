@@ -55,8 +55,8 @@ status, deliverables, and exactly what remains. Master context:
 | CD0 | This working-notes file + ledger update | complete | f609c0a |
 | CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | e549bce |
 | CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | d292f1b |
-| CD3 | `plotting/composite_saed.py`: config model + layered renderer | complete | (this commit) |
-| CD4 | Annotation engine with coincident-label merging + crowding avoidance | pending | — |
+| CD3 | `plotting/composite_saed.py`: config model + layered renderer | complete | 202b6da |
+| CD4 | Annotation engine with coincident-label merging + crowding avoidance | complete | (this commit) |
 | CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | pending | — |
 | CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | pending | — |
 
@@ -258,8 +258,30 @@ status, deliverables, and exactly what remains. Master context:
   spots as expected. Gates: 987 passed, ruff clean, mypy clean, integrity
   passed.
 
+- (CD4) Annotation engine in `plotting/composite_saed.py`: `format_hkl`
+  (plain + crystallographic overline mathtext, compact/spaced, pinned),
+  `SpotAnnotationConfig` (budget, intensity floor, coincidence tolerance,
+  offset, fonts, leader lines, overlap avoidance; validated),
+  cKDTree+union-find coincidence clustering into phase-tagged multi-line
+  merged labels ('p' / 'Vn'), deterministic greedy two-ring compass
+  placement using measured display-space text extents (label-label and
+  label-over-spot collision checks; drop-not-overlap policy), optional
+  leader lines for outer-ring placements, `AnnotationResult` report with
+  `describe()`, `render_composite_saed(..., return_annotations=True)`.
+  Key fix discovered by tests: `fig.tight_layout()` must run *before*
+  placement or the measured extents go stale. 25 regression tests in
+  `tests/unit/test_composite_saed_annotations.py` (format pins incl.
+  overlines, merged parent/variant labels on the KS composite,
+  pairwise-disjoint rendered label boxes, budget/floor (floor test uses
+  strongly Debye-Waller-damped phases since the Z-only proxy is flat),
+  disabled/deterministic/plain-format paths, leader-line engagement,
+  result consistency validation). Visual check: KS [0 1 -1] + V2 figure
+  shows merged '(-111) p / (011) V2' coincidence labels, color-coded
+  single-phase labels, no collisions. Gates: 1012 passed, ruff clean,
+  mypy clean, integrity passed.
+
 ## Next actions
 
-1. Commit CD3 and push; record hash in the phase table.
-2. Start CD4: annotation engine in `plotting/composite_saed.py` per spec,
-   with `tests/unit/test_composite_saed_annotations.py`.
+1. Commit CD4 and push; record hash in the phase table.
+2. Start CD5: coincidence analysis + zone-sweep utilities in
+   `diffraction/composite.py`, with `tests/unit/test_composite_coincidences.py`.

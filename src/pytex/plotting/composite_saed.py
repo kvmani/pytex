@@ -27,6 +27,7 @@ from pytex.diffraction.kinematic import SpotTable
 
 SizeModeName = Literal["intensity_area", "intensity_radius", "constant"]
 AxesUnitsName = Literal["mm", "inv_angstrom"]
+IndexFormatName = Literal["plain", "overline"]
 
 GID_PREFIX = "pytex-composite"
 
@@ -116,6 +117,132 @@ class SpotStyle:
         return np.asarray(np.maximum(sizes, self.min_size_pt2), dtype=np.float64)
 
 
+def format_hkl(hkl: Any, *, index_format: IndexFormatName = "overline") -> str:
+    """Format Miller indices as a TEM-convention reflection label.
+
+    Purpose: consistent spot labels across composite figures. ``"plain"``
+    yields ``(1 1 -1)``; ``"overline"`` yields crystallographic mathtext with
+    overlined negative indices — compact for single-digit indices
+    (``$(11\\bar{1})$``) and thin-space separated when any index has more
+    than one digit (``$(12\\;\\bar{1}\\;1)$``).
+    """
+
+    values = [int(value) for value in np.asarray(hkl, dtype=np.int64).reshape(3)]
+    if index_format == "plain":
+        return "(" + " ".join(str(value) for value in values) + ")"
+    if index_format != "overline":
+        raise ValueError("index_format must be 'plain' or 'overline'.")
+    compact = all(abs(value) <= 9 for value in values)
+    tokens = [
+        rf"\bar{{{abs(value)}}}" if value < 0 else str(abs(value)) for value in values
+    ]
+    separator = "" if compact else r"\;"
+    return "$(" + separator.join(tokens) + ")$"
+
+
+@dataclass(frozen=True, slots=True)
+class SpotAnnotationConfig:
+    """Configuration for spot labeling with crowding avoidance.
+
+    ``merge_coincident`` collapses reflections from different sub-patterns
+    that land within ``coincidence_tolerance_mm`` on the detector into one
+    multi-line label (each line tagged ``p`` for the parent or ``Vn`` for a
+    variant) — the standard way composite OR patterns are annotated.
+    ``max_labels`` caps the number of label *clusters*, keeping the densest
+    composites readable; clusters are prioritized by intensity, then radius.
+    With ``avoid_overlap`` labels are placed greedily on a two-ring compass
+    of candidate anchors and dropped (never overlapped) when no free
+    position exists; ``leader_lines`` draws a thin connector when a label
+    lands on the outer ring.
+    """
+
+    enabled: bool = True
+    max_labels: int = 24
+    min_intensity: float = 0.05
+    index_format: IndexFormatName = "overline"
+    merge_coincident: bool = True
+    coincidence_tolerance_mm: float = 2.0
+    offset_pt: float = 7.0
+    font_size: float = 7.0
+    text_color: str = "#111111"
+    label_color_follows_spot: bool = True
+    bbox_alpha: float = 0.65
+    avoid_overlap: bool = True
+    leader_lines: bool = False
+
+    def __post_init__(self) -> None:
+        if self.max_labels < 1:
+            raise ValueError("max_labels must be at least 1.")
+        if not 0.0 <= self.min_intensity <= 1.0:
+            raise ValueError("min_intensity must lie in the interval [0, 1].")
+        if self.index_format not in {"plain", "overline"}:
+            raise ValueError("index_format must be 'plain' or 'overline'.")
+        if (
+            not np.isfinite(self.coincidence_tolerance_mm)
+            or self.coincidence_tolerance_mm < 0.0
+        ):
+            raise ValueError("coincidence_tolerance_mm must be finite and non-negative.")
+        if not np.isfinite(self.offset_pt) or self.offset_pt <= 0.0:
+            raise ValueError("offset_pt must be finite and strictly positive.")
+        if not np.isfinite(self.font_size) or self.font_size <= 0.0:
+            raise ValueError("font_size must be finite and strictly positive.")
+        if not 0.0 <= self.bbox_alpha <= 1.0:
+            raise ValueError("bbox_alpha must lie in the interval [0, 1].")
+
+
+@dataclass(frozen=True, slots=True)
+class AnnotationResult:
+    """Outcome of the annotation pass: what was labeled and what was dropped.
+
+    ``texts`` and ``positions_data`` describe the placed labels (positions
+    are label anchor points in data units); ``skipped_count`` counts label
+    clusters dropped because no collision-free anchor existed within the
+    candidate rings. ``cluster_count`` is the number of label clusters that
+    passed the intensity floor and budget (placed + skipped).
+    """
+
+    texts: tuple[str, ...]
+    positions_data: np.ndarray
+    cluster_count: int
+    placed_count: int
+    skipped_count: int
+    merged_cluster_count: int
+
+    def __post_init__(self) -> None:
+        positions = as_float_array_2d(self.positions_data, rows=len(self.texts))
+        positions.setflags(write=False)
+        object.__setattr__(self, "positions_data", positions)
+        object.__setattr__(self, "texts", tuple(self.texts))
+        if self.placed_count != len(self.texts):
+            raise ValueError("placed_count must equal the number of placed texts.")
+        if self.placed_count + self.skipped_count != self.cluster_count:
+            raise ValueError("cluster_count must equal placed_count + skipped_count.")
+        if self.merged_cluster_count < 0 or self.merged_cluster_count > self.cluster_count:
+            raise ValueError("merged_cluster_count must lie in [0, cluster_count].")
+
+    def describe(self) -> str:
+        """Prose summary of annotation coverage and crowding decisions."""
+
+        return (
+            f"Spot annotation: {self.placed_count} label(s) placed out of "
+            f"{self.cluster_count} candidate cluster(s) ({self.merged_cluster_count} "
+            f"merged coincident-reflection label(s); {self.skipped_count} dropped for "
+            "lack of collision-free space). Labels use TEM reflection notation; lines "
+            "in a merged label are tagged 'p' (parent) or 'Vn' (variant n) and refer "
+            "to reflections landing within the coincidence tolerance on the shared "
+            "detector."
+        )
+
+
+def as_float_array_2d(values: Any, *, rows: int) -> np.ndarray:
+    array = np.asarray(values, dtype=np.float64)
+    if array.size == 0:
+        return np.zeros((0, 2), dtype=np.float64)
+    if array.shape != (rows, 2):
+        raise ValueError(f"positions_data must have shape ({rows}, 2).")
+    return np.ascontiguousarray(array)
+
+
 _DEFAULT_PARENT_STYLE = SpotStyle(
     marker="o",
     color="#3f51b5",
@@ -169,6 +296,7 @@ class CompositeSAEDPlotConfig:
     figsize: tuple[float, float] = (7.0, 7.0)
     dpi: int = 200
     limit_padding_fraction: float = 0.08
+    annotation: SpotAnnotationConfig = field(default_factory=SpotAnnotationConfig)
 
     def __post_init__(self) -> None:
         if not self.variant_color_palette:
@@ -246,11 +374,271 @@ def _scatter_sub_pattern(
     collection.set_gid(gid)
 
 
+@dataclass(frozen=True, slots=True)
+class _LabelSpot:
+    """One reflection queued for labeling (internal)."""
+
+    coordinates: np.ndarray
+    intensity: float
+    line: str
+    sub_pattern_order: int
+    color: str
+
+
+def _collect_label_spots(
+    rendered: CompositeSAEDPattern,
+    plot_config: CompositeSAEDPlotConfig,
+) -> list[_LabelSpot]:
+    annotation = plot_config.annotation
+    spots: list[_LabelSpot] = []
+    order = 0
+    parent_table = rendered.parent_spots
+    if plot_config.show_parent and parent_table is not None:
+        coordinates = _spot_coordinates(parent_table, plot_config.axes_units)
+        for row in range(len(parent_table)):
+            label = format_hkl(
+                parent_table.hkl[row], index_format=annotation.index_format
+            )
+            spots.append(
+                _LabelSpot(
+                    coordinates=coordinates[row],
+                    intensity=float(parent_table.intensity[row]),
+                    line=f"{label} p",
+                    sub_pattern_order=order,
+                    color=plot_config.parent_style.color,
+                )
+            )
+    order += 1
+    for position, variant_pattern in enumerate(rendered.variant_patterns):
+        style = plot_config.style_for_variant(variant_pattern.variant_index, position)
+        table = variant_pattern.spots
+        coordinates = _spot_coordinates(table, plot_config.axes_units)
+        for row in range(len(table)):
+            label = format_hkl(table.hkl[row], index_format=annotation.index_format)
+            spots.append(
+                _LabelSpot(
+                    coordinates=coordinates[row],
+                    intensity=float(table.intensity[row]),
+                    line=f"{label} V{variant_pattern.variant_index}",
+                    sub_pattern_order=order + position,
+                    color=style.color,
+                )
+            )
+    return spots
+
+
+def _cluster_label_spots(
+    spots: list[_LabelSpot], tolerance_units: float
+) -> list[list[int]]:
+    """Union-find clustering of spot indices within the coincidence tolerance."""
+
+    count = len(spots)
+    parent_index = list(range(count))
+
+    def find(index: int) -> int:
+        while parent_index[index] != index:
+            parent_index[index] = parent_index[parent_index[index]]
+            index = parent_index[index]
+        return index
+
+    if count and tolerance_units > 0.0:
+        from scipy.spatial import cKDTree
+
+        coordinates = np.vstack([spot.coordinates for spot in spots])
+        tree = cKDTree(coordinates)
+        for left, right in tree.query_pairs(tolerance_units):
+            root_left, root_right = find(int(left)), find(int(right))
+            if root_left != root_right:
+                parent_index[root_right] = root_left
+    clusters: dict[int, list[int]] = {}
+    for index in range(count):
+        clusters.setdefault(find(index), []).append(index)
+    return list(clusters.values())
+
+
+def _annotate_composite(
+    fig: Any,
+    axes: Any,
+    rendered: CompositeSAEDPattern,
+    plot_config: CompositeSAEDPlotConfig,
+) -> AnnotationResult:
+    annotation = plot_config.annotation
+    spots = _collect_label_spots(rendered, plot_config)
+    if not spots:
+        return AnnotationResult(
+            texts=(),
+            positions_data=np.zeros((0, 2)),
+            cluster_count=0,
+            placed_count=0,
+            skipped_count=0,
+            merged_cluster_count=0,
+        )
+
+    tolerance_units = annotation.coincidence_tolerance_mm
+    if plot_config.axes_units == "inv_angstrom":
+        tolerance_units /= rendered.config.camera_constant_mm_angstrom
+    if annotation.merge_coincident:
+        clusters = _cluster_label_spots(spots, tolerance_units)
+    else:
+        clusters = [[index] for index in range(len(spots))]
+
+    ranked: list[tuple[float, float, float, float, list[int]]] = []
+    for members in clusters:
+        max_intensity = max(spots[index].intensity for index in members)
+        if max_intensity < annotation.min_intensity:
+            continue
+        anchor = np.mean(
+            np.vstack([spots[index].coordinates for index in members]), axis=0
+        )
+        radius = float(np.linalg.norm(anchor))
+        ranked.append((-max_intensity, radius, float(anchor[0]), float(anchor[1]), members))
+    ranked.sort(key=lambda item: item[:4])
+    ranked = ranked[: annotation.max_labels]
+
+    fig.canvas.draw()
+    renderer = fig.canvas.get_renderer()
+    display_transform = axes.transData
+
+    spot_display = display_transform.transform(
+        np.vstack([spot.coordinates for spot in spots])
+    )
+    placed_boxes: list[tuple[float, float, float, float]] = []
+    texts: list[str] = []
+    positions: list[np.ndarray] = []
+    skipped = 0
+    merged_count = 0
+    directions = np.array(
+        [(1, 1), (-1, 1), (1, -1), (-1, -1), (0, 1), (0, -1), (1, 0), (-1, 0)],
+        dtype=np.float64,
+    )
+    directions /= np.linalg.norm(directions, axis=1)[:, None]
+    rings = (1.0, 2.4)
+
+    def boxes_overlap(
+        left: tuple[float, float, float, float],
+        right: tuple[float, float, float, float],
+    ) -> bool:
+        return not (
+            left[2] <= right[0]
+            or right[2] <= left[0]
+            or left[3] <= right[1]
+            or right[3] <= left[1]
+        )
+
+    for _, _, _, _, members in ranked:
+        ordered = sorted(
+            members,
+            key=lambda index: (spots[index].sub_pattern_order, -spots[index].intensity),
+        )
+        lines = [spots[index].line for index in ordered]
+        text_value = "\n".join(lines)
+        anchor = np.mean(np.vstack([spots[index].coordinates for index in ordered]), axis=0)
+        single = len({spots[index].sub_pattern_order for index in ordered}) == 1
+        color = (
+            spots[ordered[0]].color
+            if annotation.label_color_follows_spot and single
+            else annotation.text_color
+        )
+
+        artist = axes.annotate(
+            text_value,
+            xy=(float(anchor[0]), float(anchor[1])),
+            xytext=(annotation.offset_pt, annotation.offset_pt),
+            textcoords="offset points",
+            fontsize=annotation.font_size,
+            color=color,
+            zorder=7.0,
+            bbox={
+                "boxstyle": "round,pad=0.15",
+                "facecolor": "#ffffff",
+                "alpha": annotation.bbox_alpha,
+                "edgecolor": "none",
+            },
+        )
+        placed = False
+        used_ring = 0.0
+        for ring in rings:
+            for direction in directions:
+                offset = direction * annotation.offset_pt * ring
+                artist.set_position((float(offset[0]), float(offset[1])))
+                artist.set_horizontalalignment("left" if direction[0] > 0 else
+                                               "right" if direction[0] < 0 else "center")
+                artist.set_verticalalignment("bottom" if direction[1] > 0 else
+                                             "top" if direction[1] < 0 else "center")
+                extent = artist.get_window_extent(renderer=renderer)
+                box = (
+                    float(extent.x0) - 1.0,
+                    float(extent.y0) - 1.0,
+                    float(extent.x1) + 1.0,
+                    float(extent.y1) + 1.0,
+                )
+                if any(boxes_overlap(box, other) for other in placed_boxes):
+                    continue
+                inside = (
+                    (spot_display[:, 0] > box[0])
+                    & (spot_display[:, 0] < box[2])
+                    & (spot_display[:, 1] > box[1])
+                    & (spot_display[:, 1] < box[3])
+                )
+                for index in ordered:
+                    inside[index] = False
+                if bool(np.any(inside)):
+                    continue
+                placed = True
+                used_ring = ring
+                placed_boxes.append(box)
+                break
+            if placed:
+                break
+        if not placed:
+            if annotation.avoid_overlap:
+                artist.remove()
+                skipped += 1
+                continue
+            used_ring = rings[0]
+            extent = artist.get_window_extent(renderer=renderer)
+            placed_boxes.append(
+                (float(extent.x0), float(extent.y0), float(extent.x1), float(extent.y1))
+            )
+        artist.set_gid(f"{GID_PREFIX}:annotation:{len(texts)}")
+        if len(members) > 1:
+            merged_count += 1
+        if annotation.leader_lines and used_ring > 1.0:
+            offset_now = artist.get_position()
+            leader = axes.annotate(
+                "",
+                xy=(float(anchor[0]), float(anchor[1])),
+                xytext=offset_now,
+                textcoords="offset points",
+                arrowprops={
+                    "arrowstyle": "-",
+                    "color": "#888888",
+                    "linewidth": 0.6,
+                    "shrinkA": 0.0,
+                    "shrinkB": 2.0,
+                },
+                zorder=6.5,
+            )
+            leader.set_gid(f"{GID_PREFIX}:leader:{len(texts)}")
+        texts.append(text_value)
+        positions.append(anchor)
+
+    return AnnotationResult(
+        texts=tuple(texts),
+        positions_data=np.vstack(positions) if positions else np.zeros((0, 2)),
+        cluster_count=len(ranked),
+        placed_count=len(texts),
+        skipped_count=skipped,
+        merged_cluster_count=merged_count,
+    )
+
+
 def render_composite_saed(
     pattern: CompositeSAEDPattern,
     *,
     config: CompositeSAEDPlotConfig | None = None,
     ax: Any | None = None,
+    return_annotations: bool = False,
 ) -> Any:
     """Render a composite OR SAED pattern to a matplotlib figure.
 
@@ -265,8 +653,14 @@ def render_composite_saed(
     figure is reused), otherwise a new figure is created with the configured
     size, dpi and background.
 
-    Output: the matplotlib ``Figure``. Every sub-pattern scatter carries the
-    gid ``pytex-composite:<label>`` for structural inspection and testing.
+    Output: the matplotlib ``Figure``, or ``(figure, AnnotationResult)``
+    when ``return_annotations`` is true. Every sub-pattern scatter carries
+    the gid ``pytex-composite:<label>``, every label
+    ``pytex-composite:annotation:<i>`` (leaders
+    ``pytex-composite:leader:<i>``), for structural inspection and testing.
+    Spot labels follow ``config.annotation`` (see
+    :class:`SpotAnnotationConfig`): coincident reflections merge into
+    phase-tagged multi-line labels placed collision-free.
     """
 
     plot_config = CompositeSAEDPlotConfig() if config is None else config
@@ -374,7 +768,24 @@ def render_composite_saed(
                 legend_kwargs.update({"loc": "upper left", "bbox_to_anchor": (1.02, 1.0)})
             axes.legend(handles, labels, **legend_kwargs)
 
+    # Layout must be final before label placement: the collision checks
+    # measure display-space extents, which tight_layout would invalidate.
     fig.tight_layout()
+    annotation_result: AnnotationResult | None = None
+    if plot_config.annotation.enabled:
+        annotation_result = _annotate_composite(fig, axes, rendered, plot_config)
+
+    if return_annotations:
+        if annotation_result is None:
+            annotation_result = AnnotationResult(
+                texts=(),
+                positions_data=np.zeros((0, 2)),
+                cluster_count=0,
+                placed_count=0,
+                skipped_count=0,
+                merged_cluster_count=0,
+            )
+        return fig, annotation_result
     return fig
 
 
@@ -382,7 +793,10 @@ __all__ = [
     "GID_PREFIX",
     "VARIANT_COLOR_PALETTE",
     "VARIANT_MARKER_CYCLE",
+    "AnnotationResult",
     "CompositeSAEDPlotConfig",
+    "SpotAnnotationConfig",
     "SpotStyle",
+    "format_hkl",
     "render_composite_saed",
 ]
