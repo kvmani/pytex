@@ -25,6 +25,8 @@ The complete set of computed-versus-expected values at a glance:
 | `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | ✅ |
 | `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | ✅ |
 | `diffraction-ni-111-two-theta` | 44.496 | 44.496 | deg | ✅ |
+| `composite-electron-wavelength-200kv` | 0.02508 | 0.02508 | angstrom | ✅ |
+| `composite-ks-exact-child-zone` | 0.0000 | 0.0000 | deg | ✅ |
 | `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
@@ -39,6 +41,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
 - {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles derived from PyTex interplanar spacings via Bragg's law, checked against a standard reference reflection position.
+- {doc}`Composite OR diffraction <generated/composite-diffraction>` &mdash; Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, and the exactness of the Kurdjumov-Sachs child-zone mapping.
 - {doc}`Texture kernels <generated/texture>` &mdash; Analytic identities of the SO(3) kernel surface: normalization (A_0 = 1) and the halfwidth definition, computed live.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, and the misorientation representation used for EBSD comparison.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
@@ -50,6 +53,7 @@ The complete set of computed-versus-expected values at a glance:
 generated/crystal_geometry
 generated/orientation
 generated/diffraction
+generated/composite-diffraction
 generated/texture
 generated/transformation
 generated/visualization

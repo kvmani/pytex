@@ -13,6 +13,27 @@ downstream analyses depend on them.
 
 ### Added
 
+- Composite orientation-relationship SAED simulation and rendering
+  (kinematic only). New `pytex.diffraction.kinematic` provides a fully
+  vectorized zone-axis engine (`simulate_zone_axis_spots`, `SpotTable`,
+  `KinematicSimulationConfig`, `zone_basis_from_axis`,
+  `electron_wavelength_angstrom` — relativistic, pinned to standard
+  values; excitation-error reflection selection handling irrational zones;
+  vectorized centering absences and electron structure factors). New
+  `pytex.diffraction.composite` assembles a parent phase plus any subset of
+  OR variants on one shared parent-anchored detector for an arbitrary parent
+  zone axis (`simulate_composite_saed`, `CompositeSAEDPattern`,
+  `VariantZonePattern`, `rationalize_zone_axis` for nearest-rational child
+  zone labels), and quantifies which reflections superimpose
+  (`find_spot_coincidences`, `SpotCoincidenceReport`) plus a
+  `sweep_parent_zone_axes` survey iterator. New
+  `pytex.plotting.composite_saed` renders it with a typed, publication-grade
+  configuration (`render_composite_saed`, `CompositeSAEDPlotConfig`,
+  `SpotStyle`, `SpotAnnotationConfig`): per-variant marker/color/size styling,
+  variant subsetting, in-plane rotation, mm/Å⁻¹ axes, and coincidence-merging,
+  crowding-aware spot annotation. Report objects carry `describe()`; two
+  worked examples and a workflow page document the surface. See
+  `docs/roadmap/working_notes_composite_saed_program.md`.
 - Orientation-relationship analysis flagship (development-guide Cycles A-B and
   follow-ons): index correspondence with rationalization and angular residuals
   (`correspondence_direct`/`correspondence_reciprocal`,

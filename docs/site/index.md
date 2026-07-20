@@ -61,6 +61,7 @@ workflows/diffraction_geometry
 workflows/diffraction_spots
 workflows/xrd_generation
 workflows/saed_generation
+workflows/composite_or_diffraction
 workflows/crystal_visualization
 workflows/style_customization
 workflows/combined_structure_diffraction_visualization

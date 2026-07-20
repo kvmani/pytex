@@ -57,8 +57,8 @@ status, deliverables, and exactly what remains. Master context:
 | CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | d292f1b |
 | CD3 | `plotting/composite_saed.py`: config model + layered renderer | complete | 202b6da |
 | CD4 | Annotation engine with coincident-label merging + crowding avoidance | complete | 88c202e |
-| CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | complete | (this commit) |
-| CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | pending | — |
+| CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | complete | 1a93130 |
+| CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | complete | (this commit) |
 
 ### CD1 — Vectorized kinematic zone-axis engine (`src/pytex/diffraction/kinematic.py`)
 
@@ -297,9 +297,49 @@ status, deliverables, and exactly what remains. Master context:
   lazy ordered sweep. Gates: 1028 passed, ruff clean, mypy clean,
   integrity passed.
 
+- (CD6) Integration and documentation. Exports: `pytex.diffraction`
+  re-exports the full CD1-CD5 public surface (`simulate_zone_axis_spots`,
+  `SpotTable`, `KinematicSimulationConfig`, `zone_basis_from_axis`,
+  `electron_wavelength_angstrom`, `centering_allowed_mask`,
+  `electron_structure_factors`, `simulate_composite_saed`,
+  `CompositeSAEDPattern`, `VariantZonePattern`, `rationalize_zone_axis`,
+  `RationalizedZoneAxis`, `find_spot_coincidences`, `SpotCoincidence`,
+  `SpotCoincidenceReport`, `sweep_parent_zone_axes`); `pytex.plotting`
+  re-exports `render_composite_saed`, `CompositeSAEDPlotConfig`,
+  `SpotStyle`, `SpotAnnotationConfig`, `AnnotationResult`, `format_hkl`.
+  (Top-level `pytex` intentionally not touched — composite machinery is
+  accessed via the subpackages, matching the rest of the diffraction
+  surface.) Two worked examples added
+  (`worked_examples/examples/composite_diffraction.py`): 200 kV relativistic
+  wavelength vs De Graef Table 2.2 (0.02508 A) and the KS exact child-zone
+  identity ([0 1 -1]_p -> nearest child zone deviation 0 deg); gallery
+  regenerated (`docs/site/examples/generated/composite-diffraction.md` +
+  index), `tests/unit/test_worked_examples.py` green. New workflow page
+  `docs/site/workflows/composite_or_diffraction.md` wired into the Sphinx
+  toctree (fixture-based ni_fcc->fe_bcc KS example verified to run end to
+  end). CHANGELOG Unreleased/Added entry. Gates: 1030 passed, ruff clean,
+  mypy clean, integrity passed, documentation + reference policy tests
+  green, Sphinx build succeeded with no warnings.
+
+## Program v1 outcome and follow-ons
+
+All six phases (CD0-CD6) landed as verified commits. The library now
+simulates and renders composite kinematic SAED patterns for any OR / any
+parent zone axis with: a vectorized excitation-error-based engine, shared
+parent-anchored detector geometry, exact irrational child zones with
+nearest-rational labeling, per-variant styling, merged collision-free
+annotations, and a quantitative coincidence report — all with `describe()`
+explainability, regression tests on every critical part, worked examples,
+and a workflow page. Natural follow-ons (explicitly out of scope here):
+
+- Double-diffraction spot prediction (kinematically forbidden spots excited
+  via g1+g2 paths) as an optional overlay.
+- HOLZ ring / first-order-Laue-zone support (needs relrod + curvature care).
+- Interactive backend (plotly / GUI) reusing `CompositeSAEDPlotConfig`, per
+  the eventual desktop-GUI goal.
+- Dynamical (Bloch-wave / multi-beam) intensities — deliberately excluded
+  from this program.
+
 ## Next actions
 
-1. Commit CD5 and push; record hash in the phase table.
-2. Start CD6: exports (`pytex.diffraction.__init__`, top-level lazy map,
-   plotting exports), worked examples + gallery regen, docs/README index,
-   CHANGELOG, final verification; then close out the program section.
+- Program complete; no open actions.

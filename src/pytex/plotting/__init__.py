@@ -7,6 +7,14 @@ from pytex.plotting.colormaps import (
     register_pytex_colormaps,
     srgb_to_lightness,
 )
+from pytex.plotting.composite_saed import (
+    AnnotationResult,
+    CompositeSAEDPlotConfig,
+    SpotAnnotationConfig,
+    SpotStyle,
+    format_hkl,
+    render_composite_saed,
+)
 from pytex.plotting.crystal3d import (
     CrystalAtomGlyph,
     CrystalBondGlyph,
@@ -91,9 +99,11 @@ from pytex.plotting.styles import (
 
 __all__ = [
     "OKABE_ITO_COLORS",
+    "AnnotationResult",
     "Arrow3D",
     "AxisTriad3D",
     "ColormapSpec",
+    "CompositeSAEDPlotConfig",
     "CrystalAtomGlyph",
     "CrystalBondGlyph",
     "CrystalCellGlyph",
@@ -114,6 +124,8 @@ __all__ = [
     "PointCloud3D",
     "PolyLine3D",
     "PrimitiveScene3D",
+    "SpotAnnotationConfig",
+    "SpotStyle",
     "Transform3D",
     "WorldScene3D",
     "add_scale_bar",
@@ -122,6 +134,7 @@ __all__ = [
     "crystal_plane_patch",
     "direction_arrow",
     "export_figure",
+    "format_hkl",
     "get_pytex_colormap",
     "ipf_color",
     "ipf_colors",
@@ -161,6 +174,7 @@ __all__ = [
     "read_style_yaml",
     "reference_frame_triad",
     "register_pytex_colormaps",
+    "render_composite_saed",
     "render_primitive_scene_3d",
     "render_world_scene_3d",
     "resolve_style",
