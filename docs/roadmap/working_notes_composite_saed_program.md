@@ -53,8 +53,8 @@ status, deliverables, and exactly what remains. Master context:
 | Phase | Deliverable | Status | Commit |
 | --- | --- | --- | --- |
 | CD0 | This working-notes file + ledger update | complete | f609c0a |
-| CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | (this commit) |
-| CD2 | `diffraction/composite.py`: composite OR pattern assembly | pending | — |
+| CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | e549bce |
+| CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | (this commit) |
 | CD3 | `plotting/composite_saed.py`: config model + layered renderer | pending | — |
 | CD4 | Annotation engine with coincident-label merging + crowding avoidance | pending | — |
 | CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | pending | — |
@@ -220,8 +220,25 @@ status, deliverables, and exactly what remains. Master context:
   shared-basis rotation round-trip, read-only arrays, config validation.
   Gates: 937 passed, ruff clean, mypy clean, integrity passed.
 
+- (CD2) `src/pytex/diffraction/composite.py`: `rationalize_zone_axis` +
+  `RationalizedZoneAxis` (bounded primitive-triple search, true angular
+  deviation, sign-sensitive), `VariantZonePattern` (exact irrational child
+  zone + rational label + shared-frame spots), `CompositeSAEDPattern`
+  (variant lookup/subsetting, `iter_spot_tables`, stacked coordinates,
+  convention-explicit `describe()`), `simulate_composite_saed` (parent-
+  anchored shared basis via child-frame basis rotation `V_i B_p`, variant
+  subsetting, separate child config, parent-g alignment, whole-composite
+  in-plane rotation). 22 regression tests in
+  `tests/unit/test_composite_saed.py`: KS [0 1 -1]_p → exact <111>_c variant
+  (24 variants), NW [1 -1 0]_p → exact <100>_c (12 variants), Bain [001]
+  collinear (220)_p/(200)_c and pinned 45 deg parent-child (200) split,
+  shared-basis identity `B_c = V_i B_p`, composite-wide rotation
+  equivariance, g-alignment, child-config override, subset/order/error
+  paths, describe() content. Gates: 959 passed, ruff clean, mypy clean,
+  integrity passed.
+
 ## Next actions
 
-1. Commit CD1 and push; record hash in the phase table.
-2. Start CD2: `src/pytex/diffraction/composite.py` per spec above, with
-   `tests/unit/test_composite_saed.py` written alongside.
+1. Commit CD2 and push; record hash in the phase table.
+2. Start CD3: `src/pytex/plotting/composite_saed.py` per spec above, with
+   `tests/unit/test_composite_saed_plotting.py` written alongside.
