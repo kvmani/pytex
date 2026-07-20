@@ -321,6 +321,39 @@ status, deliverables, and exactly what remains. Master context:
   mypy clean, integrity passed, documentation + reference policy tests
   green, Sphinx build succeeded with no warnings.
 
+### CD7 — Burgers beta->alpha as the canonical hexagonal case (follow-on)
+
+Requested after v1: treat Burgers (bcc beta -> hcp alpha; Ti/Zr/Hf) as a
+canonical case alongside KS across tests, demos and illustrations. Burgers
+is the hexagonal counterpart that KS cannot exercise: a non-cubic child
+lattice, 622 child symmetry, and four-index notation.
+
+- **Miller-Bravais labeling** (the real gap for hexagonal illustration
+  correctness): new `is_hexagonal_phase(phase)` (via
+  `PointGroup.crystal_system`, trigonal deliberately excluded);
+  `RationalizedZoneAxis` gained `indices_bravais` with `U+V+T=0` validation
+  and `label()` preferring it; `rationalize_zone_axis` populates it for
+  hexagonal phases; `SpotCoincidence` gained `parent_bravais`/`child_bravais`
+  flags wired from the relationship phases; `format_hkl(..., bravais=True)`
+  expands `(hkl)` to `(h k i l)`. Cubic phases are untouched (three-index).
+- **Shared fixture** `make_bcc_hcp_phases()` (beta-Ti a = 3.3065 A;
+  alpha-Ti a = 2.9508 A, c = 4.6855 A, P6_3/mmc two-atom motif), reused
+  across the composite test modules like `make_fcc_bcc_phases`.
+- **Pinned Burgers science** (both defining parallelisms give exactly
+  rational views): parent `<110>` -> child `[0001]` basal zone at 0 deg
+  ({110}_bcc || (0001)_hcp); parent `<111>` -> child `<11-20>` at 0 deg
+  (<-111>_bcc || <11-20>_hcp); 12 variants; the basal view contains only
+  hk0 reflections with max d = a*sqrt(3)/2 = 2.5555 A ({10-10}); the basal
+  pattern is invariant under 60 deg rotation (six-fold check); and the
+  practical TEM signature — {110}_bcc superimposed on (0002)_hcp at
+  (sqrt(2)/a_bcc - 2/c_hcp) * 180 = **0.15450 mm**, matched by simulation to
+  14 significant figures (a hand-arithmetic slip on this constant was caught
+  by the test, which is exactly why it is pinned analytically).
+- **Two new worked examples** (Burgers exact basal zone; the {110}/(0002)
+  near-coincidence) and 15 new regression tests across the composite,
+  coincidence and annotation suites.
+- Gates: 1047 passed, ruff clean, mypy clean, integrity passed.
+
 ## Program v1 outcome and follow-ons
 
 All six phases (CD0-CD6) landed as verified commits. The library now

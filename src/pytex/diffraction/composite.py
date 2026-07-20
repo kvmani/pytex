@@ -35,9 +35,11 @@ from typing import Any
 import numpy as np
 
 from pytex.core._arrays import as_float_array, as_int_array
+from pytex.core.hexagonal import direction_uvw_to_uvtw, plane_hkl_to_hkil
 from pytex.core.lattice import (
     CrystalDirection,
     MillerIndex,
+    Phase,
     ReciprocalLatticeVector,
     ZoneAxis,
     phases_semantically_match,
@@ -63,18 +65,39 @@ def _primitive_integer_triples(max_index: int) -> np.ndarray:
     return np.asarray(nonzero[np.gcd.reduce(np.abs(nonzero), axis=1) == 1], dtype=np.int64)
 
 
+def _reflection_label(hkl: np.ndarray, *, bravais: bool) -> str:
+    indices = plane_hkl_to_hkil(hkl) if bravais else np.asarray(hkl, dtype=np.int64)
+    return "(" + " ".join(str(int(value)) for value in indices) + ")"
+
+
+def is_hexagonal_phase(phase: Phase) -> bool:
+    """Whether ``phase`` belongs to the hexagonal crystal system.
+
+    Purpose: decide when to present directions and reflections in four-index
+    Miller-Bravais notation (the convention for hexagonal crystals such as
+    the alpha-hcp product of the Burgers relationship). Trigonal phases are
+    intentionally excluded: PyTex stores them in the hexagonal setting but
+    three-index labels remain conventional there.
+    """
+
+    return phase.symmetry.to_point_group().crystal_system == "hexagonal"
+
+
 @dataclass(frozen=True, slots=True)
 class RationalizedZoneAxis:
     """Nearest rational ``[uvw]`` to an exact (possibly irrational) zone axis.
 
     ``deviation_deg`` is the true angular distance between the exact zone
     direction and the Cartesian image of ``indices``; zero means the zone
-    axis is exactly rational within the searched index bound.
+    axis is exactly rational within the searched index bound. For hexagonal
+    phases ``indices_bravais`` carries the equivalent four-index Miller-Bravais
+    ``[u v t w]`` form (``t = -(u + v)``), and :meth:`label` prefers it.
     """
 
     indices: np.ndarray
     deviation_deg: float
     max_index: int
+    indices_bravais: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         indices = as_int_array(self.indices, shape=(3,))
@@ -87,9 +110,19 @@ class RationalizedZoneAxis:
         indices = np.ascontiguousarray(indices)
         indices.setflags(write=False)
         object.__setattr__(self, "indices", indices)
+        if self.indices_bravais is not None:
+            bravais = as_int_array(self.indices_bravais, shape=(4,))
+            if int(bravais[0] + bravais[1] + bravais[2]) != 0:
+                raise ValueError(
+                    "RationalizedZoneAxis.indices_bravais must satisfy U + V + T = 0."
+                )
+            bravais = np.ascontiguousarray(bravais)
+            bravais.setflags(write=False)
+            object.__setattr__(self, "indices_bravais", bravais)
 
     def label(self) -> str:
-        return "[" + " ".join(str(int(value)) for value in self.indices) + "]"
+        indices = self.indices_bravais if self.indices_bravais is not None else self.indices
+        return "[" + " ".join(str(int(value)) for value in indices) + "]"
 
 
 def rationalize_zone_axis(
@@ -108,7 +141,8 @@ def rationalize_zone_axis(
 
     Output: :class:`RationalizedZoneAxis` with the best ``[uvw]`` and its
     angular deviation in degrees. Sign-sensitive: the triple pointing along
-    the direction (not its antipode) wins.
+    the direction (not its antipode) wins. For hexagonal phases the result
+    also carries the four-index Miller-Bravais form.
     """
 
     if int(max_index) != max_index or max_index < 1:
@@ -126,8 +160,15 @@ def rationalize_zone_axis(
     best = int(np.argmax(cosines))
     sine = float(np.linalg.norm(np.cross(units[best], target_unit)))
     deviation_deg = float(np.degrees(np.arctan2(sine, cosines[best])))
+    best_indices = candidates[best].copy()
+    bravais = (
+        direction_uvw_to_uvtw(best_indices) if is_hexagonal_phase(direction.phase) else None
+    )
     return RationalizedZoneAxis(
-        indices=candidates[best].copy(), deviation_deg=deviation_deg, max_index=int(max_index)
+        indices=best_indices,
+        deviation_deg=deviation_deg,
+        max_index=int(max_index),
+        indices_bravais=bravais,
     )
 
 
@@ -416,6 +457,9 @@ class SpotCoincidence:
     ``separation_mm`` is the Euclidean distance between the two spots on the
     shared detector; small separations are what make a composite pattern
     diagnostic of an OR in practice (superimposed reflections).
+    ``parent_bravais``/``child_bravais`` request four-index Miller-Bravais
+    rendering of the corresponding reflection label, as is conventional for
+    hexagonal phases (the alpha-hcp product of the Burgers relationship).
     """
 
     variant_index: int
@@ -424,6 +468,8 @@ class SpotCoincidence:
     parent_detector_mm: np.ndarray
     child_detector_mm: np.ndarray
     separation_mm: float
+    parent_bravais: bool = False
+    child_bravais: bool = False
 
     def __post_init__(self) -> None:
         if self.variant_index <= 0:
@@ -442,8 +488,8 @@ class SpotCoincidence:
         object.__setattr__(self, "child_detector_mm", child_xy)
 
     def label(self) -> str:
-        parent = "(" + " ".join(str(int(v)) for v in self.parent_hkl) + ")"
-        child = "(" + " ".join(str(int(v)) for v in self.child_hkl) + ")"
+        parent = _reflection_label(self.parent_hkl, bravais=self.parent_bravais)
+        child = _reflection_label(self.child_hkl, bravais=self.child_bravais)
         return (
             f"{parent}_p || {child}_V{self.variant_index} "
             f"({self.separation_mm:.2f} mm)"
@@ -560,6 +606,8 @@ def find_spot_coincidences(
         )
     coincidences: list[SpotCoincidence] = []
     variant_counts: list[tuple[int, int]] = []
+    parent_is_hexagonal = is_hexagonal_phase(pattern.relationship.parent_phase)
+    child_is_hexagonal = is_hexagonal_phase(pattern.relationship.child_phase)
     parent_tree = cKDTree(parent_table.detector_mm) if len(parent_table) else None
     for variant_pattern in pattern.variant_patterns:
         child_table = variant_pattern.spots
@@ -582,6 +630,8 @@ def find_spot_coincidences(
                         parent_detector_mm=parent_xy,
                         child_detector_mm=child_xy,
                         separation_mm=separation,
+                        parent_bravais=parent_is_hexagonal,
+                        child_bravais=child_is_hexagonal,
                     )
                 )
     coincidences.sort(
@@ -629,6 +679,7 @@ __all__ = [
     "SpotCoincidenceReport",
     "VariantZonePattern",
     "find_spot_coincidences",
+    "is_hexagonal_phase",
     "rationalize_zone_axis",
     "simulate_composite_saed",
     "sweep_parent_zone_axes",

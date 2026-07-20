@@ -29,7 +29,7 @@ from pytex.plotting.composite_saed import (
     format_hkl,
     render_composite_saed,
 )
-from tests.unit.test_composite_saed import make_fcc_bcc_phases
+from tests.unit.test_composite_saed import make_bcc_hcp_phases, make_fcc_bcc_phases
 
 
 def _with_b_iso(phase: Phase, b_iso: float) -> Phase:
@@ -92,6 +92,54 @@ class TestFormatHkl:
     def test_invalid_format_raises(self) -> None:
         with pytest.raises(ValueError, match="index_format"):
             format_hkl([1, 0, 0], index_format="fancy")  # type: ignore[arg-type]
+
+    def test_bravais_expands_to_four_indices(self) -> None:
+        # (h k l) -> (h k i l) with i = -(h + k): the hexagonal convention.
+        assert format_hkl([1, 0, 0], index_format="plain", bravais=True) == "(1 0 -1 0)"
+        assert format_hkl([0, 0, 2], index_format="plain", bravais=True) == "(0 0 0 2)"
+        assert format_hkl([1, 1, 0], index_format="plain", bravais=True) == "(1 1 -2 0)"
+
+    def test_bravais_overline_form(self) -> None:
+        assert format_hkl([1, 0, 0], bravais=True) == r"$(10\bar{1}0)$"
+
+
+class TestHexagonalAnnotations:
+    """Burgers beta->alpha: hexagonal child labels must use four indices."""
+
+    @pytest.fixture(scope="class")
+    def burgers_composite(self) -> CompositeSAEDPattern:
+        beta, alpha = make_bcc_hcp_phases()
+        relationship = OrientationRelationship.from_burgers_correspondence(
+            parent_phase=beta, child_phase=alpha
+        )
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=beta)
+        return simulate_composite_saed(relationship, zone, variant_indices=(1, 2))
+
+    def test_child_labels_four_index_parent_labels_three_index(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        config = CompositeSAEDPlotConfig(
+            annotation=SpotAnnotationConfig(index_format="plain", max_labels=40)
+        )
+        _, result = render_composite_saed(
+            burgers_composite, config=config, return_annotations=True
+        )
+        child_lines = [
+            line
+            for text in result.texts
+            for line in text.split("\n")
+            if line.endswith(("V1", "V2"))
+        ]
+        parent_lines = [
+            line for text in result.texts for line in text.split("\n") if line.endswith(" p")
+        ]
+        assert child_lines and parent_lines
+        for line in child_lines:
+            indices = line.split(")")[0].lstrip("(").split()
+            assert len(indices) == 4, f"hexagonal child label not four-index: {line}"
+        for line in parent_lines:
+            indices = line.split(")")[0].lstrip("(").split()
+            assert len(indices) == 3, f"cubic parent label not three-index: {line}"
 
 
 class TestAnnotationRendering:

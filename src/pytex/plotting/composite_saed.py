@@ -22,7 +22,12 @@ from typing import Any, Literal
 
 import numpy as np
 
-from pytex.diffraction.composite import CompositeSAEDPattern, VariantZonePattern
+from pytex.core.hexagonal import plane_hkl_to_hkil
+from pytex.diffraction.composite import (
+    CompositeSAEDPattern,
+    VariantZonePattern,
+    is_hexagonal_phase,
+)
 from pytex.diffraction.kinematic import SpotTable
 
 SizeModeName = Literal["intensity_area", "intensity_radius", "constant"]
@@ -117,7 +122,9 @@ class SpotStyle:
         return np.asarray(np.maximum(sizes, self.min_size_pt2), dtype=np.float64)
 
 
-def format_hkl(hkl: Any, *, index_format: IndexFormatName = "overline") -> str:
+def format_hkl(
+    hkl: Any, *, index_format: IndexFormatName = "overline", bravais: bool = False
+) -> str:
     """Format Miller indices as a TEM-convention reflection label.
 
     Purpose: consistent spot labels across composite figures. ``"plain"``
@@ -125,9 +132,15 @@ def format_hkl(hkl: Any, *, index_format: IndexFormatName = "overline") -> str:
     overlined negative indices — compact for single-digit indices
     (``$(11\\bar{1})$``) and thin-space separated when any index has more
     than one digit (``$(12\\;\\bar{1}\\;1)$``).
+
+    With ``bravais`` the three-index ``(hkl)`` is expanded to the four-index
+    Miller-Bravais ``(h k i l)`` form with ``i = -(h + k)``, the convention for
+    hexagonal phases such as the alpha-hcp product of the Burgers relationship.
     """
 
     values = [int(value) for value in np.asarray(hkl, dtype=np.int64).reshape(3)]
+    if bravais:
+        values = [int(value) for value in plane_hkl_to_hkil(values)]
     if index_format == "plain":
         return "(" + " ".join(str(value) for value in values) + ")"
     if index_format != "overline":
@@ -392,12 +405,16 @@ def _collect_label_spots(
     annotation = plot_config.annotation
     spots: list[_LabelSpot] = []
     order = 0
+    parent_bravais = is_hexagonal_phase(rendered.relationship.parent_phase)
+    child_bravais = is_hexagonal_phase(rendered.relationship.child_phase)
     parent_table = rendered.parent_spots
     if plot_config.show_parent and parent_table is not None:
         coordinates = _spot_coordinates(parent_table, plot_config.axes_units)
         for row in range(len(parent_table)):
             label = format_hkl(
-                parent_table.hkl[row], index_format=annotation.index_format
+                parent_table.hkl[row],
+                index_format=annotation.index_format,
+                bravais=parent_bravais,
             )
             spots.append(
                 _LabelSpot(
@@ -414,7 +431,11 @@ def _collect_label_spots(
         table = variant_pattern.spots
         coordinates = _spot_coordinates(table, plot_config.axes_units)
         for row in range(len(table)):
-            label = format_hkl(table.hkl[row], index_format=annotation.index_format)
+            label = format_hkl(
+                table.hkl[row],
+                index_format=annotation.index_format,
+                bravais=child_bravais,
+            )
             spots.append(
                 _LabelSpot(
                     coordinates=coordinates[row],

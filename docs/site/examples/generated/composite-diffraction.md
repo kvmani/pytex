@@ -4,7 +4,7 @@
 
 # Composite OR diffraction
 
-Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, and the exactness of the Kurdjumov-Sachs child-zone mapping.
+Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence).
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -112,3 +112,141 @@ result = min(
 **Citation**: Kurdjumov and Sachs, Z. Physik 64 (1930) 325; Morito et al., Acta Materialia 51 (2003) 1789 (variant conventions).
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
+
+## Burgers maps the parent <110> zone exactly onto the hcp [0001] basal zone
+
+The Burgers relationship governing the beta->alpha transformation of titanium, zirconium and hafnium is defined by the plane parallelism {110}_bcc || (0001)_hcp. Viewing a beta crystal down a <110> zone axis must therefore look straight down the hcp c-axis for the variants whose basal plane is that particular {110}: the minimal angular deviation between the mapped child zone and a rational [0001] zone must be exactly zero.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.core.transformation import OrientationRelationship
+from pytex.diffraction.composite import simulate_composite_saed
+
+beta_frame = ReferenceFrame(
+    "beta_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+alpha_frame = ReferenceFrame(
+    "alpha_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+# Beta-titanium (bcc) and alpha-titanium (hcp), room-temperature parameters.
+beta_ti = Phase(
+    "beta-titanium",
+    lattice=Lattice(3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=beta_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
+    crystal_frame=beta_frame,
+)
+alpha_ti = Phase(
+    "alpha-titanium",
+    lattice=Lattice(2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=alpha_frame),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=alpha_frame),
+    crystal_frame=alpha_frame,
+)
+burgers = OrientationRelationship.from_burgers_correspondence(
+    parent_phase=beta_ti, child_phase=alpha_ti
+)
+```
+
+:::
+
+**Compute**
+
+```python
+zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+composite = simulate_composite_saed(burgers, zone, include_parent=False)
+result = min(
+    pattern.nearest_zone_axis.deviation_deg
+    for pattern in composite.variant_patterns
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `composite-burgers-exact-basal-zone` | 0.0000 | 0.0000 | deg | 1.61e-14 | 1e-09 | ✅ pass |
+
+**Why this value**: The defining Burgers plane parallelism {110}_bcc || (0001)_hcp makes the mapped child zone exactly rational, so the deviation of the best variant is 0 degrees.
+
+**Citation**: Burgers, Physica 1 (1934) 561.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Composite OR diffraction workflow <../../workflows/composite_or_diffraction>`
+
+## Burgers {110}_bcc and (0002)_hcp reflections nearly superimpose
+
+The practical TEM signature of the Burgers relationship is that the beta {110} reflection lands almost exactly on the alpha (0002) reflection, because the plane parallelism pairs two nearly equal interplanar spacings: d(110)_bcc = a/sqrt(2) = 2.3381 angstrom against d(0002)_hcp = c/2 = 2.3428 angstrom. At a 180 mm*angstrom camera constant the residual detector separation is well under a spot diameter, so the composite pattern reads as a single decorated pattern. This computes that separation from the simulated composite.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.core.transformation import OrientationRelationship
+from pytex.diffraction.composite import simulate_composite_saed
+
+beta_frame = ReferenceFrame(
+    "beta_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+alpha_frame = ReferenceFrame(
+    "alpha_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+# Beta-titanium (bcc) and alpha-titanium (hcp), room-temperature parameters.
+beta_ti = Phase(
+    "beta-titanium",
+    lattice=Lattice(3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=beta_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
+    crystal_frame=beta_frame,
+)
+alpha_ti = Phase(
+    "alpha-titanium",
+    lattice=Lattice(2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=alpha_frame),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=alpha_frame),
+    crystal_frame=alpha_frame,
+)
+burgers = OrientationRelationship.from_burgers_correspondence(
+    parent_phase=beta_ti, child_phase=alpha_ti
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex.diffraction.composite import find_spot_coincidences
+
+zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+composite = simulate_composite_saed(burgers, zone)
+report = find_spot_coincidences(composite, tolerance_mm=1.0)
+result = report.coincidences[0].separation_mm
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `composite-burgers-110-0002-coincidence` | 0.15450 | 0.15450 | mm | 2.02e-06 | 1e-04 | ✅ pass |
+
+**Why this value**: Analytically the separation is (sqrt(2)/a_bcc - 2/c_hcp) * camera_constant = (1.414214/3.3065 - 2/4.6855) * 180 = 0.15450 mm.
+
+**Citation**: Burgers, Physica 1 (1934) 561; lattice parameters from standard Ti data.
+
+**See also**: {doc}`Composite OR diffraction workflow <../../workflows/composite_or_diffraction>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`

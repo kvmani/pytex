@@ -25,7 +25,7 @@ from pytex.diffraction.composite import (
     simulate_composite_saed,
     sweep_parent_zone_axes,
 )
-from tests.unit.test_composite_saed import make_fcc_bcc_phases
+from tests.unit.test_composite_saed import make_bcc_hcp_phases, make_fcc_bcc_phases
 
 
 @pytest.fixture(scope="module")
@@ -153,6 +153,73 @@ class TestFindSpotCoincidences:
         counts = dict(report.variant_spot_counts)
         for pattern in ks_composite.variant_patterns:
             assert counts[pattern.variant_index] == len(pattern.spots)
+
+
+class TestBurgersCoincidences:
+    """Burgers beta->alpha: the canonical hexagonal coincidence case.
+
+    The Burgers plane parallelism {110}_bcc || (0001)_hcp shows up in
+    reciprocal space as a near-exact superposition of the {110}_bcc and
+    (0002)_hcp reflections, because d(110)_bcc = a/sqrt(2) = 2.3381 A is
+    almost exactly d(0002)_hcp = c/2 = 2.3428 A for beta/alpha titanium.
+    The residual detector separation is therefore
+    (sqrt(2)/a_bcc - 2/c_hcp) * camera_constant = 0.1545 mm, i.e. the two
+    reflections sit well inside a typical spot diameter — which is why the
+    Burgers OR reads as a decorated single pattern in the basal view.
+    """
+
+    @pytest.fixture(scope="class")
+    def burgers_composite(self) -> CompositeSAEDPattern:
+        beta, alpha = make_bcc_hcp_phases()
+        relationship = OrientationRelationship.from_burgers_correspondence(
+            parent_phase=beta, child_phase=alpha
+        )
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=beta)
+        return simulate_composite_saed(relationship, zone)
+
+    def test_closest_coincidence_is_110_bcc_on_0002_hcp(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
+        assert report.coincidences
+        closest = report.coincidences[0]
+        assert tuple(sorted(np.abs(closest.parent_hkl))) == (0, 1, 1)
+        assert tuple(np.abs(closest.child_hkl)) == (0, 0, 2)
+
+    def test_pinned_analytic_separation(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        expected_mm = (np.sqrt(2.0) / 3.3065 - 2.0 / 4.6855) * 180.0
+        assert expected_mm == pytest.approx(0.15450, abs=1e-4)
+        report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
+        assert report.coincidences[0].separation_mm == pytest.approx(expected_mm, abs=1e-6)
+
+    def test_hexagonal_child_labels_are_four_index(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
+        label = report.coincidences[0].label()
+        assert "(0 0 0 2)" in label or "(0 0 0 -2)" in label
+        # the cubic parent keeps three-index notation in the same label
+        parent_token = label.split("_p")[0]
+        assert parent_token.count(" ") == 2
+
+    def test_tolerance_monotonicity(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        counts = [
+            len(find_spot_coincidences(burgers_composite, tolerance_mm=tol).coincidences)
+            for tol in (1.0, 2.0, 4.0)
+        ]
+        assert counts[0] < counts[1] < counts[2]
+
+    def test_describe_mentions_burgers(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
+        text = report.describe()
+        assert "burgers" in text
+        assert "[1 1 0]" in text
 
 
 class TestReportValidation:

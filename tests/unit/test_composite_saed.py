@@ -76,9 +76,75 @@ def make_fcc_bcc_phases() -> tuple[Phase, Phase]:
     return parent, child
 
 
+def make_bcc_hcp_phases() -> tuple[Phase, Phase]:
+    """Beta-bcc parent and alpha-hcp child for the Burgers relationship.
+
+    Lattice parameters are the standard room-temperature alpha-titanium
+    values (a = 2.9508 A, c = 4.6855 A, c/a = 1.5879) with the beta-titanium
+    bcc parameter a = 3.3065 A; the hcp basis is the P6_3/mmc two-atom motif.
+    Burgers requires a cubic parent (proper group 432) and a hexagonal child
+    (proper group 622).
+    """
+
+    parent_frame = ReferenceFrame(
+        "beta_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+    )
+    child_frame = ReferenceFrame(
+        "alpha_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+    )
+    parent_lattice = Lattice(
+        3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=parent_frame
+    )
+    child_lattice = Lattice(
+        2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=child_frame
+    )
+    parent_sites = (
+        AtomicSite(label="Ti1", species="Ti", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+        AtomicSite(label="Ti2", species="Ti", fractional_coordinates=np.array([0.5, 0.5, 0.5])),
+    )
+    child_sites = (
+        AtomicSite(label="Ti1", species="Ti", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+        AtomicSite(
+            label="Ti2",
+            species="Ti",
+            fractional_coordinates=np.array([1.0 / 3.0, 2.0 / 3.0, 0.5]),
+        ),
+    )
+    parent = Phase(
+        "beta-titanium",
+        lattice=parent_lattice,
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+        crystal_frame=parent_frame,
+        unit_cell=UnitCell(lattice=parent_lattice, sites=parent_sites),
+        space_group_symbol="Im-3m",
+    )
+    child = Phase(
+        "alpha-titanium",
+        lattice=child_lattice,
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=child_frame),
+        crystal_frame=child_frame,
+        unit_cell=UnitCell(lattice=child_lattice, sites=child_sites),
+        space_group_symbol="P6_3/mmc",
+    )
+    return parent, child
+
+
 @pytest.fixture(scope="module")
 def fcc_bcc() -> tuple[Phase, Phase]:
     return make_fcc_bcc_phases()
+
+
+@pytest.fixture(scope="module")
+def bcc_hcp() -> tuple[Phase, Phase]:
+    return make_bcc_hcp_phases()
+
+
+@pytest.fixture(scope="module")
+def burgers(bcc_hcp: tuple[Phase, Phase]) -> OrientationRelationship:
+    parent, child = bcc_hcp
+    return OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent, child_phase=child
+    )
 
 
 @pytest.fixture(scope="module")
@@ -184,6 +250,115 @@ class TestKurdjumovSachsComposite:
         assert "Variant 1" in text
         assert "excitation-error" in text
         assert "parent-anchored detector basis" in text
+
+
+class TestBurgersComposite:
+    """The beta-bcc -> alpha-hcp Burgers relationship: the canonical hexagonal case.
+
+    Burgers is defined by {110}_bcc || (0001)_hcp and <-111>_bcc || <11-20>_hcp
+    (Burgers, Physica 1 (1934) 561), the beta->alpha transformation of Ti, Zr
+    and Hf, with 12 variants. Its two defining parallelisms give two exactly
+    rational composite views, which are the pinned references here.
+    """
+
+    def test_twelve_variants(self, burgers: OrientationRelationship) -> None:
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone)
+        assert len(composite.variant_patterns) == 12
+
+    def test_parent_110_maps_exactly_to_child_basal_0001(
+        self, burgers: OrientationRelationship
+    ) -> None:
+        # {110}_bcc || (0001)_hcp: viewing down <110>_bcc looks down the hcp
+        # c-axis for the variants whose basal plane is that {110}.
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone)
+        exact = [
+            pattern
+            for pattern in composite.variant_patterns
+            if pattern.nearest_zone_axis.deviation_deg < 1e-6
+        ]
+        assert exact, "Burgers {110}_p || (0001)_c demands an exact [0001] child zone"
+        for pattern in exact:
+            assert tuple(np.abs(pattern.nearest_zone_axis.indices)) == (0, 0, 1)
+            bravais = pattern.nearest_zone_axis.indices_bravais
+            assert bravais is not None
+            assert tuple(np.abs(bravais)) == (0, 0, 0, 1)
+
+    def test_parent_111_maps_exactly_to_child_a_direction(
+        self, burgers: OrientationRelationship
+    ) -> None:
+        # <-111>_bcc || <11-20>_hcp: the close-packed direction parallelism.
+        zone = ZoneAxis(np.array([1, 1, 1]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone)
+        exact = [
+            pattern
+            for pattern in composite.variant_patterns
+            if pattern.nearest_zone_axis.deviation_deg < 1e-6
+        ]
+        assert exact, "Burgers <111>_p || <11-20>_c demands an exact <11-20> child zone"
+        for pattern in exact:
+            bravais = pattern.nearest_zone_axis.indices_bravais
+            assert bravais is not None
+            # <11-20> family: two unit entries, one 2, and w = 0
+            assert tuple(sorted(np.abs(bravais))) == (0, 1, 1, 2)
+            assert int(bravais[3]) == 0
+
+    def test_hexagonal_child_zone_labels_use_four_indices(
+        self, burgers: OrientationRelationship
+    ) -> None:
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone, variant_indices=(1,))
+        label = composite.variant_patterns[0].label()
+        assert label.count(" ") >= 3, f"expected four-index hexagonal label, got {label}"
+        assert "[0 0 0 1]" in label
+
+    def test_cubic_parent_zone_label_stays_three_index(
+        self, burgers: OrientationRelationship
+    ) -> None:
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone, variant_indices=(1,))
+        assert "[1 1 0]" in composite.describe()
+
+    def test_hexagonal_child_reciprocal_geometry(
+        self, burgers: OrientationRelationship, bcc_hcp: tuple[Phase, Phase]
+    ) -> None:
+        # Down [0001] the visible hcp reflections are the hk0 set; the closest
+        # ring is {10-10} with d = a*sqrt(3)/2 = 2.5555 A for a = 2.9508 A.
+        _, alpha = bcc_hcp
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone)
+        pattern = next(
+            p
+            for p in composite.variant_patterns
+            if p.nearest_zone_axis.deviation_deg < 1e-6
+        )
+        table = pattern.spots
+        assert len(table) > 0
+        assert np.all(table.hkl[:, 2] == 0), "the [0001] zone contains only hk0 reflections"
+        d_1010 = 2.9508 * np.sqrt(3.0) / 2.0
+        assert float(np.max(table.d_spacing_angstrom)) == pytest.approx(d_1010, abs=1e-4)
+
+    def test_hexagonal_child_has_six_fold_pattern_symmetry(
+        self, burgers: OrientationRelationship
+    ) -> None:
+        # A basal-zone hcp pattern must be invariant under 60 deg rotation.
+        zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
+        composite = simulate_composite_saed(burgers, zone)
+        pattern = next(
+            p
+            for p in composite.variant_patterns
+            if p.nearest_zone_axis.deviation_deg < 1e-6
+        )
+        coordinates = pattern.spots.detector_mm
+        angle = np.deg2rad(60.0)
+        rotation = np.array(
+            [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+        )
+        rotated = coordinates @ rotation.T
+        for point in rotated:
+            distances = np.linalg.norm(coordinates - point, axis=1)
+            assert float(np.min(distances)) < 1e-6
 
 
 class TestNishiyamaWassermannComposite:
