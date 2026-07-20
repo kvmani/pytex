@@ -50,7 +50,9 @@ from pytex.diffraction.kinematic import (
     zone_basis_from_axis,
 )
 
-_RATIONALIZE_DEFAULT_MAX_INDEX = 12
+# Zone-axis labels beyond index 6 are rarely meaningful in TEM practice; the
+# nearest low-index zone with an honest deviation beats a closer high-index one.
+_RATIONALIZE_DEFAULT_MAX_INDEX = 6
 
 
 def _primitive_integer_triples(max_index: int) -> np.ndarray:

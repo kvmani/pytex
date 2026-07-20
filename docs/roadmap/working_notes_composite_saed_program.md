@@ -54,8 +54,8 @@ status, deliverables, and exactly what remains. Master context:
 | --- | --- | --- | --- |
 | CD0 | This working-notes file + ledger update | complete | f609c0a |
 | CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | e549bce |
-| CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | (this commit) |
-| CD3 | `plotting/composite_saed.py`: config model + layered renderer | pending | — |
+| CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | d292f1b |
+| CD3 | `plotting/composite_saed.py`: config model + layered renderer | complete | (this commit) |
 | CD4 | Annotation engine with coincident-label merging + crowding avoidance | pending | — |
 | CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | pending | — |
 | CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | pending | — |
@@ -237,8 +237,29 @@ status, deliverables, and exactly what remains. Master context:
   paths, describe() content. Gates: 959 passed, ruff clean, mypy clean,
   integrity passed.
 
+- (CD3) `src/pytex/plotting/composite_saed.py`: `SpotStyle` (marker, color,
+  filled/hollow, three intensity->size modes with floor, alpha, edge,
+  z-order; validated), colorblind-aware `VARIANT_COLOR_PALETTE` (Tol muted
+  + 2) x `VARIANT_MARKER_CYCLE` (8 markers -> 96 distinct combos),
+  `CompositeSAEDPlotConfig` (per-variant style overrides, render-time
+  variant subset, mm | inv_angstrom axes units, transmitted-beam marker,
+  legend cap/outside placement, title/background/figsize/dpi/padding;
+  validated), `render_composite_saed` (children first, hollow parent on
+  top, equal aspect, machine-readable per-collection gids
+  `pytex-composite:*`). Also lowered the default zone-label rationalization
+  bound 12 -> 6 (nearest low-index zone labels; the KS variant 5.26-deg-off
+  [1 0 0] label now surfaces the classic KS-NW separation). 28 structural
+  tests in `tests/unit/test_composite_saed_plotting.py` (gid census, offset
+  parity with spot tables, subset/beam/parent toggles, explicit style
+  override + palette cycling colors, hollow parent facecolors, size-mode
+  arithmetic, unit rescaling + axis labels, legend content/cap/disable,
+  title logic, config validation). Visual smoke check rendered KS
+  [0 1 -1] composite: exact [1 1 -1] variant overlays coincident parent
+  spots as expected. Gates: 987 passed, ruff clean, mypy clean, integrity
+  passed.
+
 ## Next actions
 
-1. Commit CD2 and push; record hash in the phase table.
-2. Start CD3: `src/pytex/plotting/composite_saed.py` per spec above, with
-   `tests/unit/test_composite_saed_plotting.py` written alongside.
+1. Commit CD3 and push; record hash in the phase table.
+2. Start CD4: annotation engine in `plotting/composite_saed.py` per spec,
+   with `tests/unit/test_composite_saed_annotations.py`.
