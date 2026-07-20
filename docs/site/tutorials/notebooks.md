@@ -43,6 +43,7 @@ notebooks/17_miller_vectorized_workflows
 notebooks/18_orientation_relationships_fundamentals
 notebooks/19_lattice_correspondence_and_transformation_strain
 notebooks/20_or_catalogs_identification_and_reconstruction
+notebooks/21_composite_or_diffraction_patterns
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -63,6 +64,13 @@ pages.
    with computed variant counts and literature separations, then the
    experimental pipeline end to end: OR identification from boundaries,
    rotation refinement, and parent-grain reconstruction.
+4. `21_composite_or_diffraction_patterns` — the diffraction observable of an
+   OR: the Ewald/excitation-error theory behind the kinematic engine, the
+   shared parent-anchored detector geometry, and composite SAED patterns for
+   both canonical cases — Kurdjumov-Sachs (cubic, with the KS-NW 5.26 deg
+   separation appearing as a child-zone deviation) and Burgers beta->alpha
+   (hexagonal, with the six-fold basal view, four-index Miller-Bravais
+   labels, and the {110}_beta / (0002)_alpha superposition at 0.1545 mm).
 
 ## How To Use These
 

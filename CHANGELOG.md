@@ -13,6 +13,16 @@ downstream analyses depend on them.
 
 ### Added
 
+- Burgers beta->alpha (bcc -> hcp) is now a canonical case alongside
+  Kurdjumov-Sachs across the composite-diffraction tests, examples and
+  documentation. Hexagonal phases are labelled in four-index Miller-Bravais
+  notation throughout (`is_hexagonal_phase`,
+  `RationalizedZoneAxis.indices_bravais`, bravais flags on `SpotCoincidence`,
+  `format_hkl(..., bravais=True)`); cubic phases keep three-index labels.
+- Executed tutorial notebook
+  `21_composite_or_diffraction_patterns` documenting the composite OR
+  diffraction surface with Ewald/excitation-error theory, original diagrams,
+  and both canonical cases (KS and Burgers).
 - Composite orientation-relationship SAED simulation and rendering
   (kinematic only). New `pytex.diffraction.kinematic` provides a fully
   vectorized zone-axis engine (`simulate_zone_axis_spots`, `SpotTable`,

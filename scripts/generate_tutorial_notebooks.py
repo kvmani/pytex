@@ -2632,6 +2632,696 @@ crystal:
         ],
     }
 
+    composite_setup = """
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    from pytex import (
+        AtomicSite,
+        FrameDomain,
+        Handedness,
+        Lattice,
+        Phase,
+        ReferenceFrame,
+        SymmetrySpec,
+        UnitCell,
+        ZoneAxis,
+    )
+    from pytex.core.transformation import OrientationRelationship
+    from pytex.diffraction.composite import (
+        find_spot_coincidences,
+        simulate_composite_saed,
+    )
+    from pytex.diffraction.kinematic import (
+        KinematicSimulationConfig,
+        electron_wavelength_angstrom,
+        simulate_zone_axis_spots,
+    )
+    from pytex.plotting.composite_saed import (
+        CompositeSAEDPlotConfig,
+        SpotAnnotationConfig,
+        SpotStyle,
+        render_composite_saed,
+    )
+
+    plt.rcParams.update({"figure.dpi": 110, "font.size": 9})
+
+
+    def make_fcc_bcc_context():
+        # Austenite (fcc) and ferrite/martensite (bcc): the Kurdjumov-Sachs pair.
+        parent_frame = ReferenceFrame(
+            "austenite_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+        )
+        child_frame = ReferenceFrame(
+            "ferrite_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+        )
+        parent_lattice = Lattice(3.60, 3.60, 3.60, 90.0, 90.0, 90.0, crystal_frame=parent_frame)
+        child_lattice = Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame)
+        parent_sites = tuple(
+            AtomicSite(label=f"Fe{i}", species="Fe", fractional_coordinates=np.array(coords))
+            for i, coords in enumerate(
+                [(0.0, 0.0, 0.0), (0.5, 0.5, 0.0), (0.5, 0.0, 0.5), (0.0, 0.5, 0.5)]
+            )
+        )
+        child_sites = (
+            AtomicSite(label="Fe1", species="Fe", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(label="Fe2", species="Fe", fractional_coordinates=np.array([0.5, 0.5, 0.5])),
+        )
+        austenite = Phase(
+            "austenite",
+            lattice=parent_lattice,
+            symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+            crystal_frame=parent_frame,
+            unit_cell=UnitCell(lattice=parent_lattice, sites=parent_sites),
+            space_group_symbol="Fm-3m",
+        )
+        ferrite = Phase(
+            "ferrite",
+            lattice=child_lattice,
+            symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+            crystal_frame=child_frame,
+            unit_cell=UnitCell(lattice=child_lattice, sites=child_sites),
+            space_group_symbol="Im-3m",
+        )
+        return austenite, ferrite
+
+
+    def make_bcc_hcp_context():
+        # Beta-Ti (bcc) and alpha-Ti (hcp): the Burgers pair.
+        beta_frame = ReferenceFrame(
+            "beta_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+        )
+        alpha_frame = ReferenceFrame(
+            "alpha_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+        )
+        beta_lattice = Lattice(
+            3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=beta_frame
+        )
+        alpha_lattice = Lattice(
+            2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=alpha_frame
+        )
+        beta_sites = (
+            AtomicSite(label="Ti1", species="Ti", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(label="Ti2", species="Ti", fractional_coordinates=np.array([0.5, 0.5, 0.5])),
+        )
+        alpha_sites = (
+            AtomicSite(label="Ti1", species="Ti", fractional_coordinates=np.array([0.0, 0.0, 0.0])),
+            AtomicSite(
+                label="Ti2",
+                species="Ti",
+                fractional_coordinates=np.array([1.0 / 3.0, 2.0 / 3.0, 0.5]),
+            ),
+        )
+        beta_ti = Phase(
+            "beta-titanium",
+            lattice=beta_lattice,
+            symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
+            crystal_frame=beta_frame,
+            unit_cell=UnitCell(lattice=beta_lattice, sites=beta_sites),
+            space_group_symbol="Im-3m",
+        )
+        alpha_ti = Phase(
+            "alpha-titanium",
+            lattice=alpha_lattice,
+            symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=alpha_frame),
+            crystal_frame=alpha_frame,
+            unit_cell=UnitCell(lattice=alpha_lattice, sites=alpha_sites),
+            space_group_symbol="P6_3/mmc",
+        )
+        return beta_ti, alpha_ti
+
+
+    austenite, ferrite = make_fcc_bcc_context()
+    beta_ti, alpha_ti = make_bcc_hcp_context()
+    print("phases ready:", austenite.name, ferrite.name, beta_ti.name, alpha_ti.name)
+    """
+
+    notebooks["21_composite_or_diffraction_patterns.ipynb"] = {
+        "title": "Composite OR Diffraction Patterns",
+        "cells": [
+            markdown_cell(
+                """
+                # Composite OR Diffraction Patterns
+
+                When a parent phase transforms into a product that obeys an
+                **orientation relationship** (OR), a selected-area electron
+                diffraction (SAED) aperture that straddles both phases records
+                *one* pattern containing the parent reflections **and** the
+                reflections of every product variant that happens to be
+                illuminated. Reading that composite pattern is how an OR is
+                verified in practice.
+
+                This notebook builds those patterns from first principles with
+                PyTex's vectorized kinematic engine, using the two canonical
+                cases:
+
+                | Case | System | Parent -> child | Variants |
+                | --- | --- | --- | --- |
+                | **Kurdjumov-Sachs (KS)** | steels | fcc austenite -> bcc martensite | 24 |
+                | **Burgers** | Ti / Zr / Hf | bcc beta -> hcp alpha | 12 |
+
+                KS exercises the cubic-cubic case; Burgers adds a **hexagonal
+                child**, a non-cubic metric, and four-index Miller-Bravais
+                notation.
+
+                **Scope.** Everything here is *kinematic*: single scattering,
+                no dynamical (Bloch-wave) intensities and no double diffraction.
+                That is the right level of theory for predicting **where** spots
+                land and **which** ones superimpose, which is what OR analysis
+                needs.
+                """
+            ),
+            code_cell(composite_setup),
+            markdown_cell(
+                """
+                ## 1. The physics the engine implements
+
+                ### 1.1 Electron wavelength sets the Ewald sphere
+
+                The relativistic electron wavelength
+
+                $$\\lambda(V) = \\frac{h}{\\sqrt{2 m_0 e V \\left(1 + \\dfrac{eV}{2 m_0 c^2}\\right)}}$$
+
+                fixes the Ewald-sphere radius $k = 1/\\lambda$. At TEM voltages
+                $\\lambda$ is tiny, so $k$ is enormous compared with typical
+                reciprocal-lattice spacings — which is *why* an electron
+                diffraction pattern looks like a flat slice through the
+                reciprocal lattice.
+                """
+            ),
+            code_cell(
+                """
+                for kv in (100.0, 200.0, 300.0):
+                    lam = electron_wavelength_angstrom(kv)
+                    print(f"{kv:6.0f} kV   lambda = {lam:.6f} A   k = 1/lambda = {1.0 / lam:8.2f} 1/A")
+
+                # De Graef, Introduction to Conventional TEM (2003), Table 2.2:
+                # 0.037014, 0.025079, 0.019687 A. PyTex reproduces these exactly.
+                """
+            ),
+            markdown_cell(
+                """
+                ### 1.2 Excitation error: why spots appear at all
+
+                A reflection $\\mathbf{g}$ is excited when it lies on the Ewald
+                sphere. Real crystals are thin, so reciprocal-lattice points are
+                **relrods** and reflections near the sphere still contribute. The
+                signed distance from the sphere, measured along the beam, is the
+                *excitation error*
+
+                $$s_g = g_z - \\frac{\\lambda\\,g^2}{2}$$
+
+                with $g_z$ the zone-axis component of $\\mathbf{g}$. PyTex selects
+                reflections by $|s_g| \\le s_{\\max}$ rather than by the integer
+                zone law. That matters here for a specific reason: **a parent zone
+                axis mapped through an OR variant is almost never a rational child
+                zone axis**, so an integer zone law would silently return nothing.
+                The excitation-error criterion treats rational and irrational
+                zones identically.
+
+                For an exact zero-order-Laue-zone (ZOLZ) reflection $g_z = 0$, so
+                $s_g = -\\lambda g^2 / 2 < 0$ — the curvature of the Ewald sphere
+                pulls every ZOLZ spot slightly off exact Bragg, more so at large
+                $g$. The diagram below makes that concrete.
+                """
+            ),
+            code_cell(
+                """
+                lam = electron_wavelength_angstrom(200.0)
+                k = 1.0 / lam
+
+                fig, (ax_geom, ax_s) = plt.subplots(1, 2, figsize=(10.5, 4.2))
+
+                # --- left: Ewald construction (hugely exaggerated curvature) ---
+                g_max = 1.6
+                gx = np.linspace(-g_max, g_max, 400)
+                # Sphere of radius k centred at (0, -k): height above the g_x axis.
+                sphere_z = k - np.sqrt(np.maximum(k**2 - gx**2, 0.0))
+                ax_geom.plot(gx, sphere_z, color="#00897b", lw=2, label="Ewald sphere")
+                lattice_g = np.arange(-1.5, 1.6, 0.25)
+                ax_geom.scatter(
+                    lattice_g, np.zeros_like(lattice_g), s=26, color="#3f51b5",
+                    zorder=3, label="ZOLZ reciprocal-lattice points",
+                )
+                for g in lattice_g:
+                    z = k - np.sqrt(max(k**2 - g**2, 0.0))
+                    ax_geom.plot([g, g], [0.0, z], color="#f57c00", lw=1.0, alpha=0.8)
+                ax_geom.annotate(
+                    "$|s_g|$ grows with $g$", xy=(1.25, 0.0), xytext=(0.35, 0.022),
+                    fontsize=9, color="#f57c00",
+                    arrowprops={"arrowstyle": "->", "color": "#f57c00", "lw": 1.0},
+                )
+                ax_geom.set_xlabel("$g_x$  ($\\\\mathrm{\\\\AA}^{-1}$)")
+                ax_geom.set_ylabel("distance along beam  ($\\\\mathrm{\\\\AA}^{-1}$)")
+                ax_geom.set_title("Ewald sphere vs the ZOLZ plane (200 kV)")
+                ax_geom.set_ylim(-0.004, 0.036)
+                ax_geom.legend(fontsize=8, loc="upper center")
+                ax_geom.grid(alpha=0.25)
+
+                # --- right: the analytic s_g curve, checked against the engine ---
+                ax_s.plot(gx, -0.5 * lam * gx**2, color="#00897b", lw=2,
+                          label="$s_g = -\\\\lambda g^2 / 2$  (exact ZOLZ)")
+                zone_110 = ZoneAxis(np.array([0, 1, -1]), phase=austenite)
+                table = simulate_zone_axis_spots(austenite, zone_110)
+                g_norm = np.linalg.norm(table.g_crystal, axis=1)
+                ax_s.scatter(
+                    g_norm, table.excitation_error_inv_angstrom, s=30,
+                    color="#3f51b5", zorder=3, label="simulated austenite $[0\\\\,1\\\\,\\\\bar{1}]$ spots",
+                )
+                ax_s.axhline(0.0, color="#666666", lw=0.8)
+                ax_s.set_xlabel("$|g|$  ($\\\\mathrm{\\\\AA}^{-1}$)")
+                ax_s.set_ylabel("$s_g$  ($\\\\mathrm{\\\\AA}^{-1}$)")
+                ax_s.set_title("Excitation error of the simulated reflections")
+                ax_s.legend(fontsize=8)
+                ax_s.grid(alpha=0.25)
+
+                fig.tight_layout()
+                plt.show()
+
+                print(f"max |s_g| among simulated spots: "
+                      f"{np.abs(table.excitation_error_inv_angstrom).max():.5f} 1/A")
+                """
+            ),
+            markdown_cell(
+                """
+                ### 1.3 One detector, many crystals
+
+                The composite geometry is the part that is easy to get wrong.
+                PyTex anchors an orthonormal detector triad $(\\mathbf{u},
+                \\mathbf{v}, \\mathbf{z})$ in the **parent** crystal frame, with
+                $\\mathbf{z}$ the zone axis (pointing toward the gun; the beam
+                travels antiparallel).
+
+                Each variant rotation $V_i$ re-expresses parent-frame Cartesian
+                vectors in that variant's child frame, so the *same physical beam
+                direction* becomes $\\mathbf{z}_c = V_i \\mathbf{z}_p$, and the
+                child pattern is simulated on the rotated triad $V_i(\\mathbf{u},
+                \\mathbf{v}, \\mathbf{z})$. That is algebraically identical to
+                pulling every child reflection back into the parent frame before
+                projecting, which is exactly what makes the sub-patterns
+                *overlayable*: a parent spot and a child spot that print at the
+                same millimetre really are superimposed on the microscope screen.
+
+                Detector coordinates follow the standard small-angle SAED
+                relation $r_{\\text{mm}} = (L\\lambda)\\, g_{\\perp}$, with
+                $L\\lambda$ the camera constant.
+                """
+            ),
+            markdown_cell(
+                """
+                ## 2. Kurdjumov-Sachs: the cubic canonical case
+
+                KS is defined by
+                $\\{111\\}_\\gamma \\parallel \\{011\\}_\\alpha$ and
+                $\\langle \\bar{1}01 \\rangle_\\gamma \\parallel
+                \\langle \\bar{1}\\bar{1}1 \\rangle_\\alpha$, and generates
+                **24 variants**.
+
+                Because $[0\\,1\\,\\bar{1}]_\\gamma$ belongs to the
+                $\\langle \\bar{1}01 \\rangle$ family used in that definition, some
+                variants must map it onto an exactly rational
+                $\\langle 111 \\rangle_\\alpha$ child zone — a prediction the
+                simulation has to reproduce with zero deviation.
+                """
+            ),
+            code_cell(
+                """
+                ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+                    parent_phase=austenite, child_phase=ferrite
+                )
+                ks_zone = ZoneAxis(np.array([0, 1, -1]), phase=austenite)
+                ks_composite = simulate_composite_saed(ks, ks_zone)
+
+                print(f"variants: {len(ks_composite.variant_patterns)}")
+                deviations = np.array(
+                    [p.nearest_zone_axis.deviation_deg for p in ks_composite.variant_patterns]
+                )
+                exact = [p for p in ks_composite.variant_patterns
+                         if p.nearest_zone_axis.deviation_deg < 1e-6]
+                print(f"exactly-oriented variants: {[p.variant_index for p in exact]}")
+                for pattern in exact:
+                    print(f"   {pattern.label():<28} {len(pattern.spots)} reflections")
+                print(f"\\nlargest deviation: {deviations.max():.3f} deg")
+                """
+            ),
+            markdown_cell(
+                """
+                Four variants land exactly on $\\langle 111 \\rangle_\\alpha$, and
+                the *largest* deviation over the 24 variants is **5.26 deg** —
+                which is precisely the Kurdjumov-Sachs / Nishiyama-Wassermann
+                angular separation showing up as a diffraction-geometry
+                observable. The chart below sorts the variants by how far their
+                child zone sits from the beam.
+                """
+            ),
+            code_cell(
+                """
+                order = np.argsort(deviations)
+                labels = [
+                    ks_composite.variant_patterns[i].nearest_zone_axis.label() for i in order
+                ]
+                colors = ["#117733" if deviations[i] < 1e-6 else "#3f51b5" for i in order]
+
+                fig, ax = plt.subplots(figsize=(10.5, 3.6))
+                ax.bar(np.arange(len(order)), deviations[order], color=colors)
+                ax.axhline(5.264, color="#c0392b", ls="--", lw=1.2,
+                           label="KS-NW separation = 5.26 deg")
+                ax.set_xticks(np.arange(len(order)))
+                ax.set_xticklabels(
+                    [f"V{ks_composite.variant_patterns[i].variant_index}\\n{lab}"
+                     for i, lab in zip(order, labels)],
+                    fontsize=6, rotation=90,
+                )
+                ax.set_ylabel("child-zone deviation (deg)")
+                ax.set_title(
+                    "How far each KS variant's child zone lies from the "
+                    "$[0\\\\,1\\\\,\\\\bar{1}]_\\\\gamma$ beam"
+                )
+                ax.legend(fontsize=8)
+                ax.grid(axis="y", alpha=0.25)
+                fig.tight_layout()
+                plt.show()
+                """
+            ),
+            markdown_cell(
+                """
+                ### 2.1 The composite pattern
+
+                Rendering the parent together with the two exactly-oriented
+                variants gives the classic picture: hollow parent circles with
+                variant markers sitting on top of them wherever the OR forces a
+                superposition. Labels for coincident reflections are **merged**
+                into one multi-line, phase-tagged annotation, and the placement
+                engine keeps them from colliding.
+                """
+            ),
+            code_cell(
+                """
+                fig = render_composite_saed(
+                    ks_composite.select_variants([2, 6]),
+                    config=CompositeSAEDPlotConfig(
+                        annotation=SpotAnnotationConfig(
+                            coincidence_tolerance_mm=3.0, max_labels=22
+                        ),
+                        title=("Kurdjumov-Sachs composite SAED: austenite "
+                               "$[0\\\\,1\\\\,\\\\bar{1}]$ + variants 2 and 6"),
+                        figsize=(7.6, 6.2),
+                    ),
+                )
+                plt.show()
+                """
+            ),
+            markdown_cell(
+                """
+                ### 2.2 Which reflections actually superimpose?
+
+                `find_spot_coincidences` turns the visual impression into a
+                number: every parent/child pair closer than a tolerance on the
+                shared detector, per variant. The strongest KS coincidences are
+                the close-packed pairs
+                $\\{111\\}_\\gamma$ on $\\{011\\}_\\alpha$ — the reciprocal-space
+                echo of the defining plane parallelism. Their residual separation
+                is set purely by the lattice parameters:
+
+                $$\\Delta r = \\left(\\frac{\\sqrt{2}}{a_\\alpha} -
+                \\frac{\\sqrt{3}}{a_\\gamma}\\right) L\\lambda .$$
+                """
+            ),
+            code_cell(
+                """
+                report = find_spot_coincidences(ks_composite, tolerance_mm=2.5)
+                print(report.describe())
+                print()
+                for coincidence in report.coincidences[:4]:
+                    print("  ", coincidence.label())
+
+                analytic_mm = (np.sqrt(2.0) / 2.87 - np.sqrt(3.0) / 3.60) * 180.0
+                print(f"\\nanalytic {{111}}_g / {{011}}_a separation: {analytic_mm:.4f} mm")
+                """
+            ),
+            code_cell(
+                """
+                # Sweeping the tolerance shows the coincidence structure as
+                # discrete shells rather than a smooth ramp: superpositions come
+                # in symmetry-related families.
+                tolerances = np.linspace(0.5, 6.0, 23)
+                counts = [
+                    len(find_spot_coincidences(ks_composite, tolerance_mm=float(t)).coincidences)
+                    for t in tolerances
+                ]
+
+                fig, ax = plt.subplots(figsize=(7.2, 3.4))
+                ax.step(tolerances, counts, where="post", color="#3f51b5", lw=2)
+                ax.axvline(analytic_mm, color="#c0392b", ls="--", lw=1.2,
+                           label=f"close-packed pair at {analytic_mm:.2f} mm")
+                ax.set_xlabel("coincidence tolerance (mm)")
+                ax.set_ylabel("parent/child pairs found")
+                ax.set_title("KS coincidence count vs tolerance (all 24 variants)")
+                ax.legend(fontsize=8)
+                ax.grid(alpha=0.25)
+                fig.tight_layout()
+                plt.show()
+                """
+            ),
+            markdown_cell(
+                """
+                ## 3. Burgers: the hexagonal canonical case
+
+                The Burgers relationship governs the
+                $\\beta \\rightarrow \\alpha$ transformation of titanium,
+                zirconium and hafnium:
+
+                $$\\{110\\}_\\beta \\parallel (0001)_\\alpha, \\qquad
+                \\langle \\bar{1}11 \\rangle_\\beta \\parallel
+                \\langle 11\\bar{2}0 \\rangle_\\alpha$$
+
+                with **12 variants**. Both parallelisms are *directly visible* as
+                exactly rational composite views:
+
+                - down $\\langle 110 \\rangle_\\beta$ you look straight down the
+                  hcp $c$-axis, i.e. the $[0001]$ **basal** zone;
+                - down $\\langle 111 \\rangle_\\beta$ you look along an hcp
+                  $\\langle 11\\bar{2}0 \\rangle$ $\\mathbf{a}$-direction.
+
+                Because the child is hexagonal, PyTex automatically switches
+                directions and reflections to **four-index Miller-Bravais**
+                notation ($[u\\,v\\,t\\,w]$ with $t = -(u+v)$; $(h\\,k\\,i\\,l)$
+                with $i = -(h+k)$), while the cubic parent keeps three indices.
+                """
+            ),
+            code_cell(
+                """
+                burgers = OrientationRelationship.from_burgers_correspondence(
+                    parent_phase=beta_ti, child_phase=alpha_ti
+                )
+
+                for beam in ([1, 1, 0], [1, 1, 1]):
+                    composite = simulate_composite_saed(
+                        burgers, ZoneAxis(np.array(beam), phase=beta_ti), include_parent=False
+                    )
+                    exact_here = [
+                        p for p in composite.variant_patterns
+                        if p.nearest_zone_axis.deviation_deg < 1e-6
+                    ]
+                    labels = sorted({p.nearest_zone_axis.label() for p in exact_here})
+                    print(f"beam {beam}_beta  ->  exact child zones {labels}  "
+                          f"({len(exact_here)} of {len(composite.variant_patterns)} variants)")
+                """
+            ),
+            markdown_cell(
+                """
+                ### 3.1 The basal view
+
+                Down $[110]_\\beta$ the exactly-oriented variant produces the
+                textbook **six-fold hcp basal pattern**. Only $hk\\!\\cdot\\!0$
+                reflections satisfy the zone condition, and the innermost ring is
+                $\\{10\\bar{1}0\\}$ with $d = a\\sqrt{3}/2$.
+                """
+            ),
+            code_cell(
+                """
+                burgers_zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+                burgers_composite = simulate_composite_saed(burgers, burgers_zone)
+
+                basal = next(
+                    p for p in burgers_composite.variant_patterns
+                    if p.nearest_zone_axis.deviation_deg < 1e-6
+                )
+                print(f"basal variant: {basal.label()},  {len(basal.spots)} reflections")
+                print(f"all reflections have l = 0: {bool(np.all(basal.spots.hkl[:, 2] == 0))}")
+                print(f"largest d-spacing: {basal.spots.d_spacing_angstrom.max():.4f} A")
+                print(f"analytic a*sqrt(3)/2: {2.9508 * np.sqrt(3.0) / 2.0:.4f} A")
+
+                # Six-fold symmetry check, straight off the simulated coordinates.
+                coordinates = basal.spots.detector_mm
+                angle = np.deg2rad(60.0)
+                rotation = np.array(
+                    [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
+                )
+                worst = max(
+                    float(np.min(np.linalg.norm(coordinates - point, axis=1)))
+                    for point in coordinates @ rotation.T
+                )
+                print(f"worst mismatch after a 60 deg rotation: {worst:.2e} mm")
+                """
+            ),
+            code_cell(
+                """
+                fig = render_composite_saed(
+                    burgers_composite.select_variants([1, 2]),
+                    config=CompositeSAEDPlotConfig(
+                        annotation=SpotAnnotationConfig(
+                            coincidence_tolerance_mm=3.0, max_labels=24
+                        ),
+                        title=("Burgers composite SAED: beta-Ti $[1\\\\,1\\\\,0]$ "
+                               "+ basal and inclined alpha variants"),
+                        figsize=(7.6, 6.2),
+                    ),
+                )
+                plt.show()
+                """
+            ),
+            markdown_cell(
+                """
+                Note the notation in that figure: the hcp variant reflections read
+                $(1\\,1\\,\\bar{2}\\,0)$, $(3\\,0\\,\\bar{3}\\,0)$, ... in proper
+                four-index form, while the bcc parent keeps $(002)$, $(1\\bar{1}2)$.
+
+                ### 3.2 The Burgers fingerprint: $\\{110\\}_\\beta$ on $(0002)_\\alpha$
+
+                Here is the single most useful number in Burgers OR analysis. The
+                plane parallelism pairs two interplanar spacings that are almost
+                identical in titanium:
+
+                $$d_{110}^{\\beta} = \\frac{a_\\beta}{\\sqrt{2}} = 2.3381\\,\\text{Å},
+                \\qquad
+                d_{0002}^{\\alpha} = \\frac{c_\\alpha}{2} = 2.3428\\,\\text{Å}.$$
+
+                So those two reflections land essentially on top of each other.
+                The residual separation is
+                $\\left(\\sqrt{2}/a_\\beta - 2/c_\\alpha\\right) L\\lambda$, which
+                at a 180 mm·Å camera constant is **0.1545 mm** — far inside a
+                typical spot diameter. That is why a Burgers composite pattern
+                reads as a single *decorated* pattern rather than two overlaid
+                ones.
+                """
+            ),
+            code_cell(
+                """
+                burgers_report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
+                closest = burgers_report.coincidences[0]
+                print("closest coincidence:", closest.label())
+
+                analytic_burgers = (np.sqrt(2.0) / 3.3065 - 2.0 / 4.6855) * 180.0
+                print(f"\\nsimulated separation: {closest.separation_mm:.10f} mm")
+                print(f"analytic  separation: {analytic_burgers:.10f} mm")
+                print(f"d(110)_beta  = {3.3065 / np.sqrt(2.0):.4f} A")
+                print(f"d(0002)_alpha = {4.6855 / 2.0:.4f} A")
+                """
+            ),
+            markdown_cell(
+                """
+                ## 4. Making the figure say what you mean
+
+                Every visual choice is an explicit, typed configuration object,
+                so a figure can be tuned for a paper without touching the physics.
+                The panel below varies four things at once: parent styling,
+                per-variant marker/colour overrides, reciprocal-space axes instead
+                of millimetres, and an in-plane rotation of the whole composite
+                (the equivalent of rotating the microscope's image, which changes
+                nothing physical).
+                """
+            ),
+            code_cell(
+                """
+                fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.0))
+
+                # Left: custom styling, reciprocal-space axes, annotations off.
+                render_composite_saed(
+                    ks_composite,
+                    config=CompositeSAEDPlotConfig(
+                        parent_style=SpotStyle(
+                            marker="o", color="#1b3a6b", filled=False,
+                            size_scale=170.0, edge_width=1.5,
+                        ),
+                        variant_styles={
+                            2: SpotStyle(marker="D", color="#c0392b", size_scale=95.0),
+                            6: SpotStyle(marker="^", color="#117733", size_scale=95.0),
+                        },
+                        variant_indices=(2, 6),
+                        axes_units="inv_angstrom",
+                        show_legend=False,
+                        annotation=SpotAnnotationConfig(enabled=False),
+                        title="custom styles, reciprocal-space axes",
+                    ),
+                    ax=axes[0],
+                )
+
+                # Right: the same composite rotated 30 deg in-plane.
+                rotated = simulate_composite_saed(
+                    ks, ks_zone, variant_indices=(2, 6), in_plane_rotation_deg=30.0
+                )
+                render_composite_saed(
+                    rotated,
+                    config=CompositeSAEDPlotConfig(
+                        show_legend=False,
+                        annotation=SpotAnnotationConfig(enabled=False),
+                        title="same pattern, rotated 30 deg in-plane",
+                    ),
+                    ax=axes[1],
+                )
+
+                fig.tight_layout()
+                plt.show()
+                """
+            ),
+            markdown_cell(
+                """
+                ## 5. Explainability
+
+                Every result object carries a `describe()` that states the
+                conventions in words, so a number lifted from a script into a
+                paper arrives with its geometry attached.
+                """
+            ),
+            code_cell(
+                """
+                print(burgers_composite.select_variants([1]).describe())
+                """
+            ),
+            markdown_cell(
+                """
+                ## Summary
+
+                - Reflection selection uses the **excitation error**
+                  $s_g = g_z - \\lambda g^2/2$, not the integer zone law, so the
+                  irrational child zones produced by OR mapping are handled
+                  exactly.
+                - All sub-patterns share a **parent-anchored detector frame**, so
+                  overlaid coordinates are physically meaningful.
+                - **KS** ($[0\\,1\\,\\bar{1}]_\\gamma$): four variants land exactly
+                  on $\\langle 111 \\rangle_\\alpha$; the worst-oriented variant sits
+                  5.26 deg away — the KS-NW separation as a diffraction observable.
+                - **Burgers** ($[110]_\\beta$): the basal $[0001]_\\alpha$ view with
+                  six-fold symmetry, four-index labels, and the
+                  $\\{110\\}_\\beta / (0002)_\\alpha$ superposition at 0.1545 mm —
+                  the practical fingerprint of the relationship.
+                - Coincidences are quantified, not eyeballed, by
+                  `find_spot_coincidences`.
+
+                Deeper material:
+
+                - workflow page: `docs/site/workflows/composite_or_diffraction.md`
+                - worked examples with pinned reference values:
+                  `docs/site/examples/generated/composite-diffraction.md`
+                - the OR rotation/correspondence pillars: notebooks 18, 19 and 20
+                - program ledger and conventions:
+                  `docs/roadmap/working_notes_composite_saed_program.md`
+                """
+            ),
+        ],
+    }
+
     return notebooks
 
 

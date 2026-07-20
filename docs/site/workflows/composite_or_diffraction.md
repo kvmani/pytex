@@ -143,6 +143,9 @@ reports its true tilt.
 
 ## Related Material
 
+- {doc}`../tutorials/notebooks/21_composite_or_diffraction_patterns` — the
+  executed teaching notebook: Ewald/excitation-error theory, the shared
+  detector construction, and both canonical cases end to end
 - {doc}`saed_generation`
 - {doc}`../concepts/orientation_relationships`
 - {doc}`../concepts/diffraction_foundation`
