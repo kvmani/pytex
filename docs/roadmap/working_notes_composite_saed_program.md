@@ -56,8 +56,8 @@ status, deliverables, and exactly what remains. Master context:
 | CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | e549bce |
 | CD2 | `diffraction/composite.py`: composite OR pattern assembly | complete | d292f1b |
 | CD3 | `plotting/composite_saed.py`: config model + layered renderer | complete | 202b6da |
-| CD4 | Annotation engine with coincident-label merging + crowding avoidance | complete | (this commit) |
-| CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | pending | — |
+| CD4 | Annotation engine with coincident-label merging + crowding avoidance | complete | 88c202e |
+| CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | complete | (this commit) |
 | CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | pending | — |
 
 ### CD1 — Vectorized kinematic zone-axis engine (`src/pytex/diffraction/kinematic.py`)
@@ -280,8 +280,26 @@ status, deliverables, and exactly what remains. Master context:
   single-phase labels, no collisions. Gates: 1012 passed, ruff clean,
   mypy clean, integrity passed.
 
+- (CD5) Coincidence analysis + sweep utilities in
+  `diffraction/composite.py`: `SpotCoincidence` (validated pair with both
+  hkl, detector coordinates, separation, label), `SpotCoincidenceReport`
+  (per-variant totals, exact-count queries, tolerance/consistency
+  invariants enforced at construction, convention-explicit `describe()`),
+  `find_spot_coincidences` (per-variant cKDTree query_ball_point; sorted by
+  separation), `sweep_parent_zone_axes` lazy iterator. 16 regression tests
+  in `tests/unit/test_composite_coincidences.py`: pinned totals for the KS
+  [0 1 -1] composite (24 pairs at 2.5 mm, 0 at 1 mm, 48 at 5 mm), each
+  exactly-oriented variant contributes exactly its two antipodal
+  close-packed {111}_p||{011}_c pairs at the analytically derived
+  (sqrt(2)/2.87 - sqrt(3)/3.6)*180 = 2.0938 mm separation (simulation
+  matches analytic to 1e-13), full brute-force O(N^2) parity on the pair
+  set, tolerance monotonicity, sort order, error paths, report validation,
+  lazy ordered sweep. Gates: 1028 passed, ruff clean, mypy clean,
+  integrity passed.
+
 ## Next actions
 
-1. Commit CD4 and push; record hash in the phase table.
-2. Start CD5: coincidence analysis + zone-sweep utilities in
-   `diffraction/composite.py`, with `tests/unit/test_composite_coincidences.py`.
+1. Commit CD5 and push; record hash in the phase table.
+2. Start CD6: exports (`pytex.diffraction.__init__`, top-level lazy map,
+   plotting exports), worked examples + gallery regen, docs/README index,
+   CHANGELOG, final verification; then close out the program section.

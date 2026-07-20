@@ -28,8 +28,9 @@ Geometry conventions (pinned; see
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, replace
+from typing import Any
 
 import numpy as np
 
@@ -408,10 +409,227 @@ def simulate_composite_saed(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class SpotCoincidence:
+    """One parent/child reflection pair landing at (nearly) the same detector spot.
+
+    ``separation_mm`` is the Euclidean distance between the two spots on the
+    shared detector; small separations are what make a composite pattern
+    diagnostic of an OR in practice (superimposed reflections).
+    """
+
+    variant_index: int
+    parent_hkl: np.ndarray
+    child_hkl: np.ndarray
+    parent_detector_mm: np.ndarray
+    child_detector_mm: np.ndarray
+    separation_mm: float
+
+    def __post_init__(self) -> None:
+        if self.variant_index <= 0:
+            raise ValueError("SpotCoincidence.variant_index must be strictly positive.")
+        parent_hkl = as_int_array(self.parent_hkl, shape=(3,))
+        child_hkl = as_int_array(self.child_hkl, shape=(3,))
+        parent_xy = as_float_array(self.parent_detector_mm, shape=(2,))
+        child_xy = as_float_array(self.child_detector_mm, shape=(2,))
+        if not np.isfinite(self.separation_mm) or self.separation_mm < 0.0:
+            raise ValueError("SpotCoincidence.separation_mm must be finite and >= 0.")
+        for array in (parent_hkl, child_hkl, parent_xy, child_xy):
+            array.setflags(write=False)
+        object.__setattr__(self, "parent_hkl", parent_hkl)
+        object.__setattr__(self, "child_hkl", child_hkl)
+        object.__setattr__(self, "parent_detector_mm", parent_xy)
+        object.__setattr__(self, "child_detector_mm", child_xy)
+
+    def label(self) -> str:
+        parent = "(" + " ".join(str(int(v)) for v in self.parent_hkl) + ")"
+        child = "(" + " ".join(str(int(v)) for v in self.child_hkl) + ")"
+        return (
+            f"{parent}_p || {child}_V{self.variant_index} "
+            f"({self.separation_mm:.2f} mm)"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SpotCoincidenceReport:
+    """Quantitative statement of parent/child spot superposition for an OR.
+
+    In TEM practice an OR is verified by exactly this: which child
+    reflections fall on (or within a small distance of) parent reflections
+    in the composite zone-axis pattern. ``coincidences`` lists every pair
+    within ``tolerance_mm`` on the shared detector, per variant.
+    """
+
+    relationship_name: str
+    parent_zone_label: str
+    tolerance_mm: float
+    parent_spot_count: int
+    variant_spot_counts: tuple[tuple[int, int], ...]
+    coincidences: tuple[SpotCoincidence, ...]
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if not np.isfinite(self.tolerance_mm) or self.tolerance_mm <= 0.0:
+            raise ValueError("tolerance_mm must be finite and strictly positive.")
+        if self.parent_spot_count < 0:
+            raise ValueError("parent_spot_count must be non-negative.")
+        object.__setattr__(self, "coincidences", tuple(self.coincidences))
+        object.__setattr__(
+            self,
+            "variant_spot_counts",
+            tuple((int(index), int(count)) for index, count in self.variant_spot_counts),
+        )
+        known = {index for index, _ in self.variant_spot_counts}
+        for coincidence in self.coincidences:
+            if coincidence.variant_index not in known:
+                raise ValueError(
+                    "SpotCoincidenceReport.coincidences reference variant "
+                    f"{coincidence.variant_index} missing from variant_spot_counts."
+                )
+            if coincidence.separation_mm > self.tolerance_mm:
+                raise ValueError(
+                    "SpotCoincidenceReport.coincidences must respect tolerance_mm."
+                )
+
+    @property
+    def variant_indices(self) -> tuple[int, ...]:
+        return tuple(index for index, _ in self.variant_spot_counts)
+
+    def count_for_variant(self, variant_index: int) -> int:
+        return sum(
+            1 for item in self.coincidences if item.variant_index == variant_index
+        )
+
+    def coincidences_for_variant(self, variant_index: int) -> tuple[SpotCoincidence, ...]:
+        return tuple(
+            item for item in self.coincidences if item.variant_index == variant_index
+        )
+
+    def describe(self) -> str:
+        """Prose summary: per-variant superposition counts and their meaning."""
+
+        per_variant = ", ".join(
+            f"V{index}: {self.count_for_variant(index)}/{count}"
+            for index, count in self.variant_spot_counts
+        )
+        strongest = "; ".join(item.label() for item in self.coincidences[:4])
+        strongest_part = f" Closest pairs: {strongest}." if strongest else ""
+        return (
+            f"Spot-coincidence report for '{self.relationship_name}' along parent zone "
+            f"{self.parent_zone_label}: {len(self.coincidences)} parent/child reflection "
+            f"pair(s) separated by <= {self.tolerance_mm:g} mm on the shared detector "
+            f"(parent pattern: {self.parent_spot_count} reflection(s); child reflections "
+            f"coinciding per variant: {per_variant}).{strongest_part} Superimposed "
+            "reflections are the practical TEM signature of the orientation "
+            "relationship: variants with high coincidence fractions produce composite "
+            "patterns that look like a single decorated zone-axis pattern."
+        )
+
+
+def find_spot_coincidences(
+    pattern: CompositeSAEDPattern,
+    *,
+    tolerance_mm: float = 1.0,
+    provenance: ProvenanceRecord | None = None,
+) -> SpotCoincidenceReport:
+    """Find parent/child reflections that superimpose on the shared detector.
+
+    Purpose: quantify which child reflections of each variant land within
+    ``tolerance_mm`` of a parent reflection — the measurable content of an
+    OR in a composite SAED pattern.
+
+    Inputs: ``pattern`` — a composite that includes parent spots;
+    ``tolerance_mm`` — superposition radius on the detector (1 mm at the
+    default 180 mm*angstrom camera constant corresponds to
+    |Delta g| = 1/180 = 0.0056 1/angstrom).
+
+    Output: :class:`SpotCoincidenceReport` with every qualifying pair,
+    per-variant totals and a ``describe()`` narrative. Pair search uses a
+    KD-tree per variant (vectorized; no O(N^2) Python loops).
+    """
+
+    from scipy.spatial import cKDTree
+
+    if not np.isfinite(tolerance_mm) or tolerance_mm <= 0.0:
+        raise ValueError("tolerance_mm must be finite and strictly positive.")
+    parent_table = pattern.parent_spots
+    if parent_table is None:
+        raise ValueError(
+            "find_spot_coincidences requires a composite simulated with "
+            "include_parent=True."
+        )
+    coincidences: list[SpotCoincidence] = []
+    variant_counts: list[tuple[int, int]] = []
+    parent_tree = cKDTree(parent_table.detector_mm) if len(parent_table) else None
+    for variant_pattern in pattern.variant_patterns:
+        child_table = variant_pattern.spots
+        variant_counts.append((variant_pattern.variant_index, len(child_table)))
+        if parent_tree is None or not len(child_table):
+            continue
+        neighbor_lists = parent_tree.query_ball_point(
+            child_table.detector_mm, r=tolerance_mm
+        )
+        for child_row, parent_rows in enumerate(neighbor_lists):
+            child_xy = child_table.detector_mm[child_row]
+            for parent_row in parent_rows:
+                parent_xy = parent_table.detector_mm[parent_row]
+                separation = float(np.linalg.norm(child_xy - parent_xy))
+                coincidences.append(
+                    SpotCoincidence(
+                        variant_index=variant_pattern.variant_index,
+                        parent_hkl=parent_table.hkl[parent_row],
+                        child_hkl=child_table.hkl[child_row],
+                        parent_detector_mm=parent_xy,
+                        child_detector_mm=child_xy,
+                        separation_mm=separation,
+                    )
+                )
+    coincidences.sort(
+        key=lambda item: (
+            item.separation_mm,
+            item.variant_index,
+            tuple(int(v) for v in item.parent_hkl),
+            tuple(int(v) for v in item.child_hkl),
+        )
+    )
+    parent_zone_label = "[" + " ".join(
+        str(int(v)) for v in pattern.parent_zone_axis.indices
+    ) + "]"
+    return SpotCoincidenceReport(
+        relationship_name=pattern.relationship.name,
+        parent_zone_label=parent_zone_label,
+        tolerance_mm=float(tolerance_mm),
+        parent_spot_count=len(parent_table),
+        variant_spot_counts=tuple(variant_counts),
+        coincidences=tuple(coincidences),
+        provenance=provenance,
+    )
+
+
+def sweep_parent_zone_axes(
+    relationship: OrientationRelationship,
+    parent_zone_axes: Iterable[ZoneAxis],
+    **kwargs: Any,
+) -> Iterator[CompositeSAEDPattern]:
+    """Lazily simulate composites for a sequence of parent zone axes.
+
+    Purpose: zone-axis surveys (tilt-series planning, variant-visibility
+    maps). Keyword arguments are forwarded unchanged to
+    :func:`simulate_composite_saed`.
+    """
+
+    for zone_axis in parent_zone_axes:
+        yield simulate_composite_saed(relationship, zone_axis, **kwargs)
+
+
 __all__ = [
     "CompositeSAEDPattern",
     "RationalizedZoneAxis",
+    "SpotCoincidence",
+    "SpotCoincidenceReport",
     "VariantZonePattern",
+    "find_spot_coincidences",
     "rationalize_zone_axis",
     "simulate_composite_saed",
+    "sweep_parent_zone_axes",
 ]
