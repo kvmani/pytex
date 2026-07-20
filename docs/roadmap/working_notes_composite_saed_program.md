@@ -387,6 +387,20 @@ cross-linked from the composite workflow page. Gates: 1047 passed, ruff
 clean, mypy clean, integrity passed, notebook policy tests green, Sphinx
 build succeeded (6 figures + math verified in the generated HTML).
 
+### CD8a — Notebook-output repair and a documented footgun
+
+Found while committing CD8: `scripts/generate_tutorial_notebooks.py` rewrites
+**every** notebook with empty outputs, so running it discards stored outputs
+of notebooks that were not the target. Regenerating for notebook 21 wiped
+notebook 20's executed outputs (2 figures), and that loss was briefly
+committed in `407b92f`. Repaired by re-executing 18, 19 and 20; notebooks 18
+and 19 turned out to have been **already** unexecuted before this work
+(a pre-existing gap, despite earlier ledger entries describing them as
+committed executed), so the whole OR teaching track now renders for the
+first time: nb18 4 images, nb19 5, nb20 3, nb21 6 in the built HTML.
+A warning documenting the regeneration hazard was added to
+`scripts/execute_notebooks.py`.
+
 ## Program v1 outcome and follow-ons
 
 All six phases (CD0-CD6) landed as verified commits. The library now

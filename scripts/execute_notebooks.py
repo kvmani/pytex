@@ -5,7 +5,16 @@ stored outputs), so notebooks whose figures should appear on the site must be
 committed *executed*. Regenerate sources first with
 ``python scripts/generate_tutorial_notebooks.py``, then run::
 
-    python scripts/execute_notebooks.py --only 18 19 20
+    python scripts/execute_notebooks.py --only 18 19 20 21
+
+.. warning::
+
+   ``generate_tutorial_notebooks.py`` rewrites **every** notebook with empty
+   outputs. Running it therefore discards the stored outputs of notebooks you
+   did not intend to touch, and the site silently loses those figures. After
+   any regeneration, re-execute every notebook whose outputs must render —
+   check with ``git status`` which notebooks the generator modified and pass
+   all of them to ``--only``.
 
 ``--only`` matches filename prefixes; with no argument every notebook under
 ``docs/site/tutorials/notebooks`` is executed. Execution runs with the
