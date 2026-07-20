@@ -41,8 +41,13 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `docs/roadmap/working_notes_or_documentation_program.md` (phases 29-32: SVG diagram
   assets, three executed OR tutorial notebooks, cross-linking).
 - Phase 29 pushed as `b125d40`; Phase 30 as `5a308f5`; Phase 31 as `89ae8ad`
-- Phase: 32 complete (committing) — notebook 20 + final wiring; OR documentation
-  program v1 COMPLETE (see its working notes for outcomes and follow-ons).
+- Phase 32 pushed as `f2efbfc` — OR documentation program v1 COMPLETE (see its
+  working notes for outcomes and follow-ons).
+- NEW GOAL (2026-07-20): Composite OR diffraction pattern program — vectorized
+  kinematic composite SAED engine (parent + OR variants, any parent zone axis)
+  with publication-grade configurable plotting and smart annotations. Plan and
+  ledger in `docs/roadmap/working_notes_composite_saed_program.md` (phases
+  CD0-CD6). Kinematic only; regression tests required for every critical part.
 - Next phase candidates (in roadmap order): F13 habit planes / PTMC (large; needs its own
   working notes), reconstruction stabilization (measured-data fixture + MTEX
   `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre

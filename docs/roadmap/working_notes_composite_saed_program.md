@@ -1,0 +1,209 @@
+# Working Notes: Composite OR Diffraction Pattern Program (2026-07-20)
+
+Purpose: resumable progress ledger for the composite TEM zone-axis diffraction
+pattern program. The goal is a sophisticated, fully vectorized, highly
+configurable engine that simulates and renders **composite selected-area
+electron diffraction (SAED) patterns** — parent phase plus any subset of
+orientation-relationship (OR) variants — for **any** parent zone axis, with
+publication-grade plotting defaults. Scope is **kinematic only**: no dynamical
+(multi-beam/Bloch-wave) effects in this program. This supersedes and greatly
+extends the naive composite-pattern capability of the author's earlier
+`pycrystallography` package (configurable spot size/shape/symbols, variant
+subsets, in-plane rotation, and non-overlapping spot annotation were its
+signature features; all are re-designed here on the PyTex canonical model).
+
+If interrupted, resume by reading this file top to bottom; each phase lists
+status, deliverables, and exactly what remains. Master context:
+`docs/development/active_task_progress.md`.
+
+## Scientific conventions (pinned for the whole program)
+
+- Orientations are crystal→specimen rotations; variant rotations `V_i` map
+  parent-crystal-frame Cartesian vectors to child-crystal-frame Cartesian
+  vectors of the same physical direction
+  (`TransformationVariant.map_parent_vector_to_child`).
+- Beam travels antiparallel to the zone axis; the zone axis unit vector
+  `z_p` (parent crystal frame, Cartesian) points toward the electron gun.
+- The same physical beam direction in child variant *i*'s crystal frame is
+  `z_c = V_i z_p`. Child zone axes are in general **irrational**; exact
+  Cartesian vectors drive the geometry, and nearest-rational `[uvw]` indices
+  (with angular deviation reported) are used only for labeling.
+- Shared detector basis: an orthonormal in-plane pair `(u, v)` fixed in the
+  **parent** crystal frame (deterministic construction + optional
+  `g`-alignment + in-plane rotation). Child reciprocal vectors are pulled back
+  to the parent frame (`g_p = V_i^T g_c`) before projection, so all phases and
+  variants land on one physically consistent detector.
+- Reflection selection is by **excitation error**: `|s_g| <= s_max` with
+  `s_g = g_z - g^2/(2k)` for beam wavevector magnitude `k = 1/λ` and `g_z`
+  the zone-axis component of `g` (small-angle, kinematic). This treats
+  rational parent zones and irrational child zones uniformly and is honest
+  about Ewald-sphere curvature. Relativistic electron wavelength
+  `λ(V) = h / sqrt(2 m₀ e V (1 + eV/(2 m₀ c²)))`.
+- Kinematic intensity: `I ∝ |F_hkl|²` from the electron structure-factor
+  proxy already used in `pytex.diffraction.saed` (atomic-number scattering,
+  Debye-Waller from `b_iso`), with optional relrod damping
+  `1/(1 + (s_g/σ_s)²)` and lattice-centering systematic absences
+  (`ReflectionCondition`). Intensities normalized to max = 1 per pattern.
+- Detector coordinates: `r_mm = L λ g_⊥ = (camera constant) · g_⊥`, the
+  standard SAED small-angle approximation already used by
+  `generate_saed_pattern`.
+
+## Program Design (phases; each = verified commit, pushed when remote allows)
+
+| Phase | Deliverable | Status | Commit |
+| --- | --- | --- | --- |
+| CD0 | This working-notes file + ledger update | in progress | — |
+| CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | pending | — |
+| CD2 | `diffraction/composite.py`: composite OR pattern assembly | pending | — |
+| CD3 | `plotting/composite_saed.py`: config model + layered renderer | pending | — |
+| CD4 | Annotation engine with coincident-label merging + crowding avoidance | pending | — |
+| CD5 | Spot-coincidence analysis report + zone-axis sweep utilities | pending | — |
+| CD6 | Worked examples, exports, docs index, CHANGELOG, final verification | pending | — |
+
+### CD1 — Vectorized kinematic zone-axis engine (`src/pytex/diffraction/kinematic.py`)
+
+- `electron_wavelength_angstrom(beam_energy_kev)` — relativistic, pinned test
+  vs published 200 kV value (≈0.02508 Å).
+- `KinematicSimulationConfig` (frozen): `beam_energy_kev`,
+  `camera_constant_mm_angstrom`, `max_index`, `g_max_inv_angstrom`,
+  `max_excitation_error_inv_angstrom`, `intensity_model`
+  (`"electron_atomic_number" | "unit"`), `relrod_sigma_inv_angstrom | None`,
+  `apply_centering_absences`, `min_relative_intensity`.
+- `SpotTable` (frozen, struct-of-arrays, read-only ndarrays): `hkl (N,3)`,
+  `g_crystal (N,3)`, `detector_mm (N,2)`, `g_detector_inv_angstrom (N,2)`,
+  `d_spacing_angstrom (N,)`, `intensity (N,)` (max-normalized),
+  `structure_factor_amplitude (N,)`, `excitation_error_inv_angstrom (N,)`;
+  sorted by (-intensity, radius); `describe()`.
+- `simulate_zone_axis_spots(phase, zone_axis_cartesian, *, config, basis)` —
+  the core vectorized routine: full hkl-cube enumeration, vectorized centering
+  mask, vectorized structure factors (broadcast over hkl × sites), excitation
+  filter, projection to a supplied 3×3 zone basis. **No Python loop over
+  reflections** (site/species loops allowed: few elements).
+- `zone_basis_from_axis(zone_cartesian, *, align_g_cartesian=None,
+  in_plane_rotation_deg=0.0)` — deterministic detector basis; optional
+  alignment of a chosen reciprocal vector along +u; right-handed, pinned.
+- Tests (`tests/unit/test_kinematic_engine.py`): wavelength pinned values;
+  parity with legacy `generate_saed_pattern` for Ni [011] (same hkl set, same
+  detector geometry within tolerance); FCC/BCC forbidden reflections absent;
+  d-spacing pinned (Ni 111 ≈ 2.0345 Å); excitation errors satisfy
+  `s = -g²/(2k)` for exact ZOLZ; basis orthonormality/right-handedness;
+  in-plane rotation equivariance; determinism.
+
+### CD2 — Composite assembly (`src/pytex/diffraction/composite.py`)
+
+- `VariantZonePattern` (frozen): `variant` (TransformationVariant),
+  `zone_axis_child_cartesian`, `nearest_zone_axis` (rationalized `[uvw]` +
+  `deviation_deg`), `spots: SpotTable` (in shared detector frame).
+- `CompositeSAEDPattern` (frozen): `relationship`, `parent_zone_axis`,
+  `parent_spots: SpotTable | None`, `variant_patterns: tuple[...]`,
+  `zone_basis_parent (3,3)`, `config`, `provenance`; helpers
+  `variant_indices`, `select_variants(...)`, `all_detector_coordinates()`;
+  `describe()` with convention-explicit prose (frame conventions, beam sense,
+  selection rule, per-variant nearest zone axes).
+- `simulate_composite_saed(relationship, parent_zone_axis, *,
+  variant_indices=None, include_parent=True, config=None,
+  align_parent_g=None, in_plane_rotation_deg=0.0, child_config=None)`.
+- Rationalization of irrational child zones via bounded integer search
+  (adapt `_rationalize_components` logic from `core/transformation.py`).
+- Tests (`tests/unit/test_composite_saed.py`): KS fcc→bcc with parent
+  [0 1 -1]: a variant whose child zone is exactly [1 1 -1]_bcc exists
+  (KS parallelism `<-101>_p || <-1-11>_c` up to sign/orbit); NW parent [011]
+  → child [001] pinned; Bain [001]_p → [001]_c with 45° in-plane relation
+  pinned via spot coordinates; variant subsetting; shared-basis invariant;
+  describe() content.
+
+### CD3 — Plot configuration + renderer (`src/pytex/plotting/composite_saed.py`)
+
+- `SpotStyle` (frozen): `marker`, `color`, `filled`, `size_scale`,
+  `size_mode` (`"intensity_area" | "intensity_radius" | "constant"`),
+  `min_size_pt`, `alpha`, `edge_color`, `edge_width`, `zorder`.
+- `CompositeSAEDPlotConfig`: `parent_style`, `variant_styles`
+  (explicit dict or palette cycling; colorblind-safe default palette),
+  `variant_indices` subset, `show_transmitted_beam`, `axes_units`
+  (`"mm" | "inv_angstrom"`), `show_legend`, `legend_labels`, `title`,
+  `background`, `annotation: SpotAnnotationConfig` (CD4), theme integration
+  with `plotting/styles.py`.
+- `render_composite_saed(pattern, *, config=None, ax=None) -> Figure` —
+  layered scatter (parent topmost by default), equal aspect, legend with
+  phase + variant + nearest-zone labels, publication defaults.
+- Structural tests (`tests/unit/test_composite_saed_plotting.py`): scatter
+  collection counts/colors/marker sizes track config; variant subset honored;
+  legend entries; axes units switch rescales coordinates; figures closed.
+
+### CD4 — Annotation engine (in `plotting/composite_saed.py`)
+
+- `SpotAnnotationConfig`: `enabled`, `max_labels`, `min_intensity`,
+  `format` (`"plain" | "overline"` mathtext), `merge_coincident` (one label
+  listing all coincident reflections, phase-tagged),
+  `coincidence_tolerance_mm`, `offset_pt`, `font_size`, `leader_lines`,
+  `avoid_overlap` (greedy candidate-offset placement with
+  `scipy.spatial.cKDTree` collision checks), `label_color_follows_spot`.
+- Deterministic placement; labels never overlap each other or spot markers
+  beyond tolerance; skipped labels reported on a returned annotation result.
+- Tests: coincident KS spots produce merged multi-phase labels; label boxes
+  pairwise disjoint (structural assertion via matplotlib bbox extents);
+  overline formatting pinned; determinism.
+
+### CD5 — Coincidence analysis + utilities (`diffraction/composite.py` additions)
+
+- `SpotCoincidenceReport` (frozen, `describe()`): pairs of
+  (parent hkl, variant index, child hkl, separation_mm) within tolerance,
+  grouped clusters, counts per variant — the quantitative statement of which
+  reflections superimpose for a given OR/zone (key for OR verification in
+  TEM practice).
+- `find_spot_coincidences(pattern, *, tolerance_mm)` vectorized via cKDTree.
+- `sweep_parent_zone_axes(relationship, zone_axes, ...)` convenience iterator.
+- Tests: KS composite has pinned coincidence counts within tight tolerance;
+  brute-force cross-check; describe() text.
+
+### CD6 — Integration
+
+- Exports: `pytex.diffraction.__init__`, top-level `pytex.__init__` lazy map,
+  `docs/README.md` index entry, CHANGELOG entry, this ledger finalized.
+- Worked examples (`worked_examples/examples/`): electron wavelength at
+  200 kV (cited standard value); KS child-zone mapping angular identity.
+- Regenerate gallery; full gates.
+
+## Verification gates (every phase, before commit)
+
+- `python -m pytest` (full suite green, no new warnings)
+- `python -m ruff check .`
+- `python -m mypy src`
+- `python scripts/check_repo_integrity.py`
+
+## Key facts established (verified against live code, 2026-07-20)
+
+- `core/transformation.py`: `OrientationRelationship` (named constructors:
+  Bain, NW, KS, GT, Pitsch, Burgers), `generate_variants` reproduces
+  literature counts (Bain 3; NW/Pitsch/Burgers 12; KS/GT 24);
+  `TransformationVariant.map_parent_vector_to_child` = child-frame
+  re-expression (`R v`); `_rationalize_components` exists for nearest-integer
+  index recovery (module-private; adapt, do not import privately across
+  modules without promotion).
+- `diffraction/saed.py`: loop-based single-phase kinematic SAED
+  (`generate_saed_pattern`) with `_choose_zone_basis` (deterministic u,v from
+  cross products), integer zone-law filter, electron structure-factor proxy
+  `_structure_factor_electron` (Z-scattering + B_iso damping), intensity
+  `|F|²/(1+g²)`. Kept intact for backward compatibility; CD1 engine is the
+  new vectorized surface and should match it on rational exact zones
+  (allowing for the deliberate intensity-model and selection-rule upgrades).
+- `diffraction/physics.py`: `ReflectionCondition` centering absences
+  (scalar `is_allowed`; CD1 adds a vectorized mask), `ScatteringFactorTable`.
+- `plotting/styles.py` `resolve_style(theme=...)` provides themed defaults
+  (`common`, `saed` sections); composite plotting should integrate but carry
+  its own typed config layer.
+- Repo doctrine: frozen slots dataclasses with `__post_init__` validation,
+  read-only ndarrays, `describe()` on report objects, vectorized hot paths,
+  no naked-array public APIs where frame meaning is ambiguous, tests with
+  implementation, figures closed in tests, no byte-level SVG baselines for
+  runtime plots.
+
+## Completed
+
+- (nothing yet beyond program design; CD0 commits with this file)
+
+## Next actions
+
+1. Commit CD0 (this file + `active_task_progress.md` update).
+2. Start CD1: implement `src/pytex/diffraction/kinematic.py` per spec above,
+   with `tests/unit/test_kinematic_engine.py` written alongside.
