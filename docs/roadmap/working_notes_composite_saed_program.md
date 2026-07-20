@@ -52,8 +52,8 @@ status, deliverables, and exactly what remains. Master context:
 
 | Phase | Deliverable | Status | Commit |
 | --- | --- | --- | --- |
-| CD0 | This working-notes file + ledger update | in progress | — |
-| CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | pending | — |
+| CD0 | This working-notes file + ledger update | complete | f609c0a |
+| CD1 | `diffraction/kinematic.py`: vectorized zone-axis engine + `SpotTable` | complete | (this commit) |
 | CD2 | `diffraction/composite.py`: composite OR pattern assembly | pending | — |
 | CD3 | `plotting/composite_saed.py`: config model + layered renderer | pending | — |
 | CD4 | Annotation engine with coincident-label merging + crowding avoidance | pending | — |
@@ -200,10 +200,28 @@ status, deliverables, and exactly what remains. Master context:
 
 ## Completed
 
-- (nothing yet beyond program design; CD0 commits with this file)
+- (CD0, f609c0a) Program designed; conventions pinned above; ledger wired.
+- (CD1) `src/pytex/diffraction/kinematic.py`: relativistic
+  `electron_wavelength_angstrom` (pinned De Graef Table 2.2 values: 0.037014 /
+  0.025079 / 0.019687 angstrom at 100/200/300 kV), `KinematicSimulationConfig`
+  (validated frozen config incl. excitation-error half-width, optional relrod
+  damping, centering-absence toggle), read-only struct-of-arrays `SpotTable`
+  with `describe()`, `zone_basis_from_axis` (legacy-parity deterministic
+  construction + g-alignment + CCW in-plane rotation, pinned), vectorized
+  `centering_allowed_mask` + `electron_structure_factors` (broadcast over
+  hkl; parity with the scalar legacy formula), and `simulate_zone_axis_spots`
+  (no per-reflection Python loops; excitation-error selection handles
+  irrational zones). 59 regression tests in
+  `tests/unit/test_kinematic_engine.py`: wavelength pins, legacy-parity on
+  Ni [011] (identical hkl set + detector coordinates to 1e-9 mm), FCC/BCC
+  forbidden-reflection absences, centering-mask parity vs scalar reference on
+  all seven centerings, Ni d(111)=2.03451 A pin, ZOLZ identity
+  s_g = -g^2 lambda/2, HOLZ exclusion, sorting/normalization/determinism,
+  shared-basis rotation round-trip, read-only arrays, config validation.
+  Gates: 937 passed, ruff clean, mypy clean, integrity passed.
 
 ## Next actions
 
-1. Commit CD0 (this file + `active_task_progress.md` update).
-2. Start CD1: implement `src/pytex/diffraction/kinematic.py` per spec above,
-   with `tests/unit/test_kinematic_engine.py` written alongside.
+1. Commit CD1 and push; record hash in the phase table.
+2. Start CD2: `src/pytex/diffraction/composite.py` per spec above, with
+   `tests/unit/test_composite_saed.py` written alongside.
