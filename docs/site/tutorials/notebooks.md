@@ -9,9 +9,12 @@ These notebooks are meant to do two things at once:
 
 The notebooks are intentionally aligned with the architecture and theory notes rather than acting as informal side material.
 
-They are also expected to track the current runtime API closely. When plotting, inversion, or
-batch behavior changes in code, the notebook generator and the built notebooks must be updated in
-the same change so the executable examples stay trustworthy.
+They are also expected to track the current runtime API closely. The notebooks are hand-authored
+and committed *executed*; when plotting, inversion, or batch behavior changes in code, the
+affected notebooks must be re-run (`python scripts/execute_notebooks.py --only <prefix>`) in the
+same change so the executable examples stay trustworthy. Every notebook computes its results live
+and checks them against analytic or literature values, so a divergence between code and tutorial
+surfaces as a test failure rather than a silent documentation lie.
 
 The priority roadmap notebooks are smoke-executed in the default suite when they stay within the
 lightweight surface, and the heavier structure or diffraction notebooks are controlled by the full
