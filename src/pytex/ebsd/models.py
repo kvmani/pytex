@@ -13,7 +13,12 @@ from pytex.core.acquisition import AcquisitionGeometry, CalibrationRecord, Measu
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane, MillerIndex, Phase
-from pytex.core.orientation import Orientation, OrientationSet
+from pytex.core.orientation import (
+    Orientation,
+    OrientationSet,
+    _disorientation_medoid_index,
+    _reduced_pair_disorientation_angles,
+)
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
@@ -193,19 +198,10 @@ def _disorientation_angles_from_relative_matrices(
         if right_symmetry is not None
         else np.eye(3, dtype=np.float64)[None, :, :]
     )
-    left_applied = np.einsum("aij,njk->naik", left_ops, relative_matrices, optimize=True)
-    candidates = np.einsum(
-        "naij,bkj->nabik",
-        left_applied,
-        right_ops,
-        optimize=True,
-    )
-    candidate_matrices = candidates.reshape(-1, 3, 3)
-    angles = _rotation_angles_from_matrices(candidate_matrices).reshape(
-        relative_matrices.shape[0],
-        left_ops.shape[0] * right_ops.shape[0],
-    )
-    return np.asarray(np.min(angles, axis=1), dtype=np.float64)
+    # Shares the core quaternion kernel: one dense product per memory-bounded
+    # block, instead of expanding an (n, |S_l|, |S_r|, 3, 3) candidate array
+    # that grows without limit in the number of pairs.
+    return _reduced_pair_disorientation_angles(relative_matrices, left_ops, right_ops)
 
 
 def _pairwise_distances(coordinates: np.ndarray) -> np.ndarray:
@@ -2159,14 +2155,14 @@ class CrystalMap:
         if member_indices.size == 1:
             return int(member_indices[0])
         # Representative = member with the least total disorientation to the
-        # others. The full pairwise matrix is vectorised; argmin keeps the first
-        # minimum, matching the previous sequential-scan tie-breaking.
-        member_set = self.orientations.subset(member_indices)
-        distances = member_set.misorientation_angles_to(
-            member_set, symmetry_aware=symmetry_aware
+        # others. The row sums are accumulated in blocks, so a large grain never
+        # allocates an (n, n) matrix, and members tied to within floating-point
+        # noise resolve to the lowest index rather than to whatever the
+        # summation order happened to produce.
+        best = _disorientation_medoid_index(
+            self.orientations.subset(member_indices),
+            symmetry_aware=symmetry_aware,
         )
-        total_scores = distances.sum(axis=1)
-        best = int(np.argmin(total_scores))
         return int(member_indices[best])
 
     def _segmentation_from_labels(

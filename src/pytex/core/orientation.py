@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import overload
 
 import numpy as np
@@ -625,39 +626,195 @@ def _canonicalize_quaternion_rows(quaternions: np.ndarray) -> np.ndarray:
     return canonical
 
 
+def _quaternion_left_matrices(quaternions: np.ndarray) -> np.ndarray:
+    """Matrices ``L`` with ``L @ q = p * q`` for each ``p`` in ``quaternions``."""
+
+    w, x, y, z = np.moveaxis(np.asarray(quaternions, dtype=np.float64), -1, 0)
+    return np.stack(
+        [
+            np.stack([w, -x, -y, -z], axis=-1),
+            np.stack([x, w, -z, y], axis=-1),
+            np.stack([y, z, w, -x], axis=-1),
+            np.stack([z, -y, x, w], axis=-1),
+        ],
+        axis=-2,
+    )
+
+
+def _quaternion_right_matrices(quaternions: np.ndarray) -> np.ndarray:
+    """Matrices ``R`` with ``R @ q = q * p`` for each ``p`` in ``quaternions``."""
+
+    w, x, y, z = np.moveaxis(np.asarray(quaternions, dtype=np.float64), -1, 0)
+    return np.stack(
+        [
+            np.stack([w, -x, -y, -z], axis=-1),
+            np.stack([x, w, z, -y], axis=-1),
+            np.stack([y, -z, w, x], axis=-1),
+            np.stack([z, y, -x, w], axis=-1),
+        ],
+        axis=-2,
+    )
+
+
+@lru_cache(maxsize=32)
+def _disorientation_scalar_projection_cached(
+    left_key: bytes,
+    right_key: bytes,
+    left_count: int,
+    right_count: int,
+) -> np.ndarray:
+    """Rows ``a`` such that ``a . q`` is the scalar part of ``p * q * r^-1``.
+
+    The disorientation angle only needs the scalar part of the symmetry-
+    conjugated relative quaternion, and that scalar part is *linear* in the
+    relative quaternion. Precomputing one row per operator pair turns the
+    whole symmetry reduction into a single matrix product.
+    """
+
+    left_quaternions = matrices_to_quaternions(
+        np.frombuffer(left_key, dtype=np.float64).reshape(left_count, 3, 3)
+    )
+    right_quaternions = matrices_to_quaternions(
+        np.frombuffer(right_key, dtype=np.float64).reshape(right_count, 3, 3)
+    )
+    # q -> p * q; then q -> q * conj(r). Composing gives R(conj(r)) @ L(p),
+    # whose first row is the linear functional for the scalar part.
+    left_action = _quaternion_left_matrices(left_quaternions)
+    conjugates = right_quaternions * np.array([1.0, -1.0, -1.0, -1.0])
+    right_action = _quaternion_right_matrices(conjugates)
+    combined = np.einsum("bij,ajk->abik", right_action, left_action, optimize=True)
+    projection = combined[:, :, 0, :].reshape(-1, 4)
+
+    # Only |a . q| matters, so rows that agree up to an overall sign are
+    # redundant. For same-phase cubic symmetry this collapses 24 x 24 operator
+    # pairs to 24 distinct functionals, cutting the reduction's memory traffic
+    # by the same factor without changing any result.
+    leading = np.argmax(np.abs(projection) > 1e-12, axis=1)
+    signs = np.sign(projection[np.arange(projection.shape[0]), leading])
+    signs[signs == 0.0] = 1.0
+    canonical = np.round(projection * signs[:, None], 12)
+    _, unique_rows = np.unique(canonical, axis=0, return_index=True)
+    projection = projection[np.sort(unique_rows)]
+    return np.ascontiguousarray(projection)
+
+
+def _disorientation_scalar_projection(
+    left_operators: np.ndarray,
+    right_operators: np.ndarray,
+) -> np.ndarray:
+    left = np.ascontiguousarray(np.asarray(left_operators, dtype=np.float64))
+    right = np.ascontiguousarray(np.asarray(right_operators, dtype=np.float64))
+    return _disorientation_scalar_projection_cached(
+        left.tobytes(), right.tobytes(), left.shape[0], right.shape[0]
+    )
+
+
+def _reduced_pair_disorientation_angles_from_quaternions(
+    relative_quaternions: np.ndarray,
+    left_operators: np.ndarray,
+    right_operators: np.ndarray,
+    *,
+    max_block_elements: int = 8_000_000,
+) -> np.ndarray:
+    """Symmetry-reduced disorientation angle of each relative quaternion.
+
+    Equivalent to ``min over S_l, S_r of angle(S_l @ M @ S_r^T)``, but expressed
+    as one dense matrix product per block instead of a chain of einsums over
+    the operator groups: ``angle = 2 * arccos(max_k |a_k . q|)``.
+    """
+
+    quaternions = np.asarray(relative_quaternions, dtype=np.float64)
+    total = quaternions.shape[0]
+    if total == 0:
+        return np.empty(0, dtype=np.float64)
+    projection = _disorientation_scalar_projection(left_operators, right_operators)
+    per_row = max(projection.shape[0], 1)
+    block = max(1, int(max_block_elements // per_row))
+    angles = np.empty(total, dtype=np.float64)
+    for start in range(0, total, block):
+        stop = min(start + block, total)
+        scalars = quaternions[start:stop] @ projection.T
+        np.abs(scalars, out=scalars)
+        best = np.clip(scalars.max(axis=1), 0.0, 1.0)
+        angles[start:stop] = 2.0 * np.arccos(best)
+    return angles
+
+
 def _reduced_pair_disorientation_angles(
     relative_matrices: np.ndarray,
     left_operators: np.ndarray,
     right_operators: np.ndarray,
     *,
-    max_block_elements: int = 2_000_000,
+    max_block_elements: int = 8_000_000,
 ) -> np.ndarray:
     """Symmetry-reduced disorientation angle of each relative rotation.
 
-    Returns ``min over S_l, S_r of angle(S_l @ M @ S_r^T)`` per matrix ``M``,
-    fully vectorised over the operator groups and processed in memory-bounded
-    blocks over the leading (pair) axis.
+    Returns ``min over S_l, S_r of angle(S_l @ M @ S_r^T)`` per matrix ``M``.
+    Callers that already hold quaternions should use
+    :func:`_reduced_pair_disorientation_angles_from_quaternions` and skip the
+    matrix round trip entirely.
     """
 
-    total = relative_matrices.shape[0]
-    if total == 0:
+    matrices = np.asarray(relative_matrices, dtype=np.float64)
+    if matrices.shape[0] == 0:
         return np.empty(0, dtype=np.float64)
-    left_count = left_operators.shape[0]
-    right_count = right_operators.shape[0]
-    per_row = max(left_count * right_count * 9, 1)
-    block = max(1, int(max_block_elements // per_row))
-    angles = np.empty(total, dtype=np.float64)
-    for start in range(0, total, block):
-        stop = min(start + block, total)
-        chunk = relative_matrices[start:stop]
-        # S_l @ M then (S_l M) @ S_r^T for every operator pair.
-        left = np.einsum("aij,sjk->saik", left_operators, chunk, optimize=True)
-        products = np.einsum("saij,bkj->sabik", left, right_operators, optimize=True)
-        traces = np.trace(products, axis1=3, axis2=4)
-        cos_theta = np.clip((traces - 1.0) * 0.5, -1.0, 1.0)
-        chunk_angles = np.arccos(cos_theta).reshape(stop - start, -1)
-        angles[start:stop] = np.min(chunk_angles, axis=1)
-    return angles
+    return _reduced_pair_disorientation_angles_from_quaternions(
+        matrices_to_quaternions(matrices),
+        left_operators,
+        right_operators,
+        max_block_elements=max_block_elements,
+    )
+
+
+def _disorientation_medoid_index(
+    orientations: OrientationSet,
+    *,
+    symmetry_aware: bool = True,
+    max_pairs_per_block: int = 4_000_000,
+    tie_rtol: float = 1e-9,
+) -> int:
+    """Index of the member with the least total disorientation to the others.
+
+    Equivalent to summing the full pairwise matrix, but the row sums are
+    accumulated in blocks so an n-member set never allocates an ``(n, n)``
+    array.
+
+    Grains routinely contain members whose total disorientation agrees to the
+    last few bits — a symmetric cluster has no unique medoid. Choosing by bare
+    ``argmin`` would then let the summation order, the BLAS build or the
+    machine decide the grain reference orientation. Members within
+    ``tie_rtol`` of the minimum are therefore treated as tied and the lowest
+    index wins, which is reproducible everywhere. The tolerance sits many
+    orders of magnitude below any physically meaningful separation.
+    """
+
+    count = len(orientations)
+    if count == 0:
+        raise ValueError("A medoid requires at least one orientation.")
+    if count <= 2:
+        return 0
+    quaternions = np.asarray(orientations.quaternions, dtype=np.float64)
+    conjugates = quaternions * np.array([1.0, -1.0, -1.0, -1.0])
+    identity = np.eye(3, dtype=np.float64)[None, :, :]
+    operators = (
+        orientations.symmetry.operators
+        if symmetry_aware and orientations.symmetry is not None
+        else identity
+    )
+    rows_per_block = max(1, int(max_pairs_per_block // count))
+    totals = np.zeros(count, dtype=np.float64)
+    for start in range(0, count, rows_per_block):
+        stop = min(start + rows_per_block, count)
+        relative = quaternions_multiply(
+            conjugates[start:stop, None, :], quaternions[None, :, :]
+        ).reshape(-1, 4)
+        angles = _reduced_pair_disorientation_angles_from_quaternions(
+            relative, operators, operators
+        ).reshape(stop - start, count)
+        totals[start:stop] = angles.sum(axis=1)
+    minimum = float(totals.min())
+    tied = totals <= minimum + tie_rtol * max(abs(minimum), 1.0)
+    return int(np.flatnonzero(tied)[0])
 
 
 def _deduplicate_orientation_set(orientations: OrientationSet) -> OrientationSet:
@@ -2334,12 +2491,12 @@ class OrientationSet:
             angles = np.zeros((rows, columns), dtype=np.float64)
             angles.setflags(write=False)
             return angles
-        left = self.as_matrices()
-        right = other.as_matrices()
-        # Crystal-frame relative rotation inv(o_i) @ o_j = R_i^T @ R_j for every pair.
-        relative = np.einsum("iqp,jql->ijpl", left, right, optimize=True).reshape(
-            rows * columns, 3, 3
-        )
+        # Crystal-frame relative rotation inv(o_i) o_j = conj(q_i) * q_j for every
+        # pair. Staying in quaternions avoids materialising an (n*m, 3, 3) array.
+        left_quaternions = np.asarray(self.quaternions, dtype=np.float64)
+        right_quaternions = np.asarray(other.quaternions, dtype=np.float64)
+        conjugates = left_quaternions * np.array([1.0, -1.0, -1.0, -1.0])
+        relative = quaternions_multiply(conjugates[:, None, :], right_quaternions[None, :, :])
         identity = np.eye(3, dtype=np.float64)[None, :, :]
         left_operators = (
             self.symmetry.operators if symmetry_aware and self.symmetry is not None else identity
@@ -2347,8 +2504,8 @@ class OrientationSet:
         right_operators = (
             other.symmetry.operators if symmetry_aware and other.symmetry is not None else identity
         )
-        angles = _reduced_pair_disorientation_angles(
-            relative, left_operators, right_operators
+        angles = _reduced_pair_disorientation_angles_from_quaternions(
+            relative.reshape(rows * columns, 4), left_operators, right_operators
         ).reshape(rows, columns)
         angles = np.ascontiguousarray(angles)
         angles.setflags(write=False)

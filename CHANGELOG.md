@@ -11,7 +11,59 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Changed
+
+- **Symmetry-reduced disorientation is now a single dense product.** The
+  reduction `min over S_l, S_r of angle(S_l M S_r^T)` previously expanded an
+  `(n, |S_l|, |S_r|, 3, 3)` candidate array through a chain of einsums. Because
+  the disorientation angle depends only on the *scalar* part of the
+  symmetry-conjugated relative quaternion, and that scalar part is linear in
+  the quaternion, the whole reduction collapses to one precomputed matrix of
+  linear functionals and a single `(n, 4) @ (4, k)` product per memory-bounded
+  block. Rows that agree up to sign are redundant under `|.|`, so for
+  same-phase cubic symmetry the 24 x 24 operator pairs deduplicate to 24
+  functionals. Results are unchanged to 5e-14 rad across twelve point groups
+  and four cross-symmetry pairs, pinned by
+  `test_reduced_disorientation_kernel_matches_trace_reference`.
+
+  Measured on this machine (fcc nickel scan, `m-3m`, 4-connected):
+
+  | operation | before | after | speedup |
+  | --- | --- | --- | --- |
+  | reduction kernel, 200 000 pairs | 2.504 s | 0.110 s | 22.8x |
+  | KAM, 13 000 points | 0.625 s | 0.012 s | 52.4x |
+  | KAM, 61 600 points | 6.491 s | 0.142 s | 45.8x |
+  | `segment_grains`, 2 080 points | 5.73 s | 0.06 s | 95x |
+  | `segment_grains`, 13 000 points | 114.4 s | 1.02 s | 112x |
+  | `or_deviation`, 5 000 pairs | 1.591 s | 0.137 s | 11.6x |
+  | `reconstruct_parent_grains`, 400 grains | 3.946 s | 0.428 s | 9.2x |
+
+- `CrystalMap.segment_grains` no longer allocates an `(n, n)` angle matrix per
+  grain, and `pytex.ebsd.models` no longer expands an unbounded
+  `(pairs, |S|, |S|, 3, 3)` candidate array for neighbour misorientations —
+  that array reached 1.07 GB for a 13 000-point scan and 5.09 GB for a
+  61 600-point one. Both paths now accumulate through the shared,
+  block-bounded kernel, so memory is flat in the number of pairs.
+
+- **Grain representative orientations now resolve exact ties deterministically.**
+  A grain whose members are symmetric about its centre has no unique medoid;
+  under bare `argmin` the representative — and therefore the reference
+  orientation GROD is measured from — could be decided by summation order, the
+  BLAS build or the machine. Members within a relative `1e-9` of the minimum
+  total disorientation are now treated as tied and the lowest index wins. On
+  the reference scans this changes the representative for grains that had two
+  candidates agreeing to ~1e-10 rad, with the next distinct candidate 1e-5 to
+  3e-4 rad away; GROD maps are unchanged.
+
 ### Fixed
+
+- **Small-angle misorientation accuracy (scientific).** Neighbour
+  misorientations were computed as `arccos((trace - 1) / 2)` on a triple matrix
+  product, which is ill-conditioned exactly where EBSD measures — KAM, GROD and
+  low-angle boundaries all live below 1 degree. Against a well-conditioned
+  `atan2` reference the old path erred by up to 3.5e-8 rad; the quaternion path
+  errs by 4.5e-13 rad, roughly five orders of magnitude better. Reported KAM
+  and GROD values shift in the eighth decimal.
 
 - Notebook 07 (`07_ebsd_regular_grid_workflows`) built a `CrystalMap` whose
   orientations lived in the specimen frame while its grid lived in the map
