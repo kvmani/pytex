@@ -62,7 +62,17 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   (identity-preserving). Full plan, design decisions, two mid-flight design corrections, and the
   verification record are in `docs/roadmap/working_notes_reference_frame_foundation.md`.
   Verified: ruff clean, mypy strict clean, 1191 tests passed, coverage 89.31%, integrity and
-  Sphinx build green. Not yet committed.
+  Sphinx build green.
+- **GOAL (2026-07-26): Crystallographic convention harmonization — COMPLETE (HC1-HC6).**
+  `pytex.core.notation` is now the single notation surface: the reciprocal star marks the
+  basis (`a*, b*, c*`) and never Miller indices, symmetry families take `{hkl}` / `<uvw>`,
+  negative indices are overbarred, and index concatenation is separated when ambiguous.
+  Codified in AGENTS.md, the notation standard, the terminology registry, the reference
+  canon and the canonical data model, and enforced by `tests/unit/test_notation_conventions.py`.
+  The generated frame figures and gizmos are rolled through the docs. Plan and outcomes in
+  `docs/roadmap/working_notes_convention_harmonization.md`.
+- Both programs committed and pushed to `main` as `73f4dc8`: ruff clean, mypy strict clean,
+  1236 tests passed, coverage 89.37%, integrity green, Sphinx build warning-free.
 - Next phase candidates after it (in roadmap order): F13 habit planes / PTMC (large; needs its own
   working notes), reconstruction stabilization (measured-data fixture + MTEX
   `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre

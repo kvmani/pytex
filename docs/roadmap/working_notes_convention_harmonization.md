@@ -73,7 +73,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | HC3 | Codify the reciprocal-star rule in the foundational docs, with an enforcing policy test | DONE |
 | HC4 | Codify the further international conventions listed above | DONE |
 | HC5 | Roll the new reference-frame visualizations through the docs consistently | DONE |
-| HC6 | Full verification, then commit and push to `main` | IN PROGRESS |
+| HC6 | Full verification, then commit and push to `main` | DONE |
 
 ## Verification record
 
@@ -88,7 +88,9 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
     harmonization)
   - `python -m pytest` - **1236 passed** (1191 entering this program; +45), no warnings
   - coverage **89.37%**, above the 87% CI gate
-  - worked-example gallery regenerated; all 21 notebooks re-executed and committed executed
+  - worked-example gallery regenerated; all 21 notebooks re-executed, and the ones whose
+    diff was only an execution timestamp were reverted so the commit shows real changes
+  - committed and pushed to `main` as `73f4dc8`
 
 ## Outcomes
 
