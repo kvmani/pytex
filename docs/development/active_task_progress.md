@@ -73,6 +73,11 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `docs/roadmap/working_notes_convention_harmonization.md`.
 - Both programs committed and pushed to `main` as `73f4dc8`: ruff clean, mypy strict clean,
   1236 tests passed, coverage 89.37%, integrity green, Sphinx build warning-free.
+- **ACTIVE GOAL (2026-07-26): Figure layout repair + Burgers OR notebook program.** Fix text
+  overflow/overlap across all documentation SVGs, and teach the Burgers OR exhaustively in both
+  directions (bcc -> hcp and hcp -> bcc) with variants, transformation strain, parallelisms,
+  crystal visualizations and variant pole figures. Plan and phase ledger (FX1-FX9) in
+  `docs/roadmap/working_notes_figure_and_or_program.md` — **read that file to resume**.
 - Next phase candidates after it (in roadmap order): F13 habit planes / PTMC (large; needs its own
   working notes), reconstruction stabilization (measured-data fixture + MTEX
   `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre

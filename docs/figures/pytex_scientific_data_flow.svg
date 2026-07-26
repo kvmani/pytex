@@ -35,12 +35,12 @@
   <text x="388" y="304" text-anchor="middle" class="label">Boundary</text>
   <text x="388" y="328" text-anchor="middle" class="body">validate manifests</text>
 
-  <rect x="520" y="226" width="176" height="124" class="card" fill="#eff6ff" stroke="#2563eb"/>
+  <rect x="520" y="226" width="176.6" height="124" class="card" fill="#eff6ff" stroke="#2563eb"/>
   <circle cx="608" cy="264" r="24" fill="#dbeafe"/><text x="608" y="272" text-anchor="middle" class="label">3</text>
   <text x="608" y="304" text-anchor="middle" class="label">Canonical Core</text>
   <text x="608" y="328" text-anchor="middle" class="body">frames, phase, symmetry</text>
 
-  <rect x="740" y="226" width="176" height="124" class="card" fill="#ecfdf5" stroke="#16a34a"/>
+  <rect x="740" y="226" width="176.6" height="124" class="card" fill="#ecfdf5" stroke="#16a34a"/>
   <circle cx="828" cy="264" r="24" fill="#dcfce7"/><text x="828" y="272" text-anchor="middle" class="label">4</text>
   <text x="828" y="304" text-anchor="middle" class="label">Workflows</text>
   <text x="828" y="328" text-anchor="middle" class="body">texture, EBSD, diffraction</text>
@@ -73,9 +73,9 @@
   <path class="evidence" d="M600 524 C650 430 790 400 828 350"/>
   <path class="evidence" d="M947 524 C992 430 1020 400 1038 350"/>
 
-  <rect x="150" y="656" width="900" height="34" rx="17" fill="#ffffff" stroke="#dbe4f0"/>
+  <rect x="150" y="656" width="900" height="50.2" rx="17" fill="#ffffff" stroke="#dbe4f0"/>
   <circle cx="188" cy="673" r="6" fill="#07122f"/><text x="206" y="679" class="small">solid arrows: canonical data movement</text>
   <circle cx="480" cy="673" r="6" fill="#2563eb"/><text x="498" y="679" class="small">dashed arrows: documentation and validation constraints</text>
-  <circle cx="874" cy="673" r="6" fill="#16a34a"/><text x="892" y="679" class="small">green: evidence-backed outputs</text>
+  <circle cx="874" cy="673" r="6" fill="#16a34a"/><text x="892" y="679" class="small"><tspan x="892" dy="0.0">green: evidence-backed</tspan><tspan x="892" dy="16.6">outputs</tspan></text>
 </svg>
 

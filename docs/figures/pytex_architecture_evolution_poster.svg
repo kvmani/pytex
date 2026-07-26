@@ -27,7 +27,7 @@
     The project already has a substantial semantic core. The next work broadens the foundation without breaking that core.
   </text>
 
-  <rect x="140" y="270" rx="26" ry="26" width="620" height="640" fill="#ecfdf5" stroke="#2d6a4f" stroke-width="3"/>
+  <rect x="140" y="270" rx="26" ry="26" width="718.0" height="640" fill="#ecfdf5" stroke="#2d6a4f" stroke-width="3"/>
   <text x="180" y="324" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#1b4332">Implemented Or Foundational Today</text>
 
   <text x="180" y="378" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#1b4332">Core model: frames, symmetry, lattice, provenance, orientation</text>
@@ -37,7 +37,7 @@
   <text x="180" y="570" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#1b4332">Import and manifest surface: EBSD import normalization</text>
   <text x="180" y="618" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#1b4332">Documentation and validation doctrine already live</text>
 
-  <rect x="840" y="270" rx="26" ry="26" width="620" height="640" fill="#fff1f2" stroke="#b56576" stroke-width="3"/>
+  <rect x="840" y="270" rx="26" ry="26" width="706.8" height="640" fill="#fff1f2" stroke="#b56576" stroke-width="3"/>
   <text x="880" y="324" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#6d1f2f">Architecturally Defined Next</text>
 
   <text x="880" y="378" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#6d1f2f">SpaceGroupSpec and broader structure semantics</text>
@@ -50,7 +50,7 @@
   <line x1="760" y1="590" x2="840" y2="590" stroke="#486581" stroke-width="5" marker-end="url(#arrow)"/>
   <text x="702" y="565" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#486581">extends</text>
 
-  <rect x="140" y="940" rx="18" ry="18" width="1320" height="70" fill="#102a43"/>
+  <rect x="140" y="940" rx="18" ry="18" width="1383.9" height="82.6" fill="#102a43"/>
   <text x="180" y="984" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#f0f4f8">
     Rule: broaden the semantic foundation only where the current model is explicitly insufficient, never by inventing private conventions inside subsystems.
   </text>

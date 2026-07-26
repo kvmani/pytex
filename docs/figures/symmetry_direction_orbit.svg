@@ -47,7 +47,7 @@
   <path d="M548 430 C640 430 690 430 740 430" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow)"/>
   <text x="580" y="406" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#17324a">reduce orbit into the sector</text>
 
-  <rect x="804" y="72" width="388" height="96" rx="16" fill="#efe5c8" stroke="#b38a3a"/>
+  <rect x="804" y="72" width="419.4" height="96" rx="16" fill="#efe5c8" stroke="#b38a3a"/>
   <text x="854" y="108" font-size="21" font-family="Arial, Helvetica, sans-serif" fill="#5b4215">Mathematical rule</text>
   <text x="830" y="138" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#5b4215">d_FR ∈ 𝓕_dir and d_FR = c d for some c ∈ 𝓒</text>
 </svg>

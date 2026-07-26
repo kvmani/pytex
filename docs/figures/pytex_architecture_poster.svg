@@ -51,23 +51,23 @@
   <text x="1120" y="394" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#1b4332">EBSD</text>
   <text x="1120" y="430" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#1b4332">CrystalMap, KAM, grains, GROD</text>
 
-  <rect x="720" y="528" rx="22" ry="22" width="330" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
+  <rect x="720" y="528" rx="22" ry="22" width="356.0" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
   <text x="750" y="574" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#1b4332">Diffraction</text>
   <text x="750" y="610" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#1b4332">Geometry, spots, families, indexing</text>
 
-  <rect x="1090" y="528" rx="22" ry="22" width="330" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
+  <rect x="1090" y="528" rx="22" ry="22" width="374.8" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
   <text x="1120" y="574" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#1b4332">Plotting</text>
   <text x="1120" y="610" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#1b4332">IPF color keys and presentation aids</text>
 
-  <rect x="160" y="700" rx="22" ry="22" width="400" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
+  <rect x="160" y="700" rx="22" ry="22" width="426.0" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
   <text x="190" y="746" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#744210">Boundary Layer</text>
   <text x="190" y="782" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#744210">Adapters normalize external tools and data</text>
 
-  <rect x="600" y="700" rx="22" ry="22" width="400" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
+  <rect x="600" y="700" rx="22" ry="22" width="426.0" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
   <text x="630" y="746" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#744210">Experimental Layer</text>
   <text x="630" y="782" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#744210">Unstable research methods build downstream</text>
 
-  <rect x="1040" y="700" rx="22" ry="22" width="380" height="140" fill="#fde2e4" stroke="#b56576" stroke-width="3"/>
+  <rect x="1040" y="700" rx="22" ry="22" width="482.1" height="140" fill="#fde2e4" stroke="#b56576" stroke-width="3"/>
   <text x="1070" y="746" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#6d1f2f">Next Foundations</text>
   <text x="1070" y="782" font-family="Arial, Helvetica, sans-serif" font-size="19" fill="#6d1f2f">Multimodal acquisition and phase transformation</text>
 

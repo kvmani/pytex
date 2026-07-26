@@ -13,17 +13,17 @@
   <rect x="470" y="112" width="160" height="5" rx="3" fill="#2563eb"/><rect x="550" y="112" width="80" height="5" rx="3" fill="#7c3aed"/>
 
   <rect x="70" y="270" width="190" height="96" class="card" fill="#eff6ff" stroke="#2563eb"/>
-  <text x="100" y="305" class="label">Canonical Core</text><text x="100" y="330" class="body">phase, lattice, orientation</text>
-  <rect x="330" y="160" width="190" height="96" class="card" fill="#ecfeff" stroke="#0f9f9f"/>
-  <text x="360" y="195" class="label">DiffractionGeometry</text><text x="360" y="220" class="body">detector, specimen, lab</text>
-  <rect x="330" y="380" width="190" height="96" class="card" fill="#fffbeb" stroke="#f59e0b"/>
-  <text x="360" y="415" class="label">Reciprocal Space</text><text x="360" y="440" class="body">planes, vectors, zone axes</text>
+  <text x="100" y="305" class="label">Canonical Core</text><text x="100" y="330" class="body"><tspan x="100" dy="0.0">phase, lattice,</tspan><tspan x="100" dy="19.2">orientation</tspan></text>
+  <rect x="330" y="160" width="230.3" height="96" class="card" fill="#ecfeff" stroke="#0f9f9f"/>
+  <text x="360" y="195" class="label">DiffractionGeometry</text><text x="360" y="220" class="body">Reciprocal Space</text>
+  <rect x="330" y="380" width="213.7" height="96" class="card" fill="#fffbeb" stroke="#f59e0b"/>
+  <text x="360" y="415" class="label">Reciprocal Space</text><text x="360" y="440" class="body"><tspan x="360" dy="0.0">planes, vectors, zone</tspan><tspan x="360" dy="19.2">axes</tspan></text>
   <rect x="602" y="160" width="190" height="96" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="632" y="195" class="label">Powder XRD</text><text x="632" y="220" class="body">reflections and spectrum</text>
+  <text x="632" y="195" class="label">Powder XRD</text><text x="632" y="220" class="body"><tspan x="632" dy="0.0">reflections and</tspan><tspan x="632" dy="19.2">spectrum</tspan></text>
   <rect x="602" y="380" width="190" height="96" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="632" y="415" class="label">SAED Spots</text><text x="632" y="440" class="body">families and acceptance masks</text>
-  <rect x="858" y="270" width="174" height="96" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="888" y="305" class="label">Indexing + Evidence</text><text x="888" y="330" class="body">ranking, refinement, validation</text>
+  <text x="632" y="415" class="label">SAED Spots</text><text x="632" y="440" class="body"><tspan x="632" dy="0.0">families and</tspan><tspan x="632" dy="19.2">acceptance masks</tspan></text>
+  <rect x="858" y="270" width="228.0" height="96" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="888" y="305" class="label">Indexing + Evidence</text><text x="888" y="330" class="body"><tspan x="888" dy="0.0">ranking, refinement,</tspan><tspan x="888" dy="19.2">validation</tspan></text>
 
   <path class="arrow" d="M260 318 C300 280 306 218 330 208"/>
   <path class="arrow" d="M260 318 C300 356 306 418 330 428"/>

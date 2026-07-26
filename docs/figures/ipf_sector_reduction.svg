@@ -14,8 +14,8 @@
   </text>
 
   <rect x="56" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
-  <rect x="485" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
-  <rect x="914" y="150" width="350" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="485" y="150" width="398.3" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
+  <rect x="914" y="150" width="422.0" height="430" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
 
   <text x="92" y="192" font-size="25" font-family="Arial, Helvetica, sans-serif" fill="#21402c">1. Start with one direction</text>
   <g transform="translate(230,355)">

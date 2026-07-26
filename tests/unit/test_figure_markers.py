@@ -245,3 +245,66 @@ def test_generated_figure_list_matches_the_generator() -> None:
         "The generator writes a different figure set than this test tracks: "
         f"generator={sorted(written)}, test={sorted(GENERATED_FIGURES)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Text layout across every figure, not only the generated ones
+# ---------------------------------------------------------------------------
+
+
+def _layout_defects_by_kind() -> dict[str, list[str]]:
+    """Every layout defect the auditor finds, grouped by kind."""
+
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from audit_figure_text_layout import audit
+
+    grouped: dict[str, list[str]] = {}
+    for path in _figures():
+        for defect in audit(path):
+            grouped.setdefault(defect.kind, []).append(f"{defect.figure}: {defect.detail}")
+    return grouped
+
+
+def test_no_figure_text_runs_outside_its_box_or_canvas() -> None:
+    """The reported defect: captions painted across their panel border.
+
+    ``box`` and ``canvas`` overflows are held at zero. They are the ones a reader
+    sees as text spilling out of a card or being cut off at the edge, and every
+    one of them has been repaired — 5 remained after the automated passes and
+    were fixed individually.
+    """
+
+    grouped = _layout_defects_by_kind()
+    offenders = grouped.get("box", []) + grouped.get("canvas", [])
+    assert not offenders, (
+        "Text overflows its box or the canvas in: "
+        + "; ".join(offenders)
+        + ". Run `python scripts/audit_figure_text_layout.py` to inspect, then "
+        "`fix_svg_text_overflow.py` / `fix_svg_title_wraps.py` to repair."
+    )
+
+
+#: Overlaps that remain in dense hand-authored teaching figures. These are
+#: tracked rather than zeroed because each needs an individual layout decision
+#: in a figure whose geometry is meaningful (an axis label beside a formula, a
+#: callout over a sphere). The count is a ceiling: it must not grow.
+KNOWN_OVERLAP_CEILING = 20
+
+
+def test_figure_text_overlaps_do_not_grow() -> None:
+    """Collisions and text-over-panel are capped so repairs cannot regress.
+
+    The starting point of this program was 86 layout defects measured with
+    accurate Helvetica metrics. Captions overflowing cards and titles overflowing
+    cards are now zero; what remains are overlaps inside dense diagrams, held
+    under a ceiling so no change can quietly add more.
+    """
+
+    grouped = _layout_defects_by_kind()
+    remaining = grouped.get("collision", []) + grouped.get("over-card", [])
+    assert len(remaining) <= KNOWN_OVERLAP_CEILING, (
+        f"Figure text overlaps rose to {len(remaining)}, above the tracked ceiling of "
+        f"{KNOWN_OVERLAP_CEILING}: " + "; ".join(remaining)
+    )

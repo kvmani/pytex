@@ -35,6 +35,6 @@
     <text x="104" y="-74" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#8f301e">k_out</text>
     <line x1="-138" y1="0" x2="-42" y2="-68" stroke="#b8922c" stroke-width="4" marker-end="url(#arrow)"/>
     <text x="-94" y="-86" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5b4308">g</text>
-    <text x="-38" y="168" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#313a43">small excitation error ⇒ accepted spot</text>
+    <text x="-38" y="168" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#313a43"><tspan x="-38" dy="0.0">small excitation error ⇒ accepted</tspan><tspan x="-38" dy="23.0">spot</tspan></text>
   </g>
 </svg>

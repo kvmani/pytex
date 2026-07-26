@@ -24,7 +24,7 @@
   <text x="72" y="286" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#334e68">Standards</text>
   <text x="72" y="316" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#334e68">Docs + validation</text>
 
-  <rect x="304" y="146" width="280" height="250" rx="18" ry="18" fill="#dcfce7"/>
+  <rect x="304" y="146" width="306.0" height="250" rx="18" ry="18" fill="#dcfce7"/>
   <text x="328" y="186" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" fill="#1b4332">Canonical Core</text>
   <text x="328" y="226" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#1b4332">Frames, transforms</text>
   <text x="328" y="256" font-family="Arial, Helvetica, sans-serif" font-size="18" fill="#1b4332">Symmetry, lattice</text>

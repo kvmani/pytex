@@ -21,12 +21,12 @@
 
   <rect x="48" y="150" width="1104" height="108" rx="18" class="lane" stroke="#7c3aed"/>
   <text x="70" y="180" class="label" fill="#7c3aed">Governance And Evidence</text>
-  <rect x="84" y="202" width="250" height="74" class="card" fill="url(#violet)" stroke="#7c3aed"/>
-  <text x="112" y="232" class="label">Mission + Standards</text><text x="112" y="254" class="body">notation, reference canon, manifests</text>
-  <rect x="474" y="202" width="250" height="74" class="card" fill="url(#violet)" stroke="#7c3aed"/>
-  <text x="502" y="232" class="label">Documentation Surface</text><text x="502" y="254" class="body">Sphinx, LaTeX notes, SVG figures</text>
-  <rect x="864" y="202" width="250" height="74" class="card" fill="url(#teal)" stroke="#0f9f9f"/>
-  <text x="892" y="232" class="label">Validation Surface</text><text x="892" y="254" class="body">tests, parity ledgers, benchmarks</text>
+  <rect x="84" y="202" width="250" height="82.4" class="card" fill="url(#violet)" stroke="#7c3aed"/>
+  <text x="112" y="232" class="label">Mission + Standards</text><text x="112" y="254" class="body"><tspan x="112" dy="0.0">notation, reference canon,</tspan><tspan x="112" dy="19.2">manifests</tspan></text>
+  <rect x="474" y="202" width="267.6" height="82.4" class="card" fill="url(#violet)" stroke="#7c3aed"/>
+  <text x="502" y="232" class="label">Documentation Surface</text><text x="502" y="254" class="body"><tspan x="502" dy="0.0">Sphinx, LaTeX notes, SVG</tspan><tspan x="502" dy="19.2">figures</tspan></text>
+  <rect x="864" y="202" width="250" height="82.4" class="card" fill="url(#teal)" stroke="#0f9f9f"/>
+  <text x="892" y="232" class="label">Validation Surface</text><text x="892" y="254" class="body"><tspan x="892" dy="0.0">tests, parity ledgers,</tspan><tspan x="892" dy="19.2">benchmarks</tspan></text>
 
   <rect x="48" y="318" width="1104" height="154" rx="18" class="lane" stroke="#2563eb"/>
   <text x="70" y="348" class="label" fill="#2563eb">Canonical Core</text>
@@ -35,7 +35,7 @@
   <rect x="446" y="374" width="150" height="72" class="card" fill="url(#blue)" stroke="#2563eb"/><text x="521" y="405" text-anchor="middle" class="label">Symmetry</text><text x="521" y="429" text-anchor="middle" class="body">operators</text>
   <rect x="626" y="374" width="150" height="72" class="card" fill="url(#blue)" stroke="#2563eb"/><text x="701" y="405" text-anchor="middle" class="label">Lattice</text><text x="701" y="429" text-anchor="middle" class="body">phase + basis</text>
   <rect x="806" y="374" width="150" height="72" class="card" fill="url(#blue)" stroke="#2563eb"/><text x="881" y="405" text-anchor="middle" class="label">Orientation</text><text x="881" y="429" text-anchor="middle" class="body">rotation semantics</text>
-  <rect x="986" y="374" width="120" height="72" class="card" fill="url(#blue)" stroke="#2563eb"/><text x="1046" y="405" text-anchor="middle" class="label">Provenance</text><text x="1046" y="429" text-anchor="middle" class="body">traceability</text>
+  <rect x="986" y="374" width="127.1" height="72" class="card" fill="url(#blue)" stroke="#2563eb"/><text x="1046" y="405" text-anchor="middle" class="label">Provenance</text><text x="1046" y="429" text-anchor="middle" class="body">traceability</text>
 
   <rect x="66" y="530" width="630" height="144" rx="18" class="lane" stroke="#16a34a"/>
   <text x="88" y="560" class="label" fill="#16a34a">Domain Modules</text>
@@ -47,7 +47,7 @@
   <rect x="742" y="530" width="390" height="144" rx="18" class="lane" stroke="#f59e0b"/>
   <text x="764" y="560" class="label" fill="#f59e0b">Boundary And Growth</text>
   <rect x="778" y="584" width="146" height="68" class="card" fill="url(#amber)" stroke="#f59e0b"/><text x="851" y="613" text-anchor="middle" class="label">Adapters</text><text x="851" y="635" text-anchor="middle" class="body">normalize inputs</text>
-  <rect x="958" y="584" width="146" height="68" class="card" fill="url(#rose)" stroke="#e11d48"/><text x="1031" y="613" text-anchor="middle" class="label">Next Foundations</text><text x="1031" y="635" text-anchor="middle" class="body">multimodal + transform</text>
+  <rect x="958" y="584" width="228.0" height="81.5" class="card" fill="url(#rose)" stroke="#e11d48"/><text x="1031" y="613" text-anchor="middle" class="label">Next Foundations</text><text x="1031" y="635" text-anchor="middle" class="body"><tspan x="1031" dy="0.0">multimodal +</tspan><tspan x="1031" dy="19.2">transform</tspan></text>
 
   <path class="arrow" d="M209 276 V360"/><path class="arrow" d="M599 276 V360"/><path class="arrow" d="M989 276 V360"/>
   <path class="arrow" d="M236 410 H266"/><path class="arrow" d="M416 410 H446"/><path class="arrow" d="M596 410 H626"/><path class="arrow" d="M776 410 H806"/><path class="arrow" d="M956 410 H986"/>
