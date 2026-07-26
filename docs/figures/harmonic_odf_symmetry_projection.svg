@@ -14,14 +14,14 @@
       .arrow-orange { stroke: #c2410c; stroke-width: 3; fill: none; marker-end: url(#arrowOrange); }
       .arrow-gray { stroke: #627d98; stroke-width: 3; fill: none; marker-end: url(#arrowGray); }
     </style>
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L9,3 L0,6 Z" fill="#1d4ed8"/>
+    <marker markerUnits="userSpaceOnUse" id="arrowBlue" markerWidth="20.00" markerHeight="20.00" refX="16.00" refY="6.00" orient="auto">
+      <path d="M0.00,0.00 L18.00,6.00 L0.00,12.00 Z" fill="#1d4ed8"/>
     </marker>
-    <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L9,3 L0,6 Z" fill="#c2410c"/>
+    <marker markerUnits="userSpaceOnUse" id="arrowOrange" markerWidth="20.00" markerHeight="20.00" refX="16.00" refY="6.00" orient="auto">
+      <path d="M0.00,0.00 L18.00,6.00 L0.00,12.00 Z" fill="#c2410c"/>
     </marker>
-    <marker id="arrowGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-      <path d="M0,0 L9,3 L0,6 Z" fill="#627d98"/>
+    <marker markerUnits="userSpaceOnUse" id="arrowGray" markerWidth="20.00" markerHeight="20.00" refX="16.00" refY="6.00" orient="auto">
+      <path d="M0.00,0.00 L18.00,6.00 L0.00,12.00 Z" fill="#627d98"/>
     </marker>
   </defs>
 

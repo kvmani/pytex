@@ -49,7 +49,7 @@
     </linearGradient>
     
     <!-- Arrow marker -->
-    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+    <marker markerUnits="userSpaceOnUse" id="arrowhead" markerWidth="20.00" markerHeight="20.00" refX="18.00" refY="6.00" orient="auto">
       <polygon points="0 0, 10 3, 0 6" fill="#4b5563" />
     </marker>
     

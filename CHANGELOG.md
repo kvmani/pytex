@@ -95,6 +95,38 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **Documentation figures rendered with runaway arrowheads.** SVG markers
+  default to `markerUnits="strokeWidth"`, which multiplies the arrowhead by the
+  stroke width of the line it terminates, so a figure declaring a 12-unit head
+  and drawing a `stroke-width="4"` line rendered a **48-unit** head. Across
+  `docs/figures/` this left arrowheads occupying 11% to 125% of the lines they
+  annotated — in the worst case the head was longer than the whole arrow, and
+  the reference-frame triads were unreadable.
+
+  Six frame and orientation-convention figures are now **generated from the
+  model** by `scripts/generate_reference_frame_figures.py`:
+  `reference_frames.svg` (the canonical chain), `reference_frames_vectors.svg`
+  and `orientation_mapping_semantics.svg` (the crystal-to-specimen mapping, the
+  second showing the inverse as a separate relationship),
+  `active_passive_rotation.svg`, `bunge_euler_geometry.svg` (one computed panel
+  per Euler step), and `hcp_reference_frame.svg` (basal axes read from
+  `Lattice.direct_basis()`). Their axis directions are therefore the modelled
+  axis directions, and their layout is computed so text cannot overflow or
+  collide.
+
+  The remaining 30 hand-authored figures were corrected in place by the new
+  `scripts/fix_svg_marker_units.py`, which switches each marker to absolute
+  units and pre-scales its geometry to preserve the figure's intended visual
+  weight while bounding the head against the lines it terminates. Median
+  head-to-line ratios dropped from as high as 1.11 to at most 0.25.
+  `tests/unit/test_figure_markers.py` fails if the defect reappears.
+
+  While regenerating, one scientific error in the old chain figure was also
+  fixed: it drew the reciprocal frame as a link in the linear chain, implying a
+  `laboratory -> reciprocal` step. Duality relates the reciprocal frame to the
+  **crystal** frame, so it is now drawn off the chain, matching the canonical
+  frame chain in the notation standard.
+
 - **Index formatting was ambiguous for negative and multi-digit components.**
   `format_miller_indices` concatenated components unconditionally, so `[1-10]`
   could be read as `[1, -1, 0]` *or* `[1, -10]`, and `(1210)` as `(1, 2, 1, 0)`

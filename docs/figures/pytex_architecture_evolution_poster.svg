@@ -13,8 +13,8 @@
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#102a43" flood-opacity="0.14"/>
     </filter>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="#486581"/>
+    <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="20.00" markerHeight="20.00" refX="16.00" refY="10.00" orient="auto">
+      <path d="M0.00,0.00 L20.00,10.00 L0.00,20.00 z" fill="#486581"/>
     </marker>
   </defs>
 

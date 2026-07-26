@@ -86,11 +86,47 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
   - `python -m sphinx -b html docs/site docs/_build/html` - build succeeded with **zero warnings**
     (the 5 pre-existing `reference_canon.md` cross-reference warnings were fixed as part of the
     harmonization)
-  - `python -m pytest` - **1236 passed** (1191 entering this program; +45), no warnings
+  - `python -m pytest` - **1293 passed** after the figure program (1236 before it) (1191 entering this program; +45), no warnings
   - coverage **89.37%**, above the 87% CI gate
   - worked-example gallery regenerated; all 21 notebooks re-executed, and the ones whose
     diff was only an execution timestamp were reverted so the commit shows real changes
   - committed and pushed to `main` as `73f4dc8`
+
+## Figure program (FIG1-FIG5)
+
+Triggered by review feedback that the documentation figures were still the old,
+visibly broken ones.
+
+**Root cause.** SVG markers default to `markerUnits="strokeWidth"`, scaling the
+arrowhead by the terminating line's stroke width: a declared 12-unit head on a
+`stroke-width="4"` line renders at 48 units. Every hand-authored figure had this,
+with median head-to-line ratios from 0.11 to **1.11** — an arrowhead longer than
+its own arrow.
+
+**Two responses, chosen by whether the figure is a frame visualization.**
+
+1. *Generated* — six frame and orientation-convention figures are now produced by
+   `scripts/generate_reference_frame_figures.py` from `pytex.plotting.frame_diagrams`,
+   a new panelled concept-diagram layer (still matplotlib-free). Their geometry is the
+   model's geometry, and layout is computed from an Arial advance-width estimate so text
+   cannot overflow or collide.
+2. *Repaired in place* — the other 30 figures were corrected by
+   `scripts/fix_svg_marker_units.py`, which switches each marker to absolute units and
+   pre-scales its geometry by `min(median stroke width, cap at 25% of median line
+   length)`, preserving intended visual weight while bounding runaway heads.
+
+**A scientific error fixed along the way.** The first regenerated chain drew the
+reciprocal frame as a link in the linear chain, implying a `laboratory -> reciprocal`
+step. Duality relates reciprocal to *crystal*, so the dual panel now hangs off the
+crystal panel by a dashed edge — matching the canonical chain in
+`notation_and_conventions.md`. Pinned by
+`test_frame_chain_places_the_dual_frame_outside_the_linear_chain`.
+
+**Known follow-on.** Text-overflow analysis flagged nine further hand-authored figures
+(IPF sector, pole-figure construction, symmetry-orbit, architecture posters) whose
+captions overflow or collide. Their arrowheads are fixed; their text layout is not, and
+regenerating them would need models for IPF sectors and architecture rather than frames.
+Recorded here rather than silently left.
 
 ## Outcomes
 

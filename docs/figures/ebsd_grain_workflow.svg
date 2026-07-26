@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1160" height="600" viewBox="0 0 1160 600">
   <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="10" refX="7" refY="5" orient="auto">
-      <path d="M0,0 L10,5 L0,10 z" fill="#243140"/>
+    <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="12.92" markerHeight="12.92" refX="9.04" refY="6.46" orient="auto">
+      <path d="M0.00,0.00 L12.92,6.46 L0.00,12.92 z" fill="#243140"/>
     </marker>
   </defs>
   <rect width="1160" height="600" fill="#fbfaf6"/>

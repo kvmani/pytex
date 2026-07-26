@@ -1,124 +1,101 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="760" viewBox="0 0 1320 760">
+<svg xmlns="http://www.w3.org/2000/svg" width="1432" height="610" viewBox="0 0 1432 610" role="img">
+  <title>PyTex Reference-Frame Chain</title>
+  <desc>Crystal, specimen, map, detector, laboratory and reciprocal are distinct domains. The arrows name scientific relationships, not permission to collapse the frames. Frames shown in chain order: crystal (crystal, axes a/b/c); specimen (specimen, axes x/y/z); map (map, axes x/y/z); detector (detector, axes u/v/n); laboratory (laboratory, axes x_lab/y_lab/z_lab). Relationships: orientation g; registration; detector geometry; instrument pose. Shown separately below the chain: crystal_reciprocal (reciprocal, axes a*/b*/c*), dual to crystal.</desc>
   <defs>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
-      <path d="M0,0 L12,6 L0,12 z" fill="#213243"/>
+    <marker id="pytex-chain-axis-0" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M0,0 L13,5 L0,10 z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="pytex-chain-axis-1" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M0,0 L13,5 L0,10 z" fill="#059669"/>
+    </marker>
+    <marker id="pytex-chain-axis-2" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M0,0 L13,5 L0,10 z" fill="#dc2626"/>
+    </marker>
+    <marker id="pytex-chain-rel" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#40506f"/>
+    </marker>
+    <marker id="pytex-chain-rel-dual" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#7c3aed"/>
     </marker>
   </defs>
-
-  <rect width="1320" height="760" fill="#fcfaf5"/>
-
-  <text x="52" y="56" font-size="32" font-family="Arial, Helvetica, sans-serif" fill="#183047">Reference-frame chain</text>
-  <text x="52" y="88" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#56636f">
-    PyTex keeps crystal, specimen, map, detector, laboratory, and reciprocal domains distinct.
-  </text>
-  <text x="52" y="112" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#56636f">
-    The arrows below show scientific relationships, not permission to collapse the frames into one unlabeled coordinate system.
-  </text>
-
-  <rect x="40" y="140" width="1240" height="500" rx="26" fill="#fffdf8" stroke="#d8d0c3" stroke-width="1.8"/>
-
-  <g transform="translate(108,236)">
-    <rect x="0" y="0" width="164" height="300" rx="18" fill="#e0ecd9" stroke="#507b59" stroke-width="1.6"/>
-    <text x="34" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#21402a">crystal</text>
-    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
-    <line x1="82" y1="136" x2="136" y2="126" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="60" y2="76" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="92" y2="198" stroke="#507b59" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <text x="142" y="126" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#21402a">a</text>
-    <text x="44" y="72" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#21402a">b</text>
-    <text x="98" y="220" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#21402a">c</text>
-    <text x="24" y="264" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#31443a">lattice-fixed basis</text>
-  </g>
-
-  <g transform="translate(318,236)">
-    <rect x="0" y="0" width="164" height="300" rx="18" fill="#f3ecd8" stroke="#b58b2e" stroke-width="1.6"/>
-    <text x="24" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#5c4208">specimen</text>
-    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
-    <line x1="82" y1="136" x2="138" y2="130" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="48" y2="84" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="82" y2="202" stroke="#b58b2e" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <text x="146" y="130" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5c4208">x</text>
-    <text x="28" y="80" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5c4208">y</text>
-    <text x="92" y="224" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5c4208">z</text>
-    <text x="18" y="264" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#66511f">macroscopic sample frame</text>
-  </g>
-
-  <g transform="translate(528,236)">
-    <rect x="0" y="0" width="164" height="300" rx="18" fill="#f4e6e6" stroke="#946060" stroke-width="1.6"/>
-    <text x="48" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#5d3030">map</text>
-    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
-    <line x1="82" y1="136" x2="138" y2="136" stroke="#946060" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="82" y2="80" stroke="#946060" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <text x="144" y="136" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5d3030">scan x</text>
-    <text x="92" y="78" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#5d3030">scan y</text>
-    <g transform="translate(36,186)">
-      <rect x="0" y="0" width="92" height="64" fill="#fff7f7" stroke="#d1b3b3" stroke-width="1.2"/>
-      <line x1="0" y1="21" x2="92" y2="21" stroke="#d1b3b3" stroke-width="1"/>
-      <line x1="0" y1="43" x2="92" y2="43" stroke="#d1b3b3" stroke-width="1"/>
-      <line x1="30" y1="0" x2="30" y2="64" stroke="#d1b3b3" stroke-width="1"/>
-      <line x1="61" y1="0" x2="61" y2="64" stroke="#d1b3b3" stroke-width="1"/>
-      <circle cx="15" cy="11" r="4" fill="#bf4747"/>
-      <circle cx="46" cy="32" r="4" fill="#bf4747"/>
-      <circle cx="76" cy="53" r="4" fill="#bf4747"/>
-    </g>
-    <text x="24" y="278" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#613737">sampling and image grid</text>
-  </g>
-
-  <g transform="translate(738,236)">
-    <rect x="0" y="0" width="164" height="300" rx="18" fill="#e4edf7" stroke="#4b718f" stroke-width="1.6"/>
-    <text x="34" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#173149">detector</text>
-    <rect x="30" y="92" width="104" height="86" rx="10" fill="#d6e6f4" stroke="#4b718f" stroke-width="1.6"/>
-    <circle cx="82" cy="135" r="5" fill="#213243"/>
-    <line x1="82" y1="135" x2="122" y2="135" stroke="#4b718f" stroke-width="3.4" marker-end="url(#arrow)"/>
-    <line x1="82" y1="135" x2="82" y2="100" stroke="#4b718f" stroke-width="3.4" marker-end="url(#arrow)"/>
-    <text x="128" y="135" font-size="19" font-family="Arial, Helvetica, sans-serif" fill="#173149">u</text>
-    <text x="90" y="98" font-size="19" font-family="Arial, Helvetica, sans-serif" fill="#173149">v</text>
-    <text x="22" y="274" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#274659">pattern-plane coordinates</text>
-  </g>
-
-  <g transform="translate(948,236)">
-    <rect x="0" y="0" width="164" height="300" rx="18" fill="#eef1f5" stroke="#7a8792" stroke-width="1.6"/>
-    <text x="26" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#283340">laboratory</text>
-    <circle cx="82" cy="136" r="4" fill="#1f2937"/>
-    <line x1="82" y1="136" x2="138" y2="126" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="52" y2="82" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <line x1="82" y1="136" x2="92" y2="198" stroke="#6c7b86" stroke-width="3.8" marker-end="url(#arrow)"/>
-    <text x="144" y="126" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#283340">Lx</text>
-    <text x="28" y="78" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#283340">Ly</text>
-    <text x="98" y="220" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#283340">Lz</text>
-    <text x="30" y="274" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#47505a">instrument geometry</text>
-  </g>
-
-  <g transform="translate(1158,236)">
-    <rect x="0" y="0" width="104" height="300" rx="18" fill="#ebe7f7" stroke="#7761a2" stroke-width="1.6"/>
-    <text x="16" y="34" font-size="23" font-family="Arial, Helvetica, sans-serif" fill="#3b2a58">reciprocal</text>
-    <circle cx="52" cy="136" r="4" fill="#1f2937"/>
-    <line x1="52" y1="136" x2="82" y2="108" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
-    <line x1="52" y1="136" x2="30" y2="88" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
-    <line x1="52" y1="136" x2="58" y2="194" stroke="#7761a2" stroke-width="3.6" marker-end="url(#arrow)"/>
-    <text x="84" y="108" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#3b2a58">a*</text>
-    <text x="8" y="84" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#3b2a58">b*</text>
-    <text x="64" y="216" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#3b2a58">c*</text>
-    <text x="10" y="274" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#4d4166">dual basis</text>
-  </g>
-
-  <line x1="272" y1="388" x2="318" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
-  <text x="278" y="366" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#213243">orientation g</text>
-
-  <line x1="482" y1="388" x2="528" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
-  <text x="474" y="366" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#213243">registration</text>
-
-  <line x1="692" y1="388" x2="738" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
-  <text x="706" y="366" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#213243">detector geometry</text>
-
-  <line x1="902" y1="388" x2="948" y2="388" stroke="#213243" stroke-width="3.2" marker-end="url(#arrow)"/>
-  <text x="916" y="366" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#213243">instrument pose</text>
-
-  <line x1="272" y1="474" x2="1158" y2="474" stroke="#8a95a0" stroke-width="2.6" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
-  <text x="514" y="458" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#596673">crystal geometry can also be expressed in reciprocal space</text>
-
-  <rect x="86" y="666" width="1148" height="52" rx="16" fill="#f7f2e8" stroke="#d8c7a8" stroke-width="1.4"/>
-  <text x="114" y="698" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#4f5d69">
-    Do not let raw arrays erase these distinctions. The same numbers can mean different physics depending on whether they belong to crystal, specimen, map, detector, laboratory, or reciprocal domains.
-  </text>
+  <rect width="1432" height="610" fill="#fbfdff"/>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">PyTex Reference-Frame Chain</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Crystal, specimen, map, detector, laboratory and reciprocal are distinct domains. The arrows name scientific relationships, not permission to collapse the frames.</text>
+  <rect x="40.0" y="96.0" width="176.0" height="208.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.0"/>
+  <text x="128.0" y="122.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">crystal</text>
+  <text x="128.0" y="140.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">crystal · a/b/c</text>
+    <line x1="128.00" y1="230.00" x2="128.00" y2="197.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="128.00" y="186.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c</text>
+    <line x1="128.00" y1="230.00" x2="157.18" y2="237.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="167.42" y="239.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">b</text>
+    <line x1="128.00" y1="230.00" x2="108.32" y2="240.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="99.08" y="246.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a</text>
+    <circle cx="128.00" cy="230.00" r="3.4" fill="#07122f"/>
+  <text x="128.0" y="290.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">lattice-fixed basis</text>
+  <line x1="230.0" y1="200.0" x2="320.0" y2="200.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-chain-rel)"/>
+  <text x="275.0" y="191.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">orientation g</text>
+  <rect x="334.0" y="96.0" width="176.0" height="208.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
+  <text x="422.0" y="122.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">specimen</text>
+  <text x="422.0" y="140.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">specimen · x/y/z</text>
+    <line x1="422.00" y1="230.00" x2="422.00" y2="197.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="422.00" y="186.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <line x1="422.00" y1="230.00" x2="451.18" y2="237.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="461.42" y="239.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <line x1="422.00" y1="230.00" x2="402.32" y2="240.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="393.08" y="246.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <circle cx="422.00" cy="230.00" r="3.4" fill="#07122f"/>
+  <text x="422.0" y="290.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">macroscopic sample frame</text>
+  <line x1="524.0" y1="200.0" x2="614.0" y2="200.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-chain-rel)"/>
+  <text x="569.0" y="191.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">registration</text>
+  <rect x="628.0" y="96.0" width="176.0" height="208.0" rx="8" fill="#fdeef1" stroke="#eebfc8" stroke-width="1.0"/>
+  <text x="716.0" y="122.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">map</text>
+  <text x="716.0" y="140.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">map · x/y/z</text>
+    <line x1="716.00" y1="230.00" x2="716.00" y2="197.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="716.00" y="186.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <line x1="716.00" y1="230.00" x2="745.18" y2="237.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="755.42" y="239.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <line x1="716.00" y1="230.00" x2="696.32" y2="240.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="687.08" y="246.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <circle cx="716.00" cy="230.00" r="3.4" fill="#07122f"/>
+  <text x="716.0" y="290.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">scan sampling grid</text>
+  <line x1="818.0" y1="200.0" x2="908.0" y2="200.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-chain-rel)"/>
+  <text x="863.0" y="191.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">detector geometry</text>
+  <rect x="922.0" y="96.0" width="176.0" height="208.0" rx="8" fill="#eaf4fb" stroke="#b3d5ea" stroke-width="1.0"/>
+  <text x="1010.0" y="122.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">detector</text>
+  <text x="1010.0" y="140.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">detector · u/v/n</text>
+    <line x1="1010.00" y1="230.00" x2="1010.00" y2="197.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="1010.00" y="186.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">n</text>
+    <line x1="1010.00" y1="230.00" x2="1039.18" y2="237.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="1049.42" y="239.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">v</text>
+    <line x1="1010.00" y1="230.00" x2="990.32" y2="240.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="981.08" y="246.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">u</text>
+    <circle cx="1010.00" cy="230.00" r="3.4" fill="#07122f"/>
+  <text x="1010.0" y="290.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">pattern-plane coordinates</text>
+  <line x1="1112.0" y1="200.0" x2="1202.0" y2="200.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-chain-rel)"/>
+  <text x="1157.0" y="191.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">instrument pose</text>
+  <rect x="1216.0" y="96.0" width="176.0" height="208.0" rx="8" fill="#eef7f0" stroke="#b7d9c0" stroke-width="1.0"/>
+  <text x="1304.0" y="122.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">laboratory</text>
+  <text x="1304.0" y="140.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">laboratory · x_lab/y_lab/z_lab</text>
+    <line x1="1304.00" y1="230.00" x2="1304.00" y2="197.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="1304.00" y="186.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z_lab</text>
+    <line x1="1304.00" y1="230.00" x2="1333.18" y2="237.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="1343.42" y="239.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y_lab</text>
+    <line x1="1304.00" y1="230.00" x2="1284.32" y2="240.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="1275.08" y="246.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x_lab</text>
+    <circle cx="1304.00" cy="230.00" r="3.4" fill="#07122f"/>
+  <text x="1304.0" y="290.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">instrument geometry</text>
+  <line x1="128.0" y1="312.0" x2="128.0" y2="360.0" stroke="#7c3aed" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#pytex-chain-rel-dual)"/>
+  <text x="140.0" y="344.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#7c3aed" text-anchor="start">duality</text>
+  <rect x="40.0" y="368.0" width="176.0" height="208.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.0"/>
+  <text x="128.0" y="394.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="middle">crystal_reciprocal</text>
+  <text x="128.0" y="412.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">reciprocal · a*/b*/c*</text>
+    <line x1="128.00" y1="502.00" x2="128.00" y2="469.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-2)"/>
+    <text x="128.00" y="458.80" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c*</text>
+    <line x1="128.00" y1="502.00" x2="157.18" y2="509.37" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-1)"/>
+    <text x="167.42" y="511.96" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">b*</text>
+    <line x1="128.00" y1="502.00" x2="108.32" y2="512.93" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-chain-axis-0)"/>
+    <text x="99.08" y="518.06" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a*</text>
+    <circle cx="128.00" cy="502.00" r="3.4" fill="#07122f"/>
+  <text x="128.0" y="562.0" font-size="11" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">dual basis, starred axes</text>
+  <text x="240.0" y="472.0" font-size="12" font-family="Arial, Helvetica, sans-serif" fill="#7c3aed" text-anchor="start">Crystal geometry is also expressible in the reciprocal basis a*, b*, c*. The star marks the basis, never the Miller indices: (hkl) are already reciprocal-basis components.</text>
 </svg>

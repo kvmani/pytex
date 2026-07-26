@@ -833,8 +833,13 @@ def _svg_triad_group(
     azim_deg: float,
     fontsize: float,
     marker_id: str,
+    label_scale: float = 1.0,
 ) -> str:
-    """Emit the SVG fragment for one projected triad."""
+    """Emit the SVG fragment for one projected triad.
+
+    ``label_scale`` pushes the axis labels further from the origin, so a second
+    triad drawn in the same panel can label its axes clear of the first one's.
+    """
 
     screen, depth = project_orthographic(
         triad.endpoints(), elev_deg=elev_deg, azim_deg=azim_deg
@@ -853,7 +858,7 @@ def _svg_triad_group(
             f'stroke="{colour}" stroke-width="{width:.1f}" stroke-linecap="round" '
             f'opacity="{opacity}" marker-end="url(#{marker_id}-{index})"/>'
         )
-        anchor = _label_anchor(screen[index])
+        anchor = _label_anchor(screen[index]) * float(label_scale)
         label_x = centre[0] + scale * float(anchor[0])
         label_y = centre[1] - scale * float(anchor[1])
         parts.append(
