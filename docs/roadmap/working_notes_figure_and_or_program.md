@@ -30,7 +30,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | FX2 | Transform-aware SVG text-layout auditor | DONE |
 | FX3 | Fix text overflow and overlap in all flagged figures | DONE |
 | FX4 | Repo-wide figure text-layout policy test | DONE |
-| FX5 | Audit Burgers OR support in the core API; record gaps | TODO |
+| FX5 | Audit Burgers OR support in the core API; record gaps | DONE |
 | FX6 | Exhaustive forward Burgers (bcc → hcp) notebook content | TODO |
 | FX7 | Reverse Burgers (hcp → bcc) notebook content | TODO |
 | FX8 | Execute notebooks; pin key numbers in tests/worked examples | TODO |
@@ -145,6 +145,78 @@ reformatted seven figures with generated `ns0:` namespace prefixes. Caught by
 inspection, reverted from a backup, and the pass rewritten to edit the raw source
 textually. Worth recording: round-tripping hand-authored SVG through a parser is
 not a neutral operation.
+
+## Part 2 status (FX5 complete; FX6-FX9 open)
+
+### What already works for Burgers
+
+Verified against the `zr_hcp` and `fe_bcc` fixtures plus a constructed beta-Zr
+(bcc, a = 3.574 A):
+
+- `OrientationRelationship.from_burgers_correspondence(parent_phase=bcc, child_phase=hcp)`
+  builds the relationship and enforces the point groups (parent 432, child 622).
+- `generate_variants()` returns the literature **12 variants**.
+- `misorientation()` gives **45.291 deg**.
+- `correspondence_direct()` / `correspondence_reciprocal()`, `find_parallel_planes()`,
+  `find_parallel_directions()`, `intervariant_misorientation_angles_deg()`,
+  `variant_pole_figure()` and `variant_close_packed_groups()` are all available.
+
+So variants, misorientation, parallelism and pole figures can be written now.
+
+### The blocker: transformation strain for a hexagonal product
+
+`deformation_gradient()` **fails for Burgers** with:
+
+> The nearest-integer lattice correspondence is singular; the relationship's exact
+> correspondence is too far from an integer matrix for Bain-strain analysis.
+
+This is not a fixture problem and not an element mismatch — it fails equally for
+beta-Zr to alpha-Zr, both allotropes of one element. The cause is structural:
+
+`deformation_gradient()` computes `exact = solve(A_child, R A_parent)` from the
+**conventional** direct bases and rationalizes to the nearest *integer* matrix. That
+is correct for cubic-to-cubic (Bain, KS, NW all work, giving the textbook Bain
+stretches 1.1504, 1.1504, 0.8135), because the conventional cubic basis vectors map
+onto child lattice vectors. For bcc to hcp they do not: only the **primitive** bcc
+vectors (the `<111>/2` set) map onto hcp lattice vectors, so the conventional-basis
+correspondence is irrational. Measured for beta-Zr to alpha-Zr it is
+
+```
+[[-0.8991  0.8991  0.1172]
+ [-0.3778  0.3778  1.1597]
+ [ 0.4910  0.4910  0.0000]]
+```
+
+which is not near-integer at any denominator up to 6, and whose nearest integer
+matrix is singular. The error message is therefore accurate and the guard is doing
+its job — the method simply does not cover hexagonal products.
+
+### Scoped fix, before FX6/FX7 write strain content
+
+Extend `deformation_gradient()` to work from **primitive** bases (deriving the
+primitive vectors from the lattice centring), and/or accept an explicit
+`correspondence` argument so a caller can supply a literature lattice
+correspondence. Validate against published Burgers strains for Zr/Ti rather than
+against a prior program output, per the executable-example rule.
+
+Do **not** hand-roll the strain inside the notebook: `AGENTS.md` requires expanding
+the shared core model rather than encoding one-off conversions locally, and a
+notebook that computed this privately would be exactly the drift the repository
+forbids.
+
+### Order of work when resuming
+
+1. FX5a (new): extend `deformation_gradient` for hexagonal products; add tests
+   pinning the Burgers strain to a cited value.
+2. FX6: forward bcc to hcp notebook content — variants, misorientation table,
+   packet grouping, parallelisms, strain, crystal scenes, variant pole figures.
+3. FX7: reverse hcp to bcc. Note the reverse is **not** the inverse rotation: the
+   phases swap, so `from_burgers_correspondence` cannot be reused with arguments
+   exchanged (it requires parent 432 / child 622). Build it with
+   `from_parallel_plane_direction` using (0001)_hcp || (110)_bcc and
+   `<11-20>_hcp || <-111>_bcc`, and expect a different variant count and symmetry
+   reduction.
+4. FX8, FX9 as listed.
 
 ## Verification record
 
