@@ -4,8 +4,10 @@ from typing import Any
 
 import numpy as np
 
+from pytex.core.notation import format_plane_family_indices
 from pytex.diffraction.saed import SAEDPattern
 from pytex.diffraction.xrd import PowderPattern
+from pytex.plotting.frames import add_frame_indicator
 from pytex.plotting.styles import resolve_style
 
 
@@ -64,7 +66,12 @@ def plot_xrd_pattern(
             reverse=True,
         )
         for reflection in ranked[: int(xrd_style.get("max_labels", 12))]:
-            label = "(" + " ".join(str(int(value)) for value in reflection.miller_indices) + ")"
+            # A powder reflection is the whole symmetry-related family (that is
+            # what its multiplicity counts), so the family brackets {hkl} are the
+            # correct notation, not the single-plane form (hkl).
+            label = format_plane_family_indices(
+                tuple(int(value) for value in reflection.miller_indices), style="plain"
+            )
             axes.axvline(
                 reflection.two_theta_deg,
                 color=xrd_style["peak_color"],
@@ -92,8 +99,36 @@ def plot_saed_pattern(
     theme: str = "journal",
     style_path: str | None = None,
     style_overrides: dict[str, Any] | None = None,
+    show_frame_indicator: bool = False,
+    frame_indicator_loc: str = "lower right",
     ax: Any | None = None,
 ) -> Any:
+    """Render a kinematic SAED pattern in detector coordinates.
+
+    Parameters
+    ----------
+    pattern:
+        The `SAEDPattern` to draw. Its spot positions are detector-plane
+        coordinates in millimetres.
+    theme, style_path, style_overrides:
+        Plot styling, resolved through `pytex.plotting.styles.resolve_style`.
+    show_frame_indicator:
+        Draw the pattern's own detector frame as a small gizmo in a corner, so
+        the figure states which way ``u`` and ``v`` point rather than relying on
+        the axis labels alone. The detector normal is omitted because it points
+        at the viewer. Off by default so existing figures are unchanged.
+    frame_indicator_loc:
+        Which corner the gizmo occupies; see
+        `pytex.plotting.frames.add_frame_indicator`.
+    ax:
+        An existing axes to draw into. A new figure is created when omitted.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure holding the pattern. The caller owns it.
+    """
+
     plt, _ = _require_matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
@@ -152,5 +187,18 @@ def plot_saed_pattern(
         + " zone axis)"
     )
     axes.grid(alpha=float(common["figure"]["grid_alpha"]))
+    if show_frame_indicator:
+        # Viewed down the detector normal, so u and v lie in the page exactly as
+        # the plotted coordinates do. The normal n is omitted: it points at the
+        # viewer and would project to a point on top of the origin.
+        add_frame_indicator(
+            axes,
+            pattern.detector_frame,
+            loc=frame_indicator_loc,
+            axis_subset=("u", "v"),
+            elev_deg=90.0,
+            azim_deg=-90.0,
+            label_frame=True,
+        )
     fig.tight_layout()
     return fig

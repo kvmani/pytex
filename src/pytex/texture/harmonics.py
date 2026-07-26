@@ -470,6 +470,7 @@ class HarmonicODF:
             ),
             specimen_frame=self.specimen_frame,
             antipodal=antipodal,
+            includes_symmetry_family=include_symmetry_family,
             sample_symmetry=self.specimen_symmetry,
             provenance=self.provenance if provenance is None else provenance,
         )

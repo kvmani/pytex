@@ -105,6 +105,22 @@ figure = plot_crystal_structure_3d(
 figure.savefig("diamond_structure.png", dpi=220)
 ```
 
+## Stating The Crystal Frame In The Scene
+
+When the camera is set by a crystallographic direction rather than by angles, a reader cannot tell
+the orientation from the picture alone. An opt-in gizmo fixes that:
+
+```python
+plot_crystal_structure_3d(phase, view_preset="c", show_frame_indicator=True)
+```
+
+The gizmo draws the phase's `a`, `b`, `c` axes **from the lattice basis** at the figure's own view
+angles, so an oblique cell's gizmo leans the way the cell does and always agrees with the scene.
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
+
+See {doc}`../architecture/reference_frame_foundation`.
+
 ## Interpretation Notes
 
 - `build_crystal_scene(...)` computes reusable scene geometry and can be inspected separately from

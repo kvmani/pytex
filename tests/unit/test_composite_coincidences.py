@@ -219,7 +219,7 @@ class TestBurgersCoincidences:
         report = find_spot_coincidences(burgers_composite, tolerance_mm=1.0)
         text = report.describe()
         assert "burgers" in text
-        assert "[1 1 0]" in text
+        assert "[110]" in text
 
 
 class TestReportValidation:

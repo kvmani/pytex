@@ -51,7 +51,19 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   Phases CD0 `f609c0a`, CD1 `e549bce`, CD2 `d292f1b`, CD3 `202b6da`, CD4
   `88c202e`, CD5 `1a93130`; CD6 committing now. Composite SAED program v1
   COMPLETE (see its working notes for outcomes and follow-ons).
-- Next phase candidates (in roadmap order): F13 habit planes / PTMC (large; needs its own
+- **GOAL (2026-07-25/26): Reference-frame foundation program — COMPLETE (RF1-RF11).** Reference
+  frames are now a first-class shared foundation: `ReferenceFrame` carries axis geometry and
+  `describe()`, `FrameTransform` gained ergonomic constructors and a direction-only application
+  path, `FrameGraph` resolves multi-hop chains, `pytex.core.frame_catalog` supplies the standard
+  frames (Cartesian, specimen, sample RD/TD/ND, crystal, map, detector, laboratory, reciprocal),
+  and `pytex.plotting.frames` renders any frame as 3D primitives, an embeddable 2D gizmo, or
+  standalone documentation SVG, with opt-in frame gizmos wired into the SAED, composite-SAED,
+  and 3D crystal renderers. Every module that built frames inline now uses the catalog
+  (identity-preserving). Full plan, design decisions, two mid-flight design corrections, and the
+  verification record are in `docs/roadmap/working_notes_reference_frame_foundation.md`.
+  Verified: ruff clean, mypy strict clean, 1191 tests passed, coverage 89.31%, integrity and
+  Sphinx build green. Not yet committed.
+- Next phase candidates after it (in roadmap order): F13 habit planes / PTMC (large; needs its own
   working notes), reconstruction stabilization (measured-data fixture + MTEX
   `calcParent2Child` parity via scripts/mtex_generators), finding 8 remainder (bump/fibre
   kernels + SO3FunHarmonic), finding 9 (PF->ODF ghost correction), finding 14 (Kikuchi).

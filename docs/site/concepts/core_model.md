@@ -40,6 +40,10 @@ PyTex normalizes data once at the boundary and keeps later computations on PyTex
 
 ![Reference Frames](../../figures/reference_frames_vectors.svg)
 
+PyTex ships these frames as a catalog, so the same frame compares equal wherever it appears:
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
+
 ## Reading The Figure
 
 The figure above fixes the repository-wide frame vocabulary.
@@ -70,6 +74,8 @@ The core model is not “extra structure around NumPy arrays.” It is the mecha
 - [../../tex/theory/canonical_data_model.tex](../../tex/theory/canonical_data_model.tex)
 - [../../tex/theory/reference_frames.tex](../../tex/theory/reference_frames.tex)
 - [../../figures/reference_frames_vectors.svg](../../figures/reference_frames_vectors.svg)
+- [../../figures/reference_frame_catalog.svg](../../figures/reference_frame_catalog.svg)
+- {doc}`../architecture/reference_frame_foundation`
 
 ## References
 

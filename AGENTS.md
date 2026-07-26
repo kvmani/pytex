@@ -52,6 +52,13 @@ If implementation choices conflict with these documents, stop and reconcile the 
   and its expected outputs, with at least one computed example for verifiable numerical behavior.
 - Nomenclature and symbols are governed by one registry
   (`docs/standards/terminology_and_symbol_registry.md`); new symbols must be registered before use.
+- Crystallographic notation is written the way the international literature writes it, and is
+  produced by `pytex.core.notation` alone — never formatted inline. In particular: reciprocal
+  **basis vectors and reciprocal-frame axis labels carry the star** (`a*, b*, c*`), while Miller
+  indices do not (they are already reciprocal-basis components); a symmetry family takes
+  `{hkl}` / `<uvw>` and a specific plane or direction takes `(hkl)` / `[uvw]`; negative indices
+  are overbarred in publication-facing output. See
+  `docs/standards/notation_and_conventions.md`.
 - Publication-quality SVG figures are mandatory where reference frames, geometry, or conventions matter.
 - Canonical architecture, process-flow, validation, workflow, and teaching diagrams must follow the
   central visualization style guide.

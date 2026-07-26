@@ -238,7 +238,11 @@ def test_crystal_scene_bonds_use_chemical_cutoffs_not_render_scale() -> None:
 def test_format_miller_indices_supports_negative_components() -> None:
     assert format_direction_indices((1, 1, -2, 0)) == "$[11\\bar{2}0]$"
     assert format_plane_indices((1, 1, -2, 1)) == "$(11\\bar{2}1)$"
-    assert format_plane_indices((0, 0, 0, -1), style="plain") == "(000-1)"
+    # Plain style separates components when a negative index would make
+    # concatenation ambiguous; mathtext does not need to, because the
+    # overbar already delimits the component.
+    assert format_plane_indices((0, 0, 0, -1), style="plain") == "(0 0 0 -1)"
+    assert format_plane_indices((1, 1, 0), style="plain") == "(110)"
 
 
 def test_hexagonal_miller_bravais_helpers_construct_primitives() -> None:

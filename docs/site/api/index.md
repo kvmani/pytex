@@ -44,8 +44,22 @@ means:
 
 ## Core
 
-- `ReferenceFrame`
-- `FrameTransform`
+### Reference Frames
+
+See {doc}`../architecture/reference_frame_foundation` and
+{doc}`../concepts/reference_frames_and_conventions` for the model these build on.
+
+- `ReferenceFrame` - named, domain-typed frame carrying axis labels and axis geometry
+- `FrameTransform` - typed, invertible, composable map between two frames
+- `FrameGraph` - registry that resolves the transform between any two connected frames
+- Catalog constants: `CARTESIAN_FRAME`, `SPECIMEN_FRAME`, `SAMPLE_RD_TD_ND_FRAME`,
+  `CRYSTAL_FRAME`, `MAP_FRAME`, `DETECTOR_FRAME`, `LABORATORY_FRAME`
+- Catalog builders: `cartesian_frame`, `specimen_frame`, `sample_frame`, `crystal_frame`,
+  `map_frame`, `detector_frame`, `laboratory_frame`, `reciprocal_frame_for`,
+  `rolling_frame_graph`, `get_standard_frame`, `list_standard_frames`
+
+### Other Core Primitives
+
 - `VectorSet`
 - `AcquisitionGeometry`
 - `CalibrationRecord`
@@ -210,6 +224,17 @@ See {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/diffraction_spo
 {doc}`../workflows/xrd_generation`, and {doc}`../workflows/saed_generation`.
 
 ## Plotting
+
+### Reference-Frame Visualization
+
+- `frame_triad(...)` / `frame_triad_primitives(...)` - triad primitives for 3D scenes
+- `add_frame_indicator(axes, frame, ...)` - embeddable corner gizmo for any 2D figure
+  (diffractograms, pole figures, IPF maps, crystal-viewer panels)
+- `plot_reference_frame(...)` / `plot_frame_relationship(...)` - standalone 3D figures
+- `reference_frame_svg(...)` / `frame_catalog_svg(...)` - documentation SVG, no matplotlib
+- `project_orthographic(...)`, `FrameTriad`, `TRIAD_AXIS_COLORS`
+
+### Other Plotting Surfaces
 
 - `IPFColorKey`
 - `ipf_color(...)`

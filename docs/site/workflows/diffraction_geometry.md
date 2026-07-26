@@ -86,6 +86,21 @@ ring_radius_mm = geometry.ring_radius_mm_for_plane(plane)
 - no full kinematic pattern synthesis yet
 - external-baseline validation is still growing beyond the current internal and literature-aligned foundation
 
+## The Frames Involved
+
+Diffraction geometry is where the frame vocabulary earns its keep: the crystal frame holds the zone
+axis, the reciprocal frame holds the scattering vectors, the detector frame holds the projected
+pattern, and the laboratory frame ties specimen and detector together.
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
+
+Reciprocal-frame axes carry the IUCr star (`a*`, `b*`, `c*`); Miller indices do not, because
+`(hkl)` are already reciprocal-basis components. The scattering vector is
+$\mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}$.
+
+Use `add_frame_indicator(...)` to state the active frame inside a figure rather than in its
+caption. See {doc}`../architecture/reference_frame_foundation`.
+
 ## Related Material
 
 - `docs/architecture/diffraction_foundation.md`

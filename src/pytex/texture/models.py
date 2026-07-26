@@ -223,6 +223,12 @@ class PoleFigure:
     antipodal: bool = True
     sample_symmetry: SymmetrySpec | None = None
     provenance: ProvenanceRecord | None = None
+    #: Whether the plotted poles are the whole symmetry-related orbit of
+    #: ``pole`` (the usual case, and what a measured pole figure contains) or
+    #: only that single plane. It changes the correct notation for the
+    #: quantity: a family is written ``{hkl}``, a single plane ``(hkl)``. Titles
+    #: and prose read this rather than assuming.
+    includes_symmetry_family: bool = True
 
     def __post_init__(self) -> None:
         sample_directions = normalize_vectors(self.sample_directions)
@@ -287,6 +293,7 @@ class PoleFigure:
             antipodal=antipodal,
             sample_symmetry=sample_symmetry,
             provenance=orientations.provenance if provenance is None else provenance,
+            includes_symmetry_family=include_symmetry_family,
         )
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:

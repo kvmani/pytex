@@ -8,6 +8,7 @@ from typing import Any, cast
 import numpy as np
 
 from pytex.core import (
+    IDENTITY_AXIS_VECTORS,
     AcquisitionGeometry,
     AtomicSite,
     Basis,
@@ -46,6 +47,7 @@ from pytex.core import (
     TransformationVariant,
     UnitCell,
     ZoneAxis,
+    as_axis_vectors,
 )
 from pytex.diffraction import (
     DiffractionGeometry,
@@ -145,10 +147,20 @@ def _serialize_reference_frame(frame: ReferenceFrame) -> dict[str, Any]:
         "description": frame.description,
         "provenance": _serialize_provenance(frame.provenance),
         "metadata": dict(frame.metadata),
+        "axis_vectors": [list(vector) for vector in frame.axis_vectors],
+        "axis_descriptions": list(frame.axis_descriptions),
     }
 
 
 def _deserialize_reference_frame(payload: dict[str, Any]) -> ReferenceFrame:
+    """Rebuild a `ReferenceFrame`, tolerating payloads written before axis geometry existed.
+
+    ``axis_vectors`` and ``axis_descriptions`` were added after the first
+    contract version. Older payloads omit them, and the defaults applied here
+    (the identity triad and no long axis names) reproduce exactly the frame those
+    payloads described, so old files keep round-tripping to equal objects.
+    """
+
     _require_schema(payload, "pytex.core.reference_frame")
     return ReferenceFrame(
         name=payload["name"],
@@ -158,6 +170,8 @@ def _deserialize_reference_frame(payload: dict[str, Any]) -> ReferenceFrame:
         description=payload.get("description", ""),
         provenance=_deserialize_provenance(payload.get("provenance")),
         metadata=payload.get("metadata", {}),
+        axis_vectors=as_axis_vectors(payload.get("axis_vectors", IDENTITY_AXIS_VECTORS)),
+        axis_descriptions=tuple(payload.get("axis_descriptions", ())),
     )
 
 
@@ -927,6 +941,7 @@ def _serialize_pole_figure(pole_figure: PoleFigure) -> dict[str, Any]:
         "intensities": _as_float_list(pole_figure.intensities),
         "specimen_frame": _serialize_reference_frame(pole_figure.specimen_frame),
         "antipodal": pole_figure.antipodal,
+        "includes_symmetry_family": pole_figure.includes_symmetry_family,
         "sample_symmetry": None
         if pole_figure.sample_symmetry is None
         else _serialize_symmetry(pole_figure.sample_symmetry),
@@ -942,6 +957,9 @@ def _deserialize_pole_figure(payload: dict[str, Any]) -> PoleFigure:
         intensities=np.asarray(payload["intensities"], dtype=np.float64),
         specimen_frame=_deserialize_reference_frame(payload["specimen_frame"]),
         antipodal=bool(payload["antipodal"]),
+        # Added after the first contract version; older payloads described
+        # family pole figures, which is the default.
+        includes_symmetry_family=bool(payload.get("includes_symmetry_family", True)),
         sample_symmetry=None
         if payload.get("sample_symmetry") is None
         else _deserialize_symmetry(payload["sample_symmetry"]),

@@ -16,7 +16,11 @@ from pytex.core.lattice import (
     Phase,
     phases_semantically_match,
 )
-from pytex.core.notation import format_direction_indices, format_plane_indices
+from pytex.core.notation import (
+    format_direction_indices,
+    format_plane_family_indices,
+    format_plane_indices,
+)
 from pytex.core.orientation import (
     Misorientation,
     Orientation,
@@ -2152,7 +2156,9 @@ class VariantPoleFigure:
         per_variant = int(
             np.count_nonzero(self.variant_indices == int(self.variant_indices[0]))
         )
-        plane_text = format_plane_indices(
+        # A pole figure plots the whole symmetry-related orbit, so the family
+        # brackets {hkl} are the correct notation here, not (hkl).
+        plane_text = format_plane_family_indices(
             _index_tuple(self.child_plane.miller.indices), style="plain"
         )
         return (

@@ -8,12 +8,14 @@ from . import (
     core_crystal_geometry,
     diffraction_geometry,
     orientation_and_misorientation,
+    reference_frames,
     texture_kernels,
     transformation_correspondence,
     visualization_composition,
 )
 
 GROUPS: tuple[ExampleGroup, ...] = (
+    reference_frames.GROUP,
     core_crystal_geometry.GROUP,
     orientation_and_misorientation.GROUP,
     diffraction_geometry.GROUP,

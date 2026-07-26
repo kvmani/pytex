@@ -15,6 +15,13 @@ The complete set of computed-versus-expected values at a glance:
 
 | Example | Computed (live) | Expected (reference) | Unit | Status |
 | --- | --- | --- | --- | --- |
+| `frame-axis-correspondence-angle` | 90.0000 | 90.0000 | deg | ✅ |
+| `frame-axis-correspondence-components` | [0.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 0.0000] | &mdash; | ✅ |
+| `frame-graph-multi-hop-angle` | 30.0000 | 30.0000 | deg | ✅ |
+| `frame-round-trip-residual` | 0.0000 | 0.0000 | &mdash; | ✅ |
+| `frame-right-handed-determinant` | 1.0000 | 1.0000 | &mdash; | ✅ |
+| `reciprocal-frame-star-count` | [3, 0] | [3, 0] | &mdash; | ✅ |
+| `miller-indices-carry-no-star` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `cubic-angle-100-110` | 45.0000 | 45.0000 | deg | ✅ |
 | `cubic-angle-100-111` | 54.7356 | 54.7356 | deg | ✅ |
 | `cubic-angle-dir-110-111` | 35.2644 | 35.2644 | deg | ✅ |
@@ -40,6 +47,7 @@ The complete set of computed-versus-expected values at a glance:
 
 ## Example groups
 
+- {doc}`Reference Frames And Frame Transforms <generated/reference_frames>` &mdash; Creating standard frames, declaring frame relationships in words, and letting the frame graph compose multi-step chains — with the rotation angles, components, and invariants checked against exact analytic values. The last two examples pin the IUCr notation convention: the reciprocal star marks the basis, never the indices.
 - {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
 - {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles derived from PyTex interplanar spacings via Bragg's law, checked against a standard reference reflection position.
@@ -52,6 +60,7 @@ The complete set of computed-versus-expected values at a glance:
 :maxdepth: 1
 :hidden:
 
+generated/reference_frames
 generated/crystal_geometry
 generated/orientation
 generated/diffraction

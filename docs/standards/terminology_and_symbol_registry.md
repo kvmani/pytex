@@ -53,6 +53,13 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | Term | Fixed meaning |
 | --- | --- |
 | reference frame | A named, domain-typed coordinate frame such as crystal, specimen, map, detector, laboratory, or reciprocal. |
+| canonical Cartesian reference | The right-handed `X, Y, Z` frame in which every `ReferenceFrame`'s axis vectors are expressed. |
+| axis vectors | Components of a frame's three labelled axes in the canonical Cartesian reference; dimensionless orientation only, not lattice edge lengths. |
+| sample frame | The rolling-geometry specimen frame with axes `RD` (rolling direction), `TD` (transverse direction), `ND` (normal direction). |
+| frame transform | A typed rigid map between exactly two named frames, converting source-frame components into target-frame components. |
+| frame graph | A registry of frames and declared transforms that resolves any connected pair by composing the shortest declared chain. |
+| axis correspondence | A declaration, in axis labels, of which target axis each source axis lands on; equivalent to a signed permutation matrix. |
+| frame triad | The drawable three-arrow representation of a reference frame, shared by 3D scenes, corner gizmos, and documentation SVG. |
 | orientation | A crystal-to-specimen mapping carried by an explicit `Orientation` object. |
 | rotation | A geometric active rotation that does not by itself define crystallographic source and target meaning. |
 | misorientation | The orientation mapping between two orientations, before symmetry reduction. |
@@ -67,6 +74,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | powder pattern | Grid-sampled XRD spectrum built from discrete reflections and an optional broadening model. |
 | multiplicity | Number of symmetry-equivalent members of a plane or direction family under the phase point group. |
 | crystal scene | Reusable geometry bundle for 3D crystal rendering. |
+| reciprocal star | The `*` marking a reciprocal-space **basis vector** or reciprocal-frame axis label (`a*`); never applied to Miller indices, which are already reciprocal-basis components. |
+| symmetry family | The symmetry-related orbit of a plane or direction, written `{hkl}` or `<uvw>`; a single member is written `(hkl)` or `[uvw]`. |
+| overbar notation | A negative index rendered with a bar over the digit rather than a leading minus, in publication-facing output. |
+| zone law | The condition `h u + k v + l w = 0` for a direction `[uvw]` lying in a plane `(hkl)`. |
 
 ## Core Symbols
 
@@ -81,6 +92,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | \(q\) | Unit quaternion in `w, x, y, z` storage order. |
 | \((\phi_1, \Phi, \phi_2)\) | Bunge Euler angles. |
 | \((\mathbf{n}, \omega)\) | Axis-angle pair: rotation axis \(\mathbf{n}\) and angle \(\omega\). |
+| \(\mathbf{B}\) | Frame basis matrix whose columns are a frame's axis vectors in the canonical Cartesian reference: \(\mathbf{x} = \mathbf{B}\,\mathbf{v}\). |
+| \(\mathrm{RD}, \mathrm{TD}, \mathrm{ND}\) | Rolling, transverse, and normal directions of the sample frame. |
+| \(\{hkl\}\) | Symmetry-related family of lattice planes. |
+| \(\langle uvw \rangle\) | Symmetry-related family of lattice directions. |
 
 ### Lattice and reciprocal lattice
 

@@ -14,6 +14,8 @@ Pinned references:
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pytest
 
@@ -310,15 +312,23 @@ class TestBurgersComposite:
         zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
         composite = simulate_composite_saed(burgers, zone, variant_indices=(1,))
         label = composite.variant_patterns[0].label()
-        assert label.count(" ") >= 3, f"expected four-index hexagonal label, got {label}"
-        assert "[0 0 0 1]" in label
+        # Four-index Miller-Bravais, not three: assert the component count
+        # rather than the spacing, which the central formatter chooses based on
+        # whether concatenation would be ambiguous.
+        assert composite.variant_patterns[0].nearest_zone_axis.indices_bravais is not None
+        match = re.search(r"\[([^\]]+)\]", label)
+        assert match is not None, f"expected a bracketed zone label, got {label}"
+        body = match.group(1)
+        components = body.split() if " " in body else list(body)
+        assert len(components) == 4, f"expected a four-index label, got {label}"
+        assert "[0001]" in label
 
     def test_cubic_parent_zone_label_stays_three_index(
         self, burgers: OrientationRelationship
     ) -> None:
         zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
         composite = simulate_composite_saed(burgers, zone, variant_indices=(1,))
-        assert "[1 1 0]" in composite.describe()
+        assert "[110]" in composite.describe()
 
     def test_hexagonal_child_reciprocal_geometry(
         self, burgers: OrientationRelationship, bcc_hcp: tuple[Phase, Phase]

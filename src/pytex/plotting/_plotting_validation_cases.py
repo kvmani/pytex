@@ -11,8 +11,6 @@ from pytex import (
     CrystalPlane,
     CrystalPlaneOverlay,
     DirectionAnnotationStyle,
-    FrameDomain,
-    Handedness,
     InversePoleFigure,
     MillerIndex,
     Orientation,
@@ -22,6 +20,7 @@ from pytex import (
     Rotation,
     ZoneAxis,
     build_crystal_scene,
+    crystal_frame,
     generate_saed_pattern,
     generate_xrd_pattern,
     get_phase_fixture,
@@ -32,25 +31,16 @@ from pytex import (
     plot_saed_pattern,
     plot_symmetry_elements,
     plot_xrd_pattern,
+    specimen_frame,
 )
 
 
 def _make_crystal_frame() -> ReferenceFrame:
-    return ReferenceFrame(
-        name="crystal",
-        domain=FrameDomain.CRYSTAL,
-        axes=("a", "b", "c"),
-        handedness=Handedness.RIGHT,
-    )
+    return crystal_frame()
 
 
 def _make_specimen_frame() -> ReferenceFrame:
-    return ReferenceFrame(
-        name="specimen",
-        domain=FrameDomain.SPECIMEN,
-        axes=("x", "y", "z"),
-        handedness=Handedness.RIGHT,
-    )
+    return specimen_frame()
 
 
 def _fixture_phase(fixture_id: str) -> Any:

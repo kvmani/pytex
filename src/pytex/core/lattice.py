@@ -10,7 +10,8 @@ from typing import Any
 import numpy as np
 
 from pytex.core._arrays import as_float_array, as_int_array, normalize_vector
-from pytex.core.conventions import PYTEX_CANONICAL_CONVENTIONS, BasisKind, FrameDomain
+from pytex.core.conventions import BasisKind, FrameDomain
+from pytex.core.frame_catalog import reciprocal_frame_for
 from pytex.core.frames import ReferenceFrame
 from pytex.core.hexagonal import direction_uvtw_to_uvw, plane_hkil_to_hkl
 from pytex.core.point_groups import normalize_point_group_symbol
@@ -203,15 +204,7 @@ class Lattice:
     def reciprocal_basis(self) -> Basis:
         direct = self.direct_basis().matrix
         reciprocal = np.linalg.inv(direct).T
-        reciprocal_frame = ReferenceFrame(
-            name=f"{self.crystal_frame.name}_reciprocal",
-            domain=FrameDomain.RECIPROCAL,
-            axes=self.crystal_frame.axes,
-            handedness=self.crystal_frame.handedness,
-            convention=PYTEX_CANONICAL_CONVENTIONS,
-            description=f"Reciprocal basis associated with {self.crystal_frame.name}.",
-            provenance=self.provenance,
-        )
+        reciprocal_frame = reciprocal_frame_for(self.crystal_frame, provenance=self.provenance)
         return Basis(
             frame=reciprocal_frame,
             kind=BasisKind.RECIPROCAL,

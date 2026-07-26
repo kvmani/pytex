@@ -30,6 +30,31 @@ The current runtime plotting surface includes:
 
 These routines accept PyTex semantic objects and validate frame, symmetry, and convention meaning before rendering.
 
+### Reference-Frame Visualization
+
+A reference frame renders three ways from one geometry computation, so it looks the same wherever
+it appears:
+
+- `frame_triad(...)` / `frame_triad_primitives(...)` — triad primitives for 3D scenes
+- `plot_reference_frame(...)` / `plot_frame_relationship(...)` — standalone 3D figures
+- `add_frame_indicator(axes, frame, ...)` — a small gizmo embedded in the corner of *any* 2D axes,
+  including polar axes
+- `reference_frame_svg(...)` / `frame_catalog_svg(...)` — documentation SVG generated in pure
+  Python, with no matplotlib involved
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
+
+The gizmo is the everyday form: it states which way the axes point inside a figure that is about
+something else. Three renderers accept it directly, all opt-in so existing figures are unchanged:
+
+```python
+plot_saed_pattern(pattern, show_frame_indicator=True)           # detector u/v
+render_composite_saed(pattern, config=CompositeSAEDPlotConfig(show_frame_indicator=True))
+plot_crystal_structure_3d(phase, show_frame_indicator=True)     # crystal a/b/c
+```
+
+See {doc}`../architecture/reference_frame_foundation` for the model behind these.
+
 For spherical crystallographic plotting, PyTex now distinguishes between:
 
 - semantic direction markers projected from `CrystalDirection`

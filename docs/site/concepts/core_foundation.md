@@ -51,3 +51,5 @@ The core is not a convenience layer around arrays. It is the semantic contract t
 ### Informative
 
 - [../../figures/reference_frames_vectors.svg](../../figures/reference_frames_vectors.svg)
+- [../../figures/reference_frame_catalog.svg](../../figures/reference_frame_catalog.svg)
+- [../../figures/sample_frame_rd_td_nd.svg](../../figures/sample_frame_rd_td_nd.svg)

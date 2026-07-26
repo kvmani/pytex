@@ -44,6 +44,7 @@ from pytex.core.lattice import (
     ZoneAxis,
     phases_semantically_match,
 )
+from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import OrientationRelationship, TransformationVariant
 from pytex.diffraction.kinematic import (
@@ -67,7 +68,7 @@ def _primitive_integer_triples(max_index: int) -> np.ndarray:
 
 def _reflection_label(hkl: np.ndarray, *, bravais: bool) -> str:
     indices = plane_hkl_to_hkil(hkl) if bravais else np.asarray(hkl, dtype=np.int64)
-    return "(" + " ".join(str(int(value)) for value in indices) + ")"
+    return format_plane_indices(tuple(int(value) for value in indices), style="plain")
 
 
 def is_hexagonal_phase(phase: Phase) -> bool:
@@ -122,7 +123,7 @@ class RationalizedZoneAxis:
 
     def label(self) -> str:
         indices = self.indices_bravais if self.indices_bravais is not None else self.indices
-        return "[" + " ".join(str(int(value)) for value in indices) + "]"
+        return format_direction_indices(tuple(int(value) for value in indices), style="plain")
 
 
 def rationalize_zone_axis(
@@ -291,8 +292,8 @@ class CompositeSAEDPattern:
         """Convention-explicit prose summary of the composite pattern."""
 
         relationship = self.relationship
-        parent_label = (
-            "[" + " ".join(str(int(v)) for v in self.parent_zone_axis.indices) + "]"
+        parent_label = format_direction_indices(
+            tuple(int(v) for v in self.parent_zone_axis.indices), style="plain"
         )
         parent_part = (
             f"{len(self.parent_spots)} parent reflection(s) included"
@@ -642,9 +643,9 @@ def find_spot_coincidences(
             tuple(int(v) for v in item.child_hkl),
         )
     )
-    parent_zone_label = "[" + " ".join(
-        str(int(v)) for v in pattern.parent_zone_axis.indices
-    ) + "]"
+    parent_zone_label = format_direction_indices(
+        tuple(int(v) for v in pattern.parent_zone_axis.indices), style="plain"
+    )
     return SpotCoincidenceReport(
         relationship_name=pattern.relationship.name,
         parent_zone_label=parent_zone_label,

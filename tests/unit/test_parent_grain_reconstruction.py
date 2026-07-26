@@ -409,7 +409,9 @@ def test_variant_pole_figure_predicts_packet_plane_coincidence() -> None:
         assert float(np.max(np.abs(rows @ target))) == pytest.approx(1.0, abs=1e-9)
     text = prediction.describe()
     assert "24 variant(s)" in text
-    assert "(011)" in text
+    # A pole figure plots the whole symmetry orbit, so the family brackets
+    # {hkl} are the correct notation for the quantity, not (hkl).
+    assert "{011}" in text
 
 
 def test_variant_pole_figure_validates_phases_and_plots() -> None:

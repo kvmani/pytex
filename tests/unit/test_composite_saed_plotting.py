@@ -244,3 +244,35 @@ class TestConfigValidation:
         assert config.style_for_variant(7, 0) is custom
         cycled = config.style_for_variant(3, 1)
         assert cycled.color == VARIANT_COLOR_PALETTE[1]
+
+
+def test_composite_frame_indicator_is_opt_in(composite: CompositeSAEDPattern) -> None:
+    default_figure = render_composite_saed(composite)
+    try:
+        assert list(default_figure.axes[0].child_axes) == []
+    finally:
+        plt.close(default_figure)
+
+
+def test_composite_frame_indicator_shows_parent_crystal_axes_on_the_detector(
+    composite: CompositeSAEDPattern,
+) -> None:
+    """The gizmo must report the parent crystal axes, not the detector axes.
+
+    A composite pattern's detector axes are trivially the page axes; what a
+    reader actually needs is where the parent crystal's a/b/c point on this
+    detector, which the pattern's parent-anchored zone basis supplies.
+    """
+
+    figure = render_composite_saed(
+        composite, config=CompositeSAEDPlotConfig(show_frame_indicator=True)
+    )
+    try:
+        insets = list(figure.axes[0].child_axes)
+        assert len(insets) == 1
+        labels = {text.get_text() for text in insets[0].texts if text.get_text()}
+        parent_frame = composite.relationship.parent_phase.crystal_frame
+        assert set(parent_frame.axes) <= labels
+        assert parent_frame.name in labels
+    finally:
+        plt.close(figure)

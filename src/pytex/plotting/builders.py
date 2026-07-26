@@ -5,6 +5,7 @@ from numpy.typing import ArrayLike
 
 from pytex.core._arrays import normalize_vector
 from pytex.core.batches import EulerSet, QuaternionSet, RotationSet, VectorSet
+from pytex.core.notation import format_plane_family_indices, format_plane_indices
 from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.symmetry import SymmetrySpec
 from pytex.plotting._render import (
@@ -39,8 +40,19 @@ def _projection_title(noun: str, method: str) -> str:
     return f"{noun} ({method.replace('_', ' ').title()})"
 
 
-def _miller_label(indices: np.ndarray) -> str:
-    return "(" + " ".join(str(int(value)) for value in indices) + ")"
+def _pole_figure_label(pole_figure: PoleFigure) -> str:
+    """Bracket notation matching what the pole figure actually plots.
+
+    A pole figure normally shows the whole symmetry-related orbit of its pole,
+    which is written ``{hkl}``; only when family expansion was switched off does
+    it show the single plane ``(hkl)``. Reading the flag rather than assuming
+    keeps the title, the `describe()` prose, and the science in agreement.
+    """
+
+    indices = tuple(int(value) for value in pole_figure.pole.miller.indices)
+    if getattr(pole_figure, "includes_symmetry_family", True):
+        return format_plane_family_indices(indices, style="plain")
+    return format_plane_indices(indices, style="plain")
 
 
 def _operator_axis_and_angle(operator: np.ndarray) -> tuple[np.ndarray, float]:
@@ -390,7 +402,7 @@ def build_pole_figure_spec(
     if kind == "scatter":
         sizes = _weights_to_sizes(pole_figure.intensities)
         return FigureSpec2D(
-            title=title or f"Pole Figure {_miller_label(pole_figure.pole.miller.indices)}",
+            title=title or f"Pole Figure {_pole_figure_label(pole_figure)}",
             xlabel="projection x",
             ylabel="projection y",
             xlim=(-radius, radius),
@@ -410,7 +422,7 @@ def build_pole_figure_spec(
         histogram, xedges, yedges = pole_figure.histogram(bins=bins, method=method)
         return FigureSpec2D(
             title=title
-            or f"Pole Figure Histogram {_miller_label(pole_figure.pole.miller.indices)}",
+            or f"Pole Figure Histogram {_pole_figure_label(pole_figure)}",
             xlabel="projection x",
             ylabel="projection y",
             xlim=(-radius, radius),
@@ -427,7 +439,7 @@ def build_pole_figure_spec(
     if kind == "contour":
         histogram, xedges, yedges = pole_figure.histogram(bins=bins, method=method)
         return FigureSpec2D(
-            title=title or f"Pole Figure Contours {_miller_label(pole_figure.pole.miller.indices)}",
+            title=title or f"Pole Figure Contours {_pole_figure_label(pole_figure)}",
             xlabel="projection x",
             ylabel="projection y",
             xlim=(-radius, radius),

@@ -61,6 +61,7 @@ class PoleFigureCorrectionSpec:
             antipodal=pole_figure.antipodal,
             sample_symmetry=pole_figure.sample_symmetry,
             provenance=self.provenance or pole_figure.provenance,
+            includes_symmetry_family=pole_figure.includes_symmetry_family,
         )
 
 

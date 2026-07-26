@@ -150,6 +150,11 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 
 ![Reference Frames](../figures/reference_frames_vectors.svg)
 
+Every frame PyTex provides as standard, drawn from its own axis geometry by the same public code
+path users call:
+
+![PyTex Standard Reference Frames](../figures/reference_frame_catalog.svg)
+
 ## Scientific Posture
 
 PyTex does not treat external-tool agreement as a vague aspiration. For currently covered areas, MTEX is the validation floor, not the ceiling. Fixture-backed parity tests, unit tests, and theory notes are all part of the definition of a stable feature.

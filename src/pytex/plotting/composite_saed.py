@@ -23,12 +23,14 @@ from typing import Any, Literal
 import numpy as np
 
 from pytex.core.hexagonal import plane_hkl_to_hkil
+from pytex.core.notation import format_direction_indices
 from pytex.diffraction.composite import (
     CompositeSAEDPattern,
     VariantZonePattern,
     is_hexagonal_phase,
 )
 from pytex.diffraction.kinematic import SpotTable
+from pytex.plotting.frames import add_frame_indicator
 
 SizeModeName = Literal["intensity_area", "intensity_radius", "constant"]
 AxesUnitsName = Literal["mm", "inv_angstrom"]
@@ -287,6 +289,12 @@ class CompositeSAEDPlotConfig:
     ``axes_units`` switches between calibrated detector millimetres and
     reciprocal angstrom. The transmitted beam is drawn as a distinct central
     marker (never part of any spot table).
+
+    ``show_frame_indicator`` adds a small gizmo showing where the **parent
+    crystal axes** point on this detector, projected through the pattern's
+    parent-anchored detector basis. It answers "which way is the crystal
+    oriented in this pattern?" without a prose caption; off by default so
+    existing figures are unchanged.
     """
 
     parent_style: SpotStyle = field(default_factory=lambda: _DEFAULT_PARENT_STYLE)
@@ -310,6 +318,8 @@ class CompositeSAEDPlotConfig:
     dpi: int = 200
     limit_padding_fraction: float = 0.08
     annotation: SpotAnnotationConfig = field(default_factory=SpotAnnotationConfig)
+    show_frame_indicator: bool = False
+    frame_indicator_loc: str = "lower left"
 
     def __post_init__(self) -> None:
         if not self.variant_color_palette:
@@ -764,16 +774,18 @@ def render_composite_saed(
         axes.set_xlabel("detector u (mm)")
         axes.set_ylabel("detector v (mm)")
     else:
-        axes.set_xlabel(r"$g \cdot u$ ($\mathrm{\AA}^{-1}$)")
-        axes.set_ylabel(r"$g \cdot v$ ($\mathrm{\AA}^{-1}$)")
+        # Reciprocal-space axes: g is the reciprocal-lattice vector, bolded per
+        # IUCr vector convention, and the unit is inverse angstrom.
+        axes.set_xlabel(r"$\mathbf{g}\cdot\hat{u}$ ($\mathrm{\AA}^{-1}$)")
+        axes.set_ylabel(r"$\mathbf{g}\cdot\hat{v}$ ($\mathrm{\AA}^{-1}$)")
 
     if plot_config.show_title:
         if plot_config.title is not None:
             axes.set_title(plot_config.title)
         else:
-            parent_zone = "[" + " ".join(
-                str(int(v)) for v in rendered.parent_zone_axis.indices
-            ) + "]"
+            parent_zone = format_direction_indices(
+                tuple(int(v) for v in rendered.parent_zone_axis.indices), style="plain"
+            )
             axes.set_title(
                 f"{rendered.relationship.name}: composite SAED, parent {parent_zone} zone"
             )
@@ -788,6 +800,21 @@ def render_composite_saed(
             if plot_config.legend_outside:
                 legend_kwargs.update({"loc": "upper left", "bbox_to_anchor": (1.02, 1.0)})
             axes.legend(handles, labels, **legend_kwargs)
+
+    if plot_config.show_frame_indicator:
+        # zone_basis_parent has the orthonormal detector basis (u, v, zone) as
+        # columns in parent-crystal Cartesian components, so its transpose maps
+        # a parent-crystal vector into detector components. Its columns are
+        # therefore the parent crystal axes as seen on this detector.
+        add_frame_indicator(
+            axes,
+            pattern.relationship.parent_phase.crystal_frame,
+            loc=plot_config.frame_indicator_loc,
+            basis=np.asarray(pattern.zone_basis_parent, dtype=np.float64).T,
+            elev_deg=90.0,
+            azim_deg=-90.0,
+            label_frame=True,
+        )
 
     # Layout must be final before label placement: the collision checks
     # measure display-space extents, which tight_layout would invalidate.

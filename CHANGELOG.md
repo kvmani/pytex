@@ -11,7 +11,137 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **Reference frames are now a first-class shared foundation.** Frames were
+  previously a thin label plus three axis names, and each module built the ones
+  it needed inline. The foundation replaces that with one model used everywhere.
+  See [Reference Frame Foundation](docs/architecture/reference_frame_foundation.md).
+
+  - `ReferenceFrame` now carries **axis geometry**: `axis_vectors` (the
+    components of its three labelled axes in the canonical right-handed
+    Cartesian reference `X, Y, Z`), optional `axis_descriptions` long names, a
+    `basis_matrix` property, `axis_index` / `axis_vector` / `unit_axis_matrix`
+    accessors, `is_orthonormal` / `is_right_handed` / `determinant` reporting,
+    `with_axis_vectors` / `renamed` / `rotated` derivation, and `describe()`.
+    Construction now rejects linearly dependent axes and a declared handedness
+    that contradicts the axis-vector determinant. The geometry is stored as a
+    hashable tuple of float triples, so frames stay comparable — frame equality
+    gates `VectorSet`, `FrameTransform`, `Orientation`, and `SymmetrySpec`
+    consistency checks.
+  - `FrameTransform` gained `from_rotation`, `from_bunge_euler`,
+    `from_axis_angle`, `from_axis_correspondence` (state a vendor axis
+    convention in words instead of hand-writing a permutation matrix),
+    `between_frames`, `as_rotation`, `rotation_angle_deg`, `rotation_axis`,
+    `is_identity`, `source_axes_in_target`, and `describe()`. **New:**
+    `apply_to_directions` applies the rotation only — directions, plane normals,
+    and poles are translation-invariant, so an origin offset must not move them;
+    `apply_to_vectors` keeps applying rotation *and* translation for positions.
+  - `FrameGraph` registers frames and declared transforms and resolves the
+    transform between any two connected frames by composing the **shortest**
+    declared chain (fewest matrix products, least accumulated error). Edges are
+    usable in both directions.
+  - `pytex.core.frame_catalog` builds the standard frames once:
+    `CARTESIAN_FRAME`, `SPECIMEN_FRAME`, `SAMPLE_RD_TD_ND_FRAME` (`RD/TD/ND`),
+    `CRYSTAL_FRAME`, `MAP_FRAME`, `DETECTOR_FRAME`, `LABORATORY_FRAME`, with
+    matching builders, `reciprocal_frame_for`, `rolling_frame_graph`,
+    `get_standard_frame`, and `list_standard_frames`. Catalog defaults are
+    pinned to the field values the repository's modules already used, so
+    adopting the catalog is identity-preserving — asserted directly in
+    `tests/unit/test_frame_catalog.py`.
+  - `pytex.plotting.frames` renders the same frame three ways from one geometry
+    computation (`FrameTriad`): `frame_triad` / `frame_triad_primitives` for 3D
+    scenes, `add_frame_indicator` as an **embeddable corner gizmo** for any 2D
+    figure (SAED diffractograms, pole figures, IPF maps, crystal-viewer panels;
+    works on polar axes), and `reference_frame_svg` / `frame_catalog_svg` as
+    standalone documentation SVG generated in pure Python with **no matplotlib
+    dependency**. `project_orthographic` and `TRIAD_AXIS_COLORS` are public.
+  - Three renderers accept a frame gizmo directly, all **opt-in** so existing
+    figures are unchanged: `plot_saed_pattern(show_frame_indicator=True)` shows
+    the detector `u`/`v` axes; `render_composite_saed` with
+    `CompositeSAEDPlotConfig(show_frame_indicator=True)` shows the *parent
+    crystal* axes as they land on the detector; and
+    `plot_crystal_structure_3d(show_frame_indicator=True)` shows the phase's
+    `a`/`b`/`c` axes from the lattice basis at the figure's own view angles.
+  - New generated canonical figures `docs/figures/reference_frame_catalog.svg`
+    and `docs/figures/sample_frame_rd_td_nd.svg`, produced by
+    `scripts/generate_reference_frame_figures.py` from the same public code path
+    users call, so a documentation figure cannot drift from the model.
+  - New executable worked examples (`reference_frames` group) checking the
+    rotation implied by a declared axis correspondence, the resulting
+    components, multi-hop graph composition, exact round-trip invertibility, and
+    the right-handed determinant convention.
+
+- **Crystallographic notation is now fixed centrally and enforced.**
+  `pytex.core.notation` is the single place PyTex turns crystallographic
+  quantities into text, and the conventions it implements are anchored to the
+  IUCr *International Tables* in `docs/standards/notation_and_conventions.md`.
+
+  - **The reciprocal star** marks the *basis*, never the indices:
+    `format_reciprocal_axis_label(s)` produce `a*, b*, c*` for reciprocal basis
+    vectors and reciprocal-frame axes, while Miller indices stay unstarred
+    because `(hkl)` are already reciprocal-basis components. Starring is
+    idempotent, so a label passing through two layers cannot become `a**`.
+    `format_reciprocal_lattice_vector` renders `g_hkl`.
+  - **Bracket families** are now expressible: `format_plane_family_indices` and
+    `format_direction_family_indices` give `{hkl}` and `<uvw>`, alongside the
+    existing `(hkl)` and `[uvw]`. `format_miller_indices` gained a `scope`
+    parameter.
+  - The rule is a non-negotiable in `AGENTS.md` and is **enforced** by
+    `tests/unit/test_notation_conventions.py`, which fails if any module
+    reintroduces inline index formatting or hand-rolled starring, and which
+    renders every mathtext form through matplotlib so an unparseable label fails
+    as a test rather than as a broken figure.
+
+### Fixed
+
+- **Index formatting was ambiguous for negative and multi-digit components.**
+  `format_miller_indices` concatenated components unconditionally, so `[1-10]`
+  could be read as `[1, -1, 0]` *or* `[1, -10]`, and `(1210)` as `(1, 2, 1, 0)`
+  or `(12, 1, 0)`. A separator is now inserted whenever a component is negative
+  in plain style or any component has more than one digit; single-digit
+  non-negative indices keep the classical concatenated form `(110)`. This
+  changes user-visible label text — `describe()` output and figure labels for
+  such indices now read `[1 -1 0]` where they previously read `[1-10]`.
+
 ### Changed
+
+- **Pole figures and powder reflections are labelled as families.** A pole
+  figure plots the whole symmetry-related orbit of its pole, and a powder
+  reflection *is* its multiplicity, so both now read `{hkl}` rather than
+  `(hkl)`; writing a single member misstated the quantity. Because a
+  `PoleFigure` can be built with `include_symmetry_family=False`, the object now
+  records `includes_symmetry_family` and titles follow the record rather than an
+  assumption. JSON contracts round-trip the new field, defaulting to `True` for
+  payloads written before it existed.
+- Five modules that formatted indices inline (`plotting/diffraction.py`,
+  `plotting/builders.py`, `plotting/composite_saed.py`,
+  `diffraction/composite.py`, `diffraction/kinematic.py`) now route through
+  `pytex.core.notation`.
+- Composite SAED reciprocal-space axis labels now write the scattering vector in
+  bold per IUCr vector convention.
+- Fixed five long-standing Sphinx cross-reference warnings in
+  `docs/standards/reference_canon.md`; the documentation build is now
+  warning-free.
+
+- **Every module now builds frames through the shared catalog.**
+  `adapters/scan_files.default_ebsd_frames`, `diffraction/saed`,
+  `core/lattice.Lattice.reciprocal_basis`, the CLI core demo, and the plotting
+  validation cases no longer construct `ReferenceFrame` inline. This is
+  behaviour-preserving: the catalog defaults reproduce the previous field values
+  exactly, so the frames compare equal and no downstream consistency check
+  changes. The one visible difference is that a reciprocal frame's axis labels
+  are now starred (`a, b, c` becomes `a*, b*, c*`), which makes a
+  reciprocal-space vector impossible to mistake for a direct-space one.
+- `plotting.primitives.reference_frame_triad` now honours a frame's own
+  `axis_vectors` instead of always drawing the canonical Cartesian triad, so a
+  frame recorded as rotated draws rotated. An explicit `basis` argument still
+  wins.
+- `pytex.contracts` serializes `axis_vectors` and `axis_descriptions` for
+  reference frames. Deserialization is backward compatible: payloads written
+  before these fields existed get the identity triad and no long names, which
+  reproduces exactly the frame they described, so older files still round-trip
+  to equal objects.
 
 - **Symmetry-reduced disorientation is now a single dense product.** The
   reduction `min over S_l, S_r of angle(S_l M S_r^T)` previously expanded an

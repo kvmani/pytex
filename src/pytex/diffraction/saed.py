@@ -7,7 +7,8 @@ import numpy as np
 
 from pytex.core._arrays import as_float_array, as_int_array, normalize_vector
 from pytex.core._chemistry import atomic_number
-from pytex.core.conventions import FrameDomain, Handedness
+from pytex.core.conventions import FrameDomain
+from pytex.core.frame_catalog import detector_frame as catalog_detector_frame
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import MillerIndex, Phase, ReciprocalLatticeVector, ZoneAxis
 from pytex.core.provenance import ProvenanceRecord
@@ -148,11 +149,8 @@ def generate_saed_pattern(
     zone_basis = _choose_zone_basis(zone_vector)
     reciprocal_basis = phase.lattice.reciprocal_basis()
     reciprocal_frame = reciprocal_basis.frame
-    detector_frame = ReferenceFrame(
-        name=f"{phase.name}_saed_detector",
-        domain=FrameDomain.DETECTOR,
-        axes=("u", "v", "n"),
-        handedness=Handedness.RIGHT,
+    detector_frame = catalog_detector_frame(
+        f"{phase.name}_saed_detector",
         description="Detector plane for kinematic SAED plotting.",
         provenance=provenance,
     )

@@ -18,23 +18,48 @@ For the standards-facing policy behind this page, see {doc}`../standards/termino
 
 A named, domain-typed coordinate frame such as crystal, specimen, map, detector, laboratory, or reciprocal.
 
-See also: {doc}`reference_frames_and_conventions`, {doc}`core_model`.
+See also: {doc}`reference_frames_and_conventions`, {doc}`../architecture/reference_frame_foundation`, {doc}`core_model`.
+
+The standard frames PyTex provides, each drawn from its own axis geometry:
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
 
 ![Reference Frames](../../figures/reference_frames_vectors.svg)
 
 ### Crystal Frame
 
-The direct-lattice crystallographic frame attached to the phase and used for crystal directions, planes, and structure semantics.
+The direct-lattice crystallographic frame attached to the phase and used for crystal directions, planes, and structure semantics. Its axes are labelled $a, b, c$ — **without** stars.
+
+### Specimen Frame And Sample Frame
+
+The specimen frame ($x, y, z$) is the macroscopic frame an orientation maps *into*. The sample frame is the same domain with rolling-geometry labels — $\mathrm{RD}$ (rolling direction), $\mathrm{TD}$ (transverse direction), $\mathrm{ND}$ (sheet normal):
+
+![Sample Frame RD TD ND](../../figures/sample_frame_rd_td_nd.svg)
 
 ### Reciprocal Frame
 
-The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule $ \mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij} $.
+The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule $ \mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij} $. Its axes **carry the star**: $a^{*}, b^{*}, c^{*}$. That star marks the *basis*; it is never applied to Miller indices, which are already reciprocal-basis components.
 
 ### Detector Frame
 
 The frame in which detector coordinates such as $u$ and $v$ live for diffraction geometry and SAED plotting.
 
 See also: {doc}`../workflows/diffraction_geometry`, {doc}`../workflows/saed_generation`.
+
+## Index Notation
+
+| Quantity | Specific | Symmetry family |
+| --- | --- | --- |
+| lattice plane | $(hkl)$ | $\{hkl\}$ |
+| lattice direction | $[uvw]$ | $\langle uvw \rangle$ |
+| Miller-Bravais plane | $(hkil)$ | $\{hkil\}$ |
+| Miller-Bravais direction | $[uvtw]$ | $\langle uvtw \rangle$ |
+
+The family form is not decoration: a pole figure, a powder reflection, and a slip-system family all denote the whole symmetry-related orbit, and writing a single member would misstate the quantity. Negative indices are rendered with an overbar rather than a minus sign in publication-facing output.
+
+### Reciprocal Lattice Vector
+
+The scattering vector belonging to a set of Miller indices, $\mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}$ — a combination of the **starred** reciprocal basis vectors.
 
 ## Orientation And Texture Terms
 

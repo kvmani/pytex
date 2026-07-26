@@ -22,7 +22,7 @@ from typing import Any
 import numpy as np
 
 from pytex.adapters.ebsd import NormalizedEBSDDataset, _normalize_vendor_payload
-from pytex.core.conventions import FrameDomain
+from pytex.core import frame_catalog
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
 
@@ -75,22 +75,19 @@ _CTF_PROPERTY_NAMES = {
 
 
 def default_ebsd_frames() -> tuple[ReferenceFrame, ReferenceFrame, ReferenceFrame]:
-    crystal = ReferenceFrame(
-        name="crystal",
-        domain=FrameDomain.CRYSTAL,
-        axes=("a", "b", "c"),
+    """The crystal, specimen, and map frames a vendor scan is imported into.
+
+    Built from `pytex.core.frame_catalog` so an imported scan's frames compare
+    equal to the same frames anywhere else in the library. No axis remapping
+    between vendor and PyTex specimen conventions is applied here; that policy
+    is recorded in the generated import manifest.
+    """
+
+    return (
+        frame_catalog.crystal_frame(),
+        frame_catalog.specimen_frame(),
+        frame_catalog.map_frame(),
     )
-    specimen = ReferenceFrame(
-        name="specimen",
-        domain=FrameDomain.SPECIMEN,
-        axes=("x", "y", "z"),
-    )
-    map_frame = ReferenceFrame(
-        name="map",
-        domain=FrameDomain.MAP,
-        axes=("x", "y", "z"),
-    )
-    return crystal, specimen, map_frame
 
 
 def _readonly_float(values: np.ndarray) -> np.ndarray:

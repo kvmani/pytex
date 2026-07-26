@@ -46,6 +46,7 @@ from pytex.core.lattice import (
     ZoneAxis,
     phases_semantically_match,
 )
+from pytex.core.notation import format_direction_indices
 from pytex.core.provenance import ProvenanceRecord
 from pytex.diffraction.physics import ReflectionCondition
 
@@ -387,7 +388,11 @@ class SpotTable:
 
     def zone_axis_label(self) -> str:
         if isinstance(self.zone_axis, ZoneAxis):
-            return "[" + " ".join(str(int(value)) for value in self.zone_axis.indices) + "]"
+            return format_direction_indices(
+                tuple(int(value) for value in self.zone_axis.indices), style="plain"
+            )
+        # An irrational zone axis has no integer indices to bracket, so the
+        # decimal components are shown inside direction brackets directly.
         coordinates = self.zone_axis.coordinates
         return "[" + " ".join(f"{value:.3f}" for value in coordinates) + "]"
 

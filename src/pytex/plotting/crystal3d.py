@@ -40,6 +40,7 @@ from pytex.core._chemistry import (
 )
 from pytex.core.lattice import AtomicSite, CrystalDirection, CrystalPlane, MillerIndex, Phase
 from pytex.core.notation import format_direction_indices, format_plane_indices
+from pytex.plotting.frames import add_frame_indicator
 from pytex.plotting.primitives import Transform3D
 from pytex.plotting.styles import _deep_merge, resolve_style
 
@@ -1715,6 +1716,8 @@ def plot_crystal_structure_3d(
     view_direction: CrystalDirection | np.ndarray | None = None,
     view_preset: str | None = None,
     show_legend: bool = False,
+    show_frame_indicator: bool = False,
+    frame_indicator_loc: str = "lower left",
     ax: Any | None = None,
 ) -> Any:
     """Render a crystal scene (or phase) as a VESTA-class 3D figure.
@@ -1727,6 +1730,13 @@ def plot_crystal_structure_3d(
     `CrystalDirection` and wins over the preset. ``show_legend`` adds a
     per-species color legend. Set the ``depth_cue_strength`` style key above
     zero for VESTA-style distance fog computed for the initial view.
+
+    ``show_frame_indicator`` adds a small `pytex.plotting.frames` gizmo in the
+    chosen corner showing where the phase's crystal axes point *in the rendered
+    view*, so a reader can tell the orientation at a glance even when the camera
+    is set by a crystallographic direction rather than by angles. The gizmo is
+    drawn at the figure's own ``elev_deg``/``azim_deg``, so it always agrees with
+    the scene. Off by default, so existing figures are unchanged.
     """
 
     plt, poly3d_collection = _require_matplotlib()
@@ -1859,5 +1869,18 @@ def plot_crystal_structure_3d(
         axes.set_axis_off()
     if bool(crystal_style.get("show_title", True)):
         axes.set_title(f"{scene.phase.name} Crystal Structure")
+    if show_frame_indicator:
+        # The lattice basis columns are the a/b/c edge vectors in crystal
+        # Cartesian coordinates, which is the space the scene is drawn in, so an
+        # oblique cell's gizmo leans the way the cell does.
+        add_frame_indicator(
+            axes,
+            scene.phase.crystal_frame,
+            loc=frame_indicator_loc,
+            basis=scene.phase.lattice.direct_basis().matrix,
+            elev_deg=elev_deg,
+            azim_deg=azim_deg,
+            label_frame=True,
+        )
     fig.tight_layout()
     return fig

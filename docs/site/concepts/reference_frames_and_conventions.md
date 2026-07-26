@@ -127,30 +127,46 @@ Euler-angle import is only the first step. Once an orientation exists, PyTex kee
 
 That distinction matters because IPF-sector reduction and orientation-space reduction are related but not identical mathematical operations.
 
+## The Standard Frame Catalog
+
+You rarely have to build a frame by hand. `pytex.core.frame_catalog` provides the frames every
+workflow expects, and they compare equal wherever they appear, so frame identity is stable across
+module boundaries.
+
+![PyTex Standard Reference Frames](../../figures/reference_frame_catalog.svg)
+
+| Slug | Constant | Domain | Axes |
+| --- | --- | --- | --- |
+| `cartesian` | `CARTESIAN_FRAME` | laboratory | `X, Y, Z` |
+| `specimen` | `SPECIMEN_FRAME` | specimen | `x, y, z` |
+| `sample` | `SAMPLE_RD_TD_ND_FRAME` | specimen | `RD, TD, ND` |
+| `crystal` | `CRYSTAL_FRAME` | crystal | `a, b, c` |
+| `map` | `MAP_FRAME` | map | `x, y, z` |
+| `detector` | `DETECTOR_FRAME` | detector | `u, v, n` |
+| `laboratory` | `LABORATORY_FRAME` | laboratory | `x_lab, y_lab, z_lab` |
+
+Each slug also has a builder (`sample_frame(...)`, `crystal_frame(...)`, ...) for workflows holding
+several frames of the same kind — two phases, two detectors, a parent and a child crystal.
+
+### The Sample Frame
+
+For rolled-sheet work the specimen axes have names a metallurgist expects to read:
+
+![Sample Frame RD TD ND](../../figures/sample_frame_rd_td_nd.svg)
+
 ## Minimal Example
 
 ```python
 from pytex import (
-    FrameDomain,
-    Handedness,
     Orientation,
-    ReferenceFrame,
     Rotation,
     SymmetrySpec,
+    crystal_frame,
+    specimen_frame,
 )
 
-crystal = ReferenceFrame(
-    "crystal",
-    FrameDomain.CRYSTAL,
-    ("a", "b", "c"),
-    Handedness.RIGHT,
-)
-specimen = ReferenceFrame(
-    "specimen",
-    FrameDomain.SPECIMEN,
-    ("x", "y", "z"),
-    Handedness.RIGHT,
-)
+crystal = crystal_frame()
+specimen = specimen_frame()
 
 symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
 
@@ -162,15 +178,75 @@ orientation = Orientation(
 )
 ```
 
+## Relating Frames
+
+A `FrameTransform` is a typed, invertible map between exactly two named frames, applied as
+`v_target = R @ v_source + t`. State the relationship the way you actually know it — most often in
+words:
+
+```python
+from pytex import FrameTransform, sample_frame, specimen_frame
+
+specimen = specimen_frame()
+sample = sample_frame()
+
+transform = FrameTransform.from_axis_correspondence(
+    specimen, sample, {"x": "TD", "y": "-RD", "z": "ND"}
+)
+print(transform.describe())
+```
+
+Use `apply_to_directions` for directions, plane normals, and poles — they are translation-invariant,
+so an origin offset must not move them — and `apply_to_vectors` for positions.
+
+When a workflow spans several relationships, register them in a `FrameGraph` and ask for the pair
+you need; it composes the shortest declared chain for you:
+
+```python
+from pytex import rolling_frame_graph
+
+graph = rolling_frame_graph(rd_offset_deg=30.0)
+graph.path("cartesian", "sample_rd_td_nd")
+# ('cartesian', 'specimen', 'sample_rd_td_nd')
+graph.transform_between("cartesian", "sample_rd_td_nd").rotation_angle_deg
+# 30.0
+```
+
+## Showing The Frame In A Figure
+
+Any 2D figure whose orientation would otherwise be ambiguous can carry a small frame gizmo in a
+corner — a SAED diffractogram, a pole figure, an IPF map, a crystal-viewer panel:
+
+```python
+from pytex import DETECTOR_FRAME, add_frame_indicator
+
+add_frame_indicator(axes, DETECTOR_FRAME, loc="lower right", label_frame=True)
+```
+
+Three renderers already accept it, all opt-in:
+
+```python
+plot_saed_pattern(pattern, show_frame_indicator=True)                       # detector u/v
+render_composite_saed(pattern, config=CompositeSAEDPlotConfig(show_frame_indicator=True))
+plot_crystal_structure_3d(phase, show_frame_indicator=True)                 # crystal a/b/c
+```
+
+For documentation assets, `reference_frame_svg` and `frame_catalog_svg` emit complete SVG documents
+in pure Python with no matplotlib involved. The figures on this page are generated that way by
+`scripts/generate_reference_frame_figures.py`.
+
 ## What This Fixes In Practice
 
 - You can tell which way the orientation maps without guessing.
 - You can test Euler-angle conversions without losing frame meaning.
 - You can perform symmetry-aware misorientation and disorientation calculations on a scientifically explicit object.
 - You can connect texture and EBSD workflows without redefining the frame model in each subsystem.
+- You can state a vendor axis convention in words instead of hand-writing a permutation matrix.
+- You can put the active frame directly into a figure instead of describing it in a caption.
 
 ## Related Material
 
+- {doc}`../architecture/reference_frame_foundation`
 - {doc}`../architecture/canonical_data_model`
 - {doc}`../architecture/orientation_and_texture_foundation`
 - [../../tex/theory/reference_frames.tex](../../tex/theory/reference_frames.tex)

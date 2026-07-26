@@ -18,9 +18,13 @@ If a rule is informative only, it must not silently fix stable API semantics.
 
 PyTex maintains a working reference corpus under `../../references/` to make authoritative formulas and examples discoverable during implementation.
 
-- [Reference Index](../../references/reference_index.md) is the page-level discovery index.
-- [Formulation Summary](../../references/formulation_summary.md) is the first-stop summary for formulas, notation crosswalks, and ready-to-use examples.
-- [Feature Opportunities](../../references/feature_opportunities.md) records source-grounded implementation ideas and gap analysis.
+- `references/reference_index.md` is the page-level discovery index.
+- `references/formulation_summary.md` is the first-stop summary for formulas, notation crosswalks, and ready-to-use examples.
+- `references/feature_opportunities.md` records source-grounded implementation ideas and gap analysis.
+
+These paths are repository-root relative and are quoted rather than linked: this note is rendered
+into the Sphinx site from `docs/standards/`, and the working corpus lives outside the documentation
+tree, so a relative link would not resolve.
 
 These files are repository guidance tools, not a replacement for the source hierarchy below. When they summarize a source, contributors should still verify the cited pages before fixing stable semantics.
 
@@ -32,6 +36,19 @@ These files are repository guidance tools, not a replacement for the source hier
 - IUCr / *International Tables for Crystallography, Volume G*
 
 These sources define the normative backbone for point-group, space-group, and CIF/data-exchange semantics.
+
+### Crystallographic Notation
+
+- IUCr / *International Tables for Crystallography, Volume A* (axis conventions, Hermann-Mauguin
+  symbols, index and family notation)
+- IUCr / *International Tables for Crystallography, Volume C* (reciprocal-space definitions and
+  the starred reciprocal basis)
+
+Classification: `normative from IUCr/International Tables`. These fix the notation rules in
+[Notation And Conventions](notation_and_conventions.md) — the starred reciprocal basis, the
+`(hkl)` / `{hkl}` / `[uvw]` / `<uvw>` bracket families, overbarred negative indices, and
+Hermann-Mauguin group symbols. They are implemented once in `pytex.core.notation` and enforced by
+`tests/unit/test_notation_conventions.py`.
 
 ### Orientation And Texture Conventions
 
@@ -100,6 +117,6 @@ PyTex may adopt a tool convention from MTEX, ORIX, KikuchiPy, diffsims, or vendo
 ### Informative
 
 - `scientific_citation_policy.md`
-- [Reference Index](../../references/reference_index.md)
-- [Formulation Summary](../../references/formulation_summary.md)
+- `references/reference_index.md`
+- `references/formulation_summary.md`
 - MTEX documentation: <https://mtex-toolbox.github.io/>

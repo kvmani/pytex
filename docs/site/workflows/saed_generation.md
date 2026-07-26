@@ -70,6 +70,22 @@ live in reciprocal space and are finally rendered in detector coordinates.
 named detector and reciprocal frames, the camera constant, and the crystal-basis information used
 for the detector projection.
 
+The reciprocal frame's axes carry the IUCr star — `a*`, `b*`, `c*` — so a reciprocal-space vector
+can never be mistaken for a direct-space one. The indices themselves are not starred: `(hkl)` are
+already reciprocal-basis components, and the scattering vector is
+$\mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}$.
+
+### Stating The Frame In The Figure
+
+Rather than relying on the axis labels alone, a pattern can carry its own detector-frame gizmo:
+
+```python
+plot_saed_pattern(pattern, show_frame_indicator=True)
+```
+
+The gizmo shows the in-plane `u` and `v` axes; the detector normal is omitted because it points at
+the viewer. See {doc}`../architecture/reference_frame_foundation`.
+
 The first pinned external-baseline case for this workflow now uses the built-in `ni_fcc` fixture
 for a `[001]` zone-axis pattern and records shell geometry against a `diffsims` reference result
 under `fixtures/diffraction/`.

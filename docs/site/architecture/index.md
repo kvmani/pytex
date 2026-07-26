@@ -8,6 +8,7 @@ surface remains aligned with the repository's scientific design documents.
 
 overview
 canonical_data_model
+reference_frame_foundation
 orientation_and_texture_foundation
 ebsd_foundation
 diffraction_foundation

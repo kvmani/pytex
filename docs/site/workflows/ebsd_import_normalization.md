@@ -97,6 +97,31 @@ that every source-system nuance has been preserved or validated. If a workflow d
 vendor-specific metadata, detector calibration state, or package-version-specific behavior, record
 that dependency explicitly and add validation before treating it as stable.
 
+## Declaring A Vendor Axis Convention
+
+Vendors disagree about which specimen axis is called what, and hand-writing the permutation matrix
+is where sign errors enter. State the convention in words instead:
+
+```python
+from pytex import FrameTransform, sample_frame, specimen_frame
+
+transform = FrameTransform.from_axis_correspondence(
+    specimen_frame(), sample_frame(), {"x": "TD", "y": "-RD", "z": "ND"}
+)
+print(transform.describe())
+```
+
+The declaration fixes component semantics — in its own coordinates a frame's axis `i` is the basis
+vector `e_i`, so "source axis `i` is target axis `j`" gives a signed permutation matrix. An odd
+permutation without a compensating sign flip would be a mirror rather than a rotation, and is
+rejected instead of silently inverting your chirality.
+
+When a workflow relates more than two frames, register the transforms in a `FrameGraph` and ask for
+the pair you need; it composes the shortest declared chain. PyTex deliberately keeps the map frame
+distinct from the specimen frame: they coincide only when a workflow declares that relationship.
+
+See {doc}`../architecture/reference_frame_foundation`.
+
 ## Related Material
 
 - {doc}`ebsd_kam`

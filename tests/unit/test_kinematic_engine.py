@@ -401,7 +401,7 @@ class TestSimulateZoneAxisSpots:
         table = simulate_zone_axis_spots(phase, zone)
         text = table.describe()
         assert "nickel-fcc" in text
-        assert "[0 1 1]" in text
+        assert "[011]" in text
         assert "200 kV" in text
         assert "0.025079" in text
         assert "s_g" in text

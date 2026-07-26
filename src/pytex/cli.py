@@ -18,15 +18,15 @@ from pytex.adapters import (
 from pytex.contracts import JSON_CONTRACT_SCHEMA_VERSION
 from pytex.core import (
     PYTEX_CANONICAL_CONVENTIONS,
-    FrameDomain,
     FrameTransform,
-    Handedness,
     Orientation,
     ProvenanceRecord,
-    ReferenceFrame,
     Rotation,
     SymmetrySpec,
+    crystal_frame,
     list_phase_fixtures,
+    sample_frame,
+    specimen_frame,
 )
 
 
@@ -79,20 +79,10 @@ def _cmd_docs_build(args: argparse.Namespace) -> int:
 
 
 def _cmd_core_demo(_: argparse.Namespace) -> int:
-    crystal = ReferenceFrame(
-        name="crystal",
-        domain=FrameDomain.CRYSTAL,
-        axes=("a", "b", "c"),
-        handedness=Handedness.RIGHT,
-        provenance=ProvenanceRecord.minimal("pytex-demo"),
-    )
-    specimen = ReferenceFrame(
-        name="specimen",
-        domain=FrameDomain.SPECIMEN,
-        axes=("x", "y", "z"),
-        handedness=Handedness.RIGHT,
-        provenance=ProvenanceRecord.minimal("pytex-demo"),
-    )
+    provenance = ProvenanceRecord.minimal("pytex-demo")
+    crystal = crystal_frame(provenance=provenance)
+    specimen = specimen_frame(provenance=provenance)
+    sample = sample_frame(provenance=provenance)
     symmetry = SymmetrySpec.identity(reference_frame=crystal)
     orientation = Orientation(
         rotation=Rotation.from_bunge_euler(45.0, 35.0, 15.0),
@@ -100,10 +90,20 @@ def _cmd_core_demo(_: argparse.Namespace) -> int:
         specimen_frame=specimen,
         symmetry=symmetry,
     )
-    transform = FrameTransform.identity(specimen)
+    transform = FrameTransform.from_axis_correspondence(
+        specimen,
+        sample,
+        {"x": "RD", "y": "TD", "z": "ND"},
+        provenance=provenance,
+    )
     print("Orientation matrix:")
     print(orientation.as_matrix())
-    print("Identity transform matrix:")
+    print("Specimen frame:")
+    print(specimen.describe())
+    print("Sample frame:")
+    print(sample.describe())
+    print("Specimen-to-sample transform:")
+    print(transform.describe())
     print(transform.rotation_matrix)
     return 0
 

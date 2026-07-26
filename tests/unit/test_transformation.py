@@ -976,7 +976,9 @@ def test_describe_surfaces_state_conventions_and_key_numbers() -> None:
     text = ks.describe()
     assert "kurdjumov_sachs" in text
     assert "(111) parent || (011) child" in text
-    assert "[-101] parent || [-1-11] child" in text
+    # Negative components force a separator: "[-101]" would be ambiguous
+    # between [-1, 0, 1] and [-10, 1].
+    assert "[-1 0 1] parent || [-1 -1 1] child" in text
     assert "42.85 deg" in text
     assert "24 crystallographically distinct" in text
 
@@ -989,7 +991,7 @@ def test_describe_surfaces_state_conventions_and_key_numbers() -> None:
 
     direction = ks.map_direction_to_child(CrystalDirection([-1.0, 0.0, 1.0], phase=parent))
     direction_text = direction.describe()
-    assert "[-101]" in direction_text and "[-1-11]" in direction_text
+    assert "[-1 0 1]" in direction_text and "[-1 -1 1]" in direction_text
 
     parents, children, gt = _paired_sets_for_deviation(parent, child)
     deviation_text = or_deviation(parents, children, gt).describe()

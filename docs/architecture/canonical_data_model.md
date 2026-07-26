@@ -23,14 +23,21 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 - Stable APIs must prefer domain types over generic arrays.
 - Import normalization must preserve both canonical internal semantics and original source semantics.
 - Special-system notation, such as hexagonal four-index forms, must be normalized at the boundary and documented centrally.
+- Human-facing crystallographic notation is produced by `pytex.core.notation` alone: reciprocal
+  **basis vectors and reciprocal-frame axes carry the star** (`a*, b*, c*`) while Miller indices do
+  not, symmetry families take `{hkl}` / `<uvw>` and specific planes and directions take `(hkl)` /
+  `[uvw]`, and negative indices are overbarred. See
+  [Notation And Conventions](../standards/notation_and_conventions.md).
 - Domain objects should fail fast on inconsistent frame, phase, and symmetry combinations.
 - Stable workflow interchange should use versioned manifests and schemas rather than ad hoc dicts.
 - Major stable objects and results that cross workflow or tool boundaries should expose versioned JSON contracts that preserve enough semantics for reconstruction.
 
 ## Canonical Primitives
 
-- `ReferenceFrame`: named right-handed coordinate frame with explicit domain
-- `FrameTransform`: reusable rigid transform between frames
+- `ReferenceFrame`: named, domain-typed coordinate frame carrying explicit axis geometry
+  (see [Reference Frame Foundation](reference_frame_foundation.md))
+- `FrameTransform`: reusable rigid transform between frames, source and target always explicit
+- `FrameGraph`: registry resolving the transform between any two connected frames
 - `VectorSet`: batch of vectors sharing one explicit reference frame
 - `SymmetrySpec`: point-group or specimen-symmetry description plus operators
 - `SpaceGroupSpec`: structure-facing space-group identity attached to a crystal frame

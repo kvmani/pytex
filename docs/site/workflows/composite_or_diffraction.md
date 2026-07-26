@@ -141,6 +141,20 @@ reports its true tilt.
 - no higher-order-Laue-zone (HOLZ) ring construction yet
 - cross-phase intensity scaling is a rendering choice, not physics
 
+## Stating The Parent Frame In The Pattern
+
+Every sub-pattern of a composite figure shares one parent-anchored detector basis, so the detector
+axes are trivially the page axes and say nothing useful. What a reader actually needs is where the
+**parent crystal** axes land on that detector, which the pattern's zone basis supplies:
+
+```python
+render_composite_saed(
+    pattern, config=CompositeSAEDPlotConfig(show_frame_indicator=True)
+)
+```
+
+See {doc}`../architecture/reference_frame_foundation`.
+
 ## Related Material
 
 - {doc}`../tutorials/notebooks/21_composite_or_diffraction_patterns` — the

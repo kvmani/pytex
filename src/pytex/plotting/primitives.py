@@ -53,6 +53,13 @@ from pytex.plotting.styles import resolve_style
 # deficiencies, matching the repository categorical palette.
 _DEFAULT_TRIAD_COLORS: tuple[str, str, str] = ("#1d4ed8", "#059669", "#dc2626")
 
+#: The canonical per-axis triad colors, in first/second/third axis order.
+#:
+#: Exported so every renderer that draws a reference frame — 3D scene triads,
+#: the 2D corner gizmo in `pytex.plotting.frames`, and documentation SVG — uses
+#: one palette, and a frame therefore looks the same wherever it appears.
+TRIAD_AXIS_COLORS: tuple[str, str, str] = _DEFAULT_TRIAD_COLORS
+
 
 def _require_matplotlib() -> tuple[Any, Any]:
     try:
@@ -633,15 +640,19 @@ def reference_frame_triad(
 ) -> AxisTriad3D:
     """Build an `AxisTriad3D` for a reference frame or an explicit basis.
 
-    Provide either a `ReferenceFrame` (its axis names label the triad and a unit
-    Cartesian triad is drawn) or an explicit ``(3, 3)`` ``basis`` whose columns
-    are the axis vectors (e.g. a `Lattice.direct_basis().matrix` for the crystal
-    ``a/b/c`` axes). ``length`` scales the drawn axes. With ``orthonormalize`` a
+    Provide either a `ReferenceFrame` — whose axis labels name the triad and
+    whose `ReferenceFrame.axis_vectors` set where the axes point, so a frame
+    recorded as rotated draws rotated — or an explicit ``(3, 3)`` ``basis``
+    whose columns are the axis vectors (e.g. a `Lattice.direct_basis().matrix`
+    for the crystal ``a/b/c`` axes). An explicit ``basis`` wins over the frame's
+    own geometry. ``length`` scales the drawn axes. With ``orthonormalize`` a
     non-orthonormal basis is drawn as unit direction arrows (so an oblique cell
     still yields a legible gizmo); set it ``False`` to draw the true edge
     vectors.
     """
 
+    if basis is None and frame is not None and getattr(frame, "basis_matrix", None) is not None:
+        basis = frame.basis_matrix
     if basis is not None:
         matrix = as_float_array(basis, shape=(3, 3))
         if orthonormalize:
