@@ -163,6 +163,17 @@ _CORRESPONDENCE_DENOMINATORS: tuple[int, ...] = (1, 2)
 #: what separates the right denominator from a plausible-looking rounding.
 _CORRESPONDENCE_DETERMINANT_TOLERANCE = 1e-6
 
+#: How much better a finer denominator must fit before it is preferred.
+#:
+#: An integer correspondence is the physically expected case, so a coarser grid
+#: wins ties and near-ties. A denominator-2 grid can differ from a
+#: denominator-1 grid by at most 0.25 in an entry, so requiring a 0.1 improvement
+#: says "only accept the shuffle if it explains a substantial part of the
+#: misfit". Without this, a large lattice contraction can make the finer grid fit
+#: marginally better with a physically wrong determinant — for a 3.60 to 2.87
+#: Bain pair, by 0.009, at determinant 3 instead of 2.
+_CORRESPONDENCE_REFINEMENT_MARGIN = 0.1
+
 
 @dataclass(frozen=True, slots=True)
 class DirectionCorrespondence:
@@ -1130,19 +1141,21 @@ class OrientationRelationship:
             # wrong here: the correspondence is the nearest matrix over a bounded
             # denominator. Denominator 1 covers the cubic cases; 2 is needed when
             # a shuffle carries half a cell, as in Burgers bcc-to-hcp.
-            # Two filters, in this order, because neither alone is sufficient:
+            # Three filters, because no single one is sufficient:
             #
             #   * the determinant must be a non-zero whole number — a lattice
             #     correspondence maps a cell onto a whole number of cells, so a
             #     candidate with det 1.5 is not one, however well its entries fit;
-            #   * among the survivors take the best entry-wise fit, not the
-            #     smallest denominator. For the reverse hcp-to-bcc relationship
-            #     the denominator-1 rounding has integer determinant 2 but fits
-            #     badly, and taking it would report a doubled cell and a
-            #     nonsensical +96% volume change.
+            #   * a finer denominator must fit substantially better, not merely
+            #     better, or a large lattice contraction lets it win by a hair
+            #     with a wrong determinant;
+            #   * subject to that, take the coarsest grid, because an integer
+            #     correspondence is the physically expected case.
             #
-            # Ties break towards the smaller denominator, so the cubic cases keep
-            # the integer correspondence they have always had.
+            # The reverse hcp-to-bcc relationship needs all three: its
+            # denominator-1 rounding is invertible with integer determinant 2,
+            # but fits so badly that using it reports a doubled cell and a
+            # nonsensical +96% volume change.
             candidates: list[tuple[float, int, np.ndarray]] = []
             for candidate_denominator in _CORRESPONDENCE_DENOMINATORS:
                 scaled = np.rint(exact * candidate_denominator) / candidate_denominator
@@ -1156,8 +1169,14 @@ class OrientationRelationship:
                     (float(np.max(np.abs(exact - scaled))), candidate_denominator, scaled)
                 )
             if candidates:
+                best_deviation = min(item[0] for item in candidates)
+                acceptable = [
+                    item
+                    for item in candidates
+                    if item[0] <= best_deviation + _CORRESPONDENCE_REFINEMENT_MARGIN
+                ]
                 _, denominator, correspondence_matrix = min(
-                    candidates, key=lambda item: (round(item[0], 9), item[1])
+                    acceptable, key=lambda item: item[1]
                 )
             if correspondence_matrix is None:
                 raise ValueError(

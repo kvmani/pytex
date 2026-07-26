@@ -1744,3 +1744,29 @@ def test_correspondence_search_rejects_an_invertible_but_poor_integer_fit() -> N
     assert float(np.linalg.det(report.correspondence)) == pytest.approx(1.0, abs=1e-9)
     # The volume change is a contraction of about 2%, not an expansion of 96%.
     assert -0.03 < report.volume_ratio - 1.0 < 0.0
+
+
+def test_a_large_contraction_does_not_tip_a_cubic_pair_to_a_finer_grid() -> None:
+    """The coarsest grid wins unless a finer one fits substantially better.
+
+    For a 3.60 to 2.87 Bain pair the denominator-2 rounding fits marginally
+    better than denominator 1 — by 0.009 — but with determinant 3 instead of 2,
+    which is not the physical correspondence. Preferring the coarser grid unless
+    the improvement is substantial keeps this case integer.
+    """
+
+    _, _, parent, child = make_phases()
+    contracted = Phase(
+        "martensite_contracted",
+        lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child.crystal_frame),
+        symmetry=child.symmetry,
+        crystal_frame=child.crystal_frame,
+    )
+    report = OrientationRelationship.from_bain_correspondence(
+        parent_phase=parent, child_phase=contracted
+    ).deformation_gradient()
+
+    assert report.correspondence_denominator == 1
+    assert float(np.linalg.det(report.correspondence)) == pytest.approx(2.0, abs=1e-9)
+    # A contraction of a=3.60 to a=2.87 is a small volume change, not +52%.
+    assert abs(report.volume_ratio - 1.0) < 0.1

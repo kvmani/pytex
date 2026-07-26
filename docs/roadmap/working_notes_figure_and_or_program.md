@@ -32,10 +32,10 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | FX4 | Repo-wide figure text-layout policy test | DONE |
 | FX5 | Audit Burgers OR support in the core API; record gaps | DONE |
 | FX5a | Unblock transformation strain for reconstructive (bcc->hcp) transformations | DONE |
-| FX6 | Exhaustive forward Burgers (bcc → hcp) notebook content | TODO |
-| FX7 | Reverse Burgers (hcp → bcc) notebook content | TODO |
-| FX8 | Execute notebooks; pin key numbers in tests/worked examples | TODO |
-| FX9 | Full gate; commit and push | TODO |
+| FX6 | Exhaustive forward Burgers (bcc → hcp) notebook content | DONE |
+| FX7 | Reverse Burgers (hcp → bcc) notebook content | DONE |
+| FX8 | Execute notebooks; pin key numbers in tests/worked examples | DONE |
+| FX9 | Full gate; commit and push | DONE |
 
 ## Part 1 — Figure layout
 
@@ -253,8 +253,57 @@ forbids.
 
 - Entering state (commit `059026a`): ruff clean, mypy strict clean, **1293 tests passed**,
   coverage 89.52%, integrity green, Sphinx build warning-free.
-- FX9 final run: *(to be recorded)*
+- FX9 final run: ruff clean, mypy strict clean (88 source files), **1301 tests passed**,
+  coverage 89.53%, integrity green, Sphinx build with zero warnings, all 21 notebooks
+  execute end to end without error.
 
-## Outcomes
+## Part 2 outcomes (FX6-FX9)
 
-*(filled in per phase as work lands)*
+Notebook 19 (`19_lattice_correspondence_and_transformation_strain.ipynb`) grew from
+13 to 34 cells. The forward section (bcc → hcp, beta-Zr to alpha-Zr) covers the
+12 variants, the symmetry-reduced intervariant misorientation table, the defining
+parallelisms verified numerically rather than asserted in prose, the deformation
+gradient with its principal strains and volume change, crystal scenes of parent and
+product, and variant pole figures. The reverse section (hcp → bcc) is built
+independently with `from_parallel_plane_direction`, not by inverting the forward
+rotation, because the phases swap and the symmetry reduction differs.
+
+### The correspondence-selection rule, and why it needs three filters
+
+`deformation_gradient()` searches denominators `(1, 2)`. Choosing among the
+candidates by fit alone is wrong, and two separate regressions proved it:
+
+1. **Fit alone picks physically wrong matrices.** For the reverse Burgers pair the
+   best-fitting candidate had determinant 2 and reported a +96% volume change. A
+   lattice correspondence must map an integer number of parent cells onto a child
+   cell, so the determinant must be a whole number. Candidates whose determinant is
+   not integral to within 1e-6 are now rejected outright — this alone fixed both the
+   reverse Burgers case and a KS case that had fallen to a determinant-1.5 candidate.
+2. **A marginally better fit is not a reason to move to a finer grid.** For an
+   austenite (a = 3.60 A) to martensite (a = 2.87 A) Bain pair, denominator 2 fits
+   0.009 better than denominator 1 — noise — but with determinant 3 instead of 2, and
+   reported a +52% volume change. `_CORRESPONDENCE_REFINEMENT_MARGIN = 0.1` now
+   requires a finer denominator to fit *substantially* better before it is preferred;
+   otherwise the coarsest grid wins. Pinned by
+   `test_a_large_contraction_does_not_tip_a_cubic_pair_to_a_finer_grid`.
+
+Final behaviour across the four cases the notebooks and tests exercise:
+
+| relationship | denominator | determinant | volume change |
+| --- | --- | --- | --- |
+| Bain (3.60 → 2.87) | 1 | +2 | +1.34% |
+| KS (same pair) | 1 | +2 | +1.34% |
+| Burgers bcc → hcp | 2 | +1 | -2.74% |
+| Burgers hcp → bcc | 2 | +1 | +2.82% |
+
+The denominator-2 entries are the scientific point of the section: Burgers is
+reconstructive, and the halves are the shuffle.
+
+### Notebook prose corrected against its own output
+
+Two statements in the notebook were true of neither its code nor its data and were
+fixed: a summary row quoting a +7.65% fcc → bcc volume change for a Ni/Fe pair the
+notebook never constructs (now the +1.34% its own phases give), and a pair-count
+line that recomputed `len(variants)**2` instead of reporting the matrix it had
+actually just built. Both are the failure mode the executable-example rule exists to
+prevent — narration drifting away from the computation beneath it.
