@@ -31,6 +31,7 @@ Status values: `TODO`, `IN PROGRESS`, `DONE`.
 | FX3 | Fix text overflow and overlap in all flagged figures | DONE |
 | FX4 | Repo-wide figure text-layout policy test | DONE |
 | FX5 | Audit Burgers OR support in the core API; record gaps | DONE |
+| FX5a | Unblock transformation strain for reconstructive (bcc->hcp) transformations | DONE |
 | FX6 | Exhaustive forward Burgers (bcc → hcp) notebook content | TODO |
 | FX7 | Reverse Burgers (hcp → bcc) notebook content | TODO |
 | FX8 | Execute notebooks; pin key numbers in tests/worked examples | TODO |
@@ -191,7 +192,37 @@ which is not near-integer at any denominator up to 6, and whose nearest integer
 matrix is singular. The error message is therefore accurate and the guard is doing
 its job — the method simply does not cover hexagonal products.
 
-### Scoped fix, before FX6/FX7 write strain content
+### RESOLVED in FX5a
+
+The diagnosis below was right about the cause and wrong about the remedy. The
+correspondence is not irrational — it is **half-integer**. Rounding to the nearest
+half gives a correspondence with determinant exactly 1, and the halves *are* the
+Burgers shuffle: the bcc primitive cell is half the hcp one, so two bcc lattice
+points map onto one hcp lattice point plus one motif atom.
+
+`deformation_gradient()` now searches denominators `(1, 2)` and reports which one
+it used through `DeformationGradientReport.correspondence_denominator`. A
+denominator of 2 is a scientific statement, not an implementation detail: the
+transformation cannot be a pure lattice strain. The list is deliberately short —
+allowing any denominator would fit numerical noise instead of crystallography. An
+explicit `correspondence=` argument can still pin a literature matrix.
+
+Results for beta-Zr (a = 3.574 A) to alpha-Zr (a = 3.232, c = 5.147 A):
+
+- principal strains **+10.75%, +1.83%, -9.57%** — the classic Burgers pair of a
+  ~10% extension against a ~10% contraction
+- volume change **+1.99%**, which matches an *independent* calculation from the
+  two conventional cell volumes to 1e-9; that cross-check is the test, rather than
+  a restatement of the program's own output
+- the cubic relationships are unchanged: Bain, KS and NW still use denominator 1
+  and still give the textbook stretches 1.1504, 1.1504, 0.8135
+
+Pinned by six tests in `tests/unit/test_transformation.py`. `describe()` explains
+the denominator in prose. One fix was needed along the way: the report coerced the
+correspondence to `int64`, which rounded the halves away into a singular matrix —
+it is now float.
+
+### Superseded diagnosis, kept for the record
 
 Extend `deformation_gradient()` to work from **primitive** bases (deriving the
 primitive vectors from the lattice centring), and/or accept an explicit

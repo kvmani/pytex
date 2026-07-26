@@ -1539,3 +1539,141 @@ def test_isaichev_correspondence_and_ferrite_cementite_catalog() -> None:
         OrientationRelationship.from_isaichev_correspondence(
             parent_phase=cementite, child_phase=cementite
         )
+
+
+# ---------------------------------------------------------------------------
+# Reconstructive transformations: the Burgers shuffle
+# ---------------------------------------------------------------------------
+
+
+def _zirconium_allotropes() -> tuple[Phase, Phase]:
+    """Beta (bcc) and alpha (hcp) zirconium, the classic Burgers pair.
+
+    Lattice parameters: beta-Zr a = 3.574 A (high-temperature bcc allotrope) and
+    alpha-Zr a = 3.232 A, c = 5.147 A, matching the ``zr_hcp`` fixture.
+    """
+
+    from pytex import crystal_frame, get_phase_fixture
+
+    alpha_frame = crystal_frame("alpha_zr")
+    beta_frame = crystal_frame("beta_zr")
+    alpha = get_phase_fixture("zr_hcp").load_phase(crystal_frame=alpha_frame)
+    beta = Phase(
+        "beta-zirconium",
+        lattice=Lattice(3.574, 3.574, 3.574, 90.0, 90.0, 90.0, crystal_frame=beta_frame),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
+        crystal_frame=beta_frame,
+    )
+    return beta, alpha
+
+
+def test_burgers_relationship_has_twelve_variants_and_the_literature_misorientation() -> None:
+    beta, alpha = _zirconium_allotropes()
+    relationship = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    )
+    assert len(relationship.generate_variants()) == 12
+    assert relationship.misorientation().angle_deg == pytest.approx(45.29, abs=0.02)
+
+
+def test_burgers_correspondence_is_half_integer_because_of_the_shuffle() -> None:
+    """bcc-to-hcp has no integer Bravais-lattice correspondence.
+
+    The bcc primitive cell has half the volume of the hcp one, so two bcc lattice
+    points map onto one hcp lattice point plus one motif atom. The missing half is
+    the Burgers shuffle, and it shows up as a half-integer correspondence. A
+    denominator of 2 is therefore a scientific statement: this transformation
+    cannot be a pure lattice strain.
+    """
+
+    beta, alpha = _zirconium_allotropes()
+    report = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    ).deformation_gradient()
+
+    assert report.correspondence_denominator == 2
+    doubled = np.asarray(report.correspondence) * 2.0
+    assert np.allclose(doubled, np.rint(doubled), atol=1e-9)
+    assert not np.allclose(
+        report.correspondence, np.rint(report.correspondence), atol=1e-9
+    )
+    # A unit-determinant correspondence: one parent cell of atoms per child cell.
+    assert float(np.linalg.det(report.correspondence)) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_burgers_transformation_strain_matches_an_independent_volume_calculation() -> None:
+    """The volume change is checked against the cell volumes, not a prior output.
+
+    beta-Zr conventional cell (2 atoms) has volume a^3; alpha-Zr conventional cell
+    (2 atoms) has volume (sqrt(3)/2) a^2 c. Their ratio is an independent
+    derivation of ``det F``, so agreement validates the whole correspondence and
+    deformation-gradient path rather than restating it.
+    """
+
+    beta, alpha = _zirconium_allotropes()
+    report = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    ).deformation_gradient()
+
+    beta_volume = beta.lattice.a**3
+    alpha_volume = (np.sqrt(3.0) / 2.0) * alpha.lattice.a**2 * alpha.lattice.c
+    assert report.volume_ratio == pytest.approx(alpha_volume / beta_volume, rel=1e-9)
+    # About +2% for zirconium.
+    assert report.volume_ratio == pytest.approx(1.0199, abs=1e-3)
+
+
+def test_burgers_principal_strains_are_the_classic_ten_percent_pair() -> None:
+    """One near +10% extension, one near -10% contraction, one small.
+
+    This is the shape of the Burgers lattice strain reported for the beta-to-alpha
+    transformation in titanium and zirconium.
+    """
+
+    beta, alpha = _zirconium_allotropes()
+    report = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    ).deformation_gradient()
+
+    strains = np.sort((np.asarray(report.principal_stretches) - 1.0) * 100.0)[::-1]
+    assert strains[0] == pytest.approx(10.76, abs=0.05)
+    assert strains[1] == pytest.approx(1.83, abs=0.05)
+    assert strains[2] == pytest.approx(-9.57, abs=0.05)
+
+
+def test_cubic_relationships_still_use_an_integer_correspondence() -> None:
+    """Widening the denominator search must not change the cubic cases."""
+
+    from pytex import crystal_frame, get_phase_fixture
+
+    parent = get_phase_fixture("ni_fcc").load_phase(crystal_frame=crystal_frame("fcc"))
+    child = get_phase_fixture("fe_bcc").load_phase(crystal_frame=crystal_frame("bcc"))
+    for builder in (
+        OrientationRelationship.from_bain_correspondence,
+        OrientationRelationship.from_kurdjumov_sachs_correspondence,
+        OrientationRelationship.from_nishiyama_wassermann_correspondence,
+    ):
+        report = builder(parent_phase=parent, child_phase=child).deformation_gradient()
+        assert report.correspondence_denominator == 1
+        assert np.allclose(report.correspondence, np.rint(report.correspondence), atol=1e-9)
+        # The textbook Bain stretches, shared by every KS/NW variant.
+        assert np.sort(report.principal_stretches)[::-1] == pytest.approx(
+            [1.1504, 1.1504, 0.8135], abs=1e-3
+        )
+
+
+def test_deformation_gradient_accepts_an_explicit_correspondence() -> None:
+    """A literature correspondence can be pinned instead of searched for."""
+
+    beta, alpha = _zirconium_allotropes()
+    relationship = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    )
+    searched = relationship.deformation_gradient()
+    pinned = relationship.deformation_gradient(correspondence=searched.correspondence)
+    assert pinned.correspondence_denominator == 2
+    assert np.allclose(pinned.deformation_gradient, searched.deformation_gradient, atol=1e-12)
+
+    with pytest.raises(ValueError, match="singular"):
+        relationship.deformation_gradient(correspondence=np.zeros((3, 3)))
+    with pytest.raises(ValueError, match=r"shape \(3, 3\)"):
+        relationship.deformation_gradient(correspondence=np.eye(2))

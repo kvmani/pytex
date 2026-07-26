@@ -143,6 +143,17 @@ def _index_correspondence(
     return exact, rational, residual_deg
 
 
+#: Denominators searched when rationalizing a lattice correspondence, in order.
+#:
+#: 1 covers the cubic-to-cubic relationships, whose conventional basis vectors
+#: map onto child lattice vectors. 2 is needed for reconstructive bcc-to-hcp
+#: (Burgers), where the bcc primitive cell is half the hcp one and an atomic
+#: shuffle carries the missing half — the correspondence is genuinely
+#: half-integer. The list is short on purpose: allowing any denominator would
+#: fit numerical noise instead of crystallography.
+_CORRESPONDENCE_DENOMINATORS: tuple[int, ...] = (1, 2)
+
+
 @dataclass(frozen=True, slots=True)
 class DirectionCorrespondence:
     """The image of a crystal direction under an orientation relationship.
@@ -1039,6 +1050,7 @@ class OrientationRelationship:
         self,
         *,
         variant: TransformationVariant | None = None,
+        correspondence: ArrayLike | None = None,
     ) -> DeformationGradientReport:
         """Lattice-correspondence deformation gradient (Bain-strain analysis).
 
@@ -1053,29 +1065,82 @@ class OrientationRelationship:
         every KS/NW/GT variant shares the same principal stretches because
         they differ from Bain only by rigid rotation.
 
-        Inputs: optionally a variant and the rationalization bound.
+        Reconstructive transformations and the shuffle
+            An integer correspondence exists only when the parent's conventional
+            basis vectors map onto child *lattice* vectors, which holds for the
+            cubic-to-cubic relationships. It fails for bcc to hcp (Burgers): the
+            bcc primitive cell has half the volume of the hcp one, so two bcc
+            lattice points map onto one hcp lattice point plus one motif atom.
+            That missing half is the Burgers **shuffle**, and the correspondence
+            is a **half-integer** matrix rather than an integer one.
+
+            The search therefore widens the denominator until it finds a
+            non-singular correspondence, and reports which one it used through
+            `DeformationGradientReport.correspondence_denominator`: 1 for the
+            cubic cases, 2 when a shuffle carries half a cell. Requiring an
+            integer would have refused the Burgers case; allowing any rational
+            would fit noise, so the denominator is bounded and reported.
+
+            ``correspondence`` may still be supplied explicitly to pin a
+            literature lattice correspondence rather than accept the search.
+
+        Inputs: optionally a variant, and optionally an explicit ``(3, 3)``
+        lattice ``correspondence``.
 
         Output: a ``DeformationGradientReport`` (see its ``describe()``).
+
+        Raises
+        ------
+        ValueError
+            If no correspondence is supplied and no correspondence with a
+            denominator within the bound is non-singular.
         """
 
         rotation, variant_index = self._resolve_variant_rotation(variant)
         parent_basis = self.parent_phase.lattice.direct_basis().matrix
         child_basis = self.child_phase.lattice.direct_basis().matrix
         exact = np.linalg.solve(child_basis, rotation @ parent_basis)
-        # The lattice correspondence is the nearest INTEGER matrix: magnitudes
-        # matter for strain, so ray-based rationalization would be wrong here.
-        correspondence = np.rint(exact).astype(np.int64)
-        if int(round(float(np.linalg.det(correspondence.astype(np.float64))))) == 0:
-            raise ValueError(
-                "The nearest-integer lattice correspondence is singular; the "
-                "relationship's exact correspondence is too far from an integer "
-                "matrix for Bain-strain analysis."
-            )
-        component_error = float(np.max(np.abs(exact - correspondence)))
+        denominator = 1
+        correspondence_matrix: np.ndarray | None = None
+        if correspondence is not None:
+            supplied = np.asarray(correspondence, dtype=np.float64)
+            if supplied.shape != (3, 3):
+                raise ValueError("correspondence must have shape (3, 3).")
+            if np.isclose(float(np.linalg.det(supplied)), 0.0, atol=1e-12):
+                raise ValueError("The supplied lattice correspondence is singular.")
+            correspondence_matrix = supplied
+            component_error = float(np.max(np.abs(exact - supplied)))
+            is_integer = np.allclose(supplied, np.rint(supplied), atol=1e-9)
+            doubled = supplied * 2.0
+            is_half_integer = np.allclose(doubled, np.rint(doubled), atol=1e-9)
+            if is_half_integer and not is_integer:
+                denominator = 2
+        else:
+            # Magnitudes matter for strain, so ray-based rationalization would be
+            # wrong here: the correspondence is the nearest matrix over a bounded
+            # denominator. Denominator 1 covers the cubic cases; 2 is needed when
+            # a shuffle carries half a cell, as in Burgers bcc-to-hcp.
+            for candidate_denominator in _CORRESPONDENCE_DENOMINATORS:
+                scaled = np.rint(exact * candidate_denominator) / candidate_denominator
+                if not np.isclose(float(np.linalg.det(scaled)), 0.0, atol=1e-9):
+                    correspondence_matrix = scaled
+                    denominator = candidate_denominator
+                    break
+            if correspondence_matrix is None:
+                raise ValueError(
+                    "No non-singular lattice correspondence was found with a denominator "
+                    f"in {_CORRESPONDENCE_DENOMINATORS}. Pass an explicit "
+                    "`correspondence=` matrix (child-basis coordinates of the images of "
+                    "the parent basis vectors) taken from the literature."
+                )
+            component_error = float(np.max(np.abs(exact - correspondence_matrix)))
+        if correspondence_matrix is None:  # pragma: no cover - guarded above
+            raise ValueError("Failed to resolve a lattice correspondence.")
+        correspondence = correspondence_matrix
         gradient = (
             rotation.T
             @ child_basis
-            @ correspondence.astype(np.float64)
+            @ np.asarray(correspondence, dtype=np.float64)
             @ np.linalg.inv(parent_basis)
         )
         right_cauchy_green = gradient.T @ gradient
@@ -1097,6 +1162,7 @@ class OrientationRelationship:
             principal_directions=directions,
             volume_ratio=float(np.linalg.det(gradient)),
             correspondence=correspondence,
+            correspondence_denominator=denominator,
             polar_rotation_deg=polar_angle,
             correspondence_max_component_error=component_error,
             provenance=self.provenance,
@@ -2070,6 +2136,7 @@ class DeformationGradientReport:
     correspondence: np.ndarray
     polar_rotation_deg: float
     correspondence_max_component_error: float
+    correspondence_denominator: int = 1
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -2077,7 +2144,10 @@ class DeformationGradientReport:
         stretch = np.asarray(self.stretch_tensor, dtype=np.float64)
         stretches = np.asarray(self.principal_stretches, dtype=np.float64).reshape(-1)
         directions = np.asarray(self.principal_directions, dtype=np.float64)
-        correspondence = np.asarray(self.correspondence, dtype=np.int64)
+        # Float, not int: a reconstructive correspondence is genuinely
+        # half-integer (the Burgers shuffle), and coercing to int would silence
+        # that by rounding the halves away into a singular matrix.
+        correspondence = np.asarray(self.correspondence, dtype=np.float64)
         if gradient.shape != (3, 3) or stretch.shape != (3, 3) or correspondence.shape != (3, 3):
             raise ValueError("Deformation matrices must have shape (3, 3).")
         if stretches.shape != (3,) or directions.shape != (3, 3):
@@ -2086,6 +2156,10 @@ class DeformationGradientReport:
             raise ValueError("Principal stretches and volume ratio must be positive.")
         if self.polar_rotation_deg < 0.0 or self.correspondence_max_component_error < 0.0:
             raise ValueError("Polar rotation and component error must be non-negative.")
+        if self.correspondence_denominator < 1:
+            raise ValueError("correspondence_denominator must be a positive integer.")
+        if np.isclose(float(np.linalg.det(correspondence)), 0.0, atol=1e-9):
+            raise ValueError("The lattice correspondence must be non-singular.")
         for array in (gradient, stretch, stretches, directions, correspondence):
             array.setflags(write=False)
         object.__setattr__(self, "deformation_gradient", gradient)
@@ -2101,20 +2175,37 @@ class DeformationGradientReport:
         variant_text = (
             f" (variant {self.variant_index})" if self.variant_index is not None else ""
         )
+        denominator = self.correspondence_denominator
+        scaled = np.rint(np.asarray(self.correspondence) * denominator).astype(np.int64)
+        suffix = "" if denominator == 1 else f"/{denominator}"
         columns = ", ".join(
-            format_direction_indices(_index_tuple(self.correspondence[:, i]), style="plain")
+            format_direction_indices(_index_tuple(scaled[:, i]), style="plain") + suffix
             for i in range(3)
         )
+        if denominator == 1:
+            correspondence_text = (
+                f"Integer lattice correspondence maps the parent basis to {columns} "
+                f"(child indices; largest entry-wise deviation "
+                f"{self.correspondence_max_component_error:.3f})."
+            )
+        else:
+            correspondence_text = (
+                f"The lattice correspondence is not integer but has denominator "
+                f"{denominator}: it maps the parent basis to {columns} (child indices; "
+                f"largest entry-wise deviation "
+                f"{self.correspondence_max_component_error:.3f}). A non-unit denominator "
+                "means the parent lattice does not map onto the child lattice by strain "
+                "alone — an atomic shuffle carries the remainder, as in the "
+                "reconstructive Burgers bcc-to-hcp transformation."
+            )
         return (
             f"Transformation deformation for '{self.relationship_name}'{variant_text}: "
             f"principal strains {strains[0]:+.2f}%, {strains[1]:+.2f}%, {strains[2]:+.2f}% "
             f"(principal directions in the parent crystal frame), volume change "
-            f"{(self.volume_ratio - 1.0) * 100.0:+.2f}%. Integer lattice correspondence maps "
-            f"the parent basis to {columns} (child indices; largest entry-wise deviation "
-            f"{self.correspondence_max_component_error:.3f}). Residual polar rotation "
-            f"{self.polar_rotation_deg:.2f} deg — zero for the pure correspondence "
-            "distortion (Bain), and the rigid-body rotation relative to it for "
-            "KS-class relationships."
+            f"{(self.volume_ratio - 1.0) * 100.0:+.2f}%. {correspondence_text} "
+            f"Residual polar rotation {self.polar_rotation_deg:.2f} deg — zero for the "
+            "pure correspondence distortion (Bain), and the rigid-body rotation relative "
+            "to it for KS-class relationships."
         )
 
 
