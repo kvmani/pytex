@@ -1677,3 +1677,70 @@ def test_deformation_gradient_accepts_an_explicit_correspondence() -> None:
         relationship.deformation_gradient(correspondence=np.zeros((3, 3)))
     with pytest.raises(ValueError, match=r"shape \(3, 3\)"):
         relationship.deformation_gradient(correspondence=np.eye(2))
+
+
+def _reverse_burgers() -> OrientationRelationship:
+    """The hcp-to-bcc relationship, built explicitly.
+
+    ``from_burgers_correspondence`` cannot be reused with the arguments swapped:
+    it requires a cubic parent (432) and hexagonal child (622). The reverse is a
+    different object, with the phases exchanged.
+    """
+
+    beta, alpha = _zirconium_allotropes()
+    return OrientationRelationship.from_parallel_plane_direction(
+        name="burgers_reverse",
+        parent_plane=CrystalPlane.from_miller_bravais((0, 0, 0, 1), phase=alpha),
+        child_plane=CrystalPlane(MillerIndex(np.array([1, 1, 0]), phase=beta), phase=beta),
+        parent_direction=CrystalDirection.from_miller_bravais((1, 1, -2, 0), phase=alpha),
+        child_direction=CrystalDirection([-1.0, 1.0, 1.0], phase=beta),
+    )
+
+
+def test_reverse_burgers_has_six_variants_and_the_same_misorientation() -> None:
+    """The reverse is not the inverse rotation: the symmetry reduction differs.
+
+    Forward bcc-to-hcp gives 12 variants because the cubic parent's 24 proper
+    operators reduce against the hexagonal child's 12. Reversed, the roles swap
+    and the orbit reduces to 6. The misorientation angle is unchanged, because it
+    is the same relationship read in the other direction.
+    """
+
+    reverse = _reverse_burgers()
+    assert len(reverse.generate_variants()) == 6
+    assert reverse.misorientation().angle_deg == pytest.approx(45.29, abs=0.02)
+
+
+def test_reverse_burgers_strain_undoes_the_forward_volume_change() -> None:
+    """hcp-to-bcc must contract by what bcc-to-hcp expanded."""
+
+    beta, alpha = _zirconium_allotropes()
+    forward = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=beta, child_phase=alpha
+    ).deformation_gradient()
+    reverse = _reverse_burgers().deformation_gradient()
+
+    assert reverse.correspondence_denominator == 2
+    assert reverse.volume_ratio == pytest.approx(1.0 / forward.volume_ratio, rel=1e-6)
+    # Independently: the beta cell volume over the alpha cell volume.
+    beta_volume = beta.lattice.a**3
+    alpha_volume = (np.sqrt(3.0) / 2.0) * alpha.lattice.a**2 * alpha.lattice.c
+    assert reverse.volume_ratio == pytest.approx(beta_volume / alpha_volume, rel=1e-6)
+
+
+def test_correspondence_search_rejects_an_invertible_but_poor_integer_fit() -> None:
+    """Fit quality, not mere invertibility, picks the denominator.
+
+    For the reverse relationship the denominator-1 rounding *is* invertible, but
+    it is a poor fit with determinant 2 — taking it would report a doubled cell
+    and a nonsensical +96% volume change. The search requires the fit to be within
+    the rationalization tolerance before accepting a denominator.
+    """
+
+    reverse = _reverse_burgers()
+    report = reverse.deformation_gradient()
+    assert report.correspondence_denominator == 2
+    assert report.correspondence_max_component_error <= 0.25
+    assert float(np.linalg.det(report.correspondence)) == pytest.approx(1.0, abs=1e-9)
+    # The volume change is a contraction of about 2%, not an expansion of 96%.
+    assert -0.03 < report.volume_ratio - 1.0 < 0.0

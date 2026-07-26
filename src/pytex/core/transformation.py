@@ -153,6 +153,16 @@ def _index_correspondence(
 #: fit numerical noise instead of crystallography.
 _CORRESPONDENCE_DENOMINATORS: tuple[int, ...] = (1, 2)
 
+#: How close a correspondence determinant must be to a whole number to count.
+#:
+#: A lattice correspondence maps one cell of parent lattice points onto a whole
+#: number of child cells, so its determinant is an integer — 2 for the
+#: fcc-to-bcc family (one fcc cell of four atoms onto two bcc cells), 1 for
+#: Burgers in either direction. A candidate whose determinant is fractional is
+#: not a lattice correspondence at all, whatever its entry-wise fit, and this is
+#: what separates the right denominator from a plausible-looking rounding.
+_CORRESPONDENCE_DETERMINANT_TOLERANCE = 1e-6
+
 
 @dataclass(frozen=True, slots=True)
 class DirectionCorrespondence:
@@ -1120,12 +1130,35 @@ class OrientationRelationship:
             # wrong here: the correspondence is the nearest matrix over a bounded
             # denominator. Denominator 1 covers the cubic cases; 2 is needed when
             # a shuffle carries half a cell, as in Burgers bcc-to-hcp.
+            # Two filters, in this order, because neither alone is sufficient:
+            #
+            #   * the determinant must be a non-zero whole number — a lattice
+            #     correspondence maps a cell onto a whole number of cells, so a
+            #     candidate with det 1.5 is not one, however well its entries fit;
+            #   * among the survivors take the best entry-wise fit, not the
+            #     smallest denominator. For the reverse hcp-to-bcc relationship
+            #     the denominator-1 rounding has integer determinant 2 but fits
+            #     badly, and taking it would report a doubled cell and a
+            #     nonsensical +96% volume change.
+            #
+            # Ties break towards the smaller denominator, so the cubic cases keep
+            # the integer correspondence they have always had.
+            candidates: list[tuple[float, int, np.ndarray]] = []
             for candidate_denominator in _CORRESPONDENCE_DENOMINATORS:
                 scaled = np.rint(exact * candidate_denominator) / candidate_denominator
-                if not np.isclose(float(np.linalg.det(scaled)), 0.0, atol=1e-9):
-                    correspondence_matrix = scaled
-                    denominator = candidate_denominator
-                    break
+                determinant = float(np.linalg.det(scaled))
+                whole = round(determinant)
+                if whole == 0:
+                    continue
+                if abs(determinant - whole) > _CORRESPONDENCE_DETERMINANT_TOLERANCE:
+                    continue
+                candidates.append(
+                    (float(np.max(np.abs(exact - scaled))), candidate_denominator, scaled)
+                )
+            if candidates:
+                _, denominator, correspondence_matrix = min(
+                    candidates, key=lambda item: (round(item[0], 9), item[1])
+                )
             if correspondence_matrix is None:
                 raise ValueError(
                     "No non-singular lattice correspondence was found with a denominator "
