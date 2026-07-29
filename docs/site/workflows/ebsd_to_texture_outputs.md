@@ -71,7 +71,7 @@ Both plotting calls accept optional grain-boundary overlays.
 - `Orientation` and `OrientationSet` remain crystal-to-specimen mappings
 - quaternion order remains `w, x, y, z`
 - axis-angle outputs use radians
-- Rodrigues coordinates use `n tan(ω / 2)` with the `ω = π` singularity kept explicit
+- Rodrigues coordinates use $\hat{\mathbf{n}} \tan(\omega / 2)$ with the $\omega = \pi$ singularity kept explicit
 
 ## Related Material
 

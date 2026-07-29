@@ -27,15 +27,15 @@ Future tasks should use it together with `formulation_summary.md` before mining 
 | Kikuchi pattern as gnomonic projection | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | p. 153 | Important for gnomonic projection and pattern-center figures. |
 | Qualitative Kikuchi interpretation | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 153-155 | Useful for pattern-quality and boundary-analysis docs. |
 | Orientation determination from Kikuchi patterns | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 157-159 | Strong source for orientation-indexing workflow docs. |
-| Hexagonal plane 4-index rule `i = -(h + k)` | `hexagnoal 4index mathematics.pdf` | pp. 1-2 | Clear derivation for plane notation. |
-| Hexagonal direction 4-index rule and inverse transform | `hexagnoal 4index mathematics.pdf` | pp. 2-3 | Direct source for `uvw <-> UVTW` conversions. |
+| Hexagonal plane 4-index rule $i = -(h + k)$ | `hexagnoal 4index mathematics.pdf` | pp. 1-2 | Clear derivation for plane notation. |
+| Hexagonal direction 4-index rule and inverse transform | `hexagnoal 4index mathematics.pdf` | pp. 2-3 | Direct source for $[uvw] \leftrightarrow [UVTW]$ conversions. |
 | Four-index zone equation | `hexagnoal 4index mathematics.pdf` | pp. 2-4 | Useful for future `zone_law` helpers in Miller-Bravais notation. |
 | Worked four-index examples and addition/subtraction rules | `hexagnoal 4index mathematics.pdf` | pp. 3-4 | Ready-made test and documentation examples. |
 | Gnomonic construction for hexagonal zone symbols | `hexagnoal 4index mathematics.pdf` | pp. 5-7 | Useful for crystallographic projection figures. |
 | Miller planes from intercepts | `crystallographY_calcualtions.pdf` | book pp. 9-10 (PDF pp. 19-20) | Clear derivation of Miller indices from intercepts. |
-| Reciprocal basis definition `a_i . a_j* = delta_ij` | `crystallographY_calcualtions.pdf` | book pp. 10-11 (PDF pp. 20-21) | Good source for basis and reciprocal-lattice docs. |
-| Reciprocal vector normal to `(hkl)` | `crystallographY_calcualtions.pdf` | book pp. 11-13 (PDF pp. 21-22) | Grounds plane-normal and reciprocal-vector semantics. |
-| `|g_hkl| = 1 / d_hkl` | `crystallographY_calcualtions.pdf` | book pp. 13-14 (PDF pp. 22-23) | Essential for d-spacing and diffraction docs/tests. |
+| Reciprocal basis definition $\mathbf{a}_i \cdot \mathbf{a}_j^{*} = \delta_{ij}$ | `crystallographY_calcualtions.pdf` | book pp. 10-11 (PDF pp. 20-21) | Good source for basis and reciprocal-lattice docs. |
+| Reciprocal vector normal to $(hkl)$ | `crystallographY_calcualtions.pdf` | book pp. 11-13 (PDF pp. 21-22) | Grounds plane-normal and reciprocal-vector semantics. |
+| $\lVert \mathbf{g}_{hkl} \rVert = 1 / d_{hkl}$ | `crystallographY_calcualtions.pdf` | book pp. 13-14 (PDF pp. 22-23) | Essential for d-spacing and diffraction docs/tests. |
 | Reciprocal metric tensor and direct/reciprocal transforms | `crystallographY_calcualtions.pdf` | book pp. 14-18 (PDF pp. 23-27) | Strong basis for metric-tensor feature ideas. |
 | Non-Cartesian cross product in crystallographic bases | `crystallographY_calcualtions.pdf` | book pp. 18-20 (PDF pp. 27-29) | Useful for advanced basis and reciprocal-space work. |
 | Lattice geometry, directions, and Weiss zone law | `Kelly & Groves.pdf` | pp. 3-11 | Good general crystallography reference for directions/planes/zones. |

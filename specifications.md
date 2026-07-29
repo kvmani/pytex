@@ -190,9 +190,9 @@ PyTex must define one canonical internal convention set and normalize imported d
 The current canonical policy is:
 
 - right-handed Cartesian reference frames
-- Bunge-style `phi1`, `Phi`, `phi2` orientation labeling for the canonical Euler convenience path
-- unit quaternions stored in `w, x, y, z` order
-- reciprocal basis normalized such that `a*_i dot a_j = delta_ij`
+- Bunge-style $(\varphi_1, \Phi, \varphi_2)$ orientation labeling for the canonical Euler convenience path
+- unit quaternions stored in $(w, x, y, z)$ order
+- reciprocal basis normalized such that $\mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij}$
 - explicit distinction between crystal, specimen, map, detector, laboratory, and reciprocal frames
 - preservation of source-system provenance, original convention metadata, and boundary mappings for traceability
 

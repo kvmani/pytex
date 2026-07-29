@@ -9,7 +9,7 @@ reciprocal-space semantics used elsewhere in the library.
 
 - configurable wavelength through `RadiationSpec`
 - reflection enumeration from the canonical lattice model
-- `d`-spacing and `2\theta` computation from Bragg's law
+- $d$-spacing and $2\theta$ computation from Bragg's law
 - approximate intensity estimation from crystal structure and multiplicity
 - optional Gaussian broadening into a continuous powder spectrum
 - runtime plotting through the shared YAML style system
@@ -67,7 +67,7 @@ figure.savefig("ni_fcc_powder_xrd.png", dpi=200)
 
 ## Interpretation Notes
 
-- `PowderReflection` is the reflection-level object carrying `d` spacing, `2\theta`,
+- `PowderReflection` is the reflection-level object carrying $d$ spacing, $2\theta$,
   multiplicity, and intensity metadata.
 - `PowderPattern` is the broadened spectrum object carrying the reflection list plus
   grid-sampled intensity.

@@ -82,9 +82,9 @@ downstream analyses depend on them.
     vectors and reciprocal-frame axes, while Miller indices stay unstarred
     because `(hkl)` are already reciprocal-basis components. Starring is
     idempotent, so a label passing through two layers cannot become `a**`.
-    `format_reciprocal_lattice_vector` renders `g_hkl`.
+    `format_reciprocal_lattice_vector` renders $\mathbf{g}_{hkl}$.
   - **Bracket families** are now expressible: `format_plane_family_indices` and
-    `format_direction_family_indices` give `{hkl}` and `<uvw>`, alongside the
+    `format_direction_family_indices` give $\{hkl\}$ and $\langle uvw \rangle$, alongside the
     existing `(hkl)` and `[uvw]`. `format_miller_indices` gained a `scope`
     parameter.
   - The rule is a non-negotiable in `AGENTS.md` and is **enforced** by
@@ -140,7 +140,7 @@ downstream analyses depend on them.
 
 - **Pole figures and powder reflections are labelled as families.** A pole
   figure plots the whole symmetry-related orbit of its pole, and a powder
-  reflection *is* its multiplicity, so both now read `{hkl}` rather than
+  reflection *is* its multiplicity, so both now read $\{hkl\}$ rather than
   `(hkl)`; writing a single member misstated the quantity. Because a
   `PoleFigure` can be built with `include_symmetry_family=False`, the object now
   records `includes_symmetry_family` and titles follow the record rather than an
@@ -176,7 +176,7 @@ downstream analyses depend on them.
   to equal objects.
 
 - **Symmetry-reduced disorientation is now a single dense product.** The
-  reduction `min over S_l, S_r of angle(S_l M S_r^T)` previously expanded an
+  reduction $\min_{S_l, S_r} \angle\!\left(S_l \mathbf{M} S_r^{\mathsf{T}}\right)$ previously expanded an
   `(n, |S_l|, |S_r|, 3, 3)` candidate array through a chain of einsums. Because
   the disorientation angle depends only on the *scalar* part of the
   symmetry-conjugated relative quaternion, and that scalar part is linear in
@@ -220,7 +220,7 @@ downstream analyses depend on them.
 ### Fixed
 
 - **Small-angle misorientation accuracy (scientific).** Neighbour
-  misorientations were computed as `arccos((trace - 1) / 2)` on a triple matrix
+  misorientations were computed as $\arccos\!\left((\operatorname{tr} - 1)/2\right)$ on a triple matrix
   product, which is ill-conditioned exactly where EBSD measures — KAM, GROD and
   low-angle boundaries all live below 1 degree. Against a well-conditioned
   `atan2` reference the old path erred by up to 3.5e-8 rad; the quaternion path
@@ -271,7 +271,7 @@ downstream analyses depend on them.
   `pytex.plotting.composite_saed` renders it with a typed, publication-grade
   configuration (`render_composite_saed`, `CompositeSAEDPlotConfig`,
   `SpotStyle`, `SpotAnnotationConfig`): per-variant marker/color/size styling,
-  variant subsetting, in-plane rotation, mm/Å⁻¹ axes, and coincidence-merging,
+  variant subsetting, in-plane rotation, mm / $\text{\AA}^{-1}$ axes, and coincidence-merging,
   crowding-aware spot annotation. Report objects carry `describe()`; two
   worked examples and a workflow page document the surface. See
   `docs/roadmap/working_notes_composite_saed_program.md`.
@@ -329,7 +329,7 @@ downstream analyses depend on them.
   composed predicted children as `V @ P`, contradicting the normative
   crystal-to-specimen orientation convention; all prediction, deviation,
   fitting, scoring, and reconstruction surfaces now compose
-  `g_child = g_parent o V^T`, pinned by a specimen-space parallelism
+  $g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}$, pinned by a specimen-space parallelism
   regression test. Synthetic data was internally consistent either way; real
   measured orientations would have received wrong variant assignments.
 - `SymmetrySpec` equality raised `ValueError` on distinct-but-equal instances

@@ -25,7 +25,7 @@ Allowing these assumptions to travel as unnamed arrays creates avoidable scienti
 - Special-system notation, such as hexagonal four-index forms, must be normalized at the boundary and documented centrally.
 - Human-facing crystallographic notation is produced by `pytex.core.notation` alone: reciprocal
   **basis vectors and reciprocal-frame axes carry the star** (`a*, b*, c*`) while Miller indices do
-  not, symmetry families take `{hkl}` / `<uvw>` and specific planes and directions take `(hkl)` /
+  not, symmetry families take $\{hkl\}$ / $\langle uvw \rangle$ and specific planes and directions take $(hkl)$ /
   `[uvw]`, and negative indices are overbarred. See
   [Notation And Conventions](../standards/notation_and_conventions.md).
 - Domain objects should fail fast on inconsistent frame, phase, and symmetry combinations.

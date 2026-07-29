@@ -28,11 +28,11 @@ Use the harmonic path when:
 
 ## Discrete Dictionary Inversion
 
-The discrete path builds a forward matrix over an orientation dictionary `g_j`:
+The discrete path builds a forward matrix over an orientation dictionary $\{g_j\}$:
 
-```text
-A_mj = (1 / |H|) sum_{u in H} K(angle(y_m, g_j u))
-```
+$$
+A_{mj} = \frac{1}{|H|} \sum_{u \in H} K\!\left(\angle(\mathbf{y}_m, g_j u)\right)
+$$
 
 and solves for non-negative weights over that explicit support. This remains the most
 inspectable reconstruction route in the library.

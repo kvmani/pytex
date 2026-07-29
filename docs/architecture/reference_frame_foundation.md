@@ -87,12 +87,12 @@ demand.
 
 A typed rigid map between exactly two named frames, applied as
 
-```text
-v_target = R @ v_source + t
-```
+$$
+\mathbf{v}_{\text{target}} = \mathbf{R}\,\mathbf{v}_{\text{source}} + \mathbf{t}
+$$
 
 so `rotation_matrix` converts **components in the source frame into components in the target
-frame**. `R` is validated to be orthonormal with determinant `+1` at construction.
+frame**. $\mathbf{R}$ is validated to be orthonormal with determinant $+1$ at construction.
 
 Constructors, chosen so a relationship can be stated the way it is actually known:
 
@@ -100,15 +100,15 @@ Constructors, chosen so a relationship can be stated the way it is actually know
 | --- | --- |
 | `identity` | nothing to do |
 | `from_rotation` | a `Rotation`, quaternion, or orientation matrix |
-| `from_bunge_euler` | Bunge `(phi1, Phi, phi2)` angles |
+| `from_bunge_euler` | Bunge $(\varphi_1, \Phi, \varphi_2)$ angles |
 | `from_axis_angle` | a tilt or stage rotation |
 | `from_axis_correspondence` | words: "specimen x is the sample TD axis" |
 | `between_frames` | both frames' own axis geometry |
 
 `from_axis_correspondence` is the readable way to express the axis-relabelling conventions that
 differ between EBSD vendors. It is a statement about *components*: in its own coordinates a frame's
-axis `i` is the standard basis vector `e_i`, so "source axis `i` is target axis `j`" fixes
-`R e_i = ±e_j`, giving a signed permutation matrix independent of where either frame's axes happen
+axis $i$ is the standard basis vector $\mathbf{e}_i$, so "source axis $i$ is target axis $j$"
+fixes $\mathbf{R}\,\mathbf{e}_i = \pm\mathbf{e}_j$, giving a signed permutation matrix independent of where either frame's axes happen
 to point. An odd permutation without a compensating sign flip is a mirror, not a rotation, and is
 rejected.
 

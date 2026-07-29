@@ -80,9 +80,9 @@ Representative pinned expectations from the current audit summary:
 
 | Fixture | Expected conventional semantics | Expected primitive semantics | Interpretation |
 | --- | --- | --- | --- |
-| `fe_bcc` | `Im-3m`, point group `m-3m`, site count `2`, `a=b=c=2.8665 A` | `Im-3m`, site count `1`, rhombohedral primitive cell angles `109.4712206345 deg` | Confirms that PyTex preserves both the conventional and primitive-cell interpretation for BCC iron. |
-| `zr_hcp` | `P6_3/mmc`, point group `6/mmm`, site count `2`, `gamma=120 deg` | same as conventional | Confirms the pinned HCP starter case used for hexagonal-axis teaching and validation. |
-| `ni_fcc` | `Fm-3m`, point group `m-3m`, site count `4`, `a=b=c=3.52387 A` | `Fm-3m`, site count `1`, primitive angles `60 deg` | Confirms the pinned FCC starter case that also feeds the diffraction baseline corpus. |
+| `fe_bcc` | `Im-3m`, point group `m-3m`, site count `2`, $a = b = c = 2.8665\ \text{\AA}$ | `Im-3m`, site count `1`, rhombohedral primitive cell angles $109.4712206345^{\circ}$ | Confirms that PyTex preserves both the conventional and primitive-cell interpretation for BCC iron. |
+| `zr_hcp` | `P6_3/mmc`, point group `6/mmm`, site count `2`, $\gamma = 120^{\circ}$ | same as conventional | Confirms the pinned HCP starter case used for hexagonal-axis teaching and validation. |
+| `ni_fcc` | `Fm-3m`, point group `m-3m`, site count `4`, $a = b = c = 3.52387\ \text{\AA}$ | `Fm-3m`, site count `1`, primitive angles $60^{\circ}$ | Confirms the pinned FCC starter case that also feeds the diffraction baseline corpus. |
 
 ### Current claim boundary
 
@@ -154,7 +154,7 @@ PyTex currently:
 
 1. normalizes every quaternion-backed constructor onto the canonical unit-quaternion surface
 2. maps Rodrigues coordinates through the explicit tangent-half-angle relation
-3. preserves the Rodrigues-Frank singularity at `omega = pi` as `+inf` rather than clipping it
+3. preserves the Rodrigues-Frank singularity at $\omega = \pi$ as `+inf` rather than clipping it
 4. checks that scalar and batch constructors recover the same rotation matrices
 
 ### Current claim boundary
@@ -182,7 +182,7 @@ hexagonal and trigonal conversions.
 PyTex currently:
 
 1. reduces Miller indices to canonical integer representatives
-2. converts `hkl <-> hkil` and `uvw <-> UVTW` through the documented four-index relations
+2. converts $(hkl) \leftrightarrow (hkil)$ and $[uvw] \leftrightarrow [UVTW]$ through the documented four-index relations
 3. expands families by applying crystal symmetry in cartesian space and recovering integer indices
 4. constructs orientations from Miller scalar/set objects and from raw three- or four-index arrays
 
@@ -269,7 +269,7 @@ applies the family multiplicity exactly once, including for a non-cubic HCP phas
 
 PyTex enumerates integer Miller triplets, constructs the complete point-group orbit including the
 Friedel pair, records a deterministic representative once, and stores the orbit size as the
-reflection multiplicity. The HCP audit compares the resulting ordered `2theta` peaks and
+reflection multiplicity. The HCP audit compares the resulting ordered $2\theta$ peaks and
 multiplicities against the pinned independent reference artifact without applying cubic-only index
 sorting.
 

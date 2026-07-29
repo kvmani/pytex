@@ -6,13 +6,13 @@ Future tasks should consult this document before implementing or modifying formu
 
 | Topic | Source-preferred notation | PyTex-facing note |
 | --- | --- | --- |
-| Bunge Euler angles | `(phi1, Phi, phi2)` | Keep this ordering in docs and examples. |
-| Rotation axis-angle | `(n_hat, omega)` | State whether the rotation is interpreted actively or passively. |
-| Quaternion | `(q0, q1, q2, q3)` | PyTex stores quaternions in `(w, x, y, z)` order. |
-| Harmonic ODF expansion | `f(g) = sum C_l^{mu nu} T_l^{mu nu}(g)` or Wigner-`D` equivalents | PyTex implements a band-limited real harmonic basis and symmetry-projects it numerically. |
-| Hexagonal plane indices | `(h k i l)` | Enforce `i = -(h + k)`. |
-| Hexagonal direction indices | `[U V T W]` or `[u v t w]` | PyTex currently exposes `UVTW`/`uvtw` forms but stores reduced 3-index forms internally. |
-| Reciprocal lattice vector | `g_hkl` | In PyTex, this corresponds to reciprocal-basis components tied to a `Phase`. |
+| Bunge Euler angles | $(\varphi_1, \Phi, \varphi_2)$ | Keep this ordering in docs and examples. |
+| Rotation axis-angle | $(\hat{\mathbf{n}}, \omega)$ | State whether the rotation is interpreted actively or passively. |
+| Quaternion | $(q_0, q_1, q_2, q_3)$ | PyTex stores quaternions in `(w, x, y, z)` order. |
+| Harmonic ODF expansion | $f(g) = \sum C_{l}^{\mu\nu} T_{l}^{\mu\nu}(g)$ or Wigner-$D$ equivalents | PyTex implements a band-limited real harmonic basis and symmetry-projects it numerically. |
+| Hexagonal plane indices | $(hkil)$ | Enforce $i = -(h + k)$. |
+| Hexagonal direction indices | $[UVTW]$ or $[uvtw]$ | PyTex currently exposes `UVTW`/`uvtw` forms but stores reduced 3-index forms internally. |
+| Reciprocal lattice vector | $\mathbf{g}_{hkl}$ | In PyTex, this corresponds to reciprocal-basis components tied to a `Phase`. |
 
 ## Core Formulas
 
@@ -21,19 +21,21 @@ Future tasks should consult this document before implementing or modifying formu
 Source:
 `crystallographY_calcualtions.pdf`, book pp. 10-11 (PDF pp. 20-21)
 
-For direct basis vectors `a`, `b`, `c`:
+For direct basis vectors $\mathbf{a}$, $\mathbf{b}$, $\mathbf{c}$:
 
-```text
-a* = (b x c) / (a . (b x c))
-b* = (c x a) / (a . (b x c))
-c* = (a x b) / (a . (b x c))
-```
+$$
+\mathbf{a}^{*} = \frac{\mathbf{b} \times \mathbf{c}}{\mathbf{a} \cdot (\mathbf{b} \times \mathbf{c})},
+\qquad
+\mathbf{b}^{*} = \frac{\mathbf{c} \times \mathbf{a}}{\mathbf{a} \cdot (\mathbf{b} \times \mathbf{c})},
+\qquad
+\mathbf{c}^{*} = \frac{\mathbf{a} \times \mathbf{b}}{\mathbf{a} \cdot (\mathbf{b} \times \mathbf{c})}.
+$$
 
 The defining orthogonality rule is:
 
-```text
-a_i . a_j* = delta_ij
-```
+$$
+\mathbf{a}_i \cdot \mathbf{a}_j^{*} = \delta_{ij}
+$$
 
 Implementation consequence:
 
@@ -47,33 +49,35 @@ Source:
 
 For the reciprocal-lattice vector
 
-```text
-g_hkl = h a* + k b* + l c*
-```
+$$
+\mathbf{g}_{hkl} = h\,\mathbf{a}^{*} + k\,\mathbf{b}^{*} + l\,\mathbf{c}^{*}
+$$
 
 the key geometric relations are:
 
-```text
-g_hkl is normal to the plane (hkl)
-|g_hkl| = 1 / d_hkl
-```
+$$
+\mathbf{g}_{hkl} \perp (hkl),
+\qquad
+\lVert \mathbf{g}_{hkl} \rVert = \frac{1}{d_{hkl}}.
+$$
 
 Implementation consequence:
 
 - `CrystalPlane.normal` and `CrystalPlane.d_spacing_angstrom` should be documented together, not separately.
-- Validation examples should explicitly show the reciprocal-vector magnitude before converting to `d_hkl`.
+- Validation examples should explicitly show the reciprocal-vector magnitude before converting to $d_{hkl}$.
 
 ### 3. Direct <-> Reciprocal Component Transforms
 
 Source:
 `crystallographY_calcualtions.pdf`, book pp. 16-18 (PDF pp. 25-27)
 
-Using the direct metric tensor `g_ij` and reciprocal metric tensor `g*_ij`:
+Using the direct metric tensor $g_{ij}$ and reciprocal metric tensor $g^{*}_{ij}$:
 
-```text
-p*_m = p_i g_im
-p_i = p*_m g*_mi
-```
+$$
+p^{*}_{m} = p_i\, g_{im},
+\qquad
+p_i = p^{*}_{m}\, g^{*}_{mi}.
+$$
 
 Implementation consequence:
 
@@ -86,10 +90,11 @@ Source:
 
 For plane indices:
 
-```text
-i = -(h + k)
-(h k l) -> (h k i l)
-```
+$$
+i = -(h + k),
+\qquad
+(hkl) \rightarrow (hkil).
+$$
 
 Implementation consequence:
 
@@ -100,28 +105,33 @@ Implementation consequence:
 Source:
 `hexagnoal 4index mathematics.pdf`, pp. 2-3
 
-From 3-index `[u v w]` to 4-index `[U V T W]`:
+From 3-index $[uvw]$ to 4-index $[UVTW]$:
 
-```text
-U = (2u - v) / 3
-V = (2v - u) / 3
-T = -(u + v) / 3
-W = w
-```
+$$
+U = \frac{2u - v}{3},
+\qquad
+V = \frac{2v - u}{3},
+\qquad
+T = -\frac{u + v}{3},
+\qquad
+W = w.
+$$
 
 Inverse transform:
 
-```text
-u = 2U + V
-v = 2V + U
-w = W
-```
+$$
+u = 2U + V,
+\qquad
+v = 2V + U,
+\qquad
+w = W.
+$$
 
 Constraint:
 
-```text
+$$
 U + V + T = 0
-```
+$$
 
 Implementation consequence:
 
@@ -135,16 +145,17 @@ Source:
 
 The four-index zone relation can be written as:
 
-```text
-h U + k V + i T + l W = 0
-```
+$$
+hU + kV + iT + lW = 0
+$$
 
 with
 
-```text
-i = -(h + k)
-T = -(U + V)
-```
+$$
+i = -(h + k),
+\qquad
+T = -(U + V).
+$$
 
 Implementation consequence:
 
@@ -158,9 +169,11 @@ Source:
 
 For the hexagonal lattice:
 
-```text
-1 / d_hkl^2 = (4/3) * (h^2 + h k + k^2) / a^2 + l^2 / c^2
-```
+$$
+\frac{1}{d_{hkl}^{2}}
+=
+\frac{4}{3}\,\frac{h^{2} + hk + k^{2}}{a^{2}} + \frac{l^{2}}{c^{2}}
+$$
 
 Implementation consequence:
 
@@ -171,14 +184,14 @@ Implementation consequence:
 Source:
 `williamsandcarter.pdf`, pp. 78-79
 
-```text
-n lambda = 2 d sin(theta_B)
-```
+$$
+n\lambda = 2 d \sin\theta_{B}
+$$
 
 Implementation consequence:
 
-- Powder-XRD docs should distinguish `theta_B` from reported `2theta`.
-- Any detector or plotting workflow should state whether its angular axis is `theta`, `2theta`, or detector-plane coordinates.
+- Powder-XRD docs should distinguish $\theta_{B}$ from the reported $2\theta$.
+- Any detector or plotting workflow should state whether its angular axis is $\theta$, $2\theta$, or detector-plane coordinates.
 
 ### 9. Bunge Euler Rotation Matrix
 
@@ -189,9 +202,9 @@ Sources:
 
 PyTex docs should keep the Bunge tuple ordered as:
 
-```text
-(phi1, Phi, phi2)
-```
+$$
+(\varphi_1, \Phi, \varphi_2)
+$$
 
 and should present the matrix formula using the same symbol order whenever the docs explain Euler input/output semantics.
 
@@ -207,14 +220,14 @@ Source:
 
 Axis-angle to quaternion:
 
-```text
-q = (cos(omega / 2), n_hat sin(omega / 2))
-```
+$$
+q = \left(\cos\frac{\omega}{2},\; \hat{\mathbf{n}} \sin\frac{\omega}{2}\right)
+$$
 
 Implementation consequence:
 
 - Quaternion docs should say explicitly that PyTex stores this as `(w, x, y, z)`.
-- When code canonicalizes the sign of a quaternion, the docs should explain why equivalent `q` and `-q` need a canonical representative.
+- When code canonicalizes the sign of a quaternion, the docs should explain why the equivalent $q$ and $-q$ need a canonical representative.
 
 ### 11. Kikuchi Pattern as Gnomonic Projection
 
@@ -252,10 +265,11 @@ with the repository frame model
 
 The invariance relations are:
 
-```text
-f(g h) = f(g)   for crystal symmetry h
-f(s g) = f(g)   for specimen symmetry s
-```
+$$
+f(g h) = f(g) \quad \text{for crystal symmetry } h,
+\qquad
+f(s g) = f(g) \quad \text{for specimen symmetry } s.
+$$
 
 Implementation consequence:
 

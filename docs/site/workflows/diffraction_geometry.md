@@ -1,14 +1,14 @@
 # Diffraction: Geometry And Bragg Rings
 
-PyTex now includes the first real Phase 4 diffraction foundation on top of the existing geometry containers: detector coordinates, outgoing directions, scattering vectors, `2θ`, azimuth, and Bragg ring prediction from `d` spacing.
+PyTex now includes the first real Phase 4 diffraction foundation on top of the existing geometry containers: detector coordinates, outgoing directions, scattering vectors, $2\theta$, azimuth, and Bragg ring prediction from $d$ spacing.
 
 ## Scope
 
 - detector coordinates in millimeters relative to the explicit pattern center
 - outgoing ray directions in the laboratory frame
 - scattering-vector evaluation
-- `2θ` and azimuth at detector coordinates
-- Bragg-angle and ring-radius prediction from `d` spacing or `CrystalPlane`
+- $2\theta$ and azimuth at detector coordinates
+- Bragg-angle and ring-radius prediction from $d$ spacing or `CrystalPlane`
 
 ![Diffraction Geometry](../../figures/diffraction_geometry.svg)
 
@@ -74,7 +74,7 @@ ring_radius_mm = geometry.ring_radius_mm_for_plane(plane)
 
 ## Interpretation Notes
 
-- `2θ` is a detector-space angular observable derived from beam and outgoing directions
+- $2\theta$ is a detector-space angular observable derived from beam and outgoing directions
 - the scattering vector is a reciprocal-space object and should not be confused with detector-plane offsets
 - Bragg ring prediction in this foundation layer is geometric only; it does not yet include intensity modeling
 - detector projection validity is separate from detector containment: a ray can intersect the detector plane but still fall outside the detector bounds

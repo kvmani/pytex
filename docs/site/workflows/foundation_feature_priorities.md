@@ -19,7 +19,7 @@ $$
 I_i^{\mathrm{corr}} = s \left(\frac{I_i}{d_i} - b\right),
 $$
 
-where \(s\) is the scale, \(d_i\) is an optional defocussing factor, and \(b\) is a constant
+where $s$ is the scale, $d_i$ is an optional defocussing factor, and $b$ is a constant
 background. Negative corrected intensities are either clipped to zero or rejected, depending on
 the configured policy.
 
@@ -67,7 +67,7 @@ $$
 $$
 
 `IPFSectorBoundary.from_symmetry(...)` exposes the currently implemented fundamental-sector
-vertices and human-readable boundary equations. For cubic \(432\), the antipodal sector is
+vertices and human-readable boundary equations. For cubic $432$, the antipodal sector is
 represented by inequalities such as:
 
 $$
@@ -96,13 +96,13 @@ F_{hkl}
 \exp\!\left(2\pi i\,\mathbf{h}\cdot\mathbf{x}_j\right),
 $$
 
-where \(o_j\), \(f_j\), \(B_j\), and \(\mathbf{x}_j\) are occupancy, scattering factor,
-isotropic displacement parameter, and fractional coordinates for site \(j\). The first stable
+where $o_j$, $f_j$, $B_j$, and $\mathbf{x}_j$ are occupancy, scattering factor,
+isotropic displacement parameter, and fractional coordinates for site $j$. The first stable
 scattering table is deliberately conservative: it supports unit scattering, atomic-number
 scattering, and a smooth X-ray proxy. It is not a tabulated Cromer-Mann implementation.
 
 Reflection conditions support common centered lattices. For example, face-centered reflections
-are allowed only when \(h\), \(k\), and \(l\) have the same parity.
+are allowed only when $h$, $k$, and $l$ have the same parity.
 
 $$
 I_{hkl}
@@ -159,7 +159,7 @@ The experimental scoring kernel now has a stable workflow wrapper:
 - `VariantSelectionReport`
 - `reconstruct_parent_orientation(...)`
 
-For each candidate parent orientation \(p_m\), PyTex predicts the child orientations through the
+For each candidate parent orientation $p_m$, PyTex predicts the child orientations through the
 selected orientation relationship and variants, computes angular residuals against observed child
 orientations, and reduces them by a configured statistic:
 

@@ -22,13 +22,13 @@ PyTex uses a shared repository-wide vocabulary for the most important frame doma
 ### Crystal Frame
 
 - attached to the phase or lattice
-- typically labeled by crystal axes such as `a, b, c`
+- typically labeled by crystal axes such as $a$, $b$, $c$
 - the natural home for directions, planes, and symmetry operators
 
 ### Specimen Frame
 
 - attached to the sample or macroscopic specimen
-- typically labeled by specimen axes such as `x, y, z`
+- typically labeled by specimen axes such as $x$, $y$, $z$
 - the target frame for texture and EBSD orientation interpretation
 
 ### Map Frame
@@ -95,11 +95,11 @@ The intent is that Bunge-facing texture workflows remain readable while the gene
 
 #### How To Read The Bunge Sequence
 
-PyTex follows the standard Bunge angle labels `phi1`, `Phi`, and `phi2`. The figure above is a teaching-oriented geometry sketch of the sequence:
+PyTex follows the standard Bunge angle labels $\varphi_1$, $\Phi$, and $\varphi_2$. The figure above is a teaching-oriented geometry sketch of the sequence:
 
-- `phi1`: first rotation about the original specimen or laboratory `z` axis
-- `Phi`: second rotation about the intermediate line of nodes, usually written as the rotated `x'` axis in the ZXZ sequence
-- `phi2`: third rotation about the final crystal-aligned `z''` axis
+- $\varphi_1$: first rotation about the original specimen or laboratory $z$ axis
+- $\Phi$: second rotation about the intermediate line of nodes, usually written as the rotated $x'$ axis in the ZXZ sequence
+- $\varphi_2$: third rotation about the final crystal-aligned $z''$ axis
 
 For users, the main rule is simple: the angle names are not merely positional placeholders. They belong to a specific ordered construction. That is why PyTex keeps the Bunge helper explicit instead of treating all three-angle inputs as interchangeable.
 
@@ -114,7 +114,7 @@ These are exposed explicitly because cross-tool pipelines often distinguish thos
 
 ### Quaternion Storage
 
-Internally, PyTex uses canonical quaternion storage in `(w, x, y, z)` order with unit normalization. Convention-aware Euler import or export exists at the boundary; canonical quaternion representation is the stable internal rotational surface.
+Internally, PyTex uses canonical quaternion storage in $(w, x, y, z)$ order with unit normalization. Convention-aware Euler import or export exists at the boundary; canonical quaternion representation is the stable internal rotational surface.
 
 ## Symmetry Reduction And Fundamental Regions
 
@@ -181,8 +181,8 @@ orientation = Orientation(
 ## Relating Frames
 
 A `FrameTransform` is a typed, invertible map between exactly two named frames, applied as
-`v_target = R @ v_source + t`. State the relationship the way you actually know it — most often in
-words:
+$\mathbf{v}_{\text{target}} = \mathbf{R}\,\mathbf{v}_{\text{source}} + \mathbf{t}$. State the
+relationship the way you actually know it — most often in words:
 
 ```python
 from pytex import FrameTransform, sample_frame, specimen_frame

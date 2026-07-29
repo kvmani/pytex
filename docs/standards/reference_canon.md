@@ -46,7 +46,7 @@ These sources define the normative backbone for point-group, space-group, and CI
 
 Classification: `normative from IUCr/International Tables`. These fix the notation rules in
 [Notation And Conventions](notation_and_conventions.md) — the starred reciprocal basis, the
-`(hkl)` / `{hkl}` / `[uvw]` / `<uvw>` bracket families, overbarred negative indices, and
+$(hkl)$ / $\{hkl\}$ / $[uvw]$ / $\langle uvw \rangle$ bracket families, overbarred negative indices, and
 Hermann-Mauguin group symbols. They are implemented once in `pytex.core.notation` and enforced by
 `tests/unit/test_notation_conventions.py`.
 

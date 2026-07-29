@@ -28,17 +28,17 @@ This is the part most easily got wrong, so it is fixed explicitly. Following IUC
 
 | Quantity | Correct form | Starred? |
 | --- | --- | --- |
-| direct basis vectors | **a**, **b**, **c** | no |
-| **reciprocal basis vectors** | **a\***, **b\***, **c\*** | **yes** |
-| reciprocal-space axis labels of a frame | `a*`, `b*`, `c*` | **yes** |
-| reciprocal lattice parameters | `a*`, `b*`, `c*`, `alpha*`, `beta*`, `gamma*` | **yes** |
-| Miller plane indices | `(hkl)` | **no** |
-| plane family | `{hkl}` | **no** |
-| direction indices | `[uvw]` | **no** |
-| direction family | `<uvw>` | **no** |
-| reciprocal lattice vector | **g**\_hkl = h**a\*** + k**b\*** + l**c\*** | bold g, starred basis |
+| direct basis vectors | $\mathbf{a}, \mathbf{b}, \mathbf{c}$ | no |
+| **reciprocal basis vectors** | $\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}$ | **yes** |
+| reciprocal-space axis labels of a frame | $a^{*}, b^{*}, c^{*}$ | **yes** |
+| reciprocal lattice parameters | $a^{*}, b^{*}, c^{*}, \alpha^{*}, \beta^{*}, \gamma^{*}$ | **yes** |
+| Miller plane indices | $(hkl)$ | **no** |
+| plane family | $\{hkl\}$ | **no** |
+| direction indices | $[uvw]$ | **no** |
+| direction family | $\langle uvw \rangle$ | **no** |
+| reciprocal lattice vector | $\mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}$ | bold $\mathbf{g}$, starred basis |
 
-The star marks the **basis**, not the indices. `(hkl)` are already reciprocal-basis components by
+The star marks the **basis**, not the indices. $(hkl)$ are already reciprocal-basis components by
 definition, so starring them would be wrong and would read as a different quantity. A stable
 surface that quotes reciprocal-basis components must instead *say* the basis is reciprocal — which
 is what the starred axis labels and `BasisKind.RECIPROCAL` accomplish.
@@ -48,14 +48,14 @@ is what the starred axis labels and `BasisKind.RECIPROCAL` accomplish.
 Each of these is something the repository already assumes in prose or code but has never fixed in
 one authoritative place.
 
-1. **Bracket families.** `(hkl)` a specific plane; `{hkl}` a symmetry-related family of planes;
-   `[uvw]` a specific direction; `<uvw>` a symmetry-related family of directions. PyTex had no
+1. **Bracket families.** $(hkl)$ a specific plane; $\{hkl\}$ a symmetry-related family of planes;
+   $[uvw]$ a specific direction; $\langle uvw \rangle$ a symmetry-related family of directions. PyTex had no
    formatter for the family forms even though `properties/slip.py` and the multiplicity surfaces
    discuss them.
 2. **Negative indices use an overbar**, not a leading minus, in publication-facing output
    (`1bar` rendered as an overbar over the digit).
-3. **Four-index Miller-Bravais forms** `(hkil)`, `{hkil}`, `[uvtw]`, `<uvtw>` with the redundancy
-   constraints `h + k + i = 0` and `u + v + t = 0`.
+3. **Four-index Miller-Bravais forms** $(hkil)$, $\{hkil\}$, $[uvtw]$, $\langle uvtw \rangle$ with the redundancy
+   constraints $h + k + i = 0$ and $u + v + t = 0$.
 4. **Units at stable boundaries**: angstrom for direct lengths, inverse angstrom for reciprocal
    lengths, degrees for angles on the public API, radians only where a function name says `_rad`.
 5. **Zone law** `h u + k v + l w = 0` as the statement relating a plane and a direction lying in
@@ -137,7 +137,7 @@ Recorded here rather than silently left.
   `is_reciprocal_axis_label`, `strip_reciprocal_star`. Starring is **idempotent**, so a label
   passing through two layers cannot become `a**`.
 - **Bracket families**: `format_miller_indices` gained a `scope` parameter, plus
-  `format_plane_family_indices` / `format_direction_family_indices` for `{hkl}` and `<uvw>`.
+  `format_plane_family_indices` / `format_direction_family_indices` for $\{hkl\}$ and $\langle uvw \rangle$.
   Mathtext emits the escaped `\{...\}` and `\langle ... \rangle` forms, verified to parse in
   matplotlib.
 
@@ -153,7 +153,7 @@ composite-SAED module had already solved this locally — the central formatter 
 ### Scientific corrections, not just cosmetics
 
 - **Pole figures and powder reflections are families.** A pole figure plots the whole symmetry
-  orbit and a powder reflection *is* its multiplicity, so both now read `{hkl}` rather than
+  orbit and a powder reflection *is* its multiplicity, so both now read $\{hkl\}$ rather than
   `(hkl)`. Because a `PoleFigure` can be built without family expansion, the object now records
   `includes_symmetry_family` and the notation follows the record rather than an assumption.
   Contracts round-trip the field with a backward-compatible default.

@@ -61,7 +61,7 @@ green. `FittedEllipse` lives in `ebsd/models.py`; the CSL registry, Brandon
 criterion, and matrix classifier live in the new `ebsd/csl.py`, with
 `GrainBoundaryNetwork.classify_csl` / `csl_fraction` / `select_csl` as the
 consumer surface. CSL matching uses the symmetry-reduced deviation
-`min over S_a,S_b of angle(S_a M S_b C^T)` (cubic-only for now).
+$\min_{S_a, S_b} \angle\!\left(S_a \mathbf{M} S_b \mathbf{C}^{\mathsf{T}}\right)$ (cubic-only for now).
 
 | K | Elastic tensor layer (`properties/tensors.py`: stiffness/compliance, E(n)) | done, tests green | committed |
 | L | Polycrystal elastic homogenization (`homogenize_elastic`, Voigt/Reuss/Hill) | done, tests green | committed |
@@ -152,7 +152,7 @@ targeted pytest -> commit -> push if remote available -> update this table.
   (reuse `kernel_average_misorientation_deg(segmentation=self)` restricted to
   in-grain pairs, averaged per grain); `gam_map_deg()` broadcast.
 - `grain_equivalent_diameters()`: from member pixel count and step area
-  (`d = 2 sqrt(area / pi)`, area = size * dx * dy); requires step_sizes.
+  ($d = 2\sqrt{A/\pi}$, with $A = \text{size} \times \mathrm{d}x \times \mathrm{d}y$); requires step_sizes.
 - Return dicts keyed by grain_id; map broadcasts return grid arrays.
 - Tests: single crystal -> GOS/GAM ~0; a two-grain synthetic map -> correct
   per-grain means and diameters.

@@ -40,13 +40,13 @@ Three pillars, delivered phase by phase (one verified commit + push each):
    site, which runs with `nb_execution_mode = "off"`, renders the committed
    rich outputs):
    - `18_orientation_relationships_fundamentals` — conventions and math
-     (crystal→specimen orientations, `g_child = g_parent ∘ V^T`, coset
+     (crystal→specimen orientations, $g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}$, coset
      misorientation representative), KS as flagship: 24 variants, intervariant
      angle spectrum (Morito), packets 4×6, variant pole figure, deviation +
      fitting (GT recovered from KS nominal), index correspondence.
    - `19_lattice_correspondence_and_transformation_strain` — correspondence
      matrices `M = A_c^{-1} R A_p`, deformation gradients
-     `F = R^T A_c M_int A_p^{-1}`, Bain principal stretches analytically and
+     $\mathbf{F} = \mathbf{R}^{\mathsf{T}} \mathbf{A}_c \mathbf{M}_{\mathrm{int}} \mathbf{A}_p^{-1}$, Bain principal stretches analytically and
      live, KS/NW/GT polar rotations, 3D lattice-point renderings of the Bain
      cell-in-cell construction and the Burgers basal alignment.
    - `20_or_catalogs_identification_and_reconstruction` — live tour of all
@@ -62,7 +62,7 @@ Three pillars, delivered phase by phase (one verified commit + push each):
 
 Conventions used throughout (must match `docs/site/concepts/*` and code):
 orientations are crystal→specimen rotations; the canonical composition is
-`g_child = g_parent ∘ V^T` (variant rotations map parent-crystal to
+$g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}$ (variant rotations map parent-crystal to
 child-crystal frames); all reported inter-OR distances are symmetry-reduced.
 
 ## Phase Ledger

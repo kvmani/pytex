@@ -14,8 +14,8 @@ This document is the authoritative validation ledger for PyTex diffraction-facin
 
 | Area | Baseline | Status | Notes |
 | --- | --- | --- | --- |
-| Detector and beam geometry invariants | PyTex geometry tests and literature-backed conventions | implemented | Wavelength, detector projection, `2theta`, azimuth, and Bragg-ring geometry are directly tested. |
-| Powder XRD reflection enumeration | Internal invariant tests and Bragg-law checks | implemented | `d` spacing, `2theta` filtering, and wavelength configuration are exercised through automated tests. |
+| Detector and beam geometry invariants | PyTex geometry tests and literature-backed conventions | implemented | Wavelength, detector projection, $2\theta$, azimuth, and Bragg-ring geometry are directly tested. |
+| Powder XRD reflection enumeration | Internal invariant tests and Bragg-law checks | implemented | $d$ spacing, $2\theta$ filtering, and wavelength configuration are exercised through automated tests. |
 | Powder XRD spectrum construction | Internal deterministic tests plus pinned `pymatgen` peak-position baselines | implemented | Broadening and plotting are stable; pinned `ni_fcc`, `fe_bcc`, and non-cubic `zr_hcp` Cu K-alpha cases check peak positions, multiplicities, and one emitted representative per symmetry family. |
 | Reciprocal-space primitives | IUCr-style crystallographic relations and internal invariant tests | implemented | `ReciprocalLatticeVector`, `CrystalPlane`, and `ZoneAxis` consistency is unit-tested. |
 | SAED zone-axis spot generation | Internal geometric invariants and detector-coordinate tests | implemented | Zone-axis filtering, reciprocal construction, and detector mapping are directly tested. |

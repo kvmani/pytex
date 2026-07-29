@@ -232,8 +232,21 @@ def test_notation_conventions_are_documented_in_the_standards() -> None:
     standard = (repo_root / "docs/standards/notation_and_conventions.md").read_text(
         encoding="utf-8"
     )
-    for token in ("a*", "{hkl}", "<uvw>", "(hkl)", "[uvw]", "overbar", "zone law"):
-        assert token in standard.lower() or token in standard, token
+    # The standard writes notation as rendered mathematics, so each concept is
+    # pinned by any of its accepted spellings (plain text or LaTeX).
+    concepts = (
+        ("a*", "a^{*}"),
+        ("{hkl}", r"\{hkl\}"),
+        ("<uvw>", r"\langle uvw \rangle"),
+        ("(hkl)",),
+        ("[uvw]",),
+        ("overbar",),
+        ("zone law",),
+    )
+    for spellings in concepts:
+        assert any(
+            token in standard.lower() or token in standard for token in spellings
+        ), spellings
 
     agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
     assert "pytex.core.notation" in agents

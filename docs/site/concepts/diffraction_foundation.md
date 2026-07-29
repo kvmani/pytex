@@ -6,7 +6,7 @@ This page drills into the diffraction layer as the detector, beam, and reciproca
 
 - diffraction geometry for specimen, detector, and laboratory frames
 - scattering-vector and reciprocal-space semantics
-- detector-space `2θ` and azimuth
+- detector-space $2\theta$ and azimuth
 - Bragg ring prediction
 - kinematic spot simulation
 - reflection-family grouping and indexing candidates

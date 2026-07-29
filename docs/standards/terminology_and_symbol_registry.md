@@ -53,9 +53,9 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | Term | Fixed meaning |
 | --- | --- |
 | reference frame | A named, domain-typed coordinate frame such as crystal, specimen, map, detector, laboratory, or reciprocal. |
-| canonical Cartesian reference | The right-handed `X, Y, Z` frame in which every `ReferenceFrame`'s axis vectors are expressed. |
+| canonical Cartesian reference | The right-handed $(X, Y, Z)$ frame in which every `ReferenceFrame`'s axis vectors are expressed. |
 | axis vectors | Components of a frame's three labelled axes in the canonical Cartesian reference; dimensionless orientation only, not lattice edge lengths. |
-| sample frame | The rolling-geometry specimen frame with axes `RD` (rolling direction), `TD` (transverse direction), `ND` (normal direction). |
+| sample frame | The rolling-geometry specimen frame with axes $\mathrm{RD}$ (rolling direction), $\mathrm{TD}$ (transverse direction), $\mathrm{ND}$ (normal direction). |
 | frame transform | A typed rigid map between exactly two named frames, converting source-frame components into target-frame components. |
 | frame graph | A registry of frames and declared transforms that resolves any connected pair by composing the shortest declared chain. |
 | axis correspondence | A declaration, in axis labels, of which target axis each source axis lands on; equivalent to a signed permutation matrix. |
@@ -74,10 +74,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | powder pattern | Grid-sampled XRD spectrum built from discrete reflections and an optional broadening model. |
 | multiplicity | Number of symmetry-equivalent members of a plane or direction family under the phase point group. |
 | crystal scene | Reusable geometry bundle for 3D crystal rendering. |
-| reciprocal star | The `*` marking a reciprocal-space **basis vector** or reciprocal-frame axis label (`a*`); never applied to Miller indices, which are already reciprocal-basis components. |
-| symmetry family | The symmetry-related orbit of a plane or direction, written `{hkl}` or `<uvw>`; a single member is written `(hkl)` or `[uvw]`. |
+| reciprocal star | The $*$ marking a reciprocal-space **basis vector** or reciprocal-frame axis label ($a^{*}$); never applied to Miller indices, which are already reciprocal-basis components. |
+| symmetry family | The symmetry-related orbit of a plane or direction, written $\{hkl\}$ or $\langle uvw \rangle$; a single member is written $(hkl)$ or $[uvw]$. |
 | overbar notation | A negative index rendered with a bar over the digit rather than a leading minus, in publication-facing output. |
-| zone law | The condition `h u + k v + l w = 0` for a direction `[uvw]` lying in a plane `(hkl)`. |
+| zone law | The condition $hu + kv + lw = 0$ for a direction $[uvw]$ lying in a plane $(hkl)$. |
 
 ## Core Symbols
 
@@ -85,61 +85,61 @@ New notation is introduced through this registry, not ad hoc in a single page:
 
 | Symbol | Meaning |
 | --- | --- |
-| \(\mathbf{v}\) | Generic vector in an explicitly named frame. |
-| \(\hat{\mathbf{v}}\) | Unit vector (normalized) in an explicitly named frame. |
-| \(\mathbf{R}\) | Rotation matrix acting actively on vectors. |
-| \(\mathbf{T}\) | Rigid placement of geometry into a shared world frame: \(\mathbf{T}(\mathbf{x}) = \mathbf{R}\,\mathbf{x} + \mathbf{t}\) (the `Transform3D` visualization primitive). |
-| \(q\) | Unit quaternion in `w, x, y, z` storage order. |
-| \((\phi_1, \Phi, \phi_2)\) | Bunge Euler angles. |
-| \((\mathbf{n}, \omega)\) | Axis-angle pair: rotation axis \(\mathbf{n}\) and angle \(\omega\). |
-| \(\mathbf{B}\) | Frame basis matrix whose columns are a frame's axis vectors in the canonical Cartesian reference: \(\mathbf{x} = \mathbf{B}\,\mathbf{v}\). |
-| \(\mathrm{RD}, \mathrm{TD}, \mathrm{ND}\) | Rolling, transverse, and normal directions of the sample frame. |
-| \(\{hkl\}\) | Symmetry-related family of lattice planes. |
-| \(\langle uvw \rangle\) | Symmetry-related family of lattice directions. |
+| $\mathbf{v}$ | Generic vector in an explicitly named frame. |
+| $\hat{\mathbf{v}}$ | Unit vector (normalized) in an explicitly named frame. |
+| $\mathbf{R}$ | Rotation matrix acting actively on vectors. |
+| $\mathbf{T}$ | Rigid placement of geometry into a shared world frame: $\mathbf{T}(\mathbf{x}) = \mathbf{R}\,\mathbf{x} + \mathbf{t}$ (the `Transform3D` visualization primitive). |
+| $q$ | Unit quaternion in `w, x, y, z` storage order. |
+| $(\phi_1, \Phi, \phi_2)$ | Bunge Euler angles. |
+| $(\mathbf{n}, \omega)$ | Axis-angle pair: rotation axis $\mathbf{n}$ and angle $\omega$. |
+| $\mathbf{B}$ | Frame basis matrix whose columns are a frame's axis vectors in the canonical Cartesian reference: $\mathbf{x} = \mathbf{B}\,\mathbf{v}$. |
+| $\mathrm{RD}, \mathrm{TD}, \mathrm{ND}$ | Rolling, transverse, and normal directions of the sample frame. |
+| $\{hkl\}$ | Symmetry-related family of lattice planes. |
+| $\langle uvw \rangle$ | Symmetry-related family of lattice directions. |
 
 ### Lattice and reciprocal lattice
 
 | Symbol | Meaning |
 | --- | --- |
-| \(\mathbf{a}, \mathbf{b}, \mathbf{c}\) | Direct-lattice basis vectors. |
-| \(a, b, c, \alpha, \beta, \gamma\) | Lattice parameters (edge lengths and angles). |
-| \(\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}\) | Reciprocal-lattice basis vectors under the PyTex normalization rule. |
-| \(\mathbf{g}_{hkl}\) | Reciprocal-lattice vector associated with Miller indices \((hkl)\). |
-| \(\mathbf{G}\) | Direct-space metric tensor. |
-| \(d_{hkl}\) | Interplanar spacing for the \((hkl)\) family. |
+| $\mathbf{a}, \mathbf{b}, \mathbf{c}$ | Direct-lattice basis vectors. |
+| $a, b, c, \alpha, \beta, \gamma$ | Lattice parameters (edge lengths and angles). |
+| $\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}$ | Reciprocal-lattice basis vectors under the PyTex normalization rule. |
+| $\mathbf{g}_{hkl}$ | Reciprocal-lattice vector associated with Miller indices $(hkl)$. |
+| $\mathbf{G}$ | Direct-space metric tensor. |
+| $d_{hkl}$ | Interplanar spacing for the $(hkl)$ family. |
 
 ### Miller indices and crystallographic geometry
 
 | Symbol | Meaning |
 | --- | --- |
-| \((hkl)\) | Miller plane indices; \((hkil)\) for the four-index hexagonal form. |
-| \([uvw]\) | Miller direction indices; \([uvtw]\) for the four-index hexagonal form. |
-| \(\mathbf{n}\) | Plane normal direction. |
-| \(\angle(\mathbf{n}_1, \mathbf{n}_2)\) | Angle between two plane normals (interplanar angle). |
-| \(\angle(\mathbf{d}_1, \mathbf{d}_2)\) | Angle between two lattice directions. |
-| \(m_{\{hkl\}}\) | Symmetry multiplicity of a plane family under the phase point group. |
-| \(\mathbf{M}\) | Direction-index correspondence matrix of an orientation relationship: \(\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}\) with \(\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}\) built from the direct structure matrices. |
-| \(\mathbf{M}^{*}\) | Plane-index correspondence matrix of an orientation relationship: \(\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}\), with \(\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}\) so the zone law \(\mathbf{h} \cdot \mathbf{u}\) is preserved. |
+| $(hkl)$ | Miller plane indices; $(hkil)$ for the four-index hexagonal form. |
+| $[uvw]$ | Miller direction indices; $[uvtw]$ for the four-index hexagonal form. |
+| $\mathbf{n}$ | Plane normal direction. |
+| $\angle(\mathbf{n}_1, \mathbf{n}_2)$ | Angle between two plane normals (interplanar angle). |
+| $\angle(\mathbf{d}_1, \mathbf{d}_2)$ | Angle between two lattice directions. |
+| $m_{\{hkl\}}$ | Symmetry multiplicity of a plane family under the phase point group. |
+| $\mathbf{M}$ | Direction-index correspondence matrix of an orientation relationship: $\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}$ with $\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}$ built from the direct structure matrices. |
+| $\mathbf{M}^{*}$ | Plane-index correspondence matrix of an orientation relationship: $\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}$, with $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$ so the zone law $\mathbf{h} \cdot \mathbf{u}$ is preserved. |
 
 ### Orientation and misorientation
 
 | Symbol | Meaning |
 | --- | --- |
-| \(g\) | An orientation (crystal-to-specimen mapping). |
-| \(\Delta g\) | A misorientation between two orientations. |
-| \(\omega\) | Disorientation angle: minimal misorientation angle over the symmetry group. |
-| \(\Sigma\) | Coincidence-site-lattice index of a boundary (for example \(\Sigma 3\)). |
+| $g$ | An orientation (crystal-to-specimen mapping). |
+| $\Delta g$ | A misorientation between two orientations. |
+| $\omega$ | Disorientation angle: minimal misorientation angle over the symmetry group. |
+| $\Sigma$ | Coincidence-site-lattice index of a boundary (for example $\Sigma 3$). |
 
 ### Diffraction
 
 | Symbol | Meaning |
 | --- | --- |
-| \(\lambda\) | Radiation wavelength. |
-| \(\theta\) | Bragg half-angle. |
-| \(2\theta\) | Powder-diffraction scattering angle reported in XRD plots. |
-| \(F_{hkl}\) | Reflection structure-factor quantity or current PyTex proxy where explicitly stated. |
-| \(\hat{\mathbf{z}}\) | Unit zone-axis direction in direct space. |
-| \(u, v\) | Detector-plane plotting coordinates in SAED or detector geometry contexts. |
+| $\lambda$ | Radiation wavelength. |
+| $\theta$ | Bragg half-angle. |
+| $2\theta$ | Powder-diffraction scattering angle reported in XRD plots. |
+| $F_{hkl}$ | Reflection structure-factor quantity or current PyTex proxy where explicitly stated. |
+| $\hat{\mathbf{z}}$ | Unit zone-axis direction in direct space. |
+| $u, v$ | Detector-plane plotting coordinates in SAED or detector geometry contexts. |
 
 ## References
 

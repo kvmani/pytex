@@ -9,9 +9,9 @@ This document records the initial Phase 4 implementation posture for diffraction
 - detector-plane coordinates in millimeters relative to an explicit pattern center
 - outgoing ray directions in the laboratory frame
 - scattering-vector computation in reciprocal-length units
-- detector-space `2θ` and azimuth evaluation
-- Bragg-angle and ring-radius prediction from `d` spacing or `CrystalPlane`
-- powder XRD reflection enumeration and `2θ` spectrum generation with configurable radiation and broadening
+- detector-space $2\theta$ and azimuth evaluation
+- Bragg-angle and ring-radius prediction from $d$ spacing or `CrystalPlane`
+- powder XRD reflection enumeration and $2\theta$ spectrum generation with configurable radiation and broadening
 - explicit `RadiationSpec`, `PowderReflection`, and `PowderPattern` objects for XRD workflows
 - explicit `ReciprocalLatticeVector` and `ZoneAxis` core-model objects
 - specimen-to-laboratory rotation as an explicit diffraction-geometry contract

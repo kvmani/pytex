@@ -15,51 +15,52 @@ Primary entry points:
 ## Mathematical Model
 
 Randle and Engler describe the classical series-expansion route as an ODF written in
-symmetrized generalized spherical harmonics `T_l^{mu nu}(g)` with pole figures expanded in
-matching harmonics and linked by a linear coefficient relation
+symmetrized generalized spherical harmonics $T_{l}^{\mu\nu}(g)$ with pole figures expanded
+in matching harmonics and linked by a linear coefficient relation
 (`references/Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf`,
 pp. 105-107).
 
-PyTex implements that idea as a real, truncated basis on `SO(3)`:
+PyTex implements that idea as a real, truncated basis on $\mathrm{SO}(3)$:
 
-```text
-f(g) ~= sum_alpha c_alpha Psi_alpha(g)
-```
+$$
+f(g) \approx \sum_{\alpha} c_{\alpha}\,\Psi_{\alpha}(g),
+$$
 
-where the unsymmetrized building blocks are real and imaginary parts of Wigner `D`
-functions in Bunge Euler angles:
+where the unsymmetrized building blocks are real and imaginary parts of Wigner
+$D$ functions in Bunge Euler angles:
 
-```text
-D^l_mn(phi1, Phi, phi2) = exp(-i m phi1) d^l_mn(Phi) exp(-i n phi2)
-```
+$$
+D^{l}_{mn}(\varphi_1, \Phi, \varphi_2)
+=
+e^{-i m \varphi_1}\, d^{l}_{mn}(\Phi)\, e^{-i n \varphi_2}.
+$$
 
-PyTex keeps the source-preferred Bunge ordering:
+PyTex keeps the source-preferred Bunge ordering $(\varphi_1, \Phi, \varphi_2)$ and
+evaluates the real basis through
 
-```text
-(phi1, Phi, phi2)
-```
-
-and evaluates the real basis through:
-
-```text
-Re(D^l_mn) = d^l_mn(Phi) cos(m phi1 + n phi2)
-Im(D^l_mn) = d^l_mn(Phi) sin(m phi1 + n phi2)
-```
+$$
+\operatorname{Re} D^{l}_{mn} = d^{l}_{mn}(\Phi) \cos(m\varphi_1 + n\varphi_2),
+\qquad
+\operatorname{Im} D^{l}_{mn} = d^{l}_{mn}(\Phi) \sin(m\varphi_1 + n\varphi_2).
+$$
 
 ## How Symmetry Is Handled
 
 The ODF must satisfy the invariance relations
 
-```text
-f(g h) = f(g)   for crystal symmetry h in C
-f(s g) = f(g)   for specimen symmetry s in S
-```
+$$
+f(g h) = f(g) \quad \text{for every crystal symmetry } h \in C,
+\qquad
+f(s g) = f(g) \quad \text{for every specimen symmetry } s \in S.
+$$
 
 PyTex enforces those relations numerically by group averaging each raw basis function:
 
-```text
-Psi_bar(g) = (1 / (|S| |C|)) sum_{s in S} sum_{h in C} Psi(s g h)
-```
+$$
+\bar{\Psi}(g)
+=
+\frac{1}{|S|\,|C|} \sum_{s \in S} \sum_{h \in C} \Psi(s g h).
+$$
 
 This is the crucial left/right distinction:
 
@@ -77,29 +78,25 @@ Randle and Engler also note two practical issues with harmonic reconstruction
 (`references/Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf`,
 pp. 105-107):
 
-- the expansion must be truncated at a finite `l_max`
+- the expansion must be truncated at a finite bandlimit $l_{\max}$
 - diffraction pole figures do not determine odd terms under antipodal measurement, which is
   part of the classical ghost problem
 
 PyTex handles this as follows:
 
-1. Build a full Bunge quadrature grid over `SO(3)` with Haar weights proportional to
-   `sin(Phi)`.
+1. Build a full Bunge quadrature grid over $\mathrm{SO}(3)$ with Haar weights proportional
+   to $\sin\Phi$.
 2. Evaluate the symmetry-projected raw basis on that grid.
 3. Orthonormalize the projected basis numerically with the weighted Gram matrix.
 4. Build the PF forward operator against the current PyTex pole-density semantics:
 
-   ```text
-   I_m ~= sum_q w_q f(g_q) A_mq
-   ```
+   $$
+   I_m \approx \sum_{q} w_q\, f(g_q)\, A_{mq},
+   \qquad
+   A_{mq} = \frac{1}{|H|} \sum_{u \in H} K\!\left(\angle(\mathbf{y}_m, g_q u)\right),
+   $$
 
-   with
-
-   ```text
-   A_mq = (1 / |H|) sum_{u in H} K(angle(y_m, g_q u))
-   ```
-
-   where `H` is the crystal pole family and `K` is the configured pole-density kernel.
+   where $H$ is the crystal pole family and $K$ is the configured pole-density kernel.
 5. Solve the band-limited coefficient system by Tikhonov-regularized least squares.
 
 This is a deliberate implementation choice. PyTex reconstructs a harmonic ODF, but it

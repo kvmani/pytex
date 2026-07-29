@@ -100,14 +100,14 @@ Converted (this commit), exact equivalence verified:
    `quaternion_to_matrix`; now the batch `quaternions_to_matrices`. Max diff
    ~1e-15. High value: called by nearly every vectorized routine.
 2. `matrices_to_quaternions` proper-rotation validation - was a per-matrix
-   `is_rotation_matrix` loop; now a single batched `M^T M = I` (`einsum`) plus
+   `is_rotation_matrix` loop; now a single batched $\mathbf{M}^{\mathsf{T}}\mathbf{M} = \mathbf{I}$ (`einsum`) plus
    `det = 1` check. Same atol (1e-8).
 
 3. `OrientationSet.as_euler` (and `as_bunge_euler`) - was a per-quaternion
    `Rotation.to_euler` comprehension. Now a batched
    `_matrices_to_repeated_axis_euler` that reproduces the scalar gimbal-lock
    branching (PHI near 0 / near pi) exactly via boolean masks, followed by the
-   same `mod 2*pi` and optional `rad2deg`. Verified across bunge/matthies/abg,
+   same $\bmod 2\pi$ and optional `rad2deg`. Verified across bunge/matthies/abg,
    degrees and radians, including gimbal-lock cases (max diff ~1e-14); permanent
    regression test in `test_orientation_utilities.py`.
 

@@ -13,23 +13,23 @@ PyTex keeps three mathematically distinct objects explicit (see the
 {doc}`OR analysis foundation <../architecture/orientation_relationship_analysis_foundation>`
 for the full doctrine):
 
-1. **The rigid rotation** \(\mathbf{R}\) between parent and child Cartesian
+1. **The rigid rotation** $\mathbf{R}$ between parent and child Cartesian
    crystal frames (`parent_to_child_rotation`). It maps unit vectors and
    composes with orientations.
 2. **The index correspondence** — the linear maps that carry Miller indices:
-   \(\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}\) for directions with
-   \(\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}\) (direct
-   structure matrices), and \(\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}\)
-   for planes with \(\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}\) (reciprocal
+   $\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}$ for directions with
+   $\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}$ (direct
+   structure matrices), and $\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}$
+   for planes with $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$ (reciprocal
    bases). The inverse-transpose relation preserves the zone law
-   \(\mathbf{h} \cdot \mathbf{u}\), so a direction lying in a plane stays in
+   $\mathbf{h} \cdot \mathbf{u}$, so a direction lying in a plane stays in
    the mapped plane. Correspondence matrices are generally not rotations and
    generally irrational.
 3. **The transformation deformation** — `deformation_gradient()` builds the
    nearest-integer lattice correspondence and returns the parent-frame
    gradient with its polar decomposition: for fcc-bcc steel parameters the
    textbook Bain principal strains, and for KS/NW the literature rigid-body
-   rotations relative to Bain (\(11.06^{\circ}\)/\(9.74^{\circ}\)) as the
+   rotations relative to Bain ($11.06^{\circ}$/$9.74^{\circ}$) as the
    residual polar rotation.
 
 ## Composition convention
@@ -38,14 +38,16 @@ PyTex orientations map **crystal to specimen** (the normative convention in
 the notation standard). The child orientation produced by a variant is
 therefore
 
-\[ g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}, \]
+$$
+g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}},
+$$
 
 so that corresponding parent and child crystal directions
-(\(\mathbf{d}_{c} = \mathbf{V}\,\mathbf{d}_{p}\)) point along the same
+($\mathbf{d}_{c} = \mathbf{V}\,\mathbf{d}_{p}$) point along the same
 specimen direction — the physical meaning of an OR parallelism. Every
 prediction, deviation, fitting, and reconstruction surface uses this
 composition, crystal-symmetry equivalents act by right multiplication
-(\(g' = g\,S\)), and a regression test pins the convention against the
+($g' = g\,S$), and a regression test pins the convention against the
 specimen-space parallelism identity.
 
 ## Constructing named relationships
@@ -63,11 +65,11 @@ relationship with 4 variants) — plus the generic
 The correspondence surface answers the canonical OR questions:
 
 - `map_plane_to_child(plane)` / `map_direction_to_child(direction)` — which
-  child \((hkl)\) / \([uvw]\) corresponds to this parent plane or direction?
+  child $(hkl)$ / $[uvw]$ corresponds to this parent plane or direction?
 - `map_plane_to_parent(...)` / `map_direction_to_parent(...)` — the inverse,
   for reading product-phase measurements against parent stereography.
 - `correspondence_direct()` / `correspondence_reciprocal()` — the raw
-  \(\mathbf{M}\) and \(\mathbf{M}^{*}\) matrices, per relationship or per
+  $\mathbf{M}$ and $\mathbf{M}^{*}$ matrices, per relationship or per
   variant.
 - `map_plane_across_variants(...)` / `map_direction_across_variants(...)` —
   the variant-resolved tables.
@@ -75,14 +77,14 @@ The correspondence surface answers the canonical OR questions:
 Every mapping returns the **exact** (generally irrational) target components,
 the nearest primitive-integer **rationalization** (bounded index search, sign
 sensitive, default bound 17 to cover the Greninger-Troiano
-\(\langle 5\,12\,17 \rangle\) family), and the **angular residual** between
+$\langle 5\,12\,17 \rangle$ family), and the **angular residual** between
 them, so "nearly parallel" is always a quantified statement rather than an
 implicit rounding.
 
 Hexagonal phases participate with full index meaning: Burgers maps
-\((110)_{\beta}\) to the basal plane \((0001)_{\alpha}\) and
-\([\bar{1}11]_{\beta}\) to \([11\bar{2}0]_{\alpha}\) (stored as the
-three-index \([110]\)).
+$(110)_{\beta}$ to the basal plane $(0001)_{\alpha}$ and
+$[\bar{1}11]_{\beta}$ to $[11\bar{2}0]_{\alpha}$ (stored as the
+three-index $[110]$).
 
 ## Variant pole figures
 
@@ -91,32 +93,32 @@ where every variant's child plane family lands on the specimen sphere, and
 `plot_variant_pole_figure(...)` renders the color-per-variant stereographic
 overlay — the standard way to read measured product-phase pole figures for
 operative variants and variant selection. The prediction is pinned by the
-packet-plane coincidence: each KS variant's \(\{011\}\) pole set contains the
-specimen-frame normal of its packet's parent \(\{111\}\) member.
+packet-plane coincidence: each KS variant's $\{011\}$ pole set contains the
+specimen-frame normal of its packet's parent $\{111\}$ member.
 
 ## Variant packets
 
 `variant_close_packed_groups(relationship, parent_plane)` labels each variant
 by the parent family member it carries into exact parallelism — the packet
 classification of martensite crystallography. Kurdjumov-Sachs with the
-\(\{111\}\) family yields the four packets of six variants of lath martensite
-(Morito et al.); Burgers with \(\{110\}\) yields six groups of two.
+$\{111\}$ family yields the four packets of six variants of lath martensite
+(Morito et al.); Burgers with $\{110\}$ yields six groups of two.
 
 ## The OR as a misorientation, and deviation from it
 
 `misorientation()` returns the symmetry-reduced (disorientation)
 representative of the relationship — the way ORs are measured and reported
 from EBSD boundary data. For Kurdjumov-Sachs this is the published
-\(42.85^{\circ}\) rotation about \(\langle 0.968\;0.178\;0.178 \rangle\);
-Nishiyama-Wassermann gives \(45.99^{\circ}\) and Bain \(45^{\circ}\) about
-\(\langle 100 \rangle\).
+$42.85^{\circ}$ rotation about $\langle 0.968\;0.178\;0.178 \rangle$;
+Nishiyama-Wassermann gives $45.99^{\circ}$ and Bain $45^{\circ}$ about
+$\langle 100 \rangle$.
 
 `or_deviation(parents, children, relationship)` quantifies how well measured
 parent/child orientation pairs obey a nominal OR: for each pair it reports
 the smallest child-symmetry-reduced angle to any variant prediction, plus the
 winning variant index. Exact synthetic data returns zeros; children generated
-with Greninger-Troiano deviate by the documented \(2.40^{\circ}\) from
-Kurdjumov-Sachs and \(2.86^{\circ}\) from Nishiyama-Wassermann — the report's
+with Greninger-Troiano deviate by the documented $2.40^{\circ}$ from
+Kurdjumov-Sachs and $2.86^{\circ}$ from Nishiyama-Wassermann — the report's
 aggregate statistics are the entry point for OR fitting.
 
 ## Fitting the operative relationship
@@ -127,7 +129,7 @@ map is aligned to the current estimate through both symmetry groups, the
 aligned rotations are averaged with the quaternion eigen-mean, and the steps
 iterate to convergence. Starting from a Kurdjumov-Sachs nominal on
 Greninger-Troiano data, the fit recovers GT exactly and reports the
-\(2.40^{\circ}\) distance from the assumed nominal; on noisy data the
+$2.40^{\circ}$ distance from the assumed nominal; on noisy data the
 residual statistics quantify the fit. The returned
 `OrientationRelationshipFitReport` carries the fitted
 `OrientationRelationship` and a `describe()` summary.
@@ -137,10 +139,10 @@ residual statistics quantify the fit. The returned
 `find_parallel_planes(relationship, parent_plane)` enumerates the parent
 plane's symmetry family and reports, per variant, every child plane within an
 angular tolerance of exact parallelism — under Kurdjumov-Sachs each of the 24
-variants pairs exactly one \(\{111\}\) member with a \(\{011\}\) child plane
+variants pairs exactly one $\{111\}$ member with a $\{011\}$ child plane
 at zero deviation (its close-packed plane), and
 `find_parallel_directions(...)` does the same for the
-\(\langle 110 \rangle \parallel \langle 111 \rangle\) directions. The result
+$\langle 110 \rangle \parallel \langle 111 \rangle$ directions. The result
 is a typed `ParallelismReport` whose `describe()` prints the parallelism
 table.
 
@@ -161,7 +163,7 @@ orientations (Bain 3; NW, Pitsch, Burgers 12; KS, GT 24), and
 `intervariant_misorientations(...)` gives the axis/angle table between
 variants. Mapping the parent close-packed plane across all 24 KS variants
 shows the expected physics: exactly the six variants sharing that
-close-packed plane return \(\{011\}\) with zero residual; the other eighteen
+close-packed plane return $\{011\}$ with zero residual; the other eighteen
 land on irrational images.
 
 ## Verified numerical examples

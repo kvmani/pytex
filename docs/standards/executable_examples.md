@@ -19,10 +19,10 @@ making every tabulated value the output of a real call into the public API,
 regenerated on every documentation build and asserted on every test run.
 
 The canonical illustration is the angle between two crystallographic vectors. The
-documentation does not merely *assert* that the angle between `(100)` and `(110)`
+documentation does not merely *assert* that the angle between $(100)$ and $(110)$
 in a cubic crystal is 45 degrees; it *computes* it with
 `angle_plane_plane_rad(...)`, prints the result, and compares it to the analytic
-identity `arccos(1/sqrt(2)) = 45` — so the same artifact teaches the geometry,
+identity $\arccos(1/\sqrt{2}) = 45^{\circ}$ — so the same artifact teaches the geometry,
 demonstrates the function, and guards the implementation.
 
 ## The Worked-Example Contract

@@ -3,9 +3,9 @@
 ## Canonical Internal Defaults
 
 - handedness: right-handed Cartesian frames
-- quaternion storage order: `w, x, y, z`
-- Euler-angle labeling: Bunge `phi1`, `Phi`, `phi2`
-- reciprocal basis normalization: `a*_i dot a_j = delta_ij`
+- quaternion storage order: $(w, x, y, z)$
+- Euler-angle labeling: Bunge $(\varphi_1, \Phi, \varphi_2)$
+- reciprocal basis normalization: $\mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij}$
 - frame domains: crystal, specimen, map, detector, laboratory, reciprocal
 - units at stable boundaries: angstrom for direct lengths, inverse angstrom for
   reciprocal lengths, degrees for angles (radians only where a name ends in `_rad`)
@@ -24,13 +24,13 @@ This is the rule most easily got wrong, so it is stated explicitly.
 
 | Quantity | Written | Starred |
 | --- | --- | --- |
-| direct basis vectors | **a**, **b**, **c** | no |
-| **reciprocal basis vectors** | **a\***, **b\***, **c\*** | **yes** |
-| axis labels of a reciprocal-domain frame | `a*`, `b*`, `c*` | **yes** |
-| reciprocal lattice parameters | `a*`, `b*`, `c*`, `alpha*`, `beta*`, `gamma*` | **yes** |
-| Miller plane indices | `(hkl)` | **no** |
-| lattice direction indices | `[uvw]` | **no** |
-| reciprocal-lattice vector | **g**\_hkl = h**a\*** + k**b\*** + l**c\*** | bold `g`, starred basis |
+| direct basis vectors | $\mathbf{a}, \mathbf{b}, \mathbf{c}$ | no |
+| **reciprocal basis vectors** | $\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}$ | **yes** |
+| axis labels of a reciprocal-domain frame | $a^{*}, b^{*}, c^{*}$ | **yes** |
+| reciprocal lattice parameters | $a^{*}, b^{*}, c^{*}, \alpha^{*}, \beta^{*}, \gamma^{*}$ | **yes** |
+| Miller plane indices | $(hkl)$ | **no** |
+| lattice direction indices | $[uvw]$ | **no** |
+| reciprocal-lattice vector | $\mathbf{g}_{hkl} = h\mathbf{a}^{*} + k\mathbf{b}^{*} + l\mathbf{c}^{*}$ | bold $\mathbf{g}$, starred basis |
 
 Miller indices are *already* reciprocal-basis components by definition, so starring them would
 name a different quantity. Any surface quoting reciprocal-basis components must instead **say** the
@@ -43,10 +43,10 @@ hand; the helpers are idempotent, so a label cannot acquire `a**` by passing thr
 
 | | specific | symmetry family |
 | --- | --- | --- |
-| lattice plane | `(hkl)` | `{hkl}` |
-| lattice direction | `[uvw]` | `<uvw>` |
-| Miller-Bravais plane | `(hkil)` | `{hkil}` |
-| Miller-Bravais direction | `[uvtw]` | `<uvtw>` |
+| lattice plane | $(hkl)$ | $\{hkl\}$ |
+| lattice direction | $[uvw]$ | $\langle uvw \rangle$ |
+| Miller-Bravais plane | $(hkil)$ | $\{hkil\}$ |
+| Miller-Bravais direction | $[uvtw]$ | $\langle uvtw \rangle$ |
 
 The distinction is scientific, not cosmetic. A pole figure, a powder reflection, a slip-system
 family, and any multiplicity-bearing quantity denote the whole symmetry-related orbit and take the
@@ -59,19 +59,19 @@ object records which it is and the notation follows the record rather than an as
 - A negative index is written with an **overbar**, not a leading minus, in publication-facing
   output. The `"mathtext"` style emits the overbar; the `"plain"` style falls back to `-1`
   because a terminal has no overbar.
-- Components are concatenated only when that is unambiguous. `(110)` is the classical form, but
-  `[1-10]` could be read as `[1, -1, 0]` or `[1, -10]`, and `(1210)` as `(1, 2, 1, 0)` or
-  `(12, 1, 0)`. A separator is therefore inserted whenever a component is negative in plain style
+- Components are concatenated only when that is unambiguous. $(110)$ is the classical form, but
+  `[1-10]` could be read as $[1, \bar{1}, 0]$ or $[1, \overline{10}]$, and `(1210)` as
+  $(1, 2, 1, 0)$ or $(12, 1, 0)$. A separator is therefore inserted whenever a component is negative in plain style
   or any component has more than one digit.
 
 ### Zone law
 
-A direction `[uvw]` lies in a plane `(hkl)` when `h u + k v + l w = 0`. This is the statement
+A direction $[uvw]$ lies in a plane $(hkl)$ when $hu + kv + lw = 0$. This is the statement
 relating the two index families and the basis of zone-axis reasoning in the diffraction module.
 
 ### Four-index hexagonal forms
 
-Miller-Bravais forms carry the redundancy constraints `h + k + i = 0` and `u + v + t = 0`. The
+Miller-Bravais forms carry the redundancy constraints $h + k + i = 0$ and $u + v + t = 0$. The
 conversion rules and the direct/reciprocal basal-plane rotation are centralized in
 `hexagonal_and_trigonal_conventions.md`.
 
@@ -111,7 +111,7 @@ No subsystem may invent additional stable frame domains or silently collapse the
 ## Frame Geometry And The Standard Catalog
 
 - Every `ReferenceFrame` carries the components of its three labelled axes in the **canonical
-  right-handed Cartesian reference** `X, Y, Z`. The default is the identity triad, meaning the
+  right-handed Cartesian reference** $(X, Y, Z)$. The default is the identity triad, meaning the
   frame's axes coincide with the canonical Cartesian axes.
 - Frame axis vectors are dimensionless axis *orientation*. Physical axis lengths belong to
   `Basis`, which carries a `BasisKind` and a unit; the two must not be conflated.
@@ -124,7 +124,8 @@ No subsystem may invent additional stable frame domains or silently collapse the
   `reciprocal_frame_for(...)`. Subsystems use the catalog rather than constructing frames inline,
   so frame identity is stable across module boundaries.
 - A `FrameTransform` maps **components in its source frame to components in its target frame**
-  (`v_target = R v_source + t`). Directions, plane normals, and poles are translation-invariant and
+  ($\mathbf{v}_{\text{target}} = \mathbf{R}\,\mathbf{v}_{\text{source}} + \mathbf{t}$).
+  Directions, plane normals, and poles are translation-invariant and
   must use the direction-only application path.
 - Workflows spanning more than one declared relationship should register their transforms in a
   `FrameGraph` rather than composing chains by hand; the graph composes the shortest declared

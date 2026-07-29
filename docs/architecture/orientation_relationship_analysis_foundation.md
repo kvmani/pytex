@@ -33,7 +33,7 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
 - **F4 (parallelism finders):** `find_parallel_planes`/`find_parallel_directions` over
   symmetry families with typed reports.
 - **F5 (misorientation + deviation):** `misorientation()` representatives (KS 42.85 deg
-  <0.968 0.178 0.178> pinned) and `or_deviation` with best-variant assignment.
+  $\langle 0.968\;0.178\;0.178 \rangle$ pinned) and `or_deviation` with best-variant assignment.
 - **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean
   with iterative realignment; recovers GT exactly from a KS nominal.
 - **F8 (reconstruction, experimental):** `reconstruct_parent_grains` /
@@ -44,10 +44,10 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   by the packet-plane coincidence.
 - **F12 (deformation gradients):** `deformation_gradient()` — nearest-integer lattice
   correspondence, parent-frame gradient with polar decomposition; Bain stretches
-  (1.127, 1.127, 0.797) and the literature rigid rotations (KS 11.06 deg, NW 9.74 deg from
-  Bain) pinned.
+  $(1.127, 1.127, 0.797)$ and the literature rigid rotations (KS $11.06^{\circ}$, NW
+  $9.74^{\circ}$ from Bain) pinned.
 - Explainable `describe()` prose on every report; the canonical composition
-  `g_child = g_parent ∘ V^T` is regression-pinned (see the development-guide changelog for
+  $g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}$ is regression-pinned (see the development-guide changelog for
   the convention correction).
 
 ## 2. Doctrine
@@ -57,11 +57,13 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
 An OR analysis surface must keep three mathematically distinct objects explicit and never
 conflate them:
 
-1. **The rigid rotation** `R` between parent and child *Cartesian crystal frames* — what
+1. **The rigid rotation** $\mathbf{R}$ between parent and child *Cartesian crystal frames* — what
    `parent_to_child_rotation` stores today. It maps unit vectors and orientations.
 2. **The index correspondence** — the linear map between *lattice bases* that carries Miller
-   indices. For direction indices `[uvw]`: `u_c = A_c⁻¹ R A_p u_p` where `A_p`, `A_c` are the
-   direct structure matrices (crystal basis → Cartesian). For plane indices `(hkl)` the map goes
+   indices. For direction indices $[uvw]$:
+   $\mathbf{u}_{c} = \mathbf{A}_{c}^{-1} \mathbf{R}\, \mathbf{A}_{p}\, \mathbf{u}_{p}$ where
+   $\mathbf{A}_{p}$, $\mathbf{A}_{c}$ are the direct structure matrices
+   (crystal basis → Cartesian). For plane indices $(hkl)$ the map goes
    through the reciprocal bases (equivalently, the inverse-transpose of the direction map).
    Correspondence is generally **not** a rotation matrix and is generally irrational; nearness to
    rational indices is a physical statement about the OR, not a given.
@@ -76,23 +78,26 @@ user can never accidentally push Miller indices through a bare rotation.
 
 Every OR must be expressible as a symmetry-reduced misorientation (disorientation axis/angle in
 stated frames), because that is how ORs are measured, compared, and reported in the literature
-(e.g. KS ≈ 42.85° about <0.968 0.178 0.178>). The misorientation representation is the bridge to
+(e.g. KS $\approx 42.85^{\circ}$ about $\langle 0.968\;0.178\;0.178 \rangle$). The misorientation
+representation is the bridge to
 EBSD boundary data and to OR fitting.
 
 ### 2.3 Variant identity is a convention, not an accident
 
 Variant numbering must be stable, documented, and — where a de facto literature standard exists
-(Morito V1–V24 for KS in steels; the standard 12-variant α ordering for Burgers in Ti) —
+(Morito V1–V24 for KS in steels; the standard 12-variant $\alpha$ ordering for Burgers in Ti) —
 conforming or explicitly declared non-conforming. Variant tables published from PyTex must be
 reproducible from the doctrine alone. Variant grouping structure (Bain groups and
-close-packed-plane groups for KS; the six β↔α pair classes for Burgers) is part of variant
+close-packed-plane groups for KS; the six $\beta \leftrightarrow \alpha$ pair classes for Burgers) is part of variant
 identity and must be first-class queryable metadata, not a user-side recomputation.
 
 ### 2.4 Every OR result explains itself
 
 Per the explainable-results doctrine in the development guide: OR objects and OR reports carry
-`describe()` surfaces that state the defining parallelisms (`{111}_γ ∥ {011}_α′`,
-`<-101>_γ ∥ <-1-11>_α′`), the misorientation representation, the variant count and grouping, and
+`describe()` surfaces that state the defining parallelisms
+($\{111\}_{\gamma} \parallel \{011\}_{\alpha'}$,
+$\langle \bar{1}01 \rangle_{\gamma} \parallel \langle \bar{1}\bar{1}1 \rangle_{\alpha'}$),
+the misorientation representation, the variant count and grouping, and
 any deviations — with registry terminology and canon citations.
 
 ## 3. Feature Program
@@ -127,9 +132,10 @@ analysis and for interpreting product-phase measurements against parent stereogr
 
 **F4. Parallelism finders.** Given an OR and a parent plane/direction *family* (symmetry orbit):
 enumerate, per variant, the child planes/directions within a tolerance of parallelism, with
-deviations — the general machine behind statements like "{111}_γ ∥ {011}_α′ to within 0.0°" and
-behind discovering near-parallelisms of non-defining families (e.g. which {hkl}_α′ lie near
-{100}_γ under KS). Output is a typed report with a `describe()` that prints the parallelism
+deviations — the general machine behind statements like
+"$\{111\}_{\gamma} \parallel \{011\}_{\alpha'}$ to within $0.0^{\circ}$" and behind discovering
+near-parallelisms of non-defining families (e.g. which $\{hkl\}_{\alpha'}$ lie near
+$\{100\}_{\gamma}$ under KS). Output is a typed report with a `describe()` that prints the parallelism
 table.
 
 **F5. OR-deviation metric.** `or_deviation(parent_orientations, child_orientations, relation)`
@@ -187,8 +193,9 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 - Analytic: exact synthetic round-trips (index maps must invert; variant orbits closed under
   parent symmetry; correspondence ∘ inverse = identity to 1e-12).
 - Literature: KS/NW/GT/Pitsch/Burgers defining parallelisms and misorientation representatives;
-  Morito intervariant and variant-grouping tables; Burgers 12-variant β↔α tables; GT's position
-  between KS and NW (2.40°/2.86°).
+  Morito intervariant and variant-grouping tables; Burgers 12-variant
+  $\beta \leftrightarrow \alpha$ tables; GT's position between KS and NW
+  ($2.40^{\circ}$/$2.86^{\circ}$).
 - Parity: MTEX `calcParent2Child` / parent-grain-reconstruction outputs on shared fixtures;
   rows land in `docs/testing/mtex_parity_matrix.md` and the phase-transformation validation
   matrix.

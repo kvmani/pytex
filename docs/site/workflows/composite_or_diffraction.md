@@ -33,29 +33,36 @@ The workflow is strictly kinematic (no dynamical / multi-beam effects):
 
 1. **Beam and zone axis.** The beam travels antiparallel to the zone axis; the
    zone-axis unit vector points toward the gun. The shared detector basis
-   `(u, v, z)` is anchored in the **parent** crystal frame.
-2. **Variant mapping.** Each variant rotation `V_i` re-expresses
+   $(\mathbf{u}, \mathbf{v}, \mathbf{z})$ is anchored in the **parent** crystal frame.
+2. **Variant mapping.** Each variant rotation $\mathbf{V}_i$ re-expresses
    parent-crystal-frame Cartesian vectors in the child crystal frame. The same
-   physical beam direction becomes `z_c = V_i z_p`, and each child pattern is
-   simulated on the rotated basis `V_i (u, v, z)` — algebraically identical to
+   physical beam direction becomes $\mathbf{z}_c = \mathbf{V}_i \mathbf{z}_p$, and
+   each child pattern is simulated on the rotated basis
+   $\mathbf{V}_i (\mathbf{u}, \mathbf{v}, \mathbf{z})$ — algebraically identical to
    pulling child reciprocal vectors back to the parent frame before projection.
    All sub-patterns therefore share one detector.
-3. **Reflection selection.** A reflection `g` is kept when its excitation error
-   `s_g = g_z - g^2 λ / 2` satisfies `|s_g| ≤ s_max`, where `g_z` is the
-   zone-axis component of `g` and `λ` is the relativistic electron wavelength.
-   This small-angle kinematic criterion treats rational parent zones and
-   irrational child zones uniformly and stays honest about Ewald-sphere
-   curvature (`s_g = -g^2 λ / 2 ≤ 0` for exact zero-order-Laue-zone spots).
-4. **Intensity.** `I ∝ |F_hkl|²` from the atomic-number electron
+3. **Reflection selection.** A reflection $\mathbf{g}$ is kept when its excitation
+   error $s_g = g_z - g^{2}\lambda / 2$ satisfies $|s_g| \le s_{\max}$, where $g_z$
+   is the zone-axis component of $\mathbf{g}$ and $\lambda$ is the relativistic
+   electron wavelength. This small-angle kinematic criterion treats rational parent
+   zones and irrational child zones uniformly and stays honest about Ewald-sphere
+   curvature ($s_g = -g^{2}\lambda / 2 \le 0$ for exact zero-order-Laue-zone spots).
+4. **Intensity.** $I \propto |F_{hkl}|^{2}$ from the atomic-number electron
    structure-factor proxy (with isotropic Debye-Waller damping), optionally
    relrod-damped, with lattice-centering systematic absences applied. Each
    sub-pattern is max-normalized; kinematic cross-phase intensity ratios are
    undefined at this level of theory and are a rendering choice.
-5. **Detector map.** `r_mm = (camera constant) · g_⊥`, the standard SAED
+5. **Detector map.** $r_{\mathrm{mm}} = \Lambda\, g_{\perp}$ with camera constant
+   $\Lambda$, the standard SAED
    small-angle scale between reciprocal length and detector millimeters.
 
-The relativistic wavelength `λ(V) = h / sqrt(2 m₀ e V (1 + eV / 2 m₀ c²))`
-reproduces the standard tabulated values (0.02508 Å at 200 kV); see the
+The relativistic wavelength
+
+$$
+\lambda(V) = \frac{h}{\sqrt{2 m_0 e V \left(1 + \dfrac{eV}{2 m_0 c^{2}}\right)}}
+$$
+
+reproduces the standard tabulated values ($0.02508\ \text{\AA}$ at $200\ \mathrm{kV}$); see the
 [composite diffraction worked examples](../examples/generated/composite-diffraction.md).
 
 ## Example
@@ -112,7 +119,8 @@ citation-ready prose summaries of the geometry and the superposition counts.
   colorblind-aware palette by default, or take explicit per-variant overrides.
 - **In-plane rotation and alignment.** `in_plane_rotation_deg` rotates the whole
   composite; `align_parent_g` places a chosen parent reflection along `+u`.
-- **Axes units.** Render in calibrated detector `mm` or reciprocal `Å⁻¹`.
+- **Axes units.** Render in calibrated detector $\mathrm{mm}$ or reciprocal
+  $\text{\AA}^{-1}$.
 - **Annotations.** {class}`~pytex.plotting.SpotAnnotationConfig` merges
   coincident reflections into phase-tagged multi-line labels and places labels
   greedily without overlapping each other or covering spots, with an intensity
@@ -131,7 +139,7 @@ single-phase {doc}`saed_generation` workflow does:
 The child zone axes are stored as exact `CrystalDirection` objects;
 {func}`~pytex.diffraction.rationalize_zone_axis` supplies nearest-integer
 `[uvw]` labels with an honest angular deviation, so a Kurdjumov-Sachs child
-zone that lands exactly on `⟨111⟩` reports `0°` while an off-zone variant
+zone that lands exactly on $\langle 111 \rangle$ reports $0^{\circ}$ while an off-zone variant
 reports its true tilt.
 
 ## Current Limits

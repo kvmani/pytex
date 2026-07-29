@@ -180,7 +180,7 @@ first implementation built the rotation from the two frames' canonical-Cartesian
 (`R = [+/-b_j] [a_i]^-1`). That is a type error: it feeds canonical components into a map whose
 domain is *source-frame* components, and it only happens to be right when both frames have identity
 geometry. In its own coordinates a frame's axis `i` is `e_i`, so the declaration "source axis `i` is
-target axis `j`" fixes `R e_i = +/- e_j` — a signed permutation matrix, independent of where either
+target axis $j$" fixes $\mathbf{R}\,\mathbf{e}_i = \pm\mathbf{e}_j$ — a signed permutation matrix, independent of where either
 frame's axes point. Fixed, and pinned by
 `test_axis_correspondence_is_about_components_not_where_frames_point`.
 

@@ -25,26 +25,26 @@ status, deliverables, and exactly what remains. Master context:
 - Beam travels antiparallel to the zone axis; the zone axis unit vector
   `z_p` (parent crystal frame, Cartesian) points toward the electron gun.
 - The same physical beam direction in child variant *i*'s crystal frame is
-  `z_c = V_i z_p`. Child zone axes are in general **irrational**; exact
+  $\mathbf{z}_c = \mathbf{V}_i \mathbf{z}_p$. Child zone axes are in general **irrational**; exact
   Cartesian vectors drive the geometry, and nearest-rational `[uvw]` indices
   (with angular deviation reported) are used only for labeling.
 - Shared detector basis: an orthonormal in-plane pair `(u, v)` fixed in the
   **parent** crystal frame (deterministic construction + optional
   `g`-alignment + in-plane rotation). Child reciprocal vectors are pulled back
-  to the parent frame (`g_p = V_i^T g_c`) before projection, so all phases and
+  to the parent frame ($\mathbf{g}_p = \mathbf{V}_i^{\mathsf{T}} \mathbf{g}_c$) before projection, so all phases and
   variants land on one physically consistent detector.
-- Reflection selection is by **excitation error**: `|s_g| <= s_max` with
-  `s_g = g_z - g^2/(2k)` for beam wavevector magnitude `k = 1/λ` and `g_z`
+- Reflection selection is by **excitation error**: $|s_g| \le s_{\max}$ with
+  $s_g = g_z - g^{2}/(2k)$ for beam wavevector magnitude $k = 1/\lambda$ and $g_z$
   the zone-axis component of `g` (small-angle, kinematic). This treats
   rational parent zones and irrational child zones uniformly and is honest
   about Ewald-sphere curvature. Relativistic electron wavelength
-  `λ(V) = h / sqrt(2 m₀ e V (1 + eV/(2 m₀ c²)))`.
-- Kinematic intensity: `I ∝ |F_hkl|²` from the electron structure-factor
+  $\lambda(V) = h / \sqrt{2 m_0 e V \left(1 + eV/(2 m_0 c^{2})\right)}$.
+- Kinematic intensity: $I \propto |F_{hkl}|^{2}$ from the electron structure-factor
   proxy already used in `pytex.diffraction.saed` (atomic-number scattering,
   Debye-Waller from `b_iso`), with optional relrod damping
-  `1/(1 + (s_g/σ_s)²)` and lattice-centering systematic absences
+  $1/\left(1 + (s_g/\sigma_s)^{2}\right)$ and lattice-centering systematic absences
   (`ReflectionCondition`). Intensities normalized to max = 1 per pattern.
-- Detector coordinates: `r_mm = L λ g_⊥ = (camera constant) · g_⊥`, the
+- Detector coordinates: $r_{\mathrm{mm}} = L\lambda\, g_{\perp} = \Lambda\, g_{\perp}$ with camera constant $\Lambda$, the
   standard SAED small-angle approximation already used by
   `generate_saed_pattern`.
 
@@ -63,7 +63,7 @@ status, deliverables, and exactly what remains. Master context:
 ### CD1 — Vectorized kinematic zone-axis engine (`src/pytex/diffraction/kinematic.py`)
 
 - `electron_wavelength_angstrom(beam_energy_kev)` — relativistic, pinned test
-  vs published 200 kV value (≈0.02508 Å).
+  vs published 200 kV value ($\approx 0.02508\ \text{\AA}$).
 - `KinematicSimulationConfig` (frozen): `beam_energy_kev`,
   `camera_constant_mm_angstrom`, `max_index`, `g_max_inv_angstrom`,
   `max_excitation_error_inv_angstrom`, `intensity_model`
@@ -85,8 +85,8 @@ status, deliverables, and exactly what remains. Master context:
 - Tests (`tests/unit/test_kinematic_engine.py`): wavelength pinned values;
   parity with legacy `generate_saed_pattern` for Ni [011] (same hkl set, same
   detector geometry within tolerance); FCC/BCC forbidden reflections absent;
-  d-spacing pinned (Ni 111 ≈ 2.0345 Å); excitation errors satisfy
-  `s = -g²/(2k)` for exact ZOLZ; basis orthonormality/right-handedness;
+  d-spacing pinned (Ni 111 $\approx 2.0345\ \text{\AA}$); excitation errors satisfy
+  $s = -g^{2}/(2k)$ for exact ZOLZ; basis orthonormality/right-handedness;
   in-plane rotation equivariance; determinism.
 
 ### CD2 — Composite assembly (`src/pytex/diffraction/composite.py`)
@@ -107,7 +107,7 @@ status, deliverables, and exactly what remains. Master context:
   (adapt `_rationalize_components` logic from `core/transformation.py`).
 - Tests (`tests/unit/test_composite_saed.py`): KS fcc→bcc with parent
   [0 1 -1]: a variant whose child zone is exactly [1 1 -1]_bcc exists
-  (KS parallelism `<-101>_p || <-1-11>_c` up to sign/orbit); NW parent [011]
+  (KS parallelism $\langle \bar{1}01 \rangle_p \parallel \langle \bar{1}\bar{1}1 \rangle_c$ up to sign/orbit); NW parent [011]
   → child [001] pinned; Bain [001]_p → [001]_c with 45° in-plane relation
   pinned via spot coordinates; variant subsetting; shared-basis invariant;
   describe() content.
@@ -184,7 +184,7 @@ status, deliverables, and exactly what remains. Master context:
   (`generate_saed_pattern`) with `_choose_zone_basis` (deterministic u,v from
   cross products), integer zone-law filter, electron structure-factor proxy
   `_structure_factor_electron` (Z-scattering + B_iso damping), intensity
-  `|F|²/(1+g²)`. Kept intact for backward compatibility; CD1 engine is the
+  $|F|^{2}/(1+g^{2})$. Kept intact for backward compatibility; CD1 engine is the
   new vectorized surface and should match it on rational exact zones
   (allowing for the deliberate intensity-model and selection-rule upgrades).
 - `diffraction/physics.py`: `ReflectionCondition` centering absences
@@ -232,7 +232,7 @@ status, deliverables, and exactly what remains. Master context:
   `tests/unit/test_composite_saed.py`: KS [0 1 -1]_p → exact <111>_c variant
   (24 variants), NW [1 -1 0]_p → exact <100>_c (12 variants), Bain [001]
   collinear (220)_p/(200)_c and pinned 45 deg parent-child (200) split,
-  shared-basis identity `B_c = V_i B_p`, composite-wide rotation
+  shared-basis identity $\mathbf{B}_c = \mathbf{V}_i \mathbf{B}_p$, composite-wide rotation
   equivariance, g-alignment, child-config override, subset/order/error
   paths, describe() content. Gates: 959 passed, ruff clean, mypy clean,
   integrity passed.
@@ -331,7 +331,7 @@ lattice, 622 child symmetry, and four-index notation.
 - **Miller-Bravais labeling** (the real gap for hexagonal illustration
   correctness): new `is_hexagonal_phase(phase)` (via
   `PointGroup.crystal_system`, trigonal deliberately excluded);
-  `RationalizedZoneAxis` gained `indices_bravais` with `U+V+T=0` validation
+  `RationalizedZoneAxis` gained `indices_bravais` with $U + V + T = 0$ validation
   and `label()` preferring it; `rationalize_zone_axis` populates it for
   hexagonal phases; `SpotCoincidence` gained `parent_bravais`/`child_bravais`
   flags wired from the relationship phases; `format_hkl(..., bravais=True)`
@@ -363,7 +363,7 @@ lattice, 622 child symmetry, and four-index notation.
 with `nb_execution_mode = "off"`). Structure:
 
 1. Theory — relativistic wavelength and the Ewald-sphere radius; excitation
-   error `s_g = g_z - lambda g^2 / 2` with an original two-panel diagram
+   error $s_g = g_z - \lambda g^{2} / 2$ with an original two-panel diagram
    (Ewald sphere vs the ZOLZ plane, and the analytic `s_g` curve with the
    simulated spots landing on it); why excitation-error selection rather
    than the integer zone law is required for irrational OR-mapped child

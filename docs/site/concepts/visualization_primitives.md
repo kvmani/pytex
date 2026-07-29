@@ -62,8 +62,8 @@ objects into primitives:
 
 ## Placement: `Transform3D`
 
-A `Transform3D` maps geometry into the world frame as $\mathbf{x}_\text{world} = \mathbf{T}
-(\mathbf{x}_\text{local}) = \mathbf{R}\,\mathbf{x}_\text{local} + \mathbf{t}$. Construct it from a
+A `Transform3D` maps geometry into the world frame as
+$\mathbf{x}_\text{world} = \mathbf{T}(\mathbf{x}_\text{local}) = \mathbf{R}\,\mathbf{x}_\text{local} + \mathbf{t}$. Construct it from a
 `Rotation`, an `Orientation` (`from_orientation`, which reproduces
 `Orientation.map_crystal_vector` so a crystal drawn in the sample frame lands where the orientation
 says), or an explicit matrix. It provides `apply_points`, `apply_vector`, `apply_normal` (the

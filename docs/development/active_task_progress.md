@@ -65,7 +65,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   Sphinx build green.
 - **GOAL (2026-07-26): Crystallographic convention harmonization — COMPLETE (HC1-HC6).**
   `pytex.core.notation` is now the single notation surface: the reciprocal star marks the
-  basis (`a*, b*, c*`) and never Miller indices, symmetry families take `{hkl}` / `<uvw>`,
+  basis ($a^{*}, b^{*}, c^{*}$) and never Miller indices, symmetry families take $\{hkl\}$ / $\langle uvw \rangle$,
   negative indices are overbarred, and index concatenation is separated when ambiguous.
   Codified in AGENTS.md, the notation standard, the terminology registry, the reference
   canon and the canonical data model, and enforced by `tests/unit/test_notation_conventions.py`.
@@ -98,7 +98,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   residual; all-variant table form. Worked example (Bain/KS known correspondences), LaTeX theory
   note, validation-matrix row.
 - **Phase 3 — OR as misorientation + deviation (F5, finding 2).** `misorientation()` (symmetry-
-  reduced axis/angle; KS ≈ 42.85° about <0.968 0.178 0.178> as pinned test) and
+  reduced axis/angle; KS $\approx 42.85^{\circ}$ about $\langle 0.968\;0.178\;0.178 \rangle$ as pinned test) and
   `or_deviation(parents, children, relationship)` (min-over-variant symmetry-reduced residuals;
   zero on synthetic data).
 - **Phase 4 — Parallelism finders (F4) + `describe()` doctrine start (finding 16).**
@@ -171,7 +171,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 ## Phase 2 outcomes (2026-07-16)
 
 - Index-correspondence surface landed in `core/transformation.py`:
-  `correspondence_direct()` (`M = A_c^-1 R A_p`), `correspondence_reciprocal()`
+  `correspondence_direct()` ($\mathbf{M} = \mathbf{A}_c^{-1} \mathbf{R}\, \mathbf{A}_p$), `correspondence_reciprocal()`
   (`M* = M^-T`, zone-law preserving), `map_direction_to_child/parent`,
   `map_plane_to_child/parent` (each optionally per `variant=`), module functions
   `map_direction_across_variants` / `map_plane_across_variants`; result types
@@ -181,9 +181,9 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   for any near-zero angle work).
 - Verified physics: KS (111)→(011) and [-101]→[-1-11] exact; Bain [110]→[100]; Burgers
   (110)→(0001) and [-111]→[11-20]; inverse-transpose + zone-law identities; round trips;
-  across 24 KS variants exactly the 6 CP-group variants map (111)γ to {011} (residual 0),
+  across 24 KS variants exactly the 6 CP-group variants map $(111)_{\gamma}$ to $\{011\}$ (residual 0),
   the other 18 land on irrational images — pinned in tests (9 new tests).
-- Docs: registry symbols \(\mathbf{M}\), \(\mathbf{M}^{*}\); theory note
+- Docs: registry symbols $\mathbf{M}$, $\mathbf{M}^{*}$; theory note
   `docs/tex/algorithms/orientation_relationship_index_correspondence.tex`; concept page
   `docs/site/concepts/orientation_relationships.md` (+ toctree); site include-stubs for the OR
   foundation and the development guide (fixed all Sphinx xref warnings — root-level files are
@@ -201,7 +201,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - `or_deviation(parents, children, relationship)` + `ORDeviationReport` (per-pair min-over-
   variant child-symmetry-reduced deviations, best-variant indices, mean/median/max). Verified:
   zero + planted-variant recovery on exact GT synthetic children; GT children deviate 2.404 deg
-  from KS and 2.861 deg from NW (the documented separations); Bain ≈ 10.15 deg.
+  from KS and 2.861 deg from NW (the documented separations); Bain $\approx 10.15$ deg.
 - Composition convention confirmed: predicted child = `V @ P` (matches
   `predicted_child_orientations`; `Rotation.compose` is quaternion left-multiplication).
 - Note: `OrientationSet[slice]` does NOT return a sub-set (returns Orientation with bad shape)
@@ -265,12 +265,12 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   `core/transformation.py` + `OrientationRelationshipFitReport` (fitted OR named
   `<nominal>_fitted`, per-pair residuals, iterations/convergence, symmetry-reduced
   `deviation_from_nominal_deg`, `describe()`).
-- Algorithm: precompute all symmetry-equivalent descriptions `S_c (C P^T) S_p` per pair once;
+- Algorithm: precompute all symmetry-equivalent descriptions $S_c (\mathbf{C}\mathbf{P}^{\mathsf{T}}) S_p$ per pair once;
   iterate [align each pair to current estimate by max trace → quaternion eigen-mean (Markley,
   scatter-matrix eigenvector — sign-free) → update] until step < tol.
 - Verified: exact GT pairs + GT nominal → zero everything, 1 iteration; exact GT pairs + **KS
   nominal → recovers GT exactly** (distance to true GT = 0, reported nominal distance 2.404
-  deg); seeded 0.5-deg noise → fit within 0.15 deg of truth, residuals ≈ noise. 4 new tests.
+  deg); seeded 0.5-deg noise → fit within 0.15 deg of truth, residuals $\approx$ noise. 4 new tests.
 - Docs: validation-matrix row (MTEX `calcParent2Child` parity comparison + worked example
   explicitly queued); concept-page section; specifications list. Gates: 832 passed, zero
   warnings; ruff/mypy/integrity/Sphinx green.
@@ -294,7 +294,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
   Pipeline: (1) edge test — child-symmetry-reduced boundary disorientation matches the
   intervariant fingerprint (0 plus all distinct pair angles from
   `intervariant_misorientation_angles_deg`) within tolerance; (2) union-find clustering over
-  linked edges; (3) per cluster, candidate parents `V_k^T C_first` scored against every member
+  linked edges; (3) per cluster, candidate parents $\mathbf{V}_k^{\mathsf{T}} \mathbf{C}_{\text{first}}$ scored against every member
   (min-over-variants disorientation), best candidate wins; per-grain residuals + `describe()`
   with explicit singleton-ambiguity and experimental-status caveats.
 - Verified: 3 planted KS parents × 5 children — exact partition recovery, both cross-parent
@@ -307,7 +307,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 ## Phase 10 outcomes (2026-07-17)
 
 - Parent-reconstruction refinement landed: `_refine_cluster_parent` aligns every member's
-  candidate descriptions `S_p V_k^T C_i` to the seed (max trace) and quaternion-eigen-means
+  candidate descriptions $S_p \mathbf{V}_k^{\mathsf{T}} \mathbf{C}_i$ to the seed (max trace) and quaternion-eigen-means
   them. Noise-case parent errors drop from ~1.5 deg (first-member inheritance) to
   0.08–0.20 deg (sigma/sqrt(n) behavior); test assertions tightened to <0.5 deg parents,
   <1.0 deg mean residual. Exact case remains exact.
@@ -338,15 +338,15 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 - The Phase 11 follow-up investigation resolved decisively: PyTex's normative convention is
   **orientation = crystal→specimen** (notation standard; `map_crystal_vector = R @ v`), so
-  `misorientation_angles_to` (relative `R_i^T R_j`) was correct, and the transformation
-  stack's `child = V @ P` composition was **wrong** (correct: `g_child = g_parent ∘ V^T`,
+  `misorientation_angles_to` (relative $\mathbf{R}_i^{\mathsf{T}} \mathbf{R}_j$) was correct, and the transformation
+  stack's `child = V @ P` composition was **wrong** (correct: $g_{\text{child}} = g_{\text{parent}} \circ \mathbf{V}^{\mathsf{T}}$,
   which makes corresponding crystal directions coincide in specimen space). Diagnostic on
   canonically built children showed wrong variant selections with 14–16 deg residuals.
 - Fixed compositions/relatives in: `predicted_child_orientations`, `select_variants`,
-  `or_deviation` (also crystal-frame relative `C^T pred`), `fit_orientation_relationship`
-  (measured `V = C^T P`), experimental scoring, parent-grain reconstruction (edge relative
-  `C_i^T C_j`; candidates `P = C V`; refinement equivalents right-multiplied `P S_p`).
-- Boundary/intervariant tables are convention-invariant (`C_i^T C_j = V_a V_b^T`), so all
+  `or_deviation` (also crystal-frame relative $\mathbf{C}^{\mathsf{T}}\mathbf{P}_{\text{pred}}$), `fit_orientation_relationship`
+  (measured $\mathbf{V} = \mathbf{C}^{\mathsf{T}} \mathbf{P}$), experimental scoring, parent-grain reconstruction (edge relative
+  $\mathbf{C}_i^{\mathsf{T}} \mathbf{C}_j$; candidates $\mathbf{P} = \mathbf{C}\mathbf{V}$; refinement equivalents right-multiplied $\mathbf{P} S_p$).
+- Boundary/intervariant tables are convention-invariant ($\mathbf{C}_i^{\mathsf{T}} \mathbf{C}_j = \mathbf{V}_a \mathbf{V}_b^{\mathsf{T}}$), so all
   Morito/literature pins stand unchanged.
 - Fit convergence made robust: fixed-point criterion = stable alignment assignments (the
   quaternion↔matrix round trip has a ~1.2e-6 deg noise floor that the step-angle test alone
@@ -382,7 +382,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 - **F10 landed:** `variant_pole_figure(parent, relationship, child_plane)` (stable core
   surface) computes specimen-frame poles of the child plane family per variant under the
-  canonical composition `C = P V^T`, returned as a typed `VariantPoleFigure` with
+  canonical composition $\mathbf{C} = \mathbf{P}\mathbf{V}^{\mathsf{T}}$, returned as a typed `VariantPoleFigure` with
   `describe()`; `plot_variant_pole_figure(...)` (plotting/runtime) renders the
   color-per-variant stereographic overlay on `plot_stereographic_vectors`.
 - Pinned physics: every KS variant's predicted {011} pole set contains the specimen-frame
@@ -462,7 +462,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 
 - **F7 first stage (experimental):** `pytex.experimental.identify_orientation_relationship`
   + `ORIdentificationReport`. Key derivation: same-parent boundary misorientations populate
-  the double coset `G_c (R S_p R^T) G_c` (parent symmetry conjugated by the OR rotation,
+  the double coset $G_c (\mathbf{R} S_p \mathbf{R}^{\mathsf{T}}) G_c$ (parent symmetry conjugated by the OR rotation,
   child symmetry both sides); the fingerprint set is generated once per candidate
   (quaternion-key deduped), and per-edge distances need only elementwise traces
   (`einsum("eij,kij->ek")`) — no matrix products at scoring time.
@@ -487,7 +487,7 @@ live in `docs/architecture/orientation_relationship_analysis_foundation.md`.
 - **F12 landed:** `OrientationRelationship.deformation_gradient()` +
   `DeformationGradientReport` — nearest-integer lattice correspondence (rint of the exact
   index correspondence; ray rationalization is WRONG here because magnitudes carry the
-  strain), parent-frame gradient `F = R^T A_c M_int A_p^-1`, right-stretch via eigh, polar
+  strain), parent-frame gradient $\mathbf{F} = \mathbf{R}^{\mathsf{T}} \mathbf{A}_c \mathbf{M}_{\mathrm{int}} \mathbf{A}_p^{-1}$, right-stretch via eigh, polar
   decomposition.
 - Pinned physics: Bain principal stretches (sqrt(2) a_c/a_p, x2, a_c/a_p) and volume ratio
   2(a_c/a_p)^3 exact with zero polar rotation; KS/NW/GT all share the identical Bain
@@ -529,8 +529,8 @@ OR foundation, reconstruction stabilization (measured-data fixture + MTEX parity
 ## Phase 19 outcomes (2026-07-17)
 
 - **Finding 8 (kernel breadth) first slice landed:** `GaussianSO3Kernel` (spectral
-  Gauss-Weierstrass, `A_l = (2l+1) exp(-l(l+1) eps)`) and `AbelPoissonKernel`
-  (`A_l = (2l+1) kappa^(2l)`) in `texture/kernels.py`; halfwidth solved by bisection on
+  Gauss-Weierstrass, $A_l = (2l+1)\exp(-l(l+1)\epsilon)$) and `AbelPoissonKernel`
+  ($A_l = (2l+1)\kappa^{2l}$) in `texture/kernels.py`; halfwidth solved by bisection on
   psi(halfwidth)=psi(0)/2; series evaluation via SO(3) characters with the omega->0 limit;
   `KernelSpec` accepts names "gaussian"/"abel_poisson" and `as_so3_kernel()` routes all
   three. Tests: normalization (A_0=1 exact), halfwidth property, quadrature round trip of

@@ -40,7 +40,7 @@ The current kinematic simulation follows the standard teaching geometry:
 1. construct reciprocal vectors from Miller indices
 2. map them from crystal coordinates into specimen coordinates through the orientation
 3. map specimen coordinates into laboratory coordinates through the explicit specimen-to-lab rotation
-4. form `k_out = k_in + g`
+4. form $\mathbf{k}_{\text{out}} = \mathbf{k}_{\text{in}} + \mathbf{g}$
 5. keep candidates whose excitation error is small enough
 6. project the outgoing direction onto the detector plane
 7. group symmetry-equivalent reflections into explicit reflection families

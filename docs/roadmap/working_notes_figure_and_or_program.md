@@ -179,7 +179,7 @@ beta-Zr to alpha-Zr, both allotropes of one element. The cause is structural:
 is correct for cubic-to-cubic (Bain, KS, NW all work, giving the textbook Bain
 stretches 1.1504, 1.1504, 0.8135), because the conventional cubic basis vectors map
 onto child lattice vectors. For bcc to hcp they do not: only the **primitive** bcc
-vectors (the `<111>/2` set) map onto hcp lattice vectors, so the conventional-basis
+vectors (the $\langle 111 \rangle/2$ set) map onto hcp lattice vectors, so the conventional-basis
 correspondence is irrational. Measured for beta-Zr to alpha-Zr it is
 
 ```
@@ -244,8 +244,8 @@ forbids.
 3. FX7: reverse hcp to bcc. Note the reverse is **not** the inverse rotation: the
    phases swap, so `from_burgers_correspondence` cannot be reused with arguments
    exchanged (it requires parent 432 / child 622). Build it with
-   `from_parallel_plane_direction` using (0001)_hcp || (110)_bcc and
-   `<11-20>_hcp || <-111>_bcc`, and expect a different variant count and symmetry
+   `from_parallel_plane_direction` using $(0001)_{\mathrm{hcp}} \parallel (110)_{\mathrm{bcc}}$ and
+   $\langle 11\bar{2}0 \rangle_{\mathrm{hcp}} \parallel \langle \bar{1}11 \rangle_{\mathrm{bcc}}$, and expect a different variant count and symmetry
    reduction.
 4. FX8, FX9 as listed.
 

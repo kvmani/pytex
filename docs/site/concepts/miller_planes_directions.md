@@ -17,8 +17,8 @@ basis, symmetry operators, and hexagonal convention policy are fixed by the owni
   `(2, 0, 0)` remains distinct from `(1, 0, 0)` until a family or canonicalization utility is
   requested explicitly.
 - Cartesian vectors are always `float64`.
-- Reciprocal vectors use the crystallographer convention with no `2\pi`, so reciprocal units are
-  `1/angstrom`.
+- Reciprocal vectors use the crystallographer convention with no $2\pi$, so reciprocal units are
+  $\text{\AA}^{-1}$.
 - `d_spacing_angstrom` and `d_spacings_angstrom()` always return angstroms.
 - Angular outputs are always radians.
 
@@ -27,8 +27,8 @@ basis, symmetry operators, and hexagonal convention policy are fixed by the owni
 PyTex stores three-index internal indices and exposes vectorized conversion helpers for the
 four-index hexagonal forms:
 
-- planes: `(h, k, l) <-> (h, k, i, l)` with `i = -(h + k)`
-- directions: `(u, v, w) <-> (U, V, T, W)` with `U + V + T = 0`
+- planes: $(hkl) \leftrightarrow (hkil)$ with $i = -(h + k)$
+- directions: $[uvw] \leftrightarrow [UVTW]$ with $U + V + T = 0$
 
 Use:
 
@@ -56,7 +56,7 @@ Default family rules:
   expose `antipodal=` when the sign distinction matters
 
 This means plane families such as `{100}` deduplicate to three representatives under cubic proper
-symmetry, while direction families such as `<100>` can be treated either antipodally or as signed
+symmetry, while direction families such as $\langle 100 \rangle$ can be treated either antipodally or as signed
 axes depending on the operation.
 
 ## Vectorized Operations
