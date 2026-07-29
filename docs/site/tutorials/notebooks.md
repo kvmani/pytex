@@ -47,6 +47,7 @@ notebooks/18_orientation_relationships_fundamentals
 notebooks/19_lattice_correspondence_and_transformation_strain
 notebooks/20_or_catalogs_identification_and_reconstruction
 notebooks/21_composite_or_diffraction_patterns
+notebooks/22_burgers_beta_to_alpha_zirconium
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -74,6 +75,15 @@ pages.
    separation appearing as a child-zone deviation) and Burgers beta->alpha
    (hexagonal, with the six-fold basal view, four-index Miller-Bravais
    labels, and the {110}_beta / (0002)_alpha superposition at 0.1545 mm).
+5. `22_burgers_beta_to_alpha_zirconium` — the single-system deep dive, on the
+   alloy Burgers himself worked on. Builds the whole relationship from the
+   distorted hexagon on {110}_beta, then derives every result twice: the
+   12 variants from group theory, the five-valued intervariant spectrum
+   against the literature table, all three principal strains in closed form,
+   the half-integer correspondence that exposes the shuffle, OR-placed 3D
+   unit cells, and composite SAED down [110], [111], [001] and [112]_beta.
+   Shows why zirconium is not titanium with different numbers: the
+   {110}_beta / (0002)_alpha coincidence splits about eight times wider.
 
 ## How To Use These
 
