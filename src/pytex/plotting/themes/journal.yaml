@@ -17,7 +17,10 @@ saed:
   ring_color: "#64748b"
 crystal:
   background: "#ffffff"
-  bond_alpha: 0.38
+  # Bonds were nearly transparent, so overlapping cylinders composited into a
+  # striped haze instead of reading as solid sticks. VESTA-class ball-and-stick
+  # figures draw opaque bonds; only the plane overlays stay translucent.
+  bond_alpha: 0.95
   plane_alpha: 0.24
   atom_edgecolor: "#ffffff"
 spherical:

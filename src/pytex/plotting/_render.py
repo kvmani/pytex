@@ -256,6 +256,33 @@ def _set_equal_aspect_3d(ax: Any, all_points: np.ndarray) -> None:
         ax.set_box_aspect((1.0, 1.0, 1.0))
 
 
+def _expand_limits_for_text(axes: Any, spec: FigureSpec2D) -> None:
+    """Grow the axes limits so annotation text is not clipped or over the title.
+
+    A stereogram sets its limits to the projection boundary and then labels the
+    rim just outside it, so the rim labels fell off the right edge and the top
+    label printed on top of the title. Text is included in the extent instead,
+    with a small margin for the glyphs themselves.
+    """
+
+    if not spec.text_layers or spec.xlim is None or spec.ylim is None:
+        return
+    positions = np.vstack(
+        [np.asarray(layer.position, dtype=np.float64) for layer in spec.text_layers]
+    )
+    x_low, x_high = axes.get_xlim()
+    y_low, y_high = axes.get_ylim()
+    margin = 0.05 * max(x_high - x_low, y_high - y_low)
+    axes.set_xlim(
+        min(x_low, float(positions[:, 0].min()) - margin),
+        max(x_high, float(positions[:, 0].max()) + margin),
+    )
+    axes.set_ylim(
+        min(y_low, float(positions[:, 1].min()) - margin),
+        max(y_high, float(positions[:, 1].max()) + margin),
+    )
+
+
 def render_figure_spec(
     spec: FigureSpec2D | FigureSpec3D | MultiFigureSpec2D,
     *,
@@ -406,6 +433,7 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
         axes.set_xlim(*spec.xlim)
     if spec.ylim is not None:
         axes.set_ylim(*spec.ylim)
+    _expand_limits_for_text(axes, spec)
     if spec.grid:
         axes.grid(True, alpha=0.3)
     else:

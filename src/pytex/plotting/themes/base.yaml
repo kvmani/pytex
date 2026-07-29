@@ -25,6 +25,9 @@ xrd:
   peak_color: "#bc6c25"
   annotate_peaks: true
   max_labels: 12
+  show_title: true
+  label_title_pad: 48.0
+  label_min_separation_fraction: 0.018
 saed:
   background: "#f8fafc"
   spot_color: "#1f3a5f"
@@ -33,19 +36,23 @@ saed:
   spot_scale: 220
   annotate_spots: true
   max_labels: 16
+  show_title: true
+  label_offset_fraction: 0.022
+  label_min_separation_fraction: 0.075
 crystal:
   background: "#ffffff"
   atom_alpha: 1.0
   bond_alpha: 1.0
   plane_alpha: 0.28
   lattice_color: "#334155"
+  lattice_linewidth: 1.5
   bond_color: "#64748b"
   bond_color_mode: "two_tone"
   bond_render_mode: "cylinder"
   bond_radius_scale: 0.22
-  bond_surface_resolution: 18
-  bond_specular_strength: 0.2
-  bond_shininess: 10.0
+  bond_surface_resolution: 40
+  bond_specular_strength: 0.28
+  bond_shininess: 14.0
   plane_color: "#0f766e"
   polyhedron_color: null
   polyhedron_alpha: 0.5
@@ -67,28 +74,32 @@ crystal:
   cell_face_alpha: 0.08
   cell_linewidth: 1.0
   atom_render_mode: "sphere"
-  atom_surface_resolution: 22
+  atom_surface_resolution: 44
   atom_edgecolor: "#f8fafc"
   atom_edgewidth: 0.15
-  atom_specular_strength: 0.28
-  atom_shininess: 18.0
+  atom_specular_strength: 0.34
+  atom_shininess: 26.0
   light_direction: [1.0, -0.8, 1.4]
-  light_ambient: 0.40
-  light_diffuse: 0.72
-  light_specular: 0.34
+  light_ambient: 0.46
+  light_diffuse: 0.66
+  light_specular: 0.38
   direction_color: "#2563eb"
   direction_alpha: 0.96
   direction_linewidth: 2.2
   direction_arrow_ratio: 0.14
   direction_label_fontsize: 11
-  direction_label_offset_fraction: 0.03
+  direction_label_offset_fraction: 0.075
   plane_label_fontsize: 11
-  plane_label_offset_fraction: 0.035
+  plane_label_offset_fraction: 0.045
   show_axes: false
   show_title: true
   axis_label_color: "#334155"
   hide_grid: true
   pane_alpha: 0.0
+  mesh_seam_linewidth: 0.3
+  view_padding_fraction: 0.05
+  view_zoom_limit: 1.6
+  view_fill_fraction: 0.94
 spherical:
   boundary_color: "#0f172a"
   boundary_linewidth: 1.15

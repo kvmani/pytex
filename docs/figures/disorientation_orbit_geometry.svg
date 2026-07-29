@@ -19,7 +19,7 @@
 
   <circle cx="720" cy="300" r="14" fill="#d94f2b"/>
   <text x="742" y="295" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#7d2f1f">Δ_dis</text>
-  <text x="742" y="321" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#7d2f1f">minimum rotation angle</text>
+  <text x="742" y="348" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#7d2f1f">minimum rotation angle</text>
 
   <path d="M515 260 C575 260 598 274 640 292" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow3)"/>
   <text x="525" y="238" font-size="19" font-family="Arial, Helvetica, sans-serif" fill="#17324a">generate symmetry orbit</text>

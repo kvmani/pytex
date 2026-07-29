@@ -49,11 +49,7 @@
 
   <rect x="56" y="360" width="702" height="160" rx="22" fill="#fffdf9" stroke="#d0c7b8" stroke-width="1.5"/>
   <text x="82" y="396" font-size="22" font-family="Arial, Helvetica, sans-serif" fill="#17212b">Interpretation Notes</text>
-  <text x="82" y="430" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151"><tspan x="82" dy="0">1. Segmentation threshold fixes grain topology and therefore influences</tspan><tspan x="82" dy="21">GROD, boundaries, and cleanup.</tspan></text>
-  <text x="82" y="456" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151">
-    2. GROD is a within-grain metric; boundary extraction is an inter-grain metric.
-  </text>
-  <text x="82" y="482" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151">
-    3. Cleanup is a post-processing policy and should stay explicit in reproducible workflows.
-  </text>
+  <text x="82" y="426" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151"><tspan x="82" dy="0">1. Segmentation threshold fixes grain topology and therefore influences</tspan><tspan x="82" dy="21">GROD, boundaries, and cleanup.</tspan></text>
+  <text x="82" y="474" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151">2. GROD is a within-grain metric; boundary extraction is an inter-grain metric.</text>
+  <text x="82" y="500" font-size="16" font-family="Arial, Helvetica, sans-serif" fill="#374151">3. Cleanup is a post-processing policy and should stay explicit in reproducible workflows.</text>
 </svg>

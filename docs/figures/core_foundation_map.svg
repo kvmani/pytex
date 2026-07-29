@@ -10,18 +10,18 @@
   <rect width="1100" height="650" fill="url(#bg)"/>
   <text x="48" y="58" class="title">Core Foundation Map</text>
   <text x="48" y="90" class="subtitle">The shared semantic model beneath texture, EBSD, diffraction, and plotting</text>
-  <rect x="470" y="112" width="183.5" height="31.4" rx="3" fill="#2563eb"/><rect x="550" y="112" width="107.2" height="5" rx="3" fill="#7c3aed"/>
+  <rect x="470" y="112" width="183.5" height="5" rx="3" fill="#2563eb"/><rect x="550" y="112" width="107.2" height="5" rx="3" fill="#7c3aed"/>
 
   <rect x="424" y="245" width="252" height="122" class="card" fill="#eff6ff" stroke="#2563eb"/>
   <circle cx="470" cy="306" r="28" fill="#dbeafe"/><text x="470" y="315" text-anchor="middle" class="label">C</text>
-  <text x="516" y="292" class="label">Canonical Core</text><text x="516" y="317" class="body"><tspan x="516" dy="0.0">explicit scientific</tspan><tspan x="516" dy="19.2">semantics</tspan></text><text x="516" y="339" class="body"><tspan x="516" dy="0.0">no private frame</tspan><tspan x="516" dy="19.2">model</tspan></text>
+  <text x="516" y="292" class="label">Canonical Core</text><text x="516" y="317" class="body"><tspan x="516" dy="0.0">explicit scientific</tspan><tspan x="516" dy="19.2">semantics, no private</tspan><tspan x="516" dy="19.2">frame model</tspan></text>
 
   <rect x="88" y="164" width="220" height="90" class="card" fill="#f5f3ff" stroke="#7c3aed"/><text x="120" y="198" class="label">Conventions</text><text x="120" y="223" class="body"><tspan x="120" dy="0.0">frame domains, Euler</tspan><tspan x="120" dy="19.2">labels, basis</tspan></text>
   <rect x="88" y="390" width="220" height="90" class="card" fill="#ecfeff" stroke="#0f9f9f"/><text x="120" y="424" class="label">Reference Frames</text><text x="120" y="449" class="body"><tspan x="120" dy="0.0">named domains and</tspan><tspan x="120" dy="19.2">transforms</tspan></text>
   <rect x="440" y="500" width="220" height="90" class="card" fill="#ecfdf5" stroke="#16a34a"/><text x="472" y="534" class="label">Symmetry</text><text x="472" y="559" class="body"><tspan x="472" dy="0.0">operators and</tspan><tspan x="472" dy="19.2">fundamental sectors</tspan></text>
   <rect x="792" y="390" width="220" height="90" class="card" fill="#fffbeb" stroke="#f59e0b"/><text x="824" y="424" class="label">Lattice + Phase</text><text x="824" y="449" class="body"><tspan x="824" dy="0.0">basis, unit cell, Miller</tspan><tspan x="824" dy="19.2">objects</tspan></text>
   <rect x="792" y="164" width="220" height="90" class="card" fill="#eff6ff" stroke="#2563eb"/><text x="824" y="198" class="label">Orientation</text><text x="824" y="223" class="body"><tspan x="824" dy="0.0">rotation, mapping,</tspan><tspan x="824" dy="19.2">misorientation</tspan></text>
-  <rect x="440" y="54" width="220" height="90" class="card" fill="#fff1f2" stroke="#e11d48"/><text x="472" y="88" class="label">Provenance</text><text x="472" y="113" class="body"><tspan x="472" dy="0.0">source and</tspan><tspan x="472" dy="19.2">normalization trace</tspan></text>
+  <rect x="440" y="140" width="220" height="90" class="card" fill="#fff1f2" stroke="#e11d48"/><text x="472" y="174" class="label">Provenance</text><text x="472" y="199" class="body"><tspan x="472" dy="0.0">source and</tspan><tspan x="472" dy="19.2">normalization trace</tspan></text>
 
   <path class="arrow" d="M308 209 C360 218 392 246 424 282"/>
   <path class="arrow" d="M308 435 C360 426 392 366 424 330"/>

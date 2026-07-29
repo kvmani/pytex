@@ -11,6 +11,7 @@ from pytex.core.conventions import FrameDomain
 from pytex.core.frame_catalog import detector_frame as catalog_detector_frame
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import MillerIndex, Phase, ReciprocalLatticeVector, ZoneAxis
+from pytex.core.notation import format_plane_indices
 from pytex.core.provenance import ProvenanceRecord
 
 
@@ -188,7 +189,13 @@ def generate_saed_pattern(
                 detector_coordinates=detector_coords_mm,
                 intensity=intensity,
                 excitation_error_inv_angstrom=zone_projection,
-                label=" ".join(str(int(value)) for value in hkl),
+                # The repository notation standard renders a specific plane as
+                # (hkl) with overbarred negatives. The old space-joined digits
+                # were both off-standard and wide enough that adjacent spot
+                # labels ran together in a dense zone.
+                label=format_plane_indices(
+                    tuple(int(value) for value in hkl), style="mathtext"
+                ),
             )
         )
     spots.sort(

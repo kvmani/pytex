@@ -38,7 +38,7 @@ The specimen frame ($x, y, z$) is the macroscopic frame an orientation maps *int
 
 ### Reciprocal Frame
 
-The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule $ \mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij} $. Its axes **carry the star**: $a^{*}, b^{*}, c^{*}$. That star marks the *basis*; it is never applied to Miller indices, which are already reciprocal-basis components.
+The reciprocal-lattice frame dual to the crystal frame under the PyTex normalization rule $\mathbf{a}^{*}_i \cdot \mathbf{a}_j = \delta_{ij}$. Its axes **carry the star**: $a^{*}, b^{*}, c^{*}$. That star marks the *basis*; it is never applied to Miller indices, which are already reciprocal-basis components.
 
 ### Detector Frame
 
@@ -151,7 +151,7 @@ A rendered polygon representing the intersection of a crystallographic plane $(h
 
 A crystallographic direction used to align the 3D camera without changing the underlying crystal geometry.
 
-![Crystal Visualization Example](../../figures/crystal_visualization_demo.svg)
+![Crystal Visualization Example](../../figures/crystal_visualization_demo.png)
 
 See also: {doc}`../workflows/crystal_visualization`.
 

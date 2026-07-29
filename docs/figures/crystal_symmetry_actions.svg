@@ -39,8 +39,7 @@
     <text x="56" y="-56" font-size="22" font-family="Arial, Helvetica, sans-serif" fill="#5b4308">→</text>
     <text x="92" y="-56" font-size="28" font-family="Arial, Helvetica, sans-serif" fill="#5b4308">g c₃</text>
     <text x="-102" y="4" font-size="22" font-family="Arial, Helvetica, sans-serif" fill="#5b4308"><tspan x="-102" dy="0.0">or, with specimen</tspan><tspan x="-102" dy="28.2">symmetry, s g c</tspan></text>
-    <text x="-126" y="52" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#5b4308"><tspan x="-126" dy="0.0">orbit of symmetry-equivalent</tspan><tspan x="-126" dy="23.0">orientation</tspan></text>
-    <text x="-74" y="78" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#5b4308"><tspan x="-74" dy="0.0">representatives in</tspan><tspan x="-74" dy="23.0">orientation space</tspan></text>
+    <text x="0" y="52" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#5b4308" text-anchor="middle"><tspan x="0" dy="0.0">orbit of symmetry-equivalent</tspan><tspan x="0" dy="23.0">orientation representatives</tspan><tspan x="0" dy="23.0">in orientation space</tspan></text>
   </g>
 
   <text x="94" y="570" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#47515c">

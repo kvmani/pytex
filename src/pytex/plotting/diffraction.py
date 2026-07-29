@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import numpy as np
@@ -57,7 +58,18 @@ def plot_xrd_pattern(
     )
     axes.set_xlabel(r"2$\theta$ (deg)")
     axes.set_ylabel("normalized intensity")
-    axes.set_title(f"{pattern.phase.name} Powder XRD ({pattern.radiation.name})")
+    if bool(xrd_style.get("show_title", True)):
+        # The rotated {hkl} peak labels stand in the strip above the axes, which
+        # is exactly where an unpadded title sits: the two printed on top of
+        # each other. Reserve that strip when the labels are drawn.
+        title_pad = (
+            float(xrd_style.get("label_title_pad", 34.0))
+            if xrd_style.get("annotate_peaks", True)
+            else None
+        )
+        axes.set_title(
+            f"{pattern.phase.name} Powder XRD ({pattern.radiation.name})", pad=title_pad
+        )
     axes.grid(alpha=float(common["figure"]["grid_alpha"]))
     if xrd_style.get("annotate_peaks", True):
         ranked = sorted(
@@ -65,7 +77,19 @@ def plot_xrd_pattern(
             key=lambda reflection: reflection.intensity,
             reverse=True,
         )
+        low, high = pattern.two_theta_grid_deg[0], pattern.two_theta_grid_deg[-1]
+        span = float(high - low)
+        # Distinct families can sit within a fraction of a degree of each other,
+        # and one label was drawn per reflection with no regard for position, so
+        # in a dense pattern several rotated {hkl} strings printed on the same
+        # spot as an unreadable stack. Keep the strongest of any crowded group.
+        separation = float(xrd_style.get("label_min_separation_fraction", 0.018)) * span
+        labelled: list[float] = []
         for reflection in ranked[: int(xrd_style.get("max_labels", 12))]:
+            two_theta = float(reflection.two_theta_deg)
+            if any(abs(two_theta - placed) < separation for placed in labelled):
+                continue
+            labelled.append(two_theta)
             # A powder reflection is the whole symmetry-related family (that is
             # what its multiplicity counts), so the family brackets {hkl} are the
             # correct notation, not the single-plane form (hkl).
@@ -80,7 +104,7 @@ def plot_xrd_pattern(
             )
             axes.text(
                 reflection.two_theta_deg,
-                1.02,
+                1.015,
                 label,
                 rotation=90,
                 ha="center",
@@ -160,14 +184,37 @@ def plot_saed_pattern(
             alpha=0.95,
         )
         if saed_style.get("annotate_spots", True):
+            span = float(pattern.detector_extent_mm())
+            # Labels sat exactly on their spots, so in a dense zone every index
+            # string overprinted its neighbours into an unreadable smear. Offset
+            # each label clear of its own spot and drop any that would land on a
+            # label already placed.
+            offset = float(saed_style.get("label_offset_fraction", 0.022)) * span
+            separation = float(saed_style.get("label_min_separation_fraction", 0.075)) * span
+            # An index string is several times wider than it is tall, so a
+            # circular exclusion zone still lets neighbouring labels run into
+            # each other horizontally. The zone is widened per character.
+            placed: list[tuple[np.ndarray, float]] = []
             for spot in pattern.spots[: int(saed_style.get("max_labels", 16))]:
                 if spot.label is None:
                     continue
+                position = np.asarray(spot.detector_coordinates, dtype=np.float64)
+                # mathtext markup is not drawn, so measure the glyphs the
+                # label actually renders as.
+                glyphs = max(1, len(re.sub(r"\\[a-zA-Z]+|[${}]", "", spot.label)))
+                width = separation * (0.6 + 0.55 * glyphs)
+                if any(
+                    abs(float(position[0] - other[0])) < 0.5 * (width + other_width)
+                    and abs(float(position[1] - other[1])) < separation
+                    for other, other_width in placed
+                ):
+                    continue
+                placed.append((position, width))
                 axes.text(
-                    float(spot.detector_coordinates[0]),
-                    float(spot.detector_coordinates[1]),
+                    float(position[0]) + offset,
+                    float(position[1]) + offset,
                     spot.label,
-                    fontsize=float(common["font"]["size"]) - 1.0,
+                    fontsize=float(common["font"]["size"]) - 1.5,
                     color=saed_style["label_color"],
                     ha="left",
                     va="bottom",
@@ -180,12 +227,13 @@ def plot_saed_pattern(
     axes.set_aspect("equal", adjustable="box")
     axes.set_xlabel("detector u (mm)")
     axes.set_ylabel("detector v (mm)")
-    axes.set_title(
-        "SAED Pattern "
-        + "("
-        + " ".join(str(int(value)) for value in pattern.zone_axis.indices)
-        + " zone axis)"
-    )
+    if bool(saed_style.get("show_title", True)):
+        axes.set_title(
+            "SAED Pattern "
+            + "("
+            + " ".join(str(int(value)) for value in pattern.zone_axis.indices)
+            + " zone axis)"
+        )
     axes.grid(alpha=float(common["figure"]["grid_alpha"]))
     if show_frame_indicator:
         # Viewed down the detector normal, so u and v lie in the page exactly as

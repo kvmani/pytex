@@ -7,10 +7,10 @@
   <rect width="1320" height="780" fill="#f7f4ea"/>
   <text x="60" y="72" font-size="34" font-family="Arial, Helvetica, sans-serif" fill="#17324a">Direction orbit under crystal symmetry</text>
   <text x="60" y="108" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#35526b">
-    A single crystal direction generates a symmetry orbit; IPF reduction then chooses one
+    A single crystal direction generates a symmetry orbit;
   </text>
   <text x="60" y="134" font-size="20" font-family="Arial, Helvetica, sans-serif" fill="#35526b">
-    representative in the supported spherical sector.
+    IPF reduction then chooses one representative in the supported spherical sector.
   </text>
 
   <circle cx="318" cy="430" r="214" fill="#fffdf7" stroke="#214761" stroke-width="3"/>
@@ -41,7 +41,7 @@
   <text x="1042" y="190" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#17324a">[111]</text>
   <circle cx="1062" cy="420" r="12" fill="#2d9a6b"/>
   <text x="1080" y="414" font-size="19" font-family="Arial, Helvetica, sans-serif" fill="#1c6145">d_FR</text>
-  <text x="1080" y="440" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#1c6145">representative inside the sector</text>
+  <text x="1030" y="440" font-size="17" font-family="Arial, Helvetica, sans-serif" fill="#1c6145">representative inside the sector</text>
   <text x="894" y="668" font-size="21" font-family="Arial, Helvetica, sans-serif" fill="#17324a">schematic cubic IPF sector on the sphere</text>
 
   <path d="M548 430 C640 430 690 430 740 430" fill="none" stroke="#17324a" stroke-width="4" marker-end="url(#arrow)"/>

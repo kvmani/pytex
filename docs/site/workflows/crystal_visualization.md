@@ -4,7 +4,7 @@ PyTex now includes a VESTA-inspired 3D crystal viewer surface for unit cells, su
 overlays, repeated unit-cell overlays, bounded crystallographic plane overlays, and
 crystallographic direction overlays.
 
-![Crystal Visualization Example](../../figures/crystal_visualization_demo.svg)
+![Crystal Visualization Example](../../figures/crystal_visualization_demo.png)
 
 ## Scope
 
@@ -142,12 +142,13 @@ See {doc}`../architecture/reference_frame_foundation`.
 
 ## Hexagonal Prism Overlay
 
-For hexagonal-axis lattices with `a=b`, `alpha=beta=90 deg`, and `gamma=120 deg`, PyTex can render
+For hexagonal-axis lattices with $a = b$, $\alpha = \beta = 90^{\circ}$, and
+$\gamma = 120^{\circ}$, PyTex can render
 a six-sided prism around a lattice-point anchor. The basal vertices are constructed from the
 direct-basis vectors
 
-- `+a`
-- `+b`
+- $+\mathbf{a}$
+- $+\mathbf{b}$
 - `+(a+b)`
 - `-a`
 - `-b`

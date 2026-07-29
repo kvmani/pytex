@@ -24,13 +24,14 @@ has a theme default and can be overridden per call via ``style_overrides``.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
+from itertools import product
 from typing import Any
 
 import numpy as np
-from matplotlib.colors import to_rgb
+from matplotlib.colors import to_hex, to_rgb
 
 from pytex.core._arrays import as_float_array
 from pytex.core._chemistry import (
@@ -66,6 +67,11 @@ _RENDER_STYLE_OVERRIDES: dict[str, dict[str, Any]] = {
         "atom_radius_scale": 0.4,
     },
 }
+
+# Minimum Euclidean sRGB separation between two species colours in one scene.
+# Tuned so Jmol's Ni/Cl greens separate while chemically distinct pairs keep
+# their exact CPK colours.
+_SPECIES_COLOR_MIN_DISTANCE = 0.30
 
 
 def _merged_style_overrides(
@@ -938,6 +944,50 @@ def _coordination_polyhedra(
     return tuple(polyhedra)
 
 
+def _relative_luminance(color: str) -> float:
+    """Perceived brightness of a colour on the 0-1 sRGB luminance scale."""
+
+    red, green, blue = to_rgb(color)
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def _separated_species_colors(species: Sequence[str]) -> dict[str, str]:
+    """CPK colours for one scene's species, pulled apart where they collide.
+
+    The CPK/Jmol palette assigns colours per element with no regard for which
+    elements share a structure, so a real phase can put two near-identical
+    colours side by side — NiCl2 draws Jmol's Ni (#50d050) against its Cl
+    (#1ff01f) and the two species become indistinguishable, which defeats the
+    purpose of colouring by element at all. Every species keeps its CPK identity
+    when there is no clash; when two do clash the later one (in a stable
+    alphabetical order, so a figure never changes between runs) is darkened or
+    lightened until it separates.
+    """
+
+    ordered = sorted({str(name) for name in species})
+    assigned: dict[str, str] = {}
+    placed: list[np.ndarray] = []
+    for name in ordered:
+        base = np.asarray(to_rgb(cpk_color(name)), dtype=np.float64)
+        candidate = base
+        for _ in range(6):
+            if all(
+                float(np.linalg.norm(candidate - existing)) >= _SPECIES_COLOR_MIN_DISTANCE
+                for existing in placed
+            ):
+                break
+            # Darken bright colours and lighten dark ones, so the adjustment
+            # always moves into the available contrast range.
+            if _relative_luminance(to_hex(candidate)) > 0.45:
+                candidate = candidate * 0.68
+            else:
+                candidate = candidate + (1.0 - candidate) * 0.34
+            candidate = np.clip(candidate, 0.0, 1.0)
+        placed.append(candidate)
+        assigned[name] = to_hex(candidate)
+    return assigned
+
+
 def _atom_glyphs_from_sites(
     atom_data: list[tuple[AtomicSite, np.ndarray]],
     crystal_style: dict[str, Any],
@@ -957,6 +1007,7 @@ def _atom_glyphs_from_sites(
     radius_scale = float(crystal_style["atom_radius_scale"])
     radius_kind = str(crystal_style.get("atom_radius_kind", "covalent"))
     alpha = float(crystal_style["atom_alpha"])
+    species_colors = _separated_species_colors([site.species for site, _ in atom_data])
     groups: dict[tuple[float, float, float], list[tuple[AtomicSite, np.ndarray]]] = {}
     for site, position in atom_data:
         key = (round(position[0], 6), round(position[1], 6), round(position[2], 6))
@@ -982,7 +1033,7 @@ def _atom_glyphs_from_sites(
                     position_angstrom=position,
                     species=site.species,
                     radius_angstrom=shared_radius,
-                    color=cpk_color(site.species),
+                    color=species_colors[site.species],
                     alpha=alpha,
                     occupancy=1.0 if plain else site.occupancy,
                     sector_start=0.0 if plain else cumulative,
@@ -1430,13 +1481,61 @@ def _lit_face_colors(
     return np.concatenate([rgb, alpha_column], axis=-1)
 
 
+def _zoom_to_fit(
+    axes: Any,
+    *,
+    spans: np.ndarray,
+    center: np.ndarray,
+    crystal_style: dict[str, Any],
+) -> None:
+    """Scale the axes so the structure fills the frame it is drawn in.
+
+    A 3D axes sizes its bounding cube to stay inside the frame under *any*
+    rotation, so at a fixed publication view most of the canvas is dead space
+    and the structure reads as a small object floating in white. The corners of
+    the data box are projected through the live camera and the axes is zoomed by
+    whatever slack that projection leaves, capped so a strongly anisotropic cell
+    (a layered structure with c >> a) can never be zoomed past the frame edge.
+    """
+
+    from mpl_toolkits.mplot3d import proj3d
+
+    limit = float(crystal_style.get("view_zoom_limit", 1.6))
+    fill = float(crystal_style.get("view_fill_fraction", 0.94))
+    figure = axes.figure
+    figure.canvas.draw()
+    half = 0.5 * np.asarray(spans, dtype=np.float64)
+    offsets = np.array(list(product((-1.0, 1.0), repeat=3)), dtype=np.float64)
+    corners = np.asarray(center, dtype=np.float64)[None, :] + offsets * half[None, :]
+    projected_x, projected_y, _ = proj3d.proj_transform(
+        corners[:, 0], corners[:, 1], corners[:, 2], axes.get_proj()
+    )
+    display = axes.transData.transform(np.column_stack([projected_x, projected_y]))
+    width = float(display[:, 0].max() - display[:, 0].min())
+    height = float(display[:, 1].max() - display[:, 1].min())
+    if width <= 1e-9 or height <= 1e-9:
+        return
+    window = axes.get_window_extent()
+    zoom = min(fill * window.width / width, fill * window.height / height)
+    # Below 1.0 the structure is overflowing the frame and must shrink; above,
+    # it is floating in dead space and may grow up to the configured cap.
+    zoom = float(np.clip(zoom, 0.4, limit))
+    if abs(zoom - 1.0) > 1e-3:
+        axes.set_box_aspect(axes.get_box_aspect(), zoom=zoom)
+
+
 def _draw_crystal_frame(axes: Any, scene: CrystalScene, crystal_style: dict[str, Any]) -> None:
     """Draw the lattice box edges and any unit-cell overlays for one scene."""
 
     _, poly3d_collection = _require_matplotlib()
+    lattice_linewidth = float(crystal_style.get("lattice_linewidth", 1.2))
     for edge in scene.lattice_edges:
         axes.plot(
-            edge[:, 0], edge[:, 1], edge[:, 2], color=crystal_style["lattice_color"], linewidth=1.2
+            edge[:, 0],
+            edge[:, 1],
+            edge[:, 2],
+            color=crystal_style["lattice_color"],
+            linewidth=lattice_linewidth,
         )
     for cell in scene.cells:
         if cell.faces_angstrom:
@@ -1649,15 +1748,29 @@ def _draw_crystal_planes_and_directions(
             )
         )
         if plane.label:
-            center = np.mean(plane.vertices_angstrom, axis=0)
-            offset = plane.annotation_style.offset_fraction * scene_span * plane.normal_angstrom
+            # Anchor the label on the plane's rim rather than its centroid. A
+            # centroid label lands in the middle of the atom cloud, where it is
+            # hidden behind spheres and collides with the label of any second
+            # plane cutting through the same region.
+            vertices = plane.vertices_angstrom
+            center = np.mean(vertices, axis=0)
+            rim = vertices[int(np.argmax(np.linalg.norm(vertices - center, axis=1)))]
+            outward = rim - center
+            outward_norm = float(np.linalg.norm(outward))
+            outward = outward / outward_norm if outward_norm > 1e-9 else np.zeros(3)
+            offset = plane.annotation_style.offset_fraction * scene_span * (
+                plane.normal_angstrom + 1.6 * outward
+            )
             axes.text(
-                center[0] + offset[0],
-                center[1] + offset[1],
-                center[2] + offset[2],
+                rim[0] + offset[0],
+                rim[1] + offset[1],
+                rim[2] + offset[2],
                 plane.label,
                 color=plane.annotation_style.color or plane.color,
                 fontsize=plane.annotation_style.fontsize,
+                ha="center",
+                va="center",
+                zorder=10,
             )
     direction_arrow_ratio = float(crystal_style["direction_arrow_ratio"])
     direction_linewidth = float(crystal_style["direction_linewidth"])
@@ -1686,6 +1799,9 @@ def _draw_crystal_planes_and_directions(
                 direction.label,
                 color=direction.annotation_style.color or direction.color,
                 fontsize=direction.annotation_style.fontsize,
+                ha="center",
+                va="center",
+                zorder=10,
             )
 
 
@@ -1814,11 +1930,16 @@ def plot_crystal_structure_3d(
             strength=float(crystal_style.get("depth_cue_strength", 0.0)),
             background=str(crystal_style["background"]),
         )
+        # Each quad is stroked in its own face colour. With `edgecolors="none"`
+        # matplotlib antialiases every quad against the background, and the
+        # hairline gaps between neighbouring quads read as a wireframe grid
+        # drawn over each sphere. Stroking the seam closed is what makes the
+        # surfaces render as solid bodies.
         mesh = poly3d_collection(
             all_faces,
             facecolors=all_colors,
-            edgecolors="none",
-            linewidths=0.0,
+            edgecolors=all_colors,
+            linewidths=float(crystal_style.get("mesh_seam_linewidth", 0.3)),
         )
         mesh.set_zsort("average")
         axes.add_collection3d(mesh)
@@ -1826,13 +1947,24 @@ def plot_crystal_structure_3d(
     _draw_crystal_planes_and_directions(axes, scene, crystal_style, scene_span=scene_span)
     bounds = scene.bounds()
     center = 0.5 * (bounds[0] + bounds[1])
-    radius = 0.55 * float(np.max(bounds[1] - bounds[0]) + 1e-6)
-    axes.set_xlim(center[0] - radius, center[0] + radius)
-    axes.set_ylim(center[1] - radius, center[1] + radius)
-    axes.set_zlim(center[2] - radius, center[2] + radius)
-    # equal box aspect: spheres must render as spheres, not ellipsoids
-    axes.set_box_aspect((1.0, 1.0, 1.0))
+    extent = np.asarray(bounds[1] - bounds[0], dtype=np.float64)
+    pad = 1.0 + 2.0 * float(crystal_style.get("view_padding_fraction", 0.05))
+    # Per-axis limits sized to the data, with a matching box aspect. A single
+    # cubic bounding box wastes most of the canvas on an elongated cell (a
+    # layered structure with c >> a shrinks to a sliver); scaling the box the
+    # same way as the limits keeps the units-per-inch identical on all three
+    # axes, so spheres still render round.
+    spans = np.maximum(extent * pad, float(np.max(extent)) * 0.15 + 1e-6)
+    for setter, axis in (
+        (axes.set_xlim, 0),
+        (axes.set_ylim, 1),
+        (axes.set_zlim, 2),
+    ):
+        half = 0.5 * float(spans[axis])
+        setter(center[axis] - half, center[axis] + half)
+    axes.set_box_aspect(tuple(spans / float(np.max(spans))))
     axes.view_init(elev=elev_deg, azim=azim_deg)
+    _zoom_to_fit(axes, spans=spans, center=center, crystal_style=crystal_style)
     if show_legend and scene.atoms:
         from matplotlib.lines import Line2D
 
