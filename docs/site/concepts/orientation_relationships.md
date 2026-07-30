@@ -170,11 +170,20 @@ Because the fingerprint occupies a finite fraction of orientation space, two
 *unrelated* grains will sometimes share a fingerprint-consistent boundary by
 pure coincidence — about $7\%$ of the time at a $3^{\circ}$ tolerance for
 Kurdjumov-Sachs, $0.3\%$ at $1^{\circ}$. On a densely connected grain graph
-each parent pair shares many boundaries, and a single coincidence is enough to
-merge two parents, so this is the limiting factor for map-scale reconstruction
-rather than any inaccuracy in the edge test. It is also relationship-dependent:
+each parent pair shares many boundaries, so such a coincidence is not rare, and
+**no edge test can reject one** — it is indistinguishable from a genuine
+same-parent boundary by construction. It is also relationship-dependent:
 Burgers has 12 variants against Kurdjumov-Sachs's 24, so its admissible set is
 much smaller and it tolerates far looser matching.
+
+This is why `reconstruct_parent_grains` does not treat connectivity as proof of
+a shared parent. Linked grains are only a *proposal*; each cluster is then split
+by asking whether one parent orientation explains all of it, which separates a
+pair joined by a coincidental boundary. That recovers most of what the
+coincidence would otherwise cost — at map scale it lifts parent recovery from
+about 70 of 100 to about 100 of 100 at the default tolerance. The residual
+limit is the case where the ambiguity extends to the parent hypotheses
+themselves.
 
 `ParentGrainReconstructionResult` reports this directly as
 `chance_link_probability`, and its `describe()` warns when the expected number

@@ -77,19 +77,21 @@ downstream analyses depend on them.
   inheriting it.
 
   A second sweep at **map scale** — 100 tiled parents, 900 grains, dense
-  four-connected adjacency — establishes that the tolerance also has an *upper*
-  bound, and that it is the binding one for real grain graphs. Because one
-  chance link anywhere along a shared boundary merges two parents irreversibly,
-  and a dense graph offers many such boundaries, **the default
-  `tolerance_deg=3.0` recovers only about 70 of 100 parents under
-  Kurdjumov-Sachs**, against 97.5 at 1.0 deg. The false-link rate among
+  four-connected adjacency — showed the tolerance also has an *upper* bound,
+  from a different mechanism. Because one chance link anywhere along a shared
+  boundary merges two parents irreversibly, and a dense graph offers many such
+  boundaries, connectivity-only clustering recovered **only 69.7 of 100 parents
+  under Kurdjumov-Sachs** at the default tolerance. The false-link rate among
   separable boundaries stayed exactly zero throughout, so every one of those
   merges was a genuine physical coincidence rather than an edge-test error.
-  The window is also strongly relationship-dependent: Burgers keeps 97 of 100
-  even at 3.0 deg, because 12 variants give a far smaller admissible set than
-  the 24 of Kurdjumov-Sachs. The default is unchanged — it suits the sparse and
-  noisier regimes — but map-scale callers should set it explicitly, and the new
-  `chance_link_probability` diagnostic tells them when it is wrong.
+  The effect is strongly relationship-dependent: Burgers kept 97 of 100 even at
+  3.0 deg, because 12 variants give a far smaller admissible set than the 24 of
+  Kurdjumov-Sachs.
+
+  That upper bound is **no longer the binding constraint** — the single-parent
+  consistency split described above recovers most of the loss (69.7 to 99.7 of
+  100 at the same tolerance). The default is unchanged, and the
+  `chance_link_probability` diagnostic reports the residual risk.
 
 - **An MTEX parity campaign for the orientation-relationship stack.**
   `fixtures/mtex_parity/campaigns/or_transformation_cases.json` defines shared

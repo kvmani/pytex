@@ -190,10 +190,12 @@ conclusion, so Phase 2's headline should not be read on its own.
   misorientation. Not an edge-test defect; an intrinsic limit of any binary edge test on
   orientations.
 - **Therefore the tolerance is two-sided.** Phase 2's `>= 4x scatter` is a *lower* bound only.
-  The map-scale upper bound is far more restrictive and is the binding one for real graphs:
-  for cubic-cubic KS on a dense graph the window is roughly `4*sigma <= tol <= ~1 deg`, i.e. the
-  method needs scatter below ~0.25 deg there. Phase 2's stale "default 3.0 is appropriate"
+  The map-scale upper bound is far more restrictive and, *as of this phase*, the binding one for
+  real graphs: for cubic-cubic KS on a dense graph the window is roughly `4*sigma <= tol <= ~1 deg`,
+  i.e. the method needs scatter below ~0.25 deg there. Phase 2's stale "default 3.0 is appropriate"
   sentence was corrected in the study doc.
+  **-> Superseded by Phase 4:** the consistency vote removed most of this upper bound (69.7 -> 99.7
+  of 100 parents at the default tolerance). Read Phase 4 before acting on the window above.
 - **Mechanism identified:** the window is relationship-dependent because *fingerprint size* drives
   ambiguity. Burgers has 12 variants vs KS's 24, so ~2 800 vs ~10 700 distinct elements and
   correspondingly less of orientation space. More variants = intrinsically harder reconstruction.
