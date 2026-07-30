@@ -83,7 +83,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | 3.79e-15 | 1e-09 | ✅ pass |
+| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | 7.92e-15 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship is constructed from the parallelism {111}_fcc || {011}_bcc, so mapping the defining parent plane must recover the defining child plane identically (analytic identity).
 
@@ -164,7 +164,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | 1.03e-14 | 1e-09 | ✅ pass |
+| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | 8.70e-15 | 1e-09 | ✅ pass |
 
 **Why this value**: The Bain correspondence is constructed from (001)_fcc || (001)_bcc with [110]_fcc || [100]_bcc, so mapping the defining parent direction must recover the defining child direction identically (analytic identity).
 
@@ -365,5 +365,106 @@ result = np.array([report.deviation_from_nominal_deg, report.mean_residual_deg])
 **Why this value**: Exact GT-generated pairs must refit GT identically (zero residual is an analytic identity), and the reported distance from the KS nominal is the documented KS-GT representative separation of 2.40 deg.
 
 **Citation**: Greninger and Troiano, Trans. AIME 185 (1949) 590; Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## The Sigma3 twin is an admissible Kurdjumov-Sachs same-parent boundary
+
+Deciding whether two neighbouring martensite grains descend from one austenite grain means asking whether their boundary misorientation is one the relationship can actually produce. That admissible set is ``G_c (R G_p R^T) G_c``, because two children of one parent satisfy ``C_i^T C_j = V_i V_j^T``. Two identities are checked: the published Kurdjumov-Sachs intervariant table contains a 60 deg rotation about <111> — the Sigma3 twin relation, Morito's V1-V20 pair — so the exact Sigma3 rotation must sit at zero distance from the fingerprint; and every one of the 276 distinct variant-pair boundaries of a common parent must sit at zero distance too, since they generate the set by construction.
+
+**Symbols**
+
+- $G_c \left(R G_p R^{\mathsf{T}}\right) G_c$ &mdash; Same-parent boundary fingerprint: the admissible child-child misorientations of one parent grain.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import (
+    Rotation,
+    boundary_fingerprint_distances_deg,
+    intervariant_boundary_fingerprint,
+)
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+fingerprint = intervariant_boundary_fingerprint(ks)
+
+sigma3 = Rotation.from_axis_angle(
+    np.array([1.0, 1.0, 1.0]) / np.sqrt(3.0), np.deg2rad(60.0)
+).as_matrix()
+sigma3_distance = float(
+    boundary_fingerprint_distances_deg(sigma3[None, :, :], fingerprint)[0]
+)
+
+variants = ks.generate_variants()
+children = np.stack(
+    [variant.parent_to_child_rotation.inverse().as_matrix() for variant in variants]
+)
+left, right = np.triu_indices(len(variants), k=1)
+boundaries = np.einsum(
+    'nji,njk->nik', children[left], children[right], optimize=True
+)
+worst_variant_pair = float(
+    boundary_fingerprint_distances_deg(boundaries, fingerprint).max()
+)
+result = [sigma3_distance, worst_variant_pair]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-same-parent-boundary-fingerprint` | [0.0000, 0.0000] | [0.0000, 0.0000] | deg | 1.21e-06 | 1e-05 | ✅ pass |
+
+**Why this value**: Both values are identities, not fitted numbers. The Kurdjumov-Sachs intervariant table published by Morito et al. lists a 60 deg / <111> variant pair (V1-V20), which is exactly the Sigma3 coincidence-site relation, so the Sigma3 rotation belongs to the admissible set. The variant-pair boundaries generate the set by construction, so their distance to it is identically zero. The 1e-5 deg tolerance is the arccos and quaternion/matrix round-trip noise floor, not a physical margin.
+
+**Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (KS intervariant table); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

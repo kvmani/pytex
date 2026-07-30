@@ -91,6 +91,11 @@ filterwarnings = [
   "ignore:Issues encountered while parsing CIF:UserWarning",
   "ignore:No _symmetry_equiv_pos_as_xyz type key found:UserWarning",
   "ignore:dict interface is deprecated. Use attribute interface instead:DeprecationWarning",
+  # spglib >= 2.7 announces its own error-handling migration from inside the
+  # library on every call that goes through the legacy path. It reports a
+  # spglib-internal deprecation, not a PyTex defect, and no caller-side filter
+  # or adapter shim can suppress it at the point of emission.
+  "ignore:Set OLD_ERROR_HANDLING to false:DeprecationWarning",
 ]
 
 [tool.ruff]

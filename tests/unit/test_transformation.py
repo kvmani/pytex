@@ -1770,3 +1770,195 @@ def test_a_large_contraction_does_not_tip_a_cubic_pair_to_a_finer_grid() -> None
     assert float(np.linalg.det(report.correspondence)) == pytest.approx(2.0, abs=1e-9)
     # A contraction of a=3.60 to a=2.87 is a small volume change, not +52%.
     assert abs(report.volume_ratio - 1.0) < 0.1
+
+
+def _random_rotation_matrices(count: int, rng: np.random.Generator) -> np.ndarray:
+    quaternions = rng.normal(size=(count, 4))
+    quaternions /= np.linalg.norm(quaternions, axis=1)[:, None]
+    return np.stack(
+        [Rotation(quaternion=quaternion).as_matrix() for quaternion in quaternions], axis=0
+    )
+
+
+def test_boundary_fingerprint_contains_the_identity_and_is_symmetry_closed() -> None:
+    """Group-theoretic identities of the same-parent boundary set.
+
+    Two children of one parent formed through the *same* variant have zero
+    misorientation, so the identity must belong to the set; and because each
+    child orientation is only defined up to its own crystal symmetry, the set
+    must be invariant under left and right multiplication by child operators.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    fingerprint = intervariant_boundary_fingerprint(relationship)
+    assert fingerprint.ndim == 3
+    assert fingerprint.shape[1:] == (3, 3)
+    assert_allclose(np.linalg.det(fingerprint), 1.0, atol=1e-9)
+    # The identity (same-variant pair) is present: trace 3.
+    assert float(np.einsum("kii->k", fingerprint).max()) == pytest.approx(3.0, abs=1e-9)
+
+    # Closure is asserted as a set-distance statement rather than by comparing
+    # rounded quaternion keys: the keys are brittle at rounding boundaries, and
+    # the mathematical claim is that the transformed set lands back on the
+    # original set, which is exactly "every transformed element is at zero
+    # distance from the fingerprint".
+    operators = child.symmetry.operators
+    for operator in (operators[1], operators[5]):
+        for transformed in (
+            np.einsum("ij,kjl->kil", operator, fingerprint),
+            np.einsum("kij,jl->kil", fingerprint, operator),
+        ):
+            distances = boundary_fingerprint_distances_deg(transformed, fingerprint)
+            # 1e-5 deg, not 0: arccos near zero and the quaternion/matrix round
+            # trip both floor at ~1e-6 deg (see the index-correspondence notes).
+            assert float(distances.max()) < 1e-5
+
+
+def test_boundary_fingerprint_is_exact_on_same_parent_boundaries() -> None:
+    """Every variant pair of one parent scores zero against the fingerprint.
+
+    This is the defining property: the admissible set is exactly the
+    ``V_i V_j^T`` family, so a boundary built from any two variants of a
+    common parent has zero distance to it, up to the quaternion/matrix
+    round-trip floor.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+
+    _, _, parent, child = make_phases()
+    specimen = ReferenceFrame(
+        name="fingerprint_specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = relationship.generate_variants()
+    parent_orientation = Orientation.from_euler(
+        20.0, 30.0, 40.0, specimen_frame=specimen, symmetry=parent.symmetry, phase=parent
+    )
+    children = np.stack(
+        [
+            parent_orientation.rotation.compose(
+                variant.parent_to_child_rotation.inverse()
+            ).as_matrix()
+            for variant in variants
+        ],
+        axis=0,
+    )
+    left, right = np.triu_indices(len(variants), k=1)
+    relative = np.einsum("nji,njk->nik", children[left], children[right], optimize=True)
+    distances = boundary_fingerprint_distances_deg(
+        relative, intervariant_boundary_fingerprint(relationship)
+    )
+    assert distances.shape == (left.size,)
+    assert float(distances.max()) < 1e-5
+
+
+def test_boundary_fingerprint_rejects_unrelated_boundaries_far_better_than_angles() -> None:
+    """The axis carries most of the discriminating power of the fingerprint.
+
+    Matching only the misorientation *angle* against the intervariant spectrum
+    is very permissive: for a cubic-cubic relationship those angles are spread
+    densely enough that a few-degree window admits a large fraction of
+    entirely unrelated boundaries. Matching the full rotation removes most of
+    them. The rates below are measured properties of the method on uniformly
+    random rotations with a pinned seed, not literature values, so they are
+    asserted with wide margins that pin the qualitative separation.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+        intervariant_misorientation_angles_deg,
+    )
+    from pytex.core.orientation import _reduced_pair_disorientation_angles
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    rng = np.random.default_rng(20260730)
+    left = _random_rotation_matrices(4000, rng)
+    right = _random_rotation_matrices(4000, rng)
+    relative = np.einsum("eji,ejk->eik", left, right, optimize=True)
+
+    table = intervariant_misorientation_angles_deg(relationship)
+    spectrum = np.unique(
+        np.round(np.concatenate([[0.0], table[np.triu_indices(table.shape[0], k=1)]]), 6)
+    )
+    operators = child.symmetry.operators
+    angles = np.degrees(_reduced_pair_disorientation_angles(relative, operators, operators))
+    angle_only = np.min(np.abs(angles[:, None] - spectrum[None, :]), axis=1)
+    full = boundary_fingerprint_distances_deg(
+        relative, intervariant_boundary_fingerprint(relationship)
+    )
+
+    angle_rate = float(np.mean(angle_only <= 3.0))
+    full_rate = float(np.mean(full <= 3.0))
+    assert angle_rate > 0.40, f"angle-only false-accept fell to {angle_rate:.3f}"
+    assert full_rate < 0.15, f"fingerprint false-accept rose to {full_rate:.3f}"
+    assert angle_rate > 4.0 * full_rate
+    # Tightening the tolerance sharpens the fingerprint test quickly.
+    assert float(np.mean(full <= 1.0)) < 0.02
+
+
+def test_boundary_fingerprint_distance_is_blocked_but_exact() -> None:
+    """The blocked kernel must equal the direct all-pairs evaluation.
+
+    Edges are processed in fixed-size blocks so the transient stays bounded at
+    map scale; that must not change the result, including when the edge count
+    is not a multiple of the block size.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+    from pytex.core.transformation import _FINGERPRINT_BLOCK_SIZE
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_nishiyama_wassermann_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    fingerprint = intervariant_boundary_fingerprint(relationship)
+    rng = np.random.default_rng(11)
+    count = 2 * _FINGERPRINT_BLOCK_SIZE + 7
+    relative = _random_rotation_matrices(count, rng)
+    blocked = boundary_fingerprint_distances_deg(relative, fingerprint)
+    traces = np.einsum("eij,kij->ek", relative, fingerprint, optimize=True).max(axis=1)
+    direct = np.degrees(np.arccos(np.clip((traces - 1.0) * 0.5, -1.0, 1.0)))
+    assert blocked.shape == (count,)
+    assert_allclose(blocked, direct, atol=1e-9)
+
+
+def test_boundary_fingerprint_distance_validates_shapes() -> None:
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    fingerprint = intervariant_boundary_fingerprint(relationship)
+    with pytest.raises(ValueError, match="relative_matrices"):
+        boundary_fingerprint_distances_deg(np.eye(3), fingerprint)
+    with pytest.raises(ValueError, match="fingerprint must have shape"):
+        boundary_fingerprint_distances_deg(np.eye(3)[None, :, :], np.eye(3))
+    with pytest.raises(ValueError, match="at least one rotation"):
+        boundary_fingerprint_distances_deg(np.eye(3)[None, :, :], np.empty((0, 3, 3)))

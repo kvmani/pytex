@@ -274,6 +274,85 @@ OR_FITTING_RECOVERS_GT = WorkedExample(
 )
 
 
+
+_FINGERPRINT = SymbolUse(
+    r"G_c \left(R G_p R^{\mathsf{T}}\right) G_c",
+    "Same-parent boundary fingerprint: the admissible child-child "
+    "misorientations of one parent grain.",
+)
+
+
+KS_SIGMA3_IS_AN_ADMISSIBLE_BOUNDARY = WorkedExample(
+    id="or-ks-same-parent-boundary-fingerprint",
+    title="The Sigma3 twin is an admissible Kurdjumov-Sachs same-parent boundary",
+    domain="transformation",
+    scenario=(
+        "Deciding whether two neighbouring martensite grains descend from one "
+        "austenite grain means asking whether their boundary misorientation is "
+        "one the relationship can actually produce. That admissible set is "
+        "``G_c (R G_p R^T) G_c``, because two children of one parent satisfy "
+        "``C_i^T C_j = V_i V_j^T``. Two identities are checked: the published "
+        "Kurdjumov-Sachs intervariant table contains a 60 deg rotation about "
+        "<111> — the Sigma3 twin relation, Morito's V1-V20 pair — so the exact "
+        "Sigma3 rotation must sit at zero distance from the fingerprint; and "
+        "every one of the 276 distinct variant-pair boundaries of a common "
+        "parent must sit at zero distance too, since they generate the set by "
+        "construction."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=(
+        "from pytex import (\n"
+        "    Rotation,\n"
+        "    boundary_fingerprint_distances_deg,\n"
+        "    intervariant_boundary_fingerprint,\n"
+        ")\n"
+        "\n"
+        "ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "fingerprint = intervariant_boundary_fingerprint(ks)\n"
+        "\n"
+        "sigma3 = Rotation.from_axis_angle(\n"
+        "    np.array([1.0, 1.0, 1.0]) / np.sqrt(3.0), np.deg2rad(60.0)\n"
+        ").as_matrix()\n"
+        "sigma3_distance = float(\n"
+        "    boundary_fingerprint_distances_deg(sigma3[None, :, :], fingerprint)[0]\n"
+        ")\n"
+        "\n"
+        "variants = ks.generate_variants()\n"
+        "children = np.stack(\n"
+        "    [variant.parent_to_child_rotation.inverse().as_matrix() for variant in variants]\n"
+        ")\n"
+        "left, right = np.triu_indices(len(variants), k=1)\n"
+        "boundaries = np.einsum(\n"
+        "    'nji,njk->nik', children[left], children[right], optimize=True\n"
+        ")\n"
+        "worst_variant_pair = float(\n"
+        "    boundary_fingerprint_distances_deg(boundaries, fingerprint).max()\n"
+        ")\n"
+        "result = [sigma3_distance, worst_variant_pair]"
+    ),
+    expected=[0.0, 0.0],
+    unit="deg",
+    tolerance=1e-5,
+    reference=(
+        "Both values are identities, not fitted numbers. The Kurdjumov-Sachs "
+        "intervariant table published by Morito et al. lists a 60 deg / <111> "
+        "variant pair (V1-V20), which is exactly the Sigma3 coincidence-site "
+        "relation, so the Sigma3 rotation belongs to the admissible set. The "
+        "variant-pair boundaries generate the set by construction, so their "
+        "distance to it is identically zero. The 1e-5 deg tolerance is the "
+        "arccos and quaternion/matrix round-trip noise floor, not a physical "
+        "margin."
+    ),
+    citation=(
+        "Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) "
+        "1789 (KS intervariant table); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325."
+    ),
+    symbols=(_FINGERPRINT,),
+    see_also=(_OR_CONCEPT, _API),
+)
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
@@ -288,5 +367,6 @@ GROUP = ExampleGroup(
         BAIN_DIRECTION_CORRESPONDENCE,
         KS_MISORIENTATION_REPRESENTATION,
         OR_FITTING_RECOVERS_GT,
+        KS_SIGMA3_IS_AN_ADMISSIBLE_BOUNDARY,
     ),
 )

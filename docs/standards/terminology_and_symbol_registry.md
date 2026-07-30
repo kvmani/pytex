@@ -120,6 +120,8 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $m_{\{hkl\}}$ | Symmetry multiplicity of a plane family under the phase point group. |
 | $\mathbf{M}$ | Direction-index correspondence matrix of an orientation relationship: $\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p}$ with $\mathbf{M} = \mathbf{A}_{c}^{-1}\mathbf{R}\,\mathbf{A}_{p}$ built from the direct structure matrices. |
 | $\mathbf{M}^{*}$ | Plane-index correspondence matrix of an orientation relationship: $\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}$, with $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$ so the zone law $\mathbf{h} \cdot \mathbf{u}$ is preserved. |
+| $G_p$, $G_c$ | Parent and child crystal point groups, as sets of proper rotation operators. |
+| $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ | Same-parent boundary fingerprint: the set of misorientations two child grains of one parent can exhibit, since $\mathbf{C}_i^{\mathsf{T}}\mathbf{C}_j = \mathbf{V}_i \mathbf{V}_j^{\mathsf{T}}$ and $\mathbf{V}_i = R\,S_{p,i}$. Each child orientation is defined only up to its own crystal symmetry, hence the double coset. |
 
 ### Orientation and misorientation
 

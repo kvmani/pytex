@@ -141,7 +141,7 @@ result = float(parent_direction.unit_vector @ placed)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | 2.22e-16 | 1e-09 | ✅ pass |
+| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship fixes <110>_fcc || <111>_bcc; placing the child by the inverse relationship rotation makes the paired directions collinear, so their cosine is 1.
 

@@ -13,6 +13,26 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The same-parent boundary fingerprint is now a public core surface.**
+  `intervariant_boundary_fingerprint(relationship)` returns the deduplicated
+  set $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ of misorientations that two
+  child grains of one parent can exhibit, and
+  `boundary_fingerprint_distances_deg(relative_matrices, fingerprint)` scores
+  measured boundaries against it with a memory-bounded blocked kernel. Both are
+  exported from `pytex.core` and the top level.
+
+  This is the quantity that answers "could these two product grains share a
+  parent?", and it was previously an undocumented private helper inside
+  `pytex.experimental.or_identification`, duplicated in weakened
+  (angle-only) form by parent-grain reconstruction. Reconstruction and OR
+  identification now share the one definition, per the repository's
+  one-shared-helper rule. New worked example
+  `or-ks-same-parent-boundary-fingerprint` pins two identities: the Sigma3 twin
+  relation (60 deg about $\langle 111 \rangle$) is an admissible
+  Kurdjumov-Sachs same-parent boundary — it is Morito's published V1-V20
+  intervariant pair — and all 276 variant-pair boundaries of a common parent
+  sit at zero distance from the set they generate.
+
 - **Reference frames are now a first-class shared foundation.** Frames were
   previously a thin label plus three axis names, and each module built the ones
   it needed inline. The foundation replaces that with one model used everywhere.
@@ -94,6 +114,53 @@ downstream analyses depend on them.
     as a test rather than as a broken figure.
 
 ### Fixed
+
+- **Parent-grain reconstruction linked grains on the misorientation angle
+  alone, merging unrelated parents.** This is a scientific behavior change:
+  reconstruction groupings and parent counts change, and previously reported
+  results on real microstructures should be regenerated.
+
+  `reconstruct_parent_grains` (and therefore
+  `reconstruct_parent_grains_from_graph`) decided whether two neighbouring
+  child grains descend from a common parent by reducing the intervariant table
+  to its **distinct angles** and asking whether the boundary disorientation
+  angle fell within `tolerance_deg` of any of them. The misorientation **axis
+  was discarded**. For a cubic-cubic relationship those angles are spread
+  densely enough over the accessible range that the test was far too
+  permissive: against 20 000 uniformly random, entirely unrelated boundaries it
+  accepted **52.8%** of them at the default 3 deg tolerance (28.6% at 1 deg,
+  62.6% at 5 deg) for Kurdjumov-Sachs, and 39.1% at 3 deg for
+  Nishiyama-Wassermann.
+
+  The consequence at map scale was silent merging of distinct parent grains.
+  On a 12-parent synthetic microstructure with one contact edge between
+  consecutive parents, the angle-only rule linked 5 to 8 of the 11 cross-parent
+  boundaries and recovered only **4 to 7 of the 12** planted parents.
+
+  The edge test now matches the **full rotation**, against the admissible
+  same-parent set $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ — exact, because
+  two children of one parent satisfy
+  $\mathbf{C}_i^{\mathsf{T}}\mathbf{C}_j = \mathbf{V}_i\mathbf{V}_j^{\mathsf{T}}$
+  with $\mathbf{V}_i = R\,S_{p,i}$. False acceptance of unrelated boundaries
+  drops to 7.1% at 3 deg and 0.26% at 1 deg, and the same 12-parent fixture now
+  recovers 10 to 12 of 12. **No sensitivity is lost:** true same-parent
+  boundaries score zero against the fingerprint to 1.2e-6 deg (the
+  quaternion/matrix round-trip floor), and no true edge was missed in any
+  measurement above.
+
+- **The fingerprint distance kernel allocated gigabytes at map scale.** The
+  comparison in `identify_orientation_relationship` was written as
+  `einsum("eij,kij->ek", ...)`, which materializes one float per (edge,
+  fingerprint element) pair — **4.3 GB for 50 000 edges** against a cubic-cubic
+  fingerprint. It is now a blocked `(512, 9) @ (9, k)` GEMM in the shared
+  `boundary_fingerprint_distances_deg`: numerically identical to 4e-13, 2.5x
+  faster, and bounded at ~22 MB regardless of edge count.
+
+- **spglib 2.7 broke the test suite under the warnings-as-errors policy.** It
+  announces its own error-handling migration from inside the library on every
+  call through the legacy path, which no caller-side filter or adapter shim can
+  suppress at the point of emission. Added as a fourth narrow, commented
+  exemption in `pyproject.toml` alongside the existing pymatgen ones.
 
 - **Documentation figures rendered with runaway arrowheads.** SVG markers
   default to `markerUnits="strokeWidth"`, which multiplies the arrowhead by the

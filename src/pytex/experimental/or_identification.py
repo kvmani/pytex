@@ -19,9 +19,13 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from pytex.core._arrays import as_int_array
-from pytex.core.orientation import OrientationSet, matrices_to_quaternions
+from pytex.core.orientation import OrientationSet
 from pytex.core.provenance import ProvenanceRecord
-from pytex.core.transformation import OrientationRelationship
+from pytex.core.transformation import (
+    OrientationRelationship,
+    boundary_fingerprint_distances_deg,
+    intervariant_boundary_fingerprint,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,37 +107,6 @@ class ORIdentificationReport:
         )
 
 
-def _fingerprint_set(relationship: OrientationRelationship) -> np.ndarray:
-    """Deduplicated double coset G_c (R S_p R^T) G_c of same-parent boundaries."""
-
-    rotation = relationship.parent_to_child_rotation.as_matrix()
-    parent_symmetry = relationship.parent_phase.symmetry
-    child_symmetry = relationship.child_phase.symmetry
-    parent_ops = (
-        parent_symmetry.operators
-        if parent_symmetry is not None
-        else np.eye(3, dtype=np.float64)[None, :, :]
-    )
-    child_ops = (
-        child_symmetry.operators
-        if child_symmetry is not None
-        else np.eye(3, dtype=np.float64)[None, :, :]
-    )
-    conjugated = np.einsum("ij,pjk,lk->pil", rotation, parent_ops, rotation, optimize=True)
-    products = np.einsum(
-        "aij,pjk,bkl->apbil", child_ops, conjugated, child_ops, optimize=True
-    ).reshape(-1, 3, 3)
-    quaternions = matrices_to_quaternions(products)
-    # q and -q are one rotation: canonicalize sign on the largest component.
-    pivot = np.argmax(np.abs(quaternions), axis=1)
-    signs = np.sign(quaternions[np.arange(quaternions.shape[0]), pivot])
-    keys = np.round(quaternions * signs[:, None], 8)
-    _, unique_indices = np.unique(keys, axis=0, return_index=True)
-    fingerprint = np.ascontiguousarray(products[unique_indices])
-    fingerprint.setflags(write=False)
-    return fingerprint
-
-
 def identify_orientation_relationship(
     child_orientations: OrientationSet,
     adjacency: ArrayLike,
@@ -188,11 +161,9 @@ def identify_orientation_relationship(
     medians: list[float] = []
     per_edge_best: dict[str, np.ndarray] = {}
     for candidate in candidates:
-        fingerprint = _fingerprint_set(candidate)
-        # angle(M F^T) needs only trace(M F^T) = sum(M * F), elementwise.
-        traces = np.einsum("eij,kij->ek", relatives, fingerprint, optimize=True)
-        cosines = np.clip((traces.max(axis=1) - 1.0) * 0.5, -1.0, 1.0)
-        distances = np.degrees(np.arccos(cosines))
+        distances = boundary_fingerprint_distances_deg(
+            relatives, intervariant_boundary_fingerprint(candidate)
+        )
         means.append(float(np.mean(distances)))
         medians.append(float(np.median(distances)))
         per_edge_best[candidate.name] = distances

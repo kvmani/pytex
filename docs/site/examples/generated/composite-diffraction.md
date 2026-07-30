@@ -174,7 +174,7 @@ result = min(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `composite-burgers-exact-basal-zone` | 0.0000 | 0.0000 | deg | 1.61e-14 | 1e-09 | ✅ pass |
+| `composite-burgers-exact-basal-zone` | 0.0000 | 0.0000 | deg | 4.80e-15 | 1e-09 | ✅ pass |
 
 **Why this value**: The defining Burgers plane parallelism {110}_bcc || (0001)_hcp makes the mapped child zone exactly rational, so the deviation of the best variant is 0 degrees.
 

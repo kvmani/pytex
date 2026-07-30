@@ -440,3 +440,154 @@ def test_variant_pole_figure_validates_phases_and_plots() -> None:
     )
     axes = plot_variant_pole_figure(prediction)
     assert axes is not None
+
+
+def _many_parent_microstructure(
+    *, seed: int = 187, parent_count: int = 6, per_parent: int = 5
+) -> tuple[OrientationSet, np.ndarray, np.ndarray, OrientationRelationship]:
+    """Randomly oriented parents, each transformed through distinct KS variants.
+
+    Adjacency chains the children of each parent and adds one contact edge
+    between consecutive parents, so the fixture contains genuine cross-parent
+    boundaries of exactly the kind the edge test must reject. Seed 187 is
+    pinned because its cross-parent boundaries are all far from the same-parent
+    fingerprint, which the test asserts rather than assumes.
+    """
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = ks.generate_variants()
+    rng = np.random.default_rng(seed)
+    quaternions: list[np.ndarray] = []
+    planted: list[int] = []
+    for parent_index in range(parent_count):
+        quaternion = rng.normal(size=4)
+        quaternion /= np.linalg.norm(quaternion)
+        parent_rotation = Rotation(quaternion=quaternion)
+        for pick in rng.choice(len(variants), size=per_parent, replace=False):
+            quaternions.append(
+                parent_rotation.compose(
+                    variants[int(pick)].parent_to_child_rotation.inverse()
+                ).quaternion
+            )
+            planted.append(parent_index)
+    children = OrientationSet(
+        quaternions=np.stack(quaternions, axis=0),
+        crystal_frame=child_phase.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child_phase.symmetry,
+        phase=child_phase,
+    )
+    planted_labels = np.asarray(planted, dtype=np.int64)
+    edges: list[tuple[int, int]] = []
+    for parent_index in range(parent_count):
+        members = np.flatnonzero(planted_labels == parent_index)
+        edges.extend((int(a), int(b)) for a, b in pairwise(members))
+    for parent_index in range(parent_count - 1):
+        edges.append(
+            (
+                int(np.flatnonzero(planted_labels == parent_index)[-1]),
+                int(np.flatnonzero(planted_labels == parent_index + 1)[0]),
+            )
+        )
+    return children, np.asarray(edges, dtype=np.int64), planted_labels, ks
+
+
+def test_edge_test_matches_the_full_rotation_not_only_the_angle() -> None:
+    """Regression: an angle-only edge test merges unrelated parent grains.
+
+    The same-parent fingerprint is the double coset ``G_c (R G_p R^T) G_c``. A
+    test that compares only the misorientation *angle* against the intervariant
+    spectrum discards the axis, and for a cubic-cubic relationship that spectrum
+    is dense enough that a 3 deg window admits most unrelated boundaries.
+
+    This fixture makes the consequence concrete. Its cross-parent boundaries are
+    first asserted to be unambiguously far from the fingerprint, so the planted
+    partition is the only defensible answer; the angle-only rule nonetheless
+    links most of them and collapses distinct parents together, while the
+    shipped full-rotation rule recovers the planted partition exactly.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+        intervariant_misorientation_angles_deg,
+    )
+    from pytex.core.orientation import _reduced_pair_disorientation_angles
+
+    children, adjacency, planted, ks = _many_parent_microstructure()
+    matrices = children.as_matrices()
+    relative = np.einsum(
+        "eji,ejk->eik",
+        matrices[adjacency[:, 0]],
+        matrices[adjacency[:, 1]],
+        optimize=True,
+    )
+    cross = planted[adjacency[:, 0]] != planted[adjacency[:, 1]]
+    assert int(np.count_nonzero(cross)) == 5
+
+    fingerprint = intervariant_boundary_fingerprint(ks)
+    distances = boundary_fingerprint_distances_deg(relative, fingerprint)
+    # Ground truth is unambiguous: same-parent edges sit on the fingerprint and
+    # cross-parent edges sit far off it, well beyond any sane tolerance.
+    assert float(distances[~cross].max()) < 1e-5
+    assert float(distances[cross].min()) > 8.0
+
+    # The discarded-axis rule links most cross-parent boundaries anyway.
+    operators = ks.child_phase.symmetry.operators
+    table = intervariant_misorientation_angles_deg(ks)
+    spectrum = np.unique(
+        np.round(np.concatenate([[0.0], table[np.triu_indices(table.shape[0], k=1)]]), 6)
+    )
+    angles = np.degrees(_reduced_pair_disorientation_angles(relative, operators, operators))
+    angle_only_linked = (
+        np.min(np.abs(angles[:, None] - spectrum[None, :]), axis=1) <= 3.0
+    )
+    assert int(np.count_nonzero(angle_only_linked & cross)) >= 3
+
+    # The shipped rule rejects every one of them and recovers the partition.
+    result = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=3.0)
+    assert result.edges_linked == int(np.count_nonzero(~cross))
+    assert result.parent_count == 6
+    assert _partitions_equal(result.parent_labels, planted)
+    assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6)
+
+
+def test_reconstruction_scales_to_many_parents_without_merging_them() -> None:
+    """Partition recovery must hold across independent random microstructures.
+
+    A single pinned fixture can flatter an edge test, so this sweeps several
+    seeds and requires that the reconstruction never merges two planted parents
+    whose boundary is genuinely separable, and never splits a parent whose
+    children are all linked.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+
+    for seed in (11, 23, 57, 91):
+        children, adjacency, planted, ks = _many_parent_microstructure(seed=seed)
+        matrices = children.as_matrices()
+        relative = np.einsum(
+            "eji,ejk->eik",
+            matrices[adjacency[:, 0]],
+            matrices[adjacency[:, 1]],
+            optimize=True,
+        )
+        cross = planted[adjacency[:, 0]] != planted[adjacency[:, 1]]
+        distances = boundary_fingerprint_distances_deg(
+            relative, intervariant_boundary_fingerprint(ks)
+        )
+        # Only judge seeds whose ground truth is unambiguous at this tolerance;
+        # a cross-parent boundary that genuinely lands on the fingerprint is a
+        # real physical ambiguity, not an algorithmic defect.
+        if float(distances[cross].min()) <= 3.0:
+            continue
+        result = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=3.0)
+        assert _partitions_equal(result.parent_labels, planted), f"seed {seed}"
+        assert result.parent_count == 6, f"seed {seed}"
+        assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6), f"seed {seed}"

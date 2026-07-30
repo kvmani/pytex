@@ -29,7 +29,8 @@ from pytex.core.point_groups import normalize_point_group_symbol
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.transformation import (
     OrientationRelationship,
-    intervariant_misorientation_angles_deg,
+    boundary_fingerprint_distances_deg,
+    intervariant_boundary_fingerprint,
 )
 from pytex.ebsd.models import GrainGraph
 
@@ -114,8 +115,9 @@ class ParentGrainReconstructionResult:
             f"Parent-grain reconstruction under orientation relationship "
             f"'{self.relationship_name}': {self.parent_labels.size} child grain(s) grouped "
             f"into {self.parent_count} parent(s) using {self.edges_linked} of "
-            f"{self.edges_tested} adjacency edge(s) whose boundary disorientations matched "
-            f"the intervariant fingerprint within {self.tolerance_deg:.2f} deg. Residual of "
+            f"{self.edges_tested} adjacency edge(s) whose boundary misorientations matched "
+            f"the same-parent fingerprint (full rotation, axis and angle) within "
+            f"{self.tolerance_deg:.2f} deg. Residual of "
             f"each child to its assigned parent (best variant, child-symmetry-reduced): mean "
             f"{self.mean_deviation_deg:.3f} deg, max {self.max_deviation_deg:.3f} deg."
             f"{singleton_note} Experimental surface: literature-fixture validation is still "
@@ -128,15 +130,6 @@ def _child_operators(relationship: OrientationRelationship) -> np.ndarray:
     if symmetry is None:
         return np.eye(3, dtype=np.float64)[None, :, :]
     return np.asarray(symmetry.operators, dtype=np.float64)
-
-
-def _reference_angles_deg(relationship: OrientationRelationship) -> np.ndarray:
-    """Intervariant fingerprint: 0 (same variant) plus all distinct pair angles."""
-
-    table = intervariant_misorientation_angles_deg(relationship)
-    upper = table[np.triu_indices(table.shape[0], k=1)]
-    reference = np.unique(np.round(np.concatenate([[0.0], upper]), 6))
-    return np.asarray(reference, dtype=np.float64)
 
 
 def _member_deviations_deg(
@@ -208,14 +201,17 @@ def reconstruct_parent_grains(
     orientation was, using only the orientation relationship (no parent phase
     retained in the microstructure required).
 
-    Algorithm: an adjacency edge links two child grains when their
-    child-symmetry-reduced disorientation angle matches the relationship's
-    intervariant fingerprint (including 0 deg for same-variant neighbors)
-    within ``tolerance_deg``; union-find over linked edges yields parent
-    clusters; per cluster, the candidate parents ``V_k^T C_first`` generated
-    from its first child are scored against every member (minimum-over-
-    variants disorientation), and the best-scoring candidate becomes the
-    parent estimate with per-grain residuals reported.
+    Algorithm: an adjacency edge links two child grains when their boundary
+    misorientation ``M = C_i^T C_j`` lies within ``tolerance_deg`` of the
+    same-parent fingerprint ``G_c (R G_p R^T) G_c`` (see
+    ``intervariant_boundary_fingerprint``) — the full rotation is matched,
+    axis and angle, since a same-variant pair contributes the identity and a
+    distinct-variant pair contributes ``V_i V_j^T``. Union-find over linked
+    edges yields parent clusters; per cluster, the candidate parents
+    ``C_first V_k`` generated from its first child are scored against every
+    member (minimum-over-variants disorientation), the best-scoring candidate
+    seeds a quaternion-eigen-mean refinement over all members, and per-grain
+    residuals to the refined parent are reported.
 
     Inputs: child grain-mean orientations (phase must match the
     relationship's child phase), an ``(m, 2)`` integer adjacency array of
@@ -248,9 +244,14 @@ def reconstruct_parent_grains(
         if parent_symmetry is not None
         else np.eye(3, dtype=np.float64)[None, :, :]
     )
-    reference = _reference_angles_deg(relationship)
+    fingerprint = intervariant_boundary_fingerprint(relationship)
 
-    # Edge test: boundary disorientation matches the intervariant fingerprint.
+    # Edge test: the boundary misorientation must match the same-parent
+    # fingerprint as a *rotation* — axis and angle. Matching the angle alone
+    # is far too permissive: for a cubic-cubic relationship the intervariant
+    # angle spectrum covers so much of [0, 62] deg that a 3 deg angle-only
+    # window admits over half of all entirely unrelated boundaries, which
+    # merges distinct parents at map scale.
     linked = np.zeros(edges.shape[0], dtype=bool)
     if edges.shape[0]:
         # Crystal-frame boundary relative under the canonical crystal->specimen
@@ -261,10 +262,9 @@ def reconstruct_parent_grains(
             child_matrices[edges[:, 1]],
             optimize=True,
         )
-        angles = np.degrees(
-            _reduced_pair_disorientation_angles(relative, operators, operators)
-        )
-        distance = np.min(np.abs(angles[:, None] - reference[None, :]), axis=1)
+        # The fingerprint is closed under child symmetry on both sides, so the
+        # raw relative is scored directly (no prior disorientation reduction).
+        distance = boundary_fingerprint_distances_deg(relative, fingerprint)
         linked = distance <= tolerance_deg
 
     parent = np.arange(grain_count, dtype=np.int64)

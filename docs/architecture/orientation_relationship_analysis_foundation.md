@@ -37,9 +37,15 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
 - **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean
   with iterative realignment; recovers GT exactly from a KS nominal.
 - **F8 (reconstruction, experimental):** `reconstruct_parent_grains` /
-  `reconstruct_parent_grains_from_graph` — intervariant-fingerprint edges, union-find
+  `reconstruct_parent_grains_from_graph` — same-parent fingerprint edges, union-find
   clustering, averaged parent refinement, EBSD grain-graph wiring; validated on the
-  24-variant lath-martensite structure fixture.
+  24-variant lath-martensite structure fixture and a six-parent stress fixture.
+  The edge test matches the **full boundary rotation** against
+  $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ via the shared
+  `intervariant_boundary_fingerprint`. It previously compared only the
+  misorientation *angle* against the intervariant spectrum, which admitted
+  over half of all unrelated boundaries at the default tolerance and silently
+  merged distinct parents; see the CHANGELOG entry for the measured rates.
 - **F10 (variant pole figures):** `variant_pole_figure` + `plot_variant_pole_figure`, pinned
   by the packet-plane coincidence.
 - **F12 (deformation gradients):** `deformation_gradient()` — nearest-integer lattice
@@ -213,9 +219,13 @@ both with no parent orientations required. Still **not available**, and no PyTex
 imply otherwise: habit-plane / PTMC analysis (F13). The
 F14 catalog breadth is complete (Shoji-Nishiyama, Pitsch-Schrader, Potter, Bagaryatsky, and
 Isaichev all landed). Parent-grain reconstruction (F8) is
-experimental: synthetic and literature-structure validation exists, but external measured-data
-fixtures and MTEX parity are still required before stabilization. JSON contracts for the newer
-report objects (F11) are partial.
+experimental: synthetic, literature-structure, and multi-parent stress validation exists, but
+external measured-data fixtures and MTEX parity are still required before stabilization. The
+MTEX `calcParent2Child` parity campaign is **defined** (`fixtures/mtex_parity/campaigns/`) with
+its MATLAB handler in place, but its MTEX-side results are ungenerated because no MATLAB/MTEX
+installation is available in the development environment; until those results are produced and
+compared, no PyTex document may claim MTEX parity for reconstruction or OR fitting. JSON
+contracts for the newer report objects (F11) are partial.
 
 ## References
 

@@ -44,7 +44,7 @@ result = np.array([a0, ratio])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | 7.48e-14 | 1e-06 | ✅ pass |
+| `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | 7.47e-14 | 1e-06 | ✅ pass |
 
 **Why this value**: A_0 = 1 is the SO(3) normalization identity for character expansions, and psi(halfwidth) = psi(0)/2 is the definition of the kernel halfwidth (both analytic identities).
 

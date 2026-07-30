@@ -121,6 +121,50 @@ with Greninger-Troiano deviate by the documented $2.40^{\circ}$ from
 Kurdjumov-Sachs and $2.86^{\circ}$ from Nishiyama-Wassermann — the report's
 aggregate statistics are the entry point for OR fitting.
 
+## Which boundaries can share a parent
+
+Reconstructing parent grains, or identifying the operative relationship from a
+fully transformed microstructure, both reduce to one question: *could these two
+neighbouring product grains have come from the same parent?*
+
+The answer is exact. A child formed from parent $\mathbf{P}$ through variant
+$\mathbf{V}_i$ is $\mathbf{C}_i = \mathbf{P}\mathbf{V}_i^{\mathsf{T}}$, so the
+crystal-frame boundary misorientation of two same-parent children is
+
+$$\mathbf{C}_i^{\mathsf{T}}\mathbf{C}_j = \mathbf{V}_i \mathbf{V}_j^{\mathsf{T}}.$$
+
+Writing $\mathbf{V}_i = R\,S_{p,i}$ with $R$ the parent-to-child rotation and
+$S_p$ the parent point group, the whole family collapses to $R\,G_p\,R^{\mathsf{T}}$
+— the parent group *conjugated* by the OR rotation. Each child orientation is
+itself defined only up to its own crystal symmetry, so the observable set is the
+double coset
+
+$$G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c,$$
+
+returned by `intervariant_boundary_fingerprint(relationship)`.
+`boundary_fingerprint_distances_deg(...)` scores measured boundaries against it,
+and a distance near zero means the two grains are consistent with a shared
+parent. Both are used by `reconstruct_parent_grains` and
+`identify_orientation_relationship`, so the two workflows share one definition.
+
+**Match the rotation, not just the angle.** It is tempting to compare only the
+misorientation angle against the intervariant table from
+`intervariant_misorientation_angles_deg`. That discards the axis, and for a
+cubic-cubic relationship the angle spectrum is dense enough over its range that
+a few-degree window admits most *unrelated* boundaries: measured on uniformly
+random rotations, an angle-only test at $3^{\circ}$ accepts about $53\%$ of
+them for Kurdjumov-Sachs, against about $7\%$ for the full-rotation test — and
+at $1^{\circ}$, $29\%$ against $0.3\%$. At map scale that difference is the
+difference between resolving distinct parent grains and silently merging them.
+The stricter test costs no sensitivity: true same-parent boundaries score zero
+to within the $10^{-6}$-degree round-trip floor.
+
+The set is also a useful object in its own right. The Kurdjumov-Sachs
+fingerprint contains the $\Sigma 3$ twin relation — $60^{\circ}$ about
+$\langle 111 \rangle$, Morito's V1–V20 intervariant pair — which is why
+twin-related martensite variants are so common; this identity is pinned as a
+worked example.
+
 ## Fitting the operative relationship
 
 `fit_orientation_relationship(parents, children, nominal)` goes one step

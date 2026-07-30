@@ -1438,6 +1438,123 @@ def _child_operators(relationship: OrientationRelationship) -> np.ndarray:
     return np.asarray(symmetry.operators, dtype=np.float64)
 
 
+def _parent_operators(relationship: OrientationRelationship) -> np.ndarray:
+    symmetry = relationship.parent_phase.symmetry
+    if symmetry is None:
+        return np.eye(3, dtype=np.float64)[None, :, :]
+    return np.asarray(symmetry.operators, dtype=np.float64)
+
+
+#: Edge block size for :func:`boundary_fingerprint_distances_deg`. The distance
+#: kernel is a ``(block, 9) @ (9, K)`` GEMM, so the transient is
+#: ``block * K * 8`` bytes; 512 keeps that near 40 MB for a cubic-cubic
+#: fingerprint while staying large enough to saturate BLAS.
+_FINGERPRINT_BLOCK_SIZE = 512
+
+
+def intervariant_boundary_fingerprint(
+    relationship: OrientationRelationship,
+) -> np.ndarray:
+    r"""Every misorientation two child grains of one parent can exhibit.
+
+    Purpose: the exact admissible set for same-parent child-child boundaries —
+    the quantity an edge test must compare against when deciding whether two
+    neighbouring product grains descend from a common parent.
+
+    Theory: a child of parent :math:`P` through variant :math:`V_i` is
+    :math:`C_i = P V_i^{\mathsf{T}}`, so the crystal-frame boundary
+    misorientation of two same-parent children is
+    :math:`C_i^{\mathsf{T}} C_j = V_i V_j^{\mathsf{T}}`. Writing
+    :math:`V_i = R S_{p,i}` with :math:`R` the parent-to-child rotation and
+    :math:`S_p` the parent point group, the set collapses to
+    :math:`R G_p R^{\mathsf{T}}` — the parent group *conjugated* by the OR
+    rotation. Each child orientation is itself only defined up to its own
+    crystal symmetry, so the observable set is the double coset
+    :math:`G_c \left(R G_p R^{\mathsf{T}}\right) G_c`, returned here
+    deduplicated (``q`` and ``-q`` identified).
+
+    Inputs: the orientation relationship; its parent and child phase symmetry
+    supply :math:`G_p` and :math:`G_c` (a phase without symmetry contributes
+    the identity only).
+
+    Output: a read-only ``(k, 3, 3)`` array of rotation matrices. Pair it with
+    :func:`boundary_fingerprint_distances_deg` to score measured boundaries.
+
+    Note that this is strictly stronger than comparing misorientation *angles*
+    against :func:`intervariant_misorientation_angles_deg`: the angle spectrum
+    discards the axis, and for a cubic-cubic relationship an angle-only test
+    admits a large fraction of entirely unrelated boundaries.
+    """
+
+    rotation = relationship.parent_to_child_rotation.as_matrix()
+    parent_ops = _parent_operators(relationship)
+    child_ops = _child_operators(relationship)
+    conjugated = np.einsum("ij,pjk,lk->pil", rotation, parent_ops, rotation, optimize=True)
+    products = np.einsum(
+        "aij,pjk,bkl->apbil", child_ops, conjugated, child_ops, optimize=True
+    ).reshape(-1, 3, 3)
+    quaternions = matrices_to_quaternions(products)
+    # q and -q are one rotation: canonicalize the sign on the largest component.
+    pivot = np.argmax(np.abs(quaternions), axis=1)
+    signs = np.sign(quaternions[np.arange(quaternions.shape[0]), pivot])
+    keys = np.round(quaternions * signs[:, None], 8)
+    _, unique_indices = np.unique(keys, axis=0, return_index=True)
+    fingerprint = np.ascontiguousarray(products[unique_indices])
+    fingerprint.setflags(write=False)
+    return fingerprint
+
+
+def boundary_fingerprint_distances_deg(
+    relative_matrices: ArrayLike,
+    fingerprint: ArrayLike,
+) -> np.ndarray:
+    r"""Angular distance from each boundary misorientation to a fingerprint set.
+
+    Purpose: scores measured child-child boundary misorientations against the
+    admissible same-parent set from
+    :func:`intervariant_boundary_fingerprint`. A distance near zero means the
+    boundary is consistent with the two grains sharing a parent.
+
+    Algorithm: the distance to the set is
+    :math:`\min_F \angle\!\left(M F^{\mathsf{T}}\right)`, and since
+    :math:`\operatorname{tr}\!\left(M F^{\mathsf{T}}\right)` is just the
+    elementwise product summed, the whole comparison is one
+    ``(e, 9) @ (9, k)`` GEMM followed by a row maximum. It is evaluated in
+    blocks of ``512`` edges so the transient stays bounded at map scale — the
+    unblocked form allocates ``e * k`` floats, which is several gigabytes for
+    50 000 edges against a cubic-cubic fingerprint.
+
+    Inputs: ``(e, 3, 3)`` crystal-frame boundary misorientations
+    (:math:`M = C_i^{\mathsf{T}} C_j` under the canonical crystal-to-specimen
+    orientation convention) and the ``(k, 3, 3)`` fingerprint. The fingerprint
+    is already closed under child symmetry on both sides, so ``M`` must **not**
+    be symmetry-reduced first.
+
+    Output: an ``(e,)`` array of degrees.
+    """
+
+    matrices = np.asarray(relative_matrices, dtype=np.float64)
+    if matrices.ndim != 3 or matrices.shape[1:] != (3, 3):
+        raise ValueError("relative_matrices must have shape (e, 3, 3).")
+    reference = np.asarray(fingerprint, dtype=np.float64)
+    if reference.ndim != 3 or reference.shape[1:] != (3, 3):
+        raise ValueError("fingerprint must have shape (k, 3, 3).")
+    if reference.shape[0] == 0:
+        raise ValueError("fingerprint must contain at least one rotation.")
+    count = matrices.shape[0]
+    flat_edges = np.ascontiguousarray(matrices.reshape(count, 9))
+    flat_reference = np.ascontiguousarray(reference.reshape(reference.shape[0], 9).T)
+    best_traces = np.empty(count, dtype=np.float64)
+    for start in range(0, count, _FINGERPRINT_BLOCK_SIZE):
+        stop = min(start + _FINGERPRINT_BLOCK_SIZE, count)
+        best_traces[start:stop] = (flat_edges[start:stop] @ flat_reference).max(axis=1)
+    cosines = np.clip((best_traces - 1.0) * 0.5, -1.0, 1.0)
+    distances = np.degrees(np.arccos(cosines))
+    distances = np.ascontiguousarray(distances)
+    distances.setflags(write=False)
+    return distances
+
+
 def intervariant_misorientation_angles_deg(
     relationship: OrientationRelationship,
     *,

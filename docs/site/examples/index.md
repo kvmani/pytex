@@ -41,6 +41,7 @@ The complete set of computed-versus-expected values at a glance:
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
 | `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | ✅ |
 | `or-fit-recovers-gt-from-ks-nominal` | [2.4037, 0.0000] | [2.4037, 0.0000] | deg | ✅ |
+| `or-ks-same-parent-boundary-fingerprint` | [0.0000, 0.0000] | [0.0000, 0.0000] | deg | ✅ |
 | `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
 | `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |
