@@ -125,11 +125,67 @@ robustness study (documented fallback) as Phase 3.
 None are in scope here; fixing them inside a scientific-behavior-change commit would obscure
 the diff. They are logged as follow-ups.
 
+## Phase 2 outcomes (2026-07-30) — DONE, envelope measured + parity campaign defined
+
+- **`scripts/study_reconstruction_robustness.py`** (+ `tests/unit/test_reconstruction_robustness_study.py`
+  smoke lane, `--quick`). Sweeps noise x tolerance x grain count against planted ground truth;
+  48 cells x 25 seeds. Trials whose ground truth is *genuinely* ambiguous at the tolerance under
+  test are counted separately and excluded, so a physical coincidence is never scored as an
+  algorithmic failure. Output JSON is git-ignored (matches the `performance_results.json` rule).
+- **Headline: false-link rate is exactly 0.0 in all 48 cells** (~700 judged trials). The fixed
+  edge test never merged two separable parents anywhere in the sweep.
+- **Failure mode inverted:** the only remaining break is a *missed* link (splitting a parent).
+  Governed by tolerance vs noise — at 2x noise the partition collapses (0-48% exact, 13-17%
+  missed), at 4x it is essentially always exact. **Rule recorded: tolerance >= 4x scatter.**
+  Counter-intuitive corollary: *more* children per parent makes exact recovery *harder* at
+  marginal tolerance (more intra-parent edges = more chances to miss one).
+- **Parent error tracks sigma/sqrt(n)** (0.5 deg noise: 0.316 / 0.200 / 0.135 deg at n = 2 / 5 /
+  12, vs 0.354 / 0.224 / 0.144 predicted) — the eigen-mean refinement averages noise correctly.
+- **Cost of loose tolerance quantified:** at 5 deg, ~20 of 25 random microstructures contain a
+  genuinely ambiguous cross-parent boundary (vs 0-1 of 25 at 1 deg). That bounds the window.
+- **Validation note** `docs/testing/reconstruction_robustness_study.md` (+ site stub + toctree +
+  docs/README index + validation-matrix link). States its own limitations explicitly: synthetic,
+  cubic-cubic KS only, chain-plus-contact adjacency rather than realistic map topology.
+- **MTEX parity campaign `or_transformation_v1`** — campaign JSON, MATLAB handler
+  (`mtex_parity_transformation.m`), dispatch entries, and PyTex-side generation in
+  `generate_pytex_parity_campaign.py` (new `transformation` operation family). PyTex results
+  generated and correct: KS 42.848 deg / <0.968 0.178 0.178>, NW 45.988 deg, GT recovered exactly
+  from a KS nominal with the 2.4037 deg separation and zero residuals.
+- **HONESTY GATE — read before trusting the MATLAB side:** `mtex_parity_transformation.m` has
+  **never been executed** (no MATLAB on this machine). It encodes the *intended* comparison only.
+  A mismatch on first run is most likely a script bug, NOT a PyTex/MTEX disagreement. Likely
+  correction points are listed in `scripts/mtex_generators/README.md`: the
+  `orientation.GreningerTrojano` spelling, whether `variants(p2c)` orders as PyTex's
+  `generate_variants()`, and the `calcParent2Child` argument form. **No document claims MTEX
+  parity for this stack**, and the ledger + foundation doc say so.
+
+### Verification (Phase 2)
+
+- `python -m pytest --deselect .../test_phase_fixtures.py --deselect .../test_repo_integrity.py`
+  -> **1288 passed, 26 deselected, zero warnings**.
+- Sphinx -> **build succeeded**, zero warnings (needed a site include-stub + toctree entry for the
+  new study doc; a `docs/testing/` file linked from a site-rendered page must have one).
+- ruff clean on all new files; integrity reports no campaign-schema errors.
+
 ## Current Status
 
 - **Branch:** `main` (tracking `origin/main`)
 - **Baseline for this goal:** commit `50116880` (Burgers beta→alpha zirconium tutorial)
-- **Phase 1 committed** (see git log); Phase 2 (MTEX campaign scaffolding) is next.
+- **Phase 1 committed as `7dd77d7b`**; Phase 2 committing now.
+- **NOT pushed** — every prior phase in this ledger was pushed to `origin/main`, but pushing is
+  outward-facing and was left for the user to confirm.
+
+## Remaining work before reconstruction can leave `experimental`
+
+1. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any
+   script errors, record fixes in the generator README, then
+   `python scripts/generate_pytex_parity_campaign.py ...` and
+   `python scripts/compare_parity_results.py ...`. Only then may a parity claim be made.
+2. **Measured-data fixture** (martensite→austenite or alpha→beta Ti) — the robustness study is
+   synthetic and says so; real EBSD noise is neither Gaussian nor independent per grain.
+3. **Realistic map topology** — current adjacency is a chain plus single contacts; a real grain
+   graph is far denser, which changes both split and merge probabilities.
+4. Non-cubic sweeps (Burgers hcp/bcc) for the robustness envelope.
 - **Figure and Burgers program (FX1-FX9):** COMPLETE (pushed as latest commit)
   - All text layout issues fixed
   - Both Burgers directions exhaustively covered

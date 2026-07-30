@@ -13,6 +13,39 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Parent-grain reconstruction has a measured operating envelope.**
+  `scripts/study_reconstruction_robustness.py` sweeps orientation noise, edge
+  tolerance, and grain count against planted ground truth (48 cells, 25 seeds
+  each), and
+  [Reconstruction Robustness Study](docs/testing/reconstruction_robustness_study.md)
+  records the result. Headline: **the false-link rate is exactly zero in every
+  cell** — the edge test never merged two separable parents anywhere in the
+  sweep. The remaining failure mode is the opposite one, splitting a parent by
+  rejecting a noisy same-parent boundary, which yields the practical rule
+  **set `tolerance_deg` to at least four times the per-grain orientation
+  scatter** (at 2x the partition collapses; at 4x it is essentially always
+  exact). Parent-orientation error tracks $\sigma/\sqrt{n}$ in the grain count,
+  confirming the quaternion-eigen-mean refinement averages noise rather than
+  inheriting it. The study also quantifies the cost of a loose tolerance:
+  at 5 deg, roughly 20 of 25 random microstructures contain a *genuinely*
+  ambiguous cross-parent boundary, which bounds how far tolerance can be raised.
+
+- **An MTEX parity campaign for the orientation-relationship stack.**
+  `fixtures/mtex_parity/campaigns/or_transformation_cases.json` defines shared
+  cases for the OR-as-misorientation representative, the variant count, and
+  recovery of the operative parent-to-child rotation from measured pairs (the
+  `calcParent2Child` comparison), with a MATLAB handler
+  (`scripts/mtex_generators/mtex_parity_transformation.m`) and PyTex-side
+  generation. The PyTex results are generated and reproduce the literature
+  values (Kurdjumov-Sachs 42.85 deg, Nishiyama-Wassermann 45.99 deg, and an
+  exact Greninger-Troiano recovery from a Kurdjumov-Sachs nominal reporting the
+  2.40 deg separation).
+
+  **The MTEX side is ungenerated and the MATLAB handler is unrun**, because no
+  MATLAB/MTEX installation was available where the campaign was authored. No
+  PyTex document claims MTEX parity for this stack, and the validation ledger
+  and generator README both state the limitation explicitly.
+
 - **The same-parent boundary fingerprint is now a public core surface.**
   `intervariant_boundary_fingerprint(relationship)` returns the deduplicated
   set $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ of misorientations that two

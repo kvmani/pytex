@@ -30,6 +30,7 @@
 - [Plotting Validation Matrix](testing/plotting_validation_matrix.md)
 - [VESTA Parity Matrix](testing/vesta_parity_matrix.md)
 - [Phase Transformation Validation Matrix](testing/phase_transformation_validation_matrix.md)
+- [Reconstruction Robustness Study](testing/reconstruction_robustness_study.md)
 
 ## Standards
 

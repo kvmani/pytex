@@ -15,6 +15,7 @@ diffraction_validation_matrix
 structure_validation_matrix
 plotting_validation_matrix
 phase_transformation_validation_matrix
+reconstruction_robustness_study
 ```
 
 ## What Validation Means Here

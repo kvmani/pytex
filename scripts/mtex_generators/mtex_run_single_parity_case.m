@@ -31,6 +31,10 @@ switch string(currentCase.operation)
         computed = mtex_parity_pole_figure(currentCase);
     case "odf_from_xrdml"
         computed = mtex_parity_odf(currentCase);
+    case "or_misorientation_representative"
+        computed = mtex_parity_transformation(currentCase);
+    case "or_fit_from_orientation_pairs"
+        computed = mtex_parity_transformation(currentCase);
     otherwise
         error("PyTexParity:UnknownOperation", "Unsupported parity operation: %s", currentCase.operation);
 end

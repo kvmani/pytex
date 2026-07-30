@@ -18,6 +18,7 @@ from pytex.core import (
     MillerDirection,
     MillerPlane,
     Orientation,
+    OrientationRelationship,
     OrientationSet,
     Phase,
     ReferenceFrame,
@@ -25,6 +26,7 @@ from pytex.core import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    fit_orientation_relationship,
 )
 from pytex.plotting import IPFColorKey
 from pytex.texture import ODF, KernelSpec
@@ -324,6 +326,159 @@ def _run_pole_figure_case(case: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+_NAMED_RELATIONSHIPS = {
+    "bain": "from_bain_correspondence",
+    "burgers": "from_burgers_correspondence",
+    "greninger_troiano": "from_greninger_troiano_correspondence",
+    "kurdjumov_sachs": "from_kurdjumov_sachs_correspondence",
+    "nishiyama_wassermann": "from_nishiyama_wassermann_correspondence",
+    "pitsch": "from_pitsch_correspondence",
+}
+
+
+def _transformation_phases(case: dict[str, Any]) -> tuple[Phase, Phase, ReferenceFrame]:
+    """Parent and child phases on DISTINCT crystal frames, plus the specimen frame.
+
+    The shared ``_reference_frames()`` helper returns one crystal frame, but an
+    orientation relationship connects two different crystals and PyTex checks
+    that their frames are distinct, so the frames are built here.
+    """
+
+    specimen = ReferenceFrame(
+        name="parity_specimen",
+        domain=FrameDomain.SPECIMEN,
+        axes=("x", "y", "z"),
+        handedness=Handedness.RIGHT,
+    )
+
+    def build(payload: dict[str, Any], frame_name: str) -> Phase:
+        frame = ReferenceFrame(
+            name=frame_name,
+            domain=FrameDomain.CRYSTAL,
+            axes=("a", "b", "c"),
+            handedness=Handedness.RIGHT,
+        )
+        parameters = payload["lattice_parameters"]
+        return Phase(
+            name=str(payload["phase_id"]),
+            lattice=Lattice(
+                float(parameters["a"]),
+                float(parameters["b"]),
+                float(parameters["c"]),
+                float(parameters["alpha"]),
+                float(parameters["beta"]),
+                float(parameters["gamma"]),
+                crystal_frame=frame,
+            ),
+            symmetry=SymmetrySpec.from_point_group(
+                str(payload["point_group"]), reference_frame=frame
+            ),
+            crystal_frame=frame,
+        )
+
+    parent = build(case["phase"], "parity_parent_crystal")
+    child = build(case["input"]["child_phase"], "parity_child_crystal")
+    return parent, child, specimen
+
+
+def _named_relationship(name: str, *, parent: Phase, child: Phase):
+    try:
+        constructor = _NAMED_RELATIONSHIPS[name]
+    except KeyError:
+        raise ValueError(f"Unknown named relationship {name!r}.") from None
+    return getattr(OrientationRelationship, constructor)(
+        parent_phase=parent, child_phase=child
+    )
+
+
+def _sorted_absolute_axis(axis: np.ndarray) -> np.ndarray:
+    """Axis descriptor invariant under the point group.
+
+    A symmetry-reduced representative is only defined up to the crystal point
+    group, so two systems may report equivalent axes with permuted or negated
+    components. Sorting the absolute components descending gives a comparable
+    descriptor for cubic symmetry.
+    """
+
+    return np.sort(np.abs(np.asarray(axis, dtype=np.float64)))[::-1]
+
+
+def _run_transformation_case(case: dict[str, Any]) -> dict[str, Any]:
+    parent, child, specimen = _transformation_phases(case)
+    operation = case["operation"]
+    input_payload = case["input"]
+
+    if operation == "or_misorientation_representative":
+        relationship = _named_relationship(
+            str(input_payload["relationship"]), parent=parent, child=child
+        )
+        misorientation = relationship.misorientation()
+        return {
+            "relationship": input_payload["relationship"],
+            "misorientation_angle_deg": float(misorientation.angle_deg),
+            "misorientation_axis_sorted_abs": _sorted_absolute_axis(
+                misorientation.rotation.axis
+            ),
+            "misorientation_quaternion_wxyz": _canonical_quaternion(misorientation.rotation),
+            "variant_count": len(relationship.generate_variants()),
+        }
+
+    if operation == "or_fit_from_orientation_pairs":
+        nominal = _named_relationship(
+            str(input_payload["nominal_relationship"]), parent=parent, child=child
+        )
+        generating = _named_relationship(
+            str(input_payload["generating_relationship"]), parent=parent, child=child
+        )
+        variants = generating.generate_variants()
+        by_index = {variant.variant_index: variant for variant in variants}
+        parents = OrientationSet.from_euler_angles(
+            input_payload["parent_euler_deg"],
+            crystal_frame=parent.crystal_frame,
+            specimen_frame=specimen,
+            symmetry=parent.symmetry,
+            phase=parent,
+        )
+        # Canonical composition: a child is C = P V^T.
+        child_quaternions = []
+        for row, variant_index in enumerate(input_payload["generating_variant_indices"]):
+            variant = by_index[int(variant_index)]
+            child_quaternions.append(
+                parents[row]
+                .rotation.compose(variant.parent_to_child_rotation.inverse())
+                .quaternion
+            )
+        children = OrientationSet(
+            quaternions=np.stack(child_quaternions, axis=0),
+            crystal_frame=child.crystal_frame,
+            specimen_frame=specimen,
+            symmetry=child.symmetry,
+            phase=child,
+        )
+        report = fit_orientation_relationship(parents, children, nominal)
+        fitted = report.relationship.parent_to_child_rotation
+        return {
+            "nominal_relationship": input_payload["nominal_relationship"],
+            "generating_relationship": input_payload["generating_relationship"],
+            "pair_count": len(parents),
+            "child_euler_deg": np.asarray(
+                [
+                    children[row].rotation.to_bunge_euler(degrees=True)
+                    for row in range(len(children))
+                ],
+                dtype=np.float64,
+            ),
+            "fitted_angle_deg": float(fitted.angle_deg),
+            "fitted_axis_sorted_abs": _sorted_absolute_axis(fitted.axis),
+            "fitted_quaternion_wxyz": _canonical_quaternion(fitted),
+            "deviation_from_nominal_deg": float(report.deviation_from_nominal_deg),
+            "mean_residual_deg": float(np.mean(report.residuals_deg)),
+            "max_residual_deg": float(np.max(report.residuals_deg)),
+        }
+
+    raise ValueError(f"Unsupported transformation operation {operation!r}.")
+
+
 def run_case(case: dict[str, Any]) -> dict[str, Any]:
     family = case["operation_family"]
     if family == "orientation":
@@ -336,6 +491,8 @@ def run_case(case: dict[str, Any]) -> dict[str, Any]:
         return _run_odf_case(case)
     if family == "pole_figure":
         return _run_pole_figure_case(case)
+    if family == "transformation":
+        return _run_transformation_case(case)
     raise ValueError(f"Unsupported operation family {family!r}.")
 
 

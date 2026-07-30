@@ -1,0 +1,188 @@
+{
+  "schema_id": "pytex.parity_case_campaign",
+  "schema_version": "0.1.0",
+  "campaign_id": "or_transformation_v1",
+  "title": "Orientation-relationship and parent-reconstruction parity",
+  "description": "Shared MTEX/PyTex cases for the orientation-relationship stack: the OR expressed as a symmetry-reduced misorientation, the variant count of the relationship, and recovery of the operative parent-to-child rotation from measured parent/child orientation pairs (the MTEX calcParent2Child comparison).",
+  "target_baseline": {
+    "system": "mtex",
+    "version": "6.0.0",
+    "release_date": "November 2024",
+    "reference_url": "https://mtex-toolbox.github.io/download"
+  },
+  "conventions": {
+    "euler_convention": "bunge_zxz",
+    "angles_unit": "degree",
+    "quaternion_order": "wxyz",
+    "matrix_storage": "row_major",
+    "orientation_mapping": "crystal_to_specimen",
+    "rotation_sense": "active",
+    "misorientation_reduction": "disorientation_minimal_angle",
+    "or_rotation_direction": "parent_to_child",
+    "axis_comparison": "sorted_absolute_components",
+    "specimen_axes": ["RD", "TD", "ND"],
+    "crystal_axes": ["a", "b", "c"]
+  },
+  "cases": [
+    {
+      "case_id": "ks_misorientation_representative_001",
+      "status": "active",
+      "operation_family": "transformation",
+      "operation": "or_misorientation_representative",
+      "phase": {
+        "phase_id": "austenite_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.6,
+          "b": 3.6,
+          "c": 3.6,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "relationship": "kurdjumov_sachs",
+        "child_phase": {
+          "phase_id": "ferrite_bcc",
+          "crystal_system": "cubic",
+          "point_group": "m-3m",
+          "lattice_parameters": {
+            "a": 2.87,
+            "b": 2.87,
+            "c": 2.87,
+            "alpha": 90.0,
+            "beta": 90.0,
+            "gamma": 90.0,
+            "unit": "angstrom_degree"
+          }
+        }
+      },
+      "requested_outputs": ["misorientation_angle_deg", "misorientation_axis_sorted_abs", "variant_count"],
+      "tolerances": {
+        "angle_deg": 0.01,
+        "axis_component": 0.001,
+        "variant_count": 0
+      },
+      "notes": [
+        "The literature representative is 42.85 deg about <0.968 0.178 0.178>. The axis is compared as sorted absolute components because the symmetry-reduced representative is only defined up to the point group.",
+        "MTEX exposes this relationship as orientation.KurdjumovSachs(csParent, csChild)."
+      ]
+    },
+    {
+      "case_id": "nw_misorientation_representative_001",
+      "status": "active",
+      "operation_family": "transformation",
+      "operation": "or_misorientation_representative",
+      "phase": {
+        "phase_id": "austenite_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.6,
+          "b": 3.6,
+          "c": 3.6,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "relationship": "nishiyama_wassermann",
+        "child_phase": {
+          "phase_id": "ferrite_bcc",
+          "crystal_system": "cubic",
+          "point_group": "m-3m",
+          "lattice_parameters": {
+            "a": 2.87,
+            "b": 2.87,
+            "c": 2.87,
+            "alpha": 90.0,
+            "beta": 90.0,
+            "gamma": 90.0,
+            "unit": "angstrom_degree"
+          }
+        }
+      },
+      "requested_outputs": ["misorientation_angle_deg", "misorientation_axis_sorted_abs", "variant_count"],
+      "tolerances": {
+        "angle_deg": 0.01,
+        "axis_component": 0.001,
+        "variant_count": 0
+      },
+      "notes": [
+        "The literature representative is 45.99 deg; PyTex derives 12 variants.",
+        "MTEX exposes this relationship as orientation.NishiyamaWassermann(csParent, csChild)."
+      ]
+    },
+    {
+      "case_id": "ks_fit_parent_to_child_from_pairs_001",
+      "status": "active",
+      "operation_family": "transformation",
+      "operation": "or_fit_from_orientation_pairs",
+      "phase": {
+        "phase_id": "austenite_fcc",
+        "crystal_system": "cubic",
+        "point_group": "m-3m",
+        "lattice_parameters": {
+          "a": 3.6,
+          "b": 3.6,
+          "c": 3.6,
+          "alpha": 90.0,
+          "beta": 90.0,
+          "gamma": 90.0,
+          "unit": "angstrom_degree"
+        }
+      },
+      "input": {
+        "nominal_relationship": "kurdjumov_sachs",
+        "child_phase": {
+          "phase_id": "ferrite_bcc",
+          "crystal_system": "cubic",
+          "point_group": "m-3m",
+          "lattice_parameters": {
+            "a": 2.87,
+            "b": 2.87,
+            "c": 2.87,
+            "alpha": 90.0,
+            "beta": 90.0,
+            "gamma": 90.0,
+            "unit": "angstrom_degree"
+          }
+        },
+        "generating_relationship": "greninger_troiano",
+        "parent_euler_deg": [
+          [20.0, 30.0, 40.0],
+          [20.0, 30.0, 40.0],
+          [20.0, 30.0, 40.0],
+          [65.0, 20.0, 50.0],
+          [65.0, 20.0, 50.0],
+          [65.0, 20.0, 50.0],
+          [10.0, 50.0, 20.0],
+          [10.0, 50.0, 20.0],
+          [10.0, 50.0, 20.0]
+        ],
+        "generating_variant_indices": [1, 4, 9, 2, 7, 14, 3, 11, 20]
+      },
+      "requested_outputs": [
+        "fitted_angle_deg",
+        "fitted_axis_sorted_abs",
+        "deviation_from_nominal_deg",
+        "mean_residual_deg"
+      ],
+      "tolerances": {
+        "angle_deg": 0.05,
+        "axis_component": 0.005,
+        "residual_deg": 0.01
+      },
+      "notes": [
+        "Child orientations are generated from the parents through the Greninger-Troiano relationship using the listed variant indices, then the fit is started from a Kurdjumov-Sachs nominal. Both systems must recover Greninger-Troiano and report the ~2.40 deg KS-GT separation.",
+        "The child orientations are DERIVED, not stored: each generator builds them from its own variant enumeration, so this case also cross-checks that the two variant orderings agree. If the orderings differ the fitted rotation must still agree; only the per-pair residual assignment may differ.",
+        "MTEX comparison point: calcParent2Child applied to the parent/child misorientations, seeded from orientation.KurdjumovSachs."
+      ]
+    }
+  ]
+}
