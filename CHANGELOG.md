@@ -13,6 +13,24 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Reconstruction results now report how reliable their own clustering is.**
+  `ParentGrainReconstructionResult.chance_link_probability` is the probability
+  that two *unrelated* grains would be linked at the tolerance in use — the
+  fraction of uniformly random misorientations lying within `tolerance_deg` of
+  the same-parent fingerprint. It depends only on the relationship and the
+  tolerance, not on the data, so it is available on real maps where no ground
+  truth exists. `describe()` warns when the expected number of chance links
+  across the tested edges reaches one, because a single chance link merges two
+  parents irreversibly:
+
+  > WARNING: at this tolerance 7.3% of unrelated grain pairs fall within the
+  > same-parent fingerprint, so about 2 of the 29 tested edge(s) are expected to
+  > link by chance alone.
+
+  This exists because the map-scale sweep showed the failure is **not** a false
+  positive in the edge test — that rate stayed at zero throughout — but genuine
+  physical coincidence, which no binary edge test on orientations can avoid.
+
 - **Parent-grain reconstruction has a measured operating envelope.**
   `scripts/study_reconstruction_robustness.py` sweeps orientation noise, edge
   tolerance, and grain count against planted ground truth (48 cells, 25 seeds
@@ -26,9 +44,22 @@ downstream analyses depend on them.
   scatter** (at 2x the partition collapses; at 4x it is essentially always
   exact). Parent-orientation error tracks $\sigma/\sqrt{n}$ in the grain count,
   confirming the quaternion-eigen-mean refinement averages noise rather than
-  inheriting it. The study also quantifies the cost of a loose tolerance:
-  at 5 deg, roughly 20 of 25 random microstructures contain a *genuinely*
-  ambiguous cross-parent boundary, which bounds how far tolerance can be raised.
+  inheriting it.
+
+  A second sweep at **map scale** — 100 tiled parents, 900 grains, dense
+  four-connected adjacency — establishes that the tolerance also has an *upper*
+  bound, and that it is the binding one for real grain graphs. Because one
+  chance link anywhere along a shared boundary merges two parents irreversibly,
+  and a dense graph offers many such boundaries, **the default
+  `tolerance_deg=3.0` recovers only about 70 of 100 parents under
+  Kurdjumov-Sachs**, against 97.5 at 1.0 deg. The false-link rate among
+  separable boundaries stayed exactly zero throughout, so every one of those
+  merges was a genuine physical coincidence rather than an edge-test error.
+  The window is also strongly relationship-dependent: Burgers keeps 97 of 100
+  even at 3.0 deg, because 12 variants give a far smaller admissible set than
+  the 24 of Kurdjumov-Sachs. The default is unchanged — it suits the sparse and
+  noisier regimes — but map-scale callers should set it explicitly, and the new
+  `chance_link_probability` diagnostic tells them when it is wrong.
 
 - **An MTEX parity campaign for the orientation-relationship stack.**
   `fixtures/mtex_parity/campaigns/or_transformation_cases.json` defines shared

@@ -221,6 +221,11 @@ F14 catalog breadth is complete (Shoji-Nishiyama, Pitsch-Schrader, Potter, Bagar
 Isaichev all landed). Parent-grain reconstruction (F8) is
 experimental: synthetic, literature-structure, and multi-parent stress validation exists, but
 external measured-data fixtures and MTEX parity are still required before stabilization. The
+map-scale sweep additionally showed that the union-find edge test, while never producing a false
+link, is limited by *genuine* boundary ambiguity on dense grain graphs — the default 3 deg
+tolerance loses roughly 30% of parents under Kurdjumov-Sachs at 100 parents. Results therefore
+report `chance_link_probability`, and moving beyond that limit needs confidence-weighted voting
+rather than a binary edge test, which is the natural F8 v2. The
 MTEX `calcParent2Child` parity campaign is **defined** (`fixtures/mtex_parity/campaigns/`) with
 its MATLAB handler in place, but its MTEX-side results are ungenerated because no MATLAB/MTEX
 installation is available in the development environment; until those results are produced and

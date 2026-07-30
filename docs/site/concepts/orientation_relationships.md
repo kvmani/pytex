@@ -165,6 +165,25 @@ $\langle 111 \rangle$, Morito's V1–V20 intervariant pair — which is why
 twin-related martensite variants are so common; this identity is pinned as a
 worked example.
 
+**The set has volume, and that bounds what reconstruction can conclude.**
+Because the fingerprint occupies a finite fraction of orientation space, two
+*unrelated* grains will sometimes share a fingerprint-consistent boundary by
+pure coincidence — about $7\%$ of the time at a $3^{\circ}$ tolerance for
+Kurdjumov-Sachs, $0.3\%$ at $1^{\circ}$. On a densely connected grain graph
+each parent pair shares many boundaries, and a single coincidence is enough to
+merge two parents, so this is the limiting factor for map-scale reconstruction
+rather than any inaccuracy in the edge test. It is also relationship-dependent:
+Burgers has 12 variants against Kurdjumov-Sachs's 24, so its admissible set is
+much smaller and it tolerates far looser matching.
+
+`ParentGrainReconstructionResult` reports this directly as
+`chance_link_probability`, and its `describe()` warns when the expected number
+of chance links across the tested edges reaches one. The quantity depends only
+on the relationship and the tolerance, never on the data, so it is available on
+real maps where no ground truth exists. See the
+[Reconstruction Robustness Study](../validation/reconstruction_robustness_study.md)
+for the measured envelope.
+
 ## Fitting the operative relationship
 
 `fit_orientation_relationship(parents, children, nominal)` goes one step

@@ -167,25 +167,67 @@ the diff. They are logged as follow-ups.
   new study doc; a `docs/testing/` file linked from a site-rendered page must have one).
 - ruff clean on all new files; integrity reports no campaign-schema errors.
 
+## Phase 3 outcomes (2026-07-30) — map-scale sweep found the real limit
+
+Closing the topology and non-cubic gaps that Phase 2 flagged as limitations changed the
+conclusion, so Phase 2's headline should not be read on its own.
+
+- **New `_plant_map` / `_map_cell` mode** in the study script: parents tile a square grid, each
+  holding a 3x3 patch of child grains, four-connected adjacency over all of them. Every shared
+  parent boundary therefore contributes *several* edges instead of one. Burgers (bcc->hcp, hcp
+  child phase) added alongside KS.
+- **The failure is asymmetric and the sparse sweep hid it.** One chance link anywhere along a
+  shared boundary merges two parents irreversibly, so many edges per boundary = many chances.
+  At 100 parents / 900 grains / ~1740 edges:
+
+  | relationship | tol 1.0 | tol 2.0 | tol 3.0 (default) |
+  | --- | --- | --- | --- |
+  | Kurdjumov-Sachs | 97.5 / 100 | 88.5 / 100 | **70.0 / 100** |
+  | Burgers | 100 / 100 | 98.5 / 100 | 97.0 / 100 |
+
+- **The false-link rate stayed exactly zero throughout.** Every merge came from a *genuinely*
+  ambiguous boundary — unrelated parents that really do share a fingerprint-consistent
+  misorientation. Not an edge-test defect; an intrinsic limit of any binary edge test on
+  orientations.
+- **Therefore the tolerance is two-sided.** Phase 2's `>= 4x scatter` is a *lower* bound only.
+  The map-scale upper bound is far more restrictive and is the binding one for real graphs:
+  for cubic-cubic KS on a dense graph the window is roughly `4*sigma <= tol <= ~1 deg`, i.e. the
+  method needs scatter below ~0.25 deg there. Phase 2's stale "default 3.0 is appropriate"
+  sentence was corrected in the study doc.
+- **Mechanism identified:** the window is relationship-dependent because *fingerprint size* drives
+  ambiguity. Burgers has 12 variants vs KS's 24, so ~2 800 vs ~10 700 distinct elements and
+  correspondingly less of orientation space. More variants = intrinsically harder reconstruction.
+- **Runtime safeguard shipped (not just docs):** `ParentGrainReconstructionResult.chance_link_probability`
+  — the probability two unrelated grains link at this tolerance, estimated from 4096 seeded
+  uniform-random misorientations. Depends only on relationship + tolerance, **never on the data**,
+  so it works on real maps with no ground truth. `describe()` warns on the *expected count* over
+  the tested edges (not the rate) because a small rate over a dense graph is still unreliable.
+  Verified against the independent measurement: 7.30% estimated vs 7.11% measured at 3 deg.
+- **Default left unchanged at 3.0** deliberately — it suits the sparse/noisy regimes of the first
+  sweep, and silently changing a default is worse than reporting the diagnostic. Documented.
+- 2 new tests (diagnostic monotonicity/determinism/warning thresholds; graph-wrapper pass-through).
+
 ## Current Status
 
 - **Branch:** `main` (tracking `origin/main`)
 - **Baseline for this goal:** commit `50116880` (Burgers beta→alpha zirconium tutorial)
-- **Phase 1 committed as `7dd77d7b`**; Phase 2 committing now.
+- **Phase 1 `7dd77d7b`**, **Phase 2 `2c7c9191`**, Phase 3 committing now.
 - **NOT pushed** — every prior phase in this ledger was pushed to `origin/main`, but pushing is
   outward-facing and was left for the user to confirm.
 
 ## Remaining work before reconstruction can leave `experimental`
 
-1. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any
-   script errors, record fixes in the generator README, then
-   `python scripts/generate_pytex_parity_campaign.py ...` and
+1. **F8 v2: confidence-weighted voting instead of binary union-find.** This is now the *main*
+   blocker and Phase 3 identified it. A binary edge test cannot beat genuine boundary ambiguity;
+   MTEX's `parentGrainReconstructor` uses graph clustering with confidence for exactly this
+   reason. Recorded in the OR foundation doc.
+2. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any
+   script errors, record fixes in the generator README, then regenerate and
    `python scripts/compare_parity_results.py ...`. Only then may a parity claim be made.
-2. **Measured-data fixture** (martensite→austenite or alpha→beta Ti) — the robustness study is
-   synthetic and says so; real EBSD noise is neither Gaussian nor independent per grain.
-3. **Realistic map topology** — current adjacency is a chain plus single contacts; a real grain
-   graph is far denser, which changes both split and merge probabilities.
-4. Non-cubic sweeps (Burgers hcp/bcc) for the robustness envelope.
+3. **Measured-data fixture** (martensite→austenite or alpha→beta Ti) — the study is synthetic and
+   says so; real EBSD noise is neither Gaussian nor independent per grain.
+4. **Irregular grain geometry** — the map sweep uses square blocks, which captures edge *density*
+   but not real grain shapes, size distribution, or boundary lengths.
 - **Figure and Burgers program (FX1-FX9):** COMPLETE (pushed as latest commit)
   - All text layout issues fixed
   - Both Burgers directions exhaustively covered

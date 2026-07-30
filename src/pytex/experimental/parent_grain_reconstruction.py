@@ -47,6 +47,15 @@ class ParentGrainReconstructionResult:
     are 24-fold ambiguous for cubic-cubic relationships: their parent is the
     exact-fit candidate from the only child and must be treated as one of
     several equivalent possibilities.
+
+    ``chance_link_probability`` is the probability that two *unrelated* grains
+    would be linked at this tolerance — the fraction of uniformly random
+    misorientations lying within ``tolerance_deg`` of the same-parent
+    fingerprint. It is the controlling reliability number for the clustering:
+    a densely connected grain graph gives many chances for such a coincidence,
+    and one is enough to merge two parents irreversibly. See
+    ``describe()``, which warns when the expected number of chance links is
+    not small.
     """
 
     relationship_name: str
@@ -57,6 +66,7 @@ class ParentGrainReconstructionResult:
     edges_tested: int
     edges_linked: int
     tolerance_deg: float
+    chance_link_probability: float = 0.0
     grain_ids: np.ndarray | None = None
     provenance: ProvenanceRecord | None = None
 
@@ -111,6 +121,26 @@ class ParentGrainReconstructionResult:
             if self.singleton_count
             else ""
         )
+        # The controlling reliability number: how many of the tested edges would
+        # be expected to link by chance alone. One chance link merges two
+        # parents irreversibly, so the warning triggers on the expected count,
+        # not the rate — a small rate over a dense graph is still unreliable.
+        expected_chance_links = self.chance_link_probability * self.edges_tested
+        if expected_chance_links >= 1.0:
+            reliability_note = (
+                f" WARNING: at this tolerance {self.chance_link_probability:.1%} of "
+                f"unrelated grain pairs fall within the same-parent fingerprint, so "
+                f"about {expected_chance_links:.0f} of the {self.edges_tested} tested "
+                "edge(s) are expected to link by chance alone. One such link merges "
+                "two parents irreversibly, so these groupings are unreliable — reduce "
+                "tolerance_deg, or treat merged clusters as unresolved."
+            )
+        else:
+            reliability_note = (
+                f" At this tolerance {self.chance_link_probability:.1%} of unrelated "
+                f"grain pairs would fall within the fingerprint, so fewer than one of "
+                f"the {self.edges_tested} tested edge(s) is expected to link by chance."
+            )
         return (
             f"Parent-grain reconstruction under orientation relationship "
             f"'{self.relationship_name}': {self.parent_labels.size} child grain(s) grouped "
@@ -120,9 +150,43 @@ class ParentGrainReconstructionResult:
             f"{self.tolerance_deg:.2f} deg. Residual of "
             f"each child to its assigned parent (best variant, child-symmetry-reduced): mean "
             f"{self.mean_deviation_deg:.3f} deg, max {self.max_deviation_deg:.3f} deg."
-            f"{singleton_note} Experimental surface: literature-fixture validation is still "
-            "ahead; treat groupings as hypotheses at map scale."
+            f"{singleton_note}{reliability_note} Experimental surface: measured-data "
+            "validation is still ahead; treat groupings as hypotheses at map scale."
         )
+
+
+#: Sample count for the chance-link estimate. Fixed and seeded so the reported
+#: probability is deterministic; 4096 resolves a ~0.3% rate to roughly a third
+#: of its own value, which is enough to drive the reliability warning.
+_CHANCE_SAMPLES = 4096
+_CHANCE_SEED = 20260730
+
+
+def _chance_link_probability(fingerprint: np.ndarray, tolerance_deg: float) -> float:
+    """Probability that two unrelated grains fall within tolerance of the set.
+
+    Estimated by scoring uniformly random misorientations against the
+    fingerprint. This is a property of the relationship and the tolerance
+    alone — not of the data — so it can be reported before any conclusion is
+    drawn from the clustering.
+    """
+
+    generator = np.random.default_rng(_CHANCE_SEED)
+    quaternions = generator.normal(size=(_CHANCE_SAMPLES, 4))
+    quaternions /= np.linalg.norm(quaternions, axis=1)[:, None]
+    w, x, y, z = quaternions.T
+    matrices = np.empty((_CHANCE_SAMPLES, 3, 3), dtype=np.float64)
+    matrices[:, 0, 0] = 1.0 - 2.0 * (y * y + z * z)
+    matrices[:, 0, 1] = 2.0 * (x * y - z * w)
+    matrices[:, 0, 2] = 2.0 * (x * z + y * w)
+    matrices[:, 1, 0] = 2.0 * (x * y + z * w)
+    matrices[:, 1, 1] = 1.0 - 2.0 * (x * x + z * z)
+    matrices[:, 1, 2] = 2.0 * (y * z - x * w)
+    matrices[:, 2, 0] = 2.0 * (x * z - y * w)
+    matrices[:, 2, 1] = 2.0 * (y * z + x * w)
+    matrices[:, 2, 2] = 1.0 - 2.0 * (x * x + y * y)
+    distances = boundary_fingerprint_distances_deg(matrices, fingerprint)
+    return float(np.count_nonzero(distances <= tolerance_deg) / _CHANCE_SAMPLES)
 
 
 def _child_operators(relationship: OrientationRelationship) -> np.ndarray:
@@ -344,6 +408,7 @@ def reconstruct_parent_grains(
         edges_tested=int(edges.shape[0]),
         edges_linked=int(np.count_nonzero(linked)),
         tolerance_deg=float(tolerance_deg),
+        chance_link_probability=_chance_link_probability(fingerprint, float(tolerance_deg)),
         provenance=provenance or relationship.provenance,
     )
 
@@ -415,6 +480,7 @@ def reconstruct_parent_grains_from_graph(
         edges_tested=result.edges_tested,
         edges_linked=result.edges_linked,
         tolerance_deg=result.tolerance_deg,
+        chance_link_probability=result.chance_link_probability,
         grain_ids=grain_ids,
         provenance=result.provenance,
     )

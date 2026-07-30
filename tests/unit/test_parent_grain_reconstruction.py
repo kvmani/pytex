@@ -591,3 +591,92 @@ def test_reconstruction_scales_to_many_parents_without_merging_them() -> None:
         assert _partitions_equal(result.parent_labels, planted), f"seed {seed}"
         assert result.parent_count == 6, f"seed {seed}"
         assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6), f"seed {seed}"
+
+
+def test_chance_link_probability_tracks_the_tolerance_and_warns_when_unreliable() -> None:
+    """The reliability diagnostic must be reported and must drive the warning.
+
+    A dense grain graph gives many opportunities for two unrelated grains to
+    land on the same-parent fingerprint by coincidence, and one such link
+    merges two parents irreversibly. The result therefore reports the
+    probability of that coincidence, and `describe()` warns on the *expected
+    count* over the tested edges rather than on the rate alone.
+    """
+
+    children, adjacency, _, ks = _many_parent_microstructure()
+
+    tight = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=1.0)
+    loose = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=3.0)
+
+    # Monotone in tolerance, and bracketed by the independently measured rates
+    # for a cubic-cubic Kurdjumov-Sachs fingerprint.
+    assert tight.chance_link_probability < loose.chance_link_probability
+    assert tight.chance_link_probability < 0.01
+    assert 0.03 < loose.chance_link_probability < 0.15
+
+    # Deterministic: the estimate is a property of the relationship and the
+    # tolerance, so repeating the call must reproduce it exactly.
+    again = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=3.0)
+    assert again.chance_link_probability == loose.chance_link_probability
+
+    # 29 edges at ~7% is about two expected chance links, so the loose run must
+    # warn; the tight run is far below one and must not.
+    assert loose.chance_link_probability * loose.edges_tested >= 1.0
+    assert "WARNING" in loose.describe()
+    assert "unreliable" in loose.describe()
+    assert tight.chance_link_probability * tight.edges_tested < 1.0
+    assert "WARNING" not in tight.describe()
+    assert "fewer than one" in tight.describe()
+
+
+def test_chance_link_probability_survives_the_grain_graph_entry_point() -> None:
+    """The map-facing wrapper must carry the diagnostic through, not drop it."""
+
+    from pytex.ebsd import CrystalMap
+    from pytex.experimental import reconstruct_parent_grains_from_graph
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = ks.generate_variants()
+    parents = [
+        Orientation.from_euler(
+            *euler, specimen_frame=specimen, symmetry=parent_phase.symmetry,
+            phase=parent_phase,
+        )
+        for euler in [(20.0, 30.0, 40.0), (65.0, 20.0, 50.0)]
+    ]
+    column_rotations = [
+        parents[0].rotation.compose(variants[0].parent_to_child_rotation.inverse()),
+        parents[0].rotation.compose(variants[7].parent_to_child_rotation.inverse()),
+        parents[1].rotation.compose(variants[2].parent_to_child_rotation.inverse()),
+        parents[1].rotation.compose(variants[11].parent_to_child_rotation.inverse()),
+    ]
+    pixels = [
+        Orientation(
+            rotation=column_rotations[x],
+            crystal_frame=child_phase.crystal_frame,
+            specimen_frame=specimen,
+            symmetry=child_phase.symmetry,
+            phase=child_phase,
+        )
+        for _y in range(2)
+        for x in range(4)
+    ]
+    crystal_map = CrystalMap(
+        coordinates=np.array(
+            [[float(x), float(y)] for y in range(2) for x in range(4)], dtype=np.float64
+        ),
+        orientations=OrientationSet.from_orientations(pixels),
+        map_frame=specimen,
+        grid_shape=(2, 4),
+        step_sizes=(1.0, 1.0),
+    )
+    graph = crystal_map.segment_grains(
+        max_misorientation_deg=2.0, symmetry_aware=True, connectivity=4
+    ).grain_graph()
+    result = reconstruct_parent_grains_from_graph(graph, ks, tolerance_deg=2.0)
+    assert result.chance_link_probability > 0.0
+    assert result.grain_ids is not None
+    assert "fingerprint" in result.describe()
