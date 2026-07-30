@@ -393,6 +393,10 @@ def _map_cell(
     merged_clusters = 0
     cluster_counts: list[int] = []
     parent_errors: list[float] = []
+    pure_grains = 0
+    impure_grains = 0
+    exact_partitions = 0
+    partition_trials = 0
 
     for seed in seeds:
         children, edges, planted, parent_matrices = _plant_map(
@@ -426,12 +430,21 @@ def _map_cell(
         )
         cluster_counts.append(result.parent_count)
         recovered = result.parent_orientations.as_matrices()
+        exact_partitions += int(
+            np.array_equal(
+                result.parent_labels[:, None] == result.parent_labels[None, :],
+                planted[:, None] == planted[None, :],
+            )
+        )
+        partition_trials += 1
         for cluster in range(result.parent_count):
             members = np.flatnonzero(result.parent_labels == cluster)
             occupants = np.unique(planted[members])
             if occupants.size > 1:
                 merged_clusters += 1
+                impure_grains += int(members.size)
                 continue
+            pure_grains += int(members.size)
             parent_errors.append(
                 _symmetry_reduced_angle_between_deg(
                     recovered[cluster],
@@ -454,6 +467,14 @@ def _map_cell(
         "trials": len(seeds),
         "clusters_mean": float(np.mean(cluster_counts)),
         "merged_clusters_total": merged_clusters,
+        "pure_grain_fraction": (
+            pure_grains / (pure_grains + impure_grains)
+            if (pure_grains + impure_grains)
+            else 0.0
+        ),
+        "partition_exact": (
+            exact_partitions / partition_trials if partition_trials else float("nan")
+        ),
         "false_link_rate": (false_links / separable_cross) if separable_cross else 0.0,
         "ambiguous_cross_fraction": (
             ambiguous_cross / (ambiguous_cross + separable_cross)

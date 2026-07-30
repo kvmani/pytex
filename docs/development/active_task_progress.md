@@ -215,13 +215,43 @@ conclusion, so Phase 2's headline should not be read on its own.
 - **NOT pushed** — every prior phase in this ledger was pushed to `origin/main`, but pushing is
   outward-facing and was left for the user to confirm.
 
+## Phase 4 outcomes (2026-07-30) — the map-scale ceiling is broken
+
+Phase 3 identified confidence-weighted clustering as the main remaining blocker and filed it as
+future work. It is now implemented, because it was the one blocker actually within reach here.
+
+- **`_vote_partition_cluster` + `_variant_descriptions`** in the reconstruction module.
+  Connectivity proposes, single-parent consistency disposes: every cluster member proposes the
+  parent it implies, each proposal is scored by how many members it explains
+  (`C_j^T P` near the set `{S_c V_k}`), the best-supported proposal claims its supporters, and
+  unexplained members repeat the vote.
+- **Key simplification that makes it cheap:** the candidates `C_i V_k` for different `k` differ by
+  a parent symmetry operation, and the support set is invariant under that — so they are the same
+  hypothesis and **one proposal per member suffices**. Cost is `r^2 x |W|` per round, reusing the
+  blocked `boundary_fingerprint_distances_deg` kernel. Verified empirically.
+- **Result (identical map-scale sweep, 100 parents / 900 grains / ~1740 edges):**
+
+  | tolerance | KS before | KS after | pure grains after |
+  | --- | --- | --- | --- |
+  | 1.0 deg | 98.0 | **100.0 (exact partition)** | 100% |
+  | 2.0 deg | 88.7 | 99.7 | 97.8% |
+  | 3.0 deg (default) | **69.7** | **99.7** | 95.2% |
+
+  Burgers likewise 100.0/exact at <= 1.0 deg, 99.7 at 3.0. Holds with 0.25 deg added scatter.
+- **No regression in the sparse sweep** — its cells are already single-parent clusters, which the
+  vote returns whole. The three cells at 80-83% exact are the same pre-existing 12-children
+  marginal-tolerance splitting cases, unchanged. Max false-link rate still 0.0000% everywhere.
+- **Revert-verified regression test** built on a *searched worst case* (seed 1244): two parents
+  49.18 deg apart whose children share a boundary only 0.36 deg from the fingerprint. The test
+  asserts the edge test correctly *cannot* reject it (all 7 edges link) and that consistency
+  separates the parents anyway. Disabling the vote makes it fail (1 parent instead of 2).
+- Study script gained `pure_grain_fraction` and `partition_exact` for map cells — cluster *count*
+  alone can hide compensating merge/split errors, so purity is reported alongside.
+- Task chip `task_cf109b43` (F8 v2) dismissed as implemented.
+
 ## Remaining work before reconstruction can leave `experimental`
 
-1. **F8 v2: confidence-weighted voting instead of binary union-find.** This is now the *main*
-   blocker and Phase 3 identified it. A binary edge test cannot beat genuine boundary ambiguity;
-   MTEX's `parentGrainReconstructor` uses graph clustering with confidence for exactly this
-   reason. Recorded in the OR foundation doc.
-2. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any
+1. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any
    script errors, record fixes in the generator README, then regenerate and
    `python scripts/compare_parity_results.py ...`. Only then may a parity claim be made.
 3. **Measured-data fixture** (martensite→austenite or alpha→beta Ti) — the study is synthetic and

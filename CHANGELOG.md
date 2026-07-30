@@ -13,6 +13,36 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Parent-grain reconstruction no longer treats connectivity as proof of a
+  shared parent.** This is a scientific behavior change: groupings and parent
+  counts change again, and strictly for the better.
+
+  Union-find over linked edges assumed every link was certain. It is not: two
+  unrelated parents can share a boundary that genuinely lies *inside* the
+  same-parent fingerprint, and no edge test can reject those because they are
+  indistinguishable from real same-parent boundaries. On a dense grain graph
+  each parent pair shares several boundaries, so one coincidence anywhere along
+  a shared boundary merged the pair irreversibly. At map scale (100 tiled
+  parents, 900 grains, ~1740 edges) that cost **30% of all parents** under
+  Kurdjumov-Sachs at the default tolerance.
+
+  Each connected cluster is now split by agreement instead: every member
+  proposes the parent it implies, each proposal is scored by how many members
+  it explains (``C_j^T P`` near the variant-description set), and the
+  best-supported proposal claims its supporters, with unexplained members
+  repeating the vote. A cluster spanning two parents separates because no
+  single orientation explains all of it; a genuine single-parent cluster is
+  returned whole, so the sparse-adjacency behavior is unchanged.
+
+  On the identical map-scale sweep this turns **69.7 recovered parents into
+  99.7 of 100**, with 95% of grains landing in single-parent clusters at the
+  default 3 deg tolerance. At 1 deg and below the partition is recovered
+  *exactly* — every grain, every parent — for both Kurdjumov-Sachs and Burgers,
+  including with 0.25 deg added scatter. Pinned by a regression fixture built
+  around a searched worst case: two parents 49.18 deg apart whose children
+  share a boundary only 0.36 deg from the fingerprint, which the edge test
+  correctly cannot reject and which consistency nonetheless separates.
+
 - **Reconstruction results now report how reliable their own clustering is.**
   `ParentGrainReconstructionResult.chance_link_probability` is the probability
   that two *unrelated* grains would be linked at the tolerance in use — the

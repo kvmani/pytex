@@ -62,10 +62,10 @@ tolerance relative to the noise:
 **Practical rule: set `tolerance_deg` to at least four times the per-grain orientation scatter.**
 At 2x the partition collapses; at 4x it is essentially always exact.
 
-That is a *lower* bound only, and on this sparse adjacency it is the only bound — which is
-precisely what makes the sparse sweep misleading on its own. The map-scale section below adds an
-**upper** bound that is far more restrictive, and it is the binding one for real grain graphs. Do
-not read the rule above as endorsing a large tolerance.
+That is a *lower* bound. There is an upper bound too, from a different mechanism — genuinely
+ambiguous cross-parent boundaries — which the sparse topology here barely exercises. The map-scale
+section below shows it dominating, and shows the clustering change that recovers most of the loss.
+Do not read the rule above on its own as endorsing a large tolerance.
 
 Note the counter-intuitive interaction with grain count: **more children per parent makes exact
 partition recovery harder at marginal tolerance**, because each additional intra-parent edge is
@@ -98,55 +98,74 @@ usefully go and are why the study reports them separately.
 This is the genuine trade-off of the method: too tight and parents split, too loose and distinct
 parents become indistinguishable. The window is wide for clean data and narrows as noise rises.
 
-## Map scale changes the answer: the tolerance has an upper bound too
+## Map scale exposed a ceiling, and it needed an algorithm change
 
-The sweep above chains each parent's grains and gives each parent pair a single contact edge. A
+The sweep above chains each parent's grains and gives every parent pair a single contact edge. A
 measured grain graph is far denser, and the second sweep models that: parents tile a square grid,
-each holding a 3x3 patch of child grains, with four-connected adjacency over all of them — so
-every shared parent boundary contributes *several* edges.
+each holding a 3x3 patch of child grains, with four-connected adjacency over all of them — so every
+shared parent boundary contributes *several* edges.
 
 That difference is decisive, because the failure is asymmetric. **One chance link anywhere along a
 shared boundary merges two parents irreversibly**, so many edges per boundary means many chances.
-With 100 parents (900 grains, ~1740 edges):
+With connectivity-only clustering (union-find over linked edges), 100 parents / 900 grains /
+~1740 edges gave:
 
 | relationship | tolerance (deg) | parents recovered of 100 | ambiguous cross-edges |
 | --- | --- | --- | --- |
-| Kurdjumov-Sachs | 0.5 | 99.7 | 0.06% |
 | Kurdjumov-Sachs | 1.0 | 98.0 | 0.37% |
 | Kurdjumov-Sachs | 2.0 | 88.7 | 2.28% |
 | Kurdjumov-Sachs | **3.0 (the default)** | **69.7** | 6.11% |
-| Burgers (bcc→hcp) | 0.5 | 100.0 | 0.00% |
-| Burgers (bcc→hcp) | 1.0 | 100.0 | 0.00% |
-| Burgers (bcc→hcp) | 2.0 | 98.3 | 0.49% |
 | Burgers (bcc→hcp) | 3.0 | 97.0 | 0.74% |
 
-(All at zero added noise, 3 seeds per cell. Adding 0.25 deg scatter does not change the picture:
-Kurdjumov-Sachs recovers 98.7 at 1.0 deg and 91.3 at 2.0 deg.)
-
-**The false-link rate among separable boundaries remained zero throughout.** Every one of these
+**The false-link rate among separable boundaries was exactly zero throughout.** Every one of those
 merges came from a *genuinely* ambiguous boundary — two unrelated parents that really do share a
-fingerprint-consistent misorientation. This is a property of the relationship and the tolerance,
-not a defect in the edge test, and no algorithm working from orientations and a binary edge test
-can avoid it.
+fingerprint-consistent misorientation. The edge test was not wrong; **no** edge test can reject
+those, because they are indistinguishable from same-parent boundaries by construction.
 
-Two consequences follow.
-
-**The default `tolerance_deg=3.0` is not safe for dense grain graphs under Kurdjumov-Sachs.** It
-loses about 30% of parents at map scale. The default is retained because it is appropriate for the
-sparse-adjacency and noisier cases in the first sweep, but map-scale work should set it explicitly.
-Combined with the noise rule above, the usable window for cubic-cubic Kurdjumov-Sachs on a dense
-graph is roughly $4\sigma \le$ tolerance $\lesssim 1^{\circ}$, which means the method needs
-orientation scatter below about $0.25^{\circ}$ to be reliable there.
-
-**The window is relationship-dependent, and fingerprint size is why.** Burgers is dramatically more
-forgiving than Kurdjumov-Sachs at the same tolerance because it has 12 variants rather than 24, so
-its admissible set is far smaller (about 2 800 distinct elements against about 10 700) and occupies
+The window is also strongly relationship-dependent, and fingerprint size is the mechanism. Burgers
+is far more forgiving than Kurdjumov-Sachs because it has 12 variants rather than 24, so its
+admissible set is much smaller (about 2 800 distinct elements against about 10 700) and occupies
 correspondingly less of orientation space. Relationships with more variants are intrinsically
 harder to reconstruct from boundary evidence alone.
 
-Because this is a property of the relationship and tolerance rather than of the data,
-`ParentGrainReconstructionResult` now reports it directly as `chance_link_probability`, and
-`describe()` warns when the expected number of chance links across the tested edges reaches one:
+### The fix: connectivity proposes, consistency disposes
+
+Connectivity is not sufficient evidence of a shared parent, so it is no longer treated as such.
+Each connected cluster is now split by agreement: every member proposes the parent it implies,
+each proposal is scored by how many members it explains, and the best-supported proposal claims its
+supporters; unexplained members repeat the vote. A cluster spanning two parents separates because
+no single orientation explains all of it, while a genuine single-parent cluster is returned whole.
+
+Re-running the identical sweep:
+
+| relationship | tolerance (deg) | parents recovered of 100 | grains in pure clusters | exact partitions |
+| --- | --- | --- | --- | --- |
+| Kurdjumov-Sachs | 0.5 | 100.0 | 100.00% | 100% |
+| Kurdjumov-Sachs | 1.0 | 100.0 | 100.00% | 100% |
+| Kurdjumov-Sachs | 2.0 | 99.7 | 97.81% | 0% |
+| Kurdjumov-Sachs | **3.0 (the default)** | **99.7** | **95.19%** | 0% |
+| Burgers (bcc→hcp) | 1.0 | 100.0 | 100.00% | 100% |
+| Burgers (bcc→hcp) | 3.0 | 99.7 | 98.93% | 33% |
+
+At the default tolerance under Kurdjumov-Sachs this turns **69.7 recovered parents into 99.7**, with
+95% of grains landing in clusters drawn from a single true parent. At 1 deg and below the partition
+is recovered *exactly* — every grain, every parent — for both relationships, including with 0.25 deg
+added scatter. The sparse sweep above is unaffected: its cells are already single-parent clusters,
+which the vote returns untouched.
+
+Note the honest gap between the last two columns. "Exact partition" demands that all 900 grains be
+grouped perfectly, so a single misplaced grain fails the whole trial; at 2–3 deg a handful of grains
+still land in mixed clusters even though the parent *count* is essentially right. Tightening the
+tolerance remains the way to close that.
+
+### What still limits it
+
+The residual failures at loose tolerance are the irreducible ones: when two parents share a boundary
+inside the fingerprint *and* the vote cannot separate them because the ambiguity extends to the
+parent hypotheses themselves. Reporting remains the defence — because the coincidence rate depends
+only on the relationship and the tolerance, never on the data,
+`ParentGrainReconstructionResult` exposes `chance_link_probability`, and `describe()` warns when the
+expected number of chance links across the tested edges reaches one:
 
 > WARNING: at this tolerance 7.3% of unrelated grain pairs fall within the same-parent
 > fingerprint, so about 2 of the 29 tested edge(s) are expected to link by chance alone.
@@ -159,10 +178,15 @@ This study is synthetic and deliberately narrow. It does **not** establish:
 
 - behavior on measured EBSD data, where noise is neither Gaussian nor independent per grain, and
   grain size varies;
-- behavior for non-cubic parents or children (only cubic-cubic Kurdjumov-Sachs was swept);
+- behavior beyond the two relationships swept — the noise/tolerance sweep is cubic-cubic
+  Kurdjumov-Sachs only, and the map-scale sweep adds Burgers (bcc→hcp); other symmetries and
+  variant counts are untested, and fingerprint size is known to matter;
 - behavior on measured grain topology — the map-scale sweep uses square parent blocks with
   four-connected adjacency, which captures the density that matters but not the irregular grain
   shapes, size distribution, or boundary lengths of a real map;
+- behavior when a parent contributes only one or two child grains at map scale. The consistency
+  vote needs enough members to outvote a wrong hypothesis, so small parents remain the weak case,
+  as the singleton caveat in `describe()` already states;
 - MTEX parity. The `or_transformation_v1` parity campaign is defined and its PyTex side generated,
   but no MTEX results exist yet because no MATLAB installation was available. No parity claim may
   be made until that campaign has been run and compared.

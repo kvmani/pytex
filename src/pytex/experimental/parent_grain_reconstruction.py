@@ -189,6 +189,83 @@ def _chance_link_probability(fingerprint: np.ndarray, tolerance_deg: float) -> f
     return float(np.count_nonzero(distances <= tolerance_deg) / _CHANCE_SAMPLES)
 
 
+def _variant_descriptions(
+    variant_matrices: np.ndarray, child_operators: np.ndarray
+) -> np.ndarray:
+    r"""Every description of a parent-to-child variant under child symmetry.
+
+    A child of parent :math:`\mathbf{P}` through variant :math:`\mathbf{V}_k` is
+    :math:`\mathbf{C} = \mathbf{P}\mathbf{V}_k^{\mathsf{T}}`, so
+    :math:`\mathbf{C}^{\mathsf{T}}\mathbf{P} = \mathbf{V}_k`. The measured child
+    orientation is only defined up to its own crystal symmetry, so the testable
+    statement "grain ``j`` descends from parent ``P``" is that
+    :math:`\mathbf{C}_j^{\mathsf{T}}\mathbf{P}` lies near the set
+    :math:`\{S_c \mathbf{V}_k\}`, returned here deduplicated.
+    """
+
+    products = np.einsum(
+        "aij,vjk->avik", child_operators, variant_matrices, optimize=True
+    ).reshape(-1, 3, 3)
+    quaternions = matrices_to_quaternions(products)
+    pivot = np.argmax(np.abs(quaternions), axis=1)
+    signs = np.sign(quaternions[np.arange(quaternions.shape[0]), pivot])
+    keys = np.round(quaternions * signs[:, None], 8)
+    _, unique_indices = np.unique(keys, axis=0, return_index=True)
+    descriptions = np.ascontiguousarray(products[unique_indices])
+    descriptions.setflags(write=False)
+    return descriptions
+
+
+def _vote_partition_cluster(
+    cluster_children: np.ndarray,
+    *,
+    descriptions: np.ndarray,
+    variant_matrices: np.ndarray,
+    tolerance_deg: float,
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Split one connected cluster into groups a single parent can explain.
+
+    Connectivity alone is not evidence of a shared parent. Two unrelated parent
+    grains that happen to share one fingerprint-consistent boundary are joined
+    by union-find into a cluster no single parent orientation explains, and on
+    a dense grain graph that coincidence is common enough to dominate the error
+    (see the reconstruction robustness study).
+
+    The split is decided by agreement rather than by connectivity: every member
+    proposes the parent it implies, each proposal is scored by how many members
+    of the cluster it explains — ``C_j^T P`` near the variant-description set —
+    and the best-supported proposal claims its supporters. Unexplained members
+    repeat the vote, so a cluster spanning two parents separates into two
+    groups while a genuine single-parent cluster is returned untouched.
+
+    Only one proposal per member is needed: the candidates ``C_i V_k`` for
+    different ``k`` differ by a parent symmetry operation, and the support set
+    is invariant under that, so they are the same hypothesis.
+
+    Returns ``(local_member_indices, seed_parent_matrix)`` per group.
+    """
+
+    member_count = cluster_children.shape[0]
+    remaining = np.arange(member_count, dtype=np.int64)
+    groups: list[tuple[np.ndarray, np.ndarray]] = []
+    while remaining.size:
+        children = cluster_children[remaining]
+        proposals = np.einsum("nij,jk->nik", children, variant_matrices[0], optimize=True)
+        # relative[c, j] = C_j^T P_c, for every proposal against every member.
+        relative = np.einsum("nji,pjk->pnik", children, proposals, optimize=True)
+        distances = boundary_fingerprint_distances_deg(
+            relative.reshape(-1, 3, 3), descriptions
+        ).reshape(remaining.size, remaining.size)
+        supported = distances <= tolerance_deg
+        # A proposal always explains its own proposer, so support is never
+        # empty and the loop always makes progress.
+        best = int(np.argmax(supported.sum(axis=1)))
+        claimed = supported[best]
+        groups.append((remaining[claimed], proposals[best]))
+        remaining = remaining[~claimed]
+    return groups
+
+
 def _child_operators(relationship: OrientationRelationship) -> np.ndarray:
     symmetry = relationship.child_phase.symmetry
     if symmetry is None:
@@ -265,17 +342,30 @@ def reconstruct_parent_grains(
     orientation was, using only the orientation relationship (no parent phase
     retained in the microstructure required).
 
-    Algorithm: an adjacency edge links two child grains when their boundary
+    Algorithm, in two stages: connectivity proposes, consistency disposes.
+
+    First, an adjacency edge links two child grains when their boundary
     misorientation ``M = C_i^T C_j`` lies within ``tolerance_deg`` of the
     same-parent fingerprint ``G_c (R G_p R^T) G_c`` (see
     ``intervariant_boundary_fingerprint``) — the full rotation is matched,
     axis and angle, since a same-variant pair contributes the identity and a
     distinct-variant pair contributes ``V_i V_j^T``. Union-find over linked
-    edges yields parent clusters; per cluster, the candidate parents
-    ``C_first V_k`` generated from its first child are scored against every
-    member (minimum-over-variants disorientation), the best-scoring candidate
-    seeds a quaternion-eigen-mean refinement over all members, and per-grain
-    residuals to the refined parent are reported.
+    edges yields candidate clusters.
+
+    Connectivity alone is not sufficient evidence, because two unrelated
+    parents can share a boundary that genuinely lies inside the fingerprint —
+    no edge test can reject those, and on a dense grain graph they are common
+    enough to dominate the error (``chance_link_probability`` reports how
+    common). Each candidate cluster is therefore split by agreement: every
+    member proposes the parent it implies, each proposal is scored by how many
+    members it explains (``C_j^T P`` near the variant-description set), and the
+    best-supported proposal claims its supporters; unexplained members repeat
+    the vote. A cluster spanning two parents separates, while a genuine
+    single-parent cluster is returned whole.
+
+    Each resulting group's winning proposal then seeds a quaternion-eigen-mean
+    refinement over its members, and per-grain residuals to the refined parent
+    are reported.
 
     Inputs: child grain-mean orientations (phase must match the
     relationship's child phase), an ``(m, 2)`` integer adjacency array of
@@ -354,41 +444,45 @@ def reconstruct_parent_grains(
     variant_matrices = np.stack(
         [variant.parent_to_child_rotation.as_matrix() for variant in variants], axis=0
     )
-    parent_matrices = np.empty((unique_roots.size, 3, 3), dtype=np.float64)
+    descriptions = _variant_descriptions(variant_matrices, operators)
+    final_labels = np.empty(grain_count, dtype=np.int64)
     deviations = np.empty(grain_count, dtype=np.float64)
-    sizes = np.empty(unique_roots.size, dtype=np.int64)
+    parent_list: list[np.ndarray] = []
+    size_list: list[int] = []
+    split_clusters = 0
     for cluster in range(unique_roots.size):
         members = np.flatnonzero(labels == cluster)
-        sizes[cluster] = members.size
-        cluster_children = child_matrices[members]
-        # Candidate parents from the first member: P_k = C_first @ V_k
-        # (canonical convention C = P V^T).
-        candidates = np.einsum(
-            "ij,vjk->vik", cluster_children[0], variant_matrices, optimize=True
-        )
-        # Predicted children for every (candidate, variant): P_k V_l^T.
-        predicted = np.einsum("vij,lkj->vlik", candidates, variant_matrices, optimize=True)
-        relative = np.einsum(
-            "nji,vljk->nvlik", cluster_children, predicted, optimize=True
-        )
-        member_count, candidate_count, variant_count = relative.shape[:3]
-        angles = np.degrees(
-            _reduced_pair_disorientation_angles(
-                relative.reshape(-1, 3, 3), operators, operators
-            )
-        ).reshape(member_count, candidate_count, variant_count)
-        per_member = np.min(angles, axis=2)
-        best_candidate = int(np.argmin(np.mean(per_member, axis=0)))
-        refined = _refine_cluster_parent(
-            cluster_children,
-            candidates[best_candidate],
+        # Connectivity proposes the cluster; single-parent consistency disposes.
+        # A cluster joined through a coincidental boundary is separated here.
+        groups = _vote_partition_cluster(
+            child_matrices[members],
+            descriptions=descriptions,
             variant_matrices=variant_matrices,
-            parent_operators=parent_operators,
+            tolerance_deg=tolerance_deg,
         )
-        parent_matrices[cluster] = refined
-        deviations[members] = _member_deviations_deg(
-            cluster_children, refined, variant_matrices=variant_matrices, operators=operators
-        )
+        if len(groups) > 1:
+            split_clusters += 1
+        for local_indices, seed_parent in groups:
+            group_members = members[local_indices]
+            group_children = child_matrices[group_members]
+            refined = _refine_cluster_parent(
+                group_children,
+                seed_parent,
+                variant_matrices=variant_matrices,
+                parent_operators=parent_operators,
+            )
+            final_labels[group_members] = len(parent_list)
+            parent_list.append(refined)
+            size_list.append(int(local_indices.size))
+            deviations[group_members] = _member_deviations_deg(
+                group_children,
+                refined,
+                variant_matrices=variant_matrices,
+                operators=operators,
+            )
+    parent_matrices = np.stack(parent_list, axis=0)
+    sizes = np.asarray(size_list, dtype=np.int64)
+    labels = final_labels
 
     parent_phase = relationship.parent_phase
     parent_set = OrientationSet.from_matrices(

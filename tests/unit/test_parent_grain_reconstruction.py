@@ -680,3 +680,108 @@ def test_chance_link_probability_survives_the_grain_graph_entry_point() -> None:
     assert result.chance_link_probability > 0.0
     assert result.grain_ids is not None
     assert "fingerprint" in result.describe()
+
+
+def _ambiguously_joined_parents() -> tuple[
+    OrientationSet, np.ndarray, np.ndarray, list[Rotation], OrientationRelationship
+]:
+    """Two unrelated parents joined by a boundary the edge test cannot reject.
+
+    Seed 1244 was searched for the worst case the fingerprint admits: two
+    parents 49.18 deg apart whose children (variants 12 and 14) share a
+    boundary only 0.36 deg from the same-parent fingerprint. That boundary is
+    indistinguishable from a genuine same-parent one by *any* edge test, so
+    connectivity alone must merge the two parents. Separating them can only
+    come from single-parent consistency across the whole cluster.
+    """
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = [variant.parent_to_child_rotation for variant in ks.generate_variants()]
+    rng = np.random.default_rng(1244)
+    parents: list[Rotation] = []
+    for _ in range(2):
+        quaternion = rng.normal(size=4)
+        quaternion /= np.linalg.norm(quaternion)
+        parents.append(Rotation(quaternion=quaternion))
+
+    # The ambiguity is between variant 12 of parent 0 and variant 14 of parent
+    # 1; each parent additionally carries three other variants.
+    picks = [[12, 3, 7, 19], [14, 1, 5, 21]]
+    quaternions: list[np.ndarray] = []
+    planted: list[int] = []
+    for parent_index, parent_rotation in enumerate(parents):
+        for variant_index in picks[parent_index]:
+            quaternions.append(
+                parent_rotation.compose(variants[variant_index].inverse()).quaternion
+            )
+            planted.append(parent_index)
+    children = OrientationSet(
+        quaternions=np.stack(quaternions, axis=0),
+        crystal_frame=child_phase.crystal_frame,
+        specimen_frame=specimen,
+        symmetry=child_phase.symmetry,
+        phase=child_phase,
+    )
+    # Chain each parent's grains, then the single ambiguous contact 0-4.
+    adjacency = np.asarray(
+        [(0, 1), (1, 2), (2, 3), (4, 5), (5, 6), (6, 7), (0, 4)], dtype=np.int64
+    )
+    return children, adjacency, np.asarray(planted, dtype=np.int64), parents, ks
+
+
+def test_single_parent_consistency_splits_a_coincidentally_joined_cluster() -> None:
+    """Connectivity proposes; single-parent consistency disposes.
+
+    The joining boundary here is genuinely within the same-parent fingerprint,
+    so the edge test cannot and must not reject it — the test asserts that
+    first. Union-find therefore hands back one cluster spanning two parents.
+    The reconstruction must still return two parents, because no single
+    orientation explains all eight grains.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+    from pytex.core.transformation import _symmetry_reduced_angle_between_deg
+
+    children, adjacency, planted, parents, ks = _ambiguously_joined_parents()
+    matrices = children.as_matrices()
+
+    # The joining edge really is inside the fingerprint: unrejectable.
+    joining = boundary_fingerprint_distances_deg(
+        (matrices[0].T @ matrices[4])[None, :, :],
+        intervariant_boundary_fingerprint(ks),
+    )[0]
+    assert joining < 0.5, f"fixture stale: joining edge is {joining:.3f} deg from the set"
+    # And the two parents really are unrelated.
+    parent_operators = ks.parent_phase.symmetry.operators
+    separation = _symmetry_reduced_angle_between_deg(
+        parents[0].as_matrix(),
+        parents[1].as_matrix(),
+        child_operators=np.eye(3, dtype=np.float64)[None, :, :],
+        parent_operators=parent_operators,
+    )
+    assert separation > 10.0
+
+    result = reconstruct_parent_grains(children, adjacency, ks, tolerance_deg=2.0)
+
+    # Every edge links, including the coincidental one — connectivity alone
+    # gives a single cluster of all eight grains.
+    assert result.edges_linked == adjacency.shape[0]
+    # Consistency nonetheless recovers the two planted parents exactly.
+    assert result.parent_count == 2
+    assert _partitions_equal(result.parent_labels, planted)
+    assert result.max_deviation_deg == pytest.approx(0.0, abs=1e-6)
+    for parent_index, parent_rotation in enumerate(parents):
+        cluster = int(result.parent_labels[np.flatnonzero(planted == parent_index)[0]])
+        distance = _symmetry_reduced_angle_between_deg(
+            result.parent_orientations.as_matrices()[cluster],
+            parent_rotation.as_matrix(),
+            child_operators=np.eye(3, dtype=np.float64)[None, :, :],
+            parent_operators=parent_operators,
+        )
+        assert distance == pytest.approx(0.0, abs=1e-6)
