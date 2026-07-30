@@ -249,6 +249,29 @@ future work. It is now implemented, because it was the one blocker actually with
   alone can hide compensating merge/split errors, so purity is reported alongside.
 - Task chip `task_cf109b43` (F8 v2) dismissed as implemented.
 
+## Phase 5 outcomes (2026-07-31) — a caveat I wrote was wrong; corrected
+
+Probed the one assumption the new vote rests on that had never been measured: whether a small
+parent has enough votes to defend itself against a large neighbour. Phase 4's doc claimed small
+parents "remain the weak case". **That claim was wrong and is now corrected.**
+
+- **First probe was invalid** and caught before it was believed: it measured absorption over all
+  seeds, but in most of them the joining edge is *rejected* by the fingerprint test, so union-find
+  separates the parents trivially and the vote never runs. Mean cluster count was a flat 2.00,
+  which is what exposed it.
+- **Conditioned on a genuinely ambiguous junction** (the only case where the question arises),
+  absorption of the small parent is **5-11% and essentially flat in parent size** — 1 grain: 5.2%
+  at 2 deg / 6.0% at 3 deg; 5 grains: 6.0% / 10.7%. If anything the *larger* small parent fares
+  slightly worse, the opposite of the worry.
+- **Mechanism:** vote counts only decide which proposal is considered first. Claiming a member is a
+  per-grain consistency test (`C_j^T P` near the variant-description set), so a grain from a
+  genuinely different parent is never claimed however many votes the neighbour has. Absorption
+  needs the *additional* coincidence that the absorbing hypothesis also explains those grains,
+  which is independent of either parent's size.
+- Doc section rewritten with the measured table and the mechanism; test added pinning that a
+  one-grain parent survives >80% of ambiguous junctions (measured ~94%, loose bound so the test
+  pins the property, not a sampling artefact).
+
 ## Remaining work before reconstruction can leave `experimental`
 
 1. **Run the MTEX side** of `or_transformation_v1` on a machine with MATLAB + MTEX 6.0, fix any

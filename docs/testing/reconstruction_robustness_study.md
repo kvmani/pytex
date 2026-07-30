@@ -158,6 +158,35 @@ grouped perfectly, so a single misplaced grain fails the whole trial; at 2–3 d
 still land in mixed clusters even though the parent *count* is essentially right. Tightening the
 tolerance remains the way to close that.
 
+### Small parents are not the weak case, contrary to expectation
+
+A majority vote invites an obvious worry: a parent contributing only one grain has one vote, so a
+large neighbour should be able to swallow it. Measured against that hypothesis, it does not happen.
+Conditioning on the junction being *genuinely* ambiguous — the only situation where the question
+arises, since otherwise the edge test separates the parents outright — a small parent is absorbed
+at these rates:
+
+| grains in the small parent | absorbed at 2 deg | absorbed at 3 deg |
+| --- | --- | --- |
+| 1 | 5.2% | 6.0% |
+| 2 | 6.9% | 6.1% |
+| 3 | 7.8% | 8.0% |
+| 5 | 6.0% | 10.7% |
+
+(Against a 9-grain neighbour, 3000 seeds per row, of which 58–228 produced an ambiguous junction.)
+
+The rate is essentially flat in parent size, and if anything mildly *worse* for larger small
+parents. The reason is that vote counts only decide which proposal is considered first; they never
+let a majority claim grains it does not explain. Claiming is a per-grain consistency test —
+$\mathbf{C}_j^{\mathsf{T}}\mathbf{P}$ near the variant-description set — so a grain from a genuinely
+different parent is simply not claimed, however many votes the neighbour has. Absorption requires
+the *additional* coincidence that the absorbing parent's own hypothesis also explains the absorbed
+grains, which is independent of how many grains either parent contributes.
+
+Because absorption needs both coincidences, and ambiguous junctions are themselves uncommon (that
+is what `chance_link_probability` measures), the compound rate is small — consistent with the
+95–100% grain purity measured at map scale.
+
 ### What still limits it
 
 The residual failures at loose tolerance are the irreducible ones: when two parents share a boundary
@@ -184,9 +213,9 @@ This study is synthetic and deliberately narrow. It does **not** establish:
 - behavior on measured grain topology — the map-scale sweep uses square parent blocks with
   four-connected adjacency, which captures the density that matters but not the irregular grain
   shapes, size distribution, or boundary lengths of a real map;
-- behavior when a parent contributes only one or two child grains at map scale. The consistency
-  vote needs enough members to outvote a wrong hypothesis, so small parents remain the weak case,
-  as the singleton caveat in `describe()` already states;
+- (Small parents were expected to be the weak case and measured otherwise — see below. The
+  singleton caveat in `describe()` still applies for a different reason: a parent with no
+  orientation-consistent neighbour at all is symmetry-ambiguous regardless of the clustering.)
 - MTEX parity. The `or_transformation_v1` parity campaign is defined and its PyTex side generated,
   but no MTEX results exist yet because no MATLAB installation was available. No parity claim may
   be made until that campaign has been run and compared.

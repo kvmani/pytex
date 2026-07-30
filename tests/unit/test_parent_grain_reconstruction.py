@@ -785,3 +785,78 @@ def test_single_parent_consistency_splits_a_coincidentally_joined_cluster() -> N
             parent_operators=parent_operators,
         )
         assert distance == pytest.approx(0.0, abs=1e-6)
+
+
+def test_a_one_grain_parent_is_not_swallowed_by_a_large_neighbour() -> None:
+    """A majority vote must not let a big parent claim grains it cannot explain.
+
+    The obvious worry about deciding clusters by support is that a parent
+    contributing a single grain has a single vote. It does not work that way:
+    vote counts only decide which proposal is considered first, while claiming
+    a member is a per-grain consistency test, so a grain belonging to a
+    genuinely different parent is never claimed however large the neighbour.
+
+    Only ambiguous junctions can test this — when the joining boundary is
+    outside the fingerprint the edge test separates the parents outright and
+    the vote is not exercised — so the scan keeps exactly those trials and
+    requires the one-grain parent to survive the large majority of them.
+    """
+
+    from pytex.core import (
+        boundary_fingerprint_distances_deg,
+        intervariant_boundary_fingerprint,
+    )
+
+    parent_phase, child_phase, specimen = _phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+    variants = [variant.parent_to_child_rotation for variant in ks.generate_variants()]
+    fingerprint = intervariant_boundary_fingerprint(ks)
+    tolerance = 3.0
+
+    ambiguous = 0
+    survived = 0
+    for seed in range(400):
+        rng = np.random.default_rng(seed)
+        quaternions: list[np.ndarray] = []
+        planted: list[int] = []
+        for parent_index, size in enumerate((9, 1)):
+            quaternion = rng.normal(size=4)
+            quaternion /= np.linalg.norm(quaternion)
+            rotation = Rotation(quaternion=quaternion)
+            for pick in rng.choice(len(variants), size=size, replace=False):
+                quaternions.append(
+                    rotation.compose(variants[int(pick)].inverse()).quaternion
+                )
+                planted.append(parent_index)
+        children = OrientationSet(
+            quaternions=np.stack(quaternions, axis=0),
+            crystal_frame=child_phase.crystal_frame,
+            specimen_frame=specimen,
+            symmetry=child_phase.symmetry,
+            phase=child_phase,
+        )
+        labels = np.asarray(planted, dtype=np.int64)
+        matrices = children.as_matrices()
+        lone = int(np.flatnonzero(labels == 1)[0])
+        joining = boundary_fingerprint_distances_deg(
+            (matrices[0].T @ matrices[lone])[None, :, :], fingerprint
+        )[0]
+        if joining > tolerance:
+            continue  # separable by the edge test alone; the vote is not tested
+        ambiguous += 1
+        edges = [(k, k + 1) for k in range(8)]
+        edges.append((0, lone))
+        result = reconstruct_parent_grains(
+            children, np.asarray(edges, dtype=np.int64), ks, tolerance_deg=tolerance
+        )
+        large = set(np.unique(result.parent_labels[np.flatnonzero(labels == 0)]))
+        survived += int(int(result.parent_labels[lone]) not in large)
+
+    assert ambiguous >= 15, f"scan produced only {ambiguous} ambiguous junctions"
+    # Measured survival is ~94%; the bound is loose so the test pins the
+    # qualitative property rather than a sampling artefact.
+    assert survived / ambiguous > 0.80, (
+        f"one-grain parent survived only {survived}/{ambiguous} ambiguous junctions"
+    )
