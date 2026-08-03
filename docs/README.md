@@ -18,6 +18,7 @@
 - [Multimodal Characterization Foundation](architecture/multimodal_characterization_foundation.md)
 - [Phase Transformation Foundation](architecture/phase_transformation_foundation.md)
 - [Orientation Relationship Analysis Foundation](architecture/orientation_relationship_analysis_foundation.md)
+- [Transformation Crystallography And Composite Diffraction Program](architecture/transformation_crystallography_and_diffraction_program.md)
 - [Repository Review 2026 Foundation Audit](architecture/repo_review_2026_foundation_audit.md)
 
 ## Testing And Validation
@@ -52,6 +53,7 @@
 ## Development
 
 - [Local Development](development/local_development.md)
+- [Active Task Progress](development/active_task_progress.md) — the durable handoff record for the current task
 - [Sphinx Site README](site/README.md)
 
 ## Roadmap
@@ -60,6 +62,7 @@
 - [Implementation Roadmap](roadmap/implementation_roadmap.md)
 - [World-Class Feature And Foundation Roadmap](roadmap/world_class_feature_roadmap.md)
 - [MTEX Parity And EBSD Feature Roadmap](roadmap/mtex_parity_and_ebsd_feature_roadmap.md)
+- [Working Notes: Transformation Crystallography And Diffraction Program](roadmap/working_notes_transformation_diffraction_program.md) — the active TX phase ledger
 
 ## LaTeX Source Tree
 

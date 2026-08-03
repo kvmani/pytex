@@ -1,0 +1,15 @@
+# Line-ending policy.
+#
+# Hash-pinned artifacts must check out byte-identical on every platform. The phase-fixture
+# catalog (fixtures/phases/catalog.json) stores SHA-256 digests of the LF-form files; with
+# Git's `core.autocrlf=true` (the Windows default) those files would otherwise be rewritten
+# with CRLF on checkout and every digest in `scripts/check_repo_integrity.py` would fail.
+# `-text` disables end-of-line conversion entirely for them.
+fixtures/phases/** -text
+
+# Parity and validation fixtures are compared verbatim against reference tool output.
+fixtures/mtex_parity/** -text
+
+# Notebooks are JSON with embedded outputs; CRLF rewriting churns diffs and can invalidate
+# stored execution records.
+*.ipynb -text
