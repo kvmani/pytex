@@ -48,6 +48,7 @@ notebooks/19_lattice_correspondence_and_transformation_strain
 notebooks/20_or_catalogs_identification_and_reconstruction
 notebooks/21_composite_or_diffraction_patterns
 notebooks/22_burgers_beta_to_alpha_zirconium
+notebooks/23_transformation_crystallography_end_to_end
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -84,6 +85,13 @@ pages.
    unit cells, and composite SAED down [110], [111], [001] and [112]_beta.
    Shows why zirconium is not titanium with different numbers: the
    {110}_beta / (0002)_alpha coincidence splits about eight times wider.
+6. `23_transformation_crystallography_end_to_end` — the five questions a
+   transformation study actually asks, answered on Burgers beta->alpha in one
+   pass: the orientation relationship determined from measured Euler angles with
+   no nominal supplied, the variant correspondence table for an arbitrary parent
+   plane, the composite SAED down [110]_beta with its reflection table and
+   manifest, the same composite re-anchored on [0001]_alpha of one variant, and
+   a measured pattern solved back to phase, zone axis, spot indices and variant.
 
 ## How To Use These
 

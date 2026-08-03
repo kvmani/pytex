@@ -1,6 +1,11 @@
 # Transformation Crystallography And Composite Diffraction Program
 
-**Status:** specification (2026-08-03). Program identifier: **TX**.
+**Status:** **delivered** (TX0–TX6 complete, 2026-08-04). Program identifier: **TX**.
+Every feature below is implemented, tested, documented and demonstrated end to end in
+{doc}`../tutorials/notebooks/23_transformation_crystallography_end_to_end`. Two
+sections were corrected during implementation where they described the live code
+inaccurately — see §5.2. The ledger records what was found, what was fixed, and what
+remains open.
 **Owner document:** this file is the normative specification. The running phase ledger is the
 repository-local working note `docs/roadmap/working_notes_transformation_diffraction_program.md`,
 which is a development record and deliberately not part of the rendered documentation site. The

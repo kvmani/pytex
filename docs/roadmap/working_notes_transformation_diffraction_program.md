@@ -41,9 +41,9 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 | TX2 | Variant correspondence tables | DONE | `971c6431` |
 | TX3 | Composite SAED robustness + export layer | DONE | `0bb2256f` |
 | TX4 | Child-zone-anchored composite patterns | DONE | `d34d2f78` |
-| TX5a | Measured-pattern YAML + calibration + solver core | DONE | (this commit) |
-| TX5b | Variant assignment + interactive picker | DONE | (this commit) |
-| TX6 | Burgers notebook, figures, theory notes, ledger closure | TODO | |
+| TX5a | Measured-pattern YAML + calibration + solver core | DONE | `d3c03cfc` |
+| TX5b | Variant assignment + interactive picker | DONE | `d3c03cfc` |
+| TX6 | Burgers notebook + ledger closure | DONE | (this commit) |
 
 ## Baseline established at TX0 (verified against live code, 2026-08-03)
 
@@ -320,8 +320,65 @@ would have meant a commit whose tests could not exercise the file contract end t
 - **Docs synced**: new workflow page `saed_pattern_solving.md` (+ toctree), CHANGELOG,
   diffraction validation matrix (five rows), schema README.
 
-### Next action
+### TX6 (2026-08-04) — the end-to-end notebook, and program closure
 
-**TX6**, the closing phase: the Burgers beta-alpha notebook demonstrating (a)-(e) end to
-end, the canonical SVG figures, the LaTeX theory notes for the OR-statement extraction
-and the ratio/angle algorithm, and closure of this ledger. Spec §8.
+- **`docs/site/tutorials/notebooks/23_transformation_crystallography_end_to_end.ipynb`**,
+  committed executed (21 code cells, 2 figures, zero error outputs), registered in the
+  notebook toctree and in the teaching-track summary. It walks Burgers beta->alpha
+  through all five asks in one pass, with every printed number computed live.
+- **The notebook is also an integration test that a unit test could not be.** It found no
+  defects, which is itself the result worth recording: the five surfaces compose without
+  glue code. The consistency identity reads 7e-14 mm, the planted variant 3 is assigned
+  back at 0.0000 deg, the YAML round trip is exact to 0.0e+00 1/angstrom, and the
+  wrong-phase solve returns *no solution at all* rather than a plausible-looking one.
+- Each section states the crystallography before computing it, and the notebook closes
+  with what was **not** shown — kinematic only, no HOLZ or double diffraction, the
+  zone-axis assumption in the solver, synthetic validation for the OR determination, and
+  no MTEX parity claim anywhere.
+
+## Program outcome
+
+All five asks are delivered, each with tests, an executable worked example, concept or
+workflow documentation, a validation-matrix row, and a CHANGELOG entry:
+
+| Ask | Surface | Tests | Worked examples |
+| --- | --- | --- | --- |
+| (a) OR from measured Euler angles | `characterize_orientation_relationship`, `orientation_relationship_from_euler`, `describe_orientation_relationship` | 26 | 2 |
+| (b) Parallel planes/directions across variants | `variant_correspondence_table` | 24 | 1 |
+| (c) Composite SAED + exports | `composite_reflection_table`, `export_composite_saed`, `centering_audit` | 23 | 1 |
+| (d) Child-zone-anchored composites | `simulate_composite_saed_from_child_zone` | 18 | 1 |
+| (e) Solving a measured pattern | `solve_saed_pattern`, `MeasuredSAEDPattern`, `SAEDSpotPicker`, `assign_transformation_variant` | 41 | 1 |
+
+**Four real defects were found and fixed along the way**, three of them pre-existing:
+
+1. Checksum-pinned fixtures failed on every Windows clone (`core.autocrlf` rewriting
+   hash-pinned artifacts). Fixed in TX0; the suite now runs green with no deselects.
+2. The seedless OR fit averaged tied double-coset representatives, turning planted Bain
+   into a meaningless 26.9 deg that read as Kurdjumov-Sachs. Found in TX1.
+3. The shared Burgers worked-example setup declared no space groups, so it had been
+   simulating beta-titanium without body-centring absences and listing forbidden
+   reflections. Found in TX3 by the centring audit built in the same phase.
+4. Kinematic spot ordering was decided by floating-point noise at symmetry-equivalent
+   ties, so the same pattern reached two ways came out permuted. Found in TX4 by the
+   consistency identity.
+
+**The specification was also corrected twice** where it had claimed gaps that did not
+exist (spec §5.2) — auditing the live code before writing it turned out to matter more
+than the plan did.
+
+### Open follow-ons (not blockers, deliberately out of scope)
+
+- **Measured-EBSD fixtures** for the OR determination. Validation is synthetic and every
+  document says so.
+- **JSON round-trip contracts** for the new report objects. They have one-way
+  `to_json_dict()` payloads; the `pytex.contracts` registry covers reconstructible
+  objects only, and report objects generally are not registered there.
+- **Canonical SVG figures** for the OR-statement geometry and the solving flow, and
+  **LaTeX theory notes** for the parallelism extraction and the ratio/angle algorithm.
+  The prose and the executable examples carry the content today; the figures and notes
+  would make it publication-facing.
+- **Structure-aware catalog dispatch.** Cubic-to-cubic assumes the fcc->bcc class because
+  point-group symmetry cannot distinguish fcc from bcc; using the space group would
+  remove the assumption.
+- **HOLZ, double diffraction, and dynamical intensities** remain out of scope for both
+  the simulator and the solver, as stated from TX0.

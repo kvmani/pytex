@@ -53,6 +53,17 @@ downstream analyses depend on them.
   catalog member it matched. The reported deviations then verify the statement
   against the fitted rotation instead of asserting it.
 
+- **Tutorial notebook 23, `23_transformation_crystallography_end_to_end`**,
+  committed executed. Answers the five questions a transformation study actually
+  asks, on Burgers β→α in one pass: the orientation relationship determined from
+  measured Euler angles with no nominal supplied, the variant correspondence
+  table for an arbitrary parent plane, the composite SAED down [110]β with its
+  reflection table and manifest, the same composite re-anchored on [0001]α of one
+  variant, and a measured pattern solved back to phase, zone axis, spot indices
+  and transformation variant. Each section states the crystallography first and
+  then computes it, and closes with what was *not* shown — kinematic only, no
+  HOLZ, no dynamical intensities, synthetic validation, no MTEX claim.
+
 - **Measured SAED patterns can now be solved.** New module
   `pytex.diffraction.solving`: `solve_saed_pattern(pattern, phases)` determines
   the phase, the zone axis, the crystal orientation in the pattern frame, and the
