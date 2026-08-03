@@ -56,6 +56,7 @@ from pytex.diffraction.kinematic import (
     simulate_zone_axis_spots,
     zone_basis_from_axis,
 )
+from pytex.diffraction.physics import ReflectionCondition, phase_centering_is_declared
 
 # Zone-axis labels beyond index 6 are rarely meaningful in TEM practice; the
 # nearest low-index zone with an honest deviation beats a closer high-index one.
@@ -278,6 +279,52 @@ class CompositeSAEDPattern:
     def spot_count(self) -> int:
         return sum(len(table) for _, table in self.iter_spot_tables())
 
+    def centering_audit(self) -> tuple[tuple[str, str, bool], ...]:
+        """Which lattice centering was applied to each phase, and whether it was declared.
+
+        Purpose: exposes a failure mode that is otherwise silent. The centering
+        comes from the first letter of a phase's space-group symbol, and a phase
+        supplied without one is simulated as primitive — so a body-centred
+        structure lacking that metadata keeps reflections its real symmetry
+        forbids, with nothing in the pattern to show it.
+
+        Output: one ``(phase_name, centering, declared)`` entry per phase, for
+        the parent first and then the child. ``declared`` is ``False`` when the
+        primitive default was assumed rather than read from the phase. When
+        ``config.apply_centering_absences`` is off, no absences were applied at
+        all and the entries describe what *would* have been used.
+        """
+
+        return tuple(
+            (phase.name, ReflectionCondition.from_phase(phase).centering,
+             phase_centering_is_declared(phase))
+            for phase in (self.relationship.parent_phase, self.relationship.child_phase)
+        )
+
+    def _centering_sentence(self) -> str:
+        audit = self.centering_audit()
+        if not self.config.apply_centering_absences:
+            return (
+                "Lattice-centering absences were NOT applied "
+                "(config.apply_centering_absences is off), so the reflection list "
+                "includes systematically absent reflections."
+            )
+        assumed_note = " (ASSUMED: the phase declares no space group)"
+        applied = "; ".join(
+            f"{name} {centering}{'' if declared else assumed_note}"
+            for name, centering, declared in audit
+        )
+        warning = (
+            ""
+            if all(declared for _, _, declared in audit)
+            else (
+                " An assumed centering means any absence the real structure imposes was not "
+                "applied, so forbidden reflections may be present; supply the phase's space "
+                "group to remove them."
+            )
+        )
+        return f"Lattice-centering absences applied per phase: {applied}.{warning}"
+
     def describe(self) -> str:
         """Convention-explicit prose summary of the composite pattern."""
 
@@ -311,6 +358,7 @@ class CompositeSAEDPattern:
                 "Each sub-pattern's intensities are max-normalized (kinematic cross-phase "
                 "ratios are undefined at this level of theory)."
             ),
+            self._centering_sentence(),
         ]
         for pattern in self.variant_patterns:
             lines.append(

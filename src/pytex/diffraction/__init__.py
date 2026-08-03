@@ -5,9 +5,21 @@ from pytex.diffraction.composite import (
     SpotCoincidenceReport,
     VariantZonePattern,
     find_spot_coincidences,
+    is_hexagonal_phase,
     rationalize_zone_axis,
     simulate_composite_saed,
     sweep_parent_zone_axes,
+)
+from pytex.diffraction.export import (
+    COMPOSITE_REFLECTION_TABLE_SCHEMA,
+    COMPOSITE_SAED_MANIFEST_SCHEMA,
+    REFLECTION_TABLE_COLUMNS,
+    CompositeSAEDExport,
+    ReflectionTable,
+    ReflectionTableRow,
+    composite_reflection_table,
+    composite_saed_manifest,
+    export_composite_saed,
 )
 from pytex.diffraction.kinematic import (
     KinematicSimulationConfig,
@@ -40,6 +52,7 @@ from pytex.diffraction.physics import (
     ScatteringFactorTable,
     StructureFactor,
     lorentz_polarization_factor,
+    phase_centering_is_declared,
 )
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
 from pytex.diffraction.stereonets import (
@@ -62,6 +75,10 @@ from pytex.diffraction.xrd import (
 )
 
 __all__ = [
+    "COMPOSITE_REFLECTION_TABLE_SCHEMA",
+    "COMPOSITE_SAED_MANIFEST_SCHEMA",
+    "REFLECTION_TABLE_COLUMNS",
+    "CompositeSAEDExport",
     "CompositeSAEDPattern",
     "DetectedSpotCluster",
     "DetectorAcceptanceMask",
@@ -81,6 +98,8 @@ __all__ = [
     "RationalizedZoneAxis",
     "ReflectionCondition",
     "ReflectionFamily",
+    "ReflectionTable",
+    "ReflectionTableRow",
     "SAEDPattern",
     "SAEDSpot",
     "ScatteringFactorTable",
@@ -92,10 +111,13 @@ __all__ = [
     "StructureFactor",
     "VariantZonePattern",
     "centering_allowed_mask",
+    "composite_reflection_table",
+    "composite_saed_manifest",
     "directions_to_spherical_angles",
     "electron_structure_factors",
     "electron_wavelength_angstrom",
     "estimate_zone_axis",
+    "export_composite_saed",
     "find_spot_coincidences",
     "flatten_direction_grid",
     "generate_powder_reflections",
@@ -103,7 +125,9 @@ __all__ = [
     "generate_stereonet_grid",
     "generate_xrd_pattern",
     "index_saed_pattern",
+    "is_hexagonal_phase",
     "lorentz_polarization_factor",
+    "phase_centering_is_declared",
     "project_great_circle_trace",
     "projection_boundary_radius",
     "rationalize_zone_axis",

@@ -10,5 +10,6 @@ Current stable schemas:
 - `validation_manifest.schema.json`
 - `workflow_result_manifest.schema.json`
 - `transformation_manifest.schema.json`
+- `composite_saed_manifest.schema.json`
 
 Stable schemas must remain versioned here so adapters and workflows do not invent incompatible ad hoc locations.

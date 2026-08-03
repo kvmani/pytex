@@ -38,8 +38,8 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 | --- | --- | --- | --- |
 | TX0 | Specification + ledger | DONE | `8d75f4c5` |
 | TX1 | OR characterization from measured orientations | DONE | `8d623366` |
-| TX2 | Variant correspondence tables | DONE | (this commit) |
-| TX3 | Composite SAED robustness + export layer | TODO | |
+| TX2 | Variant correspondence tables | DONE | `971c6431` |
+| TX3 | Composite SAED robustness + export layer | DONE | (this commit) |
 | TX4 | Child-zone-anchored composite patterns | TODO | |
 | TX5a | Measured-pattern YAML + calibration + solver core | TODO | |
 | TX5b | Variant assignment + interactive picker | TODO | |
@@ -201,8 +201,49 @@ Shipped, gates green.
 - **Docs synced**: CHANGELOG, concept page section, OR foundation §1 (new F2b entry),
   validation matrix (three new rows).
 
+### TX3 (2026-08-04) — composite SAED export, and a real absence bug
+
+Shipped, gates green.
+
+- **The spec was wrong about three of its five "gaps", and has been corrected in place.**
+  Auditing the live engine before writing code showed that deterministic spot ordering
+  (`np.lexsort((l, k, h, radius, -intensity))`), config/basis guard rails, and the intensity
+  normalization contract were all already implemented and documented. A "shared" cross-phase
+  normalization option was **rejected**, not deferred: kinematic theory defines no intensity
+  ratio between two phases, so the option would manufacture a number the theory does not
+  support. Spec §5.2 now records the correction and the reasoning.
+- **The one genuine robustness gap was real and had already bitten the repository.**
+  `ReflectionCondition.from_phase` falls back to primitive when a phase declares no space
+  group, so an undeclared body-centred phase is simulated as primitive and lists forbidden
+  reflections silently. The shared Burgers *worked-example* setup had exactly this defect —
+  it was simulating beta-titanium without body-centring absences. Both phases now declare
+  their space groups, and a worked example pins that no `h + k + l` odd beta reflection
+  survives. New `phase_centering_is_declared(phase)` and
+  `CompositeSAEDPattern.centering_audit()`; `describe()`, the reflection table and the
+  manifest all state the centering applied and whether it was declared or assumed.
+- **New module `pytex.diffraction.export`**: `ReflectionTable` / `ReflectionTableRow` /
+  `composite_reflection_table`, `composite_saed_manifest`, `CompositeSAEDExport` /
+  `export_composite_saed`, plus the public column contract `REFLECTION_TABLE_COLUMNS`.
+  Every table value is read from the engine's `SpotTable`, so table and figure cannot drift.
+- **New schema** `schemas/composite_saed_manifest.schema.json` (+ README entry and
+  `composite_saed_manifest_schema_path()` in the manifests adapter). The manifest is
+  validated against it in tests.
+- **A test caught a documentation error I introduced.** The first draft of
+  `ReflectionTable.describe()` claimed "detector radius = camera constant x |g|". It is the
+  camera constant times the *in-plane* part of `g`; the difference is the out-of-plane
+  component the excitation error records. Both the prose and the test now say so, and the
+  test asserts the projected identity to 1e-12 plus the inequality against the full `|g|`.
+- **23 tests** in `tests/unit/test_composite_saed_export.py` (geometry identities, Friedel
+  symmetry, thresholding, the centering audit including the undeclared-phase case, file
+  export, no leaked figures, CSV/Markdown/JSON contracts, schema validation), **one worked
+  example** pinning four identities at once.
+- **Docs synced**: CHANGELOG, workflow page (new "Exporting the pattern" section with the
+  centering trap), diffraction validation matrix (three new rows), schema README.
+
 ### Next action
 
-Start **TX3**: composite SAED robustness (deterministic spot ordering, absence audit,
-normalization contract, guard rails, fuller `describe()`) plus the export layer —
-`composite_reflection_table`, `export_composite_saed`, and the manifest schema. Spec §5.
+Start **TX4**: `simulate_composite_saed_from_child_zone` — anchor the shared detector
+geometry on a chosen product-variant zone axis, map it back to the exact (generally
+irrational) parent direction with `R_k^T`, and delegate to the existing parent-anchored
+engine so there is one geometry definition. The strongest available test is the consistency
+identity in spec §6.3. Spec §6.

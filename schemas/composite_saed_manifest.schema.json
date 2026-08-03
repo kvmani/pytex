@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.composite_saed_manifest",
+  "title": "PyTex Composite SAED Manifest",
+  "description": "Machine-readable record of how a composite parent + orientation-relationship-variant kinematic SAED pattern was produced. Written by pytex.diffraction.export.composite_saed_manifest alongside the reflection table and figures, so an exported pattern is reproducible without the originating script.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "relationship",
+    "parent_phase",
+    "child_phase",
+    "parent_zone_axis",
+    "parent_zone_axis_label",
+    "includes_parent",
+    "parent_reflection_count",
+    "zone_basis_parent",
+    "centering_audit",
+    "parent_config",
+    "child_config",
+    "variants",
+    "total_reflection_count",
+    "intensity_normalization",
+    "theory_level",
+    "files"
+  ],
+  "properties": {
+    "schema": { "const": "pytex.composite_saed_manifest/1" },
+    "relationship": { "type": "string", "minLength": 1 },
+    "parent_phase": { "type": "string", "minLength": 1 },
+    "child_phase": { "type": "string", "minLength": 1 },
+    "parent_zone_axis": {
+      "description": "Integer [uvw] of the parent zone axis the detector geometry is anchored to.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "integer" }
+    },
+    "parent_zone_axis_label": { "type": "string", "minLength": 1 },
+    "includes_parent": { "type": "boolean" },
+    "parent_reflection_count": { "type": "integer", "minimum": 0 },
+    "zone_basis_parent": {
+      "description": "Shared detector triad in the parent crystal Cartesian frame; columns u, v and the zone-axis unit vector, so every sub-pattern's detector coordinates overlay one detector.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "array",
+        "minItems": 3,
+        "maxItems": 3,
+        "items": { "type": "number" }
+      }
+    },
+    "centering_audit": {
+      "description": "Lattice centering applied per phase. 'declared' is false when the phase carries no space-group symbol and the primitive default was assumed, in which case systematically absent reflections may be present.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/centering_entry" }
+    },
+    "parent_config": { "$ref": "#/$defs/simulation_config" },
+    "child_config": { "$ref": "#/$defs/simulation_config" },
+    "variants": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/variant_entry" }
+    },
+    "total_reflection_count": { "type": "integer", "minimum": 0 },
+    "intensity_normalization": {
+      "description": "How intensities were normalized. Kinematic theory defines no intensity ratio between two different phases, so each sub-pattern is normalized to its own maximum and cross-source comparison is not meaningful.",
+      "const": "per_sub_pattern_max"
+    },
+    "theory_level": {
+      "description": "Kinematic only; dynamical (Bloch-wave) intensities are out of scope.",
+      "const": "kinematic"
+    },
+    "files": {
+      "description": "Role to filename, relative to the manifest's own directory.",
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "table_row_count": { "type": "integer", "minimum": 0 },
+    "table_intensity_threshold": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+    "coincidence_count": { "type": "integer", "minimum": 0 },
+    "coincidence_tolerance_mm": { "type": "number", "exclusiveMinimum": 0 }
+  },
+  "$defs": {
+    "centering_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "centering", "declared"],
+      "properties": {
+        "phase": { "type": "string", "minLength": 1 },
+        "centering": { "enum": ["P", "I", "F", "A", "B", "C", "R"] },
+        "declared": { "type": "boolean" }
+      }
+    },
+    "simulation_config": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beam_energy_kev",
+        "wavelength_angstrom",
+        "camera_constant_mm_angstrom",
+        "max_index",
+        "g_max_inv_angstrom",
+        "max_excitation_error_inv_angstrom",
+        "intensity_model",
+        "relrod_sigma_inv_angstrom",
+        "apply_centering_absences",
+        "min_relative_intensity"
+      ],
+      "properties": {
+        "beam_energy_kev": { "type": "number", "exclusiveMinimum": 0 },
+        "wavelength_angstrom": { "type": "number", "exclusiveMinimum": 0 },
+        "camera_constant_mm_angstrom": { "type": "number", "exclusiveMinimum": 0 },
+        "max_index": { "type": "integer", "minimum": 1 },
+        "g_max_inv_angstrom": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "max_excitation_error_inv_angstrom": { "type": "number", "exclusiveMinimum": 0 },
+        "intensity_model": { "enum": ["electron_atomic_number", "unit"] },
+        "relrod_sigma_inv_angstrom": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "apply_centering_absences": { "type": "boolean" },
+        "min_relative_intensity": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
+      }
+    },
+    "variant_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variant_index",
+        "child_zone_axis_exact",
+        "child_zone_axis_nearest",
+        "child_zone_axis_label",
+        "child_zone_axis_deviation_deg",
+        "reflection_count"
+      ],
+      "properties": {
+        "variant_index": { "type": "integer", "minimum": 1 },
+        "child_zone_axis_exact": {
+          "description": "The parent zone axis mapped into this variant's child crystal frame. Generally irrational, which is why it is recorded alongside the nearest rational label.",
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "number" }
+        },
+        "child_zone_axis_nearest": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "integer" }
+        },
+        "child_zone_axis_label": { "type": "string", "minLength": 1 },
+        "child_zone_axis_deviation_deg": { "type": "number", "minimum": 0 },
+        "reflection_count": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

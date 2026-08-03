@@ -298,18 +298,29 @@ nearest-rational labels), `CompositeSAEDPattern` with `describe()`, `find_spot_c
 
 ### 5.2 Gaps to close (robustness)
 
-1. **Deterministic, documented spot ordering** in `SpotTable` (currently ordering follows
-   enumeration; must be sorted by `|g|` then by index for reproducible tables and stable figures).
-2. **Systematic absence audit** — the composite report must state which centering/space-group
-   conditions were applied per phase, and warn when a phase has no reflection-condition data.
-3. **Intensity normalization contract** — per-pattern vs shared normalization across parent and
-   variants is currently implicit; make it an explicit, documented option, because it changes what
-   a printed table means.
-4. **Guard rails** — validation that the requested zone axis is not the zero vector, that
-   `max_index` bounds the enumeration sensibly, that the excitation-error tolerance and specimen
-   thickness are physical, and that variant selection is order-preserving and de-duplicated.
-5. **`describe()` completeness** — must name the camera constant, the number of reflections
-   surviving each filter stage, and the kinematic-only caveat.
+**Corrected 2026-08-04 after auditing the live engine.** Three of the five gaps this section
+originally listed were already closed, and the specification was wrong to claim otherwise:
+
+- *Spot ordering* is already fully deterministic — `simulate_zone_axis_spots` ends in
+  `np.lexsort((l, k, h, radius, -intensity))`, and `SpotTable`'s docstring states it.
+- *Guard rails* already exist: `KinematicSimulationConfig.__post_init__` validates every
+  numeric field, `simulate_zone_axis_spots` rejects a phase mismatch and validates the
+  detector basis, and `CompositeSAEDPattern` rejects duplicate variant indices.
+- *Intensity normalization* is already an explicit, documented decision rather than an
+  accident: each sub-pattern is max-normalized, and `describe()` states why — kinematic
+  cross-phase intensity ratios are not defined at this level of theory. Adding a "shared"
+  normalization option would manufacture a number the theory does not support, so it is
+  **rejected**, not deferred.
+
+The genuine gaps are:
+
+1. **Systematic absence audit.** `ReflectionCondition.from_phase` falls back to primitive
+   (`P`) when a phase carries no space-group symbol, so a phase lacking that metadata
+   silently keeps reflections that its real centering would forbid. The composite report and
+   the export manifest must state, per phase, whether the centering was *declared* or
+   *assumed*.
+2. **`describe()` completeness** — should name the centering actually applied per phase
+   alongside the existing camera constant and kinematic-only caveat.
 
 ### 5.3 Export layer (new module `pytex.diffraction.export`)
 
@@ -328,7 +339,6 @@ def composite_reflection_table(
     pattern: CompositeSAEDPattern,
     *,
     intensity_threshold: float = 0.0,
-    normalization: str = "per_pattern",   # "per_pattern" | "shared"
 ) -> ReflectionTable: ...                 # tabular object with to_csv/to_markdown/to_records
 
 

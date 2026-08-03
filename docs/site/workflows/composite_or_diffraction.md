@@ -142,6 +142,53 @@ The child zone axes are stored as exact `CrystalDirection` objects;
 zone that lands exactly on $\langle 111 \rangle$ reports $0^{\circ}$ while an off-zone variant
 reports its true tilt.
 
+## Exporting The Pattern
+
+A simulated pattern usually has to leave the process — as a table for a paper, a
+figure for a slide, and a record of how both were produced.
+`pytex.diffraction.export` is that boundary.
+
+`composite_reflection_table(pattern)` returns one row per rendered spot carrying
+its source (parent, or variant $k$), phase, Miller indices and formatted label,
+$d$-spacing, $|g|$, detector position and radius in millimetres, excitation
+error, structure-factor amplitude and relative intensity. Every value is read
+from the `SpotTable` objects the engine produced, so the table and the figure
+cannot disagree. It exports through `to_csv`, `to_markdown`, `to_records` and
+`to_json_dict`.
+
+Two things about those numbers are worth stating plainly, and `describe()`
+states both:
+
+- **Intensities are max-normalized within each sub-pattern separately.** Compare
+  intensities within one source, never across sources: kinematic theory defines
+  no intensity ratio between two different phases.
+- **The detector radius uses the in-plane part of $\mathbf{g}$**, so it is
+  slightly smaller than $(L\lambda)\,|\mathbf{g}|$. The difference is the
+  out-of-plane component that the excitation error records; $d = 1/|g|$ uses the
+  full vector.
+
+`export_composite_saed(pattern, directory)` writes the table, the rendered
+figure in the requested formats, the parent/child coincidence table, and a JSON
+manifest validated by `schemas/composite_saed_manifest.schema.json` — the
+relationship, both phases with their applied lattice centering, every variant's
+exact and nearest-rational child zone axis, and the full simulation
+configuration. Figures are closed after writing, so calling it in a loop leaks
+nothing.
+
+### The centering trap
+
+`ReflectionCondition.from_phase` reads the lattice centering from the first
+letter of a phase's space-group symbol, and falls back to primitive when the
+phase carries none. A body-centred phase supplied **without** that metadata is
+therefore simulated as primitive, and its pattern shows reflections the real
+structure forbids — with nothing in the spot list to say so.
+
+`pattern.centering_audit()` reports, per phase, the centering applied and
+whether it was *declared* or *assumed*; `describe()` and the manifest carry the
+same statement, and the reflection table's `describe()` raises a warning when
+anything was assumed. If a simulated bcc pattern shows a $\{100\}$ reflection,
+this is why.
+
 ## Current Limits
 
 - kinematic intensities only — no dynamical (Bloch-wave / multi-beam) model,

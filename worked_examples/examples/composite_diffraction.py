@@ -153,12 +153,14 @@ beta_ti = Phase(
     lattice=Lattice(3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=beta_frame),
     symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
     crystal_frame=beta_frame,
+    space_group_symbol="Im-3m",
 )
 alpha_ti = Phase(
     "alpha-titanium",
     lattice=Lattice(2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=alpha_frame),
     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=alpha_frame),
     crystal_frame=alpha_frame,
+    space_group_symbol="P6_3/mmc",
 )
 burgers = OrientationRelationship.from_burgers_correspondence(
     parent_phase=beta_ti, child_phase=alpha_ti
@@ -240,6 +242,65 @@ BURGERS_BASAL_COINCIDENCE = WorkedExample(
 )
 
 
+_REFLECTION_TABLE_CODE = """
+from pytex.diffraction.export import composite_reflection_table
+
+zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+composite = simulate_composite_saed(burgers, zone, variant_indices=(1,))
+table = composite_reflection_table(composite)
+parent_rows = table.rows_for_source("parent")
+# The strongest beta reflection along [110] is a {110}: d = a / sqrt(2).
+strongest = parent_rows[0]
+result = [
+    # The table is a view of the pattern, so it lists every spot and no others.
+    len(table) - composite.spot_count(),
+    # d and |g| are one quantity reported two ways.
+    max(abs(row.d_angstrom - 1.0 / row.g_inv_angstrom) for row in table.rows),
+    # Body centring forbids h + k + l odd, so no such beta row may survive.
+    sum(1 for row in parent_rows if sum(row.hkl) % 2 != 0),
+    strongest.d_angstrom,
+]
+""".strip()
+
+
+BURGERS_REFLECTION_TABLE = WorkedExample(
+    id="composite-burgers-reflection-table-identities",
+    title="The exported reflection table obeys d = 1/|g|, body centring, and the {110} spacing",
+    domain="diffraction",
+    scenario=(
+        "Before an exported reflection table can serve as a measurement "
+        "reference, it must satisfy the identities its own columns imply. This "
+        "tabulates a Burgers composite viewed along beta [110] and checks four "
+        "things: that the table lists exactly the pattern's own spots and no "
+        "others, that every row's d-spacing is the reciprocal of its reported "
+        "|g| rather than a separately computed quantity that could drift, that "
+        "no body-centring-forbidden beta reflection survived, and that the "
+        "strongest beta reflection is the {110} whose spacing is a / sqrt(2)."
+    ),
+    setup=BURGERS_SETUP,
+    code=_REFLECTION_TABLE_CODE,
+    expected=[0.0, 0.0, 0.0, 2.33805],
+    unit="counts, angstrom, counts, angstrom",
+    tolerance=1e-5,
+    reference=(
+        "The first two are identities that hold to machine precision: the table "
+        "is a view of the simulated pattern, and d = 1/|g| is a definition, so "
+        "any nonzero value is an export defect. The third is the body-centred "
+        "reflection condition h + k + l = 2n (International Tables Vol. A), "
+        "which the beta phase's Im-3m space group imposes. The fourth is the "
+        "analytic bcc {110} interplanar spacing a / sqrt(2) = 3.3065 / 1.414214 "
+        "for the standard beta-Ti lattice parameter."
+    ),
+    citation=(
+        "Burgers, Physica 1 (1934) 561; lattice parameters from standard Ti data. "
+        "Reflection conditions and interplanar spacings: International Tables for "
+        "Crystallography, Vol. A."
+    ),
+    symbols=(),
+    see_also=(_BURGERS_CONCEPT, _DIFF_CONCEPT),
+)
+
+
 GROUP = ExampleGroup(
     slug="composite-diffraction",
     title="Composite OR diffraction",
@@ -247,13 +308,15 @@ GROUP = ExampleGroup(
         "Numerical cornerstones of composite orientation-relationship SAED simulation: the "
         "relativistic electron wavelength against the standard 200 kV value, the exactness of "
         "the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha "
-        "signatures (exact basal zone and the {110}/(0002) near-coincidence)."
+        "signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the "
+        "identities the exported reflection table must satisfy."
     ),
     examples=(
         ELECTRON_WAVELENGTH_200KV,
         KS_EXACT_CHILD_ZONE,
         BURGERS_EXACT_BASAL_ZONE,
         BURGERS_BASAL_COINCIDENCE,
+        BURGERS_REFLECTION_TABLE,
     ),
 )
 

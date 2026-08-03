@@ -53,6 +53,34 @@ downstream analyses depend on them.
   catalog member it matched. The reported deviations then verify the statement
   against the fitted rotation instead of asserting it.
 
+- **Composite SAED patterns now export.** New module `pytex.diffraction.export`:
+  `composite_reflection_table(pattern)` produces one row per rendered spot —
+  source (parent or variant `k`), phase, Miller indices and label, `d`, `|g|`,
+  detector position and radius, excitation error, `|F|`, relative intensity —
+  with `to_csv`, `to_markdown`, `to_records`, `to_json_dict` and `describe()`.
+  `export_composite_saed(pattern, directory)` writes the table, the rendered
+  figure in the requested formats, the parent/child coincidence table, and a
+  JSON manifest validated by the new
+  `schemas/composite_saed_manifest.schema.json`. Every table value is read from
+  the `SpotTable` the engine produced, so the table and the figure cannot
+  disagree, and figures are closed after writing.
+
+- **`CompositeSAEDPattern.centering_audit()` and
+  `phase_centering_is_declared(phase)` expose a silent failure mode.**
+  `ReflectionCondition.from_phase` reads the lattice centering from the first
+  letter of a phase's space-group symbol and falls back to primitive when the
+  phase carries none — so a body-centred phase supplied without that metadata is
+  simulated as primitive and keeps reflections its real structure forbids, with
+  nothing in the spot list to say so. The audit reports, per phase, the centering
+  applied and whether it was *declared* or *assumed*; `describe()`, the
+  reflection table and the manifest all carry the statement, and an assumed
+  centering produces an explicit warning.
+
+  This was not hypothetical: the shared Burgers worked-example setup declared no
+  space groups, so it had been simulating beta-titanium without body-centring
+  absences and listing forbidden reflections. Both phases now declare theirs, and
+  a worked example pins that no `h + k + l` odd beta reflection survives.
+
 - **`variant_correspondence_table(relationship, objects)` answers "what does this
   plane (or direction) become in every product variant?"** as a table rather than
   a loop: one row per (source, variant) carrying the exact image, its nearest

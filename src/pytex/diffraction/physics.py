@@ -191,10 +191,43 @@ class DiffractionIntensityModel:
         return float(max(0.0, multiplicity * structure_factor.amplitude**2 * correction))
 
 
+def phase_centering_is_declared(phase: Phase) -> bool:
+    """Whether a phase actually states its lattice centering, or `P` was assumed.
+
+    Purpose: makes a silent failure mode visible.
+    `ReflectionCondition.from_phase` reads the centering from the first letter
+    of the space-group symbol and falls back to primitive when the phase carries
+    no symbol at all. A body-centred phase supplied without that metadata is
+    therefore simulated as primitive, and its pattern shows reflections that the
+    real structure forbids — with nothing in the output to say so.
+
+    When to use: before trusting a simulated reflection list, and in any report
+    or manifest that records how a pattern was produced. Simulation surfaces in
+    this package use it to label the applied centering as *declared* or
+    *assumed*.
+
+    Inputs: the phase.
+
+    Output: ``True`` when the phase carries a non-empty space-group symbol
+    (directly or through its `SpaceGroupSpec`), ``False`` when the primitive
+    default was assumed.
+
+    See also
+    --------
+    `ReflectionCondition.from_phase` : the centering derivation itself.
+    """
+
+    symbol = phase.space_group_symbol
+    if symbol is None and phase.space_group is not None:
+        symbol = phase.space_group.symbol
+    return bool(symbol and symbol.strip())
+
+
 __all__ = [
     "DiffractionIntensityModel",
     "ReflectionCondition",
     "ScatteringFactorTable",
     "StructureFactor",
     "lorentz_polarization_factor",
+    "phase_centering_is_declared",
 ]
