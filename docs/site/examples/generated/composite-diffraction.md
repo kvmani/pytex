@@ -432,3 +432,111 @@ result = [largest_shift, parent_shift]
 **Citation**: Burgers, Physica 1 (1934) 561.
 
 **See also**: {doc}`Composite OR diffraction workflow <../../workflows/composite_or_diffraction>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
+
+## Simulating a pattern and solving it returns the pattern that was simulated
+
+The strongest available check on a pattern solver is closure: simulate a beta-titanium pattern down [110], hand its spot positions back as if a user had picked them, and require the solver to recover the same answer from geometry alone. Four quantities are checked — the fraction of spots indexed, the mean residual, the recovered zone-axis family encoded as a single number, and how many spots were given an index family other than the one they were simulated from.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.core.transformation import OrientationRelationship
+from pytex.diffraction.composite import simulate_composite_saed
+
+beta_frame = ReferenceFrame(
+    "beta_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+alpha_frame = ReferenceFrame(
+    "alpha_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+# Beta-titanium (bcc) and alpha-titanium (hcp), room-temperature parameters.
+beta_ti = Phase(
+    "beta-titanium",
+    lattice=Lattice(3.3065, 3.3065, 3.3065, 90.0, 90.0, 90.0, crystal_frame=beta_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=beta_frame),
+    crystal_frame=beta_frame,
+    space_group_symbol="Im-3m",
+)
+alpha_ti = Phase(
+    "alpha-titanium",
+    lattice=Lattice(2.9508, 2.9508, 4.6855, 90.0, 90.0, 120.0, crystal_frame=alpha_frame),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=alpha_frame),
+    crystal_frame=alpha_frame,
+    space_group_symbol="P6_3/mmc",
+)
+burgers = OrientationRelationship.from_burgers_correspondence(
+    parent_phase=beta_ti, child_phase=alpha_ti
+)
+
+from pytex.diffraction.kinematic import KinematicSimulationConfig
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex.diffraction.kinematic import simulate_zone_axis_spots
+from pytex.diffraction.solving import (
+    MeasuredSAEDPattern,
+    MeasuredSpot,
+    PatternCalibration,
+    solve_saed_pattern,
+)
+
+camera_constant = 180.0
+config = KinematicSimulationConfig(camera_constant_mm_angstrom=camera_constant)
+zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+simulated = simulate_zone_axis_spots(beta_ti, zone, config=config)
+
+# Hand the simulated spot positions back as if they had been picked by hand.
+measured = MeasuredSAEDPattern(
+    name="beta_110",
+    spots=tuple(
+        MeasuredSpot(position=(float(x), float(y))) for x, y in simulated.detector_mm
+    ),
+    calibration=PatternCalibration(
+        units="mm", camera_constant_mm_angstrom=camera_constant
+    ),
+)
+report = solve_saed_pattern(measured, [beta_ti, alpha_ti], max_index=6)
+best = report.best()
+
+# The zone axis must come back as a <110>, whichever equivalent member is named.
+zone_family = sorted(abs(int(value)) for value in best.zone_axis.indices)
+# Every solved spot must carry the family it was simulated from.
+family_matches = sum(
+    1
+    for spot in best.solved_spots
+    if sorted(abs(v) for v in spot.hkl)
+    == sorted(abs(int(v)) for v in simulated.hkl[spot.measured_index])
+)
+result = [
+    best.matched_fraction,
+    float(best.mean_residual_inv_angstrom),
+    float(zone_family[0] + 10 * zone_family[1] + 100 * zone_family[2]),
+    float(len(best.solved_spots) - family_matches),
+]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `solving-simulate-then-solve-closure` | [1.0000, 0.0000, 110.0000, 0.0000] | [1.0000, 0.0000, 110.0000, 0.0000] | fraction, 1/angstrom, family code, count | 5.87e-16 | 1e-09 | ✅ pass |
+
+**Why this value**: All four are identities of the round trip, not measured agreements. Every simulated spot is by construction a reflection of the phase in the zone, so a correct solver indexes all of them (1.0) at zero residual, recovers the <110> zone family (sorted absolute indices 0, 1, 1, encoded as 110), and assigns each spot the family it came from (0 mismatches). The zone axis is compared as a family because a crystal symmetry operation relabels the crystal without changing anything physical, so [110], [011] and [101] are one answer.
+
+**Citation**: Edington, Practical Electron Microscopy in Materials Science, Monograph 2 (ratio/angle indexing); lattice parameters from standard Ti data.
+
+**See also**: {doc}`SAED pattern solving workflow <../../workflows/saed_pattern_solving>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`

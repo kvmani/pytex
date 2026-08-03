@@ -24,8 +24,8 @@ __all__ = [
     "ParentGrainReconstructionResult",
     "ParentReconstructionResult",
     "identify_orientation_relationship",
-    "refine_orientation_relationship_from_boundaries",
     "reconstruct_parent_grains",
     "reconstruct_parent_grains_from_graph",
+    "refine_orientation_relationship_from_boundaries",
     "score_parent_orientations",
 ]

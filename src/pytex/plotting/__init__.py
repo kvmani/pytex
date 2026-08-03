@@ -99,6 +99,7 @@ from pytex.plotting.runtime import (
     plot_vector_set,
     plot_wulff_net,
 )
+from pytex.plotting.saed_picker import SAEDSpotPicker, SpotPickerState
 from pytex.plotting.scene3d import (
     PlacedCrystal,
     WorldScene3D,
@@ -112,6 +113,10 @@ from pytex.plotting.styles import (
 )
 
 __all__ = [
+    "DEFAULT_VIEW_AZIM_DEG",
+    "DEFAULT_VIEW_ELEV_DEG",
+    "OKABE_ITO_COLORS",
+    "TRIAD_AXIS_COLORS",
     "AnnotationResult",
     "Arrow3D",
     "AxisTriad3D",
@@ -127,13 +132,10 @@ __all__ = [
     "CrystalPlaneOverlay",
     "CrystalPolyhedronGlyph",
     "CrystalScene",
-    "DEFAULT_VIEW_AZIM_DEG",
-    "DEFAULT_VIEW_ELEV_DEG",
     "DirectionAnnotationStyle",
     "FrameTriad",
     "IPFColorKey",
     "Label3D",
-    "OKABE_ITO_COLORS",
     "PanelGrid",
     "PlacedCrystal",
     "PlaneAnnotationStyle",
@@ -141,9 +143,10 @@ __all__ = [
     "PointCloud3D",
     "PolyLine3D",
     "PrimitiveScene3D",
+    "SAEDSpotPicker",
     "SpotAnnotationConfig",
+    "SpotPickerState",
     "SpotStyle",
-    "TRIAD_AXIS_COLORS",
     "Transform3D",
     "WorldScene3D",
     "add_frame_indicator",

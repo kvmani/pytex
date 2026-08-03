@@ -23,7 +23,6 @@ from typing import Any, Literal
 import numpy as np
 
 from pytex.core.hexagonal import plane_hkl_to_hkil
-from pytex.core.notation import format_direction_indices
 from pytex.diffraction.composite import (
     CompositeSAEDPattern,
     VariantZonePattern,

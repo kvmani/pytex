@@ -805,6 +805,12 @@ def composite_saed_manifest_schema_path() -> Path:
     return _schema_path("composite_saed_manifest.schema.json")
 
 
+def measured_saed_pattern_schema_path() -> Path:
+    """Path of the schema validating measured-pattern YAML files."""
+
+    return _schema_path("measured_saed_pattern.schema.json")
+
+
 def _read_manifest(path: str | Path) -> dict[str, Any]:
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.measured_saed_pattern",
+  "title": "PyTex Measured SAED Pattern",
+  "description": "A measured selected-area electron diffraction pattern as a list of picked spot positions plus the calibration needed to turn them into reciprocal-space vectors. This file is the reproducibility boundary of pytex.diffraction.solving: a pattern solved from a committed file gives the same answer on any machine, whether the spots were clicked interactively or typed by hand. The transmitted beam is not a spot -- it is the calibration's centre, and every position is taken relative to it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "name", "calibration", "spots"],
+  "properties": {
+    "schema": { "const": "pytex.measured_saed_pattern/1" },
+    "name": {
+      "description": "Identifier for the pattern, carried into the solution report.",
+      "type": "string",
+      "minLength": 1
+    },
+    "calibration": { "$ref": "#/$defs/calibration" },
+    "spots": {
+      "description": "Picked spots, in the calibration's coordinate units. At least two are required: two non-collinear reflections are what fix a zone axis.",
+      "type": "array",
+      "minItems": 2,
+      "items": { "$ref": "#/$defs/spot" }
+    }
+  },
+  "$defs": {
+    "calibration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["units"],
+      "properties": {
+        "units": {
+          "description": "What the spot coordinates are. Pixel coordinates need pixel_size_mm; pixels and millimetres both need a camera constant, given directly or as camera_length_mm with beam_energy_kev. Reciprocal-angstrom coordinates need no further calibration.",
+          "enum": ["px", "mm", "reciprocal_angstrom"]
+        },
+        "centre": {
+          "description": "Transmitted-beam position in the same units as the spot coordinates, subtracted before anything else. Omit for a pattern already measured relative to the beam.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "number" }
+        },
+        "camera_constant_mm_angstrom": {
+          "description": "L*lambda, relating detector radius to |g| through r = (L*lambda) |g|.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "camera_length_mm": {
+          "description": "Effective camera length; combined with beam_energy_kev it yields the camera constant.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "beam_energy_kev": {
+          "description": "Accelerating voltage, used for the relativistic electron wavelength.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "pixel_size_mm": {
+          "description": "Detector pixel pitch. Required when units are px.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "spot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "intensity": {
+          "description": "Optional measured intensity. The solver never uses it -- geometry alone decides an indexing -- but it is carried through for plotting and record-keeping.",
+          "type": "number",
+          "minimum": 0
+        },
+        "label": {
+          "description": "Optional operator label for the spot, e.g. 'A'.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

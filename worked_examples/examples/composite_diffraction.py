@@ -370,6 +370,92 @@ CHILD_ANCHORED_CONSISTENCY = WorkedExample(
 )
 
 
+_SOLVE_CODE = """
+from pytex.diffraction.kinematic import simulate_zone_axis_spots
+from pytex.diffraction.solving import (
+    MeasuredSAEDPattern,
+    MeasuredSpot,
+    PatternCalibration,
+    solve_saed_pattern,
+)
+
+camera_constant = 180.0
+config = KinematicSimulationConfig(camera_constant_mm_angstrom=camera_constant)
+zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+simulated = simulate_zone_axis_spots(beta_ti, zone, config=config)
+
+# Hand the simulated spot positions back as if they had been picked by hand.
+measured = MeasuredSAEDPattern(
+    name="beta_110",
+    spots=tuple(
+        MeasuredSpot(position=(float(x), float(y))) for x, y in simulated.detector_mm
+    ),
+    calibration=PatternCalibration(
+        units="mm", camera_constant_mm_angstrom=camera_constant
+    ),
+)
+report = solve_saed_pattern(measured, [beta_ti, alpha_ti], max_index=6)
+best = report.best()
+
+# The zone axis must come back as a <110>, whichever equivalent member is named.
+zone_family = sorted(abs(int(value)) for value in best.zone_axis.indices)
+# Every solved spot must carry the family it was simulated from.
+family_matches = sum(
+    1
+    for spot in best.solved_spots
+    if sorted(abs(v) for v in spot.hkl)
+    == sorted(abs(int(v)) for v in simulated.hkl[spot.measured_index])
+)
+result = [
+    best.matched_fraction,
+    float(best.mean_residual_inv_angstrom),
+    float(zone_family[0] + 10 * zone_family[1] + 100 * zone_family[2]),
+    float(len(best.solved_spots) - family_matches),
+]
+""".strip()
+
+
+SOLVE_ROUND_TRIP = WorkedExample(
+    id="solving-simulate-then-solve-closure",
+    title="Simulating a pattern and solving it returns the pattern that was simulated",
+    domain="diffraction",
+    scenario=(
+        "The strongest available check on a pattern solver is closure: "
+        "simulate a beta-titanium pattern down [110], hand its spot positions "
+        "back as if a user had picked them, and require the solver to recover "
+        "the same answer from geometry alone. Four quantities are checked — the "
+        "fraction of spots indexed, the mean residual, the recovered zone-axis "
+        "family encoded as a single number, and how many spots were given an "
+        "index family other than the one they were simulated from."
+    ),
+    setup=BURGERS_SETUP + "\nfrom pytex.diffraction.kinematic import KinematicSimulationConfig\n",
+    code=_SOLVE_CODE,
+    expected=[1.0, 0.0, 110.0, 0.0],
+    unit="fraction, 1/angstrom, family code, count",
+    tolerance=1e-9,
+    reference=(
+        "All four are identities of the round trip, not measured agreements. "
+        "Every simulated spot is by construction a reflection of the phase in "
+        "the zone, so a correct solver indexes all of them (1.0) at zero "
+        "residual, recovers the <110> zone family (sorted absolute indices "
+        "0, 1, 1, encoded as 110), and assigns each spot the family it came "
+        "from (0 mismatches). The zone axis is compared as a family because a "
+        "crystal symmetry operation relabels the crystal without changing "
+        "anything physical, so [110], [011] and [101] are one answer."
+    ),
+    citation=(
+        "Edington, Practical Electron Microscopy in Materials Science, "
+        "Monograph 2 (ratio/angle indexing); lattice parameters from standard "
+        "Ti data."
+    ),
+    symbols=(),
+    see_also=(
+        SeeAlso("SAED pattern solving workflow", "../../workflows/saed_pattern_solving"),
+        _DIFF_CONCEPT,
+    ),
+)
+
+
 GROUP = ExampleGroup(
     slug="composite-diffraction",
     title="Composite OR diffraction",
@@ -387,6 +473,7 @@ GROUP = ExampleGroup(
         BURGERS_BASAL_COINCIDENCE,
         BURGERS_REFLECTION_TABLE,
         CHILD_ANCHORED_CONSISTENCY,
+        SOLVE_ROUND_TRIP,
     ),
 )
 

@@ -53,6 +53,44 @@ downstream analyses depend on them.
   catalog member it matched. The reported deviations then verify the statement
   against the fitted rotation instead of asserting it.
 
+- **Measured SAED patterns can now be solved.** New module
+  `pytex.diffraction.solving`: `solve_saed_pattern(pattern, phases)` determines
+  the phase, the zone axis, the crystal orientation in the pattern frame, and the
+  Miller indices of every spot, from picked spot positions plus a camera
+  constant. `MeasuredSAEDPattern` reads and writes a documented YAML contract
+  (`schemas/measured_saed_pattern.schema.json`), `solve_saed_pattern_file` does
+  both in one call, and `assign_transformation_variant` names which variant a
+  solved product pattern belongs to when the parent's orientation is known.
+
+  The algorithm is classical ratio/angle indexing: two non-collinear reflections
+  fix the zone, so the two shortest measured vectors seed the solution, and every
+  remaining spot is indexed by projection and scored. **Intensities are never
+  used** — a kinematic intensity model is not reliable enough to index against,
+  and a printed pattern rarely carries calibrated intensities at all.
+
+  This is a *different* surface from `diffraction.models.index_saed_pattern`,
+  which starts from a calibrated `DiffractionGeometry` and works in detector
+  pixels. Use that one when the detector model is known; use this one when only
+  the pattern is. Both docstrings say so.
+
+  Three honesty properties are built in rather than bolted on. A single SAED
+  pattern cannot distinguish a zone axis from its reverse for a centrosymmetric
+  reflection set, and the report says so instead of presenting one sense as the
+  answer. Symmetry-equivalent descriptions are deduplicated and rewritten into
+  the conventional one, so a cubic cube-axis pattern reports `[001]` rather than
+  the equally valid `[0-10]` the seed search happened to find first. And *not*
+  solving is a legitimate outcome: `best()` raises rather than guessing, and
+  `is_conclusive` is `False` whenever spots are left unindexed or a genuinely
+  different candidate explains the pattern equally well.
+
+- **`pytex.plotting.saed_picker` picks spots interactively.** `SAEDSpotPicker`
+  displays a pattern and collects clicks (left add, right remove nearest, middle
+  set beam centre, `u` undo, `c` clear), producing a `MeasuredSAEDPattern` or a
+  YAML file. The picking *logic* is `SpotPickerState`, a plain object with no
+  Matplotlib dependency, so it is tested headlessly and the GUI is not on the
+  critical path — an interactive tool that cannot be tested is a liability in a
+  scientific library.
+
 - **Composite patterns can be anchored on a product-variant zone axis.**
   `simulate_composite_saed_from_child_zone(relationship, child_zone_axis,
   anchor_variant_index=k, ...)` matches how the microscope is used: the operator

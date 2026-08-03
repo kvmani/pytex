@@ -40,9 +40,9 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 | TX1 | OR characterization from measured orientations | DONE | `8d623366` |
 | TX2 | Variant correspondence tables | DONE | `971c6431` |
 | TX3 | Composite SAED robustness + export layer | DONE | `0bb2256f` |
-| TX4 | Child-zone-anchored composite patterns | DONE | (this commit) |
-| TX5a | Measured-pattern YAML + calibration + solver core | TODO | |
-| TX5b | Variant assignment + interactive picker | TODO | |
+| TX4 | Child-zone-anchored composite patterns | DONE | `d34d2f78` |
+| TX5a | Measured-pattern YAML + calibration + solver core | DONE | (this commit) |
+| TX5b | Variant assignment + interactive picker | DONE | (this commit) |
 | TX6 | Burgers notebook, figures, theory notes, ledger closure | TODO | |
 
 ## Baseline established at TX0 (verified against live code, 2026-08-03)
@@ -275,12 +275,53 @@ Shipped, gates green.
 - **Docs synced**: CHANGELOG (Added + Fixed), workflow page (new "Anchoring on a product
   zone" section including the spot-order note), diffraction validation matrix (two rows).
 
+### TX5 (2026-08-04) — solving a measured pattern (TX5a and TX5b together)
+
+Shipped, gates green. TX5a and TX5b landed in one commit because the variant
+assignment and the picker are both thin layers over the solver core, and splitting them
+would have meant a commit whose tests could not exercise the file contract end to end.
+
+- **New module `pytex.diffraction.solving`**: `PatternCalibration`, `MeasuredSpot`,
+  `MeasuredSAEDPattern` (YAML in/out), `SolvedSpot`, `PatternSolution`,
+  `PatternSolutionReport`, `solve_saed_pattern`, `solve_saed_pattern_file`,
+  `assign_transformation_variant`. **New module `pytex.plotting.saed_picker`**:
+  `SpotPickerState` (the logic) and `SAEDSpotPicker` (the Matplotlib adapter).
+- **New schema** `schemas/measured_saed_pattern.schema.json` +
+  `measured_saed_pattern_schema_path()`.
+- **Two design decisions worth recording.**
+  - *Intensities are never used for indexing.* A kinematic intensity model is not
+    reliable enough to index against and a printed pattern rarely carries calibrated
+    intensities; geometry alone decides. Intensity is carried through for plotting only.
+  - *The picking logic is separated from the GUI.* `SpotPickerState` has no Matplotlib
+    dependency and is fully tested headlessly. An interactive tool that cannot be tested
+    is a liability, and the tests would otherwise have been skipped everywhere.
+- **Two problems found by the first end-to-end run, both fixed.**
+  - Symmetry-equivalent descriptions were being reported as *competing* solutions, so an
+    unambiguous cubic solve looked contested (`is_conclusive` False with five
+    100%-matched entries). Deduplication now compares orientations under the crystal
+    point group, and the survivor is rewritten into the conventional description —
+    fewest negative indices, then lowest — so `[001]` is reported rather than the
+    equally valid `[0-10]` the seed search found first.
+  - Spots whose indices exceed the solver's `max_index` are never offered a match, which
+    reads as a solver failure. `describe()` now names `max_index` as the first thing to
+    raise, before the tolerances.
+- **A limitation found and pinned rather than hidden**: a variant seen from a *parent*
+  zone axis is off its own zone (its child zone axis is irrational), so its
+  excitation-selected spots do not all lie in one ZOLZ and cannot all be indexed. The
+  test asserts the partial match — a full match there would mean the solver was
+  inventing reflections. The realistic case (tilt the product on zone) uses TX4's
+  child-anchored entry point and indexes fully.
+- **41 tests** in `tests/unit/test_saed_solving.py`: calibration in all three unit
+  systems, the YAML contract and schema, simulate-then-solve closure on five fcc zones
+  plus hexagonal alpha-Ti, the cubic sqrt(2)/45-degree identities read back out of the
+  solver's own output, fcc-vs-bcc discrimination, an unsolvable pattern returning
+  nothing, noise robustness at 0.5 mm and degradation at 25 mm, variant assignment, and
+  the picker state machine. **One worked example** pinning the round-trip closure.
+- **Docs synced**: new workflow page `saed_pattern_solving.md` (+ toctree), CHANGELOG,
+  diffraction validation matrix (five rows), schema README.
+
 ### Next action
 
-Start **TX5a**: the measured-pattern YAML contract (`MeasuredSAEDPattern`,
-`PatternCalibration`, schema), and the ratio/angle solver core (`solve_saed_pattern`)
-producing ranked `PatternSolution`s with an honest `is_conclusive` and an explicit statement
-of the `z` vs `-z` ambiguity. Spec §7. Note the existing detector-geometry-driven
-`index_saed_pattern` in `diffraction/models.py` solves a *different* problem (a calibrated
-detector and a known geometry object); TX5 works from a bare calibrated spot list, and the
-docs must say which to use when.
+**TX6**, the closing phase: the Burgers beta-alpha notebook demonstrating (a)-(e) end to
+end, the canonical SVG figures, the LaTeX theory notes for the OR-statement extraction
+and the ratio/angle algorithm, and closure of this ledger. Spec §8.

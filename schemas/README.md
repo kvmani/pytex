@@ -11,5 +11,6 @@ Current stable schemas:
 - `workflow_result_manifest.schema.json`
 - `transformation_manifest.schema.json`
 - `composite_saed_manifest.schema.json`
+- `measured_saed_pattern.schema.json`
 
 Stable schemas must remain versioned here so adapters and workflows do not invent incompatible ad hoc locations.
