@@ -53,6 +53,25 @@ downstream analyses depend on them.
   catalog member it matched. The reported deviations then verify the statement
   against the fitted rotation instead of asserting it.
 
+- **`variant_correspondence_table(relationship, objects)` answers "what does this
+  plane (or direction) become in every product variant?"** as a table rather than
+  a loop: one row per (source, variant) carrying the exact image, its nearest
+  integer indices, the angular residual between them, and an equivalence-group
+  label that collapses variants giving crystallographically equivalent images.
+  It takes one object or a list, runs either mapping sense, labels hexagonal
+  phases in four-index Miller-Bravais form, and exports through `to_csv`,
+  `to_markdown`, `to_records`, `to_json_dict` and `describe()`.
+
+  The grouping turns 24 rows into a readable answer. Under Kurdjumov-Sachs the
+  austenite `(111)` has exactly four distinct images across the 24 variants, six
+  variants each; the six giving a `{011}` ferrite plane at zero residual are
+  exactly the packet `variant_close_packed_groups` returns, which the tests
+  assert against each other rather than against a stored number. The reverse map
+  is not selective in the same way: the child `(011)` maps back onto a `{111}`
+  parent plane in all 24. `exact_rows()` isolates the correspondences that are
+  genuinely exact, which — unlike the grouping of the irrational images — do not
+  depend on the rationalization bound.
+
 - **`default_relationship_catalog(parent_phase, child_phase)`** resolves the
   standard named catalog from the two crystal systems through one auditable
   dispatch table, and returns `None` rather than forcing an inapplicable list

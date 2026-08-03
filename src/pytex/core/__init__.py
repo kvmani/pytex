@@ -170,6 +170,8 @@ from pytex.core.transformation import (
     PhaseTransformationRecord,
     PlaneCorrespondence,
     TransformationVariant,
+    VariantCorrespondenceRow,
+    VariantCorrespondenceTable,
     VariantPoleFigure,
     boundary_fingerprint_distances_deg,
     characterize_orientation_relationship,
@@ -185,6 +187,7 @@ from pytex.core.transformation import (
     or_deviation,
     orientation_relationship_from_euler,
     variant_close_packed_groups,
+    variant_correspondence_table,
     variant_pole_figure,
 )
 
@@ -267,6 +270,8 @@ __all__ = [
     "SymmetrySpec",
     "TransformationVariant",
     "UnitCell",
+    "VariantCorrespondenceRow",
+    "VariantCorrespondenceTable",
     "VariantPoleFigure",
     "VariantSelectionReport",
     "VectorSet",
@@ -348,6 +353,7 @@ __all__ = [
     "standard_hcp_bcc_relationships",
     "strip_reciprocal_star",
     "variant_close_packed_groups",
+    "variant_correspondence_table",
     "variant_pole_figure",
     "zone_law_value_hkil_uvtw",
 ]

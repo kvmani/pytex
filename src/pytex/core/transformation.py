@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import csv
 from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -3444,6 +3446,406 @@ def map_plane_across_variants(
     return tuple(
         relationship.map_plane_to_child(plane, variant=variant, max_index=max_index)
         for variant in resolved
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class VariantCorrespondenceRow:
+    """One (variant, source object, image) entry of a variant correspondence table.
+
+    ``exact_components`` are the generally irrational basis components of the
+    image; ``indices`` is the nearest primitive integer triple and
+    ``residual_deg`` the angle between the two. A zero residual means the image
+    really is that low-index object; a large one means the source has no
+    low-index image in this variant, which is itself the answer.
+
+    ``equivalence_group`` labels variants that produce crystallographically
+    equivalent images of the *same* source object — members of one index family.
+    """
+
+    variant_index: int
+    source_indices: np.ndarray
+    exact_components: np.ndarray
+    indices: np.ndarray
+    residual_deg: float
+    source_label: str
+    image_label: str
+    equivalence_group: int
+
+    def __post_init__(self) -> None:
+        source = np.asarray(self.source_indices, dtype=np.int64)
+        indices = np.asarray(self.indices, dtype=np.int64)
+        exact = np.asarray(self.exact_components, dtype=np.float64)
+        if source.shape != (3,) or indices.shape != (3,) or exact.shape != (3,):
+            raise ValueError("VariantCorrespondenceRow arrays must have shape (3,).")
+        if self.variant_index <= 0:
+            raise ValueError("variant_index must be positive.")
+        if not np.isfinite(self.residual_deg) or self.residual_deg < 0.0:
+            raise ValueError("residual_deg must be finite and non-negative.")
+        if self.equivalence_group < 0:
+            raise ValueError("equivalence_group must be non-negative.")
+        for array in (source, indices, exact):
+            array.setflags(write=False)
+        object.__setattr__(self, "source_indices", source)
+        object.__setattr__(self, "indices", indices)
+        object.__setattr__(self, "exact_components", exact)
+
+
+@dataclass(frozen=True, slots=True)
+class VariantCorrespondenceTable:
+    """What arbitrary parent planes or directions become in every product variant.
+
+    The tabular answer to "I have this ``(hkl)`` (or ``[uvw]``) in the parent —
+    what is the parallel plane (direction) in each of the product variants?".
+    One row per (source object, variant), carrying the exact image, its nearest
+    integer indices, the angular residual between them, and an equivalence-group
+    label that collapses variants giving crystallographically equivalent images.
+
+    The grouping is what makes a 24-row table readable. Under Kurdjumov-Sachs
+    the austenite ``(111)`` produces exactly four distinct answers across the 24
+    variants, six variants each: the ``{011}`` close-packed image at zero
+    residual (the packet the variant belongs to) and three higher-index images.
+    """
+
+    relationship_name: str
+    kind: str
+    sense: str
+    source_phase_name: str
+    image_phase_name: str
+    rows: tuple[VariantCorrespondenceRow, ...]
+    max_index: int
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind not in {"plane", "direction"}:
+            raise ValueError("VariantCorrespondenceTable.kind must be 'plane' or 'direction'.")
+        if self.sense not in {"parent_to_child", "child_to_parent"}:
+            raise ValueError(
+                "VariantCorrespondenceTable.sense must be 'parent_to_child' or "
+                "'child_to_parent'."
+            )
+        rows = tuple(self.rows)
+        if not rows:
+            raise ValueError("VariantCorrespondenceTable requires at least one row.")
+        if self.max_index < 1:
+            raise ValueError("max_index must be at least 1.")
+        object.__setattr__(self, "rows", rows)
+
+    @property
+    def source_indices(self) -> tuple[tuple[int, int, int], ...]:
+        """The distinct source objects tabulated, in the order supplied."""
+
+        seen: list[tuple[int, int, int]] = []
+        for row in self.rows:
+            key = _index_tuple(row.source_indices)
+            if key not in seen:
+                seen.append(key)
+        return tuple(seen)
+
+    @property
+    def variant_indices(self) -> tuple[int, ...]:
+        seen: list[int] = []
+        for row in self.rows:
+            if row.variant_index not in seen:
+                seen.append(row.variant_index)
+        return tuple(seen)
+
+    def rows_for(self, source_indices: ArrayLike) -> tuple[VariantCorrespondenceRow, ...]:
+        """Every variant's image of one source object, in variant order."""
+
+        key = _index_tuple(np.rint(np.asarray(source_indices, dtype=np.float64)))
+        return tuple(row for row in self.rows if _index_tuple(row.source_indices) == key)
+
+    def rows_for_variant(self, variant_index: int) -> tuple[VariantCorrespondenceRow, ...]:
+        """Every source object's image in one variant, in source order."""
+
+        return tuple(row for row in self.rows if row.variant_index == int(variant_index))
+
+    def distinct_image_count(self, source_indices: ArrayLike) -> int:
+        """How many crystallographically distinct images one source object has.
+
+        The number of index families the variants map it onto — four for the
+        Kurdjumov-Sachs ``(111)`` across all 24 variants.
+        """
+
+        rows = self.rows_for(source_indices)
+        if not rows:
+            raise KeyError("No rows for the requested source indices.")
+        return len({row.equivalence_group for row in rows})
+
+    def exact_rows(
+        self, *, tolerance_deg: float = 1e-6
+    ) -> tuple[VariantCorrespondenceRow, ...]:
+        """Rows whose image really is the low-index object reported.
+
+        The physically interesting subset: under Kurdjumov-Sachs these are the
+        six variants that carry ``(111)`` austenite onto a ``{011}`` ferrite
+        plane, i.e. the close-packed (packet) correspondence.
+        """
+
+        return tuple(row for row in self.rows if row.residual_deg <= tolerance_deg)
+
+    def to_records(self) -> list[dict[str, object]]:
+        """One flat dictionary per row, suitable for a DataFrame or CSV writer."""
+
+        return [
+            {
+                "relationship": self.relationship_name,
+                "kind": self.kind,
+                "sense": self.sense,
+                "variant": row.variant_index,
+                "source_phase": self.source_phase_name,
+                "source_indices": " ".join(
+                    str(value) for value in _index_tuple(row.source_indices)
+                ),
+                "source_label": row.source_label,
+                "image_phase": self.image_phase_name,
+                "image_indices": " ".join(str(value) for value in _index_tuple(row.indices)),
+                "image_label": row.image_label,
+                "exact_components": " ".join(
+                    f"{value:.12g}" for value in row.exact_components
+                ),
+                "residual_deg": row.residual_deg,
+                "equivalence_group": row.equivalence_group,
+            }
+            for row in self.rows
+        ]
+
+    def to_csv(self, path: str | Path) -> Path:
+        """Write the table as UTF-8 CSV with a header row and return the path."""
+
+        records = self.to_records()
+        output = Path(path)
+        with output.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(records[0]))
+            writer.writeheader()
+            writer.writerows(records)
+        return output
+
+    def to_markdown(self) -> str:
+        """Render the table as GitHub-flavoured Markdown for reports and notebooks."""
+
+        header = (
+            "| variant | source | image | residual (deg) | group |\n"
+            "| --- | --- | --- | --- | --- |\n"
+        )
+        body = "".join(
+            f"| {row.variant_index} | {row.source_label} | {row.image_label} | "
+            f"{row.residual_deg:.4f} | {row.equivalence_group} |\n"
+            for row in self.rows
+        )
+        return header + body
+
+    def to_json_dict(self) -> dict[str, object]:
+        """A JSON-ready payload carrying the same facts as ``describe()``.
+
+        A one-way report payload for manifests and downstream tooling, not a
+        round-trip contract; use `pytex.contracts` for objects that must be
+        reconstructed.
+        """
+
+        return {
+            "schema": "pytex.variant_correspondence_table/1",
+            "relationship": self.relationship_name,
+            "kind": self.kind,
+            "sense": self.sense,
+            "source_phase": self.source_phase_name,
+            "image_phase": self.image_phase_name,
+            "max_index": int(self.max_index),
+            "rows": self.to_records(),
+        }
+
+    def describe(self) -> str:
+        """Prose summary: what was mapped, how many distinct answers, and which are exact."""
+
+        noun = "plane" if self.kind == "plane" else "direction"
+        origin, destination = (
+            ("parent", "child") if self.sense == "parent_to_child" else ("child", "parent")
+        )
+        lines = [
+            f"Variant correspondence table for orientation relationship "
+            f"'{self.relationship_name}': {len(self.source_indices)} {origin} "
+            f"{noun}(s) mapped through {len(self.variant_indices)} variant(s), "
+            f"{len(self.rows)} row(s). Images are given in the {destination} phase "
+            f"('{self.image_phase_name}') as exact basis components plus the nearest "
+            f"primitive integer indices within max_index {self.max_index}; the residual "
+            "is the angle between the two, so a zero residual means the image really is "
+            "that low-index object."
+        ]
+        for source in self.source_indices:
+            rows = self.rows_for(source)
+            exact = [row for row in rows if row.residual_deg <= 1e-6]
+            label = rows[0].source_label
+            summary = (
+                f"  {label}: {len({row.equivalence_group for row in rows})} "
+                f"crystallographically distinct image(s) across {len(rows)} variant(s)"
+            )
+            if exact:
+                variants = ", ".join(str(row.variant_index) for row in exact[:12])
+                if len(exact) > 12:
+                    variants += ", ..."
+                summary += (
+                    f"; exactly parallel in {len(exact)} of them "
+                    f"(variants {variants}, image {exact[0].image_label})"
+                )
+            else:
+                summary += (
+                    "; no variant carries it onto a low-index object exactly, so every "
+                    "image is a rationalization with a stated residual"
+                )
+            lines.append(summary + ".")
+        lines.append(
+            "  Exactly-parallel images are a property of the relationship and do not depend "
+            "on max_index; how the remaining irrational images are grouped does, because a "
+            "larger bound splits them across more index families."
+        )
+        return "\n".join(lines)
+
+
+def variant_correspondence_table(
+    relationship: OrientationRelationship,
+    objects: CrystalPlane | CrystalDirection | Sequence[CrystalPlane | CrystalDirection],
+    *,
+    sense: str = "parent_to_child",
+    variants: tuple[TransformationVariant, ...] | None = None,
+    max_index: int = DEFAULT_RATIONALIZATION_MAX_INDEX,
+    provenance: ProvenanceRecord | None = None,
+) -> VariantCorrespondenceTable:
+    """Map arbitrary planes or directions through every transformation variant.
+
+    Purpose: the everyday variant-resolved question — given an orientation
+    relationship and any parent plane ``(hkl)`` or direction ``[uvw]``, what is
+    the parallel plane or direction in each product variant? Used for trace
+    analysis, for predicting which variants share a habit or diffraction
+    feature, and for teaching what "24 variants" actually means.
+
+    When to use: whenever the answer wanted is a *table* rather than a single
+    mapping. `OrientationRelationship.map_plane_to_child` answers for one
+    variant; `map_plane_across_variants` returns the raw correspondences; this
+    surface adds the grouping, labels, residuals, `describe()` and the CSV,
+    Markdown and JSON exports that make the table usable in a report.
+
+    Inputs: the relationship; one `CrystalPlane` or `CrystalDirection`, or a
+    sequence of them (all of the same kind and the same phase); ``sense``,
+    either ``"parent_to_child"`` (the default; objects belong to the parent
+    phase) or ``"child_to_parent"``; an optional explicit ``variants`` tuple
+    (default: all, in `generate_variants()` order); and ``max_index``, the bound
+    on the rationalized image indices.
+
+    Output: a `VariantCorrespondenceTable` — read its ``describe()``.
+
+    Examples
+    --------
+    Under Kurdjumov-Sachs the austenite ``(111)`` has four crystallographically
+    distinct images across the 24 variants, six variants each. In six of them
+    the image is a ``{011}`` ferrite plane at zero residual — the close-packed
+    correspondence that defines the packet — and the other eighteen land on
+    higher-index rationalizations with residuals of 0.36, 2.48 and 3.69 deg.
+
+    See also
+    --------
+    `map_plane_across_variants`, `map_direction_across_variants` : the raw
+        per-variant correspondences without tabulation.
+    `variant_close_packed_groups` : packet labels from the defining plane family.
+    `find_parallel_planes` : the search over a whole symmetry family rather than
+        one nominated object.
+    """
+
+    if sense not in {"parent_to_child", "child_to_parent"}:
+        raise ValueError("sense must be 'parent_to_child' or 'child_to_parent'.")
+    items: list[CrystalPlane | CrystalDirection] = (
+        [objects]
+        if isinstance(objects, CrystalPlane | CrystalDirection)
+        else list(objects)
+    )
+    if not items:
+        raise ValueError("variant_correspondence_table requires at least one object.")
+    kinds = {"plane" if isinstance(item, CrystalPlane) else "direction" for item in items}
+    if len(kinds) != 1:
+        raise ValueError(
+            "variant_correspondence_table requires all objects to be of one kind; "
+            "call it once for planes and once for directions."
+        )
+    kind = kinds.pop()
+    reciprocal = kind == "plane"
+
+    forward = sense == "parent_to_child"
+    source_phase = relationship.parent_phase if forward else relationship.child_phase
+    image_phase = relationship.child_phase if forward else relationship.parent_phase
+    for item in items:
+        if not phases_semantically_match(item.phase, source_phase):
+            raise ValueError(
+                f"Every object must belong to the {'parent' if forward else 'child'} "
+                f"phase '{source_phase.name}' for sense '{sense}'."
+            )
+
+    resolved = relationship.generate_variants() if variants is None else tuple(variants)
+    if not resolved:
+        raise ValueError("variant_correspondence_table requires at least one variant.")
+
+    rows: list[VariantCorrespondenceRow] = []
+    for item in items:
+        source_indices = (
+            np.asarray(item.miller.indices, dtype=np.int64)
+            if isinstance(item, CrystalPlane)
+            else np.rint(np.asarray(item.coordinates, dtype=np.float64)).astype(np.int64)
+        )
+        source_label = _crystallographic_label(
+            source_indices, phase=source_phase, reciprocal=reciprocal
+        )
+        # One equivalence-group numbering per source object: the question
+        # "how many distinct answers does *this* object have" is per object.
+        group_labels: dict[tuple[int, int, int], int] = {}
+        for variant in resolved:
+            result: PlaneCorrespondence | DirectionCorrespondence
+            if isinstance(item, CrystalPlane):
+                plane_result = (
+                    relationship.map_plane_to_child(item, variant=variant, max_index=max_index)
+                    if forward
+                    else relationship.map_plane_to_parent(
+                        item, variant=variant, max_index=max_index
+                    )
+                )
+                result = plane_result
+                exact = plane_result.target_exact_indices
+            else:
+                direction_result = (
+                    relationship.map_direction_to_child(
+                        item, variant=variant, max_index=max_index
+                    )
+                    if forward
+                    else relationship.map_direction_to_parent(
+                        item, variant=variant, max_index=max_index
+                    )
+                )
+                result = direction_result
+                exact = direction_result.target_exact_coordinates
+            indices = np.asarray(result.rational_indices, dtype=np.int64)
+            family = _family_key(indices, phase=image_phase, reciprocal=reciprocal)
+            group = group_labels.setdefault(family, len(group_labels))
+            rows.append(
+                VariantCorrespondenceRow(
+                    variant_index=variant.variant_index,
+                    source_indices=source_indices,
+                    exact_components=np.asarray(exact, dtype=np.float64),
+                    indices=indices,
+                    residual_deg=float(result.angular_residual_deg),
+                    source_label=source_label,
+                    image_label=_crystallographic_label(
+                        indices, phase=image_phase, reciprocal=reciprocal
+                    ),
+                    equivalence_group=group,
+                )
+            )
+    return VariantCorrespondenceTable(
+        relationship_name=relationship.name,
+        kind=kind,
+        sense=sense,
+        source_phase_name=source_phase.name,
+        image_phase_name=image_phase.name,
+        rows=tuple(rows),
+        max_index=max_index,
+        provenance=provenance or relationship.provenance,
     )
 
 

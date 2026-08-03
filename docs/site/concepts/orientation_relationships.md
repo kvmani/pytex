@@ -278,6 +278,33 @@ $\langle 110 \rangle \parallel \langle 111 \rangle$ directions. The result
 is a typed `ParallelismReport` whose `describe()` prints the parallelism
 table.
 
+## "What does this plane become in every variant?"
+
+`variant_correspondence_table(relationship, objects)` tabulates any parent
+plane or direction — one, or a list — through every product variant, returning
+a row per (source, variant) with the exact image, its nearest integer indices,
+the angular residual between them, and an equivalence-group label that collapses
+variants giving crystallographically equivalent images. `sense="child_to_parent"`
+runs the map the other way, for interpreting product-phase measurements against
+parent stereography.
+
+The grouping is what turns 24 rows into a readable answer. Under Kurdjumov-Sachs
+the austenite $(111)$ has exactly **four distinct images across the 24 variants,
+six variants each**: the $\{011\}$ ferrite plane at zero residual — those six are
+one packet in Morito's sense — and three higher-index rationalizations. The
+reverse map is not selective in the same way: mapping the child $(011)$ back
+lands on a $\{111\}$ parent plane in *all* 24, because every variant's own
+close-packed image came from some $\{111\}$ member.
+
+`exact_rows()` isolates the rows whose image really is the low-index object
+reported, which is the physically interesting subset. Exact correspondences are
+a property of the relationship and do not depend on the rationalization bound;
+how the remaining irrational images group *does*, because a larger bound splits
+them across more index families, and `describe()` says so.
+
+Tables export as `to_csv(path)`, `to_markdown()`, `to_records()` (a
+DataFrame-ready list of dicts) and `to_json_dict()`.
+
 ## Explainable reports
 
 Every OR surface explains itself in convention-explicit prose:

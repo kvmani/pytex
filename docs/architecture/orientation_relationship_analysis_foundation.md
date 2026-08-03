@@ -32,6 +32,11 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   with rationalized indices and atan2 angular residuals; hexagonal Miller-Bravais preserved.
 - **F4 (parallelism finders):** `find_parallel_planes`/`find_parallel_directions` over
   symmetry families with typed reports.
+- **F2b (variant correspondence tables, TX2):** `variant_correspondence_table` — one or
+  many nominated planes/directions through every variant in either sense, with
+  equivalence grouping by index family, `exact_rows()`, `describe()`, and
+  CSV/Markdown/JSON/records export. The KS `(111)` table reproduces the four packets of
+  six, and its exact rows agree with `variant_close_packed_groups` by construction.
 - **F5 (misorientation + deviation):** `misorientation()` representatives (KS 42.85 deg
   $\langle 0.968\;0.178\;0.178 \rangle$ pinned) and `or_deviation` with best-variant assignment.
 - **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean

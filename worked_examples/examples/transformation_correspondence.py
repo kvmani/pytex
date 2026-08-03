@@ -480,6 +480,64 @@ KS_STATEMENT_IS_RECOVERED_FROM_THE_ROTATION = WorkedExample(
     see_also=(_OR_CONCEPT, _API),
 )
 
+_VARIANT_TABLE_CODE = """
+from pytex import variant_correspondence_table
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+table = variant_correspondence_table(
+    ks, CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=austenite), phase=austenite)
+)
+exact = table.exact_rows()
+group_sizes = {}
+for row in table.rows:
+    group_sizes[row.equivalence_group] = group_sizes.get(row.equivalence_group, 0) + 1
+result = [
+    len(table.rows),
+    table.distinct_image_count((1, 1, 1)),
+    len(exact),
+    min(group_sizes.values()),
+    max(group_sizes.values()),
+]
+""".strip()
+
+
+KS_VARIANT_CORRESPONDENCE_TABLE = WorkedExample(
+    id="or-ks-variant-correspondence-packets",
+    title="The (111) variant correspondence table is the four Kurdjumov-Sachs packets",
+    domain="transformation",
+    scenario=(
+        "Ask what one austenite plane becomes in every martensite variant. "
+        "Mapping (111) through all 24 Kurdjumov-Sachs variants and grouping the "
+        "images by index family must reproduce the packet structure of lath "
+        "martensite: four crystallographically distinct answers, six variants "
+        "each, of which exactly one group — six variants — carries (111) onto a "
+        "{011} ferrite plane at zero residual. The computed values are the row "
+        "count, the number of distinct images, the number of exactly parallel "
+        "variants, and the smallest and largest group sizes."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=_VARIANT_TABLE_CODE,
+    expected=[24, 4, 6, 6, 6],
+    unit="counts",
+    tolerance=0,
+    reference=(
+        "Crystallographic identity, not a measured coincidence. Kurdjumov-Sachs "
+        "has 24 variants; each carries exactly one member of the four-member "
+        "{111} family onto its {011} close-packed child plane, so any nominated "
+        "member is the close-packed plane of exactly 24/4 = 6 of them. Those six "
+        "are one packet in the sense of Morito et al., and the parent symmetry "
+        "acts transitively on the remaining images, so every group holds six."
+    ),
+    citation=(
+        "Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) "
+        "1789 (packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325."
+    ),
+    symbols=(_M_RECIP, _HKL),
+    see_also=(_OR_CONCEPT, _API),
+)
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
@@ -499,5 +557,6 @@ GROUP = ExampleGroup(
         KS_SIGMA3_IS_AN_ADMISSIBLE_BOUNDARY,
         KS_IDENTIFIED_FROM_MEASURED_ORIENTATIONS,
         KS_STATEMENT_IS_RECOVERED_FROM_THE_ROTATION,
+        KS_VARIANT_CORRESPONDENCE_TABLE,
     ),
 )

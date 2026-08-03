@@ -658,3 +658,94 @@ result = np.concatenate(
 **Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## The (111) variant correspondence table is the four Kurdjumov-Sachs packets
+
+Ask what one austenite plane becomes in every martensite variant. Mapping (111) through all 24 Kurdjumov-Sachs variants and grouping the images by index family must reproduce the packet structure of lath martensite: four crystallographically distinct answers, six variants each, of which exactly one group — six variants — carries (111) onto a {011} ferrite plane at zero residual. The computed values are the row count, the number of distinct images, the number of exactly parallel variants, and the smallest and largest group sizes.
+
+**Symbols**
+
+- $\mathbf{M}^{*}$ &mdash; Plane-index correspondence matrix mapping parent (hkl) to child (hkl).
+- $(hkl)$ &mdash; Miller plane indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import variant_correspondence_table
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+table = variant_correspondence_table(
+    ks, CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=austenite), phase=austenite)
+)
+exact = table.exact_rows()
+group_sizes = {}
+for row in table.rows:
+    group_sizes[row.equivalence_group] = group_sizes.get(row.equivalence_group, 0) + 1
+result = [
+    len(table.rows),
+    table.distinct_image_count((1, 1, 1)),
+    len(exact),
+    min(group_sizes.values()),
+    max(group_sizes.values()),
+]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-variant-correspondence-packets` | [24, 4, 6, 6, 6] | [24, 4, 6, 6, 6] | counts | exact | exact | ✅ pass |
+
+**Why this value**: Crystallographic identity, not a measured coincidence. Kurdjumov-Sachs has 24 variants; each carries exactly one member of the four-member {111} family onto its {011} close-packed child plane, so any nominated member is the close-packed plane of exactly 24/4 = 6 of them. Those six are one packet in the sense of Morito et al., and the parent symmetry acts transitively on the remaining images, so every group holds six.
+
+**Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

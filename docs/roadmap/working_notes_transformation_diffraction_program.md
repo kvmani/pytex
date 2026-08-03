@@ -37,8 +37,8 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 | Phase | Scope | Status | Commit |
 | --- | --- | --- | --- |
 | TX0 | Specification + ledger | DONE | `8d75f4c5` |
-| TX1 | OR characterization from measured orientations | DONE | (this commit) |
-| TX2 | Variant correspondence tables | TODO | |
+| TX1 | OR characterization from measured orientations | DONE | `8d623366` |
+| TX2 | Variant correspondence tables | DONE | (this commit) |
 | TX3 | Composite SAED robustness + export layer | TODO | |
 | TX4 | Child-zone-anchored composite patterns | TODO | |
 | TX5a | Measured-pattern YAML + calibration + solver core | TODO | |
@@ -170,7 +170,39 @@ Shipped, gates green (full suite, integrity, ruff, mypy, Sphinx zero-warning).
   foundation limits; a structure-aware dispatch (using the space group / centring) would
   remove the assumption.
 
+### TX2 (2026-08-04) — variant correspondence tables
+
+Shipped, gates green.
+
+- **New core surface**: `variant_correspondence_table`, `VariantCorrespondenceTable`,
+  `VariantCorrespondenceRow`. Takes one object or a list (homogeneous kind, one phase),
+  either `sense`, an optional variant subset and a rationalization bound; returns rows with
+  the exact image, integer indices, residual, labels, and an equivalence-group id.
+- **Delegates, does not reimplement**: every row comes from `map_plane_to_child` /
+  `map_direction_to_child` and their parent-inverses, so the index-map semantics have one
+  definition. The table adds grouping, labels, `describe()` and the exports.
+- **The grouping is the value.** KS `(111)` -> 4 distinct images across 24 variants, 6 each;
+  the 6 exact ones are `{011}` at zero residual. The test asserts those 6 *are* the packet
+  `variant_close_packed_groups` returns, comparing two independent computations rather than
+  a stored constant.
+- **Asymmetry worth knowing** (now documented and tested): the reverse map is not selective
+  — child `(011)` maps back onto `{111}` in **all 24** variants, one equivalence group,
+  because each variant's close-packed image came from some `{111}` member.
+- **Rationalization behavior pinned**: raising `max_index` never worsens a residual, and the
+  set of exactly-parallel variants is identical at bounds 3 and 17. Only the labeling of the
+  *irrational* images depends on the bound; `describe()` states this, because a reader
+  otherwise reads "6 distinct images" as physics when it is partly a bookkeeping choice.
+- **Rationalization is sign-sensitive** (pre-existing, by design — it matches the exact
+  image's direction, which matters for a diffraction vector `g`), so the Burgers basal image
+  appears as `(0001)` or `(000-1)` depending on the variant. The test accepts both and says
+  why.
+- **24 tests** in `tests/unit/test_variant_correspondence_table.py`, **one worked example**
+  (the packet identity, expected `[24, 4, 6, 6, 6]` with tolerance 0).
+- **Docs synced**: CHANGELOG, concept page section, OR foundation §1 (new F2b entry),
+  validation matrix (three new rows).
+
 ### Next action
 
-Start **TX2**: `VariantCorrespondenceTable` over one or many parent planes/directions, both
-mapping senses, symmetry-equivalence grouping, and CSV/JSON/Markdown export. Spec §4.
+Start **TX3**: composite SAED robustness (deterministic spot ordering, absence audit,
+normalization contract, guard rails, fuller `describe()`) plus the export layer —
+`composite_reflection_table`, `export_composite_saed`, and the manifest schema. Spec §5.
