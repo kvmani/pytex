@@ -352,15 +352,12 @@ def composite_reflection_table(
             variant_index=variant_pattern.variant_index,
         )
 
-    from pytex.core.notation import format_direction_indices
 
     return ReflectionTable(
         relationship_name=pattern.relationship.name,
         parent_phase_name=pattern.relationship.parent_phase.name,
         child_phase_name=pattern.relationship.child_phase.name,
-        parent_zone_axis_label=format_direction_indices(
-            tuple(int(value) for value in pattern.parent_zone_axis.indices), style="plain"
-        ),
+        parent_zone_axis_label=pattern.parent_zone_axis_label(),
         camera_constant_mm_angstrom=float(pattern.config.camera_constant_mm_angstrom),
         beam_energy_kev=float(pattern.config.beam_energy_kev),
         wavelength_angstrom=float(pattern.config.wavelength_angstrom),
@@ -369,6 +366,23 @@ def composite_reflection_table(
         intensity_threshold=float(intensity_threshold),
         provenance=provenance or pattern.provenance,
     )
+
+
+def _parent_zone_axis_payload(pattern: CompositeSAEDPattern) -> list[float]:
+    """The parent zone axis as JSON numbers, integer or not.
+
+    A parent-anchored pattern has integer indices. A pattern anchored on a
+    child variant's zone axis has the exact — generally irrational — parent
+    direction that corresponds to it, so the manifest records real components
+    and relies on ``parent_zone_axis_nearest`` for the readable label.
+    """
+
+    from pytex.core.lattice import ZoneAxis
+
+    axis = pattern.parent_zone_axis
+    if isinstance(axis, ZoneAxis):
+        return [float(int(value)) for value in axis.indices]
+    return [float(value) for value in axis.coordinates]
 
 
 def composite_saed_manifest(
@@ -416,16 +430,27 @@ def composite_saed_manifest(
             "min_relative_intensity": float(config.min_relative_intensity),
         }
 
-    from pytex.core.notation import format_direction_indices
 
     manifest: dict[str, Any] = {
         "schema": COMPOSITE_SAED_MANIFEST_SCHEMA,
         "relationship": pattern.relationship.name,
         "parent_phase": pattern.relationship.parent_phase.name,
         "child_phase": pattern.relationship.child_phase.name,
-        "parent_zone_axis": [int(value) for value in pattern.parent_zone_axis.indices],
-        "parent_zone_axis_label": format_direction_indices(
-            tuple(int(value) for value in pattern.parent_zone_axis.indices), style="plain"
+        "parent_zone_axis": _parent_zone_axis_payload(pattern),
+        "parent_zone_axis_label": pattern.parent_zone_axis_label(),
+        "anchor_variant_index": pattern.anchor_variant_index,
+        "parent_zone_axis_nearest": (
+            None
+            if pattern.nearest_parent_zone_axis is None
+            else {
+                "indices": [
+                    int(value) for value in pattern.nearest_parent_zone_axis.indices
+                ],
+                "label": pattern.nearest_parent_zone_axis.label(),
+                "deviation_deg": float(
+                    pattern.nearest_parent_zone_axis.deviation_deg
+                ),
+            }
         ),
         "includes_parent": pattern.parent_spots is not None,
         "parent_reflection_count": (

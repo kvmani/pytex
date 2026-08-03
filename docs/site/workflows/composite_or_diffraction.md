@@ -142,6 +142,54 @@ The child zone axes are stored as exact `CrystalDirection` objects;
 zone that lands exactly on $\langle 111 \rangle$ reports $0^{\circ}$ while an off-zone variant
 reports its true tilt.
 
+## Anchoring On A Product Zone Instead
+
+`simulate_composite_saed` takes the **parent** zone axis, which matches how the
+crystallography is derived but not always how the microscope is used. In
+practice the operator tilts to a low-index zone of the *product* — say
+$[0001]$ of one alpha variant — and then wants to know what the matrix and the
+other variants contribute to that same pattern.
+
+```python
+pattern = simulate_composite_saed_from_child_zone(
+    burgers,
+    ZoneAxis(np.array([0, 0, 1]), phase=alpha),
+    anchor_variant_index=3,
+    variant_indices=(1, 2, 3),
+)
+```
+
+The anchor variant's rotation $\mathbf{R}_k$ carries parent Cartesian vectors
+into that child's frame, so the requested child zone $\mathbf{z}_c$ corresponds
+to the parent direction $\mathbf{R}_k^{\mathsf{T}} \mathbf{z}_c$. That direction
+is **generally irrational**, and the result reports it exactly alongside its
+nearest rational label — the same honesty child zone axes already get in the
+parent-anchored case, so neither crystal is privileged in the output.
+
+The detector basis is then built from that parent direction through the same
+`zone_basis_from_axis` call the parent-anchored path uses, so there is exactly
+one geometry definition. The consequence is a testable identity: **anchoring on
+variant $k$'s image of a parent zone reproduces the parent-anchored pattern for
+that zone exactly.** `align_child_g` works in the child's own indices and is
+mapped to the parent frame internally.
+
+`variant_indices` chooses which variants are drawn and is independent of
+`anchor_variant_index`; the anchor variant is not added automatically.
+
+Every export states which crystal defined the geometry: the pattern carries
+`anchor_variant_index`, `describe()` and `anchor_description()` name it, and the
+manifest records both it and the nearest rational parent zone.
+
+### A note on spot order
+
+Symmetry-equivalent reflections have mathematically equal intensity and detector
+radius that differ in the last few ULPs depending on how the basis was built.
+The engine's sort quantizes those two continuous keys (1 pm of radius, $10^{-12}$
+of full-scale intensity) before ordering, so ties fall through to the exact
+lexicographic `hkl` comparison rather than to floating-point noise. Without
+that, the two anchoring routes produced correctly-positioned but *permuted*
+spot tables, and any exported table or pinned figure inherited the permutation.
+
 ## Exporting The Pattern
 
 A simulated pattern usually has to leave the process — as a table for a paper, a

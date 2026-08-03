@@ -53,6 +53,26 @@ downstream analyses depend on them.
   catalog member it matched. The reported deviations then verify the statement
   against the fitted rotation instead of asserting it.
 
+- **Composite patterns can be anchored on a product-variant zone axis.**
+  `simulate_composite_saed_from_child_zone(relationship, child_zone_axis,
+  anchor_variant_index=k, ...)` matches how the microscope is used: the operator
+  tilts to a low-index zone of the *product* and wants the matrix and the sibling
+  variants around it. The anchor variant's rotation `R_k` carries parent Cartesian
+  vectors into that child's frame, so the requested child zone corresponds to the
+  parent direction `R_k^T z_c` — generally irrational, and reported exactly
+  alongside its nearest rational label, the same honesty child zone axes already
+  got. `align_child_g` works in the child's own indices.
+
+  Because the geometry then goes through the same `zone_basis_from_axis` call the
+  parent-anchored path uses, there is one detector-geometry definition and a
+  testable identity: anchoring on variant `k`'s image of a parent zone reproduces
+  the parent-anchored pattern for that zone exactly (verified to 1e-13 mm, and
+  pinned as a worked example). `simulate_composite_saed` accordingly accepts an
+  irrational `CrystalDirection` as well as a `ZoneAxis`, and
+  `CompositeSAEDPattern` records `anchor_variant_index` and
+  `nearest_parent_zone_axis` so every export states which crystal defined the
+  geometry.
+
 - **Composite SAED patterns now export.** New module `pytex.diffraction.export`:
   `composite_reflection_table(pattern)` produces one row per rendered spot —
   source (parent or variant `k`), phase, Miller indices and label, `d`, `|g|`,
@@ -313,6 +333,22 @@ downstream analyses depend on them.
     as a test rather than as a broken figure.
 
 ### Fixed
+
+- **Kinematic spot ordering was not stable against floating-point ties.** The
+  sort keys are decreasing intensity, then detector radius, then lexicographic
+  `hkl`. Symmetry-equivalent reflections have mathematically equal intensity and
+  radius that differ in the last few ULPs depending on how the detector basis was
+  built, so the *noise* decided the order before the exact `hkl` tie-break was
+  ever reached. Reaching the same pattern by two equivalent routes — a parent
+  zone axis, or that same axis recovered from a child variant's zone — therefore
+  produced correctly-positioned but **permuted** spot tables, and any exported
+  table or pinned figure inherited the permutation.
+
+  Both continuous keys are now quantized before sorting: 1 pm of detector radius
+  and 1e-12 of full-scale relative intensity, far below anything physical and far
+  above the ~1e-14 noise they suppress. Ties fall through to the exact index
+  comparison as intended. Row order in exported reflection tables may change for
+  reflections that were previously ordered by noise.
 
 - **Checksum-pinned fixtures no longer fail integrity checks on Windows.**
   `fixtures/phases/fe_bcc/phase.cif` held CRLF on disk and hashed to

@@ -294,6 +294,17 @@ def electron_structure_factors(
     return total
 
 
+#: Detector-radius quantum used when ordering spots, in decimal places of a
+#: millimetre. Nine places is 1 pm — orders of magnitude below any physically
+#: meaningful detector distance, and orders of magnitude above the ~1e-14 mm
+#: floating-point spread between symmetry-equivalent reflections.
+_RADIUS_SORT_DECIMALS = 9
+
+#: Relative-intensity quantum used when ordering spots. Intensities are
+#: normalized to a maximum of 1, so twelve places is 1e-12 of full scale.
+_INTENSITY_SORT_DECIMALS = 12
+
+
 def _enumerate_hkl_cube(max_index: int) -> np.ndarray:
     values = np.arange(-max_index, max_index + 1, dtype=np.int64)
     grid_h, grid_k, grid_l = np.meshgrid(values, values, values, indexing="ij")
@@ -307,7 +318,11 @@ class SpotTable:
 
     All arrays share the leading reflection dimension ``N`` and are
     read-only; rows are sorted by decreasing intensity, then increasing
-    detector radius, then lexicographic ``hkl`` for full determinism.
+    detector radius, then lexicographic ``hkl`` for full determinism. The two
+    continuous keys are quantized before sorting (1 pm of radius, 1e-12 of
+    full-scale intensity) so that symmetry-equivalent reflections, whose values
+    are mathematically equal but differ in the last few ULPs, are ordered by
+    their exact indices rather than by floating-point noise.
     ``basis`` columns are the detector ``u``, ``v`` axes and the zone-axis
     unit vector, all in the phase crystal Cartesian frame. ``detector_mm``
     stacks the ``(u, v)`` detector-plane coordinates in millimetres;
@@ -524,7 +539,25 @@ def simulate_zone_axis_spots(
     with np.errstate(divide="ignore"):
         d_spacing = np.where(g_magnitude > 0.0, 1.0 / g_magnitude, np.inf)
     radius = np.linalg.norm(detector_mm, axis=1)
-    order = np.lexsort((hkl[:, 2], hkl[:, 1], hkl[:, 0], radius, -intensity))
+    # Quantize the two continuous sort keys before ordering. Intensity and
+    # radius are ranking keys, not measurements, and reflections related by
+    # symmetry have mathematically equal values that differ in the last few
+    # ULPs depending on how the detector basis was built. Comparing them raw
+    # lets that noise decide the order, so the same pattern reached by two
+    # equivalent routes — a parent zone axis, or the same axis recovered from a
+    # child variant's zone — can come out permuted. Rounding first sends every
+    # such tie to the exact lexicographic hkl tie-break instead. The quanta are
+    # far below anything physical (1 pm on the detector, 1e-12 of full scale in
+    # intensity) and far above the ~1e-14 noise they suppress.
+    order = np.lexsort(
+        (
+            hkl[:, 2],
+            hkl[:, 1],
+            hkl[:, 0],
+            np.round(radius, _RADIUS_SORT_DECIMALS),
+            -np.round(intensity, _INTENSITY_SORT_DECIMALS),
+        )
+    )
 
     return SpotTable(
         phase=phase,

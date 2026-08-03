@@ -8,6 +8,7 @@ from pytex.diffraction.composite import (
     is_hexagonal_phase,
     rationalize_zone_axis,
     simulate_composite_saed,
+    simulate_composite_saed_from_child_zone,
     sweep_parent_zone_axes,
 )
 from pytex.diffraction.export import (
@@ -134,6 +135,7 @@ __all__ = [
     "sample_great_circle",
     "sample_small_circle",
     "simulate_composite_saed",
+    "simulate_composite_saed_from_child_zone",
     "simulate_zone_axis_spots",
     "spherical_angles_to_directions",
     "sweep_parent_zone_axes",

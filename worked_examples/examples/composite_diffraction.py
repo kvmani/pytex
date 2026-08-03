@@ -301,6 +301,75 @@ BURGERS_REFLECTION_TABLE = WorkedExample(
 )
 
 
+_CHILD_ANCHOR_CODE = """
+from pytex.diffraction.composite import simulate_composite_saed_from_child_zone
+
+selection = (1, 2, 3, 4)
+parent_zone = ZoneAxis(np.array([1, 1, 0]), phase=beta_ti)
+reference = simulate_composite_saed(burgers, parent_zone, variant_indices=selection)
+# Anchor on variant 2's own view of that same parent zone.
+recovered = simulate_composite_saed_from_child_zone(
+    burgers,
+    reference.variant_pattern(2).zone_axis_child,
+    anchor_variant_index=2,
+    variant_indices=selection,
+)
+largest_shift = max(
+    float(
+        np.max(
+            np.abs(
+                reference.variant_pattern(index).spots.detector_mm
+                - recovered.variant_pattern(index).spots.detector_mm
+            )
+        )
+    )
+    for index in selection
+)
+parent_shift = float(
+    np.max(
+        np.abs(
+            reference.parent_spots.detector_mm - recovered.parent_spots.detector_mm
+        )
+    )
+)
+result = [largest_shift, parent_shift]
+""".strip()
+
+
+CHILD_ANCHORED_CONSISTENCY = WorkedExample(
+    id="composite-child-anchored-geometry-consistency",
+    title="Anchoring on a variant's own zone reproduces the parent-anchored pattern",
+    domain="diffraction",
+    scenario=(
+        "A composite pattern can be set up two ways: choose the parent zone "
+        "axis, or choose a zone axis of one product variant and let the parent "
+        "direction follow. The two must agree, because the anchor variant's "
+        "rotation R_k satisfies R_k^T (R_k z_p) = z_p, so both routes build the "
+        "detector basis about the same parent direction. This simulates a "
+        "Burgers composite along beta [110], re-anchors it on variant 2's own "
+        "view of that zone, and measures the largest detector displacement of "
+        "any spot — for the variants and for the parent."
+    ),
+    setup=BURGERS_SETUP,
+    code=_CHILD_ANCHOR_CODE,
+    expected=[0.0, 0.0],
+    unit="mm",
+    tolerance=1e-9,
+    reference=(
+        "An exact identity of the construction, not a measured agreement: the "
+        "child-anchored entry point maps the requested child zone back through "
+        "R_k^T and then delegates to the parent-anchored engine, so the shared "
+        "detector basis is the same object built the same way. Any nonzero "
+        "displacement would mean the two paths had diverged. The 1e-9 mm "
+        "tolerance is the floating-point round trip through the rotation, not a "
+        "physical margin."
+    ),
+    citation="Burgers, Physica 1 (1934) 561.",
+    symbols=(),
+    see_also=(_BURGERS_CONCEPT, _DIFF_CONCEPT),
+)
+
+
 GROUP = ExampleGroup(
     slug="composite-diffraction",
     title="Composite OR diffraction",
@@ -317,6 +386,7 @@ GROUP = ExampleGroup(
         BURGERS_EXACT_BASAL_ZONE,
         BURGERS_BASAL_COINCIDENCE,
         BURGERS_REFLECTION_TABLE,
+        CHILD_ANCHORED_CONSISTENCY,
     ),
 )
 

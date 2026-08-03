@@ -12,6 +12,8 @@
     "child_phase",
     "parent_zone_axis",
     "parent_zone_axis_label",
+    "anchor_variant_index",
+    "parent_zone_axis_nearest",
     "includes_parent",
     "parent_reflection_count",
     "zone_basis_parent",
@@ -30,13 +32,34 @@
     "parent_phase": { "type": "string", "minLength": 1 },
     "child_phase": { "type": "string", "minLength": 1 },
     "parent_zone_axis": {
-      "description": "Integer [uvw] of the parent zone axis the detector geometry is anchored to.",
+      "description": "Parent direction the shared detector geometry is built about. Integer-valued when the user chose a parent zone axis; generally irrational when the geometry was anchored on a product variant's zone axis instead, in which case parent_zone_axis_nearest carries the readable label.",
       "type": "array",
       "minItems": 3,
       "maxItems": 3,
-      "items": { "type": "integer" }
+      "items": { "type": "number" }
     },
     "parent_zone_axis_label": { "type": "string", "minLength": 1 },
+    "anchor_variant_index": {
+      "description": "Null when the user chose the parent zone axis; the 1-based variant index when the geometry was anchored on that product variant's zone axis instead.",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "parent_zone_axis_nearest": {
+      "description": "Nearest rational parent zone axis, present only when the parent direction is irrational.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["indices", "label", "deviation_deg"],
+      "properties": {
+        "indices": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": { "type": "integer" }
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "deviation_deg": { "type": "number", "minimum": 0 }
+      }
+    },
     "includes_parent": { "type": "boolean" },
     "parent_reflection_count": { "type": "integer", "minimum": 0 },
     "zone_basis_parent": {

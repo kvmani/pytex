@@ -206,16 +206,28 @@ class CompositeSAEDPattern:
     All sub-patterns share the parent-anchored detector basis
     ``zone_basis_parent`` (columns ``u``, ``v``, zone axis; parent crystal
     Cartesian frame), so every ``detector_mm`` array overlays one detector.
+
+    The geometry is always expressed about a parent direction, but that
+    direction need not be the *chosen* one. ``anchor_variant_index`` is ``None``
+    for the usual case — the user picked a rational parent zone axis — and
+    carries the variant index when the user instead picked a zone axis of that
+    product variant, in which case ``parent_zone_axis`` is the generally
+    irrational parent direction it corresponds to and
+    ``nearest_parent_zone_axis`` reports the closest rational label. This
+    mirrors how child zone axes are reported in the parent-anchored case, so
+    neither crystal is privileged in the output.
     """
 
     relationship: OrientationRelationship
-    parent_zone_axis: ZoneAxis
+    parent_zone_axis: ZoneAxis | CrystalDirection
     parent_spots: SpotTable | None
     variant_patterns: tuple[VariantZonePattern, ...]
     zone_basis_parent: np.ndarray
     config: KinematicSimulationConfig
     child_config: KinematicSimulationConfig
     provenance: ProvenanceRecord | None = None
+    anchor_variant_index: int | None = None
+    nearest_parent_zone_axis: RationalizedZoneAxis | None = None
 
     def __post_init__(self) -> None:
         if not phases_semantically_match(
@@ -224,6 +236,8 @@ class CompositeSAEDPattern:
             raise ValueError(
                 "CompositeSAEDPattern.parent_zone_axis must use the parent phase."
             )
+        if self.anchor_variant_index is not None and self.anchor_variant_index <= 0:
+            raise ValueError("anchor_variant_index must be a positive variant index.")
         basis = as_float_array(self.zone_basis_parent, shape=(3, 3))
         basis = np.ascontiguousarray(basis)
         basis.setflags(write=False)
@@ -241,6 +255,40 @@ class CompositeSAEDPattern:
     @property
     def variant_indices(self) -> tuple[int, ...]:
         return tuple(pattern.variant_index for pattern in self.variant_patterns)
+
+    def parent_zone_axis_label(self) -> str:
+        """The parent zone axis as a bracketed label, rational or not.
+
+        A rational zone axis prints its integer indices. A parent direction
+        recovered from a chosen *child* zone axis is generally irrational, so
+        its decimal components are printed instead, followed by the nearest
+        rational label and that label's angular deviation — the same honesty
+        the child zone axes get in the parent-anchored case.
+        """
+
+        if isinstance(self.parent_zone_axis, ZoneAxis):
+            return format_direction_indices(
+                tuple(int(value) for value in self.parent_zone_axis.indices), style="plain"
+            )
+        components = "[" + " ".join(
+            f"{value:.3f}" for value in self.parent_zone_axis.coordinates
+        ) + "]"
+        if self.nearest_parent_zone_axis is None:
+            return components
+        return (
+            f"{components} (nearest {self.nearest_parent_zone_axis.label()}, "
+            f"{self.nearest_parent_zone_axis.deviation_deg:.3f} deg off)"
+        )
+
+    def anchor_description(self) -> str:
+        """Which crystal's zone axis defined the shared detector geometry."""
+
+        if self.anchor_variant_index is None:
+            return f"parent '{self.relationship.parent_phase.name}'"
+        return (
+            f"variant {self.anchor_variant_index} of child "
+            f"'{self.relationship.child_phase.name}'"
+        )
 
     def variant_pattern(self, variant_index: int) -> VariantZonePattern:
         for pattern in self.variant_patterns:
@@ -329,13 +377,20 @@ class CompositeSAEDPattern:
         """Convention-explicit prose summary of the composite pattern."""
 
         relationship = self.relationship
-        parent_label = format_direction_indices(
-            tuple(int(v) for v in self.parent_zone_axis.indices), style="plain"
-        )
+        parent_label = self.parent_zone_axis_label()
         parent_part = (
             f"{len(self.parent_spots)} parent reflection(s) included"
             if self.parent_spots is not None
             else "parent reflections not included"
+        )
+        anchor_part = (
+            ""
+            if self.anchor_variant_index is None
+            else (
+                f" The detector geometry was anchored on the zone axis of "
+                f"{self.anchor_description()}, and the parent direction above is the exact "
+                "parent direction that corresponds to it."
+            )
         )
         lines = [
             (
@@ -343,7 +398,7 @@ class CompositeSAEDPattern:
                 f"'{relationship.name}' (parent '{relationship.parent_phase.name}' -> "
                 f"child '{relationship.child_phase.name}') viewed along parent zone axis "
                 f"{parent_label}; {parent_part}; {len(self.variant_patterns)} variant "
-                f"pattern(s)."
+                f"pattern(s).{anchor_part}"
             ),
             (
                 "Conventions: the beam is antiparallel to the zone axis; variant rotations "
@@ -372,15 +427,17 @@ class CompositeSAEDPattern:
 
 def simulate_composite_saed(
     relationship: OrientationRelationship,
-    parent_zone_axis: ZoneAxis,
+    parent_zone_axis: ZoneAxis | CrystalDirection,
     *,
     variant_indices: tuple[int, ...] | list[int] | None = None,
     include_parent: bool = True,
     config: KinematicSimulationConfig | None = None,
     child_config: KinematicSimulationConfig | None = None,
     align_parent_g: MillerIndex | None = None,
+    align_g_cartesian: np.ndarray | None = None,
     in_plane_rotation_deg: float = 0.0,
     rationalize_max_index: int = _RATIONALIZE_DEFAULT_MAX_INDEX,
+    anchor_variant_index: int | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> CompositeSAEDPattern:
     """Simulate a composite parent + OR-variant SAED pattern.
@@ -402,9 +459,19 @@ def simulate_composite_saed(
     :class:`KinematicSimulationConfig`); ``child_config`` — optional separate
     settings for children (defaults to ``config``); ``align_parent_g`` — a
     parent reflection whose in-plane component is placed along ``+u``;
+    ``align_g_cartesian`` — the same alignment given directly as a parent
+    crystal Cartesian reciprocal vector, for callers that hold one but no
+    integer parent index (used by
+    :func:`simulate_composite_saed_from_child_zone`);
     ``in_plane_rotation_deg`` — rotates the whole composite counterclockwise
     on the detector; ``rationalize_max_index`` — index bound for child
-    zone-axis labels.
+    zone-axis labels; ``anchor_variant_index`` — bookkeeping only, recording
+    that this geometry was chosen from a child variant's zone axis rather than
+    from the parent's.
+
+    ``parent_zone_axis`` may be an irrational :class:`CrystalDirection` as well
+    as a rational :class:`ZoneAxis`; an irrational one is labeled by its
+    components plus its nearest rational zone, exactly as child zone axes are.
 
     Output: :class:`CompositeSAEDPattern` with parent and per-variant
     :class:`SpotTable` data in one shared detector frame.
@@ -415,6 +482,11 @@ def simulate_composite_saed(
     parent_config = KinematicSimulationConfig() if config is None else config
     effective_child_config = parent_config if child_config is None else child_config
 
+    if align_parent_g is not None and align_g_cartesian is not None:
+        raise ValueError(
+            "Pass at most one of align_parent_g and align_g_cartesian; they set the same "
+            "in-plane reference."
+        )
     align_cartesian: np.ndarray | None = None
     if align_parent_g is not None:
         if not phases_semantically_match(align_parent_g.phase, relationship.parent_phase):
@@ -422,12 +494,19 @@ def simulate_composite_saed(
         align_cartesian = ReciprocalLatticeVector.from_miller_index(
             align_parent_g
         ).cartesian_vector
+    elif align_g_cartesian is not None:
+        align_cartesian = as_float_array(align_g_cartesian, shape=(3,))
 
     zone_unit_parent = parent_zone_axis.unit_vector
     basis_parent = zone_basis_from_axis(
         zone_unit_parent,
         align_g_cartesian=align_cartesian,
         in_plane_rotation_deg=in_plane_rotation_deg,
+    )
+    nearest_parent = (
+        None
+        if isinstance(parent_zone_axis, ZoneAxis)
+        else rationalize_zone_axis(parent_zone_axis, max_index=rationalize_max_index)
     )
 
     parent_spots: SpotTable | None = None
@@ -485,6 +564,109 @@ def simulate_composite_saed(
         zone_basis_parent=basis_parent,
         config=parent_config,
         child_config=effective_child_config,
+        provenance=provenance,
+        anchor_variant_index=anchor_variant_index,
+        nearest_parent_zone_axis=nearest_parent,
+    )
+
+
+def simulate_composite_saed_from_child_zone(
+    relationship: OrientationRelationship,
+    child_zone_axis: ZoneAxis | CrystalDirection,
+    *,
+    anchor_variant_index: int = 1,
+    variant_indices: tuple[int, ...] | list[int] | None = None,
+    include_parent: bool = True,
+    config: KinematicSimulationConfig | None = None,
+    child_config: KinematicSimulationConfig | None = None,
+    align_child_g: MillerIndex | None = None,
+    in_plane_rotation_deg: float = 0.0,
+    rationalize_max_index: int = _RATIONALIZE_DEFAULT_MAX_INDEX,
+    provenance: ProvenanceRecord | None = None,
+) -> CompositeSAEDPattern:
+    """Simulate a composite pattern anchored on a *product-variant* zone axis.
+
+    Purpose: matches how the microscope is actually used. An operator tilts to a
+    low-index zone of the **product** — say ``[0001]`` of one alpha variant —
+    and then wants to know what the parent matrix and the *other* variants
+    contribute to that same pattern. :func:`simulate_composite_saed` answers the
+    mirror-image question, where the parent zone is the one chosen.
+
+    When to use: interpreting a measured pattern taken on a product grain,
+    predicting which sibling variants will decorate it, and teaching why a
+    two-phase pattern looks the way it does from the product's point of view.
+
+    Algorithm: the anchor variant's rotation ``R_k`` carries parent Cartesian
+    vectors into that child's crystal frame, so the requested child zone ``z_c``
+    corresponds to the parent direction ``R_k^T z_c`` — generally irrational,
+    which is why the result reports it exactly alongside its nearest rational
+    label. The detector basis is then built from that parent direction through
+    the same :func:`zone_basis_from_axis` path the parent-anchored entry point
+    uses, and the simulation delegates to :func:`simulate_composite_saed`. There
+    is therefore exactly one detector-geometry definition, and anchoring on
+    variant ``k``'s image of a parent zone reproduces the parent-anchored
+    pattern for that zone identically.
+
+    Inputs: ``child_zone_axis`` — a zone axis of the child phase, rational
+    (the practical case: the operator tilted to a low-index child zone) or an
+    exact irrational :class:`CrystalDirection`, which is what makes the
+    consistency identity above testable to machine precision;
+    ``anchor_variant_index`` — which variant that zone axis belongs to (1-based,
+    default 1); ``align_child_g`` — a **child** reflection whose in-plane
+    component is placed along ``+u``, expressed in the child's own indices and
+    mapped to the parent frame internally; every other argument is forwarded to
+    :func:`simulate_composite_saed`.
+
+    ``variant_indices`` selects which variants appear in the composite and is
+    independent of ``anchor_variant_index``; the anchor variant is not added
+    automatically, so ask for it explicitly if you want its own spots drawn.
+
+    Output: a :class:`CompositeSAEDPattern` whose ``anchor_variant_index``
+    records the choice, so every export states which crystal defined the
+    geometry.
+
+    See also
+    --------
+    `simulate_composite_saed` : the parent-anchored entry point this delegates to.
+    """
+
+    if not phases_semantically_match(child_zone_axis.phase, relationship.child_phase):
+        raise ValueError("child_zone_axis.phase must match relationship.child_phase.")
+    variants = relationship.generate_variants()
+    available = {variant.variant_index: variant for variant in variants}
+    anchor = available.get(int(anchor_variant_index))
+    if anchor is None:
+        raise ValueError(
+            f"Unknown anchor_variant_index {anchor_variant_index}; available: "
+            f"1..{len(variants)}."
+        )
+
+    rotation = anchor.parent_to_child_rotation.as_matrix()
+    # R_k maps parent Cartesian -> child Cartesian, so its transpose carries the
+    # chosen child zone axis back to the parent direction it corresponds to.
+    parent_cartesian = rotation.T @ child_zone_axis.unit_vector
+    parent_direction = CrystalDirection.from_cartesian(
+        parent_cartesian, phase=relationship.parent_phase
+    )
+
+    align_cartesian: np.ndarray | None = None
+    if align_child_g is not None:
+        if not phases_semantically_match(align_child_g.phase, relationship.child_phase):
+            raise ValueError("align_child_g.phase must match relationship.child_phase.")
+        child_g = ReciprocalLatticeVector.from_miller_index(align_child_g).cartesian_vector
+        align_cartesian = rotation.T @ child_g
+
+    return simulate_composite_saed(
+        relationship,
+        parent_direction,
+        variant_indices=variant_indices,
+        include_parent=include_parent,
+        config=config,
+        child_config=child_config,
+        align_g_cartesian=align_cartesian,
+        in_plane_rotation_deg=in_plane_rotation_deg,
+        rationalize_max_index=rationalize_max_index,
+        anchor_variant_index=int(anchor_variant_index),
         provenance=provenance,
     )
 
@@ -681,9 +863,7 @@ def find_spot_coincidences(
             tuple(int(v) for v in item.child_hkl),
         )
     )
-    parent_zone_label = format_direction_indices(
-        tuple(int(v) for v in pattern.parent_zone_axis.indices), style="plain"
-    )
+    parent_zone_label = pattern.parent_zone_axis_label()
     return SpotCoincidenceReport(
         relationship_name=pattern.relationship.name,
         parent_zone_label=parent_zone_label,
@@ -721,5 +901,6 @@ __all__ = [
     "is_hexagonal_phase",
     "rationalize_zone_axis",
     "simulate_composite_saed",
+    "simulate_composite_saed_from_child_zone",
     "sweep_parent_zone_axes",
 ]

@@ -728,9 +728,7 @@ def render_composite_saed(
 
     parent_table = rendered.parent_spots
     if plot_config.show_parent and parent_table is not None:
-        parent_zone = "[" + " ".join(
-            str(int(v)) for v in rendered.parent_zone_axis.indices
-        ) + "]"
+        parent_zone = rendered.parent_zone_axis_label()
         parent_label = f"{rendered.relationship.parent_phase.name} {parent_zone}"
         _scatter_sub_pattern(
             axes,
@@ -783,9 +781,7 @@ def render_composite_saed(
         if plot_config.title is not None:
             axes.set_title(plot_config.title)
         else:
-            parent_zone = format_direction_indices(
-                tuple(int(v) for v in rendered.parent_zone_axis.indices), style="plain"
-            )
+            parent_zone = rendered.parent_zone_axis_label()
             axes.set_title(
                 f"{rendered.relationship.name}: composite SAED, parent {parent_zone} zone"
             )

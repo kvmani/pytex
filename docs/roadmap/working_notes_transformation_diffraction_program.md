@@ -39,8 +39,8 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 | TX0 | Specification + ledger | DONE | `8d75f4c5` |
 | TX1 | OR characterization from measured orientations | DONE | `8d623366` |
 | TX2 | Variant correspondence tables | DONE | `971c6431` |
-| TX3 | Composite SAED robustness + export layer | DONE | (this commit) |
-| TX4 | Child-zone-anchored composite patterns | TODO | |
+| TX3 | Composite SAED robustness + export layer | DONE | `0bb2256f` |
+| TX4 | Child-zone-anchored composite patterns | DONE | (this commit) |
 | TX5a | Measured-pattern YAML + calibration + solver core | TODO | |
 | TX5b | Variant assignment + interactive picker | TODO | |
 | TX6 | Burgers notebook, figures, theory notes, ledger closure | TODO | |
@@ -240,10 +240,47 @@ Shipped, gates green.
 - **Docs synced**: CHANGELOG, workflow page (new "Exporting the pattern" section with the
   centering trap), diffraction validation matrix (three new rows), schema README.
 
+### TX4 (2026-08-04) — child-zone anchoring, and a sort-stability defect it exposed
+
+Shipped, gates green.
+
+- **`simulate_composite_saed_from_child_zone(relationship, child_zone_axis,
+  anchor_variant_index=k, ...)`** maps the requested child zone back through `R_k^T` and
+  delegates to `simulate_composite_saed`, so there is exactly one detector-geometry
+  definition. `align_child_g` is given in the child's own indices and mapped internally.
+- **`simulate_composite_saed` generalized** to accept an irrational `CrystalDirection` as
+  well as a `ZoneAxis`, plus an `align_g_cartesian` escape hatch and an
+  `anchor_variant_index` bookkeeping field. `CompositeSAEDPattern` gained
+  `anchor_variant_index`, `nearest_parent_zone_axis`, `parent_zone_axis_label()` and
+  `anchor_description()`; every label site (coincidence report, reflection table, plotting
+  title and legend) now routes through the accessor instead of reading `.indices` directly.
+- **The consistency identity found a real defect.** Anchoring on variant `k`'s image of a
+  parent zone should reproduce the parent-anchored pattern exactly. The first run showed
+  spots displaced by up to **486 mm** — with matching counts. The positions were right; the
+  *row order* was not. The sort keys are intensity then radius then `hkl`, and
+  symmetry-equivalent reflections have mathematically equal intensity and radius that differ
+  by ~1e-14 depending on how the basis was built, so noise decided the order before the exact
+  `hkl` tie-break was reached. Both continuous keys are now quantized before `lexsort`
+  (1 pm of radius, 1e-12 of full-scale intensity). The identity then holds to **1e-13 mm**
+  with identical `hkl` ordering. This is a behavior change for exported table row order and
+  is recorded under `Fixed` in the CHANGELOG.
+- **18 tests** in `tests/unit/test_composite_saed_child_anchor.py`: the identity for four
+  anchor variants, sort-order stability under a 1e-15 perturbation and across repeated runs,
+  the Burgers basal-zone geometry, `align_child_g` placing a child reflection on `+u`, the
+  anchor recorded in `describe()`/manifest, and validation. **One worked example** pinning
+  the identity at tolerance 1e-9 mm.
+- **Schema updated**: `parent_zone_axis` is now `number` rather than `integer` (it is the
+  exact parent direction, generally irrational), plus required `anchor_variant_index` and
+  `parent_zone_axis_nearest`.
+- **Docs synced**: CHANGELOG (Added + Fixed), workflow page (new "Anchoring on a product
+  zone" section including the spot-order note), diffraction validation matrix (two rows).
+
 ### Next action
 
-Start **TX4**: `simulate_composite_saed_from_child_zone` — anchor the shared detector
-geometry on a chosen product-variant zone axis, map it back to the exact (generally
-irrational) parent direction with `R_k^T`, and delegate to the existing parent-anchored
-engine so there is one geometry definition. The strongest available test is the consistency
-identity in spec §6.3. Spec §6.
+Start **TX5a**: the measured-pattern YAML contract (`MeasuredSAEDPattern`,
+`PatternCalibration`, schema), and the ratio/angle solver core (`solve_saed_pattern`)
+producing ranked `PatternSolution`s with an honest `is_conclusive` and an explicit statement
+of the `z` vs `-z` ambiguity. Spec §7. Note the existing detector-geometry-driven
+`index_saed_pattern` in `diffraction/models.py` solves a *different* problem (a calibrated
+detector and a known geometry object); TX5 works from a bare calibrated spot list, and the
+docs must say which to use when.
