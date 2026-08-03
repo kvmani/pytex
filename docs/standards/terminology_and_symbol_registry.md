@@ -122,6 +122,8 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\mathbf{M}^{*}$ | Plane-index correspondence matrix of an orientation relationship: $\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p}$, with $\mathbf{M}^{*} = \mathbf{M}^{-\mathsf{T}}$ so the zone law $\mathbf{h} \cdot \mathbf{u}$ is preserved. |
 | $G_p$, $G_c$ | Parent and child crystal point groups, as sets of proper rotation operators. |
 | $G_c \left(R\,G_p\,R^{\mathsf{T}}\right) G_c$ | Same-parent boundary fingerprint: the set of misorientations two child grains of one parent can exhibit, since $\mathbf{C}_i^{\mathsf{T}}\mathbf{C}_j = \mathbf{V}_i \mathbf{V}_j^{\mathsf{T}}$ and $\mathbf{V}_i = R\,S_{p,i}$. Each child orientation is defined only up to its own crystal symmetry, hence the double coset. |
+| $\mathbf{V}_i = \mathbf{C}_i^{\mathsf{T}} \mathbf{P}_i$ | Measured parent-to-child rotation of one orientation pair, in the canonical crystal-to-specimen convention $\mathbf{C} = \mathbf{P}\,\mathbf{V}^{\mathsf{T}}$. The quantity every OR fitting and determination surface averages. |
+| $G_c \mathbf{V} G_p$ | Double coset of one measured pair: all symmetry-equivalent descriptions of its parent-to-child rotation. Its maximum-trace (minimum-angle) element is the pair's disorientation description of the relationship, and is the seed for determining an OR with no nominal supplied. Not unique when the relationship's own rotation is symmetric. |
 
 ### Orientation and misorientation
 

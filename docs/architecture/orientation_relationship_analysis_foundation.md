@@ -36,6 +36,18 @@ Implemented and tested in `pytex.core.transformation`, `pytex.core.parent_recons
   $\langle 0.968\;0.178\;0.178 \rangle$ pinned) and `or_deviation` with best-variant assignment.
 - **F6 (fitting):** `fit_orientation_relationship` — symmetry-aligned quaternion eigen-mean
   with iterative realignment; recovers GT exactly from a KS nominal.
+- **F6b (OR determination from measured pairs, TX1):**
+  `characterize_orientation_relationship` / `orientation_relationship_from_euler` — fit
+  (seeded from the data, no nominal required), catalog ranking through
+  `default_relationship_catalog`, parallelism extraction, and an explicit
+  `is_conclusive` verdict, in one `ORCharacterizationReport`.
+  `describe_orientation_relationship` recovers the parallel-plane / parallel-direction
+  statement from a rotation alone, with hexagonal phases labeled in four-index
+  Miller-Bravais form. The seed reduces **one** pair through the double coset
+  $G_c V_0 G_p$ rather than averaging all of them: the maximum-trace element is not
+  unique for a symmetric relationship, and averaging tied representatives turns Bain
+  (45 deg / $\langle 100 \rangle$, three variants) into a meaningless 26.9 deg that
+  reads as KS. Regression-pinned.
 - **F8 (reconstruction, experimental):** `reconstruct_parent_grains` /
   `reconstruct_parent_grains_from_graph` — same-parent fingerprint edges, union-find
   clustering, averaged parent refinement, EBSD grain-graph wiring; validated on the
@@ -156,6 +168,14 @@ pairs by symmetry-aware rotation averaging (quaternion mean over the per-pair va
 misorientations, with outlier rejection); report confidence via residual statistics. Parity
 floor: MTEX `calcParent2Child`.
 
+**F6b. OR *determination* from measured pairs.** F6 refines a relationship the user already
+names. F6b answers the question as asked — "what is the OR?" — with no nominal: a data-derived
+starting estimate, a ranking against the standard catalog for the two crystal systems, the
+parallel-plane / parallel-direction statement recovered from the fitted rotation, and an
+explicit verdict on whether the identification is trustworthy. Specified in the
+[Transformation Crystallography And Composite Diffraction Program](transformation_crystallography_and_diffraction_program.md)
+as TX1.
+
 **F7. OR determination without the parent.** From child-child boundary misorientations in a
 fully transformed microstructure, refine the OR via the MODF peak structure (the intervariant
 fingerprint). Validated against lath-martensite literature data.
@@ -208,9 +228,20 @@ metadata; the catalog constructors gain a registry keyed by name + phase-family 
 - Property-based: random lattices and ORs — mapping a plane and its symmetric equivalents must
   produce the same child family; rationalization residuals must be invariant to index scaling.
 
-## 5. Current Limits (honest statement, updated 2026-07-18)
+## 5. Current Limits (honest statement, updated 2026-08-03)
 
-F1-F12 and F14 are implemented and validated as listed in §1. F7 is implemented at both stages
+F1-F12, F6b, and F14 are implemented and validated as listed in §1.
+
+F6b's limits are worth stating precisely because the surface is easy to over-trust. The catalog
+ranking can only choose among the relationships it is given, and the standard cubic-cubic entry
+assumes an fcc→bcc transformation because point-group symmetry cannot distinguish an fcc phase
+from a bcc one — supply an explicit catalog when that assumption is wrong. The parallelism
+statement is recovered at a bounded index (default 3 on both sides), so a relationship defined
+by higher-index parallelisms will report none and say so rather than invent one. Discrimination
+is limited by the catalog's own spacing: on planted Kurdjumov-Sachs data the identification is
+conclusive up to 2 deg of added scatter and correctly reports *inconclusive* at 5 deg, which is
+comparable to the 2.40 deg separating KS from Greninger-Troiano. Validation is synthetic;
+measured-EBSD fixtures remain outstanding, as they do for F8. F7 is implemented at both stages
 as experimental surfaces: `pytex.experimental.identify_orientation_relationship` ranks candidate
 ORs against child-child boundary misorientations via the double-coset intervariant fingerprint,
 and `pytex.experimental.refine_orientation_relationship_from_boundaries` refines the winning

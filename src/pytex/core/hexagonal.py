@@ -3,11 +3,15 @@ from __future__ import annotations
 from collections.abc import Iterable
 from fractions import Fraction
 from math import gcd
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike
 
 from pytex.core._arrays import IntArray, as_int_array
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle guard
+    from pytex.core.lattice import Phase
 
 
 def _reduce_integer_tuple(values: Iterable[int]) -> IntArray:
@@ -55,3 +59,19 @@ def plane_hkil_to_hkl(hkil: ArrayLike) -> IntArray:
     if i != -(h + k):
         raise ValueError("Hexagonal four-index planes must satisfy i = -(h + k).")
     return as_int_array((h, k, ell), shape=(3,))
+
+
+def is_hexagonal_phase(phase: Phase) -> bool:
+    """Whether ``phase`` belongs to the hexagonal crystal system.
+
+    Purpose: decide when to present directions and reflections in four-index
+    Miller-Bravais notation (the convention for hexagonal crystals such as
+    the alpha-hcp product of the Burgers relationship). Trigonal phases are
+    intentionally excluded: PyTex stores them in the hexagonal setting but
+    three-index labels remain conventional there.
+
+    This is the single definition used across the library; the diffraction
+    package re-exports it rather than defining its own.
+    """
+
+    return phase.symmetry.to_point_group().crystal_system == "hexagonal"

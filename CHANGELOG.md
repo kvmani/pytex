@@ -13,6 +13,62 @@ downstream analyses depend on them.
 
 ### Added
 
+- **One call now answers "I measured two phases by EBSD — what is the
+  orientation relationship?"** `characterize_orientation_relationship(parents,
+  children)` fits the operative rotation, names it against the standard catalog
+  for the two crystal systems, states it as parallel planes and directions, and
+  judges whether the identification can be trusted — returning an
+  `ORCharacterizationReport` with `describe()` and a JSON payload.
+  `orientation_relationship_from_euler(...)` is the same surface taking two
+  columns of Bunge Euler angles in degrees, which is how measurements arrive.
+
+  The fit needs no nominal relationship. The starting estimate comes from the
+  data: the first pair is reduced to its minimum-angle representative in the
+  double coset $G_c V_0 G_p$, which absorbs the parent symmetry operation that
+  distinguishes one variant from another, so pairs drawn from different
+  variants still align to it. **Only one pair is reduced, deliberately** —
+  reducing every pair and averaging looks more robust and is not, because the
+  maximum-trace element is not unique when the relationship's own rotation is
+  symmetric. Bain is the concrete failure: 45 deg about <100> with three
+  variants averages to a meaningless 26.9 deg, which then reads as
+  Kurdjumov-Sachs. A regression test pins the correct behavior.
+
+  The verdict is deliberately conservative. `is_conclusive` requires the winner
+  to fit within tolerance *and* to lead the runner-up by more than both the
+  measurement scatter and its own misfit. Measured behavior on planted KS data:
+  identified conclusively up to 2 deg of added scatter; at 5 deg — comparable
+  to the 2.40 deg that separates KS from Greninger-Troiano — the report
+  degrades to an explicit "NOT conclusively identified" rather than to a
+  confident wrong answer.
+
+- **`describe_orientation_relationship(relationship)` reads a rotation back as
+  crystallography**, recovering the parallel-plane and parallel-direction
+  clauses that define it: `(111) || (011)` with `[10-1] || [11-1]` for
+  Kurdjumov-Sachs, `(011) || (0001)` with `[-111] || [-12-10]` for Burgers,
+  with hexagonal phases labeled in four-index Miller-Bravais form. A rotation
+  typically satisfies several exact low-index parallelisms at once, all true;
+  which one the literature quotes depends on the structures rather than on the
+  rotation, so the search takes a preference — by default the relationship's own
+  recorded defining families, and for a fitted relationship those of the
+  catalog member it matched. The reported deviations then verify the statement
+  against the fitted rotation instead of asserting it.
+
+- **`default_relationship_catalog(parent_phase, child_phase)`** resolves the
+  standard named catalog from the two crystal systems through one auditable
+  dispatch table, and returns `None` rather than forcing an inapplicable list
+  when no standard catalog covers the pair.
+
+- **`is_hexagonal_phase` moved into `pytex.core.hexagonal`** and is exported
+  from `pytex.core`; `pytex.diffraction.composite` re-exports it. Core
+  notation needs the same test the diffraction labels use, and the library
+  keeps one definition of it.
+
+- **Program specification** for transformation crystallography and composite
+  diffraction:
+  [`docs/architecture/transformation_crystallography_and_diffraction_program.md`](docs/architecture/transformation_crystallography_and_diffraction_program.md),
+  with the running phase ledger in
+  [`docs/roadmap/working_notes_transformation_diffraction_program.md`](docs/roadmap/working_notes_transformation_diffraction_program.md).
+
 - **Parent-grain reconstruction no longer treats connectivity as proof of a
   shared parent.** This is a scientific behavior change: groupings and parent
   counts change again, and strictly for the better.
@@ -210,6 +266,15 @@ downstream analyses depend on them.
     as a test rather than as a broken figure.
 
 ### Fixed
+
+- **Checksum-pinned fixtures no longer fail integrity checks on Windows.**
+  `fixtures/phases/fe_bcc/phase.cif` held CRLF on disk and hashed to
+  `e512334e…`, while its LF form hashes to `8afe4f95…` — the digest pinned in
+  `fixtures/phases/catalog.json`. Git's Windows default `core.autocrlf=true`
+  was rewriting checksum-pinned artifacts on checkout, so six phase fixtures
+  failed `scripts/check_repo_integrity.py` and `tests/unit/test_phase_fixtures.py`
+  on any such clone. A new `.gitattributes` marks `fixtures/phases/**`,
+  `fixtures/mtex_parity/**` and `*.ipynb` as `-text`, disabling the conversion.
 
 - **Parent-grain reconstruction linked grains on the misorientation angle
   alone, merging unrelated parents.** This is a scientific behavior change:

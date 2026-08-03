@@ -353,14 +353,143 @@ KS_SIGMA3_IS_AN_ADMISSIBLE_BOUNDARY = WorkedExample(
     see_also=(_OR_CONCEPT, _API),
 )
 
+_R_FIT = SymbolUse(
+    r"\mathbf{R}",
+    "Parent-to-child rotation of an orientation relationship.",
+)
+
+_IDENTIFICATION_CODE = """
+from pytex import (
+    OrientationSet,
+    Rotation,
+    characterize_orientation_relationship,
+    specimen_frame,
+)
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+variants = ks.generate_variants()
+parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+# Canonical crystal->specimen convention: C = P V^T.
+child_matrices = np.stack(
+    [
+        parent_matrix @ variants[k].parent_to_child_rotation.as_matrix().T
+        for k in (0, 4, 8, 13, 17, 22)
+    ]
+)
+frame = specimen_frame()
+parents = OrientationSet.from_matrices(
+    np.stack([parent_matrix] * 6), specimen_frame=frame, phase=austenite
+)
+children = OrientationSet.from_matrices(
+    child_matrices, specimen_frame=frame, phase=ferrite
+)
+report = characterize_orientation_relationship(parents, children)
+deviations = dict(zip(report.catalog_names, report.catalog_deviations_deg, strict=True))
+result = [deviations["kurdjumov_sachs"], deviations["nishiyama_wassermann"]]
+""".strip()
+
+
+KS_IDENTIFIED_FROM_MEASURED_ORIENTATIONS = WorkedExample(
+    id="or-ks-identified-from-measured-orientations",
+    title="Kurdjumov-Sachs recovered from measured parent/child orientation pairs",
+    domain="transformation",
+    scenario=(
+        "The everyday EBSD question: a parent grain and several child grains "
+        "were indexed, and the operative orientation relationship is wanted. "
+        "Children are synthesized here through six known Kurdjumov-Sachs "
+        "variants of one parent, and characterization runs with no nominal "
+        "relationship supplied, so the answer comes from the data alone. Two "
+        "quantities are checked: the deviation of the fitted rotation from "
+        "catalog Kurdjumov-Sachs, and its deviation from Nishiyama-Wassermann. "
+        "The first must be zero because the data were built from that "
+        "relationship; the second must be the published separation between the "
+        "two relationships, which is what makes them distinguishable at all."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=_IDENTIFICATION_CODE,
+    expected=[0.0, 5.26],
+    unit="deg",
+    tolerance=0.01,
+    reference=(
+        "The first value is an analytic identity: the children were generated "
+        "from exact Kurdjumov-Sachs variants, so the fitted rotation must "
+        "coincide with the relationship it was built from. The second is the "
+        "tabulated 5.26 deg angular separation between the Kurdjumov-Sachs and "
+        "Nishiyama-Wassermann relationships. Neither number is copied from a "
+        "previous program output."
+    ),
+    citation=(
+        "Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Nishiyama, Sci. Rep. "
+        "Tohoku Univ. 23 (1934) 637; Wassermann, Arch. Eisenhuettenwes. 16 "
+        "(1933) 647."
+    ),
+    symbols=(_R_FIT, _OMEGA),
+    see_also=(_OR_CONCEPT, _API),
+)
+
+_STATEMENT_CODE = """
+from pytex import describe_orientation_relationship
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+planes, directions = describe_orientation_relationship(ks)
+plane, direction = planes[0], directions[0]
+result = np.concatenate(
+    [
+        np.sort(np.abs(plane.parent_indices)),
+        np.sort(np.abs(plane.child_indices)),
+        np.sort(np.abs(direction.parent_indices)),
+        np.sort(np.abs(direction.child_indices)),
+        [plane.deviation_deg, direction.deviation_deg],
+    ]
+)
+""".strip()
+
+
+KS_STATEMENT_IS_RECOVERED_FROM_THE_ROTATION = WorkedExample(
+    id="or-ks-parallelism-statement-from-rotation",
+    title="Reading the Kurdjumov-Sachs parallelisms back out of its rotation",
+    domain="transformation",
+    scenario=(
+        "An orientation relationship is stored as a rotation, but the "
+        "literature reports it as parallel planes and directions. This example "
+        "recovers that statement from the rotation alone and checks it against "
+        "the defining Kurdjumov-Sachs parallelisms: the parent plane must "
+        "belong to {111} and its child image to {011}, the parent direction to "
+        "<110> and its child image to <111>, all at zero angular deviation. "
+        "Sorted absolute indices are compared because any member of a family is "
+        "an equally correct statement of the same relationship."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=_STATEMENT_CODE,
+    expected=[1, 1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0.0, 0.0],
+    unit="indices, deg",
+    tolerance=1e-4,
+    reference=(
+        "The Kurdjumov-Sachs relationship is defined by {111}_fcc || {011}_bcc "
+        "and <110>_fcc || <111>_bcc, so recovering the statement from the "
+        "rotation must reproduce exactly those families at zero deviation "
+        "(analytic identity). The 1e-4 deg tolerance is the matrix-quaternion "
+        "round-trip noise floor, not a physical margin."
+    ),
+    citation="Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.",
+    symbols=(_R_FIT, _HKL, _UVW),
+    see_also=(_OR_CONCEPT, _API),
+)
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
     summary=(
         "Index-correspondence identities for named orientation relationships: "
         "mapping parent planes and directions to their product-phase "
-        "counterparts, with rationalized indices and angular residuals, and "
-        "the misorientation representation used for EBSD comparison."
+        "counterparts, with rationalized indices and angular residuals, the "
+        "misorientation representation used for EBSD comparison, and the "
+        "recovery of a relationship and its parallelism statement from measured "
+        "parent/child orientation pairs."
     ),
     examples=(
         KS_PLANE_CORRESPONDENCE,
@@ -368,5 +497,7 @@ GROUP = ExampleGroup(
         KS_MISORIENTATION_REPRESENTATION,
         OR_FITTING_RECOVERS_GT,
         KS_SIGMA3_IS_AN_ADMISSIBLE_BOUNDARY,
+        KS_IDENTIFIED_FROM_MEASURED_ORIENTATIONS,
+        KS_STATEMENT_IS_RECOVERED_FROM_THE_ROTATION,
     ),
 )

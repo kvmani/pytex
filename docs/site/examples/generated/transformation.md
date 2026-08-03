@@ -4,7 +4,7 @@
 
 # Orientation-relationship correspondence
 
-Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, and the misorientation representation used for EBSD comparison.
+Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -466,5 +466,195 @@ result = [sigma3_distance, worst_variant_pair]
 **Why this value**: Both values are identities, not fitted numbers. The Kurdjumov-Sachs intervariant table published by Morito et al. lists a 60 deg / <111> variant pair (V1-V20), which is exactly the Sigma3 coincidence-site relation, so the Sigma3 rotation belongs to the admissible set. The variant-pair boundaries generate the set by construction, so their distance to it is identically zero. The 1e-5 deg tolerance is the arccos and quaternion/matrix round-trip noise floor, not a physical margin.
 
 **Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (KS intervariant table); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Kurdjumov-Sachs recovered from measured parent/child orientation pairs
+
+The everyday EBSD question: a parent grain and several child grains were indexed, and the operative orientation relationship is wanted. Children are synthesized here through six known Kurdjumov-Sachs variants of one parent, and characterization runs with no nominal relationship supplied, so the answer comes from the data alone. Two quantities are checked: the deviation of the fitted rotation from catalog Kurdjumov-Sachs, and its deviation from Nishiyama-Wassermann. The first must be zero because the data were built from that relationship; the second must be the published separation between the two relationships, which is what makes them distinguishable at all.
+
+**Symbols**
+
+- $\mathbf{R}$ &mdash; Parent-to-child rotation of an orientation relationship.
+- $(\mathbf{n}, \omega)$ &mdash; Axis-angle pair of the symmetry-reduced misorientation representative.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import (
+    OrientationSet,
+    Rotation,
+    characterize_orientation_relationship,
+    specimen_frame,
+)
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+variants = ks.generate_variants()
+parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+# Canonical crystal->specimen convention: C = P V^T.
+child_matrices = np.stack(
+    [
+        parent_matrix @ variants[k].parent_to_child_rotation.as_matrix().T
+        for k in (0, 4, 8, 13, 17, 22)
+    ]
+)
+frame = specimen_frame()
+parents = OrientationSet.from_matrices(
+    np.stack([parent_matrix] * 6), specimen_frame=frame, phase=austenite
+)
+children = OrientationSet.from_matrices(
+    child_matrices, specimen_frame=frame, phase=ferrite
+)
+report = characterize_orientation_relationship(parents, children)
+deviations = dict(zip(report.catalog_names, report.catalog_deviations_deg, strict=True))
+result = [deviations["kurdjumov_sachs"], deviations["nishiyama_wassermann"]]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-identified-from-measured-orientations` | [0.0000, 5.2644] | [0.0000, 5.2600] | deg | 4.39e-03 | 1e-02 | ✅ pass |
+
+**Why this value**: The first value is an analytic identity: the children were generated from exact Kurdjumov-Sachs variants, so the fitted rotation must coincide with the relationship it was built from. The second is the tabulated 5.26 deg angular separation between the Kurdjumov-Sachs and Nishiyama-Wassermann relationships. Neither number is copied from a previous program output.
+
+**Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Nishiyama, Sci. Rep. Tohoku Univ. 23 (1934) 637; Wassermann, Arch. Eisenhuettenwes. 16 (1933) 647.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Reading the Kurdjumov-Sachs parallelisms back out of its rotation
+
+An orientation relationship is stored as a rotation, but the literature reports it as parallel planes and directions. This example recovers that statement from the rotation alone and checks it against the defining Kurdjumov-Sachs parallelisms: the parent plane must belong to {111} and its child image to {011}, the parent direction to <110> and its child image to <111>, all at zero angular deviation. Sorted absolute indices are compared because any member of a family is an equally correct statement of the same relationship.
+
+**Symbols**
+
+- $\mathbf{R}$ &mdash; Parent-to-child rotation of an orientation relationship.
+- $(hkl)$ &mdash; Miller plane indices.
+- $[uvw]$ &mdash; Miller direction indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import describe_orientation_relationship
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+planes, directions = describe_orientation_relationship(ks)
+plane, direction = planes[0], directions[0]
+result = np.concatenate(
+    [
+        np.sort(np.abs(plane.parent_indices)),
+        np.sort(np.abs(plane.child_indices)),
+        np.sort(np.abs(direction.parent_indices)),
+        np.sort(np.abs(direction.child_indices)),
+        [plane.deviation_deg, direction.deviation_deg],
+    ]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-parallelism-statement-from-rotation` | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | indices, deg | 0.00e+00 | 1e-04 | ✅ pass |
+
+**Why this value**: The Kurdjumov-Sachs relationship is defined by {111}_fcc || {011}_bcc and <110>_fcc || <111>_bcc, so recovering the statement from the rotation must reproduce exactly those families at zero deviation (analytic identity). The 1e-4 deg tolerance is the matrix-quaternion round-trip noise floor, not a physical margin.
+
+**Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

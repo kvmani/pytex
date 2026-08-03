@@ -206,6 +206,66 @@ residual statistics quantify the fit. The returned
 `OrientationRelationshipFitReport` carries the fitted
 `OrientationRelationship` and a `describe()` summary.
 
+## "I measured two phases — what is the OR?"
+
+`characterize_orientation_relationship(parents, children)` answers the
+question an EBSD user actually asks, in one call and without needing to guess
+the answer first. Given paired parent and child grain-mean orientations it
+
+1. **fits** the operative rotation, seeded from the data itself rather than
+   from a nominal relationship (see below);
+2. **names** it, by ranking the fit against the standard catalog for the two
+   crystal systems under both symmetry groups;
+3. **states** it crystallographically, recovering the parallel planes and
+   directions that define it; and
+4. **judges** it — `is_conclusive` is `False` unless the winner both fits
+   within tolerance and leads the runner-up by more than the measurement
+   scatter and its own misfit.
+
+`orientation_relationship_from_euler(parent_euler_deg, child_euler_deg, ...)`
+is the same thing taking two columns of Bunge Euler angles in degrees, which
+is how the measurements usually arrive.
+
+### The data-derived starting estimate
+
+Each pair contributes $V_i = C_i^{\mathsf{T}} P_i$. Without a nominal
+relationship the first pair is reduced to its minimum-angle representative in
+the double coset $G_c V_0 G_p$; the parent symmetry operation that
+distinguishes one variant from another lives inside that coset, so pairs drawn
+from *different* variants still have an equivalent description close to this
+one, and the alignment step finds it.
+
+Only one pair is reduced, deliberately. Reducing every pair independently and
+averaging the results looks more robust and is not: the maximum-trace element
+is not unique when the relationship's own rotation is symmetric, so different
+pairs land on different tied representatives whose mean is a rotation none of
+them shows. Bain is the concrete failure — $45^{\circ}$ about
+$\langle 100 \rangle$ with three variants averages to a meaningless
+$26.9^{\circ}$, which then reads as Kurdjumov-Sachs. Seeding from one pair and
+resolving the rest against it breaks the ties consistently, and a regression
+test pins it.
+
+### Reading a rotation back as crystallography
+
+`describe_orientation_relationship(relationship)` recovers the parallel-plane
+and parallel-direction clauses from a rotation alone. A rotation has three
+degrees of freedom, so one plane parallelism (two constraints) plus one
+in-plane direction parallelism (the third) determines it completely — which is
+exactly the classical form, $(111) \parallel (011)$ with
+$[10\bar{1}] \parallel [11\bar{1}]$ for Kurdjumov-Sachs, and
+$(011)_{\beta} \parallel (0001)_{\alpha}$ with
+$[\bar{1}11]_{\beta} \parallel [\bar{1}2\bar{1}0]_{\alpha}$ for Burgers
+(hexagonal phases are labeled in four-index Miller-Bravais form).
+
+A rotation typically satisfies *several* exact low-index parallelisms at once,
+all of them true. Which one the literature quotes is a fact about the two
+structures — their close-packed planes and directions — not about the
+rotation, and index magnitude alone cannot recover it. So the search takes a
+preference: by default, the relationship's own recorded defining families, and
+for a fitted relationship, those of the catalog member it matched. The
+reported deviations then *verify* the statement against the fitted rotation
+instead of asserting it.
+
 ## Parallelism finders
 
 `find_parallel_planes(relationship, parent_plane)` enumerates the parent

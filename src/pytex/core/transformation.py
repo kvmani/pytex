@@ -1,14 +1,27 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike
 
+if TYPE_CHECKING:  # pragma: no cover - import-cycle guard
+    # parent_reconstruction imports this module, so the catalog type is
+    # available for annotations only; the runtime import is local to the one
+    # function that needs it.
+    from pytex.core.parent_reconstruction import OrientationRelationshipCatalog
+
 from pytex.core._arrays import as_int_array
 from pytex.core.batches import VectorSet
 from pytex.core.frames import ReferenceFrame
+from pytex.core.hexagonal import (
+    direction_uvw_to_uvtw,
+    is_hexagonal_phase,
+    plane_hkl_to_hkil,
+)
 from pytex.core.lattice import (
     CrystalDirection,
     CrystalPlane,
@@ -1854,6 +1867,144 @@ def _symmetry_reduced_angle_between_deg(
     return float(np.min(_rotation_angles_deg_from_matrices(relative.reshape(-1, 3, 3))))
 
 
+def _symmetry_operator_pair(
+    relationship: OrientationRelationship,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The (parent, child) proper-rotation operator arrays of a relationship.
+
+    Phases without a symmetry specification contribute the identity, so every
+    caller can use one code path.
+    """
+
+    identity = np.eye(3, dtype=np.float64)[None, :, :]
+    parent_symmetry = relationship.parent_phase.symmetry
+    child_symmetry = relationship.child_phase.symmetry
+    return (
+        parent_symmetry.operators if parent_symmetry is not None else identity,
+        child_symmetry.operators if child_symmetry is not None else identity,
+    )
+
+
+def _measured_parent_to_child(
+    parent_orientations: OrientationSet, child_orientations: OrientationSet
+) -> np.ndarray:
+    """Per-pair measured parent-to-child rotations ``V_i = C_i^T P_i``.
+
+    The single definition of "the operative rotation of a measured pair" in
+    the canonical crystal->specimen convention (``C = P V^T``). Every TX
+    surface routes through this helper rather than re-deriving the transpose
+    placement.
+    """
+
+    return np.asarray(
+        np.einsum(
+            "nji,njk->nik",
+            child_orientations.as_matrices(),
+            parent_orientations.as_matrices(),
+            optimize=True,
+        ),
+        dtype=np.float64,
+    )
+
+
+def _fit_from_seed(
+    measured: np.ndarray,
+    seed: np.ndarray,
+    *,
+    parent_operators: np.ndarray,
+    child_operators: np.ndarray,
+    max_iterations: int,
+    convergence_tol_deg: float,
+) -> tuple[np.ndarray, np.ndarray, int, bool]:
+    """Symmetry-aware rotation averaging of measured parent-to-child rotations.
+
+    Alternates (i) aligning every measurement to the symmetry-equivalent
+    description ``S_c V S_p`` nearest the current estimate and (ii) replacing
+    the estimate with the quaternion eigen-mean (Markley) of the aligned set.
+    Shared by ``fit_orientation_relationship`` (seeded by a nominal OR) and
+    ``characterize_orientation_relationship`` (seeded by the double-coset
+    reduction of the data itself), so there is exactly one implementation of
+    the averaging semantics.
+
+    Returns ``(estimate, residuals_deg, iterations, converged)``.
+    """
+
+    candidates = np.einsum(
+        "aij,njk,bkl->nabil", child_operators, measured, parent_operators, optimize=True
+    )
+    pair_count = measured.shape[0]
+    flat_candidates = candidates.reshape(pair_count, -1, 3, 3)
+    estimate = np.asarray(seed, dtype=np.float64)
+    iterations = 0
+    converged = False
+    aligned = flat_candidates[:, 0]
+    previous_best: np.ndarray | None = None
+    while iterations < max_iterations and not converged:
+        iterations += 1
+        relative = np.einsum("ncij,kj->ncik", flat_candidates, estimate, optimize=True)
+        traces = np.trace(relative, axis1=-2, axis2=-1)
+        best = np.argmax(traces, axis=1)
+        aligned = flat_candidates[np.arange(pair_count), best]
+        quaternions = matrices_to_quaternions(aligned)
+        scatter = quaternions.T @ quaternions
+        eigenvalues, eigenvectors = np.linalg.eigh(scatter)
+        mean_quaternion = eigenvectors[:, int(np.argmax(eigenvalues))]
+        updated = Rotation(quaternion=mean_quaternion).as_matrix()
+        step_angle = _rotation_angles_deg_from_matrices((updated @ estimate.T)[None, :, :])[0]
+        estimate = updated
+        # Fixed point: alignment assignments stable (the mean is then a
+        # deterministic function of them), or the step under the angular
+        # tolerance. The assignment test is robust to the ~1e-6 deg
+        # matrix->quaternion->matrix round-trip noise floor.
+        converged = (
+            previous_best is not None and bool(np.array_equal(best, previous_best))
+        ) or step_angle <= convergence_tol_deg
+        previous_best = best
+    residuals = _rotation_angles_deg_from_matrices(
+        np.einsum("nij,kj->nik", aligned, estimate, optimize=True)
+    )
+    return estimate, residuals, iterations, converged
+
+
+def _double_coset_seed(
+    measured: np.ndarray,
+    *,
+    parent_operators: np.ndarray,
+    child_operators: np.ndarray,
+) -> np.ndarray:
+    """A starting estimate derived from the data alone, with no nominal OR.
+
+    The first measurement is reduced to its minimum-angle (maximum-trace)
+    representative within the double coset ``G_c V_0 G_p`` — the disorientation
+    description of the relationship that pair shows. Measurements belonging to
+    different variants of one relationship differ exactly by a parent symmetry
+    operation, which the coset absorbs, so every other pair has an equivalent
+    description close to this one and `_fit_from_seed` will find it.
+
+    Only one measurement is reduced, deliberately. Averaging the reduced
+    representatives of *all* measurements looks more robust and is not: the
+    maximum-trace element is not unique when the relationship's rotation is
+    itself symmetric, and different pairs then reduce to different tied
+    representatives whose mean is a rotation none of them shows. Bain is the
+    concrete failure — 45 deg about <100> with three variants averages to a
+    meaningless 27 deg. Seeding from one pair and letting the alignment step
+    resolve every other pair against it breaks the ties consistently.
+
+    Any symmetry-equivalent description states the same relationship, so
+    downstream comparisons must remain symmetry-reduced (they are).
+    """
+
+    candidates = np.einsum(
+        "aij,jk,bkl->abil",
+        child_operators,
+        measured[0],
+        parent_operators,
+        optimize=True,
+    ).reshape(-1, 3, 3)
+    traces = np.trace(candidates, axis1=-2, axis2=-1)
+    return np.ascontiguousarray(candidates[int(np.argmax(traces))])
+
+
 def fit_orientation_relationship(
     parent_orientations: OrientationSet,
     child_orientations: OrientationSet,
@@ -1898,60 +2049,15 @@ def fit_orientation_relationship(
         raise ValueError("child_orientations.phase must match the nominal child phase.")
     if parent_orientations.specimen_frame != child_orientations.specimen_frame:
         raise ValueError("Parent and child orientations must share a specimen frame.")
-    parent_symmetry = nominal.parent_phase.symmetry
-    child_symmetry = nominal.child_phase.symmetry
-    parent_operators = (
-        parent_symmetry.operators
-        if parent_symmetry is not None
-        else np.eye(3, dtype=np.float64)[None, :, :]
-    )
-    child_operators = (
-        child_symmetry.operators
-        if child_symmetry is not None
-        else np.eye(3, dtype=np.float64)[None, :, :]
-    )
-    parent_matrices = parent_orientations.as_matrices()
-    child_matrices = child_orientations.as_matrices()
-    # Canonical crystal->specimen convention: C = P V^T, so the measured
-    # parent-to-child rotation per pair is V = C^T P.
-    measured = np.einsum("nji,njk->nik", child_matrices, parent_matrices, optimize=True)
-    # All symmetry-equivalent descriptions of every measurement, computed once:
-    # S_c (C^T P) S_p over both groups.
-    candidates = np.einsum(
-        "aij,njk,bkl->nabil", child_operators, measured, parent_operators, optimize=True
-    )
-    pair_count = measured.shape[0]
-    flat_candidates = candidates.reshape(pair_count, -1, 3, 3)
-    estimate = nominal.parent_to_child_rotation.as_matrix()
-    iterations = 0
-    converged = False
-    aligned = flat_candidates[:, 0]
-    previous_best: np.ndarray | None = None
-    while iterations < max_iterations and not converged:
-        iterations += 1
-        relative = np.einsum("ncij,kj->ncik", flat_candidates, estimate, optimize=True)
-        traces = np.trace(relative, axis1=-2, axis2=-1)
-        best = np.argmax(traces, axis=1)
-        aligned = flat_candidates[np.arange(pair_count), best]
-        quaternions = matrices_to_quaternions(aligned)
-        scatter = quaternions.T @ quaternions
-        eigenvalues, eigenvectors = np.linalg.eigh(scatter)
-        mean_quaternion = eigenvectors[:, int(np.argmax(eigenvalues))]
-        updated = Rotation(quaternion=mean_quaternion).as_matrix()
-        step_angle = _rotation_angles_deg_from_matrices(
-            (updated @ estimate.T)[None, :, :]
-        )[0]
-        estimate = updated
-        # Fixed point: alignment assignments stable (the mean is then a
-        # deterministic function of them), or the step under the angular
-        # tolerance. The assignment test is robust to the ~1e-6 deg
-        # matrix->quaternion->matrix round-trip noise floor.
-        converged = (
-            previous_best is not None and bool(np.array_equal(best, previous_best))
-        ) or step_angle <= convergence_tol_deg
-        previous_best = best
-    residuals = _rotation_angles_deg_from_matrices(
-        np.einsum("nij,kj->nik", aligned, estimate, optimize=True)
+    parent_operators, child_operators = _symmetry_operator_pair(nominal)
+    measured = _measured_parent_to_child(parent_orientations, child_orientations)
+    estimate, residuals, iterations, converged = _fit_from_seed(
+        measured,
+        nominal.parent_to_child_rotation.as_matrix(),
+        parent_operators=parent_operators,
+        child_operators=child_operators,
+        max_iterations=max_iterations,
+        convergence_tol_deg=convergence_tol_deg,
     )
     fitted_rotation = Rotation.from_matrix(estimate).canonicalized()
     fitted = OrientationRelationship(
@@ -2276,6 +2382,813 @@ def variant_close_packed_groups(
     labels = np.ascontiguousarray(labels)
     labels.setflags(write=False)
     return labels
+
+
+#: Default angular tolerance for calling two crystallographic objects parallel.
+#:
+#: Three degrees is the working figure for EBSD-derived orientation relationships:
+#: comfortably above the ~0.5 deg orientation-noise floor of a well-calibrated
+#: indexed map, and comfortably below the 5.26 deg that separates
+#: Kurdjumov-Sachs from Nishiyama-Wassermann, so the two remain distinguishable.
+DEFAULT_OR_TOLERANCE_DEG = 3.0
+
+
+def _canonical_sign_triples(max_index: int) -> np.ndarray:
+    """Primitive integer triples with the first nonzero entry positive.
+
+    A plane and its negative describe the same plane, and a direction and its
+    reverse the same axis of parallelism, so only one of each antiparallel pair
+    is worth testing.
+    """
+
+    triples = _primitive_integer_triples(max_index)
+    first_nonzero = np.argmax(triples != 0, axis=1)
+    leading = triples[np.arange(triples.shape[0]), first_nonzero]
+    return np.ascontiguousarray(triples[leading > 0])
+
+
+def _family_key(
+    indices: np.ndarray, *, phase: Phase, reciprocal: bool
+) -> tuple[int, int, int]:
+    """A deterministic identifier shared by every member of one index family.
+
+    Used to recognize that two parallelism clauses are the same crystallographic
+    statement written with different family members, so only one is reported.
+    """
+
+    orbit = _integer_index_orbit(
+        np.asarray(indices, dtype=np.int64), phase=phase, reciprocal=reciprocal
+    )
+    return min(_index_tuple(row) for row in orbit)
+
+
+def _crystallographic_label(indices: np.ndarray, *, phase: Phase, reciprocal: bool) -> str:
+    """Format a plane or direction the way the literature writes it for this phase.
+
+    Hexagonal phases take four-index Miller-Bravais labels — three-index
+    hexagonal indices hide the symmetry of the family and are not how the
+    hcp literature states an orientation relationship — while every other
+    system keeps its three-index form.
+    """
+
+    triple = _index_tuple(indices)
+    if is_hexagonal_phase(phase):
+        four = plane_hkl_to_hkil(triple) if reciprocal else direction_uvw_to_uvtw(triple)
+        values = tuple(int(value) for value in four)
+        return (
+            format_plane_indices(values, style="plain")
+            if reciprocal
+            else format_direction_indices(values, style="plain")
+        )
+    return (
+        format_plane_indices(triple, style="plain")
+        if reciprocal
+        else format_direction_indices(triple, style="plain")
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ORParallelismStatement:
+    """One ``(hkl)_p || (hkl)_c`` or ``[uvw]_p || [uvw]_c`` clause of an OR statement.
+
+    This is how the literature states an orientation relationship: a rotation
+    matrix is unreadable, but "(111) austenite parallel to (011) ferrite" is the
+    working crystallographic fact. ``deviation_deg`` is the angle between the
+    exact image of the parent object and the reported child indices; an exact
+    defining parallelism reads zero.
+    """
+
+    kind: str
+    parent_indices: np.ndarray
+    child_indices: np.ndarray
+    deviation_deg: float
+    parent_label: str
+    child_label: str
+
+    def __post_init__(self) -> None:
+        if self.kind not in {"plane", "direction"}:
+            raise ValueError("ORParallelismStatement.kind must be 'plane' or 'direction'.")
+        parent = np.asarray(self.parent_indices, dtype=np.int64)
+        child = np.asarray(self.child_indices, dtype=np.int64)
+        if parent.shape != (3,) or child.shape != (3,):
+            raise ValueError("ORParallelismStatement indices must have shape (3,).")
+        if not np.isfinite(self.deviation_deg) or self.deviation_deg < 0.0:
+            raise ValueError("deviation_deg must be finite and non-negative.")
+        for array in (parent, child):
+            array.setflags(write=False)
+        object.__setattr__(self, "parent_indices", parent)
+        object.__setattr__(self, "child_indices", child)
+
+    def as_text(self) -> str:
+        """The clause as it would be written in a paper, e.g. ``(111) || (011)``."""
+
+        return f"{self.parent_label} || {self.child_label}"
+
+
+def _parallelism_statements(
+    relationship: OrientationRelationship,
+    *,
+    kind: str,
+    rotation: np.ndarray,
+    tolerance_deg: float,
+    max_index: int,
+    max_statements: int,
+    preferred_parent_indices: tuple[np.ndarray, ...] = (),
+) -> tuple[ORParallelismStatement, ...]:
+    """Extract the best near-parallel index pairs of one kind, vectorized.
+
+    Every canonical-sign primitive parent triple up to ``max_index`` is carried
+    through ``rotation`` into the child basis at once, and every candidate child
+    triple is compared with every image in a single cosine matrix, rather than
+    looping in Python over ~10^2 index pairs and re-running the rationalizer for
+    each. Clauses are then deduplicated by index *family*, because the same
+    statement written with a different family member is not new information.
+
+    ``preferred_parent_indices`` nominates parent families to report first. This
+    matters because a rotation generally satisfies several equally exact
+    low-index parallelisms, and which one is *the* statement is a fact about the
+    two structures (their close-packed planes and directions), not about the
+    rotation — index magnitude alone cannot recover it. When the caller knows
+    the relationship is Kurdjumov-Sachs, {111} and <110> are the families worth
+    reporting, and the deviations then verify that the fitted rotation really
+    does satisfy them.
+    """
+
+    reciprocal = kind == "plane"
+    parent_phase = relationship.parent_phase
+    child_phase = relationship.child_phase
+    source_basis = (
+        parent_phase.lattice.reciprocal_basis().matrix
+        if reciprocal
+        else parent_phase.lattice.direct_basis().matrix
+    )
+    target_basis = (
+        child_phase.lattice.reciprocal_basis().matrix
+        if reciprocal
+        else child_phase.lattice.direct_basis().matrix
+    )
+    parent_triples = _canonical_sign_triples(max_index)
+    child_triples = _canonical_sign_triples(max_index)
+
+    # Cartesian images of every parent triple, rotated into the child frame.
+    parent_cartesian = parent_triples.astype(np.float64) @ source_basis.T
+    images = parent_cartesian @ rotation.T
+    image_units = images / np.linalg.norm(images, axis=1)[:, None]
+    # Cartesian images of every candidate child triple, in the same frame.
+    child_cartesian = child_triples.astype(np.float64) @ target_basis.T
+    child_units = child_cartesian / np.linalg.norm(child_cartesian, axis=1)[:, None]
+
+    # Signed comparison would reject a correct antiparallel description, and the
+    # canonical-sign filter has already collapsed each antiparallel pair to one
+    # representative, so parallelism is judged on |cos|.
+    cosines = np.abs(image_units @ child_units.T)
+    best_columns = np.argmax(cosines, axis=1)
+    best_cosines = cosines[np.arange(cosines.shape[0]), best_columns]
+    deviations = np.degrees(np.arccos(np.clip(best_cosines, -1.0, 1.0)))
+    accepted = np.flatnonzero(deviations <= tolerance_deg)
+
+    parent_keys = {
+        int(row): _family_key(parent_triples[row], phase=parent_phase, reciprocal=reciprocal)
+        for row in accepted
+    }
+    preferred_keys = {
+        _family_key(np.asarray(indices, dtype=np.int64), phase=parent_phase, reciprocal=reciprocal)
+        for indices in preferred_parent_indices
+    }
+    # Fit quality outranks preference: a nominated family must not promote a
+    # visibly worse clause above an exact one. Bucketing the deviation to
+    # milli-degrees first lets preference decide among clauses that are equally
+    # exact in any meaningful sense (and absorbs the ~1e-6 deg
+    # matrix-quaternion round-trip floor), while a genuinely poorer fit still
+    # sorts below.
+    ranked = sorted(
+        accepted,
+        key=lambda row: (
+            round(float(deviations[row]), 3),
+            0 if parent_keys[int(row)] in preferred_keys else 1,
+            round(float(deviations[row]), 9),
+            int(np.abs(parent_triples[row]).sum() + np.abs(child_triples[best_columns[row]]).sum()),
+            _index_tuple(parent_triples[row]),
+        ),
+    )
+    statements: list[ORParallelismStatement] = []
+    seen: set[tuple[tuple[int, int, int], tuple[int, int, int]]] = set()
+    for row in ranked:
+        parent_indices = parent_triples[row]
+        child_indices = child_triples[best_columns[row]]
+        key = (
+            parent_keys[int(row)],
+            _family_key(child_indices, phase=child_phase, reciprocal=reciprocal),
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        statements.append(
+            ORParallelismStatement(
+                kind=kind,
+                parent_indices=parent_indices,
+                child_indices=child_indices,
+                deviation_deg=float(deviations[row]),
+                parent_label=_crystallographic_label(
+                    parent_indices, phase=parent_phase, reciprocal=reciprocal
+                ),
+                child_label=_crystallographic_label(
+                    child_indices, phase=child_phase, reciprocal=reciprocal
+                ),
+            )
+        )
+        if len(statements) >= max_statements:
+            break
+    return tuple(statements)
+
+
+def describe_orientation_relationship(
+    relationship: OrientationRelationship,
+    *,
+    tolerance_deg: float = DEFAULT_OR_TOLERANCE_DEG,
+    max_index: int = 3,
+    max_statements: int = 4,
+    variant: TransformationVariant | None = None,
+    preferred_parent_planes: Sequence[ArrayLike] | None = None,
+    preferred_parent_directions: Sequence[ArrayLike] | None = None,
+) -> tuple[tuple[ORParallelismStatement, ...], tuple[ORParallelismStatement, ...]]:
+    """Recover the parallel-plane / parallel-direction statement of an OR.
+
+    Purpose: turns a rotation back into crystallography. Given any orientation
+    relationship — named, fitted from measurements, or hand-built — this finds
+    which low-index parent planes are parallel to which low-index child planes,
+    and likewise for directions, so the relationship can be reported the way the
+    literature reports it rather than as a matrix.
+
+    When to use: after fitting an OR to measured data (the statement is the
+    interpretable answer), when checking that a constructed relationship
+    encodes the parallelisms intended, and when teaching what a named OR means.
+
+    A rotation has three degrees of freedom, so one plane parallelism (two
+    constraints) plus one in-plane direction parallelism (the third) determines
+    the relationship completely. That pair is exactly the classical form, e.g.
+    Kurdjumov-Sachs as ``(111) || (011)`` with ``[10-1] || [11-1]``.
+
+    Inputs: the relationship; ``tolerance_deg``, the angle below which two
+    objects count as parallel (see :data:`DEFAULT_OR_TOLERANCE_DEG`);
+    ``max_index``, the index bound searched on both sides; ``max_statements``,
+    how many clauses of each kind to return; an optional ``variant`` to
+    describe one specific variant instead of the base relationship; and
+    ``preferred_parent_planes`` / ``preferred_parent_directions``, parent index
+    families to report first — which default to the relationship's own recorded
+    defining parallelisms when it was built from an explicit correspondence.
+
+    Output: ``(plane_statements, direction_statements)``, each ordered by
+    preference, then deviation, then total index magnitude, and deduplicated by
+    index family so one crystallographic statement is reported once.
+
+    A rotation typically satisfies *several* exact low-index parallelisms at
+    once, all of them true. Which one is quoted in the literature is decided by
+    the structures — the close-packed plane and direction of the two phases —
+    and index magnitude alone cannot recover that, so nominate the families of
+    interest through the ``preferred_*`` arguments when they are known.
+    `characterize_orientation_relationship` does this automatically from the
+    matching catalog relationship's own defining parallelisms.
+
+    Note also that a relationship has several symmetry-equivalent descriptions,
+    and the statement recovered is the one belonging to the stored rotation. A
+    different but equivalent description (e.g. ``(1-11)`` in place of ``(111)``)
+    states the same relationship.
+
+    See also
+    --------
+    `find_parallel_planes`, `find_parallel_directions` : the per-variant search
+        over one nominated parent family.
+    `characterize_orientation_relationship` : fits an OR to measurements and
+        reports its statement in one call.
+    """
+
+    if max_statements < 1:
+        raise ValueError("max_statements must be at least 1.")
+    rotation = (
+        relationship.parent_to_child_rotation.as_matrix()
+        if variant is None
+        else variant.parent_to_child_rotation.as_matrix()
+    )
+    # A relationship built from an explicit correspondence already records the
+    # families that define it, and those are the ones worth reporting. Falling
+    # back to them makes the default answer the defining statement rather than
+    # an arbitrary equally-exact alternative.
+    if preferred_parent_planes is None:
+        preferred_parent_planes = [
+            pair[0].miller.indices for pair in relationship.parallel_planes
+        ]
+    if preferred_parent_directions is None:
+        preferred_parent_directions = [
+            pair[0].coordinates for pair in relationship.parallel_directions
+        ]
+    return (
+        _parallelism_statements(
+            relationship,
+            kind="plane",
+            rotation=rotation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            max_statements=max_statements,
+            preferred_parent_indices=tuple(
+                np.asarray(indices, dtype=np.int64).reshape(3)
+                for indices in preferred_parent_planes
+            ),
+        ),
+        _parallelism_statements(
+            relationship,
+            kind="direction",
+            rotation=rotation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            max_statements=max_statements,
+            preferred_parent_indices=tuple(
+                np.rint(np.asarray(indices, dtype=np.float64).reshape(3)).astype(np.int64)
+                for indices in preferred_parent_directions
+            ),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ORCharacterizationReport:
+    """What orientation relationship a set of measured parent/child pairs shows.
+
+    The one-call answer to "I measured these orientations by EBSD — what is the
+    OR?". It carries four separable things, because a trustworthy answer needs
+    all of them:
+
+    - ``relationship``: the rotation fitted to the measurements;
+    - ``residuals_deg``: how tightly the pairs agree with it (the scatter);
+    - ``catalog_names`` / ``catalog_deviations_deg`` / ``best_catalog_name``:
+      which named relationship it is, and by how much it beats the runner-up;
+    - ``plane_statements`` / ``direction_statements``: the parallelisms, i.e.
+      the crystallographic reading of the fitted rotation.
+
+    ``is_conclusive`` is deliberately conservative: a named match is only
+    claimed when the winner both fits within ``catalog_tolerance_deg`` and
+    leads the runner-up by more than the data scatter and its own misfit.
+    """
+
+    relationship: OrientationRelationship
+    pair_count: int
+    residuals_deg: np.ndarray
+    iterations: int
+    converged: bool
+    catalog_names: tuple[str, ...]
+    catalog_deviations_deg: np.ndarray
+    best_catalog_name: str | None
+    best_catalog_deviation_deg: float
+    margin_deg: float
+    catalog_tolerance_deg: float
+    plane_statements: tuple[ORParallelismStatement, ...]
+    direction_statements: tuple[ORParallelismStatement, ...]
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        residuals = np.asarray(self.residuals_deg, dtype=np.float64).reshape(-1)
+        deviations = np.asarray(self.catalog_deviations_deg, dtype=np.float64).reshape(-1)
+        names = tuple(str(name) for name in self.catalog_names)
+        if residuals.size == 0:
+            raise ValueError("ORCharacterizationReport requires at least one pair.")
+        if self.pair_count != residuals.size:
+            raise ValueError("pair_count must equal the number of residuals.")
+        if deviations.shape != (len(names),):
+            raise ValueError("catalog_deviations_deg must have one entry per catalog name.")
+        if self.best_catalog_name is not None and self.best_catalog_name not in names:
+            raise ValueError("best_catalog_name must be one of catalog_names.")
+        if names and self.best_catalog_name is None:
+            raise ValueError("best_catalog_name is required when a catalog was compared.")
+        if np.any(~np.isfinite(residuals)) or np.any(residuals < 0.0):
+            raise ValueError("residuals_deg must be finite and non-negative.")
+        if deviations.size and (np.any(~np.isfinite(deviations)) or np.any(deviations < 0.0)):
+            raise ValueError("catalog_deviations_deg must be finite and non-negative.")
+        if self.iterations <= 0:
+            raise ValueError("iterations must be positive.")
+        for array in (residuals, deviations):
+            array.setflags(write=False)
+        object.__setattr__(self, "residuals_deg", residuals)
+        object.__setattr__(self, "catalog_deviations_deg", deviations)
+        object.__setattr__(self, "catalog_names", names)
+        object.__setattr__(self, "plane_statements", tuple(self.plane_statements))
+        object.__setattr__(self, "direction_statements", tuple(self.direction_statements))
+
+    @property
+    def mean_residual_deg(self) -> float:
+        return float(np.mean(self.residuals_deg))
+
+    @property
+    def max_residual_deg(self) -> float:
+        return float(np.max(self.residuals_deg))
+
+    @property
+    def matches_catalog(self) -> bool:
+        """Whether the fitted OR sits within tolerance of a named relationship."""
+
+        return (
+            self.best_catalog_name is not None
+            and self.best_catalog_deviation_deg <= self.catalog_tolerance_deg
+        )
+
+    @property
+    def is_conclusive(self) -> bool:
+        """Whether the named identification can be trusted.
+
+        Requires the winner to fit within tolerance *and* to lead the runner-up
+        by more than both the measurement scatter and its own misfit — the two
+        quantities that could otherwise explain the lead away.
+        """
+
+        if not self.matches_catalog:
+            return False
+        if len(self.catalog_names) == 1:
+            return True
+        return self.margin_deg > max(self.mean_residual_deg, self.best_catalog_deviation_deg)
+
+    def statement_text(self) -> str:
+        """The parallelism statement as one line, e.g. ``(111) || (011), [10-1] || [11-1]``."""
+
+        clauses = [statement.as_text() for statement in self.plane_statements[:1]]
+        clauses += [statement.as_text() for statement in self.direction_statements[:1]]
+        return ", ".join(clauses) if clauses else "no low-index parallelism within tolerance"
+
+    def describe(self) -> str:
+        """Prose summary: fitted rotation, scatter, named match, and parallelisms."""
+
+        misorientation = self.relationship.misorientation()
+        axis = misorientation.rotation.axis
+        lines = [
+            f"Orientation relationship characterized from {self.pair_count} measured "
+            f"parent/child orientation pair(s). Fitted parent-to-child rotation: "
+            f"{misorientation.angle_deg:.3f} deg about "
+            f"<{axis[0]:.4f} {axis[1]:.4f} {axis[2]:.4f}> (disorientation representative, "
+            f"parent {self.relationship.parent_phase.name} -> child "
+            f"{self.relationship.child_phase.name}). Pair scatter about the fit: mean "
+            f"{self.mean_residual_deg:.3f} deg, max {self.max_residual_deg:.3f} deg."
+        ]
+        if self.pair_count == 1:
+            lines.append(
+                "  Only one pair was supplied, so the scatter is zero by construction and "
+                "says nothing about measurement quality; supply several pairs to estimate it."
+            )
+        if self.catalog_names:
+            order = np.argsort(self.catalog_deviations_deg)
+            ranking = "; ".join(
+                f"{self.catalog_names[int(index)]}: "
+                f"{float(self.catalog_deviations_deg[int(index)]):.3f} deg"
+                for index in order[:5]
+            )
+            verdict = (
+                f"identified as '{self.best_catalog_name}'"
+                if self.is_conclusive
+                else (
+                    f"closest to '{self.best_catalog_name}' but NOT conclusively identified"
+                    if self.matches_catalog
+                    else "matches no catalog relationship within "
+                    f"{self.catalog_tolerance_deg:.3f} deg"
+                )
+            )
+            lines.append(
+                f"  Catalog comparison ({len(self.catalog_names)} candidate(s)): {verdict} "
+                f"at {self.best_catalog_deviation_deg:.3f} deg, leading the runner-up by "
+                f"{self.margin_deg:.3f} deg. Ranking: {ranking}."
+            )
+            if not self.is_conclusive:
+                lines.append(
+                    "  A lead comparable to the scatter or to the winner's own misfit cannot "
+                    "separate the candidates; treat the name as provisional."
+                )
+        else:
+            lines.append(
+                "  No relationship catalog was available for this phase pair, so the fitted "
+                "rotation is reported without a name."
+            )
+        if self.plane_statements or self.direction_statements:
+            lines.append("  Crystallographic statement of the fitted relationship:")
+            for statement in self.plane_statements:
+                lines.append(
+                    f"    plane     {statement.as_text()} "
+                    f"(deviation {statement.deviation_deg:.4f} deg)"
+                )
+            for statement in self.direction_statements:
+                lines.append(
+                    f"    direction {statement.as_text()} "
+                    f"(deviation {statement.deviation_deg:.4f} deg)"
+                )
+            lines.append(
+                "    One plane clause fixes two of the rotation's three degrees of freedom "
+                "and one in-plane direction clause fixes the third; the remaining clauses are "
+                "consequences. Indices are those of the stored description; a "
+                "symmetry-equivalent description states the same relationship."
+            )
+        else:
+            lines.append(
+                "  No low-index plane or direction parallelism was found within tolerance, "
+                "which is itself informative: the relationship is not of the classical "
+                "parallel-planes type at this index bound."
+            )
+        return "\n".join(lines)
+
+    def to_json_dict(self) -> dict[str, object]:
+        """A plain JSON-ready summary, carrying the same facts as ``describe()``.
+
+        This is a one-way report payload for manifests and downstream tooling,
+        not a round-trip contract; use `pytex.contracts` for objects that must
+        be reconstructed.
+        """
+
+        def _statements(items: tuple[ORParallelismStatement, ...]) -> list[dict[str, object]]:
+            return [
+                {
+                    "kind": statement.kind,
+                    "parent_indices": _index_tuple(statement.parent_indices),
+                    "child_indices": _index_tuple(statement.child_indices),
+                    "parent_label": statement.parent_label,
+                    "child_label": statement.child_label,
+                    "deviation_deg": statement.deviation_deg,
+                }
+                for statement in items
+            ]
+
+        misorientation = self.relationship.misorientation()
+        return {
+            "schema": "pytex.or_characterization_report/1",
+            "parent_phase": self.relationship.parent_phase.name,
+            "child_phase": self.relationship.child_phase.name,
+            "pair_count": int(self.pair_count),
+            "rotation_angle_deg": float(misorientation.angle_deg),
+            "rotation_axis": [float(value) for value in misorientation.rotation.axis],
+            "mean_residual_deg": self.mean_residual_deg,
+            "max_residual_deg": self.max_residual_deg,
+            "converged": bool(self.converged),
+            "iterations": int(self.iterations),
+            "catalog_names": list(self.catalog_names),
+            "catalog_deviations_deg": [float(value) for value in self.catalog_deviations_deg],
+            "best_catalog_name": self.best_catalog_name,
+            "best_catalog_deviation_deg": float(self.best_catalog_deviation_deg),
+            "margin_deg": float(self.margin_deg),
+            "catalog_tolerance_deg": float(self.catalog_tolerance_deg),
+            "matches_catalog": bool(self.matches_catalog),
+            "is_conclusive": bool(self.is_conclusive),
+            "statement_text": self.statement_text(),
+            "plane_statements": _statements(self.plane_statements),
+            "direction_statements": _statements(self.direction_statements),
+        }
+
+
+def characterize_orientation_relationship(
+    parent_orientations: OrientationSet,
+    child_orientations: OrientationSet,
+    *,
+    catalog: OrientationRelationshipCatalog | Sequence[OrientationRelationship] | None = None,
+    nominal: OrientationRelationship | None = None,
+    catalog_tolerance_deg: float = DEFAULT_OR_TOLERANCE_DEG,
+    parallelism_tolerance_deg: float = DEFAULT_OR_TOLERANCE_DEG,
+    max_index: int = 3,
+    max_statements: int = 4,
+    max_iterations: int = 20,
+    convergence_tol_deg: float = 1e-8,
+    provenance: ProvenanceRecord | None = None,
+) -> ORCharacterizationReport:
+    """Determine the orientation relationship shown by measured orientation pairs.
+
+    Purpose: answers "I measured a parent grain and one or more child grains by
+    EBSD — what is the orientation relationship?" in one call, and answers it
+    the way the question is meant: not only as a rotation, but as a named
+    relationship with an honest confidence verdict and the parallel planes and
+    directions that define it.
+
+    When to use: on paired parent/child grain-mean orientations from an EBSD map
+    of a partially transformed microstructure (retained austenite plus
+    martensite, retained beta plus alpha, a precipitate and its matrix). When no
+    parent phase survives, use
+    `pytex.experimental.identify_orientation_relationship` instead, which works
+    from child-child boundary misorientations alone.
+
+    Algorithm: each pair contributes the measured rotation ``V_i = C_i^T P_i``.
+    Without a nominal relationship the starting estimate comes from the data
+    itself — every ``V_i`` is reduced to its minimum-angle representative in the
+    double coset ``G_c V_i G_p``, which absorbs the parent symmetry operation
+    that distinguishes one variant from another, so pairs belonging to different
+    variants reduce to the same matrix and can be averaged. The estimate is then
+    refined by symmetry-aware rotation averaging (align each measurement to its
+    nearest equivalent description, take the quaternion eigen-mean, iterate) —
+    the same routine `fit_orientation_relationship` uses. Finally the fit is
+    compared with each catalog relationship under both symmetry groups, and its
+    parallelisms are extracted by `describe_orientation_relationship`.
+
+    Inputs: paired ``OrientationSet`` objects of equal length sharing a specimen
+    frame, one per phase. ``catalog`` accepts an ``OrientationRelationshipCatalog``
+    or a tuple of relationships; when omitted, the standard catalog for the two
+    crystal systems is used (see `pytex.core.parent_reconstruction.default_relationship_catalog`).
+    ``nominal`` overrides the data-derived starting estimate. The two tolerances
+    govern the named match and the parallelism search respectively.
+
+    Output: an `ORCharacterizationReport` — read its ``describe()``.
+
+    Examples
+    --------
+    A parent and one child built through Kurdjumov-Sachs variant 1 are
+    identified as Kurdjumov-Sachs at zero deviation, and the recovered statement
+    is the defining one, ``{111} || {011}`` with ``<10-1> || <11-1>``.
+
+    See also
+    --------
+    `fit_orientation_relationship` : the refinement step alone, given a nominal.
+    `or_deviation` : how far measurements sit from a relationship already known.
+    `describe_orientation_relationship` : the parallelism extraction alone.
+    """
+
+    if len(parent_orientations) != len(child_orientations):
+        raise ValueError(
+            "parent_orientations and child_orientations must be paired (equal length)."
+        )
+    if len(parent_orientations) == 0:
+        raise ValueError("characterize_orientation_relationship requires at least one pair.")
+    if parent_orientations.specimen_frame != child_orientations.specimen_frame:
+        raise ValueError("Parent and child orientations must share a specimen frame.")
+    parent_phase = parent_orientations.phase
+    child_phase = child_orientations.phase
+    if parent_phase is None or child_phase is None:
+        raise ValueError(
+            "characterize_orientation_relationship requires both orientation sets to carry "
+            "a phase; the relationship is defined between phases."
+        )
+    if max_statements < 1:
+        raise ValueError("max_statements must be at least 1.")
+
+    from pytex.core.parent_reconstruction import (
+        OrientationRelationshipCatalog as _Catalog,
+    )
+    from pytex.core.parent_reconstruction import (
+        default_relationship_catalog,
+    )
+
+    candidates: tuple[OrientationRelationship, ...]
+    if catalog is None:
+        resolved_catalog = default_relationship_catalog(
+            parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+        )
+        candidates = () if resolved_catalog is None else resolved_catalog.relationships
+    elif isinstance(catalog, _Catalog):
+        candidates = catalog.relationships
+    else:
+        candidates = tuple(catalog)
+
+    seed_relationship = nominal or OrientationRelationship(
+        name="seed",
+        parent_phase=parent_phase,
+        child_phase=child_phase,
+        parent_to_child_rotation=Rotation.identity(),
+        provenance=provenance,
+    )
+    parent_operators, child_operators = _symmetry_operator_pair(seed_relationship)
+    measured = _measured_parent_to_child(parent_orientations, child_orientations)
+    seed = (
+        nominal.parent_to_child_rotation.as_matrix()
+        if nominal is not None
+        else _double_coset_seed(
+            measured, parent_operators=parent_operators, child_operators=child_operators
+        )
+    )
+    estimate, residuals, iterations, converged = _fit_from_seed(
+        measured,
+        seed,
+        parent_operators=parent_operators,
+        child_operators=child_operators,
+        max_iterations=max_iterations,
+        convergence_tol_deg=convergence_tol_deg,
+    )
+    fitted = OrientationRelationship(
+        name=f"{parent_phase.name}_to_{child_phase.name}_fitted",
+        parent_phase=parent_phase,
+        child_phase=child_phase,
+        parent_to_child_rotation=Rotation.from_matrix(estimate).canonicalized(),
+        provenance=provenance,
+    )
+    deviations = np.asarray(
+        [
+            _symmetry_reduced_angle_between_deg(
+                estimate,
+                candidate.parent_to_child_rotation.as_matrix(),
+                child_operators=child_operators,
+                parent_operators=parent_operators,
+            )
+            for candidate in candidates
+        ],
+        dtype=np.float64,
+    )
+    preferred_planes: tuple[np.ndarray, ...] = ()
+    preferred_directions: tuple[np.ndarray, ...] = ()
+    if deviations.size:
+        order = np.argsort(deviations)
+        winner = candidates[int(order[0])]
+        best_name: str | None = winner.name
+        best_deviation = float(deviations[int(order[0])])
+        margin = (
+            float(deviations[int(order[1])] - deviations[int(order[0])])
+            if deviations.size > 1
+            else float("inf")
+        )
+        # The winning relationship already knows which families define it, so
+        # its own statement is reported rather than an arbitrary equally-exact
+        # low-index alternative. The deviations then verify the statement
+        # against the *fitted* rotation instead of asserting it.
+        if best_deviation <= catalog_tolerance_deg:
+            preferred_planes = tuple(
+                np.asarray(pair[0].miller.indices, dtype=np.int64)
+                for pair in winner.parallel_planes
+            )
+            preferred_directions = tuple(
+                np.rint(np.asarray(pair[0].coordinates, dtype=np.float64)).astype(np.int64)
+                for pair in winner.parallel_directions
+            )
+    else:
+        best_name = None
+        best_deviation = float("inf")
+        margin = float("inf")
+    planes, directions = describe_orientation_relationship(
+        fitted,
+        tolerance_deg=parallelism_tolerance_deg,
+        max_index=max_index,
+        max_statements=max_statements,
+        preferred_parent_planes=preferred_planes,
+        preferred_parent_directions=preferred_directions,
+    )
+    return ORCharacterizationReport(
+        relationship=fitted,
+        pair_count=len(parent_orientations),
+        residuals_deg=residuals,
+        iterations=iterations,
+        converged=converged,
+        catalog_names=tuple(candidate.name for candidate in candidates),
+        catalog_deviations_deg=deviations,
+        best_catalog_name=best_name,
+        best_catalog_deviation_deg=best_deviation,
+        margin_deg=margin,
+        catalog_tolerance_deg=float(catalog_tolerance_deg),
+        plane_statements=planes,
+        direction_statements=directions,
+        provenance=provenance,
+    )
+
+
+def orientation_relationship_from_euler(
+    parent_euler_deg: ArrayLike,
+    child_euler_deg: ArrayLike,
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    specimen_frame: ReferenceFrame | None = None,
+    convention: str = "bunge",
+    catalog: OrientationRelationshipCatalog | Sequence[OrientationRelationship] | None = None,
+    nominal: OrientationRelationship | None = None,
+    catalog_tolerance_deg: float = DEFAULT_OR_TOLERANCE_DEG,
+    parallelism_tolerance_deg: float = DEFAULT_OR_TOLERANCE_DEG,
+    max_index: int = 3,
+    max_statements: int = 4,
+    provenance: ProvenanceRecord | None = None,
+) -> ORCharacterizationReport:
+    """Determine the OR directly from measured Euler angle triples.
+
+    Purpose: the ergonomic entry point for the common case where the
+    measurements are two columns of Euler angles exported from an EBSD system,
+    not `OrientationSet` objects. It builds the orientation sets in the given
+    convention and defers entirely to `characterize_orientation_relationship`,
+    whose options it mirrors.
+
+    Inputs: ``(n, 3)`` parent and child Euler angle arrays **in degrees**, one
+    row per parent/child pair and in matching row order; the two phases; and
+    optionally the specimen frame the angles refer to (the shared standard
+    specimen frame by default) and the Euler ``convention`` (Bunge ZXZ by
+    default). The remaining keywords are those of
+    `characterize_orientation_relationship`.
+
+    Output: an `ORCharacterizationReport` — read its ``describe()``.
+    """
+
+    from pytex.core.frame_catalog import specimen_frame as standard_specimen_frame
+
+    frame = standard_specimen_frame() if specimen_frame is None else specimen_frame
+    parent_angles = np.asarray(parent_euler_deg, dtype=np.float64).reshape(-1, 3)
+    child_angles = np.asarray(child_euler_deg, dtype=np.float64).reshape(-1, 3)
+    parents = OrientationSet.from_euler_angles(
+        parent_angles, specimen_frame=frame, phase=parent_phase, convention=convention
+    )
+    children = OrientationSet.from_euler_angles(
+        child_angles, specimen_frame=frame, phase=child_phase, convention=convention
+    )
+    return characterize_orientation_relationship(
+        parents,
+        children,
+        catalog=catalog,
+        nominal=nominal,
+        catalog_tolerance_deg=catalog_tolerance_deg,
+        parallelism_tolerance_deg=parallelism_tolerance_deg,
+        max_index=max_index,
+        max_statements=max_statements,
+        provenance=provenance,
+    )
 
 
 @dataclass(frozen=True, slots=True)

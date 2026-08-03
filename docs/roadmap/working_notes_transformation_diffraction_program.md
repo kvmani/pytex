@@ -36,8 +36,8 @@ Closed out by **TX6**: a Burgers β↔α notebook demonstrating (a)–(e) end to
 
 | Phase | Scope | Status | Commit |
 | --- | --- | --- | --- |
-| TX0 | Specification + ledger | DONE | (this commit) |
-| TX1 | OR characterization from measured orientations | TODO | |
+| TX0 | Specification + ledger | DONE | `8d75f4c5` |
+| TX1 | OR characterization from measured orientations | DONE | (this commit) |
 | TX2 | Variant correspondence tables | TODO | |
 | TX3 | Composite SAED robustness + export layer | TODO | |
 | TX4 | Child-zone-anchored composite patterns | TODO | |
@@ -116,8 +116,61 @@ python scripts/generate_worked_examples.py
   `fixtures/mtex_parity/results/pytex/*/` directories, and the stray root `package.json`, all of
   which were sitting untracked in the worktree.
 
+### TX1 (2026-08-03) — OR determination from measured orientations
+
+Shipped, gates green (full suite, integrity, ruff, mypy, Sphinx zero-warning).
+
+- **New core surface**: `characterize_orientation_relationship`,
+  `orientation_relationship_from_euler`, `describe_orientation_relationship`,
+  `ORCharacterizationReport`, `ORParallelismStatement`, `DEFAULT_OR_TOLERANCE_DEG`, and
+  `default_relationship_catalog` (in `parent_reconstruction`, next to the other catalog
+  builders). All exported from `pytex.core` and the top level.
+- **Refactor, not duplication**: `fit_orientation_relationship`'s align/average loop is now
+  `_fit_from_seed`, shared by both entry points, plus `_symmetry_operator_pair` and
+  `_measured_parent_to_child` so the `V = C^T P` convention has exactly one definition.
+  The existing fitting tests pass unchanged, which is the evidence the refactor is behavior
+  preserving.
+- **A real defect found and fixed while building the seedless start.** The first design
+  reduced *every* pair to its minimum-angle double-coset representative and averaged them.
+  That is wrong: the maximum-trace element is not unique when the relationship's own
+  rotation is symmetric, so different pairs land on different tied representatives.
+  Measured: planted Bain (45 deg / <100>, three variants) averaged to **26.9 deg** and was
+  reported as Kurdjumov-Sachs. Fix — reduce **one** pair and let the alignment step resolve
+  the rest against it. `test_bain_survives_the_double_coset_tie` fails if this regresses.
+- **Statement extraction needed a preference, and the reason is scientific.** A rotation
+  satisfies several exact low-index parallelisms simultaneously; for KS both
+  `(111)||(011)` and `(10-1)||(11-1)` are exact, and index magnitude alone tie-breaks
+  arbitrarily (it picked the latter). Which one the literature quotes depends on the two
+  structures' close-packed planes and directions, which a rotation does not know. So the
+  search takes a preference: by default the relationship's own recorded defining families,
+  and for a fitted relationship those of the matched catalog member. Fit quality outranks
+  preference in the sort, so a nominated family can never promote a visibly worse clause
+  above an exact one.
+- **`is_hexagonal_phase` moved to `pytex.core.hexagonal`** (one-shared-helper rule) so core
+  notation can label hexagonal statements in four-index Miller-Bravais form;
+  `pytex.diffraction.composite` re-exports it and its tests pass unchanged.
+- **26 tests** in `tests/unit/test_or_characterization.py`, every expected value from a
+  definitional parallelism, a published separation (KS-NW 5.26 deg, KS-GT 2.40 deg), or an
+  analytic identity. **Two worked examples** in the transformation gallery, regenerated.
+- **Measured noise envelope** (planted KS, 12 pairs across mixed variants): conclusive at
+  0.5 and 2.0 deg scatter; correctly *inconclusive* at 5.0 deg. The failure mode is an
+  admitted "cannot separate the candidates", not a confident wrong name.
+- **Docs synced**: CHANGELOG (Added + Fixed), concept page (new section with the seeding
+  subtlety and the preference rationale), OR foundation §1/§3/§5 (new F6b, honest limits),
+  phase-transformation foundation, symbol registry (two new entries), validation matrix
+  (five new rows), and a site stub + toctree entry for the program spec.
+
+### Deferred from TX1
+
+- `ORCharacterizationReport` has `to_json_dict()` (a one-way report payload) but is **not**
+  registered in `pytex.contracts`' round-trip serializer registry. Report objects generally
+  are not; revisit as a batch when TX3's manifests land.
+- The cubic-cubic catalog assumes an fcc->bcc transformation because point-group symmetry
+  cannot distinguish fcc from bcc. Documented in `default_relationship_catalog` and in the
+  foundation limits; a structure-aware dispatch (using the space group / centring) would
+  remove the assumption.
+
 ### Next action
 
-Start **TX1**: refactor `fit_orientation_relationship`'s align/average loop into a shared
-`_fit_from_seed`, add the seedless double-coset eigen-mean start, then build
-`ORCharacterizationReport` with catalog ranking and parallelism extraction.
+Start **TX2**: `VariantCorrespondenceTable` over one or many parent planes/directions, both
+mapping senses, symmetry-equivalence grouping, and CSV/JSON/Markdown export. Spec §4.

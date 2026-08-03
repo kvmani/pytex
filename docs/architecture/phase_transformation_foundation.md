@@ -77,6 +77,22 @@ constructor, starting with `OrientationRelationship.from_bain_correspondence(...
 `OrientationRelationship.from_nishiyama_wassermann_correspondence(...)`. The goal is explicitness:
 each builder encodes one stated correspondence rather than hiding an unnamed matrix.
 
+## Determining The Relationship From Measurements
+
+A relationship is not always known in advance — usually it is what the measurement is *for*.
+`characterize_orientation_relationship(parents, children)` (and its Euler-angle entry point)
+takes paired parent/child orientations and returns the fitted rotation, the matching named
+relationship, the parallel planes and directions that define it, and an explicit verdict on
+whether the identification is trustworthy. `describe_orientation_relationship(...)` performs the
+last step alone, turning any rotation back into the crystallographic statement the literature
+uses.
+
+This closes the loop with the constructors above: a relationship built from an explicit
+correspondence records the parallelisms that define it, and those same parallelisms are what the
+determination surface recovers and reports. The full specification is the
+[Transformation Crystallography And Composite Diffraction Program](transformation_crystallography_and_diffraction_program.md),
+feature TX1.
+
 ## Current Limits (updated 2026-07-17)
 
 The full current-state statement lives in the

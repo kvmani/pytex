@@ -381,11 +381,76 @@ def standard_ferrite_cementite_relationships(
     )
 
 
+#: Which standard catalog serves which (parent, child) crystal-system pair.
+#:
+#: One table rather than a chain of conditionals, so the dispatch is auditable
+#: and extending it is a one-line change. Cubic-to-cubic cannot distinguish an
+#: fcc parent from a bcc one by point group alone, so it resolves to the full
+#: fcc->bcc family (Bain, Kurdjumov-Sachs, Nishiyama-Wassermann,
+#: Greninger-Troiano, Pitsch); that is the intended reading of a cubic-cubic
+#: transformation catalog and is stated in `default_relationship_catalog`.
+_CATALOG_DISPATCH: dict[tuple[str, str], tuple[str, ...]] = {
+    ("cubic", "cubic"): ("standard_fcc_bcc_relationships",),
+    ("cubic", "hexagonal"): (
+        "standard_bcc_hcp_relationships",
+        "standard_fcc_hcp_relationships",
+    ),
+    ("hexagonal", "cubic"): ("standard_hcp_bcc_relationships",),
+    ("cubic", "orthorhombic"): ("standard_ferrite_cementite_relationships",),
+}
+
+
+def default_relationship_catalog(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog | None:
+    """The standard OR catalog for a parent/child phase pair, chosen by crystal system.
+
+    Purpose: lets callers such as
+    `pytex.core.transformation.characterize_orientation_relationship` rank a
+    measured relationship against the named relationships that are actually
+    plausible for the two phases, without the caller having to know which
+    builder applies.
+
+    Inputs: the parent and child phases. The choice depends only on their
+    crystal systems, per the `_CATALOG_DISPATCH` table.
+
+    Output: an `OrientationRelationshipCatalog`, or ``None`` when no standard
+    catalog covers the pair — in which case a fitted relationship is reported
+    without a name rather than being forced onto an inapplicable list.
+
+    Note the cubic-to-cubic entry returns the fcc->bcc family. Point-group
+    symmetry cannot tell an fcc phase from a bcc one, so a cubic-cubic
+    transformation is assumed to be of the austenite->ferrite class; supply an
+    explicit catalog when it is not.
+    """
+
+    parent_system = parent_phase.symmetry.to_point_group().crystal_system
+    child_system = child_phase.symmetry.to_point_group().crystal_system
+    builder_names = _CATALOG_DISPATCH.get((parent_system, child_system))
+    if builder_names is None:
+        return None
+    relationships: list[OrientationRelationship] = []
+    for builder_name in builder_names:
+        builder = globals()[builder_name]
+        relationships.extend(
+            builder(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ).relationships
+        )
+    return OrientationRelationshipCatalog(
+        relationships=tuple(relationships), provenance=provenance
+    )
+
+
 __all__ = [
     "OrientationRelationshipCatalog",
     "ParentReconstructionConfig",
     "ParentReconstructionReport",
     "VariantSelectionReport",
+    "default_relationship_catalog",
     "reconstruct_parent_orientation",
     "select_variants",
     "standard_bcc_hcp_relationships",

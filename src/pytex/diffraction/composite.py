@@ -35,11 +35,14 @@ from typing import Any
 import numpy as np
 
 from pytex.core._arrays import as_float_array, as_int_array
-from pytex.core.hexagonal import direction_uvw_to_uvtw, plane_hkl_to_hkil
+from pytex.core.hexagonal import (
+    direction_uvw_to_uvtw,
+    is_hexagonal_phase,
+    plane_hkl_to_hkil,
+)
 from pytex.core.lattice import (
     CrystalDirection,
     MillerIndex,
-    Phase,
     ReciprocalLatticeVector,
     ZoneAxis,
     phases_semantically_match,
@@ -69,19 +72,6 @@ def _primitive_integer_triples(max_index: int) -> np.ndarray:
 def _reflection_label(hkl: np.ndarray, *, bravais: bool) -> str:
     indices = plane_hkl_to_hkil(hkl) if bravais else np.asarray(hkl, dtype=np.int64)
     return format_plane_indices(tuple(int(value) for value in indices), style="plain")
-
-
-def is_hexagonal_phase(phase: Phase) -> bool:
-    """Whether ``phase`` belongs to the hexagonal crystal system.
-
-    Purpose: decide when to present directions and reflections in four-index
-    Miller-Bravais notation (the convention for hexagonal crystals such as
-    the alpha-hcp product of the Burgers relationship). Trigonal phases are
-    intentionally excluded: PyTex stores them in the hexagonal setting but
-    three-index labels remain conventional there.
-    """
-
-    return phase.symmetry.to_point_group().crystal_system == "hexagonal"
 
 
 @dataclass(frozen=True, slots=True)

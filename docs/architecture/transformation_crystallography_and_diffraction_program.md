@@ -1,8 +1,10 @@
 # Transformation Crystallography And Composite Diffraction Program
 
 **Status:** specification (2026-08-03). Program identifier: **TX**.
-**Owner document:** this file is the normative specification. The running phase ledger is
-[Working Notes: Transformation Crystallography And Diffraction Program](../roadmap/working_notes_transformation_diffraction_program.md).
+**Owner document:** this file is the normative specification. The running phase ledger is the
+repository-local working note `docs/roadmap/working_notes_transformation_diffraction_program.md`,
+which is a development record and deliberately not part of the rendered documentation site. The
+repository documentation index links it.
 
 ---
 
