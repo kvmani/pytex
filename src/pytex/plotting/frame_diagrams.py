@@ -42,7 +42,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from xml.sax.saxutils import escape
 
 import numpy as np
 
@@ -57,6 +56,43 @@ from pytex.plotting.frames import (
     project_orthographic,
 )
 from pytex.plotting.primitives import TRIAD_AXIS_COLORS
+from pytex.plotting.svg_primitives import (
+    ACCENT as _ACCENT,
+)
+from pytex.plotting.svg_primitives import (
+    MUTED as _MUTED,
+)
+from pytex.plotting.svg_primitives import (
+    PANEL as _PANEL,
+)
+from pytex.plotting.svg_primitives import (
+    PANEL_STROKE as _PANEL_STROKE,
+)
+from pytex.plotting.svg_primitives import (
+    VIOLET as _VIOLET,
+)
+from pytex.plotting.svg_primitives import (
+    arrow_marker as _plain_marker,
+)
+from pytex.plotting.svg_primitives import (
+    callout as _callout,
+)
+from pytex.plotting.svg_primitives import (
+    card as _card,
+)
+from pytex.plotting.svg_primitives import (
+    document as _document,
+)
+from pytex.plotting.svg_primitives import (
+    header_width,
+    text_width,
+)
+from pytex.plotting.svg_primitives import (
+    relationship_arrow as _relationship_arrow,
+)
+from pytex.plotting.svg_primitives import (
+    text as _text,
+)
 
 #: Desaturated triad colours for a reference frame drawn behind a mapped one.
 PALE_TRIAD_COLORS: tuple[str, str, str] = ("#93b4f5", "#8fd6bd", "#f2a0a0")
@@ -73,17 +109,7 @@ __all__ = [
     "text_width",
 ]
 
-# Canonical documentation tokens (docs/standards/visualization_style_guide.md).
-_INK = "#07122f"
-_MUTED = "#40506f"
-_PAPER = "#fbfdff"
-_PANEL = "#ffffff"
-_PANEL_STROKE = "#d7e0ef"
-_ACCENT = "#2563eb"
-_VIOLET = "#7c3aed"
-_FONT = "Arial, Helvetica, sans-serif"
-
-# Per-domain accent colours, so a domain keeps one identity across figures.
+# Frame-domain accent colours, so a domain keeps one identity across figures.
 _DOMAIN_TINTS: dict[str, tuple[str, str]] = {
     "crystal": ("#eef4ff", "#b9cdf2"),
     "specimen": ("#fdf6e8", "#e6d4a8"),
@@ -92,168 +118,6 @@ _DOMAIN_TINTS: dict[str, tuple[str, str]] = {
     "laboratory": ("#eef7f0", "#b7d9c0"),
     "reciprocal": ("#f3eefc", "#cdbdee"),
 }
-
-# Arial advance widths are ~0.52 em on average for mixed-case text; the digits
-# and capitals that dominate these labels run slightly wider.
-_AVERAGE_ADVANCE_EM = 0.55
-
-
-def text_width(text: str, font_size: float) -> float:
-    """Estimate the rendered width of an Arial string, in SVG user units.
-
-    Used to size panels and place labels so nothing collides. It is an estimate,
-    not a measurement — SVG has no text metrics available offline — so callers
-    should leave a margin rather than butt elements against the result.
-    """
-
-    return _AVERAGE_ADVANCE_EM * float(font_size) * len(str(text))
-
-
-def _text(
-    x: float,
-    y: float,
-    content: str,
-    *,
-    size: float = 13.0,
-    fill: str = _INK,
-    anchor: str = "start",
-    weight: str | None = None,
-) -> str:
-    """One SVG text element with the canonical font."""
-
-    bold = f' font-weight="{weight}"' if weight else ""
-    return (
-        f'  <text x="{x:.1f}" y="{y:.1f}" font-size="{size:.0f}" font-family="{_FONT}" '
-        f'fill="{fill}" text-anchor="{anchor}"{bold}>{escape(content)}</text>'
-    )
-
-
-def _card(
-    x: float,
-    y: float,
-    width: float,
-    height: float,
-    *,
-    fill: str = _PANEL,
-    stroke: str = _PANEL_STROKE,
-    radius: float = 8.0,
-    stroke_width: float = 1.0,
-    dashed: bool = False,
-) -> str:
-    """A rounded panel card; 8px radius per the style guide."""
-
-    dash = ' stroke-dasharray="6 5"' if dashed else ""
-    return (
-        f'  <rect x="{x:.1f}" y="{y:.1f}" width="{width:.1f}" height="{height:.1f}" '
-        f'rx="{radius:.0f}" fill="{fill}" stroke="{stroke}" stroke-width="{stroke_width}"{dash}/>'
-    )
-
-
-def _relationship_arrow(
-    x1: float,
-    y1: float,
-    x2: float,
-    y2: float,
-    *,
-    marker_id: str,
-    label: str | None = None,
-    sublabel: str | None = None,
-    colour: str = _MUTED,
-    dashed: bool = False,
-    label_size: float = 12.0,
-) -> str:
-    """A labelled relationship arrow between two elements.
-
-    The label sits above the line and the optional sublabel below it, both
-    centred on the midpoint, so a relationship reads without crossing the arrow
-    it describes.
-    """
-
-    dash = ' stroke-dasharray="7 5"' if dashed else ""
-    parts = [
-        f'  <line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" '
-        f'stroke="{colour}" stroke-width="2"{dash} marker-end="url(#{marker_id})"/>'
-    ]
-    mid_x = 0.5 * (x1 + x2)
-    mid_y = 0.5 * (y1 + y2)
-    if label is not None:
-        parts.append(_text(mid_x, mid_y - 9.0, label, size=label_size, fill=_INK, anchor="middle"))
-    if sublabel is not None:
-        offset = 20.0 if label is not None else 14.0
-        parts.append(
-            _text(mid_x, mid_y + offset - 9.0, sublabel, size=label_size - 1.0,
-                  fill=_MUTED, anchor="middle")
-        )
-    return "\n".join(parts)
-
-
-def _callout(
-    x: float,
-    y: float,
-    title: str,
-    lines: Sequence[str],
-    *,
-    width: float | None = None,
-    title_size: float = 14.0,
-    line_size: float = 12.0,
-    line_height: float = 19.0,
-) -> tuple[str, float, float]:
-    """A titled note box. Returns the fragment and its rendered size."""
-
-    if width is None:
-        widest = max([text_width(title, title_size)] + [text_width(t, line_size) for t in lines])
-        width = widest + 36.0
-    height = 34.0 + line_height * len(lines) + 12.0
-    parts = [_card(x, y, width, height, fill="#f7faff", stroke="#c8d8f2")]
-    parts.append(_text(x + 16.0, y + 25.0, title, size=title_size, fill=_INK))
-    for index, line in enumerate(lines):
-        parts.append(
-            _text(x + 16.0, y + 48.0 + line_height * index, line, size=line_size, fill=_MUTED)
-        )
-    return "\n".join(parts), width, height
-
-
-def header_width(title: str, subtitle: str, *, margin: float = 40.0) -> float:
-    """Minimum document width that fits the heading and subtitle without clipping."""
-
-    return margin * 2.0 + max(text_width(title, 25.0), text_width(subtitle, 13.0))
-
-
-def _document(
-    *,
-    width: float,
-    height: float,
-    title: str,
-    description: str,
-    subtitle: str,
-    body: str,
-    marker_defs: str,
-) -> str:
-    """Wrap fragments into a complete, accessible SVG document."""
-
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width:.0f}" height="{height:.0f}" '
-        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img">\n'
-        f"  <title>{escape(title)}</title>\n"
-        f"  <desc>{escape(description)}</desc>\n"
-        f"  <defs>\n{marker_defs}\n  </defs>\n"
-        f'  <rect width="{width:.0f}" height="{height:.0f}" fill="{_PAPER}"/>\n'
-        f"{_text(40.0, 46.0, title, size=25.0, fill=_INK)}\n"
-        f"{_text(40.0, 72.0, subtitle, size=13.0, fill=_MUTED)}\n"
-        f"{body}\n"
-        f"</svg>\n"
-    )
-
-
-def _plain_marker(marker_id: str, colour: str) -> str:
-    """A relationship arrowhead that does **not** scale with stroke width."""
-
-    return (
-        f'    <marker id="{marker_id}" markerUnits="userSpaceOnUse" markerWidth="12" '
-        f'markerHeight="9" refX="11" refY="4.5" orient="auto">\n'
-        f'      <path d="M0,0 L12,4.5 L0,9 z" fill="{colour}"/>\n'
-        f"    </marker>"
-    )
 
 
 @dataclass(frozen=True, slots=True)

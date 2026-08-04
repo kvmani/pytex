@@ -41,6 +41,7 @@ See also
 
 from __future__ import annotations
 
+import zlib
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -960,7 +961,13 @@ def reference_frame_svg(
     # Pushed below the mid-line so the vertical axis label clears the subtitle.
     centre = (width / 2.0, height / 2.0 + 34.0)
     scale = 0.30 * min(width, height)
-    marker_id = f"pytex-frame-arrow-{abs(hash(frame.name)) % 100000}"
+    # A *stable* digest, not builtins.hash: Python randomizes string hashing per
+    # process, so a hash-derived id changed the marker names on every run and
+    # regenerating a committed figure always produced a diff. A generated asset
+    # whose bytes move for no reason cannot be checked for drift, which is the
+    # whole reason these figures are generated rather than drawn.
+    digest = zlib.crc32(frame.name.encode("utf-8")) % 100000
+    marker_id = f"pytex-frame-arrow-{digest}"
     triad_svg = _svg_triad_group(
         triad,
         centre=centre,

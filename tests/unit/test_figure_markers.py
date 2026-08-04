@@ -31,8 +31,16 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIGURES_DIR = REPO_ROOT / "docs" / "figures"
 
+#: Figures produced by scripts/generate_algorithm_figures.py.
+ALGORITHM_FIGURES = (
+    "or_determination_algorithm.svg",
+    "variant_correspondence_algorithm.svg",
+    "composite_saed_algorithm.svg",
+    "saed_indexing_algorithm.svg",
+)
+
 #: Figures produced by scripts/generate_reference_frame_figures.py.
-GENERATED_FIGURES = (
+FRAME_FIGURES = (
     "reference_frame_catalog.svg",
     "sample_frame_rd_td_nd.svg",
     "reference_frames.svg",
@@ -42,6 +50,10 @@ GENERATED_FIGURES = (
     "bunge_euler_geometry.svg",
     "hcp_reference_frame.svg",
 )
+
+#: Every figure written by a generator, and therefore held to the strict layout
+#: contract. Hand-authored figures pass the marker check only.
+GENERATED_FIGURES = FRAME_FIGURES + ALGORITHM_FIGURES
 
 #: Arial average advance width, matching pytex.plotting.frame_diagrams.text_width.
 _ADVANCE_EM = 0.55
@@ -235,16 +247,62 @@ def test_generated_figures_have_no_text_overflow_or_collisions(name: str) -> Non
 
 
 def test_generated_figure_list_matches_the_generator() -> None:
-    """`GENERATED_FIGURES` must not drift from what the script actually writes."""
+    """`FRAME_FIGURES` must not drift from what the frame script actually writes."""
 
     source = (REPO_ROOT / "scripts" / "generate_reference_frame_figures.py").read_text(
         encoding="utf-8"
     )
     written = set(re.findall(r'FIGURES_DIR / "([^"]+\.svg)"', source))
-    assert written == set(GENERATED_FIGURES), (
+    assert written == set(FRAME_FIGURES), (
         "The generator writes a different figure set than this test tracks: "
-        f"generator={sorted(written)}, test={sorted(GENERATED_FIGURES)}"
+        f"generator={sorted(written)}, test={sorted(FRAME_FIGURES)}"
     )
+
+
+def test_algorithm_figure_list_matches_the_generator() -> None:
+    """`ALGORITHM_FIGURES` must not drift from what the algorithm script writes."""
+
+    source = (REPO_ROOT / "scripts" / "generate_algorithm_figures.py").read_text(
+        encoding="utf-8"
+    )
+    written = set(re.findall(r'"([a-z0-9_]+\.svg)": ', source))
+    assert written == set(ALGORITHM_FIGURES), (
+        "The generator writes a different figure set than this test tracks: "
+        f"generator={sorted(written)}, test={sorted(ALGORITHM_FIGURES)}"
+    )
+
+
+def test_algorithm_figures_are_deterministic() -> None:
+    """Regenerating must reproduce the committed bytes exactly.
+
+    A generated asset whose bytes move between runs cannot be checked for drift,
+    which defeats the reason these figures are generated rather than drawn. This
+    caught `builtins.hash` being used for marker ids, which Python randomizes per
+    process.
+    """
+
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from generate_algorithm_figures import (
+        composite_saed_figure,
+        or_determination_figure,
+        saed_indexing_figure,
+        variant_correspondence_figure,
+    )
+
+    produced = {
+        "or_determination_algorithm.svg": or_determination_figure(),
+        "variant_correspondence_algorithm.svg": variant_correspondence_figure(),
+        "composite_saed_algorithm.svg": composite_saed_figure(),
+        "saed_indexing_algorithm.svg": saed_indexing_figure(),
+    }
+    for name, svg in produced.items():
+        committed = (FIGURES_DIR / name).read_text(encoding="utf-8")
+        assert svg == committed, (
+            f"{name} differs from the committed asset. Run "
+            "`python scripts/generate_algorithm_figures.py`."
+        )
 
 
 # ---------------------------------------------------------------------------
