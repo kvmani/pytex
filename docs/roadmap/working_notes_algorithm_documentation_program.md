@@ -39,10 +39,10 @@ For every feature of the TX program (and the OR/diffraction surfaces it builds o
 | --- | --- | --- | --- |
 | TD0 | Audit, ledger, page plan | DONE | (TD1 commit) |
 | TD1 | Shared SVG primitives + `algorithm_diagrams` module + generator | DONE | (this commit) |
-| TD2 | OR determination from measured orientations (TX1) | TODO | |
-| TD3 | Variant correspondence tables (TX2) | TODO | |
-| TD4 | Composite SAED assembly and anchoring (TX3, TX4) | TODO | |
-| TD5 | SAED pattern indexing (TX5) | TODO | |
+| TD2 | OR determination from measured orientations (TX1) | DONE | (this commit) |
+| TD3 | Variant correspondence tables (TX2) | DONE | (this commit) |
+| TD4 | Composite SAED assembly and anchoring (TX3, TX4) | DONE | (this commit) |
+| TD5 | SAED pattern indexing (TX5) | DONE | (this commit) |
 | TD6 | LaTeX notes, index wiring, validation matrix, closure | TODO | |
 
 ## Audit at TD0 (verified against the live repository, 2026-08-04)
@@ -166,8 +166,38 @@ defect rather than a typo.
 - Corrected in `docs/testing/reconstruction_robustness_study.md`, the archived reconstruction
   ledger, and the CHANGELOG.
 
+### TD2-TD5 (2026-08-04) — the four algorithm pages
+
+New Sphinx section `docs/site/algorithms/`, wired into the site toctree with its own
+caption, holding one page per algorithm family. Each page carries the same five elements:
+what is computed, the mathematics rendered on the page, the algorithm as reimplementable
+steps, the constraints and failure modes as admonitions beside the step they govern, the
+cost, and a verification table naming where each claim is checked.
+
+| Page | Covers |
+| --- | --- |
+| `orientation_relationship_determination` | double-coset seed, symmetry-aware eigen-mean, catalog ranking, parallelism extraction |
+| `variant_correspondence` | the two index maps and why they differ, rationalization, family grouping |
+| `composite_saed_assembly` | Ewald/excitation error, shared detector basis, child anchoring, centring |
+| `saed_pattern_indexing` | calibration, ratio/angle seeding, triad construction, symmetry deduplication, ambiguity |
+
+**Every number on these pages was computed, not recalled**, and several are new to the
+documentation: the symmetry-reduced catalog separation matrix (5x5, fcc->bcc), the
+equivalence-group breakdown of the KS `(111)` table (4 groups of 6) and the Burgers
+`(011)beta` table (2+2+4+4, uneven because the hexagonal child group is smaller), the
+per-variant child-zone deviations for Burgers down beta [110] (two variants exactly on
+zone at 54 reflections, the rest at 1.0-1.3 deg), and the solver's noise envelope
+(100% at 0.5 mm, no solution at 2.0 mm).
+
+**Cubic and hexagonal side by side on every page**, as required: Kurdjumov-Sachs and
+Burgers, with the hexagonal-specific behaviour — four-index Miller-Bravais labelling, the
+non-cubic metric making the two index maps genuinely differ, the smaller child point group
+— stated rather than left implicit.
+
+Sphinx builds zero-warning with all four pages and their figures.
+
 ### Next action
 
-**TD2**: the `docs/site/algorithms/` section and its first page — OR determination —
-carrying the mathematics, the algorithm steps, the constraints, complexity, and the cubic
-(Kurdjumov-Sachs) and hexagonal (Burgers) worked numbers.
+**TD6**: LaTeX theory notes for the two algorithms the TX specification promised
+(OR-statement extraction, ratio/angle indexing), the `docs/README.md` and theory-index
+entries, a validation-matrix row for the documentation contract, and ledger closure.

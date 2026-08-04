@@ -35,6 +35,13 @@ tutorials/notebooks
 
 ```{toctree}
 :maxdepth: 2
+:caption: Algorithms
+
+algorithms/index
+```
+
+```{toctree}
+:maxdepth: 2
 :caption: Worked Examples
 
 examples/index
