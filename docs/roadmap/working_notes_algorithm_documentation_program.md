@@ -140,6 +140,32 @@ wraps formulas through `wrap_text` like every other label, so the class of defec
 recur. The figure guard tests gained `ALGORITHM_FIGURES`, so the new figures are held to the
 strict overflow/collision contract rather than only the marker check.
 
+### TD2a (2026-08-04) — a defect found while gathering the numbers to document
+
+Documenting a quantity means first checking it. Computing the fingerprint sizes the
+reconstruction robustness study quotes showed **both were wrong**, and the reason was a real
+defect rather than a typo.
+
+- `intervariant_boundary_fingerprint` deduplicated on **quaternions**, which need a sign
+  convention. The convention was "make the largest-magnitude component positive", and two
+  components tie in magnitude for the 90 and 180 degree elements of a crystal point group, so
+  `argmax` broke the tie arbitrarily: numerically identical rotations canonicalized to `q` and
+  `-q` and were counted twice — 81 of them for Kurdjumov-Sachs. Rounding the keys added an
+  independent failure at rounding boundaries, which made the count of a group-theoretic set
+  depend on the lattice parameters that entered the rotation (10664 vs 10665).
+- Deduplication now runs on the **matrices**, which have no sign ambiguity, via a SciPy
+  spatial query. A lexicographic sort was tried first and is wrong here: duplicates are not
+  reliably adjacent, because a distinct element can agree with them in the leading entries and
+  sort between them. Measured before believing it.
+- **Not a results change** — the distance kernel takes a maximum over the set, so duplicates
+  never altered a distance, a grouping, or an identification. It mattered because the size is
+  quoted as science.
+- True counts: **10 584** (Kurdjumov-Sachs), **684** (Burgers) — a factor of 15, which is the
+  mechanism behind Burgers reconstructing more robustly. Three tests now pin the counts, their
+  independence from lattice parameters and c/a, and the absence of duplicates.
+- Corrected in `docs/testing/reconstruction_robustness_study.md`, the archived reconstruction
+  ledger, and the CHANGELOG.
+
 ### Next action
 
 **TD2**: the `docs/site/algorithms/` section and its first page — OR determination —

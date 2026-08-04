@@ -383,6 +383,37 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **The intervariant boundary fingerprint contained duplicate elements, and its
+  size moved with lattice parameters.** `intervariant_boundary_fingerprint`
+  returns the deduplicated double coset `G_c (R G_p R^T) G_c` — the set of
+  misorientations two children of one parent can show. Deduplication ran on
+  quaternions, which need a sign convention, and the convention was "make the
+  largest-magnitude component positive". Two components tie in magnitude for the
+  90 and 180 degree elements of a crystal point group, so `argmax` broke the tie
+  arbitrarily: numerically identical rotations canonicalized to `q` and `-q`,
+  landed far apart, and were counted twice. Rounding the keys to a fixed number
+  of decimals added a second, independent failure — a value near a rounding
+  boundary rounds either way depending on floating-point noise.
+
+  Together these made the size of a purely group-theoretic set depend on the
+  lattice parameters that entered the rotation: the Kurdjumov-Sachs fingerprint
+  returned 10664 elements for one cubic pair and 10665 for another. The true
+  counts are **10 584** for Kurdjumov-Sachs and **684** for Burgers.
+
+  Deduplication now runs on the rotation matrices, which carry no sign
+  ambiguity, using a SciPy spatial query rather than a sort — duplicates are not
+  reliably adjacent in lexicographic order, because a distinct element can agree
+  with them in the leading entries and sort between them.
+
+  **This is not a results change.** `boundary_fingerprint_distances_deg` takes a
+  maximum over the set, so 81 duplicate elements never altered a distance,
+  a reconstruction grouping, or an OR identification; they wasted 0.8% of each
+  evaluation. It mattered because the set's size is quoted as a scientific
+  quantity — the reconstruction robustness study reasons from it, and had
+  published "about 2 800" for Burgers against "about 10 700" for
+  Kurdjumov-Sachs. Both figures are corrected, and both counts plus their
+  independence from lattice parameters are now pinned by tests.
+
 - **Kinematic spot ordering was not stable against floating-point ties.** The
   sort keys are decreasing intensity, then detector radius, then lexicographic
   `hkl`. Symmetry-equivalent reflections have mathematically equal intensity and

@@ -197,7 +197,10 @@ conclusion, so Phase 2's headline should not be read on its own.
   **-> Superseded by Phase 4:** the consistency vote removed most of this upper bound (69.7 -> 99.7
   of 100 parents at the default tolerance). Read Phase 4 before acting on the window above.
 - **Mechanism identified:** the window is relationship-dependent because *fingerprint size* drives
-  ambiguity. Burgers has 12 variants vs KS's 24, so ~2 800 vs ~10 700 distinct elements and
+  ambiguity. Burgers has 12 variants vs KS's 24, so 684 vs 10 584 distinct elements and
+  <!-- Corrected 2026-08-04: this line originally read "~2 800 vs ~10 700". Both were wrong.
+       The Burgers estimate gave the hexagonal child 24 proper operators instead of 12; the
+       KS figure came from a quaternion deduplication that double-counted 81 elements. -->
   correspondingly less of orientation space. More variants = intrinsically harder reconstruction.
 - **Runtime safeguard shipped (not just docs):** `ParentGrainReconstructionResult.chance_link_probability`
   — the probability two unrelated grains link at this tolerance, estimated from 4096 seeded

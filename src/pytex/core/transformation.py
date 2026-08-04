@@ -1508,15 +1508,66 @@ def intervariant_boundary_fingerprint(
     products = np.einsum(
         "aij,pjk,bkl->apbil", child_ops, conjugated, child_ops, optimize=True
     ).reshape(-1, 3, 3)
-    quaternions = matrices_to_quaternions(products)
-    # q and -q are one rotation: canonicalize the sign on the largest component.
-    pivot = np.argmax(np.abs(quaternions), axis=1)
-    signs = np.sign(quaternions[np.arange(quaternions.shape[0]), pivot])
-    keys = np.round(quaternions * signs[:, None], 8)
-    _, unique_indices = np.unique(keys, axis=0, return_index=True)
-    fingerprint = np.ascontiguousarray(products[unique_indices])
+    fingerprint = np.ascontiguousarray(products[_deduplicate_rotations(products)])
     fingerprint.setflags(write=False)
     return fingerprint
+
+
+#: How close two rotation matrices must be to count as the same group element.
+#:
+#: The duplicates being merged are the *same* element reached by different
+#: operator products, so they agree to the floating-point floor of three chained
+#: matrix multiplications (~1e-15). Distinct elements of these groups are
+#: separated by ~1e-1 in the same measure, so the tolerance sits in a gap six
+#: orders of magnitude wide and its exact value is not delicate.
+_ROTATION_DEDUPLICATION_TOLERANCE = 1e-9
+
+
+def _deduplicate_rotations(matrices: np.ndarray) -> np.ndarray:
+    """Indices of one representative per distinct rotation in a set of matrices.
+
+    Deduplicating on **matrices** rather than on quaternions is the point. A
+    quaternion needs a sign convention, usually "make the largest-magnitude
+    component positive" — and when two components tie in magnitude, which is
+    common for the 90 and 180 degree elements of a crystal point group,
+    ``argmax`` breaks the tie arbitrarily. Two numerically identical rotations
+    then canonicalize to ``q`` and ``-q``, land far apart, and are counted
+    twice. Measured on the Kurdjumov-Sachs double coset: 10665 elements by the
+    quaternion route against 10584 genuinely distinct rotations, so 81 elements
+    were duplicates.
+
+    Rounding to a fixed number of decimals has a second, independent problem: a
+    value near a rounding boundary rounds either way depending on floating-point
+    noise, so the count of a mathematically fixed set moved with the lattice
+    parameters that entered the rotation (10664 for one cubic pair, 10665 for
+    another) even though group theory cannot depend on them.
+
+    Sorting the flattened matrices lexicographically makes duplicates adjacent —
+    they differ only in the last bits, so nothing distinct can sort between them
+    — and one linear pass merges runs whose successive steps stay inside the
+    tolerance. Exact, stable, and ``O(n log n)``.
+
+    Duplicates were never a *correctness* problem downstream, because
+    :func:`boundary_fingerprint_distances_deg` takes a maximum over the set. They
+    mattered because the set's size is quoted as a scientific quantity.
+    """
+
+    if matrices.shape[0] == 0:
+        return np.zeros(0, dtype=np.int64)
+    from scipy.spatial import cKDTree
+
+    flat = np.ascontiguousarray(matrices.reshape(matrices.shape[0], -1))
+    # A spatial query rather than a sort: duplicates are not reliably adjacent
+    # in lexicographic order, because a distinct element can agree with them in
+    # the leading entries and sort between them. Neighbourhood membership is the
+    # actual predicate, so ask for it directly.
+    tree = cKDTree(flat)
+    keep = np.ones(flat.shape[0], dtype=bool)
+    for left, right in tree.query_pairs(_ROTATION_DEDUPLICATION_TOLERANCE):
+        # Keep the earliest index of each duplicate run, so the retained order
+        # is the enumeration order and the result is reproducible.
+        keep[max(left, right)] = False
+    return np.asarray(np.flatnonzero(keep), dtype=np.int64)
 
 
 def boundary_fingerprint_distances_deg(

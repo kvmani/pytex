@@ -123,10 +123,21 @@ fingerprint-consistent misorientation. The edge test was not wrong; **no** edge 
 those, because they are indistinguishable from same-parent boundaries by construction.
 
 The window is also strongly relationship-dependent, and fingerprint size is the mechanism. Burgers
-is far more forgiving than Kurdjumov-Sachs because it has 12 variants rather than 24, so its
-admissible set is much smaller (about 2 800 distinct elements against about 10 700) and occupies
-correspondingly less of orientation space. Relationships with more variants are intrinsically
-harder to reconstruct from boundary evidence alone.
+is far more forgiving than Kurdjumov-Sachs because both its variant count and its child point group
+are smaller: the deduplicated double coset $G_c \left( R\,G_p\,R^{\mathsf{T}} \right) G_c$ holds
+**684** distinct elements for Burgers against **10 584** for Kurdjumov-Sachs — a factor of 15 — so
+it occupies correspondingly less of orientation space. Relationships with larger admissible sets
+are intrinsically harder to reconstruct from boundary evidence alone.
+
+*(Corrected 2026-08-04. This paragraph previously quoted "about 2 800" against "about 10 700", and
+both numbers were wrong. The Burgers estimate had treated the hexagonal child as contributing 24
+proper operators rather than 12. The Kurdjumov-Sachs figure came from a deduplication that
+canonicalized a quaternion's sign on its largest-magnitude component; two components tie in
+magnitude for the 90 and 180 degree elements of a crystal point group, so numerically identical
+rotations were canonicalized to* $q$ *and* $-q$ *and counted twice — 81 of them. That routine now
+deduplicates on the matrices, which carry no sign ambiguity. The correction strengthens this
+paragraph's argument rather than weakening it. Both counts, and their independence from lattice
+parameters, are pinned in* `tests/unit/test_transformation.py`*.)*
 
 ### The fix: connectivity proposes, consistency disposes
 

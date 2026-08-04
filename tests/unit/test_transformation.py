@@ -1916,6 +1916,131 @@ def test_boundary_fingerprint_rejects_unrelated_boundaries_far_better_than_angle
     assert float(np.mean(full <= 1.0)) < 0.02
 
 
+def _hexagonal_child(reference: Phase, *, c_over_a: float = 1.587) -> Phase:
+    """An hcp child sharing a cubic phase's crystal frame, for group-theory tests."""
+
+    lattice = Lattice(
+        2.95,
+        2.95,
+        2.95 * c_over_a,
+        90.0,
+        90.0,
+        120.0,
+        crystal_frame=reference.crystal_frame,
+    )
+    return Phase(
+        "alpha",
+        lattice=lattice,
+        symmetry=SymmetrySpec.from_point_group(
+            "6/mmm", reference_frame=reference.crystal_frame
+        ),
+        crystal_frame=reference.crystal_frame,
+    )
+
+
+def test_intervariant_fingerprint_sizes_are_pinned() -> None:
+    """The admissible same-parent set is much smaller for Burgers than for KS.
+
+    The size of $G_c (R G_p R^T) G_c$ governs how much of orientation space a
+    chance boundary can land in, and therefore how reconstructable a
+    relationship is from boundary evidence alone. It is pure group theory — it
+    depends on the point groups and the relationship, never on lattice
+    parameters — so it is an exact integer, not a measurement, and the
+    reconstruction robustness study reasons from it in prose.
+
+    Both numbers this test pins were wrong in the documentation before it
+    existed: the study quoted "about 2 800" for Burgers against "about 10 700"
+    for Kurdjumov-Sachs. The Burgers estimate had treated the hexagonal child as
+    contributing 24 proper operators rather than 12, and the Kurdjumov-Sachs
+    figure came from a deduplication that double-counted 81 elements. A number a
+    document argues from is a number a test should hold.
+    """
+
+    from pytex.core import intervariant_boundary_fingerprint
+
+    _, _, cubic_parent, cubic_child = make_phases()
+    kurdjumov_sachs = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=cubic_parent, child_phase=cubic_child
+    )
+    assert len(kurdjumov_sachs.generate_variants()) == 24
+    assert intervariant_boundary_fingerprint(kurdjumov_sachs).shape[0] == 10584
+
+    burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=cubic_parent, child_phase=_hexagonal_child(cubic_child)
+    )
+    assert len(burgers.generate_variants()) == 12
+    assert intervariant_boundary_fingerprint(burgers).shape[0] == 684
+
+
+def test_intervariant_fingerprint_size_is_independent_of_lattice_parameters() -> None:
+    """A group-theoretic count must not move with the cell it was computed from.
+
+    This is the property the previous deduplication broke. It canonicalized a
+    quaternion's sign on its largest-magnitude component, and for the 90 and 180
+    degree elements of a crystal point group two components tie in magnitude, so
+    ``argmax`` broke the tie arbitrarily: two numerically identical rotations
+    canonicalized to ``q`` and ``-q`` and were counted twice. It also rounded to
+    a fixed number of decimals, so a value near a rounding boundary rounded
+    either way depending on floating-point noise. Together those made the count
+    of a fixed set depend on the lattice parameters that entered the rotation.
+    """
+
+    from pytex.core import intervariant_boundary_fingerprint
+
+    _, _, parent, child = make_phases()
+    cubic_counts = set()
+    for parameter in (2.87, 3.2, 3.61):
+        scaled = Phase(
+            "child",
+            lattice=Lattice(
+                parameter,
+                parameter,
+                parameter,
+                90.0,
+                90.0,
+                90.0,
+                crystal_frame=child.crystal_frame,
+            ),
+            symmetry=child.symmetry,
+            crystal_frame=child.crystal_frame,
+        )
+        relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+            parent_phase=parent, child_phase=scaled
+        )
+        cubic_counts.add(intervariant_boundary_fingerprint(relationship).shape[0])
+    assert cubic_counts == {10584}
+
+    hexagonal_counts = set()
+    for ratio in (1.587, 1.60, 1.633):
+        relationship = OrientationRelationship.from_burgers_correspondence(
+            parent_phase=parent, child_phase=_hexagonal_child(child, c_over_a=ratio)
+        )
+        hexagonal_counts.add(intervariant_boundary_fingerprint(relationship).shape[0])
+    assert hexagonal_counts == {684}
+
+
+def test_intervariant_fingerprint_holds_no_duplicates() -> None:
+    """No two elements of the returned set may name the same rotation.
+
+    Duplicates were never a correctness problem downstream, because the distance
+    kernel takes a maximum over the set. They mattered because the set's size is
+    quoted as a scientific quantity, and because 81 wasted elements is 0.8% of
+    every distance evaluation.
+    """
+
+    from pytex.core import intervariant_boundary_fingerprint
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    fingerprint = intervariant_boundary_fingerprint(relationship)
+    traces = np.einsum("aij,bij->ab", fingerprint, fingerprint, optimize=True)
+    np.fill_diagonal(traces, -3.0)
+    # trace(A B^T) = 3 only when A and B are the same rotation.
+    assert float(np.max(traces)) < 3.0 - 1e-6
+
+
 def test_boundary_fingerprint_distance_is_blocked_but_exact() -> None:
     """The blocked kernel must equal the direct all-pairs evaluation.
 
