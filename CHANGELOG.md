@@ -13,6 +13,38 @@ downstream analyses depend on them.
 
 ### Added
 
+- **New Sphinx section `docs/site/algorithms/`** documenting how each scientific
+  surface computes what it computes. Four pages — OR determination from measured
+  orientations, variant-resolved plane and direction correspondence, composite
+  SAED assembly, and SAED pattern indexing — each carrying the mathematics
+  rendered on the page, the algorithm as reimplementable steps, the constraints
+  and failure modes beside the step they govern, the cost, and a verification
+  table naming where every claim is checked. Cubic (Kurdjumov-Sachs) and
+  hexagonal (Burgers) examples run side by side throughout, so hexagonal-specific
+  behaviour is stated rather than left implicit.
+
+  Every number on these pages is computed rather than recalled, and several are
+  new to the documentation: the symmetry-reduced catalog separation matrix for
+  the fcc→bcc family, the equivalence-group breakdown of the KS `(111)` and
+  Burgers `(011)β` correspondence tables, the per-variant child-zone deviations
+  for Burgers down β[110], and the solver's noise envelope.
+
+- **Two canonical LaTeX theory notes** the transformation program had promised:
+  `docs/tex/algorithms/orientation_relationship_determination.tex` (double-coset
+  seeding, symmetry-aware rotation averaging, catalog distance, the
+  non-uniqueness of a parallelism statement) and
+  `docs/tex/algorithms/saed_ratio_angle_indexing.tex` (calibration, the
+  admissibility test, triad construction, and the intrinsic zone-sense
+  ambiguity).
+
+- **`pytex.plotting.algorithm_diagrams` and `pytex.plotting.svg_primitives`**,
+  with `scripts/generate_algorithm_figures.py`. Algorithm flow sheets are
+  *generated* rather than drawn, so a figure cannot drift from the algorithm it
+  illustrates, and they are held to the repository's figure layout guards —
+  title/desc, canonical font, absolute marker units, no text overflow or
+  collision, and byte-for-byte reproducibility. The shared primitives were
+  extracted from `frame_diagrams`, whose figures are byte-identical afterwards.
+
 - **One call now answers "I measured two phases by EBSD — what is the
   orientation relationship?"** `characterize_orientation_relationship(parents,
   children)` fits the operative rotation, names it against the standard catalog
@@ -382,6 +414,14 @@ downstream analyses depend on them.
     as a test rather than as a broken figure.
 
 ### Fixed
+
+- **Generated figures were not reproducible.** `pytex.plotting.frames` derived
+  its arrowhead marker ids from `builtins.hash(frame.name)`, and Python
+  randomizes string hashing per process, so regenerating a committed figure
+  changed its bytes on every run and `git diff` was permanently dirty. A
+  generated asset whose bytes move for no reason cannot be checked for drift,
+  which is the entire reason these figures are generated rather than drawn. Now
+  a `zlib.crc32` digest, with a test pinning byte-for-byte reproducibility.
 
 - **The intervariant boundary fingerprint contained duplicate elements, and its
   size moved with lattice parameters.** `intervariant_boundary_fingerprint`

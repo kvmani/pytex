@@ -2,6 +2,11 @@
 
 Canonical scientific notes are authored in LaTeX and live under `docs/tex/`. The Sphinx pages explain how to use PyTex; the LaTeX notes explain why the scientific contracts are defined the way they are.
 
+The Sphinx {doc}`../algorithms/index` section renders the same algorithms with their
+mathematics on the page, worked cubic and hexagonal numbers, and flow-sheet figures. Read
+those first for orientation; read the LaTeX notes when the derivation or the convention
+fixing is what is needed.
+
 ## How To Use This Section
 
 - read concept and workflow pages first if you need orientation to the library surface

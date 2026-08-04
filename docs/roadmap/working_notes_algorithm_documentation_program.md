@@ -43,7 +43,7 @@ For every feature of the TX program (and the OR/diffraction surfaces it builds o
 | TD3 | Variant correspondence tables (TX2) | DONE | (this commit) |
 | TD4 | Composite SAED assembly and anchoring (TX3, TX4) | DONE | (this commit) |
 | TD5 | SAED pattern indexing (TX5) | DONE | (this commit) |
-| TD6 | LaTeX notes, index wiring, validation matrix, closure | TODO | |
+| TD6 | LaTeX notes, index wiring, validation matrix, closure | DONE | (this commit) |
 
 ## Audit at TD0 (verified against the live repository, 2026-08-04)
 
@@ -196,8 +196,53 @@ non-cubic metric making the two index maps genuinely differ, the smaller child p
 
 Sphinx builds zero-warning with all four pages and their figures.
 
-### Next action
+### TD6 (2026-08-04) — theory notes, wiring, closure
 
-**TD6**: LaTeX theory notes for the two algorithms the TX specification promised
-(OR-statement extraction, ratio/angle indexing), the `docs/README.md` and theory-index
-entries, a validation-matrix row for the documentation contract, and ledger closure.
+- **Two canonical LaTeX notes**, both promised by the TX specification and outstanding until
+  now: `docs/tex/algorithms/orientation_relationship_determination.tex` and
+  `docs/tex/algorithms/saed_ratio_angle_indexing.tex`. They carry the derivations and the
+  convention fixing; the Sphinx pages carry the same algorithms with worked numbers and
+  figures, and each side points at the other.
+- **Wiring**: the theory index, `docs/README.md` (LaTeX tree, the four new figures, and the
+  TD ledger), and three rows in the plotting validation matrix covering the generated
+  algorithm figures, generation determinism, and the shared SVG primitives.
+- **CHANGELOG** entries under `Added` (the algorithms section, the theory notes, the figure
+  modules) and `Fixed` (the non-reproducible marker ids).
+
+## Program outcome
+
+Every delivered TX feature now has its algorithm, mathematics and constraints readable in the
+Sphinx site, with a generated publication-grade figure, and cubic and hexagonal examples side
+by side.
+
+| Feature | Algorithm page | Figure | LaTeX note |
+| --- | --- | --- | --- |
+| OR determination (TX1) | `orientation_relationship_determination` | yes | new |
+| Variant correspondence (TX2) | `variant_correspondence` | yes | index-correspondence note (existing) |
+| Composite SAED (TX3, TX4) | `composite_saed_assembly` | yes | kinematic-spot note (existing) |
+| Pattern indexing (TX5) | `saed_pattern_indexing` | yes | new |
+
+**Two defects were found by doing this work**, both because documenting a quantity means first
+computing it:
+
+1. **Generated figures were not reproducible** — arrowhead marker ids came from
+   `builtins.hash`, which Python randomizes per process, so a committed figure's bytes moved
+   on every regeneration and drift could not be detected. Fixed with a stable digest and
+   pinned by a test.
+2. **The intervariant fingerprint contained duplicates and its size moved with lattice
+   parameters** — quaternion sign canonicalization broke on magnitude ties. Fixed by
+   deduplicating on matrices; two published numbers corrected; three tests added. (TD2a.)
+
+Both are recorded in the CHANGELOG.
+
+### Open follow-ons
+
+- **Geometry figures**, as opposed to flow sheets: what an excitation error *is* on the Ewald
+  sphere, what the crystal-to-pattern triad construction looks like. The existing
+  `zone_axis_ewald_geometry.svg` covers part of the first. These would suit a dedicated
+  renderer rather than `algorithm_flow_svg`.
+- **Algorithm pages for the surfaces outside the TX program** — parent-grain reconstruction,
+  OR identification from boundaries, harmonic ODF inversion, EBSD grain segmentation. The
+  section and its conventions are now in place for them.
+- The pre-existing ~16 ruff findings (RUF022/RUF043/RUF059) in files this program did not
+  touch, and the two mypy `to_hex` stub-drift errors in `plotting/crystal3d.py`.
