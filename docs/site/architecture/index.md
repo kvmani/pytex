@@ -16,5 +16,6 @@ multimodal_characterization_foundation
 phase_transformation_foundation
 orientation_relationship_analysis_foundation
 transformation_crystallography_and_diffraction_program
+tem_tilt_navigation_foundation
 repo_review_2026_foundation_audit
 ```

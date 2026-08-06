@@ -19,6 +19,7 @@
 - [Phase Transformation Foundation](architecture/phase_transformation_foundation.md)
 - [Orientation Relationship Analysis Foundation](architecture/orientation_relationship_analysis_foundation.md)
 - [Transformation Crystallography And Composite Diffraction Program](architecture/transformation_crystallography_and_diffraction_program.md)
+- [TEM Tilt Navigation Foundation](architecture/tem_tilt_navigation_foundation.md)
 - [Repository Review 2026 Foundation Audit](architecture/repo_review_2026_foundation_audit.md)
 
 ## Testing And Validation
@@ -80,9 +81,12 @@
 - [Harmonic ODF Reconstruction](tex/algorithms/harmonic_odf_reconstruction.tex)
 - [EBSD KAM Parameterization](tex/algorithms/ebsd_kam_parameterization.tex)
 - [EBSD Local Misorientation](tex/algorithms/ebsd_local_misorientation.tex)
+- [Lattice Curvature And GND Density](tex/algorithms/lattice_curvature_and_gnd_density.tex)
 - [EBSD Grain Segmentation And GROD](tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
 - [EBSD Boundaries And Cleanup](tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [Diffraction Geometry And Bragg Rings](tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
+- [Kikuchi Bands And The Gnomonic Projection](tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
+- [Preferred Orientation In Powder Intensities](tex/algorithms/preferred_orientation_in_powder_intensities.tex)
 - [Powder XRD And SAED](tex/algorithms/powder_xrd_and_saed.tex)
 - [Orientation Relationship Index Correspondence](tex/algorithms/orientation_relationship_index_correspondence.tex)
 - [Orientation Relationship Determination](tex/algorithms/orientation_relationship_determination.tex)
