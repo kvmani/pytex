@@ -1,8 +1,22 @@
 # TEM Tilt Navigation Foundation
 
-**Status:** **proposed — formulation for review.** No implementation exists. Program identifier:
-**TN**. This document is the scientific formulation the user asked for before any code is written;
-if approved it becomes the input to a formal algorithm and software-requirements specification.
+**Status:** **delivered** (TN0–TN10 complete, 2026-08-07). Program identifier: **TN**.
+Every section below is implemented in `pytex.tem` and `pytex.plotting.tilt_stereogram`,
+tested by `tests/unit/test_tem_tilt_navigation.py`, demonstrated end to end in
+{doc}`../tutorials/notebooks/24_tem_tilt_navigation`, and checked numerically by the
+worked examples under {doc}`../examples/generated/tem_tilt_navigation`.
+
+This document remains the **normative specification**: it fixes the conventions the code
+implements, and a change to either must change both. Section 19 records which of its
+claims were verified numerically and how. Two points were corrected during the work and
+are marked in place — the point-group criterion in §8.1 (improper operations other than
+inversion, not absence of a centre) and the visualization approach in §12.5, where the
+delivered figure is a static two-panel stereogram with the trajectory drawn as a series of
+dots, not an animation.
+
+**Companion documents.** The rendered algorithm page is
+{doc}`../algorithms/tem_tilt_navigation`; the canonical derivation is
+`docs/tex/algorithms/tem_specimen_tilt_navigation.tex`.
 
 **Scope of this document.** Define the problem, the geometry, the algorithm, the ambiguities, the
 calibration burden, the reachability and path-planning logic, the visualization mathematics, the
@@ -937,21 +951,32 @@ rather than aspirational:
   exponentials rather than by the closed-form (B) — and asserts agreement to $10^{-9}$. That is a
   real cross-check; a second copy of the same equation in the plotting layer is not.
 
-### 12.5 Animation mechanics — an honest blocker
+### 12.5 What was delivered instead of animation
 
-`pytex.plotting` currently has **no animation infrastructure**: it is Matplotlib figures and
-hand-built SVG, all deterministic and headless-safe. Adding animation risks importing
-non-determinism and a heavy dependency into a repository whose figure tests are exact.
+**This section is superseded by the delivered implementation.** The requirement was clarified
+during review: what is wanted is not a moving picture but a *static, publication-quality*
+stereogram showing the intermediate positions of the zone axis as a **series of dots** on its way
+to the target. That is what `pytex.plotting.tilt_stereogram` produces, and it is the better answer
+— a printed figure carries the same information, survives peer review, and can be tested exactly.
 
-Recommendation: make the **frame sequence the primitive**. `TiltPath.sample(n)` yields a
-deterministic list of states; `render_tilt_stereogram(state)` renders one frame. Then:
+The delivered figure has **two panels**, because one cannot do the job. A double-tilt holder
+reaches about eight percent of the sphere (§10.2), so everything interesting happens inside a small
+patch of a full stereogram, and a single panel must trade crystallographic context against legible
+detail. The overview places the move among the low-index poles; the detail zooms to the reachable
+region where the stage angles and the tilt-axis senses can be read.
 
-- static multi-panel contact sheet (default; testable exactly, embeddable in the docs);
-- animated SVG via SMIL — self-contained, no JavaScript, renders in the Sphinx site, and diffable as
-  text, which fits the repository's existing SVG practice;
-- GIF via `matplotlib.animation` behind an optional extra, never a required dependency.
+Two design points earned their place during implementation:
 
-Test the trajectory and the per-frame geometry; never test pixels.
+- **The dots grow toward the target.** Direction of travel is then legible without an arrowhead and
+  without relying on colour, so it survives a greyscale reprint. Their *spacing* carries the
+  second piece of information: where they crowd, the beam is moving slowly through the crystal for
+  a given change of stage angle.
+- **Axis limits are computed before the annotation layers.** The renderer expands axes to fit every
+  text layer, so a label for a pole outside the intended zoom silently undid it. Limits are now
+  fixed first and off-view poles are filtered — a bug worth recording because it is invisible
+  except by measuring the rendered extent, which the test suite now does.
+
+The animation infrastructure discussed above was not built and is not needed.
 
 ### 12.6 The teaching mode the prompt asks for
 

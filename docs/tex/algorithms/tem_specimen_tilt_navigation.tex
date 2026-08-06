@@ -1,0 +1,334 @@
+\section{TEM Specimen Tilt Navigation}
+
+This note fixes the conventions, the geometry and the identifiability analysis behind
+\texttt{pytex.tem}: given a crystal at a known holder position with an indexed zone axis, determine
+the holder tilts $(\alpha, \beta)$ that bring a requested zone axis onto the electron beam.
+
+The forward problem is a single rigid-body equation and the inverse problem has a two-line closed
+form. Almost all of the difficulty lies elsewhere, in what the available observations do
+\emph{not} determine, and the bulk of this note is therefore devoted to that question.
+
+\subsection{Frames}
+
+No new frame domain is introduced. Per the repository frame doctrine the holder frame \emph{is}
+the specimen-domain frame for TEM work, so the crystal-to-holder rotation is an ordinary
+crystal-to-specimen \texttt{Orientation}.
+
+\begin{itemize}
+  \item \textbf{Crystal} $C$: right-handed Cartesian tied to the lattice through the structure
+    matrix $\mathbf{A}$, with $[uvw] \mapsto \mathbf{A}[u,v,w]^{\mathsf T}$ and
+    $(hkl) \mapsto \mathbf{A}^{*}[h,k,l]^{\mathsf T}$, $\mathbf{A}^{*} = (\mathbf{A}^{-1})^{\mathsf T}$.
+  \item \textbf{Holder} $H$: rigidly attached to the specimen and to the cartridge, with
+    $\hat{\mathbf{x}}_H$ along the rod (the $\alpha$ axis), $\hat{\mathbf{y}}_H$ along the nominal
+    $\beta$ axis. Coincides with the laboratory frame at zero tilt.
+  \item \textbf{Laboratory} $L$: fixed to the column, $\hat{\mathbf{z}}_L$ pointing up the column
+    toward the gun, so electrons propagate along $-\hat{\mathbf{z}}_L$.
+  \item \textbf{Pattern} $P$: axes of the stored diffraction-image array, origin at the
+    transmitted beam.
+\end{itemize}
+
+\subsection{The Specimen/Holder Collapse}
+
+A textbook treatment inserts a specimen frame between crystal and holder, joined by a mounting
+rotation $\mathbf{M}_{H \leftarrow S}$. \textbf{That rotation and the crystal orientation are not
+separately identifiable from diffraction data.} No observable in this problem depends on either
+alone, only on the product, so carrying them separately manufactures an unobservable degree of
+freedom. PyTex therefore carries the single crystal-to-holder rotation
+
+\begin{equation}
+\mathbf{U} \;\equiv\; \mathbf{M}_{H \leftarrow S}\,\mathbf{M}_{S \leftarrow C}.
+\label{eq:tn-collapse}
+\end{equation}
+
+The mounting rotation reappears only in the tilt envelope, where a grid bar shadows at a
+mounting-dependent azimuth, never as an orientation unknown.
+
+\subsection{Stage Kinematics}
+
+The two tilt axes of a double-tilt holder are not both fixed. The $\alpha$ axis is the rod, fixed
+in the column; the $\beta$ axis is a cradle carried \emph{inside} the rod and therefore moves with
+$\alpha$. Writing the $\beta$ rotation about its instantaneous laboratory-frame axis
+$\mathbf{R}_x(\alpha)\hat{\mathbf{y}}$ and composing with $\alpha$,
+
+\begin{equation}
+\mathbf{R}_{\text{stage}}
+= \Bigl[\mathbf{R}_x(\alpha)\,\mathbf{R}_y(\beta)\,\mathbf{R}_x(\alpha)^{\mathsf T}\Bigr]\,
+  \mathbf{R}_x(\alpha)
+= \mathbf{R}_x(\alpha)\,\mathbf{R}_y(\beta),
+\label{eq:tn-stage}
+\end{equation}
+
+so the moving-axis factors cancel exactly. The cancellation is a property of this particular axis
+pair and \emph{not} a general licence to ignore axis motion: it does not survive a non-orthogonal
+or mis-set pair, which is why the calibrated model composes the two rotations explicitly.
+
+The master equation is then
+
+\begin{equation}
+\mathbf{v}_L(\alpha,\beta) = \mathbf{R}_{\text{stage}}(\alpha,\beta)\,\mathbf{U}\,\mathbf{v}_C .
+\label{eq:tn-master}
+\end{equation}
+
+Everything below is an inversion of, or a constraint on, \eqref{eq:tn-master}.
+
+\subsection{Beam Direction, And Why It Is The Useful Form}
+
+Transposing \eqref{eq:tn-master} for the beam axis gives
+
+\begin{equation}
+\hat{\mathbf{b}}_H(\alpha,\beta)
+= \mathbf{R}_{\text{stage}}^{\mathsf T}\hat{\mathbf{z}}_L
+= \bigl(-\cos\alpha\,\sin\beta,\ \sin\alpha,\ \cos\alpha\,\cos\beta\bigr).
+\label{eq:tn-beam}
+\end{equation}
+
+This is a spherical coordinate system whose \textbf{pole is the $\beta$ axis}, and three
+consequences follow immediately.
+
+\begin{enumerate}
+  \item The Jacobian is $\cos\alpha$, so a tilt rectangle reaches the solid angle
+    \begin{equation}
+    \Omega = (\beta_{\max} - \beta_{\min})\,(\sin\alpha_{\max} - \sin\alpha_{\min}).
+    \label{eq:tn-solid-angle}
+    \end{equation}
+    A $\pm 30^{\circ}$ holder gives $\Omega = \pi/3 = 1.0472\,\mathrm{sr}$, which is
+    $8.33\,\%$ of all directions.
+  \item Curves of constant $\beta$ are great circles through $\pm\hat{\mathbf{y}}_H$, and curves of
+    constant $\alpha$ are small circles about it. The accessible region is a geodesic quadrilateral
+    and draws exactly, as circular arcs.
+  \item $\lVert \partial\hat{\mathbf{b}}_H/\partial\alpha \rVert = 1$ but
+    $\lVert \partial\hat{\mathbf{b}}_H/\partial\beta \rVert = \cos\alpha$: a degree of $\beta$ buys
+    only $\cos\alpha$ degrees of crystal rotation. This is the double-tilt holder's gimbal lock.
+\end{enumerate}
+
+\subsection{The Closed-Form Solution}
+
+Let $\hat{\mathbf{w}} = \mathbf{U}\hat{\mathbf{t}}_C = (w_1, w_2, w_3)^{\mathsf T}$ be the target
+direction in holder coordinates. Alignment requires $\hat{\mathbf{w}} = \pm\hat{\mathbf{b}}_H$,
+and matching against \eqref{eq:tn-beam} gives
+
+\begin{equation}
+\beta^{*} = \operatorname{atan2}(-w_1,\ w_3),
+\qquad
+\alpha^{*} = \operatorname{atan2}\!\left(w_2,\ \sqrt{w_1^2 + w_3^2}\right).
+\label{eq:tn-solution}
+\end{equation}
+
+Verification: with $\rho = \sqrt{w_1^2 + w_3^2}$, $\mathbf{R}_y(\beta^{*})^{\mathsf T}$ carries
+$\hat{\mathbf{w}}$ to $(0, w_2, \rho)$ and $\mathbf{R}_x(\alpha^{*})^{\mathsf T}$ carries that to
+$(0,0,1)$.
+
+Four branches satisfy the alignment condition. Two require $\lvert\beta\rvert > 90^{\circ}$ and one
+requires roughly $180^{\circ}$ of $\alpha$, so on a real holder exactly one is relevant.
+\textbf{The combinatorial richness of the answer therefore comes from symmetry and ambiguity, not
+from the trigonometry.} When $\rho = 0$ the target lies along the $\beta$ axis, $\beta$ is
+indeterminate and $\alpha = \pm 90^{\circ}$; the degeneracy is detected rather than producing an
+arbitrary $\operatorname{atan2}(0,0)$.
+
+For a calibrated stage with a non-orthogonal or mis-set axis pair there is no closed form, and
+\eqref{eq:tn-solution} seeds a Gauss--Newton refinement on the two-dimensional residual.
+
+\subsection{Reconstruction, And Why Two Zones Beat One Pattern}
+
+\subsubsection{Single pattern}
+
+Pattern indexing supplies the crystal-to-pattern rotation $\mathbf{R}_{P \leftarrow C}$, and
+
+\begin{equation}
+\mathbf{U} = \mathbf{R}_{\text{stage}}(\alpha_c,\beta_c)^{\mathsf T}\,
+             \mathbf{F}\,\mathbf{R}_z(\varphi_D)\,\mathbf{R}_{P \leftarrow C},
+\label{eq:tn-mode-a}
+\end{equation}
+
+with $\varphi_D$ the diffraction rotation and $\mathbf{F}$ the parity of the stored image. If
+$\mathbf{F}$ is wrong the product is improper, so $\det \mathbf{U} = -1$ is a free and exact
+self-check.
+
+\subsubsection{Two zone axes}
+
+If zone axes $\hat{\mathbf{n}}_1, \hat{\mathbf{n}}_2$ were indexed at two stage positions then by
+\eqref{eq:tn-beam}
+
+\begin{equation}
+\mathbf{U}\,\hat{\mathbf{n}}_i = \hat{\mathbf{b}}_H(\alpha_i, \beta_i), \qquad i = 1,2,
+\label{eq:tn-mode-b}
+\end{equation}
+
+and two non-parallel correspondences determine a rotation uniquely (Wahba's problem). \textbf{This
+path requires neither $\varphi_D$ nor $\mathbf{F}$}: the single hardest calibration constant in the
+problem is not needed if the operator has visited two zones, which after any real session of
+Kikuchi-band chasing they almost always have.
+
+It also yields a calibration-free consistency test. The interzonal angle is a crystallographic
+invariant while the beam-direction angle depends only on the stage model, so
+
+\begin{equation}
+\Delta_{\text{cons}} = \Bigl\lvert\, \angle(\hat{\mathbf{n}}_1,\hat{\mathbf{n}}_2)
+- \angle\bigl(\hat{\mathbf{b}}_H(\alpha_1,\beta_1), \hat{\mathbf{b}}_H(\alpha_2,\beta_2)\bigr) \Bigr\rvert
+\label{eq:tn-consistency}
+\end{equation}
+
+indicts, in order of likelihood, a wrong zone-axis sign, a wrong stage sign convention, a wrong
+indexing, or a bent specimen.
+
+A residual two-fold ambiguity survives: flipping both zone-axis senses admits
+$\mathbf{U}' = \mathbf{U}\mathbf{Q}$ with $\mathbf{Q}$ the $180^{\circ}$ rotation about
+$\hat{\mathbf{n}}_1 \times \hat{\mathbf{n}}_2$. It is harmless exactly when $\mathbf{Q}$ is an
+element of the crystal's proper point group, which is a one-line check. For cubic zones $[001]$ and
+$[110]$ the axis is $\langle 1\bar{1}0 \rangle$ and the answer is yes.
+
+\subsection{Identifiability: Three Independent Ambiguities}
+
+The classical ``$180^{\circ}$ ambiguity'' is three unrelated things. Conflating them is why the
+failure mode has a reputation for being intractable.
+
+\subsubsection{Layer 1: Friedel/Laue}
+
+Kinematic intensities obey $\lvert F(\mathbf{g})\rvert = \lvert F(-\mathbf{g})\rvert$, so the
+recorded pattern is centrosymmetric even when the crystal is not. The reconstruction is determined
+only up to the observation stabilizer
+
+\begin{equation}
+G_{\text{obs}} = \bigl\{\, \mathbf{Q} \in L \cap SO(3)\ :\ \mathbf{Q}\ \text{maps the zone plane to itself} \,\bigr\},
+\label{eq:tn-stabilizer}
+\end{equation}
+
+with $L$ the \emph{Laue class}. The genuinely distinct hypotheses are counted by the cosets
+$G_{\text{obs}} / (G_{\text{obs}} \cap G_{\text{proper}})$.
+
+The decisive observation is that $L \cap SO(3)$ exceeds the crystal's proper point group for
+\textbf{exactly ten of the thirty-two point groups} --- those containing improper operations other
+than inversion --- and by a factor of exactly two in every case:
+
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Class & Point groups & Index \\
+\hline
+Centrosymmetric (11) & $\bar{1}$, $2/m$, $mmm$, $4/m$, $4/mmm$, $\bar{3}$, $\bar{3}m$, $6/m$, $6/mmm$, $m\bar{3}$, $m\bar{3}m$ & 1 \\
+Enantiomorphic (11) & $1$, $2$, $222$, $4$, $422$, $3$, $32$, $6$, $622$, $23$, $432$ & 1 \\
+Improper, acentric (10) & $m$, $mm2$, $\bar{4}$, $4mm$, $\bar{4}2m$, $3m$, $\bar{6}$, $6mm$, $\bar{6}m2$, $\bar{4}3m$ & 2 \\
+\hline
+\end{tabular}
+\end{center}
+
+Two consequences. \textbf{For a centrosymmetric crystal Friedel's law adds nothing}: every
+``ambiguous'' reconstruction is a symmetry-equivalent description of the same physical orientation,
+so the much-feared $180^{\circ}$ ambiguity is harmless for every cubic and hexagonal metal. And
+\emph{non-centrosymmetric is the wrong test}: quartz, point group $32$, is acentric yet entirely
+ambiguity-free, because its point group is already all rotations.
+
+Where the ambiguity is real, the destination is a Friedel partner: the SAED pattern there is
+indistinguishable, but the physical orientation differs, and with it every polarity-sensitive
+measurement --- CBED/HOLZ symmetry, polar-axis determination, $\mathbf{g}\cdot\mathbf{b}$ analysis.
+
+\subsubsection{Layer 2: Instrumental rotation}
+
+An error $\delta\varphi$ in the diffraction rotation is a rotation about the beam axis. It is
+\emph{not} absorbed by crystal symmetry, and following the tilts it implies lands the specimen
+
+\begin{equation}
+\Delta_{\text{res}} = 2\arcsin\!\bigl(\sin(\delta\varphi/2)\,\sin\theta_c\bigr)
+\ \approx\ \delta\varphi\,\sin\theta_c
+\label{eq:tn-residual-law}
+\end{equation}
+
+away from the target, where $\theta_c$ is the angle between the current and target zone axes.
+Derivation: with $\mathbf{c} = \mathbf{U}_{\text{true}}\hat{\mathbf{t}}_C$, the tilts satisfy
+$\mathbf{R}_{\text{stage}}\mathbf{R}_z(\delta\varphi)\mathbf{c} = \hat{\mathbf{z}}_L$ while the
+specimen delivers $\mathbf{R}_{\text{stage}}\mathbf{c}$; the residual is
+$\angle(\mathbf{c}, \mathbf{R}_z(\delta\varphi)\mathbf{c})$.
+
+Equation \eqref{eq:tn-residual-law} carries the two operationally important facts. At
+$\delta\varphi = 180^{\circ}$ both tilt angles are negated: the specimen goes exactly the wrong way
+while the calculation reports a clean zero residual. And the error \emph{scales with the length of
+the hop}, so a long excursion should be routed through intermediate low-index zones with
+re-indexing at each, which converts an open-loop calculation into a self-correcting procedure.
+
+\subsubsection{Layer 3: Parity}
+
+The image mirroring $\mathbf{F}$ and the readout signs $s_\alpha, s_\beta$ reflect the trajectory
+rather than rotating it, so unlike layer 2 they cannot be absorbed into any single angle. They are
+caught by $\det\mathbf{U}$ and by \eqref{eq:tn-consistency}.
+
+\subsection{Calibration}
+
+The instrument reports the two stage angles and nothing about the transformation between them and
+the diffraction pattern. The core measurement is a two-excursion procedure: apply a known positive
+$\alpha$, record the azimuth $\psi_\alpha$ at which a tracked Kikuchi feature moved, repeat for
+$\beta$.
+
+A rigid rotation carries a pole at the pattern centre to $\mathbf{R}\hat{\mathbf{z}}_L$. At zero
+tilt $\mathbf{R}_x(\Delta\alpha)\hat{\mathbf{z}}_L$ displaces along $-\hat{\mathbf{y}}_L$ and
+$\mathbf{R}_y(\Delta\beta)\hat{\mathbf{z}}_L$ along $+\hat{\mathbf{x}}_L$, so with
+$\mathbf{R}_{L \leftarrow P} = \mathbf{F}\mathbf{R}_z(\varphi_D)$,
+
+\begin{equation}
+\varphi_D = -\psi_\beta,
+\qquad
+\psi_\alpha - \psi_\beta =
+\begin{cases}
+-90^{\circ} & \mathbf{F} = \mathbf{I},\\
++90^{\circ} & \text{mirrored}.
+\end{cases}
+\label{eq:tn-calibration}
+\end{equation}
+
+Three results from two exposures --- the rotation numerically, the parity from a sign, and a
+redundancy check, since the azimuths must be $90^{\circ}$ apart. The displacement magnitude is a
+bonus: a pole must move by exactly the applied angle, which also confirms the camera length.
+
+$\varphi_D$ is hysteretic in the projector and diffraction lens settings, so a calibration records
+the camera length and voltage it was measured at and must not be interpolated to another. A
+plausible interpolated value for a hysteretic quantity is precisely the layer-2 failure above.
+
+\subsection{Eucentric Height Is Not An Orientation Parameter}
+
+Being off eucentric height introduces \emph{no orientation error to first order}: tilting about a
+displaced axis is a rotation composed with a translation, and only the rotation enters
+\eqref{eq:tn-master}. The real cost is that the region of interest translates out of the
+selected-area aperture, so the operator loses the crystal rather than mis-orienting it. This
+belongs in path segmentation, not in the orientation model.
+
+\subsection{Path Planning}
+
+A straight line in $(\alpha,\beta)$ is not a straight line on the crystal sphere. The geodesic
+between two zone axes lies in the plane they span, whose normal rationalizes to a low-index
+$(hkl)$ --- and the Kikuchi band of that reflection is exactly the band joining the two poles.
+\textbf{The mathematically optimal path is the one experienced operators already follow by eye},
+which is why the planner reports the band to follow.
+
+\subsection{Failure Modes}
+
+In order of practical likelihood:
+
+\begin{enumerate}
+  \item $\varphi_D$ wrong, worst at $180^{\circ}$: a clean, confident, exactly-backwards answer,
+    detected only by calibration or by the two-zone path.
+  \item Parity or sign convention wrong: reflected trajectory, detected by $\det\mathbf{U}$ and by
+    \eqref{eq:tn-consistency}.
+  \item Specimen bent or the area polycrystalline: the rigid assumption fails and no reconstruction
+    is valid; bounded by \eqref{eq:tn-consistency} across pairs.
+  \item Target orbit outside the envelope: not a failure but an answer, and the most common useful
+    output.
+  \item Target near the $\beta$-axis pole: ill-conditioned by $1/\cos\alpha$, bounded at $1.31$
+    within a real envelope.
+  \item One of the ten affected point groups with a polarity-sensitive purpose: irreducible from
+    kinematic SAED; reported, not guessed.
+\end{enumerate}
+
+\subsection{References}
+
+\begin{itemize}
+  \item De Graef, M., \emph{Introduction to Conventional Transmission Electron Microscopy},
+    Cambridge University Press, DOI: 10.1017/CBO9780511615092 --- stage geometry, diffraction
+    rotation, Kikuchi navigation.
+  \item Williams, D. B. and Carter, C. B., \emph{Transmission Electron Microscopy}, Springer,
+    DOI: 10.1007/978-0-387-76501-3 --- indexing, tilt practice, calibration procedures.
+  \item Wahba, G., \emph{SIAM Review} \textbf{7} (1965) 409, DOI: 10.1137/1007077 --- the
+    two-vector attitude problem underlying the two-zone reconstruction.
+  \item Hahn, Th. (ed.), \emph{International Tables for Crystallography, Volume A}, IUCr/Springer,
+    DOI: 10.1107/97809553602060000100 --- point groups, Laue classes, stabilizer orders.
+  \item Morawiec, A., \emph{Orientations and Rotations}, Springer, DOI: 10.1007/978-3-662-09156-2
+    --- rotation representations, symmetry orbits, tangent-space covariance.
+\end{itemize}

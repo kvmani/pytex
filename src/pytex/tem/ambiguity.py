@@ -128,6 +128,8 @@ class DiscriminatingExperiment:
             raise ValueError("A discriminating experiment needs at least one outcome.")
 
     def describe(self) -> str:
+        """The procedure and what each family predicts, as one sentence."""
+
         outcomes = "; ".join(
             f"family {index + 1}: {outcome}"
             for index, outcome in enumerate(self.predicted_outcomes)
@@ -182,6 +184,8 @@ class AmbiguityFamily:
         return float(math.degrees(math.acos(max(-1.0, min(1.0, (trace - 1.0) / 2.0)))))
 
     def describe(self) -> str:
+        """Whether this family is a genuine alternative, and why it exists."""
+
         if self.index == 1:
             return "Family 1: the reference reconstruction."
         status = (

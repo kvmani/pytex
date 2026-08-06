@@ -71,6 +71,13 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | ODF | Orientation distribution function over orientation space. |
 | fundamental zone | The symmetry-reduced subset of orientation space used for canonical orientation keys. |
 | zone axis | Direct-space crystallographic direction defining an electron-diffraction viewing or incidence condition. |
+| holder frame | The specimen-domain frame for TEM work: rigidly attached to the specimen and the holder cartridge, coinciding with the laboratory frame at zero tilt. Not a new frame domain. |
+| crystal-to-holder orientation | The rotation $\mathbf{U}$ taking crystal-frame vectors into holder-frame components; absorbs the separately unobservable specimen-mounting rotation. |
+| holder tilt | A stage rotation about one of the two holder axes, $\alpha$ about the rod and $\beta$ about the cradle carried inside it. |
+| tilt envelope | The set of stage positions a holder can physically reach, as a predicate with a continuous margin rather than a pair of limits. |
+| diffraction rotation | The azimuth of the recorded diffraction pattern relative to the laboratory frame; instrument-specific, hysteretic in the lens settings, and not present in file metadata. |
+| observation stabilizer | The rotations of the Laue class that map an observed zone plane to itself; the group up to which a single kinematic pattern determines an orientation. |
+| ambiguity family | A competing hypothesis about the true orientation, of which only one is correct; distinct from a symmetry equivalent, which is a free choice. |
 | powder pattern | Grid-sampled XRD spectrum built from discrete reflections and an optional broadening model. |
 | multiplicity | Number of symmetry-equivalent members of a plane or direction family under the phase point group. |
 | crystal scene | Reusable geometry bundle for 3D crystal rendering. |

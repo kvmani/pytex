@@ -343,12 +343,16 @@ class RectangularEnvelope(TiltEnvelope):
             raise ValueError("RectangularEnvelope requires beta_min_deg < beta_max_deg.")
 
     def contains(self, alpha_deg: float, beta_deg: float) -> bool:
+        """Whether both angles lie within their independent limits."""
+
         return bool(
             self.alpha_min_deg <= alpha_deg <= self.alpha_max_deg
             and self.beta_min_deg <= beta_deg <= self.beta_max_deg
         )
 
     def margin_deg(self, alpha_deg: float, beta_deg: float) -> float:
+        """Degrees to the nearest of the four limits."""
+
         return float(
             min(
                 alpha_deg - self.alpha_min_deg,
@@ -359,6 +363,8 @@ class RectangularEnvelope(TiltEnvelope):
         )
 
     def bounds(self) -> tuple[float, float, float, float]:
+        """The limits themselves, which are already a tight bounding box."""
+
         return (
             self.alpha_min_deg,
             self.alpha_max_deg,
@@ -378,6 +384,8 @@ class RectangularEnvelope(TiltEnvelope):
         )
 
     def describe(self) -> str:
+        """One-line description of the independent limits."""
+
         return (
             f"rectangular envelope alpha in [{self.alpha_min_deg:+.1f}, "
             f"{self.alpha_max_deg:+.1f}] deg, beta in [{self.beta_min_deg:+.1f}, "
@@ -411,6 +419,8 @@ class EllipticalEnvelope(TiltEnvelope):
         return math.hypot(alpha_deg / self.alpha_max_deg, beta_deg / self.beta_max_deg)
 
     def contains(self, alpha_deg: float, beta_deg: float) -> bool:
+        """Whether the normalized radius is within unity."""
+
         return bool(self._radius(alpha_deg, beta_deg) <= 1.0)
 
     def margin_deg(self, alpha_deg: float, beta_deg: float) -> float:
@@ -429,6 +439,8 @@ class EllipticalEnvelope(TiltEnvelope):
         return float((1.0 - radius) * scale)
 
     def bounds(self) -> tuple[float, float, float, float]:
+        """The bounding box of the ellipse; looser than the envelope itself."""
+
         return (
             -self.alpha_max_deg,
             self.alpha_max_deg,
@@ -437,6 +449,8 @@ class EllipticalEnvelope(TiltEnvelope):
         )
 
     def describe(self) -> str:
+        """One-line description of the coupled limits."""
+
         return (
             f"elliptical envelope with semi-axes alpha {self.alpha_max_deg:.1f} deg, "
             f"beta {self.beta_max_deg:.1f} deg (each range shrinks as the other grows)"
@@ -501,6 +515,8 @@ class PolygonEnvelope(TiltEnvelope):
         return distance if self.contains(alpha_deg, beta_deg) else -distance
 
     def bounds(self) -> tuple[float, float, float, float]:
+        """Axis-aligned bounding box of the polygon vertices."""
+
         return (
             float(np.min(self.vertices[:, 0])),
             float(np.max(self.vertices[:, 0])),
@@ -509,6 +525,8 @@ class PolygonEnvelope(TiltEnvelope):
         )
 
     def describe(self) -> str:
+        """One-line description of the digitized boundary and its extent."""
+
         alpha_min, alpha_max, beta_min, beta_max = self.bounds()
         return (
             f"polygonal envelope with {self.vertices.shape[0]} vertices, bounded by "
@@ -545,11 +563,15 @@ class MaskedEnvelope(TiltEnvelope):
         object.__setattr__(self, "excluded", tuple(self.excluded))
 
     def contains(self, alpha_deg: float, beta_deg: float) -> bool:
+        """Inside the base envelope and outside every exclusion."""
+
         if not self.base.contains(alpha_deg, beta_deg):
             return False
         return not any(region.contains(alpha_deg, beta_deg) for region in self.excluded)
 
     def margin_deg(self, alpha_deg: float, beta_deg: float) -> float:
+        """The tighter of the base clearance and the distance to any exclusion."""
+
         margin = self.base.margin_deg(alpha_deg, beta_deg)
         for region in self.excluded:
             # Inside an exclusion the margin is negative; outside it, the
@@ -559,9 +581,13 @@ class MaskedEnvelope(TiltEnvelope):
         return float(margin)
 
     def bounds(self) -> tuple[float, float, float, float]:
+        """The base envelope's bounds; exclusions only remove area."""
+
         return self.base.bounds()
 
     def describe(self) -> str:
+        """One-line description of the base envelope and what was subtracted."""
+
         if not self.excluded:
             return self.base.describe()
         return (
@@ -897,19 +923,31 @@ class StageModel(Protocol):
     """
 
     @property
-    def kind(self) -> HolderKind: ...
+    def kind(self) -> HolderKind:
+        """The tilt geometry this holder provides."""
+        ...
 
     @property
-    def envelope(self) -> TiltEnvelope: ...
+    def envelope(self) -> TiltEnvelope:
+        """The set of stage positions this holder can physically reach."""
+        ...
 
     @property
-    def calibration(self) -> StageCalibration: ...
+    def calibration(self) -> StageCalibration:
+        """Everything measured about this stage that the ideal model does not supply."""
+        ...
 
-    def rotation_matrix(self, alpha_deg: float, beta_deg: float) -> np.ndarray: ...
+    def rotation_matrix(self, alpha_deg: float, beta_deg: float) -> np.ndarray:
+        """Holder-to-laboratory rotation at a stage position, as a 3x3 matrix."""
+        ...
 
-    def beam_direction(self, alpha_deg: float, beta_deg: float) -> np.ndarray: ...
+    def beam_direction(self, alpha_deg: float, beta_deg: float) -> np.ndarray:
+        """Beam direction in holder coordinates at a stage position, as a unit vector."""
+        ...
 
-    def describe(self) -> str: ...
+    def describe(self) -> str:
+        """Convention-explicit prose describing the geometry, limits and calibration."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -995,6 +1033,8 @@ class DoubleTiltStage(_StageCommon):
 
     @property
     def kind(self) -> HolderKind:
+        """Identifies this as a double-tilt holder."""
+
         return HolderKind.DOUBLE_TILT
 
     def rotation_matrix(self, alpha_deg: float, beta_deg: float) -> np.ndarray:
@@ -1050,6 +1090,8 @@ class TiltRotateStage(_StageCommon):
 
     @property
     def kind(self) -> HolderKind:
+        """Identifies this as a tilt-rotate holder."""
+
         return HolderKind.TILT_ROTATE
 
     def rotation_matrix(self, alpha_deg: float, beta_deg: float) -> np.ndarray:
@@ -1065,6 +1107,8 @@ class TiltRotateStage(_StageCommon):
         return np.asarray(alpha_rotation @ rotation_z(beta_rad), dtype=np.float64)
 
     def describe(self) -> str:
+        """Prose statement of the geometry, conventions and limits."""
+
         return (
             f"Tilt-rotate holder '{self.name}': alpha tilts about the laboratory x "
             "axis and the second angle rotates the specimen about its own normal, "
@@ -1091,6 +1135,8 @@ class SingleTiltStage(_StageCommon):
 
     @property
     def kind(self) -> HolderKind:
+        """Identifies this as a single-tilt holder."""
+
         return HolderKind.SINGLE_TILT
 
     def rotation_matrix(self, alpha_deg: float, beta_deg: float = 0.0) -> np.ndarray:
@@ -1103,6 +1149,8 @@ class SingleTiltStage(_StageCommon):
         return _rotation_about(axes.alpha_axis, alpha_rad)
 
     def describe(self) -> str:
+        """Prose statement of the geometry, and of why exact solutions are rare."""
+
         return (
             f"Single-tilt holder '{self.name}': one axis only, so reachable beam "
             "directions form a great circle — a set of measure zero. An exact zone "

@@ -92,6 +92,7 @@
 - [Orientation Relationship Determination](tex/algorithms/orientation_relationship_determination.tex)
 - [SAED Ratio/Angle Indexing](tex/algorithms/saed_ratio_angle_indexing.tex)
 - [Reciprocal Space And Kinematic Spots](tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
+- [TEM Specimen Tilt Navigation](tex/algorithms/tem_specimen_tilt_navigation.tex)
 - [Validation Program](tex/validation/validation_program.tex)
 
 ## Figures

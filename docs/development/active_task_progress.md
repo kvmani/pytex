@@ -44,8 +44,19 @@ annotated stereographic projection, tests, worked examples, docs and a runnable 
 | TN6 | `plotting/tilt_stereogram.py`: the annotated figure | **done** (`4a16430`) |
 | TN7 | `tests/unit/test_tem_tilt_navigation.py` (foundation §14 matrix) | **done** (`4a16430`, `34755e1`) |
 | TN8 | Worked examples + schemas + top-level exports | **done** (`34755e1`) |
-| TN9 | Notebook `24_tem_tilt_navigation.ipynb` | in progress |
-| TN10 | Theory note, site pages, indexes, registry, parity matrix | pending |
+| TN9 | Notebook `24_tem_tilt_navigation.ipynb` | **done** (`bcdcfa1`) |
+| TN10 | Theory note, site pages, indexes, registry, parity matrix | **done** |
+
+### What TN10 delivered
+
+| Artifact | Path |
+| --- | --- |
+| Canonical LaTeX derivation | `docs/tex/algorithms/tem_specimen_tilt_navigation.tex` |
+| Rendered algorithm page | `docs/site/algorithms/tem_tilt_navigation.md` |
+| Design record, marked delivered | `docs/architecture/tem_tilt_navigation_foundation.md` |
+| Registered in | algorithms toctree, theory index, notebooks index, architecture index, `docs/README.md` |
+| Terminology registry | 7 new terms (holder frame, crystal-to-holder orientation, holder tilt, tilt envelope, diffraction rotation, observation stabilizer, ambiguity family) |
+| MTEX parity matrix | new row; **no parity claimed in either direction** — MTEX has no equivalent surface, this being instrument-operation geometry rather than texture analysis |
 
 ### Verification results (measured, not assumed)
 

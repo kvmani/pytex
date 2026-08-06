@@ -33,15 +33,19 @@ fixing is what is needed.
 - [../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex](../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex)
 - [../../tex/algorithms/ebsd_kam_parameterization.tex](../../tex/algorithms/ebsd_kam_parameterization.tex)
 - [../../tex/algorithms/ebsd_local_misorientation.tex](../../tex/algorithms/ebsd_local_misorientation.tex)
+- [../../tex/algorithms/lattice_curvature_and_gnd_density.tex](../../tex/algorithms/lattice_curvature_and_gnd_density.tex)
 - [../../tex/algorithms/multiphase_ebsd_graph_workflows.tex](../../tex/algorithms/multiphase_ebsd_graph_workflows.tex)
 - [../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex](../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
 - [../../tex/algorithms/ebsd_boundaries_and_cleanup.tex](../../tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [../../tex/algorithms/experimental_parent_candidate_scoring.tex](../../tex/algorithms/experimental_parent_candidate_scoring.tex)
 - [../../tex/algorithms/phase_transformation_relationship_construction.tex](../../tex/algorithms/phase_transformation_relationship_construction.tex)
 - [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
+- [../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex](../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
+- [../../tex/algorithms/preferred_orientation_in_powder_intensities.tex](../../tex/algorithms/preferred_orientation_in_powder_intensities.tex)
 - [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
 - [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
 - [../../tex/algorithms/stereographic_projections_and_xrdml_texture_import.tex](../../tex/algorithms/stereographic_projections_and_xrdml_texture_import.tex)
+- [../../tex/algorithms/tem_specimen_tilt_navigation.tex](../../tex/algorithms/tem_specimen_tilt_navigation.tex)
 
 ## Validation Notes
 
