@@ -49,6 +49,7 @@ notebooks/20_or_catalogs_identification_and_reconstruction
 notebooks/21_composite_or_diffraction_patterns
 notebooks/22_burgers_beta_to_alpha_zirconium
 notebooks/23_transformation_crystallography_end_to_end
+notebooks/24_tem_tilt_navigation
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -92,6 +93,22 @@ pages.
    plane, the composite SAED down [110]_beta with its reflection table and
    manifest, the same composite re-anchored on [0001]_alpha of one variant, and
    a measured pattern solved back to phase, zone axis, spot indices and variant.
+
+## Instrument Operation Track
+
+7. `24_tem_tilt_navigation` — the question asked in front of a microscope: *I am
+   down one zone axis and I want another, so which way do I tilt and how far?*
+   Reconstructs the crystal-to-holder orientation from two indexed zone axes —
+   a path that needs no diffraction-rotation calibration at all — then solves
+   the holder angles, enumerates the symmetry orbit of the target, reports which
+   equivalents the holder can actually reach, and draws the annotated
+   stereogram with the trajectory as a series of dots. Two results are worth the
+   read on their own: Friedel's law leaves a genuine ambiguity for only ten of
+   the thirty-two point groups, so the much-feared 180 degree ambiguity is
+   harmless for every cubic and hexagonal metal; while an uncalibrated
+   diffraction rotation — which is *not* absorbed by symmetry — produces a
+   perfectly self-consistent answer that drives the specimen the wrong way, and
+   is fixed by a two-exposure calibration.
 
 ## How To Use These
 

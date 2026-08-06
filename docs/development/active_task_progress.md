@@ -36,24 +36,51 @@ annotated stereographic projection, tests, worked examples, docs and a runnable 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | TN0 | Foundation document, reviewed and approved | **done** (2026-08-06) |
-| TN1 | `tem/stage.py`: kinematics, calibration record, envelopes | pending |
-| TN2 | `tem/navigation.py`: closed form, branches, orbit, validation, ranking | pending |
-| TN3 | `tem/reconstruction.py` + `tem/ambiguity.py` | pending |
-| TN4 | `tem/path.py`: geodesic/Kikuchi-band paths, waypoints, backlash | pending |
-| TN5 | `tem/calibration.py` + uncertainty propagation | pending |
-| TN6 | `plotting/tilt_stereogram.py`: the annotated figure | pending |
-| TN7 | `tests/unit/test_tem_*.py` (foundation §14.2 matrix) | pending |
-| TN8 | Worked examples + JSON contracts | pending |
-| TN9 | Notebook `24_tem_tilt_navigation.ipynb` | pending |
+| TN1 | `tem/stage.py`: kinematics, calibration record, envelopes | **done** (`bd0be70`) |
+| TN2 | `tem/navigation.py`: closed form, branches, orbit, validation, ranking | **done** (`bd0be70`) |
+| TN3 | `tem/reconstruction.py` + `tem/ambiguity.py` | **done** (`bd0be70`) |
+| TN4 | `tem/path.py`: geodesic/Kikuchi-band paths, waypoints, backlash | **done** (`bd0be70`) |
+| TN5 | `tem/calibration.py` + uncertainty propagation | **done** (`bd0be70`, YAML contract in `34755e1`) |
+| TN6 | `plotting/tilt_stereogram.py`: the annotated figure | **done** (`4a16430`) |
+| TN7 | `tests/unit/test_tem_tilt_navigation.py` (foundation §14 matrix) | **done** (`4a16430`, `34755e1`) |
+| TN8 | Worked examples + schemas + top-level exports | **done** (`34755e1`) |
+| TN9 | Notebook `24_tem_tilt_navigation.ipynb` | in progress |
 | TN10 | Theory note, site pages, indexes, registry, parity matrix | pending |
+
+### Verification results (measured, not assumed)
+
+| Gate | Result |
+| --- | --- |
+| `pytest tests/unit` | **3909 passed** before TN7; **3993 passed** after (84 new TN tests) |
+| `ruff check` | clean across `src/pytex`, `tests`, `worked_examples` |
+| `mypy` (strict) | clean, 105 source files |
+| Worked-example gallery | 6 new TN examples, all computed == expected |
+| Public exports | 428 → 463 (35 TEM surfaces) |
+
+Numerical claims verified against closed form: moving-beta-axis cancellation
+(exact); beam-direction formula (exact); closed-form tilt solution (max error
+4.6e-16 over 20 000 random directions); all four solution branches; residual law
+`2 asin(sin(dphi/2) sin theta)` (max deviation 1.3e-10 deg); the 180-degree
+error negating both angles exactly; two-zone reconstruction (1.2e-6 deg over 200
+trials); Laue-vs-proper enlargement over all 32 point groups (factor exactly 2
+for the ten affected).
+
+### Open issue to raise with the user
+
+**Commit `34755e1` has a wider footprint than its message describes.** It was
+staged with `git add -A src/pytex`, which swept in pre-existing uncommitted
+docstring work from the completed Release-Readiness program that was sitting
+unstaged in the working tree at session start. Nothing was lost or altered — the
+full suite passes — but the commit message describes only the TN worked-example
+and contract work. The history is already pushed to `main`, so correcting it
+would need a force push, which was not done unilaterally. Roughly 26 further
+pre-existing modified/untracked files (docs, tests, `docs/tex/algorithms/*.tex`)
+remain uncommitted and untouched.
 
 ### Next actions
 
-Start TN1. Nothing is implemented yet; `src/pytex/tem/` does not exist.
-
-### Verification results
-
-_None yet._
+TN9: write and execute `docs/site/tutorials/notebooks/24_tem_tilt_navigation.ipynb`,
+then TN10 documentation.
 
 ---
 
