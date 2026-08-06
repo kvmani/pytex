@@ -22,6 +22,13 @@ from pytex.diffraction.export import (
     composite_saed_manifest,
     export_composite_saed,
 )
+from pytex.diffraction.kikuchi import (
+    GnomonicProjection,
+    KikuchiBand,
+    KikuchiPattern,
+    KikuchiZoneAxis,
+    simulate_kikuchi_pattern,
+)
 from pytex.diffraction.kinematic import (
     KinematicSimulationConfig,
     SpotTable,
@@ -55,6 +62,13 @@ from pytex.diffraction.physics import (
     lorentz_polarization_factor,
     phase_centering_is_declared,
 )
+from pytex.diffraction.preferred_orientation import (
+    MarchDollaseModel,
+    ODFPreferredOrientationModel,
+    PreferredOrientationModel,
+    march_dollase_factors,
+    preferred_orientation_factor_table,
+)
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
 from pytex.diffraction.solving import (
     COORDINATE_UNITS,
@@ -87,6 +101,7 @@ from pytex.diffraction.xrd import (
     PowderPattern,
     PowderReflection,
     RadiationSpec,
+    apply_preferred_orientation,
     generate_powder_reflections,
     generate_xrd_pattern,
 )
@@ -108,12 +123,18 @@ __all__ = [
     "DiffractionIntensityModel",
     "DiffractionPattern",
     "FamilyIndexingReport",
+    "GnomonicProjection",
     "IndexingCandidate",
+    "KikuchiBand",
+    "KikuchiPattern",
+    "KikuchiZoneAxis",
     "KinematicSimulation",
     "KinematicSimulationConfig",
     "KinematicSpot",
+    "MarchDollaseModel",
     "MeasuredSAEDPattern",
     "MeasuredSpot",
+    "ODFPreferredOrientationModel",
     "OrientationIndexingCandidate",
     "OrientationRefinementResult",
     "PatternCalibration",
@@ -121,6 +142,7 @@ __all__ = [
     "PatternSolutionReport",
     "PowderPattern",
     "PowderReflection",
+    "PreferredOrientationModel",
     "RadiationSpec",
     "RationalizedZoneAxis",
     "ReflectionCondition",
@@ -138,6 +160,7 @@ __all__ = [
     "StereonetGrid",
     "StructureFactor",
     "VariantZonePattern",
+    "apply_preferred_orientation",
     "assign_transformation_variant",
     "centering_allowed_mask",
     "composite_reflection_table",
@@ -156,7 +179,9 @@ __all__ = [
     "index_saed_pattern",
     "is_hexagonal_phase",
     "lorentz_polarization_factor",
+    "march_dollase_factors",
     "phase_centering_is_declared",
+    "preferred_orientation_factor_table",
     "project_great_circle_trace",
     "projection_boundary_radius",
     "rationalize_zone_axis",
@@ -164,6 +189,7 @@ __all__ = [
     "sample_small_circle",
     "simulate_composite_saed",
     "simulate_composite_saed_from_child_zone",
+    "simulate_kikuchi_pattern",
     "simulate_zone_axis_spots",
     "solve_saed_pattern",
     "solve_saed_pattern_file",

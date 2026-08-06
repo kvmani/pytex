@@ -25,6 +25,30 @@ def _freeze_float_mapping(values: Mapping[str, float]) -> Mapping[str, float]:
 
 @dataclass(frozen=True, slots=True)
 class MeasurementQuality:
+    """Quality and completeness statistics of a measurement.
+
+    Purpose
+    -------
+    Carries what is known about how good the data are — confidence, the
+    fraction successfully indexed, the fraction masked out, and named
+    warning flags — so that quality can be reported and used for weighting
+    rather than being assumed uniform.
+
+    Attributes
+    ----------
+    confidence : float, optional
+        Overall confidence in ``[0, 1]``.
+    valid_fraction : float, optional
+        Fraction of points successfully measured.
+    masked_fraction : float, optional
+        Fraction excluded by masking.
+    uncertainty : Mapping[str, float]
+        Named uncertainty estimates.
+    flags : tuple of str
+        Named quality warnings.
+    provenance : ProvenanceRecord, optional
+    """
+
     confidence: float | None = None
     valid_fraction: float | None = None
     masked_fraction: float | None = None
@@ -46,6 +70,24 @@ class MeasurementQuality:
 
 @dataclass(frozen=True, slots=True)
 class CalibrationRecord:
+    """The calibration state of an instrument geometry.
+
+    Purpose
+    -------
+    Distinguishes a measured calibration from an assumed nominal one. This
+    matters for honest reporting: results derived from nominal geometry must
+    not be presented as if the geometry had been calibrated, and
+    :attr:`is_calibrated` is the flag that keeps the two apart.
+
+    Attributes
+    ----------
+    status : str
+        ``"nominal"`` for assumed instrument defaults, anything else for a
+        real calibration.
+    Remaining attributes record the method, date, and parameters of the
+    calibration when there was one.
+    """
+
     source: str
     status: str = "nominal"
     residual_error: float | None = None
@@ -76,11 +118,38 @@ class CalibrationRecord:
 
     @property
     def is_calibrated(self) -> bool:
+        """Whether the record describes a real calibration rather than a nominal one.
+
+        ``False`` for status ``"nominal"``, meaning the geometry was assumed from
+        instrument defaults. Reports must not present nominal geometry as
+        measured, so this distinction is carried explicitly rather than inferred.
+        """
+
         return self.status != "nominal"
 
 
 @dataclass(frozen=True, slots=True)
 class PatternCenter:
+    """The pattern centre of a diffraction detector, in fractional coordinates.
+
+    Purpose
+    -------
+    The projection origin of an EBSD or TEM pattern. Vendors differ in how
+    they define it — which corner is the origin, and how the detector
+    distance is normalized — so the convention name is stored with the
+    numbers rather than assumed.
+
+    Attributes
+    ----------
+    x_fraction, y_fraction : float
+        In-plane position as fractions of the detector extent.
+    detector_distance_fraction : float
+        Specimen-to-detector distance, as a fraction of the detector width.
+    convention : str
+        Which vendor convention the fractions follow.
+    provenance : ProvenanceRecord, optional
+    """
+
     x_fraction: float
     y_fraction: float
     detector_distance_fraction: float
@@ -112,6 +181,13 @@ class PatternCenter:
         object.__setattr__(self, "convention", convention)
 
     def as_array(self) -> np.ndarray:
+        """The pattern centre as ``[x_fraction, y_fraction, distance_fraction]``.
+
+        Fractional detector coordinates; read-only. Vendors differ in their
+        pattern-centre conventions, which is why the convention name is stored
+        alongside the numbers.
+        """
+
         values = np.array(
             [self.x_fraction, self.y_fraction, self.detector_distance_fraction],
             dtype=np.float64,
@@ -122,6 +198,22 @@ class PatternCenter:
 
 @dataclass(frozen=True, slots=True)
 class EBSDDetectorGeometry:
+    """The detector geometry of an EBSD acquisition.
+
+    Purpose
+    -------
+    Detector frame, pattern centre, shape, and pixel size together — the
+    geometry that turns a Kikuchi pattern into orientation information.
+
+    Attributes
+    ----------
+    detector_frame : ReferenceFrame
+        Must belong to the detector domain.
+    pattern_center : PatternCenter
+    Remaining attributes record the detector shape, pixel size, and
+    specimen-to-detector distance.
+    """
+
     detector_frame: ReferenceFrame
     pattern_center: PatternCenter
     detector_distance_mm: float
@@ -158,10 +250,20 @@ class EBSDDetectorGeometry:
 
     @property
     def pattern_center_array(self) -> np.ndarray:
+        """The pattern centre as a fractional 3-vector; see
+        :meth:`PatternCenter.as_array`.
+        """
+
         return self.pattern_center.as_array()
 
     @property
     def pattern_center_px(self) -> np.ndarray:
+        """The in-plane pattern centre in detector pixels, as ``(x, y)``.
+
+        Converted from fractional coordinates using the detector shape.
+        Read-only.
+        """
+
         height, width = self.detector_shape
         values = np.array(
             [
@@ -176,6 +278,15 @@ class EBSDDetectorGeometry:
 
 @dataclass(frozen=True, slots=True)
 class EBSDCalibrationGeometry:
+    """An EBSD detector geometry together with its calibration record.
+
+    Purpose
+    -------
+    Pairs the geometry with the evidence for it, so that a downstream
+    consumer can tell measured geometry from assumed geometry without
+    looking elsewhere.
+    """
+
     acquisition_geometry: AcquisitionGeometry
     detector_geometry: EBSDDetectorGeometry
     map_to_specimen: FrameTransform | None = None
@@ -206,15 +317,46 @@ class EBSDCalibrationGeometry:
 
     @property
     def pattern_center(self) -> PatternCenter:
+        """The pattern centre of the underlying detector geometry.
+        """
+
         return self.detector_geometry.pattern_center
 
     @property
     def detector_distance_mm(self) -> float:
+        """Specimen-to-detector distance in millimetres.
+        """
+
         return self.detector_geometry.detector_distance_mm
 
 
 @dataclass(frozen=True, slots=True)
 class ScatteringSetup:
+    """The radiation and beam configuration of a scattering experiment.
+
+    Purpose
+    -------
+    Declares what is doing the scattering: the radiation type, the incident
+    beam direction in the laboratory frame, and the wavelength — either
+    directly or as a beam energy from which the relativistically corrected
+    electron wavelength is derived.
+
+    Attributes
+    ----------
+    laboratory_frame : ReferenceFrame
+        Must belong to the laboratory domain.
+    radiation_type : str
+        ``"electron"`` by default.
+    incident_beam_direction : np.ndarray
+        Beam direction in the laboratory frame.
+    wavelength_angstrom : float, optional
+        Explicit wavelength; takes precedence when given.
+    beam_energy_kev : float, optional
+        Accelerating voltage, from which the electron wavelength is derived.
+        At least one of these two must be present.
+    provenance : ProvenanceRecord, optional
+    """
+
     laboratory_frame: ReferenceFrame
     radiation_type: str = "electron"
     incident_beam_direction: np.ndarray = field(
@@ -256,6 +398,15 @@ class ScatteringSetup:
 
     @property
     def effective_wavelength_angstrom(self) -> float:
+        """The wavelength to use, in angstroms.
+
+        Returns the explicitly stored wavelength when there is one. Otherwise it
+        derives the relativistically corrected electron wavelength from the beam
+        energy, ``lambda = 12.2639 / sqrt(V (1 + 0.97845e-6 V))`` with ``V`` in
+        volts. Raises when neither is available, rather than silently assuming a
+        default that would misplace every simulated reflection.
+        """
+
         if self.wavelength_angstrom is not None:
             return float(self.wavelength_angstrom)
         if self.beam_energy_kev is None:
@@ -270,6 +421,37 @@ class ScatteringSetup:
 
 @dataclass(frozen=True, slots=True)
 class AcquisitionGeometry:
+    """The complete frame and transform context of a measurement.
+
+    Purpose
+    -------
+    The bridge across the canonical frame chain
+    ``crystal -> specimen -> map -> detector -> laboratory -> reciprocal``.
+    Any workflow that crosses a tool boundary must carry this, so the
+    receiving side inherits the frames and transforms rather than assuming
+    them.
+
+    Not every workflow instantiates every frame; the ``supports_*``
+    properties report which parts of the chain are actually declared, and
+    composed transforms return ``None`` rather than inventing an identity
+    when a leg is missing.
+
+    Attributes
+    ----------
+    specimen_frame : ReferenceFrame
+        The one required frame.
+    modality : str
+        ``"ebsd"``, ``"tem"``, ``"xrd"``, or ``"generic"``.
+    map_frame, detector_frame, laboratory_frame : ReferenceFrame, optional
+        The remaining domains, when the workflow reaches them.
+    specimen_to_detector, specimen_to_laboratory : FrameTransform, optional
+    laboratory_to_reciprocal : FrameTransform, optional
+        The declared transforms between the frames above.
+    calibration_record : CalibrationRecord, optional
+    measurement_quality : MeasurementQuality, optional
+    provenance : ProvenanceRecord, optional
+    """
+
     specimen_frame: ReferenceFrame
     modality: str = "generic"
     map_frame: ReferenceFrame | None = None
@@ -389,17 +571,33 @@ class AcquisitionGeometry:
 
     @property
     def supports_mapping(self) -> bool:
+        """Whether a map-domain frame is declared, so mapped workflows are usable.
+        """
+
         return self.map_frame is not None
 
     @property
     def supports_detection(self) -> bool:
+        """Whether a detector-domain frame is declared.
+        """
+
         return self.detector_frame is not None
 
     @property
     def supports_laboratory_context(self) -> bool:
+        """Whether a laboratory-domain frame is declared.
+        """
+
         return self.laboratory_frame is not None
 
     def specimen_to_reciprocal_transform(self) -> FrameTransform | None:
+        """The composed specimen-to-reciprocal transform, when it can be formed.
+
+        Composes specimen-to-laboratory with laboratory-to-reciprocal. Returns
+        ``None`` when either leg is missing, rather than inventing an identity
+        that would silently assert an unmeasured alignment.
+        """
+
         if self.specimen_to_laboratory is None or self.laboratory_to_reciprocal is None:
             return None
         return self.laboratory_to_reciprocal.compose(self.specimen_to_laboratory)

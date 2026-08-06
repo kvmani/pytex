@@ -142,6 +142,27 @@ def _projected_gradient_nonnegative_weights(
 
 @dataclass(frozen=True, slots=True)
 class KernelSpec:
+    """The smoothing kernel and halfwidth used to estimate an ODF.
+
+    Purpose
+    -------
+    Kernel density estimation on SO(3) needs two decisions, and this makes
+    both explicit. The halfwidth is the consequential one: too narrow and the
+    ODF reproduces measurement noise, too wide and distinct texture
+    components merge. It should reflect the angular resolution of the
+    measurement, not be tuned until the figure looks right.
+
+    Attributes
+    ----------
+    name : str
+        ``"de_la_vallee_poussin"`` (default), ``"von_mises_fisher"``,
+        ``"gaussian"``, or ``"abel_poisson"``. At equal halfwidth they differ
+        mainly in tail weight and in how fast their harmonic coefficients
+        decay.
+    halfwidth_deg : float
+        Angle at which the kernel falls to half its peak value.
+    """
+
     name: str = "de_la_vallee_poussin"
     halfwidth_deg: float = 10.0
 
@@ -160,6 +181,23 @@ class KernelSpec:
             raise ValueError("Kernel halfwidth must be strictly positive.")
 
     def evaluate(self, angles_rad: ArrayLike, *, normalized: bool = False) -> np.ndarray:
+        """Kernel value at misorientation angles in radians.
+
+        Parameters
+        ----------
+        angles_rad : ArrayLike
+            Misorientation angles.
+        normalized : bool
+            Scale by the kernel's SO(3) normalization, so that the kernel
+            integrates to one over orientation space. Leave it off for relative
+            weighting, where only ratios matter.
+
+        See Also
+        --------
+        as_so3_kernel : The full spectral kernel object, with Chebyshev
+            coefficients and bandwidth estimation.
+        """
+
         angle_array = np.asarray(angles_rad, dtype=np.float64)
         halfwidth_rad = np.deg2rad(self.halfwidth_deg)
         if self.name == "de_la_vallee_poussin":
@@ -216,6 +254,36 @@ class KernelSpec:
 
 @dataclass(frozen=True, slots=True)
 class PoleFigure:
+    """The distribution of a crystal plane normal over specimen directions.
+
+    Purpose
+    -------
+    The classical texture representation: where a given ``{hkl}`` points in
+    the specimen, as measured by diffraction or computed from orientations.
+
+    Attributes
+    ----------
+    pole : CrystalPlane
+        The plane whose normal is represented.
+    sample_directions : np.ndarray
+        ``(n, 3)`` specimen-frame directions.
+    intensities : np.ndarray
+        ``(n,)`` pole densities at those directions.
+    specimen_frame : ReferenceFrame
+    antipodal : bool
+        Whether opposite normals are treated as the same pole — the
+        convention that permits a one-hemisphere plot.
+    sample_symmetry : SymmetrySpec, optional
+        Statistical specimen symmetry imposed, if any. Imposing it is an
+        assumption about the process, so it is recorded rather than implied.
+    include_symmetry_family : bool
+        Whether the whole ``{hkl}`` orbit is represented or only the single
+        plane. It decides the correct notation — a family is ``{hkl}``, a
+        single plane ``(hkl)`` — which titles and prose read rather than
+        assume.
+    provenance : ProvenanceRecord, optional
+    """
+
     pole: CrystalPlane
     sample_directions: np.ndarray
     intensities: np.ndarray
@@ -259,6 +327,39 @@ class PoleFigure:
         sample_symmetry: SymmetrySpec | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> PoleFigure:
+        """Build a pole figure from measured or modelled orientations.
+
+        Purpose
+        -------
+        Map a crystal plane normal through every orientation into the specimen
+        frame — the computation a diffraction pole-figure measurement performs
+        physically.
+
+        Parameters
+        ----------
+        orientations : OrientationSet
+            Must share the pole's crystal frame, and its phase when both declare
+            one; a mismatch raises.
+        pole : CrystalPlane
+            The plane whose normal is plotted.
+        weights : ArrayLike, optional
+            One weight per orientation; uniform when omitted.
+        include_symmetry_family : bool
+            Plot the whole ``{hkl}`` family (default). A measured pole figure
+            always contains the full family, so this is the faithful choice.
+        antipodal : bool
+            Treat opposite normals as the same pole (default), which is what
+            permits a one-hemisphere plot.
+        sample_symmetry : SymmetrySpec, optional
+            Statistical specimen symmetry to impose. This is an assumption about
+            the process, so it is off by default.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        PoleFigure
+        """
+
         if orientations.crystal_frame != pole.phase.crystal_frame:
             raise ValueError("PoleFigure orientations must use the pole phase crystal frame.")
         if orientations.phase is not None and orientations.phase != pole.phase:
@@ -297,6 +398,23 @@ class PoleFigure:
         )
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:
+        """Project the specimen directions onto the plotting plane.
+
+        Parameters
+        ----------
+        method : str
+            ``"equal_area"`` (Schmidt/Lambert, default) preserves area, so
+            densities read directly off the plot and pole-density comparisons are
+            fair. ``"stereographic"`` (Wulff) preserves angles instead and is the
+            right choice for angle-measuring constructions.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n, 2)`` plane coordinates. The projection disc has radius
+            ``sqrt(2)`` for equal-area and ``1`` for stereographic.
+        """
+
         return project_directions(
             self.sample_directions,
             method=method,
@@ -309,6 +427,29 @@ class PoleFigure:
         bins: int = 72,
         method: str = "equal_area",
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Binned pole density on the projection plane.
+
+        Purpose
+        -------
+        Convert scattered poles into the density field that a contoured pole
+        figure displays.
+
+        Parameters
+        ----------
+        bins : int
+            Bins per axis of the square binning grid.
+        method : str
+            Projection method; see :meth:`project`. Equal-area projection is
+            strongly preferred here, since only then do equal bins represent
+            equal solid angles and the densities become comparable.
+
+        Returns
+        -------
+        tuple of np.ndarray
+            Intensity-weighted 2-D histogram and the two bin-edge arrays, as
+            from ``numpy.histogram2d``.
+        """
+
         projected = self.project(method=method)
         radius = np.sqrt(2.0) if method == "equal_area" else 1.0
         histogram, xedges, yedges = np.histogram2d(
@@ -326,6 +467,32 @@ class PoleFigure:
 
 @dataclass(frozen=True, slots=True)
 class InversePoleFigure:
+    """The distribution of a specimen direction over crystal directions.
+
+    Purpose
+    -------
+    The complement of a pole figure: which crystal directions align with a
+    chosen specimen axis. This is the representation behind IPF colouring and
+    behind fibre-texture statements such as "a strong ``<111>`` fibre along
+    ND".
+
+    Attributes
+    ----------
+    sample_direction : np.ndarray
+        The specimen axis; normalized on construction.
+    crystal_directions : np.ndarray
+        ``(n, 3)`` crystal-frame directions, folded into the fundamental
+        sector when symmetry reduction was requested.
+    intensities : np.ndarray
+        ``(n,)`` densities.
+    crystal_frame, specimen_frame : ReferenceFrame
+    antipodal : bool
+    crystal_symmetry : SymmetrySpec, optional
+        Needed to draw the standard triangle; without it the figure is an
+        unbounded scatter.
+    provenance : ProvenanceRecord, optional
+    """
+
     sample_direction: np.ndarray
     crystal_directions: np.ndarray
     intensities: np.ndarray
@@ -367,6 +534,33 @@ class InversePoleFigure:
         antipodal: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> InversePoleFigure:
+        """Build an inverse pole figure from measured or modelled orientations.
+
+        Purpose
+        -------
+        Map a fixed specimen direction through every orientation into the crystal
+        frame — the representation behind IPF colouring and behind fibre-texture
+        statements such as "a <111> fibre along ND".
+
+        Parameters
+        ----------
+        orientations : OrientationSet
+        sample_direction : ArrayLike
+            The specimen axis; normalized internally.
+        weights : ArrayLike, optional
+            One weight per orientation; uniform when omitted.
+        reduce_by_symmetry : bool
+            Fold the resulting crystal directions into the symmetry fundamental
+            sector (default) — what makes the standard triangle standard.
+        antipodal : bool
+            Treat a direction and its reverse as equivalent (default).
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        InversePoleFigure
+        """
+
         normalized_sample_direction = normalize_vector(sample_direction)
         intensities = (
             as_float_array(np.ones(len(orientations)), shape=(len(orientations),))
@@ -398,6 +592,12 @@ class InversePoleFigure:
         )
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:
+        """Project the crystal directions onto the plotting plane.
+
+        See :meth:`PoleFigure.project` for the projection methods and their
+        respective uses.
+        """
+
         return project_directions(
             self.crystal_directions,
             method=method,
@@ -406,11 +606,23 @@ class InversePoleFigure:
 
     @property
     def sector_vertices(self) -> np.ndarray | None:
+        """Corner directions of the symmetry fundamental sector, or ``None``.
+
+        ``None`` when no crystal symmetry is attached, in which case there is no
+        standard triangle to draw.
+        """
+
         if self.crystal_symmetry is None:
             return None
         return self.crystal_symmetry.fundamental_sector(antipodal=self.antipodal).vertices
 
     def project_sector_vertices(self, *, method: str = "equal_area") -> np.ndarray | None:
+        """The fundamental-sector corners projected onto the plotting plane.
+
+        Used to draw the standard-triangle outline in the same projection as the
+        data. ``None`` when no crystal symmetry is attached.
+        """
+
         if self.sector_vertices is None:
             return None
         return project_directions(
@@ -460,15 +672,53 @@ class ODFSectionData:
 
     @property
     def section_count(self) -> int:
+        """Number of constant-coordinate sections in this data set.
+        """
+
         return int(self.phi2_deg.shape[0])
 
     @property
     def max_density(self) -> float:
+        """Largest ODF density over all sections, in multiples of random.
+
+        The number quoted as texture strength, and the natural upper limit for a
+        shared contour scale across sections.
+        """
+
         return float(np.max(self.densities))
 
 
 @dataclass(frozen=True, slots=True)
 class ODF:
+    """A discrete kernel-density orientation distribution function.
+
+    Purpose
+    -------
+    The orientation distribution represented as weighted support
+    orientations convolved with a smoothing kernel — the natural
+    representation for EBSD data, where every indexed point is one support
+    orientation. Densities are in multiples of a random distribution, so a
+    value of 1 means untextured.
+
+    Attributes
+    ----------
+    orientations : OrientationSet
+        The support. Its resolution bounds the angular detail representable.
+    weights : np.ndarray
+        One non-negative weight per support orientation, summing to a
+        positive value.
+    kernel : KernelSpec
+        The smoothing kernel and halfwidth.
+    specimen_symmetry : SymmetrySpec, optional
+        Statistical specimen symmetry imposed, if any.
+    provenance : ProvenanceRecord, optional
+
+    See Also
+    --------
+    pytex.texture.HarmonicODF : The series-expansion representation, compact
+        for symmetric materials and the natural form for convolution.
+    """
+
     orientations: OrientationSet
     weights: np.ndarray
     kernel: KernelSpec = field(default_factory=KernelSpec)
@@ -501,6 +751,36 @@ class ODF:
         specimen_symmetry: SymmetrySpec | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> ODF:
+        """Build a discrete kernel-density ODF from an orientation set.
+
+        Purpose
+        -------
+        The standard route from measured orientations to a continuous
+        orientation distribution: each orientation contributes a smoothing
+        kernel, and the sum is the estimated density.
+
+        Parameters
+        ----------
+        orientations : OrientationSet
+            The support. For EBSD data this is one orientation per indexed point.
+        weights : ArrayLike, optional
+            One weight per orientation — a confidence index or a grain area, for
+            example. Uniform when omitted.
+        kernel : KernelSpec, optional
+            Smoothing kernel and halfwidth. The halfwidth is the central choice:
+            too narrow and the ODF reproduces measurement noise, too wide and
+            real texture components are smeared together. It should reflect the
+            angular resolution of the measurement, not be tuned for appearance.
+        specimen_symmetry : SymmetrySpec, optional
+            Statistical specimen symmetry to impose; an assumption about the
+            process, so off by default.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        ODF
+        """
+
         default_weights = np.ones(len(orientations), dtype=np.float64)
         weights_value = (
             default_weights if weights is None else np.asarray(weights, dtype=np.float64)
@@ -515,6 +795,12 @@ class ODF:
 
     @property
     def normalized_weights(self) -> np.ndarray:
+        """Support weights normalized to sum to one, read-only.
+
+        Makes the ODF a probability density over orientation space, so that
+        volume fractions read directly as fractions.
+        """
+
         normalized = self.weights / np.sum(self.weights)
         normalized = np.ascontiguousarray(normalized)
         normalized.setflags(write=False)
@@ -527,6 +813,32 @@ class ODF:
         symmetry_aware: bool = True,
         normalized: bool = False,
     ) -> np.ndarray | float:
+        """Evaluate the ODF density at given orientations.
+
+        Purpose
+        -------
+        The density ``f(g)`` in multiples of a random distribution — the number a
+        texture-strength statement quotes.
+
+        Parameters
+        ----------
+        orientations : Orientation or OrientationSet
+            Query orientations. Must share the ODF support's crystal and specimen
+            frames. A single orientation returns a scalar.
+        symmetry_aware : bool
+            Reduce query-to-support misorientations by crystal symmetry
+            (default). Turning it off makes the density depend on which symmetry
+            branch the query happens to be written in, so leave it on unless both
+            sides are already reduced.
+        normalized : bool
+            Use the SO(3)-normalized kernel, so densities are in multiples of
+            random rather than in arbitrary units.
+
+        Returns
+        -------
+        float or np.ndarray
+        """
+
         query_set: OrientationSet
         scalar_output = False
         if isinstance(orientations, Orientation):
@@ -678,6 +990,24 @@ class ODF:
         include_symmetry_family: bool = True,
         antipodal: bool = True,
     ) -> PoleFigure:
+        """The pole figure this ODF predicts for a given crystal plane.
+
+        Purpose
+        -------
+        The forward projection from orientation space to pole space. Comparing a
+        reconstructed pole figure against the measured one is the standard
+        check on an ODF inversion — a good ODF must reproduce the data it came
+        from.
+
+        Parameters
+        ----------
+        pole : CrystalPlane
+        include_symmetry_family : bool
+            Include the whole ``{hkl}`` family (default), as a measurement does.
+        antipodal : bool
+            Treat opposite normals as the same pole (default).
+        """
+
         return PoleFigure.from_orientations(
             self.orientations,
             pole,
@@ -695,6 +1025,12 @@ class ODF:
         include_symmetry_family: bool = True,
         antipodal: bool = True,
     ) -> tuple[PoleFigure, ...]:
+        """Reconstructed pole figures for several planes.
+
+        The batch form of :meth:`reconstruct_pole_figure`, applying the same
+        conventions to every pole so the set is internally consistent.
+        """
+
         return tuple(
             self.reconstruct_pole_figure(
                 pole,
@@ -711,6 +1047,29 @@ class ODF:
         *,
         include_symmetry_family: bool = True,
     ) -> np.ndarray:
+        """Pole density at chosen specimen directions, without binning.
+
+        Purpose
+        -------
+        Evaluate the pole figure exactly where it is wanted — along a fibre, at a
+        measured pole position, or on a supplied grid — instead of reconstructing
+        a whole figure and interpolating.
+
+        Parameters
+        ----------
+        pole : CrystalPlane
+            Must share the ODF support's crystal frame and phase.
+        sample_directions : ArrayLike
+            ``(n, 3)`` specimen directions.
+        include_symmetry_family : bool
+            Include the whole ``{hkl}`` family (default).
+
+        Returns
+        -------
+        np.ndarray
+            ``(n,)`` pole densities.
+        """
+
         if self.orientations.crystal_frame != pole.phase.crystal_frame:
             raise ValueError("Pole density evaluation requires the same crystal frame as the pole.")
         if self.orientations.phase is not None and self.orientations.phase != pole.phase:
@@ -734,6 +1093,38 @@ class ODF:
         max_angle_deg: float,
         symmetry_aware: bool = True,
     ) -> float:
+        """Fraction of the texture lying within a given angle of an orientation.
+
+        Purpose
+        -------
+        The quantitative statement behind "the cube component makes up 18 percent
+        of the texture": the summed normalized weight of all support orientations
+        within ``max_angle_deg`` of the component centre.
+
+        Parameters
+        ----------
+        center : Orientation
+            The component's ideal orientation.
+        max_angle_deg : float
+            Angular radius defining the component. The result depends strongly on
+            this radius, so it must be reported alongside the fraction for the
+            number to mean anything.
+        symmetry_aware : bool
+            Use symmetry-reduced disorientation angles (default).
+
+        Returns
+        -------
+        float
+            A fraction in ``[0, 1]``.
+
+        Notes
+        -----
+        Computed by hard cut-off on the discrete support, not by integrating the
+        smoothed density, so it is a support-weight fraction rather than a
+        kernel-integrated volume. The two agree closely when the support is dense
+        relative to the kernel halfwidth.
+        """
+
         query_set = OrientationSet.from_orientations([center])
         angles = query_set.misorientation_angles_to(
             self.orientations,
@@ -755,6 +1146,55 @@ class ODF:
         tolerance: float = 1e-8,
         provenance: ProvenanceRecord | None = None,
     ) -> ODFInversionReport:
+        """Estimate an ODF from measured pole figures (PF-to-ODF inversion).
+
+        Purpose
+        -------
+        The classical inverse problem of quantitative texture analysis: X-ray and
+        neutron diffraction measure pole figures, but the orientation
+        distribution is what physical models need.
+
+        Method and limits
+        -----------------
+        Builds the pole-density response of every dictionary orientation to every
+        measured pole-figure point and solves the resulting non-negative,
+        regularized least-squares system iteratively. The problem is
+        ill-posed — pole figures are projections and lose the odd-order harmonic
+        information — so the solution depends on the dictionary, the kernel, and
+        the regularization, and several pole figures from different planes are
+        needed to constrain it. Ghost correction and zero-range methods are not
+        applied here; treat the result as a regularized estimate, not a unique
+        inversion.
+
+        Parameters
+        ----------
+        pole_figures : sequence of PoleFigure
+            At least one; all must share a specimen frame with the dictionary.
+            More independent poles give a better-conditioned problem.
+        orientation_dictionary : OrientationSet
+            The support the ODF is expressed on; its resolution bounds the
+            achievable angular detail.
+        kernel : KernelSpec, optional
+            Smoothing kernel for the response model.
+        regularization : float
+            Tikhonov weight. Larger values give smoother, more stable, less
+            detailed solutions.
+        include_symmetry_family : bool
+            Model the whole ``{hkl}`` family per pole figure (default), matching
+            what the measurement contains.
+        max_iterations : int
+            Iteration cap for the solver.
+        tolerance : float
+            Convergence tolerance.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        ODFInversionReport
+            The estimated ODF together with the residuals and convergence
+            information needed to judge whether the fit is usable.
+        """
+
         if not pole_figures:
             raise ValueError("ODF inversion requires at least one PoleFigure.")
         specimen_frame = orientation_dictionary.specimen_frame
@@ -823,6 +1263,38 @@ class ODF:
 
 @dataclass(frozen=True, slots=True)
 class ODFInversionReport:
+    """A PF-to-ODF inversion result together with the evidence to judge it.
+
+    Purpose
+    -------
+    Pole-figure inversion is ill-posed, so an ODF alone is not a result. This
+    carries the residuals, the convergence history, and the problem
+    dimensions, so a reader can see whether the solution actually reproduces
+    the measured data and how strongly it was regularized.
+
+    Attributes
+    ----------
+    odf : ODF
+        The estimated distribution.
+    residual_norm, relative_residual_norm : float
+        Absolute and normalized misfit against the measured pole densities.
+    objective_history : np.ndarray
+        Objective value per iteration; a history still descending at the end
+        means the solver stopped early rather than converged.
+    iterations : int
+    converged : bool
+    regularization : float
+        The Tikhonov weight used; larger means smoother and less detailed.
+    observation_count, dictionary_size : int
+        The problem dimensions. A dictionary much larger than the
+        observation count is underdetermined and leans on regularization.
+    mean_absolute_error, max_absolute_error : float
+    predicted_intensities : np.ndarray
+        Pole densities the solution implies, for direct comparison against
+        the measurement.
+    provenance : ProvenanceRecord, optional
+    """
+
     odf: ODF
     residual_norm: float
     objective_history: np.ndarray

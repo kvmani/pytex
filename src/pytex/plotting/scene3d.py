@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from matplotlib.colors import to_rgb
 
 from pytex.core.lattice import Phase
 from pytex.plotting.crystal3d import (
@@ -49,6 +48,39 @@ from pytex.plotting.primitives import (
     scene_span,
 )
 from pytex.plotting.styles import resolve_style
+
+
+def _to_hex(color: Any) -> str:
+    """``matplotlib.colors.to_hex``, imported on demand.
+
+    Matplotlib is an *optional* dependency behind the ``pytex[plotting]`` extra,
+    and the repository forbids import-time coupling to optional stacks. A
+    module-level ``from matplotlib.colors import to_hex`` made matplotlib
+    mandatory for ``import pytex``; importing inside the call restores the
+    declared contract at the cost of one cached dict lookup.
+    """
+
+    try:
+        from matplotlib.colors import to_hex
+    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
+        raise ImportError(
+            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
+        ) from exc
+    return str(to_hex(color))
+
+
+def _to_rgb(color: Any) -> tuple[float, float, float]:
+    """``matplotlib.colors.to_rgb``, imported on demand. See :func:`_to_hex`."""
+
+    try:
+        from matplotlib.colors import to_rgb
+    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
+        raise ImportError(
+            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
+        ) from exc
+    red, green, blue = to_rgb(color)
+    return (float(red), float(green), float(blue))
+
 
 # Distinct parent/child accent colors for orientation-relationship figures,
 # drawn from the categorical palette so the two crystals stay separable.
@@ -128,6 +160,12 @@ class WorldScene3D:
         )
 
     def placed_scenes(self) -> tuple[CrystalScene, ...]:
+        """The child scenes with their placement transforms already applied.
+
+        Each sub-scene is defined in its own local frame; this returns them in
+        world coordinates, which is what a renderer consumes.
+        """
+
         return tuple(placed.placed_scene() for placed in self.crystals)
 
     def bounds(self) -> np.ndarray:
@@ -347,7 +385,7 @@ def render_world_scene_3d(
         _draw_species_legend(axes, placed_scenes)
     if bool(crystal_style.get("hide_grid", True)):
         axes.grid(False)
-    pane_rgba = (*to_rgb(background), float(crystal_style["pane_alpha"]))
+    pane_rgba = (*_to_rgb(background), float(crystal_style["pane_alpha"]))
     axes.xaxis.set_pane_color(pane_rgba)
     axes.yaxis.set_pane_color(pane_rgba)
     axes.zaxis.set_pane_color(pane_rgba)

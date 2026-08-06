@@ -10,6 +10,7 @@ from pytex import (
     CrystalDirectionOverlay,
     CrystalPlane,
     CrystalPlaneOverlay,
+    DiffractionGeometry,
     DirectionAnnotationStyle,
     InversePoleFigure,
     MillerIndex,
@@ -21,16 +22,20 @@ from pytex import (
     ZoneAxis,
     build_crystal_scene,
     crystal_frame,
+    detector_frame,
     generate_saed_pattern,
     generate_xrd_pattern,
     get_phase_fixture,
+    laboratory_frame,
     plot_crystal_directions,
     plot_crystal_planes,
     plot_crystal_structure_3d,
     plot_inverse_pole_figure,
+    plot_kikuchi_pattern,
     plot_saed_pattern,
     plot_symmetry_elements,
     plot_xrd_pattern,
+    simulate_kikuchi_pattern,
     specimen_frame,
 )
 
@@ -69,6 +74,27 @@ def build_plotting_validation_figures() -> dict[str, Any]:
         max_g_inv_angstrom=1.0,
     )
     saed_figure = plot_saed_pattern(saed_pattern, theme="dark")
+
+    # A conventional 20 kV EBSD detector at the cube orientation. Band centre
+    # lines are exactly straight in gnomonic coordinates, so this case is also a
+    # visual check on the projection.
+    kikuchi_geometry = DiffractionGeometry(
+        detector_frame=detector_frame(),
+        specimen_frame=specimen,
+        laboratory_frame=laboratory_frame(),
+        beam_energy_kev=20.0,
+        camera_length_mm=15.0,
+        pattern_center=np.array([0.5, 0.5, 0.6]),
+        detector_pixel_size_um=(50.0, 50.0),
+        detector_shape=(480, 640),
+    )
+    kikuchi_pattern = simulate_kikuchi_pattern(
+        kikuchi_geometry,
+        ni_fcc,
+        Orientation.from_euler(0.0, 0.0, 0.0, specimen_frame=specimen, phase=ni_fcc),
+        max_index=2,
+    )
+    kikuchi_figure = plot_kikuchi_pattern(kikuchi_pattern, theme="dark", max_bands=12)
 
     zr_scene = build_crystal_scene(
         zr_hcp,
@@ -188,6 +214,7 @@ def build_plotting_validation_figures() -> dict[str, Any]:
     return {
         "xrd_ni_fcc_journal": xrd_figure,
         "saed_ni_fcc_dark": saed_figure,
+        "kikuchi_ni_fcc_dark": kikuchi_figure,
         "crystal_zr_hcp_journal": crystal_figure,
         "ipf_ni_fcc_journal": ipf_figure,
         "stereonet_directions_ni_fcc_journal": direction_figure,

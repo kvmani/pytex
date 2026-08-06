@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
+import yaml
 
 from pytex.core.provenance import ProvenanceRecord
 from pytex.tem.reconstruction import CurrentState, ZoneAxisObservation
@@ -51,13 +53,23 @@ from pytex.tem.stage import (
 )
 
 __all__ = [
+    "STAGE_CALIBRATION_SCHEMA",
     "CalibrationResult",
     "TiltExcursionObservation",
     "calibrate_from_tilt_excursions",
     "fit_stage_and_orientation",
+    "load_stage_calibration",
     "predicted_excursion_azimuth_deg",
     "residual_from_rotation_error_deg",
+    "save_stage_calibration",
 ]
+
+#: Schema identifier of the persisted stage-calibration contract.
+#:
+#: A calibration is measured once and used for a session, so it must survive as a
+#: file rather than as a live object. The schema travels with it because a
+#: calibration read back under different conventions is worse than none.
+STAGE_CALIBRATION_SCHEMA = "pytex.stage_calibration/1"
 
 
 def residual_from_rotation_error_deg(
@@ -262,7 +274,7 @@ class CalibrationResult:
         """Serializable payload, kept in lockstep with :meth:`describe`."""
 
         return {
-            "schema": "pytex.stage_calibration/1",
+            "schema": STAGE_CALIBRATION_SCHEMA,
             "calibration": self.calibration.to_json_dict(),
             "orthogonality_residual_deg": self.orthogonality_residual_deg,
             "scale_residual_deg": self.scale_residual_deg,
@@ -537,3 +549,61 @@ def _with_calibration(stage: StageModel, calibration: StageCalibration) -> Stage
     from dataclasses import replace
 
     return replace(stage, calibration=calibration)  # type: ignore[type-var]
+
+
+def save_stage_calibration(calibration: StageCalibration, path: str | Path) -> Path:
+    """Write a stage calibration to a YAML file.
+
+    Purpose
+    -------
+    A calibration is measured once, at a particular camera length and voltage,
+    and then used for a session or longer. Persisting it means the two-excursion
+    procedure is run once rather than every time somebody opens a notebook, and
+    the recorded conditions travel with the numbers so a later reader cannot
+    apply it where it does not hold.
+
+    Parameters
+    ----------
+    calibration : StageCalibration
+    path : str or Path
+        Destination. The parent directory must exist.
+
+    Returns
+    -------
+    Path
+        The written path.
+
+    See Also
+    --------
+    load_stage_calibration : the inverse.
+    """
+
+    destination = Path(path)
+    payload = {"schema": STAGE_CALIBRATION_SCHEMA, **calibration.to_json_dict()}
+    destination.write_text(
+        yaml.safe_dump(payload, sort_keys=False, allow_unicode=True), encoding="utf-8"
+    )
+    return destination
+
+
+def load_stage_calibration(path: str | Path) -> StageCalibration:
+    """Read a stage calibration written by :func:`save_stage_calibration`.
+
+    Raises
+    ------
+    ValueError
+        If the file does not declare the expected schema. Reading a calibration
+        under the wrong conventions is worse than having none, so this is a hard
+        failure rather than a warning.
+    """
+
+    payload = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"'{path}' does not contain a stage-calibration mapping.")
+    schema = payload.get("schema")
+    if schema != STAGE_CALIBRATION_SCHEMA:
+        raise ValueError(
+            f"'{path}' declares schema '{schema}', not '{STAGE_CALIBRATION_SCHEMA}'. "
+            "Refusing to read a calibration whose conventions are unknown."
+        )
+    return StageCalibration.from_json_dict(payload)

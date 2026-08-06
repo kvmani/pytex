@@ -1751,6 +1751,18 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
 
 
 def to_json_contract(obj: Any) -> dict[str, Any]:
+    """Serialize a PyTex object to its canonical JSON contract payload.
+
+    Purpose
+    -------
+    The machine-readable interchange form of a stable result object: a plain
+    dict carrying a ``schema_id`` alongside the data, so a consumer knows how
+    to interpret it and which schema to validate it against.
+
+    Raises ``TypeError`` for a type with no registered serializer, rather
+    than emitting a partial payload that would not round-trip.
+    """
+
     for cls, serializer in _SERIALIZERS.items():
         if isinstance(obj, cls):
             payload = serializer(obj)
@@ -1761,6 +1773,13 @@ def to_json_contract(obj: Any) -> dict[str, Any]:
 
 
 def from_json_contract(payload: dict[str, Any]) -> Any:
+    """Reconstruct a PyTex object from a JSON contract payload.
+
+    Dispatches on the payload's ``schema_id``. A payload with no string
+    ``schema_id``, or one naming an unregistered schema, raises — an
+    unidentified payload cannot be safely guessed at.
+    """
+
     schema_id = payload.get("schema_id")
     if not isinstance(schema_id, str):
         raise ValueError("JSON contract payload must contain a string schema_id.")
@@ -1771,6 +1790,17 @@ def from_json_contract(payload: dict[str, Any]) -> Any:
 
 
 def write_json_contract(obj: Any, path: str | Path) -> Path:
+    """Write an object's JSON contract to a file.
+
+    Keys are sorted and the output indented, so contract files are stable
+    under regeneration and diff cleanly in version control.
+
+    Returns
+    -------
+    Path
+        The path written.
+    """
+
     output_path = Path(path)
     output_path.write_text(
         json.dumps(to_json_contract(obj), indent=2, sort_keys=True), encoding="utf-8"
@@ -1779,6 +1809,12 @@ def write_json_contract(obj: Any, path: str | Path) -> Path:
 
 
 def read_json_contract(path: str | Path) -> Any:
+    """Read a JSON contract file and reconstruct the object.
+
+    The inverse of :func:`write_json_contract`. A file that does not decode
+    to a JSON object raises.
+    """
+
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("JSON contract file must decode to an object.")

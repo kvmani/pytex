@@ -226,9 +226,15 @@ class Arrow3D:
 
     @property
     def vector(self) -> np.ndarray:
+        """The arrow's displacement vector, from tail to tip.
+        """
+
         return as_float_array(self.head - self.tail, shape=(3,))
 
     def transformed(self, transform: Transform3D) -> Arrow3D:
+        """This arrow under an affine transform, as a new arrow.
+        """
+
         return Arrow3D(
             tail=transform.apply_points(self.tail),
             head=transform.apply_points(self.head),
@@ -261,6 +267,9 @@ class PolyLine3D:
             raise ValueError("PolyLine3D requires at least two points.")
 
     def transformed(self, transform: Transform3D) -> PolyLine3D:
+        """This polyline under an affine transform, as a new polyline.
+        """
+
         return PolyLine3D(
             points=transform.apply_points(self.points),
             color=self.color,
@@ -298,6 +307,9 @@ class PlanePatch3D:
         object.__setattr__(self, "normal", as_float_array(normal / norm, shape=(3,)))
 
     def transformed(self, transform: Transform3D) -> PlanePatch3D:
+        """This plane patch under an affine transform, as a new patch.
+        """
+
         return PlanePatch3D(
             vertices=transform.apply_points(self.vertices),
             normal=transform.apply_normal(self.normal),
@@ -331,6 +343,9 @@ class PointCloud3D:
             object.__setattr__(self, "color", as_float_array(self.color, shape=(None, 3)))
 
     def transformed(self, transform: Transform3D) -> PointCloud3D:
+        """This point cloud under an affine transform, as a new cloud.
+        """
+
         return PointCloud3D(
             points=transform.apply_points(self.points),
             color=self.color,
@@ -356,6 +371,9 @@ class Label3D:
         object.__setattr__(self, "position", as_float_array(self.position, shape=(3,)))
 
     def transformed(self, transform: Transform3D) -> Label3D:
+        """This label under an affine transform, as a new label.
+        """
+
         return Label3D(
             position=transform.apply_points(self.position),
             text=self.text,
@@ -391,6 +409,9 @@ class AxisTriad3D:
             raise ValueError("AxisTriad3D.labels must contain exactly three labels when provided.")
 
     def arrows(self) -> tuple[Arrow3D, ...]:
+        """The three axis arrows of the triad.
+        """
+
         return tuple(
             Arrow3D(
                 tail=self.origin,
@@ -405,6 +426,9 @@ class AxisTriad3D:
         )
 
     def tip_labels(self) -> tuple[Label3D, ...]:
+        """The axis labels placed at the arrow tips.
+        """
+
         if self.labels is None:
             return ()
         return tuple(
@@ -418,6 +442,9 @@ class AxisTriad3D:
         )
 
     def transformed(self, transform: Transform3D) -> AxisTriad3D:
+        """This triad under an affine transform, as a new triad.
+        """
+
         return AxisTriad3D(
             origin=transform.apply_points(self.origin),
             axes=transform.apply_vector(self.axes.T).T,
@@ -448,6 +475,9 @@ class PrimitiveScene3D:
     triads: tuple[AxisTriad3D, ...] = ()
 
     def is_empty(self) -> bool:
+        """Whether the scene contains no primitives at all.
+        """
+
         return not (
             self.arrows
             or self.polylines
@@ -458,6 +488,13 @@ class PrimitiveScene3D:
         )
 
     def merge(self, other: PrimitiveScene3D) -> PrimitiveScene3D:
+        """This scene combined with another, as a new scene.
+
+        The composition operator for building a figure from independently
+        constructed parts — a reference triad, a unit cell, an overlay — without
+        any of them needing to know about the others.
+        """
+
         return PrimitiveScene3D(
             arrows=self.arrows + other.arrows,
             polylines=self.polylines + other.polylines,
@@ -468,6 +505,12 @@ class PrimitiveScene3D:
         )
 
     def transformed(self, transform: Transform3D) -> PrimitiveScene3D:
+        """Every primitive in the scene under an affine transform, as a new scene.
+
+        This is how a scene defined in a local frame is placed into a world
+        frame; the scene itself stays immutable.
+        """
+
         return PrimitiveScene3D(
             arrows=tuple(arrow.transformed(transform) for arrow in self.arrows),
             polylines=tuple(line.transformed(transform) for line in self.polylines),

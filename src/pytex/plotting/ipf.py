@@ -33,6 +33,24 @@ def _normalize_rgb_vertices(vertices: ArrayLike) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class IPFColorKey:
+    """The colour mapping from crystal directions to inverse-pole-figure colours.
+
+    Purpose
+    -------
+    Defines the standard IPF colouring: each direction is folded into the
+    symmetry fundamental sector and coloured by its barycentric position, so
+    symmetrically equivalent directions receive the same colour and the
+    sector corners anchor the primary colours. It also produces the legend
+    mesh that makes an IPF map interpretable.
+
+    Attributes
+    ----------
+    symmetry : SymmetrySpec
+        Determines the fundamental sector, and hence the colour scheme. Two
+        maps of different symmetries are not colour-comparable.
+    Remaining attributes carry the projection and colour-assignment options.
+    """
+
     crystal_symmetry: SymmetrySpec
     specimen_direction: str | np.ndarray
     antipodal: bool = True
@@ -66,10 +84,19 @@ class IPFColorKey:
 
     @property
     def sector(self) -> FundamentalSector:
+        """The symmetry fundamental sector this colour key maps over.
+        """
+
         return self.crystal_symmetry.fundamental_sector(antipodal=self.antipodal)
 
     @property
     def sector_vertices(self) -> np.ndarray:
+        """Corner directions of the fundamental sector, as unit vectors.
+
+        For cubic symmetry these are the ``[001]``, ``[101]``, ``[111]`` corners
+        that anchor the colour key.
+        """
+
         vertices = self.sector.vertices
         if vertices.shape == (3, 3):
             return vertices
@@ -78,6 +105,26 @@ class IPFColorKey:
         return as_float_array(_DEFAULT_ANCHOR_DIRECTIONS, shape=(3, 3))
 
     def colors_from_crystal_directions(self, crystal_directions: ArrayLike) -> np.ndarray:
+        """RGB colours for crystal directions, by position in the sector.
+
+        Purpose
+        -------
+        The core of IPF colouring: each direction is folded into the fundamental
+        sector and assigned a colour from its barycentric position, so
+        symmetrically equivalent directions receive the same colour and the
+        sector corners anchor the primary colours.
+
+        Parameters
+        ----------
+        directions : ArrayLike
+            ``(n, 3)`` crystal directions.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n, 3)`` RGB values in ``[0, 1]``.
+        """
+
         directions = normalize_vectors(crystal_directions)
         reduced = self.crystal_symmetry.reduce_vectors_to_fundamental_sector(
             directions,
@@ -105,6 +152,9 @@ class IPFColorKey:
         method: str = "stereographic",
         samples_per_edge: int = 64,
     ) -> np.ndarray:
+        """Projected sector-boundary polyline, for drawing the colour-key outline.
+        """
+
         trace = self.sector.boundary_trace(samples_per_edge=samples_per_edge)
         projected = project_directions(trace, method=method, antipodal=self.antipodal)
         return freeze_array(np.ascontiguousarray(projected))
@@ -115,6 +165,17 @@ class IPFColorKey:
         resolution_deg: float = 2.0,
         method: str = "stereographic",
     ) -> tuple[np.ndarray, np.ndarray]:
+        """A filled colour-key mesh over the fundamental sector.
+
+        The standard-triangle legend that accompanies an IPF map and makes its
+        colours interpretable.
+
+        Returns
+        -------
+        tuple of np.ndarray
+            Projected mesh coordinates and their RGB colours.
+        """
+
         if not 0.0 < float(resolution_deg) <= 15.0:
             raise ValueError("legend_mesh resolution_deg must lie in (0, 15] degrees.")
         polar = np.arange(0.0, 90.0 + resolution_deg, resolution_deg)
@@ -137,6 +198,12 @@ class IPFColorKey:
         )
 
     def colors_from_orientations(self, orientations: OrientationSet) -> np.ndarray:
+        """RGB colours for orientations relative to a specimen direction.
+
+        Maps the chosen specimen axis into each crystal frame and colours the
+        resulting crystal direction — the operation behind an IPF map.
+        """
+
         if orientations.symmetry is None or orientations.symmetry != self.crystal_symmetry:
             raise ValueError("OrientationSet symmetry must match the IPFColorKey crystal symmetry.")
         crystal_directions = orientations.map_sample_directions_to_crystal(self.specimen_direction)
@@ -148,6 +215,10 @@ class IPFColorKey:
         return self.colors_from_crystal_directions(crystal_direction_array)
 
     def color_from_orientation(self, orientation: Orientation) -> np.ndarray:
+        """The RGB colour of a single orientation; see
+        :meth:`colors_from_orientations`.
+        """
+
         if orientation.symmetry is None or orientation.symmetry != self.crystal_symmetry:
             raise ValueError("Orientation symmetry must match the IPFColorKey crystal symmetry.")
         crystal_direction = orientation.map_sample_vector_to_crystal(self.specimen_direction)

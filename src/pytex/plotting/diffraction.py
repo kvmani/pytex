@@ -5,7 +5,8 @@ from typing import Any
 
 import numpy as np
 
-from pytex.core.notation import format_plane_family_indices
+from pytex.core.notation import format_direction_indices, format_plane_family_indices
+from pytex.diffraction.kikuchi import GnomonicProjection, KikuchiPattern
 from pytex.diffraction.saed import SAEDPattern
 from pytex.diffraction.xrd import PowderPattern
 from pytex.plotting.frames import add_frame_indicator
@@ -30,6 +31,22 @@ def plot_xrd_pattern(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot a simulated powder X-ray diffraction pattern.
+
+    Parameters
+    ----------
+    pattern : PowderPattern
+        Intensity against ``2*theta``, from
+        :func:`~pytex.diffraction.generate_xrd_pattern`.
+    Remaining parameters control peak labelling, styling, and the target
+    axes.
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+    """
+
     plt, _ = _require_matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
@@ -248,5 +265,157 @@ def plot_saed_pattern(
             azim_deg=-90.0,
             label_frame=True,
         )
+    fig.tight_layout()
+    return fig
+
+
+def plot_kikuchi_pattern(
+    pattern: KikuchiPattern,
+    *,
+    coordinates: str = "gnomonic",
+    show_edges: bool = True,
+    show_zone_axes: bool = True,
+    max_bands: int | None = None,
+    label_zone_axes: bool = True,
+    samples: int = 361,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    """Draw a simulated Kikuchi pattern as band traces and zone axes.
+
+    Purpose
+    -------
+    Make the geometry legible: each band is drawn as its centre line with the
+    two Kossel-cone edges that bound it, and the zone axes are marked where
+    bands intersect. Useful for teaching how a pattern is built, and for
+    overlaying a simulation on a measured pattern to check an indexing solution.
+
+    Parameters
+    ----------
+    pattern : KikuchiPattern
+        The simulated pattern.
+    coordinates : str
+        ``"gnomonic"`` (default) plots in the projection where band centres are
+        exactly straight — the right frame for judging geometry. ``"detector"``
+        plots in detector pixels, which is what a measured pattern looks like
+        and where centre lines curve on a tilted detector.
+    show_edges : bool
+        Draw the Kossel-cone edges as well as the centre lines. The visible gap
+        between an edge pair *is* the band.
+    show_zone_axes : bool
+        Mark the zone axes.
+    max_bands : int, optional
+        Draw only the strongest ``max_bands`` bands, for legibility.
+    label_zone_axes : bool
+        Annotate zone axes with their ``[uvw]`` indices.
+    samples : int
+        Points sampled along each trace.
+    theme, style_path, style_overrides :
+        Plot styling, resolved through `pytex.plotting.styles.resolve_style`.
+    ax : matplotlib Axes, optional
+        An existing axes to draw into. A new figure is created when omitted.
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+        The figure holding the pattern. The caller owns it.
+    """
+
+    if coordinates not in {"gnomonic", "detector"}:
+        raise ValueError("coordinates must be either 'gnomonic' or 'detector'.")
+    if samples < 2:
+        raise ValueError("samples must be at least two.")
+    if max_bands is not None and max_bands <= 0:
+        raise ValueError("max_bands must be strictly positive when provided.")
+
+    plt, _ = _require_matplotlib()
+    style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
+    common = style["common"]
+    saed_style = style["saed"]
+    if ax is None:
+        fig, axes = plt.subplots(
+            figsize=tuple(common["figure"]["figsize"]),
+            dpi=int(common["figure"]["dpi"]),
+            facecolor=saed_style["background"],
+        )
+    else:
+        axes = ax
+        fig = axes.figure
+    axes.set_facecolor(saed_style["background"])
+
+    projection = GnomonicProjection(geometry=pattern.geometry)
+    in_detector = coordinates == "detector"
+
+    def _place(points: np.ndarray) -> np.ndarray:
+        if points.shape[0] == 0:
+            return points
+        return np.asarray(projection.to_detector_px(points)) if in_detector else points
+
+    bands = pattern.bands if max_bands is None else pattern.bands[:max_bands]
+    for band in bands:
+        centre = _place(band.center_trace(projection, samples=samples))
+        if centre.shape[0] > 1:
+            axes.plot(
+                centre[:, 0],
+                centre[:, 1],
+                color=saed_style["spot_color"],
+                linewidth=1.1,
+                alpha=0.9,
+            )
+        if not show_edges:
+            continue
+        for edge in band.edge_traces(projection, samples=samples):
+            placed = _place(edge)
+            if placed.shape[0] > 1:
+                axes.plot(
+                    placed[:, 0],
+                    placed[:, 1],
+                    color=saed_style["ring_color"],
+                    linewidth=0.7,
+                    alpha=0.55,
+                )
+
+    if show_zone_axes:
+        visible = [axis for axis in pattern.zone_axes if axis.on_detector]
+        if visible:
+            points = _place(np.vstack([axis.coordinates for axis in visible]))
+            axes.scatter(
+                points[:, 0],
+                points[:, 1],
+                s=float(saed_style["spot_scale"]) * 0.25,
+                color=saed_style["label_color"],
+                zorder=5,
+            )
+            if label_zone_axes:
+                for axis, point in zip(visible, points, strict=True):
+                    indices = tuple(int(value) for value in axis.indices)
+                    axes.annotate(
+                        format_direction_indices(indices, style="mathtext"),
+                        (float(point[0]), float(point[1])),
+                        textcoords="offset points",
+                        xytext=(4, 4),
+                        fontsize=float(common["font"]["size"]) - 1.5,
+                        color=saed_style["label_color"],
+                    )
+
+    if in_detector:
+        height, width = pattern.geometry.detector_shape
+        axes.set_xlim(0.0, float(width - 1))
+        # Detector row 0 is conventionally the top of the image.
+        axes.set_ylim(float(height - 1), 0.0)
+        axes.set_xlabel("detector u (px)")
+        axes.set_ylabel("detector v (px)")
+    else:
+        corners = np.asarray(projection.detector_corner_coordinates())
+        axes.set_xlim(float(corners[:, 0].min()), float(corners[:, 0].max()))
+        axes.set_ylim(float(corners[:, 1].min()), float(corners[:, 1].max()))
+        axes.set_xlabel("gnomonic x (detector distances)")
+        axes.set_ylabel("gnomonic y (detector distances)")
+    axes.set_aspect("equal", adjustable="box")
+    if bool(saed_style.get("show_title", True)):
+        axes.set_title(f"Kikuchi pattern ({pattern.phase.name}, {coordinates} coordinates)")
+    axes.grid(alpha=float(common["figure"]["grid_alpha"]))
     fig.tight_layout()
     return fig

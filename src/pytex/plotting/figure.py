@@ -188,6 +188,11 @@ class PanelGrid:
 
     @property
     def axes_flat(self) -> list[Any]:
+        """The panel axes as a flat tuple in row-major order.
+
+        Convenient for iterating over panels without indexing the grid shape.
+        """
+
         return list(self.axes.ravel())
 
     def label(self, **kwargs: Any) -> list[Any]:

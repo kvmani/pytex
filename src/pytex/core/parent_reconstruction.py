@@ -16,6 +16,22 @@ ReductionMode = Literal["mean", "median", "max"]
 
 @dataclass(frozen=True, slots=True)
 class ParentReconstructionConfig:
+    """Settings governing how candidate parent orientations are scored.
+
+    Attributes
+    ----------
+    reduction : str
+        How per-child residuals are reduced to one score: ``"mean"``
+        (default), ``"median"`` (robust to a few misindexed children), or
+        ``"max"`` (worst case).
+    symmetry_aware : bool
+        Use symmetry-reduced disorientation angles (default).
+    ambiguity_tolerance_deg : float
+        Candidates scoring within this of the best are reported as
+        ambiguous. Setting it to zero does not remove ambiguity, it hides it.
+    provenance : ProvenanceRecord, optional
+    """
+
     reduction: ReductionMode = "mean"
     symmetry_aware: bool = True
     ambiguity_tolerance_deg: float = 1.0
@@ -30,6 +46,25 @@ class ParentReconstructionConfig:
 
 @dataclass(frozen=True, slots=True)
 class VariantSelectionReport:
+    """Which transformation variant best explains each child orientation.
+
+    Purpose
+    -------
+    Variant selection is the observable signature of the transformation
+    mechanism: a random variant distribution indicates no selection, while a
+    skewed one points to stress, boundary, or prior-deformation effects.
+
+    Attributes
+    ----------
+    variant_indices : np.ndarray
+        One-based variant index per child; strictly positive.
+    scores_deg : np.ndarray
+        The residual angle of the assignment, per child. A large residual
+        means the child is not well explained by *any* variant, which is a
+        different conclusion from "assigned to variant k".
+    provenance : ProvenanceRecord, optional
+    """
+
     variant_indices: np.ndarray
     scores_deg: np.ndarray
     provenance: ProvenanceRecord | None = None
@@ -89,6 +124,35 @@ class VariantSelectionReport:
 
 @dataclass(frozen=True, slots=True)
 class ParentReconstructionReport:
+    """The outcome of scoring candidate parent orientations, with its ambiguity.
+
+    Purpose
+    -------
+    Reports which candidate parent best explains a set of measured child
+    orientations, and — as importantly — whether the answer is determined at
+    all. With few children, several parents typically explain the data
+    equally well; ``ambiguous_indices`` records that rather than letting the
+    top score pass as a determination.
+
+    Attributes
+    ----------
+    record : PhaseTransformationRecord
+        The parent/child data and the orientation relationship used.
+    candidate_parents : OrientationSet
+        The candidates that were scored.
+    scores_deg : np.ndarray
+        One residual score per candidate.
+    best_index : int
+    best_score_deg : float
+    ambiguous_indices : tuple of int
+        Candidates within the configured tolerance of the best. More than one
+        entry means the reconstruction is unresolved.
+    reduction : str
+    symmetry_aware : bool
+        The settings used, recorded so the result is reproducible.
+    provenance : ProvenanceRecord, optional
+    """
+
     record: PhaseTransformationRecord
     candidate_parents: OrientationSet
     scores_deg: np.ndarray
@@ -116,9 +180,22 @@ class ParentReconstructionReport:
 
     @property
     def is_ambiguous(self) -> bool:
+        """Whether more than one candidate parent scores within the tolerance.
+
+        An ambiguous reconstruction must not be reported as a determination: the
+        data admit several parents, which for a single child orientation is the
+        normal case rather than a failure.
+        """
+
         return len(self.ambiguous_indices) > 1
 
     def best_parent_orientation(self) -> Orientation:
+        """The highest-scoring candidate parent orientation.
+
+        Check :attr:`is_ambiguous` before relying on it — the best candidate is
+        only meaningful when the selection is unambiguous.
+        """
+
         return self.candidate_parents[self.best_index]
 
     def describe(self) -> str:
@@ -144,6 +221,21 @@ class ParentReconstructionReport:
 
 @dataclass(frozen=True, slots=True)
 class OrientationRelationshipCatalog:
+    """A named collection of orientation relationships.
+
+    Purpose
+    -------
+    The lookup for standard relationships — Kurdjumov-Sachs,
+    Nishiyama-Wassermann, Bain, Burgers, Pitsch — so a fitted relationship
+    can be compared against the literature by name rather than by
+    hand-entered angles. Names are required to be unique.
+
+    Attributes
+    ----------
+    relationships : tuple of OrientationRelationship
+    provenance : ProvenanceRecord, optional
+    """
+
     relationships: tuple[OrientationRelationship, ...]
     provenance: ProvenanceRecord | None = None
 
@@ -154,9 +246,17 @@ class OrientationRelationshipCatalog:
             raise ValueError("OrientationRelationshipCatalog relationship names must be unique.")
 
     def names(self) -> tuple[str, ...]:
+        """Names of the catalogued orientation relationships, in catalog order.
+        """
+
         return tuple(relationship.name for relationship in self.relationships)
 
     def get(self, name: str) -> OrientationRelationship:
+        """One catalogued orientation relationship by name.
+
+        Raises ``KeyError`` for an unknown name.
+        """
+
         for relationship in self.relationships:
             if relationship.name == name:
                 return relationship
@@ -170,6 +270,40 @@ def reconstruct_parent_orientation(
     config: ParentReconstructionConfig | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> ParentReconstructionReport:
+    """Choose the parent orientation best explaining a transformation record.
+
+    Purpose
+    -------
+    Given measured child orientations and a set of candidate parents, score
+    each candidate by how well it reproduces the children under the record's
+    orientation relationship, and report the best with an explicit ambiguity
+    verdict.
+
+    Method and limits
+    -----------------
+    Scores *given* candidates; it does not search orientation space, so the
+    candidate set bounds what can be found. With few child orientations
+    several parents typically explain the data equally well, which is why the
+    report carries :attr:`~ParentReconstructionReport.is_ambiguous` rather
+    than presenting the top score as an answer.
+
+    Parameters
+    ----------
+    record : PhaseTransformationRecord
+        The parent/child orientations and the orientation relationship.
+    candidate_parents : OrientationSet
+        Candidates to score; must be non-empty.
+    config : ParentReconstructionConfig, optional
+        Scoring and ambiguity-tolerance settings.
+    provenance : ProvenanceRecord, optional
+
+    Returns
+    -------
+    ParentReconstructionReport
+        Scores, the best index, the set of ambiguous indices, and a
+        :meth:`~ParentReconstructionReport.describe` prose summary.
+    """
+
     if len(candidate_parents) == 0:
         raise ValueError("candidate_parents must contain at least one orientation.")
     reconstruction_config = ParentReconstructionConfig() if config is None else config

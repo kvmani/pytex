@@ -270,6 +270,32 @@ def _vectorized_regular_grid_pairs(
 
 @dataclass(frozen=True, slots=True)
 class CrystalMapPhase:
+    """One phase declared in a crystal map.
+
+    Purpose
+    -------
+    Vendor files routinely name a phase and give its point group without a
+    full crystal structure. This type accommodates that: symmetry is
+    required, a full :class:`~pytex.core.lattice.Phase` is optional, and
+    either is enough to resolve the crystal frame.
+
+    Attributes
+    ----------
+    phase_id : int
+        Non-negative identifier, as used in the file.
+    name : str
+        Canonical phase name.
+    symmetry : SymmetrySpec
+        Required, and its reference frame must be set — phase-resolved maps
+        cannot reduce orientations without it.
+    phase : Phase, optional
+        The full structure, when available. Its name and symmetry are checked
+        against this entry rather than assumed to agree.
+    aliases : tuple of str
+        Alternative names, for matching against other systems' naming.
+    provenance : ProvenanceRecord, optional
+    """
+
     phase_id: int
     name: str
     symmetry: SymmetrySpec
@@ -307,15 +333,46 @@ class CrystalMapPhase:
 
     @property
     def crystal_frame(self) -> ReferenceFrame:
+        """The crystal-domain reference frame of this map phase.
+
+        Taken from the full :class:`~pytex.core.lattice.Phase` when one is
+        attached, otherwise from the symmetry specification. A map phase can
+        exist without a full phase — vendor files often name a phase and give
+        its point group but no lattice — so this property is the single place
+        that resolves which frame applies.
+        """
+
         if self.phase is not None:
             return self.phase.crystal_frame
         return cast(ReferenceFrame, self.symmetry.reference_frame)
 
     @property
     def point_group(self) -> str:
+        """The Hermann-Mauguin point-group symbol of this map phase.
+        """
+
         return self.symmetry.point_group
 
     def matches(self, selector: int | str | Phase | CrystalMapPhase) -> bool:
+        """Whether this map phase is the one a selector refers to.
+
+        Purpose
+        -------
+        EBSD workflows identify a phase in whichever way is convenient at the
+        call site — by the integer phase id in the file, by name, by a
+        :class:`~pytex.core.lattice.Phase`, or by another
+        :class:`CrystalMapPhase`. This resolves all four to one boolean so
+        callers need not branch on the selector type.
+
+        Parameters
+        ----------
+        selector : int, str, Phase, or CrystalMapPhase
+            An integer matches ``phase_id``; a string matches the canonical
+            name or any registered alias; a ``Phase`` matches the attached phase
+            when there is one, and otherwise falls back to name/alias matching;
+            a ``CrystalMapPhase`` matches on ``phase_id``.
+        """
+
         if isinstance(selector, CrystalMapPhase):
             return selector.phase_id == self.phase_id
         if isinstance(selector, Phase):
@@ -330,6 +387,32 @@ class CrystalMapPhase:
 
 @dataclass(frozen=True, slots=True)
 class CoordinateNeighborGraph:
+    """Which measurement points count as neighbours, and how far apart they are.
+
+    Purpose
+    -------
+    The neighbourhood definition that KAM, grain segmentation, boundary
+    extraction, and smoothing all share, so the definition lives in one place
+    rather than being re-derived per metric.
+
+    Attributes
+    ----------
+    pairs : np.ndarray
+        ``(m, 2)`` unique unordered index pairs.
+    distances : np.ndarray
+        ``(m,)`` distances between the paired points.
+    connectivity : int
+        ``4`` (edge neighbours) or ``8`` (edge and corner).
+    order : int
+        Neighbour shell; ``1`` is nearest neighbours.
+    mode : str
+        How the pairs were built: ``"regular_grid"`` for the vectorized grid
+        construction, ``"coordinate_radius"`` for the distance-based
+        fallback used on irregular point sets.
+    max_distance : float, optional
+        Radius cut-off, when the coordinate-radius path was used.
+    """
+
     pairs: np.ndarray
     distances: np.ndarray
     connectivity: int
@@ -364,6 +447,25 @@ class CoordinateNeighborGraph:
 
 @dataclass(frozen=True, slots=True)
 class TextureReport:
+    """A complete texture characterization computed under one set of choices.
+
+    Purpose
+    -------
+    Bundles the ODF with its pole figures and inverse pole figures, all
+    produced from the same weighting, kernel, and symmetry assumptions — so
+    the parts of a texture description cannot drift apart in conventions.
+
+    Attributes
+    ----------
+    odf : ODF
+    pole_figures : tuple of PoleFigure
+    inverse_pole_figures : tuple of InversePoleFigure
+    odf_figure, pole_figure_figures, inverse_pole_figure_figures : optional
+        Rendered Matplotlib figures, present only when plotting was
+        requested; the numerical products never depend on them.
+    provenance : ProvenanceRecord, optional
+    """
+
     odf: ODF
     pole_figures: tuple[PoleFigure, ...] = ()
     inverse_pole_figures: tuple[InversePoleFigure, ...] = ()
@@ -409,6 +511,22 @@ class FittedEllipse:
 
 @dataclass(frozen=True, slots=True)
 class Grain:
+    """One segmented grain: its member points and its representative orientation.
+
+    Attributes
+    ----------
+    grain_id : int
+    member_indices : np.ndarray
+        Indices of the measurement points in this grain; non-empty.
+    mean_coordinate : np.ndarray
+        Centroid of the member points.
+    reference_orientation_index : int
+        The member point chosen as representative. Must belong to
+        ``member_indices``; this is the reference GROD is measured against,
+        and it is a measured orientation rather than an average.
+    provenance : ProvenanceRecord, optional
+    """
+
     grain_id: int
     member_indices: np.ndarray
     mean_coordinate: np.ndarray
@@ -433,11 +551,37 @@ class Grain:
 
     @property
     def size(self) -> int:
+        """Number of measurement points belonging to this grain.
+
+        A pixel count, not a physical area. For area or diameter in specimen
+        units use :meth:`GrainSegmentation.grain_areas` or
+        :meth:`GrainSegmentation.grain_equivalent_diameters`, which apply the
+        map step sizes.
+        """
+
         return int(self.member_indices.size)
 
 
 @dataclass(frozen=True, slots=True)
 class GrainBoundarySegment:
+    """One pixel face separating two grains, with its misorientation.
+
+    Attributes
+    ----------
+    left_index, right_index : int
+        The two measurement points; must be distinct.
+    left_grain_id, right_grain_id : int
+        Their grains; must be distinct, since a segment by definition
+        straddles a boundary.
+    misorientation_deg : float
+        Non-negative; symmetry-reduced when the segmentation was.
+    length : float
+        Face length in map coordinate units.
+    midpoint : np.ndarray
+        Face centre, for plotting the boundary network.
+    provenance : ProvenanceRecord, optional
+    """
+
     left_index: int
     right_index: int
     left_grain_id: int
@@ -464,6 +608,14 @@ class GrainBoundarySegment:
         object.__setattr__(self, "midpoint", midpoint)
 
     def classify(self, *, high_angle_threshold_deg: float = 15.0) -> str:
+        """Label this segment ``"high_angle"`` or ``"low_angle"``.
+
+        The 15-degree default threshold is the conventional dividing line
+        between low-angle (dislocation-wall) and high-angle boundaries in the
+        Read-Shockley picture; it is a convention, not a physical constant, and
+        is exposed so it can be set to whatever a study uses.
+        """
+
         if high_angle_threshold_deg < 0.0:
             raise ValueError("high_angle_threshold_deg must be non-negative.")
         return "high_angle" if self.misorientation_deg >= high_angle_threshold_deg else "low_angle"
@@ -471,6 +623,27 @@ class GrainBoundarySegment:
 
 @dataclass(frozen=True, slots=True)
 class GrainBoundaryNetwork:
+    """Every boundary segment of a segmentation, with classification thresholds.
+
+    Purpose
+    -------
+    The raw material for boundary-character statistics: segment
+    misorientations, lengths, and the high-angle fraction. Collapse it with
+    :meth:`grain_graph` when grain-scale adjacency is what is wanted.
+
+    Attributes
+    ----------
+    segmentation : GrainSegmentation
+        The segmentation the segments came from.
+    segments : tuple of GrainBoundarySegment
+    min_misorientation_deg : float
+        The threshold below which segments were discarded.
+    high_angle_threshold_deg : float
+        Dividing line between low- and high-angle boundaries; 15 degrees by
+        convention, and a convention rather than a physical constant.
+    provenance : ProvenanceRecord, optional
+    """
+
     segmentation: GrainSegmentation
     segments: tuple[GrainBoundarySegment, ...]
     min_misorientation_deg: float
@@ -486,20 +659,36 @@ class GrainBoundaryNetwork:
 
     @property
     def count(self) -> int:
+        """Number of boundary segments in the network.
+        """
+
         return len(self.segments)
 
     @property
     def mean_misorientation_deg(self) -> float:
+        """Mean segment misorientation in degrees; ``0.0`` for an empty network.
+
+        Unweighted over segments. Because segments are pixel-face sized, this
+        is close to a length-weighted mean on a regular grid, but it is not the
+        same statistic on an irregular one.
+        """
+
         if not self.segments:
             return 0.0
         return float(np.mean([segment.misorientation_deg for segment in self.segments]))
 
     @property
     def total_length(self) -> float:
+        """Summed length of all boundary segments, in map coordinate units.
+        """
+
         return float(np.sum([segment.length for segment in self.segments]))
 
     @property
     def high_angle_count(self) -> int:
+        """Number of segments at or above the network's high-angle threshold.
+        """
+
         return int(
             sum(
                 segment.classify(high_angle_threshold_deg=self.high_angle_threshold_deg)
@@ -509,6 +698,23 @@ class GrainBoundaryNetwork:
         )
 
     def grain_graph(self) -> GrainGraph:
+        """Collapse the segment list into a grain-adjacency graph.
+
+        Purpose
+        -------
+        The segment network is per pixel face; most grain-scale reasoning —
+        neighbour queries, CSL classification, parent-grain reconstruction —
+        wants one edge per grain pair instead. This groups segments by grain
+        pair and summarizes each pair's total length, mean misorientation, and
+        high-angle fraction.
+
+        Returns
+        -------
+        GrainGraph
+            Nodes are grain ids, edges are grain pairs, in sorted pair order so
+            the graph is reproducible.
+        """
+
         edge_groups: dict[tuple[int, int], list[tuple[int, GrainBoundarySegment]]] = {}
         for index, segment in enumerate(self.segments):
             left_grain_id, right_grain_id = sorted((segment.left_grain_id, segment.right_grain_id))
@@ -682,6 +888,25 @@ class GrainBoundaryNetwork:
 
 @dataclass(frozen=True, slots=True)
 class GrainGraphEdge:
+    """The adjacency between two grains, summarizing their shared boundary.
+
+    Attributes
+    ----------
+    left_grain_id, right_grain_id : int
+        The connected grains; must be distinct.
+    segment_indices : np.ndarray
+        The boundary segments forming this edge; non-empty.
+    total_length : float
+        Shared boundary length. This is the natural weight for voting
+        algorithms — a long shared boundary is stronger evidence than a
+        single shared pixel face.
+    mean_misorientation_deg : float
+    high_angle_fraction : float
+        Fraction of the shared boundary above the high-angle threshold, in
+        ``[0, 1]``.
+    provenance : ProvenanceRecord, optional
+    """
+
     left_grain_id: int
     right_grain_id: int
     segment_indices: np.ndarray
@@ -709,11 +934,34 @@ class GrainGraphEdge:
 
     @property
     def grain_pair(self) -> tuple[int, int]:
+        """The ``(left_grain_id, right_grain_id)`` pair this edge connects.
+        """
+
         return (self.left_grain_id, self.right_grain_id)
 
 
 @dataclass(frozen=True, slots=True)
 class GrainGraph:
+    """The grain-adjacency graph of a segmentation.
+
+    Purpose
+    -------
+    Grain-scale connectivity: one edge per grain pair rather than one per
+    pixel face. This is the structure region-growing algorithms iterate on —
+    parent-grain reconstruction, twin merging, small-grain absorption.
+
+    Attributes
+    ----------
+    segmentation : GrainSegmentation
+    edges : tuple of GrainGraphEdge
+        In sorted grain-pair order, so the graph is reproducible.
+    node_grain_ids : np.ndarray
+        Grain ids in adjacency-matrix row order. Note that row ``i``
+        corresponds to ``node_grain_ids[i]``, not to grain id ``i``.
+    high_angle_threshold_deg : float
+    provenance : ProvenanceRecord, optional
+    """
+
     segmentation: GrainSegmentation
     edges: tuple[GrainGraphEdge, ...]
     node_grain_ids: np.ndarray
@@ -731,10 +979,19 @@ class GrainGraph:
 
     @property
     def edge_count(self) -> int:
+        """Number of grain-pair edges in the graph.
+        """
+
         return len(self.edges)
 
     @property
     def adjacency_matrix(self) -> np.ndarray:
+        """Symmetric 0/1 adjacency matrix over :attr:`node_grain_ids`.
+
+        Row and column ``i`` correspond to ``node_grain_ids[i]``, *not* to grain
+        id ``i``. Returned read-only.
+        """
+
         node_index = {int(grain_id): idx for idx, grain_id in enumerate(self.node_grain_ids)}
         matrix = np.zeros((len(self.node_grain_ids), len(self.node_grain_ids)), dtype=np.int64)
         for edge in self.edges:
@@ -747,6 +1004,13 @@ class GrainGraph:
         return matrix
 
     def neighbors(self, grain_id: int) -> np.ndarray:
+        """Sorted grain ids adjacent to ``grain_id``.
+
+        Returns an empty array for an isolated grain. This is the primitive that
+        region-growing algorithms — parent-grain reconstruction, twin merging,
+        small-grain absorption — iterate on.
+        """
+
         neighbors = [
             edge.right_grain_id if edge.left_grain_id == grain_id else edge.left_grain_id
             for edge in self.edges
@@ -760,6 +1024,36 @@ class GrainGraph:
 
 @dataclass(frozen=True, slots=True)
 class GrainSegmentation:
+    """A crystal map partitioned into grains, with the settings that produced it.
+
+    Purpose
+    -------
+    The bridge from point-wise orientations to microstructural statistics:
+    grain sizes, shapes, boundaries, averages, and the local-misorientation
+    family (GROD, GOS, GAM) all derive from here.
+
+    The segmentation parameters are stored, not just applied, so every
+    derived metric inherits the same conventions and the result stays
+    reproducible.
+
+    Attributes
+    ----------
+    crystal_map : CrystalMap
+        The map segmented; derived metrics query it directly.
+    labels : np.ndarray
+        One grain id per measurement point.
+    grains : tuple of Grain
+    max_misorientation_deg : float
+        The grain-boundary criterion used. It determines whether subgrains
+        are resolved as separate grains, so it must be reported with any
+        grain-size result.
+    connectivity : int
+        ``4`` or ``8`` neighbourhood.
+    symmetry_aware : bool
+        Whether disorientation rather than raw rotation angle was used.
+    provenance : ProvenanceRecord, optional
+    """
+
     crystal_map: CrystalMap
     labels: np.ndarray
     grains: tuple[Grain, ...]
@@ -785,15 +1079,50 @@ class GrainSegmentation:
 
     @property
     def label_grid(self) -> np.ndarray:
+        """Per-pixel grain labels reshaped to the map grid.
+
+        Requires a regular 2-D map. The values are grain ids, so the array can
+        be used directly as an index into per-grain quantities.
+        """
+
         rows, cols = self.crystal_map._require_regular_2d_grid()
         labels = np.ascontiguousarray(self.labels.reshape((rows, cols)))
         labels.setflags(write=False)
         return labels
 
     def reference_orientation(self, grain: Grain) -> Orientation:
+        """The orientation of a grain's representative measurement point.
+
+        This is the *measured* orientation at the point the segmentation chose
+        as representative, not an average. For the averaged quantity use
+        :meth:`grain_mean_orientation`; GROD is measured against this reference.
+        """
+
         return self.crystal_map.orientations[grain.reference_orientation_index]
 
     def grod_map_deg(self) -> np.ndarray:
+        """Grain Reference Orientation Deviation map, in degrees.
+
+        Purpose
+        -------
+        Per pixel, the misorientation between that point and its own grain's
+        reference orientation. GROD reveals intragranular orientation gradients
+        — the signature of stored plastic strain, subgrain structure, and
+        recovery — which a grain-average number hides.
+
+        Returns
+        -------
+        np.ndarray
+            ``(rows, cols)`` degrees, read-only. Requires a regular 2-D grid.
+            Symmetry-aware iff the segmentation was built that way.
+
+        See Also
+        --------
+        gos_map_deg : One number per grain instead of per pixel.
+        kernel_average_misorientation_deg : Local (neighbour) rather than
+            grain-referenced deviation.
+        """
+
         rows, cols = self.crystal_map._require_regular_2d_grid()
         point_count = len(self.crystal_map.orientations)
         # Per-point reference-orientation index: each point takes its grain's
@@ -816,9 +1145,18 @@ class GrainSegmentation:
         return deviations
 
     def grain_mean_orientation(self, grain: Grain) -> Orientation:
+        """Symmetry-aware mean orientation of one grain's member points.
+
+        Uses quaternion eigenvector averaging with per-member symmetry-branch
+        selection; see :meth:`~pytex.core.orientation.OrientationSet.mean_orientation`.
+        """
+
         return self.crystal_map.orientations.subset(grain.member_indices).mean_orientation()
 
     def grain_mean_orientations(self) -> dict[int, Orientation]:
+        """Mean orientation of every grain, keyed by grain id.
+        """
+
         return {grain.grain_id: self.grain_mean_orientation(grain) for grain in self.grains}
 
     def grain_orientation_spread_deg(self) -> dict[int, float]:
@@ -850,6 +1188,13 @@ class GrainSegmentation:
         return per_point
 
     def gos_map_deg(self) -> np.ndarray:
+        """Grain Orientation Spread broadcast to every pixel of its grain.
+
+        Each pixel carries its grain's GOS value, so the map shows which grains
+        are deformed rather than where within a grain the deformation sits.
+        Returned as a grid for a regular 2-D map and per point otherwise.
+        """
+
         return self._reshape_to_grid_if_regular(
             self._broadcast_grain_values_to_points(self.grain_orientation_spread_deg())
         )
@@ -870,6 +1215,14 @@ class GrainSegmentation:
         }
 
     def gam_map_deg(self) -> np.ndarray:
+        """Grain Average Misorientation broadcast to every pixel of its grain.
+
+        GAM averages the *local* (kernel) misorientation inside a grain, so it
+        responds to short-wavelength gradients — geometrically necessary
+        dislocation content — where GOS responds to the total spread. The two
+        differ sharply for a grain with a single sharp subgrain wall.
+        """
+
         return self._reshape_to_grid_if_regular(
             self._broadcast_grain_values_to_points(self.grain_average_misorientation_deg())
         )
@@ -889,6 +1242,9 @@ class GrainSegmentation:
         }
 
     def grain_sizes(self) -> dict[int, int]:
+        """Member pixel count of every grain, keyed by grain id.
+        """
+
         return {grain.grain_id: grain.size for grain in self.grains}
 
     def _fitted_ellipse(self, grain: Grain) -> FittedEllipse:
@@ -925,15 +1281,40 @@ class GrainSegmentation:
         )
 
     def grain_fitted_ellipse(self, grain: Grain) -> FittedEllipse:
+        """Best-fit ellipse of one grain's member-pixel cloud.
+
+        Fitted from the eigen-decomposition of the pixel-coordinate covariance,
+        with semi-axes set to twice the eigenvalue square roots. This is the
+        standard second-moment shape descriptor: it captures elongation and
+        alignment, and it is not a boundary fit, so a concave grain is still
+        described by a convex ellipse.
+        """
+
         return self._fitted_ellipse(grain)
 
     def grain_fitted_ellipses(self) -> dict[int, FittedEllipse]:
+        """Best-fit ellipse of every grain, keyed by grain id.
+        """
+
         return {grain.grain_id: self._fitted_ellipse(grain) for grain in self.grains}
 
     def grain_aspect_ratios(self) -> dict[int, float]:
+        """Major-to-minor axis ratio of every grain's fitted ellipse.
+
+        The elongation measure behind grain-morphology statistics for rolled and
+        drawn material. Degenerate (single-line) grains report infinity.
+        """
+
         return {grain.grain_id: self._fitted_ellipse(grain).aspect_ratio for grain in self.grains}
 
     def grain_shape_orientations_deg(self) -> dict[int, float]:
+        """Angle of each grain's major axis, in degrees within ``[0, 180)``.
+
+        Measured from the map x-axis. Together with
+        :meth:`grain_aspect_ratios` this gives the morphological-texture
+        counterpart of crystallographic texture.
+        """
+
         return {grain.grain_id: self._fitted_ellipse(grain).angle_deg for grain in self.grains}
 
     def _grid_step_sizes(self) -> tuple[float, float]:
@@ -1011,6 +1392,31 @@ class GrainSegmentation:
         min_misorientation_deg: float = 0.0,
         high_angle_threshold_deg: float = 15.0,
     ) -> GrainBoundaryNetwork:
+        """Build the grain-boundary segment network of this segmentation.
+
+        Purpose
+        -------
+        Extract every pixel face that straddles two grains, with its
+        misorientation, length, and midpoint — the raw material for
+        boundary-character statistics, CSL classification, and boundary
+        plotting.
+
+        Parameters
+        ----------
+        min_misorientation_deg : float
+            Discard segments below this misorientation. Use it to suppress the
+            noise floor of the indexing.
+        high_angle_threshold_deg : float
+            The threshold the resulting network uses to classify segments;
+            15 degrees by convention.
+
+        Returns
+        -------
+        GrainBoundaryNetwork
+            Segments only between points of the same phase; interphase
+            interfaces are not boundary segments in this model.
+        """
+
         if min_misorientation_deg < 0.0:
             raise ValueError("min_misorientation_deg must be non-negative.")
         segments: list[GrainBoundarySegment] = []
@@ -1072,6 +1478,12 @@ class GrainSegmentation:
         min_misorientation_deg: float = 0.0,
         high_angle_threshold_deg: float = 15.0,
     ) -> GrainGraph:
+        """The grain-adjacency graph of this segmentation.
+
+        Convenience for ``boundary_network(...).grain_graph()``; see
+        :meth:`GrainBoundaryNetwork.grain_graph`.
+        """
+
         return self.boundary_network(
             min_misorientation_deg=min_misorientation_deg,
             high_angle_threshold_deg=high_angle_threshold_deg,
@@ -1083,6 +1495,31 @@ class GrainSegmentation:
         iterations: int = 1,
         min_neighbor_votes: int = 3,
     ) -> GrainSegmentation:
+        """Reassign isolated points to the label most of their neighbours carry.
+
+        Purpose
+        -------
+        Clean up salt-and-pepper labelling left by mis-indexed points, without
+        moving real boundaries. A point changes label only when at least
+        ``min_neighbor_votes`` of its neighbours agree on a different one, so a
+        genuine boundary — where votes are split — is left alone.
+
+        Parameters
+        ----------
+        iterations : int
+            Number of smoothing sweeps. Each sweep uses the labels from the end
+            of the previous one, so the operation is deterministic.
+        min_neighbor_votes : int
+            Votes required to overrule a point's own label. Raising it makes the
+            filter more conservative.
+
+        Returns
+        -------
+        GrainSegmentation
+            A new segmentation on the same map, re-derived from the smoothed
+            labels. Requires a regular 2-D grid.
+        """
+
         if iterations <= 0:
             raise ValueError("iterations must be strictly positive.")
         if min_neighbor_votes <= 0:
@@ -1125,6 +1562,37 @@ class GrainSegmentation:
         until_stable: bool = True,
         max_iterations: int | None = None,
     ) -> GrainSegmentation:
+        """Absorb grains below a size threshold into their best neighbour.
+
+        Purpose
+        -------
+        Remove sub-resolution "grains" that are really indexing noise, so that
+        grain-size statistics are not dominated by single-pixel artefacts.
+
+        Method
+        ------
+        Repeatedly takes the smallest grain below ``min_size`` and merges it
+        into the neighbour with which it shares the most boundary faces, using
+        the lower mean misorientation and then the lower grain id to break ties.
+        Deterministic by construction. Merging can push a grain over the
+        threshold, which is why the default runs to a fixed point.
+
+        Parameters
+        ----------
+        min_size : int
+            Minimum member-pixel count a grain must have to survive.
+        until_stable : bool
+            Repeat until no grain is below the threshold (default). ``False``
+            performs a single merge.
+        max_iterations : int, optional
+            Hard cap on merge steps, as a guard on pathological maps.
+
+        Returns
+        -------
+        GrainSegmentation
+            A new segmentation with the surviving grains relabelled.
+        """
+
         if min_size <= 0:
             raise ValueError("min_size must be strictly positive.")
         if min_size <= 1:
@@ -1205,6 +1673,56 @@ class GrainSegmentation:
 
 @dataclass(frozen=True, slots=True)
 class CrystalMap:
+    """An EBSD orientation map: one orientation per measurement point.
+
+    Purpose
+    -------
+    The central EBSD object. It holds the measured orientations together with
+    their spatial coordinates, phase assignments, grid geometry, acquisition
+    context, and any auxiliary quality channels — everything needed to
+    interpret the orientations as a microstructure rather than as a bare
+    list.
+
+    Immutable by construction: derived maps (a phase subset, a filtered
+    selection, an added property channel) are produced as new maps, so a
+    downstream calculation cannot change the data another calculation is
+    reading.
+
+    Grid versus graph mode
+    ----------------------
+    With ``grid_shape`` set, the map is a regular raster and grid-shaped
+    outputs are available. Without it the map operates in graph mode, where
+    neighbourhoods come from coordinate distances instead; most metrics still
+    work but return per-point rather than gridded arrays.
+
+    Attributes
+    ----------
+    coordinates : np.ndarray
+        ``(n, 2)`` or ``(n, 3)`` point positions in the map frame.
+    orientations : OrientationSet
+        One orientation per point, in matching order.
+    map_frame : ReferenceFrame
+        Must belong to the map or specimen domain.
+    phase_entries : tuple of CrystalMapPhase
+        Declared phases. A multiphase map additionally requires per-point
+        ``phase_ids`` and forbids phase and symmetry on the shared
+        ``OrientationSet`` — so one phase's symmetry can never be applied to
+        another phase's points.
+    phase_ids : np.ndarray, optional
+        Per-point phase assignment.
+    grid_shape : tuple of int, optional
+        Raster shape; ``None`` selects graph mode.
+    step_sizes : tuple of float, optional
+        Physical step per axis; required for areas and diameters in specimen
+        units.
+    acquisition_geometry, calibration_record, measurement_quality : optional
+        Acquisition context, cross-checked against the orientations' frames.
+    properties : Mapping[str, ArrayLike], optional
+        Auxiliary per-point channels such as confidence index or image
+        quality. They travel with every derived map.
+    provenance : ProvenanceRecord, optional
+    """
+
     coordinates: np.ndarray
     orientations: OrientationSet
     map_frame: ReferenceFrame
@@ -1343,14 +1861,33 @@ class CrystalMap:
 
     @property
     def is_multiphase(self) -> bool:
+        """Whether the map declares more than one phase.
+
+        Multiphase maps must carry per-point ``phase_ids`` and must leave phase
+        and symmetry off the shared ``OrientationSet``, so that no calculation
+        can silently apply one phase's symmetry to another's points.
+        """
+
         return len(self.phase_entries) > 1
 
     @property
     def has_phase_assignments(self) -> bool:
+        """Whether any phase information is attached, in either supported form.
+
+        True when explicit ``phase_entries`` exist, or when the underlying
+        ``OrientationSet`` carries a single phase.
+        """
+
         return bool(self.phase_entries) or self.orientations.phase is not None
 
     @property
     def phase_id_array(self) -> np.ndarray | None:
+        """Per-point phase ids, or ``None`` when the map has no phase information.
+
+        For a single-phase map without explicit ids this synthesizes an
+        all-zero array, so downstream code can treat both cases uniformly.
+        """
+
         if self.phase_ids is not None:
             return self.phase_ids
         if self.orientations.phase is None and self.orientations.symmetry is None:
@@ -1361,6 +1898,14 @@ class CrystalMap:
 
     @property
     def resolved_phase_entries(self) -> tuple[CrystalMapPhase, ...]:
+        """The map's phase entries, synthesizing one for a single-phase map.
+
+        A map built from an ``OrientationSet`` that carries a phase has no
+        explicit entries; this presents that case in the same form as an
+        explicitly multiphase map. Returns an empty tuple when no phase
+        information exists at all.
+        """
+
         if self.phase_entries:
             return self.phase_entries
         if self.orientations.phase is None and self.orientations.symmetry is None:
@@ -1390,6 +1935,13 @@ class CrystalMap:
 
     @property
     def primary_phase(self) -> Phase | None:
+        """The single :class:`~pytex.core.lattice.Phase` of the map, when unambiguous.
+
+        Returns ``None`` for a genuinely multiphase map, and also when the one
+        phase present is known only by symmetry and has no full ``Phase``
+        attached — a common state for vendor imports.
+        """
+
         if self.orientations.phase is not None and not self.phase_entries:
             return self.orientations.phase
         if len(self.resolved_phase_entries) == 1:
@@ -1398,10 +1950,24 @@ class CrystalMap:
 
     @property
     def property_names(self) -> tuple[str, ...]:
+        """Names of the auxiliary per-point channels carried with the map.
+
+        Typical channels are the vendor's confidence index, image quality, band
+        contrast, or fit. They travel with every derived map, so a
+        quality-filtered sub-map keeps its quality channel.
+        """
+
         properties = cast("Mapping[str, np.ndarray]", self.properties)
         return tuple(properties.keys())
 
     def get_property(self, name: str) -> np.ndarray:
+        """The raw per-point values of one auxiliary channel.
+
+        Raises ``KeyError`` naming the available channels when the requested one
+        does not exist. Returns the flat per-point array; use
+        :meth:`property_map` for the grid-shaped view.
+        """
+
         properties = cast("Mapping[str, np.ndarray]", self.properties)
         if name not in properties:
             available = ", ".join(sorted(properties)) or "<none>"
@@ -1411,6 +1977,12 @@ class CrystalMap:
         return properties[name]
 
     def property_map(self, name: str) -> np.ndarray:
+        """One auxiliary channel reshaped to the map grid.
+
+        Requires a regular 2-D grid. Use this to display or threshold image
+        quality or confidence index alongside orientation-derived maps.
+        """
+
         rows, cols = self._require_regular_2d_grid()
         values = np.ascontiguousarray(self.get_property(name).reshape((rows, cols)))
         values.setflags(write=False)
@@ -1422,6 +1994,28 @@ class CrystalMap:
         *,
         replace: bool = False,
     ) -> CrystalMap:
+        """A copy of the map with additional or replaced auxiliary channels.
+
+        Purpose
+        -------
+        ``CrystalMap`` is immutable, so derived per-point quantities — a KAM
+        map, a Schmid-factor map, a computed mask — are attached by producing a
+        new map rather than mutating this one.
+
+        Parameters
+        ----------
+        properties : Mapping[str, ArrayLike]
+            Channels to attach; each must have one value per point.
+        replace : bool
+            When ``False`` (default) the new channels are merged over the
+            existing ones. When ``True`` the existing channels are discarded.
+
+        Returns
+        -------
+        CrystalMap
+            A new map sharing coordinates, orientations, grid, and provenance.
+        """
+
         existing = dict(cast("Mapping[str, np.ndarray]", self.properties))
         merged: dict[str, ArrayLike] = {} if replace else dict(existing)
         merged.update(dict(properties))
@@ -1441,6 +2035,13 @@ class CrystalMap:
         )
 
     def phase_summary(self) -> dict[str, int]:
+        """Point count per phase name.
+
+        Returns an empty dict when the map carries no phase assignments. This
+        is the phase-fraction count by *points*, which equals the area fraction
+        only on a regular grid with uniform step size.
+        """
+
         phase_entries = self.resolved_phase_entries
         phase_ids = self.phase_id_array
         if not phase_entries or phase_ids is None:
@@ -1451,6 +2052,14 @@ class CrystalMap:
         }
 
     def summary(self) -> dict[str, Any]:
+        """A compact machine-readable description of the map.
+
+        Reports point count, coordinate dimensionality, grid shape and step
+        sizes (``None`` in graph mode), multiphase flag, per-phase point counts,
+        and the map and specimen frame names. Intended for logging, manifests,
+        and quick inspection rather than for numerical work.
+        """
+
         return {
             "point_count": len(self.orientations),
             "coordinate_dimensions": int(self.coordinates.shape[1]),
@@ -1471,6 +2080,19 @@ class CrystalMap:
         }
 
     def validate(self) -> tuple[str, ...]:
+        """Advisory notes about limitations of this map, as human-readable strings.
+
+        Purpose
+        -------
+        Report conditions that are legal but will restrict what can be computed
+        — phases known only by symmetry with no full ``Phase`` attached, or a
+        map in graph mode where grid-shaped outputs are unavailable. An empty
+        tuple means no such limitation was found.
+
+        This is an advisory surface, not a validator: structural invariants are
+        enforced at construction time and raise there.
+        """
+
         notes: list[str] = []
         if self.is_multiphase:
             unresolved = [
@@ -1496,6 +2118,13 @@ class CrystalMap:
         raise ValueError(f"Unknown phase selector: {selector!r}.")
 
     def phase_mask(self, selector: int | str | Phase | CrystalMapPhase) -> np.ndarray:
+        """Boolean per-point mask selecting one phase.
+
+        Accepts a phase id, name, ``Phase``, or ``CrystalMapPhase``. Raises when
+        the map carries no phase assignments, rather than returning an
+        all-true mask that would quietly conflate phases.
+        """
+
         phase_ids = self.phase_id_array
         if phase_ids is None:
             raise ValueError("CrystalMap does not carry explicit phase assignments.")
@@ -1505,12 +2134,43 @@ class CrystalMap:
         return mask
 
     def phase_entry_for_index(self, index: int) -> CrystalMapPhase | None:
+        """The phase entry of a single measurement point, or ``None``.
+
+        ``None`` means the map carries no phase assignments at all.
+        """
+
         phase_ids = self.phase_id_array
         if phase_ids is None:
             return None
         return self._phase_entry_by_id()[int(phase_ids[int(index)])]
 
     def select_phase(self, selector: int | str | Phase | CrystalMapPhase) -> CrystalMap:
+        """The sub-map containing only the points of one phase.
+
+        Purpose
+        -------
+        Most texture and grain calculations are single-phase by nature. This
+        extracts one phase's points and rebuilds their ``OrientationSet`` with
+        that phase's symmetry attached, so the sub-map is fully self-describing.
+
+        Parameters
+        ----------
+        selector : int, str, Phase, or CrystalMapPhase
+            Which phase to keep; see :meth:`CrystalMapPhase.matches`.
+
+        Returns
+        -------
+        CrystalMap
+            The sub-map, carrying masked property channels. Its ``grid_shape``
+            is dropped to ``None`` — graph mode — unless every point was
+            selected, because a phase subset of a grid is generally not a grid.
+
+        Raises
+        ------
+        ValueError
+            When the phase has no points in this map.
+        """
+
         mask = np.asarray(self.phase_mask(selector), dtype=bool)
         if not np.any(mask):
             raise ValueError("Selected phase has no points in this CrystalMap.")
@@ -1755,6 +2415,26 @@ class CrystalMap:
         referenced_files: tuple[str, ...] = (),
         metadata: dict[str, str] | None = None,
     ) -> ExperimentManifest:
+        """Export the map's acquisition context as a machine-readable manifest.
+
+        Purpose
+        -------
+        Cross-tool workflows must carry frames, calibration, and measurement
+        quality with the data. This produces the schema-validated
+        :class:`~pytex.adapters.ExperimentManifest`, synthesizing a minimal EBSD
+        acquisition geometry when the map does not already carry one, and adding
+        grid shape, step sizes, and phase names as metadata.
+
+        Parameters
+        ----------
+        source_system : str
+            Name recorded as the producing system.
+        referenced_files : tuple of str
+            Paths recorded alongside the manifest.
+        metadata : dict, optional
+            Extra key/value pairs, merged over the derived ones.
+        """
+
         from pytex.adapters import ExperimentManifest
 
         acquisition_geometry = self.acquisition_geometry
@@ -1812,6 +2492,36 @@ class CrystalMap:
         specimen_symmetry: SymmetrySpec | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> ODF:
+        """Estimate the orientation distribution function from the map.
+
+        Purpose
+        -------
+        The bridge from a measured EBSD map to quantitative texture: every
+        indexed point contributes one orientation, kernel-smoothed into a
+        continuous ODF from which volume fractions and texture strength follow.
+
+        Parameters
+        ----------
+        phase : int, str, Phase, or CrystalMapPhase, optional
+            Required for a multiphase map; an ODF mixes phases meaninglessly.
+        weights : ArrayLike, optional
+            One weight per point — use a confidence-index or image-quality
+            channel to down-weight poorly indexed points. Uniform when omitted.
+        kernel : KernelSpec, optional
+            Smoothing kernel and half-width. The half-width controls the
+            bias-variance trade-off and should reflect the measurement's angular
+            resolution, not be chosen for appearance.
+        specimen_symmetry : SymmetrySpec, optional
+            Statistical sample symmetry to impose (orthorhombic for rolled
+            sheet, for example). Imposing it is an assumption about the process,
+            so it is off by default.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        ODF
+        """
+
         from pytex.texture import ODF
 
         phase_view = self._phase_resolved_view(phase=phase, operation="to_odf")
@@ -1834,6 +2544,36 @@ class CrystalMap:
         sample_symmetry: SymmetrySpec | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> PoleFigure:
+        """Pole figure of one crystal plane, computed from the map.
+
+        Purpose
+        -------
+        Where a given crystal plane normal points in the specimen frame across
+        all measured points — the standard texture representation, here computed
+        directly from EBSD orientations rather than measured by diffraction.
+
+        Parameters
+        ----------
+        pole : CrystalPlane or ArrayLike
+            The plane whose normal is plotted, as a typed plane or ``(hkl)``.
+        phase : optional
+            Required for a multiphase map.
+        weights : ArrayLike, optional
+            One weight per point.
+        include_symmetry_family : bool
+            Plot the whole ``{hkl}`` family (default), as measured pole figures
+            inevitably do, rather than the single variant.
+        antipodal : bool
+            Fold each pole onto one hemisphere (default), the usual convention.
+        sample_symmetry : SymmetrySpec, optional
+            Statistical specimen symmetry to impose.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        PoleFigure
+        """
+
         from pytex.texture import PoleFigure
 
         phase_view = self._phase_resolved_view(phase=phase, operation="pole_figure")
@@ -1857,6 +2597,35 @@ class CrystalMap:
         antipodal: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> InversePoleFigure:
+        """Inverse pole figure of a specimen direction, computed from the map.
+
+        Purpose
+        -------
+        Which crystal directions align with a chosen specimen axis — the
+        representation behind IPF colouring and behind fibre-texture statements
+        such as "a strong <111> fibre along ND".
+
+        Parameters
+        ----------
+        sample_direction : str or ArrayLike
+            Specimen axis, by name (``"x"``, ``"y"``, ``"z"``, ``"RD"``,
+            ``"TD"``, ``"ND"``) or as a vector. Defaults to ``"z"``.
+        phase : optional
+            Required for a multiphase map.
+        weights : ArrayLike, optional
+            One weight per point.
+        reduce_by_symmetry : bool
+            Fold directions into the crystal-symmetry fundamental sector
+            (default), which is what makes the standard triangle standard.
+        antipodal : bool
+            Treat a direction and its reverse as equivalent (default).
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        InversePoleFigure
+        """
+
         from pytex.texture import InversePoleFigure
 
         phase_view = self._phase_resolved_view(phase=phase, operation="inverse_pole_figure")
@@ -1893,6 +2662,48 @@ class CrystalMap:
         inverse_pole_figure_plot_kwargs: dict[str, Any] | None = None,
         odf_plot_kwargs: dict[str, Any] | None = None,
     ) -> TextureReport:
+        """Compute a complete texture characterization of the map in one call.
+
+        Purpose
+        -------
+        The teaching- and reporting-oriented entry point: it builds the ODF, the
+        requested pole figures, and the inverse pole figures from one consistent
+        set of choices, so that the pieces of a texture description cannot drift
+        apart in conventions, weighting, or symmetry assumptions.
+
+        Parameters
+        ----------
+        poles : CrystalPlane, ArrayLike, or sequence thereof
+            Planes to produce pole figures for. Empty by default.
+        sample_directions : str, ArrayLike, or sequence thereof
+            Specimen axes to produce inverse pole figures for; ``("x", "y", "z")``
+            by default.
+        phase : optional
+            Required for a multiphase map.
+        weights : ArrayLike, optional
+            One weight per point, applied consistently to every product.
+        kernel : KernelSpec, optional
+            ODF smoothing kernel.
+        specimen_symmetry : SymmetrySpec, optional
+            Statistical specimen symmetry, applied to both ODF and pole figures.
+        include_symmetry_family, reduce_by_symmetry, antipodal : bool
+            Conventions passed through to the pole and inverse pole figures.
+        plot : bool
+            Also render Matplotlib figures for each product and attach them to
+            the report. Off by default so the computation has no plotting
+            dependency.
+        provenance : ProvenanceRecord, optional
+        pole_figure_plot_kwargs, inverse_pole_figure_plot_kwargs, odf_plot_kwargs : dict, optional
+            Forwarded to the corresponding plotting functions when ``plot`` is
+            set.
+
+        Returns
+        -------
+        TextureReport
+            Carrying the ODF, the figures, and (when requested) the rendered
+            Matplotlib figures.
+        """
+
         phase_view = self._phase_resolved_view(phase=phase, operation="texture_report")
         report_provenance = phase_view.provenance if provenance is None else provenance
         odf = phase_view.to_odf(
@@ -1965,6 +2776,36 @@ class CrystalMap:
         order: int = 1,
         max_distance: float | None = None,
     ) -> CoordinateNeighborGraph:
+        """The point-adjacency graph underlying every local-misorientation metric.
+
+        Purpose
+        -------
+        Decide, once and explicitly, which measurement points count as
+        neighbours. KAM, grain segmentation, boundary extraction, and smoothing
+        all consume this graph, so the neighbourhood definition lives in one
+        place rather than being re-derived per metric.
+
+        Parameters
+        ----------
+        connectivity : int
+            ``4`` (edge neighbours) or ``8`` (edge and corner neighbours) on a
+            regular grid.
+        order : int
+            Neighbour shell. ``1`` is nearest neighbours; higher orders reach
+            further and are what "KAM of order n" means.
+        max_distance : float, optional
+            Radius cut-off. Forces the coordinate-radius path even on a regular
+            grid, and is required for irregular point clouds.
+
+        Returns
+        -------
+        CoordinateNeighborGraph
+            Unique unordered pairs and their distances. ``mode`` records which
+            path produced them: ``"regular_grid"`` for the fast vectorized grid
+            construction, ``"coordinate_radius"`` for the distance-based
+            fallback.
+        """
+
         if connectivity not in {4, 8}:
             raise ValueError("connectivity must be either 4 or 8.")
         if order <= 0:
@@ -2009,9 +2850,20 @@ class CrystalMap:
         )
 
     def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:
+        """First-shell neighbour index pairs, as an ``(m, 2)`` array.
+
+        Shorthand for ``neighbor_graph(connectivity=..., order=1).pairs``.
+        """
+
         return self.neighbor_graph(connectivity=connectivity, order=1).pairs
 
     def kam_neighbor_pairs(self, *, order: int = 1) -> np.ndarray:
+        """Neighbour pairs for a KAM calculation at the given shell order.
+
+        Fixes 4-connectivity, which is the conventional KAM neighbourhood on a
+        square grid.
+        """
+
         return self.neighbor_graph(connectivity=4, order=order).pairs
 
     def kernel_average_misorientation_deg(
@@ -2024,6 +2876,45 @@ class CrystalMap:
         statistic: str = "mean",
         segmentation: GrainSegmentation | None = None,
     ) -> np.ndarray:
+        """Kernel Average Misorientation, in degrees.
+
+        Purpose
+        -------
+        Per point, the average misorientation to its neighbours — the standard
+        local-deformation measure. KAM responds to the geometrically necessary
+        dislocation content stored in short-wavelength orientation gradients,
+        which is why it maps deformation structure where a grain-average number
+        cannot.
+
+        Parameters
+        ----------
+        symmetry_aware : bool
+            Reduce each pair misorientation by crystal symmetry (default).
+        connectivity : int
+            ``4`` or ``8`` neighbourhood.
+        order : int
+            Neighbour shell; higher orders average over a wider kernel.
+        threshold_deg : float, optional
+            Exclude neighbour pairs above this misorientation. This is the
+            standard way to keep grain boundaries out of an intragranular KAM:
+            without it, boundary pixels report the boundary misorientation
+            rather than the local gradient.
+        statistic : str
+            ``"mean"`` (default) or ``"max"`` over the neighbourhood.
+        segmentation : GrainSegmentation, optional
+            Restrict averaging to same-grain pairs. Stricter and more physical
+            than a threshold, and required for the GAM definition. Must be a
+            segmentation of this same map instance.
+
+        Returns
+        -------
+        np.ndarray
+            Degrees, shaped to the grid for a regular 2-D map and per point
+            otherwise; read-only. Points with no admissible neighbour report
+            zero. Pairs that cross a phase boundary are never included, since a
+            misorientation between different phases is not defined here.
+        """
+
         if connectivity not in {4, 8}:
             raise ValueError("connectivity must be either 4 or 8.")
         if threshold_deg is not None and threshold_deg < 0.0:
@@ -2212,6 +3103,40 @@ class CrystalMap:
         symmetry_aware: bool = True,
         connectivity: int = 4,
     ) -> GrainSegmentation:
+        """Group measurement points into grains by neighbour misorientation.
+
+        Purpose
+        -------
+        Turn a point-wise orientation map into the grain objects that
+        microstructural statistics need — sizes, shapes, boundaries, and grain
+        averages all follow from this segmentation.
+
+        Method
+        ------
+        Union-find over the first-shell neighbour graph: two neighbouring points
+        join the same grain when their misorientation is at or below
+        ``max_misorientation_deg``. This is the standard flood-fill
+        segmentation; it merges points connected by a chain of small steps, so a
+        grain with a continuous gradient can exceed the threshold end to end.
+        Pairs across a phase boundary are never joined.
+
+        Parameters
+        ----------
+        max_misorientation_deg : float
+            The grain-boundary criterion. Conventionally 5-15 degrees; the value
+            determines whether subgrains are resolved as separate grains.
+        symmetry_aware : bool
+            Use disorientation rather than raw rotation angle (default).
+        connectivity : int
+            ``4`` or ``8`` neighbourhood.
+
+        Returns
+        -------
+        GrainSegmentation
+            Grain labels, grain objects, and the settings used, so downstream
+            metrics inherit the same conventions.
+        """
+
         if max_misorientation_deg < 0.0:
             raise ValueError("max_misorientation_deg must be non-negative.")
         neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs

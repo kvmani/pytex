@@ -122,6 +122,29 @@ def _canonicalize_positions(
 
 @dataclass(frozen=True, slots=True)
 class XRDMLPoleFigureMeasurement:
+    """A parsed Panalytical XRDML pole-figure measurement.
+
+    Purpose
+    -------
+    The intermediate between the XRDML file and a PyTex pole figure. It holds
+    the diffractometer scan positions and intensities as recorded, without
+    crystallographic interpretation; attaching a phase and pole is a separate,
+    explicit step via :meth:`to_pole_figure`.
+
+    Attributes
+    ----------
+    phi_deg, psi_deg : np.ndarray
+        Azimuth and tilt scan positions.
+    intensity_grid : np.ndarray
+        Measured intensities on the scan grid.
+    two_theta_deg : np.ndarray, optional
+        Diffraction angle, identifying the measured reflection.
+    omega_deg : np.ndarray, optional
+    wavelength_angstrom : float, optional
+    source_path, sample_name, sample_mode, measurement_axis : str, optional
+        Instrument and sample metadata, retained for traceability.
+    """
+
     phi_deg: np.ndarray
     psi_deg: np.ndarray
     intensity_grid: np.ndarray
@@ -164,6 +187,12 @@ class XRDMLPoleFigureMeasurement:
 
     @property
     def sample_directions(self) -> np.ndarray:
+        """Specimen directions of every measured point, as unit vectors.
+
+        Converts the diffractometer's tilt and rotation positions into the
+        Cartesian specimen directions a PyTex pole figure is defined on.
+        """
+
         directions = spherical_angles_to_directions(self.psi_deg, self.phi_deg).reshape(-1, 3)
         directions = np.ascontiguousarray(directions, dtype=np.float64)
         directions.setflags(write=False)
@@ -171,17 +200,33 @@ class XRDMLPoleFigureMeasurement:
 
     @property
     def flattened_intensities(self) -> np.ndarray:
+        """Raw measured intensities as a flat per-point array.
+        """
+
         flattened = np.ascontiguousarray(self.intensity_grid.reshape(-1), dtype=np.float64)
         flattened.setflags(write=False)
         return flattened
 
     def normalized_intensity_grid(self, *, mode: str | None = None) -> np.ndarray:
+        """The measured intensity grid under a chosen normalization.
+
+        ``mode=None`` uses the measurement's own recorded normalization; pass an
+        explicit mode to override it. The choice changes every downstream
+        density, so it is surfaced rather than hidden.
+        """
+
         return _normalize_intensity_grid(
             self.intensity_grid,
             mode=self.intensity_normalization if mode is None else mode,
         )
 
     def normalized_flattened_intensities(self, *, mode: str | None = None) -> np.ndarray:
+        """Normalized intensities as a flat per-point array.
+
+        The flat counterpart of :meth:`normalized_intensity_grid`, aligned with
+        :meth:`sample_directions`.
+        """
+
         flattened = np.ascontiguousarray(
             self.normalized_intensity_grid(mode=mode).reshape(-1),
             dtype=np.float64,
@@ -191,6 +236,9 @@ class XRDMLPoleFigureMeasurement:
 
     @property
     def shape(self) -> tuple[int, int]:
+        """Grid shape of the measurement as ``(n_tilt, n_azimuth)``.
+        """
+
         return (
             int(self.intensity_grid.shape[0]),
             int(self.intensity_grid.shape[1]),
@@ -206,6 +254,12 @@ class XRDMLPoleFigureMeasurement:
         intensity_normalization: str | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> PoleFigure:
+        """Convert the measurement into a PyTex pole figure.
+
+        Attaches the phase, the pole, and the specimen frame to the measured
+        intensities.
+        """
+
         normalization_mode = (
             self.intensity_normalization
             if intensity_normalization is None
@@ -240,6 +294,14 @@ class XRDMLPoleFigureMeasurement:
 
 
 def read_xrdml_pole_figure(path: str | Path) -> XRDMLPoleFigureMeasurement:
+    """Parse a Panalytical XRDML pole-figure file into a measurement object.
+
+    Reads the scan positions and intensities without interpreting them
+    crystallographically; use
+    :meth:`XRDMLPoleFigureMeasurement.to_pole_figure` to attach phase and
+    pole meaning.
+    """
+
     source = Path(path)
     root = ElementTree.fromstring(_open_xrdml_text(source))
     namespace = _namespace(root)
@@ -346,6 +408,12 @@ def load_xrdml_pole_figure(
     sample_symmetry: SymmetrySpec | None = None,
     intensity_normalization: str | None = None,
 ) -> PoleFigure:
+    """Read an XRDML file and return a PyTex pole figure directly.
+
+    Convenience composition of :func:`read_xrdml_pole_figure` with
+    :meth:`XRDMLPoleFigureMeasurement.to_pole_figure`.
+    """
+
     measurement = read_xrdml_pole_figure(path)
     return measurement.to_pole_figure(
         pole,
@@ -372,6 +440,14 @@ def invert_xrdml_pole_figures(
     tolerance: float = 1e-8,
     provenance: ProvenanceRecord | None = None,
 ) -> ODFInversionReport:
+    """Read XRDML pole figures and reconstruct an ODF from them.
+
+    The end-to-end path from measured XRDML files to an orientation
+    distribution. The inversion is ill-posed — see
+    :meth:`~pytex.texture.ODF.invert_pole_figures` — so check the returned
+    residuals before using the result.
+    """
+
     if len(measurements) != len(poles):
         raise ValueError("measurements and poles must have matching lengths.")
     pole_figures = []

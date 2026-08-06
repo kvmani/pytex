@@ -21,6 +21,7 @@ from pytex.core.fixtures import (
     get_phase_fixture,
     list_phase_fixtures,
     phase_fixture_catalog_path,
+    phase_fixtures_available,
 )
 from pytex.core.frame_catalog import (
     CARTESIAN_FRAME,
@@ -328,6 +329,7 @@ __all__ = [
     "or_deviation",
     "orientation_relationship_from_euler",
     "phase_fixture_catalog_path",
+    "phase_fixtures_available",
     "phases_semantically_match",
     "plane_hkil_to_hkl",
     "plane_hkil_to_hkl_array",

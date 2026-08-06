@@ -375,6 +375,30 @@ def _canonical_direction_sign(vector: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class PointGroup:
+    """One of the 32 crystallographic point groups, with all its operators.
+
+    Purpose
+    -------
+    The full symmetry description, including improper operators — mirrors,
+    inversion, rotoinversions — which act on directions and on the crystal
+    structure but not on orientations. For orientation algebra use
+    :class:`~pytex.core.symmetry.SymmetrySpec`, which carries the rotation
+    subgroup.
+
+    Provides the Laue class (what diffraction can determine), the proper
+    subgroup, mirror-plane normals, and direction orbits.
+
+    Attributes
+    ----------
+    hermann_mauguin : str
+        Normalized Hermann-Mauguin symbol.
+    schoenflies : str
+        Schoenflies symbol.
+    crystal_system : str
+    operators : np.ndarray
+        ``(order, 3, 3)`` matrices, proper and improper together.
+    """
+
     hermann_mauguin: str
     schoenflies: str
     crystal_system: str
@@ -397,6 +421,14 @@ class PointGroup:
 
     @classmethod
     def from_symbol(cls, symbol: str) -> PointGroup:
+        """Build a point group from its Hermann-Mauguin symbol.
+
+        Accepts the usual spellings (``"m-3m"``, ``"6/mmm"``, ``"432"``) and
+        normalizes them, so equivalent notations resolve to the same group.
+        Raises for a symbol that is not one of the 32 crystallographic point
+        groups.
+        """
+
         canonical = normalize_point_group_symbol(symbol)
         definition = _definition_table()[canonical]
         return cls(
@@ -408,28 +440,65 @@ class PointGroup:
 
     @property
     def order(self) -> int:
+        """Total number of symmetry operators, proper and improper.
+
+        48 for ``m-3m``, 24 for ``432``. Note that this counts *all* operators,
+        whereas :attr:`~pytex.core.symmetry.SymmetrySpec.order` counts only the
+        rotations used for orientation algebra.
+        """
+
         return int(self.operators.shape[0])
 
     @property
     def determinants(self) -> np.ndarray:
+        """Determinant of every operator: ``+1`` proper, ``-1`` improper.
+
+        Read-only. The discriminator behind :attr:`rotations` and
+        :attr:`improper_operators`.
+        """
+
         return freeze_array(np.ascontiguousarray(np.linalg.det(self.operators)))
 
     @property
     def rotations(self) -> np.ndarray:
+        """The proper (determinant ``+1``) operators of the group.
+
+        These are the operators that act on orientations. Read-only.
+        """
+
         proper = self.operators[self.determinants > 0.0]
         return freeze_array(np.ascontiguousarray(proper))
 
     @property
     def improper_operators(self) -> np.ndarray:
+        """The improper (determinant ``-1``) operators: inversion, mirrors,
+        rotoinversions.
+
+        They act on directions and on the crystal structure, but not on
+        orientations. Read-only.
+        """
+
         improper = self.operators[self.determinants < 0.0]
         return freeze_array(np.ascontiguousarray(improper))
 
     @property
     def is_proper(self) -> bool:
+        """Whether the group consists of rotations only.
+
+        True for the 11 proper (enantiomorphic) point groups.
+        """
+
         return bool(np.all(self.determinants > 0.0))
 
     @property
     def is_centrosymmetric(self) -> bool:
+        """Whether the group contains the inversion operator.
+
+        Centrosymmetric crystals cannot be piezoelectric or show
+        second-harmonic generation, and their structure factors are real for a
+        suitable origin choice.
+        """
+
         return bool(
             any(
                 np.allclose(operator, _INVERSION, atol=_OPERATOR_TOLERANCE)
@@ -439,23 +508,59 @@ class PointGroup:
 
     @property
     def is_laue(self) -> bool:
+        """Whether this group is already one of the 11 Laue classes.
+        """
+
         return self.hermann_mauguin == self.laue_class_symbol
 
     @property
     def laue_class_symbol(self) -> str:
+        """Hermann-Mauguin symbol of this group's Laue class.
+
+        The Laue class is the group with inversion added — the symmetry a
+        kinematic diffraction experiment can determine, because Friedel's law
+        makes ``+g`` and ``-g`` indistinguishable in intensity.
+        """
+
         return _definition_table()[self.hermann_mauguin].laue_class
 
     @property
     def proper_subgroup_symbol(self) -> str:
+        """Hermann-Mauguin symbol of the rotation subgroup of this group.
+        """
+
         return _definition_table()[self.hermann_mauguin].proper_subgroup
 
     def laue_class(self) -> PointGroup:
+        """This group's Laue class, as a full :class:`PointGroup`.
+        """
+
         return PointGroup.from_symbol(self.laue_class_symbol)
 
     def proper_subgroup(self) -> PointGroup:
+        """The rotation subgroup of this group, as a full :class:`PointGroup`.
+
+        The group whose operators act on orientations; see :attr:`rotations`.
+        """
+
         return PointGroup.from_symbol(self.proper_subgroup_symbol)
 
     def mirror_normals(self) -> np.ndarray:
+        """Unit normals of the mirror planes in this group.
+
+        Purpose
+        -------
+        Mirror planes are the visible edges of a fundamental sector and the
+        natural annotation on a stereographic projection of symmetry elements.
+
+        Method
+        ------
+        A mirror is the improper operator of trace ``+1``; its normal is the
+        eigenvector of eigenvalue ``-1``. Normals are sign-canonicalized and
+        deduplicated, so each physical mirror appears once. An empty array is
+        returned for a group with no mirrors.
+        """
+
         normals: dict[tuple[float, ...], np.ndarray] = {}
         for operator in self.improper_operators:
             if not np.isclose(float(np.trace(operator)), 1.0, atol=_OPERATOR_TOLERANCE):
@@ -471,6 +576,26 @@ class PointGroup:
         return freeze_array(np.ascontiguousarray(stacked))
 
     def equivalent_directions(self, vector: ArrayLike, *, antipodal: bool = False) -> np.ndarray:
+        """The distinct symmetry-equivalent unit directions of one vector.
+
+        Uses the *full* operator set, including improper operators — the right
+        choice for directions and plane normals, which do transform under
+        mirrors and inversion. For orientations use the rotation subgroup
+        instead.
+
+        Parameters
+        ----------
+        vector : ArrayLike
+            A single direction; normalized internally.
+        antipodal : bool
+            Also include the negated directions.
+
+        Returns
+        -------
+        np.ndarray
+            ``(m, 3)`` unit directions with duplicates removed, read-only.
+        """
+
         unit = normalize_vector(vector)
         candidates = np.einsum("oij,j->oi", self.operators, unit, optimize=True)
         if antipodal:
@@ -482,6 +607,14 @@ class PointGroup:
         return freeze_array(np.ascontiguousarray(stacked))
 
     def to_symmetry_spec(self, **kwargs: object) -> object:
+        """The orientation-algebra view of this group.
+
+        Produces a :class:`~pytex.core.symmetry.SymmetrySpec` carrying the
+        rotation operators. Keyword arguments — ``reference_frame``,
+        ``specimen_symmetry``, ``provenance`` — are forwarded to
+        :meth:`~pytex.core.symmetry.SymmetrySpec.from_point_group`.
+        """
+
         from pytex.core.symmetry import SymmetrySpec
 
         return SymmetrySpec.from_point_group(self.hermann_mauguin, **kwargs)  # type: ignore[arg-type]

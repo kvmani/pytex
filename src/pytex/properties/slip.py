@@ -45,14 +45,30 @@ class SlipSystem:
 
     @property
     def phase(self) -> Phase:
+        """The phase this slip system belongs to, taken from its slip plane.
+        """
+
         return self.plane.phase
 
     @property
     def plane_normal(self) -> np.ndarray:
+        """Unit slip-plane normal in the Cartesian crystal frame.
+
+        Resolved through the reciprocal basis, so it is a true normal rather than
+        the direction with the same indices.
+        """
+
         return np.asarray(self.plane.normal_cartesian, dtype=np.float64)
 
     @property
     def slip_direction(self) -> np.ndarray:
+        """Unit slip direction in the Cartesian crystal frame.
+
+        Resolved through the direct basis. Its sense is meaningful — it is the
+        direction of the Burgers vector — so it must not be antipodally
+        canonicalized.
+        """
+
         return np.asarray(self.direction.unit_vector_cartesian, dtype=np.float64)
 
 
@@ -107,10 +123,40 @@ class SlipSystemFamily:
 
     @property
     def count(self) -> int:
+        """Number of symmetry-distinct slip systems in the family.
+
+        12 for FCC ``{111}<110>``, 12 for BCC ``{110}<111>``, 3 for basal slip in
+        hexagonal metals.
+        """
+
         return int(self.plane_normals.shape[0])
 
     @classmethod
     def from_representative(cls, representative: SlipSystem, *, name: str = "") -> SlipSystemFamily:
+        """Expand one representative slip system into its full symmetry family.
+
+        Purpose
+        -------
+        Slip is quoted in the literature by one representative — ``{111}<110>`` —
+        but Schmid-factor and Taylor calculations need every member. This applies
+        the crystal symmetry operators and keeps the distinct plane/direction
+        pairs.
+
+        Method
+        ------
+        Every symmetry operator is applied to the representative's plane normal
+        and slip direction together, so the pairing is preserved, and the results
+        are deduplicated treating ``+/-`` as the same system — a slip system and
+        its reverse are the same system operating in the opposite sense.
+
+        Parameters
+        ----------
+        representative : SlipSystem
+            Its phase must carry crystal symmetry; this is checked.
+        name : str, optional
+            Family name; defaults to the representative's.
+        """
+
         phase = representative.phase
         if phase.symmetry is None:
             raise ValueError("SlipSystemFamily expansion requires a phase with crystal symmetry.")

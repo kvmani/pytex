@@ -21,6 +21,28 @@ from pytex.ebsd import CrystalMap, CrystalMapPhase
 
 @dataclass(frozen=True, slots=True)
 class KikuchiPyWorkflowResult:
+    """The output of a KikuchiPy indexing or refinement workflow.
+
+    Purpose
+    -------
+    Carries the normalized PyTex dataset alongside the original external
+    objects, so downstream PyTex code works from the normalized form while
+    KikuchiPy-specific follow-up remains possible without re-running the
+    workflow.
+
+    Attributes
+    ----------
+    dataset : NormalizedEBSDDataset
+        The PyTex-side result, with frames and provenance attached.
+    experiment_manifest : ExperimentManifest
+        The acquisition context of the run.
+    xmap : Any, optional
+        The original KikuchiPy crystal map.
+    index_data, band_data : Any, optional
+        Raw indexing and band-detection output, when the workflow produced
+        them.
+    """
+
     dataset: NormalizedEBSDDataset
     experiment_manifest: ExperimentManifest
     xmap: Any | None = None
@@ -474,6 +496,36 @@ def normalize_ebsd(
     metadata: dict[str, str] | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> NormalizedEBSDDataset:
+    """Normalize a KikuchiPy EBSD signal into a PyTex dataset.
+
+    Purpose
+    -------
+    Entry point for the KikuchiPy bridge: attaches PyTex frames, phases, and
+    provenance to an externally held EBSD signal, producing a dataset that
+    carries its own conventions.
+
+    Parameters
+    ----------
+    ebsd_signal : Any
+        A KikuchiPy ``EBSD`` signal or crystal map.
+    frames : tuple or dict of ReferenceFrame, optional
+        The crystal, specimen, and map frames together; alternatively supply
+        them individually below.
+    crystal_frame, specimen_frame, map_frame : ReferenceFrame, optional
+        Individual frame declarations.
+    phase : Phase, optional
+    phases : dict, tuple, or list of Phase, optional
+        Phase declarations for a multiphase map.
+    source_file : str, optional
+        Recorded in the import manifest.
+    metadata : dict, optional
+    provenance : ProvenanceRecord, optional
+
+    Returns
+    -------
+    NormalizedEBSDDataset
+    """
+
     resolved_frames = _resolve_frames(
         frames=frames,
         crystal_frame=crystal_frame,
@@ -538,6 +590,37 @@ def index_hough(
     provenance: ProvenanceRecord | None = None,
     **hough_kwargs: Any,
 ) -> KikuchiPyWorkflowResult:
+    """Run KikuchiPy Hough indexing and normalize the result.
+
+    Purpose
+    -------
+    Indexing itself is delegated to KikuchiPy and PyEBSDIndex; this wraps the
+    call so the returned crystal map arrives in the PyTex model with frames,
+    phases, and provenance attached rather than as a bare external object.
+
+    Parameters
+    ----------
+    ebsd_signal : Any
+        The KikuchiPy ``EBSD`` signal to index.
+    phase_list : Any
+        KikuchiPy phase list for the indexing run.
+    indexer : Any
+        The configured PyEBSDIndex indexer.
+    frames, crystal_frame, specimen_frame, map_frame : ReferenceFrame, optional
+        Frames to attach; see :func:`normalize_ebsd`.
+    phase, phases : optional
+        Phase declarations.
+    source_file, metadata, provenance : optional
+        Recorded with the result.
+    **hough_kwargs
+        Forwarded verbatim to KikuchiPy's ``hough_indexing``.
+
+    Returns
+    -------
+    KikuchiPyWorkflowResult
+        The normalized dataset alongside the original external crystal map.
+    """
+
     result = ebsd_signal.hough_indexing(phase_list=phase_list, indexer=indexer, **hough_kwargs)
     if isinstance(result, tuple):
         xmap = result[0]
@@ -585,6 +668,30 @@ def refine_orientations(
     provenance: ProvenanceRecord | None = None,
     **refine_kwargs: Any,
 ) -> KikuchiPyWorkflowResult:
+    """Refine orientations with KikuchiPy and normalize the result.
+
+    Purpose
+    -------
+    Dynamical-simulation-based refinement of an existing indexing solution,
+    wrapped so the refined map returns in the PyTex model.
+
+    Parameters
+    ----------
+    ebsd_signal : Any
+        The KikuchiPy ``EBSD`` signal.
+    xmap : Any or KikuchiPyWorkflowResult
+        The starting solution; a previous workflow result is unwrapped
+        automatically.
+    frames, crystal_frame, specimen_frame, map_frame : ReferenceFrame, optional
+    phase, phases, source_file, metadata, provenance : optional
+    **refine_kwargs
+        Forwarded verbatim to KikuchiPy's ``refine_orientation``.
+
+    Returns
+    -------
+    KikuchiPyWorkflowResult
+    """
+
     seed_xmap = xmap.xmap if isinstance(xmap, KikuchiPyWorkflowResult) else xmap
     refined_xmap = ebsd_signal.refine_orientation(seed_xmap, **refine_kwargs)
     dataset = normalize_ebsd(

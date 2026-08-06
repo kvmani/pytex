@@ -1269,3 +1269,62 @@ class TestUncertainty:
         # exact regardless of how wrong that estimate is. That is the point: the
         # residual measures solver quality, and sigma measures input quality.
         assert max(residuals) < 1e-9
+
+
+# --------------------------------------------------------------------------- #
+# Persisted contracts
+# --------------------------------------------------------------------------- #
+
+
+class TestContracts:
+    def test_stage_calibration_yaml_round_trips(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        from pytex.tem.calibration import load_stage_calibration, save_stage_calibration
+
+        original = StageCalibration(
+            axes=GeneralStageAxes(coupling=0.01),
+            alpha_sign=-1,
+            diffraction_rotation_deg=37.5,
+            pattern_is_mirrored=True,
+            camera_length_mm=800.0,
+            accelerating_voltage_kv=200.0,
+            backlash_deg=0.3,
+            notes=("measured on the 2100F double-tilt cartridge",),
+        )
+        path = save_stage_calibration(original, tmp_path / "stage.yaml")
+        restored = load_stage_calibration(path)
+        assert restored.diffraction_rotation_deg == original.diffraction_rotation_deg
+        assert restored.pattern_is_mirrored == original.pattern_is_mirrored
+        assert restored.alpha_sign == original.alpha_sign
+        assert restored.camera_length_mm == original.camera_length_mm
+        assert restored.backlash_deg == original.backlash_deg
+        assert restored.axes.coupling == pytest.approx(original.axes.coupling)
+        assert restored.notes == original.notes
+
+    def test_unknown_schema_is_refused(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """A calibration read under unknown conventions is worse than none."""
+
+        from pytex.tem.calibration import load_stage_calibration
+
+        path = tmp_path / "bad.yaml"
+        path.write_text("schema: something.else/9\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="Refusing to read"):
+            load_stage_calibration(path)
+
+    def test_tilt_plan_report_schema_identifier_is_stable(self) -> None:
+        from pytex.tem.navigation import TILT_PLAN_REPORT_SCHEMA
+
+        assert TILT_PLAN_REPORT_SCHEMA == "pytex.tilt_plan_report/1"
+
+    def test_public_api_exports_the_tem_surfaces(self) -> None:
+        import pytex
+
+        for name in (
+            "plan_tilt_to_zone_axis",
+            "DoubleTiltStage",
+            "CurrentState",
+            "TiltPlanReport",
+            "StageCalibration",
+            "RectangularEnvelope",
+        ):
+            assert name in pytex.__all__, name
+            assert hasattr(pytex, name), name

@@ -87,6 +87,28 @@ def plot_ipf_map(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot an inverse-pole-figure coloured orientation map.
+
+    Purpose
+    -------
+    The standard EBSD map view: every point is coloured by which crystal
+    direction lies along a chosen specimen axis, folded into the symmetry
+    fundamental sector so the colour encodes crystallography rather than the
+    arbitrary symmetry branch a measurement reported.
+
+    Parameters
+    ----------
+    crystal_map : CrystalMap
+        Must be on a regular 2-D grid.
+    Remaining parameters select the reference direction, the colour key, and
+    the Matplotlib target axes.
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+    """
+
     plt, _ = _require_matplotlib()
     if crystal_map.orientations.symmetry is None:
         raise ValueError("plot_ipf_map() requires crystal-map orientations with crystal symmetry.")
@@ -165,6 +187,22 @@ def plot_kam_map(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot a kernel-average-misorientation map.
+
+    Purpose
+    -------
+    Display local misorientation in degrees — the standard visualization of
+    stored deformation and subgrain structure. See
+    :meth:`~pytex.ebsd.CrystalMap.kernel_average_misorientation_deg` for the
+    threshold and neighbourhood choices, which materially change what the map
+    shows.
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes, with a labelled colorbar in degrees.
+    """
+
     plt, _ = _require_matplotlib()
     register_pytex_colormaps()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
@@ -208,6 +246,133 @@ def plot_kam_map(
     axes.set_xlabel(crystal_map.map_frame.axes[0])
     axes.set_ylabel(crystal_map.map_frame.axes[1])
     axes.set_title("Kernel Average Misorientation")
+    axes.set_aspect("equal", adjustable="box")
+    axes.grid(alpha=float(common["figure"]["grid_alpha"]))
+    fig.tight_layout()
+    return fig
+
+
+def plot_gnd_density_map(
+    crystal_map: CrystalMap,
+    *,
+    burgers_vector_nm: float,
+    method: str = "curvature",
+    step_scale_m: float = 1e-6,
+    kam_threshold_deg: float | None = 5.0,
+    log_scale: bool = True,
+    boundary_overlay: GrainSegmentation | GrainBoundaryNetwork | None = None,
+    boundary_color: str = "#111111",
+    boundary_linewidth: float = 0.85,
+    cmap: str = "inferno",
+    scale_bar: float | None = None,
+    theme: str = "journal",
+    style_path: str | None = None,
+    style_overrides: dict[str, Any] | None = None,
+    ax: Any | None = None,
+) -> Any:
+    """Plot a geometrically necessary dislocation density map.
+
+    Purpose
+    -------
+    Display the dislocation content implied by the measured lattice curvature,
+    in dislocations per square metre — the map that connects an orientation
+    measurement to stored energy, work hardening, and recrystallization driving
+    force.
+
+    Parameters
+    ----------
+    crystal_map : CrystalMap
+        Regular 2-D grid carrying ``step_sizes``.
+    burgers_vector_nm : float
+        Burgers vector magnitude in nanometres.
+    method : str
+        ``"curvature"`` (Nye route, default) or ``"kam"``; see
+        :func:`~pytex.ebsd.gnd.geometrically_necessary_dislocation_density`.
+    step_scale_m : float
+        Metres per map coordinate unit; the default treats them as micrometres.
+    kam_threshold_deg : float, optional
+        Grain-boundary exclusion threshold for the ``"kam"`` method.
+    log_scale : bool
+        Plot ``log10(density)`` (default). GND densities span orders of
+        magnitude, so a linear scale is dominated by boundary artefacts and
+        shows nothing of the grain interiors.
+    boundary_overlay, boundary_color, boundary_linewidth :
+        Optional grain-boundary overlay, as for :func:`plot_kam_map`. Strongly
+        recommended: the curvature method does not exclude boundaries, so
+        overlaying them shows the reader which features are artefacts.
+    cmap, scale_bar, theme, style_path, style_overrides, ax :
+        Styling and target axes.
+
+    Returns
+    -------
+    Any
+        The figure, with a colorbar labelled in the units actually plotted.
+
+    Notes
+    -----
+    The plotted density is a **lower bound** and is **resolution dependent**;
+    see the module documentation of :mod:`pytex.ebsd.gnd`. The step size should
+    be quoted in any figure caption.
+    """
+
+    plt, _ = _require_matplotlib()
+    from pytex.ebsd.gnd import geometrically_necessary_dislocation_density
+
+    style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
+    common = style["common"]
+    density = np.asarray(
+        geometrically_necessary_dislocation_density(
+            crystal_map,
+            burgers_vector_nm=burgers_vector_nm,
+            method=method,  # type: ignore[arg-type]
+            step_scale_m=step_scale_m,
+            kam_threshold_deg=kam_threshold_deg,
+        ),
+        dtype=np.float64,
+    )
+    if log_scale:
+        # Zero density is a real, meaningful value (an unbent lattice) but has no
+        # logarithm, so those points are left blank rather than clamped to an
+        # arbitrary floor that would read as a measurement. ``out`` is required
+        # alongside ``where``: without it the untouched entries are uninitialized.
+        values = np.full_like(density, np.nan)
+        positive = density > 0.0
+        np.log10(density, out=values, where=positive)
+        label = "log$_{10}$ GND density (m$^{-2}$)"
+    else:
+        values = density
+        label = "GND density (m$^{-2}$)"
+    if ax is None:
+        fig, axes = plt.subplots(
+            figsize=tuple(common["figure"]["figsize"]),
+            dpi=int(common["figure"]["dpi"]),
+            facecolor=common["figure"]["facecolor"],
+        )
+    else:
+        axes = ax
+        fig = axes.figure
+    axes.set_facecolor(common["figure"]["axes_facecolor"])
+    image = axes.imshow(
+        values,
+        origin="lower",
+        extent=_regular_grid_extent(crystal_map),
+        interpolation="nearest",
+        cmap=cmap,
+    )
+    colorbar = fig.colorbar(image, ax=axes)
+    colorbar.set_label(label)
+    _overlay_boundaries(
+        axes,
+        crystal_map,
+        boundary_overlay,
+        color=boundary_color,
+        linewidth=boundary_linewidth,
+    )
+    if scale_bar is not None:
+        add_scale_bar(axes, scale_bar)
+    axes.set_xlabel(crystal_map.map_frame.axes[0])
+    axes.set_ylabel(crystal_map.map_frame.axes[1])
+    axes.set_title("Geometrically Necessary Dislocation Density")
     axes.set_aspect("equal", adjustable="box")
     axes.grid(alpha=float(common["figure"]["grid_alpha"]))
     fig.tight_layout()

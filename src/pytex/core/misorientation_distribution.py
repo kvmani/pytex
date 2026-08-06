@@ -82,6 +82,24 @@ def random_disorientation_angles_deg(
 
 @dataclass(frozen=True, slots=True)
 class MisorientationDistribution:
+    """A population of misorientation angles, for boundary statistics.
+
+    Purpose
+    -------
+    The misorientation-angle distribution of a grain-boundary network. Its
+    comparison against the Mackenzie distribution — the analytic
+    misorientation distribution of a randomly textured aggregate — is the
+    standard test for whether boundaries formed preferentially, as in
+    twinning or variant selection.
+
+    Attributes
+    ----------
+    angles_deg : np.ndarray
+        Misorientation angles in degrees, usually symmetry-reduced
+        disorientation angles.
+    provenance : ProvenanceRecord, optional
+    """
+
     angles_deg: np.ndarray
     symmetry: SymmetrySpec | None = None
     correlated: bool = False
@@ -95,14 +113,30 @@ class MisorientationDistribution:
 
     @property
     def count(self) -> int:
+        """Number of misorientation angles in the distribution.
+        """
+
         return int(self.angles_deg.size)
 
     @property
     def mean_angle_deg(self) -> float:
+        """Mean misorientation angle in degrees; ``0.0`` when empty.
+
+        Compare it against the Mackenzie value for a randomly textured aggregate
+        — about 45 degrees for cubic symmetry — to judge whether the boundary
+        population departs from random.
+        """
+
         return float(np.mean(self.angles_deg)) if self.count else 0.0
 
     @property
     def max_angle_deg(self) -> float:
+        """Largest misorientation angle in degrees; ``0.0`` when empty.
+
+        For symmetry-reduced (disorientation) angles this is bounded by the
+        symmetry's maximum disorientation: 62.8 degrees for cubic-cubic.
+        """
+
         return float(np.max(self.angles_deg)) if self.count else 0.0
 
     def histogram(
@@ -112,6 +146,38 @@ class MisorientationDistribution:
         angle_range: tuple[float, float] | None = None,
         density: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Histogram of the misorientation angles.
+
+        Purpose
+        -------
+        The misorientation-angle distribution, whose comparison against the
+        Mackenzie random-texture distribution is the standard test for
+        preferential boundary formation — twinning, variant selection, or
+        texture-driven correlation.
+
+        Parameters
+        ----------
+        bins : int
+            Number of bins.
+        angle_range : tuple of float, optional
+            ``(lower, upper)`` in degrees. Defaults to zero through the observed
+            maximum. Fix it explicitly when comparing several distributions, or
+            the bin edges will differ between them.
+        density : bool
+            Normalize to a probability density (default), which is what makes
+            the comparison against Mackenzie meaningful.
+
+        Returns
+        -------
+        tuple of np.ndarray
+            Counts (or densities) and bin edges, as from ``numpy.histogram``.
+
+        Raises
+        ------
+        ValueError
+            When the distribution is empty.
+        """
+
         if self.count == 0:
             raise ValueError("Cannot histogram an empty MisorientationDistribution.")
         upper = angle_range[1] if angle_range is not None else float(np.max(self.angles_deg))

@@ -54,6 +54,23 @@ def _split_numeric_tokens(lines: Sequence[str]) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class LaboTexPoleFigureDescriptor:
+    """The scan geometry of one pole figure in a LaboTex file.
+
+    Attributes
+    ----------
+    two_theta_deg : float
+        Diffraction angle of the measured reflection.
+    alpha_start_deg, alpha_end_deg, alpha_step_deg : float
+        Tilt-axis scan range and step.
+    beta_start_deg, beta_end_deg, beta_step_deg : float
+        Azimuth-axis scan range and step.
+    scan_index : int
+    hkl : tuple of int
+        The measured reflection.
+    background_flag : int
+        Whether a background correction was recorded by the source system.
+    """
+
     two_theta_deg: float
     alpha_start_deg: float
     alpha_end_deg: float
@@ -68,6 +85,9 @@ class LaboTexPoleFigureDescriptor:
 
     @property
     def alpha_values_deg(self) -> np.ndarray:
+        """The pole-figure tilt (alpha) sample positions, in degrees.
+        """
+
         count = round((self.alpha_end_deg - self.alpha_start_deg) / self.alpha_step_deg) + 1
         values = np.linspace(
             self.alpha_start_deg,
@@ -81,6 +101,9 @@ class LaboTexPoleFigureDescriptor:
 
     @property
     def beta_values_deg(self) -> np.ndarray:
+        """The pole-figure azimuth (beta) sample positions, in degrees.
+        """
+
         count = round((self.beta_end_deg - self.beta_start_deg) / self.beta_step_deg) + 1
         values = np.linspace(
             self.beta_start_deg,
@@ -94,10 +117,19 @@ class LaboTexPoleFigureDescriptor:
 
     @property
     def shape(self) -> tuple[int, int]:
+        """Grid shape of the measurement as ``(n_alpha, n_beta)``.
+        """
+
         return (int(self.alpha_values_deg.size), int(self.beta_values_deg.size))
 
     @property
     def sample_directions(self) -> np.ndarray:
+        """Specimen directions of every grid point, as unit vectors.
+
+        Converts the LaboTex ``(alpha, beta)`` angle grid into the Cartesian
+        specimen directions a PyTex pole figure is defined on.
+        """
+
         alpha_grid = np.repeat(self.alpha_values_deg[:, None], self.beta_values_deg.size, axis=1)
         beta_grid = np.repeat(self.beta_values_deg[None, :], self.alpha_values_deg.size, axis=0)
         directions = spherical_angles_to_directions(alpha_grid, beta_grid).reshape(-1, 3)
@@ -108,6 +140,32 @@ class LaboTexPoleFigureDescriptor:
 
 @dataclass(frozen=True, slots=True)
 class LaboTexPoleFigureMeasurement:
+    """A parsed LaboTex pole-figure file: geometry, intensities, and metadata.
+
+    Purpose
+    -------
+    The intermediate between the file and PyTex pole figures. It deliberately
+    holds the measurement *as recorded* — raw intensity grids and scan
+    descriptors — without crystallographic interpretation; attaching a phase
+    and poles is a separate, explicit step via :meth:`to_pole_figures`.
+
+    Attributes
+    ----------
+    title : str
+    format_kind : str
+        Which LaboTex format variant was parsed.
+    lattice_parameters : tuple of float
+        The six cell parameters as recorded in the file.
+    descriptors : tuple of LaboTexPoleFigureDescriptor
+        Scan geometry, one per pole figure.
+    intensity_grids : tuple of np.ndarray
+        Raw intensity grids, one per pole figure.
+    source_path : str, optional
+    metadata : Mapping[str, str]
+    comments : tuple of str
+        File comments, retained for traceability.
+    """
+
     title: str
     format_kind: str
     lattice_parameters: tuple[float, float, float, float, float, float]
@@ -135,6 +193,23 @@ class LaboTexPoleFigureMeasurement:
         object.__setattr__(self, "comments", tuple(self.comments))
 
     def normalized_intensity_grids(self, *, mode: str = "none") -> tuple[np.ndarray, ...]:
+        """The measured intensity grids under a chosen normalization.
+
+        Parameters
+        ----------
+        mode : str
+            Normalization to apply. ``"none"`` (default) leaves the raw counts,
+            which is the honest starting point; the other modes rescale so
+            figures from different measurements become comparable. Because the
+            choice changes every downstream density, it is explicit rather than
+            implied.
+
+        Returns
+        -------
+        tuple of np.ndarray
+            One grid per pole figure in the file.
+        """
+
         return tuple(_normalize_intensity_grid(grid, mode=mode) for grid in self.intensity_grids)
 
     def to_pole_figures(
@@ -147,6 +222,13 @@ class LaboTexPoleFigureMeasurement:
         intensity_normalization: str = "none",
         provenance: ProvenanceRecord | None = None,
     ) -> tuple[PoleFigure, ...]:
+        """Convert the measurement into PyTex pole figures.
+
+        Attaches the phase, the poles, and the specimen frame to the measured
+        grids, producing figures that can be inverted to an ODF or compared
+        against a computed one.
+        """
+
         normalized_grids = self.normalized_intensity_grids(mode=intensity_normalization)
         figures: list[PoleFigure] = []
         for descriptor, grid in zip(self.descriptors, normalized_grids, strict=True):
@@ -181,6 +263,13 @@ class LaboTexPoleFigureMeasurement:
 
 
 def read_labotex_pole_figures(path: str | Path) -> LaboTexPoleFigureMeasurement:
+    """Parse a LaboTex pole-figure file into a measurement object.
+
+    Reads the angle grid and intensity blocks without interpreting them
+    crystallographically; use :meth:`LaboTexPoleFigureMeasurement.to_pole_figures`
+    to attach phase and pole meaning.
+    """
+
     source = Path(path)
     suffix = source.suffix.lower()
     if suffix not in _FORMAT_EXTENSIONS:
@@ -284,6 +373,12 @@ def load_labotex_pole_figures(
     sample_symmetry: SymmetrySpec | None = None,
     intensity_normalization: str = "none",
 ) -> tuple[PoleFigure, ...]:
+    """Read a LaboTex file and return PyTex pole figures directly.
+
+    Convenience composition of :func:`read_labotex_pole_figures` with
+    :meth:`LaboTexPoleFigureMeasurement.to_pole_figures`.
+    """
+
     measurement = read_labotex_pole_figures(path)
     return measurement.to_pole_figures(
         phase,
@@ -310,6 +405,14 @@ def invert_labotex_pole_figures(
     tolerance: float = 1e-8,
     provenance: ProvenanceRecord | None = None,
 ) -> ODFInversionReport:
+    """Read LaboTex pole figures and reconstruct an ODF from them.
+
+    The end-to-end path from a measured LaboTex file to an orientation
+    distribution. The inversion is ill-posed — see
+    :meth:`~pytex.texture.ODF.invert_pole_figures` — so check the returned
+    residuals before using the result.
+    """
+
     pole_figures: list[PoleFigure] = []
     for measurement in measurements:
         parsed = (

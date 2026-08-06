@@ -31,8 +31,13 @@ from pytex.plotting.crystal3d import (
     build_crystal_scene,
     plot_crystal_structure_3d,
 )
-from pytex.plotting.diffraction import plot_saed_pattern, plot_xrd_pattern
+from pytex.plotting.diffraction import (
+    plot_kikuchi_pattern,
+    plot_saed_pattern,
+    plot_xrd_pattern,
+)
 from pytex.plotting.ebsd import (
+    plot_gnd_density_map,
     plot_ipf_map,
     plot_ipf_xyz_maps,
     plot_kam_map,
@@ -173,11 +178,13 @@ __all__ = [
     "plot_crystal_structure_3d",
     "plot_euler_set",
     "plot_frame_relationship",
+    "plot_gnd_density_map",
     "plot_inverse_pole_figure",
     "plot_ipf_key",
     "plot_ipf_map",
     "plot_ipf_xyz_maps",
     "plot_kam_map",
+    "plot_kikuchi_pattern",
     "plot_odf",
     "plot_odf_phi2_sections",
     "plot_orientations",

@@ -557,6 +557,13 @@ def render_figure_spec_3d(spec: FigureSpec3D, *, ax: Any | None = None) -> Any:
 
 
 def save_documentation_figure_svg(figure: Figure, path: str | Path) -> Path:
+    """Render a figure specification to a canonical documentation SVG.
+
+    For repository-tracked figures under ``docs/figures/`` only. Runtime
+    plotting returns ordinary Matplotlib figures instead; SVG byte baselines
+    are deliberately not used for routine regression testing.
+    """
+
     destination = Path(path)
     if destination.suffix.lower() != ".svg":
         raise ValueError("Documentation figures must be saved with a .svg suffix.")

@@ -41,6 +41,27 @@ def _alignment_quaternion(source: np.ndarray, target: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class Fibre:
+    """A texture fibre: a crystal direction held parallel to a specimen axis.
+
+    Purpose
+    -------
+    A one-parameter family of orientations — everything obtained by spinning
+    the crystal about the shared axis. Fibres are how deformation textures
+    are usually described (the alpha and gamma fibres of rolled steel, the
+    ``<111>`` fibre of drawn wire), because a single fibre often carries most
+    of the texture.
+
+    Attributes
+    ----------
+    name : str
+        Fibre name, as used in the literature.
+    crystal_direction : ArrayLike
+        The crystal direction forming the fibre axis.
+    specimen_direction : str or ArrayLike
+        The specimen axis it is held parallel to, by name or as a vector.
+    phase : Phase, optional
+    """
+
     name: str
     crystal_direction: tuple[float, float, float]
     specimen_direction: str | tuple[float, float, float]
@@ -80,9 +101,18 @@ class Fibre:
         return cls("theta", (1.0, 0.0, 0.0), "ND")
 
     def crystal_unit_vector(self) -> np.ndarray:
+        """Unit crystal direction defining the fibre axis.
+        """
+
         return normalize_vector(np.asarray(self.crystal_direction, dtype=np.float64))
 
     def specimen_unit_vector(self) -> np.ndarray:
+        """Unit specimen direction the crystal direction is held parallel to.
+
+        Accepts the named specimen axes (``"RD"``, ``"TD"``, ``"ND"``, ...) at
+        construction, resolved to a vector here.
+        """
+
         return specimen_direction_vector(self.specimen_direction)
 
     def orientations(
@@ -145,6 +175,31 @@ class Fibre:
         tolerance_deg: float = 10.0,
         weights: ArrayLike | None = None,
     ) -> float:
+        """Fraction of an orientation set lying on this fibre.
+
+        Purpose
+        -------
+        The quantitative statement behind "the alpha fibre carries 30 percent of
+        the texture": the weighted fraction of orientations whose crystal
+        direction lies within ``tolerance_deg`` of the specimen fibre axis.
+
+        Parameters
+        ----------
+        orientations : OrientationSet
+            The population; must be non-empty.
+        tolerance_deg : float
+            Angular tolerance in ``(0, 90]``. The result depends strongly on it,
+            so it must be reported alongside the fraction.
+        weights : ArrayLike, optional
+            One weight per orientation, normalized internally. Uniform when
+            omitted.
+
+        Returns
+        -------
+        float
+            A fraction in ``[0, 1]``.
+        """
+
         if not 0.0 < float(tolerance_deg) <= 90.0:
             raise ValueError("tolerance_deg must lie in (0, 90] degrees.")
         count = len(orientations)

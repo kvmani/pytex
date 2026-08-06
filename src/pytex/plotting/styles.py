@@ -30,6 +30,9 @@ def _validate_style_mapping(style: dict[str, Any]) -> dict[str, Any]:
 
 
 def list_style_themes() -> tuple[str, ...]:
+    """Names of the bundled plotting style themes.
+    """
+
     theme_dir = resources.files(_THEME_PACKAGE)
     paths = [Path(str(path)) for path in theme_dir.iterdir()]
     return tuple(
@@ -40,6 +43,11 @@ def list_style_themes() -> tuple[str, ...]:
 
 
 def read_style_yaml(path: str | Path) -> dict[str, Any]:
+    """Read a style definition from a YAML file.
+
+    For project-specific styles kept outside the library.
+    """
+
     content = Path(path).read_text(encoding="utf-8")
     payload = cast(dict[str, Any], yaml.safe_load(content) or {})
     if not isinstance(payload, dict):
@@ -48,6 +56,13 @@ def read_style_yaml(path: str | Path) -> dict[str, Any]:
 
 
 def load_style_theme(name: str = _DEFAULT_THEME) -> dict[str, Any]:
+    """Load a bundled plotting style theme by name.
+
+    Themes fix figure proportions, fonts, and the colour system centrally, so
+    that figures produced across the library share one visual language rather
+    than each call site inventing its own.
+    """
+
     if name not in list_style_themes():
         raise ValueError(f"Unknown style theme {name!r}.")
     theme_dir = resources.files(_THEME_PACKAGE)
@@ -61,6 +76,12 @@ def resolve_style(
     style_path: str | Path | None = None,
     overrides: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Resolve a theme name, a style file, and inline overrides into one style.
+
+    Precedence runs theme, then file, then overrides, so a caller can adjust
+    one property without restating the whole theme.
+    """
+
     base = load_style_theme("base")
     if theme != "base":
         base = _deep_merge(base, load_style_theme(theme))

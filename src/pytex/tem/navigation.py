@@ -80,6 +80,7 @@ __all__ = [
     "DEFAULT_RANKING",
     "DEFAULT_TOLERANCE_DEG",
     "LONG_HOP_THRESHOLD_DEG",
+    "TILT_PLAN_REPORT_SCHEMA",
     "RankingWeights",
     "Reachability",
     "TiltPlanReport",
@@ -102,6 +103,9 @@ DEFAULT_TOLERANCE_DEG = 0.5
 #: about ``dphi sin(theta)``. At 30 degrees a 5 degree calibration error already
 #: costs 2.5 degrees, which exceeds the default tolerance five-fold.
 LONG_HOP_THRESHOLD_DEG = 30.0
+
+#: Schema identifier of the tilt-plan report payload.
+TILT_PLAN_REPORT_SCHEMA = "pytex.tilt_plan_report/1"
 
 
 class Reachability(StrEnum):
@@ -557,7 +561,7 @@ class TiltPlanReport:
         """Serializable payload, kept in lockstep with :meth:`describe`."""
 
         return {
-            "schema": "pytex.tilt_plan_report/1",
+            "schema": TILT_PLAN_REPORT_SCHEMA,
             "phase": self.current.phase.name,
             "target": [int(value) for value in self.target.indices],
             "tolerance_deg": self.tolerance_deg,

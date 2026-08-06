@@ -31,7 +31,6 @@ from itertools import product
 from typing import Any
 
 import numpy as np
-from matplotlib.colors import to_hex, to_rgb
 
 from pytex.core._arrays import as_float_array
 from pytex.core._chemistry import (
@@ -44,6 +43,39 @@ from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.plotting.frames import add_frame_indicator
 from pytex.plotting.primitives import Transform3D
 from pytex.plotting.styles import _deep_merge, resolve_style
+
+
+def _to_hex(color: Any) -> str:
+    """``matplotlib.colors.to_hex``, imported on demand.
+
+    Matplotlib is an *optional* dependency behind the ``pytex[plotting]`` extra,
+    and the repository forbids import-time coupling to optional stacks. A
+    module-level ``from matplotlib.colors import to_hex`` made matplotlib
+    mandatory for ``import pytex``; importing inside the call restores the
+    declared contract at the cost of one cached dict lookup.
+    """
+
+    try:
+        from matplotlib.colors import to_hex
+    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
+        raise ImportError(
+            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
+        ) from exc
+    return str(to_hex(color))
+
+
+def _to_rgb(color: Any) -> tuple[float, float, float]:
+    """``matplotlib.colors.to_rgb``, imported on demand. See :func:`_to_hex`."""
+
+    try:
+        from matplotlib.colors import to_rgb
+    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
+        raise ImportError(
+            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
+        ) from exc
+    red, green, blue = to_rgb(color)
+    return (float(red), float(green), float(blue))
+
 
 # VESTA-style render presets: each maps to style overrides (and build behavior)
 # so one keyword switches the whole visual system. User style_overrides win.
@@ -138,6 +170,12 @@ class CrystalAtomGlyph:
 
     @property
     def is_full_sphere(self) -> bool:
+        """Whether this atom is drawn as a whole sphere rather than a partial one.
+
+        Atoms on a cell boundary are drawn clipped when periodic images are
+        shown, matching the VESTA convention.
+        """
+
         return (
             self.occupancy >= 1.0 - 1e-9
             and self.sector_start <= 1e-9
@@ -171,6 +209,9 @@ class CrystalBondGlyph:
 
     @property
     def length_angstrom(self) -> float:
+        """Length of the bond, in angstroms.
+        """
+
         return float(np.linalg.norm(self.end_angstrom - self.start_angstrom))
 
     def half_segments(self) -> tuple[tuple[np.ndarray, np.ndarray, str], ...]:
@@ -225,6 +266,24 @@ class CrystalPolyhedronGlyph:
 
 @dataclass(frozen=True, slots=True)
 class CrystalCellOverlay:
+    """A request to draw unit-cell outlines in a crystal-structure view.
+
+    A declarative overlay: it states *what* to draw, and the renderer decides
+    how. Kept separate from the resulting :class:`CrystalCellGlyph` so scene
+    description stays independent of rendering.
+
+    Attributes
+    ----------
+    kind : str
+        Cell outline style.
+    anchor_fractional : np.ndarray
+        Where the outline starts, in fractional cell coordinates.
+    span_cells : tuple of int
+        How many cells to span along each axis.
+    color, alpha, linewidth, show_faces, face_alpha : optional
+        Appearance; ``None`` defers to the active style theme.
+    """
+
     kind: str = "parallelepiped"
     anchor_fractional: np.ndarray = field(default_factory=lambda: np.zeros(3, dtype=np.float64))
     span_cells: tuple[int, int, int] = (1, 1, 1)
@@ -250,6 +309,18 @@ class CrystalCellOverlay:
 
 @dataclass(frozen=True, slots=True)
 class PlaneAnnotationStyle:
+    """Label appearance for a crystal plane drawn in a 3-D view.
+
+    Attributes
+    ----------
+    color : str, optional
+        ``None`` defers to the active style theme.
+    fontsize : float
+    offset_fraction : float
+        Label offset from the plane, as a fraction of the scene extent, so
+        labels scale with the figure rather than being fixed in points.
+    """
+
     color: str | None = None
     fontsize: float = 11.0
     offset_fraction: float = 0.035
@@ -257,6 +328,17 @@ class PlaneAnnotationStyle:
 
 @dataclass(frozen=True, slots=True)
 class DirectionAnnotationStyle:
+    """Label appearance for a crystal direction drawn in a 3-D view.
+
+    Attributes
+    ----------
+    color : str, optional
+        ``None`` defers to the active style theme.
+    fontsize : float
+    offset_fraction : float
+        Label offset from the arrow, as a fraction of the scene extent.
+    """
+
     color: str | None = None
     fontsize: float = 11.0
     offset_fraction: float = 0.03
@@ -264,6 +346,25 @@ class DirectionAnnotationStyle:
 
 @dataclass(frozen=True, slots=True)
 class CrystalPlaneOverlay:
+    """A request to draw a crystal plane in a structure view.
+
+    Attributes
+    ----------
+    plane : CrystalPlane
+        The plane to draw; carries its own phase, so the patch is placed
+        correctly for the lattice rather than assuming cubic geometry.
+    offset : float, optional
+        Displacement along the normal, for drawing a plane away from the
+        origin.
+    color, alpha : optional
+        Appearance; ``None`` defers to the style theme.
+    label : str, optional
+        Explicit label text; when omitted, ``label_indices`` is formatted in
+        proper crystallographic notation.
+    label_indices : tuple of int, optional
+    annotation_style : PlaneAnnotationStyle, optional
+    """
+
     plane: CrystalPlane
     offset: float | None = None
     color: str | None = None
@@ -275,6 +376,26 @@ class CrystalPlaneOverlay:
 
 @dataclass(frozen=True, slots=True)
 class CrystalDirectionOverlay:
+    """A request to draw a crystal direction arrow in a structure view.
+
+    Attributes
+    ----------
+    direction : CrystalDirection
+        The direction to draw; resolved through the direct basis, so it is
+        correct in non-cubic lattices.
+    anchor_fractional : np.ndarray
+        Arrow origin in fractional cell coordinates.
+    color, alpha : optional
+    label : str, optional
+        Explicit label text; when omitted, ``label_indices`` is formatted in
+        proper crystallographic notation.
+    label_indices : tuple of int, optional
+    annotation_style : DirectionAnnotationStyle, optional
+    arrow_length_scale : float
+        Arrow length as a fraction of the lattice repeat, so the arrowhead
+        stays inside the cell it belongs to.
+    """
+
     direction: CrystalDirection
     anchor_fractional: np.ndarray
     color: str | None = None
@@ -296,6 +417,23 @@ class CrystalDirectionOverlay:
 
 @dataclass(frozen=True, slots=True)
 class CrystalPlaneGlyph:
+    """A crystal plane resolved to drawable geometry in Cartesian coordinates.
+
+    The rendered counterpart of :class:`CrystalPlaneOverlay`, with the
+    lattice geometry already applied.
+
+    Attributes
+    ----------
+    vertices_angstrom : np.ndarray
+        Polygon vertices of the plane patch.
+    normal_angstrom : np.ndarray
+        Plane normal, for label placement and face orientation.
+    color, alpha : str, float
+        Resolved appearance, no longer deferred to the theme.
+    label : str
+    annotation_style : PlaneAnnotationStyle
+    """
+
     vertices_angstrom: np.ndarray
     normal_angstrom: np.ndarray
     color: str
@@ -314,6 +452,20 @@ class CrystalPlaneGlyph:
 
 @dataclass(frozen=True, slots=True)
 class CrystalDirectionGlyph:
+    """A crystal direction resolved to a drawable arrow in Cartesian coordinates.
+
+    The rendered counterpart of :class:`CrystalDirectionOverlay`.
+
+    Attributes
+    ----------
+    start_angstrom, end_angstrom : np.ndarray
+        Arrow endpoints.
+    color, alpha : str, float
+        Resolved appearance.
+    label : str
+    annotation_style : DirectionAnnotationStyle
+    """
+
     start_angstrom: np.ndarray
     end_angstrom: np.ndarray
     color: str
@@ -328,6 +480,21 @@ class CrystalDirectionGlyph:
 
 @dataclass(frozen=True, slots=True)
 class CrystalCellGlyph:
+    """Unit-cell outlines resolved to drawable geometry.
+
+    The rendered counterpart of :class:`CrystalCellOverlay`.
+
+    Attributes
+    ----------
+    kind : str
+    edges_angstrom : tuple of np.ndarray
+        Cell edge segments.
+    faces_angstrom : tuple of np.ndarray
+        Cell face polygons, drawn only when faces were requested.
+    color, alpha, face_alpha, linewidth : str, float
+        Resolved appearance.
+    """
+
     kind: str
     edges_angstrom: tuple[np.ndarray, ...]
     faces_angstrom: tuple[np.ndarray, ...]
@@ -366,6 +533,12 @@ class CrystalScene:
     polyhedra: tuple[CrystalPolyhedronGlyph, ...] = ()
 
     def bounds(self) -> np.ndarray:
+        """Axis-aligned bounding box of the scene, as min and max corners.
+
+        Used to set equal-aspect 3-D axis limits so the cell is not visually
+        distorted.
+        """
+
         points: list[np.ndarray] = []
         points.extend(edge for edge in self.lattice_edges)
         points.extend(edge for cell in self.cells for edge in cell.edges_angstrom)
@@ -947,8 +1120,15 @@ def _coordination_polyhedra(
 def _relative_luminance(color: str) -> float:
     """Perceived brightness of a colour on the 0-1 sRGB luminance scale."""
 
-    red, green, blue = to_rgb(color)
+    red, green, blue = _to_rgb(color)
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def _rgb_tuple(values: np.ndarray) -> tuple[float, float, float]:
+    """Matplotlib-facing RGB triple from a length-3 float array."""
+
+    red, green, blue = (float(value) for value in values)
+    return (red, green, blue)
 
 
 def _separated_species_colors(species: Sequence[str]) -> dict[str, str]:
@@ -968,7 +1148,7 @@ def _separated_species_colors(species: Sequence[str]) -> dict[str, str]:
     assigned: dict[str, str] = {}
     placed: list[np.ndarray] = []
     for name in ordered:
-        base = np.asarray(to_rgb(cpk_color(name)), dtype=np.float64)
+        base = np.asarray(_to_rgb(cpk_color(name)), dtype=np.float64)
         candidate = base
         for _ in range(6):
             if all(
@@ -978,13 +1158,13 @@ def _separated_species_colors(species: Sequence[str]) -> dict[str, str]:
                 break
             # Darken bright colours and lighten dark ones, so the adjustment
             # always moves into the available contrast range.
-            if _relative_luminance(to_hex(candidate)) > 0.45:
+            if _relative_luminance(_to_hex(_rgb_tuple(candidate))) > 0.45:
                 candidate = candidate * 0.68
             else:
                 candidate = candidate + (1.0 - candidate) * 0.34
             candidate = np.clip(candidate, 0.0, 1.0)
         placed.append(candidate)
-        assigned[name] = to_hex(candidate)
+        assigned[name] = _to_hex(_rgb_tuple(candidate))
     return assigned
 
 
@@ -1412,7 +1592,7 @@ def _apply_depth_cue(
         return colors
     nearness = (depth - float(np.min(depth))) / span
     fade = float(np.clip(strength, 0.0, 1.0)) * (1.0 - nearness)
-    background_rgb = np.asarray(to_rgb(background), dtype=np.float64)
+    background_rgb = np.asarray(_to_rgb(background), dtype=np.float64)
     faded = colors.copy()
     faded[:, :3] = colors[:, :3] * (1.0 - fade[:, None]) + background_rgb[None, :] * fade[:, None]
     return faded
@@ -1467,7 +1647,7 @@ def _lit_face_colors(
     viewers. Returns ``(n, 4)`` facecolors.
     """
 
-    base_rgb = np.asarray(to_rgb(color), dtype=np.float64)
+    base_rgb = np.asarray(_to_rgb(color), dtype=np.float64)
     lambert = np.clip(normals @ light_direction, 0.0, 1.0)
     view_direction = np.array([0.0, 0.0, 1.0], dtype=np.float64)
     reflected = 2.0 * lambert[:, None] * normals - light_direction
@@ -1988,7 +2168,7 @@ def plot_crystal_structure_3d(
         axes.legend(handles=handles, loc="upper right", framealpha=0.85)
     if bool(crystal_style.get("hide_grid", True)):
         axes.grid(False)
-    pane_rgba = (*to_rgb(crystal_style["background"]), float(crystal_style["pane_alpha"]))
+    pane_rgba = (*_to_rgb(crystal_style["background"]), float(crystal_style["pane_alpha"]))
     axes.xaxis.set_pane_color(pane_rgba)
     axes.yaxis.set_pane_color(pane_rgba)
     axes.zaxis.set_pane_color(pane_rgba)

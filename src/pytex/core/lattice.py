@@ -76,6 +76,26 @@ def _sites_from_pymatgen_structure(structure: Any) -> tuple[AtomicSite, ...]:
 
 @dataclass(frozen=True, slots=True)
 class SpaceGroupSpec:
+    """A space-group identification: symbol, number, and reference frame.
+
+    Purpose
+    -------
+    Records the space group so that centring-based reflection conditions can
+    be applied. Its leading letter drives
+    :meth:`~pytex.diffraction.ReflectionCondition.from_phase`; without it,
+    systematic absences cannot be determined and forbidden reflections will
+    be listed as present.
+
+    Attributes
+    ----------
+    symbol : str
+        Hermann-Mauguin symbol.
+    number : int
+        International Tables number, in ``[1, 230]``.
+    reference_frame : ReferenceFrame
+    provenance : ProvenanceRecord, optional
+    """
+
     symbol: str
     number: int
     reference_frame: ReferenceFrame
@@ -109,6 +129,14 @@ class SpaceGroupSpec:
         reference_frame: ReferenceFrame,
         provenance: ProvenanceRecord | None = None,
     ) -> SpaceGroupSpec:
+        """Build a space-group specification from a pymatgen symmetry analyzer.
+
+        Optional-dependency bridge: it reads the symbol and number that
+        pymatgen's spglib-backed analysis determined, and attaches the PyTex
+        reference frame, so the space group enters the data model with explicit
+        frame meaning rather than as a bare string.
+        """
+
         with _spglib_dict_shim_silenced():
             return cls(
                 symbol=str(analyzer.get_space_group_symbol()),
@@ -121,6 +149,26 @@ class SpaceGroupSpec:
 
 @dataclass(frozen=True, slots=True)
 class Basis:
+    """A set of three basis vectors with its frame, kind, and unit declared.
+
+    Purpose
+    -------
+    Distinguishes a direct basis ``(a, b, c)`` from a reciprocal basis
+    ``(a*, b*, c*)`` at the type level. Outside the cubic system the two are
+    not interchangeable, and a bare matrix cannot say which it is — so the
+    kind and unit travel with the numbers.
+
+    Attributes
+    ----------
+    frame : ReferenceFrame
+    kind : BasisKind
+        ``DIRECT`` or ``RECIPROCAL``.
+    matrix : np.ndarray
+        ``(3, 3)`` with the basis vectors as columns.
+    unit : str
+        ``"angstrom"`` for direct, ``"1/angstrom"`` for reciprocal.
+    """
+
     frame: ReferenceFrame
     kind: BasisKind
     matrix: np.ndarray
@@ -134,11 +182,45 @@ class Basis:
             raise ValueError("Reciprocal bases must use a reciprocal-domain reference frame.")
 
     def vector(self, index: int) -> np.ndarray:
+        """One basis vector, as a Cartesian 3-vector in this basis's frame.
+
+        Column ``index`` of the basis matrix: ``0`` is ``a``, ``1`` is ``b``,
+        ``2`` is ``c`` for a direct basis, and ``a*``, ``b*``, ``c*`` for a
+        reciprocal one. Units follow the basis: angstroms for direct, inverse
+        angstroms for reciprocal.
+        """
+
         return as_float_array(self.matrix[:, index], shape=(3,))
 
 
 @dataclass(frozen=True, slots=True)
 class Lattice:
+    """A crystal lattice: six cell parameters plus the frame they are stated in.
+
+    Purpose
+    -------
+    The geometric foundation of every crystallographic calculation in the
+    library. It fixes the crystal-to-Cartesian convention once, in
+    :meth:`direct_basis`, so that directions, plane normals, d-spacings,
+    structure factors, and orientation matrices all derive from one
+    definition rather than from per-site formulae.
+
+    Attributes
+    ----------
+    a, b, c : float
+        Cell edge lengths in angstroms.
+    alpha_deg, beta_deg, gamma_deg : float
+        Cell angles in degrees.
+    crystal_frame : ReferenceFrame
+        The crystal-domain frame the basis is expressed in.
+    provenance : ProvenanceRecord, optional
+
+    Notes
+    -----
+    Reciprocal quantities follow the crystallographic convention *without*
+    ``2*pi``, so ``|g_hkl| = 1/d_hkl`` directly.
+    """
+
     a: float
     b: float
     c: float
@@ -170,6 +252,14 @@ class Lattice:
         crystal_frame: ReferenceFrame,
         provenance: ProvenanceRecord | None = None,
     ) -> Lattice:
+        """Build a lattice from a pymatgen ``Lattice``, attaching a crystal frame.
+
+        Optional-dependency bridge. Only cell lengths and angles cross the
+        boundary; pymatgen's own basis-vector convention is not adopted, because
+        PyTex fixes its own crystal-to-Cartesian convention in
+        :meth:`direct_basis`.
+        """
+
         lengths = tuple(float(value) for value in pymatgen_lattice.abc)
         angles = tuple(float(value) for value in pymatgen_lattice.angles)
         return cls(
@@ -184,6 +274,29 @@ class Lattice:
         )
 
     def direct_basis(self) -> Basis:
+        """The direct-space basis ``(a, b, c)`` as Cartesian columns, in angstroms.
+
+        Purpose
+        -------
+        The single definition of the crystal-to-Cartesian convention in PyTex.
+        Everything that turns indices into geometry — directions, plane normals,
+        structure factors, orientation matrices — goes through this matrix, so
+        the convention is fixed in exactly one place.
+
+        Convention
+        ----------
+        ``a`` along ``x``; ``b`` in the ``x-y`` plane, making angle ``gamma``
+        with ``a``; ``c`` completing the cell with the specified ``alpha`` and
+        ``beta``. This is the standard crystallographic setting used by the
+        IUCr-facing literature.
+
+        Returns
+        -------
+        Basis
+            Carrying the crystal frame, the basis kind, and the unit, so the
+            matrix cannot be reused in the wrong frame by accident.
+        """
+
         alpha = np.deg2rad(self.alpha_deg)
         beta = np.deg2rad(self.beta_deg)
         gamma = np.deg2rad(self.gamma_deg)
@@ -202,6 +315,15 @@ class Lattice:
         return Basis(frame=self.crystal_frame, kind=BasisKind.DIRECT, matrix=matrix)
 
     def reciprocal_basis(self) -> Basis:
+        """The reciprocal basis ``(a*, b*, c*)`` as Cartesian columns.
+
+        Computed as the inverse transpose of the direct basis, which realizes
+        the duality ``a_i . a*_j = delta_ij``. Note the normalization: PyTex
+        uses the crystallographic convention *without* a factor of ``2*pi``, so
+        ``|g_hkl| = 1/d_hkl`` directly. Units are inverse angstroms, and the
+        returned basis carries the reciprocal frame.
+        """
+
         direct = self.direct_basis().matrix
         reciprocal = np.linalg.inv(direct).T
         reciprocal_frame = reciprocal_frame_for(self.crystal_frame, provenance=self.provenance)
@@ -213,19 +335,51 @@ class Lattice:
         )
 
     def metric_tensor(self) -> np.ndarray:
+        """The direct metric tensor of this lattice; see :func:`metric_tensor`.
+        """
+
         return metric_tensor(self)
 
     def reciprocal_metric_tensor(self) -> np.ndarray:
+        """The reciprocal metric tensor of this lattice; see
+        :func:`reciprocal_metric_tensor`.
+        """
+
         return reciprocal_metric_tensor(self)
 
     def direct_to_reciprocal_components(self, components: Any) -> np.ndarray:
+        """Convert direct-basis components to reciprocal-basis components in this
+        lattice; see :func:`direct_to_reciprocal_components`.
+        """
+
         return direct_to_reciprocal_components(components, self)
 
     def reciprocal_to_direct_components(self, components: Any) -> np.ndarray:
+        """Convert reciprocal-basis components to direct-basis components in this
+        lattice; see :func:`reciprocal_to_direct_components`.
+        """
+
         return reciprocal_to_direct_components(components, self)
 
 
 def metric_tensor(lattice: Lattice) -> np.ndarray:
+    """The direct metric tensor ``G = A^T A`` of a lattice.
+
+    Purpose
+    -------
+    ``G`` encodes the whole geometry of a lattice: the dot product of two
+    direct-basis index vectors is ``u^T G v``, so lengths, angles, and
+    volumes in a triclinic cell follow from one matrix instead of a
+    per-system formula. Its diagonal holds ``a^2, b^2, c^2`` and its
+    off-diagonal entries the products ``ab cos(gamma)`` and so on.
+
+    Returns
+    -------
+    np.ndarray
+        ``(3, 3)`` symmetric positive-definite tensor in angstrom squared,
+        read-only.
+    """
+
     basis = lattice.direct_basis().matrix
     tensor = basis.T @ basis
     tensor = np.ascontiguousarray(tensor, dtype=np.float64)
@@ -234,6 +388,15 @@ def metric_tensor(lattice: Lattice) -> np.ndarray:
 
 
 def reciprocal_metric_tensor(lattice: Lattice) -> np.ndarray:
+    """The reciprocal metric tensor ``G* = B^T B`` of a lattice.
+
+    The reciprocal-space counterpart of :func:`metric_tensor`: the dot
+    product of two reciprocal-basis index vectors is ``h^T G* k``, which is
+    where the general interplanar-spacing formula
+    ``1/d^2 = h^T G* h`` comes from. Units are inverse angstrom squared;
+    returned read-only.
+    """
+
     basis = lattice.reciprocal_basis().matrix
     tensor = basis.T @ basis
     tensor = np.ascontiguousarray(tensor, dtype=np.float64)
@@ -242,6 +405,27 @@ def reciprocal_metric_tensor(lattice: Lattice) -> np.ndarray:
 
 
 def direct_to_reciprocal_components(components: Any, lattice: Lattice) -> np.ndarray:
+    """Convert direct-basis components to reciprocal-basis components.
+
+    Purpose
+    -------
+    Index-lowering with the metric tensor. The direction ``[uvw]`` and the
+    plane ``(hkl)`` with the same numbers are *not* the same geometric
+    object outside the cubic system; this is the correct conversion between
+    the two component sets, and the reason PyTex never equates them.
+
+    Parameters
+    ----------
+    components : ArrayLike
+        Any array ending in dimension 3.
+    lattice : Lattice
+
+    Returns
+    -------
+    np.ndarray
+        Same shape, in reciprocal-basis components; read-only.
+    """
+
     array = np.asarray(components, dtype=np.float64)
     if array.shape[-1] != 3:
         raise ValueError("direct components must end with dimension 3.")
@@ -252,6 +436,12 @@ def direct_to_reciprocal_components(components: Any, lattice: Lattice) -> np.nda
 
 
 def reciprocal_to_direct_components(components: Any, lattice: Lattice) -> np.ndarray:
+    """Convert reciprocal-basis components to direct-basis components.
+
+    Index-raising with the reciprocal metric tensor; the inverse operation
+    of :func:`direct_to_reciprocal_components`.
+    """
+
     array = np.asarray(components, dtype=np.float64)
     if array.shape[-1] != 3:
         raise ValueError("reciprocal components must end with dimension 3.")
@@ -263,6 +453,20 @@ def reciprocal_to_direct_components(components: Any, lattice: Lattice) -> np.nda
 
 @dataclass(frozen=True, slots=True)
 class AtomicSite:
+    """One atom in a unit cell: species, fractional position, and occupancy.
+
+    Attributes
+    ----------
+    label : str
+        Site label, as used in CIF files.
+    species : str
+        Element symbol; sets the scattering factor.
+    fractional_coordinates : np.ndarray
+        Position in fractional cell coordinates.
+    occupancy : float
+        Fractional site occupancy, for disordered or partially filled sites.
+    """
+
     label: str
     species: str
     fractional_coordinates: np.ndarray
@@ -281,6 +485,22 @@ class AtomicSite:
 
 @dataclass(frozen=True, slots=True)
 class UnitCell:
+    """A lattice together with the atomic sites in one cell.
+
+    Purpose
+    -------
+    The atomic basis that structure-factor calculations sum over, and the
+    input to crystal-structure visualization. A phase without a unit cell
+    supports lattice geometry but not intensity calculation.
+
+    Attributes
+    ----------
+    lattice : Lattice
+    sites : tuple of AtomicSite
+        Atoms in the cell, in fractional coordinates.
+    provenance : ProvenanceRecord, optional
+    """
+
     lattice: Lattice
     sites: tuple[AtomicSite, ...] = ()
     provenance: ProvenanceRecord | None = None
@@ -297,6 +517,13 @@ class UnitCell:
         lattice: Lattice | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> UnitCell:
+        """Build a unit cell with atomic sites from a pymatgen ``Structure``.
+
+        Optional-dependency bridge that carries fractional coordinates, species,
+        and site labels across. Pass ``lattice`` to reuse an already-constructed
+        PyTex lattice instead of deriving one from the structure.
+        """
+
         unit_cell_lattice = lattice or Lattice.from_pymatgen_lattice(
             structure.lattice,
             crystal_frame=crystal_frame,
@@ -311,6 +538,44 @@ class UnitCell:
 
 @dataclass(frozen=True, slots=True)
 class Phase:
+    """A crystallographic phase: lattice, symmetry, frame, and optional structure.
+
+    Purpose
+    -------
+    The unit of material identity in PyTex. Anything that depends on *which
+    material* is being described — d-spacings, structure factors, symmetry
+    orbits, index conversions, transformation relationships — takes a phase
+    rather than loose parameters, so those pieces cannot become inconsistent
+    with one another.
+
+    Construction enforces internal consistency: the lattice, symmetry, unit
+    cell, and space group must all agree on the crystal frame and on each
+    other, and a mismatch raises rather than propagating.
+
+    Attributes
+    ----------
+    name : str
+        Canonical phase name.
+    lattice : Lattice
+    symmetry : SymmetrySpec
+        Crystal symmetry, in ``crystal_frame``.
+    crystal_frame : ReferenceFrame
+        Must belong to the crystal domain.
+    unit_cell : UnitCell, optional
+        Atomic basis. Required for structure factors; without it, only
+        lattice-level reasoning is available.
+    space_group : SpaceGroupSpec, optional
+    space_group_symbol : str, optional
+    space_group_number : int, optional
+        Kept consistent with ``space_group`` when both are given. The space
+        group determines centring absences, so omitting it means forbidden
+        reflections will be reported as present.
+    chemical_formula : str, optional
+    aliases : tuple of str
+        Alternative names, for matching against vendor phase names.
+    provenance : ProvenanceRecord, optional
+    """
+
     name: str
     lattice: Lattice
     symmetry: SymmetrySpec
@@ -366,6 +631,34 @@ class Phase:
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
     ) -> Phase:
+        """Build a phase from a pymatgen ``Structure``.
+
+        Purpose
+        -------
+        The route from an external structural model to a fully specified PyTex
+        phase: lattice, unit cell, symmetry, and space group are all derived
+        together, so the phase is internally consistent by construction.
+
+        Parameters
+        ----------
+        structure : pymatgen Structure
+        crystal_frame : ReferenceFrame
+            The crystal-domain frame to attach.
+        phase_name : str, optional
+            Defaults to the structure's reduced formula.
+        aliases : tuple of str
+            Additional names this phase should answer to, for matching against
+            vendor phase names.
+        symprec, angle_tolerance : float
+            Symmetry-detection tolerances passed to the spglib-backed analysis.
+            Loose values can promote a distorted cell to a higher symmetry than
+            the data supports; they are exposed so that choice is explicit.
+
+        Returns
+        -------
+        Phase
+        """
+
         _, spacegroup_analyzer_cls = _require_pymatgen()
         analyzer = spacegroup_analyzer_cls(
             structure,
@@ -419,6 +712,38 @@ class Phase:
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
     ) -> Phase:
+        """Build a phase from a CIF file.
+
+        Purpose
+        -------
+        The most common entry point for real structural data. Requires the
+        optional pymatgen dependency; the CIF is parsed, its symmetry
+        determined, and the result attached to the given crystal frame.
+
+        Parameters
+        ----------
+        path : str or Path
+        crystal_frame : ReferenceFrame
+        phase_name : str, optional
+            Defaults to the reduced formula.
+        aliases : tuple of str
+            Additional names for phase matching.
+        primitive : bool
+            Reduce to the primitive cell. Off by default, so the conventional
+            cell of the CIF is kept and reflection conditions stay those of the
+            conventional setting.
+        symprec, angle_tolerance : float
+            Symmetry-detection tolerances.
+
+        Returns
+        -------
+        Phase
+
+        See Also
+        --------
+        from_cif_string : The same construction from CIF text already in memory.
+        """
+
         structure_cls, _ = _require_pymatgen()
         cif_path = Path(path)
         structure = structure_cls.from_file(str(cif_path))
@@ -452,6 +777,13 @@ class Phase:
         angle_tolerance: float = 5.0,
         provenance: ProvenanceRecord | None = None,
     ) -> Phase:
+        """Build a phase from CIF text held in memory.
+
+        Identical in contract to :meth:`from_cif`, for CIF content that came
+        from a database query, an archive, or a test fixture rather than a file
+        on disk.
+        """
+
         structure_cls, _ = _require_pymatgen()
         structure = structure_cls.from_str(cif_text, fmt="cif")
         if primitive:
@@ -504,6 +836,27 @@ def phases_semantically_match(left: Phase | None, right: Phase | None) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class MillerIndex:
+    """An ``(hkl)`` index triple bound to a phase and a basis kind.
+
+    Purpose
+    -------
+    The minimal typed index. It defaults to the reciprocal basis, since
+    Miller indices are reciprocal-basis components — the distinction that
+    makes ``[hkl]`` and ``(hkl)`` different objects outside the cubic system.
+
+    For index algebra — families, symmetry orbits, reductions, angle
+    tables — use :class:`~pytex.core.miller.MillerPlane` and its set form,
+    which build on this.
+
+    Attributes
+    ----------
+    indices : np.ndarray
+        Integer index triple.
+    phase : Phase
+    basis_kind : BasisKind
+        ``RECIPROCAL`` by default.
+    """
+
     indices: np.ndarray
     phase: Phase
     basis_kind: BasisKind = BasisKind.RECIPROCAL
@@ -514,15 +867,43 @@ class MillerIndex:
             raise ValueError("Miller indices must not be the zero triplet.")
 
     def as_array(self) -> np.ndarray:
+        """The stored index triple as an integer array.
+        """
+
         return self.indices
 
     @classmethod
     def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> MillerIndex:
+        """Miller index from a hexagonal four-index ``(hkil)`` quadruple.
+
+        The constraint ``i = -(h + k)`` is checked on conversion.
+        """
+
         return cls(indices=plane_hkil_to_hkl(indices), phase=phase)
 
 
 @dataclass(frozen=True, slots=True)
 class CrystalDirection:
+    """A crystallographic direction ``[uvw]`` on a phase.
+
+    Purpose
+    -------
+    A direction in the lattice, resolved to Cartesian coordinates through the
+    *direct* basis. Keeping the phase attached is what makes the resolution
+    correct for non-cubic lattices, where the Cartesian direction of
+    ``[uvw]`` depends on the cell parameters.
+
+    Attributes
+    ----------
+    coordinates : np.ndarray
+        Direction components; must not be the zero vector.
+    phase : Phase
+    basis_kind : BasisKind
+        ``DIRECT`` by default. A reciprocal-basis direction is resolved
+        through the reciprocal basis instead, which is why the kind is
+        stored rather than assumed.
+    """
+
     coordinates: np.ndarray
     phase: Phase
     basis_kind: BasisKind = BasisKind.DIRECT
@@ -534,6 +915,14 @@ class CrystalDirection:
 
     @property
     def unit_vector(self) -> np.ndarray:
+        """Unit vector of this direction in the Cartesian crystal frame.
+
+        Resolved through the direct basis for a direct-basis direction and
+        through the reciprocal basis for a reciprocal-basis one, following the
+        direction's declared ``basis_kind`` — which is why the basis is stored
+        with the coordinates rather than assumed.
+        """
+
         if self.basis_kind is BasisKind.DIRECT:
             basis = self.phase.lattice.direct_basis()
         else:
@@ -543,6 +932,11 @@ class CrystalDirection:
 
     @classmethod
     def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> CrystalDirection:
+        """Direction from a hexagonal four-index ``[UVTW]`` quadruple.
+
+        The constraint ``U + V + T = 0`` is checked on conversion.
+        """
+
         return cls(coordinates=direction_uvtw_to_uvw(indices).astype(np.float64), phase=phase)
 
     @classmethod
@@ -568,6 +962,21 @@ class CrystalDirection:
 
 @dataclass(frozen=True, slots=True)
 class ZoneAxis:
+    """A zone axis ``[uvw]``: the beam direction of a diffraction pattern.
+
+    Purpose
+    -------
+    A lattice direction seen from the diffraction side. Reflections belong to
+    its zone exactly when the zone law ``hu + kv + lw = 0`` holds, which is
+    the selection rule determining what appears in a zone-axis pattern.
+
+    Attributes
+    ----------
+    indices : np.ndarray
+        Integer direction indices.
+    phase : Phase
+    """
+
     indices: np.ndarray
     phase: Phase
 
@@ -578,27 +987,74 @@ class ZoneAxis:
 
     @property
     def direction(self) -> CrystalDirection:
+        """This zone axis as a :class:`CrystalDirection`.
+
+        A zone axis is a lattice direction; this is the same vector in the
+        general direction type.
+        """
+
         return CrystalDirection(self.indices.astype(np.float64), phase=self.phase)
 
     @property
     def unit_vector(self) -> np.ndarray:
+        """Unit vector of the zone axis in the Cartesian crystal frame.
+
+        For electron diffraction this is the direction that must be brought
+        parallel to the beam for the corresponding zone-axis pattern.
+        """
+
         return self.direction.unit_vector
 
     def zone_law_value(self, miller: MillerIndex) -> int:
+        """The zone-law value ``hu + kv + lw`` for a reflection on this zone.
+
+        Zero means the reflection belongs to the zone — that is, it appears in
+        this zone-axis pattern. The phases of the operands must match.
+        """
+
         if miller.phase != self.phase:
             raise ValueError("MillerIndex.phase must match ZoneAxis.phase.")
         return int(np.dot(self.indices, miller.indices))
 
     def contains_miller_index(self, miller: MillerIndex) -> bool:
+        """Whether a reflection belongs to this zone (zone-law value zero).
+
+        The selection rule that determines which reflections appear in a
+        zone-axis diffraction pattern.
+        """
+
         return self.zone_law_value(miller) == 0
 
     @classmethod
     def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> ZoneAxis:
+        """Zone axis from a hexagonal four-index ``[UVTW]`` quadruple.
+        """
+
         return cls(indices=direction_uvtw_to_uvw(indices), phase=phase)
 
 
 @dataclass(frozen=True, slots=True)
 class ReciprocalLatticeVector:
+    """A reciprocal-lattice vector ``g = h a* + k b* + l c*`` on a phase.
+
+    Purpose
+    -------
+    The reciprocal-space view of a plane: its direction is the plane normal
+    and its magnitude is ``1/d``. This is the natural object for diffraction
+    reasoning, where the Ewald construction and the scattering condition are
+    both statements about ``g``.
+
+    Attributes
+    ----------
+    coordinates : np.ndarray
+        Reciprocal-basis components; must not be the zero vector.
+    phase : Phase
+
+    Notes
+    -----
+    Uses the crystallographic convention without ``2*pi``.
+    """
+
     coordinates: np.ndarray
     phase: Phase
 
@@ -609,24 +1065,64 @@ class ReciprocalLatticeVector:
 
     @classmethod
     def from_miller_index(cls, miller: MillerIndex) -> ReciprocalLatticeVector:
+        """The reciprocal-lattice vector ``g`` of a Miller index.
+
+        The ``(hkl)`` components are reinterpreted as reciprocal-basis
+        coordinates, which is what they already are — a Miller index *is* a
+        reciprocal-lattice vector in index form.
+        """
+
         return cls(coordinates=miller.indices.astype(np.float64), phase=miller.phase)
 
     @property
     def cartesian_vector(self) -> np.ndarray:
+        """The vector ``g = h a* + k b* + l c*`` in Cartesian crystal-frame
+        coordinates, in inverse angstroms.
+
+        Not normalized: its magnitude carries the d-spacing information.
+        """
+
         reciprocal = self.phase.lattice.reciprocal_basis().matrix
         return as_float_array(reciprocal @ self.coordinates, shape=(3,))
 
     @property
     def magnitude_inv_angstrom(self) -> float:
+        """``|g| = 1 / d``, in inverse angstroms.
+
+        The reciprocal of the interplanar spacing, under the crystallographic
+        (no ``2*pi``) reciprocal-lattice convention.
+        """
+
         return float(np.linalg.norm(self.cartesian_vector))
 
     @property
     def unit_vector(self) -> np.ndarray:
+        """Unit vector along ``g`` in the Cartesian crystal frame.
+
+        The plane-normal direction of the corresponding ``(hkl)``.
+        """
+
         return normalize_vector(self.cartesian_vector)
 
 
 @dataclass(frozen=True, slots=True)
 class CrystalPlane:
+    """A crystallographic plane ``(hkl)`` on a phase.
+
+    Purpose
+    -------
+    A lattice plane, resolved through the *reciprocal* basis — the only
+    correct route for a normal outside the cubic system, where the direction
+    ``[hkl]`` is not parallel to the normal of ``(hkl)``. Carries the
+    d-spacing that Bragg's law consumes.
+
+    Attributes
+    ----------
+    miller : MillerIndex
+        The index triple; its phase must match ``phase``.
+    phase : Phase
+    """
+
     miller: MillerIndex
     phase: Phase
 
@@ -636,12 +1132,25 @@ class CrystalPlane:
 
     @property
     def normal(self) -> np.ndarray:
+        """Unit normal of the plane in the Cartesian crystal frame.
+
+        Resolved through the reciprocal basis, the only correct route outside
+        the cubic system: for a non-cubic lattice the direction ``[hkl]`` is not
+        parallel to the normal of the plane ``(hkl)``.
+        """
+
         reciprocal = self.phase.lattice.reciprocal_basis().matrix
         normal = reciprocal @ self.miller.indices.astype(np.float64)
         return normalize_vector(normal)
 
     @property
     def d_spacing_angstrom(self) -> float:
+        """Interplanar spacing ``d`` in angstroms.
+
+        The reciprocal of ``|g|``, correct for every crystal system without a
+        per-system formula, and the quantity Bragg's law consumes.
+        """
+
         reciprocal = self.phase.lattice.reciprocal_basis().matrix
         reciprocal_vector = reciprocal @ self.miller.indices.astype(np.float64)
         magnitude = float(np.linalg.norm(reciprocal_vector))
@@ -651,8 +1160,19 @@ class CrystalPlane:
 
     @property
     def reciprocal_lattice_vector(self) -> ReciprocalLatticeVector:
+        """This plane as a :class:`ReciprocalLatticeVector`.
+
+        The same object seen from reciprocal space, where diffraction reasoning
+        happens.
+        """
+
         return ReciprocalLatticeVector.from_miller_index(self.miller)
 
     @classmethod
     def from_miller_bravais(cls, indices: Any, *, phase: Phase) -> CrystalPlane:
+        """Plane from a hexagonal four-index ``(hkil)`` quadruple.
+
+        The constraint ``i = -(h + k)`` is checked on conversion.
+        """
+
         return cls(miller=MillerIndex.from_miller_bravais(indices, phase=phase), phase=phase)

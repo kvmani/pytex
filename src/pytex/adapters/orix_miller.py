@@ -49,6 +49,9 @@ def _rounded_int_rows(values: Any, *, columns: int, name: str) -> tuple[np.ndarr
 
 
 def to_orix_phase(pytex_phase: Phase) -> Any:
+    """Convert a PyTex phase to an orix ``Phase``.
+    """
+
     orix_phase_cls, _ = _require_orix()
     return orix_phase_cls(
         name=pytex_phase.name,
@@ -58,6 +61,11 @@ def to_orix_phase(pytex_phase: Phase) -> Any:
 
 
 def to_orix_miller_plane(planes: MillerPlane | MillerPlaneSet) -> Any:
+    """Convert PyTex Miller planes to an orix ``Miller`` object.
+
+    Accepts a single plane or a plane set.
+    """
+
     _, orix_miller_cls = _require_orix()
     if isinstance(planes, MillerPlane):
         return orix_miller_cls(hkl=planes.indices, phase=to_orix_phase(planes.phase))
@@ -65,6 +73,11 @@ def to_orix_miller_plane(planes: MillerPlane | MillerPlaneSet) -> Any:
 
 
 def to_orix_miller_direction(directions: MillerDirection | MillerDirectionSet) -> Any:
+    """Convert PyTex Miller directions to an orix ``Miller`` object.
+
+    Accepts a single direction or a direction set.
+    """
+
     _, orix_miller_cls = _require_orix()
     if isinstance(directions, MillerDirection):
         return orix_miller_cls(uvw=directions.indices, phase=to_orix_phase(directions.phase))
@@ -76,6 +89,13 @@ def from_orix_miller(
     *,
     phase: Phase,
 ) -> MillerPlane | MillerPlaneSet | MillerDirection | MillerDirectionSet:
+    """Convert an orix ``Miller`` object to the matching PyTex index type.
+
+    Returns a plane or direction type according to the orix object's own
+    coordinate kind, so reciprocal-basis and direct-basis data do not get
+    crossed.
+    """
+
     preferred = getattr(miller, "coordinate_format", None)
     attribute_order: tuple[tuple[str, str], ...]
     if isinstance(preferred, str) and preferred in {"hkl", "hkil", "uvw", "UVTW"}:

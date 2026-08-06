@@ -21,6 +21,25 @@ from pytex.core.symmetry import SymmetrySpec
 
 @dataclass(frozen=True, slots=True)
 class TextureComponent:
+    """A named ideal texture orientation, as Euler angles.
+
+    Purpose
+    -------
+    The catalogue entries the literature names — cube, Goss, brass, copper,
+    S — so that a component can be referred to by name and turned into a
+    concrete orientation on a specific phase and specimen frame, rather than
+    having its angles retyped at each use.
+
+    Attributes
+    ----------
+    name : str
+        Conventional component name.
+    bunge_euler_deg : tuple of float
+        The ideal orientation as Bunge ``(phi1, Phi, phi2)`` in degrees.
+    Remaining attributes record the component's Miller description and any
+    notes.
+    """
+
     name: str
     bunge_euler_deg: tuple[float, float, float]
     miller_label: str = ""
@@ -44,6 +63,27 @@ class TextureComponent:
         symmetry: SymmetrySpec | None = None,
         phase: Phase | None = None,
     ) -> Orientation:
+        """This named component as a concrete :class:`~pytex.core.orientation.Orientation`.
+
+        Purpose
+        -------
+        Turn a catalogued component — cube, Goss, brass, copper, S — into an
+        orientation on a specific phase and specimen frame, so it can be used as
+        a volume-fraction centre, plotted, or compared against measured data.
+
+        Parameters
+        ----------
+        specimen_frame : ReferenceFrame
+            The specimen-domain frame. Required, because the component's Euler
+            angles are defined relative to specimen axes.
+        crystal_frame : ReferenceFrame, optional
+            Required unless ``phase`` supplies it.
+        symmetry : SymmetrySpec, optional
+            Inferred from ``phase`` when omitted.
+        phase : Phase, optional
+            Supplies crystal frame and symmetry.
+        """
+
         if crystal_frame is None:
             if phase is None:
                 raise ValueError("crystal_frame is required when phase is not provided.")

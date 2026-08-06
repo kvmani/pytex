@@ -29,6 +29,21 @@ def spherical_angles_to_directions(
     polar_deg: ArrayLike,
     azimuth_deg: ArrayLike,
 ) -> np.ndarray:
+    """Unit direction vectors from polar and azimuthal angles in degrees.
+
+    Convention
+    ----------
+    Polar angle measured from ``+z``, azimuth measured from ``+x`` towards
+    ``+y``. The two inputs are broadcast against one another, so a single
+    polar angle can be paired with an array of azimuths to trace a small
+    circle.
+
+    Returns
+    -------
+    np.ndarray
+        Unit vectors with a trailing dimension of 3.
+    """
+
     polar, azimuth = np.broadcast_arrays(
         np.asarray(polar_deg, dtype=np.float64),
         np.asarray(azimuth_deg, dtype=np.float64),
@@ -51,6 +66,27 @@ def directions_to_spherical_angles(
     *,
     antipodal: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Polar and azimuthal angles in degrees from direction vectors.
+
+    The inverse of :func:`spherical_angles_to_directions`. Inputs are
+    normalized internally.
+
+    Parameters
+    ----------
+    directions : ArrayLike
+        Any array ending in dimension 3.
+    antipodal : bool
+        Fold vectors onto the upper hemisphere first, so that ``+v`` and
+        ``-v`` give the same angles — the right choice for plane normals and
+        for any direction family quoted without a sense.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        Polar angles in ``[0, 180]`` and azimuths in ``[0, 360)``, both
+        read-only.
+    """
+
     vectors = np.array(normalize_vectors(directions), copy=True)
     if antipodal:
         mask = vectors[..., 2] < 0.0
@@ -82,6 +118,27 @@ def _broadcast_unit_rows(
 
 @dataclass(frozen=True, slots=True)
 class SphericalVectorSet:
+    """A batch of unit directions with a frame and an antipodal declaration.
+
+    Purpose
+    -------
+    Directional data — poles, plane normals, specimen axes — with the two
+    facts needed to interpret it: which frame it lives in, and whether ``+v``
+    and ``-v`` mean the same thing. The antipodal flag is not cosmetic: it
+    changes how angles, means, and hemisphere folding are computed, and it is
+    the difference between a plane normal (antipodal) and a slip direction
+    (not).
+
+    Attributes
+    ----------
+    values : np.ndarray
+        ``(n, 3)`` unit vectors.
+    reference_frame : ReferenceFrame
+    antipodal : bool
+        Whether a direction and its reverse are the same datum.
+    provenance : ProvenanceRecord, optional
+    """
+
     values: np.ndarray
     reference_frame: ReferenceFrame
     antipodal: bool = False
@@ -99,6 +156,22 @@ class SphericalVectorSet:
         antipodal: bool = False,
         provenance: ProvenanceRecord | None = None,
     ) -> SphericalVectorSet:
+        """Build a direction set from raw vectors, normalizing them.
+
+        Parameters
+        ----------
+        vectors : ArrayLike
+            ``(n, 3)`` vectors; normalized internally.
+        reference_frame : ReferenceFrame
+            The frame the directions live in. Required, because a direction
+            without a frame cannot be compared with anything.
+        antipodal : bool
+            Declare ``+v`` and ``-v`` equivalent. This is a property of the
+            data's meaning — true for plane normals, false for slip directions —
+            and it changes how angles, means, and folding behave downstream.
+        provenance : ProvenanceRecord, optional
+        """
+
         return cls(
             values=np.asarray(vectors, dtype=np.float64),
             reference_frame=reference_frame,
@@ -113,6 +186,11 @@ class SphericalVectorSet:
         *,
         antipodal: bool = False,
     ) -> SphericalVectorSet:
+        """Build a direction set from a :class:`~pytex.core.batches.VectorSet`.
+
+        The frame is inherited; the values are normalized.
+        """
+
         return cls(
             values=vector_set.values,
             reference_frame=vector_set.reference_frame,
@@ -131,6 +209,13 @@ class SphericalVectorSet:
         antipodal: bool = False,
         provenance: ProvenanceRecord | None = None,
     ) -> SphericalVectorSet:
+        """Build a direction set from polar and azimuthal angles.
+
+        The angle convention is that of
+        :func:`spherical_angles_to_directions`. Pass ``degrees=False`` for
+        radians. The two angle arrays are broadcast against one another.
+        """
+
         polar_values = np.atleast_1d(np.asarray(polar, dtype=np.float64))
         azimuth_values = np.atleast_1d(np.asarray(azimuth, dtype=np.float64))
         if not degrees:
@@ -159,9 +244,18 @@ class SphericalVectorSet:
         )
 
     def as_array(self) -> np.ndarray:
+        """The underlying ``(n, 3)`` unit-vector array, without frame meaning.
+        """
+
         return self.values
 
     def to_vector_set(self) -> VectorSet:
+        """The general :class:`~pytex.core.batches.VectorSet` view of these
+        directions.
+
+        Drops the antipodal flag, which the general vector type does not carry.
+        """
+
         return VectorSet(
             values=self.values,
             reference_frame=self.reference_frame,
@@ -169,6 +263,12 @@ class SphericalVectorSet:
         )
 
     def to_polar(self, *, degrees: bool = True) -> tuple[np.ndarray, np.ndarray]:
+        """Polar and azimuthal angles of the directions.
+
+        Honours the set's antipodal flag, folding onto the upper hemisphere
+        first when it is set. Pass ``degrees=False`` for radians.
+        """
+
         polar_deg, azimuth_deg = directions_to_spherical_angles(
             self.values,
             antipodal=self.antipodal,
@@ -180,6 +280,11 @@ class SphericalVectorSet:
         return polar_rad, azimuth_rad
 
     def subset(self, indices: ArrayLike) -> SphericalVectorSet:
+        """The directions at the given indices, as a new set.
+
+        Frame, antipodal flag, and provenance are preserved.
+        """
+
         return SphericalVectorSet(
             values=self.values[np.asarray(indices)],
             reference_frame=self.reference_frame,
@@ -188,6 +293,25 @@ class SphericalVectorSet:
         )
 
     def fold_upper_hemisphere(self) -> SphericalVectorSet:
+        """Fold every direction onto the upper hemisphere.
+
+        Purpose
+        -------
+        The convention behind one-hemisphere pole figures: because ``+v`` and
+        ``-v`` denote the same pole, only one hemisphere need be plotted.
+
+        Directions on the equator, where the sign is not resolved by the ``z``
+        component, are disambiguated by a deterministic rule on ``x`` and then
+        ``y``, so the fold is stable rather than sensitive to numerical noise.
+
+        Raises
+        ------
+        ValueError
+            When the set is not antipodal. Folding a set whose directions carry
+            a genuine sense would destroy information, so it is refused rather
+            than performed silently.
+        """
+
         if not self.antipodal:
             raise ValueError(
                 "fold_upper_hemisphere is only meaningful for antipodal direction sets; "
@@ -214,11 +338,25 @@ class SphericalVectorSet:
             )
 
     def dot(self, other: SphericalVectorSet) -> np.ndarray:
+        """Row-wise dot products with another direction set.
+
+        Both sets must share a reference frame; one row broadcasts against many.
+        Returns an ``(n,)`` read-only array of cosines.
+        """
+
         self._require_matching_frame(other, operation="dot")
         left, right = _broadcast_unit_rows(self.values, other.values, operation="dot")
         return freeze_array(np.ascontiguousarray(np.einsum("ni,ni->n", left, right)))
 
     def cross(self, other: SphericalVectorSet) -> SphericalVectorSet:
+        """Row-wise cross products with another direction set.
+
+        The result is normalized and carries the antipodal flag if either
+        operand does. Parallel or antiparallel pairs raise, because their cross
+        product has no defined direction — better than returning a normalized
+        zero vector that would look like a valid direction.
+        """
+
         self._require_matching_frame(other, operation="cross")
         left, right = _broadcast_unit_rows(self.values, other.values, operation="cross")
         products = np.cross(left, right)
@@ -235,6 +373,14 @@ class SphericalVectorSet:
         )
 
     def angles_to_rad(self, other: SphericalVectorSet) -> np.ndarray:
+        """Row-wise angles to another direction set, in radians.
+
+        When either set is antipodal the cosine is taken in absolute value, so
+        angles lie in ``[0, pi/2]`` and a direction is never reported as
+        180 degrees from its own reverse. Otherwise angles lie in ``[0, pi]``.
+        Both sets must share a reference frame.
+        """
+
         self._require_matching_frame(other, operation="angles_to_rad")
         left, right = _broadcast_unit_rows(
             self.values,
@@ -247,13 +393,45 @@ class SphericalVectorSet:
         return freeze_array(np.ascontiguousarray(np.arccos(cosines)))
 
     def angles_to_deg(self, other: SphericalVectorSet) -> np.ndarray:
+        """Row-wise angles to another direction set, in degrees.
+
+        See :meth:`angles_to_rad` for the antipodal handling.
+        """
+
         return freeze_array(np.ascontiguousarray(np.rad2deg(self.angles_to_rad(other))))
 
     def orientation_tensor(self) -> np.ndarray:
+        """The normalized orientation tensor ``T = (1/n) sum v_i v_i^T``.
+
+        Purpose
+        -------
+        The second-moment descriptor of a direction distribution, and the
+        standard tool of directional statistics: its eigenvalues classify the
+        distribution as clustered, girdle-like, or uniform, and its eigenvectors
+        give the principal directions. It is the right summary for antipodal
+        data, where a vector mean would cancel.
+
+        Returns
+        -------
+        np.ndarray
+            ``(3, 3)`` symmetric tensor of unit trace, read-only.
+        """
+
         tensor = np.einsum("ni,nj->ij", self.values, self.values) / float(len(self))
         return freeze_array(np.ascontiguousarray(tensor))
 
     def mean_direction(self) -> np.ndarray:
+        """The mean direction of the set, as a unit vector.
+
+        Method
+        ------
+        For an antipodal set the mean is the principal eigenvector of the
+        :meth:`orientation_tensor`, sign-canonicalized to the upper hemisphere —
+        the correct estimator when ``+v`` and ``-v`` are the same datum, since a
+        vector sum would cancel. For a non-antipodal set it is the normalized
+        resultant vector.
+        """
+
         if self.antipodal:
             eigenvalues, eigenvectors = np.linalg.eigh(self.orientation_tensor())
             principal = eigenvectors[:, int(np.argmax(eigenvalues))]
@@ -275,6 +453,13 @@ class SphericalVectorSet:
         return as_float_array(resultant / norm, shape=(3,))
 
     def rotated_by(self, rotation: Rotation) -> SphericalVectorSet:
+        """The directions rotated by a :class:`~pytex.core.orientation.Rotation`.
+
+        Frame, antipodal flag, and provenance are preserved. Note that the frame
+        label is unchanged: this rotates directions within a frame, it does not
+        re-express them in another one.
+        """
+
         mapped = rotation.apply(self.values)
         return SphericalVectorSet(
             values=np.asarray(mapped, dtype=np.float64),
@@ -316,6 +501,30 @@ def _ring_band_weights(
 
 @dataclass(frozen=True, slots=True)
 class S2Grid:
+    """A sampling grid on the unit sphere, with per-point integration weights.
+
+    Purpose
+    -------
+    The evaluation and integration support for pole figures and spherical
+    functions. The weights are the point: sphere sampling is never uniform in
+    a naive latitude-longitude scheme, so summing without weights biases
+    every integral towards the poles.
+
+    Attributes
+    ----------
+    vectors : SphericalVectorSet
+        The grid directions.
+    weights : np.ndarray
+        Per-point integration weights; use these, never uniform weights.
+    resolution_deg : float
+        Nominal angular spacing.
+    hemisphere : str
+        ``"upper"`` or ``"sphere"``.
+    method : str
+        How the grid was generated — ``"equispaced"`` (near-equal-area, for
+        integration) or ``"regular"`` (latitude-longitude, for display).
+    """
+
     vectors: SphericalVectorSet
     weights: np.ndarray
     resolution_deg: float
@@ -346,6 +555,45 @@ class S2Grid:
         antipodal: bool = False,
         provenance: ProvenanceRecord | None = None,
     ) -> S2Grid:
+        """A near-equal-area grid on the sphere at the requested resolution.
+
+        Purpose
+        -------
+        The integration and evaluation support for pole figures and spherical
+        functions. Equal-area sampling is what makes summing over grid points a
+        valid approximation to a spherical integral; a naive latitude-longitude
+        grid over-samples the poles badly and biases every such sum.
+
+        Method
+        ------
+        Points are placed on rings of constant polar angle, with the number of
+        points per ring scaled by the ring circumference ``sin(theta)``, so cell
+        areas are nearly equal. Per-point weights are computed from the ring
+        band areas and returned with the grid, so callers integrate with the
+        weights rather than assuming uniformity.
+
+        Parameters
+        ----------
+        resolution_deg : float
+            Target angular spacing.
+        reference_frame : ReferenceFrame
+            Frame the grid directions live in.
+        hemisphere : str
+            ``"upper"`` (default) or ``"sphere"``.
+        antipodal : bool
+            Declare ``+v`` and ``-v`` equivalent on the resulting directions.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        S2Grid
+            Directions, integration weights, and the generation metadata.
+
+        See Also
+        --------
+        regular : A latitude-longitude grid, for display rather than integration.
+        """
+
         resolution = _require_resolution(resolution_deg)
         hemisphere = _require_hemisphere(hemisphere)
         polar_max = 90.0 if hemisphere == "upper" else 180.0
@@ -397,6 +645,30 @@ class S2Grid:
         antipodal: bool = False,
         provenance: ProvenanceRecord | None = None,
     ) -> S2Grid:
+        """A regular latitude-longitude grid on the sphere.
+
+        Purpose
+        -------
+        A rectangular grid in ``(polar, azimuth)``, convenient for contouring
+        and for interchange with tools that expect gridded data.
+
+        Sampling density is *not* uniform on the sphere — cells shrink towards
+        the poles — so the returned weights must be used for any integration.
+        Prefer :meth:`equispaced` when the grid is an integration support rather
+        than a display raster.
+
+        Parameters
+        ----------
+        polar_step_deg, azimuth_step_deg : float
+            Grid spacing along each angular axis.
+        reference_frame : ReferenceFrame
+        hemisphere : str
+            ``"upper"`` (default) or ``"sphere"``.
+        antipodal : bool
+            Declare ``+v`` and ``-v`` equivalent on the resulting directions.
+        provenance : ProvenanceRecord, optional
+        """
+
         polar_step = _require_resolution(polar_step_deg)
         azimuth_step = float(azimuth_step_deg)
         if not 0.0 < azimuth_step <= 120.0 or not np.isclose(

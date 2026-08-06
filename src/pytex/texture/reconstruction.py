@@ -41,6 +41,35 @@ class PoleFigureCorrectionSpec:
             object.__setattr__(self, "defocus_factors", factors)
 
     def apply(self, pole_figure: PoleFigure) -> PoleFigure:
+        """Apply background, defocusing, and scale corrections to a pole figure.
+
+        Purpose
+        -------
+        Measured X-ray pole figures need instrumental correction before
+        inversion: a background is subtracted, the tilt-dependent defocusing loss
+        is divided out, and a scale is applied. Doing this in a declared spec —
+        rather than ad hoc at the call site — keeps the correction auditable and
+        reproducible.
+
+        Order of operations
+        -------------------
+        Defocus division first, then background subtraction, then scaling.
+
+        Parameters
+        ----------
+        pole_figure : PoleFigure
+            The measured figure. Defocus factors, when given, must match its
+            intensity shape.
+
+        Returns
+        -------
+        PoleFigure
+            The corrected figure. Negative intensities are physically
+            meaningless; the spec's ``missing_intensity_policy`` decides whether
+            they raise or are clipped to zero, so the choice is explicit rather
+            than hidden.
+        """
+
         intensities = np.asarray(pole_figure.intensities, dtype=np.float64)
         if self.defocus_factors is not None:
             if self.defocus_factors.shape != intensities.shape:
@@ -67,6 +96,27 @@ class PoleFigureCorrectionSpec:
 
 @dataclass(frozen=True, slots=True)
 class PoleFigureResidualReport:
+    """How well an ODF reproduces one measured pole figure.
+
+    Purpose
+    -------
+    The goodness-of-fit check on a reconstruction. An inversion that cannot
+    reproduce its own input data is not usable, whatever its internal
+    convergence reported, so this comparison is the meaningful acceptance
+    test.
+
+    Attributes
+    ----------
+    pole_figure : PoleFigure
+        The measurement compared against.
+    predicted_intensities : np.ndarray
+        Pole densities the ODF implies at the measured directions.
+    residuals : np.ndarray
+        Predicted minus measured, per direction.
+    Remaining attributes summarize the residual magnitudes.
+    provenance : ProvenanceRecord, optional
+    """
+
     pole_figure: PoleFigure
     predicted_intensities: np.ndarray
     residuals: np.ndarray
@@ -104,6 +154,27 @@ class PoleFigureResidualReport:
         include_symmetry_family: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> PoleFigureResidualReport:
+        """Compare an ODF's predicted pole densities against a measured figure.
+
+        Purpose
+        -------
+        The goodness-of-fit check on a PF-to-ODF inversion: reconstruct the pole
+        density the ODF implies at the measured directions and report the
+        residuals. An inversion that cannot reproduce its own input data is not
+        usable, whatever its internal convergence said.
+
+        Parameters
+        ----------
+        odf : ODF or HarmonicODF
+            Either ODF representation is accepted.
+        pole_figure : PoleFigure
+            The measured figure to compare against.
+        include_symmetry_family : bool
+            Include the whole ``{hkl}`` family (default), matching the
+            measurement.
+        provenance : ProvenanceRecord, optional
+        """
+
         predicted = odf.evaluate_pole_density(
             pole_figure.pole,
             pole_figure.sample_directions,
@@ -128,6 +199,30 @@ class PoleFigureResidualReport:
 
 @dataclass(frozen=True, slots=True)
 class ODFReconstructionConfig:
+    """A declared, reproducible PF-to-ODF reconstruction procedure.
+
+    Purpose
+    -------
+    Bundles the correction spec, the algorithm choice, the kernel, and the
+    regularization into one object, so a study's inversion settings live in a
+    single declared configuration rather than scattered across call sites —
+    and so the correction step can never be accidentally skipped.
+
+    Attributes
+    ----------
+    algorithm : str
+        ``"discrete"`` (weighted support; needs an orientation dictionary) or
+        the harmonic series method.
+    correction : PoleFigureCorrectionSpec, optional
+        Applied before inversion; ``None`` means the figures are used as
+        given.
+    kernel : KernelSpec
+        Smoothing kernel for the response model.
+    regularization : float
+        Tikhonov weight; larger is smoother, more stable, less detailed.
+    Remaining attributes carry algorithm-specific settings.
+    """
+
     algorithm: ReconstructionAlgorithm = "harmonic"
     kernel: KernelSpec = field(default_factory=KernelSpec)
     correction: PoleFigureCorrectionSpec | None = None
@@ -152,6 +247,12 @@ class ODFReconstructionConfig:
             raise ValueError("tolerance must be positive.")
 
     def corrected_pole_figures(self, pole_figures: Sequence[PoleFigure]) -> tuple[PoleFigure, ...]:
+        """Apply this configuration's correction spec to a set of pole figures.
+
+        Returns the input unchanged when no correction is configured, so the
+        call is always safe to make.
+        """
+
         if self.correction is None:
             return tuple(pole_figures)
         return tuple(self.correction.apply(pole_figure) for pole_figure in pole_figures)
@@ -162,6 +263,28 @@ class ODFReconstructionConfig:
         *,
         orientation_dictionary: object | None = None,
     ) -> ODFInversionReport | HarmonicODFReconstructionReport:
+        """Run the configured PF-to-ODF reconstruction.
+
+        Purpose
+        -------
+        One entry point that applies the correction spec and then dispatches to
+        the chosen inversion algorithm, so the correction can never be
+        accidentally skipped between the two steps.
+
+        Parameters
+        ----------
+        pole_figures : sequence of PoleFigure
+            The measured figures.
+        orientation_dictionary : OrientationSet, optional
+            Required by the ``"discrete"`` algorithm, which needs a support to
+            place weights on; unused by the harmonic algorithm.
+
+        Returns
+        -------
+        ODFInversionReport or HarmonicODFReconstructionReport
+            Depending on the configured algorithm.
+        """
+
         corrected = self.corrected_pole_figures(pole_figures)
         if self.algorithm == "discrete":
             if orientation_dictionary is None:
@@ -194,6 +317,13 @@ def residual_reports_for_pole_figures(
     include_symmetry_family: bool = True,
     provenance: ProvenanceRecord | None = None,
 ) -> tuple[PoleFigureResidualReport, ...]:
+    """Residual reports for an ODF against several measured pole figures.
+
+    The batch form of :meth:`PoleFigureResidualReport.from_odf`, and the
+    standard way to check a reconstruction against every figure that went
+    into it.
+    """
+
     return tuple(
         PoleFigureResidualReport.from_odf(
             odf,

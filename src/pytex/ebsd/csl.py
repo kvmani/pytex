@@ -87,9 +87,21 @@ class CSLType:
 
     @property
     def name(self) -> str:
+        """Conventional label of this coincidence-site-lattice boundary.
+
+        Formatted as ``Sigma<n>`` with a variant suffix, since some Sigma values
+        admit more than one distinct axis-angle boundary.
+        """
+
         return f"Sigma{self.sigma}{self.variant}"
 
     def matrix(self) -> np.ndarray:
+        """The rotation matrix of this CSL boundary's ideal misorientation.
+
+        Built from the tabulated axis and angle — for example Sigma3 as 60
+        degrees about ``<111>``, the coherent twin of cubic metals.
+        """
+
         axis = np.asarray(self.axis, dtype=np.float64)
         return _axis_angle_matrix(axis, math.radians(self.angle_deg))
 
@@ -108,6 +120,9 @@ class TwinLaw:
     csl: CSLType
 
     def matrix(self) -> np.ndarray:
+        """The rotation matrix of this twin law's ideal misorientation.
+        """
+
         return self.csl.matrix()
 
 

@@ -72,6 +72,15 @@ class ElasticTensor:
         object.__setattr__(self, "tensor", array)
 
     def voigt_matrix(self) -> np.ndarray:
+        """The ``6x6`` Voigt matrix of this fourth-rank tensor, read-only.
+
+        The compact engineering form in which elastic constants are tabulated.
+        Note that the Voigt convention differs between stiffness and compliance —
+        compliance carries factors of 2 and 4 on the shear terms — and the
+        conversion here follows whichever the concrete subclass is, so the two
+        never get mixed up.
+        """
+
         matrix = _tensor_to_voigt(self.tensor, compliance=self._compliance)
         matrix = np.ascontiguousarray(matrix)
         matrix.setflags(write=False)
@@ -105,6 +114,13 @@ class StiffnessTensor(ElasticTensor):
 
     @classmethod
     def from_voigt(cls, matrix: ArrayLike) -> StiffnessTensor:
+        """Stiffness tensor from a ``6x6`` Voigt matrix.
+
+        The matrix must be symmetric; this is checked, since an asymmetric
+        stiffness matrix violates the existence of a strain-energy density and
+        usually indicates a transcription error.
+        """
+
         voigt = np.asarray(matrix, dtype=np.float64)
         if voigt.shape != (6, 6):
             raise ValueError("Voigt stiffness matrix must have shape (6, 6).")
@@ -114,6 +130,17 @@ class StiffnessTensor(ElasticTensor):
 
     @classmethod
     def cubic(cls, c11: float, c12: float, c44: float) -> StiffnessTensor:
+        """Cubic stiffness tensor from the three independent constants.
+
+        Cubic symmetry leaves only ``C11``, ``C12``, and ``C44`` independent. The
+        Zener anisotropy ratio ``2*C44 / (C11 - C12)`` measures how far the
+        crystal is from isotropy: it equals 1 for tungsten and about 3.8 for
+        copper, which is why directional-modulus surfaces are near-spherical for
+        one and strongly lobed for the other.
+
+        Units are the caller's; they carry through to every derived modulus.
+        """
+
         matrix = np.zeros((6, 6), dtype=np.float64)
         for index in range(3):
             matrix[index, index] = c11
@@ -133,6 +160,14 @@ class StiffnessTensor(ElasticTensor):
         c33: float,
         c44: float,
     ) -> StiffnessTensor:
+        """Hexagonal stiffness tensor from the five independent constants.
+
+        Hexagonal (transversely isotropic) symmetry leaves ``C11``, ``C12``,
+        ``C13``, ``C33``, and ``C44`` independent; ``C66 = (C11 - C12) / 2``
+        follows from the symmetry and is applied here rather than being asked
+        for.
+        """
+
         c66 = 0.5 * (c11 - c12)
         matrix = np.array(
             [
@@ -149,6 +184,24 @@ class StiffnessTensor(ElasticTensor):
 
     @classmethod
     def isotropic(cls, *, youngs_modulus: float, poisson_ratio: float) -> StiffnessTensor:
+        """Isotropic stiffness tensor from Young's modulus and Poisson's ratio.
+
+        Purpose
+        -------
+        The reference case with no directional dependence — useful as a baseline
+        against which a real crystal's anisotropy is measured, and as a stand-in
+        when single-crystal constants are unavailable.
+
+        Parameters
+        ----------
+        youngs_modulus : float
+            Young's modulus; sets the unit of every derived quantity.
+        poisson_ratio : float
+            Poisson's ratio. Thermodynamic stability requires it to lie in
+            ``(-1, 0.5)``; values approaching 0.5 make the tensor
+            near-incompressible and numerically stiff.
+        """
+
         e = youngs_modulus
         nu = poisson_ratio
         factor = e / ((1.0 + nu) * (1.0 - 2.0 * nu))
@@ -158,23 +211,46 @@ class StiffnessTensor(ElasticTensor):
         return cls.cubic(c11, c12, c44)
 
     def compliance(self) -> ComplianceTensor:
+        """The compliance tensor, obtained by inverting the Voigt stiffness matrix.
+
+        Inverse of :meth:`ComplianceTensor.stiffness`. Directional moduli are
+        naturally expressed through compliance, which is why the directional
+        queries below delegate to it.
+        """
+
         voigt_compliance = np.linalg.inv(self.voigt_matrix())
         return ComplianceTensor(tensor=_voigt_to_tensor(voigt_compliance, compliance=True))
 
     def youngs_modulus(self, direction: ArrayLike) -> np.ndarray | float:
+        """Directional Young's modulus; see
+        :meth:`ComplianceTensor.youngs_modulus`.
+        """
+
         return self.compliance().youngs_modulus(direction)
 
     def linear_compressibility(self, direction: ArrayLike) -> np.ndarray | float:
+        """Directional linear compressibility; see
+        :meth:`ComplianceTensor.linear_compressibility`.
+        """
+
         return self.compliance().linear_compressibility(direction)
 
     def shear_modulus(
         self, plane_normal: ArrayLike, shear_direction: ArrayLike
     ) -> np.ndarray | float:
+        """Directional shear modulus; see
+        :meth:`ComplianceTensor.shear_modulus`.
+        """
+
         return self.compliance().shear_modulus(plane_normal, shear_direction)
 
     def poisson_ratio(
         self, direction: ArrayLike, transverse_direction: ArrayLike
     ) -> np.ndarray | float:
+        """Directional Poisson's ratio; see
+        :meth:`ComplianceTensor.poisson_ratio`.
+        """
+
         return self.compliance().poisson_ratio(direction, transverse_direction)
 
 
@@ -233,12 +309,23 @@ class ComplianceTensor(ElasticTensor):
 
     @classmethod
     def from_voigt(cls, matrix: ArrayLike) -> ComplianceTensor:
+        """Compliance tensor from a ``6x6`` Voigt compliance matrix.
+
+        The compliance Voigt convention carries factors of 2 and 4 on the shear
+        terms; the conversion applies them, so a compliance matrix must not be
+        passed to :meth:`StiffnessTensor.from_voigt` or the shear components will
+        be wrong by those factors.
+        """
+
         voigt = np.asarray(matrix, dtype=np.float64)
         if voigt.shape != (6, 6):
             raise ValueError("Voigt compliance matrix must have shape (6, 6).")
         return cls(tensor=_voigt_to_tensor(voigt, compliance=True))
 
     def stiffness(self) -> StiffnessTensor:
+        """The stiffness tensor, obtained by inverting the Voigt compliance matrix.
+        """
+
         voigt_stiffness = np.linalg.inv(self.voigt_matrix())
         return StiffnessTensor(tensor=_voigt_to_tensor(voigt_stiffness, compliance=False))
 
@@ -419,10 +506,19 @@ class DirectionalModulusSurface:
 
     @property
     def minimum(self) -> float:
+        """Smallest directional property value on the sampled surface.
+
+        For Young's modulus of a cubic metal this is the soft direction —
+        ``<100>`` when the Zener ratio exceeds 1, ``<111>`` when it is below.
+        """
+
         return float(np.min(self.values))
 
     @property
     def maximum(self) -> float:
+        """Largest directional property value on the sampled surface.
+        """
+
         return float(np.max(self.values))
 
     @property

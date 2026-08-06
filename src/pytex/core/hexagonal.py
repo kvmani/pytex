@@ -27,6 +27,19 @@ def _reduce_integer_tuple(values: Iterable[int]) -> IntArray:
 
 
 def direction_uvw_to_uvtw(uvw: ArrayLike) -> IntArray:
+    """One three-index direction ``[uvw]`` to four-index ``[UVTW]``.
+
+    Applies ``U = (2u - v)/3``, ``V = (2v - u)/3``, ``T = -(U + V)``,
+    ``W = w`` in exact rational arithmetic and clears denominators, so the
+    result is always an integer quadruple describing the same direction.
+    The four-index form exists so that the three symmetry-equivalent
+    ``<11-20>`` directions of a hexagonal crystal receive indices that are
+    permutations of one another, which the three-index form cannot do.
+
+    See :func:`~pytex.core.miller.direction_uvw_to_uvtw_array` for the
+    vectorized form.
+    """
+
     u, v, w = (int(value) for value in as_int_array(uvw, shape=(3,)))
     fractions = (
         Fraction(2 * u - v, 3),
@@ -42,6 +55,13 @@ def direction_uvw_to_uvtw(uvw: ArrayLike) -> IntArray:
 
 
 def direction_uvtw_to_uvw(uvtw: ArrayLike) -> IntArray:
+    """One four-index direction ``[UVTW]`` to three-index ``[uvw]``.
+
+    Applies ``u = 2U + V``, ``v = 2V + U``, ``w = W`` and reduces to lowest
+    terms. The redundancy constraint ``U + V + T = 0`` is checked, not
+    assumed, so a mistyped quadruple raises instead of silently converting.
+    """
+
     u4, v4, t4, w4 = (int(value) for value in as_int_array(uvtw, shape=(4,)))
     if u4 + v4 + t4 != 0:
         raise ValueError("Hexagonal four-index directions must satisfy U + V + T = 0.")
@@ -50,11 +70,21 @@ def direction_uvtw_to_uvw(uvtw: ArrayLike) -> IntArray:
 
 
 def plane_hkl_to_hkil(hkl: ArrayLike) -> IntArray:
+    """One three-index plane ``(hkl)`` to four-index ``(hkil)``.
+
+    Inserts the redundant index ``i = -(h + k)``.
+    """
+
     h, k, ell = (int(value) for value in as_int_array(hkl, shape=(3,)))
     return as_int_array((h, k, -(h + k), ell), shape=(4,))
 
 
 def plane_hkil_to_hkl(hkil: ArrayLike) -> IntArray:
+    """One four-index plane ``(hkil)`` to three-index ``(hkl)``.
+
+    Drops the redundant ``i`` after checking ``i = -(h + k)``.
+    """
+
     h, k, i, ell = (int(value) for value in as_int_array(hkil, shape=(4,)))
     if i != -(h + k):
         raise ValueError("Hexagonal four-index planes must satisfy i = -(h + k).")

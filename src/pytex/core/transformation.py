@@ -317,6 +317,43 @@ def _require_cubic_phase_for_bain(phase: Phase, *, role: str) -> None:
 
 @dataclass(frozen=True, slots=True)
 class OrientationRelationship:
+    """The fixed crystallographic relationship between a parent and a child phase.
+
+    Purpose
+    -------
+    The flagship object of the transformation subsystem. A phase
+    transformation does not produce arbitrary child orientations: the product
+    lattice inherits a definite relationship to the parent, stated in the
+    literature as a pair of parallelisms — Kurdjumov-Sachs as
+    ``(111)_gamma || (011)_alpha`` with ``[-101]_gamma || [-1-11]_alpha``.
+
+    This type holds both the rotation that statement implies *and* the
+    statement itself, so reports can restate the relationship in the terms it
+    was defined by rather than only as an angle.
+
+    Attributes
+    ----------
+    name : str
+        Non-empty identifier, carried into every derived report.
+    parent_phase, child_phase : Phase
+        Must be semantically distinct; a relationship between a phase and
+        itself is rejected.
+    parent_to_child_rotation : Rotation
+        The rotation taking parent crystal axes to child crystal axes.
+    parallel_directions : tuple of (CrystalDirection, CrystalDirection)
+        The direction parallelisms defining the relationship, as typed pairs
+        so phase and basis meaning are not lost.
+    parallel_planes : tuple of (CrystalPlane, CrystalPlane)
+        The plane parallelisms.
+    provenance : ProvenanceRecord, optional
+
+    Notes
+    -----
+    Because both phases carry symmetry, one relationship generates a family
+    of symmetry-equivalent :class:`TransformationVariant` realizations — 24
+    for Kurdjumov-Sachs, 12 for Nishiyama-Wassermann.
+    """
+
     name: str
     parent_phase: Phase
     child_phase: Phase
@@ -360,10 +397,16 @@ class OrientationRelationship:
 
     @property
     def parent_crystal_frame(self) -> ReferenceFrame:
+        """Crystal-domain reference frame of the parent phase.
+        """
+
         return self.parent_phase.crystal_frame
 
     @property
     def child_crystal_frame(self) -> ReferenceFrame:
+        """Crystal-domain reference frame of the child (product) phase.
+        """
+
         return self.child_phase.crystal_frame
 
     @classmethod
@@ -377,6 +420,39 @@ class OrientationRelationship:
         child_direction: CrystalDirection,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationRelationship:
+        """Build an orientation relationship from the parallelisms that define it.
+
+        Purpose
+        -------
+        The literature states an OR as a pair of parallelisms — Kurdjumov-Sachs
+        as ``(111)_gamma || (011)_alpha`` with ``[-101]_gamma || [-1-11]_alpha``.
+        This constructor turns that statement directly into the rotation it
+        implies, so a published OR can be reproduced without composing rotations
+        by hand.
+
+        Parameters
+        ----------
+        name : str
+            Identifier carried into reports and figures.
+        parent_plane, child_plane : CrystalPlane
+            The planes made parallel; the child normal is brought onto the
+            parent normal.
+        parent_direction, child_direction : CrystalDirection
+            The in-plane directions made parallel, fixing the remaining
+            rotation about the common normal. They need not be exactly
+            perpendicular to their plane normals; the normal component is
+            removed, so a slightly inconsistent literature statement still
+            yields a proper rotation.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        OrientationRelationship
+            Carrying both phases, the rotation, and the defining parallelisms —
+            which are kept so that reports can restate the OR in the terms it
+            was defined by.
+        """
+
         if not phases_semantically_match(parent_plane.phase, parent_direction.phase):
             raise ValueError("parent_plane.phase must match parent_direction.phase.")
         if not phases_semantically_match(child_plane.phase, child_direction.phase):
@@ -406,6 +482,19 @@ class OrientationRelationship:
         name: str = "bain",
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationRelationship:
+        """The Bain orientation relationship between two cubic phases.
+
+        Purpose
+        -------
+        The Bain correspondence is the minimum-strain lattice correspondence for
+        the FCC-to-BCC transformation: ``{100}`` planes and ``<100>`` directions
+        of the two lattices are held parallel. It is the reference against which
+        Kurdjumov-Sachs and Nishiyama-Wassermann are usually described, and the
+        starting point for phenomenological martensite theory.
+
+        Both phases must be cubic; this is checked rather than assumed.
+        """
+
         _require_cubic_phase_for_bain(parent_phase, role="parent")
         _require_cubic_phase_for_bain(child_phase, role="child")
         return cls.from_parallel_plane_direction(
@@ -432,6 +521,20 @@ class OrientationRelationship:
         name: str = "nishiyama_wassermann",
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationRelationship:
+        """The Nishiyama-Wassermann orientation relationship between cubic phases.
+
+        Purpose
+        -------
+        The NW relationship holds ``{111}_fcc || {110}_bcc`` with
+        ``<-1-12>_fcc || <-110>_bcc``, and generates 12 variants where
+        Kurdjumov-Sachs generates 24. NW and KS differ by only about 5.26
+        degrees, which is why distinguishing them from measured data needs the
+        residual statistics that
+        :func:`characterize_orientation_relationship` reports.
+
+        Both phases must be cubic; this is checked rather than assumed.
+        """
+
         _require_cubic_phase_for_bain(parent_phase, role="parent")
         _require_cubic_phase_for_bain(child_phase, role="child")
         return cls.from_parallel_plane_direction(
@@ -759,6 +862,18 @@ class OrientationRelationship:
         )
 
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        """Map a parent-crystal vector into the child crystal frame.
+
+        Applies the parent-to-child rotation. A ``VectorSet`` must carry the
+        parent crystal frame — checked, not assumed — and is returned re-framed
+        to the child crystal frame.
+
+        This maps *Cartesian directions*. To answer the index question — which
+        child ``(hkl)`` or ``[uvw]`` corresponds to a given parent one — use
+        the correspondence surfaces, which additionally rationalize to
+        low-integer indices and report the angular residual.
+        """
+
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.parent_crystal_frame:
                 raise ValueError(
@@ -773,6 +888,12 @@ class OrientationRelationship:
         return self.parent_to_child_rotation.apply(vector)
 
     def map_child_vector_to_parent(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        """Map a child-crystal vector into the parent crystal frame.
+
+        The inverse of :meth:`map_parent_vector_to_child`, with the same frame
+        checking and the same Cartesian-direction caveat.
+        """
+
         inverse = self.parent_to_child_rotation.inverse()
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.child_crystal_frame:
@@ -1259,6 +1380,22 @@ class OrientationRelationship:
         ).disorientation()
 
     def inverse(self, *, name: str | None = None) -> OrientationRelationship:
+        """The relationship with parent and child roles exchanged.
+
+        Purpose
+        -------
+        Turns a parent-to-child OR into the child-to-parent one, with the
+        rotation inverted and every parallelism pair reversed. Use it to reason
+        from the product phase back to the parent — the direction
+        parent-grain reconstruction works in.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name for the inverted relationship; defaults to
+            ``"<child>_to_<parent>"``.
+        """
+
         return OrientationRelationship(
             name=name or f"{self.child_phase.name}_to_{self.parent_phase.name}",
             parent_phase=self.child_phase,
@@ -1374,6 +1511,36 @@ class OrientationRelationship:
 
 @dataclass(frozen=True, slots=True)
 class TransformationVariant:
+    """One symmetry-equivalent realization of an orientation relationship.
+
+    Purpose
+    -------
+    A parent grain transforming under a given relationship can produce
+    several crystallographically equivalent child orientations, one per
+    combination of parent and child symmetry operators. These variants are
+    what a martensitic or bainitic microstructure is built from, and which
+    variants actually appear — variant selection — is the observable
+    signature of the transformation mechanism.
+
+    Attributes
+    ----------
+    orientation_relationship : OrientationRelationship
+        The relationship this variant realizes.
+    variant_index : int
+        One-based index; strictly positive.
+    parent_operator_index, child_operator_index : int
+        Which symmetry operators generated this variant. Note that the
+        numbering is an enumeration-order artefact and does not by itself
+        match a published variant table.
+    parent_to_child_rotation : Rotation
+        This variant's specific rotation.
+    habit_plane_pairs : tuple of (CrystalPlane, CrystalPlane)
+        Descriptive only. Habit planes are *not* computed here; populating
+        this slot requires invariant-line or phenomenological martensite
+        theory, which the library does not yet implement.
+    provenance : ProvenanceRecord, optional
+    """
+
     orientation_relationship: OrientationRelationship
     variant_index: int
     parent_operator_index: int
@@ -1405,6 +1572,14 @@ class TransformationVariant:
         object.__setattr__(self, "habit_plane_pairs", tuple(plane_pairs))
 
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
+        """Map a parent-crystal vector into this variant's child crystal frame.
+
+        Each transformation variant is a distinct symmetry-related realization
+        of the orientation relationship, so the same parent direction maps to a
+        different child direction in each. A ``VectorSet`` must carry the parent
+        crystal frame and is returned re-framed to the child crystal frame.
+        """
+
         if isinstance(vector, VectorSet):
             if vector.reference_frame != self.orientation_relationship.parent_crystal_frame:
                 raise ValueError(
@@ -1739,14 +1914,33 @@ class ORDeviationReport:
 
     @property
     def mean_deviation_deg(self) -> float:
+        """Mean angular departure of the measured pairs from the nominal OR.
+
+        The headline goodness-of-fit number: how well the nominal relationship
+        describes the data, in degrees.
+        """
+
         return float(np.mean(self.deviations_deg))
 
     @property
     def median_deviation_deg(self) -> float:
+        """Median angular departure, in degrees.
+
+        More robust than the mean to a few badly indexed pairs, and the more
+        honest statistic when the pair set contains outliers.
+        """
+
         return float(np.median(self.deviations_deg))
 
     @property
     def max_deviation_deg(self) -> float:
+        """Largest angular departure over the measured pairs, in degrees.
+
+        The worst-case number. A large maximum with a small median usually means
+        misindexed points or a second, unaccounted-for relationship, rather than
+        a poor overall fit.
+        """
+
         return float(np.max(self.deviations_deg))
 
     def describe(self) -> str:
@@ -1870,10 +2064,20 @@ class OrientationRelationshipFitReport:
 
     @property
     def mean_residual_deg(self) -> float:
+        """Mean angular residual of the fitted relationship, in degrees.
+
+        The fit-quality number for a *fitted* OR. Compare it against the
+        deviation from the nearest catalogued relationship to judge whether the
+        data support a named OR or a genuinely distinct one.
+        """
+
         return float(np.mean(self.residuals_deg))
 
     @property
     def max_residual_deg(self) -> float:
+        """Largest angular residual of the fitted relationship, in degrees.
+        """
+
         return float(np.max(self.residuals_deg))
 
     def describe(self) -> str:
@@ -2232,6 +2436,13 @@ class ParallelismReport:
         object.__setattr__(self, "matches", tuple(self.matches))
 
     def describe(self) -> str:
+        """Prose summary of the parallel plane or direction matches found.
+
+        States the relationship, the tolerance, and each match as a
+        variant-indexed parallelism with its angular deviation, using
+        crystallographic index notation.
+        """
+
         formatter = format_plane_indices if self.kind == "plane" else format_direction_indices
         noun = "plane" if self.kind == "plane" else "direction"
         lines = [
@@ -2828,10 +3039,16 @@ class ORCharacterizationReport:
 
     @property
     def mean_residual_deg(self) -> float:
+        """Mean angular residual of the characterization, in degrees.
+        """
+
         return float(np.mean(self.residuals_deg))
 
     @property
     def max_residual_deg(self) -> float:
+        """Largest angular residual of the characterization, in degrees.
+        """
+
         return float(np.max(self.residuals_deg))
 
     @property
@@ -3374,6 +3591,9 @@ class VariantPoleFigure:
 
     @property
     def variant_count(self) -> int:
+        """Number of distinct variants contributing poles to this figure.
+        """
+
         return int(np.unique(self.variant_indices).size)
 
     def describe(self) -> str:
@@ -3595,6 +3815,9 @@ class VariantCorrespondenceTable:
 
     @property
     def variant_indices(self) -> tuple[int, ...]:
+        """The variant indices present in the table, in first-appearance order.
+        """
+
         seen: list[int] = []
         for row in self.rows:
             if row.variant_index not in seen:
@@ -3902,6 +4125,36 @@ def variant_correspondence_table(
 
 @dataclass(frozen=True, slots=True)
 class PhaseTransformationRecord:
+    """A measured parent orientation with its child orientations and their OR.
+
+    Purpose
+    -------
+    The unit of transformation-crystallography analysis: what transformed
+    into what, under which relationship, through which variants. It is the
+    input to variant-selection statistics, to deviation analysis, and to
+    parent-grain reconstruction.
+
+    Construction cross-checks that the parent and child orientations belong
+    to the phases the relationship declares, so a record cannot silently pair
+    data with the wrong relationship.
+
+    Attributes
+    ----------
+    name : str
+        Non-empty identifier.
+    orientation_relationship : OrientationRelationship
+    parent_orientation : Orientation
+        Its phase must match the relationship's parent phase.
+    child_orientations : OrientationSet
+        Their phase must match the relationship's child phase.
+    variant_indices : np.ndarray, optional
+        One variant index per child, when the assignment has been made.
+        ``None`` means unassigned, not "all variant 1".
+    notes : tuple of str
+        Free-text remarks, including honest limitations of the record.
+    provenance : ProvenanceRecord, optional
+    """
+
     name: str
     orientation_relationship: OrientationRelationship
     parent_orientation: Orientation
@@ -3949,11 +4202,40 @@ class PhaseTransformationRecord:
 
     @property
     def variant_count(self) -> int:
+        """Number of distinct transformation variants referenced by this record.
+
+        Zero when no variant assignment was made.
+        """
+
         if self.variant_indices is None:
             return 0
         return int(np.unique(self.variant_indices).size)
 
     def predicted_child_orientations(self) -> OrientationSet:
+        """The child orientations this record's OR and variants predict.
+
+        Purpose
+        -------
+        The forward model of the transformation: apply each assigned variant to
+        its parent orientation and report the child orientation it implies.
+        Comparing these against the measured child orientations is what makes
+        a variant assignment falsifiable.
+
+        Convention
+        ----------
+        Composed as ``g_child = g_parent . V^T`` in the crystal-to-specimen
+        convention. The transpose is not cosmetic: composing as ``V . g_parent``
+        is a different, wrong prediction that self-consistent synthetic tests
+        cannot detect but real measured orientations expose immediately.
+
+        Returns
+        -------
+        OrientationSet
+            One predicted orientation per child, in record order. When no
+            variant indices are present the base relationship is applied to
+            every pair.
+        """
+
         child_count = len(self.child_orientations)
         if self.variant_indices is None:
             base = self.orientation_relationship.parent_to_child_rotation.as_matrix()

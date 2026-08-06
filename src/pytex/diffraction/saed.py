@@ -62,6 +62,23 @@ def _enumerate_zone_hkls(max_index: int) -> np.ndarray:
 
 @dataclass(frozen=True, slots=True)
 class SAEDSpot:
+    """One reflection in a simulated selected-area electron diffraction pattern.
+
+    Attributes
+    ----------
+    miller_indices : np.ndarray
+        The reflection ``(hkl)``.
+    detector_coordinates : np.ndarray
+        Position on the detector in millimetres, at radius proportional to
+        ``|g|`` through the camera constant.
+    g_magnitude_inv_angstrom : float
+    d_spacing_angstrom : float
+    intensity : float
+        Kinematic and relative.
+    label : str
+        Rendered index label, empty when the spot is beyond the label limit.
+    """
+
     miller_indices: np.ndarray
     reciprocal_vector_crystal: np.ndarray
     reciprocal_vector_detector: np.ndarray
@@ -95,6 +112,31 @@ class SAEDSpot:
 
 @dataclass(frozen=True, slots=True)
 class SAEDPattern:
+    """A simulated zone-axis electron diffraction pattern.
+
+    Purpose
+    -------
+    The spot pattern seen in a TEM with the beam along a given zone axis,
+    scaled by the camera constant so radial position is proportional to
+    ``|g|``.
+
+    Limits
+    ------
+    Kinematic and geometric: relative intensities are indicative rather than
+    quantitative, and double diffraction — which can make a formally
+    forbidden reflection appear — is not modelled.
+
+    Attributes
+    ----------
+    phase : Phase
+    zone_axis : ZoneAxis
+        The beam direction in crystal indices.
+    spots : tuple of SAEDSpot
+    camera_constant_mm_angstrom : float
+        The product ``L*lambda`` setting the pattern scale.
+    provenance : ProvenanceRecord, optional
+    """
+
     phase: Phase
     zone_axis: ZoneAxis
     detector_frame: ReferenceFrame
@@ -117,6 +159,12 @@ class SAEDPattern:
             raise ValueError("SAEDPattern.camera_constant_mm_angstrom must be positive.")
 
     def detector_extent_mm(self) -> float:
+        """A suggested plot half-extent covering all spots, in millimetres.
+
+        The largest spot radius plus 15 percent margin, so no spot sits on the
+        frame edge. Returns ``1.0`` for an empty pattern.
+        """
+
         if not self.spots:
             return 1.0
         radii = [float(np.linalg.norm(spot.detector_coordinates)) for spot in self.spots]
@@ -135,6 +183,52 @@ def generate_saed_pattern(
     label_limit: int = 20,
     provenance: ProvenanceRecord | None = None,
 ) -> SAEDPattern:
+    """Simulate a selected-area electron diffraction pattern down a zone axis.
+
+    Purpose
+    -------
+    The spot pattern seen in a TEM with the beam along ``[uvw]``: which
+    reflections of the zone appear, where they land on the detector, and how
+    strong they are.
+
+    Method and limits
+    -----------------
+    Kinematic and geometric. Reflections belonging to the zone are placed by
+    the camera constant ``L*lambda``, so radial position is proportional to
+    ``|g|``. Intensities come from electron structure factors with no
+    dynamical scattering, so relative intensities within a zone are
+    indicative rather than quantitative, and double diffraction — which can
+    make a formally forbidden reflection appear — is not modelled.
+
+    Parameters
+    ----------
+    phase : Phase
+        Must be the same phase the zone axis is defined on.
+    zone_axis : ZoneAxis
+        The beam direction in crystal indices.
+    camera_constant_mm_angstrom : float
+        The product ``L*lambda`` setting the pattern scale; the quantity a
+        real microscope is calibrated for.
+    max_index : int
+        Largest absolute Miller index enumerated.
+    max_g_inv_angstrom : float, optional
+        Radial cut-off in reciprocal space, equivalent to the recorded
+        detector extent.
+    zone_tolerance_inv_angstrom : float
+        Tolerance on the zone-law condition, standing in for the finite
+        thickness of the Ewald-sphere intersection.
+    intensity_model : str
+        ``"electron_atomic_number"`` (default) or ``"unit"``.
+    label_limit : int
+        Maximum number of spots to label, so a dense pattern stays legible.
+    provenance : ProvenanceRecord, optional
+
+    Returns
+    -------
+    SAEDPattern
+        Spots with indices, detector coordinates, and intensities.
+    """
+
     if zone_axis.phase != phase:
         raise ValueError("zone_axis.phase must match phase.")
     if camera_constant_mm_angstrom <= 0.0:

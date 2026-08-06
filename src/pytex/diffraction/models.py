@@ -123,6 +123,45 @@ def _reflection_family_key(miller_indices: np.ndarray, phase: Phase) -> tuple[fl
 
 @dataclass(frozen=True, slots=True)
 class DiffractionGeometry:
+    """The complete geometry of a diffraction experiment.
+
+    Purpose
+    -------
+    The single authority on where a diffracted beam lands and what angle it
+    corresponds to. Detector position, orientation, pixel size, beam energy,
+    and the specimen-to-laboratory relationship are held together so that no
+    projection has to re-derive them, and so that frame domains stay
+    separate: the detector, specimen, and laboratory frames are distinct and
+    are checked as such at construction.
+
+    Attributes
+    ----------
+    detector_frame, specimen_frame, laboratory_frame : ReferenceFrame
+        Must belong to their respective domains; enforced.
+    beam_energy_kev : float
+        Accelerating voltage, from which the relativistically corrected
+        electron wavelength follows.
+    camera_length_mm : float
+        Specimen-to-detector distance along the detector normal.
+    pattern_center : np.ndarray
+        ``(x, y, z)``; the in-plane components are fractions of the detector
+        extent in ``[0, 1]``, and ``z`` is a positive distance fraction.
+    detector_pixel_size_um : tuple of float
+        Per-axis pixel size, so non-square pixels are handled correctly.
+    detector_shape : tuple of int
+        ``(height, width)`` in pixels.
+    beam_direction_lab : np.ndarray
+        Incident beam direction; normalized on construction.
+    specimen_to_lab_matrix : np.ndarray
+        Must be a proper rotation; enforced.
+    tilt_degrees : tuple of float
+        Detector tilt as an X-Y-Z rotation sequence.
+    acquisition_geometry, calibration_record, measurement_quality,
+    scattering_setup, provenance : optional
+        Context records. When supplied they are cross-checked against the
+        explicit fields above, so the two cannot disagree silently.
+    """
+
     detector_frame: ReferenceFrame
     specimen_frame: ReferenceFrame
     laboratory_frame: ReferenceFrame
@@ -293,6 +332,15 @@ class DiffractionGeometry:
         referenced_files: tuple[str, ...] = (),
         metadata: dict[str, str] | None = None,
     ) -> ExperimentManifest:
+        """Export this geometry as a schema-validated experiment manifest.
+
+        Synthesizes a minimal acquisition geometry when none is attached, and
+        records camera length, detector shape, and pixel size as metadata. The
+        manifest states explicitly that the specimen-to-detector transform was
+        taken as the nominal identity when no measured transform was available,
+        so a downstream reader is never misled about calibration provenance.
+        """
+
         from pytex.adapters import ExperimentManifest
 
         acquisition_geometry = self.acquisition_geometry
@@ -341,6 +389,14 @@ class DiffractionGeometry:
 
     @property
     def electron_wavelength_angstrom(self) -> float:
+        """Relativistically corrected electron wavelength, in angstroms.
+
+        Evaluates ``lambda = 12.2639 / sqrt(V (1 + 0.97845e-6 V))`` with ``V``
+        the accelerating voltage in volts. The correction matters: at 200 kV the
+        non-relativistic value is about 6 percent too large, which would
+        misplace every simulated spot.
+        """
+
         voltage = self.beam_energy_kev * 1000.0
         numerator = 12.2639
         denominator = np.sqrt(voltage * (1.0 + 0.97845e-6 * voltage))
@@ -348,10 +404,22 @@ class DiffractionGeometry:
 
     @property
     def ewald_sphere_radius_inv_angstrom(self) -> float:
+        """Radius of the Ewald sphere, ``1 / lambda``, in inverse angstroms.
+
+        The scale that decides how nearly flat the sphere is over the pattern —
+        the reason electron patterns show a whole zone at once while X-ray
+        patterns do not.
+        """
+
         return float(1.0 / self.electron_wavelength_angstrom)
 
     @property
     def incident_wavevector_lab(self) -> np.ndarray:
+        """Incident wavevector ``k_0`` in the laboratory frame, in inverse angstroms.
+
+        Magnitude ``1 / lambda`` along the beam direction. Read-only.
+        """
+
         wavevector = self.beam_direction_lab / self.electron_wavelength_angstrom
         wavevector = np.ascontiguousarray(wavevector)
         wavevector.setflags(write=False)
@@ -359,6 +427,12 @@ class DiffractionGeometry:
 
     @property
     def pattern_center_px(self) -> np.ndarray:
+        """Pattern centre in pixel coordinates, as ``(u, v)``.
+
+        Converted from the stored fractional pattern centre using the detector
+        shape. Read-only.
+        """
+
         width_px = self.detector_shape[1]
         height_px = self.detector_shape[0]
         center = np.array(
@@ -373,6 +447,20 @@ class DiffractionGeometry:
 
     @property
     def detector_basis_lab(self) -> np.ndarray:
+        """Detector axes expressed in the laboratory frame, as columns ``(u, v, n)``.
+
+        Purpose
+        -------
+        The single definition of detector orientation that every projection and
+        back-projection in this class goes through, so no other code needs to
+        re-derive it.
+
+        The third column is the detector normal. The in-plane axes are
+        constructed orthogonal to the beam and then rotated by the configured
+        X-Y-Z tilt sequence, so a tilted detector is handled without the caller
+        composing rotations by hand. Read-only.
+        """
+
         beam = self.beam_direction_lab
         trial_up = np.array([0.0, 1.0, 0.0], dtype=np.float64)
         if np.isclose(abs(float(np.dot(beam, trial_up))), 1.0, atol=1e-8):
@@ -392,6 +480,12 @@ class DiffractionGeometry:
         return basis
 
     def specimen_vectors_to_lab(self, vectors: np.ndarray) -> np.ndarray:
+        """Map specimen-frame vectors into the laboratory frame.
+
+        Applies the stored specimen-to-laboratory rotation. Accepts any array
+        ending in dimension 3 and returns a read-only array.
+        """
+
         array = np.asarray(vectors, dtype=np.float64)
         if array.shape[-1] != 3:
             raise ValueError("Specimen vectors must end with dimension 3.")
@@ -401,6 +495,11 @@ class DiffractionGeometry:
         return mapped
 
     def lab_vectors_to_specimen(self, vectors: np.ndarray) -> np.ndarray:
+        """Map laboratory-frame vectors into the specimen frame.
+
+        The inverse of :meth:`specimen_vectors_to_lab`.
+        """
+
         array = np.asarray(vectors, dtype=np.float64)
         if array.shape[-1] != 3:
             raise ValueError("Laboratory vectors must end with dimension 3.")
@@ -410,6 +509,12 @@ class DiffractionGeometry:
         return mapped
 
     def detector_coordinates_mm(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Detector-plane offsets from the pattern centre, in millimetres.
+
+        Converts pixel coordinates using the per-axis pixel size, so
+        non-square pixels are handled correctly. Returns ``(n, 2)``, read-only.
+        """
+
         detector_pixels = as_float_array(coordinates_px, shape=(None, 2))
         pixel_size_mm = np.array(self.detector_pixel_size_um, dtype=np.float64) / 1000.0
         offsets_mm = (detector_pixels - self.pattern_center_px[None, :]) * pixel_size_mm[None, :]
@@ -418,6 +523,13 @@ class DiffractionGeometry:
         return offsets_mm
 
     def detector_points_lab_mm(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Laboratory-frame positions of detector pixels, in millimetres.
+
+        Places each pixel on the detector plane at the configured camera length
+        along the detector normal, offset by its in-plane coordinates. Returns
+        ``(n, 3)``, read-only.
+        """
+
         offsets_mm = self.detector_coordinates_mm(coordinates_px)
         basis = self.detector_basis_lab
         center_lab = basis[:, 2] * self.camera_length_mm
@@ -431,6 +543,12 @@ class DiffractionGeometry:
         return points_lab
 
     def outgoing_directions_lab(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Unit scattered-beam directions for the given detector pixels.
+
+        The direction from the specimen to each pixel — the geometric input to
+        :meth:`scattering_vectors_lab` and :meth:`two_theta_rad`.
+        """
+
         directions = normalize_vectors(self.detector_points_lab_mm(coordinates_px))
         directions = np.ascontiguousarray(directions)
         directions.setflags(write=False)
@@ -439,6 +557,28 @@ class DiffractionGeometry:
     def project_directions_to_detector_px(
         self, directions_lab: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Project laboratory directions onto the detector, in pixels.
+
+        Purpose
+        -------
+        The forward projection every simulation uses: given a diffracted beam
+        direction, where does it land on the detector?
+
+        Parameters
+        ----------
+        directions_lab : np.ndarray
+            ``(n, 3)`` directions in the laboratory frame; normalized
+            internally.
+
+        Returns
+        -------
+        tuple of (np.ndarray, np.ndarray)
+            ``(n, 2)`` pixel coordinates and an ``(n,)`` validity mask. Beams
+            travelling away from the detector, or parallel to its plane, cannot
+            intersect it: those rows are ``NaN`` and are flagged ``False``
+            rather than silently projected to a spurious position.
+        """
+
         directions = normalize_vectors(directions_lab)
         basis = self.detector_basis_lab
         detector_normal = basis[:, 2]
@@ -463,6 +603,12 @@ class DiffractionGeometry:
         return coordinates_px, valid
 
     def scattering_vectors_lab(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Scattering vectors ``q = k - k_0`` for the given pixels.
+
+        In the laboratory frame and in inverse angstroms. The quantity compared
+        against reciprocal-lattice vectors when a pattern is indexed.
+        """
+
         outgoing = self.outgoing_directions_lab(coordinates_px)
         wavelength = self.electron_wavelength_angstrom
         incident_wavevector = self.beam_direction_lab[None, :] / wavelength
@@ -473,6 +619,11 @@ class DiffractionGeometry:
         return scattering
 
     def two_theta_rad(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Scattering angle ``2*theta`` at the given pixels, in radians.
+
+        Measured from the incident beam direction.
+        """
+
         outgoing = self.outgoing_directions_lab(coordinates_px)
         cos_angles = np.clip(outgoing @ self.beam_direction_lab, -1.0, 1.0)
         angles = np.arccos(cos_angles)
@@ -481,6 +632,13 @@ class DiffractionGeometry:
         return angles
 
     def azimuth_rad(self, coordinates_px: np.ndarray) -> np.ndarray:
+        """Azimuthal angle of the given pixels about the beam, in radians.
+
+        Measured in the detector plane from the detector ``u`` axis, in
+        ``(-pi, pi]``. Together with :meth:`two_theta_rad` this gives the polar
+        coordinates used for ring integration and texture-resolved analysis.
+        """
+
         outgoing = self.outgoing_directions_lab(coordinates_px)
         basis = self.detector_basis_lab
         u_coords = outgoing @ basis[:, 0]
@@ -491,6 +649,14 @@ class DiffractionGeometry:
         return azimuth
 
     def bragg_two_theta_rad(self, d_spacing_angstrom: float) -> float:
+        """Bragg angle ``2*theta`` for a given interplanar spacing, in radians.
+
+        Solves ``lambda = 2 d sin(theta)`` at first order using this geometry's
+        electron wavelength. Raises when the spacing is too small to satisfy the
+        Bragg condition at this wavelength, rather than returning a clipped
+        angle that would look plausible and be wrong.
+        """
+
         if d_spacing_angstrom <= 0.0:
             raise ValueError("d_spacing_angstrom must be strictly positive.")
         argument = self.electron_wavelength_angstrom / (2.0 * d_spacing_angstrom)
@@ -499,19 +665,57 @@ class DiffractionGeometry:
         return float(2.0 * np.arcsin(np.clip(argument, -1.0, 1.0)))
 
     def ring_radius_mm(self, two_theta_rad: float) -> float:
+        """Detector radius of a diffraction ring at a given ``2*theta``.
+
+        ``L tan(2 theta)`` for camera length ``L``. Note the tangent: the common
+        small-angle form ``L * 2 theta`` is an approximation, and this is not
+        it.
+        """
+
         if two_theta_rad < 0.0:
             raise ValueError("two_theta_rad must be non-negative.")
         return float(self.camera_length_mm * np.tan(two_theta_rad))
 
     def ring_radius_mm_for_d_spacing(self, d_spacing_angstrom: float) -> float:
+        """Detector ring radius for a given interplanar spacing, in millimetres.
+
+        Composes :meth:`bragg_two_theta_rad` with :meth:`ring_radius_mm` — the
+        calculation behind camera-constant calibration, since the product of
+        ring radius and d-spacing is the camera constant.
+        """
+
         return self.ring_radius_mm(self.bragg_two_theta_rad(d_spacing_angstrom))
 
     def ring_radius_mm_for_plane(self, plane: CrystalPlane) -> float:
+        """Detector ring radius for a given crystal plane, in millimetres.
+
+        The typed form of :meth:`ring_radius_mm_for_d_spacing`.
+        """
+
         return self.ring_radius_mm_for_d_spacing(plane.d_spacing_angstrom)
 
 
 @dataclass(frozen=True, slots=True)
 class DetectorAcceptanceMask:
+    """Which region of a detector counts as usable.
+
+    Purpose
+    -------
+    A simulated reflection may project outside the physical detector, onto
+    its unusable border, or beyond a useful radius. Declaring acceptance once
+    means simulation, indexing, and scoring all agree on which spots were
+    observable in principle — the distinction between "not predicted" and
+    "predicted but unobservable".
+
+    Attributes
+    ----------
+    inset_px : tuple of float
+        Border to exclude on each axis, in pixels.
+    max_radius_px : float, optional
+        Radial cut-off from the pattern centre. ``None`` means no radial
+        limit.
+    """
+
     inset_px: tuple[float, float] = (0.0, 0.0)
     max_radius_px: float | None = None
 
@@ -534,6 +738,29 @@ class DetectorAcceptanceMask:
         object.__setattr__(self, "inset_px", inset)
 
     def contains(self, geometry: DiffractionGeometry, coordinates_px: np.ndarray) -> np.ndarray:
+        """Which detector coordinates the mask accepts.
+
+        Purpose
+        -------
+        A simulated reflection can project outside the physical detector, onto
+        its unusable border, or beyond the useful radius. This decides
+        acceptance once so simulation, indexing, and scoring all agree on which
+        spots were observable in principle.
+
+        Parameters
+        ----------
+        geometry : DiffractionGeometry
+            Supplies detector shape and pattern centre.
+        coordinates_px : np.ndarray
+            ``(n, 2)`` pixel coordinates.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n,)`` boolean acceptance mask, read-only. Non-finite coordinates
+            — the output of a failed projection — are rejected.
+        """
+
         coordinates = as_float_array(coordinates_px, shape=(None, 2))
         finite = np.all(np.isfinite(coordinates), axis=1)
         inset_u, inset_v = self.inset_px
@@ -562,6 +789,30 @@ class DetectorAcceptanceMask:
 
 @dataclass(frozen=True, slots=True)
 class ReflectionFamily:
+    """A group of symmetry-equivalent reflections in a simulation.
+
+    Purpose
+    -------
+    Symmetry-equivalent reflections carry the same structure factor and
+    d-spacing, so they succeed or fail together. Grouping them lets an
+    indexing report say *which family* went unmatched, which distinguishes a
+    wrong centring or wrong phase from a wrong orientation.
+
+    Attributes
+    ----------
+    representative_miller_indices : np.ndarray
+        The family's representative ``(hkl)``.
+    member_miller_indices : np.ndarray
+        ``(m, 3)`` all members of the family.
+    representative_spot_index : int
+    spot_indices : np.ndarray
+        Indices of the simulated spots belonging to this family.
+    multiplicity : int
+        Family size; strictly positive.
+    total_intensity : float
+        Summed intensity over the family's spots.
+    """
+
     representative_miller_indices: np.ndarray
     member_miller_indices: np.ndarray
     representative_spot_index: int
@@ -597,6 +848,33 @@ class ReflectionFamily:
 
 @dataclass(frozen=True, slots=True)
 class KinematicSpot:
+    """One simulated reflection, with its geometry and intensity.
+
+    Attributes
+    ----------
+    miller_indices : np.ndarray
+        The reflection ``(hkl)``.
+    reciprocal_vector_lab : np.ndarray
+        ``g`` in the laboratory frame, in inverse angstroms.
+    outgoing_direction_lab : np.ndarray
+        Unit diffracted-beam direction.
+    detector_coordinates_px : np.ndarray
+        Where the beam meets the detector.
+    excitation_error_inv_angstrom : float
+        Distance from the Ewald sphere. Zero is exact Bragg; the further from
+        zero, the weaker the reflection.
+    intensity : float
+        Kinematic intensity, relative and not absolute.
+    two_theta_rad, azimuth_rad : float
+        Detector polar coordinates of the spot.
+    on_detector : bool
+        Whether the beam intersects the detector plane at all.
+    accepted_by_mask : bool
+        Whether it also falls inside the acceptance mask.
+    family_id : int, optional
+        Index into the simulation's reflection families.
+    """
+
     miller_indices: np.ndarray
     reciprocal_vector_lab: np.ndarray
     outgoing_direction_lab: np.ndarray
@@ -651,6 +929,35 @@ class KinematicSpot:
 
 @dataclass(frozen=True, slots=True)
 class KinematicSimulation:
+    """A simulated kinematic diffraction pattern with its full context.
+
+    Purpose
+    -------
+    The forward model that pattern indexing inverts: given geometry, phase,
+    and orientation, the reflections that appear and where. It also carries
+    the matching and orientation-search entry points, so simulation and
+    comparison stay bound to the same conventions.
+
+    Limits
+    ------
+    Kinematic (single-scattering) throughout. Multiple scattering, dynamical
+    intensity transfer, and absorption are not modelled, so intensities are
+    indicative; relative intensities within one zone are the meaningful
+    output.
+
+    Attributes
+    ----------
+    geometry : DiffractionGeometry
+    phase : Phase
+    spots : tuple of KinematicSpot
+        Every simulated reflection, including those off the detector. Use
+        :meth:`accepted_spots` when comparing against a measurement.
+    reflection_families : tuple of ReflectionFamily
+    orientation : Orientation, optional
+    zone_axis : ZoneAxis, optional
+    provenance : ProvenanceRecord, optional
+    """
+
     geometry: DiffractionGeometry
     phase: Phase
     spots: tuple[KinematicSpot, ...]
@@ -660,6 +967,12 @@ class KinematicSimulation:
     provenance: ProvenanceRecord | None = None
 
     def accepted_spots(self) -> tuple[KinematicSpot, ...]:
+        """The simulated spots that fell inside the detector acceptance mask.
+
+        Use these, not :attr:`spots`, when comparing against a measurement: the
+        rejected ones were never observable.
+        """
+
         return tuple(spot for spot in self.spots if spot.accepted_by_mask)
 
     @classmethod
@@ -680,6 +993,34 @@ class KinematicSimulation:
         cluster_radius_px: float = 5.0,
         use_only_accepted: bool = True,
     ) -> tuple[OrientationIndexingCandidate, ...]:
+        """Score a list of candidate orientations against an observed pattern.
+
+        Purpose
+        -------
+        Orientation determination by exhaustive comparison: simulate the pattern
+        for each candidate, match it to the observation, and rank by agreement.
+        This is the geometric ancestor of dictionary indexing.
+
+        Parameters
+        ----------
+        geometry, phase, miller_indices : see :meth:`simulate_spots`.
+        pattern : DiffractionPattern
+            The observation to match against.
+        candidate_orientations : list of Orientation or OrientationSet
+            The search space. Its resolution bounds the achievable angular
+            accuracy; refine the winner with
+            :meth:`refine_orientation_candidate`.
+        zone_axis, max_excitation_error_inv_angstrom, intensity_model,
+        excitation_sigma_inv_angstrom, acceptance_mask : see :meth:`simulate_spots`.
+        max_distance_px, cluster_radius_px, use_only_accepted : see
+            :meth:`associate_to_pattern`.
+
+        Returns
+        -------
+        tuple of OrientationIndexingCandidate
+            Sorted best first by :attr:`IndexingCandidate.score`.
+        """
+
         if isinstance(candidate_orientations, OrientationSet):
             orientations = [
                 candidate_orientations[index] for index in range(len(candidate_orientations))
@@ -743,6 +1084,42 @@ class KinematicSimulation:
         step_deg: float = 1.0,
         iterations: int = 2,
     ) -> OrientationRefinementResult:
+        """Locally refine an orientation estimate against an observed pattern.
+
+        Purpose
+        -------
+        Improve an orientation beyond the resolution of the coarse candidate
+        list, by searching a shrinking neighbourhood around the current best.
+
+        Method
+        ------
+        Iterative local grid search: at each iteration, orientations within
+        ``search_half_width_deg`` are sampled at ``step_deg``, scored as in
+        :meth:`rank_orientation_candidates`, and the best becomes the next
+        centre with a reduced step. This is a local search — it improves a good
+        estimate and cannot recover from a wrong one.
+
+        Parameters
+        ----------
+        initial_orientation : Orientation
+            Starting estimate, typically the winner from
+            :meth:`rank_orientation_candidates`.
+        search_half_width_deg : float
+            Half-width of the first search neighbourhood.
+        step_deg : float
+            Initial angular step.
+        iterations : int
+            Number of refinement rounds.
+        Other parameters : see :meth:`simulate_spots` and
+            :meth:`associate_to_pattern`.
+
+        Returns
+        -------
+        OrientationRefinementResult
+            The refined orientation and the score history, so convergence can be
+            inspected rather than assumed.
+        """
+
         if search_half_width_deg < 0.0:
             raise ValueError("search_half_width_deg must be non-negative.")
         if step_deg <= 0.0:
@@ -852,6 +1229,35 @@ class KinematicSimulation:
         cluster_radius_px: float = 5.0,
         use_only_accepted: bool = True,
     ) -> IndexingCandidate:
+        """Match this simulation's spots against an observed pattern.
+
+        Purpose
+        -------
+        The assignment step of indexing: pair each observed spot cluster with
+        the nearest unused simulated reflection, and report what was left over
+        on both sides.
+
+        Parameters
+        ----------
+        pattern : DiffractionPattern
+            The observation. Its geometry and phase must equal this
+            simulation's; a mismatch raises rather than producing a meaningless
+            match.
+        max_distance_px : float
+            Largest accepted separation between an observation and its assigned
+            reflection.
+        cluster_radius_px : float
+            Radius used to merge raw detections into spot clusters first.
+        use_only_accepted : bool
+            Match only against detector-accepted spots (default).
+
+        Returns
+        -------
+        IndexingCandidate
+            Matches, unmatched observed clusters, and unmatched simulated spots
+            — the unmatched sets are as diagnostic as the matches.
+        """
+
         if pattern.geometry != self.geometry:
             raise ValueError("pattern.geometry must match simulation.geometry.")
         if pattern.phase != self.phase:
@@ -923,6 +1329,57 @@ class KinematicSimulation:
         deduplicate_families: bool = False,
         provenance: ProvenanceRecord | None = None,
     ) -> KinematicSimulation:
+        """Simulate a kinematic diffraction pattern on the detector.
+
+        Purpose
+        -------
+        Given a geometry, a phase, and a set of reflections, compute where each
+        reflection lands and how strong it is — the forward model that pattern
+        indexing inverts.
+
+        Method and limits
+        -----------------
+        Kinematic (single-scattering) theory throughout: intensities are
+        ``|F|^2`` modulated by an excitation-error term. Multiple scattering,
+        dynamical intensity transfer, and absorption are not modelled, so
+        absolute intensities are indicative and relative intensities within a
+        zone are the meaningful output.
+
+        Parameters
+        ----------
+        geometry : DiffractionGeometry
+            Detector, beam, and frame definitions.
+        phase : Phase
+            Supplies the lattice and scattering factors.
+        miller_indices : np.ndarray
+            ``(n, 3)`` integer-valued reflections to consider.
+        orientation : Orientation, optional
+            Crystal orientation. Must be consistent with ``phase`` when its
+            phase is set.
+        zone_axis : ZoneAxis, optional
+            Zone axis to align to, for zone-axis pattern simulation.
+        max_excitation_error_inv_angstrom : float
+            Reflections further than this from the Ewald sphere are dropped.
+            This is the relrod cut-off; widening it admits weaker, more
+            off-axis reflections.
+        intensity_model : str
+            Intensity weighting model, ``"kinematic_proxy"`` by default.
+        excitation_sigma_inv_angstrom : float
+            Width of the excitation-error falloff, standing in for specimen
+            thickness: a thinner foil gives longer relrods and a larger sigma.
+        acceptance_mask : DetectorAcceptanceMask, optional
+            Marks which spots would be observable.
+        deduplicate_families : bool
+            Collapse symmetry-equivalent reflections to one representative each.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        KinematicSimulation
+            Spots with Miller indices, detector coordinates, intensities, and
+            acceptance flags, plus reflection-family grouping.
+        """
+
         miller_array = as_float_array(miller_indices, shape=(None, 3))
         if max_excitation_error_inv_angstrom < 0.0:
             raise ValueError("max_excitation_error_inv_angstrom must be non-negative.")
@@ -1107,6 +1564,28 @@ class KinematicSimulation:
 
 @dataclass(frozen=True, slots=True)
 class DiffractionPattern:
+    """A measured diffraction pattern: spot positions and intensities.
+
+    Purpose
+    -------
+    The observation side of indexing. Because it carries its geometry and
+    phase, the detector coordinates can be converted to scattering vectors
+    and angles without the caller restating the experiment.
+
+    Attributes
+    ----------
+    coordinates_px : np.ndarray
+        ``(n, 2)`` detected positions in detector pixels.
+    intensities : np.ndarray
+        ``(n,)`` intensities; must be finite and non-negative.
+    geometry : DiffractionGeometry
+    phase : Phase
+    orientation : Orientation, optional
+        When known; its frames and phase are checked against the geometry
+        and phase rather than assumed compatible.
+    provenance : ProvenanceRecord, optional
+    """
+
     coordinates_px: np.ndarray
     intensities: np.ndarray
     geometry: DiffractionGeometry
@@ -1135,23 +1614,65 @@ class DiffractionPattern:
         object.__setattr__(self, "intensities", intensities)
 
     def detector_coordinates_mm(self) -> np.ndarray:
+        """Detector-plane offsets of the observed spots, in millimetres.
+        """
+
         return self.geometry.detector_coordinates_mm(self.coordinates_px)
 
     def outgoing_directions_lab(self) -> np.ndarray:
+        """Unit scattered-beam directions of the observed spots, in the lab frame.
+        """
+
         return self.geometry.outgoing_directions_lab(self.coordinates_px)
 
     def scattering_vectors_lab(self) -> np.ndarray:
+        """Scattering vectors ``q`` of the observed spots, in inverse angstroms.
+
+        These are the measured reciprocal-space positions that indexing compares
+        against computed reciprocal-lattice vectors.
+        """
+
         return self.geometry.scattering_vectors_lab(self.coordinates_px)
 
     def two_theta_rad(self) -> np.ndarray:
+        """Scattering angles ``2*theta`` of the observed spots, in radians.
+        """
+
         return self.geometry.two_theta_rad(self.coordinates_px)
 
     def azimuth_rad(self) -> np.ndarray:
+        """Azimuthal angles of the observed spots about the beam, in radians.
+        """
+
         return self.geometry.azimuth_rad(self.coordinates_px)
 
     def cluster_observations(
         self, *, max_distance_px: float = 5.0
     ) -> tuple[DetectedSpotCluster, ...]:
+        """Group nearby detections into spot clusters.
+
+        Purpose
+        -------
+        A measured spot usually appears as several detections. Indexing needs
+        one position per physical reflection, so detections within
+        ``max_distance_px`` of one another are merged by single-linkage
+        clustering and reduced to an intensity-weighted centroid — sub-pixel
+        accurate, and robust to asymmetric spot shapes.
+
+        Parameters
+        ----------
+        max_distance_px : float
+            Linkage radius. Too large merges genuinely distinct reflections;
+            too small splits one spot into several.
+
+        Returns
+        -------
+        tuple of DetectedSpotCluster
+            Each carrying its member detection indices, weighted centre, and
+            total intensity. Clusters of zero total intensity fall back to the
+            unweighted centroid.
+        """
+
         if max_distance_px <= 0.0:
             raise ValueError("max_distance_px must be strictly positive.")
         unassigned = set(range(self.coordinates_px.shape[0]))
@@ -1195,6 +1716,26 @@ class DiffractionPattern:
 
 @dataclass(frozen=True, slots=True)
 class DetectedSpotCluster:
+    """A group of detections merged into one observed reflection.
+
+    Purpose
+    -------
+    A measured spot usually appears as several detections. Indexing needs one
+    position per physical reflection, so detections are clustered and reduced
+    to an intensity-weighted centroid — sub-pixel accurate and robust to
+    asymmetric spot shapes.
+
+    Attributes
+    ----------
+    cluster_id : int
+    member_indices : np.ndarray
+        Indices of the detections merged; must be non-empty.
+    center_px : np.ndarray
+        Intensity-weighted centre.
+    total_intensity : float
+        Summed intensity; finite and non-negative.
+    """
+
     cluster_id: int
     member_indices: np.ndarray
     center_px: np.ndarray
@@ -1211,6 +1752,19 @@ class DetectedSpotCluster:
 
 @dataclass(frozen=True, slots=True)
 class SpotAssignment:
+    """A match between one observed spot cluster and one simulated reflection.
+
+    Attributes
+    ----------
+    observed_cluster_id : int
+    simulated_spot_index : int
+    residual_px : float
+        Detector-plane distance between the two; finite and non-negative.
+        This is the per-spot accuracy of the indexing solution.
+    family_id : int, optional
+        The reflection family the matched spot belongs to.
+    """
+
     observed_cluster_id: int
     simulated_spot_index: int
     residual_px: float
@@ -1227,6 +1781,28 @@ class SpotAssignment:
 
 @dataclass(frozen=True, slots=True)
 class IndexingCandidate:
+    """One indexing solution, with everything needed to judge it.
+
+    Purpose
+    -------
+    Reports not only the matches but both unmatched sets — observed clusters
+    with no reflection, and predicted reflections with no observation. Those
+    are as diagnostic as the matches: unexplained observations suggest a
+    wrong phase or a second grain, while unobserved predictions suggest wrong
+    centring or an intensity cut-off set too low.
+
+    Attributes
+    ----------
+    pattern : DiffractionPattern
+        The observation.
+    simulation : KinematicSimulation
+        The prediction being tested.
+    observation_clusters : tuple of DetectedSpotCluster
+    matches : tuple of SpotAssignment
+    unmatched_observed_cluster_ids : np.ndarray
+    unmatched_simulated_spot_indices : np.ndarray
+    """
+
     pattern: DiffractionPattern
     simulation: KinematicSimulation
     observation_clusters: tuple[DetectedSpotCluster, ...]
@@ -1250,24 +1826,61 @@ class IndexingCandidate:
 
     @property
     def match_fraction(self) -> float:
+        """Fraction of observed spot clusters that received an assignment.
+
+        In ``[0, 1]``; ``0.0`` when there were no observations. The recall side
+        of indexing quality.
+        """
+
         if not self.observation_clusters:
             return 0.0
         return float(len(self.matches) / len(self.observation_clusters))
 
     @property
     def mean_residual_px(self) -> float:
+        """Mean detector-plane residual of the assigned spots, in pixels.
+
+        ``inf`` when nothing matched, so an empty solution never wins a
+        smallest-residual comparison. The precision side of indexing quality.
+        """
+
         if not self.matches:
             return np.inf
         return float(np.mean([match.residual_px for match in self.matches]))
 
     @property
     def score(self) -> float:
+        """Combined indexing quality in ``[0, 1]``, larger is better.
+
+        ``match_fraction / (1 + mean_residual_px)``: a solution must both explain
+        many observed spots and place them accurately. A high match fraction
+        with poor residuals, or tight residuals on a handful of spots, both
+        score low. This is a heuristic ranking score, not a likelihood.
+        """
+
         if not self.matches:
             return 0.0
         residual_penalty = 1.0 / (1.0 + self.mean_residual_px)
         return float(self.match_fraction * residual_penalty)
 
     def family_reports(self) -> tuple[FamilyIndexingReport, ...]:
+        """Per-reflection-family breakdown of this indexing solution.
+
+        Purpose
+        -------
+        An overall score hides *which* reflections were explained. Reporting per
+        symmetry family exposes the diagnostic pattern — for example a family
+        systematically unmatched, which points to a wrong centring assumption or
+        a wrong phase rather than to a wrong orientation.
+
+        Returns
+        -------
+        tuple of FamilyIndexingReport
+            One entry per simulated family, with matched counts, matched
+            fraction, total family intensity, and mean residual. Empty when the
+            simulation carried no family grouping.
+        """
+
         if not self.simulation.reflection_families:
             return ()
         matches_by_family: dict[int, list[SpotAssignment]] = {}
@@ -1308,17 +1921,58 @@ class IndexingCandidate:
 
 @dataclass(frozen=True, slots=True)
 class OrientationIndexingCandidate:
+    """One candidate orientation together with its indexing solution.
+
+    The unit that :meth:`KinematicSimulation.rank_orientation_candidates`
+    sorts, pairing the trial orientation with the quality of the pattern
+    match it produced.
+
+    Attributes
+    ----------
+    orientation_index : int
+        Position in the candidate list.
+    orientation : Orientation
+    indexing : IndexingCandidate
+    """
+
     orientation_index: int
     orientation: Orientation
     indexing: IndexingCandidate
 
     @property
     def score(self) -> float:
+        """Indexing quality of this orientation candidate; see
+        :attr:`IndexingCandidate.score`.
+        """
+
         return self.indexing.score
 
 
 @dataclass(frozen=True, slots=True)
 class FamilyIndexingReport:
+    """How one reflection family fared in an indexing solution.
+
+    Purpose
+    -------
+    The per-family breakdown that an overall score hides. A family
+    systematically unmatched — high simulated count, zero matches — points to
+    a wrong centring assumption or a wrong phase, not to a wrong orientation.
+
+    Attributes
+    ----------
+    family_id : int
+    representative_miller_indices : np.ndarray
+    multiplicity : int
+    simulated_spot_count : int
+    matched_spot_count : int
+    matched_fraction : float
+    total_family_intensity : float
+        Strong families that go unmatched are the informative ones.
+    mean_residual_px : float
+        ``inf`` when nothing in the family matched.
+    observed_cluster_ids : np.ndarray
+    """
+
     family_id: int
     representative_miller_indices: np.ndarray
     multiplicity: int
@@ -1365,6 +2019,29 @@ class FamilyIndexingReport:
 
 @dataclass(frozen=True, slots=True)
 class OrientationRefinementResult:
+    """The outcome of a local orientation refinement, with its search history.
+
+    Purpose
+    -------
+    Records not just the refined orientation but how it was reached — how
+    many candidates were evaluated, over how many iterations, and how the
+    search window shrank — so convergence can be inspected rather than
+    assumed. Refinement is a local search: it improves a good estimate and
+    cannot recover from a wrong one.
+
+    Attributes
+    ----------
+    seed_orientation : Orientation
+        The starting estimate.
+    refined_candidate : OrientationIndexingCandidate
+        The best solution found.
+    evaluated_candidates : int
+    iterations : int
+    initial_search_half_width_deg : float
+    final_step_deg : float
+        The final angular step, which bounds the achieved precision.
+    """
+
     seed_orientation: Orientation
     refined_candidate: OrientationIndexingCandidate
     evaluated_candidates: int
@@ -1410,6 +2087,45 @@ def estimate_zone_axis(
     max_index: int = 4,
     min_intensity_fraction: float = 0.0,
 ) -> ZoneAxis:
+    """Estimate the zone axis of a measured diffraction pattern.
+
+    Purpose
+    -------
+    Recover ``[uvw]`` from spot positions alone, without an orientation
+    estimate — the first step in indexing an unknown pattern.
+
+    Method
+    ------
+    All reflections of a zone lie in the plane perpendicular to the zone
+    axis, so their scattering vectors are perpendicular to it. Every
+    candidate direction up to ``max_index`` is scored by the mean absolute
+    normalized projection of the measured scattering vectors onto it, and
+    the smallest-residual candidate wins. Enumeration is exhaustive, so the
+    result is deterministic and independent of any starting guess.
+
+    Parameters
+    ----------
+    pattern : DiffractionPattern
+        The observation. Must contain at least one spot.
+    max_index : int
+        Largest absolute index of the enumerated candidates. Raising it
+        admits higher-order zone axes at cubic cost.
+    min_intensity_fraction : float
+        Discard spots weaker than this fraction of the strongest, in
+        ``[0, 1]``. Use it to keep noise out of the fit.
+
+    Returns
+    -------
+    ZoneAxis
+        The best candidate, on the pattern's phase.
+
+    Notes
+    -----
+    Reports the best candidate unconditionally; it does not decide whether
+    the pattern really is a zone-axis pattern. Check the resulting indexing
+    residuals before trusting the axis.
+    """
+
     if not 0.0 <= min_intensity_fraction <= 1.0:
         raise ValueError("min_intensity_fraction must lie in [0, 1].")
     scattering_vectors = pattern.geometry.lab_vectors_to_specimen(pattern.scattering_vectors_lab())
@@ -1458,6 +2174,38 @@ def index_saed_pattern(
     cluster_radius_px: float = 5.0,
     use_only_accepted: bool = True,
 ) -> IndexingCandidate:
+    """Index a measured SAED pattern against a phase.
+
+    Purpose
+    -------
+    The single-call route from an observed spot list to an indexed solution:
+    determine the zone axis if it was not supplied, simulate the expected
+    pattern, and match it to the observation.
+
+    Parameters
+    ----------
+    pattern : DiffractionPattern
+        The observation.
+    miller_indices : np.ndarray
+        ``(n, 3)`` candidate reflections to simulate.
+    orientation : Orientation, optional
+        Fixes the in-plane rotation when known.
+    zone_axis : ZoneAxis, optional
+        Skips the estimation step; supply it when the axis is known.
+    max_excitation_error_inv_angstrom, intensity_model,
+    excitation_sigma_inv_angstrom, acceptance_mask : see
+        :meth:`KinematicSimulation.simulate_spots`.
+    max_distance_px, cluster_radius_px, use_only_accepted : see
+        :meth:`KinematicSimulation.associate_to_pattern`.
+
+    Returns
+    -------
+    IndexingCandidate
+        The solution, with matched and unmatched spots on both sides and a
+        per-family breakdown available through
+        :meth:`IndexingCandidate.family_reports`.
+    """
+
     selected_zone_axis = zone_axis if zone_axis is not None else estimate_zone_axis(pattern)
     simulation = KinematicSimulation.simulate_spots(
         pattern.geometry,

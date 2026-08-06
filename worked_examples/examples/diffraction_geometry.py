@@ -81,14 +81,306 @@ NI_111_TWO_THETA = WorkedExample(
 )
 
 
+KIKUCHI_SETUP = (
+    NICKEL_SETUP
+    + """
+from pytex import (
+    DiffractionGeometry,
+    GnomonicProjection,
+    Orientation,
+    simulate_kikuchi_pattern,
+)
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("RD", "TD", "ND"),
+    handedness=Handedness.RIGHT,
+)
+detector = ReferenceFrame(
+    name="detector",
+    domain=FrameDomain.DETECTOR,
+    axes=("u", "v", "n"),
+    handedness=Handedness.RIGHT,
+)
+laboratory = ReferenceFrame(
+    name="laboratory",
+    domain=FrameDomain.LABORATORY,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+# A conventional 20 kV EBSD detector.
+ebsd_geometry = DiffractionGeometry(
+    detector_frame=detector,
+    specimen_frame=specimen,
+    laboratory_frame=laboratory,
+    beam_energy_kev=20.0,
+    camera_length_mm=15.0,
+    pattern_center=np.array([0.5, 0.5, 0.6]),
+    detector_pixel_size_um=(50.0, 50.0),
+    detector_shape=(480, 640),
+)
+cube_orientation = Orientation.from_euler(
+    0.0, 0.0, 0.0, specimen_frame=specimen, phase=nickel
+)
+"""
+)
+
+_BAND_WIDTH = SymbolUse(r"2\theta_B", "Angular width of a Kikuchi band.")
+_GNOMONIC = SymbolUse(r"r_g", "Gnomonic radius, in units of the detector distance.")
+
+_EBSD_CONCEPT = SeeAlso("EBSD foundation", "../../concepts/ebsd_foundation")
+
+
+NI_111_KIKUCHI_BAND_WIDTH = WorkedExample(
+    id="diffraction-ni-111-kikuchi-band-width",
+    title="Ni{111} Kikuchi band width at 20 kV",
+    domain="diffraction",
+    scenario=(
+        "You are reading an EBSD pattern and want to know how wide the strongest bands should be, "
+        "either to check a detector calibration or to identify a phase from band widths alone. A "
+        "Kikuchi band is bounded by the two Kossel cones of its lattice plane, so its angular width "
+        "is exactly 2*theta_B and Bragg's law makes that a direct measurement of the interplanar "
+        "spacing: wide bands mean large d-spacings. The widest band of nickel comes from {111}."
+    ),
+    setup=KIKUCHI_SETUP,
+    code=(
+        "pattern = simulate_kikuchi_pattern(\n"
+        "    ebsd_geometry, nickel, cube_orientation, max_index=2\n"
+        ")\n"
+        "band = pattern.band_for_plane((1, 1, 1))\n"
+        "result = float(np.degrees(band.angular_width_rad))"
+    ),
+    expected=2.4187,
+    unit="deg",
+    tolerance=2e-3,
+    reference=(
+        "d_111 = 3.52387 / sqrt(3) = 2.034510 angstrom. The relativistic electron wavelength at "
+        "20 kV is 0.085883 angstrom, so sin(theta_B) = lambda / (2 d) = 0.0211066, giving "
+        "theta_B = 1.20936 degrees and a band width of 2*theta_B = 2.4187 degrees. This is the "
+        "familiar ~2.4 degree width of the strongest nickel bands in a 20 kV EBSD pattern."
+    ),
+    citation=(
+        "Goldstein et al., Scanning Electron Microscopy and X-Ray Microanalysis, 4th ed. "
+        "(electron wavelength table); Schwartz, Kumar, Adams and Field (eds.), Electron "
+        "Backscatter Diffraction in Materials Science, 2nd ed."
+    ),
+    symbols=(_DSPACING, _LAMBDA, _THETA, _BAND_WIDTH),
+    see_also=(_EBSD_CONCEPT, _DIFF_CONCEPT),
+    result_format="{:.4f}",
+)
+
+
+CUBE_ZONE_AXIS_GNOMONIC_RADIUS = WorkedExample(
+    id="diffraction-gnomonic-zone-axis-radius",
+    title="Gnomonic radius of the [011] zone axis at the cube orientation",
+    domain="diffraction",
+    scenario=(
+        "Zone axes are the landmarks of a Kikuchi pattern, and locating them is the first step in "
+        "indexing one. The gnomonic projection places a direction at a radius equal to the tangent "
+        "of its angle from the detector normal, so the geometry can be checked in closed form. With "
+        "a cubic crystal at the cube orientation and an untilted detector, [011] lies exactly 45 "
+        "degrees from the detector normal, and must therefore project to gnomonic radius "
+        "tan(45 deg) = 1 exactly. This is an end-to-end check of the crystal to specimen to "
+        "laboratory to detector chain: a transposed rotation anywhere along it moves the answer."
+    ),
+    setup=KIKUCHI_SETUP,
+    code=(
+        "pattern = simulate_kikuchi_pattern(\n"
+        "    ebsd_geometry, nickel, cube_orientation, max_index=2\n"
+        ")\n"
+        "axis = next(\n"
+        "    zone for zone in pattern.zone_axes\n"
+        "    if tuple(int(value) for value in zone.indices) == (0, 1, 1)\n"
+        ")\n"
+        "result = float(np.hypot(*axis.coordinates))"
+    ),
+    expected=1.0,
+    unit="",
+    tolerance=1e-12,
+    reference=(
+        "The gnomonic projection maps a direction at angle psi from the detector normal to radius "
+        "tan(psi). In a cubic crystal [011] makes an angle of 45 degrees with [001]; at the cube "
+        "orientation with an untilted detector [001] is the detector normal, so the radius is "
+        "tan(45 deg) = 1 exactly. The identity is exact, so the tolerance is numerical only."
+    ),
+    citation=(
+        "Snyder, Map Projections: A Working Manual, USGS Professional Paper 1395 (gnomonic "
+        "projection); Randle and Engler, Introduction to Texture Analysis, 2nd ed."
+    ),
+    symbols=(_GNOMONIC,),
+    see_also=(_EBSD_CONCEPT, _DIFF_CONCEPT),
+    result_format="{:.12f}",
+)
+
+
+PREFERRED_ORIENTATION_SETUP = (
+    NICKEL_SETUP
+    + """
+from pytex import (
+    MarchDollaseModel,
+    MillerPlane,
+    ODF,
+    ODFPreferredOrientationModel,
+    OrientationSet,
+    march_dollase_factors,
+)
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("RD", "TD", "ND"),
+    handedness=Handedness.RIGHT,
+)
+"""
+)
+
+_MARCH = SymbolUse("r", "March coefficient of the preferred-orientation model.")
+_PO_FACTOR = SymbolUse(
+    r"P_{hkl}", "Preferred-orientation intensity factor, in multiples of random."
+)
+
+_XRD_CONCEPT = SeeAlso("Texture foundation", "../../concepts/texture_foundation")
+
+
+MARCH_DOLLASE_FAMILY_FACTOR = WorkedExample(
+    id="diffraction-march-dollase-family-factor",
+    title="March-Dollase factor for cubic {111} under a (111) plate texture",
+    domain="diffraction",
+    scenario=(
+        "You are refining a powder pattern from a specimen that will not pack randomly — a "
+        "platy powder, or a rolled foil — and the measured {111} peak is far too strong. The "
+        "March-Dollase model absorbs that into one parameter. Because every symmetry-equivalent "
+        "plane of a family diffracts at the same angle, the factor is averaged over the whole "
+        "family, and for cubic {111} with the preferred axis along (111) that average has a "
+        "closed form: one member sits at 0 degrees to the axis and three at arccos(1/3)."
+    ),
+    setup=PREFERRED_ORIENTATION_SETUP,
+    code=(
+        "model = MarchDollaseModel(\n"
+        "    preferred_orientation=MillerPlane.from_hkl([1, 1, 1], phase=nickel),\n"
+        "    march_coefficient=0.5,\n"
+        ")\n"
+        "result = float(model.factors([MillerPlane.from_hkl([1, 1, 1], phase=nickel)])[0])"
+    ),
+    expected=2.3091327231300272,
+    unit="",
+    tolerance=1e-12,
+    reference=(
+        "With r = 1/2 the March function is P(a) = (r^2 cos^2 a + sin^2 a / r)^(-3/2). The cubic "
+        "{111} family has four members up to inversion: one at a = 0, giving P = r^-3 = 8, and "
+        "three at cos^2 a = 1/9, where the bracket is 1/36 + 16/9 = 65/36 and "
+        "P = (36/65)^(3/2) = 216 / (65 sqrt(65)). The family mean is therefore "
+        "(8 + 3 * 216 / (65 sqrt(65))) / 4 = 2 + 162 / (65 sqrt(65)) = 2.3091327231300272, "
+        "evaluated in exact decimal arithmetic independently of PyTex."
+    ),
+    citation=(
+        "Dollase, W. A., J. Appl. Cryst. 19, 267-272 (1986), "
+        "DOI: 10.1107/S0021889886089458; March, A., Z. Kristallogr. 81, 285-297 (1932)."
+    ),
+    symbols=(_MARCH, _PO_FACTOR),
+    see_also=(_XRD_WORKFLOW, _XRD_CONCEPT),
+    result_format="{:.12f}",
+)
+
+
+MARCH_DOLLASE_NORMALIZATION = WorkedExample(
+    id="diffraction-march-dollase-normalization",
+    title="The March distribution integrates to one over the sphere",
+    domain="diffraction",
+    scenario=(
+        "Before trusting any preferred-orientation correction it is worth confirming that it "
+        "*redistributes* diffracted intensity rather than inventing it. The March distribution "
+        "has exactly that property: averaged over a uniform distribution of directions it is 1 "
+        "for every March coefficient. This is the statement that makes a fitted r a description "
+        "of texture rather than a free intensity scale."
+    ),
+    setup=PREFERRED_ORIENTATION_SETUP,
+    code=(
+        "u = np.linspace(-1.0, 1.0, 2_000_001)\n"
+        "factors = march_dollase_factors(np.arccos(u), 0.4)\n"
+        "result = float(np.trapezoid(factors, u) / 2.0)"
+    ),
+    expected=1.0,
+    unit="",
+    tolerance=1e-6,
+    reference=(
+        "Substituting u = cos(a), the spherical average is the integral over u in [-1, 1] of "
+        "((r^2 - 1/r) u^2 + 1/r)^(-3/2), halved. Its antiderivative is "
+        "u / (B sqrt(A u^2 + B)) with A = r^2 - 1/r and B = 1/r, so the average evaluates to "
+        "1 / (B sqrt(A + B)) = r / r = 1 for every positive r. The identity is exact; the "
+        "tolerance is the quadrature error alone."
+    ),
+    citation=(
+        "Dollase, W. A., J. Appl. Cryst. 19, 267-272 (1986), "
+        "DOI: 10.1107/S0021889886089458."
+    ),
+    symbols=(_MARCH, _PO_FACTOR),
+    see_also=(_XRD_WORKFLOW, _XRD_CONCEPT),
+    result_format="{:.9f}",
+)
+
+
+ODF_WEIGHTED_RANDOM_TEXTURE = WorkedExample(
+    id="diffraction-odf-weighted-random-texture",
+    title="ODF-weighted intensities reduce to the random powder",
+    domain="diffraction",
+    scenario=(
+        "PyTex can drive powder intensities from a measured orientation distribution instead of "
+        "a fitted parameter: the intensity of a reflection scales with the pole density along "
+        "the scattering vector, and an ODF supplies exactly that. The check that makes the "
+        "result interpretable is the limiting case — an untextured specimen must reproduce the "
+        "random powder the uncorrected pattern already assumes, giving a factor of 1 for every "
+        "reflection with no fitted parameter anywhere."
+    ),
+    setup=PREFERRED_ORIENTATION_SETUP,
+    code=(
+        "grid = OrientationSet.from_equispaced_so3_grid(\n"
+        "    12.0,\n"
+        "    specimen_frame=specimen,\n"
+        "    phase=nickel,\n"
+        "    reduce_to_fundamental_region=False,\n"
+        ")\n"
+        "model = ODFPreferredOrientationModel(odf=ODF.from_orientations(grid))\n"
+        "result = float(model.factors([MillerPlane.from_hkl([1, 1, 1], phase=nickel)])[0])"
+    ),
+    expected=1.0,
+    unit="",
+    tolerance=0.01,
+    reference=(
+        "Pole density is defined in multiples of a random distribution, so a uniform orientation "
+        "distribution has pole density 1 along every specimen direction and the correction is the "
+        "identity. The tolerance reflects the finite SO(3) grid used to represent the uniform "
+        "distribution, not any approximation in the correction itself."
+    ),
+    citation=(
+        "Bunge, H.-J., Texture Analysis in Materials Science, "
+        "DOI: 10.1016/C2013-0-11769-2; Von Dreele, R. B., J. Appl. Cryst. 30, 517-525 (1997), "
+        "DOI: 10.1107/S0021889897005918 (texture in Rietveld refinement)."
+    ),
+    symbols=(_PO_FACTOR,),
+    see_also=(_XRD_WORKFLOW, _XRD_CONCEPT),
+    result_format="{:.4f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="diffraction",
     title="Diffraction geometry",
     summary=(
-        "Powder scattering angles derived from PyTex interplanar spacings via Bragg's law, checked "
-        "against a standard reference reflection position."
+        "Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band "
+        "and zone-axis geometry in the gnomonic projection, and preferred-orientation "
+        "corrections to powder intensities — each checked against a standard reference value or "
+        "a closed-form identity."
     ),
-    examples=(NI_111_TWO_THETA,),
+    examples=(
+        NI_111_TWO_THETA,
+        NI_111_KIKUCHI_BAND_WIDTH,
+        CUBE_ZONE_AXIS_GNOMONIC_RADIUS,
+        MARCH_DOLLASE_FAMILY_FACTOR,
+        MARCH_DOLLASE_NORMALIZATION,
+        ODF_WEIGHTED_RANDOM_TEXTURE,
+    ),
 )
 
 __all__ = ["GROUP"]

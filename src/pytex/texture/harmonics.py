@@ -89,6 +89,21 @@ def _bunge_quadrature(
 
 @dataclass(frozen=True, slots=True)
 class HarmonicBasisTerm:
+    """One term of the generalized spherical harmonic basis on SO(3).
+
+    Attributes
+    ----------
+    degree : int
+        Harmonic degree ``l``; non-negative.
+    sample_order : int
+        Specimen-side order ``m``; magnitude must not exceed ``degree``.
+    crystal_order : int
+        Crystal-side order ``n``; magnitude must not exceed ``degree``.
+    component : str
+        ``"real"`` or ``"imag"``, since the real-valued basis splits each
+        complex term in two.
+    """
+
     degree: int
     sample_order: int
     crystal_order: int
@@ -301,6 +316,49 @@ def _coerce_query_orientations(
 
 @dataclass(frozen=True, slots=True)
 class HarmonicODF:
+    """An orientation distribution represented as a harmonic series on SO(3).
+
+    Purpose
+    -------
+    The series-expansion representation of the classical Bunge method. Where
+    :class:`~pytex.texture.ODF` places weighted kernels on discrete support
+    orientations, this stores coefficients of symmetry-projected generalized
+    spherical harmonics — compact for symmetric materials, and the natural
+    form for convolution and for texture-index and entropy integrals.
+
+    Limits
+    ------
+    A truncated series is not sign-constrained, so sharply textured or
+    under-resolved expansions can evaluate slightly negative. Pole-figure
+    data determine only the even-order coefficients under Friedel's law,
+    which is the classical ghost problem.
+
+    Attributes
+    ----------
+    coefficients : np.ndarray
+        The symmetry-projected expansion coefficients.
+    basis_terms : tuple of HarmonicBasisTerm
+        The raw harmonic terms before symmetry projection.
+    basis_transform : np.ndarray
+        The projection from raw terms onto the symmetry-allowed basis, which
+        is what makes the representation compact.
+    quadrature_orientations : OrientationSet
+    quadrature_weights : np.ndarray
+    quadrature_basis_values : np.ndarray
+        The integration support and precomputed basis values, so integral
+        quantities need no re-evaluation.
+    degree_bandlimit : int
+        Truncation degree; bounds the angular detail representable.
+    crystal_symmetry, specimen_symmetry : SymmetrySpec, optional
+    phase : Phase, optional
+    pole_kernel : KernelSpec
+        Smoothing kernel used for pole-density evaluation.
+    even_degrees_only : bool
+        Whether odd degrees were excluded — the honest default for
+        pole-figure-derived ODFs, which cannot determine them.
+    provenance : ProvenanceRecord, optional
+    """
+
     coefficients: np.ndarray
     basis_terms: tuple[HarmonicBasisTerm, ...]
     basis_transform: np.ndarray
@@ -359,26 +417,51 @@ class HarmonicODF:
 
     @property
     def crystal_frame(self) -> ReferenceFrame:
+        """Crystal-domain frame of the quadrature support.
+        """
+
         return self.quadrature_orientations.crystal_frame
 
     @property
     def specimen_frame(self) -> ReferenceFrame:
+        """Specimen-domain frame of the quadrature support.
+        """
+
         return self.quadrature_orientations.specimen_frame
 
     @property
     def basis_size(self) -> int:
+        """Number of symmetry-projected basis functions actually carried.
+
+        Smaller than :attr:`raw_basis_size`: crystal and specimen symmetry
+        eliminate most raw harmonic terms, which is exactly why the harmonic
+        representation is compact for symmetric materials.
+        """
+
         return int(self.coefficients.shape[0])
 
     @property
     def raw_basis_size(self) -> int:
+        """Number of raw harmonic terms before symmetry projection.
+        """
+
         return len(self.basis_terms)
 
     @property
     def quadrature_size(self) -> int:
+        """Number of quadrature orientations used for integration.
+        """
+
         return len(self.quadrature_orientations)
 
     @property
     def quadrature_densities(self) -> np.ndarray:
+        """ODF density evaluated at every quadrature orientation, read-only.
+
+        The array all integral quantities — mean density, texture index,
+        entropy — are computed from, using the stored quadrature weights.
+        """
+
         densities = self.quadrature_basis_values @ self.coefficients
         densities = np.ascontiguousarray(densities, dtype=np.float64)
         densities.setflags(write=False)
@@ -386,6 +469,13 @@ class HarmonicODF:
 
     @property
     def mean_density(self) -> float:
+        """Quadrature-weighted mean density over SO(3).
+
+        Should be close to 1 for a correctly normalized ODF, since a uniform
+        distribution has density 1 in multiples of random. A departure indicates
+        a normalization or quadrature problem rather than a texture feature.
+        """
+
         return _weighted_mean(self.quadrature_densities, self.quadrature_weights)
 
     @property
@@ -407,6 +497,23 @@ class HarmonicODF:
         return _weighted_mean(integrand, self.quadrature_weights)
 
     def evaluate(self, orientations: Orientation | OrientationSet) -> np.ndarray | float:
+        """Evaluate the ODF density at given orientations.
+
+        Parameters
+        ----------
+        orientations : Orientation or OrientationSet
+            Query orientations; must share the ODF's crystal and specimen
+            frames. A single orientation returns a scalar.
+
+        Returns
+        -------
+        float or np.ndarray
+            Density in multiples of a random distribution. Because a truncated
+            harmonic series is not sign-constrained, sharply textured or
+            under-resolved expansions can produce small negative values; treat
+            them as truncation artefacts, not as densities.
+        """
+
         query_set, scalar_output = _coerce_query_orientations(
             orientations,
             crystal_frame=self.crystal_frame,
@@ -436,6 +543,23 @@ class HarmonicODF:
         *,
         include_symmetry_family: bool = True,
     ) -> np.ndarray:
+        """Pole density at chosen specimen directions.
+
+        Parameters
+        ----------
+        pole : CrystalPlane
+            Must match the ODF's phase when one is declared.
+        sample_directions : ArrayLike
+            ``(n, 3)`` specimen directions.
+        include_symmetry_family : bool
+            Include the whole ``{hkl}`` family (default), as a measurement does.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n,)`` pole densities.
+        """
+
         if self.phase is not None and pole.phase != self.phase:
             raise ValueError("HarmonicODF pole evaluation requires the same phase as the ODF.")
         response = _pole_density_response_matrix(
@@ -460,6 +584,22 @@ class HarmonicODF:
         antipodal: bool = True,
         provenance: ProvenanceRecord | None = None,
     ) -> PoleFigure:
+        """The pole figure this harmonic ODF predicts for a crystal plane.
+
+        Unlike the discrete ODF's reconstruction, the specimen directions must be
+        supplied: a harmonic ODF has no scattered support of its own to reuse, so
+        the evaluation grid is the caller's choice.
+
+        Parameters
+        ----------
+        pole : CrystalPlane
+        sample_directions : ArrayLike
+            ``(n, 3)`` specimen directions to evaluate on.
+        include_symmetry_family : bool
+        antipodal : bool
+        provenance : ProvenanceRecord, optional
+        """
+
         return PoleFigure(
             pole=pole,
             sample_directions=np.asarray(sample_directions, dtype=np.float64),
@@ -492,6 +632,54 @@ class HarmonicODF:
         basis_tolerance: float = 1e-10,
         provenance: ProvenanceRecord | None = None,
     ) -> HarmonicODFReconstructionReport:
+        """Estimate a harmonic ODF from measured pole figures.
+
+        Purpose
+        -------
+        The series-expansion route to PF-to-ODF inversion — the classical Bunge
+        method — in which the unknown is a truncated set of symmetry-projected
+        harmonic coefficients rather than weights on a discrete support.
+
+        Method and limits
+        -----------------
+        Builds the pole-density response of each basis function at every measured
+        pole-figure point and solves the regularized least-squares system for the
+        coefficients. Two limits are intrinsic and are not worked around here:
+        pole figures determine only the even-order coefficients under Friedel's
+        law, so the odd part is unconstrained — the classical ghost problem — and
+        truncation at ``degree_bandlimit`` bounds the angular detail recoverable.
+        Ghost correction and zero-range methods are not applied; treat the result
+        as a band-limited regularized estimate.
+
+        Parameters
+        ----------
+        pole_figures : sequence of PoleFigure
+            All must share a specimen frame. More independent poles constrain the
+            problem better.
+        degree_bandlimit : int
+            Highest harmonic degree retained. Cost and achievable detail both
+            rise with it; so does sensitivity to noise.
+        regularization : float
+            Tikhonov weight; larger is smoother and more stable.
+        include_symmetry_family : bool
+            Model the whole ``{hkl}`` family per pole figure (default).
+        even_degrees_only : bool, optional
+            Restrict to even degrees. ``None`` selects the honest default, since
+            odd degrees are not determined by pole-figure data.
+        specimen_symmetry : SymmetrySpec, optional
+            Statistical specimen symmetry to project onto.
+        pole_kernel : KernelSpec, optional
+            Smoothing kernel for the response model.
+        phi1_step_deg, big_phi_step_deg, phi2_step_deg : float
+            Quadrature grid spacing in Bunge Euler space.
+
+        Returns
+        -------
+        HarmonicODFReconstructionReport
+            The estimated ODF with the residual and conditioning information
+            needed to judge the fit.
+        """
+
         if not pole_figures:
             raise ValueError("Harmonic ODF inversion requires at least one PoleFigure.")
         if regularization < 0.0:
@@ -643,6 +831,39 @@ class HarmonicODF:
 
 @dataclass(frozen=True, slots=True)
 class HarmonicODFReconstructionReport:
+    """A harmonic PF-to-ODF reconstruction with the evidence to judge it.
+
+    Purpose
+    -------
+    Pole-figure inversion is ill-posed, so the ODF alone is not a result.
+    This adds the residuals against the measured data, the problem
+    dimensions, and — importantly — the conditioning of the system, so a
+    reader can tell a well-constrained solution from one held up entirely by
+    regularization.
+
+    Attributes
+    ----------
+    odf : HarmonicODF
+    residual_norm, relative_residual_norm : float
+    mean_absolute_error, max_absolute_error : float
+    regularization : float
+    observation_count : int
+    basis_size, raw_basis_size : int
+        Symmetry-projected and raw basis sizes; their ratio shows how much
+        the symmetry bought.
+    quadrature_size : int
+    degree_bandlimit : int
+    even_degrees_only : bool
+    matrix_rank, condition_number : float
+        Conditioning of the least-squares system. A rank below the basis size
+        means the data do not determine every coefficient.
+    predicted_intensities : np.ndarray
+        Pole densities the solution implies, for direct comparison.
+    mean_density : float
+        Should be near 1 for a correctly normalized ODF.
+    provenance : ProvenanceRecord, optional
+    """
+
     odf: HarmonicODF
     residual_norm: float
     relative_residual_norm: float

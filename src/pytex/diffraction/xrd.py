@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
@@ -8,7 +9,9 @@ import numpy as np
 from pytex.core._arrays import as_float_array, as_int_array
 from pytex.core._chemistry import atomic_number
 from pytex.core.lattice import Phase
+from pytex.core.miller import MillerPlane
 from pytex.core.provenance import ProvenanceRecord
+from pytex.diffraction.preferred_orientation import PreferredOrientationModel
 
 _TWO_THETA_TOLERANCE_DEG = 1e-8
 
@@ -210,15 +213,33 @@ class RadiationSpec:
 
     @classmethod
     def cu_ka(cls) -> RadiationSpec:
+        """Cu K-alpha radiation, K-alpha wavelength.
+
+        The most common laboratory X-ray source. Uses a single averaged
+        wavelength; for doublet-resolved peak shapes use :meth:`cu_ka_doublet`.
+        """
+
         return cls(name="Cu Ka", wavelength_angstrom=1.5406, anode="Cu")
 
     @classmethod
     def mo_ka(cls) -> RadiationSpec:
+        """Mo K-alpha radiation, K-alpha wavelength.
+
+        Shorter wavelength than Cu, so more reflections fall inside a given
+        ``2*theta`` range.
+        """
+
         return cls(name="Mo Ka", wavelength_angstrom=0.71073, anode="Mo")
 
     # Bearden (1967) K-alpha1 / K-alpha2 wavelengths for the common anodes.
     @classmethod
     def cu_ka_doublet(cls) -> RadiationSpec:
+        """Cu radiation, K-alpha1/K-alpha2 doublet wavelengths (Bearden 1967).
+
+        Models the K-alpha1/K-alpha2 pair explicitly, which is what produces the
+        characteristic peak splitting at high ``2*theta``.
+        """
+
         return cls(
             name="Cu Ka1/Ka2",
             wavelength_angstrom=1.540562,
@@ -228,6 +249,9 @@ class RadiationSpec:
 
     @classmethod
     def mo_ka_doublet(cls) -> RadiationSpec:
+        """Mo radiation, K-alpha1/K-alpha2 doublet wavelengths (Bearden 1967).
+        """
+
         return cls(
             name="Mo Ka1/Ka2",
             wavelength_angstrom=0.709300,
@@ -237,6 +261,12 @@ class RadiationSpec:
 
     @classmethod
     def co_ka(cls) -> RadiationSpec:
+        """Co radiation, K-alpha1/K-alpha2 doublet wavelengths (Bearden 1967).
+
+        Preferred for iron-bearing samples, where Cu radiation excites strong Fe
+        fluorescence and raises the background.
+        """
+
         return cls(
             name="Co Ka1/Ka2",
             wavelength_angstrom=1.788965,
@@ -246,6 +276,12 @@ class RadiationSpec:
 
     @classmethod
     def cr_ka(cls) -> RadiationSpec:
+        """Cr radiation, K-alpha1/K-alpha2 doublet wavelengths (Bearden 1967).
+
+        Long wavelength; conventional for residual-stress measurement, where the
+        large ``2*theta`` of accessible reflections improves strain sensitivity.
+        """
+
         return cls(
             name="Cr Ka1/Ka2",
             wavelength_angstrom=2.289700,
@@ -255,6 +291,9 @@ class RadiationSpec:
 
     @classmethod
     def fe_ka(cls) -> RadiationSpec:
+        """Fe radiation, K-alpha1/K-alpha2 doublet wavelengths (Bearden 1967).
+        """
+
         return cls(
             name="Fe Ka1/Ka2",
             wavelength_angstrom=1.936042,
@@ -264,11 +303,36 @@ class RadiationSpec:
 
     @classmethod
     def neutron(cls, wavelength_angstrom: float, *, name: str = "neutron") -> RadiationSpec:
+        """A neutron radiation specification at a given wavelength.
+
+        Marked as neutron rather than X-ray radiation. Note that neutron
+        scattering lengths differ fundamentally from X-ray form factors — they do
+        not scale with atomic number and can be negative — so intensity models
+        built on X-ray scattering factors do not transfer to neutron data.
+        """
+
         return cls(name=name, wavelength_angstrom=wavelength_angstrom, kind="neutron")
 
 
 @dataclass(frozen=True, slots=True)
 class PowderReflection:
+    """One reflection family in a powder diffraction pattern.
+
+    Attributes
+    ----------
+    miller_indices : np.ndarray
+        The family representative ``(hkl)``.
+    two_theta_deg : float
+        Bragg angle for the pattern's radiation.
+    d_spacing_angstrom : float
+    multiplicity : int
+        Number of symmetry-equivalent reflections contributing at this angle.
+        This is why a high-multiplicity family can outshine one with a larger
+        structure factor.
+    intensity : float
+        Relative intensity, kinematic.
+    """
+
     miller_indices: np.ndarray
     d_spacing_angstrom: float
     two_theta_deg: float
@@ -310,6 +374,35 @@ class PowderReflection:
 
 @dataclass(frozen=True, slots=True)
 class PowderPattern:
+    """A simulated continuous powder diffraction pattern.
+
+    Purpose
+    -------
+    Reflection positions convolved with a peak profile onto a ``2*theta``
+    grid — the form a measured diffractogram takes, and the form a comparison
+    against measurement needs.
+
+    Limits
+    ------
+    Kinematic intensities with no background model, no absorption, no
+    preferred-orientation correction, and no size or strain broadening beyond
+    the configured profile. Suitable for phase identification and peak
+    indexing, not for quantitative phase analysis.
+
+    Attributes
+    ----------
+    two_theta_deg : np.ndarray
+        The angular grid.
+    intensity : np.ndarray
+        Profile-convolved intensity on that grid.
+    reflections : tuple of PowderReflection
+        The underlying reflection list, retained so peaks stay attributable
+        to their indices.
+    radiation : RadiationSpec
+    phase : Phase
+    provenance : ProvenanceRecord, optional
+    """
+
     phase: Phase
     radiation: RadiationSpec
     reflections: tuple[PowderReflection, ...]
@@ -346,6 +439,47 @@ def generate_powder_reflections(
         "xray_atomic_number"
     ),
 ) -> tuple[PowderReflection, ...]:
+    """Enumerate the powder reflections of a phase in a ``2*theta`` window.
+
+    Purpose
+    -------
+    The reflection list behind a simulated powder pattern: which ``(hkl)``
+    diffract, at what angle, with what multiplicity and relative intensity.
+
+    Method
+    ------
+    All reflections up to ``max_index`` are enumerated and filtered
+    vectorially by the Bragg condition and the requested angular window,
+    then grouped into symmetry families so each family contributes one
+    entry carrying its multiplicity.
+
+    Parameters
+    ----------
+    phase : Phase
+        Lattice, symmetry, and — for structure factors — the atomic basis.
+    radiation : RadiationSpec, optional
+        Defaults to Cu K-alpha.
+    two_theta_range_deg : tuple of float
+        Inclusive angular window; must satisfy ``0 <= min < max <= 180``.
+    max_index : int
+        Largest absolute Miller index enumerated. Too small silently omits
+        high-angle reflections, so raise it if the pattern looks truncated.
+    intensity_model : str
+        ``"xray_atomic_number"`` (default), ``"xray_tabulated"``, or
+        ``"unit"``.
+
+    Returns
+    -------
+    tuple of PowderReflection
+        One entry per reflection family, with ``2*theta``, d-spacing,
+        multiplicity, and relative intensity.
+
+    See Also
+    --------
+    generate_xrd_pattern : Convolves these reflections with a peak profile
+        to produce a continuous pattern.
+    """
+
     if max_index <= 0:
         raise ValueError("max_index must be strictly positive.")
     radiation_spec = RadiationSpec.cu_ka() if radiation is None else radiation
@@ -462,6 +596,76 @@ def _accumulate_reflection_profiles(
     return intensity_grid
 
 
+def apply_preferred_orientation(
+    reflections: Sequence[PowderReflection],
+    model: PreferredOrientationModel,
+    *,
+    phase: Phase,
+) -> tuple[PowderReflection, ...]:
+    """Scale powder reflection intensities by a preferred-orientation model.
+
+    Purpose
+    -------
+    Apply a texture correction to an already-computed reflection list, leaving
+    every other field — indices, spacing, angle, multiplicity, structure
+    factor — unchanged, so the corrected list stays comparable with the
+    uncorrected one reflection by reflection.
+
+    Parameters
+    ----------
+    reflections : sequence of PowderReflection
+        The random-powder reflection list.
+    model : PreferredOrientationModel
+        Any object satisfying the protocol, such as
+        :class:`~pytex.diffraction.preferred_orientation.MarchDollaseModel` or
+        :class:`~pytex.diffraction.preferred_orientation.ODFPreferredOrientationModel`.
+    phase : Phase
+        The phase the reflections belong to; needed to build the typed planes
+        the model consumes.
+
+    Returns
+    -------
+    tuple of PowderReflection
+        Corrected reflections in the input order.
+
+    Notes
+    -----
+    Powder intensities are relative, so the corrected list is deliberately not
+    renormalized: the *ratios* between reflections carry the texture
+    information, and rescaling to a fixed maximum would discard part of the
+    effect being modelled.
+    """
+
+    if not reflections:
+        return ()
+    planes = [
+        MillerPlane(indices=reflection.miller_indices, phase=phase)
+        for reflection in reflections
+    ]
+    factors = np.asarray(model.factors(planes), dtype=np.float64)
+    if factors.shape != (len(reflections),):
+        raise ValueError(
+            "A preferred-orientation model must return exactly one factor per reflection."
+        )
+    if np.any(~np.isfinite(factors)) or np.any(factors < 0.0):
+        raise ValueError("Preferred-orientation factors must be finite and non-negative.")
+    return tuple(
+        PowderReflection(
+            miller_indices=reflection.miller_indices,
+            d_spacing_angstrom=reflection.d_spacing_angstrom,
+            two_theta_deg=reflection.two_theta_deg,
+            intensity=float(reflection.intensity * factor),
+            structure_factor_amplitude=reflection.structure_factor_amplitude,
+            multiplicity=reflection.multiplicity,
+            structure_factor_real=reflection.structure_factor_real,
+            structure_factor_imag=reflection.structure_factor_imag,
+            lorentz_polarization_factor=reflection.lorentz_polarization_factor,
+            intensity_model=reflection.intensity_model,
+        )
+        for reflection, factor in zip(reflections, factors, strict=True)
+    )
+
+
 def generate_xrd_pattern(
     phase: Phase,
     *,
@@ -476,6 +680,7 @@ def generate_xrd_pattern(
     profile: Literal["gaussian", "pseudo_voigt"] = "gaussian",
     pseudo_voigt_eta: float = 0.5,
     caglioti_uvw: tuple[float, float, float] | None = None,
+    preferred_orientation: PreferredOrientationModel | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> PowderPattern:
     """Simulate a powder XRD pattern for ``phase``.
@@ -487,6 +692,15 @@ def generate_xrd_pattern(
     radiation carries a K-alpha2 line, its pattern is superposed at
     ``kalpha2_relative_intensity``; the returned ``reflections`` remain the
     K-alpha1 list.
+
+    Preferred orientation: pass a model such as
+    :class:`~pytex.diffraction.preferred_orientation.MarchDollaseModel` or
+    :class:`~pytex.diffraction.preferred_orientation.ODFPreferredOrientationModel`
+    as ``preferred_orientation`` to scale the reflection intensities by texture.
+    The returned ``reflections`` are then the *corrected* ones, so the pattern
+    and its reflection list cannot disagree. Omitting it assumes a randomly
+    oriented powder, which is an assumption about the specimen and not a neutral
+    default.
     """
 
     if resolution_deg <= 0.0:
@@ -507,6 +721,10 @@ def generate_xrd_pattern(
         max_index=max_index,
         intensity_model=intensity_model,
     )
+    if preferred_orientation is not None:
+        reflections = apply_preferred_orientation(
+            reflections, preferred_orientation, phase=phase
+        )
     min_two_theta, max_two_theta = map(float, two_theta_range_deg)
     grid = np.arange(min_two_theta, max_two_theta + 0.5 * resolution_deg, resolution_deg)
     intensity_grid = _accumulate_reflection_profiles(
@@ -532,6 +750,13 @@ def generate_xrd_pattern(
             max_index=max_index,
             intensity_model=intensity_model,
         )
+        if preferred_orientation is not None:
+            # The K-alpha2 line diffracts from the same textured specimen, so it
+            # carries the same correction; omitting it here would make the
+            # doublet ratio depend on the texture.
+            kalpha2_reflections = apply_preferred_orientation(
+                kalpha2_reflections, preferred_orientation, phase=phase
+            )
         intensity_grid += _accumulate_reflection_profiles(
             grid,
             kalpha2_reflections,

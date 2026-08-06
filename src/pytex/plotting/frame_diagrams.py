@@ -735,7 +735,7 @@ def hexagonal_frame_svg(
                       fill="#b45309", anchor="middle"))
 
     note_top = 132.0
-    note, note_width, note_height = _callout(
+    note, _note_width, note_height = _callout(
         552.0,
         note_top,
         "Notation fixed in docs and code",

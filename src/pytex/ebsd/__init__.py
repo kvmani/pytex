@@ -7,6 +7,11 @@ from pytex.ebsd.csl import (
     brandon_tolerance_deg,
     classify_misorientations,
 )
+from pytex.ebsd.gnd import (
+    geometrically_necessary_dislocation_density,
+    lattice_curvature_tensor,
+    nye_dislocation_density_tensor,
+)
 from pytex.ebsd.models import (
     CoordinateNeighborGraph,
     CrystalMap,
@@ -48,4 +53,7 @@ __all__ = [
     "TwinLaw",
     "brandon_tolerance_deg",
     "classify_misorientations",
+    "geometrically_necessary_dislocation_density",
+    "lattice_curvature_tensor",
+    "nye_dislocation_density_tensor",
 ]

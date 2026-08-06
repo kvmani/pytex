@@ -52,6 +52,26 @@ def plot_vector_set(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot a set of vectors on a spherical projection.
+
+    Parameters
+    ----------
+    vectors : VectorSet or ArrayLike
+        A typed vector set, or a raw ``(n, 3)`` array together with
+        ``reference_frame``.
+    reference_frame : ReferenceFrame, optional
+        Required when raw arrays are passed, so the plot states which frame
+        the directions live in.
+    title : str, optional
+    ax : matplotlib Axes, optional
+        Draw into an existing axes instead of creating a figure.
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+    """
+
     vector_set = coerce_vector_set(vectors, reference_frame=reference_frame)
     return render_figure_spec(
         build_vector_figure_spec(vector_set, normalize=normalize, title=title),
@@ -68,6 +88,20 @@ def plot_symmetry_orbit(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot the symmetry orbit of a direction on a spherical projection.
+
+    Purpose
+    -------
+    Show every direction the point group makes equivalent to the given one —
+    the picture behind a ``<uvw>`` family, and the clearest way to see how
+    many equivalents a symmetry produces.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return render_figure_spec(
         build_symmetry_orbit_figure_spec(
             symmetry,
@@ -92,6 +126,20 @@ def plot_symmetry_elements(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot the symmetry elements of a point group stereographically.
+
+    Purpose
+    -------
+    The classical stereogram: rotation axes and mirror traces of the group,
+    drawn in the conventional crystallographic layout for teaching and for
+    checking that a symmetry has been declared as intended.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return _plot_symmetry_elements(
         symmetry,
         method=method,
@@ -114,6 +162,17 @@ def plot_wulff_net(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Draw a Wulff (or Schmidt) net graticule.
+
+    The reference net against which angles are read off a stereographic
+    projection by hand. Useful as a background layer under a pole figure.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return _plot_wulff_net(
         method=method,
         title=title,
@@ -136,6 +195,18 @@ def plot_crystal_directions(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot crystal directions on a spherical projection.
+
+    Accepts one direction or a sequence. Directions are resolved through the
+    direct basis, so the plotted positions are correct in non-cubic lattices
+    where index and direction do not coincide.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return _plot_crystal_directions(
         directions,
         labels=labels,
@@ -162,6 +233,18 @@ def plot_crystal_planes(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot crystal planes as poles on a spherical projection.
+
+    Accepts one plane or a sequence. Planes are plotted as their normals,
+    resolved through the reciprocal basis — the only correct route outside
+    the cubic system.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return _plot_crystal_planes(
         planes,
         labels=labels,
@@ -191,6 +274,30 @@ def plot_stereographic_vectors(
     style_overrides: dict[str, Any] | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot arbitrary vectors stereographically, with labels and colours.
+
+    The general-purpose spherical plotting entry point that the more
+    specific functions delegate to. Use it for overlays that mix sources —
+    measured poles against computed ones, for example.
+
+    Parameters
+    ----------
+    vectors : Any
+        ``(n, 3)`` directions or a typed vector set.
+    method : str
+        Projection method; see the note below.
+    antipodal : bool
+        Fold onto one hemisphere (default), the usual pole-figure
+        convention.
+    title : str, optional
+    ax : matplotlib Axes, optional
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return _plot_stereographic_vectors(
         vectors,
         labels=labels,
@@ -213,6 +320,21 @@ def plot_euler_set(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot Euler angles as a scatter in Euler space.
+
+    Shows where a set of orientations sits in the ``(phi1, Phi, phi2)``
+    coordinates the texture literature sections. Note that Euler space is not
+    metrically faithful — equal angular differences do not correspond to
+    equal distances, and the space is strongly distorted near ``Phi = 0``.
+
+    Parameters
+    ----------
+    euler_set : EulerSet
+        The typed set, so the convention is known rather than assumed.
+    title : str, optional
+    ax : matplotlib Axes, optional
+    """
+
     return render_figure_spec(build_euler_figure_spec(euler_set, title=title), ax=ax)
 
 
@@ -222,6 +344,15 @@ def plot_quaternion_set(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot a quaternion set in orientation space.
+
+    Parameters
+    ----------
+    quaternions : QuaternionSet
+    title : str, optional
+    ax : matplotlib Axes, optional
+    """
+
     return render_figure_spec(build_quaternion_figure_spec(quaternions, title=title), ax=ax)
 
 
@@ -232,6 +363,25 @@ def plot_rotations(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot rotations in axis-angle or Euler representation.
+
+    Parameters
+    ----------
+    rotations : Rotation, RotationSet, QuaternionSet, or EulerSet
+        Any rotation representation; coerced internally.
+    representation : str
+        ``"axis_angle"`` or ``"euler"``. Axis-angle shows the rotation axis
+        distribution, which reveals fibres directly; Euler matches the
+        literature's sectioning convention.
+    title : str, optional
+    ax : matplotlib Axes, optional
+
+    Raises
+    ------
+    ValueError
+        For an unrecognized representation.
+    """
+
     rotation_set = coerce_rotation_set(rotations)
     if representation == "axis_angle":
         return render_figure_spec(build_rotation_figure_spec(rotation_set, title=title), ax=ax)
@@ -253,6 +403,17 @@ def plot_orientations(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot crystal orientations in Euler or axis-angle representation.
+
+    Parameters
+    ----------
+    orientations : Orientation or OrientationSet
+    representation : str
+        ``"euler"`` (default) or ``"axis_angle"``; see :func:`plot_rotations`.
+    title : str, optional
+    ax : matplotlib Axes, optional
+    """
+
     orientation_set = coerce_orientation_set(orientations)
     if representation == "axis_angle":
         return render_figure_spec(
@@ -339,6 +500,27 @@ def plot_pole_figure(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot a pole figure.
+
+    Parameters
+    ----------
+    pole_figure : PoleFigure
+        The figure to render, from a measurement or reconstructed from an
+        ODF.
+    title : str, optional
+    ax : matplotlib Axes, optional
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return render_figure_spec(
         build_pole_figure_spec(
             pole_figure,
@@ -360,6 +542,24 @@ def plot_inverse_pole_figure(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot an inverse pole figure in the standard triangle.
+
+    The fundamental-sector outline is drawn when the figure carries crystal
+    symmetry, so the plot reads as the conventional standard triangle rather
+    than as an unbounded scatter.
+
+    Parameters
+    ----------
+    inverse_pole_figure : InversePoleFigure
+    title : str, optional
+    ax : matplotlib Axes, optional
+
+    The ``method`` argument selects the projection: ``"equal_area"``
+    (Schmidt) preserves area, so densities are comparable across the figure,
+    while ``"stereographic"`` (Wulff) preserves angles and is the right
+    choice for angle-measuring constructions.
+    """
+
     return render_figure_spec(
         build_inverse_pole_figure_spec(inverse_pole_figure, method=method, title=title),
         ax=ax,
@@ -455,6 +655,22 @@ def plot_odf(
     title: str | None = None,
     ax: Any | None = None,
 ) -> Any:
+    """Plot an orientation distribution function as Euler-space sections.
+
+    Purpose
+    -------
+    The conventional presentation of an ODF: density contoured on
+    constant-``phi2`` sections through Bunge Euler space, in multiples of a
+    random distribution.
+
+    Parameters
+    ----------
+    odf : ODF or HarmonicODF
+        Either ODF representation.
+    title : str, optional
+    ax : matplotlib Axes, optional
+    """
+
     return render_figure_spec(
         build_odf_figure_spec(
             odf,

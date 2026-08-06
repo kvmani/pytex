@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pytex._version import __version__
 from pytex.core import (
     AcquisitionGeometry,
     CalibrationRecord,
@@ -28,7 +29,7 @@ WORKFLOW_RESULT_MANIFEST_SCHEMA_ID = "pytex.workflow_result_manifest"
 WORKFLOW_RESULT_MANIFEST_SCHEMA_VERSION = "1.0.0"
 TRANSFORMATION_MANIFEST_SCHEMA_ID = "pytex.transformation_manifest"
 TRANSFORMATION_MANIFEST_SCHEMA_VERSION = "1.0.0"
-_PYTEX_VERSION = "0.1.0.dev0"
+_PYTEX_VERSION = __version__
 
 
 def _iso8601_now() -> str:
@@ -159,6 +160,21 @@ def _mapping_sequence_declaration(
 
 @dataclass(frozen=True, slots=True)
 class ExperimentManifest:
+    """The frames, calibration, and quality of a measurement, as interchange.
+
+    Purpose
+    -------
+    Any workflow that crosses a tool boundary must carry its conventions with
+    its data. Manifests are the machine-readable form of that context —
+    versioned by ``schema_id``, stamped with the PyTex version and the
+    canonical convention set, and validated on both write and read, so a
+    consumer never has to guess how the numbers were produced.
+
+    Attributes are documented in the corresponding JSON schema under
+    ``schemas/``; use :meth:`to_dict` and :meth:`from_dict` to move between
+    this type and the payload.
+    """
+
     source_system: str
     modality: str
     specimen_frame: Mapping[str, Any]
@@ -218,6 +234,33 @@ class ExperimentManifest:
         referenced_files: Sequence[str] = (),
         metadata: Mapping[str, str] | None = None,
     ) -> ExperimentManifest:
+        """Build an experiment manifest from an acquisition geometry.
+
+        Purpose
+        -------
+        The bridge from PyTex's in-memory acquisition model to the interchange
+        form: frames, transforms, calibration, measurement quality, and phase
+        declarations are all serialized together, so a downstream tool receives
+        the conventions along with the data instead of having to assume them.
+
+        Parameters
+        ----------
+        acquisition_geometry : AcquisitionGeometry
+            The frames and transforms of the measurement.
+        source_system : str
+            Name of the producing system.
+        phase : Phase, optional
+            Primary phase declaration.
+        phases : tuple of Phase, optional
+            All phases, for a multiphase measurement.
+        scattering_setup : ScatteringSetup, optional
+            Radiation and beam declaration.
+        referenced_files : tuple of str
+            Paths recorded with the manifest.
+        metadata : dict, optional
+            Additional key/value pairs.
+        """
+
         phase_declarations = tuple(
             declaration
             for declaration in (_phase_declaration(candidate) for candidate in phases)
@@ -263,6 +306,13 @@ class ExperimentManifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """The manifest as a schema-conformant JSON-ready dictionary.
+
+        Plain JSON types throughout, matching the experiment manifest schema, so the
+        payload can be validated, stored, or handed to another tool without
+        PyTex present.
+        """
+
         payload: dict[str, Any] = {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -298,10 +348,25 @@ class ExperimentManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ExperimentManifest:
+        """Reconstruct the manifest from a experiment manifest payload.
+
+        The payload is validated against the schema first, so a malformed or
+        foreign document raises here rather than producing a manifest with
+        missing fields.
+        """
+
         validate_experiment_manifest(payload)
         return cls(**payload)
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the experiment manifest to a JSON file.
+
+        Returns
+        -------
+        Path
+            The path written.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -311,6 +376,21 @@ class ExperimentManifest:
 
 @dataclass(frozen=True, slots=True)
 class BenchmarkManifest:
+    """The workflows, fixtures, and baseline of a benchmark, as interchange.
+
+    Purpose
+    -------
+    Any workflow that crosses a tool boundary must carry its conventions with
+    its data. Manifests are the machine-readable form of that context —
+    versioned by ``schema_id``, stamped with the PyTex version and the
+    canonical convention set, and validated on both write and read, so a
+    consumer never has to guess how the numbers were produced.
+
+    Attributes are documented in the corresponding JSON schema under
+    ``schemas/``; use :meth:`to_dict` and :meth:`from_dict` to move between
+    this type and the payload.
+    """
+
     benchmark_id: str
     subsystem: str
     baseline_kind: str
@@ -355,6 +435,13 @@ class BenchmarkManifest:
         object.__setattr__(self, "tolerances", tolerances)
 
     def to_dict(self) -> dict[str, Any]:
+        """The manifest as a schema-conformant JSON-ready dictionary.
+
+        Plain JSON types throughout, matching the benchmark manifest schema, so the
+        payload can be validated, stored, or handed to another tool without
+        PyTex present.
+        """
+
         return {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -373,10 +460,25 @@ class BenchmarkManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> BenchmarkManifest:
+        """Reconstruct the manifest from a benchmark manifest payload.
+
+        The payload is validated against the schema first, so a malformed or
+        foreign document raises here rather than producing a manifest with
+        missing fields.
+        """
+
         validate_benchmark_manifest(payload)
         return cls(**payload)
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the benchmark manifest to a JSON file.
+
+        Returns
+        -------
+        Path
+            The path written.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -386,6 +488,21 @@ class BenchmarkManifest:
 
 @dataclass(frozen=True, slots=True)
 class ValidationManifest:
+    """A validation campaign, its references, and its status, as interchange.
+
+    Purpose
+    -------
+    Any workflow that crosses a tool boundary must carry its conventions with
+    its data. Manifests are the machine-readable form of that context —
+    versioned by ``schema_id``, stamped with the PyTex version and the
+    canonical convention set, and validated on both write and read, so a
+    consumer never has to guess how the numbers were produced.
+
+    Attributes are documented in the corresponding JSON schema under
+    ``schemas/``; use :meth:`to_dict` and :meth:`from_dict` to move between
+    this type and the payload.
+    """
+
     campaign_name: str
     subsystem: str
     baseline_kind: str
@@ -436,6 +553,13 @@ class ValidationManifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """The manifest as a schema-conformant JSON-ready dictionary.
+
+        Plain JSON types throughout, matching the validation manifest schema, so the
+        payload can be validated, stored, or handed to another tool without
+        PyTex present.
+        """
+
         return {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -454,10 +578,25 @@ class ValidationManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> ValidationManifest:
+        """Reconstruct the manifest from a validation manifest payload.
+
+        The payload is validated against the schema first, so a malformed or
+        foreign document raises here rather than producing a manifest with
+        missing fields.
+        """
+
         validate_validation_manifest(payload)
         return cls(**payload)
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the validation manifest to a JSON file.
+
+        Returns
+        -------
+        Path
+            The path written.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -467,6 +606,21 @@ class ValidationManifest:
 
 @dataclass(frozen=True, slots=True)
 class WorkflowResultManifest:
+    """The artifacts a workflow produced and the inputs it consumed, as interchange.
+
+    Purpose
+    -------
+    Any workflow that crosses a tool boundary must carry its conventions with
+    its data. Manifests are the machine-readable form of that context —
+    versioned by ``schema_id``, stamped with the PyTex version and the
+    canonical convention set, and validated on both write and read, so a
+    consumer never has to guess how the numbers were produced.
+
+    Attributes are documented in the corresponding JSON schema under
+    ``schemas/``; use :meth:`to_dict` and :meth:`from_dict` to move between
+    this type and the payload.
+    """
+
     result_id: str
     workflow_name: str
     modality: str
@@ -515,6 +669,13 @@ class WorkflowResultManifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """The manifest as a schema-conformant JSON-ready dictionary.
+
+        Plain JSON types throughout, matching the workflow-result manifest schema, so the
+        payload can be validated, stored, or handed to another tool without
+        PyTex present.
+        """
+
         return {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -532,10 +693,25 @@ class WorkflowResultManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> WorkflowResultManifest:
+        """Reconstruct the manifest from a workflow-result manifest payload.
+
+        The payload is validated against the schema first, so a malformed or
+        foreign document raises here rather than producing a manifest with
+        missing fields.
+        """
+
         validate_workflow_result_manifest(payload)
         return cls(**payload)
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the workflow-result manifest to a JSON file.
+
+        Returns
+        -------
+        Path
+            The path written.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -545,6 +721,21 @@ class WorkflowResultManifest:
 
 @dataclass(frozen=True, slots=True)
 class TransformationManifest:
+    """The orientation relationship, phases, and variants of an analysis, as interchange.
+
+    Purpose
+    -------
+    Any workflow that crosses a tool boundary must carry its conventions with
+    its data. Manifests are the machine-readable form of that context —
+    versioned by ``schema_id``, stamped with the PyTex version and the
+    canonical convention set, and validated on both write and read, so a
+    consumer never has to guess how the numbers were produced.
+
+    Attributes are documented in the corresponding JSON schema under
+    ``schemas/``; use :meth:`to_dict` and :meth:`from_dict` to move between
+    this type and the payload.
+    """
+
     transformation_id: str
     orientation_relationship_name: str
     parent_phase: Mapping[str, Any]
@@ -610,6 +801,13 @@ class TransformationManifest:
         referenced_files: Sequence[str] = (),
         metadata: Mapping[str, str] | None = None,
     ) -> TransformationManifest:
+        """Build a transformation manifest from a phase-transformation record.
+
+        Serializes the orientation relationship, both phase declarations, the
+        specimen frame, and the variant count, so a transformation analysis can
+        be archived and re-read with its conventions intact.
+        """
+
         return cls(
             transformation_id=record.name,
             orientation_relationship_name=record.orientation_relationship.name,
@@ -625,6 +823,13 @@ class TransformationManifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """The manifest as a schema-conformant JSON-ready dictionary.
+
+        Plain JSON types throughout, matching the transformation manifest schema, so the
+        payload can be validated, stored, or handed to another tool without
+        PyTex present.
+        """
+
         return {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -645,10 +850,25 @@ class TransformationManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> TransformationManifest:
+        """Reconstruct the manifest from a transformation manifest payload.
+
+        The payload is validated against the schema first, so a malformed or
+        foreign document raises here rather than producing a manifest with
+        missing fields.
+        """
+
         validate_transformation_manifest(payload)
         return cls(**payload)
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the transformation manifest to a JSON file.
+
+        Returns
+        -------
+        Path
+            The path written.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -663,6 +883,12 @@ def _require_fields(payload: Mapping[str, Any], required: set[str], *, name: str
 
 
 def validate_experiment_manifest(payload: dict[str, Any]) -> None:
+    """Validate a experiment manifest payload against its schema.
+
+    Raises on the first violation, naming the offending field. Returns
+    ``None`` on success — this is a gate, not a transformation.
+    """
+
     _require_fields(
         payload,
         {
@@ -683,6 +909,12 @@ def validate_experiment_manifest(payload: dict[str, Any]) -> None:
 
 
 def validate_benchmark_manifest(payload: dict[str, Any]) -> None:
+    """Validate a benchmark manifest payload against its schema.
+
+    Raises on the first violation, naming the offending field. Returns
+    ``None`` on success — this is a gate, not a transformation.
+    """
+
     _require_fields(
         payload,
         {
@@ -706,6 +938,12 @@ def validate_benchmark_manifest(payload: dict[str, Any]) -> None:
 
 
 def validate_validation_manifest(payload: dict[str, Any]) -> None:
+    """Validate a validation manifest payload against its schema.
+
+    Raises on the first violation, naming the offending field. Returns
+    ``None`` on success — this is a gate, not a transformation.
+    """
+
     _require_fields(
         payload,
         {
@@ -729,6 +967,12 @@ def validate_validation_manifest(payload: dict[str, Any]) -> None:
 
 
 def validate_workflow_result_manifest(payload: dict[str, Any]) -> None:
+    """Validate a workflow-result manifest payload against its schema.
+
+    Raises on the first violation, naming the offending field. Returns
+    ``None`` on success — this is a gate, not a transformation.
+    """
+
     _require_fields(
         payload,
         {
@@ -751,6 +995,12 @@ def validate_workflow_result_manifest(payload: dict[str, Any]) -> None:
 
 
 def validate_transformation_manifest(payload: dict[str, Any]) -> None:
+    """Validate a transformation manifest payload against its schema.
+
+    Raises on the first violation, naming the offending field. Returns
+    ``None`` on success — this is a gate, not a transformation.
+    """
+
     _require_fields(
         payload,
         {
@@ -780,22 +1030,37 @@ def _schema_path(filename: str) -> Path:
 
 
 def experiment_manifest_schema_path() -> Path:
+    """Path to the JSON schema for experiment manifests.
+    """
+
     return _schema_path("experiment_manifest.schema.json")
 
 
 def benchmark_manifest_schema_path() -> Path:
+    """Path to the JSON schema for benchmark manifests.
+    """
+
     return _schema_path("benchmark_manifest.schema.json")
 
 
 def validation_manifest_schema_path() -> Path:
+    """Path to the JSON schema for validation manifests.
+    """
+
     return _schema_path("validation_manifest.schema.json")
 
 
 def workflow_result_manifest_schema_path() -> Path:
+    """Path to the JSON schema for workflow-result manifests.
+    """
+
     return _schema_path("workflow_result_manifest.schema.json")
 
 
 def transformation_manifest_schema_path() -> Path:
+    """Path to the JSON schema for transformation manifests.
+    """
+
     return _schema_path("transformation_manifest.schema.json")
 
 
@@ -819,20 +1084,35 @@ def _read_manifest(path: str | Path) -> dict[str, Any]:
 
 
 def read_experiment_manifest(path: str | Path) -> ExperimentManifest:
+    """Read and validate a experiment manifest from a JSON file.
+    """
+
     return ExperimentManifest.from_dict(_read_manifest(path))
 
 
 def read_benchmark_manifest(path: str | Path) -> BenchmarkManifest:
+    """Read and validate a benchmark manifest from a JSON file.
+    """
+
     return BenchmarkManifest.from_dict(_read_manifest(path))
 
 
 def read_validation_manifest(path: str | Path) -> ValidationManifest:
+    """Read and validate a validation manifest from a JSON file.
+    """
+
     return ValidationManifest.from_dict(_read_manifest(path))
 
 
 def read_workflow_result_manifest(path: str | Path) -> WorkflowResultManifest:
+    """Read and validate a workflow-result manifest from a JSON file.
+    """
+
     return WorkflowResultManifest.from_dict(_read_manifest(path))
 
 
 def read_transformation_manifest(path: str | Path) -> TransformationManifest:
+    """Read and validate a transformation manifest from a JSON file.
+    """
+
     return TransformationManifest.from_dict(_read_manifest(path))

@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pytex._version import __version__
 from pytex.core.conventions import PYTEX_CANONICAL_CONVENTIONS
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
@@ -15,7 +16,7 @@ from pytex.ebsd import CrystalMap, CrystalMapPhase
 
 EBSD_IMPORT_MANIFEST_SCHEMA_ID = "pytex.ebsd_import_manifest"
 EBSD_IMPORT_MANIFEST_SCHEMA_VERSION = "1.0.0"
-_PYTEX_VERSION = "0.1.0.dev0"
+_PYTEX_VERSION = __version__
 _MISSING = object()
 
 
@@ -37,6 +38,33 @@ def _validate_mapping_string(
 
 @dataclass(frozen=True, slots=True)
 class EBSDImportManifest:
+    """The provenance and conventions under which EBSD data were imported.
+
+    Purpose
+    -------
+    Records where the data came from and — crucially — which orientation
+    convention and angle unit the source used, so that an imported dataset
+    can never be reinterpreted under the wrong convention downstream.
+    Schema-validated on write and read.
+
+    Attributes
+    ----------
+    source_system : str
+        The producing tool.
+    source_file : str
+    crystal_frame, specimen_frame : dict of str
+        Frame declarations.
+    phase_name, point_group : str, optional
+        Single-phase declaration.
+    phases : tuple of dict
+        Phase declarations for a multiphase import.
+    orientation_convention : str
+        ``"bunge"`` by default.
+    angle_unit : str
+        ``"degree"`` by default.
+    Remaining attributes carry the schema and version stamps.
+    """
+
     source_system: str
     source_file: str
     crystal_frame: dict[str, str]
@@ -116,6 +144,9 @@ class EBSDImportManifest:
         object.__setattr__(self, "phases", tuple(normalized_phases))
 
     def to_dict(self) -> dict[str, Any]:
+        """The import manifest as a schema-conformant JSON-ready dictionary.
+        """
+
         payload: dict[str, Any] = {
             "schema_id": self.schema_id,
             "schema_version": self.schema_version,
@@ -138,6 +169,9 @@ class EBSDImportManifest:
         return payload
 
     def write_json(self, path: str | Path) -> Path:
+        """Write the import manifest to a JSON file and return the path.
+        """
+
         output_path = Path(path)
         output_path.write_text(
             json.dumps(self.to_dict(), indent=2, sort_keys=True), encoding="utf-8"
@@ -146,6 +180,9 @@ class EBSDImportManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> EBSDImportManifest:
+        """Reconstruct an import manifest from a payload, validating it first.
+        """
+
         validate_ebsd_import_manifest(payload)
         return cls(
             schema_id=payload["schema_id"],
@@ -168,6 +205,26 @@ class EBSDImportManifest:
 
 @dataclass(frozen=True, slots=True)
 class NormalizedEBSDDataset:
+    """An imported EBSD map paired with the manifest describing its import.
+
+    Purpose
+    -------
+    The output of every import adapter. Keeping the map and its manifest
+    together means a dataset always travels with the record of how it was
+    normalized; construction cross-checks that the phases the manifest
+    declares match the phases the map actually carries.
+
+    Attributes
+    ----------
+    crystal_map : CrystalMap
+        The normalized map.
+    manifest : EBSDImportManifest
+        Its import record.
+    source_phase_aliases : tuple of str
+        Phase names as the source system spelled them, retained for
+        traceability back to the original file.
+    """
+
     crystal_map: CrystalMap
     manifest: EBSDImportManifest
     source_phase_aliases: tuple[str, ...] = ()
@@ -189,10 +246,21 @@ class NormalizedEBSDDataset:
         object.__setattr__(self, "source_phase_aliases", tuple(self.source_phase_aliases))
 
     def write_manifest_json(self, path: str | Path) -> Path:
+        """Write this dataset's import manifest to a JSON file.
+
+        The manifest records where the data came from and which conventions were
+        applied on import, so a normalized dataset never loses its provenance.
+        """
+
         return self.manifest.write_json(path)
 
 
 def validate_ebsd_import_manifest(payload: dict[str, Any]) -> None:
+    """Validate an EBSD import-manifest payload against its schema.
+
+    Raises on the first violation; returns ``None`` on success.
+    """
+
     required = {
         "schema_id",
         "schema_version",
@@ -230,10 +298,16 @@ def validate_ebsd_import_manifest(payload: dict[str, Any]) -> None:
 
 
 def manifest_schema_path() -> Path:
+    """Path to the JSON schema for EBSD import manifests.
+    """
+
     return Path(__file__).resolve().parents[3] / "schemas" / "ebsd_import_manifest.schema.json"
 
 
 def read_ebsd_import_manifest(path: str | Path) -> EBSDImportManifest:
+    """Read and validate an EBSD import manifest from a JSON file.
+    """
+
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("EBSD import manifest JSON must decode to an object.")
@@ -489,6 +563,33 @@ def normalize_kikuchipy_payload(
     phase: Phase | None = None,
     phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
+    """Normalize a KikuchiPy-shaped payload into a PyTex EBSD dataset.
+
+    Purpose
+    -------
+    Bring externally indexed EBSD results into the PyTex data model with
+    explicit frames and phases attached, so nothing downstream has to guess
+    which convention the numbers were produced under.
+
+    Parameters
+    ----------
+    payload : dict
+        The KikuchiPy-shaped result mapping.
+    crystal_frame, specimen_frame, map_frame : ReferenceFrame
+        The three frames to attach. Required, because the source payload does
+        not carry PyTex frame identities.
+    phase : Phase, optional
+        Single-phase declaration.
+    phases : dict, tuple, or list of Phase, optional
+        Phase declarations for a multiphase map, keyed by id or name.
+
+    Returns
+    -------
+    NormalizedEBSDDataset
+        The crystal map together with an import manifest recording the
+        source and the conventions applied.
+    """
+
     return _normalize_vendor_payload(
         payload,
         source_system="kikuchipy",
@@ -510,6 +611,13 @@ def normalize_kikuchipy_dataset(
     phase: Phase | None = None,
     phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
+    """Normalize a KikuchiPy dataset object into a PyTex EBSD dataset.
+
+    The object-taking counterpart of
+    :func:`normalize_kikuchipy_payload`; the arguments and return contract
+    are the same.
+    """
+
     payload = _payload_from_object(
         dataset,
         coordinate_paths=("coordinates", "xmap.coordinates", "xmap.xy"),
@@ -552,6 +660,12 @@ def normalize_pyebsdindex_payload(
     phase: Phase | None = None,
     phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
+    """Normalize a PyEBSDIndex-shaped payload into a PyTex EBSD dataset.
+
+    Same contract as :func:`normalize_kikuchipy_payload`, for results
+    produced by PyEBSDIndex's Radon/Hough indexing.
+    """
+
     return _normalize_vendor_payload(
         payload,
         source_system="pyebsdindex",
@@ -573,6 +687,12 @@ def normalize_pyebsdindex_result(
     phase: Phase | None = None,
     phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> NormalizedEBSDDataset:
+    """Normalize a PyEBSDIndex result object into a PyTex EBSD dataset.
+
+    The object-taking counterpart of
+    :func:`normalize_pyebsdindex_payload`.
+    """
+
     payload = _payload_from_object(
         result,
         coordinate_paths=("coordinates", "scan.coordinates", "xy"),

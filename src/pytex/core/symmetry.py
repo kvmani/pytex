@@ -221,6 +221,36 @@ def _canonical_vector_index(vectors: np.ndarray) -> int:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class SymmetrySpec:
+    """A crystal or specimen symmetry group, as explicit rotation operators.
+
+    Purpose
+    -------
+    The symmetry authority of the library. Every symmetry-aware operation —
+    orientation reduction, disorientation, pole-figure families, inverse
+    pole figures, variant enumeration — consumes this one type, so no
+    subsystem defines its own symmetry model.
+
+    The stored operators are the *proper rotations* of the group: an
+    orientation is a rotation, so improper operators cannot map one
+    orientation onto another. Use :meth:`to_point_group` when mirrors,
+    inversion, and rotoinversions are needed as well.
+
+    Attributes
+    ----------
+    name : str
+    point_group : str
+        Hermann-Mauguin symbol. May name a centrosymmetric or Laue group;
+        the operators stored are those of the corresponding proper group.
+    operators : np.ndarray
+        ``(order, 3, 3)`` rotation matrices.
+    specimen_symmetry : str, optional
+        Name of an associated statistical specimen symmetry.
+    reference_frame : ReferenceFrame, optional
+        The frame the operators act in. Strongly recommended: without it,
+        vectors handed to this specification cannot be frame-checked.
+    provenance : ProvenanceRecord, optional
+    """
+
     name: str
     point_group: str
     operators: np.ndarray = field(default_factory=lambda: np.eye(3)[None, :, :])
@@ -261,24 +291,64 @@ class SymmetrySpec:
 
     @property
     def order(self) -> int:
+        """Number of symmetry operators in the group.
+
+        24 for cubic ``432``, 12 for hexagonal ``622``, 1 for triclinic. This is
+        the factor by which the orientation fundamental region shrinks, and the
+        multiplier on the cost of every symmetry-aware reduction.
+        """
+
         return int(self.operators.shape[0])
 
     @property
     def proper_point_group(self) -> str:
+        """The rotation (proper) point group corresponding to this symmetry.
+
+        Diffraction and orientation work is governed by the rotation subgroup:
+        an orientation is a rotation, so improper operators cannot map one
+        orientation onto another. This normalizes any Hermann-Mauguin symbol —
+        including centrosymmetric and Laue symbols — to the proper group whose
+        operators are actually stored.
+        """
+
         return _normalized_proper_point_group(self.point_group)
 
     @property
     def laue_group_symbol(self) -> str:
+        """Hermann-Mauguin symbol of the Laue class of this point group.
+
+        The Laue class is the point group with inversion added. It is what a
+        diffraction experiment can determine, because Friedel's law makes
+        ``+g`` and ``-g`` equal in intensity under kinematic scattering.
+        """
+
         return laue_class_symbol_for(self.point_group)
 
     @property
     def is_laue(self) -> bool:
+        """Whether this symmetry is already a Laue (centrosymmetric) group.
+        """
+
         return normalize_point_group_symbol(self.point_group) == self.laue_group_symbol
 
     def to_point_group(self) -> PointGroup:
+        """The full :class:`~pytex.core.point_groups.PointGroup` for this symmetry.
+
+        ``SymmetrySpec`` carries the proper operators used for orientation
+        algebra; the ``PointGroup`` additionally carries improper operators,
+        mirror normals, Schoenflies naming, and crystal-system membership.
+        """
+
         return PointGroup.from_symbol(self.point_group)
 
     def laue_symmetry(self) -> SymmetrySpec:
+        """The Laue-class symmetry corresponding to this one.
+
+        Use it when a calculation must respect only what diffraction can
+        distinguish — pole figures and inverse pole figures being the standard
+        cases.
+        """
+
         return SymmetrySpec.from_point_group(
             self.laue_group_symbol,
             reference_frame=self.reference_frame,
@@ -294,6 +364,12 @@ class SymmetrySpec:
         point_group: str = "1",
         reference_frame: ReferenceFrame | None = None,
     ) -> SymmetrySpec:
+        """The trivial symmetry: one operator, point group ``1``.
+
+        The correct explicit choice for a triclinic phase and for "no specimen
+        symmetry assumed", which is preferable to leaving symmetry unset.
+        """
+
         return cls(
             name=name,
             point_group=point_group,
@@ -310,6 +386,32 @@ class SymmetrySpec:
         specimen_symmetry: str | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> SymmetrySpec:
+        """Build a symmetry specification from a Hermann-Mauguin symbol.
+
+        Purpose
+        -------
+        The standard constructor: it expands the symbol into the explicit
+        rotation-operator array that every symmetry-aware calculation consumes.
+
+        Parameters
+        ----------
+        point_group : str
+            Hermann-Mauguin symbol, for example ``"m-3m"``, ``"432"``,
+            ``"6/mmm"``. The stored operators are those of the corresponding
+            proper group.
+        reference_frame : ReferenceFrame, optional
+            The frame the operators act in. Strongly recommended: without it,
+            the specification cannot verify that vectors handed to it live in
+            the right frame.
+        specimen_symmetry : str, optional
+            Name of an associated statistical specimen symmetry.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        SymmetrySpec
+        """
+
         proper_group = _normalized_proper_point_group(point_group)
         operators = _operators_for_proper_point_group(proper_group)
         return cls(
@@ -329,6 +431,26 @@ class SymmetrySpec:
         reference_frame: ReferenceFrame | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> SymmetrySpec:
+        """Build a statistical specimen (sample) symmetry by name.
+
+        Purpose
+        -------
+        Specimen symmetry expresses an assumption about the *process*, not about
+        the crystal: rolling is usually taken to impose orthorhombic sample
+        symmetry, axisymmetric drawing to impose a fibre symmetry. Imposing it
+        averages the ODF over those operations, which sharpens statistics when
+        the assumption holds and fabricates symmetry when it does not.
+
+        Parameters
+        ----------
+        name : str
+            Specimen symmetry name; ``"triclinic"`` (no assumption) by default.
+            An unsupported name raises and lists the supported ones.
+        reference_frame : ReferenceFrame, optional
+            Must be a specimen-domain frame.
+        provenance : ProvenanceRecord, optional
+        """
+
         normalized = name.strip().lower()
         point_group = _SPECIMEN_SYMMETRY_POINT_GROUPS.get(normalized)
         if point_group is None:
@@ -356,6 +478,22 @@ class SymmetrySpec:
         )
 
     def apply_to_vectors(self, vectors: ArrayLike | VectorSet) -> np.ndarray:
+        """Apply every symmetry operator to the given vectors.
+
+        Parameters
+        ----------
+        vectors : ArrayLike or VectorSet
+            Any array ending in dimension 3. A ``VectorSet`` must carry this
+            specification's reference frame, which is checked.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(order, ...)``: the operator axis is prepended, so the
+            result is the full orbit rather than a reduced representative.
+            Read-only.
+        """
+
         if isinstance(vectors, VectorSet):
             if self.reference_frame is not None and vectors.reference_frame != self.reference_frame:
                 raise ValueError(
@@ -372,6 +510,29 @@ class SymmetrySpec:
         return transformed
 
     def apply_to_rotation_matrices(self, matrices: ArrayLike, *, side: str = "right") -> np.ndarray:
+        """Apply every symmetry operator to a stack of rotation matrices.
+
+        Purpose
+        -------
+        Orientations and misorientations transform by symmetry on a *side*:
+        crystal symmetry acts on the right of a crystal-to-specimen orientation,
+        specimen symmetry on the left. Getting the side wrong silently produces
+        a different, wrong orbit, so the side is an explicit argument here.
+
+        Parameters
+        ----------
+        matrices : ArrayLike
+            Any array with trailing shape ``(3, 3)``.
+        side : str
+            ``"right"`` (default) for crystal symmetry, ``"left"`` for specimen
+            symmetry.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(order, ..., 3, 3)``, read-only.
+        """
+
         rotations = np.asarray(matrices, dtype=np.float64)
         if rotations.shape[-2:] != (3, 3):
             raise ValueError("Input rotation matrices must have trailing shape (3, 3).")
@@ -386,6 +547,25 @@ class SymmetrySpec:
         return transformed
 
     def equivalent_vectors(self, vector: ArrayLike, *, antipodal: bool = False) -> np.ndarray:
+        """The distinct symmetry-equivalent unit vectors of one direction.
+
+        Duplicates produced by operators that fix the direction are removed, so
+        the returned count is the true multiplicity of the direction — 6 for
+        cubic ``<100>``, 8 for ``<111>``.
+
+        Parameters
+        ----------
+        vector : ArrayLike
+            A single direction; normalized internally.
+        antipodal : bool
+            Also include the negated vectors, giving the family without a sense.
+
+        Returns
+        -------
+        np.ndarray
+            ``(m, 3)`` unit vectors, read-only.
+        """
+
         candidates = self.apply_to_vectors(vector)
         candidates = normalize_vectors(candidates)
         if antipodal:
@@ -401,6 +581,15 @@ class SymmetrySpec:
         return array
 
     def canonicalize_vector(self, vector: ArrayLike, *, antipodal: bool = False) -> np.ndarray:
+        """The canonical representative of one direction's symmetry orbit.
+
+        Deterministic: symmetry-equivalent directions always yield the same
+        vector, so directions can be compared and grouped. This is a
+        *representative*, chosen by a fixed ordering rule, and is not
+        necessarily the one inside the fundamental sector — for that use
+        :meth:`reduce_vector_to_fundamental_sector`.
+        """
+
         candidates = self.equivalent_vectors(vector, antipodal=antipodal)
         return as_float_array(candidates[_canonical_vector_index(candidates)], shape=(3,))
 
@@ -410,6 +599,12 @@ class SymmetrySpec:
         *,
         antipodal: bool = False,
     ) -> np.ndarray | VectorSet:
+        """Canonical representatives for many directions at once.
+
+        The batch form of :meth:`canonicalize_vector`. A ``VectorSet`` in gives
+        a ``VectorSet`` out with its frame and provenance preserved.
+        """
+
         reference_frame = None
         provenance = None
         if isinstance(vectors, VectorSet):
@@ -437,6 +632,26 @@ class SymmetrySpec:
         return array
 
     def fundamental_sector(self, *, antipodal: bool = True) -> FundamentalSector:
+        """The fundamental sector of this symmetry on the unit sphere.
+
+        Purpose
+        -------
+        The spherical region containing exactly one representative of every
+        direction orbit — the standard stereographic triangle for cubic
+        symmetry, and the domain an inverse pole figure is plotted in.
+
+        Parameters
+        ----------
+        antipodal : bool
+            Treat a direction and its reverse as equivalent (default), which
+            halves the sector and matches how IPFs are conventionally drawn.
+
+        Returns
+        -------
+        FundamentalSector
+            Carrying the sector vertices and bounding-plane normals.
+        """
+
         return FundamentalSector(
             point_group=self.point_group,
             proper_point_group=self.proper_point_group,
@@ -446,6 +661,13 @@ class SymmetrySpec:
         )
 
     def vector_in_fundamental_sector(self, vector: ArrayLike, *, antipodal: bool = True) -> bool:
+        """Whether a direction already lies in the fundamental sector.
+
+        With ``antipodal=True`` (default) the direction is first folded onto the
+        upper hemisphere, matching the convention of
+        :meth:`fundamental_sector`.
+        """
+
         candidate = normalize_vector(vector)
         if antipodal and candidate[2] < 0.0:
             candidate = -candidate
@@ -457,6 +679,30 @@ class SymmetrySpec:
         *,
         antipodal: bool = True,
     ) -> np.ndarray:
+        """The representative of a direction inside the fundamental sector.
+
+        Purpose
+        -------
+        The reduction behind inverse pole figures and IPF colouring: fold a
+        direction into the standard triangle so that symmetry-equivalent
+        directions land on the same point.
+
+        Parameters
+        ----------
+        vector : ArrayLike
+            A single direction; normalized internally.
+        antipodal : bool
+            Treat a direction and its reverse as equivalent (default).
+
+        Returns
+        -------
+        np.ndarray
+            The unit representative. When no orbit member satisfies the sector
+            test exactly — possible for a direction lying on a sector boundary
+            within numerical tolerance — the canonical representative is
+            returned instead, so the function always yields a usable direction.
+        """
+
         candidates = self.equivalent_vectors(vector, antipodal=antipodal)
         matching = [
             candidate
@@ -474,6 +720,14 @@ class SymmetrySpec:
         *,
         antipodal: bool = True,
     ) -> np.ndarray | VectorSet:
+        """Fundamental-sector representatives for many directions at once.
+
+        The batch form of :meth:`reduce_vector_to_fundamental_sector`, and the
+        call behind every inverse pole figure computed from a full EBSD map. A
+        ``VectorSet`` in gives a ``VectorSet`` out with frame and provenance
+        preserved.
+        """
+
         reference_frame = None
         provenance = None
         if isinstance(vectors, VectorSet):
@@ -504,6 +758,29 @@ class SymmetrySpec:
 
 @dataclass(frozen=True, slots=True)
 class FundamentalSector:
+    """The spherical region holding one representative of each direction orbit.
+
+    Purpose
+    -------
+    The standard stereographic triangle, generalized to any point group. It
+    is the domain an inverse pole figure is drawn in and the region IPF
+    colouring maps over.
+
+    Attributes
+    ----------
+    point_group, proper_point_group : str
+        The group and its rotation subgroup.
+    antipodal : bool
+        Whether ``+v`` and ``-v`` are treated as equivalent, which halves the
+        sector.
+    vertices : np.ndarray
+        Corner directions of the sector.
+    edge_normals : np.ndarray
+        Inward normals of the bounding planes, used by :meth:`contains`. An
+        empty set means triclinic symmetry, where the whole sphere is the
+        sector.
+    """
+
     point_group: str
     proper_point_group: str
     antipodal: bool
@@ -521,6 +798,16 @@ class FundamentalSector:
         object.__setattr__(self, "edge_normals", edge_normals)
 
     def contains(self, vectors: ArrayLike, *, atol: float = _SECTOR_TOLERANCE) -> np.ndarray:
+        """Whether each vector lies inside the sector.
+
+        Tests every vector against the sector's bounding-plane normals with a
+        tolerance, so directions on a boundary are accepted rather than
+        rejected by floating-point noise. Accepts a single ``(3,)`` vector or an
+        ``(n, 3)`` array and returns a scalar or ``(n,)`` boolean accordingly. A
+        sector with no bounding planes — triclinic symmetry — contains
+        everything.
+        """
+
         array = np.asarray(vectors, dtype=np.float64)
         squeeze = array.ndim == 1
         rows = np.atleast_2d(array)
@@ -537,6 +824,14 @@ class FundamentalSector:
         return mask
 
     def center(self) -> np.ndarray:
+        """A representative interior direction of the sector.
+
+        The normalized vertex centroid for a genuine polygonal sector, falling
+        back to the centroid of the boundary trace for degenerate sectors and to
+        ``[0, 0, 1]`` when there are no vertices at all. Used to place labels
+        and to seed searches inside the sector.
+        """
+
         if self.vertices.shape[0] == 0:
             return as_float_array([0.0, 0.0, 1.0], shape=(3,))
         if self.vertices.shape[0] >= 3:
@@ -545,6 +840,27 @@ class FundamentalSector:
         return normalize_vector(trace.sum(axis=0))
 
     def boundary_trace(self, *, samples_per_edge: int = 64) -> np.ndarray:
+        """A polyline tracing the sector boundary on the unit sphere.
+
+        Purpose
+        -------
+        The outline drawn around a standard stereographic triangle. Sampling
+        along great-circle edges rather than joining vertices with straight
+        lines is what makes the drawn boundary follow the actual spherical
+        geometry.
+
+        Parameters
+        ----------
+        samples_per_edge : int
+            Points per edge; at least two. Higher values give a smoother curve.
+
+        Returns
+        -------
+        np.ndarray
+            ``(m, 3)`` unit vectors along the boundary. For triclinic symmetry,
+            where there is no bounded sector, the equator is returned.
+        """
+
         if samples_per_edge < 2:
             raise ValueError("boundary_trace requires at least two samples per edge.")
         if self.vertices.shape[0] == 0:

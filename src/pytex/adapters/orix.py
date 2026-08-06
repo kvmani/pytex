@@ -52,12 +52,21 @@ def _quaternion_array_from_orix(obj: Any, *, name: str) -> tuple[np.ndarray, boo
 
 
 def to_orix_symmetry(symmetry: SymmetrySpec) -> Any:
+    """Convert a PyTex symmetry specification to an orix symmetry object.
+    """
+
     _, _, _, orix_symmetry, _ = _require_orix()
     attribute = _PROPER_POINT_GROUP_TO_ORIX[symmetry.proper_point_group]
     return getattr(orix_symmetry, attribute)
 
 
 def from_orix_symmetry(orix_symmetry: Any, *, reference_frame: ReferenceFrame) -> SymmetrySpec:
+    """Convert an orix symmetry to a PyTex specification, attaching a frame.
+
+    The reference frame must be supplied: orix symmetries carry no PyTex
+    frame identity, and inventing one would silently assert an alignment.
+    """
+
     point_group = str(getattr(orix_symmetry, "name", "")).strip()
     if not point_group:
         raise ValueError("Unable to derive a point-group name from the orix symmetry object.")
@@ -65,6 +74,11 @@ def from_orix_symmetry(orix_symmetry: Any, *, reference_frame: ReferenceFrame) -
 
 
 def to_orix_rotation(rotations: Rotation | RotationSet) -> Any:
+    """Convert PyTex rotations to an orix ``Rotation``.
+
+    Accepts a single rotation or a batch.
+    """
+
     _, _, orix_rotation_cls, _, _ = _require_orix()
     quaternions = (
         rotations.quaternion[None, :]
@@ -79,6 +93,11 @@ def from_orix_rotation(
     *,
     provenance: ProvenanceRecord | None = None,
 ) -> Rotation | RotationSet:
+    """Convert an orix ``Rotation`` to PyTex rotations.
+
+    Returns a single rotation for a scalar input and a batch otherwise.
+    """
+
     quaternions, scalar = _quaternion_array_from_orix(rotation, name="orix rotation")
     if scalar:
         return Rotation(quaternion=quaternions[0], provenance=provenance)
@@ -86,6 +105,13 @@ def from_orix_rotation(
 
 
 def to_orix_orientation(orientations: Orientation | OrientationSet) -> Any:
+    """Convert PyTex orientations to an orix ``Orientation``.
+
+    Accepts a single orientation or a batch. Note that frame and phase
+    meaning are not fully representable on the orix side, so the conversion
+    is lossy in that respect.
+    """
+
     _, orix_orientation_cls, _, _, _ = _require_orix()
     if isinstance(orientations, Orientation):
         quaternions = orientations.rotation.quaternion[None, :]
@@ -108,6 +134,12 @@ def from_orix_orientation(
     phase: Phase | None = None,
     provenance: ProvenanceRecord | None = None,
 ) -> Orientation | OrientationSet:
+    """Convert an orix ``Orientation`` to PyTex orientations.
+
+    The crystal and specimen frames must be supplied, since the orix object
+    does not carry PyTex frame identities.
+    """
+
     quaternions, scalar = _quaternion_array_from_orix(orientation, name="orix orientation")
     resolved_symmetry = symmetry
     if resolved_symmetry is None and phase is not None:
@@ -146,16 +178,25 @@ def _to_orix_phase(phase: Phase) -> Any:
 
 
 def to_orix_plane(plane: CrystalPlane) -> Any:
+    """Convert a PyTex crystal plane to an orix ``Miller`` object.
+    """
+
     _, _, _, _, orix_miller_cls = _require_orix()
     return orix_miller_cls(hkl=plane.miller.indices, phase=_to_orix_phase(plane.phase))
 
 
 def to_orix_direction(direction: CrystalDirection) -> Any:
+    """Convert a PyTex crystal direction to an orix ``Miller`` object.
+    """
+
     _, _, _, _, orix_miller_cls = _require_orix()
     return orix_miller_cls(uvw=direction.coordinates, phase=_to_orix_phase(direction.phase))
 
 
 def plane_from_orix_miller(miller: Any, *, phase: Phase) -> CrystalPlane:
+    """Convert an orix ``Miller`` object to a PyTex crystal plane on a phase.
+    """
+
     hkil = np.asarray(getattr(miller, "hkil", []), dtype=np.int64).reshape(-1)
     if hkil.size == 4:
         return CrystalPlane.from_miller_bravais(tuple(int(value) for value in hkil), phase=phase)
@@ -166,6 +207,9 @@ def plane_from_orix_miller(miller: Any, *, phase: Phase) -> CrystalPlane:
 
 
 def direction_from_orix_miller(miller: Any, *, phase: Phase) -> CrystalDirection:
+    """Convert an orix ``Miller`` object to a PyTex crystal direction on a phase.
+    """
+
     uvw = np.asarray(getattr(miller, "uvw", []), dtype=np.float64).reshape(-1)
     if uvw.size == 3 and not np.allclose(uvw, 0.0):
         return CrystalDirection(uvw, phase=phase)

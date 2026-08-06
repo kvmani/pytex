@@ -40,6 +40,31 @@ def _kappa_from_halfwidth(halfwidth_rad: float) -> float:
 
 @dataclass(frozen=True)
 class DeLaValleePoussinKernel:
+    """The de la Vallee Poussin kernel on SO(3), the texture-analysis default.
+
+    Purpose
+    -------
+    The standard ODF smoothing kernel of quantitative texture analysis. It is
+    non-negative and has a finite, exactly zero tail beyond ``pi`` in its
+    angular argument, so it never contributes spurious density far from a
+    measured orientation — the property that distinguishes it from the
+    Gaussian and Abel-Poisson kernels, whose tails only decay.
+
+    Its shape parameter ``kappa`` is solved from the requested halfwidth via
+    the defining property ``psi(halfwidth) = psi(0) / 2``, and the kernel is
+    normalized over SO(3).
+
+    Attributes
+    ----------
+    halfwidth_deg : float
+        Angle at which the kernel falls to half its peak, in ``(0, 180)``.
+
+    See Also
+    --------
+    GaussianSO3Kernel : Smoothest kernel for a given halfwidth.
+    AbelPoissonKernel : Broader-tailed at equal halfwidth.
+    """
+
     halfwidth_deg: float
 
     def __post_init__(self) -> None:
@@ -52,6 +77,9 @@ class DeLaValleePoussinKernel:
 
     @property
     def halfwidth_rad(self) -> float:
+        """The kernel halfwidth in radians.
+        """
+
         return math.radians(self.halfwidth_deg)
 
     @cached_property
@@ -63,6 +91,12 @@ class DeLaValleePoussinKernel:
         return _beta(1.5, 0.5) / _beta(1.5, self.kappa + 0.5)
 
     def evaluate(self, omega_rad: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in radians.
+
+        Angles must lie in ``[-pi, pi]``; anything outside raises rather than
+        being silently wrapped. Returns a read-only array of the same shape.
+        """
+
         omega = np.asarray(omega_rad, dtype=np.float64)
         if np.any(np.abs(omega) > np.pi + 1e-12):
             raise ValueError("Kernel angles must lie in [-pi, pi] radians.")
@@ -72,6 +106,11 @@ class DeLaValleePoussinKernel:
         return values
 
     def evaluate_deg(self, omega_deg: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in degrees.
+
+        Degree-input convenience wrapper over :meth:`evaluate`.
+        """
+
         return self.evaluate(np.deg2rad(np.asarray(omega_deg, dtype=np.float64)))
 
     def chebyshev_coefficients(self, bandwidth: int) -> np.ndarray:
@@ -208,6 +247,9 @@ class GaussianSO3Kernel:
 
     @property
     def halfwidth_rad(self) -> float:
+        """The kernel halfwidth in radians.
+        """
+
         return math.radians(self.halfwidth_deg)
 
     @cached_property
@@ -232,6 +274,12 @@ class GaussianSO3Kernel:
         return values
 
     def evaluate(self, omega_rad: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in radians.
+
+        Angles must lie in ``[-pi, pi]``; anything outside raises rather than
+        being silently wrapped. Returns a read-only array of the same shape.
+        """
+
         omega = np.asarray(omega_rad, dtype=np.float64)
         if np.any(np.abs(omega) > np.pi + 1e-12):
             raise ValueError("Kernel angles must lie in [-pi, pi] radians.")
@@ -241,9 +289,33 @@ class GaussianSO3Kernel:
         return values
 
     def evaluate_deg(self, omega_deg: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in degrees.
+
+        Degree-input convenience wrapper over :meth:`evaluate`.
+        """
+
         return self.evaluate(np.deg2rad(np.asarray(omega_deg, dtype=np.float64)))
 
     def chebyshev_coefficients(self, bandwidth: int) -> np.ndarray:
+        """Character (Chebyshev) coefficients ``A_0 .. A_bandwidth``.
+
+        Purpose
+        -------
+        The spectral representation of the kernel on SO(3). These coefficients
+        are what a harmonic ODF convolves with, and their decay rate is what
+        :meth:`bandwidth` measures.
+
+        Parameters
+        ----------
+        bandwidth : int
+            Highest order to return; must be non-negative.
+
+        Returns
+        -------
+        np.ndarray
+            ``bandwidth + 1`` coefficients, read-only.
+        """
+
         if bandwidth < 0:
             raise ValueError("bandwidth must be non-negative.")
         orders = np.arange(bandwidth + 1, dtype=np.float64)
@@ -253,6 +325,24 @@ class GaussianSO3Kernel:
         return coefficients
 
     def bandwidth(self, *, threshold: float = 1e-3, max_bandwidth: int = 512) -> int:
+        """Smallest harmonic order whose coefficient falls below ``threshold``.
+
+        Purpose
+        -------
+        The practical truncation order for a harmonic expansion of this kernel:
+        beyond it the kernel contributes less than ``threshold``, so carrying
+        further orders costs time without changing the result.
+
+        Parameters
+        ----------
+        threshold : float
+            Coefficient magnitude cut-off, in ``(0, 1)``.
+        max_bandwidth : int
+            Cap on the search; returned unchanged if no coefficient falls below
+            the threshold within it, so a narrow kernel reports the cap rather
+            than silently truncating.
+        """
+
         if not 0.0 < threshold < 1.0:
             raise ValueError("threshold must lie in (0, 1).")
         coefficients = self.chebyshev_coefficients(max_bandwidth)
@@ -286,6 +376,9 @@ class AbelPoissonKernel:
 
     @property
     def halfwidth_rad(self) -> float:
+        """The kernel halfwidth in radians.
+        """
+
         return math.radians(self.halfwidth_deg)
 
     @cached_property
@@ -310,6 +403,12 @@ class AbelPoissonKernel:
         return values
 
     def evaluate(self, omega_rad: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in radians.
+
+        Angles must lie in ``[-pi, pi]``; anything outside raises rather than
+        being silently wrapped. Returns a read-only array of the same shape.
+        """
+
         omega = np.asarray(omega_rad, dtype=np.float64)
         if np.any(np.abs(omega) > np.pi + 1e-12):
             raise ValueError("Kernel angles must lie in [-pi, pi] radians.")
@@ -319,9 +418,33 @@ class AbelPoissonKernel:
         return values
 
     def evaluate_deg(self, omega_deg: ArrayLike) -> np.ndarray:
+        """Kernel value at misorientation angles in degrees.
+
+        Degree-input convenience wrapper over :meth:`evaluate`.
+        """
+
         return self.evaluate(np.deg2rad(np.asarray(omega_deg, dtype=np.float64)))
 
     def chebyshev_coefficients(self, bandwidth: int) -> np.ndarray:
+        """Character (Chebyshev) coefficients ``A_0 .. A_bandwidth``.
+
+        Purpose
+        -------
+        The spectral representation of the kernel on SO(3). These coefficients
+        are what a harmonic ODF convolves with, and their decay rate is what
+        :meth:`bandwidth` measures.
+
+        Parameters
+        ----------
+        bandwidth : int
+            Highest order to return; must be non-negative.
+
+        Returns
+        -------
+        np.ndarray
+            ``bandwidth + 1`` coefficients, read-only.
+        """
+
         if bandwidth < 0:
             raise ValueError("bandwidth must be non-negative.")
         orders = np.arange(bandwidth + 1, dtype=np.float64)
@@ -331,6 +454,24 @@ class AbelPoissonKernel:
         return coefficients
 
     def bandwidth(self, *, threshold: float = 1e-3, max_bandwidth: int = 512) -> int:
+        """Smallest harmonic order whose coefficient falls below ``threshold``.
+
+        Purpose
+        -------
+        The practical truncation order for a harmonic expansion of this kernel:
+        beyond it the kernel contributes less than ``threshold``, so carrying
+        further orders costs time without changing the result.
+
+        Parameters
+        ----------
+        threshold : float
+            Coefficient magnitude cut-off, in ``(0, 1)``.
+        max_bandwidth : int
+            Cap on the search; returned unchanged if no coefficient falls below
+            the threshold within it, so a narrow kernel reports the cap rather
+            than silently truncating.
+        """
+
         if not 0.0 < threshold < 1.0:
             raise ValueError("threshold must lie in (0, 1).")
         coefficients = self.chebyshev_coefficients(max_bandwidth)
