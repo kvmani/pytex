@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytex"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Pure-Python-first crystallographic texture and diffraction foundation library."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -33,6 +33,10 @@ classifiers = [
 ]
 dependencies = [
   "numpy>=1.26",
+  # PyYAML backs two declared data contracts that are on the core import
+  # path: the plotting style themes and the measured-SAED pattern format.
+  # It is a genuine runtime requirement, not an optional extra.
+  "pyyaml>=6.0",
   "scipy>=1.11",
 ]
 
@@ -72,6 +76,11 @@ pytex = "pytex.cli:main"
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+# The version has exactly one literal, in src/pytex/_version.py. setuptools reads
+# it statically, so the build never imports the package or its dependencies.
+[tool.setuptools.dynamic]
+version = {attr = "pytex._version.__version__"}
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
@@ -109,6 +118,9 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 [tool.ruff.lint.per-file-ignores]
 "scripts/generate_worked_examples.py" = ["E501"]
 "worked_examples/examples/*.py" = ["E501"]
+# Greek alpha and beta are the published names of the TEM holder tilt axes, so
+# they are the correct characters in figure labels rather than confusable ones.
+"src/pytex/plotting/tilt_stereogram.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.11"

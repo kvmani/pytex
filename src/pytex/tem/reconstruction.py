@@ -654,10 +654,11 @@ class CurrentState:
                 "from_zone_axes needs at least three observations; use "
                 "from_two_zone_axes for exactly two."
             )
-        phases = {observation.zone_axis.phase for observation in observations}
-        if len(phases) != 1:
-            raise ValueError("All zone-axis observations must belong to one phase.")
         phase = observations[0].zone_axis.phase
+        # Compared rather than collected into a set: Phase is a rich value object
+        # and is deliberately not hashable, so equality is the available test.
+        if any(observation.zone_axis.phase != phase for observation in observations):
+            raise ValueError("All zone-axis observations must belong to one phase.")
 
         beams = np.stack(
             [

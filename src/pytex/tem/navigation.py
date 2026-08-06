@@ -47,6 +47,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import StrEnum
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -69,8 +70,10 @@ from pytex.tem.reconstruction import CurrentState
 from pytex.tem.stage import (
     BEAM_AXIS_LABORATORY,
     GIMBAL_TOLERANCE,
+    DoubleTiltStage,
     StageModel,
     StagePosition,
+    beam_direction_holder,
 )
 
 __all__ = [
@@ -577,18 +580,36 @@ class TiltPlanReport:
         }
 
 
-def _rationalize_direction(
-    phase: Phase, cartesian: np.ndarray, *, max_index: int = 6, tolerance_deg: float = 2.0
-) -> np.ndarray | None:
-    """Nearest low-index lattice direction to a Cartesian crystal-frame vector."""
+@lru_cache(maxsize=32)
+def _direction_grid(
+    lattice_key: tuple[float, ...], max_index: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Lattice directions up to ``max_index`` and their unit Cartesian images.
 
-    direct = phase.lattice.direct_basis().matrix
+    Cached on the direct-basis matrix because the grid depends only on the
+    lattice, and rebuilding it for every candidate solution dominated the
+    solver's cost while producing an identical array each time.
+    """
+
+    direct = np.asarray(lattice_key, dtype=np.float64).reshape(3, 3)
     values = np.arange(-max_index, max_index + 1, dtype=np.int64)
     grid = np.stack(np.meshgrid(values, values, values, indexing="ij"), axis=-1)
     uvw = grid.reshape(-1, 3)
     uvw = uvw[np.any(uvw != 0, axis=1)]
     images = uvw.astype(np.float64) @ direct.T
     images = images / np.linalg.norm(images, axis=1)[:, None]
+    return uvw, images
+
+
+def _rationalize_direction(
+    phase: Phase, cartesian: np.ndarray, *, max_index: int = 6, tolerance_deg: float = 2.0
+) -> np.ndarray | None:
+    """Nearest low-index lattice direction to a Cartesian crystal-frame vector."""
+
+    direct = phase.lattice.direct_basis().matrix
+    uvw, images = _direction_grid(
+        tuple(float(value) for value in np.asarray(direct).ravel()), max_index
+    )
     cosines = images @ normalize_vector(cartesian)
     deviations = np.degrees(np.arccos(np.clip(cosines, -1.0, 1.0)))
     admissible = deviations <= tolerance_deg
@@ -777,7 +798,7 @@ def plan_tilt_to_zone_axis(
     families = current.ambiguity.families
 
     candidates: list[TiltSolution] = []
-    rejected_best: TiltSolution | None = None
+    rejected_best: tuple[float, float, float] | None = None
     reachable_members: set[tuple[int, int, int]] = set()
 
     for family in families:
@@ -801,7 +822,21 @@ def plan_tilt_to_zone_axis(
                     beta,
                     allow_reverse=allow_reverse,
                 )
+                # The cheap rejections come first: assembling a solution
+                # rationalizes the landed direction against a lattice-index grid,
+                # which is far more expensive than either test and is wasted on a
+                # candidate that fails one of them.
+                if residual > tolerance_deg:
+                    continue
                 margin = float(stage.envelope.margin_deg(alpha, beta))
+                if margin < 0.0:
+                    # An exact solution exists but lies outside the envelope.
+                    # Kept only to explain *how far* out of range the target is;
+                    # it is never offered as a nearest approach, which must by
+                    # definition be a position the holder can actually reach.
+                    if rejected_best is None or margin > rejected_best[0]:
+                        rejected_best = (margin, alpha, beta)
+                    continue
                 solution = _build_solution(
                     current=current,
                     stage=stage,
@@ -817,16 +852,6 @@ def plan_tilt_to_zone_axis(
                     ranking=ranking,
                     target_cartesian=target_cartesian,
                 )
-                if residual > tolerance_deg:
-                    continue
-                if margin < 0.0:
-                    # An exact solution exists but lies outside the envelope.
-                    # Kept only to explain *how far* out of range the target is;
-                    # it is never offered as a nearest approach, which must by
-                    # definition be a position the holder can actually reach.
-                    if rejected_best is None or margin > rejected_best.envelope_margin_deg:
-                        rejected_best = solution
-                    continue
                 key = _member_key(member)
                 reachable_members.add(key)
                 candidates.append(solution)
@@ -1086,12 +1111,15 @@ def _nearest_approach(
     Answers "how close can I get?" when the answer to "can I get there?" is no.
     A six-degree miss still shows the Kikuchi pole and is frequently useful, so
     reporting the nearest approach is a real answer rather than a consolation.
-    Searches the envelope on a coarse grid, then refines locally.
+
+    Searches the envelope on a grid. The grid step is about a degree, which is
+    finer than the residual is ever quoted to, so refining further would report
+    precision the answer does not have.
     """
 
     alpha_min, alpha_max, beta_min, beta_max = stage.envelope.bounds()
-    alphas = np.linspace(alpha_min, alpha_max, 121)
-    betas = np.linspace(beta_min, beta_max, 121)
+    alphas = np.linspace(alpha_min, alpha_max, 91)
+    betas = np.linspace(beta_min, beta_max, 91)
     grid_alpha, grid_beta = np.meshgrid(alphas, betas, indexing="ij")
     flat_alpha = grid_alpha.ravel()
     flat_beta = grid_beta.ravel()
@@ -1110,13 +1138,18 @@ def _nearest_approach(
     flat_beta = flat_beta[inside]
 
     # The reachable beam directions, evaluated once and reused for every
-    # candidate: the grid does not depend on the target.
-    beams = np.stack(
-        [
-            stage.beam_direction(float(a), float(b))
-            for a, b in zip(flat_alpha, flat_beta, strict=True)
-        ]
-    )
+    # candidate: the grid does not depend on the target. An ideal stage has a
+    # vectorized closed form, which is worth taking because this grid is the
+    # largest single computation in the package.
+    if stage.calibration.axes.is_ideal and isinstance(stage, DoubleTiltStage):
+        beams = beam_direction_holder(flat_alpha, flat_beta)
+    else:
+        beams = np.stack(
+            [
+                stage.beam_direction(float(a), float(b))
+                for a, b in zip(flat_alpha, flat_beta, strict=True)
+            ]
+        )
 
     best: tuple[float, float, float, np.ndarray, AmbiguityFamily] | None = None
     for family in families:
