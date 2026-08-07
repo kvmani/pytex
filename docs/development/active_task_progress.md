@@ -4,7 +4,7 @@ This file is the durable handoff record for the current substantial repository t
 current enough that work can resume after an interrupted agent session without relying on chat
 history.
 
-## Current Task: TEM Tilt Navigation Program (TN) — IN PROGRESS (started 2026-08-06)
+## Current Task: TEM Tilt Navigation Program (TN) — COMPLETE (2026-08-06 to 2026-08-07)
 
 **Objective.** Implement, in full, the formulation approved in
 [`docs/architecture/tem_tilt_navigation_foundation.md`](../architecture/tem_tilt_navigation_foundation.md):
@@ -76,22 +76,53 @@ error negating both angles exactly; two-zone reconstruction (1.2e-6 deg over 200
 trials); Laue-vs-proper enlargement over all 32 point groups (factor exactly 2
 for the ten affected).
 
-### Open issue to raise with the user
+### Working-tree cleanup (2026-08-07)
 
-**Commit `34755e1` has a wider footprint than its message describes.** It was
-staged with `git add -A src/pytex`, which swept in pre-existing uncommitted
-docstring work from the completed Release-Readiness program that was sitting
-unstaged in the working tree at session start. Nothing was lost or altered — the
-full suite passes — but the commit message describes only the TN worked-example
-and contract work. The history is already pushed to `main`, so correcting it
-would need a force push, which was not done unilaterally. Roughly 26 further
-pre-existing modified/untracked files (docs, tests, `docs/tex/algorithms/*.tex`)
-remain uncommitted and untouched.
+The repository was carrying a substantial uncommitted tail from the completed
+Release-Readiness program. It is now committed in six scoped commits rather than
+one dump, so each change is auditable against the reason it was made:
+
+| Commit | Scope |
+| --- | --- |
+| `30124d4` | Kikuchi band geometry: workflow page, theory note, tests |
+| `a851496` | Preferred-orientation corrections: theory note, tests, and the ~40x ODF scaling fix |
+| `5ee646f` | GND density: theory note, tests, and the Nye-tensor `NaN` trace defect |
+| `2269f5e` | Escaped regex metacharacters in five `pytest.raises(match=...)` patterns |
+| `a3aa58b` | Release surface: `pyyaml` declared, matplotlib made lazy, single version source, metadata and docstring guards, CHANGELOG |
+| _(this commit)_ | Britton EBSD frame-conventions tutorial cited in `reference_index.md`; PDF deliberately **not** tracked, and `references/*.pdf` added to `.gitignore` |
+
+Two latent defects were found and fixed during that pass:
+
+- `docs/testing/diffraction_validation_matrix.md` carried **corrupted LaTeX**:
+  `\frac` and `\theta` had lost their backslashes to a form-feed and a tab, so
+  two table cells contained control characters. Repaired in `a851496`.
+- `references/britton_up_down_ebsd.pdf` was an **orphan**: present on disk but
+  absent from `reference_index.md`, which `references/AGENTS.md` makes mandatory
+  reading before any PDF is used. Now cited with five topic entries and its DOI,
+  without the binary.
+
+**Standing rule set this session:** PDFs in `references/` are a local working
+library and are **never added to git tracking**. `references/*.pdf` is in
+`.gitignore`; cite by DOI in `reference_index.md` instead. The eight PDFs that
+predate the rule remain tracked, since gitignore does not untrack existing files
+and removing them is a separate decision.
+
+**Known history blemish.** Commit `34755e1` has a wider footprint than its
+message describes: it was staged with `git add -A src/pytex`, which swept the
+`src/` half of the Release-Readiness work in alongside the TN worked examples.
+Nothing was lost or altered and the suite passes, but the message describes only
+the TN work. It is already pushed, so correcting it would need a force push to
+`main`, which was not done unilaterally. The six commits above supply the
+documentation, tests and rationale for everything that landed there, so the
+record is complete even though one commit's message under-describes it.
 
 ### Next actions
 
-TN9: write and execute `docs/site/tutorials/notebooks/24_tem_tilt_navigation.ipynb`,
-then TN10 documentation.
+**None — the TN program is complete and the working tree is clean.** Every phase
+TN0–TN10 is delivered, verified and pushed. If work resumes on this area, the
+open items are the ones the foundation document lists as out of scope rather
+than anything unfinished: dynamical intensities, HOLZ/CBED polarity
+determination, and instrument I/O.
 
 ---
 

@@ -66,3 +66,9 @@ docs/presentations/
 
 # Local figure-inspection scratch pages
 .fig_*.html
+
+# Reference PDF corpus: a local working library, not a repository asset.
+# New PDFs are never tracked - cite them by DOI in references/reference_index.md
+# instead. (Eight PDFs predate this rule and remain tracked; gitignore does not
+# untrack them, and removing them is a separate decision.)
+references/*.pdf

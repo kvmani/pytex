@@ -3,6 +3,14 @@
 This index is the discovery surface for the PDF corpus in `references/`.
 Future tasks should use it together with `formulation_summary.md` before mining the PDFs directly.
 
+Entries marked **(not tracked)** describe a PDF that is *not* stored in the repository.
+Obtain it yourself from the citation below and place it in `references/`; the page
+numbers in this table refer to the published article.
+
+| File | Citation |
+| --- | --- |
+| `britton_up_down_ebsd.pdf` | T. B. Britton, J. Jiang, Y. Guo, A. Vilalta-Clemente, D. Wallis, L. N. Hansen, A. Winkelmann and A. J. Wilkinson, "Tutorial: Crystal orientations and EBSD - Or which way is up?", *Materials Characterization* **117** (2016) 113-126. DOI: <https://doi.org/10.1016/j.matchar.2016.04.008>. Open access, CC BY. |
+
 | Aspect | Reference PDF | Page number(s) | Remarks |
 | --- | --- | --- | --- |
 | Rotation representations overview and convention risks | `MathsOfrotations_RolletDegraef.pdf` | pp. 1-3 | Why sign, frame, and representation conventions drift; good basis for PyTex orientation docs. |
@@ -25,6 +33,11 @@ Future tasks should use it together with `formulation_summary.md` before mining 
 | Kikuchi pattern overview | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 148-151 | Good for EBSD/TEM Kikuchi documentation. |
 | Kikuchi bands, zone axes, and pattern content | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 150-151 | Grounds Kikuchi-band and indexing figures. |
 | Kikuchi pattern as gnomonic projection | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | p. 153 | Important for gnomonic projection and pattern-center figures. |
+| Frames of reference: detector, sample, and crystal, and how they drift apart | `britton_up_down_ebsd.pdf` (not tracked) | pp. 114-118 | The canonical treatment of the "which way is up" problem. Directly relevant to the PyTex frame doctrine and to `pytex.tem`, whose parity and rotation ambiguities are the same failure class. |
+| Unit-cell setting and the crystal-frame convention | `britton_up_down_ebsd.pdf` (not tracked) | pp. 116-118 | Fixes the crystal Cartesian frame against the lattice, including the non-orthogonal cases; adheres to Convention 1 of Rowenhorst et al. |
+| EBSP-to-sample coordinate relationship | `britton_up_down_ebsd.pdf` (not tracked) | pp. 119-123 | The detector-to-specimen chain and its validation experiments; the EBSD counterpart of the diffraction-rotation and parity calibration in `pytex.tem`. |
+| Experimental validation of frame conventions | `britton_up_down_ebsd.pdf` (not tracked) | pp. 119-123 | Shows how to *prove* a convention chain is self-consistent rather than assuming it; the model for PyTex's own frame-chain anchors. |
+| Recommendations for reporting orientation conventions | `britton_up_down_ebsd.pdf` (not tracked) | pp. 124-126 | Useful when specifying what a PyTex manifest or report must state for an orientation to be reproducible elsewhere. |
 | Qualitative Kikuchi interpretation | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 153-155 | Useful for pattern-quality and boundary-analysis docs. |
 | Orientation determination from Kikuchi patterns | `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf` | pp. 157-159 | Strong source for orientation-indexing workflow docs. |
 | Hexagonal plane 4-index rule $i = -(h + k)$ | `hexagnoal 4index mathematics.pdf` | pp. 1-2 | Clear derivation for plane notation. |
