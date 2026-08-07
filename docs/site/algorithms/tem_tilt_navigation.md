@@ -204,6 +204,67 @@ single-tilt holder reaches a set of *measure zero* — a great circle — so an
 exact zone axis there is coincidence only, and the correct output is always a
 nearest approach.
 
+## 8a. The reverse direction: orientation *from* an indexed pattern
+
+Everything above inverts the master equation for the tilts. The same equation
+inverts for the **orientation**, which is what texture and microstructure work
+wants out of indexing: given the crystal-to-pattern rotation that indexing
+produced and the holder angles at which the pattern was recorded,
+
+$$\mathbf{U} = \mathbf{R}_{\text{stage}}(\alpha,\beta)^{\mathsf T}\ \mathbf{F}\ \mathbf{R}_z(\varphi_D)\ \mathbf{R}_{P \leftarrow C}.$$
+
+Because the holder frame is the specimen-domain frame, $\mathbf{U}$ *is* an
+ordinary `Orientation` — reportable as Bunge $(\varphi_1, \Phi, \varphi_2)$ and
+directly comparable with an EBSD measurement, with no convention conversion in
+between.
+
+**Surface:** `pytex.tem.orientation_from_indexed_pattern` for one pattern,
+`orientation_from_indexed_patterns` for several, and
+`orientations_from_pattern_report` to map over a solver's ranked solutions.
+
+### Why one pattern is not enough
+
+That composition needs $\varphi_D$, and an error in it is **not** absorbed by
+crystal symmetry: it rotates the reported orientation bodily about the beam
+axis, degree for degree. A $180°$ error yields a clean, self-consistent
+orientation that is wrong by $180°$. The single-pattern surface therefore
+**raises** rather than guessing when no calibration exists.
+
+### Two patterns determine the orientation *and* the calibration
+
+The way out needs no extra equipment. With two indexed patterns at different
+stage positions:
+
+1. The zone axes alone fix the orientation —
+   $\mathbf{U}\hat{\mathbf{n}}_i = \hat{\mathbf{b}}_H(\alpha_i,\beta_i)$, two
+   non-parallel correspondences, Wahba's problem. No calibration enters.
+2. Each pattern's in-plane indexing then over-determines $\varphi_D$: the
+   residual
+   $\mathbf{M}_i = \mathbf{R}_{\text{stage},i}\,\mathbf{U}\,\mathbf{R}_i^{\mathsf T}$
+   must be a rotation **about the beam axis**, and its angle *is* the diffraction
+   rotation. It is read off, not searched for, so recovery is exact.
+
+Two independent diagnostics fall out:
+
+| Quantity | What it catches |
+| --- | --- |
+| Scatter of $\varphi_D$ across patterns | Patterns disagreeing about one instrument constant |
+| **Beam-axis deviation of $\mathbf{M}_i$** | The part of the residual that **no** $\varphi_D$ can absorb — a mirrored stored pattern, a mis-indexed reflection, a reversed stage sign, or a bent specimen |
+
+The second is the one to read. `MultiPatternOrientation.as_calibration()` refuses
+to return a calibration when it is large, because propagating a constant the data
+already contradict is worse than having none.
+
+### How a mirrored pattern actually presents
+
+Not as an improper matrix. Indexing builds right-handed triads from both the
+observed and the calculated vectors, so it *always* returns a proper rotation.
+Mirroring instead flips the stored $y$ axis **and** reverses the derived pattern
+normal — together a $180°$ rotation about the pattern $x$ axis, which is proper.
+It therefore slips past any determinant check and is caught only by the
+beam-axis deviation above. An improper matrix arriving at this surface means a
+caller composed a mirror in by hand, and is rejected as an input error.
+
 ## 9. Path planning: the geodesic is the Kikuchi band
 
 A straight line in $(\alpha,\beta)$ is not a straight line on the crystal

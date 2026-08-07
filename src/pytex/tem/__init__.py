@@ -55,6 +55,15 @@ from pytex.tem.calibration import (
     calibrate_from_tilt_excursions,
     fit_stage_and_orientation,
 )
+from pytex.tem.indexing import (
+    INDEXED_ORIENTATION_SCHEMA,
+    IndexedOrientation,
+    IndexedPatternObservation,
+    MultiPatternOrientation,
+    orientation_from_indexed_pattern,
+    orientation_from_indexed_patterns,
+    orientations_from_pattern_report,
+)
 from pytex.tem.navigation import (
     DEFAULT_RANKING,
     RankingWeights,
@@ -97,6 +106,7 @@ from pytex.tem.stage import (
 __all__ = [
     "BEAM_AXIS_LABORATORY",
     "DEFAULT_RANKING",
+    "INDEXED_ORIENTATION_SCHEMA",
     "AmbiguityFamily",
     "AmbiguityLayer",
     "AmbiguityReport",
@@ -106,7 +116,10 @@ __all__ = [
     "EllipticalEnvelope",
     "GeneralStageAxes",
     "HolderKind",
+    "IndexedOrientation",
+    "IndexedPatternObservation",
     "MaskedEnvelope",
+    "MultiPatternOrientation",
     "PathStrategy",
     "PolygonEnvelope",
     "RankingWeights",
@@ -131,6 +144,9 @@ __all__ = [
     "connecting_band",
     "fit_stage_and_orientation",
     "observation_stabilizer",
+    "orientation_from_indexed_pattern",
+    "orientation_from_indexed_patterns",
+    "orientations_from_pattern_report",
     "plan_path",
     "plan_tilt_to_zone_axis",
     "solve_tilts_for_direction",

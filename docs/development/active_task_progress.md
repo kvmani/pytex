@@ -4,7 +4,52 @@ This file is the durable handoff record for the current substantial repository t
 current enough that work can resume after an interrupted agent session without relying on chat
 history.
 
-## Current Task: TEM Tilt Navigation Program (TN) — COMPLETE (2026-08-06 to 2026-08-07)
+## Current Task: SAED Indexing To Crystal Orientation (SI) — COMPLETE (2026-08-07)
+
+**Objective.** Make SAED indexing output a crystal orientation: given holder alpha and beta,
+a successfully indexed pattern must return the orientation.
+
+**Delivered.** `src/pytex/tem/indexing.py`, exported from `pytex.tem` and the package root.
+
+| Surface | What it does |
+| --- | --- |
+| `orientation_from_indexed_pattern` | One pattern plus stage angles to an `Orientation`, with Bunge angles, forward validation and the ambiguity the pattern leaves. **Raises** without a diffraction-rotation calibration rather than guessing. |
+| `orientation_from_indexed_patterns` | Two or more patterns determine the orientation **and** the diffraction rotation together, from the data alone. Self-calibrating. |
+| `orientations_from_pattern_report` | Maps over a solver's ranked solutions, since competing indexings imply competing orientations. |
+| `MultiPatternOrientation.as_calibration()` | Closes the loop: the measured constant becomes a reusable `StageCalibration`. Refuses when the fit is inconsistent. |
+
+### The design points worth not re-deriving
+
+1. **Why the single-pattern path refuses without a calibration.** An error in the diffraction
+   rotation rotates the reported orientation bodily about the beam axis, degree for degree, and
+   crystal symmetry does not absorb it. Guessing produces a clean, self-consistent, wrong answer.
+2. **How the multi-pattern path self-calibrates.** Zone axes fix the orientation (Wahba, no
+   calibration). Then `M_i = R_stage_i U R_i^T` must be a rotation *about the beam axis*, and its
+   angle **is** the diffraction rotation — read off, not fitted, so recovery is exact.
+3. **The beam-axis deviation is the load-bearing diagnostic.** It is the component of the residual
+   orthogonal to the entire diffraction-rotation degree of freedom, so no value of that constant
+   could absorb it. Non-zero means an input is wrong.
+4. **A mirrored pattern is NOT an improper matrix.** Indexing builds right-handed triads, so it
+   always returns a proper rotation. Mirroring flips the stored y axis *and* reverses the derived
+   pattern normal — together a 180-degree rotation about the pattern x axis, which is proper. It
+   passes every determinant check and is caught only by (3). Verified: determinants stay +1 while
+   the beam deviation reads 22 degrees. An improper matrix reaching the surface means a caller
+   composed a mirror by hand, and is rejected as an input error.
+
+### Verification
+
+| Gate | Result |
+| --- | --- |
+| Single-pattern round trip | max abs error **8.9e-16** over 200 random orientations and rotations |
+| Self-calibration | diffraction rotation recovered exactly at 0, 37, -110, 175 degrees; orientation error 0 |
+| Mirrored storage | detected, `is_consistent` false, `as_calibration()` refuses |
+| New tests | 28, in `tests/unit/test_tem_indexed_orientation.py` |
+| Worked examples | 2 added, both computed == expected |
+| Docs | algorithm page section 8a; theory-note subsection; notebook 24 section 8 |
+
+---
+
+## Previous Task: TEM Tilt Navigation Program (TN) — COMPLETE (2026-08-06 to 2026-08-07)
 
 **Objective.** Implement, in full, the formulation approved in
 [`docs/architecture/tem_tilt_navigation_foundation.md`](../architecture/tem_tilt_navigation_foundation.md):

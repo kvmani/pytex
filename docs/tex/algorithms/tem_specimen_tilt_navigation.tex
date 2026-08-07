@@ -177,6 +177,65 @@ $\hat{\mathbf{n}}_1 \times \hat{\mathbf{n}}_2$. It is harmless exactly when $\ma
 element of the crystal's proper point group, which is a one-line check. For cubic zones $[001]$ and
 $[110]$ the axis is $\langle 1\bar{1}0 \rangle$ and the answer is yes.
 
+\subsection{The Reverse Inversion: Orientation From An Indexed Pattern}
+
+Sections above invert \eqref{eq:tn-master} for the tilts. The same equation inverts for the
+orientation, which is what texture and microstructure work requires of indexing. Given the
+crystal-to-pattern rotation $\mathbf{R}_{P \leftarrow C}$ that indexing produces and the holder
+angles at which the pattern was recorded, \eqref{eq:tn-mode-a} gives $\mathbf{U}$ directly, and
+because the holder frame is the specimen-domain frame this is an ordinary crystal-to-specimen
+orientation --- reportable in Bunge angles and comparable with an EBSD measurement without further
+conversion.
+
+\subsubsection{Joint determination of orientation and diffraction rotation}
+
+The single-pattern inversion requires $\varphi_D$, and \eqref{eq:tn-residual-law} shows that an
+error in it rotates the reported orientation bodily about the beam axis, degree for degree, with
+crystal symmetry providing no protection. Two patterns remove the dependency entirely.
+
+Let patterns $i = 1, 2, \ldots$ be indexed at stage positions $(\alpha_i, \beta_i)$, with zone axes
+$\hat{\mathbf{n}}_i$ and crystal-to-pattern rotations $\mathbf{R}_i$. The zone axes alone determine
+$\mathbf{U}$ through \eqref{eq:tn-mode-b}, using no calibration. With $\mathbf{U}$ fixed, define
+
+\begin{equation}
+\mathbf{M}_i \;\equiv\; \mathbf{R}_{\text{stage}}(\alpha_i,\beta_i)\,\mathbf{U}\,\mathbf{R}_i^{\mathsf T}.
+\label{eq:tn-residual}
+\end{equation}
+
+Substituting \eqref{eq:tn-mode-a} shows $\mathbf{M}_i = \mathbf{F}\mathbf{R}_z(\varphi_D)$ for every
+$i$. Two consequences follow, and they are independent:
+
+\begin{enumerate}
+  \item \textbf{The diffraction rotation is read off, not fitted.} With $\mathbf{F} = \mathbf{I}$,
+    $\varphi_D = \operatorname{atan2}\left((\mathbf{M}_i)_{21}, (\mathbf{M}_i)_{11}\right)$ exactly.
+    The scatter of that value across patterns measures whether they agree on one instrument
+    constant. Because $\varphi_D$ is an angle, the mean must be taken circularly: an arithmetic mean
+    of $359^{\circ}$ and $1^{\circ}$ is $180^{\circ}$, which would be a spectacular way to report a
+    calibration.
+  \item \textbf{The beam-axis deviation is a residual no calibration can absorb.} Every
+    $\mathbf{M}_i$ must fix $\hat{\mathbf{z}}_L$. The angle
+    $\angle(\mathbf{M}_i\hat{\mathbf{z}}_L, \hat{\mathbf{z}}_L)$ is therefore orthogonal to the
+    entire $\varphi_D$ degree of freedom, and is non-zero only if an input is wrong --- a mirrored
+    stored pattern, a mis-indexed reflection, a reversed stage sign convention, or a bent specimen.
+\end{enumerate}
+
+The second quantity is the operative diagnostic, and the reason a calibration derived this way may
+be adopted with confidence: the data have already been asked whether they are consistent with
+\emph{any} value of the constant, not merely fitted to the best one.
+
+\subsubsection{How a mirrored pattern presents}
+
+Not as an improper matrix, which is the natural but wrong expectation. Indexing constructs
+right-handed orthonormal triads from both the observed and the calculated reflection pairs, so its
+output is a proper rotation whatever the data. A mirrored recording instead reflects the stored
+in-plane axes \emph{and} reverses the sense of the derived pattern normal, since the normal is
+built as a cross product of the reflected vectors. The two together compose to a $180^{\circ}$
+rotation about the pattern $x$ axis, which is proper.
+
+Mirroring therefore passes any determinant test and is detected only by the beam-axis deviation of
+\eqref{eq:tn-residual}. An improper matrix arriving at this surface means a mirror was composed in
+by hand upstream, and is rejected as an input error rather than propagated.
+
 \subsection{Identifiability: Three Independent Ambiguities}
 
 The classical ``$180^{\circ}$ ambiguity'' is three unrelated things. Conflating them is why the

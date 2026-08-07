@@ -394,3 +394,187 @@ result = int(report.orbit_size)
 **Citation**: Hahn, Th. (ed.), International Tables for Crystallography, Volume A, IUCr/Springer, DOI: 10.1107/97809553602060000100.
 
 **See also**: {doc}`TEM tilt navigation foundation <../../architecture/tem_tilt_navigation_foundation>`, {doc}`TEM tilt navigation notebook <../../tutorials/notebooks/24_tem_tilt_navigation>`
+
+## Crystal orientation from an indexed pattern: the identity case
+
+The case that fixes every sign in the chain from indexing to orientation. A crystal whose [001] is on the beam at zero tilt, recorded with a zero diffraction rotation and an identity crystal-to-pattern rotation, must come out at the identity orientation. Anything transposed or composed in the wrong order moves the answer off it, so this is the cheapest possible guard on the composition U = R_stage^T F Rz(phi_D) R, which is what turns a solved SAED pattern plus the holder tilts into a reportable orientation.
+
+**Symbols**
+
+- $\varphi_D$ &mdash; Diffraction rotation of the recorded pattern.
+- $(\varphi_1, \Phi, \varphi_2)$ &mdash; Bunge Euler angles of a crystal orientation.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    DoubleTiltStage,
+    FrameDomain,
+    Handedness,
+    IndexedPatternObservation,
+    Lattice,
+    Phase,
+    RectangularEnvelope,
+    ReferenceFrame,
+    StageCalibration,
+    StagePosition,
+    SymmetrySpec,
+    ZoneAxis,
+    orientation_from_indexed_pattern,
+    orientation_from_indexed_patterns,
+    solve_tilts_for_direction,
+)
+from pytex.tem.stage import rotation_z
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+wide_stage = DoubleTiltStage(envelope=RectangularEnvelope(-60.0, 60.0, -60.0, 60.0))
+
+
+def pattern_rotation_for(orientation, position, diffraction_rotation_deg):
+    """The crystal-to-pattern rotation indexing would report, obtained by
+    inverting U = R_stage^T Rz(phi_D) R so that R = Rz(-phi_D) R_stage U."""
+    stage_matrix = wide_stage.rotation_matrix(position.alpha_deg, position.beta_deg)
+    return rotation_z(np.deg2rad(-diffraction_rotation_deg)) @ stage_matrix @ orientation
+
+
+def position_for(orientation, zone):
+    """Stage angles putting a zone axis on the beam under this orientation."""
+    return StagePosition(*solve_tilts_for_direction(orientation @ zone.unit_vector)[0])
+```
+
+:::
+
+**Compute**
+
+```python
+stage = DoubleTiltStage(
+    calibration=StageCalibration(diffraction_rotation_deg=0.0)
+)
+indexed = orientation_from_indexed_pattern(
+    np.eye(3),
+    ZoneAxis([0, 0, 1], phase=nickel),
+    StagePosition(0.0, 0.0),
+    stage,
+)
+result = float(np.max(np.abs(indexed.matrix - np.eye(3))))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | 0.00e+00 | 1e-12 | ✅ pass |
+
+**Why this value**: At zero tilt the stage rotation is the identity; at zero diffraction rotation so is Rz; and an unmirrored pattern has identity parity. The composition therefore reduces to the crystal-to-pattern rotation itself, which is the identity by construction, so the deviation is exactly zero.
+
+**Citation**: Composition derived in section 5 of docs/architecture/tem_tilt_navigation_foundation.md.
+
+**See also**: {doc}`TEM tilt navigation foundation <../../architecture/tem_tilt_navigation_foundation>`, {doc}`TEM tilt navigation notebook <../../tutorials/notebooks/24_tem_tilt_navigation>`
+
+## Diffraction rotation recovered from two indexed patterns
+
+The diffraction rotation is the one constant this subsystem needs and the instrument does not report. This example shows it need not be supplied at all: two patterns indexed at two stage positions determine the crystal orientation *and* that constant together. A rotation of 37 degrees is planted in synthetic patterns and recovered from them, with no calibration given to the stage — which is what makes subsequent single-pattern orientations trustworthy rather than inherited.
+
+**Symbols**
+
+- $\varphi_D$ &mdash; Diffraction rotation of the recorded pattern.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    DoubleTiltStage,
+    FrameDomain,
+    Handedness,
+    IndexedPatternObservation,
+    Lattice,
+    Phase,
+    RectangularEnvelope,
+    ReferenceFrame,
+    StageCalibration,
+    StagePosition,
+    SymmetrySpec,
+    ZoneAxis,
+    orientation_from_indexed_pattern,
+    orientation_from_indexed_patterns,
+    solve_tilts_for_direction,
+)
+from pytex.tem.stage import rotation_z
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+wide_stage = DoubleTiltStage(envelope=RectangularEnvelope(-60.0, 60.0, -60.0, 60.0))
+
+
+def pattern_rotation_for(orientation, position, diffraction_rotation_deg):
+    """The crystal-to-pattern rotation indexing would report, obtained by
+    inverting U = R_stage^T Rz(phi_D) R so that R = Rz(-phi_D) R_stage U."""
+    stage_matrix = wide_stage.rotation_matrix(position.alpha_deg, position.beta_deg)
+    return rotation_z(np.deg2rad(-diffraction_rotation_deg)) @ stage_matrix @ orientation
+
+
+def position_for(orientation, zone):
+    """Stage angles putting a zone axis on the beam under this orientation."""
+    return StagePosition(*solve_tilts_for_direction(orientation @ zone.unit_vector)[0])
+```
+
+:::
+
+**Compute**
+
+```python
+truth = np.linalg.qr(np.random.default_rng(23).normal(size=(3, 3)))[0]
+if np.linalg.det(truth) < 0:
+    truth[:, 0] *= -1
+
+observations = []
+for indices in ([0, 0, 1], [0, 1, 1]):
+    zone = ZoneAxis(indices, phase=nickel)
+    position = position_for(truth, zone)
+    observations.append(
+        IndexedPatternObservation(
+            pattern_rotation_for(truth, position, 37.0), zone, position
+        )
+    )
+
+# wide_stage carries no diffraction-rotation calibration at all.
+fit = orientation_from_indexed_patterns(observations, wide_stage)
+result = float(fit.diffraction_rotation_deg)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+
+**Why this value**: The value planted in the synthetic patterns. Recovery is exact rather than fitted: once the zone axes fix the orientation, the residual R_stage U R^T is by construction a pure rotation about the beam axis whose angle is the diffraction rotation, so the value is read off directly.
+
+**Citation**: Britton, T. B. et al., Materials Characterization 117 (2016) 113-126, DOI: 10.1016/j.matchar.2016.04.008, on why this constant must be measured rather than assumed.
+
+**See also**: {doc}`TEM tilt navigation foundation <../../architecture/tem_tilt_navigation_foundation>`, {doc}`TEM tilt navigation notebook <../../tutorials/notebooks/24_tem_tilt_navigation>`

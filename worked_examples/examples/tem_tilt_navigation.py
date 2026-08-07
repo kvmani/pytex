@@ -283,6 +283,156 @@ CUBIC_ORBIT_MULTIPLICITY = WorkedExample(
 )
 
 
+ORIENTATION_SETUP = '''
+import numpy as np
+from pytex import (
+    DoubleTiltStage,
+    FrameDomain,
+    Handedness,
+    IndexedPatternObservation,
+    Lattice,
+    Phase,
+    RectangularEnvelope,
+    ReferenceFrame,
+    StageCalibration,
+    StagePosition,
+    SymmetrySpec,
+    ZoneAxis,
+    orientation_from_indexed_pattern,
+    orientation_from_indexed_patterns,
+    solve_tilts_for_direction,
+)
+from pytex.tem.stage import rotation_z
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+wide_stage = DoubleTiltStage(envelope=RectangularEnvelope(-60.0, 60.0, -60.0, 60.0))
+
+
+def pattern_rotation_for(orientation, position, diffraction_rotation_deg):
+    """The crystal-to-pattern rotation indexing would report, obtained by
+    inverting U = R_stage^T Rz(phi_D) R so that R = Rz(-phi_D) R_stage U."""
+    stage_matrix = wide_stage.rotation_matrix(position.alpha_deg, position.beta_deg)
+    return rotation_z(np.deg2rad(-diffraction_rotation_deg)) @ stage_matrix @ orientation
+
+
+def position_for(orientation, zone):
+    """Stage angles putting a zone axis on the beam under this orientation."""
+    return StagePosition(*solve_tilts_for_direction(orientation @ zone.unit_vector)[0])
+'''
+
+_PHI_D = SymbolUse(r"\varphi_D", "Diffraction rotation of the recorded pattern.")
+_EULER = SymbolUse(
+    r"(\varphi_1, \Phi, \varphi_2)", "Bunge Euler angles of a crystal orientation."
+)
+
+
+INDEXED_ORIENTATION_IDENTITY = WorkedExample(
+    id="tem-indexed-orientation-identity",
+    title="Crystal orientation from an indexed pattern: the identity case",
+    domain="tem",
+    scenario=(
+        "The case that fixes every sign in the chain from indexing to orientation. A crystal whose "
+        "[001] is on the beam at zero tilt, recorded with a zero diffraction rotation and an "
+        "identity crystal-to-pattern rotation, must come out at the identity orientation. Anything "
+        "transposed or composed in the wrong order moves the answer off it, so this is the "
+        "cheapest possible guard on the composition U = R_stage^T F Rz(phi_D) R, which is what "
+        "turns a solved SAED pattern plus the holder tilts into a reportable orientation."
+    ),
+    setup=ORIENTATION_SETUP,
+    code=(
+        "stage = DoubleTiltStage(\n"
+        "    calibration=StageCalibration(diffraction_rotation_deg=0.0)\n"
+        ")\n"
+        "indexed = orientation_from_indexed_pattern(\n"
+        "    np.eye(3),\n"
+        "    ZoneAxis([0, 0, 1], phase=nickel),\n"
+        "    StagePosition(0.0, 0.0),\n"
+        "    stage,\n"
+        ")\n"
+        "result = float(np.max(np.abs(indexed.matrix - np.eye(3))))"
+    ),
+    expected=0.0,
+    unit="dimensionless",
+    tolerance=1e-12,
+    reference=(
+        "At zero tilt the stage rotation is the identity; at zero diffraction rotation "
+        "so is Rz; and an unmirrored pattern has identity parity. The composition "
+        "therefore reduces to the crystal-to-pattern rotation itself, which is the "
+        "identity by construction, so the deviation is exactly zero."
+    ),
+    citation=(
+        "Composition derived in section 5 of "
+        "docs/architecture/tem_tilt_navigation_foundation.md."
+    ),
+    symbols=(_PHI_D, _EULER),
+    see_also=(_FOUNDATION, _NOTEBOOK),
+    result_format="{:.2e}",
+)
+
+
+SELF_CALIBRATED_DIFFRACTION_ROTATION = WorkedExample(
+    id="tem-self-calibrated-diffraction-rotation",
+    title="Diffraction rotation recovered from two indexed patterns",
+    domain="tem",
+    scenario=(
+        "The diffraction rotation is the one constant this subsystem needs and the instrument does "
+        "not report. This example shows it need not be supplied at all: two patterns indexed at two "
+        "stage positions determine the crystal orientation *and* that constant together. A rotation "
+        "of 37 degrees is planted in synthetic patterns and recovered from them, with no "
+        "calibration given to the stage — which is what makes subsequent single-pattern "
+        "orientations trustworthy rather than inherited."
+    ),
+    setup=ORIENTATION_SETUP,
+    code=(
+        "truth = np.linalg.qr(np.random.default_rng(23).normal(size=(3, 3)))[0]\n"
+        "if np.linalg.det(truth) < 0:\n"
+        "    truth[:, 0] *= -1\n"
+        "\n"
+        "observations = []\n"
+        "for indices in ([0, 0, 1], [0, 1, 1]):\n"
+        "    zone = ZoneAxis(indices, phase=nickel)\n"
+        "    position = position_for(truth, zone)\n"
+        "    observations.append(\n"
+        "        IndexedPatternObservation(\n"
+        "            pattern_rotation_for(truth, position, 37.0), zone, position\n"
+        "        )\n"
+        "    )\n"
+        "\n"
+        "# wide_stage carries no diffraction-rotation calibration at all.\n"
+        "fit = orientation_from_indexed_patterns(observations, wide_stage)\n"
+        "result = float(fit.diffraction_rotation_deg)"
+    ),
+    expected=37.0,
+    unit="deg",
+    tolerance=1e-9,
+    reference=(
+        "The value planted in the synthetic patterns. Recovery is exact rather than "
+        "fitted: once the zone axes fix the orientation, the residual "
+        "R_stage U R^T is by construction a pure rotation about the beam axis whose "
+        "angle is the diffraction rotation, so the value is read off directly."
+    ),
+    citation=(
+        "Britton, T. B. et al., Materials Characterization 117 (2016) 113-126, "
+        "DOI: 10.1016/j.matchar.2016.04.008, on why this constant must be measured "
+        "rather than assumed."
+    ),
+    symbols=(_PHI_D,),
+    see_also=(_FOUNDATION, _NOTEBOOK),
+    result_format="{:.6f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="tem_tilt_navigation",
     title="TEM tilt navigation",
@@ -299,6 +449,8 @@ GROUP = ExampleGroup(
         ROTATION_ERROR_RESIDUAL,
         OBSERVATION_STABILIZER_ORDER,
         CUBIC_ORBIT_MULTIPLICITY,
+        INDEXED_ORIENTATION_IDENTITY,
+        SELF_CALIBRATED_DIFFRACTION_ROTATION,
     ),
 )
 

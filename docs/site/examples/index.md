@@ -53,6 +53,8 @@ The complete set of computed-versus-expected values at a glance:
 | `tem-diffraction-rotation-residual` | 5.000000 | 5.000000 | deg | ✅ |
 | `tem-observation-stabilizer-cubic-001` | 8 | 8 | operators | ✅ |
 | `tem-symmetry-orbit-multiplicity` | 48 | 48 | directions | ✅ |
+| `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | ✅ |
+| `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
 | `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | ✅ |
