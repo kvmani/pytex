@@ -311,7 +311,7 @@ def test_apply_to_vectors_rejects_a_vector_set_from_another_frame() -> None:
     specimen = make_frame("specimen", FrameDomain.SPECIMEN)
     transform = FrameTransform(source=crystal, target=specimen, rotation_matrix=np.eye(3))
     stray = VectorSet(values=[[1.0, 0.0, 0.0]], reference_frame=specimen)
-    with pytest.raises(ValueError, match="must match FrameTransform.source"):
+    with pytest.raises(ValueError, match=r"must match FrameTransform\.source"):
         transform.apply_to_vectors(stray)
 
 
@@ -409,7 +409,7 @@ def test_axis_correspondence_rejects_incomplete_or_repeated_declarations() -> No
 
 def test_axis_correspondence_rejects_an_improper_permutation() -> None:
     # Swapping two axes without a sign flip is a mirror, not a rotation.
-    with pytest.raises(ValueError, match="not a proper rotation|determinant is not"):
+    with pytest.raises(ValueError, match=r"not a proper rotation|determinant is not"):
         FrameTransform.from_axis_correspondence(
             SPECIMEN_FRAME, SAMPLE_RD_TD_ND_FRAME, {"x": "TD", "y": "RD", "z": "ND"}
         )
@@ -494,7 +494,7 @@ def test_apply_to_directions_rejects_a_vector_set_from_another_frame() -> None:
         (0.0, 0.0, 1.0), 90.0, source=specimen_frame(), target=map_frame()
     )
     stray = VectorSet(values=[[1.0, 0.0, 0.0]], reference_frame=map_frame())
-    with pytest.raises(ValueError, match="must match FrameTransform.source"):
+    with pytest.raises(ValueError, match=r"must match FrameTransform\.source"):
         transform.apply_to_directions(stray)
 
 

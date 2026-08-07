@@ -335,7 +335,7 @@ class TestBurgersComposite:
     ) -> None:
         # Down [0001] the visible hcp reflections are the hk0 set; the closest
         # ring is {10-10} with d = a*sqrt(3)/2 = 2.5555 A for a = 2.9508 A.
-        _, alpha = bcc_hcp
+        _, _alpha = bcc_hcp
         zone = ZoneAxis(np.array([1, 1, 0]), phase=burgers.parent_phase)
         composite = simulate_composite_saed(burgers, zone)
         pattern = next(
@@ -544,7 +544,7 @@ class TestSharedGeometryControls:
 
     def test_zone_phase_mismatch_raises(self, ks: OrientationRelationship) -> None:
         zone = ZoneAxis(np.array([0, 1, -1]), phase=ks.child_phase)
-        with pytest.raises(ValueError, match="parent_zone_axis.phase"):
+        with pytest.raises(ValueError, match=r"parent_zone_axis\.phase"):
             simulate_composite_saed(ks, zone)
 
     def test_align_g_phase_mismatch_raises(self, ks: OrientationRelationship) -> None:

@@ -366,7 +366,7 @@ class TestSimulateZoneAxisSpots:
         nickel = make_nickel_phase()
         iron = make_iron_bcc_phase()
         zone = ZoneAxis(np.array([0, 0, 1]), phase=iron)
-        with pytest.raises(ValueError, match="zone_axis.phase"):
+        with pytest.raises(ValueError, match=r"zone_axis\.phase"):
             simulate_zone_axis_spots(nickel, zone)
 
     def test_invalid_basis_raises(self) -> None:

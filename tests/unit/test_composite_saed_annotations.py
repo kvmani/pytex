@@ -162,7 +162,7 @@ class TestAnnotationRendering:
                 coincidence_tolerance_mm=3.0, max_labels=40, min_intensity=0.0
             )
         )
-        fig, result = render_composite_saed(
+        _fig, result = render_composite_saed(
             ks_composite, config=config, return_annotations=True
         )
         assert result.merged_cluster_count > 0

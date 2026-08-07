@@ -683,7 +683,7 @@ def test_parallel_directions_reject_phase_mismatch() -> None:
 
 
 def test_burgers_parallel_directions_keep_miller_bravais_meaning() -> None:
-    crystal_parent, crystal_child, parent, _ = make_phases()
+    _crystal_parent, crystal_child, parent, _ = make_phases()
     hex_symmetry = SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_child)
     hex_lattice = Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_child)
     alpha = Phase(
@@ -771,7 +771,7 @@ def test_ks_close_packed_group_membership_across_variants() -> None:
 
 
 def test_burgers_hexagonal_correspondence_keeps_index_meaning() -> None:
-    crystal_parent, _, parent, _ = make_phases()
+    _crystal_parent, _, parent, _ = make_phases()
     hex_frame = ReferenceFrame(
         name="hex_child",
         domain=FrameDomain.CRYSTAL,
@@ -1142,7 +1142,7 @@ def test_fit_averages_noise_toward_true_relationship() -> None:
 
 def test_fit_validates_pairing_and_phases() -> None:
     _, _, parent, child = make_phases()
-    parents, children, gt = _random_gt_pairs(parent, child, count=4)
+    _parents, children, gt = _random_gt_pairs(parent, child, count=4)
     with pytest.raises(ValueError, match="parent phase"):
         fit_orientation_relationship(children, children, gt)
 
@@ -1211,7 +1211,7 @@ def test_child_composition_follows_canonical_crystal_to_specimen_convention() ->
 
 def test_orientation_set_slicing_returns_metadata_preserving_subset() -> None:
     _, _, parent, child = make_phases()
-    parents, children, _ = _paired_sets_for_deviation(parent, child)
+    _parents, children, _ = _paired_sets_for_deviation(parent, child)
     sliced = children[:1]
     assert isinstance(sliced, OrientationSet)
     assert len(sliced) == 1
@@ -1282,7 +1282,7 @@ def test_ks_class_relationships_share_bain_stretches_with_literature_rotations()
 def test_shoji_nishiyama_correspondence_and_catalog() -> None:
     from pytex.core import standard_fcc_hcp_relationships, variant_close_packed_groups
 
-    crystal_parent, _, parent, _ = make_phases()
+    _crystal_parent, _, parent, _ = make_phases()
     hex_frame = ReferenceFrame(
         name="sn_hex_child",
         domain=FrameDomain.CRYSTAL,

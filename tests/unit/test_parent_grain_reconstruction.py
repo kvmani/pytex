@@ -163,7 +163,7 @@ def test_reconstruction_tolerates_orientation_noise() -> None:
 
 
 def test_singleton_grains_are_reported_as_ambiguous() -> None:
-    children, adjacency, planted, _, ks = _planted_microstructure()
+    children, adjacency, _planted, _, ks = _planted_microstructure()
     # Drop every edge touching grain 0 so it becomes a singleton cluster.
     kept = adjacency[(adjacency[:, 0] != 0) & (adjacency[:, 1] != 0)]
     result = reconstruct_parent_grains(children, kept, ks, tolerance_deg=2.0)

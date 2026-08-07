@@ -77,7 +77,7 @@ def test_refinement_with_noise_stays_near_truth_and_describes() -> None:
 
 def test_refinement_input_validation() -> None:
     parent_phase, child_phase, _ = _phases()
-    children, edges = _microstructure(
+    children, _edges = _microstructure(
         OrientationRelationship.from_kurdjumov_sachs_correspondence
     )
     nominal = OrientationRelationship.from_kurdjumov_sachs_correspondence(
