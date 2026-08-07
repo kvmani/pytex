@@ -132,7 +132,7 @@ def run(quick: bool) -> dict[str, object]:
     grain_count = 30 if quick else 400
     repeats = 1 if quick else 3
     parents, children, ks = _paired_sets(pair_count)
-    grain_parents, grain_children, _ = _paired_sets(grain_count)
+    _grain_parents, grain_children, _ = _paired_sets(grain_count)
     adjacency = np.column_stack(
         [np.arange(grain_count - 1), np.arange(1, grain_count)]
     )

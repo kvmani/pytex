@@ -137,6 +137,10 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.ebsd.gnd
+```
+
+```{eval-rst}
 .. automodule:: pytex.ebsd.models
 ```
 
@@ -152,11 +156,19 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.diffraction.kikuchi
+```
+
+```{eval-rst}
 .. automodule:: pytex.diffraction.models
 ```
 
 ```{eval-rst}
 .. automodule:: pytex.diffraction.physics
+```
+
+```{eval-rst}
+.. automodule:: pytex.diffraction.preferred_orientation
 ```
 
 ```{eval-rst}

@@ -62,6 +62,7 @@ reconstruction_robustness.json
 # Generated capability deck: a 3 MB self-contained HTML plus its rasters,
 # rebuilt on demand from docs/presentations/generate/. Kept out of history.
 docs/presentations/
+.tmp_pytex_platform_deck/
 
 # Local figure-inspection scratch pages
 .fig_*.html

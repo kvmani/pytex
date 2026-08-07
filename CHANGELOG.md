@@ -11,7 +11,97 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`import pytex` failed on a clean install of the declared dependencies.**
+  `pytex.diffraction.solving` and `pytex.plotting.styles` import `yaml` at module
+  level, but `pyyaml` was not declared, so a fresh `pip install pytex` raised
+  `ModuleNotFoundError` on the very first import. `pyyaml` is now a declared
+  runtime dependency — it backs two data contracts on the core import path, the
+  plotting style themes and the measured-SAED pattern format. Verified by
+  building the wheel and importing it in a clean virtual environment.
+
+- **Matplotlib was silently mandatory.** `pytex.plotting.crystal3d` and
+  `pytex.plotting.scene3d` imported `matplotlib.colors` at module level, which
+  contradicted the `plotting` extra and the `_require_matplotlib()` guards used
+  everywhere else. Those imports are now lazy, so the library imports and
+  computes with numpy, scipy and pyyaml alone; matplotlib is required only when a
+  plot is actually drawn.
+
+- **The version string existed in four files.** `pyproject.toml`,
+  `pytex.__version__`, and both manifest writers each carried their own literal,
+  so a release bump would have left exported manifests stamping the previous
+  version. `src/pytex/_version.py` is now the single source: the packaging
+  metadata reads it statically, and `CITATION.cff` states the same version.
+
+- **`nye_dislocation_density_tensor` destroyed its own measurable output.**
+  Subtracting the trace as `trace * identity` propagated the `NaN` of the
+  unmeasurable out-of-plane curvature into every off-diagonal component, because
+  `NaN * 0` is `NaN`. The trace is now applied to the diagonal alone.
+
+- **ODF-weighted preferred-orientation factors were mis-scaled by ~40x.**
+  `ODF.evaluate_pole_density` returns a kernel-weighted response, not a value in
+  multiples of random — the smoothing kernel peaks at 1 rather than integrating
+  to 1 — so a uniform texture returns the kernel's spherical mean. The
+  correction now divides by that mean, computed by Gauss-Legendre quadrature, and
+  a uniform ODF gives a factor of 1 as it must.
+
+- **`GnomonicProjection.contains` rejected exact detector edges**, so
+  `detector_corner_coordinates()` reported its own corners as off-detector. Now
+  takes an explicit pixel tolerance.
+
+- **Five `pytest.raises(match=...)` patterns contained unescaped regex
+  metacharacters**, silently matching more loosely than they read.
+
 ### Added
+
+- **Kikuchi band geometry and the gnomonic projection**
+  (`pytex.diffraction.kikuchi`): `GnomonicProjection`, `KikuchiBand`,
+  `KikuchiZoneAxis`, `KikuchiPattern`, `simulate_kikuchi_pattern`, and
+  `plot_kikuchi_pattern`. The geometric layer shared by EBSD and TEM. Band
+  centre lines are exactly straight in gnomonic coordinates at any detector tilt;
+  band edges are computed on the **exact Kossel cones**, so they are the conics
+  they physically are rather than the usual small-angle straight-line
+  approximation. Validated against closed-form anchors: gnomonic radius
+  `tan(psi)`, Bragg's law by hand for the 2.42-degree Ni{111} band at 20 kV, and
+  `[011]` projecting to gnomonic radius exactly 1 at the cube orientation, which
+  pins the whole crystal-to-detector frame chain.
+
+- **Preferred-orientation corrections for powder intensities**
+  (`pytex.diffraction.preferred_orientation`): `march_dollase_factors`,
+  `MarchDollaseModel`, `ODFPreferredOrientationModel`, the
+  `PreferredOrientationModel` protocol, `apply_preferred_orientation`, and a
+  `preferred_orientation=` argument on `generate_xrd_pattern`. The ODF-weighted
+  model drives powder intensities directly from a measured texture with no fitted
+  parameter — the texture core feeding diffraction. March-Dollase factors are
+  averaged over the full symmetry family, so they cannot depend on which family
+  representative the enumeration emitted, and the distribution's exact spherical
+  normalization is pinned as a test.
+
+- **Lattice curvature and GND density** (`pytex.ebsd.gnd`):
+  `lattice_curvature_tensor`, `nye_dislocation_density_tensor`,
+  `geometrically_necessary_dislocation_density` (Nye and KAM routes), and
+  `plot_gnd_density_map`. Completes the KAM/GROD/GOS/GAM family with the
+  dislocation content those gradients imply, in m^-2. Unmeasurable components are
+  reported as `NaN` rather than zero: a 2-D map determines six of nine curvature
+  and five of nine Nye components. Densities are documented as lower bounds and
+  as resolution dependent, with the step-size scaling pinned as a test.
+
+- **`phase_fixtures_available()`**, so code can test for the checksum-pinned
+  phase-fixture corpus rather than discover its absence by exception. The corpus
+  is a repository asset and is not shipped in the wheel; the loader now says so
+  and names the alternatives.
+
+- **Complete public-API docstring coverage.** Every one of the 411 names in
+  `pytex.__all__` and every public member of every exported class now carries a
+  docstring — 574 members plus 118 class docstrings that previously had only
+  Python's auto-generated dataclass signature. Repo-wide public docstring
+  coverage rose from 33.1% to 90.2%.
+
+- **Three new test ratchets** that would have caught the defects above:
+  `tests/unit/test_public_api_docstrings.py` (every export documented, with a
+  real summary line), and `tests/unit/test_release_metadata.py` (no undeclared
+  module-level imports, one version literal, citation metadata in step).
 
 - **New Sphinx section `docs/site/algorithms/`** documenting how each scientific
   surface computes what it computes. Four pages — OR determination from measured
