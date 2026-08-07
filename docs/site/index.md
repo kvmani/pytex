@@ -68,6 +68,7 @@ workflows/diffraction_geometry
 workflows/diffraction_spots
 workflows/xrd_generation
 workflows/saed_generation
+workflows/kikuchi_geometry
 workflows/composite_or_diffraction
 workflows/saed_pattern_solving
 workflows/crystal_visualization
