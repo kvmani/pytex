@@ -12,7 +12,8 @@ from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane
-from pytex.core.orientation import Orientation, OrientationSet
+from pytex.core.notation import format_plane_family_indices, format_plane_indices
+from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.sphere import S2Grid
 from pytex.core.symmetry import SymmetrySpec
@@ -807,6 +808,299 @@ class PoleFigure:
             )
         return replace(self, intensities=self.intensities / mean_density)
 
+    # ------------------------------------------------------------------
+    # Combining figures
+    # ------------------------------------------------------------------
+
+    def _require_combinable(self, other: PoleFigure, *, operation: str) -> None:
+        """Refuse to combine two figures that do not describe the same quantity.
+
+        Every check here has a way of silently producing a plausible but wrong
+        answer if skipped, which is why they raise rather than warn or coerce.
+        """
+
+        if self.pole != other.pole:
+            raise ValueError(
+                f"Cannot {operation} pole figures of different poles: densities of two "
+                "different {hkl} are different physical quantities. Compare each pole "
+                "against its own counterpart."
+            )
+        if self.specimen_frame != other.specimen_frame:
+            raise ValueError(
+                f"Cannot {operation} pole figures in different specimen frames; the same "
+                "direction vector means different things in each."
+            )
+        if self.antipodal != other.antipodal:
+            raise ValueError(
+                f"Cannot {operation} pole figures with different antipodal conventions: one "
+                "identifies opposite normals and the other does not, so their supports are "
+                "not the same set of directions."
+            )
+        if self.includes_symmetry_family != other.includes_symmetry_family:
+            raise ValueError(
+                f"Cannot {operation} a whole-family {{hkl}} figure with a single-plane (hkl) "
+                "figure; they differ by the multiplicity of the family."
+            )
+        if self.sample_directions.shape != other.sample_directions.shape or not np.allclose(
+            self.sample_directions, other.sample_directions, atol=1e-9
+        ):
+            raise ValueError(
+                f"Cannot {operation} pole figures on different supports. Resample both onto "
+                "one grid first, e.g. `grid = a.integration_grid(); a.on_grid(grid); "
+                "b.on_grid(grid)`."
+            )
+
+    def difference(
+        self,
+        other: PoleFigure,
+        *,
+        left_label: str = "left",
+        right_label: str = "right",
+    ) -> PoleFigureDifference:
+        """The signed residual figure ``self - other``.
+
+        Purpose
+        -------
+        The standard comparison of two pole figures: a measurement against the
+        figure an ODF recalculates, two measurements of the same specimen, or a
+        specimen before and after a treatment. The sign says which way the
+        disagreement runs, which is the part a single error number cannot tell
+        you.
+
+        Both figures must share a support and should share a scale; put each in
+        multiples of random with :meth:`normalize_to_mrd` (or resample with
+        :meth:`on_grid`, which normalizes by default) so the residual reads in
+        m.r.d. rather than in arbitrary units.
+
+        Parameters
+        ----------
+        other : PoleFigure
+            The figure being subtracted. Must match this one in pole, specimen
+            frame, antipodal convention, family flag and support; each mismatch
+            raises with the reason.
+        left_label, right_label : str
+            Names carried into the result so that a plotted or saved residual
+            says what was compared.
+
+        Returns
+        -------
+        PoleFigureDifference
+            Read its ``describe()``.
+        """
+
+        self._require_combinable(other, operation="subtract")
+        return PoleFigureDifference(
+            pole=self.pole,
+            sample_directions=self.sample_directions,
+            values=self.intensities - other.intensities,
+            specimen_frame=self.specimen_frame,
+            antipodal=self.antipodal,
+            left_label=left_label,
+            right_label=right_label,
+            includes_symmetry_family=self.includes_symmetry_family,
+            provenance=self.provenance,
+        )
+
+    def __add__(self, other: PoleFigure | float) -> PoleFigure:
+        """Sum two pole figures on a shared support, or add a constant.
+
+        Adding figures is how a multi-phase or multi-component pole figure is
+        assembled from its parts. The result is a pole density and is therefore
+        still a :class:`PoleFigure`.
+        """
+
+        if isinstance(other, PoleFigure):
+            self._require_combinable(other, operation="add")
+            return replace(self, intensities=self.intensities + other.intensities)
+        shifted = self.intensities + float(other)
+        if np.any(shifted < 0.0):
+            raise ValueError(
+                "Adding this constant would make pole densities negative, which is not a "
+                "pole figure. Use subtraction, which returns a PoleFigureDifference."
+            )
+        return replace(self, intensities=shifted)
+
+    __radd__ = __add__
+
+    def __sub__(self, other: PoleFigure | float) -> PoleFigureDifference:
+        """Signed difference; see :meth:`difference`.
+
+        Subtracting the scalar 1 is the idiomatic way to get the deviation from
+        a random distribution, once the figure is in m.r.d.
+
+        Note that this returns a :class:`PoleFigureDifference`, not a
+        ``PoleFigure``: the result is signed, and a pole density is not.
+        """
+
+        if isinstance(other, PoleFigure):
+            return self.difference(other)
+        return PoleFigureDifference(
+            pole=self.pole,
+            sample_directions=self.sample_directions,
+            values=self.intensities - float(other),
+            specimen_frame=self.specimen_frame,
+            antipodal=self.antipodal,
+            left_label="figure",
+            right_label=f"{float(other):g}",
+            includes_symmetry_family=self.includes_symmetry_family,
+            provenance=self.provenance,
+        )
+
+    def __mul__(self, factor: float) -> PoleFigure:
+        """Scale by a non-negative constant.
+
+        Only scalars: the pointwise product of two pole densities is not a pole
+        density and has no accepted meaning, so it is not defined. For "how many
+        times stronger is this figure than that one" use division.
+        """
+
+        value = float(factor)
+        if not np.isfinite(value) or value < 0.0:
+            raise ValueError("PoleFigure can only be scaled by a finite, non-negative factor.")
+        return replace(self, intensities=self.intensities * value)
+
+    __rmul__ = __mul__
+
+    def __truediv__(self, other: PoleFigure | float) -> PoleFigure:
+        """Ratio to another figure on the same support, or scaling by 1/x.
+
+        The ratio of two pole figures answers "how many times stronger is this
+        direction here than there" — the natural comparison when both are in
+        m.r.d. It is non-negative, so the result is a :class:`PoleFigure`.
+
+        Raises
+        ------
+        ValueError
+            If any denominator density is zero. A ratio there is undefined, and
+            substituting any finite value would invent a comparison the data
+            does not support; mask those directions instead.
+        """
+
+        if isinstance(other, PoleFigure):
+            self._require_combinable(other, operation="divide")
+            if np.any(other.intensities <= 0.0):
+                raise ValueError(
+                    "Cannot divide by a pole figure with zero density: the ratio is undefined "
+                    "wherever the denominator vanishes. Restrict both figures to the measured "
+                    "region first."
+                )
+            return replace(self, intensities=self.intensities / other.intensities)
+        value = float(other)
+        if not np.isfinite(value) or value <= 0.0:
+            raise ValueError("PoleFigure can only be divided by a finite, positive scalar.")
+        return replace(self, intensities=self.intensities / value)
+
+    # ------------------------------------------------------------------
+    # Transforming a figure
+    # ------------------------------------------------------------------
+
+    def rotate(self, rotation: Rotation) -> PoleFigure:
+        """Rotate the figure within the specimen frame.
+
+        Purpose: bring two figures measured in different specimen settings into
+        a common one — a rolling direction defined differently by two
+        laboratories, or a specimen remounted between measurements. Only the
+        directions move; the densities travel with them unchanged.
+
+        The rotation is applied to the sampled directions, so the result is no
+        longer on the original grid. Resample with :meth:`on_grid` before
+        combining it with anything.
+        """
+
+        rotated = self.sample_directions @ np.asarray(rotation.as_matrix(), dtype=np.float64).T
+        return replace(self, sample_directions=rotated)
+
+    def symmetrize(self, sample_symmetry: SymmetrySpec) -> PoleFigure:
+        """Impose a statistical specimen symmetry.
+
+        Purpose
+        -------
+        Rolled sheet is conventionally assumed orthorhombic about RD/TD/ND, so
+        its pole figures are averaged over that symmetry to suppress noise. The
+        assumption is about the process, not the data, which is why it is never
+        applied implicitly and is recorded on the result.
+
+        Method
+        ------
+        The support is replicated under every operator of the group and the
+        intensities are tiled with it. Under :meth:`on_grid` this yields the
+        orbit average for a sampled field and the symmetrized density for a
+        pole cloud, so one implementation is correct for both readings.
+
+        Parameters
+        ----------
+        sample_symmetry : SymmetrySpec
+            Must be declared in this figure's specimen frame; a symmetry whose
+            operators act in another frame would rotate the poles somewhere
+            meaningless.
+
+        Returns
+        -------
+        PoleFigure
+            The replicated figure, carrying the imposed symmetry. Resample it
+            with :meth:`on_grid` to obtain the averaged field.
+        """
+
+        if sample_symmetry.reference_frame != self.specimen_frame:
+            raise ValueError(
+                "symmetrize requires a sample_symmetry declared in the figure's specimen frame."
+            )
+        orbit = sample_symmetry.apply_to_vectors(self.sample_directions)
+        directions = np.ascontiguousarray(orbit.reshape(-1, 3), dtype=np.float64)
+        return replace(
+            self,
+            sample_directions=directions,
+            intensities=np.tile(self.intensities, sample_symmetry.operators.shape[0]),
+            sample_symmetry=sample_symmetry,
+        )
+
+    def restrict_polar_range(
+        self,
+        *,
+        max_polar_deg: float,
+        min_polar_deg: float = 0.0,
+    ) -> PoleFigure:
+        """Keep only the directions within a polar-angle band.
+
+        Purpose: an X-ray pole figure is only trustworthy out to the tilt where
+        defocusing takes over, typically 70-80 degrees. Everything beyond it is
+        instrument, not texture. Discarding it explicitly keeps that
+        unmeasured-versus-zero distinction visible instead of letting the
+        unreliable rim drive a normalization or a residual.
+
+        The polar angle is measured from the specimen-frame ``+Z`` axis, and
+        from the nearer of ``+Z``/``-Z`` when opposite poles are identified.
+
+        Returns
+        -------
+        PoleFigure
+            The retained subset, in the original order.
+
+        Raises
+        ------
+        ValueError
+            If the band is empty or leaves no sampled direction — an empty pole
+            figure is not a useful object to hand onwards.
+        """
+
+        low, high = float(min_polar_deg), float(max_polar_deg)
+        if not 0.0 <= low < high <= 180.0:
+            raise ValueError("Require 0 <= min_polar_deg < max_polar_deg <= 180.")
+        components = self.sample_directions[:, 2]
+        if self.antipodal:
+            components = np.abs(components)
+        polar_deg = np.degrees(np.arccos(np.clip(components, -1.0, 1.0)))
+        keep = (polar_deg >= low) & (polar_deg <= high)
+        if not np.any(keep):
+            raise ValueError(
+                f"No sampled direction lies between {low} and {high} degrees of polar angle."
+            )
+        return replace(
+            self,
+            sample_directions=self.sample_directions[keep],
+            intensities=self.intensities[keep],
+        )
+
     def project(self, *, method: str = "equal_area") -> np.ndarray:
         """Project the specimen directions onto the plotting plane.
 
@@ -873,6 +1167,146 @@ class PoleFigure:
         xedges.setflags(write=False)
         yedges.setflags(write=False)
         return histogram, xedges, yedges
+
+
+@dataclass(frozen=True, slots=True)
+class PoleFigureDifference:
+    """The signed difference between two pole figures on a shared support.
+
+    Purpose
+    -------
+    The product that answers "where, and by how much, do these two figures
+    disagree?" — the residual figure that turns an ODF inversion from a number
+    into a diagnosis, and the standard way to compare a measurement against a
+    model or against another measurement.
+
+    Why this is not a :class:`PoleFigure`
+    -------------------------------------
+    A pole density is non-negative, and ``PoleFigure`` enforces that. A
+    difference is signed, and its sign is the whole content: which regions the
+    model over-predicts and which it under-predicts. Coercing it into a
+    non-negative type would destroy exactly the information it exists to carry,
+    so subtraction returns this instead. Addition, scaling and ratios stay
+    non-negative and do return ``PoleFigure``.
+
+    Attributes
+    ----------
+    pole : CrystalPlane
+        The plane both figures represent.
+    sample_directions : np.ndarray
+        ``(n, 3)`` shared specimen-frame support.
+    values : np.ndarray
+        ``(n,)`` signed differences, ``left - right``. Positive means the left
+        figure is the larger.
+    specimen_frame : ReferenceFrame
+    antipodal : bool
+    left_label, right_label : str
+        What was subtracted from what, so a saved or plotted residual is
+        self-describing.
+    includes_symmetry_family : bool
+    provenance : ProvenanceRecord, optional
+    """
+
+    pole: CrystalPlane
+    sample_directions: np.ndarray
+    values: np.ndarray
+    specimen_frame: ReferenceFrame
+    antipodal: bool = True
+    left_label: str = "left"
+    right_label: str = "right"
+    includes_symmetry_family: bool = True
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        sample_directions = normalize_vectors(self.sample_directions)
+        values = as_float_array(self.values, shape=(sample_directions.shape[0],))
+        if self.specimen_frame.domain is not FrameDomain.SPECIMEN:
+            raise ValueError(
+                "PoleFigureDifference.specimen_frame must belong to the specimen domain."
+            )
+        if np.any(~np.isfinite(values)):
+            raise ValueError("PoleFigureDifference values must be finite.")
+        object.__setattr__(self, "sample_directions", sample_directions)
+        object.__setattr__(self, "values", values)
+
+    def __len__(self) -> int:
+        return int(self.values.shape[0])
+
+    @property
+    def max_absolute_deviation(self) -> float:
+        """Largest disagreement anywhere on the figure, in m.r.d."""
+
+        return float(np.max(np.abs(self.values)))
+
+    @property
+    def mean_deviation(self) -> float:
+        """Unweighted mean signed difference.
+
+        A value far from zero indicates a scale mismatch — the two figures are
+        not on the same normalization — rather than a shape disagreement.
+        """
+
+        return float(np.mean(self.values))
+
+    @property
+    def rms_deviation(self) -> float:
+        """Root-mean-square disagreement, the usual single-number summary."""
+
+        return float(np.sqrt(np.mean(self.values**2)))
+
+    def weighted_rms_deviation(self, weights: ArrayLike) -> float:
+        """Solid-angle-weighted RMS disagreement.
+
+        Prefer this over :attr:`rms_deviation` whenever the support is a raster
+        or any other non-equal-area sampling: an unweighted RMS over such a
+        support is dominated by wherever the sampling happens to be densest.
+        """
+
+        weight_array = as_float_array(weights, shape=(self.values.shape[0],))
+        if np.any(weight_array <= 0.0):
+            raise ValueError("weights must be strictly positive.")
+        total = float(np.sum(weight_array))
+        return float(np.sqrt(np.sum(weight_array * self.values**2) / total))
+
+    def project(self, *, method: str = "equal_area") -> np.ndarray:
+        """Project the support onto the plotting plane; see :meth:`PoleFigure.project`."""
+
+        return project_directions(
+            self.sample_directions,
+            method=method,
+            antipodal=self.antipodal,
+        )
+
+    def describe(self) -> str:
+        """Prose summary: what was compared, how badly it disagrees, and where."""
+
+        indices = [int(value) for value in self.pole.miller.indices]
+        notation = (
+            format_plane_family_indices(indices, style="plain")
+            if self.includes_symmetry_family
+            else format_plane_indices(indices, style="plain")
+        )
+        worst = int(np.argmax(np.abs(self.values)))
+        direction = self.sample_directions[worst]
+        signed = float(self.values[worst])
+        bias = (
+            "The mean signed difference is far from zero, which indicates the two figures are "
+            "not on the same normalization; put both in multiples of random with "
+            "normalize_to_mrd before reading the shape of the residual."
+            if abs(self.mean_deviation) > 0.05 * max(self.rms_deviation, 1e-12)
+            else "The mean signed difference is near zero, so the two figures share a scale and "
+            "the residual describes shape disagreement rather than a normalization error."
+        )
+        return (
+            f"Difference of {notation} pole figures, {self.left_label} minus {self.right_label}, "
+            f"over {len(self)} shared specimen directions. RMS deviation "
+            f"{self.rms_deviation:.4f} m.r.d., maximum |deviation| "
+            f"{self.max_absolute_deviation:.4f} m.r.d. at specimen direction "
+            f"[{direction[0]:.3f} {direction[1]:.3f} {direction[2]:.3f}], where "
+            f"{self.left_label} is "
+            f"{'higher' if signed > 0.0 else 'lower'} by {abs(signed):.4f} m.r.d. "
+            f"Mean signed difference {self.mean_deviation:+.4f} m.r.d. {bias}"
+        )
 
 
 @dataclass(frozen=True, slots=True)

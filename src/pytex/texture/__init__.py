@@ -19,6 +19,7 @@ from pytex.texture.models import (
     ODFInversionReport,
     ODFSectionData,
     PoleFigure,
+    PoleFigureDifference,
     PoleFigureSampling,
     ResamplingEstimator,
 )
@@ -49,6 +50,7 @@ __all__ = [
     "ODFSectionData",
     "PoleFigure",
     "PoleFigureCorrectionSpec",
+    "PoleFigureDifference",
     "PoleFigureResidualReport",
     "PoleFigureSampling",
     "ResamplingEstimator",

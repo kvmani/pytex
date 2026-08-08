@@ -7,6 +7,7 @@ combined until they share a support (resampling) and a physical scale
 
 from __future__ import annotations
 
+from dataclasses import replace as dataclass_replace
 from itertools import pairwise
 
 import numpy as np
@@ -23,6 +24,7 @@ from pytex.core import (
     OrientationSet,
     Phase,
     ReferenceFrame,
+    Rotation,
     S2Grid,
     SymmetrySpec,
     raster_solid_angle_weights,
@@ -418,3 +420,321 @@ def test_mrd_normalization_makes_two_differently_scaled_measurements_comparable(
         scaled_by_max.normalize_to_mrd(integration_weights=grid.weights).intensities,
         rtol=1e-12,
     )
+
+
+# --------------------------------------------------------------------------
+# Arithmetic
+# --------------------------------------------------------------------------
+
+
+def two_figures_on_one_grid(
+    specimen: ReferenceFrame, phase: Phase
+) -> tuple[PoleFigure, PoleFigure, S2Grid]:
+    """Two different textures resampled onto one shared support."""
+
+    grid = uniform_grid(specimen, 10.0)
+    sharp = PoleFigure.from_orientations(
+        OrientationSet.from_euler_angles(
+            np.zeros((1, 3)), specimen_frame=specimen, phase=phase
+        ),
+        make_pole(phase),
+    ).on_grid(grid, halfwidth_deg=15.0)
+    spread = PoleFigure.from_orientations(
+        OrientationSet.from_euler_angles(
+            np.array([[0.0, 0.0, 0.0], [30.0, 20.0, 10.0], [12.0, 45.0, 33.0]]),
+            specimen_frame=specimen,
+            phase=phase,
+        ),
+        make_pole(phase),
+    ).on_grid(grid, halfwidth_deg=15.0)
+    return sharp, spread, grid
+
+
+def test_a_figure_minus_itself_is_identically_zero() -> None:
+    _, specimen, phase = make_context()
+    sharp, _, _ = two_figures_on_one_grid(specimen, phase)
+    residual = sharp - sharp
+    assert residual.max_absolute_deviation == 0.0
+    assert residual.rms_deviation == 0.0
+
+
+def test_subtraction_is_antisymmetric() -> None:
+    _, specimen, phase = make_context()
+    sharp, spread, _ = two_figures_on_one_grid(specimen, phase)
+    assert_allclose((sharp - spread).values, -(spread - sharp).values, rtol=1e-12)
+
+
+def test_addition_and_subtraction_are_consistent() -> None:
+    """(a + b) - b must recover a, which ties the two operators together."""
+
+    _, specimen, phase = make_context()
+    sharp, spread, _ = two_figures_on_one_grid(specimen, phase)
+    recovered = (sharp + spread) - spread
+    assert_allclose(recovered.values, sharp.intensities, rtol=1e-12)
+
+
+def test_sum_of_two_mrd_figures_has_mean_two() -> None:
+    """Densities add, and so do their means; this fixes the scale convention."""
+
+    _, specimen, phase = make_context()
+    sharp, spread, grid = two_figures_on_one_grid(specimen, phase)
+    total = sharp + spread
+    assert_allclose(total.spherical_mean(integration_weights=grid.weights), 2.0, rtol=1e-9)
+
+
+def test_subtracting_one_from_an_mrd_figure_gives_deviation_from_random() -> None:
+    _, specimen, phase = make_context()
+    sharp, _, grid = two_figures_on_one_grid(specimen, phase)
+    deviation = sharp - 1.0
+    # A normalized figure integrates to 1, so its deviation integrates to 0.
+    assert_allclose(float(np.sum(grid.weights * deviation.values)), 0.0, atol=1e-9)
+    # And it must be signed: a texture is above random somewhere and below it
+    # elsewhere, which is precisely what a non-negative type could not express.
+    assert float(np.max(deviation.values)) > 0.0
+    assert float(np.min(deviation.values)) < 0.0
+
+
+def test_ratio_of_a_figure_to_itself_is_one_everywhere() -> None:
+    _, specimen, phase = make_context()
+    sharp, _, _ = two_figures_on_one_grid(specimen, phase)
+    assert_allclose((sharp / sharp).intensities, 1.0, rtol=1e-12)
+
+
+def test_scaling_is_exactly_undone_by_dividing() -> None:
+    _, specimen, phase = make_context()
+    sharp, _, _ = two_figures_on_one_grid(specimen, phase)
+    assert_allclose(((sharp * 3.5) / 3.5).intensities, sharp.intensities, rtol=1e-12)
+    assert_allclose((2.0 * sharp).intensities, (sharp * 2.0).intensities, rtol=1e-12)
+
+
+def test_scaling_moves_the_mean_proportionally() -> None:
+    _, specimen, phase = make_context()
+    sharp, _, grid = two_figures_on_one_grid(specimen, phase)
+    assert_allclose(
+        (sharp * 4.0).spherical_mean(integration_weights=grid.weights), 4.0, rtol=1e-9
+    )
+
+
+def test_difference_carries_labels_into_its_prose() -> None:
+    _, specimen, phase = make_context()
+    sharp, spread, _ = two_figures_on_one_grid(specimen, phase)
+    text = sharp.difference(spread, left_label="measured", right_label="recalculated").describe()
+    assert "measured minus recalculated" in text
+    assert "m.r.d." in text
+    assert "{111}" in text
+
+
+def test_difference_of_scale_mismatched_figures_says_so() -> None:
+    """The describe() must diagnose a normalization error, not merely report one."""
+
+    _, specimen, phase = make_context()
+    sharp, _, _ = two_figures_on_one_grid(specimen, phase)
+    text = (sharp * 2.0).difference(sharp).describe()
+    assert "not on the same normalization" in text
+
+
+def test_weighted_rms_differs_from_the_unweighted_one() -> None:
+    """On a non-equal-area support the unweighted RMS is the wrong summary."""
+
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 10.0)
+    sharp, spread, _ = two_figures_on_one_grid(specimen, phase)
+    residual = sharp - spread
+    assert residual.weighted_rms_deviation(grid.weights) != pytest.approx(
+        residual.rms_deviation, rel=1e-6
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        ("pole", "different poles"),
+        ("frame", "different specimen frames"),
+        ("antipodal", "antipodal conventions"),
+        ("family", "single-plane"),
+        ("support", "different supports"),
+    ],
+)
+def test_combining_mismatched_figures_raises_with_the_reason(mutate: str, message: str) -> None:
+    """Every mismatch that could otherwise produce a plausible wrong answer."""
+
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase)
+    if mutate == "pole":
+        other = dataclass_replace(
+            figure, pole=CrystalPlane(MillerIndex((2, 0, 0), phase=phase), phase=phase)
+        )
+    elif mutate == "frame":
+        other_frame = ReferenceFrame(
+            name="rolled-specimen",
+            domain=FrameDomain.SPECIMEN,
+            axes=("rd", "td", "nd"),
+            handedness=Handedness.RIGHT,
+        )
+        other = dataclass_replace(figure, specimen_frame=other_frame)
+    elif mutate == "antipodal":
+        other = dataclass_replace(figure, antipodal=False)
+    elif mutate == "family":
+        other = dataclass_replace(figure, includes_symmetry_family=False)
+    else:
+        other = dataclass_replace(
+            figure,
+            sample_directions=figure.sample_directions[:-1],
+            intensities=figure.intensities[:-1],
+        )
+    with pytest.raises(ValueError, match=message):
+        _ = figure - other
+
+
+def test_dividing_by_a_figure_with_a_hole_refuses_rather_than_inventing_a_value() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase)
+    holed = PoleFigure(
+        pole=figure.pole,
+        sample_directions=figure.sample_directions,
+        intensities=np.where(np.arange(len(figure.intensities)) == 3, 0.0, 1.0),
+        specimen_frame=specimen,
+        antipodal=True,
+        sampling="sampled_density",
+    )
+    with pytest.raises(ValueError, match="zero density"):
+        _ = figure / holed
+
+
+def test_adding_a_constant_that_would_go_below_zero_raises() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, value=0.5)
+    with pytest.raises(ValueError, match="negative"):
+        _ = figure + (-1.0)
+
+
+def test_scaling_by_a_negative_factor_raises() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase)
+    with pytest.raises(ValueError, match="non-negative"):
+        _ = figure * -1.0
+
+
+# --------------------------------------------------------------------------
+# Transforms
+# --------------------------------------------------------------------------
+
+
+def test_rotating_a_figure_moves_its_poles_and_keeps_its_densities() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, value=2.0)
+    rotated = figure.rotate(Rotation.from_bunge_euler(30.0, 20.0, 10.0))
+    assert_allclose(rotated.intensities, figure.intensities, rtol=1e-12)
+    assert not np.allclose(rotated.sample_directions, figure.sample_directions)
+    # A rotation is an isometry, so every angle to a fixed member is preserved.
+    assert_allclose(
+        rotated.sample_directions @ rotated.sample_directions[0],
+        figure.sample_directions @ figure.sample_directions[0],
+        atol=1e-12,
+    )
+
+
+def test_rotating_a_random_texture_leaves_it_random() -> None:
+    """The invariance that makes the rotation trustworthy on real data."""
+
+    _, specimen, phase = make_context()
+    target = uniform_grid(specimen, 10.0)
+    cloud = uniform_pole_cloud(specimen, phase, resolution_deg=4.0)
+    before = cloud.on_grid(target, halfwidth_deg=12.0, normalize=False)
+    after = cloud.rotate(Rotation.from_bunge_euler(45.0, 35.0, 25.0)).on_grid(
+        target, halfwidth_deg=12.0, normalize=False
+    )
+    assert_allclose(after.intensities, before.intensities, atol=2e-2)
+
+
+def test_symmetrize_records_the_assumption_and_replicates_the_support() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase)
+    orthorhombic = SymmetrySpec.from_point_group("222", reference_frame=specimen)
+    symmetrized = figure.symmetrize(orthorhombic)
+    assert symmetrized.sample_symmetry == orthorhombic
+    expected = len(figure.intensities) * orthorhombic.operators.shape[0]
+    assert symmetrized.sample_directions.shape[0] == expected
+
+
+def test_symmetrizing_makes_the_field_invariant_under_the_group() -> None:
+    """The point of symmetrizing: the resampled field becomes group-invariant.
+
+    A single sharp component is deliberately asymmetric; after imposing
+    orthorhombic specimen symmetry, rotating the figure by a group operator
+    must leave the resampled field unchanged.
+    """
+
+    _, specimen, phase = make_context()
+    orthorhombic = SymmetrySpec.from_point_group("222", reference_frame=specimen)
+    target = uniform_grid(specimen, 10.0)
+    figure = PoleFigure.from_orientations(
+        OrientationSet.from_euler_angles(
+            np.array([[17.0, 29.0, 41.0]]), specimen_frame=specimen, phase=phase
+        ),
+        make_pole(phase),
+    )
+    symmetrized = figure.symmetrize(orthorhombic)
+    plain = symmetrized.on_grid(target, halfwidth_deg=12.0)
+    two_fold_z = Rotation.from_axis_angle([0.0, 0.0, 1.0], np.pi)
+    turned = symmetrized.rotate(two_fold_z).on_grid(target, halfwidth_deg=12.0)
+    assert_allclose(turned.intensities, plain.intensities, atol=1e-9)
+
+
+def test_symmetrize_rejects_a_symmetry_from_another_frame() -> None:
+    crystal, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase)
+    with pytest.raises(ValueError, match="specimen frame"):
+        figure.symmetrize(SymmetrySpec.from_point_group("222", reference_frame=crystal))
+
+
+def test_restricting_the_polar_range_drops_the_defocused_rim() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, resolution_deg=5.0)
+    restricted = figure.restrict_polar_range(max_polar_deg=70.0)
+    polar = np.degrees(
+        np.arccos(np.clip(np.abs(restricted.sample_directions[:, 2]), -1.0, 1.0))
+    )
+    assert float(np.max(polar)) <= 70.0 + 1e-9
+    assert len(restricted.intensities) < len(figure.intensities)
+
+
+def test_restricting_to_an_empty_band_raises() -> None:
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, resolution_deg=10.0)
+    # The grid has rings every 10 degrees, so this band falls strictly between
+    # two of them and contains nothing at all.
+    with pytest.raises(ValueError, match="No sampled direction"):
+        figure.restrict_polar_range(min_polar_deg=41.0, max_polar_deg=44.0)
+
+
+def test_the_full_workflow_two_measurements_to_one_residual() -> None:
+    """The end-to-end path this sprint exists to make possible.
+
+    Two figures with different supports and incomparable scales — the normal
+    situation, and previously a dead end — become one residual figure in m.r.d.
+    """
+
+    _, specimen, phase = make_context()
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [35.0, 20.0, 10.0]]), specimen_frame=specimen, phase=phase
+    )
+    measured = PoleFigure.from_orientations(orientations, make_pole(phase))
+    coarse = uniform_grid(specimen, 12.0)
+    modelled = (measured.on_grid(coarse, halfwidth_deg=18.0) * 850.0).normalize_to_mrd(
+        integration_weights=coarse.weights
+    )
+    assert measured.sample_directions.shape != modelled.sample_directions.shape
+
+    common = measured.integration_grid(resolution_deg=8.0)
+    residual = measured.on_grid(common, halfwidth_deg=15.0).difference(
+        modelled.on_grid(common, halfwidth_deg=15.0),
+        left_label="measured",
+        right_label="modelled",
+    )
+    assert len(residual) == len(common)
+    # Both are normalized, so the residual must integrate to zero even where
+    # the two figures disagree pointwise.
+    assert_allclose(float(np.sum(common.weights * residual.values)), 0.0, atol=1e-9)
+    assert residual.rms_deviation > 0.0
+    assert "measured minus modelled" in residual.describe()

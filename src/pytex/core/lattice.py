@@ -861,6 +861,21 @@ class MillerIndex:
     phase: Phase
     basis_kind: BasisKind = BasisKind.RECIPROCAL
 
+    def __eq__(self, other: object) -> bool:
+        # The generated dataclass __eq__ compares the index array with `==`,
+        # which yields an array and raises "truth value is ambiguous" for every
+        # distinct-but-equal pair. Equality here is the index identity.
+        if not isinstance(other, MillerIndex):
+            return NotImplemented
+        return (
+            bool(np.array_equal(self.indices, other.indices))
+            and self.phase == other.phase
+            and self.basis_kind == other.basis_kind
+        )
+
+    def __hash__(self) -> int:
+        return hash((tuple(int(value) for value in self.indices), self.basis_kind))
+
     def __post_init__(self) -> None:
         object.__setattr__(self, "indices", as_int_array(self.indices, shape=(3,)))
         if not np.any(self.indices):
@@ -907,6 +922,20 @@ class CrystalDirection:
     coordinates: np.ndarray
     phase: Phase
     basis_kind: BasisKind = BasisKind.DIRECT
+
+    def __eq__(self, other: object) -> bool:
+        # See MillerIndex.__eq__: the generated comparison of the coordinate
+        # array raises rather than answering.
+        if not isinstance(other, CrystalDirection):
+            return NotImplemented
+        return (
+            bool(np.array_equal(self.coordinates, other.coordinates))
+            and self.phase == other.phase
+            and self.basis_kind == other.basis_kind
+        )
+
+    def __hash__(self) -> int:
+        return hash((tuple(float(value) for value in self.coordinates), self.basis_kind))
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coordinates", as_float_array(self.coordinates, shape=(3,)))
@@ -979,6 +1008,15 @@ class ZoneAxis:
 
     indices: np.ndarray
     phase: Phase
+
+    def __eq__(self, other: object) -> bool:
+        # See MillerIndex.__eq__.
+        if not isinstance(other, ZoneAxis):
+            return NotImplemented
+        return bool(np.array_equal(self.indices, other.indices)) and self.phase == other.phase
+
+    def __hash__(self) -> int:
+        return hash(tuple(int(value) for value in self.indices))
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "indices", as_int_array(self.indices, shape=(3,)))
@@ -1057,6 +1095,18 @@ class ReciprocalLatticeVector:
 
     coordinates: np.ndarray
     phase: Phase
+
+    def __eq__(self, other: object) -> bool:
+        # See MillerIndex.__eq__.
+        if not isinstance(other, ReciprocalLatticeVector):
+            return NotImplemented
+        return (
+            bool(np.array_equal(self.coordinates, other.coordinates))
+            and self.phase == other.phase
+        )
+
+    def __hash__(self) -> int:
+        return hash(tuple(float(value) for value in self.coordinates))
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "coordinates", as_float_array(self.coordinates, shape=(3,)))
