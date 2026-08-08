@@ -11,7 +11,54 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **Pole-figure arithmetic.** Two pole figures could not previously be combined
+  at all: `PoleFigure` holds *scattered* specimen directions, so two figures
+  generally share no sampling direction, and the arithmetic was blocked
+  structurally rather than merely unwritten. The chain is now complete.
+
+  - `PoleFigure.sampling` records whether the intensities are per-pole weights
+    of a pole cloud (`"scattered_poles"`) or densities evaluated at the given
+    directions (`"sampled_density"`). The two demand different resampling
+    estimators — a weighted sum versus a weighted mean — and using the sum on a
+    latitude-longitude raster biases the result towards the poles, where such a
+    raster oversamples. Round-trips through the JSON contract; payloads
+    predating the tag read as pole clouds, which is what `from_orientations`
+    produced.
+  - `PoleFigure.on_grid` resamples onto any `S2Grid` by kernel smoothing,
+    choosing the estimator from `sampling`. This is what gives two figures a
+    common support.
+  - `PoleFigure.normalize_to_mrd` and `PoleFigure.spherical_mean` put
+    intensities on the multiples-of-random scale, backed by the new
+    `pytex.core.sphere.raster_solid_angle_weights` for measured rasters. The
+    XRDML and LaboTex readers gain an `"mrd"` normalization mode.
+  - `PoleFigure.__add__`, `__mul__`, `__truediv__`, `difference`/`__sub__`,
+    plus `rotate`, `symmetrize` and `restrict_polar_range`. Every way two
+    figures can differ while still looking combinable — pole, specimen frame,
+    antipodal convention, family flag, support — raises with the reason.
+  - `PoleFigureDifference` holds a signed residual. Subtraction does not return
+    a `PoleFigure` because a pole density is non-negative by invariant while a
+    difference is signed, and the sign is its entire content.
+
+- **Residual pole figures for ODF inversion.** `PoleFigureResidualReport` gains
+  `difference_figure()` and a `describe()`; `pytex.plotting.plot_pole_figure_difference`
+  draws it on the diverging colormap with limits symmetric about zero.
+  A residual norm says how badly an ODF misses its own input data; the residual
+  *figure* says where, which is what distinguishes an unmodelled component from
+  counting noise. `ScatterLayer2D` gains `vmin`/`vmax` to support this.
+
 ### Fixed
+
+- **Comparing two Miller indices raised instead of answering.** `MillerIndex`,
+  `CrystalDirection`, `ZoneAxis` and `ReciprocalLatticeVector` inherited the
+  generated dataclass `__eq__`, which compares their index arrays with `==` and
+  raises `ValueError: The truth value of an array with more than one element is
+  ambiguous` for every distinct-but-equal pair. `a == b` on two separately
+  constructed but identical indices was therefore impossible, which blocked any
+  operation that must first check two objects describe the same quantity.
+  `SymmetrySpec` already carried the custom `__eq__`/`__hash__` for this
+  reason; these four now do too.
 
 - **`import pytex` failed on a clean install of the declared dependencies.**
   `pytex.diffraction.solving` and `pytex.plotting.styles` import `yaml` at module

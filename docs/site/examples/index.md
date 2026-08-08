@@ -47,6 +47,8 @@ The complete set of computed-versus-expected values at a glance:
 | `composite-child-anchored-geometry-consistency` | [0.0000, 0.0000] | [0.0000, 0.0000] | mm | ✅ |
 | `solving-simulate-then-solve-closure` | [1.0000, 0.0000, 110.0000, 0.0000] | [1.0000, 0.0000, 110.0000, 0.0000] | fraction, 1/angstrom, family code, count | ✅ |
 | `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | ✅ |
+| `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
+| `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
 | `tem-tilt-001-to-111-travel` | 54.7356 | 54.7356 | deg | ✅ |
 | `tem-holder-accessible-solid-angle` | 1.04720 | 1.04720 | sr | ✅ |
@@ -76,6 +78,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`EBSD microstructure <generated/ebsd>` &mdash; Lattice curvature and geometrically necessary dislocation density recovered from a planted orientation gradient, checked against the closed-form Nye result.
 - {doc}`Composite OR diffraction <generated/composite-diffraction>` &mdash; Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the identities the exported reflection table must satisfy.
 - {doc}`Texture kernels <generated/texture>` &mdash; Analytic identities of the SO(3) kernel surface: normalization (A_0 = 1) and the halfwidth definition, computed live.
+- {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
@@ -91,6 +94,7 @@ generated/diffraction
 generated/ebsd
 generated/composite-diffraction
 generated/texture
+generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
 generated/transformation
 generated/visualization

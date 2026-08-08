@@ -19,7 +19,7 @@ clean, `py.typed` shipped, CI matrix ubuntu+macos x Python 3.11-3.13 with an
 | 3 | SAED for arbitrary orientation / zone axis | 8 | Correct kinematics; no thickness shape factor, no HOLZ, no dynamical |
 | 4 | Tilt solving to a target zone axis | 9.5 | The strongest subsystem in the repo |
 | 5 | ODF from XRDML / LaboTex / EBSD | 8 | Full stack minus ghost correction and a defocus model |
-| 6 | Pole-figure arithmetic | 2 | Effectively absent; the clearest hole |
+| 6 | Pole-figure arithmetic | 2 → **8** | Was the clearest hole; addressed in full, see below |
 | 7 | XRD pattern computation | 7 | Excellent forward model, zero analysis of measured data |
 | 8 | EBSD | 8 | Broad and deep; square-grid-only and no HDF5 readers |
 | 9 | OR from two grains' Euler angles | 9 | Exactly the asked-for entry point, with honest ambiguity reporting |
@@ -170,27 +170,43 @@ No uncertainty quantification (bootstrap on ODF or volume fractions). No `.epf`,
 2. A defocus model plus `defocus_from_random_sample(...)` calibration, making XRDML → ODF a complete workflow.
 3. Component fitting: recover Gauss components and volume fractions from a measured ODF.
 
-## 6. Pole-figure arithmetic — 2/10
+## 6. Pole-figure arithmetic — 2/10 at review, **8/10 after the 2026-08-08 sprint**
 
-**Implemented.** Essentially nothing. `PoleFigure` is a frozen dataclass holding
-scattered `sample_directions` and `intensities`, with `from_orientations`,
-`project` and `histogram`. There are no arithmetic dunders anywhere in `src/`.
+**At review.** Essentially nothing, and blocked structurally rather than merely
+unwritten. `PoleFigure` held scattered `sample_directions` and `intensities`
+with only `from_orientations`, `project` and `histogram`; two figures generally
+shared no sampling direction, so there was nothing to combine pointwise. No
+resampling, no spherical interpolation. Measured intensities were normalized
+only by `max` or `sum`, never to multiples of a random distribution, so even on
+a shared support their magnitudes were not comparable. No symmetrization, no
+rotation, no tilt-range mask, and no difference product — so ODF-inversion QC
+had no visual counterpart either.
 
-**Lacking (in dependency order, because the gap is structural, not cosmetic).**
-There is no resampling onto a common grid, so two pole figures generally have no
-shared support and cannot be combined at all. There is no spherical
-interpolation. Measured intensities are normalized only by `max` or `sum`
-(`adapters/xrdml.py`, `adapters/labotex.py`), never to multiples of a random
-distribution using solid-angle weights, so magnitudes are not physically
-comparable between figures. There is no symmetrization operator, no rotation of a
-pole figure, no mask for the unmeasured tilt range, and no difference/residual
-figure product — which also means ODF-inversion QC has no visual counterpart.
+**Delivered** (`ee9591c`..`920e6c4`; see
+`docs/development/active_task_progress.md` for the design record):
 
-**Next — a single focused sprint, highest payoff-per-effort in the repo.**
-1. `PoleFigure.on_grid(S2Grid, method=...)` — kernel-smoothed resampling onto the existing `S2Grid`. Nothing else is possible without it.
-2. `PoleFigure.normalize_to_mrd()` using solid-angle weights; make the adapters able to emit m.r.d. directly.
-3. `__add__` / `__sub__` / `__mul__` / `__truediv__` and `difference(other)`, each *raising* on pole, frame, symmetry or grid mismatch rather than silently broadcasting; plus `symmetrize(sample_symmetry)`, `rotate(rotation)` and `mask_unmeasured(...)`.
-4. Wire the difference product into `residual_reports_for_pole_figures` so measured-minus-recalculated figures become a standard plot.
+1. `PoleFigure.sampling` — records whether the intensities are per-pole weights
+   or an evaluated density. The distinction was invisible until resampling and
+   then decides the answer, so it is recorded rather than guessed.
+2. `PoleFigure.on_grid` — kernel resampling onto any `S2Grid`, estimator chosen
+   from the sampling tag. Supplies the shared support.
+3. `PoleFigure.normalize_to_mrd` / `spherical_mean`, plus
+   `raster_solid_angle_weights` and an `mrd` mode on the XRDML and LaboTex
+   readers. Supplies the shared scale.
+4. `__add__` / `__sub__` / `__mul__` / `__truediv__`, `difference`, `rotate`,
+   `symmetrize`, `restrict_polar_range`, each raising on pole, frame, antipodal,
+   family or support mismatch. Subtraction returns a signed
+   `PoleFigureDifference`, because a pole density is non-negative and a
+   difference is not.
+5. `PoleFigureResidualReport.difference_figure()` and
+   `plot_pole_figure_difference` — the residual figure ODF inversion never had.
+
+**Still lacking.** The resampling kernel is one fixed von Mises-Fisher shape,
+with no S2 kernel library matching the SO(3) one. m.r.d. over a partial figure
+averages over the measured cap only. There is no contoured rendering of a
+difference figure (it is drawn as a scatter, which is honest for a scattered
+support but less readable than a contour on a dense grid). Ratio figures have no
+masking helper for near-zero denominators beyond refusing outright.
 
 ## 7. XRD pattern computation — 7/10
 
@@ -363,7 +379,7 @@ end-to-end recipe per capability above is worth more than the next feature.
 
 Ordered by payoff per unit effort, not by ambition:
 
-1. **Pole-figure arithmetic sprint** (section 6) — resample, m.r.d. normalize, then arithmetic and residual figures. Small, self-contained, unblocks ODF QC and multi-figure workflows.
+1. ~~**Pole-figure arithmetic sprint** (section 6)~~ — **done 2026-08-08.** Resampling, m.r.d. normalization, arithmetic and residual figures all landed; see section 6.
 2. **Reconcile the roadmap documents** with the verified state (section 11, risk 1) and add `windows-latest` to CI.
 3. **Defocus model plus ghost correction** (section 5) — makes XRDML → ODF a genuinely complete workflow rather than one that needs external correction.
 4. **Measured XRD pattern I/O** (section 7) — the single missing piece that converts a good forward model into an analysis capability.

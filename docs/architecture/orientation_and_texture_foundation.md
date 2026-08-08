@@ -20,12 +20,41 @@ This document records the current implementation posture for Phase 2.
 - band-limited harmonic ODF reconstruction with explicit crystal and specimen symmetry handling
 - construction-time validation of frame, phase, and symmetry consistency across the orientation and texture domain models
 - cached proper point-group operator generation to keep repeated symmetry construction cheap
+- recorded pole-figure sampling semantics: whether intensities are per-pole weights of a cloud or densities evaluated at given directions, which decides the correct resampling estimator
+- spherical resampling of a pole figure onto an arbitrary `S2Grid`, giving two figures a common support
+- multiples-of-random normalization from solid-angle integration weights, including a raster weighting for measured tilt/rotation grids
+- pole-figure arithmetic on a shared support, with a signed `PoleFigureDifference` for subtraction
+- residual pole figures from an ODF reconstruction, as a plottable diagnosis rather than a scalar norm
+
+### Why pole-figure arithmetic needed three steps, not one
+
+The operators were not merely unwritten; they were undefined. A `PoleFigure`
+carries *scattered* specimen directions, so two figures generally share no
+sampling direction and there is nothing to combine pointwise. Measured
+intensities additionally arrive in detector counts or scaled by their own
+maximum, so even on a shared support their magnitudes are not comparable.
+Resampling supplies the shared support, m.r.d. supplies the shared scale, and
+only then does arithmetic mean anything. The sequence is a dependency chain,
+not a convenience ordering.
+
+Subtraction is the one operator that cannot return a `PoleFigure`. A pole
+density is non-negative and the type enforces it; a difference is signed, and
+its sign — which regions a model over-predicts and which it under-predicts — is
+the entire content of the result. Hence `PoleFigureDifference`.
 
 ## Deliberate Current Limits
 
 - exact polyhedral fundamental-region boundaries for every crystal class are not yet implemented
 - broad experimentally calibrated PF inversion doctrine beyond the current kernel-regularized harmonic model is still ahead
 - exact orientation-space polyhedral regions for all crystal classes are not yet implemented
+- m.r.d. normalization over a partial pole figure averages over the *measured*
+  cap; it equals the true spherical mean only if the unmeasured region has the
+  same mean. Defocusing limits the reachable tilt, so this assumption is real
+  and is stated at the call site rather than hidden
+- the resampling kernel is a fixed von Mises-Fisher shape; a kernel library on
+  S2 matching the existing SO(3) one is not yet implemented
+- ghost correction and zero-range methods are still absent, so the odd part of
+  a reconstructed ODF remains unconstrained
 
 ## Why This Still Moves The Project Forward
 

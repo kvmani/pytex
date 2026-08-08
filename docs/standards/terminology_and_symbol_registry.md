@@ -67,6 +67,11 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | symmetry | Point-group-facing operator set used for orientation and direction reduction. |
 | space group | Structure-facing crystallographic identity used for phases and CIF-backed construction. |
 | pole figure | Distribution of crystal directions or plane normals expressed relative to specimen directions. |
+| multiples of a random distribution (m.r.d.) | The scale on which a pole density or ODF value is 1 where the distribution is random. Defined by the solid-angle-weighted mean over the sampled region being exactly 1, so it is a property of an integral and not of a maximum or a sum. |
+| pole-figure sampling | Whether a pole figure's intensities are per-pole weights of a cloud of poles (**scattered poles**) or densities already evaluated at the given directions (**sampled density**). The two require different resampling estimators, so the reading is recorded rather than inferred. |
+| pole-figure difference | The signed field $\Delta P$ obtained by subtracting one pole figure from another on a shared support. Signed, and therefore not itself a pole figure. |
+| residual pole figure | A pole-figure difference between a measurement and the figure an ODF recalculates for it; the spatial form of a goodness-of-fit check. |
+| solid-angle weights | Per-point integration weights making a sum over a sampled support approximate an integral over the sphere. Required whenever a mean is taken over a tilt/rotation raster, which over-samples the specimen normal. |
 | inverse pole figure | Distribution of specimen directions expressed in crystal coordinates and reduced by symmetry where appropriate. |
 | ODF | Orientation distribution function over orientation space. |
 | fundamental zone | The symmetry-reduced subset of orientation space used for canonical orientation keys. |
@@ -140,6 +145,15 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\Delta g$ | A misorientation between two orientations. |
 | $\omega$ | Disorientation angle: minimal misorientation angle over the symmetry group. |
 | $\Sigma$ | Coincidence-site-lattice index of a boundary (for example $\Sigma 3$). |
+
+### Pole figures and texture intensity
+
+| Symbol | Meaning |
+| --- | --- |
+| $P_{hkl}(\mathbf{y})$ | Pole density of the plane family $\{hkl\}$ at specimen direction $\mathbf{y}$, in multiples of a random distribution. |
+| $\Delta P$ | Signed difference of two pole densities on a shared support. |
+| $w_i$ | Solid-angle integration weight of sampled direction $i$; weights sum to 1 over the sampled region. |
+| $\psi$ | Polar (tilt) angle of a specimen direction from the specimen-frame $+Z$ axis. |
 
 ### Diffraction
 

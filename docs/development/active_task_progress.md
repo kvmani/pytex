@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Current Task: Pole-Figure Arithmetic (PFA) — IN PROGRESS (started 2026-08-08)
+## Current Task: Pole-Figure Arithmetic (PFA) — COMPLETE (2026-08-08)
 
 **Objective.** Make pole-figure arithmetic possible. It is today structurally blocked, not merely
 unwritten: `PoleFigure` holds *scattered* specimen directions, so two figures generally share no
@@ -34,8 +34,8 @@ Nothing downstream is meaningful without the step before it.
 | 2 | `PoleFigure.on_grid` spherical resampling | done | `82dc073` |
 | 3 | `PoleFigure.normalize_to_mrd` + `raster_solid_angle_weights` + adapter `mrd` mode | done | `4b1bdec` |
 | 4 | Arithmetic, `PoleFigureDifference`, `symmetrize`/`rotate`/`restrict_polar_range` | done | `ce3146f` |
-| 5 | Residual QC product + difference plotting | in progress | — |
-| 6 | Exports, worked example, docs, CHANGELOG, review-scorecard update | pending | — |
+| 5 | Residual QC product + difference plotting | done | `920e6c4` |
+| 6 | Exports, worked example, docs, CHANGELOG, review-scorecard update | done | this commit |
 
 ### Design decisions worth not re-deriving
 
@@ -69,9 +69,34 @@ Nothing downstream is meaningful without the step before it.
    still unhashable because `Phase` holds a dict; that is pre-existing and out of this sprint's
    scope, but it is why `PoleFigureDifference` compares poles rather than hashing them.
 
-### Next actions
+### Verification
 
-Step 5: give `PoleFigureResidualReport` a difference-figure product, expose it from
-`residual_reports_for_pole_figures`, and add a diverging-colormap `plot_pole_figure_difference`
-through the existing figure-spec layer. Then step 6. Each step lands as its own commit with
-tests, pushed to `main`.
+Full suite green: 4340 tests, strict mypy over 106 source files, ruff clean. The identities that
+calibrate the new numerics are asserted directly rather than by tolerance, and are the first
+things to re-run if any of this is touched:
+
+- Nadaraya-Watson reproduces a constant field to machine precision, for any halfwidth and any
+  query direction (partition of unity — distinguishes a weighted mean from a weighted sum).
+- Density estimation of a random texture converges to 1 m.r.d. at **second order** under cloud
+  refinement. The test asserts the convergence *rate*, not a tolerance, because a wrong
+  normalizing constant would leave a floor that refinement could not remove.
+- `raster_solid_angle_weights` reproduces the analytic solid-angle mean of `cos(polar)` over a
+  cap to 5e-4 at a 2.5 degree step, where the unweighted mean is wrong by more than 1e-2.
+- On the real Ge(113) XRDML fixture the m.r.d. grid has weighted mean exactly 1 and a peak of
+  1.2e4; the `max` mode reports a peak of 1.0 for a single crystal, which says nothing.
+
+### What was deliberately not done
+
+- No S2 kernel library to match the SO(3) one; the resampling kernel is one fixed von
+  Mises-Fisher shape.
+- No contoured rendering of a difference figure — scatter is honest for a scattered support but
+  less readable on a dense grid.
+- `CrystalPlane`/`Phase` remain unhashable (`Phase` holds a dict). Pre-existing, out of scope,
+  and the reason `PoleFigureDifference` compares poles rather than hashing them.
+- Ghost correction and a defocus model remain absent; they are the next texture gap, tracked in
+  `docs/roadmap/feature_capability_review_2026_08.md` section 5.
+
+### Next task
+
+None claimed. The capability review's recommended order puts roadmap reconciliation plus
+`windows-latest` in CI next, then the defocus model and ghost correction.
