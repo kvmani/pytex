@@ -14,6 +14,7 @@ from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.sphere import S2Grid
 from pytex.core.symmetry import SymmetrySpec
 from pytex.texture.kernels import (
     AbelPoissonKernel,
@@ -46,10 +47,94 @@ _RESAMPLING_ESTIMATORS = ("density", "interpolate")
 DEFAULT_RESAMPLING_HALFWIDTH_DEG = 5.0
 
 
+#: Largest number of cosine entries held in memory at once while resampling.
+#: Resampling forms a (grid x source) cosine matrix; on a fine grid against a
+#: large pole cloud that product is far larger than either input, so it is
+#: evaluated in blocks. Four million entries is ~32 MB in float64.
+_RESAMPLING_BLOCK_ENTRIES = 4_000_000
+
+
 def _as_direction_array(vectors: np.ndarray | VectorSet) -> np.ndarray:
     if isinstance(vectors, VectorSet):
         return vectors.values
     return vectors
+
+
+def _spherical_kappa_from_halfwidth(halfwidth_deg: float) -> float:
+    """Concentration of the S2 smoothing kernel with the given halfwidth.
+
+    The kernel is ``K(v, u) = exp(kappa * (v.u - 1))``, the von Mises-Fisher
+    shape written so that ``K = 1`` at coincidence. Requiring ``K = 1/2`` at an
+    angular separation of ``halfwidth_deg`` gives
+    ``kappa = ln 2 / (1 - cos(halfwidth))``.
+    """
+
+    halfwidth = float(halfwidth_deg)
+    if not np.isfinite(halfwidth) or not 0.0 < halfwidth < 180.0:
+        raise ValueError("halfwidth_deg must be finite and lie in (0, 180).")
+    denominator = 1.0 - float(np.cos(np.deg2rad(halfwidth)))
+    if denominator <= 0.0:  # pragma: no cover - guarded by the range check above
+        raise ValueError("halfwidth_deg is too small to define a kernel.")
+    return float(np.log(2.0) / denominator)
+
+
+def _spherical_kernel_mean(kappa: float, *, antipodal: bool) -> float:
+    """Mean of the S2 smoothing kernel over the sphere.
+
+    Dividing a kernel sum by this value converts it from an unnormalized
+    density into multiples of a random distribution, because a uniform
+    distribution of poles produces exactly this mean everywhere.
+
+    For ``K(t) = exp(kappa * (t - 1))`` with ``t = cos(angle)``, the spherical
+    mean is ``(1/2) * integral of K over t in [-1, 1]``. When opposite poles are
+    identified the kernel is evaluated at ``|t|``, which halves the domain and
+    doubles the density, giving the second expression.
+    """
+
+    if antipodal:
+        return float((1.0 - np.exp(-kappa)) / kappa)
+    return float((1.0 - np.exp(-2.0 * kappa)) / (2.0 * kappa))
+
+
+def _resample_directions(
+    *,
+    target: np.ndarray,
+    source: np.ndarray,
+    values: np.ndarray,
+    kappa: float,
+    antipodal: bool,
+    estimator: str,
+) -> np.ndarray:
+    """Evaluate the kernel estimator of ``values`` at ``target`` directions.
+
+    Blocked over target rows so the cosine matrix never has to exist in full.
+    """
+
+    kernel_mean = _spherical_kernel_mean(kappa, antipodal=antipodal)
+    total_weight = float(np.sum(values))
+    block_rows = max(1, _RESAMPLING_BLOCK_ENTRIES // max(1, source.shape[0]))
+    estimated = np.empty(target.shape[0], dtype=np.float64)
+    for start in range(0, target.shape[0], block_rows):
+        stop = min(start + block_rows, target.shape[0])
+        cosines = target[start:stop] @ source.T
+        if antipodal:
+            cosines = np.abs(cosines)
+        np.clip(cosines, -1.0, 1.0, out=cosines)
+        kernel = np.exp(kappa * (cosines - 1.0))
+        if estimator == "density":
+            # Kernel density estimate: every pole contributes its own weight,
+            # and dividing by the total weight times the kernel's spherical
+            # mean puts the result in multiples of random.
+            estimated[start:stop] = (kernel @ values) / (total_weight * kernel_mean)
+        else:
+            # Nadaraya-Watson: a weighted *mean* of nearby samples, which
+            # reproduces a constant field exactly and does not inherit the
+            # source raster's sampling density.
+            denominator = kernel.sum(axis=1)
+            supported = denominator > 0.0
+            safe = np.where(supported, denominator, 1.0)
+            estimated[start:stop] = np.where(supported, (kernel @ values) / safe, 0.0)
+    return estimated
 
 
 def _pole_density_response_matrix(
@@ -446,6 +531,144 @@ class PoleFigure:
             # Each row is one pole carrying its orientation's weight, not a
             # density evaluated at that direction.
             sampling="scattered_poles",
+        )
+
+    def on_grid(
+        self,
+        grid: S2Grid,
+        *,
+        halfwidth_deg: float = DEFAULT_RESAMPLING_HALFWIDTH_DEG,
+        estimator: ResamplingEstimator | None = None,
+        normalize: bool = True,
+        provenance: ProvenanceRecord | None = None,
+    ) -> PoleFigure:
+        """Resample this pole figure onto a common spherical grid.
+
+        Purpose
+        -------
+        The prerequisite for comparing or combining two pole figures. Measured
+        and computed figures carry whatever support their instrument or their
+        orientation set gave them, and two such supports generally share no
+        direction at all; arithmetic between them is undefined until both are
+        evaluated on one grid. This performs that evaluation.
+
+        When to use
+        -----------
+        Before :meth:`difference`, the arithmetic operators, or any pointwise
+        comparison of two figures — resample both onto the *same*
+        :class:`~pytex.core.sphere.S2Grid`. Also useful on its own to convert a
+        scattered pole cloud into the smooth density field a contoured plot
+        wants, without going through the coarse 2-D binning of
+        :meth:`histogram`.
+
+        Method
+        ------
+        Kernel smoothing on the sphere with
+        ``K(v, u) = exp(kappa * (v.u - 1))``, the von Mises-Fisher shape, whose
+        concentration follows from ``halfwidth_deg``. Which estimator is correct
+        depends on what the intensities mean, so it is taken from
+        :attr:`sampling` unless overridden:
+
+        - ``"density"`` (for ``sampling="scattered_poles"``) — kernel density
+          estimation, a weighted **sum** over poles, divided by the total weight
+          and the kernel's spherical mean so the result is already in multiples
+          of random.
+        - ``"interpolate"`` (for ``sampling="sampled_density"``) — a
+          Nadaraya-Watson weighted **mean** of nearby samples, which reproduces
+          a constant field exactly and does not inherit the source raster's own
+          sampling density.
+
+        Using the sum where the mean is meant biases the result towards the
+        poles of a latitude-longitude raster, which oversamples there; that is
+        why the reading is recorded on the object rather than assumed here.
+
+        Parameters
+        ----------
+        grid : S2Grid
+            The target support. Its reference frame must be this figure's
+            specimen frame. Prefer :meth:`S2Grid.equispaced` — its equal-area
+            weights are what make the m.r.d. normalization and any later
+            integration valid.
+        halfwidth_deg : float
+            Kernel halfwidth, the angle at which the kernel falls to half its
+            peak. This is the consequential choice: too small and the result
+            reproduces sampling noise, too large and distinct texture
+            components merge. Set it from the angular resolution of the
+            measurement, not until the figure looks right.
+        estimator : str, optional
+            Override the estimator implied by :attr:`sampling`. Pass this only
+            when the recorded reading is known to be wrong.
+        normalize : bool
+            Rescale the result so its grid-weighted mean is exactly 1, i.e.
+            multiples of a random distribution (default). This is what makes
+            two figures numerically comparable. Disable to keep the raw
+            estimator output.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        PoleFigure
+            A figure on ``grid``'s directions, with ``sampling="sampled_density"``
+            because the intensities are now densities evaluated at those
+            directions.
+
+        Raises
+        ------
+        ValueError
+            If the grid frame does not match the specimen frame, if the
+            estimator name is unknown, or if normalization is requested and the
+            resampled field is everywhere zero (nothing to scale).
+
+        Examples
+        --------
+        A random texture resampled onto an equal-area grid is 1 m.r.d.
+        everywhere, to within the kernel's smoothing of the finite pole set;
+        that identity is the calibration of this method.
+        """
+
+        chosen = "density" if self.sampling == "scattered_poles" else "interpolate"
+        if estimator is not None:
+            if estimator not in _RESAMPLING_ESTIMATORS:
+                raise ValueError("estimator must be 'density' or 'interpolate'.")
+            chosen = estimator
+        if grid.vectors.reference_frame != self.specimen_frame:
+            raise ValueError(
+                "PoleFigure.on_grid requires a grid in the figure's specimen frame."
+            )
+        if self.intensities.size == 0:
+            raise ValueError("PoleFigure.on_grid requires at least one sampled direction.")
+        if chosen == "density" and float(np.sum(self.intensities)) <= 0.0:
+            raise ValueError(
+                "Kernel density estimation requires a positive total pole weight."
+            )
+
+        target = np.asarray(grid.vectors.values, dtype=np.float64)
+        estimated = _resample_directions(
+            target=target,
+            source=self.sample_directions,
+            values=self.intensities,
+            kappa=_spherical_kappa_from_halfwidth(halfwidth_deg),
+            antipodal=self.antipodal,
+            estimator=chosen,
+        )
+        if normalize:
+            mean_density = float(np.sum(grid.weights * estimated))
+            if not mean_density > 0.0:
+                raise ValueError(
+                    "Cannot normalize to m.r.d.: the resampled figure is zero everywhere. "
+                    "Widen halfwidth_deg, or check that the source directions overlap the grid."
+                )
+            estimated = estimated / mean_density
+        return PoleFigure(
+            pole=self.pole,
+            sample_directions=target,
+            intensities=np.maximum(estimated, 0.0),
+            specimen_frame=self.specimen_frame,
+            antipodal=self.antipodal,
+            sample_symmetry=self.sample_symmetry,
+            includes_symmetry_family=self.includes_symmetry_family,
+            sampling="sampled_density",
+            provenance=self.provenance if provenance is None else provenance,
         )
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:
