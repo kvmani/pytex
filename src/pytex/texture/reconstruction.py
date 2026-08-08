@@ -15,6 +15,7 @@ from pytex.texture.models import (
     ODFInversionReport,
     PoleFigure,
     PoleFigureDifference,
+    random_pole_density,
 )
 
 CorrectionPolicy = Literal["clip_zero", "raise"]
@@ -236,11 +237,23 @@ class PoleFigureResidualReport:
         provenance : ProvenanceRecord, optional
         """
 
-        predicted = odf.evaluate_pole_density(
-            pole_figure.pole,
-            pole_figure.sample_directions,
-            include_symmetry_family=include_symmetry_family,
+        predicted = np.asarray(
+            odf.evaluate_pole_density(
+                pole_figure.pole,
+                pole_figure.sample_directions,
+                include_symmetry_family=include_symmetry_family,
+            ),
+            dtype=np.float64,
         )
+        if isinstance(odf, ODF):
+            # A discrete ODF's pole density is a kernel-weighted *response*, not
+            # a value in multiples of random: the kernel peaks at 1 rather than
+            # integrating to 1, so a random texture returns the kernel's
+            # spherical mean (about 0.016 at a 12 degree halfwidth). Differencing
+            # that against a measured figure in m.r.d. would report a ~100%
+            # residual for a perfect fit — a scale error, not a misfit. A
+            # HarmonicODF needs no correction; its densities are already m.r.d.
+            predicted = predicted / random_pole_density(odf.kernel)
         residuals = np.ascontiguousarray(predicted - pole_figure.intensities, dtype=np.float64)
         residuals.setflags(write=False)
         residual_norm = float(np.linalg.norm(residuals))

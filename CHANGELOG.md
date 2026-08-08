@@ -61,6 +61,17 @@ downstream analyses depend on them.
   is now evaluated in log-gamma, which agrees with the exact integer form to
   2.7e-14 over every term of degrees 0-6 and stays finite at any degree.
 
+- **Pole-figure residuals compared two different scales.**
+  `PoleFigureResidualReport.from_odf` subtracted a discrete `ODF`'s pole density
+  straight from the measured figure, but `ODF.evaluate_pole_density` returns a
+  kernel-weighted *response*, not multiples of random — a random texture returns
+  the kernel's spherical mean, about 0.016 at a 12 degree halfwidth. A perfect
+  fit therefore reported a relative residual near 1.0, condemning every sound
+  inversion. The prediction is now converted with the new
+  `pytex.texture.models.random_pole_density`, which also replaces the private
+  duplicate in `pytex.diffraction.preferred_orientation`. `HarmonicODF` is
+  unaffected: its densities are already in m.r.d., so that path is left alone.
+
 - **Comparing two Miller indices raised instead of answering.** `MillerIndex`,
   `CrystalDirection`, `ZoneAxis` and `ReciprocalLatticeVector` inherited the
   generated dataclass `__eq__`, which compares their index arrays with `==` and

@@ -34,11 +34,13 @@ from pytex.plotting.builders import build_pole_figure_difference_spec
 from pytex.plotting.runtime import plot_pole_figure_difference
 from pytex.texture import (
     ODF,
+    HarmonicODF,
     KernelSpec,
     PoleFigure,
     PoleFigureResidualReport,
     residual_reports_for_pole_figures,
 )
+from pytex.texture.models import random_pole_density
 
 
 def make_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
@@ -785,6 +787,13 @@ def test_a_perfect_reconstruction_has_an_identically_zero_residual_figure() -> N
 
     This is the calibration of the whole QC path: any non-zero residual here
     would be a bug in the comparison, not a property of the data.
+
+    Note the division by ``random_pole_density``. A discrete ODF's
+    ``evaluate_pole_density`` returns a kernel-weighted response, so building a
+    figure from it directly produces one in response units — and a pole figure
+    is in multiples of random. The two must be put on the same scale before
+    they can be subtracted at all, which is exactly what ``from_odf`` does
+    internally.
     """
 
     _, specimen, phase = make_context()
@@ -794,7 +803,8 @@ def test_a_perfect_reconstruction_has_an_identically_zero_residual_figure() -> N
     predicted = PoleFigure(
         pole=pole,
         sample_directions=grid.vectors.values,
-        intensities=odf.evaluate_pole_density(pole, grid.vectors.values),
+        intensities=odf.evaluate_pole_density(pole, grid.vectors.values)
+        / random_pole_density(odf.kernel),
         specimen_frame=specimen,
         antipodal=True,
         sampling="sampled_density",
@@ -890,3 +900,87 @@ def test_plot_pole_figure_difference_renders() -> None:
     assert isinstance(figure, matplotlib.figure.Figure)
     assert "sharp - spread" in figure.axes[0].get_title()
     plt.close(figure)
+
+
+# --------------------------------------------------------------------------
+# Discrete-ODF residuals are compared on the physical scale
+# --------------------------------------------------------------------------
+
+
+def test_random_pole_density_matches_the_response_of_a_random_texture() -> None:
+    """The normalizing constant, checked against an actual random texture.
+
+    A discrete ODF's pole density is a kernel-weighted response, and a random
+    texture returns the kernel's spherical mean rather than 1. Sampling SO(3)
+    uniformly and evaluating the response must reproduce that mean; the
+    quadrature is then verified against the thing it stands for.
+    """
+
+    _, specimen, phase = make_context()
+    crystal = phase.crystal_frame
+    uniform = OrientationSet.from_equispaced_so3_grid(
+        15.0,
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    kernel = KernelSpec(halfwidth_deg=12.0)
+    odf = ODF.from_orientations(uniform, kernel=kernel)
+    grid = uniform_grid(specimen, 12.0)
+    response = odf.evaluate_pole_density(make_pole(phase), grid.vectors.values)
+    assert float(np.mean(response)) == pytest.approx(random_pole_density(kernel), rel=1e-3)
+    # The scale error this guards against is one to two orders of magnitude,
+    # not a rounding difference.
+    assert random_pole_density(kernel) < 0.05
+
+
+def test_a_discrete_odf_residual_is_small_against_the_texture_it_came_from() -> None:
+    """The regression this exists to prevent.
+
+    ``evaluate_pole_density`` returns a kernel response, not m.r.d., while a
+    resampled pole figure is in m.r.d. Differencing them directly reported a
+    relative residual of 0.99 for a *perfect* fit — a scale error masquerading
+    as a total misfit, which would condemn every sound inversion.
+    """
+
+    _, specimen, phase = make_context()
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [35.0, 20.0, 10.0], [12.0, 45.0, 33.0]]),
+        specimen_frame=specimen,
+        phase=phase,
+    )
+    grid = uniform_grid(specimen, 9.0)
+    odf = ODF.from_orientations(orientations, kernel=KernelSpec(halfwidth_deg=12.0))
+    measured = PoleFigure.from_orientations(orientations, make_pole(phase)).on_grid(
+        grid, halfwidth_deg=12.0
+    )
+    report = PoleFigureResidualReport.from_odf(odf, measured)
+    assert report.relative_residual_norm < 0.1
+    # Both sides must now sit on the same scale, which is the actual fix.
+    assert float(np.mean(report.predicted_intensities)) == pytest.approx(
+        float(np.mean(measured.intensities)), rel=0.05
+    )
+
+
+def test_a_harmonic_odf_residual_is_not_rescaled() -> None:
+    """HarmonicODF pole densities are already m.r.d. and must be left alone.
+
+    Applying the discrete correction here would introduce the very scale error
+    it removes elsewhere, so the two paths are checked separately.
+    """
+
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 12.0)
+    flat = PoleFigure(
+        pole=make_pole(phase),
+        sample_directions=grid.vectors.values,
+        intensities=np.ones(len(grid)),
+        specimen_frame=specimen,
+        antipodal=True,
+        sampling="sampled_density",
+    )
+    report = HarmonicODF.invert_pole_figures((flat,), degree_bandlimit=6, regularization=1e-6)
+    residual = PoleFigureResidualReport.from_odf(report.odf, flat)
+    assert float(np.mean(residual.predicted_intensities)) == pytest.approx(1.0, abs=0.1)
+    assert residual.relative_residual_norm < 0.5

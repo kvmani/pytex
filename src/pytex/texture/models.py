@@ -48,6 +48,66 @@ _RESAMPLING_ESTIMATORS = ("density", "interpolate")
 DEFAULT_RESAMPLING_HALFWIDTH_DEG = 5.0
 
 
+#: Gauss-Legendre nodes used to integrate a kernel over the sphere. The
+#: integrand is smooth in ``cos(omega)``, so this is far more accuracy than any
+#: kernel halfwidth in use requires.
+_KERNEL_MEAN_NODES = 512
+
+
+def random_pole_density(kernel: KernelSpec) -> float:
+    r"""The pole density a *random* texture produces under this kernel.
+
+    Purpose
+    -------
+    :meth:`ODF.evaluate_pole_density` returns a kernel-weighted **response**,
+    not a value in multiples of a random distribution: the kernel there peaks at
+    1 rather than integrating to 1, so a random texture yields the kernel's
+    spherical mean instead of unity. That mean is this function, and dividing by
+    it is what converts a response into m.r.d.
+
+    When to use
+    -----------
+    Whenever a discrete ODF's pole densities must be compared with anything on
+    the physical scale — a measured pole figure, another ODF, a powder-intensity
+    correction. Comparing the raw response directly is a scale error of one to
+    two orders of magnitude, not a small one: at a 12 degree halfwidth the
+    response of a random texture is about 0.016.
+
+    :class:`~pytex.texture.HarmonicODF` needs no such correction; its pole
+    densities are already in m.r.d.
+
+    Method
+    ------
+    For a random orientation distribution the mapped poles are uniform on the
+    sphere, so the expected response is
+
+    .. math:: c = \tfrac{1}{2}\int_{-1}^{1} k(\arccos u)\, \mathrm{d}u ,
+
+    evaluated by Gauss-Legendre quadrature in :math:`u = \cos\omega`.
+
+    Parameters
+    ----------
+    kernel : KernelSpec
+        The kernel the ODF was estimated with.
+
+    Returns
+    -------
+    float
+        The response of a random texture; strictly positive.
+    """
+
+    nodes, weights = np.polynomial.legendre.leggauss(_KERNEL_MEAN_NODES)
+    angles = np.arccos(np.clip(nodes, -1.0, 1.0))
+    values = np.asarray(kernel.evaluate(angles), dtype=np.float64)
+    mean = 0.5 * float(np.sum(values * weights))
+    if not np.isfinite(mean) or mean <= 0.0:
+        raise ValueError(
+            "The ODF smoothing kernel has a non-positive spherical mean, so pole "
+            "densities cannot be normalized to multiples of random."
+        )
+    return mean
+
+
 #: Largest number of cosine entries held in memory at once while resampling.
 #: Resampling forms a (grid x source) cosine matrix; on a fine grid against a
 #: large pole cloud that product is far larger than either input, so it is

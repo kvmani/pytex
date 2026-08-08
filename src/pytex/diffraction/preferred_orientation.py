@@ -50,7 +50,7 @@ from pytex.core._arrays import FloatArray, freeze_array, normalize_vector
 from pytex.core.miller import MillerPlane
 from pytex.core.notation import format_plane_family_indices
 from pytex.core.provenance import ProvenanceRecord
-from pytex.texture.models import KernelSpec
+from pytex.texture.models import KernelSpec, random_pole_density
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard for typing only
     from pytex.texture.harmonics import HarmonicODF
@@ -63,42 +63,14 @@ _ANGLE_ATOL = 1e-12
 #: Quadrature nodes used to evaluate the spherical mean of a smoothing kernel.
 #: The integrand is smooth in ``cos(omega)``, so Gauss-Legendre converges fast;
 #: 512 nodes is far past convergence for any physically sensible halfwidth.
-_KERNEL_MEAN_NODES = 512
-
-
 def _random_pole_density(kernel: KernelSpec) -> float:
-    """The pole density a *uniform* texture produces under this kernel.
+    """The pole density a *random* texture produces under this kernel.
 
-    Purpose
-    -------
-    :meth:`~pytex.texture.ODF.evaluate_pole_density` returns a kernel-weighted
-    response, not a value in multiples of random: the kernel used there peaks at
-    1 rather than integrating to 1, so a uniform texture yields the kernel's
-    spherical mean rather than unity. Dividing by that mean is what converts the
-    response into multiples of a random distribution — the units a
-    preferred-orientation factor must be in.
-
-    Method
-    ------
-    For a uniform orientation distribution the mapped poles are uniform on the
-    sphere, so the expected response is
-
-    .. math:: c = \\tfrac{1}{2}\\int_{-1}^{1} k(\\arccos u)\\, du ,
-
-    evaluated here by Gauss-Legendre quadrature in :math:`u = \\cos\\omega`,
-    where the integrand is smooth.
+    Thin alias for :func:`pytex.texture.models.random_pole_density`, which is
+    the single implementation; see there for why the correction is needed.
     """
 
-    nodes, weights = np.polynomial.legendre.leggauss(_KERNEL_MEAN_NODES)
-    angles = np.arccos(np.clip(nodes, -1.0, 1.0))
-    values = np.asarray(kernel.evaluate(angles), dtype=np.float64)
-    mean = 0.5 * float(np.sum(values * weights))
-    if not np.isfinite(mean) or mean <= 0.0:
-        raise ValueError(
-            "The ODF smoothing kernel has a non-positive spherical mean, so pole "
-            "densities cannot be normalized to multiples of random."
-        )
-    return mean
+    return random_pole_density(kernel)
 
 
 @runtime_checkable
