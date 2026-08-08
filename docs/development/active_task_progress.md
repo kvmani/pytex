@@ -96,6 +96,42 @@ things to re-run if any of this is touched:
 - Ghost correction and a defocus model remain absent; they are the next texture gap, tracked in
   `docs/roadmap/feature_capability_review_2026_08.md` section 5.
 
+## Follow-on: Notebook Policy And Tutorial 25 — COMPLETE (2026-08-08)
+
+**Objective.** A hand-authored tutorial on pole-figure arithmetic, and a guarantee that no
+notebook output is ever committed.
+
+**The conflict that had to be resolved first.** `scripts/execute_notebooks.py` was not a
+generator — the notebooks have always been hand-authored. It existed to bake outputs *into* the
+committed file, because `docs/site/conf.py` set `nb_execution_mode = "off"` and myst-nb then
+publishes only stored outputs. Stripping outputs without changing that would have turned all 24
+tutorial pages into bare code listings. So the site now executes notebooks itself
+(`nb_execution_mode = "cache"`, `nb_execution_raise_on_error = True`), which is a *stronger*
+guarantee: a notebook that no longer runs fails the build, whereas a stored output proves only
+that it ran once against whatever the library looked like then. Committed notebooks went from
+13.3 MB to 0.45 MB.
+
+**Two real defects found while writing the tutorial**, each fixed with its own commit and tests:
+
+1. `HarmonicODF` crashed for any `degree_bandlimit >= 7` (`88eb2eb`). The Wigner small-`d`
+   coefficient multiplies four factorials; at degree 7 the product exceeds int64 and became a
+   Python big integer that NumPy could hold only as an object, so `np.sqrt` raised. The default
+   is 6, so it broke exactly when a user raised the bandwidth for a sharp texture. Now evaluated
+   in log-gamma.
+2. `PoleFigureResidualReport.from_odf` compared two different scales (`05bbd0e`). A discrete
+   ODF's `evaluate_pole_density` returns a kernel *response*, not m.r.d.; a random texture
+   returns the kernel's spherical mean (~0.016 at 12 deg). A perfect fit reported a relative
+   residual of 0.99. Now 0.010 on the same case, via the new public
+   `pytex.texture.models.random_pole_density`, which also replaced the private duplicate in
+   `diffraction/preferred_orientation.py` — the same constant had been discovered twice.
+
+**Notebook 25** (`docs/site/tutorials/notebooks/25_pole_figure_arithmetic.ipynb`): 54 cells,
+25 of them code, every result computed live on simulated rolling textures. Its spine is the
+dependency chain — support, then scale, then arithmetic — and its most useful figures are the
+two failure modes: the wrong resampling estimator returning 0.66 to 6.3 on a field that is
+constant 1.0, and an over-smoothed ODF whose residual is *organized* (−4.17 m.r.d. at the peaks,
++0.74 in the background) rather than noisy.
+
 ### Next task
 
 None claimed. The capability review's recommended order puts roadmap reconciliation plus

@@ -50,12 +50,13 @@ notebooks/21_composite_or_diffraction_patterns
 notebooks/22_burgers_beta_to_alpha_zirconium
 notebooks/23_transformation_crystallography_end_to_end
 notebooks/24_tem_tilt_navigation
+notebooks/25_pole_figure_arithmetic
 ```
 
 ## Orientation-Relationship Teaching Track
 
-The orientation-relationship notebooks are committed *executed*: their pole
-figures, spectra, and reports render directly in this site. They pair with the
+The orientation-relationship notebooks compute their pole figures, spectra and
+reports live, and the site renders what the build produces. They pair with the
 scientific diagrams under `_static/or/` and the OR concept and foundation
 pages.
 
@@ -109,6 +110,18 @@ pages.
    diffraction rotation — which is *not* absorbed by symmetry — produces a
    perfectly self-consistent answer that drives the specimen the wrong way, and
    is fixed by a two-exposure calibration.
+
+## Quantitative Texture Comparison Track
+
+8. `25_pole_figure_arithmetic` — subtracting one pole figure from another sounds
+   like a one-line operation and is not, because two figures share neither a
+   support nor a scale. Works through the dependency chain that makes the
+   operators mean something: resampling onto a common grid, the two kernel
+   estimators and what using the wrong one costs (a factor of nine on data that
+   is constant), solid-angle weights and the multiples-of-random scale, then
+   each operator on simulated rolling textures where the answer is known in
+   advance. Ends on the payoff: a residual pole figure diagnosing an
+   over-smoothed ODF from the *shape* of its error, which no scalar norm can do.
 
 ## How To Use These
 
