@@ -1,5 +1,10 @@
 # Working Notes: OR Scientific Documentation Program (2026-07-18)
 
+> **Policy note (2026-08-08).** This note predates the change to notebook handling.
+> Notebooks are now committed *without* outputs and executed by the Sphinx build
+> (`nb_execution_mode = "cache"`); `scripts/execute_notebooks.py` has been removed.
+> Instructions below to run it are historical record, not current procedure.
+
 Purpose: resumable progress ledger for the orientation-relationship (OR)
 documentation program. The goal is documentation that works simultaneously as
 scientific reference (equations, conventions, algorithms), user tutorial

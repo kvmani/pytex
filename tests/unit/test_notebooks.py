@@ -87,39 +87,61 @@ def test_priority_teaching_notebooks_smoke_execute() -> None:
         _execute_notebook_code_cells(NOTEBOOK_ROOT / notebook_name)
 
 
-def test_every_notebook_is_committed_executed() -> None:
-    """Committed notebooks must carry their outputs.
+def test_no_notebook_is_committed_with_outputs() -> None:
+    """A committed notebook must carry its source only, never its outputs.
 
-    The Sphinx site builds with ``nb_execution_mode = "off"``, so myst-nb
-    renders only what is stored in the file: an unexecuted notebook silently
-    publishes as a bare code listing. Regenerate outputs with
-    ``python scripts/execute_notebooks.py --only <prefix>``.
+    Outputs are the record of one particular run on one particular machine.
+    Committing them makes every rerun a diff, makes review impossible (a
+    one-line code change arrives as a thousand lines of changed base64), and
+    inflates the repository without adding a single reviewable fact — the
+    stored figures were 13 MB against 0.45 MB of actual notebook source.
+
+    The site does not need them: ``docs/site/conf.py`` sets
+    ``nb_execution_mode = "cache"``, so myst-nb runs each notebook at build
+    time and renders what it produces. A notebook that no longer runs fails the
+    docs build, which is a stronger guarantee than a stored output could give —
+    a stored output proves only that the notebook ran once, against whatever
+    the library looked like then.
     """
 
-    unexecuted: list[str] = []
+    offenders: list[str] = []
     for notebook_path in sorted(NOTEBOOK_ROOT.glob("*.ipynb")):
         payload = _notebook_payload(notebook_path)
         for index, cell in enumerate(payload["cells"]):
-            if cell["cell_type"] != "code" or not _cell_source(cell).strip():
+            if cell["cell_type"] != "code":
                 continue
-            if cell.get("execution_count") is None:
-                unexecuted.append(f"{notebook_path.name} cell {index}")
-    assert not unexecuted, (
-        "These notebook code cells were committed without being executed, so their "
-        "outputs will not render on the documentation site: " + ", ".join(unexecuted)
+            if cell.get("outputs"):
+                offenders.append(f"{notebook_path.name} cell {index}: stored outputs")
+            if cell.get("execution_count") is not None:
+                offenders.append(f"{notebook_path.name} cell {index}: execution count")
+    assert not offenders, (
+        "These notebook cells were committed with run artifacts. Clear all outputs before "
+        "committing (in VS Code: 'Notebook: Clear All Outputs'; in Jupyter: Kernel > Restart "
+        "and Clear Output). Offenders: " + ", ".join(offenders)
     )
 
 
-def test_no_notebook_contains_error_output() -> None:
-    """A committed notebook must not ship a traceback as documentation."""
+def test_no_notebook_carries_run_specific_metadata() -> None:
+    """Per-run metadata is as unreviewable as an output, and just as transient.
 
-    failures: list[str] = []
+    ``metadata.execution`` records wall-clock timestamps of one run, and
+    notebook-level ``widgets`` state records the state of interactive widgets in
+    one session. Both change on every execution while meaning nothing to a
+    reader, so they are stripped alongside outputs.
+    """
+
+    offenders: list[str] = []
     for notebook_path in sorted(NOTEBOOK_ROOT.glob("*.ipynb")):
         payload = _notebook_payload(notebook_path)
+        notebook_metadata = payload.get("metadata", {})
+        assert isinstance(notebook_metadata, dict)
+        if "widgets" in notebook_metadata:
+            offenders.append(f"{notebook_path.name}: notebook widget state")
         for index, cell in enumerate(payload["cells"]):
-            for output in cell.get("outputs", []):
-                if output.get("output_type") == "error":
-                    failures.append(
-                        f"{notebook_path.name} cell {index}: {output.get('ename')}"
-                    )
-    assert not failures, "Notebooks committed with error outputs: " + ", ".join(failures)
+            cell_metadata = cell.get("metadata", {})
+            assert isinstance(cell_metadata, dict)
+            if "execution" in cell_metadata:
+                offenders.append(f"{notebook_path.name} cell {index}: execution timings")
+    assert not offenders, (
+        "These notebooks carry run-specific metadata: " + ", ".join(offenders)
+    )

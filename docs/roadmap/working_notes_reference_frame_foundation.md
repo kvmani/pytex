@@ -1,5 +1,10 @@
 # Working Notes — Reference Frame Foundation Program
 
+> **Policy note (2026-08-08).** This note predates the change to notebook handling.
+> Notebooks are now committed *without* outputs and executed by the Sphinx build
+> (`nb_execution_mode = "cache"`); `scripts/execute_notebooks.py` has been removed.
+> Instructions below to run it are historical record, not current procedure.
+
 Durable plan and phase ledger for the reference-frame foundation. This file is the resumption
 point: if the working session is interrupted, read this file first, then continue at the first
 phase whose status is not `DONE`.

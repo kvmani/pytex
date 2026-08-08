@@ -108,19 +108,17 @@ The `.ipynb` files under `docs/site/tutorials/notebooks/` are the source of trut
 directly — in Jupyter, in your editor, or by hand — like any other source file. There is no
 generator step.
 
-The Sphinx site builds with `nb_execution_mode = "off"`, so myst-nb renders whatever outputs are
-stored in the file. A notebook's figures and printed results therefore appear on the site only if
-it is committed **executed**. After editing one, run it:
+Notebooks are hand-authored and committed **without outputs**. The Sphinx site builds with
+`nb_execution_mode = "cache"`, so myst-nb executes each notebook itself and renders what it
+produces; `nb_execution_raise_on_error = True` means a tutorial that no longer runs fails the
+build rather than publishing a traceback as a result.
 
-```bash
-python scripts/execute_notebooks.py --only 21
-```
+So after editing a notebook there is nothing to regenerate — clear its outputs and commit the
+source. `tests/unit/test_notebooks.py` fails if any output, execution count, or run-specific
+metadata is committed.
 
-`--only` matches filename prefixes; omit it to execute every notebook. `tests/unit/test_notebooks.py`
-enforces that committed notebooks are executed and error-free, so a forgotten run fails the test
-suite instead of silently publishing a tutorial page with no outputs.
-
-Then rebuild the Sphinx site so the rendered pages pick up the new outputs.
+In VS Code, clear outputs with the command palette entry **Notebook: Clear All Outputs**; in
+Jupyter, **Kernel > Restart Kernel and Clear All Outputs**.
 
 ## Build LaTeX Or PDF Notes
 
@@ -166,10 +164,11 @@ python -m pip install -e ".[dev,docs,adapters]"
 
 ### Sphinx builds but a notebook page shows code with no outputs
 
-The site renders stored outputs, so the notebook needs executing:
+The site executes notebooks itself, so this means execution was skipped or served from a stale
+cache. Clear the cache and rebuild:
 
 ```bash
-python scripts/execute_notebooks.py --only 12
+rm -rf docs/site/_build && python -m sphinx -b html docs/site docs/site/_build/html
 ```
 
 ### LaTeX PDF build fails

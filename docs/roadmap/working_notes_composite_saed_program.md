@@ -1,5 +1,10 @@
 # Working Notes: Composite OR Diffraction Pattern Program (2026-07-20)
 
+> **Policy note (2026-08-08).** This note predates the change to notebook handling.
+> Notebooks are now committed *without* outputs and executed by the Sphinx build
+> (`nb_execution_mode = "cache"`); `scripts/execute_notebooks.py` has been removed.
+> Instructions below to run it are historical record, not current procedure.
+
 Purpose: resumable progress ledger for the composite TEM zone-axis diffraction
 pattern program. The goal is a sophisticated, fully vectorized, highly
 configurable engine that simulates and renders **composite selected-area

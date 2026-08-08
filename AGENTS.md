@@ -207,6 +207,15 @@ The mechanics are fixed centrally:
 - Theory and derivations remain in `docs/tex/`; interactive narratives remain in the notebook
   tutorials; canonical geometry remains in `docs/figures/` SVGs. Worked examples are the verifiable
   numerical bridge between them, not a replacement.
+- **Notebooks are hand-authored and committed without outputs.** There is no generator and no
+  execution step: `.ipynb` files under `docs/site/tutorials/notebooks/` are edited directly, like
+  any other source file, and every code cell must be committed with its outputs and execution
+  count cleared. Outputs are the record of one run on one machine — they make review impossible
+  (a one-line change arrives as a wall of changed base64) and add nothing reviewable. The Sphinx
+  site executes notebooks itself (`nb_execution_mode = "cache"`, `nb_execution_raise_on_error`),
+  so a notebook that no longer runs fails the docs build, which is a stronger guarantee than a
+  stored output. `tests/unit/test_notebooks.py` rejects any committed output, execution count, or
+  run-specific metadata.
 - Nomenclature is governed by `docs/standards/terminology_and_symbol_registry.md`; symbols must be
   registered before use across prose, math, figures, notebooks, worked examples, and docstrings.
 - The docstring contract in `docs/standards/documentation_architecture.md` (purpose, when-to-use,

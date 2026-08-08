@@ -54,6 +54,13 @@ myst_enable_extensions = [
     "dollarmath",
 ]
 
-nb_execution_mode = "off"
+# Notebooks are committed *without* outputs, so the site must produce them at
+# build time rather than render stored ones. "cache" executes each notebook once
+# and reuses the result until its source changes, which keeps incremental builds
+# cheap. Raising on error means a tutorial that no longer runs fails the docs
+# build instead of publishing a traceback as if it were a result.
+nb_execution_mode = "cache"
+nb_execution_raise_on_error = True
+nb_execution_timeout = 300
 
 root_doc = "index"

@@ -9,7 +9,7 @@ Rewrite the tutorial notebooks so each is a genuinely pedagogical, scientificall
 rigorous, executable demonstration of the library: theory + conventions + citations,
 focused imports (no kitchen-sink boilerplate), live-computed results verified against
 analytic/literature values, and at least one figure. Notebooks must execute error-free
-(`scripts/execute_notebooks.py`) and pass `tests/unit/test_notebooks.py`.
+(the Sphinx build runs them) and pass `tests/unit/test_notebooks.py`.
 
 ## Motivation / baseline problem
 
@@ -21,10 +21,14 @@ richer — used as the quality template.
 
 ## Build tooling
 
-- Notebooks are rebuilt from Python scripts in the session scratchpad using a helper
-  `nbbuild.py` (`md()`, `code()`, `write_notebook()` with cell ids, nbformat 4.5,
-  kernelspec python3). Then executed with `python scripts/execute_notebooks.py --only NN`.
-- Error check: scan committed `.ipynb` for `output_type == "error"`.
+- **Superseded 2026-08-08.** Notebooks are authored and edited by hand as `.ipynb` files,
+  with no generator and no execution step. They are committed **without outputs**: the Sphinx
+  site sets `nb_execution_mode = "cache"` and executes them at build time, and
+  `nb_execution_raise_on_error = True` fails the build on a notebook that no longer runs.
+  `scripts/execute_notebooks.py` existed only to bake outputs into the committed file and has
+  been removed.
+- Check: `tests/unit/test_notebooks.py` rejects any committed output, execution count, or
+  run-specific metadata, and smoke-executes the priority notebooks' code cells.
 
 ## Status (rewritten + executed error-free, with verified assertions + figure)
 
