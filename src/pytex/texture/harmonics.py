@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from math import factorial
+from math import lgamma
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -153,17 +153,29 @@ def _enumerate_terms(
     return tuple(terms)
 
 
+def _log_factorial(value: int) -> float:
+    """``log(value!)`` for a non-negative integer, without forming ``value!``."""
+
+    return float(lgamma(value + 1))
+
+
 def _wigner_small_d(
     degree: int,
     sample_order: int,
     crystal_order: int,
     beta_rad: np.ndarray,
 ) -> np.ndarray:
-    prefactor = np.sqrt(
-        factorial(degree + sample_order)
-        * factorial(degree - sample_order)
-        * factorial(degree + crystal_order)
-        * factorial(degree - crystal_order)
+    # The Wigner coefficient is a ratio of factorials, and both halves overflow
+    # fast: at degree 7 the numerator already exceeds int64, so evaluating it
+    # directly produced a Python big integer that NumPy could only hold as an
+    # object and refused to take the square root of. Working in log-gamma keeps
+    # every intermediate a float and stays exact to rounding at any degree a
+    # texture analysis would use.
+    log_prefactor = 0.5 * (
+        _log_factorial(degree + sample_order)
+        + _log_factorial(degree - sample_order)
+        + _log_factorial(degree + crystal_order)
+        + _log_factorial(degree - crystal_order)
     )
     k_min = max(0, crystal_order - sample_order)
     k_max = min(degree - sample_order, degree + crystal_order)
@@ -171,15 +183,17 @@ def _wigner_small_d(
     sin_half = np.sin(beta_rad / 2.0)
     values = np.zeros_like(beta_rad, dtype=np.float64)
     for k in range(k_min, k_max + 1):
-        denominator = (
-            factorial(degree + crystal_order - k)
-            * factorial(k)
-            * factorial(sample_order - crystal_order + k)
-            * factorial(degree - sample_order - k)
+        log_denominator = (
+            _log_factorial(degree + crystal_order - k)
+            + _log_factorial(k)
+            + _log_factorial(sample_order - crystal_order + k)
+            + _log_factorial(degree - sample_order - k)
         )
         exponent_cos = 2 * degree + crystal_order - sample_order - 2 * k
         exponent_sin = sample_order - crystal_order + 2 * k
-        coefficient = ((-1) ** (k - sample_order + crystal_order)) * prefactor / denominator
+        coefficient = ((-1) ** (k - sample_order + crystal_order)) * np.exp(
+            log_prefactor - log_denominator
+        )
         values += coefficient * (cos_half**exponent_cos) * (sin_half**exponent_sin)
     values = np.ascontiguousarray(values, dtype=np.float64)
     values.setflags(write=False)

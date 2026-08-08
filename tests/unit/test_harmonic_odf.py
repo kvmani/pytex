@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
@@ -14,17 +16,25 @@ from pytex.core import (
     Phase,
     ReferenceFrame,
     Rotation,
+    S2Grid,
     SymmetrySpec,
 )
+from pytex.core.orientation import OrientationSet
 from pytex.diffraction.stereonets import spherical_angles_to_directions
 from pytex.plotting.builders import build_odf_figure_spec
-from pytex.texture import HarmonicODF, KernelSpec, residual_reports_for_pole_figures
+from pytex.texture import (
+    HarmonicODF,
+    KernelSpec,
+    PoleFigure,
+    residual_reports_for_pole_figures,
+)
 from pytex.texture.harmonics import (
     _bunge_quadrature,
     _enumerate_terms,
     _orthonormalize_weighted_basis,
     _symmetry_projected_raw_basis,
     _weighted_mean,
+    _wigner_small_d,
 )
 
 
@@ -337,3 +347,112 @@ def test_harmonic_residual_reports_match_reconstruction_surface() -> None:
         assert_allclose(report.predicted_intensities, pole_figure.intensities, atol=1e-8)
         assert_allclose(report.residuals, np.zeros_like(report.residuals), atol=1e-8)
         assert report.relative_residual_norm <= 1e-8
+
+
+def _reference_wigner_small_d(
+    degree: int, sample_order: int, crystal_order: int, beta_rad: np.ndarray
+) -> np.ndarray:
+    """Wigner small-d straight from the factorial formula, in exact integers.
+
+    This is the textbook expression evaluated with Python's arbitrary-precision
+    integers and converted to float only at the last moment, so it is exact to
+    rounding. It is unusable in the library — the integers grow past what NumPy
+    can hold — but it is the right thing to check the log-gamma form against.
+    """
+
+    prefactor = math.sqrt(
+        float(
+            math.factorial(degree + sample_order)
+            * math.factorial(degree - sample_order)
+            * math.factorial(degree + crystal_order)
+            * math.factorial(degree - crystal_order)
+        )
+    )
+    values = np.zeros_like(beta_rad, dtype=np.float64)
+    k_min = max(0, crystal_order - sample_order)
+    k_max = min(degree - sample_order, degree + crystal_order)
+    for k in range(k_min, k_max + 1):
+        denominator = float(
+            math.factorial(degree + crystal_order - k)
+            * math.factorial(k)
+            * math.factorial(sample_order - crystal_order + k)
+            * math.factorial(degree - sample_order - k)
+        )
+        values += (
+            ((-1) ** (k - sample_order + crystal_order))
+            * prefactor
+            / denominator
+            * np.cos(beta_rad / 2.0) ** (2 * degree + crystal_order - sample_order - 2 * k)
+            * np.sin(beta_rad / 2.0) ** (sample_order - crystal_order + 2 * k)
+        )
+    return values
+
+
+def test_wigner_small_d_matches_the_exact_factorial_form() -> None:
+    """The log-gamma evaluation must agree with exact integer arithmetic.
+
+    Degrees 0-6 are the range where the factorial products still fit in the
+    integer types NumPy can hold, so the exact form is available to check
+    against for every (degree, sample order, crystal order) triple.
+    """
+
+    beta = np.linspace(0.05, np.pi - 0.05, 17)
+    worst = 0.0
+    for degree in range(7):
+        for sample_order in range(-degree, degree + 1):
+            for crystal_order in range(-degree, degree + 1):
+                computed = _wigner_small_d(degree, sample_order, crystal_order, beta)
+                expected = _reference_wigner_small_d(degree, sample_order, crystal_order, beta)
+                worst = max(worst, float(np.max(np.abs(computed - expected))))
+    assert worst < 1e-12
+
+
+def test_wigner_small_d_survives_degrees_that_overflow_integer_factorials() -> None:
+    """Above degree 6 the factorial products exceed int64 and used to crash.
+
+    ``factorial(2*degree)`` alone reaches 8.7e18 at degree 7, and the formula
+    multiplies four such terms; the result became a Python big integer that
+    NumPy could hold only as an object, and ``np.sqrt`` on an object array
+    raises ``TypeError``. The bandlimit default is 6, so this surfaced only when
+    a user raised the bandwidth for a sharp texture — exactly when they need it.
+    """
+
+    beta = np.linspace(0.05, np.pi - 0.05, 9)
+    for degree in (7, 10, 16, 24):
+        values = _wigner_small_d(degree, degree, -degree, beta)
+        assert np.all(np.isfinite(values))
+    # d^l_{00}(pi/2) has the closed form 0 for odd l and, for even l = 2m,
+    # (-1)^m * C(2m, m) / 4^m. Checking it pins the normalization, not just
+    # finiteness. The tolerance loosens with degree because the sum alternates
+    # in sign over l + 1 terms and loses a few digits to cancellation; at degree
+    # 16 the agreement is 7e-12 against a value of 0.196.
+    half_pi = np.array([np.pi / 2.0])
+    assert _wigner_small_d(7, 0, 0, half_pi)[0] == pytest.approx(0.0, abs=1e-12)
+    for degree in (8, 10, 16):
+        order = degree // 2
+        expected = ((-1) ** order) * math.comb(degree, order) / (2.0**degree)
+        assert _wigner_small_d(degree, 0, 0, half_pi)[0] == pytest.approx(expected, abs=1e-10)
+
+
+def test_harmonic_inversion_accepts_a_bandlimit_above_six() -> None:
+    """The end-to-end path that the overflow made unreachable."""
+
+    crystal, specimen, phase, _ = make_harmonic_context()
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [30.0, 20.0, 10.0]]),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    pole = CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase)
+    grid = S2Grid.equispaced(
+        20.0, reference_frame=specimen, hemisphere="upper", antipodal=True
+    )
+    measured = PoleFigure.from_orientations(orientations, pole).on_grid(
+        grid, halfwidth_deg=20.0
+    )
+    report = HarmonicODF.invert_pole_figures(
+        (measured,), degree_bandlimit=8, regularization=1e-3
+    )
+    assert np.all(np.isfinite(report.odf.coefficients))

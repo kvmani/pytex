@@ -50,6 +50,17 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **The harmonic ODF could not use a bandwidth above 6.** `HarmonicODF` builds
+  its basis from Wigner small-`d` functions, whose coefficient is a ratio of
+  factorials. At degree 7 the numerator `factorial(2*l)` already reaches 8.7e18
+  and the formula multiplies four such terms, so the product became a Python big
+  integer that NumPy could hold only as an object — and `np.sqrt` on an object
+  array raises `TypeError`. Any `degree_bandlimit >= 7` therefore crashed. Since
+  the default is 6, this surfaced only when a user raised the bandwidth to
+  resolve a sharp texture, which is exactly when it is needed. The coefficient
+  is now evaluated in log-gamma, which agrees with the exact integer form to
+  2.7e-14 over every term of degrees 0-6 and stays finite at any degree.
+
 - **Comparing two Miller indices raised instead of answering.** `MillerIndex`,
   `CrystalDirection`, `ZoneAxis` and `ReciprocalLatticeVector` inherited the
   generated dataclass `__eq__`, which compares their index arrays with `==` and
