@@ -29,7 +29,16 @@ from pytex.core import (
     SymmetrySpec,
     raster_solid_angle_weights,
 )
-from pytex.texture import PoleFigure
+from pytex.plotting._render import ScatterLayer2D
+from pytex.plotting.builders import build_pole_figure_difference_spec
+from pytex.plotting.runtime import plot_pole_figure_difference
+from pytex.texture import (
+    ODF,
+    KernelSpec,
+    PoleFigure,
+    PoleFigureResidualReport,
+    residual_reports_for_pole_figures,
+)
 
 
 def make_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
@@ -738,3 +747,146 @@ def test_the_full_workflow_two_measurements_to_one_residual() -> None:
     assert_allclose(float(np.sum(common.weights * residual.values)), 0.0, atol=1e-9)
     assert residual.rms_deviation > 0.0
     assert "measured minus modelled" in residual.describe()
+
+
+# --------------------------------------------------------------------------
+# ODF residual QC product and its figure
+# --------------------------------------------------------------------------
+
+
+def odf_from_orientations(specimen: ReferenceFrame, phase: Phase) -> ODF:
+    return ODF.from_orientations(
+        OrientationSet.from_euler_angles(
+            np.array([[0.0, 0.0, 0.0], [35.0, 20.0, 10.0], [12.0, 45.0, 33.0]]),
+            specimen_frame=specimen,
+            phase=phase,
+        ),
+        kernel=KernelSpec(halfwidth_deg=15.0),
+    )
+
+
+def test_residual_report_exposes_a_difference_figure_matching_its_residuals() -> None:
+    _, specimen, phase = make_context()
+    odf = odf_from_orientations(specimen, phase)
+    grid = uniform_grid(specimen, 12.0)
+    measured = odf.reconstruct_pole_figure(make_pole(phase)).on_grid(grid, halfwidth_deg=15.0)
+    report = PoleFigureResidualReport.from_odf(odf, measured)
+
+    figure = report.difference_figure()
+    assert_allclose(figure.values, report.residuals, rtol=1e-12)
+    assert figure.left_label == "recalculated"
+    assert figure.right_label == "measured"
+    assert len(figure) == report.observation_count
+    assert figure.max_absolute_deviation == pytest.approx(report.max_absolute_error)
+
+
+def test_a_perfect_reconstruction_has_an_identically_zero_residual_figure() -> None:
+    """Comparing an ODF against the figure it itself predicts must be exact.
+
+    This is the calibration of the whole QC path: any non-zero residual here
+    would be a bug in the comparison, not a property of the data.
+    """
+
+    _, specimen, phase = make_context()
+    odf = odf_from_orientations(specimen, phase)
+    pole = make_pole(phase)
+    grid = uniform_grid(specimen, 12.0)
+    predicted = PoleFigure(
+        pole=pole,
+        sample_directions=grid.vectors.values,
+        intensities=odf.evaluate_pole_density(pole, grid.vectors.values),
+        specimen_frame=specimen,
+        antipodal=True,
+        sampling="sampled_density",
+    )
+    report = PoleFigureResidualReport.from_odf(odf, predicted)
+    assert report.difference_figure().max_absolute_deviation < 1e-12
+
+
+def test_residual_report_describes_its_own_quality() -> None:
+    _, specimen, phase = make_context()
+    odf = odf_from_orientations(specimen, phase)
+    grid = uniform_grid(specimen, 12.0)
+    measured = odf.reconstruct_pole_figure(make_pole(phase)).on_grid(grid, halfwidth_deg=15.0)
+    text = PoleFigureResidualReport.from_odf(odf, measured).describe()
+    assert "relative residual norm" in text
+    assert "recalculated minus measured" in text
+    assert "acceptance test" in text
+
+
+def test_residual_reports_for_pole_figures_yields_plottable_differences() -> None:
+    _, specimen, phase = make_context()
+    odf = odf_from_orientations(specimen, phase)
+    grid = uniform_grid(specimen, 12.0)
+    figures = [
+        odf.reconstruct_pole_figure(
+            CrystalPlane(MillerIndex(indices, phase=phase), phase=phase)
+        ).on_grid(grid, halfwidth_deg=15.0)
+        for indices in ((1, 1, 1), (2, 0, 0))
+    ]
+    reports = residual_reports_for_pole_figures(odf, figures)
+    assert len(reports) == 2
+    for report, figure in zip(reports, figures, strict=True):
+        difference = report.difference_figure()
+        assert difference.pole == figure.pole
+        assert difference.project().shape == (len(figure.intensities), 2)
+
+
+def test_difference_figure_spec_centres_the_diverging_scale_on_zero() -> None:
+    """A diverging colormap is only honest with symmetric limits.
+
+    Without them matplotlib centres the neutral colour on the data mean, so a
+    residual that is positive everywhere would be drawn half in the colour that
+    means negative.
+    """
+
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 15.0)
+    figure = constant_density_figure(specimen, phase, value=1.0, resolution_deg=15.0)
+    biased = PoleFigure(
+        pole=figure.pole,
+        sample_directions=grid.vectors.values,
+        intensities=np.linspace(1.0, 3.0, len(grid)),
+        specimen_frame=specimen,
+        antipodal=True,
+        sampling="sampled_density",
+    )
+    spec = build_pole_figure_difference_spec(biased - figure)
+    layer = spec.scatter_layers[0]
+    assert layer.cmap == "pytex.diverging"
+    assert layer.vmin == pytest.approx(-layer.vmax)
+    assert layer.vmax == pytest.approx(2.0)
+    assert "{111}" in spec.title
+
+
+def test_difference_figure_spec_survives_an_identically_zero_residual() -> None:
+    """A perfect fit must still render rather than divide by a zero range."""
+
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, resolution_deg=15.0)
+    spec = build_pole_figure_difference_spec(figure - figure)
+    layer = spec.scatter_layers[0]
+    assert layer.vmin is not None and layer.vmax is not None
+    assert layer.vmin < layer.vmax
+
+
+def test_scatter_layer_rejects_half_specified_colour_limits() -> None:
+    with pytest.raises(ValueError, match="together or not at all"):
+        ScatterLayer2D(points=np.zeros((2, 2)), vmin=-1.0)
+    with pytest.raises(ValueError, match="vmin < vmax"):
+        ScatterLayer2D(points=np.zeros((2, 2)), vmin=1.0, vmax=1.0)
+
+
+def test_plot_pole_figure_difference_renders() -> None:
+    matplotlib = pytest.importorskip("matplotlib")
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    _, specimen, phase = make_context()
+    sharp, spread, _ = two_figures_on_one_grid(specimen, phase)
+    figure = plot_pole_figure_difference(
+        sharp.difference(spread, left_label="sharp", right_label="spread")
+    )
+    assert isinstance(figure, matplotlib.figure.Figure)
+    assert "sharp - spread" in figure.axes[0].get_title()
+    plt.close(figure)

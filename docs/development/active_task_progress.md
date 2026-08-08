@@ -29,12 +29,12 @@ Nothing downstream is meaningful without the step before it.
 
 | # | Step | Status | Commit |
 | --- | --- | --- | --- |
-| 0 | Cardinal rule (ledger + commit/push cadence) into `AGENTS.md` | done | — |
-| 1 | `PoleFigure.sampling` semantics field + contract round-trip | pending | — |
-| 2 | `PoleFigure.on_grid` spherical resampling | pending | — |
-| 3 | `PoleFigure.normalize_to_mrd` + adapter `mrd` mode | pending | — |
-| 4 | Arithmetic, `PoleFigureDifference`, `symmetrize`/`rotate`/`restrict_polar_range` | pending | — |
-| 5 | Residual QC product + difference plotting | pending | — |
+| 0 | Cardinal rule (ledger + commit/push cadence) into `AGENTS.md` | done | `ee9591c` |
+| 1 | `PoleFigure.sampling` semantics field + contract round-trip | done | `6c925b2` |
+| 2 | `PoleFigure.on_grid` spherical resampling | done | `82dc073` |
+| 3 | `PoleFigure.normalize_to_mrd` + `raster_solid_angle_weights` + adapter `mrd` mode | done | `4b1bdec` |
+| 4 | Arithmetic, `PoleFigureDifference`, `symmetrize`/`rotate`/`restrict_polar_range` | done | `ce3146f` |
+| 5 | Residual QC product + difference plotting | in progress | — |
 | 6 | Exports, worked example, docs, CHANGELOG, review-scorecard update | pending | — |
 
 ### Design decisions worth not re-deriving
@@ -60,6 +60,18 @@ Nothing downstream is meaningful without the step before it.
    and integrating with that grid's weights — approximate, so it is documented as such rather than
    presented as exact.
 
+4. **A latent equality defect blocked the whole thing and is now fixed.** `MillerIndex`,
+   `CrystalDirection`, `ZoneAxis` and `ReciprocalLatticeVector` inherited the dataclass `__eq__`,
+   which compares their index arrays with `==` and raises "truth value of an array ... is
+   ambiguous" for every distinct-but-equal pair. Comparing two poles — the first check any
+   arithmetic operator must make — was therefore impossible. `SymmetrySpec` already carried the
+   custom `__eq__`/`__hash__` for exactly this reason; those four now do too. `CrystalPlane` is
+   still unhashable because `Phase` holds a dict; that is pre-existing and out of this sprint's
+   scope, but it is why `PoleFigureDifference` compares poles rather than hashing them.
+
 ### Next actions
 
-Start at step 1. Each step lands as its own commit with tests, pushed to `main`.
+Step 5: give `PoleFigureResidualReport` a difference-figure product, expose it from
+`residual_reports_for_pole_figures`, and add a diverging-colormap `plot_pole_figure_difference`
+through the existing figure-spec layer. Then step 6. Each step lands as its own commit with
+tests, pushed to `main`.

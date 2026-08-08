@@ -25,9 +25,19 @@ class ScatterLayer2D:
     edgecolors: str | None = "black"
     linewidths: float = 0.4
     colorbar_label: str | None = None
+    #: Explicit colour limits. Required whenever a diverging colormap is used:
+    #: its neutral midpoint is only at zero if the limits are symmetric, and
+    #: matplotlib's autoscaling puts the midpoint wherever the data happens to
+    #: be centred, which silently miscolours the sign of every point.
+    vmin: float | None = None
+    vmax: float | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "points", as_float_array(self.points, shape=(None, 2)))
+        if (self.vmin is None) != (self.vmax is None):
+            raise ValueError("ScatterLayer2D vmin and vmax must be set together or not at all.")
+        if self.vmin is not None and self.vmax is not None and not self.vmin < self.vmax:
+            raise ValueError("ScatterLayer2D requires vmin < vmax.")
         if self.values is not None:
             object.__setattr__(
                 self,
@@ -348,6 +358,8 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             c=color_input,
             s=scatter_layer.sizes,
             cmap=scatter_layer.cmap if scatter_layer.values is not None else None,
+            vmin=scatter_layer.vmin,
+            vmax=scatter_layer.vmax,
             alpha=scatter_layer.alpha,
             edgecolors=scatter_layer.edgecolors,
             linewidths=scatter_layer.linewidths,

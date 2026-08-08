@@ -20,8 +20,14 @@ from pytex.plotting._render import (
     ScatterLayer3D,
     TextLayer2D,
 )
+from pytex.plotting.colormaps import register_pytex_colormaps
 from pytex.texture.harmonics import HarmonicODF
-from pytex.texture.models import ODF, InversePoleFigure, PoleFigure
+from pytex.texture.models import (
+    ODF,
+    InversePoleFigure,
+    PoleFigure,
+    PoleFigureDifference,
+)
 
 
 def _frame_axis_labels(frame_axes: tuple[str, str, str]) -> tuple[str, str, str]:
@@ -462,6 +468,61 @@ def build_pole_figure_spec(
             ),
         )
     raise ValueError("Pole figure kind must be 'scatter', 'histogram', or 'contour'.")
+
+
+def build_pole_figure_difference_spec(
+    difference: PoleFigureDifference,
+    *,
+    method: str = "equal_area",
+    title: str | None = None,
+    symmetric_limits: bool = True,
+) -> FigureSpec2D:
+    """Figure spec for a signed pole-figure residual.
+
+    A residual is signed, so it is drawn on the diverging colormap with limits
+    symmetric about zero. That symmetry is the whole point: on a diverging map
+    the neutral colour marks the zero crossing only if the limits are
+    symmetric, and matplotlib's autoscaling would otherwise place it wherever
+    the data happens to be centred — colouring an entirely positive residual as
+    though half of it were negative.
+    """
+
+    projected = difference.project(method=method)
+    radius = _projection_radius(method)
+    extreme = float(np.max(np.abs(difference.values)))
+    limits: tuple[float, float] | tuple[None, None] = (None, None)
+    if symmetric_limits:
+        # A residual that is identically zero has no scale of its own; give it a
+        # nominal one so the figure still renders, all in the neutral colour.
+        span = extreme if extreme > 0.0 else 1.0
+        limits = (-span, span)
+    register_pytex_colormaps()
+    indices = tuple(int(value) for value in difference.pole.miller.indices)
+    label = (
+        format_plane_family_indices(indices, style="plain")
+        if difference.includes_symmetry_family
+        else format_plane_indices(indices, style="plain")
+    )
+    return FigureSpec2D(
+        title=title
+        or f"Pole Figure Difference {label}: {difference.left_label} - {difference.right_label}",
+        xlabel="projection x",
+        ylabel="projection y",
+        xlim=(-radius, radius),
+        ylim=(-radius, radius),
+        boundary_circle_radius=radius,
+        scatter_layers=(
+            ScatterLayer2D(
+                points=projected,
+                values=difference.values,
+                cmap="pytex.diverging",
+                colorbar_label="difference (m.r.d.)",
+                label="residual",
+                vmin=limits[0],
+                vmax=limits[1],
+            ),
+        ),
+    )
 
 
 def build_inverse_pole_figure_spec(

@@ -9,7 +9,13 @@ import numpy as np
 from pytex.core._arrays import as_float_array
 from pytex.core.provenance import ProvenanceRecord
 from pytex.texture.harmonics import HarmonicODF, HarmonicODFReconstructionReport
-from pytex.texture.models import ODF, KernelSpec, ODFInversionReport, PoleFigure
+from pytex.texture.models import (
+    ODF,
+    KernelSpec,
+    ODFInversionReport,
+    PoleFigure,
+    PoleFigureDifference,
+)
 
 CorrectionPolicy = Literal["clip_zero", "raise"]
 ReconstructionAlgorithm = Literal["discrete", "harmonic"]
@@ -146,6 +152,59 @@ class PoleFigureResidualReport:
                 )
         object.__setattr__(self, "predicted_intensities", predicted)
         object.__setattr__(self, "residuals", residuals)
+
+    def difference_figure(self) -> PoleFigureDifference:
+        """The residual as a figure that can be projected and plotted.
+
+        Purpose
+        -------
+        Turns the goodness-of-fit numbers into a diagnosis. ``residual_norm``
+        says how badly the ODF misses; only the residual *figure* says
+        **where**, and a systematic miss concentrated in one region of the
+        specimen sphere means something quite different from noise spread over
+        all of it — an unmodelled component, an uncorrected defocusing loss at
+        high tilt, or a bandwidth too low to carry a sharp peak.
+
+        Returns
+        -------
+        PoleFigureDifference
+            Recalculated minus measured, on the measured directions. Positive
+            means the ODF over-predicts. Read its ``describe()``, or hand it to
+            ``pytex.plotting.plot_pole_figure_difference``.
+        """
+
+        return PoleFigureDifference(
+            pole=self.pole_figure.pole,
+            sample_directions=self.pole_figure.sample_directions,
+            values=self.residuals,
+            specimen_frame=self.pole_figure.specimen_frame,
+            antipodal=self.pole_figure.antipodal,
+            left_label="recalculated",
+            right_label="measured",
+            includes_symmetry_family=self.pole_figure.includes_symmetry_family,
+            provenance=self.provenance,
+        )
+
+    def describe(self) -> str:
+        """Prose summary: how well the ODF reproduces this figure, and where not."""
+
+        difference = self.difference_figure()
+        quality = (
+            "The reconstruction reproduces this figure well"
+            if self.relative_residual_norm <= 0.05
+            else "The reconstruction reproduces this figure only approximately"
+            if self.relative_residual_norm <= 0.2
+            else "The reconstruction does not reproduce this figure"
+        )
+        return (
+            f"Pole-figure residual over {self.observation_count} measured directions: "
+            f"relative residual norm {self.relative_residual_norm:.4f}, mean absolute error "
+            f"{self.mean_absolute_error:.4f}, maximum absolute error "
+            f"{self.max_absolute_error:.4f}. {quality}. "
+            f"{difference.describe()} An inversion that cannot reproduce its own input data is "
+            "not usable whatever its internal convergence reported, so this comparison — not "
+            "the solver's iteration count — is the acceptance test."
+        )
 
     @classmethod
     def from_odf(

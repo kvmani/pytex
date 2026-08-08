@@ -16,6 +16,7 @@ from pytex.plotting.builders import (
     build_inverse_pole_figure_spec,
     build_odf_figure_spec,
     build_orientation_figure_spec,
+    build_pole_figure_difference_spec,
     build_pole_figure_spec,
     build_quaternion_figure_spec,
     build_rotation_figure_spec,
@@ -41,7 +42,12 @@ from pytex.plotting.spherical import (
     plot_wulff_net as _plot_wulff_net,
 )
 from pytex.texture.harmonics import HarmonicODF
-from pytex.texture.models import ODF, InversePoleFigure, PoleFigure
+from pytex.texture.models import (
+    ODF,
+    InversePoleFigure,
+    PoleFigure,
+    PoleFigureDifference,
+)
 
 
 def plot_vector_set(
@@ -530,6 +536,57 @@ def plot_pole_figure(
             sigma_bins=sigma_bins,
             levels=levels,
             title=title,
+        ),
+        ax=ax,
+    )
+
+
+def plot_pole_figure_difference(
+    difference: PoleFigureDifference,
+    *,
+    method: str = "equal_area",
+    title: str | None = None,
+    symmetric_limits: bool = True,
+    ax: Any | None = None,
+) -> Any:
+    """Plot a signed pole-figure residual on a diverging colour scale.
+
+    Purpose
+    -------
+    The QC figure for a PF-to-ODF inversion, and the standard way to compare
+    two measurements. A residual norm says *how badly* two figures disagree;
+    only this says *where*, and where is what identifies the cause — a
+    systematic miss over one region of the specimen sphere points at an
+    unmodelled component or an uncorrected defocusing loss, while noise spread
+    evenly over the whole figure points at counting statistics.
+
+    Parameters
+    ----------
+    difference : PoleFigureDifference
+        From ``a.difference(b)`` or ``PoleFigureResidualReport.difference_figure()``.
+    method : str
+        Projection; see :func:`plot_pole_figure`.
+    title : str, optional
+        Defaults to a title naming the pole and both operands.
+    symmetric_limits : bool
+        Centre the colour scale on zero (default). Leave this on: the diverging
+        colormap's neutral colour marks the zero crossing only when the limits
+        are symmetric, so turning it off will colour part of a one-signed
+        residual as though it had the other sign.
+    ax : matplotlib Axes, optional
+
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+    """
+
+    return render_figure_spec(
+        build_pole_figure_difference_spec(
+            difference,
+            method=method,
+            title=title,
+            symmetric_limits=symmetric_limits,
         ),
         ax=ax,
     )
