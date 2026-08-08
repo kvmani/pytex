@@ -43,6 +43,14 @@ If implementation choices conflict with these documents, stop and reconcile the 
 
 ## Non-Negotiable Rules
 
+- **Cardinal rule — every goal is resumable and every substantial step is landed on `main`.**
+  No task may exist only in an agent's head or in an uncommitted worktree. Concretely, for every
+  goal or multi-step task: maintain the progress ledger described under
+  [Durable progress and resumability](#durable-progress-and-resumability), and `git commit` and
+  `git push` to `main` after each substantial increment — not only at the end. An interruption at
+  any moment must leave the repository in a state a later session can resume from by reading the
+  ledger and the git history alone. This rule outranks tidiness preferences such as saving up a
+  single large commit. See [Commit and push cadence](#commit-and-push-cadence).
 - Sphinx is the primary browsable and searchable documentation surface.
 - LaTeX is the canonical source for major scientific notes.
 - Stable public numerical surfaces must be documented with executable worked examples whose outputs
@@ -121,6 +129,24 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 - Use `docs/development/active_task_progress.md` for the current task unless a more specific tracked
   handoff document already exists. Archive or reset it only after the task is fully verified and its
   durable outcomes have been incorporated into canonical documentation.
+
+### Commit and push cadence
+
+- Commit and push to `main` after each substantial increment of a task, not once at the end. A
+  substantial increment is any self-consistent unit that leaves the suite green: a new public
+  surface with its tests, a completed refactor, a documentation or contract update, a bug fix.
+- Before each such commit, update the progress ledger in the same commit, so the ledger and the
+  code never disagree about what is done.
+- Every commit must leave the repository green on the base lane (`ruff`, `mypy`, `pytest`). A
+  commit that knowingly breaks the suite is a defect; if work must be checkpointed mid-flight,
+  land it behind a test that documents the current partial state rather than a failing one.
+- Stage by explicit path. Never `git add -A` or `git add <dir>`: the working tree routinely holds
+  unrelated work in progress, and sweeping it into an unrelated commit destroys the resumability
+  this section exists to guarantee.
+- Push after committing. An unpushed commit is not durable progress — a lost machine loses the
+  work, and no other session can resume from it.
+- When a task ends or is abandoned, say so explicitly in the ledger and commit that statement, so
+  the next session does not have to infer intent from a silent worktree.
 
 ### Before coding
 
