@@ -153,6 +153,7 @@ from pytex.core.sphere import (
     S2Grid,
     SphericalVectorSet,
     directions_to_spherical_angles,
+    raster_solid_angle_weights,
     spherical_angles_to_directions,
 )
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
@@ -337,6 +338,7 @@ __all__ = [
     "plane_hkl_to_hkil_array",
     "project_directions_onto_planes",
     "random_disorientation_angles_deg",
+    "raster_solid_angle_weights",
     "reciprocal_frame_for",
     "reciprocal_metric_tensor",
     "reciprocal_to_direct_components",

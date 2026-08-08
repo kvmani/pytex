@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 import numpy as np
@@ -670,6 +670,142 @@ class PoleFigure:
             sampling="sampled_density",
             provenance=self.provenance if provenance is None else provenance,
         )
+
+    def integration_grid(self, *, resolution_deg: float = 5.0) -> S2Grid:
+        """An equal-area grid suitable for integrating this figure.
+
+        Purpose: the natural common support for this figure — the hemisphere
+        when opposite poles are identified, the whole sphere otherwise — with
+        the equal-area weights that make integration over it valid. Use it as
+        the ``grid`` argument of :meth:`on_grid` when no particular grid is
+        required, so that two figures compared against each other are compared
+        on the same one.
+        """
+
+        return S2Grid.equispaced(
+            resolution_deg,
+            reference_frame=self.specimen_frame,
+            hemisphere="upper" if self.antipodal else "sphere",
+            antipodal=self.antipodal,
+        )
+
+    def spherical_mean(
+        self,
+        *,
+        integration_weights: ArrayLike | None = None,
+        resolution_deg: float = 5.0,
+        halfwidth_deg: float = DEFAULT_RESAMPLING_HALFWIDTH_DEG,
+    ) -> float:
+        """The mean pole density over the sphere.
+
+        Purpose
+        -------
+        The quantity that defines the multiples-of-random scale: a pole figure
+        is in m.r.d. exactly when this equals 1. It is reported separately from
+        :meth:`normalize_to_mrd` so that the scale factor being applied is
+        visible rather than implicit.
+
+        Method
+        ------
+        A mean over the sphere is an integral, and an integral needs solid-angle
+        weights, which scattered directions do not carry. Two routes, in order
+        of preference:
+
+        - ``integration_weights`` supplied — used directly. This is exact, and
+          is the route to take whenever the weights are known: an
+          :class:`~pytex.core.sphere.S2Grid` carries them, and a diffractometer
+          raster's are proportional to ``sin(tilt)``.
+        - Otherwise the figure is resampled onto an equal-area grid and
+          integrated there. This is an **estimate**: it inherits the smoothing
+          of the resampling kernel, so a very sharp texture sampled coarsely
+          will be biased. Supply the weights when accuracy matters.
+
+        Parameters
+        ----------
+        integration_weights : ArrayLike, optional
+            One positive weight per sampled direction. Need not be normalized.
+        resolution_deg : float
+            Spacing of the fallback integration grid.
+        halfwidth_deg : float
+            Kernel halfwidth used by the fallback route.
+
+        Returns
+        -------
+        float
+            The mean pole density, in whatever units the intensities carry.
+        """
+
+        if integration_weights is not None:
+            weights = as_float_array(
+                integration_weights, shape=(self.intensities.shape[0],)
+            )
+            if np.any(weights <= 0.0):
+                raise ValueError("integration_weights must be strictly positive.")
+            return float(np.sum(weights * self.intensities) / np.sum(weights))
+        grid = self.integration_grid(resolution_deg=resolution_deg)
+        resampled = self.on_grid(grid, halfwidth_deg=halfwidth_deg, normalize=False)
+        return float(np.sum(grid.weights * resampled.intensities))
+
+    def normalize_to_mrd(
+        self,
+        *,
+        integration_weights: ArrayLike | None = None,
+        resolution_deg: float = 5.0,
+        halfwidth_deg: float = DEFAULT_RESAMPLING_HALFWIDTH_DEG,
+    ) -> PoleFigure:
+        """Rescale to multiples of a random distribution.
+
+        Purpose
+        -------
+        Makes a figure's magnitudes physically meaningful and comparable with
+        any other figure. A measured pole figure arrives in detector counts, or
+        divided by its own maximum or sum — none of which can be compared
+        between two measurements, or against a computed figure, or interpreted
+        as "how much stronger than random is this direction". After this, 1
+        means random, 2 means twice random, and arithmetic between two figures
+        has a defined meaning.
+
+        When to use
+        -----------
+        On every measured figure before comparing or combining it with another.
+        :meth:`on_grid` already normalizes by default, so a resampled figure
+        does not need this again.
+
+        Method
+        ------
+        Divides by :meth:`spherical_mean`; see there for how that mean is
+        obtained and when it is exact rather than estimated.
+
+        Parameters
+        ----------
+        integration_weights : ArrayLike, optional
+            Passed to :meth:`spherical_mean`. Supply it when known — the
+            normalization is then exact.
+        resolution_deg, halfwidth_deg : float
+            Fallback integration settings; see :meth:`spherical_mean`.
+
+        Returns
+        -------
+        PoleFigure
+            The same figure with intensities scaled so the mean density is 1.
+
+        Raises
+        ------
+        ValueError
+            If the mean density is not positive, which means there is no scale
+            to divide by — an empty or everywhere-zero figure.
+        """
+
+        mean_density = self.spherical_mean(
+            integration_weights=integration_weights,
+            resolution_deg=resolution_deg,
+            halfwidth_deg=halfwidth_deg,
+        )
+        if not mean_density > 0.0:
+            raise ValueError(
+                "Cannot normalize to m.r.d.: the mean pole density is not positive."
+            )
+        return replace(self, intensities=self.intensities / mean_density)
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:
         """Project the specimen directions onto the plotting plane.

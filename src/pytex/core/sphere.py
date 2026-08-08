@@ -499,6 +499,81 @@ def _ring_band_weights(
     return np.asarray(per_point / per_point.sum(), dtype=np.float64)
 
 
+def raster_solid_angle_weights(polar_deg: ArrayLike) -> np.ndarray:
+    """Integration weights for a measured polar/azimuth raster.
+
+    Purpose
+    -------
+    A diffractometer samples a pole figure on a tilt/rotation raster, whose
+    points are not equally spaced on the sphere: rings near the pole are short
+    and carry little solid angle, rings near the equator are long and carry
+    much. Averaging such a raster without weights over-counts the pole. These
+    are the weights that make the average an integral — and therefore make a
+    conversion to multiples of a random distribution correct.
+
+    When to use
+    -----------
+    Whenever a mean, an integral, or an m.r.d. normalization is taken over
+    measured raster data, e.g. as the ``integration_weights`` argument of
+    :meth:`~pytex.texture.PoleFigure.spherical_mean`. Grids built by
+    :class:`S2Grid` already carry their own weights and do not need this.
+
+    Method
+    ------
+    Points are grouped into rings of equal polar angle. Each ring is given the
+    solid angle of the band midway to its neighbours, ``cos(lower) -
+    cos(upper)``, shared equally among its points. Bands are clipped to the
+    measured polar range, so the weights describe the region actually measured;
+    a partial pole figure — the usual case, since defocusing limits the
+    reachable tilt — is therefore averaged over its measured cap, which equals
+    the true spherical mean only if the unmeasured cap has the same mean.
+
+    Parameters
+    ----------
+    polar_deg : ArrayLike
+        Polar angle of every sampled point, in degrees. One entry per point, in
+        the same order as the intensities they weight. Points sharing a polar
+        angle are treated as one ring.
+
+    Returns
+    -------
+    np.ndarray
+        Read-only weights summing to 1, one per input point, strictly positive.
+
+    Examples
+    --------
+    On a raster stepping the tilt by a constant amount, the equatorial ring
+    carries far more weight than the ring next to the pole — the ratio of their
+    band areas, not 1.
+    """
+
+    polar = as_float_array(np.asarray(polar_deg, dtype=np.float64).reshape(-1), shape=(None,))
+    if polar.size == 0:
+        raise ValueError("raster_solid_angle_weights requires at least one point.")
+    if np.any(polar < -1e-9) or np.any(polar > 180.0 + 1e-9):
+        raise ValueError("polar_deg must lie in [0, 180].")
+    rings, inverse, counts = np.unique(
+        np.round(polar, 9), return_inverse=True, return_counts=True
+    )
+    if rings.size == 1:
+        # A single ring carries the whole measured band; every point on it is
+        # equivalent, so the weights are uniform.
+        return freeze_array(np.full(polar.size, 1.0 / polar.size, dtype=np.float64))
+    midpoints = 0.5 * (rings[:-1] + rings[1:])
+    half_step = np.diff(rings) / 2.0
+    # Interior rings are bounded by the midpoints to their neighbours. The two
+    # edge rings would otherwise get only a half band, which would under-weight
+    # them; extend each outwards by its own half step, clipped to the sphere.
+    # The weights then describe the cap actually measured.
+    lower = np.concatenate([[max(rings[0] - half_step[0], 0.0)], midpoints])
+    upper = np.concatenate([midpoints, [min(rings[-1] + half_step[-1], 180.0)]])
+    band = np.cos(np.deg2rad(lower)) - np.cos(np.deg2rad(upper))
+    if np.any(band <= 0.0):  # pragma: no cover - only reachable for degenerate rings
+        raise ValueError("polar_deg produced a ring of zero solid angle.")
+    per_point = (band / counts)[inverse]
+    return freeze_array(np.asarray(per_point / per_point.sum(), dtype=np.float64))
+
+
 @dataclass(frozen=True, slots=True)
 class S2Grid:
     """A sampling grid on the unit sphere, with per-point integration weights.

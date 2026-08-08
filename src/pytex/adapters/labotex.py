@@ -12,23 +12,37 @@ from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane, MillerIndex, Phase
 from pytex.core.orientation import OrientationSet
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.sphere import raster_solid_angle_weights
 from pytex.core.symmetry import SymmetrySpec
 from pytex.diffraction.stereonets import spherical_angles_to_directions
 from pytex.texture.models import ODF, KernelSpec, ODFInversionReport, PoleFigure
 
-_INTENSITY_NORMALIZATION_MODES = {"none", "max", "sum"}
+_INTENSITY_NORMALIZATION_MODES = {"none", "max", "sum", "mrd"}
 _FORMAT_EXTENSIONS = {".ppf": "PPF", ".epf": "EPF"}
 
 
-def _normalize_intensity_grid(intensities: np.ndarray, *, mode: str) -> np.ndarray:
+def _normalize_intensity_grid(
+    intensities: np.ndarray,
+    *,
+    mode: str,
+    polar_deg: np.ndarray | None = None,
+) -> np.ndarray:
     if mode not in _INTENSITY_NORMALIZATION_MODES:
-        raise ValueError("intensity_normalization must be one of 'none', 'max', or 'sum'.")
+        raise ValueError(
+            "intensity_normalization must be one of 'none', 'max', 'sum', or 'mrd'."
+        )
     normalized = np.array(intensities, copy=True, dtype=np.float64)
     if mode == "none":
         normalized = np.ascontiguousarray(normalized, dtype=np.float64)
         normalized.setflags(write=False)
         return normalized
-    scale = float(np.nanmax(normalized)) if mode == "max" else float(np.sum(normalized))
+    if mode == "mrd":
+        if polar_deg is None:  # pragma: no cover - callers always supply the raster
+            raise ValueError("The 'mrd' normalization requires the raster polar angles.")
+        weights = raster_solid_angle_weights(np.asarray(polar_deg, dtype=np.float64).reshape(-1))
+        scale = float(np.sum(weights * normalized.reshape(-1)))
+    else:
+        scale = float(np.nanmax(normalized)) if mode == "max" else float(np.sum(normalized))
     if not np.isfinite(scale) or scale <= 0.0:
         raise ValueError(
             "Cannot normalize LaboTex intensities because the selected scale is non-positive."
@@ -210,7 +224,20 @@ class LaboTexPoleFigureMeasurement:
             One grid per pole figure in the file.
         """
 
-        return tuple(_normalize_intensity_grid(grid, mode=mode) for grid in self.intensity_grids)
+        return tuple(
+            _normalize_intensity_grid(
+                grid,
+                mode=mode,
+                # LaboTex alpha is the tilt from the specimen normal, so it is
+                # the polar angle whose bands carry the solid angle.
+                polar_deg=np.repeat(
+                    descriptor.alpha_values_deg[:, None],
+                    descriptor.beta_values_deg.size,
+                    axis=1,
+                ),
+            )
+            for descriptor, grid in zip(self.descriptors, self.intensity_grids, strict=True)
+        )
 
     def to_pole_figures(
         self,

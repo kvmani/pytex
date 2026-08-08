@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytex import (
@@ -19,6 +20,7 @@ from pytex import (
     SymmetrySpec,
     invert_xrdml_pole_figures,
     load_xrdml_pole_figure,
+    raster_solid_angle_weights,
     read_xrdml_pole_figure,
     spherical_angles_to_directions,
 )
@@ -245,3 +247,25 @@ def test_real_xrdml_fixture_from_xrayutilities_is_readable() -> None:
     assert measurement.shape == (91, 1199)
     assert measurement.wavelength_angstrom is not None
     assert measurement.sample_mode == "Reflection"
+
+
+def test_mrd_normalization_of_the_real_fixture_has_unit_mean_density() -> None:
+    """m.r.d. is defined by its mean, and only the weighted mean is that mean.
+
+    The measured raster steps psi uniformly, so it over-samples the specimen
+    normal badly; a naive average over its points is not a spherical average.
+    Weighting each ring by its solid angle is what makes the mean 1 by
+    construction, and hence what makes the numbers comparable with any other
+    figure.
+    """
+
+    fixture_path = REPO_ROOT / "fixtures" / "xrdml" / "polefig_Ge113_xrayutilities.xrdml.bz2"
+    measurement = read_xrdml_pole_figure(fixture_path)
+    weights = raster_solid_angle_weights(measurement.psi_deg.reshape(-1))
+    densities = measurement.normalized_intensity_grid(mode="mrd").reshape(-1)
+    assert_allclose(float(np.sum(weights * densities)), 1.0, rtol=1e-10)
+    # A Ge(113) single-crystal figure is extremely sharp, so its peak must be
+    # orders of magnitude above random. The `max` mode cannot say this at all:
+    # it forces the peak to 1 regardless of how strong the texture is.
+    assert float(np.max(densities)) > 1_000.0
+    assert float(np.max(measurement.normalized_intensity_grid(mode="max"))) == pytest.approx(1.0)

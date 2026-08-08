@@ -14,6 +14,7 @@ from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import CrystalPlane
 from pytex.core.orientation import OrientationSet
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.sphere import raster_solid_angle_weights
 from pytex.core.symmetry import SymmetrySpec
 from pytex.diffraction.stereonets import spherical_angles_to_directions
 from pytex.texture.models import ODF, KernelSpec, ODFInversionReport, PoleFigure
@@ -25,7 +26,7 @@ _AXIS_ALIASES = {
     "two_theta": ("2Theta",),
     "omega": ("Omega",),
 }
-_INTENSITY_NORMALIZATION_MODES = {"none", "max", "sum"}
+_INTENSITY_NORMALIZATION_MODES = {"none", "max", "sum", "mrd"}
 
 
 def _open_xrdml_text(path: str | Path) -> str:
@@ -49,15 +50,28 @@ def _find_text(element: ElementTree.Element, query: str) -> str | None:
     return value or None
 
 
-def _normalize_intensity_grid(intensities: np.ndarray, *, mode: str) -> np.ndarray:
+def _normalize_intensity_grid(
+    intensities: np.ndarray,
+    *,
+    mode: str,
+    polar_deg: np.ndarray | None = None,
+) -> np.ndarray:
     if mode not in _INTENSITY_NORMALIZATION_MODES:
-        raise ValueError("intensity_normalization must be one of 'none', 'max', or 'sum'.")
+        raise ValueError(
+            "intensity_normalization must be one of 'none', 'max', 'sum', or 'mrd'."
+        )
     normalized = np.array(intensities, copy=True, dtype=np.float64)
     if mode == "none":
         normalized = np.ascontiguousarray(normalized, dtype=np.float64)
         normalized.setflags(write=False)
         return normalized
-    scale = float(np.nanmax(normalized)) if mode == "max" else float(np.sum(normalized))
+    if mode == "mrd":
+        if polar_deg is None:  # pragma: no cover - callers always supply the raster
+            raise ValueError("The 'mrd' normalization requires the raster polar angles.")
+        weights = raster_solid_angle_weights(np.asarray(polar_deg, dtype=np.float64).reshape(-1))
+        scale = float(np.sum(weights * normalized.reshape(-1)))
+    else:
+        scale = float(np.nanmax(normalized)) if mode == "max" else float(np.sum(normalized))
     if not np.isfinite(scale) or scale <= 0.0:
         raise ValueError(
             "Cannot normalize XRDML intensities because the selected scale is non-positive."
@@ -169,7 +183,7 @@ class XRDMLPoleFigureMeasurement:
         if self.intensity_normalization not in _INTENSITY_NORMALIZATION_MODES:
             raise ValueError(
                 "XRDMLPoleFigureMeasurement.intensity_normalization must be one of "
-                "'none', 'max', or 'sum'."
+                "'none', 'max', 'sum', or 'mrd'."
             )
         object.__setattr__(self, "phi_deg", phi)
         object.__setattr__(self, "psi_deg", psi)
@@ -218,6 +232,7 @@ class XRDMLPoleFigureMeasurement:
         return _normalize_intensity_grid(
             self.intensity_grid,
             mode=self.intensity_normalization if mode is None else mode,
+            polar_deg=self.psi_deg,
         )
 
     def normalized_flattened_intensities(self, *, mode: str | None = None) -> np.ndarray:

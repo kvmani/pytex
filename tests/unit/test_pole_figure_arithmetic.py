@@ -25,6 +25,7 @@ from pytex.core import (
     ReferenceFrame,
     S2Grid,
     SymmetrySpec,
+    raster_solid_angle_weights,
 )
 from pytex.texture import PoleFigure
 
@@ -303,3 +304,117 @@ def test_normalizing_an_everywhere_zero_field_raises_rather_than_dividing_by_zer
     )
     with pytest.raises(ValueError, match="zero everywhere"):
         figure.on_grid(grid, normalize=True)
+
+
+# --------------------------------------------------------------------------
+# Multiples of a random distribution
+# --------------------------------------------------------------------------
+
+
+def test_raster_weights_sum_to_one_and_never_vanish() -> None:
+    polar = np.repeat(np.arange(0.0, 70.1, 5.0), 72)
+    weights = raster_solid_angle_weights(polar)
+    assert_allclose(float(np.sum(weights)), 1.0, rtol=1e-12)
+    assert float(np.min(weights)) > 0.0
+
+
+def test_raster_weights_integrate_a_known_function_to_the_analytic_cap_mean() -> None:
+    """The weights must reproduce the solid-angle mean, not the naive mean.
+
+    For ``f = cos(polar)`` over a cap of half-angle ``t``, the solid-angle mean
+    is ``sin^2(t) / (2 * (1 - cos t))``, which is a strict identity. The raster
+    covers rings from 0 to 70 degrees at 2.5 degree steps, so its bands extend
+    to 71.25 degrees. Refinement must drive the error to zero; the unweighted
+    mean does not converge to this value at all, which is the point.
+    """
+
+    step = 2.5
+    polar = np.repeat(np.arange(0.0, 70.0 + 1e-9, step), 72)
+    weights = raster_solid_angle_weights(polar)
+    cap_rad = np.deg2rad(70.0 + step / 2.0)
+    exact = float(np.sin(cap_rad) ** 2 / (2.0 * (1.0 - np.cos(cap_rad))))
+    weighted = float(np.sum(weights * np.cos(np.deg2rad(polar))))
+    assert abs(weighted - exact) < 5e-4
+    naive = float(np.mean(np.cos(np.deg2rad(polar))))
+    assert abs(naive - exact) > 1e-2
+
+
+def test_raster_weights_favour_the_equator_over_the_pole() -> None:
+    """The whole point of weighting: a raster over-samples near the pole."""
+
+    rings = np.arange(0.0, 90.1, 10.0)
+    polar = np.repeat(rings, 36)
+    weights = raster_solid_angle_weights(polar).reshape(rings.size, 36)
+    per_ring = weights.sum(axis=1)
+    assert float(per_ring[-1]) > 5.0 * float(per_ring[0])
+
+
+def test_normalize_to_mrd_with_supplied_weights_is_exact() -> None:
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 10.0)
+    rng = np.random.default_rng(20260808)
+    figure = PoleFigure(
+        pole=make_pole(phase),
+        sample_directions=grid.vectors.values,
+        intensities=rng.uniform(0.5, 4.0, size=len(grid)),
+        specimen_frame=specimen,
+        antipodal=True,
+        sampling="sampled_density",
+    )
+    normalized = figure.normalize_to_mrd(integration_weights=grid.weights)
+    assert_allclose(normalized.spherical_mean(integration_weights=grid.weights), 1.0, rtol=1e-12)
+
+
+def test_normalize_to_mrd_leaves_a_figure_already_in_mrd_alone() -> None:
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 10.0)
+    figure = constant_density_figure(specimen, phase, value=1.0)
+    normalized = figure.normalize_to_mrd(integration_weights=grid.weights)
+    assert_allclose(normalized.intensities, figure.intensities, rtol=1e-12)
+
+
+def test_normalize_to_mrd_falls_back_to_an_estimated_spherical_mean() -> None:
+    """Without weights the mean is estimated by resampling, not refused."""
+
+    _, specimen, phase = make_context()
+    figure = constant_density_figure(specimen, phase, value=6.0, resolution_deg=8.0)
+    assert_allclose(figure.spherical_mean(), 6.0, rtol=1e-9)
+    assert_allclose(figure.normalize_to_mrd().intensities, 1.0, rtol=1e-9)
+
+
+def test_spherical_mean_rejects_non_positive_weights() -> None:
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 10.0)
+    figure = constant_density_figure(specimen, phase)
+    weights = np.array(grid.weights, copy=True)
+    weights[0] = 0.0
+    with pytest.raises(ValueError, match="strictly positive"):
+        figure.spherical_mean(integration_weights=weights)
+
+
+def test_mrd_normalization_makes_two_differently_scaled_measurements_comparable() -> None:
+    """The reason m.r.d. exists: detector scale must not survive normalization.
+
+    Two measurements of the same texture that differ only by counting time —
+    or by a `max` versus `sum` pre-normalization — must become numerically
+    identical once both are on the m.r.d. scale.
+    """
+
+    _, specimen, phase = make_context()
+    grid = uniform_grid(specimen, 10.0)
+    rng = np.random.default_rng(4242)
+    field = rng.uniform(0.5, 4.0, size=len(grid))
+    common = {
+        "pole": make_pole(phase),
+        "sample_directions": grid.vectors.values,
+        "specimen_frame": specimen,
+        "antipodal": True,
+        "sampling": "sampled_density",
+    }
+    long_count = PoleFigure(intensities=field * 9000.0, **common)  # type: ignore[arg-type]
+    scaled_by_max = PoleFigure(intensities=field / field.max(), **common)  # type: ignore[arg-type]
+    assert_allclose(
+        long_count.normalize_to_mrd(integration_weights=grid.weights).intensities,
+        scaled_by_max.normalize_to_mrd(integration_weights=grid.weights).intensities,
+        rtol=1e-12,
+    )
