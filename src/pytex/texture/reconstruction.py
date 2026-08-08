@@ -91,6 +91,8 @@ class PoleFigureCorrectionSpec:
             sample_symmetry=pole_figure.sample_symmetry,
             provenance=self.provenance or pole_figure.provenance,
             includes_symmetry_family=pole_figure.includes_symmetry_family,
+            # Correcting intensities does not change what they mean.
+            sampling=pole_figure.sampling,
         )
 
 

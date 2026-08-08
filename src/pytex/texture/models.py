@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -20,6 +21,29 @@ from pytex.texture.kernels import (
     GaussianSO3Kernel,
 )
 from pytex.texture.projections import project_directions
+
+#: How a pole figure's ``intensities`` are to be read. ``"scattered_poles"`` means
+#: they are per-pole weights of a cloud of individual poles, as produced by
+#: mapping orientations through a plane normal; the density field they represent
+#: is recovered by kernel *density estimation* (a weighted sum). ``"sampled_density"``
+#: means they are already pole densities evaluated at the given directions, as a
+#: diffractometer raster or an ODF evaluation produces; that field is resampled by
+#: kernel *interpolation* (a weighted mean). Applying the wrong estimator to a
+#: latitude-longitude raster biases the result towards the poles, where such a
+#: raster oversamples, so the reading is recorded rather than assumed.
+PoleFigureSampling = Literal["scattered_poles", "sampled_density"]
+
+_POLE_FIGURE_SAMPLINGS = ("scattered_poles", "sampled_density")
+
+#: Resampling estimators for :meth:`PoleFigure.on_grid`.
+ResamplingEstimator = Literal["density", "interpolate"]
+
+_RESAMPLING_ESTIMATORS = ("density", "interpolate")
+
+#: Default kernel halfwidth for spherical resampling, in degrees. Five degrees is
+#: the conventional texture-measurement step, so a figure resampled at the default
+#: is smoothed on the scale it was measured at rather than beyond it.
+DEFAULT_RESAMPLING_HALFWIDTH_DEG = 5.0
 
 
 def _as_direction_array(vectors: np.ndarray | VectorSet) -> np.ndarray:
@@ -281,7 +305,23 @@ class PoleFigure:
         plane. It decides the correct notation — a family is ``{hkl}``, a
         single plane ``(hkl)`` — which titles and prose read rather than
         assume.
+    sampling : str
+        How ``intensities`` is to be read: ``"scattered_poles"`` (per-pole
+        weights of a pole cloud, the default and what
+        :meth:`from_orientations` produces) or ``"sampled_density"`` (pole
+        densities already evaluated at ``sample_directions``, what a
+        diffractometer raster or an ODF evaluation produces). The two demand
+        different resampling estimators, so the reading is recorded rather
+        than guessed. See :data:`PoleFigureSampling`.
     provenance : ProvenanceRecord, optional
+
+    Notes
+    -----
+    Two pole figures can be combined arithmetically only once they share a
+    support. Use :meth:`on_grid` to resample both onto one
+    :class:`~pytex.core.sphere.S2Grid`, and :meth:`normalize_to_mrd` to put
+    their magnitudes on the physical multiples-of-random scale, before using
+    the arithmetic operators.
     """
 
     pole: CrystalPlane
@@ -297,6 +337,10 @@ class PoleFigure:
     #: quantity: a family is written ``{hkl}``, a single plane ``(hkl)``. Titles
     #: and prose read this rather than assuming.
     includes_symmetry_family: bool = True
+    #: How ``intensities`` is to be read; see :data:`PoleFigureSampling`. The
+    #: default is the pole-cloud reading, which is what the dominant
+    #: constructor :meth:`from_orientations` produces.
+    sampling: PoleFigureSampling = "scattered_poles"
 
     def __post_init__(self) -> None:
         sample_directions = normalize_vectors(self.sample_directions)
@@ -305,6 +349,10 @@ class PoleFigure:
             raise ValueError("PoleFigure.specimen_frame must belong to the specimen domain.")
         if np.any(~np.isfinite(intensities)) or np.any(intensities < 0.0):
             raise ValueError("PoleFigure intensities must be finite and non-negative.")
+        if self.sampling not in _POLE_FIGURE_SAMPLINGS:
+            raise ValueError(
+                "PoleFigure.sampling must be 'scattered_poles' or 'sampled_density'."
+            )
         if (
             self.sample_symmetry is not None
             and self.sample_symmetry.reference_frame != self.specimen_frame
@@ -395,6 +443,9 @@ class PoleFigure:
             sample_symmetry=sample_symmetry,
             provenance=orientations.provenance if provenance is None else provenance,
             includes_symmetry_family=include_symmetry_family,
+            # Each row is one pole carrying its orientation's weight, not a
+            # density evaluated at that direction.
+            sampling="scattered_poles",
         )
 
     def project(self, *, method: str = "equal_area") -> np.ndarray:

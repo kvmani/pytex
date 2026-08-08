@@ -67,6 +67,7 @@ from pytex.texture import (
     KernelSpec,
     ODFInversionReport,
     PoleFigure,
+    PoleFigureSampling,
 )
 
 JSON_CONTRACT_SCHEMA_VERSION = "1.0.0"
@@ -933,6 +934,22 @@ def _deserialize_kernel(payload: dict[str, Any]) -> KernelSpec:
     return KernelSpec(name=str(payload["name"]), halfwidth_deg=float(payload["halfwidth_deg"]))
 
 
+def _require_pole_figure_sampling(value: Any) -> PoleFigureSampling:
+    """Validate a serialized ``sampling`` tag before it reaches the constructor.
+
+    The tag decides which resampling estimator is correct, so an unrecognized
+    value must fail at the contract boundary rather than be silently coerced to
+    a default that would change the science.
+    """
+
+    if value not in ("scattered_poles", "sampled_density"):
+        raise ValueError(
+            "Pole-figure payload 'sampling' must be 'scattered_poles' or 'sampled_density'; "
+            f"got {value!r}."
+        )
+    return cast("PoleFigureSampling", value)
+
+
 def _serialize_pole_figure(pole_figure: PoleFigure) -> dict[str, Any]:
     return {
         **_base_payload("pytex.texture.pole_figure"),
@@ -942,6 +959,7 @@ def _serialize_pole_figure(pole_figure: PoleFigure) -> dict[str, Any]:
         "specimen_frame": _serialize_reference_frame(pole_figure.specimen_frame),
         "antipodal": pole_figure.antipodal,
         "includes_symmetry_family": pole_figure.includes_symmetry_family,
+        "sampling": pole_figure.sampling,
         "sample_symmetry": None
         if pole_figure.sample_symmetry is None
         else _serialize_symmetry(pole_figure.sample_symmetry),
@@ -960,6 +978,10 @@ def _deserialize_pole_figure(payload: dict[str, Any]) -> PoleFigure:
         # Added after the first contract version; older payloads described
         # family pole figures, which is the default.
         includes_symmetry_family=bool(payload.get("includes_symmetry_family", True)),
+        # Also added later. Older payloads predate the distinction and came
+        # overwhelmingly from `from_orientations`, so the pole-cloud reading is
+        # the faithful default for them.
+        sampling=_require_pole_figure_sampling(payload.get("sampling", "scattered_poles")),
         sample_symmetry=None
         if payload.get("sample_symmetry") is None
         else _deserialize_symmetry(payload["sample_symmetry"]),

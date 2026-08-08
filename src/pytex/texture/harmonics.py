@@ -612,6 +612,9 @@ class HarmonicODF:
             antipodal=antipodal,
             includes_symmetry_family=include_symmetry_family,
             sample_symmetry=self.specimen_symmetry,
+            # The intensities are densities evaluated at the supplied
+            # directions, not weights of individual poles.
+            sampling="sampled_density",
             provenance=self.provenance if provenance is None else provenance,
         )
 

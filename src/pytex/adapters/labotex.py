@@ -256,6 +256,9 @@ class LaboTexPoleFigureMeasurement:
                     specimen_frame=specimen_frame,
                     antipodal=antipodal,
                     sample_symmetry=sample_symmetry,
+                    # A LaboTex export is a measured density raster, not a
+                    # cloud of individually weighted poles.
+                    sampling="sampled_density",
                     provenance=record,
                 )
             )

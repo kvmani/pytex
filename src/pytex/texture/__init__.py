@@ -12,12 +12,15 @@ from pytex.texture.kernels import (
     GaussianSO3Kernel,
 )
 from pytex.texture.models import (
+    DEFAULT_RESAMPLING_HALFWIDTH_DEG,
     ODF,
     InversePoleFigure,
     KernelSpec,
     ODFInversionReport,
     ODFSectionData,
     PoleFigure,
+    PoleFigureSampling,
+    ResamplingEstimator,
 )
 from pytex.texture.reconstruction import (
     ODFReconstructionConfig,
@@ -27,6 +30,7 @@ from pytex.texture.reconstruction import (
 )
 
 __all__ = [
+    "DEFAULT_RESAMPLING_HALFWIDTH_DEG",
     "NAMED_BCC_FIBRES",
     "ODF",
     "STANDARD_BCC_ROLLING_COMPONENTS",
@@ -46,6 +50,8 @@ __all__ = [
     "PoleFigure",
     "PoleFigureCorrectionSpec",
     "PoleFigureResidualReport",
+    "PoleFigureSampling",
+    "ResamplingEstimator",
     "TextureComponent",
     "component_volume_fractions",
     "fibre_axis_alignment_quaternion",

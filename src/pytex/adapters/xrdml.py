@@ -289,6 +289,9 @@ class XRDMLPoleFigureMeasurement:
             specimen_frame=specimen_frame,
             antipodal=antipodal,
             sample_symmetry=sample_symmetry,
+            # A diffractometer raster measures the pole density at each
+            # grid position; the intensities are not per-pole weights.
+            sampling="sampled_density",
             provenance=record,
         )
 
