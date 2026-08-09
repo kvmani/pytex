@@ -71,7 +71,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | 2 | Notebook 26: rotation and orientation representations | done | (this commit) |
 | 3 | CBED module + tests + algorithm note | done | (this commit) |
 | 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | done | (this commit) |
-| 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
+| 5 | Notebook 28: CBED analysis (Ni, Zr) | done | (this commit) |
 | 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
 
 ### Step 1 outcome (2026-08-09)
@@ -209,9 +209,37 @@ for hand-picked spots — a zirconium zone explains them equally well and `is_co
 The notebook shows both tolerances and draws the real lesson: set the tolerance to what the
 picking achieves, because a tighter one buys confidence the data does not support.
 
+### Step 5 outcome (2026-08-09)
+
+`docs/site/tutorials/notebooks/28_convergent_beam_diffraction.ipynb`: 29 cells, 13 code, every
+number computed live for both Ni and Zr.
+
+**The geometric chain it makes explicit, and which is not obvious from the literature:**
+discs touch when `alpha = theta_B` of the innermost reflection (the Kossel-Moellenstedt
+threshold), and exact Bragg lies inside a disc only when `alpha > theta_B`. These are the
+*same* condition, so **at a zone axis in the KM regime a disc necessarily shows one wing of
+the rocking curve**, never the symmetric two-wing curve textbooks draw. That is not a
+simulation artefact — real thickness measurement is done at a two-beam condition reached by
+tilting off the zone axis — and the Kelly fit does not care, because it needs the minimum
+positions and their orders, not both wings. The notebook derives this rather than working
+around it.
+
+**Verified live in the notebook:** aluminium extinction distances against Williams & Carter
+(within 1.4 percent); thickness round trips for Ni (200) at 1500 and 2000 A and Zr (10-10) at
+2000 and 3000 A, all in the KM regime and all recovering `t` to better than 0.1 percent and
+`xi_g` to better than 0.1 percent; and HOLZ ring radii inverted to recover Ni `a` down [001],
+`a*sqrt(3)` down [111], Zr `c` down [0001] and Zr `a` down [11-20] — the Zr `c` case being the
+point, since the [0001] spot pattern cannot see `c` at all.
+
+**Both failure modes shown running, not described:** the Zr case at 10 mrad falls into the
+Kossel regime, where R^2 drops to 0.993 and both fitted numbers are wrong (the R^2 is the
+warning); and forcing `first_order=1` on a clean case raises, because the wrong assignment
+implies a negative `1/xi^2`.
+
 ### Next actions
 
-Step 5: notebook 28, the CBED tutorial for Ni and Zr.
+Step 6: the closing documentation pass — worked examples, symbol registry, MTEX parity matrix
+rows, and the concept/API cross-links.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 
