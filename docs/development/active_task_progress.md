@@ -5,6 +5,39 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Repository Content Rule And PDF History Purge — COMPLETE (2026-08-09)
+
+**Objective.** Make "the repository holds sources and canonical assets only" a cardinal rule that
+is enforced rather than remembered, and resolve the tracked-PDF exception it exposed.
+
+**The rule.** `AGENTS.md` gains a second cardinal rule and a `Repository content` section stating
+one test: if a command in this repository regenerates a file, it is committed only when
+documentation, a test, a manifest, or a pinned baseline names it. Both lists — what is committed
+(sources, canonical `docs/figures/` SVGs including the generated ones, generated galleries and
+fixtures tests load) and what never is (build output, caches, notebook outputs, inspection renders,
+logs, scratch, reference PDFs) — are explicit, because the previous phrasing left "generated" and
+"canonical" to judgement. Cross-referenced from `docs/standards/engineering_governance.md` and
+`.gitignore`.
+
+**The enforcement.** `scripts/check_repo_integrity.py::_check_repository_content` fails on any
+tracked path in the excluded categories; it runs in the base lane via
+`tests/unit/test_repo_integrity.py`, which tests one path per category and the canonical generated
+assets it must *not* reject. Prose alone would not have held.
+
+**What it found immediately.** Eight reference PDFs, 107 MB of third-party textbooks, tracked since
+before the no-PDFs rule existed. On the maintainer's decision they were untracked and purged from
+history with `git filter-repo`, and `main` was force-pushed. Result: `.git` 131 MB -> 35 MB
+(pack 122.7 MiB -> 34.2 MiB). Local copies were untouched; `references/reference_index.md` now
+states that no PDF is tracked, which files are expected locally, and that a filename is not a
+citation. There is no grandfather list left — the check rejects every tracked PDF.
+
+**Backups taken before the rewrite** (outside the repo, safe to delete once the rewrite is trusted):
+`../pytex-backup-2026-08-09/pytex-full-history.bundle` (124 MB, the complete pre-rewrite history)
+and `../pytex-backup-2026-08-09/references/` (all nine PDFs).
+
+**Consequence for other clones.** Every commit hash changed. Any existing clone or fork must
+re-clone; pulling into an old clone will conflict.
+
 ## Current Task: Class & Object Model Atlas — IN PROGRESS (2026-08-09)
 
 **Objective.** Give the Sphinx site a Class & Object Model Atlas: an overview of the library
