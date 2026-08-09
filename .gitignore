@@ -70,5 +70,13 @@ docs/presentations/
 # Reference PDF corpus: a local working library, not a repository asset.
 # New PDFs are never tracked - cite them by DOI in references/reference_index.md
 # instead. (Eight PDFs predate this rule and remain tracked; gitignore does not
-# untrack them, and removing them is a separate decision.)
+# untrack them, and removing them is a separate decision. They are listed as
+# grandfathered in scripts/check_repo_integrity.py, which rejects any ninth.)
 references/*.pdf
+
+# Everything above serves one cardinal rule, stated in AGENTS.md under
+# "Repository content: sources and canonical assets only": if a command in this
+# repository can regenerate a file, it is committed only when documentation, a
+# test, a manifest, or a pinned baseline refers to it by name. Add the entry here
+# before or in the commit that first produces the artifact - history is permanent,
+# so a stray committed once is carried by every clone forever.

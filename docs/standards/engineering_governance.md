@@ -16,6 +16,11 @@
 
 ## Repository Expectations
 
+- **The repository holds sources and canonical assets only.** Nothing a command in this repository
+  regenerates is committed unless documentation, a test, a manifest, or a pinned baseline refers to
+  it by name. Build output, caches, notebook outputs, local inspection renders, logs, and scratch
+  files are gitignored before or alongside the change that creates them. This is a cardinal rule in
+  `AGENTS.md`, enforced by `scripts/check_repo_integrity.py` in the base test lane.
 - Add module-local indexes when a subsystem grows materially.
 - Keep docs synchronized with actual behavior.
 - Use deterministic tests where possible.

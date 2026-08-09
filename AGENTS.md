@@ -43,6 +43,13 @@ If implementation choices conflict with these documents, stop and reconcile the 
 
 ## Non-Negotiable Rules
 
+- **Cardinal rule — the repository holds sources and canonical assets only.**
+  Nothing that a command in this repository can regenerate is committed, unless it is a canonical
+  asset that documentation, tests, manifests, or pinned baselines actually reference. Build output,
+  caches, notebook outputs, local inspection renders, scratch files, and generated reports are
+  excluded in `.gitignore` before or alongside the change that creates them. See
+  [Repository content](#repository-content-sources-and-canonical-assets-only) for the full test and
+  the enforcement.
 - **Cardinal rule — every goal is resumable and every substantial step is landed on `main`.**
   No task may exist only in an agent's head or in an uncommitted worktree. Concretely, for every
   goal or multi-step task: maintain the progress ledger described under
@@ -130,6 +137,52 @@ Speed matters, but only after semantics are explicit and scientifically defensib
   handoff document already exists. Archive or reset it only after the task is fully verified and its
   durable outcomes have been incorporated into canonical documentation.
 
+### Repository content: sources and canonical assets only
+
+Apply one test before staging any file:
+
+> Can a command in this repository regenerate it? If yes, it is committed **only** if some
+> documentation page, test, manifest, or pinned regression baseline refers to it by name.
+
+Everything else stays out of history. History is permanent: an artifact committed once is carried
+by every clone forever, even after deletion, so the moment to exclude it is before the first commit,
+not after someone notices the repository is slow.
+
+**Committed** — the sources, plus generated files that are genuinely product surface:
+
+- source, tests, documentation, standards, schemas, and worked-example sources
+- canonical documentation figures in `docs/figures/`, including generated ones such as the
+  reference-frame, algorithm, and class-model SVGs, because pages reference them by name and tests
+  compare them byte-for-byte
+- generated galleries and fixtures that tests or manifests name, such as `docs/site/examples/` and
+  the tracked parity fixture inputs
+- small pinned regression baselines that a test loads
+
+**Never committed** — regenerable output, machine-local state, and working scratch:
+
+- build output: `docs/_build/`, `docs/site/_build/`, `dist/`, `build/`, `*.egg-info/`, doctrees
+- caches: `__pycache__/`, `*.pyc`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.jupyter_cache/`,
+  `.hypothesis/`, coverage data
+- **notebook outputs and execution counts.** `.ipynb` files are hand-authored and committed with
+  every cell cleared; the Sphinx build executes them, which is a stronger guarantee than a stored
+  result. Enforced by `tests/unit/test_notebooks.py`. See the notebook rule under
+  [Documentation And Executable-Examples Standard](#documentation-and-executable-examples-standard).
+- local inspection and demo renders: `output/`, `outputs/`, `inspection_outputs/`,
+  `reports/inspection/`, scratch HTML preview pages
+- run artifacts: logs, `*.tmp`, `*.bak`, benchmark scratch results, editor and OS files
+- reference PDFs. `references/*.pdf` is a local working library; cite by DOI in
+  `references/reference_index.md` instead.
+
+Two obligations follow, and they are part of the implementation task, not cleanup afterwards:
+
+1. Add the `.gitignore` entry **before or in** the commit that first produces the artifact.
+2. Stage by explicit path, never `git add -A` or `git add <dir>`, so an unignored stray cannot ride
+   along unnoticed. See [Commit and push cadence](#commit-and-push-cadence).
+
+`scripts/check_repo_integrity.py` fails on tracked files matching the excluded categories, and
+`tests/unit/test_repo_integrity.py` runs it in the base lane, so this rule is checked rather than
+remembered.
+
 ### Commit and push cadence
 
 - Commit and push to `main` after each substantial increment of a task, not once at the end. A
@@ -176,8 +229,12 @@ Speed matters, but only after semantics are explicit and scientifically defensib
   keep JSON contracts and `describe()` in lockstep.
 - Add or update cross-links when a page relies on terms, conventions, or workflows defined elsewhere in the docs.
 - Add local module indexes or README files when a subsystem grows enough to need them.
-- Treat repository artifact hygiene as part of the implementation task: generated outputs, local inspection assets, caches, build products, screenshots, notebooks checkpoints, benchmark scratch files, and similar non-canonical artifacts must be excluded in `.gitignore` before or alongside the change that creates them.
-- Only commit generated files when they are intentional canonical repository assets referenced by docs, tests, manifests, validation workflows, or pinned regression baselines.
+- Treat repository artifact hygiene as part of the implementation task, per the cardinal rule in
+  [Repository content](#repository-content-sources-and-canonical-assets-only): exclude generated
+  outputs, local inspection assets, caches, build products, screenshots, notebook checkpoints, and
+  benchmark scratch files in `.gitignore` before or alongside the change that creates them, and
+  commit a generated file only when documentation, tests, manifests, validation workflows, or a
+  pinned baseline refers to it by name.
 - Runtime plotting validation must prefer structural and semantic assertions over repo-tracked SVG byte baselines. Canonical SVG tracking is reserved for documentation figures in `docs/figures/`, not for routine runtime-regression fixtures.
 
 ### When touching algorithms
