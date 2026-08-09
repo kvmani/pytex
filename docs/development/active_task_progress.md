@@ -35,8 +35,9 @@ citation. There is no grandfather list left — the check rejects every tracked 
 `../pytex-backup-2026-08-09/pytex-full-history.bundle` (124 MB, the complete pre-rewrite history)
 and `../pytex-backup-2026-08-09/references/` (all nine PDFs).
 
-**Consequence for other clones.** Every commit hash changed. Any existing clone or fork must
-re-clone; pulling into an old clone will conflict.
+**Consequence for other clones.** Every commit hash changed. The maintainer confirmed on
+2026-08-09 that no other clone or fork existed, so nothing had to be re-cloned and no follow-up is
+outstanding. Any clone taken before that date would need re-cloning.
 
 ## Current Task: Class & Object Model Atlas — IN PROGRESS (2026-08-09)
 
