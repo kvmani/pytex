@@ -10,6 +10,13 @@ This document records the current implementation posture for Phase 2.
 - deterministic symmetry-reduced orientation canonicalization
 - Bunge Euler import and export on top of quaternion-backed rotations
 - convention-aware Euler conversion support for Bunge and Matthies/ABG parity workflows
+- the two **equal-volume** charts of SO(3), homochoric and cubochoric, with vectorized
+  conversions to and from every other representation, so uniform sampling and dictionary
+  grids need no chart-specific correction
+- a single-call all-representations report (`orientation_representations`) that converts one
+  orientation into all ten numerical forms with `describe()` and a JSON contract
+- recovery of the ideal `(hkl)[uvw]` texture-component name from an orientation, reported
+  with its residual angles and with the four-index form for hexagonal and trigonal phases
 - mapping between crystal vectors and specimen vectors for individual orientations and orientation sets
 - pole-figure synthesis from orientation sets
 - inverse-pole-figure synthesis from orientation sets

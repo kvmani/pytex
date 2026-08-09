@@ -89,6 +89,10 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.core.representations
+```
+
+```{eval-rst}
 .. automodule:: pytex.core.symmetry
 ```
 
@@ -153,6 +157,10 @@ support objects that are imported elsewhere in the library.
 ```{eval-rst}
 .. automodule:: pytex.diffraction
    :no-members:
+```
+
+```{eval-rst}
+.. automodule:: pytex.diffraction.cbed
 ```
 
 ```{eval-rst}

@@ -39,7 +39,7 @@ and `../pytex-backup-2026-08-09/references/` (all nine PDFs).
 2026-08-09 that no other clone or fork existed, so nothing had to be re-cloned and no follow-up is
 outstanding. Any clone taken before that date would need re-cloning.
 
-## Current Task: Orientation Representations, TEM Round-Trip Indexing, And CBED — IN PROGRESS (2026-08-09)
+## Completed Task: Orientation Representations, TEM Round-Trip Indexing, And CBED — COMPLETE (2026-08-09)
 
 **Objective.** Three things that belong together because they share one conversion spine:
 
@@ -72,7 +72,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | 3 | CBED module + tests + algorithm note | done | (this commit) |
 | 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | done | (this commit) |
 | 5 | Notebook 28: CBED analysis (Ni, Zr) | done | (this commit) |
-| 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
+| 6 | Docs index, symbol registry, worked examples, parity matrix | done | (this commit) |
 
 ### Step 1 outcome (2026-08-09)
 
@@ -236,10 +236,53 @@ Kossel regime, where R^2 drops to 0.993 and both fitted numbers are wrong (the R
 warning); and forcing `first_order=1` on a clean case raises, because the wrong assignment
 implies a negative `1/xi^2`.
 
-### Next actions
+### Step 6 outcome (2026-08-09) — TASK COMPLETE
 
-Step 6: the closing documentation pass — worked examples, symbol registry, MTEX parity matrix
-rows, and the concept/API cross-links.
+Four executable worked examples in two new groups, `orientation-representations` and
+`convergent-beam-diffraction`, each with independent provenance rather than a copied program
+output: the equal-volume identity (ball and cube both enclosing `pi^2`, and the cube corner
+landing on the ball surface), the `from_miller` / `ideal_orientation_indices` inversion, the
+aluminium extinction distances against Williams & Carter Table 23.1, and the Kelly inversion
+of analytically generated fringe minima. Gallery regenerated; `test_worked_examples.py` green.
+
+Registry, matrices, and foundations updated: nine new symbols registered before use
+(`rho`, `rho_F`, `h`, `c`, `R_1`, `a_p`, `s_g`, `xi_g`, `f_e`, `alpha`, `t`, `H`); seven CBED
+rows added to the diffraction validation matrix including an explicit `planned` row for the
+dynamical breadth that is *not* implemented; two MTEX rows added that state plainly that MTEX
+has **no** equal-volume chart, so no parity is claimed and the comparable surface is
+ORIX/EMsoft; and both the diffraction and orientation foundation documents corrected, since
+the diffraction one still claimed "no dynamical intensity simulation".
+
+**The Sphinx build was broken before this task started, and is now fixed.** The notebook policy
+rests on the site executing every notebook (`nb_execution_mode = "cache"`,
+`nb_execution_raise_on_error`), so "a notebook that no longer runs fails the docs build" is the
+guarantee that replaces stored outputs. But `docs/site/tutorials/notebooks/15_*.ipynb` read
+three manifests by repository-relative path, and myst-nb executes a notebook with *its own
+directory* as the working directory — so the build had been failing since the policy was
+switched on, while `tests/unit/test_notebooks.py` passed because it `chdir`s to the repo root.
+Notebook 15 now resolves the repository root by walking up to `pyproject.toml`, which works
+under all three execution contexts. With that fixed the full site builds, which is the first
+confirmation that notebooks 26, 27 and 28 execute under the documentation build rather than
+only under a manual runner.
+
+Two smaller defects the build surfaced and this commit fixes: the CBED worked example linked to
+a non-existent concept page (`concepts/diffraction_geometry`; the page is
+`concepts/diffraction_foundation`), and notebook 27 jumped from an H1 to an H3.
+
+### Task status
+
+**COMPLETE.** All six steps landed and pushed. Base lane green (`ruff`, `mypy`, `pytest`), the
+repository-integrity check passes, and `python -m sphinx -b html docs/site docs/_build/html`
+completes with only the pre-existing duplicate-object-description warnings from
+`pytex.adapters.*`, which predate this task.
+
+### Next task
+
+None claimed. Candidates in the capability review's recommended order: roadmap reconciliation
+plus `windows-latest` in CI, then the defocus model and ghost correction. A natural follow-on
+to this task specifically would be many-beam (Bloch-wave) CBED intensities, which is the
+prerequisite for the diffraction-group symmetry determination that the current module
+explicitly does not attempt.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 

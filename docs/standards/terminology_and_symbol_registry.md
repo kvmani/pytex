@@ -104,6 +104,12 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $q$ | Unit quaternion in `w, x, y, z` storage order. |
 | $(\phi_1, \Phi, \phi_2)$ | Bunge Euler angles. |
 | $(\mathbf{n}, \omega)$ | Axis-angle pair: rotation axis $\mathbf{n}$ and angle $\omega$. |
+| $\boldsymbol{\rho}$ | Rodrigues vector $\hat{\mathbf{n}}\tan(\omega/2)$; the chart in which symmetry fundamental zones are convex polyhedra. |
+| $\boldsymbol{\rho}_{F}$ | Rodrigues-Frank homogeneous form $(\hat{\mathbf{n}}, \tan(\omega/2))$, whose magnitude is projective so $\omega = \pi$ stays representable. |
+| $\mathbf{h}$ | Homochoric vector $\hat{\mathbf{n}}[\tfrac{3}{4}(\omega - \sin\omega)]^{1/3}$: the equal-volume chart of SO(3), a ball of radius $R_{1}$. |
+| $\mathbf{c}$ | Cubochoric coordinate: the equal-volume chart mapped onto a cube of edge $a_{p} = \pi^{2/3}$, so a uniform Cartesian grid is a uniform grid of orientations. |
+| $R_{1}$ | Radius of the homochoric ball, $(3\pi/4)^{1/3} \approx 1.3307$. |
+| $a_{p}$ | Edge of the cubochoric cube, $\pi^{2/3} \approx 2.1450$; the cube and the ball both enclose the volume $\pi^{2}$ of SO(3). |
 | $\mathbf{B}$ | Frame basis matrix whose columns are a frame's axis vectors in the canonical Cartesian reference: $\mathbf{x} = \mathbf{B}\,\mathbf{v}$. |
 | $\mathrm{RD}, \mathrm{TD}, \mathrm{ND}$ | Rolling, transverse, and normal directions of the sample frame. |
 | $\{hkl\}$ | Symmetry-related family of lattice planes. |
@@ -165,6 +171,12 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $F_{hkl}$ | Reflection structure-factor quantity or current PyTex proxy where explicitly stated. |
 | $\hat{\mathbf{z}}$ | Unit zone-axis direction in direct space. |
 | $u, v$ | Detector-plane plotting coordinates in SAED or detector geometry contexts. |
+| $s_{g}$ | Excitation error of reflection $\mathbf{g}$: its deviation from the exact Bragg condition, measured along the zone axis in reciprocal angstrom. |
+| $\xi_{g}$ | Two-beam extinction distance of reflection $\mathbf{g}$: the depth period of the intensity exchange between the transmitted and diffracted beams, $\pi V_{c}\cos\theta_{B}/(\lambda|F_{g}|)$. |
+| $f_{e}(s)$ | Electron atomic scattering factor in angstrom, from the X-ray form factor by Mott-Bethe: $(Z - f_{x})/(8\pi^{2}a_{0}s^{2})$. |
+| $\alpha$ | Convergence semi-angle of the illumination cone in CBED; sets the disc radius $\alpha/\lambda$ and the Kossel-Moellenstedt threshold. |
+| $t$ | Foil thickness along the beam. |
+| $H$ | Reciprocal-lattice layer spacing along a zone axis, $1/|\mathbf{r}_{uvw}|$; measured by the HOLZ ring radii $G_{n} \simeq \sqrt{2nH/\lambda}$. |
 
 ## References
 

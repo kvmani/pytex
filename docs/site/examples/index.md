@@ -31,6 +31,8 @@ The complete set of computed-versus-expected values at a glance:
 | `hex-angle-prism-prism` | 60.0000 | 60.0000 | deg | ✅ |
 | `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | ✅ |
 | `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | ✅ |
+| `core-orientation-equal-volume-charts-agree-on-the-so3-volume` | [1.000000000000, 1.000000000000, 1.000000000000] | [1.000000000000, 1.000000000000, 1.000000000000] | &mdash; | ✅ |
+| `core-orientation-ideal-indices-invert-the-plane-direction-construction` | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | &mdash; | ✅ |
 | `diffraction-ni-111-two-theta` | 44.496 | 44.496 | deg | ✅ |
 | `diffraction-ni-111-kikuchi-band-width` | 2.4188 | 2.4187 | deg | ✅ |
 | `diffraction-gnomonic-zone-axis-radius` | 1.000000000000 | 1.000000000000 | &mdash; | ✅ |
@@ -46,6 +48,8 @@ The complete set of computed-versus-expected values at a glance:
 | `composite-burgers-reflection-table-identities` | [0.0000, 0.0000, 0.0000, 2.3380] | [0.0000, 0.0000, 0.0000, 2.3380] | counts, angstrom, counts, angstrom | ✅ |
 | `composite-child-anchored-geometry-consistency` | [0.0000, 0.0000] | [0.0000, 0.0000] | mm | ✅ |
 | `solving-simulate-then-solve-closure` | [1.0000, 0.0000, 110.0000, 0.0000] | [1.0000, 0.0000, 110.0000, 0.0000] | fraction, 1/angstrom, family code, count | ✅ |
+| `diffraction-cbed-aluminium-extinction-distances-at-100kv` | [555.2, 663.9, 1062.5] | [556.0, 673.0, 1057.0] | angstrom | ✅ |
+| `diffraction-cbed-two-beam-thickness-inverts-the-fringe-relation` | [2000.000000, 500.000000] | [2000.000000, 500.000000] | angstrom | ✅ |
 | `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
@@ -74,9 +78,11 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Reference Frames And Frame Transforms <generated/reference_frames>` &mdash; Creating standard frames, declaring frame relationships in words, and letting the frame graph compose multi-step chains — with the rotation angles, components, and invariants checked against exact analytic values. The last two examples pin the IUCr notation convention: the reciprocal star marks the basis, never the indices.
 - {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
+- {doc}`Orientation representations <generated/orientation-representations>` &mdash; The constants and identities behind the equal-volume charts of SO(3), and the inversion that names an orientation as a (hkl)[uvw] texture component.
 - {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
 - {doc}`EBSD microstructure <generated/ebsd>` &mdash; Lattice curvature and geometrically necessary dislocation density recovered from a planted orientation gradient, checked against the closed-form Nye result.
 - {doc}`Composite OR diffraction <generated/composite-diffraction>` &mdash; Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the identities the exported reflection table must satisfy.
+- {doc}`Convergent-beam diffraction <generated/convergent-beam-diffraction>` &mdash; The absolute scale of the two-beam extinction distance, checked against a published table, and the fringe analysis that measures a foil thickness without needing one.
 - {doc}`Texture kernels <generated/texture>` &mdash; Analytic identities of the SO(3) kernel surface: normalization (A_0 = 1) and the halfwidth definition, computed live.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
@@ -90,9 +96,11 @@ The complete set of computed-versus-expected values at a glance:
 generated/reference_frames
 generated/crystal_geometry
 generated/orientation
+generated/orientation-representations
 generated/diffraction
 generated/ebsd
 generated/composite-diffraction
+generated/convergent-beam-diffraction
 generated/texture
 generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
