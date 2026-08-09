@@ -1155,8 +1155,12 @@ class Rotation:
         ----------
         rodrigues : ArrayLike
             A 3-vector ``tan(omega/2) * n`` when ``frank`` is ``False``, or a
-            homogeneous 4-vector when ``frank`` is ``True``. The Frank form
-            stays finite at ``omega = pi``, where the 3-vector diverges.
+            homogeneous 4-vector ``(n, tan(omega/2))`` when ``frank`` is
+            ``True``. The Frank form keeps the axis separate from the
+            magnitude, so it stays exactly invertible at ``omega = pi`` — the
+            magnitude is the infinite projective coordinate there, which the
+            inverse recognizes — whereas the 3-vector loses the axis in an
+            overflowing product.
         frank : bool
             Select the homogeneous four-component form.
         """
@@ -1333,8 +1337,9 @@ class Rotation:
 
         Rodrigues space is the natural setting for fundamental-zone geometry,
         because symmetry fundamental zones are convex polyhedra there. Pass
-        ``frank=True`` for the homogeneous form, which stays finite as the
-        rotation angle approaches ``pi``.
+        ``frank=True`` for the homogeneous form, which keeps the axis separate
+        from the magnitude and so stays exactly invertible at ``omega = pi``,
+        where the 3-vector overflows and loses the axis.
         """
 
         return as_float_array(
@@ -2684,7 +2689,8 @@ class OrientationSet:
     ) -> OrientationSet:
         """Build a set from Rodrigues ``(n, 3)`` or Rodrigues-Frank ``(n, 4)`` rows.
 
-        Pass ``frank=True`` for the homogeneous form, which stays finite at a
+        Pass ``frank=True`` for the homogeneous form, which keeps the axis
+        separate from the magnitude and so stays exactly invertible at a
         rotation angle of ``pi``.
         """
 

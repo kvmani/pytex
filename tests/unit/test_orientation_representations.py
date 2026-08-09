@@ -492,6 +492,36 @@ def test_representation_set_matches_the_single_orientation_reports() -> None:
     assert "ten representations" in batch.describe()
 
 
+def test_reports_use_the_canonical_quaternion_sign() -> None:
+    """``q`` and ``-q`` are one rotation; a *report* must pick one of them.
+
+    Without this, a batch row and the single-orientation report for the same
+    rotation could differ by a global sign, and a componentwise comparison of
+    two identical rotations could report a difference of 2.
+    """
+
+    quaternions = _random_quaternions(64, seed=5)
+    flipped = -quaternions
+    batch = OrientationRepresentationSet.from_quaternions(flipped)
+    assert np.all(batch.quaternions[:, 0] >= 0.0)
+    assert batch.quaternions == pytest.approx(quaternions, abs=1e-12)
+
+    single = rotation_representations(Rotation(quaternion=flipped[3]))
+    assert single.quaternion == pytest.approx(batch.quaternions[3], abs=1e-12)
+
+
+def test_canonical_sign_resolves_the_180_degree_tie() -> None:
+    """At 180 degrees both signs have ``w = 0``, so the tie needs its own rule."""
+
+    from pytex.core.representations import canonical_quaternions
+
+    half_turns = np.array([[0.0, -1.0, 0.0, 0.0], [0.0, 0.0, 0.0, -1.0]])
+    canonical = canonical_quaternions(half_turns)
+    assert canonical == pytest.approx(np.array([[0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]]))
+    # Idempotent: canonicalizing an already-canonical batch changes nothing.
+    assert canonical_quaternions(canonical) == pytest.approx(canonical)
+
+
 def test_representation_set_can_be_built_from_any_single_form() -> None:
     angles = np.array([[35.0, 45.0, 0.0], [59.0, 37.0, 63.0]])
     batch = OrientationRepresentationSet.from_values(

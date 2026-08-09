@@ -68,7 +68,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | --- | --- | --- | --- |
 | 0 | Survey the existing conversion surface; open this entry | done | (this commit) |
 | 1 | `pytex.core.representations` + tests + theory note | done | (this commit) |
-| 2 | Notebook 26: rotation and orientation representations | pending | |
+| 2 | Notebook 26: rotation and orientation representations | done | (this commit) |
 | 3 | CBED module + tests | pending | |
 | 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | pending | |
 | 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
@@ -109,9 +109,37 @@ representations through quaternions so there are ten conversions rather than nin
 246/229, so `docs/figures/class_model_*.svg` were regenerated and the atlas page's prose count
 updated — the test that forbids hand-transcribed counts caught it, as designed.
 
+### Step 2 outcome (2026-08-09)
+
+`docs/site/tutorials/notebooks/26_orientation_representations.ipynb`: 54 cells, 25 of them
+code, every number computed live. Its spine is the *measure problem* — section 6 puts three
+samplers against the analytic law `(1 - cos w)/pi` and shows uniform Euler angles producing a
+visibly non-uniform set of orientations, which is the fact that makes the equal-volume charts
+worth having rather than exotic. Sections 8.1-8.3 verify the cube-to-ball map in the notebook
+itself (nested spheres to nine decimals, unit Jacobian over 400 probes, and the grid picture),
+so a reader is shown the evidence rather than asked to trust it.
+
+**Two real inaccuracies found while writing it**, both fixed in this commit:
+
+1. **The Rodrigues-Frank docstrings claimed the form "stays finite" at `omega = pi`.** It does
+   not: the magnitude is `tan(omega/2)`, and PyTex stores `inf` there. The claim was wrong but
+   the *behaviour* is right and better than the claim — the magnitude is a projective
+   coordinate, so 180 degrees is exactly representable and exactly invertible (axis preserved),
+   whereas the plain 3-vector overflows to ~1e16 and loses its axis in the product. Five
+   docstrings across `orientation.py` and `batches.py` now say that instead.
+2. **`OrientationRepresentations` documented a non-negative quaternion scalar part it did not
+   enforce.** `Rotation` keeps whichever sign the arithmetic produced, so a batch row and a
+   single report of the same rotation could differ by a global sign. Reporting surfaces now
+   canonicalize through the new public `canonical_quaternions`, which also resolves the
+   180-degree tie where both signs have `w = 0`.
+
+Also corrected in the notebook draft: `Rotation.distance_to` returns **radians**, not degrees
+(three cells were mislabelling it), and the S component was written `(123)[6 -3 4]`, which does
+not satisfy the zone law — `(123)[6 3 -4]` does, and now round-trips exactly.
+
 ### Next actions
 
-Step 2: notebook 26, the rotation and orientation representation tutorial.
+Step 3: the CBED module.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 

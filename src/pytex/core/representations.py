@@ -24,7 +24,7 @@ matrix         ``(3, 3)``        applying the rotation to vectors
 quaternion     ``(4,)``          composing rotations; numerically stable
 axis-angle     ``(3,)`` + scalar reading the physics off directly
 Rodrigues      ``(3,)``          fundamental zones are convex polyhedra
-Rodrigues-Frank ``(4,)``         the same, finite at ``omega = pi``
+Rodrigues-Frank ``(4,)``         the same, still invertible at ``omega = pi``
 Euler (Bunge)  ``(3,)``          the texture community's lingua franca
 Euler (ZYZ)    ``(3,)``          Matthies/Roe school, and ``abg`` imports
 homochoric     ``(3,)``          equal-volume; a ball of radius ``(3 pi/4)^(1/3)``
@@ -146,6 +146,7 @@ __all__ = [
     "OrientationRepresentationSet",
     "OrientationRepresentations",
     "RepresentationKind",
+    "canonical_quaternions",
     "convert_orientations",
     "cubochoric_from_homochoric",
     "cubochoric_from_quaternions",
@@ -213,7 +214,9 @@ class RepresentationKind(StrEnum):
     AXIS_ANGLE = "axis_angle"
     #: ``(n, 3)`` Rodrigues vectors ``n tan(omega / 2)``.
     RODRIGUES = "rodrigues"
-    #: ``(n, 4)`` Rodrigues-Frank rows ``(nx, ny, nz, tan(omega / 2))``.
+    #: ``(n, 4)`` Rodrigues-Frank rows ``(nx, ny, nz, tan(omega / 2))``; the
+    #: magnitude is projective, so ``omega = pi`` is representable rather than
+    #: overflowing as it does in the 3-vector form.
     RODRIGUES_FRANK = "rodrigues_frank"
     #: ``(n, 3)`` Bunge ZXZ angles ``(phi1, Phi, phi2)``.
     EULER_BUNGE = "euler_bunge"
@@ -1137,7 +1140,9 @@ class OrientationRepresentations:
     rodrigues : np.ndarray
         ``(3,)``; infinite at 180 degrees, which is why the Frank form exists.
     rodrigues_frank : np.ndarray
-        ``(4,)`` homogeneous form, finite everywhere.
+        ``(4,)`` homogeneous form. The magnitude is a projective coordinate, so
+        the 180-degree rotation is exactly representable and exactly invertible
+        here, where the 3-vector overflows and loses its axis.
     euler_bunge_deg, euler_matthies_deg : np.ndarray
         ``(3,)`` triples, degrees.
     homochoric, cubochoric : np.ndarray
@@ -1283,8 +1288,49 @@ def _format_row(values: np.ndarray) -> str:
     return "  ".join(f"{float(value):+.6f}" for value in np.ravel(values))
 
 
+def canonical_quaternions(quaternions: ArrayLike) -> np.ndarray:
+    """Pick the ``w >= 0`` representative of each quaternion.
+
+    What it does
+        Negates any row whose scalar part is negative, and — when the scalar
+        part is exactly zero, the 180-degree rotations, where both signs have
+        ``w = 0`` — resolves the remaining tie on the first non-zero vector
+        component.
+
+    When to use it
+        Before *reporting* or *comparing* quaternions componentwise. ``q`` and
+        ``-q`` are the same rotation, so a raw componentwise comparison of two
+        equal rotations can report a difference of 2. Composition and rotation
+        algebra do not need this and are unaffected by it.
+
+    Parameters
+    ----------
+    quaternions:
+        ``(n, 4)`` unit quaternions in ``(w, x, y, z)`` order.
+
+    Returns
+    -------
+    np.ndarray
+        ``(n, 4)`` with the canonical sign chosen row by row.
+    """
+
+    values = normalize_quaternions(quaternions)
+    if values.size == 0:
+        return values
+    negative = values[:, 0] < 0.0
+    tied = np.isclose(values[:, 0], 0.0, atol=1e-15)
+    if np.any(tied):
+        leading = np.zeros(values.shape[0], dtype=np.float64)
+        for column in (1, 2, 3):
+            unresolved = leading == 0.0
+            leading = np.where(unresolved, values[:, column], leading)
+        negative = np.where(tied, leading < 0.0, negative)
+    return np.ascontiguousarray(np.where(negative[:, None], -values, values))
+
+
 def _representation_fields(quaternion: np.ndarray) -> dict[str, Any]:
-    batch = quaternion[None, :]
+    batch = canonical_quaternions(quaternion[None, :])
+    quaternion = batch[0]
     axes, angles = quaternions_to_axes_angles(batch)
     return {
         "matrix": quaternions_to_matrices(batch)[0],
@@ -1444,9 +1490,15 @@ class OrientationRepresentationSet:
         *,
         provenance: ProvenanceRecord | None = None,
     ) -> OrientationRepresentationSet:
-        """Build the full representation batch from ``(n, 4)`` quaternions."""
+        """Build the full representation batch from ``(n, 4)`` quaternions.
 
-        normalized = normalize_quaternions(quaternions)
+        The quaternions are put in the canonical ``w >= 0`` sign, matching the
+        single-orientation report, so that a row of the batch and the report for
+        the same rotation agree component for component and not merely up to a
+        sign.
+        """
+
+        normalized = canonical_quaternions(quaternions)
         axes, angles = quaternions_to_axes_angles(normalized)
         return cls(
             quaternions=normalized,

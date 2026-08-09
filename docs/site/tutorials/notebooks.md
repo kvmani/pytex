@@ -51,6 +51,7 @@ notebooks/22_burgers_beta_to_alpha_zirconium
 notebooks/23_transformation_crystallography_end_to_end
 notebooks/24_tem_tilt_navigation
 notebooks/25_pole_figure_arithmetic
+notebooks/26_orientation_representations
 ```
 
 ## Orientation-Relationship Teaching Track

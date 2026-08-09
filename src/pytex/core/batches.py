@@ -350,7 +350,8 @@ class RotationSet:
     ) -> RotationSet:
         """Build a batch from Rodrigues ``(n, 3)`` or Rodrigues-Frank ``(n, 4)`` rows.
 
-        Pass ``frank=True`` for the homogeneous form, which stays finite at a
+        Pass ``frank=True`` for the homogeneous form, which keeps the axis
+        separate from the magnitude and so stays exactly invertible at a
         rotation angle of ``pi``.
         """
 
@@ -441,7 +442,8 @@ class RotationSet:
         """Rodrigues (``(n, 3)``) or Rodrigues-Frank (``(n, 4)``) parameters.
 
         Rodrigues space is where symmetry fundamental zones are convex
-        polyhedra; the Frank form stays finite at a rotation angle of ``pi``.
+        polyhedra; the Frank form keeps the axis separate from the magnitude
+        and so stays exactly invertible at a rotation angle of ``pi``.
         """
 
         from pytex.core.orientation import quaternions_to_rodrigues
