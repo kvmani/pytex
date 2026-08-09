@@ -3,9 +3,26 @@
 This index is the discovery surface for the PDF corpus in `references/`.
 Future tasks should use it together with `formulation_summary.md` before mining the PDFs directly.
 
-Entries marked **(not tracked)** describe a PDF that is *not* stored in the repository.
-Obtain it yourself from the citation below and place it in `references/`; the page
-numbers in this table refer to the published article.
+**No PDF in this directory is tracked by git.** The corpus is a local working library, not a
+repository asset: `references/*.pdf` is gitignored and `scripts/check_repo_integrity.py` rejects any
+tracked PDF. Obtain each file yourself and place it in `references/`; the page numbers in the tables
+below refer to the published work, so they remain usable whatever copy you hold.
+
+The eight files below were tracked before that rule existed and were purged from history on
+2026-08-09. They are still referenced by name in the aspect table, and are expected to be present
+locally:
+
+- `Bhadesia_crystallography.pdf`
+- `Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf`
+- `Kelly & Groves.pdf`
+- `MathsOfrotations_RolletDegraef.pdf`
+- `crystallographY_calcualtions.pdf`
+- `hexagnoal 4index mathematics.pdf`
+- `kikuchi maps of cubic and hexgonal crystals.pdf`
+- `williamsandcarter.pdf`
+
+A full citation must be added to the table below for any of these that a documentation page cites,
+per the source-hierarchy rule in `AGENTS.md`. Filenames are not citations.
 
 | File | Citation |
 | --- | --- |

@@ -434,21 +434,6 @@ _EXCLUDED_TRACKED_SUFFIXES: tuple[tuple[str, str], ...] = (
     (".doctree", "Sphinx intermediate"),
 )
 
-#: PDFs tracked before the reference-corpus rule existed. New ones are rejected;
-#: removing these is a separate, deliberate decision recorded in `.gitignore`.
-_GRANDFATHERED_PDFS = frozenset(
-    (
-        "references/Bhadesia_crystallography.pdf",
-        "references/Introduction_to_Texture_Analysis__Macrotexture_Microtexture_and_Orientation_Mapping.pdf",
-        "references/Kelly & Groves.pdf",
-        "references/MathsOfrotations_RolletDegraef.pdf",
-        "references/crystallographY_calcualtions.pdf",
-        "references/hexagnoal 4index mathematics.pdf",
-        "references/kikuchi maps of cubic and hexgonal crystals.pdf",
-        "references/williamsandcarter.pdf",
-    )
-)
-
 
 def _check_repository_content(repo_root: Path) -> list[str]:
     """Enforce the cardinal rule: sources and canonical assets only.
@@ -476,11 +461,7 @@ def _check_repository_content(repo_root: Path) -> list[str]:
                         f"{normalized}"
                     )
                     break
-        if (
-            normalized.lower().endswith(".pdf")
-            and normalized.startswith("references/")
-            and normalized not in _GRANDFATHERED_PDFS
-        ):
+        if normalized.lower().endswith(".pdf") and normalized.startswith("references/"):
             issues.append(
                 "INVALID: reference PDFs are a local working library, not a repository asset. "
                 f"Cite it by DOI in references/reference_index.md instead: {normalized}"

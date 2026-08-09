@@ -68,10 +68,10 @@ docs/presentations/
 .fig_*.html
 
 # Reference PDF corpus: a local working library, not a repository asset.
-# New PDFs are never tracked - cite them by DOI in references/reference_index.md
-# instead. (Eight PDFs predate this rule and remain tracked; gitignore does not
-# untrack them, and removing them is a separate decision. They are listed as
-# grandfathered in scripts/check_repo_integrity.py, which rejects any ninth.)
+# PDFs are never tracked - cite them by DOI in references/reference_index.md
+# instead. The eight that predated this rule were purged from history on
+# 2026-08-09 (git filter-repo), removing ~107 MB; scripts/check_repo_integrity.py
+# now rejects any tracked PDF with no exceptions.
 references/*.pdf
 
 # Everything above serves one cardinal rule, stated in AGENTS.md under

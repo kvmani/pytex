@@ -71,15 +71,14 @@ def test_sources_and_canonical_assets_are_accepted(
     assert _check_repository_content(REPO_ROOT) == []
 
 
-def test_the_grandfathered_pdf_list_does_not_grow() -> None:
-    """Eight PDFs predate the reference-corpus rule; no ninth may be added.
+def test_no_reference_pdf_is_tracked() -> None:
+    """The rule has no exceptions left.
 
-    Untracking them is a separate decision — the bytes are in history either way
-    — but the list is frozen so the exception cannot quietly become the rule.
+    Eight PDFs predated it and were purged from history on 2026-08-09; the
+    corpus is a local working library, cited by DOI in
+    references/reference_index.md. There is no grandfather list to grow.
     """
 
-    assert len(check_repo_integrity._GRANDFATHERED_PDFS) == 8
-    assert all(
-        path.startswith("references/") and path.endswith(".pdf")
-        for path in check_repo_integrity._GRANDFATHERED_PDFS
-    )
+    tracked = check_repo_integrity._tracked_files(REPO_ROOT)
+    offenders = [path for path in tracked if path.replace("\\", "/").lower().endswith(".pdf")]
+    assert not offenders, f"reference PDFs are tracked again: {offenders}"
