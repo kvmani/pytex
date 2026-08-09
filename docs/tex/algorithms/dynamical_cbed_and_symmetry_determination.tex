@@ -219,3 +219,134 @@ weak beams, so the cost is \(O(m n^{3})\) for \(m\) incident directions and \(n\
 economy that works is a tighter window in \eqref{eq:dyn-selection}, which removes beams that
 were barely coupled, rather than coarser tilt sampling, which degrades the fringe positions
 the calculation exists to predict.
+
+\subsection{HOLZ Lines}
+
+A higher-order Laue zone reflection is far from the Bragg condition at the centre of the
+pattern and exactly at it somewhere inside the bright-field disc. Because \(s_g\) is affine in
+the incident tilt, that locus is a straight line,
+
+\begin{equation}
+  \boldsymbol{\theta}\cdot\hat{\mathbf{g}}_{\perp} = d_{g},
+  \qquad
+  d_{g} = \frac{g_{z} - \tfrac{1}{2}\lambda|\mathbf{g}|^{2}}{|\mathbf{g}_{\perp}|},
+  \label{eq:holz-line}
+\end{equation}
+
+with unit normal \(\hat{\mathbf{g}}_{\perp}\) and signed distance \(d_g\) from the pattern
+centre; it crosses the bright-field disc when \(|d_g| \le \alpha\). The line appears dark
+(\emph{deficiency}) in the direct disc and bright (\emph{excess}) at the same incident tilts in
+the disc of \(\mathbf{g}\) itself. Nothing beyond \eqref{eq:dyn-selection} is approximated, so
+line positions are exact to the accuracy of \(s_g\); \texttt{pytex} checks them by asking the
+dynamical module for \(s_g\) at points on the line and requiring zero to \(10^{-15}\).
+
+\paragraph{Sharpness.} The rocking curve has its first zero at \(|s| = 1/t\), and \(s\) varies
+across the disc at the rate \(|\mathbf{g}_{\perp}|\) per radian, so the line's angular
+half-width is \(\Delta\theta = 1/(t|\mathbf{g}_{\perp}|)\). It narrows in proportion to the foil
+thickness --- HOLZ metrology wants a \emph{thick} specimen, the opposite of the usual thin-foil
+instinct.
+
+\paragraph{The metrology, and the trap in it.} Scaling the lattice by \(1+\varepsilon\) shrinks
+every \(\mathbf{g}\) by the same factor. Substituting into \eqref{eq:holz-line},
+
+\begin{equation}
+  d_{g}(\varepsilon, \lambda) = \frac{g_{z}}{|\mathbf{g}_{\perp}|}
+    - \frac{\lambda|\mathbf{g}|^{2}}{2(1+\varepsilon)|\mathbf{g}_{\perp}|},
+  \qquad
+  \left.\frac{\partial d_{g}}{\partial\varepsilon}\right|_{0}
+    = \frac{\lambda|\mathbf{g}|^{2}}{2|\mathbf{g}_{\perp}|},
+\end{equation}
+
+and the wavelength enters the same term with the opposite sign. Setting \(\lambda \to
+\lambda(1+\varepsilon)\) therefore cancels a lattice strain \(\varepsilon\) exactly, at every
+reflection simultaneously. \emph{A fractional change in lattice parameter and a fractional
+change in wavelength are indistinguishable from HOLZ line positions.} This is not a limitation
+of the model: it is why quantitative HOLZ metrology begins by calibrating the accelerating
+voltage against a standard of known lattice parameter, and why an uncalibrated measurement of a
+lattice parameter is a measurement of the high-tension supply. \texttt{pytex} asserts the
+degeneracy to \(10^{-16}\) rather than describing it.
+
+\paragraph{Why intersections are measured, not lines.} For nickel down \([001]\) at 200~kV in a
+\(1000\)~\AA{} foil, the best single line moves \(0.059\)~mrad per unit strain against a
+half-width of \(0.21\)~mrad: a strain of \(3.6\times10^{-3}\) shifts it by its own width, far
+short of the \(10^{-4}\) the technique is known for. The crossing of two lines meeting at angle
+\(\phi\), however, moves as \(1/\sin\phi\) times faster, and the best near-parallel pair
+resolves \(6.3\times10^{-5}\). That is where the sensitivity comes from, and
+\texttt{HOLZLinePattern.intersections} reports the amplification explicitly.
+
+\subsection{Diffraction Groups}
+
+Fix a beam direction \(\mathbf{b}\). Every operator \(S\) of the crystal point group falls into
+one of three cases: it fixes \(\mathbf{b}\), it reverses it, or it does neither and relates
+different patterns. The first two contribute the restriction \(T = S|_{\perp}\) to the plane
+normal to the beam, the second tagged with the reciprocity flag \(R\) because such an operator
+is a symmetry only in combination with the reciprocity theorem. The map \(S \mapsto (S|_\perp,
+\text{tag})\) is a homomorphism onto a subgroup of \(G_2 \times \mathbb{Z}_2\) with \(G_2\) one
+of the ten plane point groups, and those subgroups are of three kinds: no tagged element (10 of
+them), the full direct product (10, written with the suffix \(1_R\)), and the graph of a
+surjection onto \(\mathbb{Z}_2\) (11, with \(\_R\) on individual generators). That is Buxton's
+31, obtained by construction rather than transcription, and \texttt{pytex} verifies the count
+and the membership against the published set.
+
+\paragraph{The two observables.} A tagged element requires reciprocity, which relates a point in
+one disc to a point in another at an incident direction outside the illumination cone. Only
+untagged elements are rigid symmetries of the recorded pattern:
+
+\begin{equation}
+  \text{WP} = \{\,T : (T, \text{untagged}) \in D\,\}.
+\end{equation}
+
+Inside the direct disc the reciprocity displacement is proportional to \(\mathbf{g}_\perp\) and
+therefore vanishes, leaving only reciprocity's own inversion of the incident direction, so a
+tagged element acts there as \(-T\):
+
+\begin{equation}
+  \text{BF} = \varphi(D),
+  \qquad \varphi(T, \text{untagged}) = T,
+  \qquad \varphi(T, \text{tagged}) = -T .
+\end{equation}
+
+\(\varphi\) is a homomorphism because \(-1\) is central in two dimensions. The familiar
+consequences follow: a two-fold axis perpendicular to the beam gives a bright-field mirror the
+whole pattern does not have (\(m_R\)); a mirror perpendicular to the beam gives a bright-field
+two-fold alone (\(1_R\)); and \(\bar{6}m2\) down its three-fold shows a \emph{six}-fold direct
+disc over a \(3m\) whole pattern (\(3m1_R\)).
+
+\paragraph{The centre of symmetry.} The element \(2_R\) requires an operator acting as \(-1\) on
+the beam direction \emph{and} as \(-1\) on the transverse plane, which is the inversion and
+nothing else. Hence \(2_R \in D\) at every beam direction of a centrosymmetric crystal and at
+none of an acentric one --- an exact correspondence, verified over all 32 point groups. Knowing
+only whether \(2_R\) is present therefore partitions the 32 point groups into exactly 21 and 11,
+which is the arithmetic of the whole technique.
+
+\paragraph{What \(\pm\mathbf{G}\) is, and is not.} Buxton's \(\pm\mathbf{G}\) observation
+compares the \(+\mathbf{g}\) and \(-\mathbf{g}\) \emph{dark-field} discs, each recorded with its
+own reflection at the Bragg condition --- two exposures at different specimen tilts, related by
+reciprocity. It is \emph{not} a two-fold rotation of a single zone-axis pattern. Taking it to be
+one gives a test that fails, and the reason is visible in the excitation errors:
+\(s_{-g}(-\boldsymbol{\theta}) - s_{g}(\boldsymbol{\theta}) = -2g_{z}\), which vanishes only in
+the zeroth Laue zone. Once higher-order beams are admitted the two-fold is broken for a
+centrosymmetric crystal too, and numerically the residual \emph{grows} with the beam set for
+centric and acentric structures alike --- so it is physics, not truncation. \texttt{pytex}
+therefore does not measure \(\pm\mathbf{G}\) from a zone-axis simulation, and says so instead of
+reporting a number that would sometimes be wrong. The determination does not need it: at any
+zone whose candidate diffraction groups differ in bright-field or whole-pattern symmetry, those
+two settle the question.
+
+\paragraph{The worked case.} Down \([001]\), zincblende \(\bar{4}3m\) has diffraction group
+\(4_Rmm_R\) --- a four-fold bright-field disc over a merely two-fold whole pattern --- while a
+centrosymmetric structure on the same lattice has \(4mm1_R\), four-fold in both. Simulating both
+with the coupled method and reading the symmetry back separates them with residuals of \(0.00\)
+against \(0.32\), and inverting the observation returns \(\{\bar{4}2m, \bar{4}3m\}\) for the
+polar structure with the centrosymmetry verdict \emph{false}. Confine the beam set to the
+zeroth Laue zone and the same crystal reports the four-fold whole-pattern symmetry of a
+centrosymmetric one: the projected potential of zincblende down \([001]\) \emph{is}
+centrosymmetric. That is the single most important caveat in CBED symmetry work, and it is
+enforced rather than described --- \texttt{symmetry\_observations} refuses a projection
+calculation unless asked a second time.
+
+\paragraph{Not implemented.} Buxton's table also lists dark-field and \(\pm\mathbf{G}\)
+symmetries for reflections lying on symmetry lines, recorded at their own Bragg conditions.
+These sharpen determinations that the two implemented observations leave open --- \(4mm1_R\)
+against \(4mm\), for instance. They are absent here, and the report says so and recommends a
+second zone axis instead, naming the tool that finds one.

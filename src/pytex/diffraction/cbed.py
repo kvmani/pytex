@@ -9,7 +9,7 @@ is therefore a *map of the rocking curve*: one CBED exposure contains the
 intensity as a function of deviation from the Bragg condition, which a parallel
 beam could only obtain by tilting the specimen through a series of exposures.
 
-Three things follow, and this module implements the first two of them.
+Three things follow, and this module implements all three.
 
 **Thickness.** The two-beam rocking curve has zeros at known deviations, and
 their spacing depends on the foil thickness. Measuring the fringe positions in a
@@ -21,28 +21,50 @@ standard Kelly *et al.* analysis, implemented as
 **Lattice parameter along the beam.** The convergence also makes higher-order
 Laue zones visible as rings, whose radii depend on the reciprocal-lattice layer
 spacing along the zone axis — the one lattice dimension a zone-axis SAED pattern
-cannot see at all. See :func:`holz_ring_radii_inv_angstrom`.
+cannot see at all (:func:`holz_ring_radii_inv_angstrom`) — and as sharp *lines*
+inside the bright-field disc, which measure the lattice parameters themselves to
+a part in ten thousand (`pytex.diffraction.holz`).
 
 **Point and space group.** The symmetry *within* the discs and of the whole
 pattern determines the diffraction group, and hence the point group including
 the presence or absence of a centre of symmetry, which Friedel's law hides from
-kinematic SAED. That determination needs full dynamical intensities and is
-**not** implemented here; the pattern object says so rather than implying it.
+kinematic SAED. :meth:`CBEDPattern.determine_point_group` performs that
+determination from a simulated pattern, and
+`pytex.diffraction.diffraction_groups` carries the group theory behind it.
+
+Two simulation methods, and why the choice matters
+--------------------------------------------------
+
+:class:`ConvergentBeamConfig` selects between them.
+
+``"two-beam"`` (the default) computes each disc as an independent two-beam
+rocking curve. It is cheap, it is exactly the model the thickness analysis
+inverts, and it is the right choice for teaching disc geometry, the
+Kossel-Moellenstedt regime and fringe counting. It is the wrong choice for
+anything about *relative* intensities or symmetry, because the discs of one
+pattern never exchange intensity: each is symmetric in :math:`s` by
+construction, so the pattern reports symmetry the crystal may not have.
+
+``"bloch"`` solves the coupled many-beam problem through
+`pytex.diffraction.dynamical`, optionally with absorption and with higher-order
+Laue zone reflections in the beam set. It is the only method whose symmetry
+means anything, and :meth:`CBEDPattern.symmetry_observations` refuses to run on
+a two-beam pattern for that reason.
 
 What this module models, and what it does not
 ---------------------------------------------
 
 Modelled: disc geometry from the convergence semi-angle, the excitation error
-across each disc, the two-beam dynamical rocking curve with its extinction
-distance, the Kossel-Moellenstedt versus Kossel overlap regime, HOLZ ring radii,
-and thickness extraction from fringe minima.
+across each disc, either the two-beam rocking curve or the full many-beam
+dynamical solution with an absorptive potential, the Kossel-Moellenstedt versus
+Kossel overlap regime, HOLZ ring radii and HOLZ line geometry, thickness
+extraction from fringe minima, and the diffraction-group symmetry determination.
 
-Not modelled: many-beam dynamical coupling (each disc is computed in its own
-two-beam approximation, so the discs of one pattern are not mutually
-consistent), absorption, HOLZ *line* positions within the bright-field disc,
-inelastic background, and probe aberrations. Those limits are stated on
-:class:`CBEDPattern` and repeated by its ``describe()``, so a caller cannot
-mistake a simulated disc for a dynamical calculation.
+Not modelled: inelastic background, probe aberrations, specimen bending, wedge
+or strain gradients, and Bethe perturbation of weak beams (so a beam set
+containing a whole HOLZ ring is expensive). The absorptive potential is
+phenomenological rather than computed from absorptive form factors. Those limits
+are stated on :class:`CBEDPattern` and repeated by its ``describe()``.
 
 The geometry
 ------------
@@ -84,22 +106,42 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import ArrayLike
+from scipy import ndimage
 
 from pytex.core._arrays import as_float_array, normalize_vector
 from pytex.core.lattice import Phase, ZoneAxis
 from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.provenance import ProvenanceRecord
+from pytex.diffraction.diffraction_groups import (
+    DiffractionGroup,
+    PointGroupDetermination,
+    SymmetryObservations,
+    determine_point_group,
+    diffraction_group_for_zone_axis,
+    plane_point_group_symbol,
+)
+from pytex.diffraction.dynamical import (
+    AbsorptionModel,
+    BeamSet,
+    beam_set_for_zone,
+    beam_set_from_indices,
+    solve_bloch_waves,
+)
+from pytex.diffraction.holz import HOLZLinePattern, holz_line_pattern
 from pytex.diffraction.kinematic import (
     centering_allowed_mask,
     electron_wavelength_angstrom,
     zone_basis_from_axis,
 )
 from pytex.diffraction.physics import ReflectionCondition
-from pytex.diffraction.scattering import electron_scattering_factors
+from pytex.diffraction.scattering import electron_structure_factor_angstrom
+
+#: How a CBED pattern's disc intensities are computed.
+SimulationMethod = Literal["two-beam", "bloch"]
 
 __all__ = [
     "CBED_PATTERN_SCHEMA",
@@ -107,6 +149,7 @@ __all__ = [
     "CBEDDisc",
     "CBEDPattern",
     "ConvergentBeamConfig",
+    "SimulationMethod",
     "TwoBeamThicknessReport",
     "electron_structure_factor_angstrom",
     "extinction_distance_angstrom",
@@ -123,96 +166,12 @@ CBED_PATTERN_SCHEMA = "pytex.cbed_pattern/1"
 #: Schema identifier of the two-beam thickness payload.
 CBED_THICKNESS_SCHEMA = "pytex.cbed_two_beam_thickness/1"
 
-#: Electron rest energy in keV, for the relativistic correction ``gamma``.
-_ELECTRON_REST_ENERGY_KEV = 510.99895
-
 _DEBYE_WALLER_DENOMINATOR = 16.0 * np.pi * np.pi
 
 
 # --------------------------------------------------------------------------- #
-# Structure factors on an absolute scale, and extinction distances
+# Extinction distances
 # --------------------------------------------------------------------------- #
-
-
-def electron_structure_factor_angstrom(
-    phase: Phase,
-    hkl: ArrayLike,
-    *,
-    beam_energy_kev: float = 200.0,
-) -> np.ndarray:
-    """Electron structure factors ``F_g`` in angstrom, relativistically corrected.
-
-    What it does
-        Sums the Mott-Bethe electron scattering factors over the unit cell,
-
-        .. math::
-
-           F_{g} = \\gamma \\sum_{j} o_{j}\\, f_{e}^{j}(s)\\,
-                   e^{-B_{j}s^{2}}\\, e^{2\\pi i\\,\\mathbf{g}\\cdot\\mathbf{r}_{j}},
-           \\qquad s = |\\mathbf{g}|/2,
-
-        with the relativistic factor
-        :math:`\\gamma = 1 + E/m_{0}c^{2}` applied because the incident electron
-        is not slow: at 200 kV it is 1.39, and omitting it would make every
-        extinction distance 39 percent too long.
-
-    When to use it
-        Whenever the *absolute* scale matters — extinction distances, dynamical
-        rocking curves, thickness determination. For relative spot intensities
-        within one zone, `pytex.diffraction.kinematic.electron_structure_factors`
-        is the cheaper atomic-number proxy and is sufficient.
-
-    Parameters
-    ----------
-    phase:
-        Must carry a unit cell with sites; a bare lattice has no structure
-        factor and raises rather than returning a fabricated one.
-    hkl:
-        ``(n, 3)`` integer Miller indices, or one triple.
-    beam_energy_kev:
-        Accelerating voltage, for the wavelength and for ``gamma``.
-
-    Returns
-    -------
-    np.ndarray
-        ``(n,)`` complex structure factors in angstrom.
-
-    Raises
-    ------
-    ValueError
-        If the phase has no unit-cell sites.
-    """
-
-    indices = np.atleast_2d(np.asarray(hkl, dtype=np.int64))
-    if indices.ndim != 2 or indices.shape[1] != 3:
-        raise ValueError("hkl must have shape (3,) or (n, 3).")
-    if phase.unit_cell is None or not phase.unit_cell.sites:
-        raise ValueError(
-            "Electron structure factors on an absolute scale need the atom positions: "
-            f"phase '{phase.name}' carries no unit cell. Load the phase from a CIF, or "
-            "use the relative-intensity path in pytex.diffraction.kinematic."
-        )
-    if not np.isfinite(beam_energy_kev) or beam_energy_kev <= 0.0:
-        raise ValueError("beam_energy_kev must be finite and strictly positive.")
-
-    reciprocal = as_float_array(phase.lattice.reciprocal_basis().matrix, shape=(3, 3))
-    g_cartesian = indices.astype(np.float64) @ reciprocal.T
-    s_values = np.linalg.norm(g_cartesian, axis=1) / 2.0
-
-    gamma = 1.0 + float(beam_energy_kev) / _ELECTRON_REST_ENERGY_KEV
-    total = np.zeros(indices.shape[0], dtype=np.complex128)
-    for site in phase.unit_cell.sites:
-        factors = electron_scattering_factors(site.species, s_values)
-        b_iso = 0.0 if site.b_iso is None else float(site.b_iso)
-        damping = np.exp(-b_iso * s_values * s_values)
-        phase_argument = indices.astype(np.float64) @ site.fractional_coordinates
-        total += (
-            float(site.occupancy)
-            * factors
-            * damping
-            * np.exp(2.0j * np.pi * phase_argument)
-        )
-    return np.asarray(gamma * total, dtype=np.complex128)
 
 
 def extinction_distance_angstrom(
@@ -734,6 +693,31 @@ class ConvergentBeamConfig:
         therefore a fitted thickness — can be located.
     apply_centering_absences : bool
         Remove reflections forbidden by the lattice centering.
+    method : {"two-beam", "bloch"}
+        How disc intensities are computed. ``"two-beam"`` gives each disc its own
+        independent rocking curve — cheap, and exactly the model
+        :func:`thickness_from_fringe_minima` inverts. ``"bloch"`` solves the
+        coupled many-beam problem through `pytex.diffraction.dynamical`, which
+        costs ``O(m n^3)`` but is the only method whose relative intensities and
+        symmetry mean anything.
+    absorption : AbsorptionModel or None
+        The imaginary optical potential. Only accepted with ``method="bloch"``,
+        because the two-beam closed form has no absorptive term; asking for it in
+        the two-beam path raises rather than silently ignoring it.
+    laue_zones : tuple of int
+        Which Laue zones enter the **beam set**. Must contain ``0``, which
+        carries the discs the pattern is drawn from. Adding ``1`` (or ``1`` and
+        ``-1``) admits higher-order reflections, which is what produces HOLZ
+        deficiency lines inside the discs and, crucially, what breaks the
+        projection symmetry that would otherwise make every pattern look
+        centrosymmetric. Only meaningful with ``method="bloch"``.
+    holz_max_index : int
+        Largest absolute Miller index enumerated when searching for higher-order
+        reflections. These have large indices — the first HOLZ ring of a cubic
+        metal sits near ``|g| ~ 5`` inverse angstrom — so the bound is separate
+        from ``max_index``, which governs only the drawn zeroth-zone discs.
+    holz_g_max_inv_angstrom : float
+        Radial cut-off for the same search.
     """
 
     beam_energy_kev: float = 200.0
@@ -745,6 +729,11 @@ class ConvergentBeamConfig:
     max_excitation_error_inv_angstrom: float = 0.02
     disc_samples: int = 81
     apply_centering_absences: bool = True
+    method: SimulationMethod = "two-beam"
+    absorption: AbsorptionModel | None = None
+    laue_zones: tuple[int, ...] = (0,)
+    holz_max_index: int = 20
+    holz_g_max_inv_angstrom: float = 6.0
 
     def __post_init__(self) -> None:
         if not np.isfinite(self.beam_energy_kev) or self.beam_energy_kev <= 0.0:
@@ -770,6 +759,48 @@ class ConvergentBeamConfig:
             raise ValueError("max_excitation_error_inv_angstrom must be non-negative.")
         if self.disc_samples < 3:
             raise ValueError("disc_samples must be at least 3 to resolve a rocking curve.")
+        if self.method not in {"two-beam", "bloch"}:
+            raise ValueError(
+                f"method must be 'two-beam' or 'bloch'; got '{self.method}'. Symmetry "
+                "analysis requires 'bloch', because a two-beam disc is symmetric in s by "
+                "construction and would report symmetry the crystal may not have."
+            )
+        if self.absorption is not None and self.method != "bloch":
+            raise ValueError(
+                "Absorption is only meaningful in the coupled calculation: the two-beam disc "
+                "path evaluates a closed form that has no absorptive term. Set "
+                "method='bloch' or leave absorption as None."
+            )
+        if not self.laue_zones:
+            raise ValueError("laue_zones must name at least one Laue zone, normally 0.")
+        if 0 not in self.laue_zones:
+            raise ValueError(
+                "laue_zones must include 0: the zeroth Laue zone carries the discs the "
+                "pattern is drawn from, and a calculation without it would have nothing to "
+                "plot."
+            )
+        if self.method != "bloch" and set(self.laue_zones) != {0}:
+            raise ValueError(
+                "Higher-order Laue zone beams only affect a coupled calculation. In the "
+                "two-beam path each disc is independent, so a HOLZ reflection could not "
+                "change it. Set method='bloch'."
+            )
+        if self.holz_max_index <= 0:
+            raise ValueError("holz_max_index must be strictly positive.")
+        if self.holz_g_max_inv_angstrom <= 0.0:
+            raise ValueError("holz_g_max_inv_angstrom must be strictly positive.")
+
+    @property
+    def includes_holz_beams(self) -> bool:
+        """Whether any higher-order Laue zone is in the beam set.
+
+        The single most important thing to know before reading symmetry off a
+        simulated pattern: without it, the calculation samples the *projected*
+        potential, whose symmetry is at least as high as the crystal's and is
+        often strictly higher.
+        """
+
+        return any(int(zone) != 0 for zone in self.laue_zones)
 
     @property
     def wavelength_angstrom(self) -> float:
@@ -885,18 +916,20 @@ class CBEDPattern:
 
     Limits
     ------
-    **Each disc is an independent two-beam calculation.** Real CBED is
-    many-beam: the discs of one pattern share intensity, and at a zone axis
-    the two-beam picture is at its worst. Absorption is not modelled, so the
-    fringes do not decay with thickness as they do in practice. HOLZ *lines*
-    inside the bright-field disc — the sharp features used for lattice-parameter
-    metrology — are not simulated; only the ring radii are given. And the
-    symmetry analysis that determines the diffraction group, and with it the
-    point group, is not implemented at all.
+    They depend on ``config.method``, and the object states which was used.
 
-    What the object is therefore good for: geometry, regime, fringe counting,
-    thickness methodology, and teaching. What it is not good for: quantitative
-    intensity comparison against an experimental pattern.
+    With ``"two-beam"``, **each disc is an independent calculation**. Real CBED
+    is many-beam: the discs of one pattern share intensity, and at a zone axis
+    the two-beam picture is at its worst. No absorption enters, so the fringes do
+    not decay with thickness as they do in practice, and — the trap worth naming
+    — every disc is symmetric in ``s`` by construction, so the pattern displays
+    symmetry that belongs to the *method* and not to the crystal.
+    :meth:`symmetry_observations` therefore refuses to run on such a pattern.
+
+    With ``"bloch"``, the discs are mutually consistent, absorption is available,
+    and higher-order Laue zone beams can be admitted. What remains unmodelled is
+    inelastic background, probe aberrations, specimen bending or wedge, and the
+    absorptive potential's *magnitude*, which is phenomenological.
 
     Attributes
     ----------
@@ -910,6 +943,13 @@ class CBEDPattern:
         ``(3, 3)`` with columns ``u``, ``v`` and the zone-axis unit vector.
     holz_orders : np.ndarray
     holz_radii_mm : np.ndarray
+    holz_lines : HOLZLinePattern or None
+        Geometry of the first-order Laue zone lines, if any fall inside the
+        illumination cone. Positions are exact and independent of the simulation
+        method; whether the lines are *visible* in the disc intensities depends
+        on the beam set. See `pytex.diffraction.holz`.
+    beam_set : BeamSet or None
+        The coupled beam set, for ``method="bloch"``; ``None`` otherwise.
     nearest_disc_separation_mm : float
         Centre-to-centre distance of the closest pair of discs; ``inf`` when
         only the transmitted disc is present.
@@ -924,6 +964,8 @@ class CBEDPattern:
     holz_orders: np.ndarray
     holz_radii_mm: np.ndarray
     nearest_disc_separation_mm: float
+    holz_lines: HOLZLinePattern | None = None
+    beam_set: BeamSet | None = None
     provenance: ProvenanceRecord | None = None
 
     @property
@@ -972,6 +1014,358 @@ class CBEDPattern:
             "max_excitation_error_inv_angstrom."
         )
 
+    # ----------------------------------------------------------------- #
+    # Symmetry: the point-group determination
+    # ----------------------------------------------------------------- #
+
+    def predicted_diffraction_group(self) -> DiffractionGroup:
+        """The diffraction group this zone *should* show, from the declared point group.
+
+        Purpose
+        -------
+        The forward direction: what the crystallography says the pattern must
+        look like. Comparing it against :meth:`symmetry_observations` is how a
+        simulation is validated, and comparing it against a *recorded* pattern is
+        how a candidate structure is tested.
+
+        Returns
+        -------
+        DiffractionGroup
+
+        See Also
+        --------
+        `pytex.diffraction.diffraction_groups.diffraction_group_for_zone_axis`
+        """
+
+        return diffraction_group_for_zone_axis(self.phase, self.zone_axis)
+
+    def symmetry_observations(
+        self,
+        *,
+        tolerance: float = 0.05,
+        require_holz: bool = True,
+        friedel_pair_two_fold: bool | None = None,
+    ) -> SymmetryObservations:
+        """Measure the pattern's symmetry the way an experimenter reads it.
+
+        What it does
+            Tests candidate plane operations against the computed intensities and
+            keeps those that survive:
+
+            - **Bright field.** Resamples the transmitted disc under each
+              candidate operation and compares.
+            - **Whole pattern.** Requires the operation to permute the disc
+              centres *and* to map each disc's intensity map onto its partner's.
+
+            The survivors are closed into a group and named. Together these two
+            observations determine the diffraction group in most cases,
+            centrosymmetry included: down a four-fold zone,
+            ``BF = 4mm, WP = 4mm`` is ``4mm1_R`` and centric, while
+            ``BF = 4mm, WP = 2mm`` is ``4_Rmm_R`` and acentric — the classic
+            silicon-versus-gallium-arsenide comparison, which this measurement
+            separates with residuals of ``0.00`` against ``0.32``.
+
+        When to use it
+            To close the loop — simulate a pattern, read its symmetry back, and
+            hand the result to
+            `pytex.diffraction.diffraction_groups.determine_point_group`. The
+            same observations are what an operator records at the microscope, so
+            the report format is the same either way.
+
+        Parameters
+        ----------
+        tolerance:
+            Largest accepted mismatch, as a fraction of each map's mean absolute
+            deviation. Operations that are not grid-aligned — three- and six-fold
+            rotations and their mirrors — carry resampling error that falls with
+            ``config.disc_samples``; use at least 101 samples on a trigonal or
+            hexagonal zone.
+        require_holz:
+            Refuse to report when the beam set contains no higher-order Laue zone
+            reflection. Pass ``False`` only when the *projection* symmetry is
+            what is wanted, and know that it is generally higher than the
+            crystal's own. Without HOLZ beams, gallium arsenide down ``[001]``
+            reports the ``4mm`` whole-pattern symmetry of silicon.
+        friedel_pair_two_fold:
+            Passed straight through to the report. **This library does not
+            measure it**; see the note below.
+
+        Returns
+        -------
+        SymmetryObservations
+
+        Raises
+        ------
+        ValueError
+            If the pattern was computed with ``method="two-beam"``, whose discs
+            are symmetric in ``s`` by construction and would report symmetry that
+            belongs to the method; or if ``require_holz`` is set and the beam set
+            is confined to the zeroth Laue zone.
+
+        Notes
+        -----
+        **Candidate operations are derived from the pattern, not assumed.**
+        Rotations of order 2, 3, 4 and 6 are tested, and mirror lines are taken
+        from the azimuths of the disc centres and their perpendiculars — the only
+        orientations at which a mirror could permute the discs. Testing a dense
+        sweep of angles instead would find spurious mirrors in a smooth map. The
+        survivors are then closed under multiplication before being named,
+        because ``{1, R_2, R_3, R_6}`` is four matrices but a six-fold group.
+
+        **Why the ``+-g`` relation is not measured here.** Buxton's ``2_R``
+        observation compares the ``+g`` and ``-g`` *dark-field* discs, each
+        recorded with its own reflection at the Bragg condition — two exposures
+        at different specimen tilts, related by the reciprocity theorem. It is
+        *not* a two-fold rotation of a single zone-axis pattern. Taking it to be
+        one gives a test that fails: the excitation errors satisfy
+        ``s_{-g}(-theta) - s_g(theta) = -2 g_z``, which vanishes only in the
+        zeroth Laue zone, so once higher-order beams are admitted the two-fold is
+        broken for a centrosymmetric crystal too. That is confirmed numerically
+        — the residual *grows* with the beam set for centric and acentric
+        structures alike, so it is physics and not truncation — and it is why
+        this method leaves the field to the caller rather than reporting a number
+        that would sometimes be wrong. The determination does not need it: the
+        bright-field and whole-pattern symmetries settle centrosymmetry at any
+        zone whose diffraction groups differ in them.
+        """
+
+        if self.config.method != "bloch":
+            raise ValueError(
+                "Symmetry cannot be read from a two-beam pattern. Each disc there is an "
+                "independent rocking curve, symmetric in s by construction, so every +-g "
+                "pair matches and the pattern reports a centre of symmetry whatever the "
+                "crystal is. Re-simulate with ConvergentBeamConfig(method='bloch')."
+            )
+        if require_holz and not self.config.includes_holz_beams:
+            raise ValueError(
+                "The beam set is confined to the zeroth Laue zone, so this calculation "
+                "samples the potential projected along the beam. That projection is "
+                "frequently centrosymmetric when the crystal is not - zincblende down [111] "
+                "is the standard example - and reading symmetry from it would report the "
+                "projection's symmetry as the crystal's. Add higher-order Laue zones with "
+                "ConvergentBeamConfig(laue_zones=(0, 1, -1)), or pass require_holz=False if "
+                "the projection symmetry is genuinely what is wanted."
+            )
+        if not 0.0 < tolerance < 1.0:
+            raise ValueError("tolerance must lie strictly between 0 and 1.")
+        if len(self.discs) < 2:
+            raise ValueError(
+                "The pattern has no diffracted discs, so there is no symmetry to read: a "
+                "single transmitted disc is invariant under everything. Widen "
+                "g_max_inv_angstrom or max_excitation_error_inv_angstrom until reflections "
+                "are selected."
+            )
+
+        floor = self._contrast_floor()
+        candidates = self._candidate_plane_operations()
+        bright = [
+            operation
+            for operation in candidates
+            if self._disc_maps_agree(
+                self.transmitted_disc, self.transmitted_disc, operation, tolerance, floor
+            )
+        ]
+        whole = [
+            operation
+            for operation in candidates
+            if self._whole_pattern_agrees(operation, tolerance, floor)
+        ]
+        return SymmetryObservations(
+            bright_field=plane_point_group_symbol(_close_plane_group(bright)),
+            whole_pattern=plane_point_group_symbol(_close_plane_group(whole)),
+            friedel_pair_two_fold=friedel_pair_two_fold,
+        )
+
+    def determine_point_group(
+        self,
+        *,
+        tolerance: float = 0.05,
+        require_holz: bool = True,
+        friedel_pair_two_fold: bool | None = None,
+        **kwargs: Any,
+    ) -> PointGroupDetermination:
+        """Measure the pattern's symmetry and turn it into a point group.
+
+        Purpose
+        -------
+        The end-to-end capability in one call: simulate, read the symmetry, and
+        report which crystal point groups are consistent with it — including
+        whether the crystal has a centre of symmetry, which kinematic
+        diffraction cannot determine at all.
+
+        Parameters
+        ----------
+        tolerance, require_holz, friedel_pair_two_fold:
+            As in :meth:`symmetry_observations`.
+        **kwargs:
+            Forwarded to
+            `pytex.diffraction.diffraction_groups.determine_point_group`, chiefly
+            ``candidate_point_groups`` for narrowing with prior knowledge.
+
+        Returns
+        -------
+        PointGroupDetermination
+
+        Notes
+        -----
+        On a *simulated* pattern this is a self-consistency check: the answer
+        should contain the point group the phase declared, and
+        :meth:`predicted_diffraction_group` says which diffraction group it
+        should have gone through. On a *measured* pattern it is the
+        determination itself.
+
+        **Choose the zone before trusting the answer.** Two point groups that
+        share a diffraction group at one beam direction generally differ at
+        another; `pytex.diffraction.diffraction_groups.diffraction_group_table`
+        names the directions. Down ``[001]`` the cubic pair ``m-3m`` and
+        ``-43m`` differ in whole-pattern symmetry and are separated outright;
+        down ``[111]`` they share both bright-field and whole-pattern symmetry
+        and are not.
+        """
+
+        observations = self.symmetry_observations(
+            tolerance=tolerance,
+            require_holz=require_holz,
+            friedel_pair_two_fold=friedel_pair_two_fold,
+        )
+        return determine_point_group(observations, **kwargs)
+
+    def _candidate_plane_operations(self) -> list[np.ndarray]:
+        """Plane operations that could conceivably permute the discs."""
+
+        operations = [np.eye(2)]
+        for order in (2, 3, 4, 6):
+            angle = 2.0 * math.pi / order
+            operations.append(
+                np.array(
+                    [
+                        [math.cos(angle), -math.sin(angle)],
+                        [math.sin(angle), math.cos(angle)],
+                    ]
+                )
+            )
+        angles: set[int] = set()
+        for disc in self.discs:
+            if disc.is_transmitted:
+                continue
+            azimuth = math.atan2(float(disc.centre_mm[1]), float(disc.centre_mm[0]))
+            for offset in (0.0, math.pi / 2.0):
+                angles.add(round(math.degrees((azimuth + offset) % math.pi) * 10))
+        for tenths in sorted(angles):
+            doubled = 2.0 * math.radians(tenths / 10.0)
+            operations.append(
+                np.array(
+                    [
+                        [math.cos(doubled), math.sin(doubled)],
+                        [math.sin(doubled), -math.cos(doubled)],
+                    ]
+                )
+            )
+        return operations
+
+    def _interior_mask(self) -> np.ndarray:
+        """Samples safely inside the disc, away from the edge where resampling fails."""
+
+        alpha = self.config.convergence_semi_angle_rad
+        axis = self.transmitted_disc.tilt_axis_mrad * 1e-3
+        grid_u, grid_v = np.meshgrid(axis, axis, indexing="ij")
+        return np.asarray(grid_u * grid_u + grid_v * grid_v <= (0.9 * alpha) ** 2, dtype=bool)
+
+    def _resample(self, values: np.ndarray, operation: np.ndarray) -> np.ndarray:
+        """``values`` evaluated at ``operation @ theta`` on the same grid."""
+
+        axis = self.transmitted_disc.tilt_axis_mrad * 1e-3
+        samples = axis.size
+        alpha = self.config.convergence_semi_angle_rad
+        grid_u, grid_v = np.meshgrid(axis, axis, indexing="ij")
+        stacked = np.stack([grid_u.reshape(-1), grid_v.reshape(-1)])
+        mapped = operation @ stacked
+        indices = (mapped + alpha) / (2.0 * alpha) * (samples - 1)
+        filled = np.nan_to_num(values, nan=0.0)
+        return np.asarray(
+            ndimage.map_coordinates(filled, indices, order=3, mode="nearest").reshape(
+                samples, samples
+            ),
+            dtype=np.float64,
+        )
+
+    def _contrast_floor(self) -> float:
+        """The smallest per-disc contrast a symmetry test will take seriously.
+
+        Each comparison is normalized by the disc's own mean absolute deviation,
+        because the physics that breaks a symmetry frequently lives in the
+        *weak* discs — for gallium arsenide down ``[001]`` the four-fold is
+        broken in the near-forbidden ``{200}`` reflections, whose contrast is
+        half a percent of the strongest disc's, and normalizing everything by
+        the brightest disc would hide it completely.
+
+        That per-disc normalization needs a floor, and this is it. A
+        **systematically absent** reflection has an identically zero disc whose
+        residual floating-point noise has a mean absolute deviation of order
+        ``1e-30``; dividing by that turns rounding error into a catastrophic
+        symmetry violation. Silicon down ``[001]`` has four such discs, the
+        absent ``{200}``, and they were enough to destroy the four-fold before
+        the floor was added. The floor is ``1e-6`` of the strongest disc's
+        contrast: a disc below that carries no recordable information, so it
+        cannot testify either way.
+        """
+
+        interior = self._interior_mask()
+        scales = [
+            float(np.mean(np.abs(values - values.mean())))
+            for values in (
+                np.nan_to_num(disc.intensity, nan=0.0)[interior] for disc in self.discs
+            )
+        ]
+        return 1e-6 * max(scales) if scales else 0.0
+
+    def _disc_maps_agree(
+        self,
+        source: CBEDDisc,
+        target: CBEDDisc,
+        operation: np.ndarray,
+        tolerance: float,
+        floor: float,
+    ) -> bool:
+        """Whether ``I_target(T theta) == I_source(theta)`` inside the disc.
+
+        The residual is the mean absolute deviation over the disc interior,
+        relative to the source disc's own contrast (floored — see
+        :meth:`_contrast_floor`). A worst-case (max) criterion is not usable
+        here: HOLZ lines are far narrower than the tilt sampling can resolve, so
+        resampling them at a rotation that is not grid-aligned produces large
+        errors along a handful of thin loci while the map as a whole is
+        symmetric. An L1 measure weights those loci by their area, which is what
+        an eye reading the pattern does too.
+        """
+
+        interior = self._interior_mask()
+        reference = np.nan_to_num(source.intensity, nan=0.0)[interior]
+        scale = max(float(np.mean(np.abs(reference - reference.mean()))), floor)
+        if scale <= 0.0:
+            return True
+        resampled = self._resample(target.intensity, operation)[interior]
+        return float(np.mean(np.abs(resampled - reference))) <= tolerance * scale
+
+    def _whole_pattern_agrees(
+        self, operation: np.ndarray, tolerance: float, floor: float
+    ) -> bool:
+        """Whether the operation permutes the discs and maps each map onto its partner."""
+
+        centres = np.stack([disc.centre_mm for disc in self.discs])
+        radius = max(self.config.disc_radius_mm, 1e-9)
+        for index, disc in enumerate(self.discs):
+            image = operation @ centres[index]
+            distances = np.linalg.norm(centres - image[None, :], axis=1)
+            partner = int(np.argmin(distances))
+            if float(distances[partner]) > 0.05 * radius:
+                return False
+            if not self._disc_maps_agree(
+                disc, self.discs[partner], operation, tolerance, floor
+            ):
+                return False
+        return True
+
     def describe(self) -> str:
         """Convention-explicit prose: the pattern, the regime, and the limits."""
 
@@ -1004,6 +1398,55 @@ class CBEDPattern:
                 "beam, which no zone-axis SAED pattern can see."
             )
         )
+        lines = (
+            ""
+            if self.holz_lines is None or not self.holz_lines.bright_field_lines
+            else (
+                f" {len(self.holz_lines.bright_field_lines)} first-order HOLZ lines cross "
+                "the bright-field disc; their positions are exact and measure the lattice "
+                "parameters, subject to the wavelength degeneracy described by "
+                "pytex.diffraction.holz."
+            )
+        )
+        if self.config.method == "bloch":
+            beams = self.beam_set.size if self.beam_set is not None else 0
+            holz_beams = (
+                int(np.count_nonzero(self.beam_set.holz_mask)) if self.beam_set is not None else 0
+            )
+            absorption = (
+                "without absorption"
+                if self.config.absorption is None or not self.config.absorption.is_absorbing
+                else (
+                    "with an absorptive potential of ratio "
+                    f"{self.config.absorption.reflection_ratio:.3f}"
+                )
+            )
+            method = (
+                f"Intensities come from a coupled {beams}-beam Bloch-wave calculation "
+                f"({holz_beams} higher-order Laue zone beams) {absorption}, so the discs of "
+                "this pattern are mutually consistent. "
+                + (
+                    "Higher-order Laue zone beams are present, so the projection symmetry is "
+                    "broken and the pattern's symmetry can be read: see "
+                    "symmetry_observations() and determine_point_group()."
+                    if holz_beams
+                    else (
+                        "The beam set is confined to the zeroth Laue zone, so the calculation "
+                        "carries the symmetry of the *projected* potential, which is often "
+                        "higher than the crystal's; symmetry_observations() refuses to run "
+                        "on it unless asked explicitly."
+                    )
+                )
+            )
+        else:
+            method = (
+                "Every disc here is an independent two-beam calculation without absorption: "
+                "the geometry, the regime and the fringe positions are meaningful, but the "
+                "relative intensities of different discs are not, and the pattern's symmetry "
+                "belongs to the method rather than to the crystal - which is why "
+                "symmetry_observations() refuses to run on it. Re-simulate with "
+                "ConvergentBeamConfig(method='bloch', laue_zones=(0, 1, -1)) for that."
+            )
         return (
             f"Convergent-beam pattern of {self.phase.name} down {zone_label} at "
             f"{self.config.beam_energy_kev:.0f} kV with a convergence semi-angle of "
@@ -1011,11 +1454,7 @@ class CBEDPattern:
             f"{self.config.thickness_angstrom:.0f} A. {diffracted} diffracted discs plus "
             f"the transmitted disc, each of radius {self.config.disc_radius_mm:.2f} mm, "
             f"with the closest disc centres {self.nearest_disc_separation_mm:.2f} mm "
-            f"apart. {overlap} {holz} "
-            "Every disc here is an independent two-beam calculation without absorption: "
-            "the geometry, the regime and the fringe positions are meaningful, but the "
-            "relative intensities of different discs are not, and the diffraction-group "
-            "symmetry determination is not implemented."
+            f"apart. {overlap} {holz}{lines} {method}"
         )
 
     def to_json_dict(self) -> dict[str, Any]:
@@ -1027,6 +1466,26 @@ class CBEDPattern:
             "zone_axis": [int(value) for value in self.zone_axis.indices],
             "beam_energy_kev": self.config.beam_energy_kev,
             "convergence_semi_angle_mrad": self.config.convergence_semi_angle_mrad,
+            "method": self.config.method,
+            "laue_zones": [int(zone) for zone in self.config.laue_zones],
+            "beam_count": self.beam_set.size if self.beam_set is not None else None,
+            "holz_beam_count": (
+                int(np.count_nonzero(self.beam_set.holz_mask))
+                if self.beam_set is not None
+                else None
+            ),
+            "absorption": (
+                None
+                if self.config.absorption is None
+                else {
+                    "mean_ratio": self.config.absorption.mean_ratio,
+                    "reflection_ratio": self.config.absorption.reflection_ratio,
+                }
+            ),
+            "bright_field_holz_line_count": (
+                0 if self.holz_lines is None else len(self.holz_lines.bright_field_lines)
+            ),
+            "predicted_diffraction_group": self.predicted_diffraction_group().symbol,
             "thickness_angstrom": self.config.thickness_angstrom,
             "camera_constant_mm_angstrom": self.config.camera_constant_mm_angstrom,
             "disc_radius_mm": self.config.disc_radius_mm,
@@ -1061,15 +1520,20 @@ def simulate_cbed_pattern(
     What it does
         Selects the zeroth-Laue-zone reflections as the parallel-beam engine
         does, turns each into a disc of radius ``alpha / lambda``, and fills the
-        disc with the two-beam rocking curve evaluated at the excitation error
-        of each incident direction in the convergence cone.
+        disc with the intensity at the excitation error of each incident
+        direction in the convergence cone — by the two-beam closed form, or, with
+        ``config.method = "bloch"``, by the coupled many-beam solution of
+        `pytex.diffraction.dynamical`. It also computes the first-order HOLZ line
+        geometry, whose positions do not depend on the method.
 
     When to use it
         To see what a CBED exposure of a given phase, zone, voltage,
         convergence angle and thickness would look like; to check whether an
-        intended convergence angle keeps the discs separated; and to generate
-        the fringes that :func:`thickness_from_fringe_minima` reads back — the
-        round trip that demonstrates the thickness method end to end.
+        intended convergence angle keeps the discs separated; to generate the
+        fringes that :func:`thickness_from_fringe_minima` reads back — the round
+        trip that demonstrates the thickness method end to end; and, with the
+        Bloch method and higher-order Laue zones admitted, to determine the
+        crystal point group from the pattern's symmetry.
 
     Parameters
     ----------
@@ -1112,9 +1576,24 @@ def simulate_cbed_pattern(
        hence ``xi_g``.
     4. Sample the convergence cone on a square grid of tilts, mask to the disc,
        and evaluate ``s_g(theta) = g_z - theta . g_perp - lambda g^2 / 2``.
-    5. Fill the disc with the two-beam intensity at those ``s`` values. The
-       transmitted disc is filled with ``1 - I_g`` for the strongest diffracted
-       reflection, the two-beam complement.
+    5. Fill the discs.
+
+       - ``"two-beam"``: each disc gets the closed-form rocking curve at its own
+         ``s`` values, and the transmitted disc gets ``1 - I_g`` for the
+         strongest diffracted reflection — the two-beam complement.
+       - ``"bloch"``: one coupled calculation supplies every disc at once,
+         including the transmitted one, which is then a genuine bright-field
+         intensity rather than a complement. The beam set is the drawn
+         zeroth-zone reflections plus, when ``laue_zones`` asks for them, the
+         higher-order reflections whose Bragg loci cross the cone. Only tilts
+         inside the cone are solved.
+
+    6. Compute the first-order HOLZ line geometry (`pytex.diffraction.holz`).
+
+    **Cost.** The Bloch path is ``O(m n^3)`` in the number of in-cone tilts ``m``
+    and beams ``n``. Admitting a HOLZ ring can multiply ``n`` several-fold, so
+    reduce ``disc_samples`` or tighten ``max_excitation_error_inv_angstrom``
+    rather than expecting the default sampling to stay cheap.
     """
 
     if zone_axis.phase != phase:
@@ -1198,48 +1677,65 @@ def simulate_cbed_pattern(
             ),
         )
 
-    discs: list[CBEDDisc] = []
-    strongest_intensity: np.ndarray | None = None
-    for row in range(grid.shape[0]):
-        s_map = (
-            g_zone[row, 2]
-            - tilt_u * g_zone[row, 0]
-            - tilt_v * g_zone[row, 1]
-            - 0.5 * wavelength * g_magnitude[row] ** 2
+    excitation_maps = [
+        g_zone[row, 2]
+        - tilt_u * g_zone[row, 0]
+        - tilt_v * g_zone[row, 1]
+        - 0.5 * wavelength * g_magnitude[row] ** 2
+        for row in range(grid.shape[0])
+    ]
+
+    beam_set: BeamSet | None = None
+    if settings.method == "bloch":
+        intensity_maps, transmitted_intensity, beam_set = _bloch_disc_intensities(
+            phase,
+            zone_axis,
+            settings,
+            grid,
+            in_plane_rotation_deg=in_plane_rotation_deg,
+            tilt_u=tilt_u,
+            tilt_v=tilt_v,
+            outside=outside,
         )
-        xi_g = float(extinction[row])
-        intensity_map = (
+    else:
+        intensity_maps = [
             two_beam_rocking_curve(
                 s_map,
                 thickness_angstrom=settings.thickness_angstrom,
-                extinction_distance_angstrom=xi_g,
+                extinction_distance_angstrom=float(extinction[row]),
             )
-            if np.isfinite(xi_g)
+            if np.isfinite(extinction[row])
             else np.zeros_like(s_map)
-        )
-        if strongest_intensity is None:
-            strongest_intensity = intensity_map
-        discs.append(
-            build_disc(
-                grid[row], g_zone[row], float(g_magnitude[row]),
-                complex(structure_factors[row]), xi_g, intensity_map, s_map,
-            )
+            for row, s_map in enumerate(excitation_maps)
+        ]
+        transmitted_intensity = (
+            1.0 - intensity_maps[0] if intensity_maps else np.ones_like(tilt_u)
         )
 
-    transmitted_intensity = (
-        1.0 - strongest_intensity if strongest_intensity is not None
-        else np.ones_like(tilt_u)
+    discs = [
+        build_disc(
+            grid[row],
+            g_zone[row],
+            float(g_magnitude[row]),
+            complex(structure_factors[row]),
+            float(extinction[row]),
+            intensity_maps[row],
+            excitation_maps[row],
+        )
+        for row in range(grid.shape[0])
+    ]
+    discs.insert(
+        0,
+        build_disc(
+            np.zeros(3, dtype=np.int64),
+            np.zeros(3, dtype=np.float64),
+            0.0,
+            complex(0.0, 0.0),
+            float("inf"),
+            transmitted_intensity,
+            np.zeros_like(tilt_u),
+        ),
     )
-    transmitted = build_disc(
-        np.zeros(3, dtype=np.int64),
-        np.zeros(3, dtype=np.float64),
-        0.0,
-        complex(0.0, 0.0),
-        float("inf"),
-        transmitted_intensity,
-        np.zeros_like(tilt_u),
-    )
-    discs.insert(0, transmitted)
 
     centres = np.stack([disc.centre_mm for disc in discs])
     if len(centres) > 1:
@@ -1253,6 +1749,17 @@ def simulate_cbed_pattern(
     holz_orders, holz_radii = holz_ring_radii_inv_angstrom(
         phase, zone_axis, beam_energy_kev=settings.beam_energy_kev
     )
+    lines = holz_line_pattern(
+        phase,
+        zone_axis,
+        beam_energy_kev=settings.beam_energy_kev,
+        convergence_semi_angle_mrad=settings.convergence_semi_angle_mrad,
+        camera_constant_mm_angstrom=settings.camera_constant_mm_angstrom,
+        max_index=settings.holz_max_index,
+        g_max_inv_angstrom=settings.holz_g_max_inv_angstrom,
+        in_plane_rotation_deg=in_plane_rotation_deg,
+        apply_centering_absences=settings.apply_centering_absences,
+    )
     return CBEDPattern(
         phase=phase,
         zone_axis=zone_axis,
@@ -1262,5 +1769,118 @@ def simulate_cbed_pattern(
         holz_orders=holz_orders,
         holz_radii_mm=settings.camera_constant_mm_angstrom * holz_radii,
         nearest_disc_separation_mm=nearest,
+        holz_lines=lines,
+        beam_set=beam_set,
         provenance=provenance,
     )
+
+
+def _close_plane_group(operations: list[np.ndarray]) -> np.ndarray:
+    """Close a set of surviving plane operations under multiplication.
+
+    Purpose
+    -------
+    The operations tested against a pattern are *generators* — one rotation per
+    order, one matrix per mirror azimuth — not a group. Naming the survivors
+    directly would count ``{1, R_2, R_3, R_6}`` as four rotations and report a
+    four-fold axis where the crystal has a six-fold. Closing first is not a
+    tidiness step: it is what makes the name correct.
+
+    No re-verification is needed. A product of two symmetries of a map is a
+    symmetry of that map, so every element of the closure is one already.
+
+    Raises
+    ------
+    ValueError
+        If the closure exceeds twelve elements, the largest crystallographic
+        plane point group. That means a spurious operation survived the
+        intensity test, which is a sampling or tolerance problem and should be
+        reported rather than named.
+    """
+
+    closure: dict[tuple[float, ...], np.ndarray] = {}
+    for operation in [np.eye(2), *operations]:
+        closure.setdefault(tuple(np.round(np.asarray(operation).reshape(-1), 6) + 0.0), operation)
+    changed = True
+    while changed:
+        changed = False
+        for first in list(closure.values()):
+            for second in list(closure.values()):
+                product = first @ second
+                key = tuple(np.round(product.reshape(-1), 6) + 0.0)
+                if key not in closure:
+                    closure[key] = product
+                    changed = True
+        if len(closure) > 12:
+            raise ValueError(
+                f"The measured symmetry operations generate {len(closure)} elements, more "
+                "than the twelve of the largest crystallographic plane point group. A "
+                "spurious operation passed the intensity test: increase disc_samples so the "
+                "sharpest features are resolved, or tighten the tolerance."
+            )
+    return np.stack(list(closure.values()))
+
+
+def _bloch_disc_intensities(
+    phase: Phase,
+    zone_axis: ZoneAxis,
+    settings: ConvergentBeamConfig,
+    drawn_indices: np.ndarray,
+    *,
+    in_plane_rotation_deg: float,
+    tilt_u: np.ndarray,
+    tilt_v: np.ndarray,
+    outside: np.ndarray,
+) -> tuple[list[np.ndarray], np.ndarray, BeamSet]:
+    """Disc intensities from one coupled many-beam calculation.
+
+    The beam set is the drawn zeroth-zone reflections plus, when
+    ``settings.laue_zones`` asks for them, the higher-order reflections whose
+    Bragg loci cross the illumination cone. Only tilts inside the cone are
+    solved: the square sampling grid wastes 21 percent of its points on the
+    corners, and at ``O(n^3)`` per tilt that is worth not paying.
+    """
+
+    holz_zones = tuple(int(zone) for zone in settings.laue_zones if int(zone) != 0)
+    indices = drawn_indices
+    if holz_zones:
+        higher = beam_set_for_zone(
+            phase,
+            zone_axis,
+            beam_energy_kev=settings.beam_energy_kev,
+            max_index=settings.holz_max_index,
+            g_max_inv_angstrom=settings.holz_g_max_inv_angstrom,
+            max_excitation_error_inv_angstrom=settings.max_excitation_error_inv_angstrom,
+            convergence_semi_angle_mrad=settings.convergence_semi_angle_mrad,
+            laue_zones=holz_zones,
+            in_plane_rotation_deg=in_plane_rotation_deg,
+            apply_centering_absences=settings.apply_centering_absences,
+        )
+        indices = np.concatenate([drawn_indices, higher.miller_indices], axis=0)
+
+    beams = beam_set_from_indices(
+        phase,
+        zone_axis,
+        indices,
+        beam_energy_kev=settings.beam_energy_kev,
+        in_plane_rotation_deg=in_plane_rotation_deg,
+    )
+
+    inside = ~outside
+    tilts = np.stack([tilt_u[inside], tilt_v[inside]], axis=1)
+    solution = solve_bloch_waves(
+        beams,
+        tilts,
+        thickness_angstrom=settings.thickness_angstrom,
+        absorption=settings.absorption,
+    )
+
+    def scatter(column: np.ndarray) -> np.ndarray:
+        filled = np.zeros_like(tilt_u)
+        filled[inside] = column
+        return filled
+
+    maps = [
+        scatter(solution.intensities[:, beams.index_of(row)]) for row in drawn_indices
+    ]
+    return maps, scatter(solution.transmitted_intensity), beams

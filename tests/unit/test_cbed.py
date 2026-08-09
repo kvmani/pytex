@@ -29,6 +29,11 @@ from pytex.diffraction.cbed import (
     thickness_from_fringe_minima,
     two_beam_rocking_curve,
 )
+from pytex.diffraction.diffraction_groups import (
+    determine_point_group,
+    diffraction_group_for_zone_axis,
+)
+from pytex.diffraction.dynamical import AbsorptionModel
 from pytex.diffraction.kinematic import electron_wavelength_angstrom
 from pytex.diffraction.scattering import electron_scattering_factors, xray_form_factors
 
@@ -488,9 +493,15 @@ def test_pattern_describe_and_json_stay_in_lockstep(nickel: Phase) -> None:
     assert payload["zone_axis"] == [0, 0, 1]
     assert len(payload["discs"]) == len(pattern.discs)
     assert payload["disc_radius_mm"] == pytest.approx(pattern.config.disc_radius_mm)
-    # The limits must be stated, not implied.
+    # The limits must be stated, not implied. For the two-beam method the
+    # sharpest limit is that the pattern's symmetry is an artefact of the
+    # construction, and the prose must name the escape route.
     assert "two-beam" in prose
-    assert "diffraction-group" in prose
+    assert "belongs to the method rather than to the crystal" in prose
+    assert "method='bloch'" in prose
+    assert payload["method"] == "two-beam"
+    assert payload["beam_count"] is None
+    assert payload["predicted_diffraction_group"] == "4mm1_R"
 
 
 def test_pattern_reports_a_missing_reflection_rather_than_a_wrong_one(nickel: Phase) -> None:
@@ -518,3 +529,282 @@ def test_simulation_requires_a_unit_cell() -> None:
     )
     with pytest.raises(ValueError, match="carries no unit cell"):
         simulate_cbed_pattern(bare, ZoneAxis(np.array([0, 0, 1]), phase=bare))
+
+
+# --------------------------------------------------------------------------- #
+# Many-beam coupling, HOLZ lines, and the point-group determination
+# --------------------------------------------------------------------------- #
+#
+# The pair below is the whole demonstration in two structures. Zincblende GaAs
+# and a rocksalt arrangement of the same two species on the same lattice differ
+# only by where the second sublattice sits, and therefore only by the presence of
+# a centre of symmetry. Down [001] their diffraction groups differ in
+# whole-pattern symmetry -- 4_Rmm_R against 4mm1_R -- so the measurement
+# separates them, and this is the classic case CBED is known for.
+
+
+def _fcc_derived_phase(
+    name: str,
+    parameter_angstrom: float,
+    sublattices: tuple[tuple[str, tuple[float, float, float]], ...],
+    point_group: str,
+    space_group: tuple[str, int],
+) -> Phase:
+    """One FCC sublattice per (species, offset) pair."""
+
+    frame = crystal_frame()
+    lattice = Lattice(
+        parameter_angstrom,
+        parameter_angstrom,
+        parameter_angstrom,
+        90.0,
+        90.0,
+        90.0,
+        crystal_frame=frame,
+    )
+    bases = ((0.0, 0.0, 0.0), (0.0, 0.5, 0.5), (0.5, 0.0, 0.5), (0.5, 0.5, 0.0))
+    sites = tuple(
+        AtomicSite(
+            label=f"{species}{index}",
+            species=species,
+            fractional_coordinates=np.asarray(base, dtype=np.float64)
+            + np.asarray(offset, dtype=np.float64),
+        )
+        for species, offset in sublattices
+        for index, base in enumerate(bases)
+    )
+    return Phase(
+        name,
+        lattice=lattice,
+        symmetry=SymmetrySpec.from_point_group(point_group, reference_frame=frame),
+        crystal_frame=frame,
+        unit_cell=UnitCell(lattice=lattice, sites=sites),
+        space_group=SpaceGroupSpec(
+            symbol=space_group[0], number=space_group[1], reference_frame=frame
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
+def zincblende() -> Phase:
+    """Zincblende GaAs: point group ``-43m``, **no** centre of symmetry."""
+
+    return _fcc_derived_phase(
+        "gallium-arsenide",
+        5.6535,
+        (("Ga", (0.0, 0.0, 0.0)), ("As", (0.25, 0.25, 0.25))),
+        "-43m",
+        ("F-43m", 216),
+    )
+
+
+@pytest.fixture(scope="module")
+def centric_control() -> Phase:
+    """The same species on the same lattice, offset by ``1/2`` -- centrosymmetric."""
+
+    return _fcc_derived_phase(
+        "rocksalt-control",
+        5.6535,
+        (("Ga", (0.0, 0.0, 0.0)), ("As", (0.5, 0.5, 0.5))),
+        "m-3m",
+        ("Fm-3m", 225),
+    )
+
+
+def _symmetry_config(*, laue_zones: tuple[int, ...]) -> ConvergentBeamConfig:
+    """A coupled calculation cheap enough for the test lane but fine enough to read."""
+
+    return ConvergentBeamConfig(
+        convergence_semi_angle_mrad=5.0,
+        thickness_angstrom=1000.0,
+        disc_samples=45,
+        max_index=4,
+        g_max_inv_angstrom=1.2,
+        max_excitation_error_inv_angstrom=0.005,
+        method="bloch",
+        laue_zones=laue_zones,
+        holz_max_index=20,
+        holz_g_max_inv_angstrom=4.8,
+        absorption=AbsorptionModel(),
+    )
+
+
+def test_bloch_discs_are_mutually_consistent_and_conserve_intensity(nickel: Phase) -> None:
+    """The coupled pattern's discs share one wavefield, so they cannot over-sum.
+
+    In the two-beam path the transmitted disc is the *complement* of one
+    reflection and the diffracted discs are independent, so their total is
+    meaningless. Here the transmitted disc is a genuine bright-field intensity
+    and the drawn discs are a subset of one unitary wavefield, so their sum
+    cannot exceed one anywhere.
+    """
+
+    config = ConvergentBeamConfig(method="bloch", disc_samples=21)
+    pattern = simulate_cbed_pattern(
+        nickel, ZoneAxis(np.array([0, 0, 1]), phase=nickel), config=config
+    )
+    assert pattern.beam_set is not None
+    assert pattern.beam_set.size >= len(pattern.discs)
+
+    stacked = np.stack([np.nan_to_num(disc.intensity, nan=0.0) for disc in pattern.discs])
+    assert np.all(np.sum(stacked, axis=0) <= 1.0 + 1e-9)
+    assert np.all(np.nan_to_num(pattern.transmitted_disc.intensity, nan=0.0) <= 1.0 + 1e-9)
+
+
+def test_config_refuses_settings_that_would_be_silently_ignored() -> None:
+    """Each rejected combination would otherwise produce a plausible wrong answer."""
+
+    with pytest.raises(ValueError, match="method must be"):
+        ConvergentBeamConfig(method="multislice")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="Absorption is only meaningful"):
+        ConvergentBeamConfig(absorption=AbsorptionModel())
+    with pytest.raises(ValueError, match="laue_zones must include 0"):
+        ConvergentBeamConfig(method="bloch", laue_zones=(1,))
+    with pytest.raises(ValueError, match="only affect a coupled calculation"):
+        ConvergentBeamConfig(laue_zones=(0, 1))
+
+
+def test_symmetry_cannot_be_read_from_a_two_beam_pattern(nickel: Phase) -> None:
+    """Refusing is the point: a two-beam disc is symmetric in ``s`` by construction."""
+
+    pattern = simulate_cbed_pattern(
+        nickel,
+        ZoneAxis(np.array([0, 0, 1]), phase=nickel),
+        config=ConvergentBeamConfig(disc_samples=21),
+    )
+    with pytest.raises(ValueError, match="two-beam pattern"):
+        pattern.symmetry_observations()
+
+
+def test_symmetry_refuses_a_projection_calculation_by_default(nickel: Phase) -> None:
+    """A zeroth-Laue-zone beam set samples the projected potential, not the crystal."""
+
+    pattern = simulate_cbed_pattern(
+        nickel,
+        ZoneAxis(np.array([0, 0, 1]), phase=nickel),
+        config=ConvergentBeamConfig(method="bloch", disc_samples=21),
+    )
+    with pytest.raises(ValueError, match="zeroth Laue zone"):
+        pattern.symmetry_observations()
+    observations = pattern.symmetry_observations(require_holz=False)
+    assert observations.bright_field == "4mm"
+
+
+def test_predicted_diffraction_group_agrees_with_the_group_theory(nickel: Phase) -> None:
+    """The pattern's forward prediction must be the module's, not a second opinion."""
+
+    zone = ZoneAxis(np.array([0, 0, 1]), phase=nickel)
+    pattern = simulate_cbed_pattern(
+        nickel, zone, config=ConvergentBeamConfig(disc_samples=11)
+    )
+    assert (
+        pattern.predicted_diffraction_group().symbol
+        == diffraction_group_for_zone_axis(nickel, zone).symbol
+        == "4mm1_R"
+    )
+
+
+def test_holz_lines_are_attached_to_the_pattern(nickel: Phase) -> None:
+    """Line geometry is method-independent, so every pattern carries it."""
+
+    pattern = simulate_cbed_pattern(
+        nickel,
+        ZoneAxis(np.array([0, 0, 1]), phase=nickel),
+        config=ConvergentBeamConfig(
+            disc_samples=11, convergence_semi_angle_mrad=8.0, holz_g_max_inv_angstrom=5.2
+        ),
+    )
+    assert pattern.holz_lines is not None
+    assert pattern.holz_lines.bright_field_lines
+    assert pattern.to_json_dict()["bright_field_holz_line_count"] == len(
+        pattern.holz_lines.bright_field_lines
+    )
+    for line in pattern.holz_lines.bright_field_lines[:3]:
+        assert line.laue_zone == 1
+        assert line.chord_tilt_rad() is not None
+
+
+def test_the_missing_centre_of_symmetry_is_determined_from_the_pattern(
+    zincblende: Phase, centric_control: Phase
+) -> None:
+    """The capability, end to end, on the pair that differs only by a centre.
+
+    Down ``[001]`` zincblende has diffraction group ``4_Rmm_R`` -- a four-fold
+    bright-field disc over a merely two-fold whole pattern -- while the
+    centrosymmetric control has ``4mm1_R``, four-fold in both. Measuring that
+    difference from the simulated intensities and inverting it returns
+    ``{-42m, -43m}`` for the one and a centrosymmetric-inclusive set for the
+    other. This is the determination kinematic diffraction cannot make.
+    """
+
+    config = _symmetry_config(laue_zones=(0, 1))
+    polar = simulate_cbed_pattern(
+        zincblende, ZoneAxis(np.array([0, 0, 1]), phase=zincblende), config=config
+    )
+    centric = simulate_cbed_pattern(
+        centric_control, ZoneAxis(np.array([0, 0, 1]), phase=centric_control), config=config
+    )
+
+    assert polar.predicted_diffraction_group().symbol == "4_Rmm_R"
+    assert centric.predicted_diffraction_group().symbol == "4mm1_R"
+
+    polar_observations = polar.symmetry_observations()
+    assert polar_observations.bright_field == "4mm"
+    assert polar_observations.whole_pattern == "2mm"
+
+    centric_observations = centric.symmetry_observations()
+    assert centric_observations.bright_field == "4mm"
+    assert centric_observations.whole_pattern == "4mm"
+
+    determination = polar.determine_point_group()
+    assert determination.diffraction_groups == ("4_Rmm_R",)
+    assert set(determination.point_groups) == {"-42m", "-43m"}
+    assert determination.is_centrosymmetric is False
+
+    control = centric.determine_point_group()
+    assert "m-3m" in control.point_groups
+    assert control.is_centrosymmetric is not False
+
+
+def test_a_projection_calculation_makes_the_polar_crystal_look_centrosymmetric(
+    zincblende: Phase,
+) -> None:
+    """The trap, demonstrated rather than described.
+
+    The same crystal, the same code, one flag: with the beam set confined to the
+    zeroth Laue zone, gallium arsenide down ``[001]`` reports the four-fold
+    whole-pattern symmetry of a centrosymmetric crystal, and the missing centre
+    is invisible. This is why `symmetry_observations` refuses a projection
+    calculation unless asked twice.
+    """
+
+    projection = simulate_cbed_pattern(
+        zincblende,
+        ZoneAxis(np.array([0, 0, 1]), phase=zincblende),
+        config=_symmetry_config(laue_zones=(0,)),
+    )
+    observations = projection.symmetry_observations(require_holz=False)
+    assert observations.bright_field == "4mm"
+    assert observations.whole_pattern == "4mm"
+    assert "-43m" not in determine_point_group(observations).point_groups
+
+
+def test_bloch_describe_and_json_report_the_coupling(zincblende: Phase) -> None:
+    """The prose must say which method ran and whether symmetry can be read."""
+
+    pattern = simulate_cbed_pattern(
+        zincblende,
+        ZoneAxis(np.array([0, 0, 1]), phase=zincblende),
+        config=_symmetry_config(laue_zones=(0, 1)),
+    )
+    prose = pattern.describe()
+    assert "Bloch-wave" in prose
+    assert "mutually consistent" in prose
+    assert "projection symmetry is broken" in prose
+
+    payload = pattern.to_json_dict()
+    assert payload["method"] == "bloch"
+    assert payload["beam_count"] == pattern.beam_set.size  # type: ignore[union-attr]
+    assert payload["holz_beam_count"] > 0
+    assert payload["absorption"]["reflection_ratio"] == pytest.approx(0.1)
+    assert payload["predicted_diffraction_group"] == "4_Rmm_R"

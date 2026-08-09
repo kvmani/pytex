@@ -133,6 +133,7 @@ __all__ = [
     "diffraction_group_for_zone_axis",
     "diffraction_group_symbols",
     "diffraction_group_table",
+    "plane_point_group_symbol",
 ]
 
 #: Schema identifier of the point-group determination payload.
@@ -196,6 +197,50 @@ def _rotation_angle(matrix: np.ndarray) -> float:
     """Rotation angle of a 2D proper operator, in ``[0, 2 pi)``."""
 
     return math.atan2(float(matrix[1, 0]), float(matrix[0, 0])) % (2.0 * math.pi)
+
+
+def plane_point_group_symbol(operators: ArrayLike) -> str:
+    """Name the two-dimensional point group formed by a set of plane operations.
+
+    What it does
+        Collapses duplicates, counts the proper rotations and asks whether any
+        mirror is present, and returns one of the ten symbols in
+        :data:`PLANE_POINT_GROUP_SYMBOLS`.
+
+    When to use it
+        When a symmetry has been *measured* rather than derived — for example by
+        testing which operations leave a simulated CBED disc unchanged — and the
+        surviving operations must be named before they can be compared with a
+        diffraction group's prediction. This is the bridge
+        `pytex.diffraction.cbed.CBEDPattern.symmetry_observations` crosses.
+
+    Parameters
+    ----------
+    operators:
+        ``(n, 2, 2)`` orthogonal matrices. They must form a group; a set that
+        does not will produce a rotation count that is not 1, 2, 3, 4 or 6 and
+        will raise, which is the intended failure for a measurement that has
+        found an inconsistent set.
+
+    Returns
+    -------
+    str
+        The Hermann-Mauguin symbol.
+
+    Raises
+    ------
+    ValueError
+        If the operations do not form a crystallographic plane point group.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> plane_point_group_symbol([np.eye(2), -np.eye(2)])
+    '2'
+    """
+
+    matrices = as_float_array(operators, shape=(None, 2, 2))
+    return _plane_group_symbol(tuple(matrices))
 
 
 # --------------------------------------------------------------------------- #

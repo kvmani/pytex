@@ -4,8 +4,8 @@ from pytex.diffraction.cbed import (
     CBEDDisc,
     CBEDPattern,
     ConvergentBeamConfig,
+    SimulationMethod,
     TwoBeamThicknessReport,
-    electron_structure_factor_angstrom,
     extinction_distance_angstrom,
     fringe_minimum_excitation_errors,
     holz_ring_radii_inv_angstrom,
@@ -116,7 +116,10 @@ from pytex.diffraction.preferred_orientation import (
     preferred_orientation_factor_table,
 )
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
-from pytex.diffraction.scattering import electron_scattering_factors
+from pytex.diffraction.scattering import (
+    electron_scattering_factors,
+    electron_structure_factor_angstrom,
+)
 from pytex.diffraction.solving import (
     COORDINATE_UNITS,
     DEFAULT_ANGLE_TOLERANCE_DEG,
@@ -216,6 +219,7 @@ __all__ = [
     "SAEDPattern",
     "SAEDSpot",
     "ScatteringFactorTable",
+    "SimulationMethod",
     "SolvedSpot",
     "SpotAssignment",
     "SpotCoincidence",

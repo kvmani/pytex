@@ -26,12 +26,18 @@ from importlib import resources
 from typing import Any
 
 import numpy as np
+from numpy.typing import ArrayLike
 
+from pytex.core._arrays import as_float_array
 from pytex.core._chemistry import atomic_number
+from pytex.core.lattice import Phase
 
 _DATA_PACKAGE = "pytex.diffraction._data"
 _TABLE_FILENAME = "xray_scattering_factors.json"
 _DE_GRAEF_MCHENRY_SCALE = 41.78214
+
+#: Electron rest energy in keV, for the relativistic correction ``gamma``.
+_ELECTRON_REST_ENERGY_KEV = 510.99895
 
 
 @lru_cache(maxsize=1)
@@ -158,8 +164,90 @@ def electron_scattering_factors(species: str, s_values: np.ndarray) -> np.ndarra
     return np.asarray(np.where(np.abs(s) < 1e-12, zero_angle_limit, factors), dtype=np.float64)
 
 
+def electron_structure_factor_angstrom(
+    phase: Phase,
+    hkl: ArrayLike,
+    *,
+    beam_energy_kev: float = 200.0,
+) -> np.ndarray:
+    """Electron structure factors ``F_g`` in angstrom, relativistically corrected.
+
+    What it does
+        Sums the Mott-Bethe electron scattering factors over the unit cell,
+
+        .. math::
+
+           F_{g} = \\gamma \\sum_{j} o_{j}\\, f_{e}^{j}(s)\\,
+                   e^{-B_{j}s^{2}}\\, e^{2\\pi i\\,\\mathbf{g}\\cdot\\mathbf{r}_{j}},
+           \\qquad s = |\\mathbf{g}|/2,
+
+        with the relativistic factor
+        :math:`\\gamma = 1 + E/m_{0}c^{2}` applied because the incident electron
+        is not slow: at 200 kV it is 1.39, and omitting it would make every
+        extinction distance 39 percent too long.
+
+    When to use it
+        Whenever the *absolute* scale matters — extinction distances, dynamical
+        rocking curves, thickness determination. For relative spot intensities
+        within one zone, `pytex.diffraction.kinematic.electron_structure_factors`
+        is the cheaper atomic-number proxy and is sufficient.
+
+    Parameters
+    ----------
+    phase:
+        Must carry a unit cell with sites; a bare lattice has no structure
+        factor and raises rather than returning a fabricated one.
+    hkl:
+        ``(n, 3)`` integer Miller indices, or one triple.
+    beam_energy_kev:
+        Accelerating voltage, for the wavelength and for ``gamma``.
+
+    Returns
+    -------
+    np.ndarray
+        ``(n,)`` complex structure factors in angstrom.
+
+    Raises
+    ------
+    ValueError
+        If the phase has no unit-cell sites.
+    """
+
+    indices = np.atleast_2d(np.asarray(hkl, dtype=np.int64))
+    if indices.ndim != 2 or indices.shape[1] != 3:
+        raise ValueError("hkl must have shape (3,) or (n, 3).")
+    if phase.unit_cell is None or not phase.unit_cell.sites:
+        raise ValueError(
+            "Electron structure factors on an absolute scale need the atom positions: "
+            f"phase '{phase.name}' carries no unit cell. Load the phase from a CIF, or "
+            "use the relative-intensity path in pytex.diffraction.kinematic."
+        )
+    if not np.isfinite(beam_energy_kev) or beam_energy_kev <= 0.0:
+        raise ValueError("beam_energy_kev must be finite and strictly positive.")
+
+    reciprocal = as_float_array(phase.lattice.reciprocal_basis().matrix, shape=(3, 3))
+    g_cartesian = indices.astype(np.float64) @ reciprocal.T
+    s_values = np.linalg.norm(g_cartesian, axis=1) / 2.0
+
+    gamma = 1.0 + float(beam_energy_kev) / _ELECTRON_REST_ENERGY_KEV
+    total = np.zeros(indices.shape[0], dtype=np.complex128)
+    for site in phase.unit_cell.sites:
+        factors = electron_scattering_factors(site.species, s_values)
+        b_iso = 0.0 if site.b_iso is None else float(site.b_iso)
+        damping = np.exp(-b_iso * s_values * s_values)
+        phase_argument = indices.astype(np.float64) @ site.fractional_coordinates
+        total += (
+            float(site.occupancy)
+            * factors
+            * damping
+            * np.exp(2.0j * np.pi * phase_argument)
+        )
+    return np.asarray(gamma * total, dtype=np.complex128)
+
+
 __all__ = [
     "electron_scattering_factors",
+    "electron_structure_factor_angstrom",
     "tabulated_species",
     "xray_form_factor_matrix",
     "xray_form_factors",

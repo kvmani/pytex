@@ -40,9 +40,9 @@ diffraction engine it extends. Recorded here rather than decided silently.
 | --- | --- | --- | --- |
 | 0 | Survey `cbed.py`, the symmetry surface, and the docs hooks; open this entry | done | (step 1) |
 | 1 | `pytex.diffraction.dynamical`: Bloch waves + absorption, tests, theory note | done | e671b8f |
-| 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | done | (this commit) |
-| 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | done | (this commit) |
-| 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | pending | |
+| 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | done | 660ff94 |
+| 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | done | 660ff94 |
+| 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | done | (this commit) |
 | 5 | Notebook 29, docs index, symbol registry, worked examples, parity matrix | pending | |
 
 ### Step 1 outcome (2026-08-09)
@@ -179,6 +179,72 @@ recommends a second zone axis instead, and names the tool that finds it.
 
 **Side effect.** Sixteen more public names moved the class-model atlas counts from 253/236 to
 260/243; figures regenerated and the atlas prose updated.
+
+### Step 4 outcome (2026-08-10)
+
+`ConvergentBeamConfig` gains `method`, `absorption`, `laue_zones`, `holz_max_index` and
+`holz_g_max_inv_angstrom`; `CBEDPattern` gains `beam_set`, `holz_lines`,
+`predicted_diffraction_group()`, `symmetry_observations()` and `determine_point_group()`. Nine
+new tests in `tests/unit/test_cbed.py`. The `describe()` text that advertised all four features
+as unimplemented is gone.
+
+**The import cycle was removed structurally, not with a lazy import.**
+`electron_structure_factor_angstrom` moved from `cbed.py` to `scattering.py`, which is its
+proper home next to `electron_scattering_factors` and which nothing in the diffraction package
+depends on. `cbed` now imports `dynamical`, `holz` and `diffraction_groups` at module level and
+none of them imports `cbed`. The public import path is preserved by re-export, and
+`tests/unit/test_cbed.py` still imports it from `cbed` unchanged.
+
+**`method="two-beam"` stays the default.** It is the model `thickness_from_fringe_minima`
+inverts, and switching the default would silently change every existing result. `"bloch"` is
+the coupled path; the config refuses combinations that would be silently ignored — absorption
+without `bloch` (the closed form has no absorptive term), HOLZ zones without `bloch` (each disc
+is independent there, so a HOLZ beam could not change it), and `laue_zones` without `0` (there
+would be no discs to draw).
+
+**The headline result, end to end.** Zincblende GaAs and a rocksalt structure on the *same*
+lattice with the *same* two species, differing only by where the second sublattice sits:
+
+| | predicted | measured BF | measured WP | determination |
+| --- | --- | --- | --- | --- |
+| GaAs `[001]`, ZOLZ+FOLZ | `4_Rmm_R` | `4mm` | `2mm` | `{-42m, -43m}`, **not centrosymmetric** |
+| control `[001]`, ZOLZ+FOLZ | `4mm1_R` | `4mm` | `4mm` | includes `m-3m`, centre not excluded |
+| GaAs `[001]`, **ZOLZ only** | `4_Rmm_R` | `4mm` | `4mm` | looks exactly like the control |
+
+The residuals are `0.00` against `0.32` — no tolerance judgement is involved. The third row is
+the point of the whole exercise: same crystal, same code, one flag, and the missing centre
+becomes invisible, because the projected potential of zincblende down `[001]` *is*
+centrosymmetric. `symmetry_observations()` therefore refuses a ZOLZ-only pattern unless asked
+twice, and refuses a two-beam pattern outright.
+
+**Three measurement bugs found and fixed, each of which produced a plausible wrong answer:**
+
+1. **The surviving operations must be closed into a group before naming.** They are tested as
+   generators — one rotation per order — so `{1, R2, R3, R6}` is four matrices and was being
+   counted as a four-fold axis where the crystal has a six-fold.
+2. **A worst-case criterion is unusable.** HOLZ lines are narrower than the tilt sampling can
+   resolve, so resampling at a rotation that is not grid-aligned produces large errors along a
+   few thin loci while the map as a whole is symmetric. The residual is now the mean absolute
+   deviation, which weights those loci by their area.
+3. **Per-disc normalization needs a floor.** A systematically absent reflection has an
+   identically zero disc whose floating-point noise has a mean absolute deviation of order
+   1e-30; dividing by it turned rounding error into a catastrophic symmetry violation. Silicon
+   down `[001]` has four such discs, the absent `{200}`, and they destroyed the four-fold.
+   But normalizing by the *brightest* disc instead is equally wrong — GaAs breaks its four-fold
+   in the near-forbidden `{200}` discs, whose contrast is half a percent of the strongest, and
+   that normalization hid it. The floor is 1e-6 of the strongest disc's contrast.
+
+**The `+-g` observation is deliberately not measured, and this was the hardest finding.**
+Buxton's `2_R` compares the `+g` and `-g` *dark-field* discs, each recorded with its own
+reflection at the Bragg condition — two exposures at different specimen tilts, related by
+reciprocity. It is not a two-fold rotation of a single zone-axis pattern. Treating it as one
+gives a test that fails, and the derivation says why:
+`s_-g(-theta) - s_g(theta) = -2 g_z`, which vanishes only in the zeroth Laue zone. The
+numerical check settles it: the residual *grows* with the beam set for centric and acentric
+structures alike (Si 0.06 -> 0.37, GaAs 0.13 -> 0.55 as the excitation window widens), so it is
+physics and not truncation. `symmetry_observations` therefore leaves `friedel_pair_two_fold` to
+the caller rather than reporting a number that would sometimes be wrong. The determination does
+not need it: at `[001]` the bright-field and whole-pattern symmetries settle the centre outright.
 
 ## Repository Content Rule And PDF History Purge — COMPLETE (2026-08-09)
 

@@ -121,13 +121,13 @@ from pytex.core._arrays import as_float_array, normalize_vector
 from pytex.core.lattice import Phase, ZoneAxis
 from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.provenance import ProvenanceRecord
-from pytex.diffraction.cbed import electron_structure_factor_angstrom
 from pytex.diffraction.kinematic import (
     centering_allowed_mask,
     electron_wavelength_angstrom,
     zone_basis_from_axis,
 )
 from pytex.diffraction.physics import ReflectionCondition
+from pytex.diffraction.scattering import electron_structure_factor_angstrom
 
 __all__ = [
     "BLOCH_WAVE_SOLUTION_SCHEMA",
@@ -337,7 +337,7 @@ def potential_coefficients_inv_angstrom(
 
     See Also
     --------
-    `pytex.diffraction.cbed.electron_structure_factor_angstrom` : supplies
+    `pytex.diffraction.scattering.electron_structure_factor_angstrom` : supplies
         :math:`F_{g}`.
     """
 
