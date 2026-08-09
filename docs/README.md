@@ -75,6 +75,7 @@
 - [Euler Convention Handling](tex/theory/euler_convention_handling.tex)
 - [Fundamental Region Reduction](tex/theory/fundamental_region_reduction.tex)
 - [Hexagonal Conventions](tex/theory/hexagonal_conventions.tex)
+- [Orientation Representations And The Equal-Volume Maps](tex/theory/orientation_representations.tex)
 - [Orientation Space And Disorientation](tex/theory/orientation_space_and_disorientation.tex)
 - [Reference Frames](tex/theory/reference_frames.tex)
 - [Crystal Visualization Geometry](tex/theory/crystal_visualization_geometry.tex)

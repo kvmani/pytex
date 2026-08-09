@@ -19,6 +19,7 @@ fixing is what is needed.
 - [../../tex/theory/canonical_data_model.tex](../../tex/theory/canonical_data_model.tex)
 - [../../tex/theory/euler_convention_handling.tex](../../tex/theory/euler_convention_handling.tex)
 - [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
+- [../../tex/theory/orientation_representations.tex](../../tex/theory/orientation_representations.tex)
 - [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
 - [../../tex/theory/hexagonal_conventions.tex](../../tex/theory/hexagonal_conventions.tex)
 - [../../tex/theory/crystal_structures_and_cif_import.tex](../../tex/theory/crystal_structures_and_cif_import.tex)

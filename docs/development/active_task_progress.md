@@ -67,19 +67,51 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | # | Step | Status | Commit |
 | --- | --- | --- | --- |
 | 0 | Survey the existing conversion surface; open this entry | done | (this commit) |
-| 1 | `pytex.core.representations` + tests | pending | |
+| 1 | `pytex.core.representations` + tests + theory note | done | (this commit) |
 | 2 | Notebook 26: rotation and orientation representations | pending | |
 | 3 | CBED module + tests | pending | |
 | 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | pending | |
 | 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
 | 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
 
+### Step 1 outcome (2026-08-09)
+
+`src/pytex/core/representations.py` (≈1150 lines) plus 39 tests in
+`tests/unit/test_orientation_representations.py`, and the theory note
+`docs/tex/theory/orientation_representations.tex`.
+
+**The cube-to-ball map was derived, not transcribed.** The Roşca–Morawiec–De Graef map is
+usually quoted as a block of constants, and a mis-remembered constant produces a map that still
+looks plausible. It is instead derived here from the two conditions that determine it —
+sub-cubes map onto spheres of equal volume, giving `r = z (6/π)^(1/3)`; and each cube face maps
+to its own spherical *sector*, not a cap, because six caps of solid angle 2π/3 overlap and
+cannot tile. Those force an area-preserving square-to-sector map, which factors into a planar
+wedge and a Lambert lift, and fix the wedge prefactor analytically at `2^(1/4) √(6/π)` —
+confirmed by the fact that the same value then satisfies the sector-boundary condition at every
+azimuth, not just the one it was solved at.
+
+**The tests assert the defining properties rather than stored numbers.** Jacobian determinant
+1 everywhere (finite differences, off the branch kinks), the cube corner landing exactly on the
+ball surface, every face of every sub-cube landing on one sphere, continuity across the pyramid
+boundary and the face diagonal, and — the sharpest one — a uniform cube sample reproducing the
+analytic mean rotation angle of SO(3), `π/2 + 2/π = 126.4756 deg`. A wrong constant fails all of
+them; a table of copied outputs would have failed none.
+
+**Also landed:** vectorized Euler conversions that match the per-object path exactly (the
+existing `RotationSet.as_euler_set` loops in Python); `convert_orientations`, routing all ten
+representations through quaternions so there are ten conversions rather than ninety;
+`ideal_orientation_indices`, the inverse of `Orientation.from_miller`, reporting the nearest
+`(hkl)[uvw]` **with its residual angle** and the four-index form for hexagonal phases; and the
+`OrientationRepresentations` / `OrientationRepresentationSet` reports with `describe()` and
+`to_json_dict()`.
+
+**Side effect.** The 21 new public names moved the class-model atlas counts from 242/226 to
+246/229, so `docs/figures/class_model_*.svg` were regenerated and the atlas page's prose count
+updated — the test that forbids hand-transcribed counts caught it, as designed.
+
 ### Next actions
 
-Step 1. `src/pytex/core/representations.py`: vectorized homochoric and cubochoric conversions
-(Roşca–Morawiec–De Graef equal-volume cube-to-ball map), recovery of the ideal-orientation
-`(hkl)[uvw]` indices from an orientation matrix, and an `OrientationRepresentations` report
-carrying every form with `describe()` and `to_json_dict()`.
+Step 2: notebook 26, the rotation and orientation representation tutorial.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 
