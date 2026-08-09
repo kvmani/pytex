@@ -5,6 +5,43 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Current Task: Class & Object Model Atlas — IN PROGRESS (2026-08-09)
+
+**Objective.** Give the Sphinx site a Class & Object Model Atlas: an overview of the library
+architecture, an honest class-hierarchy view, and UML-style object-model diagrams per domain
+(core, texture, EBSD, diffraction, TEM), generated from the source so they cannot drift.
+
+**Key finding from the first inspection pass (drives the whole design).** PyTex has 241 public
+classes, 225 of them dataclasses, and only **6 internal inheritance edges** (`TiltEnvelope` ->
+4 envelopes; `ElasticTensor` -> stiffness/compliance) plus 10 `StrEnum` vocabularies and 2
+`Protocol`s. A Doxygen-style inheritance atlas would therefore be nearly empty and would
+misrepresent the design. The rich, real structure is **composition**: 390 typed dataclass-field
+references between public classes. The atlas leads with the object model and states the
+composition-first fact explicitly, with the small hierarchy shown in full rather than padded.
+
+**Tooling constraint.** No Graphviz `dot` binary and no `pylint`/`pyreverse` in this environment,
+so `sphinx.ext.inheritance_diagram` and pyreverse are both unavailable — and adding a
+system-binary dependency to the docs build would be a regression. The atlas is therefore rendered
+by PyTex's own SVG stack (`pytex.plotting.svg_primitives`, canonical style tokens, Arial advance
+metrics), the same path the reference-frame and algorithm figures already use.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 0 | Inspect codebase + docs architecture, choose approach | done | (this entry) |
+| 1 | Introspection module: build the class model from the source | pending | |
+| 2 | `pytex.plotting.class_diagrams` layered UML renderer + tests | pending | |
+| 3 | Generator script + canonical SVG assets in `docs/figures/` | pending | |
+| 4 | Sphinx page, cross-links from architecture/API/library-structure | pending | |
+| 5 | Build the site, inspect the rendered diagrams, iterate | pending | |
+
+### Next actions
+
+Step 1: `scripts/class_model.py` — walk `pytex`, resolve dataclass field type hints, emit nodes
+(name, module, stereotype, key fields) and typed relations (composition / association /
+inheritance), with per-domain view selection.
+
 ## Current Task: Pole-Figure Arithmetic (PFA) — COMPLETE (2026-08-08)
 
 **Objective.** Make pole-figure arithmetic possible. It is today structurally blocked, not merely
