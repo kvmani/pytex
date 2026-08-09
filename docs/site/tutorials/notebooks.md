@@ -52,6 +52,7 @@ notebooks/23_transformation_crystallography_end_to_end
 notebooks/24_tem_tilt_navigation
 notebooks/25_pole_figure_arithmetic
 notebooks/26_orientation_representations
+notebooks/27_tem_pattern_indexing_round_trip
 ```
 
 ## Orientation-Relationship Teaching Track

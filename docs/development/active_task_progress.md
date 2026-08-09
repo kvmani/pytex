@@ -70,7 +70,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | 1 | `pytex.core.representations` + tests + theory note | done | (this commit) |
 | 2 | Notebook 26: rotation and orientation representations | done | (this commit) |
 | 3 | CBED module + tests + algorithm note | done | (this commit) |
-| 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | pending | |
+| 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | done | (this commit) |
 | 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
 | 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
 
@@ -176,9 +176,42 @@ two-beam calculation), absorption, HOLZ lines within the bright-field disc, and 
 diffraction-group symmetry determination that would give the point group including its
 centrosymmetry.
 
+### Step 4 outcome (2026-08-09)
+
+`docs/site/tutorials/notebooks/27_tem_pattern_indexing_round_trip.ipynb`: 31 cells, 12 code.
+Simulate a zone-axis pattern, hand the bare spot positions to `solve_saed_pattern` as if
+picked off a micrograph, and check what comes back — for four Ni zones and four Zr zones.
+
+**The notebook states what a round trip does not prove.** It tests the forward and inverse
+models for *mutual* consistency; a convention error shared by both would round-trip perfectly.
+So it is an internal-consistency test that complements, and does not replace, the external
+pymatgen baselines. Saying which is which was worth a paragraph.
+
+**Three findings the run produced, each now a section rather than a footnote:**
+
+1. **The recovered zone axis is a symmetry orbit, not a triple.** Zr `[10-10]` comes back as a
+   different member of its 3-element orbit. Checking a round trip by string comparison would
+   call that a failure; checking up to symmetry calls it correct, which it is.
+2. **Ni `[112]` has a genuine residual ambiguity, and the others do not.** Every pattern is
+   invariant under a half turn about the beam, because Friedel's law makes the spot set
+   centrosymmetric. For `[001]`, `[011]` and `[111]` that half turn *is* a cubic symmetry
+   operation, so the disorientation is zero. `<112>` is not a two-fold axis of m-3m, so the
+   two returned solutions are physically different orientations with identical patterns — the
+   true one is in the report but is not ranked first. This is what `pytex.tem.ambiguity`
+   enumerates, and the notebook now connects the two.
+3. **Comparing orientations without symmetry reduction looks like a bug.** The raw angle
+   between the true and recovered rotations is routinely 90-180 degrees while the
+   disorientation is zero. Shown as a column rather than described.
+
+**The inconclusive example had to be made honest.** Two spots at the default 3 percent length
+tolerance still identify nickel; the first draft claimed otherwise. At 5 percent — realistic
+for hand-picked spots — a zirconium zone explains them equally well and `is_conclusive` flips.
+The notebook shows both tolerances and draws the real lesson: set the tolerance to what the
+picking achieves, because a tighter one buys confidence the data does not support.
+
 ### Next actions
 
-Step 4: notebook 27, the SAED generate-then-index round trip for Ni and Zr.
+Step 5: notebook 28, the CBED tutorial for Ni and Zr.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 
