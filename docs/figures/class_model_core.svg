@@ -241,6 +241,6 @@
   <text x="58.0" y="1753.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
   <text x="56.0" y="1780.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Phase is the join: one lattice, one symmetry, one crystal frame.</text>
   <text x="56.0" y="1798.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">A Miller object becomes a CrystalPlane or CrystalDirection once bound to a phase.</text>
-  <text x="56.0" y="1816.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 94 classes carry it, on every result object.</text>
+  <text x="56.0" y="1816.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 96 classes carry it, on every result object.</text>
   <text x="56.0" y="1834.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>

@@ -164,7 +164,15 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.diffraction.diffraction_groups
+```
+
+```{eval-rst}
 .. automodule:: pytex.diffraction.dynamical
+```
+
+```{eval-rst}
+.. automodule:: pytex.diffraction.holz
 ```
 
 ```{eval-rst}

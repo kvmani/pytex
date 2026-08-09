@@ -39,9 +39,9 @@ diffraction engine it extends. Recorded here rather than decided silently.
 | # | Step | Status | Commit |
 | --- | --- | --- | --- |
 | 0 | Survey `cbed.py`, the symmetry surface, and the docs hooks; open this entry | done | (step 1) |
-| 1 | `pytex.diffraction.dynamical`: Bloch waves + absorption, tests, theory note | done | (this commit) |
-| 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | pending | |
-| 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | pending | |
+| 1 | `pytex.diffraction.dynamical`: Bloch waves + absorption, tests, theory note | done | e671b8f |
+| 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | done | (this commit) |
+| 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | done | (this commit) |
 | 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | pending | |
 | 5 | Notebook 29, docs index, symbol registry, worked examples, parity matrix | pending | |
 
@@ -108,6 +108,77 @@ aberrations.
 **Side effect.** Nine new public names moved the class-model atlas counts from 250/233 to
 253/236, so `docs/figures/class_model_*.svg` were regenerated and the atlas page's prose
 counts updated.
+
+### Step 2 outcome (2026-08-10)
+
+`src/pytex/diffraction/holz.py`, 16 tests in `tests/unit/test_holz.py`.
+
+**The geometry is exact and is checked against the other module.** Because `s_g` is affine in the
+incident tilt, `s_g = 0` is a straight line, so line positions are closed-form rather than sampled.
+The test takes points on a line and asks `pytex.diffraction.dynamical` — which derived the
+excitation error for a different purpose — what `s_g` is there: zero to 1e-15. Two modules agreeing
+to machine precision is worth more than either agreeing with a stored number.
+
+**The metrology trap is a theorem, not a caveat.** Scaling the lattice by `1+eps` and scaling the
+wavelength by the same factor return every line to its original position **exactly**, at every
+reflection simultaneously (asserted to 1e-16 for strains from 1e-4 to 2e-2). So HOLZ line positions
+cannot separate a strained lattice from a mis-set accelerating voltage, which is why quantitative
+HOLZ work calibrates the voltage on a standard first. `offset_at(lattice_strain=..., 
+wavelength_angstrom=...)` takes both arguments precisely so the degeneracy cannot be papered over.
+
+**The numbers explain the practice.** For Ni [001] at 200 kV in a 1000 A foil, the best *single*
+line resolves a strain of 3.6e-3 — far short of the 1e-4 the technique is known for. The best
+*intersection* of two near-parallel lines resolves 6.3e-5, because a crossing moves as
+`1/sin(phi)` times faster than its lines. That is why HOLZ measurements read intersections, and the
+module reports the amplification rather than leaving the reader to wonder where the sensitivity
+comes from. Line half-width `1/(t |g_perp|)` falls as `1/t`, so the resolvable strain does too:
+HOLZ metrology wants a *thick* foil, the opposite of the usual instinct.
+
+**Deliberately geometry only.** No intensities: line positions are exact, line contrast needs the
+coupled dynamical solution and inherits all of its approximations. `holz_line_pattern` accordingly
+does not require a unit cell, and a test asserts that — atoms decide whether a line is visible, not
+where it is.
+
+### Step 3 outcome (2026-08-10)
+
+`src/pytex/diffraction/diffraction_groups.py`, 33 tests in
+`tests/unit/test_diffraction_groups.py`.
+
+**The 31 diffraction groups are derived, not transcribed.** Each crystal operator `S` is classified
+by its action on the beam direction — fixes it, reverses it, or neither — and the first two classes
+contribute their transverse restriction `S|_perp`, tagged with the reciprocity flag when `S`
+reverses the beam. That map is a homomorphism onto a subgroup of (plane point group) x Z2, and
+scanning all 32 point groups over their characteristic directions yields exactly Buxton's 31, whose
+membership the test compares symbol by symbol. The point-group-to-diffraction-group table
+(Buxton Table 2) is likewise computed by inversion rather than copied.
+
+**Two of the observables are derived too.** Whole-pattern symmetry is the untagged subgroup, because
+a tagged element needs reciprocity, which maps a point in one disc to an incident direction outside
+the illumination cone. Bright-field symmetry is `phi(D)` with `phi(T, tagged) = -T`, because inside
+the direct disc the reciprocity displacement is proportional to `g_perp` and therefore vanishes,
+leaving only reciprocity's own inversion of the incident direction. Every canonical entry checks
+out: `m-3m [001] -> 4mm1_R`, `-43m [001] -> 4_Rmm_R (BF 4mm, WP 2mm)`, `432 [001] -> 4m_Rm_R`,
+`-6m2 [001] -> 3m1_R` with a **six**-fold bright-field disc over a `3m` whole pattern, `m-3m [111]
+-> 6_Rmm_R` with `3m` whole pattern (not the 6mm a kinematic pattern appears to show).
+
+**Centrosymmetry is an exact correspondence.** `2_R` requires an operator acting as `-1` on the beam
+direction and as `-1` on the transverse plane, which is the inversion and nothing else. So `2_R` is
+in the diffraction group at *every* beam direction of a centrosymmetric crystal and at none of an
+acentric one — asserted over all 32 point groups at every characteristic direction. Supplying only
+the `+-g` observation therefore splits the 32 point groups into exactly 21 and 11, which is the
+arithmetic of the whole technique and is asserted as such.
+
+**And `2_R` is invisible in BF and WP** (`phi(2, tagged) = -2 = 1`), so no amount of disc symmetry
+decides the centre. That is why `SymmetryObservations` carries `friedel_pair_two_fold` as a separate
+field and why leaving it unknown leaves the verdict `None` by construction rather than by accident.
+
+**Not implemented, and `describe()` says so:** Buxton's dark-field and `+-g` observations for
+reflections lying on symmetry lines, recorded at their own Bragg condition. They would narrow cases
+such as `4_Rmm_R -> {-42m, -43m}` that the three implemented observations leave open; the report
+recommends a second zone axis instead, and names the tool that finds it.
+
+**Side effect.** Sixteen more public names moved the class-model atlas counts from 253/236 to
+260/243; figures regenerated and the atlas prose updated.
 
 ## Repository Content Rule And PDF History Purge — COMPLETE (2026-08-09)
 
