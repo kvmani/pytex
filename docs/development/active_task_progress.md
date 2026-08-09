@@ -33,8 +33,8 @@ metrics), the same path the reference-frame and algorithm figures already use.
 | 1 | Introspection module: build the class model from the source | done | (this commit) |
 | 2 | `pytex.plotting.class_diagrams` layered UML renderer + tests | done | (this commit) |
 | 3 | Generator script + canonical SVG assets in `docs/figures/` | done | (this commit) |
-| 4 | Sphinx page, cross-links from architecture/API/library-structure | pending | |
-| 5 | Build the site, inspect the rendered diagrams, iterate | pending | |
+| 4 | Sphinx page, cross-links from architecture/API/library-structure | done | (this commit) |
+| 5 | Build the site, inspect the rendered diagrams, iterate | done | (this commit) |
 
 ### Next actions
 

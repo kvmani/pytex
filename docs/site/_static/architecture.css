@@ -166,3 +166,40 @@ body {
   color: #486581;
   font-size: 1.02rem;
 }
+
+/* Class & object model atlas.
+ *
+ * A UML card is a table of field names, not a poster node: scaled to the
+ * content column a 2400-unit diagram renders its 15px attribute lines at about
+ * 5px, which is unreadable. These figures therefore keep their drawn size and
+ * scroll horizontally inside their own container, so the page body never
+ * scrolls sideways. */
+.content figure.class-atlas-figure {
+  background: var(--pytex-panel-bg);
+  border: 1px solid var(--pytex-panel-border);
+  border-radius: 18px;
+  box-shadow: var(--pytex-panel-shadow);
+  margin: 1.75rem 0;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.6rem;
+}
+
+.content figure.class-atlas-figure img.class-atlas-image {
+  background: white;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  display: block;
+  height: auto;
+  max-width: none;
+  padding: 0.4rem;
+  width: auto;
+}
+
+.content figure.class-atlas-figure figcaption {
+  color: #486581;
+  font-size: 0.94rem;
+  max-width: 46rem;
+  padding: 0.35rem 0.4rem 0;
+}

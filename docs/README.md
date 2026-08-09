@@ -10,6 +10,7 @@
 ## Architecture
 
 - [Architecture Overview](architecture/overview.md)
+- [Class And Object Model Atlas](site/architecture/class_model_atlas.md) — generated class hierarchy and per-domain object-model diagrams
 - [Canonical Data Model](architecture/canonical_data_model.md)
 - [Reference Frame Foundation](architecture/reference_frame_foundation.md)
 - [Orientation And Texture Foundation](architecture/orientation_and_texture_foundation.md)

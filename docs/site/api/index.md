@@ -21,6 +21,10 @@ Use it in this order:
 If a type below would be ambiguous to you without knowing its frame, symmetry, provenance, or
 reduction rules, do not start from the API list alone. Follow the linked concept page first.
 
+If you want to see how these types *fit together* rather than what each one is, read
+{doc}`../architecture/class_model_atlas`. It carries generated UML-style diagrams of the class
+hierarchy and of the composition relations between the objects listed below, one per domain.
+
 ## Recommended Entry Points
 
 - Start with `ReferenceFrame`, `SymmetrySpec`, `Phase`, and `Orientation` if you are building core
@@ -287,6 +291,8 @@ For architectural context, see {doc}`../architecture/overview`.
 
 - This page is curated, not exhaustive API documentation.
 - The exhaustive module, class, method, and function reference is available at {doc}`full_reference`.
+- The structural view — which class holds which, and what inherits from what — is
+  {doc}`../architecture/class_model_atlas`.
 - A symbol appearing here does not mean every downstream workflow built on it is equally validated.
 - Use {doc}`../validation/index` to check current parity, evidence, and limitations before relying
   on a surface for stronger scientific claims.

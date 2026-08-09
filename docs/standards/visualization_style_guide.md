@@ -50,6 +50,25 @@ consistent stroke colors. Avoid one-note palettes that make every subsystem look
 - Put legends inside the SVG only when color, stroke style, or line style carries meaning.
 - Every canonical SVG must include a `<title>` and `<desc>` element.
 
+### Class And Object Model Diagrams
+
+Class-model diagrams are the one registered exception to the 18px-node-label rule above. A UML
+card is a table of declared field names, not a poster node: at poster type sizes a fifteen-class
+domain view would not fit any screen, and truncating the field lists would remove the content the
+diagram exists to show. They use their own fixed scale:
+
+| Element | Size |
+| --- | --- |
+| class name | 18px bold |
+| attribute lines | 15px |
+| module path, stereotype, relation labels | 13px |
+
+Everything else in this guide applies unchanged: canonical tokens, Arial, 8px card radius,
+mandatory `<title>` and `<desc>`, and arrowheads in `userSpaceOnUse`. These figures are generated
+by `pytex.plotting.class_diagrams` from the introspected model in `scripts/class_model.py`; do not
+hand-edit them. Because they hold their drawn size rather than scaling to the content column, the
+Sphinx pages that embed them must use the `class-atlas-figure` scroll container.
+
 ## Diagram Categories
 
 - `architecture maps`: layered or lane-based diagrams that show modules, governance, boundaries,

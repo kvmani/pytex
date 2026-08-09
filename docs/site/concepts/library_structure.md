@@ -177,8 +177,15 @@ The architecture of PyTex can be reduced to four ideas:
 
 That combination is what makes PyTex a scientific infrastructure project rather than just a collection of analysis routines.
 
+## From Structure To Classes
+
+The diagrams above describe the library semantically: which layer owns which responsibility. For
+the corresponding *structural* view — the actual classes, what each one holds, and what inherits
+from what, all generated from the source — see {doc}`../architecture/class_model_atlas`.
+
 ## Related Material
 
+- {doc}`../architecture/class_model_atlas`
 - {doc}`core_model`
 - {doc}`core_foundation`
 - {doc}`orientation_texture`

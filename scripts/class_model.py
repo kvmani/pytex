@@ -349,7 +349,7 @@ def build_model(package_name: str = "pytex") -> ClassModel:
             for f in dataclasses.fields(obj):
                 annotation = hints.get(f.name, f.type)
                 required = (
-                    f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING  # type: ignore[misc]
+                    f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING
                 )
                 fields.append(
                     FieldEntry(
@@ -431,16 +431,16 @@ def _relations(
             annotation = hints.get(f.name)
             if annotation is None:
                 continue
-            required = (
-                f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING  # type: ignore[misc]
-            )
+            required = f.default is dataclasses.MISSING and f.default_factory is dataclasses.MISSING
             optional = _is_optional(annotation)
             many = _is_many(annotation)
             multiplicity = "*" if many else ("0..1" if optional else "1")
             kind = "composition" if required and not optional else "association"
             seen: set[str] = set()
             for referenced in _iter_annotation(annotation):
-                target = classes.get(referenced)  # type: ignore[arg-type]
+                if not isinstance(referenced, type):
+                    continue
+                target = classes.get(referenced)
                 if target is None or target in seen:
                     continue
                 seen.add(target)

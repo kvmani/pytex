@@ -240,15 +240,19 @@ def _box(
         for rel in model.relations
         if rel.source == qualname and rel.target in related and rel.label
     }
-    ordered = [f for f in entry.fields if f.name in relation_fields]
-    ordered += [f for f in entry.fields if f.name not in relation_fields]
+    # Underscore-prefixed fields are internal cache or bookkeeping state, not
+    # part of the object's scientific meaning; listing them would put private
+    # implementation on a public diagram.
+    declared = [f for f in entry.fields if not f.name.startswith("_")]
+    ordered = [f for f in declared if f.name in relation_fields]
+    ordered += [f for f in declared if f.name not in relation_fields]
 
     shown = ordered[:MAX_FIELDS]
     if entry.kind == "enum":
         lines = tuple(f.name for f in shown)
     else:
         lines = tuple(f"{f.name}: {f.type_name}" for f in shown)
-    remaining = len(entry.fields) - len(shown)
+    remaining = len(declared) - len(shown)
     return ClassBox(
         key=qualname,
         name=entry.name,

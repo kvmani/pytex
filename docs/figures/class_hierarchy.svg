@@ -15,36 +15,33 @@
   <rect width="1965" height="867" fill="#fbfdff"/>
   <text x="40.0" y="46.0" font-size="25" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">PyTex Class Hierarchy</text>
   <text x="40.0" y="72.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Every inheritance relation in the library — and it is short because PyTex composes rather than subclasses</text>
-  <path d="M185.7,233.0 C185.7,342.2 135.8,383.8 135.8,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
-  <path d="M297.7,233.0 C297.7,342.2 347.5,383.8 347.5,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
+  <path d="M185.7,213.0 C185.7,330.6 135.8,375.4 135.8,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
+  <path d="M297.7,213.0 C297.7,330.6 347.5,375.4 347.5,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M1524.2,179.0 C1524.2,310.9 1620.3,361.1 1620.3,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M1486.8,179.0 C1486.8,310.9 1401.3,361.1 1401.3,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M1561.5,179.0 C1561.5,310.9 1834.7,361.1 1834.7,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M1449.5,179.0 C1449.5,310.9 1165.6,361.1 1165.6,493.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
-  <rect x="40.0" y="493.0" width="191.6" height="123.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
+  <rect x="40.0" y="493.0" width="191.6" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="41.0" y="494.0" width="189.6" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
   <text x="55.0" y="522.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ComplianceTensor</text>
   <text x="55.0" y="539.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
   <text x="55.0" y="557.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="41.0" y1="561.0" x2="230.6" y2="561.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
   <text x="55.0" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
-  <text x="55.0" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">_compliance: bool</text>
-  <rect x="161.7" y="110.0" width="160.0" height="123.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
+  <rect x="161.7" y="110.0" width="160.0" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="162.7" y="111.0" width="158.0" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
   <text x="176.7" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ElasticTensor</text>
   <text x="176.7" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
   <text x="176.7" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="162.7" y1="178.0" x2="320.7" y2="178.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
   <text x="176.7" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
-  <text x="176.7" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">_compliance: bool</text>
-  <rect x="265.6" y="493.0" width="163.8" height="123.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
+  <rect x="265.6" y="493.0" width="163.8" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="266.6" y="494.0" width="161.8" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
   <text x="280.6" y="522.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">StiffnessTensor</text>
   <text x="280.6" y="539.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
   <text x="280.6" y="557.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="266.6" y1="561.0" x2="428.4" y2="561.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
   <text x="280.6" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
-  <text x="280.6" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">_compliance: bool</text>
   <rect x="1529.9" y="493.0" width="180.9" height="123.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1530.9" y="494.0" width="178.9" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
   <text x="1544.9" y="522.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">EllipticalEnvelope</text>

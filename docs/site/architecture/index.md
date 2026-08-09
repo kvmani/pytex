@@ -7,6 +7,7 @@ surface remains aligned with the repository's scientific design documents.
 :maxdepth: 1
 
 overview
+class_model_atlas
 canonical_data_model
 reference_frame_foundation
 orientation_and_texture_foundation
