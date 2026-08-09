@@ -89,4 +89,5 @@ Before stronger diffraction claims are made, the next validation pass should add
 - `../tex/algorithms/preferred_orientation_in_powder_intensities.tex`
 - `../tex/algorithms/powder_xrd_and_saed.tex`
 - `../tex/algorithms/convergent_beam_electron_diffraction.tex`
+- `../tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`
 - `../tex/algorithms/reciprocal_space_and_kinematic_spots.tex`

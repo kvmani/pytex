@@ -5,6 +5,110 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, Diffraction Groups — IN PROGRESS (2026-08-09)
+
+**Objective.** Close the four gaps that the CBED step of the previous task explicitly listed as
+not implemented, and that its `describe()` still advertises as missing:
+
+1. **Many-beam coupling.** Every disc is currently its own two-beam calculation, so the discs of
+   one pattern are not mutually consistent. Replace that with a Bloch-wave solution of the full
+   coupled system.
+2. **Absorption.** Without an imaginary part of the crystal potential the fringes never decay and
+   the Borrmann (anomalous absorption) asymmetry — the thing that makes a real bright-field disc
+   look the way it does — cannot appear.
+3. **HOLZ lines.** Only the ring *radii* are given; the sharp deficiency lines inside the
+   bright-field disc, which are the lattice-parameter metrology instrument, are absent.
+4. **Diffraction-group symmetry determination.** CBED's most celebrated capability: the point
+   group *including the presence or absence of a centre of symmetry*, which Friedel's law hides
+   from kinematic SAED.
+
+These are one capability, not four. The chain is: many-beam coupling makes the pattern a single
+mutually consistent object; absorption makes it a physically realizable one; HOLZ beams in the
+same beam set break the projection (ZOLZ-only) symmetry that would otherwise make every pattern
+look centrosymmetric; and the symmetry that survives that breaking *is* the diffraction group.
+
+**Where the code goes, and why not in `pytex.tem`.** The request said "in the TEM module". The
+work lands in `pytex/diffraction/` alongside `cbed.py`, because `pytex/tem/` is scoped by
+`docs/architecture/tem_tilt_navigation_foundation.md` and its own package docstring to
+*instrument operation* — stage models, tilt solving, reachability — and explicitly not to new
+crystallography. Dynamical electron scattering is diffraction physics and belongs with the
+diffraction engine it extends. Recorded here rather than decided silently.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 0 | Survey `cbed.py`, the symmetry surface, and the docs hooks; open this entry | done | (step 1) |
+| 1 | `pytex.diffraction.dynamical`: Bloch waves + absorption, tests, theory note | done | (this commit) |
+| 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | pending | |
+| 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | pending | |
+| 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | pending | |
+| 5 | Notebook 29, docs index, symbol registry, worked examples, parity matrix | pending | |
+
+### Step 1 outcome (2026-08-09)
+
+`src/pytex/diffraction/dynamical.py` (≈900 lines), 20 tests in
+`tests/unit/test_dynamical.py`, and the theory note
+`docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`.
+
+**The scale is inherited, not re-asserted.** The off-diagonal coupling is
+`nu_g = lambda F_g / (pi V_c cos theta_g)`, chosen so that `|nu_g| = 1/xi_g` for the
+extinction distance already validated against Williams & Carter Table 23.1. The two-beam limit
+of the many-beam solver then reproduces `two_beam_rocking_curve` to 2e-15, which pins the
+diagonal convention (`2 s_g`), the off-diagonal scale and the `i pi` in the propagator
+simultaneously. A many-beam module that introduced its own absolute scale would have needed a
+second validation; this one does not.
+
+**Three exact properties are asserted rather than assumed:** the two-beam limit above;
+unitarity (`sum I_g = 1` to 1e-12 at every tilt and thickness with absorption off, which is
+what catches the classic error of obtaining the Bloch-wave excitation amplitudes by
+projection instead of by solving — the eigenvectors are not orthogonal); and the fact that
+normal absorption factors exactly out of the matrix exponential as `exp(-2 pi t / xi'_0)`, so
+the phenomenological `mean_ratio` provably cannot contaminate any statement about shape,
+position or symmetry. `normal_absorption_factor` exposes that scalar so a caller can divide
+it out.
+
+**Absorption is structural, its magnitude is not, and the docstring says which is which.**
+The imaginary optical potential enters the structure matrix, so anomalous absorption emerges
+from the eigenvector structure rather than being applied to the output. The test is the
+Hashimoto-Howie-Whelan theorem: with absorption the bright-field rocking curve becomes
+asymmetric (>10 percent) while the dark-field one stays symmetric to 1e-10. The ratios
+themselves are the customary 1/10 of Hirsch et al.; Bird-King absorptive form factors are not
+implemented and `AbsorptionModel.describe()` says so. `reflection_ratio > mean_ratio` is
+rejected because it would give a Bloch wave that gains intensity with depth.
+
+**The centrosymmetry mechanism was derived, and it changed the design.** `A` is Hermitian for
+any real potential but *symmetric* only when every included `nu_g` is real. Relabelling
+`g -> -g`, `theta -> -theta` turns `A` into `A^T` (exactly, for a ZOLZ set), so the propagator
+becomes `M^T` and `I_g(theta) = I_-g(-theta)` holds **iff** `M` is symmetric **iff** the
+sampled structure is centrosymmetric. Friedel's law is therefore a theorem about the
+propagator, not a kinematic accident.
+
+What that derivation exposed is the thing the module now warns about loudly: a ZOLZ-only beam
+set samples the *projected* potential, and for zincblende down `[111]` every ZOLZ coefficient
+is real. A projection calculation reports Friedel's law to 1e-14 for GaAs and cannot see the
+polarity at all. Admitting the first-order Laue zone breaks it by 15 percent absolute
+(26 percent relative). The control that makes this a measurement rather than a coincidence is
+a rocksalt structure on the *same* lattice with the *same* two species, differing only by
+where the second sublattice sits: its violation stays below 1e-3. Three orders of magnitude
+separate them. `BeamSet.holz_mask` and `BeamSet.describe()` exist so that a caller cannot
+draw a symmetry conclusion from a projection calculation without being told.
+
+**Consequently the beam selection had to change.** A HOLZ reflection is far from Bragg on axis
+and exactly at Bragg somewhere inside the bright-field disc, so selecting on the zero-tilt
+excitation error discards every HOLZ beam and with it the whole mechanism. Selection is on
+`min |s_g|` over the illumination cone, which is available in closed form because `s_g` is
+affine in the tilt.
+
+**Not implemented, and stated in the module docstring:** Bethe perturbation of weak beams
+(so a full HOLZ ring costs `O(m n^3)` in earnest — the working economy is a tighter
+excitation window, not coarser tilt sampling), wedge/bent/strained specimens, and probe
+aberrations.
+
+**Side effect.** Nine new public names moved the class-model atlas counts from 250/233 to
+253/236, so `docs/figures/class_model_*.svg` were regenerated and the atlas page's prose
+counts updated.
+
 ## Repository Content Rule And PDF History Purge — COMPLETE (2026-08-09)
 
 **Objective.** Make "the repository holds sources and canonical assets only" a cardinal rule that

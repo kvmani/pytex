@@ -26,6 +26,17 @@ from pytex.diffraction.composite import (
     simulate_composite_saed_from_child_zone,
     sweep_parent_zone_axes,
 )
+from pytex.diffraction.dynamical import (
+    BLOCH_WAVE_SOLUTION_SCHEMA,
+    AbsorptionModel,
+    BeamSet,
+    BlochWaveSolution,
+    beam_set_for_zone,
+    beam_set_from_indices,
+    potential_coefficients_inv_angstrom,
+    solve_bloch_waves,
+    structure_matrix,
+)
 from pytex.diffraction.export import (
     COMPOSITE_REFLECTION_TABLE_SCHEMA,
     COMPOSITE_SAED_MANIFEST_SCHEMA,
@@ -123,6 +134,7 @@ from pytex.diffraction.xrd import (
 )
 
 __all__ = [
+    "BLOCH_WAVE_SOLUTION_SCHEMA",
     "CBED_PATTERN_SCHEMA",
     "CBED_THICKNESS_SCHEMA",
     "COMPOSITE_REFLECTION_TABLE_SCHEMA",
@@ -133,6 +145,9 @@ __all__ = [
     "MEASURED_PATTERN_SCHEMA",
     "PATTERN_SOLUTION_SCHEMA",
     "REFLECTION_TABLE_COLUMNS",
+    "AbsorptionModel",
+    "BeamSet",
+    "BlochWaveSolution",
     "CBEDDisc",
     "CBEDPattern",
     "CompositeSAEDExport",
@@ -184,6 +199,8 @@ __all__ = [
     "VariantZonePattern",
     "apply_preferred_orientation",
     "assign_transformation_variant",
+    "beam_set_for_zone",
+    "beam_set_from_indices",
     "centering_allowed_mask",
     "composite_reflection_table",
     "composite_saed_manifest",
@@ -208,6 +225,7 @@ __all__ = [
     "lorentz_polarization_factor",
     "march_dollase_factors",
     "phase_centering_is_declared",
+    "potential_coefficients_inv_angstrom",
     "preferred_orientation_factor_table",
     "project_great_circle_trace",
     "projection_boundary_radius",
@@ -219,9 +237,11 @@ __all__ = [
     "simulate_composite_saed_from_child_zone",
     "simulate_kikuchi_pattern",
     "simulate_zone_axis_spots",
+    "solve_bloch_waves",
     "solve_saed_pattern",
     "solve_saed_pattern_file",
     "spherical_angles_to_directions",
+    "structure_matrix",
     "sweep_parent_zone_axes",
     "thickness_from_fringe_minima",
     "two_beam_rocking_curve",

@@ -66,3 +66,4 @@ Phase 4 should begin by making reciprocal-space and detector-space semantics exp
 - <a href="../tex/algorithms/powder_xrd_and_saed.tex">Powder XRD And SAED</a>
 - <a href="../tex/algorithms/reciprocal_space_and_kinematic_spots.tex">Reciprocal Space And Kinematic Spots</a>
 - <a href="../tex/algorithms/convergent_beam_electron_diffraction.tex">Convergent-Beam Electron Diffraction</a>
+- <a href="../tex/algorithms/dynamical_cbed_and_symmetry_determination.tex">Dynamical CBED And Symmetry Determination</a>

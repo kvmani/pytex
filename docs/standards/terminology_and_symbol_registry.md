@@ -90,6 +90,9 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | symmetry family | The symmetry-related orbit of a plane or direction, written $\{hkl\}$ or $\langle uvw \rangle$; a single member is written $(hkl)$ or $[uvw]$. |
 | overbar notation | A negative index rendered with a bar over the digit rather than a leading minus, in publication-facing output. |
 | zone law | The condition $hu + kv + lw = 0$ for a direction $[uvw]$ lying in a plane $(hkl)$. |
+| Bloch wave | An eigenvector of the dynamical structure matrix: a wavefield that propagates through a perfect crystal unchanged in shape, attenuated at its own rate. The many-beam solution is a superposition of them. |
+| projection approximation | A dynamical calculation confined to the zeroth Laue zone. It samples the potential *projected* along the beam, whose symmetry is at least as high as the crystal's and is often strictly higher; every CBED symmetry conclusion drawn under it is unsafe. |
+| anomalous absorption | The unequal absorption of the Bloch-wave branches, from the off-diagonal imaginary potential. It makes the bright-field rocking curve asymmetric in $s_{g}$ while leaving the dark-field one symmetric. |
 
 ## Core Symbols
 
@@ -177,6 +180,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\alpha$ | Convergence semi-angle of the illumination cone in CBED; sets the disc radius $\alpha/\lambda$ and the Kossel-Moellenstedt threshold. |
 | $t$ | Foil thickness along the beam. |
 | $H$ | Reciprocal-lattice layer spacing along a zone axis, $1/|\mathbf{r}_{uvw}|$; measured by the HOLZ ring radii $G_{n} \simeq \sqrt{2nH/\lambda}$. |
+| $\nu_{g}$ | Complex Fourier coefficient of the scaled lattice potential, $\lambda F_{g}/(\pi V_{c}\cos\theta_{g})$; the off-diagonal element of the dynamical structure matrix, with $|\nu_{g}| = 1/\xi_{g}$. Its **phase** is what distinguishes a centrosymmetric structure from a non-centrosymmetric one. |
+| $\xi'_{g}$ | Absorption distance of reflection $\mathbf{g}$: the imaginary partner of $\xi_{g}$ in the complex optical potential. $\xi'_{0}$ is normal absorption (a scalar $e^{-2\pi t/\xi'_{0}}$); $\xi'_{g}$ for $g \neq 0$ is anomalous absorption. |
+| $\mathbf{A}$ | Dynamical structure matrix of the coupled beam equations $\mathrm{d}\psi/\mathrm{d}z = i\pi\mathbf{A}\psi$: diagonal $2s_{g} + i/\xi'_{0}$, off-diagonal $\nu_{g-h} + i/\xi'_{g-h}$. |
+| $\gamma_{j}$ | Bloch-wave excitation: the $j$-th eigenvalue of $\mathbf{A}$. Its real part locates the dispersion surface; its imaginary part is that branch's absorption coefficient. |
 
 ## References
 
