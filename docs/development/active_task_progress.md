@@ -69,7 +69,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 | 0 | Survey the existing conversion surface; open this entry | done | (this commit) |
 | 1 | `pytex.core.representations` + tests + theory note | done | (this commit) |
 | 2 | Notebook 26: rotation and orientation representations | done | (this commit) |
-| 3 | CBED module + tests | pending | |
+| 3 | CBED module + tests + algorithm note | done | (this commit) |
 | 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | pending | |
 | 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
 | 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
@@ -137,9 +137,48 @@ Also corrected in the notebook draft: `Rotation.distance_to` returns **radians**
 (three cells were mislabelling it), and the S component was written `(123)[6 -3 4]`, which does
 not satisfy the zone law — `(123)[6 3 -4]` does, and now round-trips exactly.
 
+### Step 3 outcome (2026-08-09)
+
+`src/pytex/diffraction/cbed.py`, 31 tests in `tests/unit/test_cbed.py`, and
+`docs/tex/algorithms/convergent_beam_electron_diffraction.tex`.
+
+**The hard part was the absolute scale, not the geometry.** Disc geometry and rocking curves
+are easy to make *look* right; an extinction distance that is wrong by a constant produces
+perfectly plausible fringes at the wrong spacing. Two things fix it and both are pinned by
+tests:
+
+1. **Mott-Bethe.** Electrons scatter from the potential, so `f_e = (Z - f_x)/(8 pi^2 a0 s^2)`.
+   PyTex's X-ray table is stored as `Z - 41.78214 s^2 sum a_i exp(-b_i s^2)`, and 41.78214
+   *is* `8 pi^2 a0` — so the inversion returns exactly `sum a_i exp(-b_i s^2)` and introduces
+   no new constant. That identity is asserted directly, which is what pins the scale.
+2. **The relativistic factor** `gamma = 1 + E/m0c^2` (1.39 at 200 kV). Omitting it lengthens
+   every extinction distance by 39 percent, and nothing else in the pattern would look wrong.
+
+Validated against Williams & Carter Table 23.1 for aluminium at 100 kV: `{111}` 555 vs 556,
+`{200}` 664 vs 673, `{220}` 1063 vs 1057 — within 1.4 percent. Aluminium was chosen because
+the fitted parametrization is most accurate for light elements; for Ni it runs ~11 percent
+high, which is stated in the docstring rather than hidden, and is exactly why the thickness
+fit *measures* the extinction distance instead of taking it from a table.
+
+**The capability claim is a round trip**, tested through the public path: simulate a pattern
+at a known thickness, read the fringe minima off a disc, and recover both the thickness and
+the extinction distance from the Kelly `(s_n/n)^2` versus `1/n^2` line.
+
+**Two things the tests taught, both now documented:** forcing the classic wrong assumption
+`n = 1` on the innermost minimum does not merely bias the thickness — it tilts the fitted
+line the wrong way and yields a *negative* `1/xi^2`, so the routine can and does refuse.
+And a disc is centred at `s = -lambda g^2/2`, so exact Bragg lies inside it only when the
+convergence angle exceeds the Bragg angle; below that the two fringe branches are unequal
+and the richer one is the one to measure.
+
+**Not implemented, and said so in `describe()`:** many-beam coupling (each disc is its own
+two-beam calculation), absorption, HOLZ lines within the bright-field disc, and the
+diffraction-group symmetry determination that would give the point group including its
+centrosymmetry.
+
 ### Next actions
 
-Step 3: the CBED module.
+Step 4: notebook 27, the SAED generate-then-index round trip for Ni and Zr.
 
 ## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 

@@ -12,7 +12,7 @@ committed figures no longer match the code.
 :::{admonition} The one thing to know before reading
 :class: important
 
-**PyTex composes; it does not subclass.** Of 246 public classes, 229 are dataclasses and only 6
+**PyTex composes; it does not subclass.** Of 250 public classes, 233 are dataclasses and only 6
 inheritance relations exist library-wide. A Doxygen-style hierarchy atlas would be nearly empty
 here, and would describe a design PyTex does not have. The object-model diagrams — which show
 composition and association — carry the real structure, and this page leads with them.

@@ -1,3 +1,18 @@
+from pytex.diffraction.cbed import (
+    CBED_PATTERN_SCHEMA,
+    CBED_THICKNESS_SCHEMA,
+    CBEDDisc,
+    CBEDPattern,
+    ConvergentBeamConfig,
+    TwoBeamThicknessReport,
+    electron_structure_factor_angstrom,
+    extinction_distance_angstrom,
+    fringe_minimum_excitation_errors,
+    holz_ring_radii_inv_angstrom,
+    simulate_cbed_pattern,
+    thickness_from_fringe_minima,
+    two_beam_rocking_curve,
+)
 from pytex.diffraction.composite import (
     CompositeSAEDPattern,
     RationalizedZoneAxis,
@@ -70,6 +85,7 @@ from pytex.diffraction.preferred_orientation import (
     preferred_orientation_factor_table,
 )
 from pytex.diffraction.saed import SAEDPattern, SAEDSpot, generate_saed_pattern
+from pytex.diffraction.scattering import electron_scattering_factors
 from pytex.diffraction.solving import (
     COORDINATE_UNITS,
     DEFAULT_ANGLE_TOLERANCE_DEG,
@@ -107,6 +123,8 @@ from pytex.diffraction.xrd import (
 )
 
 __all__ = [
+    "CBED_PATTERN_SCHEMA",
+    "CBED_THICKNESS_SCHEMA",
     "COMPOSITE_REFLECTION_TABLE_SCHEMA",
     "COMPOSITE_SAED_MANIFEST_SCHEMA",
     "COORDINATE_UNITS",
@@ -115,8 +133,11 @@ __all__ = [
     "MEASURED_PATTERN_SCHEMA",
     "PATTERN_SOLUTION_SCHEMA",
     "REFLECTION_TABLE_COLUMNS",
+    "CBEDDisc",
+    "CBEDPattern",
     "CompositeSAEDExport",
     "CompositeSAEDPattern",
+    "ConvergentBeamConfig",
     "DetectedSpotCluster",
     "DetectorAcceptanceMask",
     "DiffractionGeometry",
@@ -159,6 +180,7 @@ __all__ = [
     "SpotTable",
     "StereonetGrid",
     "StructureFactor",
+    "TwoBeamThicknessReport",
     "VariantZonePattern",
     "apply_preferred_orientation",
     "assign_transformation_variant",
@@ -166,16 +188,21 @@ __all__ = [
     "composite_reflection_table",
     "composite_saed_manifest",
     "directions_to_spherical_angles",
+    "electron_scattering_factors",
+    "electron_structure_factor_angstrom",
     "electron_structure_factors",
     "electron_wavelength_angstrom",
     "estimate_zone_axis",
     "export_composite_saed",
+    "extinction_distance_angstrom",
     "find_spot_coincidences",
     "flatten_direction_grid",
+    "fringe_minimum_excitation_errors",
     "generate_powder_reflections",
     "generate_saed_pattern",
     "generate_stereonet_grid",
     "generate_xrd_pattern",
+    "holz_ring_radii_inv_angstrom",
     "index_saed_pattern",
     "is_hexagonal_phase",
     "lorentz_polarization_factor",
@@ -187,6 +214,7 @@ __all__ = [
     "rationalize_zone_axis",
     "sample_great_circle",
     "sample_small_circle",
+    "simulate_cbed_pattern",
     "simulate_composite_saed",
     "simulate_composite_saed_from_child_zone",
     "simulate_kikuchi_pattern",
@@ -195,5 +223,7 @@ __all__ = [
     "solve_saed_pattern_file",
     "spherical_angles_to_directions",
     "sweep_parent_zone_axes",
+    "thickness_from_fringe_minima",
+    "two_beam_rocking_curve",
     "zone_basis_from_axis",
 ]

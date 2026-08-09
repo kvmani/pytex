@@ -27,6 +27,7 @@ fixing is what is needed.
 
 ## Algorithm Notes
 
+- [../../tex/algorithms/convergent_beam_electron_diffraction.tex](../../tex/algorithms/convergent_beam_electron_diffraction.tex)
 - [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
 - [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
 - [../../tex/algorithms/foundation_feature_priorities.tex](../../tex/algorithms/foundation_feature_priorities.tex)

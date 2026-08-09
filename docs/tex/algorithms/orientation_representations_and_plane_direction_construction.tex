@@ -20,6 +20,8 @@ This note records two related PyTex foundations:
 
 The implementation is intentionally explicit about mapping direction, singularities, and default specimen references so the batch APIs remain scientifically auditable.
 
+The \emph{equal-volume} representations --- homochoric and cubochoric --- are not covered here; they, the invariant-measure argument that motivates them, and the inverse construction that recovers $(hkl)[uvw]$ indices from an orientation are in 	exttt{docs/tex/theory/orientation\_representations.tex}.
+
 \section{Canonical Rotation Representation Rules}
 
 PyTex stores unit quaternions in $(w, x, y, z)$ order and interprets them as active crystal-to-specimen rotations. For an axis--angle pair $(\hat{\mathbf{n}}, \omega)$ the quaternion is

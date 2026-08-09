@@ -92,6 +92,7 @@
 - [Powder XRD And SAED](tex/algorithms/powder_xrd_and_saed.tex)
 - [Orientation Relationship Index Correspondence](tex/algorithms/orientation_relationship_index_correspondence.tex)
 - [Orientation Relationship Determination](tex/algorithms/orientation_relationship_determination.tex)
+- [Convergent-Beam Electron Diffraction](tex/algorithms/convergent_beam_electron_diffraction.tex)
 - [SAED Ratio/Angle Indexing](tex/algorithms/saed_ratio_angle_indexing.tex)
 - [Reciprocal Space And Kinematic Spots](tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
 - [TEM Specimen Tilt Navigation](tex/algorithms/tem_specimen_tilt_navigation.tex)

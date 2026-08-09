@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="2263" viewBox="0 0 1660 2263" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="1395" height="1920" viewBox="0 0 1395 1920" role="img">
   <title>Object Model — Diffraction</title>
   <desc>UML-style object model of pytex.diffraction: diffraction geometry and radiation specification, powder, SAED, Kikuchi and composite patterns, and the kinematic simulation configuration and spot tables behind them.</desc>
   <defs>
@@ -12,288 +12,286 @@
       <path d="M1,5 L8,1 L15,5 L8,9 z" fill="#07122f"/>
     </marker>
   </defs>
-  <rect width="1660" height="2263" fill="#fbfdff"/>
+  <rect width="1395" height="1920" fill="#fbfdff"/>
   <text x="40.0" y="46.0" font-size="25" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">Object Model — Diffraction</text>
   <text x="40.0" y="72.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Geometry, radiation, patterns, and the kinematic simulation objects</text>
-  <path d="M262.5,1302.0 C262.5,1360.8 159.5,1383.2 159.5,1442.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
-  <path d="M1014.6,353.0 C1014.6,522.3 1194.0,586.7 1194.0,756.0" fill="none" stroke="#40506f" stroke-width="1.3" stroke-dasharray="6 5" opacity="0.55" marker-end="url(#cd-arrow)"/>
-  <path d="M778.4,353.0 C778.4,522.3 933.2,586.7 933.2,756.0" fill="none" stroke="#40506f" stroke-width="1.3" stroke-dasharray="6 5" opacity="0.55" marker-end="url(#cd-arrow)"/>
-  <path d="M440.3,959.0 C440.3,1017.8 262.5,1040.2 262.5,1099.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
-  <path d="M132.3,979.0 C132.3,1029.4 140.3,1048.6 140.3,1099.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
-  <path d="M247.7,1685.0 C247.7,1727.0 229.3,1743.0 229.3,1785.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M79.3,1302.0 C79.3,1504.9 158.3,1582.1 158.3,1785.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M170.9,1302.0 C170.9,1504.9 193.8,1582.1 193.8,1785.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M955.5,353.0 C955.5,395.0 849.0,411.0 849.0,453.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M837.5,353.0 C837.5,666.3 841.2,785.7 841.2,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M896.5,353.0 C896.5,666.3 959.9,785.7 959.9,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M957.2,616.0 C957.2,674.8 1042.6,697.2 1042.6,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M740.7,616.0 C740.7,674.8 732.7,697.2 732.7,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M499.1,333.0 C499.1,798.8 247.7,976.2 247.7,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M410.4,333.0 C410.4,654.7 201.4,777.3 201.4,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M587.8,333.0 C587.8,654.7 486.6,777.3 486.6,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M732.7,999.0 C732.7,1185.1 335.8,1255.9 335.8,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M933.2,999.0 C933.2,1041.0 722.4,1057.0 722.4,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M381.0,1342.0 C381.0,1528.1 264.7,1598.9 264.7,1785.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M486.6,1342.0 C486.6,1528.1 300.2,1598.9 300.2,1785.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M592.3,1342.0 C592.3,1528.1 335.7,1598.9 335.7,1785.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M529.0,959.0 C529.0,1161.9 291.7,1239.1 291.7,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M617.7,959.0 C617.7,1017.8 592.3,1040.2 592.3,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M335.8,656.0 C335.8,698.0 529.0,714.0 529.0,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M106.5,656.0 C106.5,698.0 229.5,714.0 229.5,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M229.5,979.0 C229.5,1173.5 203.6,1247.5 203.6,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M326.6,979.0 C326.6,1029.4 381.0,1048.6 381.0,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M96.3,253.0 C96.3,608.3 79.3,743.7 79.3,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <path d="M295.7,253.0 C295.7,337.0 221.1,369.0 221.1,453.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <rect x="335.7" y="1099.0" width="301.8" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="2.0"/>
-  <rect x="336.7" y="1100.0" width="299.8" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="350.7" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">DiffractionGeometry</text>
-  <text x="350.7" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
-  <text x="350.7" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="336.7" y1="1167.0" x2="636.5" y2="1167.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="350.7" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">detector_frame: ReferenceFrame</text>
-  <text x="350.7" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">specimen_frame: ReferenceFrame</text>
-  <text x="350.7" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">laboratory_frame: ReferenceFrame</text>
-  <text x="350.7" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beam_energy_kev: float</text>
-  <text x="350.7" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">camera_length_mm: float</text>
-  <text x="350.7" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">pattern_center: ndarray</text>
-  <text x="350.7" y="1309.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">detector_pixel_size_um: tuple[float, float]</text>
-  <text x="350.7" y="1329.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 9 more</text>
-  <rect x="402.3" y="756.0" width="253.4" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="2.0"/>
-  <rect x="403.3" y="757.0" width="251.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="417.3" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">DiffractionPattern</text>
-  <text x="417.3" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
-  <text x="417.3" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="403.3" y1="824.0" x2="654.7" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="417.3" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
-  <text x="417.3" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
-  <text x="417.3" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation?</text>
-  <text x="417.3" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">coordinates_px: ndarray</text>
-  <text x="417.3" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">intensities: ndarray</text>
-  <text x="417.3" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <rect x="727.8" y="110.0" width="337.3" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="728.8" y="111.0" width="335.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="742.8" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">CompositeSAEDPattern</text>
-  <text x="742.8" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
-  <text x="742.8" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="728.8" y1="178.0" x2="1064.2" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="742.8" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">parent_spots: SpotTable?</text>
-  <text x="742.8" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">variant_patterns: VariantZonePattern[]</text>
-  <text x="742.8" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">config: KinematicSimulationConfig</text>
-  <text x="742.8" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">child_config: KinematicSimulationConfig</text>
-  <text x="742.8" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">nearest_parent_zone_axis: RationalizedZon…</text>
-  <text x="742.8" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">relationship: OrientationRelationship</text>
-  <text x="742.8" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">parent_zone_axis: ZoneAxis | CrystalDirection</text>
-  <text x="742.8" y="340.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 3 more</text>
-  <rect x="57.3" y="453.0" width="327.6" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="58.3" y="454.0" width="325.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="72.3" y="482.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">IndexingCandidate</text>
-  <text x="72.3" y="499.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
-  <text x="72.3" y="517.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="58.3" y1="521.0" x2="383.9" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="72.3" y="543.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">pattern: DiffractionPattern</text>
-  <text x="72.3" y="563.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">simulation: KinematicSimulation</text>
-  <text x="72.3" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">observation_clusters: DetectedSpotCluster[]</text>
-  <text x="72.3" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">matches: SpotAssignment[]</text>
-  <text x="72.3" y="623.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unmatched_observed_cluster_ids: ndarray</text>
-  <text x="72.3" y="643.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unmatched_simulated_spot_indices: ndarray</text>
-  <rect x="90.7" y="756.0" width="277.6" height="223.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="91.7" y="757.0" width="275.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="105.7" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KinematicSimulation</text>
-  <text x="105.7" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
-  <text x="105.7" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="91.7" y1="824.0" x2="367.3" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="105.7" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
-  <text x="105.7" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
-  <text x="105.7" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation?</text>
-  <text x="105.7" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">spots: KinematicSpot[]</text>
-  <text x="105.7" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">reflection_families: ReflectionFamily[]</text>
-  <text x="105.7" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis: ZoneAxis?</text>
-  <text x="105.7" y="966.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <rect x="694.3" y="453.0" width="309.3" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="695.3" y="454.0" width="307.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="709.3" y="482.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">VariantZonePattern</text>
-  <text x="709.3" y="499.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
-  <text x="709.3" y="517.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="695.3" y1="521.0" x2="1002.6" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="709.3" y="543.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">nearest_zone_axis: RationalizedZoneAxis</text>
-  <text x="709.3" y="563.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">spots: SpotTable</text>
-  <text x="709.3" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">variant: TransformationVariant</text>
-  <text x="709.3" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis_child: CrystalDirection</text>
-  <rect x="372.4" y="110.0" width="253.4" height="223.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="373.4" y="111.0" width="251.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="387.4" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KikuchiPattern</text>
-  <text x="387.4" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kikuchi</text>
-  <text x="387.4" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="373.4" y1="178.0" x2="624.8" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="387.4" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
-  <text x="387.4" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
-  <text x="387.4" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation</text>
-  <text x="387.4" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">bands: KikuchiBand[]</text>
-  <text x="387.4" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axes: KikuchiZoneAxis[]</text>
-  <text x="387.4" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">wavelength_angstrom: float</text>
-  <text x="387.4" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <rect x="671.5" y="1099.0" width="339.3" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="672.5" y="1100.0" width="337.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="686.5" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KinematicSimulationConfig</text>
-  <text x="686.5" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kinematic</text>
-  <text x="686.5" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="672.5" y1="1167.0" x2="1009.8" y2="1167.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="686.5" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beam_energy_kev: float</text>
-  <text x="686.5" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">camera_constant_mm_angstrom: float</text>
-  <text x="686.5" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_index: int</text>
-  <text x="686.5" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_max_inv_angstrom: float?</text>
-  <text x="686.5" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_excitation_error_inv_angstrom: float</text>
-  <text x="686.5" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">intensity_model: Literal[electron_atomic_num…</text>
-  <text x="686.5" y="1309.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">relrod_sigma_inv_angstrom: float?</text>
-  <text x="686.5" y="1329.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 2 more</text>
-  <rect x="689.7" y="756.0" width="286.5" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="690.7" y="757.0" width="284.5" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="704.7" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">SpotTable</text>
-  <text x="704.7" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kinematic</text>
-  <text x="704.7" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="690.7" y1="824.0" x2="975.2" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="704.7" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
-  <text x="704.7" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">config: KinematicSimulationConfig</text>
-  <text x="704.7" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis: ZoneAxis | CrystalDirection</text>
-  <text x="704.7" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">basis: ndarray</text>
-  <text x="704.7" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">hkl: ndarray</text>
-  <text x="704.7" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_crystal: ndarray</text>
-  <text x="704.7" y="966.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_detector_inv_angstrom: ndarray</text>
-  <text x="704.7" y="986.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 6 more</text>
-  <rect x="1010.2" y="756.0" width="216.2" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="1011.2" y="757.0" width="214.2" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="1025.2" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">RationalizedZoneAxis</text>
-  <text x="1025.2" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
-  <text x="1025.2" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="1011.2" y1="824.0" x2="1225.4" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="1025.2" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indices: ndarray</text>
-  <text x="1025.2" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">deviation_deg: float</text>
-  <text x="1025.2" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_index: int</text>
-  <text x="1025.2" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indices_bravais: ndarray?</text>
-  <rect x="53.6" y="110.0" width="284.8" height="143.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="54.6" y="111.0" width="282.8" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="68.6" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">OrientationIndexingCandidate</text>
-  <text x="68.6" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
-  <text x="68.6" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="54.6" y1="178.0" x2="337.4" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="68.6" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation</text>
-  <text x="68.6" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indexing: IndexingCandidate</text>
-  <text x="68.6" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation_index: int</text>
-  <rect x="1294.4" y="110.0" width="325.1" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="1295.4" y="111.0" width="323.1" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="1309.4" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">DiffractionIntensityModel</text>
-  <text x="1309.4" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.physics</text>
-  <text x="1309.4" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="1295.4" y1="178.0" x2="1618.5" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="1309.4" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">scattering_table: ScatteringFactorTable</text>
-  <text x="1309.4" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">correction: Literal[none, lorentz_polarization]</text>
-  <text x="1309.4" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">reflection_condition: ReflectionCondition?</text>
-  <text x="1309.4" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <rect x="121.8" y="1442.0" width="251.8" height="243.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
-  <rect x="122.8" y="1443.0" width="249.8" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
-  <text x="136.8" y="1471.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Phase</text>
-  <text x="136.8" y="1488.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.lattice</text>
-  <text x="136.8" y="1506.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
-  <line x1="122.8" y1="1510.0" x2="372.6" y2="1510.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
-  <text x="136.8" y="1532.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">crystal_frame: ReferenceFrame</text>
-  <text x="136.8" y="1552.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">name: str</text>
-  <text x="136.8" y="1572.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">lattice: Lattice</text>
-  <text x="136.8" y="1592.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">symmetry: SymmetrySpec</text>
-  <text x="136.8" y="1612.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unit_cell: UnitCell?</text>
-  <text x="136.8" y="1632.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">space_group: SpaceGroupSpec?</text>
-  <text x="136.8" y="1652.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">space_group_symbol: str?</text>
-  <text x="136.8" y="1672.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 4 more</text>
-  <rect x="40.0" y="1099.0" width="261.7" height="203.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
-  <rect x="41.0" y="1100.0" width="259.7" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
-  <text x="55.0" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Orientation</text>
-  <text x="55.0" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.orientation</text>
-  <text x="55.0" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
-  <line x1="41.0" y1="1167.0" x2="300.7" y2="1167.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
-  <text x="55.0" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">crystal_frame: ReferenceFrame</text>
-  <text x="55.0" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">specimen_frame: ReferenceFrame</text>
-  <text x="55.0" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase?</text>
-  <text x="55.0" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">rotation: Rotation</text>
-  <text x="55.0" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">symmetry: SymmetrySpec?</text>
-  <text x="55.0" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <rect x="120.3" y="1785.0" width="253.4" height="243.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
-  <rect x="121.3" y="1786.0" width="251.4" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
-  <text x="135.3" y="1814.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ReferenceFrame</text>
-  <text x="135.3" y="1831.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.frames</text>
-  <text x="135.3" y="1849.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
-  <line x1="121.3" y1="1853.0" x2="372.7" y2="1853.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
-  <text x="135.3" y="1875.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">name: str</text>
-  <text x="135.3" y="1895.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">domain: FrameDomain</text>
-  <text x="135.3" y="1915.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">axes: tuple[str, str, str]</text>
-  <text x="135.3" y="1935.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">handedness: Handedness</text>
-  <text x="135.3" y="1955.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">convention: ConventionSet</text>
-  <text x="135.3" y="1975.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">description: str</text>
-  <text x="135.3" y="1995.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
-  <text x="135.3" y="2015.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 3 more</text>
-  <rect x="241.8" y="1354.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="262.5" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
-  <rect x="935.0" y="365.5" width="159.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="1014.6" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">nearest_parent_zone_axis</text>
-  <rect x="737.9" y="365.5" width="81.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="778.4" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">parent_spots</text>
-  <rect x="406.9" y="1011.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="440.3" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
-  <rect x="99.0" y="1011.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="132.3" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
-  <rect x="205.7" y="1697.5" width="84.0" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="247.7" y="1709.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">crystal_frame</text>
-  <rect x="37.3" y="1354.5" width="84.0" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="79.3" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">crystal_frame</text>
-  <rect x="119.8" y="1372.5" width="102.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="170.9" y="1384.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">specimen_frame</text>
-  <rect x="901.6" y="383.5" width="107.9" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="955.5" y="395.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">variant_patterns *</text>
-  <rect x="800.2" y="383.5" width="74.6" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="837.5" y="395.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">child_config</text>
-  <rect x="876.2" y="365.5" width="40.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="896.5" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">config</text>
-  <rect x="899.7" y="668.5" width="115.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="957.2" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">nearest_zone_axis</text>
-  <rect x="722.2" y="668.5" width="37.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="740.7" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">spots</text>
-  <rect x="478.4" y="365.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="499.1" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
-  <rect x="377.1" y="365.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="410.4" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
-  <rect x="557.7" y="365.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="587.8" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
-  <rect x="712.0" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="732.7" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
-  <rect x="912.9" y="1011.5" width="40.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="933.2" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">config</text>
-  <rect x="334.3" y="1354.5" width="93.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="381.0" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">detector_frame</text>
-  <rect x="434.5" y="1354.5" width="104.3" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="486.6" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">laboratory_frame</text>
-  <rect x="541.2" y="1354.5" width="102.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="592.3" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">specimen_frame</text>
-  <rect x="508.3" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="529.0" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
-  <rect x="587.6" y="1011.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="617.7" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
-  <rect x="312.6" y="668.5" width="46.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="335.8" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">pattern</text>
-  <rect x="74.2" y="668.5" width="64.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="106.5" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">simulation</text>
-  <rect x="208.8" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="229.5" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
-  <rect x="296.5" y="1011.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="326.6" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
-  <rect x="63.0" y="365.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="96.3" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
-  <rect x="268.5" y="365.5" width="54.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="295.7" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">indexing</text>
-  <rect x="40.0" y="2062.0" width="464.9" height="161.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="56.0" y="2088.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
-  <line x1="58.0" y1="2110.0" x2="98.0" y2="2110.0" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
-  <text x="116.0" y="2114.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">composition - a required field: the owner cannot exist without it</text>
-  <line x1="58.0" y1="2131.0" x2="98.0" y2="2131.0" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
-  <text x="116.0" y="2135.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">association - an optional or defaulted field</text>
-  <text x="58.0" y="2156.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
-  <text x="56.0" y="2183.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 91 classes carry it, on every result object.</text>
-  <text x="56.0" y="2201.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
+  <path d="M874.0,1302.0 C874.0,1360.8 760.0,1383.2 760.0,1442.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
+  <path d="M189.6,353.0 C189.6,522.3 223.8,586.7 223.8,756.0" fill="none" stroke="#40506f" stroke-width="1.3" stroke-dasharray="6 5" opacity="0.55" marker-end="url(#cd-arrow)"/>
+  <path d="M378.5,353.0 C378.5,522.3 533.7,586.7 533.7,756.0" fill="none" stroke="#40506f" stroke-width="1.3" stroke-dasharray="6 5" opacity="0.55" marker-end="url(#cd-arrow)"/>
+  <path d="M1115.5,959.0 C1115.5,1017.8 904.6,1040.2 904.6,1099.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
+  <path d="M718.8,979.0 C718.8,1029.4 585.1,1048.6 585.1,1099.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
+  <path d="M848.3,979.0 C848.3,1029.4 782.4,1048.6 782.4,1099.0" fill="none" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
+  <path d="M529.1,1222.0 C529.1,1314.4 671.9,1349.6 671.9,1442.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M713.3,353.0 C713.3,810.4 701.3,984.6 701.3,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M546.4,353.0 C546.4,666.3 547.8,785.7 547.8,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M425.7,353.0 C425.7,666.3 473.1,785.7 473.1,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M236.8,353.0 C236.8,395.0 244.3,411.0 244.3,453.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M284.0,353.0 C284.0,666.3 126.7,785.7 126.7,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M331.3,353.0 C331.3,666.3 245.5,785.7 245.5,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M136.1,616.0 C136.1,674.8 72.4,697.2 72.4,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M352.6,616.0 C352.6,674.8 333.2,697.2 333.2,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1139.9,333.0 C1139.9,798.8 818.8,976.2 818.8,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1228.6,333.0 C1228.6,654.7 965.6,777.3 965.6,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1317.3,333.0 C1317.3,654.7 1295.4,777.3 1295.4,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M533.7,999.0 C533.7,1185.1 642.5,1255.9 642.5,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M433.5,999.0 C433.5,1041.0 510.4,1057.0 510.4,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M333.2,999.0 C333.2,1041.0 364.2,1057.0 364.2,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1026.8,959.0 C1026.8,1161.9 789.4,1239.1 789.4,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1204.2,959.0 C1204.2,1017.8 1189.8,1040.2 1189.8,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1014.8,656.0 C1014.8,698.0 1115.5,714.0 1115.5,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M785.4,656.0 C785.4,698.0 816.0,714.0 816.0,756.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M783.6,979.0 C783.6,1173.5 730.7,1247.5 730.7,1442.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.55" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M913.1,979.0 C913.1,1029.4 1084.2,1048.6 1084.2,1099.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M825.8,253.0 C825.8,608.3 843.5,743.7 843.5,1099.0" fill="none" stroke="#07122f" stroke-width="1.3" opacity="0.40" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <path d="M1025.2,253.0 C1025.2,337.0 900.1,369.0 900.1,453.0" fill="none" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <rect x="1038.9" y="1099.0" width="301.8" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="2.0"/>
+  <rect x="1039.9" y="1100.0" width="299.8" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="1053.9" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">DiffractionGeometry</text>
+  <text x="1053.9" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
+  <text x="1053.9" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="1039.9" y1="1167.0" x2="1339.7" y2="1167.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="1053.9" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">detector_frame: ReferenceFrame</text>
+  <text x="1053.9" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">specimen_frame: ReferenceFrame</text>
+  <text x="1053.9" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">laboratory_frame: ReferenceFrame</text>
+  <text x="1053.9" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beam_energy_kev: float</text>
+  <text x="1053.9" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">camera_length_mm: float</text>
+  <text x="1053.9" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">pattern_center: ndarray</text>
+  <text x="1053.9" y="1309.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">detector_pixel_size_um: tuple[float, float]</text>
+  <text x="1053.9" y="1329.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 9 more</text>
+  <rect x="988.7" y="756.0" width="253.4" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="2.0"/>
+  <rect x="989.7" y="757.0" width="251.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="1003.7" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">DiffractionPattern</text>
+  <text x="1003.7" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
+  <text x="1003.7" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="989.7" y1="824.0" x2="1241.2" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="1003.7" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
+  <text x="1003.7" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="1003.7" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation?</text>
+  <text x="1003.7" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">coordinates_px: ndarray</text>
+  <text x="1003.7" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">intensities: ndarray</text>
+  <text x="1003.7" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
+  <rect x="139.0" y="110.0" width="337.3" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="140.0" y="111.0" width="335.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="154.0" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">CompositeSAEDPattern</text>
+  <text x="154.0" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
+  <text x="154.0" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="140.0" y1="178.0" x2="475.3" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="154.0" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">parent_zone_axis: ZoneAxis | CrystalDirection</text>
+  <text x="154.0" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">parent_spots: SpotTable?</text>
+  <text x="154.0" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">variant_patterns: VariantZonePattern[]</text>
+  <text x="154.0" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">config: KinematicSimulationConfig</text>
+  <text x="154.0" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">child_config: KinematicSimulationConfig</text>
+  <text x="154.0" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">nearest_parent_zone_axis: RationalizedZon…</text>
+  <text x="154.0" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">relationship: OrientationRelationship</text>
+  <text x="154.0" y="340.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 3 more</text>
+  <rect x="736.3" y="453.0" width="327.6" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="737.3" y="454.0" width="325.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="751.3" y="482.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">IndexingCandidate</text>
+  <text x="751.3" y="499.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
+  <text x="751.3" y="517.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="737.3" y1="521.0" x2="1062.9" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="751.3" y="543.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">pattern: DiffractionPattern</text>
+  <text x="751.3" y="563.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">simulation: KinematicSimulation</text>
+  <text x="751.3" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">observation_clusters: DetectedSpotCluster[]</text>
+  <text x="751.3" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">matches: SpotAssignment[]</text>
+  <text x="751.3" y="623.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unmatched_observed_cluster_ids: ndarray</text>
+  <text x="751.3" y="643.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unmatched_simulated_spot_indices: ndarray</text>
+  <rect x="677.2" y="756.0" width="277.6" height="223.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="678.2" y="757.0" width="275.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="692.2" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KinematicSimulation</text>
+  <text x="692.2" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
+  <text x="692.2" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="678.2" y1="824.0" x2="953.7" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="692.2" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
+  <text x="692.2" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="692.2" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation?</text>
+  <text x="692.2" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis: ZoneAxis?</text>
+  <text x="692.2" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">spots: KinematicSpot[]</text>
+  <text x="692.2" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">reflection_families: ReflectionFamily[]</text>
+  <text x="692.2" y="966.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
+  <rect x="89.7" y="453.0" width="309.3" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="90.7" y="454.0" width="307.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="104.7" y="482.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">VariantZonePattern</text>
+  <text x="104.7" y="499.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
+  <text x="104.7" y="517.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="90.7" y1="521.0" x2="398.0" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="104.7" y="543.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">nearest_zone_axis: RationalizedZoneAxis</text>
+  <text x="104.7" y="563.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">spots: SpotTable</text>
+  <text x="104.7" y="583.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">variant: TransformationVariant</text>
+  <text x="104.7" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis_child: CrystalDirection</text>
+  <rect x="1101.9" y="110.0" width="253.4" height="223.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="1102.9" y="111.0" width="251.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="1116.9" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KikuchiPattern</text>
+  <text x="1116.9" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kikuchi</text>
+  <text x="1116.9" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="1102.9" y1="178.0" x2="1354.3" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="1116.9" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">geometry: DiffractionGeometry</text>
+  <text x="1116.9" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="1116.9" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation</text>
+  <text x="1116.9" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">bands: KikuchiBand[]</text>
+  <text x="1116.9" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axes: KikuchiZoneAxis[]</text>
+  <text x="1116.9" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">wavelength_angstrom: float</text>
+  <text x="1116.9" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
+  <rect x="75.8" y="1099.0" width="339.3" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="76.8" y="1100.0" width="337.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="90.8" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">KinematicSimulationConfig</text>
+  <text x="90.8" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kinematic</text>
+  <text x="90.8" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="76.8" y1="1167.0" x2="414.1" y2="1167.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="90.8" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beam_energy_kev: float</text>
+  <text x="90.8" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">camera_constant_mm_angstrom: float</text>
+  <text x="90.8" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_index: int</text>
+  <text x="90.8" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_max_inv_angstrom: float?</text>
+  <text x="90.8" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_excitation_error_inv_angstrom: float</text>
+  <text x="90.8" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">intensity_model: Literal[electron_atomic_num…</text>
+  <text x="90.8" y="1309.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">relrod_sigma_inv_angstrom: float?</text>
+  <text x="90.8" y="1329.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 2 more</text>
+  <rect x="290.2" y="756.0" width="286.5" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="291.2" y="757.0" width="284.5" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="305.2" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">SpotTable</text>
+  <text x="305.2" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.kinematic</text>
+  <text x="305.2" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="291.2" y1="824.0" x2="575.7" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="305.2" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="305.2" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis: ZoneAxis | CrystalDirection</text>
+  <text x="305.2" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">config: KinematicSimulationConfig</text>
+  <text x="305.2" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">basis: ndarray</text>
+  <text x="305.2" y="926.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">hkl: ndarray</text>
+  <text x="305.2" y="946.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_crystal: ndarray</text>
+  <text x="305.2" y="966.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">g_detector_inv_angstrom: ndarray</text>
+  <text x="305.2" y="986.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 6 more</text>
+  <rect x="510.7" y="110.0" width="238.4" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="511.7" y="111.0" width="236.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="525.7" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">CBEDPattern</text>
+  <text x="525.7" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.cbed</text>
+  <text x="525.7" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="511.7" y1="178.0" x2="748.1" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="525.7" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="525.7" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_axis: ZoneAxis</text>
+  <text x="525.7" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">config: ConvergentBeamConfig</text>
+  <text x="525.7" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">discs: CBEDDisc[]</text>
+  <text x="525.7" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">zone_basis_crystal: ndarray</text>
+  <text x="525.7" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">holz_orders: ndarray</text>
+  <text x="525.7" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">holz_radii_mm: ndarray</text>
+  <text x="525.7" y="340.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 2 more</text>
+  <rect x="40.0" y="756.0" width="216.2" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="41.0" y="757.0" width="214.2" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="55.0" y="785.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">RationalizedZoneAxis</text>
+  <text x="55.0" y="802.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.composite</text>
+  <text x="55.0" y="820.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="41.0" y1="824.0" x2="255.2" y2="824.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="55.0" y="846.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indices: ndarray</text>
+  <text x="55.0" y="866.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">deviation_deg: float</text>
+  <text x="55.0" y="886.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">max_index: int</text>
+  <text x="55.0" y="906.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indices_bravais: ndarray?</text>
+  <rect x="783.1" y="110.0" width="284.8" height="143.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="784.1" y="111.0" width="282.8" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="798.1" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">OrientationIndexingCandidate</text>
+  <text x="798.1" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">diffraction.models</text>
+  <text x="798.1" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="784.1" y1="178.0" x2="1066.9" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="798.1" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation: Orientation</text>
+  <text x="798.1" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indexing: IndexingCandidate</text>
+  <text x="798.1" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">orientation_index: int</text>
+  <rect x="604.8" y="1442.0" width="251.8" height="243.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
+  <rect x="605.8" y="1443.0" width="249.8" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
+  <text x="619.8" y="1471.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Phase</text>
+  <text x="619.8" y="1488.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.lattice</text>
+  <text x="619.8" y="1506.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
+  <line x1="605.8" y1="1510.0" x2="855.6" y2="1510.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
+  <text x="619.8" y="1532.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">name: str</text>
+  <text x="619.8" y="1552.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">lattice: Lattice</text>
+  <text x="619.8" y="1572.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">symmetry: SymmetrySpec</text>
+  <text x="619.8" y="1592.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">crystal_frame: ReferenceFrame</text>
+  <text x="619.8" y="1612.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">unit_cell: UnitCell?</text>
+  <text x="619.8" y="1632.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">space_group: SpaceGroupSpec?</text>
+  <text x="619.8" y="1652.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">space_group_symbol: str?</text>
+  <text x="619.8" y="1672.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">+ 4 more</text>
+  <rect x="449.1" y="1099.0" width="160.0" height="123.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
+  <rect x="450.1" y="1100.0" width="158.0" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
+  <text x="464.1" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ZoneAxis</text>
+  <text x="464.1" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.lattice</text>
+  <text x="464.1" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
+  <line x1="450.1" y1="1167.0" x2="608.1" y2="1167.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
+  <text x="464.1" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase</text>
+  <text x="464.1" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">indices: ndarray</text>
+  <rect x="743.2" y="1099.0" width="261.7" height="203.0" rx="8" fill="#eef4ff" stroke="#2563eb" stroke-width="1.2"/>
+  <rect x="744.2" y="1100.0" width="259.7" height="4" rx="2" fill="#2563eb" opacity="0.85"/>
+  <text x="758.2" y="1128.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Orientation</text>
+  <text x="758.2" y="1145.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">core.orientation</text>
+  <text x="758.2" y="1163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#2563eb" text-anchor="start">«frozen dataclass»</text>
+  <line x1="744.2" y1="1167.0" x2="1003.9" y2="1167.0" stroke="#2563eb" stroke-width="1" opacity="0.35"/>
+  <text x="758.2" y="1189.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">phase: Phase?</text>
+  <text x="758.2" y="1209.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">rotation: Rotation</text>
+  <text x="758.2" y="1229.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">crystal_frame: ReferenceFrame</text>
+  <text x="758.2" y="1249.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">specimen_frame: ReferenceFrame</text>
+  <text x="758.2" y="1269.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">symmetry: SymmetrySpec?</text>
+  <text x="758.2" y="1289.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">provenance: ProvenanceRecord?</text>
+  <rect x="853.3" y="1354.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="874.0" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="110.0" y="365.5" width="159.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="189.6" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">nearest_parent_zone_axis</text>
+  <rect x="337.9" y="365.5" width="81.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="378.5" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">parent_spots</text>
+  <rect x="1082.1" y="1011.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1115.5" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
+  <rect x="686.6" y="1011.5" width="64.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="718.8" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">zone_axis</text>
+  <rect x="815.0" y="1011.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="848.3" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
+  <rect x="508.4" y="1354.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="529.1" y="1366.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="692.6" y="365.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="713.3" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="514.2" y="365.5" width="64.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="546.4" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">zone_axis</text>
+  <rect x="371.4" y="383.5" width="108.6" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="425.7" y="395.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">parent_zone_axis</text>
+  <rect x="182.9" y="383.5" width="107.9" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="236.8" y="395.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">variant_patterns *</text>
+  <rect x="246.7" y="401.5" width="74.6" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="284.0" y="413.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">child_config</text>
+  <rect x="310.9" y="383.5" width="40.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="331.3" y="395.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">config</text>
+  <rect x="78.5" y="668.5" width="115.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="136.1" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">nearest_zone_axis</text>
+  <rect x="334.1" y="668.5" width="37.1" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="352.6" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">spots</text>
+  <rect x="1119.2" y="365.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1139.9" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="1195.2" y="365.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1228.6" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
+  <rect x="1287.2" y="365.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1317.3" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
+  <rect x="513.0" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="533.7" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="401.2" y="1011.5" width="64.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="433.5" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">zone_axis</text>
+  <rect x="312.9" y="1011.5" width="40.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="333.2" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">config</text>
+  <rect x="1006.1" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1026.8" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="1174.1" y="1011.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1204.2" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
+  <rect x="991.6" y="668.5" width="46.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1014.8" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">pattern</text>
+  <rect x="753.2" y="668.5" width="64.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="785.4" y="680.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">simulation</text>
+  <rect x="762.9" y="1011.5" width="41.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="783.6" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">phase</text>
+  <rect x="883.0" y="1011.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="913.1" y="1023.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">geometry</text>
+  <rect x="792.5" y="365.5" width="66.7" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="825.8" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">orientation</text>
+  <rect x="998.0" y="365.5" width="54.4" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
+  <text x="1025.2" y="377.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="middle">indexing</text>
+  <rect x="40.0" y="1719.0" width="464.9" height="161.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="56.0" y="1745.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
+  <line x1="58.0" y1="1767.0" x2="98.0" y2="1767.0" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
+  <text x="116.0" y="1771.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">composition - a required field: the owner cannot exist without it</text>
+  <line x1="58.0" y1="1788.0" x2="98.0" y2="1788.0" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
+  <text x="116.0" y="1792.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">association - an optional or defaulted field</text>
+  <text x="58.0" y="1813.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
+  <text x="56.0" y="1840.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 93 classes carry it, on every result object.</text>
+  <text x="56.0" y="1858.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>

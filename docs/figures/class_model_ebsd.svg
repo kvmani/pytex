@@ -255,6 +255,6 @@
   <line x1="58.0" y1="2111.0" x2="98.0" y2="2111.0" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
   <text x="116.0" y="2115.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">association - an optional or defaulted field</text>
   <text x="58.0" y="2136.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
-  <text x="56.0" y="2163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 91 classes carry it, on every result object.</text>
+  <text x="56.0" y="2163.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 93 classes carry it, on every result object.</text>
   <text x="56.0" y="2181.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>
