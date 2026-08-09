@@ -51,12 +51,29 @@ FRAME_FIGURES = (
     "hcp_reference_frame.svg",
 )
 
+#: Figures produced by scripts/generate_class_model_figures.py.
+CLASS_MODEL_FIGURES = (
+    "class_model_architecture.svg",
+    "class_hierarchy.svg",
+    "class_model_core.svg",
+    "class_model_transformation.svg",
+    "class_model_texture.svg",
+    "class_model_ebsd.svg",
+    "class_model_diffraction.svg",
+    "class_model_tem.svg",
+)
+
 #: Every figure written by a generator, and therefore held to the strict layout
 #: contract. Hand-authored figures pass the marker check only.
-GENERATED_FIGURES = FRAME_FIGURES + ALGORITHM_FIGURES
+GENERATED_FIGURES = FRAME_FIGURES + ALGORITHM_FIGURES + CLASS_MODEL_FIGURES
 
-#: Arial average advance width, matching pytex.plotting.frame_diagrams.text_width.
-_ADVANCE_EM = 0.55
+# Text is measured with the library's own Helvetica advance-width table rather
+# than an average character width. The average model is wrong by 20-30% for
+# strings dominated by narrow lowercase or by capitals, which on a figure of
+# side-by-side cards reports overlaps between labels that do not touch. One
+# ruler is used everywhere: this guard, `scripts/audit_figure_text_layout.py`,
+# and the figure generators themselves.
+from pytex.plotting._svg_text import text_width  # noqa: E402
 
 _TEXT_RE = re.compile(
     r'<text[^>]*\bx="(-?[0-9.]+)"[^>]*\by="(-?[0-9.]+)"[^>]*font-size="([0-9.]+)"[^>]*>'
@@ -215,7 +232,7 @@ def _layout_defects(path: Path) -> tuple[list[str], list[str]]:
             continue
         anchor_match = re.search(r'text-anchor="([a-z]+)"', match.group(0))
         anchor = anchor_match.group(1) if anchor_match else "start"
-        estimated = _ADVANCE_EM * float(size) * len(content)
+        estimated = text_width(content, float(size))
         left = float(x)
         if anchor == "middle":
             left -= estimated / 2.0
@@ -262,14 +279,23 @@ def test_generated_figure_list_matches_the_generator() -> None:
 def test_algorithm_figure_list_matches_the_generator() -> None:
     """`ALGORITHM_FIGURES` must not drift from what the algorithm script writes."""
 
-    source = (REPO_ROOT / "scripts" / "generate_algorithm_figures.py").read_text(
-        encoding="utf-8"
-    )
+    source = (REPO_ROOT / "scripts" / "generate_algorithm_figures.py").read_text(encoding="utf-8")
     written = set(re.findall(r'"([a-z0-9_]+\.svg)": ', source))
     assert written == set(ALGORITHM_FIGURES), (
         "The generator writes a different figure set than this test tracks: "
         f"generator={sorted(written)}, test={sorted(ALGORITHM_FIGURES)}"
     )
+
+
+def test_class_model_figure_list_matches_the_generator() -> None:
+    """`CLASS_MODEL_FIGURES` must not drift from what the atlas generator writes."""
+
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from generate_class_model_figures import build_figures
+
+    assert set(build_figures()) == set(CLASS_MODEL_FIGURES)
 
 
 def test_algorithm_figures_are_deterministic() -> None:
