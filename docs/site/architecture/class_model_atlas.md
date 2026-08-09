@@ -12,7 +12,7 @@ committed figures no longer match the code.
 :::{admonition} The one thing to know before reading
 :class: important
 
-**PyTex composes; it does not subclass.** Of 240 public classes, 225 are dataclasses and only 6
+**PyTex composes; it does not subclass.** Of 242 public classes, 226 are dataclasses and only 6
 inheritance relations exist library-wide. A Doxygen-style hierarchy atlas would be nearly empty
 here, and would describe a design PyTex does not have. The object-model diagrams — which show
 composition and association — carry the real structure, and this page leads with them.
@@ -63,7 +63,8 @@ therefore follows construction dependency: nothing on a lower row needs anything
 
 Fields naming another card in the same diagram are listed first; the rest of a class's fields are
 summarized as `+ n more`. `ProvenanceRecord` is deliberately absent from every object-model
-diagram: 85 classes carry it, and drawing those edges would say only that provenance is universal.
+diagram: nearly ninety classes carry it — each figure's legend states the current count — and
+drawing those edges would say only that provenance is universal.
 See {doc}`canonical_data_model` for what it holds.
 
 ## 1. Library Architecture

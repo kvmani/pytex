@@ -238,6 +238,32 @@ def test_committed_figures_match_the_generator(name: str, figures: dict[str, str
     )
 
 
+ATLAS_PAGE = REPO_ROOT / "docs" / "site" / "architecture" / "class_model_atlas.md"
+
+
+def test_the_page_does_not_hand_transcribe_the_model_counts(model) -> None:  # type: ignore[no-untyped-def]
+    """The three numbers the page states must be the three the model reports.
+
+    Documentation numbers are not allowed to be typed in from memory here any
+    more than anywhere else in PyTex. This is the one place the atlas page names
+    figures in prose, so it is the one place that can go stale.
+    """
+
+    page = ATLAS_PAGE.read_text(encoding="utf-8")
+    match = re.search(
+        r"Of (\d+) public classes, (\d+) are dataclasses and only (\d+)\s+inheritance relations",
+        page,
+    )
+    assert match is not None, "the atlas page no longer states the counts in the expected form"
+    classes, dataclasses_stated, inheritance = (int(value) for value in match.groups())
+
+    assert classes == len(model.entries)
+    assert dataclasses_stated == sum(
+        1 for entry in model.entries.values() if entry.kind == "dataclass"
+    )
+    assert inheritance == len(model.of_kind("inheritance"))
+
+
 def test_the_atlas_covers_every_scientific_domain() -> None:
     """The atlas is per-domain by design; one enormous graph was the thing to avoid."""
 

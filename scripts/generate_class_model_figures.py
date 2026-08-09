@@ -31,9 +31,9 @@ Not by a hand-kept list of class names, which would go stale silently. Each view
 names *modules*; the roster is the most connected classes in them, plus any
 pinned anchors, plus the core objects those classes actually reference. A new
 class that becomes central to a domain therefore enters its diagram on its own.
-``ProvenanceRecord`` is the one deliberate omission: 85 classes carry it, and
-drawing all 85 edges would say only that provenance is universal — which the
-legend says in one line instead.
+``ProvenanceRecord`` is the one deliberate omission: nearly every result object
+carries it, and drawing all of those edges would say only that provenance is
+universal — which each figure's legend says in one measured line instead.
 """
 
 from __future__ import annotations
@@ -52,8 +52,9 @@ from pytex.plotting.class_diagrams import ClassBox, ClassEdge, class_diagram_svg
 
 FIGURES = REPO_ROOT / "docs" / "figures"
 
-#: Carried by 85 classes. Drawing it would turn every domain view into a star
-#: around one node and say nothing a legend line cannot.
+#: Carried by nearly ninety classes. Drawing it would turn every domain view
+#: into a star around one node and say nothing a legend line cannot. The exact
+#: count is measured for the legend rather than written down here.
 UBIQUITOUS = ("pytex.core.provenance.ProvenanceRecord",)
 
 #: Fields shown on a card before it is summarized with a footnote.
@@ -318,9 +319,10 @@ def domain_figure(model: ClassModel, spec: ViewSpec) -> str:
         _box(model, name, related=related, emphasis=name in pinned and len(pinned) < 4)
         for name in roster
     ]
+    holders = len({rel.source for rel in model.relations if rel.target in UBIQUITOUS})
     notes = [
         *spec.notes,
-        "ProvenanceRecord is omitted: 85 classes carry it, on every result object.",
+        f"ProvenanceRecord is omitted: {holders} classes carry it, on every result object.",
         "Fields naming another card are listed first; the rest are summarized.",
     ]
     return class_diagram_svg(
