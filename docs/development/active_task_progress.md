@@ -39,7 +39,49 @@ and `../pytex-backup-2026-08-09/references/` (all nine PDFs).
 2026-08-09 that no other clone or fork existed, so nothing had to be re-cloned and no follow-up is
 outstanding. Any clone taken before that date would need re-cloning.
 
-## Current Task: Class & Object Model Atlas — IN PROGRESS (2026-08-09)
+## Current Task: Orientation Representations, TEM Round-Trip Indexing, And CBED — IN PROGRESS (2026-08-09)
+
+**Objective.** Three things that belong together because they share one conversion spine:
+
+1. **A core orientation-representation surface.** PyTex can already build a `Rotation` or an
+   `Orientation` from a matrix, a quaternion, axis-angle, Rodrigues, three Euler conventions, and
+   `(hkl)[uvw]`, and can emit most of those again. What is missing is (a) the two representations
+   with no constructor at all — **homochoric** and **cubochoric** — and (b) the operation users
+   actually ask for: *give me one orientation and print every form of it at once*, in readable,
+   standard notation. That becomes `pytex.core.representations`, with a vectorized batch path.
+2. **A TEM zone-axis round trip.** Generate a pattern with `generate_saed_pattern`, feed it back to
+   `solve_saed_pattern`, and show the original zone axis and orientation come back. This is the
+   honest self-consistency proof for the indexing chain, and it currently exists nowhere as a
+   documented artifact.
+3. **CBED.** Convergent-beam diffraction is absent from the library. It is the natural companion to
+   SAED — same geometry, one extra parameter (the convergence semi-angle) — and it is what gives
+   thickness measurement and point-group determination.
+
+Each gets a tutorial notebook held to the standard of notebook 25 (pole-figure arithmetic): live
+computation, rendered mathematics, algorithm boxes, and the failure modes shown rather than
+described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the fixtures already in
+`pytex.core.fixtures`.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 0 | Survey the existing conversion surface; open this entry | done | (this commit) |
+| 1 | `pytex.core.representations` + tests | pending | |
+| 2 | Notebook 26: rotation and orientation representations | pending | |
+| 3 | CBED module + tests | pending | |
+| 4 | Notebook 27: TEM zone-axis indexing round trip (Ni, Zr) | pending | |
+| 5 | Notebook 28: CBED analysis (Ni, Zr) | pending | |
+| 6 | Docs index, symbol registry, worked examples, parity matrix | pending | |
+
+### Next actions
+
+Step 1. `src/pytex/core/representations.py`: vectorized homochoric and cubochoric conversions
+(Roşca–Morawiec–De Graef equal-volume cube-to-ball map), recovery of the ideal-orientation
+`(hkl)[uvw]` indices from an orientation matrix, and an `OrientationRepresentations` report
+carrying every form with `describe()` and `to_json_dict()`.
+
+## Completed Task: Class & Object Model Atlas — COMPLETE (2026-08-09)
 
 **Objective.** Give the Sphinx site a Class & Object Model Atlas: an overview of the library
 architecture, an honest class-hierarchy view, and UML-style object-model diagrams per domain
