@@ -7,8 +7,7 @@
     <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="24.00" markerHeight="24.00" refX="20.00" refY="12.00" orient="auto"><path d="M4.00,4.00 L20.00,12.00 L4.00,20.00 Z" fill="#07122f"/></marker>
     <marker markerUnits="userSpaceOnUse" id="blueArrow" markerWidth="24.00" markerHeight="24.00" refX="20.00" refY="12.00" orient="auto"><path d="M4.00,4.00 L20.00,12.00 L4.00,20.00 Z" fill="#2563eb"/></marker>
     <style>
-      text{font-family:Arial, Helvetica, sans-serif}
-      .title{font-size:42px;font-weight:700;fill:#07122f}.subtitle{font-size:20px;fill:#40506f}
+      text{font-family: Arial;font-weight:700;fill:#07122f}.subtitle{font-size:20px;fill:#40506f}
       .label{font-size:18px;font-weight:700;fill:#07122f}.body{font-size:14px;fill:#40506f}
       .small{font-size:13px;fill:#40506f}.card{rx:8;filter:url(#shadow);stroke-width:2}
       .lane{fill:#fbfdff;stroke-width:1.5;stroke-dasharray:5 5}

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1965" height="887" viewBox="0 0 1965 887" role="img">
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="1965" height="887" viewBox="0 0 1965 887" role="img">
   <title>PyTex Class Hierarchy</title>
   <desc>The complete inheritance structure of PyTex. Only a few families use subclassing: the TEM tilt envelopes, which are alternative geometric shapes behind one interface, and the elastic tensor pair. Everything else is a frozen dataclass composed of other objects, which is why the object-model diagrams rather than this one carry the library's structure.</desc>
   <defs>
@@ -13,8 +13,8 @@
     </marker>
   </defs>
   <rect width="1965" height="887" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">PyTex Class Hierarchy</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Every inheritance relation in the library — and it is short because PyTex composes rather than subclasses</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">PyTex Class Hierarchy</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Every inheritance relation in the library — and it is short because PyTex composes rather than subclasses</text>
   <path d="M185.7,213.0 C185.7,339.0 135.8,387.0 135.8,513.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M297.7,213.0 C297.7,339.0 347.5,387.0 347.5,513.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <path d="M1524.2,179.0 C1524.2,319.3 1620.3,372.7 1620.3,513.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
@@ -23,94 +23,94 @@
   <path d="M1449.5,179.0 C1449.5,319.3 1165.6,372.7 1165.6,513.0" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <rect x="40.0" y="513.0" width="191.6" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="41.0" y="514.0" width="189.6" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
-  <text x="55.0" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ComplianceTensor</text>
-  <text x="55.0" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
-  <text x="55.0" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
+  <text x="55.0" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">ComplianceTensor</text>
+  <text x="55.0" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">properties.tensors</text>
+  <text x="55.0" y="577.0" font-size="13" font-family="Arial" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="41.0" y1="581.0" x2="230.6" y2="581.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
-  <text x="55.0" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
+  <text x="55.0" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">tensor: ndarray</text>
   <rect x="161.7" y="110.0" width="160.0" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="162.7" y="111.0" width="158.0" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
-  <text x="176.7" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">ElasticTensor</text>
-  <text x="176.7" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
-  <text x="176.7" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
+  <text x="176.7" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">ElasticTensor</text>
+  <text x="176.7" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">properties.tensors</text>
+  <text x="176.7" y="174.0" font-size="13" font-family="Arial" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="162.7" y1="178.0" x2="320.7" y2="178.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
-  <text x="176.7" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
+  <text x="176.7" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">tensor: ndarray</text>
   <rect x="265.6" y="513.0" width="163.8" height="103.0" rx="8" fill="#eef7f0" stroke="#16a34a" stroke-width="1.2"/>
   <rect x="266.6" y="514.0" width="161.8" height="4" rx="2" fill="#16a34a" opacity="0.85"/>
-  <text x="280.6" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">StiffnessTensor</text>
-  <text x="280.6" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">properties.tensors</text>
-  <text x="280.6" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
+  <text x="280.6" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">StiffnessTensor</text>
+  <text x="280.6" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">properties.tensors</text>
+  <text x="280.6" y="577.0" font-size="13" font-family="Arial" fill="#16a34a" text-anchor="start">«frozen dataclass»</text>
   <line x1="266.6" y1="581.0" x2="428.4" y2="581.0" stroke="#16a34a" stroke-width="1" opacity="0.35"/>
-  <text x="280.6" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">tensor: ndarray</text>
+  <text x="280.6" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">tensor: ndarray</text>
   <rect x="1529.9" y="513.0" width="180.9" height="123.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1530.9" y="514.0" width="178.9" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
-  <text x="1544.9" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">EllipticalEnvelope</text>
-  <text x="1544.9" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">tem.stage</text>
-  <text x="1544.9" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
+  <text x="1544.9" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">EllipticalEnvelope</text>
+  <text x="1544.9" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">tem.stage</text>
+  <text x="1544.9" y="577.0" font-size="13" font-family="Arial" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
   <line x1="1530.9" y1="581.0" x2="1709.8" y2="581.0" stroke="#0ea5e9" stroke-width="1" opacity="0.35"/>
-  <text x="1544.9" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">alpha_max_deg: float</text>
-  <text x="1544.9" y="623.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beta_max_deg: float</text>
+  <text x="1544.9" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">alpha_max_deg: float</text>
+  <text x="1544.9" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">beta_max_deg: float</text>
   <rect x="1306.6" y="513.0" width="189.2" height="143.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1307.6" y="514.0" width="187.2" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
-  <text x="1321.6" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">MaskedEnvelope</text>
-  <text x="1321.6" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">tem.stage</text>
-  <text x="1321.6" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
+  <text x="1321.6" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">MaskedEnvelope</text>
+  <text x="1321.6" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">tem.stage</text>
+  <text x="1321.6" y="577.0" font-size="13" font-family="Arial" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
   <line x1="1307.6" y1="581.0" x2="1494.9" y2="581.0" stroke="#0ea5e9" stroke-width="1" opacity="0.35"/>
-  <text x="1321.6" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">base: TiltEnvelope</text>
-  <text x="1321.6" y="623.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">excluded: TiltEnvelope[]</text>
-  <text x="1321.6" y="643.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">reason: str</text>
+  <text x="1321.6" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">base: TiltEnvelope</text>
+  <text x="1321.6" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">excluded: TiltEnvelope[]</text>
+  <text x="1321.6" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">reason: str</text>
   <rect x="1744.8" y="513.0" width="179.9" height="103.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1745.8" y="514.0" width="177.9" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
-  <text x="1759.8" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">PolygonEnvelope</text>
-  <text x="1759.8" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">tem.stage</text>
-  <text x="1759.8" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
+  <text x="1759.8" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">PolygonEnvelope</text>
+  <text x="1759.8" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">tem.stage</text>
+  <text x="1759.8" y="577.0" font-size="13" font-family="Arial" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
   <line x1="1745.8" y1="581.0" x2="1923.7" y2="581.0" stroke="#0ea5e9" stroke-width="1" opacity="0.35"/>
-  <text x="1759.8" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">vertices: ndarray</text>
+  <text x="1759.8" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">vertices: ndarray</text>
   <rect x="1058.5" y="513.0" width="214.1" height="163.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1059.5" y="514.0" width="212.1" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
-  <text x="1073.5" y="542.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">RectangularEnvelope</text>
-  <text x="1073.5" y="559.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">tem.stage</text>
-  <text x="1073.5" y="577.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
+  <text x="1073.5" y="542.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">RectangularEnvelope</text>
+  <text x="1073.5" y="559.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">tem.stage</text>
+  <text x="1073.5" y="577.0" font-size="13" font-family="Arial" fill="#0ea5e9" text-anchor="start">«frozen dataclass»</text>
   <line x1="1059.5" y1="581.0" x2="1271.6" y2="581.0" stroke="#0ea5e9" stroke-width="1" opacity="0.35"/>
-  <text x="1073.5" y="603.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">alpha_min_deg: float</text>
-  <text x="1073.5" y="623.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">alpha_max_deg: float</text>
-  <text x="1073.5" y="643.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beta_min_deg: float</text>
-  <text x="1073.5" y="663.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">beta_max_deg: float</text>
+  <text x="1073.5" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">alpha_min_deg: float</text>
+  <text x="1073.5" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">alpha_max_deg: float</text>
+  <text x="1073.5" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">beta_min_deg: float</text>
+  <text x="1073.5" y="663.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">beta_max_deg: float</text>
   <rect x="1425.5" y="110.0" width="160.0" height="69.0" rx="8" fill="#eaf6fe" stroke="#0ea5e9" stroke-width="1.2"/>
   <rect x="1426.5" y="111.0" width="158.0" height="4" rx="2" fill="#0ea5e9" opacity="0.85"/>
-  <text x="1440.5" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">TiltEnvelope</text>
-  <text x="1440.5" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">tem.stage</text>
-  <text x="1440.5" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#0ea5e9" text-anchor="start">«class»</text>
+  <text x="1440.5" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">TiltEnvelope</text>
+  <text x="1440.5" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">tem.stage</text>
+  <text x="1440.5" y="174.0" font-size="13" font-family="Arial" fill="#0ea5e9" text-anchor="start">«class»</text>
   <rect x="497.4" y="110.0" width="218.4" height="303.0" rx="8" fill="#f4f6fa" stroke="#40506f" stroke-width="1.2"/>
   <rect x="498.4" y="111.0" width="216.4" height="4" rx="2" fill="#40506f" opacity="0.85"/>
-  <text x="512.4" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">StrEnum vocabularies</text>
-  <text x="512.4" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">standard library base</text>
-  <text x="512.4" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">«11 enums»</text>
+  <text x="512.4" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">StrEnum vocabularies</text>
+  <text x="512.4" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">standard library base</text>
+  <text x="512.4" y="174.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">«11 enums»</text>
   <line x1="498.4" y1="178.0" x2="714.8" y2="178.0" stroke="#40506f" stroke-width="1" opacity="0.35"/>
-  <text x="512.4" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">AmbiguityLayer</text>
-  <text x="512.4" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">AngleConvention</text>
-  <text x="512.4" y="240.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">BasisKind</text>
-  <text x="512.4" y="260.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">FrameDomain</text>
-  <text x="512.4" y="280.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">Handedness</text>
-  <text x="512.4" y="300.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">HolderKind</text>
-  <text x="512.4" y="320.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">PathStrategy</text>
-  <text x="512.4" y="340.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">Reachability</text>
-  <text x="512.4" y="360.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">ReciprocalConvention</text>
-  <text x="512.4" y="380.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">ReconstructionMode</text>
-  <text x="512.4" y="400.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">RepresentationKind</text>
+  <text x="512.4" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">AmbiguityLayer</text>
+  <text x="512.4" y="220.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">AngleConvention</text>
+  <text x="512.4" y="240.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">BasisKind</text>
+  <text x="512.4" y="260.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">FrameDomain</text>
+  <text x="512.4" y="280.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">Handedness</text>
+  <text x="512.4" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">HolderKind</text>
+  <text x="512.4" y="320.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">PathStrategy</text>
+  <text x="512.4" y="340.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">Reachability</text>
+  <text x="512.4" y="360.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ReciprocalConvention</text>
+  <text x="512.4" y="380.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ReconstructionMode</text>
+  <text x="512.4" y="400.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">RepresentationKind</text>
   <rect x="783.8" y="110.0" width="206.7" height="123.0" rx="8" fill="#f4f6fa" stroke="#40506f" stroke-width="1.2"/>
   <rect x="784.8" y="111.0" width="204.7" height="4" rx="2" fill="#40506f" opacity="0.85"/>
-  <text x="798.8" y="139.0" font-size="18" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Structural protocols</text>
-  <text x="798.8" y="156.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">typing.Protocol</text>
-  <text x="798.8" y="174.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">«2 protocols»</text>
+  <text x="798.8" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Structural protocols</text>
+  <text x="798.8" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">typing.Protocol</text>
+  <text x="798.8" y="174.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">«2 protocols»</text>
   <line x1="784.8" y1="178.0" x2="989.5" y2="178.0" stroke="#40506f" stroke-width="1" opacity="0.35"/>
-  <text x="798.8" y="200.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">PreferredOrientationModel</text>
-  <text x="798.8" y="220.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start">StageModel</text>
+  <text x="798.8" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">PreferredOrientationModel</text>
+  <text x="798.8" y="220.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">StageModel</text>
   <rect x="40.0" y="710.0" width="504.8" height="137.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="56.0" y="736.0" font-size="15" font-family="Arial, Helvetica, sans-serif" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
+  <text x="56.0" y="736.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="758.0" x2="98.0" y2="758.0" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
-  <text x="116.0" y="762.0" font-size="14" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
-  <text x="56.0" y="789.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">260 public classes: 243 dataclasses (242 frozen), and 6 inheritance relations.</text>
-  <text x="56.0" y="807.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">Subclassing is used where alternatives share one interface, not to share code.</text>
-  <text x="56.0" y="825.0" font-size="13" font-family="Arial, Helvetica, sans-serif" fill="#40506f" text-anchor="start">The object-model diagrams show the composition that carries the real structure.</text>
+  <text x="116.0" y="762.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
+  <text x="56.0" y="789.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">260 public classes: 243 dataclasses (242 frozen), and 6 inheritance relations.</text>
+  <text x="56.0" y="807.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Subclassing is used where alternatives share one interface, not to share code.</text>
+  <text x="56.0" y="825.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">The object-model diagrams show the composition that carries the real structure.</text>
 </svg>
