@@ -5,19 +5,19 @@
     </marker>
   </defs>
   <rect width="1320" height="740" fill="#fcfbf7"/>
-  <text x="42" y="56" font-size="30" font-family="Arial" fill="#18212b" font-family="Arial">Crystal Symmetry Actions</text>
-  <text x="42" y="88" font-size="16" font-family="Arial" fill="#56616d" font-family="Arial">
+  <text x="42" y="56" font-size="30" font-family="Arial" fill="#18212b">Crystal Symmetry Actions</text>
+  <text x="42" y="88" font-size="16" font-family="Arial" fill="#56616d">
     The same crystal symmetry group can act on directions or on orientations, but the geometric meaning
   </text>
-  <text x="42" y="112" font-size="16" font-family="Arial" fill="#56616d" font-family="Arial">
+  <text x="42" y="112" font-size="16" font-family="Arial" fill="#56616d">
     of that action depends on the object being reduced.
   </text>
 
   <rect x="48" y="146" width="574" height="520" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
   <rect x="698" y="146" width="574" height="520" rx="24" fill="#fffdf9" stroke="#ddd6ca" stroke-width="1.5"/>
 
-  <text x="84" y="188" font-size="26" font-family="Arial" fill="#21402c" font-family="Arial">Action on directions</text>
-  <text x="734" y="188" font-size="26" font-family="Arial" fill="#17324a" font-family="Arial">Action on orientations</text>
+  <text x="84" y="188" font-size="26" font-family="Arial" fill="#21402c">Action on directions</text>
+  <text x="734" y="188" font-size="26" font-family="Arial" fill="#17324a">Action on orientations</text>
 
   <g transform="translate(336,360)">
     <circle cx="0" cy="0" r="126" fill="none" stroke="#cfd8e1" stroke-width="2.5"/>
@@ -25,39 +25,39 @@
     <line x1="0" y1="0" x2="92" y2="-84" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
     <line x1="0" y1="0" x2="-102" y2="-70" stroke="#4d7a58" stroke-width="4" marker-end="url(#arrow)"/>
     <line x1="0" y1="0" x2="0" y2="126" stroke="#3f78a4" stroke-width="4" marker-end="url(#arrow)"/>
-    <text x="106" y="-88" font-size="19" font-family="Arial" fill="#8f301e" font-family="Arial">e·d = d</text>
-    <text x="-170" y="-76" font-size="19" font-family="Arial" fill="#21402c" font-family="Arial">c₂·d</text>
-    <text x="12" y="142" font-size="19" font-family="Arial" fill="#17324a" font-family="Arial">c₃·d</text>
-    <text x="-108" y="182" font-size="18" font-family="Arial" fill="#313a43" font-family="Arial">example symmetry-equivalent poles</text>
+    <text x="106" y="-88" font-size="19" font-family="Arial" fill="#8f301e">e·d = d</text>
+    <text x="-170" y="-76" font-size="19" font-family="Arial" fill="#21402c">c₂·d</text>
+    <text x="12" y="142" font-size="19" font-family="Arial" fill="#17324a">c₃·d</text>
+    <text x="-108" y="182" font-size="18" font-family="Arial" fill="#313a43">example symmetry-equivalent poles</text>
   </g>
 
   <g transform="translate(986,364)">
     <rect x="-158" y="-110" width="316" height="220" rx="18" fill="#f4e7bf" stroke="#aa8b2d" stroke-width="2"/>
-    <text x="-124" y="-56" font-size="28" font-family="Arial" fill="#5b4308" font-family="Arial">g</text>
-    <text x="-84" y="-56" font-size="22" font-family="Arial" fill="#5b4308" font-family="Arial">→</text>
-    <text x="-42" y="-56" font-size="28" font-family="Arial" fill="#5b4308" font-family="Arial">g c₂</text>
-    <text x="56" y="-56" font-size="22" font-family="Arial" fill="#5b4308" font-family="Arial">→</text>
-    <text x="92" y="-56" font-size="28" font-family="Arial" fill="#5b4308" font-family="Arial">g c₃</text>
-    <text x="-102" y="4" font-size="22" font-family="Arial" fill="#5b4308" font-family="Arial"><tspan x="-102" dy="0.0">or, with specimen</tspan><tspan x="-102" dy="28.2">symmetry, s g c</tspan></text>
-    <text x="0" y="52" font-size="18" font-family="Arial" fill="#5b4308" text-anchor="middle" font-family="Arial"><tspan x="0" dy="0.0">orbit of symmetry-equivalent</tspan><tspan x="0" dy="23.0">orientation representatives</tspan><tspan x="0" dy="23.0">in orientation space</tspan></text>
+    <text x="-124" y="-56" font-size="28" font-family="Arial" fill="#5b4308">g</text>
+    <text x="-84" y="-56" font-size="22" font-family="Arial" fill="#5b4308">→</text>
+    <text x="-42" y="-56" font-size="28" font-family="Arial" fill="#5b4308">g c₂</text>
+    <text x="56" y="-56" font-size="22" font-family="Arial" fill="#5b4308">→</text>
+    <text x="92" y="-56" font-size="28" font-family="Arial" fill="#5b4308">g c₃</text>
+    <text x="-102" y="4" font-size="22" font-family="Arial" fill="#5b4308"><tspan x="-102" dy="0.0">or, with specimen</tspan><tspan x="-102" dy="28.2">symmetry, s g c</tspan></text>
+    <text x="0" y="52" font-size="18" font-family="Arial" fill="#5b4308" text-anchor="middle"><tspan x="0" dy="0.0">orbit of symmetry-equivalent</tspan><tspan x="0" dy="23.0">orientation representatives</tspan><tspan x="0" dy="23.0">in orientation space</tspan></text>
   </g>
 
-  <text x="94" y="570" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="94" y="570" font-size="17" font-family="Arial" fill="#47515c">
     Direction reduction stays on the sphere.
   </text>
-  <text x="94" y="596" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="94" y="596" font-size="17" font-family="Arial" fill="#47515c">
     It asks which equivalent pole belongs
   </text>
-  <text x="94" y="622" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="94" y="622" font-size="17" font-family="Arial" fill="#47515c">
     in the chosen IPF sector.
   </text>
-  <text x="740" y="570" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="740" y="570" font-size="17" font-family="Arial" fill="#47515c">
     Orientation reduction stays in orientation space.
   </text>
-  <text x="740" y="596" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="740" y="596" font-size="17" font-family="Arial" fill="#47515c">
     It asks which equivalent orientation is
   </text>
-  <text x="740" y="622" font-size="17" font-family="Arial" fill="#47515c" font-family="Arial">
+  <text x="740" y="622" font-size="17" font-family="Arial" fill="#47515c">
     the correct canonical representative.
   </text>
 </svg>

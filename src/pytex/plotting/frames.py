@@ -86,7 +86,7 @@ _MUTED = "#40506f"
 _PAPER = "#fbfdff"
 _PANEL = "#ffffff"
 _PANEL_STROKE = "#d7e0ef"
-_SVG_FONT = "Arial, Helvetica, sans-serif"
+_SVG_FONT = "Arial"
 
 
 def _require_matplotlib() -> Any:

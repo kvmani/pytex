@@ -22,36 +22,36 @@
   <rect x="70" y="60" rx="30" ry="30" width="1460" height="980" fill="#ffffff" filter="url(#shadow)"/>
 
   <rect x="110" y="100" rx="24" ry="24" width="1380" height="120" fill="url(#header)"/>
-  <text x="150" y="152" font-family="Arial" font-size="44" fill="#ffffff" font-family="Arial">Implemented Foundation And Planned Expansion</text>
-  <text x="150" y="192" font-family="Arial" font-size="21" fill="#d9e7f5" font-family="Arial">
+  <text x="150" y="152" font-family="Arial" font-size="44" fill="#ffffff">Implemented Foundation And Planned Expansion</text>
+  <text x="150" y="192" font-family="Arial" font-size="21" fill="#d9e7f5">
     The project already has a substantial semantic core. The next work broadens the foundation without breaking that core.
   </text>
 
   <rect x="140" y="270" rx="26" ry="26" width="718.0" height="640" fill="#ecfdf5" stroke="#2d6a4f" stroke-width="3"/>
-  <text x="180" y="324" font-family="Arial" font-size="30" font-weight="700" fill="#1b4332" font-family="Arial">Implemented Or Foundational Today</text>
+  <text x="180" y="324" font-family="Arial" font-size="30" font-weight="700" fill="#1b4332">Implemented Or Foundational Today</text>
 
-  <text x="180" y="378" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">Core model: frames, symmetry, lattice, provenance, orientation</text>
-  <text x="180" y="426" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">Texture: PF, IPF, ODF, IPF color keys</text>
-  <text x="180" y="474" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">EBSD: CrystalMap, KAM, segmentation, GROD, boundaries</text>
-  <text x="180" y="522" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">Diffraction: geometry, reciprocal-space, kinematic spots</text>
-  <text x="180" y="570" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">Import and manifest surface: EBSD import normalization</text>
-  <text x="180" y="618" font-family="Arial" font-size="24" fill="#1b4332" font-family="Arial">Documentation and validation doctrine already live</text>
+  <text x="180" y="378" font-family="Arial" font-size="24" fill="#1b4332">Core model: frames, symmetry, lattice, provenance, orientation</text>
+  <text x="180" y="426" font-family="Arial" font-size="24" fill="#1b4332">Texture: PF, IPF, ODF, IPF color keys</text>
+  <text x="180" y="474" font-family="Arial" font-size="24" fill="#1b4332">EBSD: CrystalMap, KAM, segmentation, GROD, boundaries</text>
+  <text x="180" y="522" font-family="Arial" font-size="24" fill="#1b4332">Diffraction: geometry, reciprocal-space, kinematic spots</text>
+  <text x="180" y="570" font-family="Arial" font-size="24" fill="#1b4332">Import and manifest surface: EBSD import normalization</text>
+  <text x="180" y="618" font-family="Arial" font-size="24" fill="#1b4332">Documentation and validation doctrine already live</text>
 
   <rect x="866" y="270" rx="26" ry="26" width="640" height="640" fill="#fff1f2" stroke="#b56576" stroke-width="3"/>
-  <text x="880" y="324" font-family="Arial" font-size="30" font-weight="700" fill="#6d1f2f" font-family="Arial">Architecturally Defined Next</text>
+  <text x="880" y="324" font-family="Arial" font-size="30" font-weight="700" fill="#6d1f2f">Architecturally Defined Next</text>
 
-  <text x="880" y="378" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">SpaceGroupSpec and broader structure semantics</text>
-  <text x="880" y="426" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">AcquisitionGeometry and CalibrationRecord</text>
-  <text x="880" y="474" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">MeasurementQuality and ScatteringSetup</text>
-  <text x="880" y="522" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">Diffraction validation beyond the current internal base</text>
-  <text x="880" y="570" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">PhaseTransformationRecord and variant semantics</text>
-  <text x="880" y="618" font-family="Arial" font-size="24" fill="#6d1f2f" font-family="Arial">Parent-child provenance and transformation relationships</text>
+  <text x="880" y="378" font-family="Arial" font-size="24" fill="#6d1f2f">SpaceGroupSpec and broader structure semantics</text>
+  <text x="880" y="426" font-family="Arial" font-size="24" fill="#6d1f2f">AcquisitionGeometry and CalibrationRecord</text>
+  <text x="880" y="474" font-family="Arial" font-size="24" fill="#6d1f2f">MeasurementQuality and ScatteringSetup</text>
+  <text x="880" y="522" font-family="Arial" font-size="24" fill="#6d1f2f">Diffraction validation beyond the current internal base</text>
+  <text x="880" y="570" font-family="Arial" font-size="24" fill="#6d1f2f">PhaseTransformationRecord and variant semantics</text>
+  <text x="880" y="618" font-family="Arial" font-size="24" fill="#6d1f2f">Parent-child provenance and transformation relationships</text>
 
   <line x1="770" y1="590" x2="866" y2="590" stroke="#486581" stroke-width="5" marker-end="url(#arrow)"/>
-  <text x="800" y="586" font-family="Arial" font-size="18" fill="#486581" text-anchor="middle" font-family="Arial">extends</text>
+  <text x="800" y="586" font-family="Arial" font-size="18" fill="#486581" text-anchor="middle">extends</text>
 
   <rect x="140" y="940" rx="18" ry="18" width="1383.9" height="82.6" fill="#102a43"/>
-  <text x="180" y="984" font-family="Arial" font-size="20" fill="#f0f4f8" font-family="Arial">
+  <text x="180" y="984" font-family="Arial" font-size="20" fill="#f0f4f8">
     Rule: broaden the semantic foundation only where the current model is explicitly insufficient, never by inventing private conventions inside subsystems.
   </text>
 </svg>

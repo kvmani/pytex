@@ -206,8 +206,11 @@ def test_generated_figures_carry_title_and_description(name: str) -> None:
 @pytest.mark.parametrize("name", GENERATED_FIGURES)
 def test_generated_figures_use_the_canonical_font(name: str) -> None:
     text = (FIGURES_DIR / name).read_text(encoding="utf-8")
-    assert "Arial, Helvetica, sans-serif" in text
-    assert "serif;" not in text.replace("sans-serif;", "")
+    assert 'font-family="Arial"' in text
+    # No fallback stack: the layout metrics are Arial's, so a substituted face
+    # would render text the figure was not laid out for. See the style guide.
+    assert "Helvetica" not in text
+    assert "serif" not in text
 
 
 # ---------------------------------------------------------------------------

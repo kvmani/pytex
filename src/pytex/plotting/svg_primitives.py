@@ -50,7 +50,14 @@ ROSE = "#e11d48"
 GREEN = "#16a34a"
 
 #: The one font used by every canonical SVG asset.
-FONT = "Arial, Helvetica, sans-serif"
+#:
+#: Arial alone, with no fallback stack. The stack was dropped deliberately: a
+#: figure that renders in Arial on one machine and Helvetica or a generic
+#: sans-serif on another is not a canonical asset, because the text metrics in
+#: :mod:`pytex.plotting._svg_text` — which is what keeps labels inside their
+#: cards without a renderer — are Arial's. Naming the fallbacks invited exactly
+#: the substitution the metrics cannot account for.
+FONT = "Arial"
 
 #: Fill/stroke pairs derived from the tokens, for cards that carry a role.
 #:

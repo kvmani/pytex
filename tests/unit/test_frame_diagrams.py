@@ -380,7 +380,7 @@ def test_every_diagram_uses_absolute_marker_units(every_diagram: dict[str, str])
 
 def test_every_diagram_uses_the_canonical_font(every_diagram: dict[str, str]) -> None:
     for name, svg in every_diagram.items():
-        assert "Arial, Helvetica, sans-serif" in svg, name
+        assert 'font-family="Arial"' in svg, name
 
 
 def test_every_diagram_escapes_markup_in_frame_names() -> None:

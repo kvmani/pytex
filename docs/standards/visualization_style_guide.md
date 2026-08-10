@@ -40,9 +40,12 @@ consistent stroke colors. Avoid one-note palettes that make every subsystem look
 - Avoid long single-row or single-column flowsheets when the content naturally has phases. Prefer
   two-row, lane-based, radial, or grouped layouts that use the available screen area.
 - Keep repeated node cards near 8px corner radius.
-- Use `Arial, Helvetica, sans-serif` for all canonical SVG text. Do not use serif fallback fonts for
-  titles, labels, symbols, or callouts unless a figure explicitly embeds a publication source
-  facsimile.
+- Use `Arial` — and only `Arial`, with no fallback stack — for all canonical SVG text, as a single
+  `font-family` attribute per element. The fallback stack is excluded on purpose: the text metrics
+  in `pytex.plotting._svg_text`, which keep labels inside their cards without invoking a renderer,
+  are Arial's, so a figure that silently renders in a substituted face is no longer the asset that
+  was laid out. Do not use serif fonts for titles, labels, symbols, or callouts unless a figure
+  explicitly embeds a publication source facsimile.
 - Use 18px or larger node labels and at least 15px body text inside SVG assets.
 - Use 44px icon medallions or equivalent visual anchors for major nodes when icons clarify the
   diagram.

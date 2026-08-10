@@ -1,4 +1,4 @@
-﻿<svg xmlns="http://www.w3.org/2000/svg" width="1172" height="638" viewBox="0 0 1172 638" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" width="1172" height="638" viewBox="0 0 1172 638" role="img">
   <title>PyTex Standard Reference Frames</title>
   <desc>One panel per catalog frame. Axis vectors are components in the canonical Cartesian reference; all panels share one viewing direction. Frames shown: cartesian (laboratory): axes X, Y, Z; specimen (specimen): axes x, y, z; sample_rd_td_nd (specimen): axes RD, TD, ND; crystal (crystal): axes a, b, c; map (map): axes x, y, z; detector (detector): axes u, v, n; laboratory (laboratory): axes x_lab, y_lab, z_lab.</desc>
   <defs>
@@ -13,90 +13,90 @@
     </marker>
   </defs>
   <rect width="1172" height="638" fill="#fbfdff"/>
-  <text x="26" y="46" font-size="24" font-family="Arial" fill="#07122f" font-family="Arial">PyTex Standard Reference Frames</text>
-  <text x="26" y="72" font-size="13" font-family="Arial" fill="#40506f" font-family="Arial">One panel per catalog frame. Axis vectors are components in the canonical Cartesian reference; all panels share one viewing direction.</text>
+  <text x="26" y="46" font-size="24" font-family="Arial" fill="#07122f">PyTex Standard Reference Frames</text>
+  <text x="26" y="72" font-size="13" font-family="Arial" fill="#40506f">One panel per catalog frame. Axis vectors are components in the canonical Cartesian reference; all panels share one viewing direction.</text>
   <g>
     <rect x="32.0" y="98.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="166.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">cartesian</text>
-    <text x="166.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">laboratory domain &#183; X/Y/Z</text>
+    <text x="166.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">cartesian</text>
+    <text x="166.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">laboratory domain &#183; X/Y/Z</text>
     <line x1="166.00" y1="246.00" x2="166.00" y2="183.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="166.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">Z</text>
+    <text x="166.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">Z</text>
     <line x1="166.00" y1="246.00" x2="222.04" y2="260.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="241.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">Y</text>
+    <text x="241.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">Y</text>
     <line x1="166.00" y1="246.00" x2="128.20" y2="266.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="110.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">X</text>
+    <text x="110.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">X</text>
     <circle cx="166.00" cy="246.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="312.0" y="98.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="446.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">specimen</text>
-    <text x="446.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">specimen domain &#183; x/y/z</text>
+    <text x="446.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">specimen</text>
+    <text x="446.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">specimen domain &#183; x/y/z</text>
     <line x1="446.00" y1="246.00" x2="446.00" y2="183.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="446.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
+    <text x="446.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
     <line x1="446.00" y1="246.00" x2="502.04" y2="260.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="521.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
+    <text x="521.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
     <line x1="446.00" y1="246.00" x2="408.20" y2="266.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="390.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
+    <text x="390.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
     <circle cx="446.00" cy="246.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="592.0" y="98.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="726.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">sample_rd_td_nd</text>
-    <text x="726.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">specimen domain &#183; RD/TD/ND</text>
+    <text x="726.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">sample_rd_td_nd</text>
+    <text x="726.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">specimen domain &#183; RD/TD/ND</text>
     <line x1="726.00" y1="246.00" x2="726.00" y2="183.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="726.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">ND</text>
+    <text x="726.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">ND</text>
     <line x1="726.00" y1="246.00" x2="782.04" y2="260.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="801.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TD</text>
+    <text x="801.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">TD</text>
     <line x1="726.00" y1="246.00" x2="688.20" y2="266.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="670.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">RD</text>
+    <text x="670.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">RD</text>
     <circle cx="726.00" cy="246.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="872.0" y="98.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="1006.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">crystal</text>
-    <text x="1006.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">crystal domain &#183; a/b/c</text>
+    <text x="1006.0" y="124.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">crystal</text>
+    <text x="1006.0" y="142.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">crystal domain &#183; a/b/c</text>
     <line x1="1006.00" y1="246.00" x2="1006.00" y2="183.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="1006.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">c</text>
+    <text x="1006.00" y="163.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c</text>
     <line x1="1006.00" y1="246.00" x2="1062.04" y2="260.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="1081.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">b</text>
+    <text x="1081.70" y="265.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">b</text>
     <line x1="1006.00" y1="246.00" x2="968.20" y2="266.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="950.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">a</text>
+    <text x="950.47" y="276.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a</text>
     <circle cx="1006.00" cy="246.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="32.0" y="358.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="166.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">map</text>
-    <text x="166.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">map domain &#183; x/y/z</text>
+    <text x="166.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">map</text>
+    <text x="166.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">map domain &#183; x/y/z</text>
     <line x1="166.00" y1="506.00" x2="166.00" y2="443.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="166.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
+    <text x="166.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
     <line x1="166.00" y1="506.00" x2="222.04" y2="520.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="241.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
+    <text x="241.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
     <line x1="166.00" y1="506.00" x2="128.20" y2="526.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="110.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
+    <text x="110.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
     <circle cx="166.00" cy="506.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="312.0" y="358.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="446.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">detector</text>
-    <text x="446.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">detector domain &#183; u/v/n</text>
+    <text x="446.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">detector</text>
+    <text x="446.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">detector domain &#183; u/v/n</text>
     <line x1="446.00" y1="506.00" x2="446.00" y2="443.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="446.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">n</text>
+    <text x="446.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">n</text>
     <line x1="446.00" y1="506.00" x2="502.04" y2="520.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="521.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">v</text>
+    <text x="521.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">v</text>
     <line x1="446.00" y1="506.00" x2="408.20" y2="526.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="390.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">u</text>
+    <text x="390.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">u</text>
     <circle cx="446.00" cy="506.00" r="3.4" fill="#07122f"/>
   </g>
   <g>
     <rect x="592.0" y="358.0" width="268.0" height="248.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1"/>
-    <text x="726.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">laboratory</text>
-    <text x="726.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">laboratory domain &#183; x_lab/y_lab/z_lab</text>
+    <text x="726.0" y="384.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">laboratory</text>
+    <text x="726.0" y="402.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">laboratory domain &#183; x_lab/y_lab/z_lab</text>
     <line x1="726.00" y1="506.00" x2="726.00" y2="443.32" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-2)"/>
-    <text x="726.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z_lab</text>
+    <text x="726.00" y="423.04" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z_lab</text>
     <line x1="726.00" y1="506.00" x2="782.04" y2="520.16" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-1)"/>
-    <text x="801.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y_lab</text>
+    <text x="801.70" y="525.13" font-size="13" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y_lab</text>
     <line x1="726.00" y1="506.00" x2="688.20" y2="526.99" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-catalog-arrow-0)"/>
-    <text x="670.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x_lab</text>
+    <text x="670.47" y="536.84" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x_lab</text>
     <circle cx="726.00" cy="506.00" r="3.4" fill="#07122f"/>
   </g>
 </svg>
