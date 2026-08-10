@@ -18,8 +18,11 @@ The diffracting directions therefore form two cones of semi-angle
 :math:`90^\\circ - \\theta_B` about the plane normal — the Kossel cones — one on
 each side of the plane. Their intersections with the detector are the two edges
 of the band, and the plane's own trace runs midway between them. The band's
-angular width is :math:`2\\theta_B`, so a *wide* band means a *large* d-spacing:
-band widths measure the lattice directly.
+angular width is :math:`2\\theta_B = 2\\arcsin(\\lambda/2d) \\approx \\lambda/d`, so a
+*wide* band means a *small* d-spacing. Band widths measure the lattice directly,
+and the widest bands in a pattern come from the high-index planes while the
+strongest come from the low-index ones -- two orderings that are easy to
+conflate.
 
 Why gnomonic coordinates
 ------------------------
@@ -287,8 +290,8 @@ class KikuchiBand:
     --------------
     The band's angular width is exactly ``2 * bragg_angle_rad``, and
     :math:`\\sin\\theta_B = \\lambda / 2d`, so band width is a direct measurement
-    of the interplanar spacing. Its centre line is the trace of the lattice
-    plane itself.
+    of the interplanar spacing -- an *inverse* one: the width grows as the spacing
+    falls. Its centre line is the trace of the lattice plane itself.
 
     Attributes
     ----------
@@ -772,8 +775,9 @@ def simulate_kikuchi_pattern(
         Largest absolute Miller index enumerated. Raising it admits narrower,
         higher-order bands at cubic cost.
     min_d_spacing_angstrom : float, optional
-        Drop planes below this spacing. Since band width falls as the spacing
-        does, this is the direct way to exclude bands too narrow to resolve.
+        Drop planes below this spacing. Since band width grows as the spacing
+        falls, this excludes the *widest* bands -- the weak high-order ones that
+        clutter a pattern -- rather than the narrowest.
     min_relative_intensity : float
         Drop bands weaker than this fraction of the strongest.
     max_bands : int, optional
