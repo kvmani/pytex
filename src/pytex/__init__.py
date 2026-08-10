@@ -549,6 +549,7 @@ from pytex.texture import (
     PoleFigureResidualReport,
     TextureComponent,
     component_volume_fractions,
+    random_pole_density,
     residual_reports_for_pole_figures,
 )
 
@@ -1010,6 +1011,7 @@ __all__ = [
     "quaternions_from_homochoric",
     "quaternions_to_euler_angles",
     "random_disorientation_angles_deg",
+    "random_pole_density",
     "raster_solid_angle_weights",
     "rc_params_from_style",
     "read_benchmark_manifest",

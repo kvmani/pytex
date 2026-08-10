@@ -38,11 +38,19 @@ from pytex.texture.harmonics import (
 )
 
 
-def _build_harmonic_odf(perturbations: dict[int, float]) -> HarmonicODF:
+def _build_harmonic_odf(
+    perturbations: dict[int, float],
+    *,
+    step_deg: float = 30.0,
+    halfwidth_deg: float = 10.0,
+) -> HarmonicODF:
     """Build a valid (mean-density-1) HarmonicODF with identity symmetry.
 
     ``perturbations`` maps non-constant orthonormal basis columns to their
     coefficient; the constant column is set to 1 so the ODF integrates to 1.
+    ``step_deg`` sets the Bunge quadrature spacing and ``halfwidth_deg`` the pole
+    kernel; the defaults are deliberately coarse and fast, and a test that needs
+    the pole-density quadrature to be accurate must refine both.
     """
 
     crystal = ReferenceFrame(
@@ -65,9 +73,9 @@ def _build_harmonic_odf(perturbations: dict[int, float]) -> HarmonicODF:
         specimen_frame=specimen,
         crystal_symmetry=symmetry,
         phase=phase,
-        phi1_step_deg=30.0,
-        big_phi_step_deg=30.0,
-        phi2_step_deg=30.0,
+        phi1_step_deg=step_deg,
+        big_phi_step_deg=step_deg,
+        phi2_step_deg=step_deg,
         provenance=None,
     )
     basis_terms = _enumerate_terms(degree_bandlimit=2, even_degrees_only=False)
@@ -102,7 +110,7 @@ def _build_harmonic_odf(perturbations: dict[int, float]) -> HarmonicODF:
         crystal_symmetry=symmetry,
         specimen_symmetry=None,
         phase=phase,
-        pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=10.0),
+        pole_kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=halfwidth_deg),
         even_degrees_only=False,
         provenance=None,
     )
@@ -456,3 +464,60 @@ def test_harmonic_inversion_accepts_a_bandlimit_above_six() -> None:
         (measured,), degree_bandlimit=8, regularization=1e-3
     )
     assert np.all(np.isfinite(report.odf.coefficients))
+
+
+def test_uniform_harmonic_odf_pole_density_is_exactly_one_mrd() -> None:
+    """A uniform ODF must give unit pole density, on the m.r.d. scale.
+
+    This is an exact identity rather than a tolerance against a prior run: if
+    every orientation is equally likely then every specimen direction is equally
+    likely to carry a given pole, so the pole figure is flat at 1.0 multiples of
+    random. It is the check that pins the scale of
+    :meth:`HarmonicODF.evaluate_pole_density`, whose kernel-weighted quadrature
+    sum would otherwise return the kernel's spherical mean — of order 0.006 —
+    for exactly this case.
+    """
+
+    # The quadrature has to resolve the kernel for the identity to hold
+    # numerically, so both are refined relative to the module default.
+    odf = _build_harmonic_odf({}, step_deg=12.0, halfwidth_deg=25.0)
+    phase = odf.phase
+    assert phase is not None
+    pole = CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase)
+    densities = odf.evaluate_pole_density(pole, make_measurement_grid())
+    assert_allclose(densities, np.ones_like(densities), atol=5e-3)
+
+
+def test_harmonic_inversion_returns_an_odf_on_the_mrd_scale() -> None:
+    """Inversion of m.r.d. pole figures must return an m.r.d. ODF.
+
+    The forward operator and the returned density have to share one scale. They
+    did not: the operator carried the raw kernel response, so the fitted
+    coefficients absorbed its reciprocal and every density the ODF reported was
+    about 163 times too large at the default halfwidth. The pole-figure round
+    trip still closed, which is why the error was invisible from the residual
+    alone — only the ODF's own mean density exposes it.
+    """
+
+    crystal, specimen, phase, _ = make_harmonic_context()
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [35.0, 45.0, 0.0], [55.0, 30.0, 65.0]]),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    grid = S2Grid.equispaced(15.0, reference_frame=specimen, hemisphere="upper")
+    pole_figures = tuple(
+        PoleFigure.from_orientations(
+            orientations, CrystalPlane(miller=MillerIndex(indices, phase=phase), phase=phase)
+        ).on_grid(grid, halfwidth_deg=15.0)
+        for indices in ([1, 1, 1], [2, 0, 0], [2, 2, 0])
+    )
+    # Every input figure is normalized to multiples of random, so its spherical
+    # mean is 1 and the recovered ODF's mean density must be too.
+    for pole_figure in pole_figures:
+        assert pole_figure.spherical_mean() == pytest.approx(1.0, abs=0.1)
+    report = HarmonicODF.invert_pole_figures(pole_figures, degree_bandlimit=6)
+    assert report.odf.mean_density == pytest.approx(1.0, abs=0.1)
+    assert report.odf.texture_index > 1.0

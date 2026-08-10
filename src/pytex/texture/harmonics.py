@@ -13,7 +13,12 @@ from pytex.core.lattice import CrystalPlane, Phase
 from pytex.core.orientation import Orientation, OrientationSet
 from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
-from pytex.texture.models import KernelSpec, PoleFigure, _pole_density_response_matrix
+from pytex.texture.models import (
+    KernelSpec,
+    PoleFigure,
+    _pole_density_response_matrix,
+    random_pole_density,
+)
 
 
 def _identity_operators() -> np.ndarray:
@@ -571,7 +576,18 @@ class HarmonicODF:
         Returns
         -------
         np.ndarray
-            ``(n,)`` pole densities.
+            ``(n,)`` pole densities in multiples of a random distribution, on the
+            same scale as the orientation density itself: a uniform ODF
+            (:attr:`mean_density` 1) returns 1.0 at every direction.
+
+        Notes
+        -----
+        The kernel used to smooth the quadrature sum peaks at 1 rather than
+        integrating to 1, so the raw response of a uniform distribution is the
+        kernel's spherical mean — about 0.006 at the default 7.5 degree
+        halfwidth, not 1. Dividing by
+        :func:`~pytex.texture.models.random_pole_density` removes that factor,
+        which is the only reason this returns m.r.d. rather than a response.
         """
 
         if self.phase is not None and pole.phase != self.phase:
@@ -584,7 +600,7 @@ class HarmonicODF:
             include_symmetry_family=include_symmetry_family,
         )
         weighted_density = self.quadrature_weights * self.quadrature_densities
-        density = response @ weighted_density
+        density = (response @ weighted_density) / random_pole_density(self.pole_kernel)
         density = np.ascontiguousarray(density, dtype=np.float64)
         density.setflags(write=False)
         return density
@@ -759,6 +775,16 @@ class HarmonicODF:
             quadrature_weights,
             tolerance=basis_tolerance,
         )
+        # The forward operator must predict the observations on their own scale.
+        # Measured and reconstructed pole figures are in multiples of a random
+        # distribution, while the raw kernel response of a uniform ODF is the
+        # kernel's spherical mean (0.006 at the default halfwidth), so an
+        # unnormalized operator would be fitted by coefficients inflated by its
+        # reciprocal — about 163 — and every density the returned ODF reports,
+        # including mean_density, texture_index and entropy, would carry that
+        # factor. The pole-figure round trip would still close, which is why this
+        # scale error is invisible unless the ODF itself is inspected.
+        kernel_mean = random_pole_density(inversion_kernel)
         blocks = []
         for pole_figure in pole_figures:
             response = _pole_density_response_matrix(
@@ -768,7 +794,9 @@ class HarmonicODF:
                 kernel=inversion_kernel,
                 include_symmetry_family=include_symmetry_family,
             )
-            blocks.append(response @ (quadrature_weights[:, None] * quadrature_basis_values))
+            blocks.append(
+                (response @ (quadrature_weights[:, None] * quadrature_basis_values)) / kernel_mean
+            )
         system_matrix = np.vstack(blocks)
         observations = np.concatenate([pole_figure.intensities for pole_figure in pole_figures])
         if regularization > 0.0:

@@ -22,6 +22,7 @@ from pytex.texture.models import (
     PoleFigureDifference,
     PoleFigureSampling,
     ResamplingEstimator,
+    random_pole_density,
 )
 from pytex.texture.reconstruction import (
     ODFReconstructionConfig,
@@ -57,5 +58,6 @@ __all__ = [
     "TextureComponent",
     "component_volume_fractions",
     "fibre_axis_alignment_quaternion",
+    "random_pole_density",
     "residual_reports_for_pole_figures",
 ]
