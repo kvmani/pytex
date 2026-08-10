@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, Diffraction Groups — IN PROGRESS (2026-08-09)
+## Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, Diffraction Groups — COMPLETE (2026-08-10)
 
 **Objective.** Close the four gaps that the CBED step of the previous task explicitly listed as
 not implemented, and that its `describe()` still advertises as missing:
@@ -42,8 +42,8 @@ diffraction engine it extends. Recorded here rather than decided silently.
 | 1 | `pytex.diffraction.dynamical`: Bloch waves + absorption, tests, theory note | done | e671b8f |
 | 2 | `pytex.diffraction.holz`: HOLZ line loci, chords, metrology sensitivity | done | 660ff94 |
 | 3 | `pytex.diffraction.diffraction_groups`: the 31 groups, forward and inverse | done | 660ff94 |
-| 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | done | (this commit) |
-| 5 | Notebook 29, docs index, symbol registry, worked examples, parity matrix | pending | |
+| 4 | Wire all three into `CBEDPattern`; retire the "not implemented" limits text | done | f12addc |
+| 5 | Notebook 29, docs index, symbol registry, worked examples, parity matrix | done | (this commit) |
 
 ### Step 1 outcome (2026-08-09)
 
@@ -245,6 +245,41 @@ structures alike (Si 0.06 -> 0.37, GaAs 0.13 -> 0.55 as the excitation window wi
 physics and not truncation. `symmetry_observations` therefore leaves `friedel_pair_two_fold` to
 the caller rather than reporting a number that would sometimes be wrong. The determination does
 not need it: at `[001]` the bright-field and whole-pattern symmetries settle the centre outright.
+
+### Step 5 outcome (2026-08-10)
+
+`docs/site/tutorials/notebooks/29_dynamical_cbed_and_point_groups.ipynb` (54 cells, 24 code,
+runs in 23 s), six worked examples in `worked_examples/examples/dynamical_cbed.py`, four new
+rows in `docs/testing/diffraction_validation_matrix.md`, and a CHANGELOG entry.
+
+**The control was changed while writing the notebook, and that was a real finding.** The
+rocksalt structure used in the unit tests — same lattice, same two species, offset by 1/2
+instead of 1/4 — is an excellent control for the whole-pattern test and *useless* for the
+`+-g` one, because gallium and arsenic are neighbours in the periodic table and its
+higher-order reflections go as `f_Ga - f_As`, which is nearly zero. It would have shown a
+residual near zero and made the naive `+-g` test look reliable. Diamond silicon is the right
+control: identical structure type to zincblende, identical site geometry, differing only in
+whether the two sublattices carry the same element. Notebook section 5.3 now makes that
+point explicitly — a control that is perfect for one measurement can be uninformative for
+another.
+
+**Every number in the notebook is computed, including the ones in the prose.** A sentence
+quoting the symmetry residuals as "0.00 against 0.32" was replaced by a cell that reads the
+symmetry back at four tolerances spanning two decades and shows the answer is flat, which is
+the claim that actually matters and is checked rather than transcribed.
+
+**Worked-example provenance.** All six expected values are analytic identities or published
+counts, never a copied program output: the two-beam closed form (exact, tolerance 1e-12),
+unitarity (exact), the strain/wavelength cancellation (exact, 1e-15), Buxton's 31 diffraction
+groups, the 21/11 split of the point groups from the International Tables, and the published
+diffraction-group assignments for `-43m` and `m-3m` down a four-fold axis.
+
+## Dynamical CBED — COMPLETE (2026-08-10)
+
+All five steps are landed and pushed. The four gaps the previous task listed as unimplemented
+are closed, and the limits that remain are named in `describe()` on every object that has them:
+Bethe perturbation of weak beams, computed absorptive form factors, Buxton's special dark-field
+and `+-g` observations, and specimen realism.
 
 ## Repository Content Rule And PDF History Purge — COMPLETE (2026-08-09)
 

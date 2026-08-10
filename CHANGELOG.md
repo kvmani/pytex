@@ -13,6 +13,71 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Dynamical CBED: many-beam coupling, absorption, HOLZ lines, and the point
+  group.** Tutorial-28-era CBED computed each disc as an independent two-beam
+  calculation, and said so: no coupling, no absorption, no HOLZ lines, and no
+  diffraction-group symmetry determination. All four now exist, and they turn
+  out to be one capability rather than four — admitting higher-order Laue zone
+  beams is what produces the lines *and* what breaks the projection symmetry
+  that would otherwise make every pattern look centrosymmetric.
+
+  - `pytex.diffraction.dynamical` solves the coupled many-beam problem by the
+    Bloch-wave method. The absolute scale is inherited rather than re-asserted:
+    the coupling coefficient is `nu_g = lambda F_g / (pi V_c cos theta_g)`, so
+    `|nu_g| = 1/xi_g` for the extinction distance already validated against
+    Williams and Carter Table 23.1, and the two-beam limit reproduces
+    `two_beam_rocking_curve` to 2e-15 — which pins the diagonal convention, the
+    off-diagonal scale and the `i*pi` in the propagator at once. Without
+    absorption the propagator is unitary and the beams sum to one to 1e-12,
+    which is the check that catches obtaining the Bloch-wave excitation
+    amplitudes by projection when the eigenvectors are not orthogonal.
+  - `AbsorptionModel` adds the imaginary optical potential. The *structure* is
+    exact — anomalous absorption emerges from the eigenvector structure rather
+    than being applied to the output, and is tested by the
+    Hashimoto-Howie-Whelan theorem that the bright-field rocking curve becomes
+    asymmetric while the dark-field one stays symmetric. The *magnitudes* are
+    the customary phenomenological ratios of Hirsch et al., and `describe()`
+    says so; absorptive form factors are not computed. Normal absorption is
+    proved to factor out exactly as `exp(-2 pi t / xi'_0)`, so the
+    phenomenological number cannot contaminate any conclusion about shape,
+    position or symmetry.
+  - `pytex.diffraction.holz` gives the HOLZ line loci in closed form, with
+    their chords in both discs, their angular width for a given thickness, their
+    intersections, and their sensitivity to strain and to voltage. Positions are
+    checked against `pytex.diffraction.dynamical`, which derives the excitation
+    error independently, to 1e-15. The strain/wavelength degeneracy is asserted
+    rather than described: a fractional lattice strain and a fractional
+    wavelength change of the same size cancel to 1e-16 at every reflection
+    simultaneously, which is why quantitative HOLZ metrology calibrates the
+    accelerating voltage first.
+  - `pytex.diffraction.diffraction_groups` **derives** the 31 diffraction
+    groups from PyTex's own operator tables rather than storing Buxton's table,
+    and obtains the point-group correspondence by inversion. Bright-field and
+    whole-pattern symmetry are derived too. The centrosymmetry statement is an
+    exact correspondence — `2_R` is present at every beam direction of a
+    centrosymmetric crystal and none of an acentric one, asserted over all 32
+    point groups — so the `+-g` observation alone splits them into exactly 21
+    and 11.
+  - `ConvergentBeamConfig` gains `method`, `absorption`, `laue_zones` and the
+    HOLZ search bounds; `CBEDPattern` gains `beam_set`, `holz_lines`,
+    `predicted_diffraction_group()`, `symmetry_observations()` and
+    `determine_point_group()`. Down `[001]`, zincblende GaAs and diamond
+    silicon are separated by whole-pattern symmetry, `2mm` against `4mm`, and
+    the determination returns `{-42m, -43m}` and "not centrosymmetric" for the
+    polar one. Confine the beam set to the zeroth Laue zone and the same
+    crystal looks centrosymmetric, so `symmetry_observations()` refuses a
+    projection calculation unless asked twice and a two-beam pattern outright.
+  - Tutorial `29_dynamical_cbed_and_point_groups`, the theory note
+    `docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`, and six
+    worked examples whose expected values are analytic identities or published
+    counts.
+
+  Not implemented, and stated in `describe()` rather than left to be
+  discovered: Bethe perturbation of weak beams, computed absorptive form
+  factors, Buxton's dark-field and `+-g` observations for reflections on
+  symmetry lines, and specimen realism (wedge, bending, strain gradient, probe
+  aberration, inelastic background).
+
 - **Pole-figure arithmetic.** Two pole figures could not previously be combined
   at all: `PoleFigure` holds *scattered* specimen directions, so two figures
   generally share no sampling direction, and the arithmetic was blocked
