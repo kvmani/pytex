@@ -74,7 +74,7 @@ inversion) rather than by notebook number.
 | Notebook | Subject it must own | Status |
 | --- | --- | --- |
 | 02 rotations & batch primitives | the metric on SO(3), the symmetry quotient, disorientation, quaternion averaging, the Mackenzie distribution | **done** — 34 cells, 25.6 k md chars, 3 figures |
-| 06 texture/ODF/PF inversion | kernel normalization, the ghost problem, conditioning of the forward operator, regularization trade-off | pending |
+| 06 texture/ODF/PF inversion | kernel normalization, the ghost problem, conditioning of the forward operator, regularization trade-off | **done** — 36 cells, 28.4 k md chars, 4 figures; found four library defects |
 | 03 symmetry & fundamental regions | point groups as groups, orbit–stabilizer, the fundamental sector's area, Laue vs proper | pending |
 | 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | pending |
 | 04 lattices, space groups, CIF | metric tensor arithmetic, reciprocal duality, systematic absences from the space group | pending |
@@ -98,6 +98,35 @@ Requested in the same instruction and tracked in `docs/development/active_task_p
 Kikuchi maps in the stereographic plane that guide a TEM operator in planning the path to the
 next zone axis, plus tutorial 30 with cubic and hexagonal inline graphics. That work adds a
 notebook rather than improving one, so it is ledgered there, not here.
+
+## Defects found by writing the notebooks
+
+Round 2 is turning up real defects at a rate that the round-1 pass did not, and the reason is
+structural: round 1 demonstrated that a call returns *something*, while the rubric's R5 demands
+an exact analytic value verified live. A surface that is wrong by a constant factor passes the
+first test and fails the second.
+
+From notebook 06 alone, all four now fixed on `main`:
+
+1. `HarmonicODF.invert_pole_figures` returned every density scaled by
+   `1/random_pole_density(kernel)` — 162.7 at the default halfwidth — so `mean_density`,
+   `texture_index` and `entropy` were meaningless. Invisible from the residual, because
+   `evaluate_pole_density` carried the same factor and the two cancelled.
+2. `ODF.invert_pole_figures` had the same scale error, and there it was fatal rather than
+   cosmetic: the weights are constrained to sum to one, so the model could not absorb the
+   factor. Given a measured (m.r.d.) pole figure it returned a relative residual of 0.99 and a
+   cube density a third of the truth.
+3. …and reported that as `converged=True` after one iteration, because the stopping rule
+   compared the raw step size — which is proportional to 1/L — against a fixed tolerance.
+4. `regularization` was inert at every value from 1e-10 to 1e8, because the feasibility step
+   clipped and rescaled instead of projecting, and the Tikhonov gradient is parallel to `w`.
+
+Notebook 02 found two smaller ones: `spread_angles_deg` documented as per-component when it is
+the per-member GROD field, and the Mackenzie mean quoted as 45 degrees when that is the mode.
+
+The lesson for the remaining notebooks: **write the exact-value check first.** Every one of these
+was found by asking "what does this return for the case where the answer is known?" — a uniform
+ODF, a random texture, a flat pole figure.
 
 ## Working method
 
