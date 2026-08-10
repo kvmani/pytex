@@ -5,6 +5,53 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Stereographic Kikuchi Maps For Zone-Axis Navigation — IN PROGRESS (opened 2026-08-10)
+
+**Objective.** Give PyTex the TEM operator's road atlas: the Kikuchi bands and zone axes of a
+phase, drawn on a stereographic projection of the crystal sphere, with routing along bands
+from the current zone axis to a target one. Then tutorial 30, with inline cubic and hexagonal
+graphics.
+
+**Why this is not already covered.** Three neighbouring surfaces exist and none of them is
+this:
+
+- `pytex.diffraction.kikuchi` simulates an EBSD-style pattern in **gnomonic** projection on a
+  flat detector of finite extent. A gnomonic projection cannot show a hemisphere — a band at
+  90 degrees from the pattern centre is at infinity — so it is structurally unable to be an
+  atlas.
+- `pytex.tem.path.connecting_band` already knows the key fact that the geodesic between two
+  zone axes *is* a Kikuchi band, but it answers only for one pair of poles given in advance.
+- `pytex.plotting.tilt_stereogram` draws poles and the stage envelope stereographically, but
+  has no bands, so it shows the destinations without the roads between them.
+
+The map is the missing middle: the global band network, from which the routes are read.
+
+**Where the code goes.** `src/pytex/diffraction/kikuchi_map.py`, beside `kikuchi.py` and
+`stereonets.py`. Same reasoning as the dynamical CBED entry below: `pytex/tem/` is scoped to
+instrument operation, and band geometry on the crystal sphere is diffraction geometry. The
+*routing* result is consumed by `pytex.tem` navigation, not defined by it.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 0 | Survey the three neighbouring surfaces; open this entry and the round-2 notebook rubric | done | (step 0) |
+| 1 | Notebooks 02 and 06 to the round-2 rubric, proving the standard is reachable | pending | |
+| 2 | `pytex.diffraction.kikuchi_map`: bands, zone axes, routing, `describe()`, JSON | pending | |
+| 3 | `pytex.plotting.kikuchi_map`: the rendered atlas, cubic and hexagonal | pending | |
+| 4 | Theory note, worked example, symbol registry, docs index, parity matrix | pending | |
+| 5 | Tutorial 30 | pending | |
+| 6 | Remaining round-2 notebooks, per `docs/development/notebook_improvement_progress.md` | pending | |
+
+### Step 0 outcome (2026-08-10)
+
+Two things found and one fixed. Tutorial 29 had been committed **with its outputs and per-cell
+execution timings**, leaving `tests/unit/test_notebooks.py` red on `main` and the file at
+1.1 MB; cleared to 55 KB and pushed as the first commit of this task. And the round-1 notebook
+overhaul, recorded as complete, is complete only against its own much lower bar — the explicit
+round-2 rubric now lives in `docs/development/notebook_improvement_progress.md` and measures
+the round-1 notebooks as short by roughly a factor of three in every dimension.
+
 ## Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, Diffraction Groups — COMPLETE (2026-08-10)
 
 **Objective.** Close the four gaps that the CBED step of the previous task explicitly listed as
