@@ -20,56 +20,56 @@
 
   <rect width="1600" height="980" fill="url(#bg)"/>
 
-  <text x="90" y="92" font-family="Arial" font-size="44" fill="#ffffff">PyTex Architecture Atlas</text>
-  <text x="90" y="132" font-family="Arial" font-size="22" fill="#d9e7f5">
+  <text x="90" y="92" font-family="Arial" font-size="44" fill="#ffffff" font-family="Arial">PyTex Architecture Atlas</text>
+  <text x="90" y="132" font-family="Arial" font-size="22" fill="#d9e7f5" font-family="Arial">
     One canonical crystallographic core, multiple scientific domains, explicit governance, and architecture-first expansion.
   </text>
 
   <rect x="80" y="180" rx="28" ry="28" width="1440" height="720" fill="url(#panel)" filter="url(#shadow)"/>
 
   <rect x="120" y="220" rx="20" ry="20" width="1360" height="96" fill="#102a43"/>
-  <text x="150" y="273" font-family="Arial" font-size="28" font-weight="700" fill="#f0f4f8">
+  <text x="150" y="273" font-family="Arial" font-size="28" font-weight="700" fill="#f0f4f8" font-family="Arial">
     Governance And Product Surfaces
   </text>
-  <text x="150" y="307" font-family="Arial" font-size="18" fill="#d9e2ec">
+  <text x="150" y="307" font-family="Arial" font-size="18" fill="#d9e2ec" font-family="Arial">
     Mission, specifications, standards, Sphinx docs, LaTeX theory notes, SVG figures, tests, ledgers, fixtures, and benchmarks.
   </text>
 
   <rect x="160" y="362" rx="22" ry="22" width="480" height="260" fill="#eff6ff" stroke="#486581" stroke-width="3"/>
-  <text x="190" y="410" font-family="Arial" font-size="30" font-weight="700" fill="#102a43">Canonical Core</text>
-  <text x="190" y="450" font-family="Arial" font-size="22" fill="#334e68">conventions.py</text>
-  <text x="190" y="485" font-family="Arial" font-size="22" fill="#334e68">frames.py</text>
-  <text x="190" y="520" font-family="Arial" font-size="22" fill="#334e68">symmetry.py</text>
-  <text x="190" y="555" font-family="Arial" font-size="22" fill="#334e68">lattice.py</text>
-  <text x="190" y="590" font-family="Arial" font-size="22" fill="#334e68">orientation.py / provenance.py</text>
+  <text x="190" y="410" font-family="Arial" font-size="30" font-weight="700" fill="#102a43" font-family="Arial">Canonical Core</text>
+  <text x="190" y="450" font-family="Arial" font-size="22" fill="#334e68" font-family="Arial">conventions.py</text>
+  <text x="190" y="485" font-family="Arial" font-size="22" fill="#334e68" font-family="Arial">frames.py</text>
+  <text x="190" y="520" font-family="Arial" font-size="22" fill="#334e68" font-family="Arial">symmetry.py</text>
+  <text x="190" y="555" font-family="Arial" font-size="22" fill="#334e68" font-family="Arial">lattice.py</text>
+  <text x="190" y="590" font-family="Arial" font-size="22" fill="#334e68" font-family="Arial">orientation.py / provenance.py</text>
 
   <rect x="720" y="348" rx="22" ry="22" width="330" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
-  <text x="750" y="394" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332">Texture</text>
-  <text x="750" y="430" font-family="Arial" font-size="19" fill="#1b4332">PF, IPF, ODF, kernels</text>
+  <text x="750" y="394" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332" font-family="Arial">Texture</text>
+  <text x="750" y="430" font-family="Arial" font-size="19" fill="#1b4332" font-family="Arial">PF, IPF, ODF, kernels</text>
 
   <rect x="1090" y="348" rx="22" ry="22" width="330" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
-  <text x="1120" y="394" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332">EBSD</text>
-  <text x="1120" y="430" font-family="Arial" font-size="19" fill="#1b4332">CrystalMap, KAM, grains, GROD</text>
+  <text x="1120" y="394" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332" font-family="Arial">EBSD</text>
+  <text x="1120" y="430" font-family="Arial" font-size="19" fill="#1b4332" font-family="Arial">CrystalMap, KAM, grains, GROD</text>
 
   <rect x="720" y="528" rx="22" ry="22" width="356.0" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
-  <text x="750" y="574" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332">Diffraction</text>
-  <text x="750" y="610" font-family="Arial" font-size="19" fill="#1b4332">Geometry, spots, families, indexing</text>
+  <text x="750" y="574" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332" font-family="Arial">Diffraction</text>
+  <text x="750" y="610" font-family="Arial" font-size="19" fill="#1b4332" font-family="Arial">Geometry, spots, families, indexing</text>
 
   <rect x="1090" y="528" rx="22" ry="22" width="374.8" height="140" fill="#dcfce7" stroke="#2d6a4f" stroke-width="3"/>
-  <text x="1120" y="574" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332">Plotting</text>
-  <text x="1120" y="610" font-family="Arial" font-size="19" fill="#1b4332">IPF color keys and presentation aids</text>
+  <text x="1120" y="574" font-family="Arial" font-size="28" font-weight="700" fill="#1b4332" font-family="Arial">Plotting</text>
+  <text x="1120" y="610" font-family="Arial" font-size="19" fill="#1b4332" font-family="Arial">IPF color keys and presentation aids</text>
 
   <rect x="160" y="700" rx="22" ry="22" width="426.0" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
-  <text x="190" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#744210">Boundary Layer</text>
-  <text x="190" y="782" font-family="Arial" font-size="19" fill="#744210">Adapters normalize external tools and data</text>
+  <text x="190" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#744210" font-family="Arial">Boundary Layer</text>
+  <text x="190" y="782" font-family="Arial" font-size="19" fill="#744210" font-family="Arial">Adapters normalize external tools and data</text>
 
   <rect x="600" y="700" rx="22" ry="22" width="426.0" height="140" fill="#fff7d6" stroke="#b7791f" stroke-width="3"/>
-  <text x="630" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#744210">Experimental Layer</text>
-  <text x="630" y="782" font-family="Arial" font-size="19" fill="#744210">Unstable research methods build downstream</text>
+  <text x="630" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#744210" font-family="Arial">Experimental Layer</text>
+  <text x="630" y="782" font-family="Arial" font-size="19" fill="#744210" font-family="Arial">Unstable research methods build downstream</text>
 
   <rect x="1040" y="700" rx="22" ry="22" width="482.1" height="140" fill="#fde2e4" stroke="#b56576" stroke-width="3"/>
-  <text x="1070" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#6d1f2f">Next Foundations</text>
-  <text x="1070" y="782" font-family="Arial" font-size="19" fill="#6d1f2f">Multimodal acquisition and phase transformation</text>
+  <text x="1070" y="746" font-family="Arial" font-size="28" font-weight="700" fill="#6d1f2f" font-family="Arial">Next Foundations</text>
+  <text x="1070" y="782" font-family="Arial" font-size="19" fill="#6d1f2f" font-family="Arial">Multimodal acquisition and phase transformation</text>
 
   <line x1="640" y1="492" x2="720" y2="418" stroke="#486581" stroke-width="4" marker-end="url(#arrow)"/>
   <line x1="640" y1="492" x2="720" y2="598" stroke="#486581" stroke-width="4" marker-end="url(#arrow)"/>
@@ -79,7 +79,7 @@
   <line x1="500" y1="622" x2="800" y2="700" stroke="#486581" stroke-width="4" marker-end="url(#arrow)"/>
   <line x1="1220" y1="668" x2="1220" y2="700" stroke="#b56576" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <text x="120" y="940" font-family="Arial" font-size="18" fill="#d9e7f5">
+  <text x="120" y="940" font-family="Arial" font-size="18" fill="#d9e7f5" font-family="Arial">
     Semantic nucleus: one shared crystallographic core. Product rule: documentation and validation are part of completion.
   </text>
 </svg>

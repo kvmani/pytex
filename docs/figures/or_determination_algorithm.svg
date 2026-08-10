@@ -10,120 +10,120 @@
     </marker>
   </defs>
   <rect width="1196" height="1112" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Determining an Orientation Relationship From Measured Orientations</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">characterize_orientation_relationship: fit without a nominal, name it against the catalog, state it crystallographically, and say whether to trust it.</text>
-  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">1 - measurement</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Determining an Orientation Relationship From Measured Orientations</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">characterize_orientation_relationship: fit without a nominal, name it against the catalog, state it crystallographically, and say whether to trust it.</text>
+  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">1 - measurement</text>
   <rect x="40.0" y="108.0" width="236.0" height="162.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
-  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">Paired orientations</text>
-  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">P_i (parent), C_i (child)</text>
-  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">n grain-mean orientations per</text>
-  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">phase,</text>
-  <text x="54.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">row-matched, one specimen</text>
-  <text x="54.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">frame.</text>
-  <text x="54.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Euler angles accepted directly.</text>
+  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold" font-family="Arial">Paired orientations</text>
+  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">P_i (parent), C_i (child)</text>
+  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">n grain-mean orientations per</text>
+  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">phase,</text>
+  <text x="54.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">row-matched, one specimen</text>
+  <text x="54.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">frame.</text>
+  <text x="54.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Euler angles accepted directly.</text>
   <rect x="310.0" y="108.0" width="236.0" height="162.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Per-pair rotation</text>
-  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">V_i = C_i^T P_i</text>
-  <text x="324.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The operative parent-to-child</text>
-  <text x="324.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rotation</text>
-  <text x="324.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">of each pair, in the canonical</text>
-  <text x="324.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">crystal-to-specimen convention</text>
-  <text x="324.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">C = P V^T.</text>
+  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Per-pair rotation</text>
+  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">V_i = C_i^T P_i</text>
+  <text x="324.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The operative parent-to-child</text>
+  <text x="324.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">rotation</text>
+  <text x="324.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">of each pair, in the canonical</text>
+  <text x="324.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">crystal-to-specimen convention</text>
+  <text x="324.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">C = P V^T.</text>
   <line x1="276.0" y1="189.0" x2="306.0" y2="189.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="108.0" width="300.0" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="133.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: one convention</text>
-  <text x="872.0" y="156.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">V = C^T P has exactly one definition in</text>
-  <text x="872.0" y="175.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the library. Both orientation sets must</text>
-  <text x="872.0" y="194.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">share a specimen frame and carry phases;</text>
-  <text x="872.0" y="213.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">row order is the pairing.</text>
+  <text x="872.0" y="133.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: one convention</text>
+  <text x="872.0" y="156.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">V = C^T P has exactly one definition in</text>
+  <text x="872.0" y="175.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the library. Both orientation sets must</text>
+  <text x="872.0" y="194.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">share a specimen frame and carry phases;</text>
+  <text x="872.0" y="213.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">row order is the pairing.</text>
   <line x1="158.0" y1="270.0" x2="158.0" y2="310.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
-  <text x="40.0" y="304.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">2 - fit, with no nominal relationship required</text>
+  <text x="40.0" y="304.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">2 - fit, with no nominal relationship required</text>
   <rect x="40.0" y="316.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="54.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Double-coset seed</text>
-  <text x="54.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">max-trace element of G_c V_0</text>
-  <text x="54.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">G_p</text>
-  <text x="54.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">One pair reduced to its</text>
-  <text x="54.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">minimum-angle</text>
-  <text x="54.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">representative. The coset</text>
-  <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">absorbs the</text>
-  <text x="54.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">parent symmetry operation that</text>
-  <text x="54.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">distinguishes one variant from</text>
-  <text x="54.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">another.</text>
+  <text x="54.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Double-coset seed</text>
+  <text x="54.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">max-trace element of G_c V_0</text>
+  <text x="54.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">G_p</text>
+  <text x="54.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">One pair reduced to its</text>
+  <text x="54.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">minimum-angle</text>
+  <text x="54.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">representative. The coset</text>
+  <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">absorbs the</text>
+  <text x="54.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">parent symmetry operation that</text>
+  <text x="54.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">distinguishes one variant from</text>
+  <text x="54.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">another.</text>
   <rect x="310.0" y="316.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="324.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Align to the estimate</text>
-  <text x="324.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">argmax_S,S' tr(S_c V_i S_p</text>
-  <text x="324.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">R^T)</text>
-  <text x="324.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Each measurement is replaced by</text>
-  <text x="324.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">its</text>
-  <text x="324.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">symmetry-equivalent description</text>
-  <text x="324.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">nearest the current estimate.</text>
+  <text x="324.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Align to the estimate</text>
+  <text x="324.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">argmax_S,S' tr(S_c V_i S_p</text>
+  <text x="324.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">R^T)</text>
+  <text x="324.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Each measurement is replaced by</text>
+  <text x="324.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">its</text>
+  <text x="324.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">symmetry-equivalent description</text>
+  <text x="324.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">nearest the current estimate.</text>
   <line x1="276.0" y1="422.5" x2="306.0" y2="422.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="316.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="594.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Quaternion eigen-mean</text>
-  <text x="594.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">R &lt;- top eigenvector of sum q</text>
-  <text x="594.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">q^T</text>
-  <text x="594.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Markley's rotation average of</text>
-  <text x="594.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the</text>
-  <text x="594.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">aligned set. Align and average</text>
-  <text x="594.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">iterate</text>
-  <text x="594.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">until the assignment is stable.</text>
+  <text x="594.0" y="343.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Quaternion eigen-mean</text>
+  <text x="594.0" y="365.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">R &lt;- top eigenvector of sum q</text>
+  <text x="594.0" y="384.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">q^T</text>
+  <text x="594.0" y="403.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Markley's rotation average of</text>
+  <text x="594.0" y="419.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the</text>
+  <text x="594.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">aligned set. Align and average</text>
+  <text x="594.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">iterate</text>
+  <text x="594.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">until the assignment is stable.</text>
   <line x1="546.0" y1="422.5" x2="576.0" y2="422.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="316.0" width="300.0" height="160.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="341.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: seed ONE pair</text>
-  <text x="872.0" y="364.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The maximum-trace coset element is not</text>
-  <text x="872.0" y="383.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">unique when the relationship's rotation is</text>
-  <text x="872.0" y="402.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">itself symmetric. Averaging every pair's</text>
-  <text x="872.0" y="421.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">reduced representative turns Bain (45 deg,</text>
-  <text x="872.0" y="440.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">&lt;100&gt;, 3 variants) into 26.9 deg, which</text>
-  <text x="872.0" y="459.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">then reads as Kurdjumov-Sachs.</text>
+  <text x="872.0" y="341.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: seed ONE pair</text>
+  <text x="872.0" y="364.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The maximum-trace coset element is not</text>
+  <text x="872.0" y="383.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">unique when the relationship's rotation is</text>
+  <text x="872.0" y="402.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">itself symmetric. Averaging every pair's</text>
+  <text x="872.0" y="421.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">reduced representative turns Bain (45 deg,</text>
+  <text x="872.0" y="440.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">&lt;100&gt;, 3 variants) into 26.9 deg, which</text>
+  <text x="872.0" y="459.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">then reads as Kurdjumov-Sachs.</text>
   <line x1="158.0" y1="529.0" x2="158.0" y2="569.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
-  <text x="40.0" y="563.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">3 - name it, state it, judge it</text>
+  <text x="40.0" y="563.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">3 - name it, state it, judge it</text>
   <rect x="40.0" y="575.0" width="236.0" height="188.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
-  <text x="54.0" y="602.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Rank the catalog</text>
-  <text x="54.0" y="624.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">min over G_c, G_p of angle(R,</text>
-  <text x="54.0" y="643.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">R_cand)</text>
-  <text x="54.0" y="662.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Symmetry-reduced distance to</text>
-  <text x="54.0" y="678.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">each named</text>
-  <text x="54.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">relationship for the two</text>
-  <text x="54.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">crystal systems.</text>
+  <text x="54.0" y="602.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold" font-family="Arial">Rank the catalog</text>
+  <text x="54.0" y="624.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">min over G_c, G_p of angle(R,</text>
+  <text x="54.0" y="643.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">R_cand)</text>
+  <text x="54.0" y="662.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Symmetry-reduced distance to</text>
+  <text x="54.0" y="678.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">each named</text>
+  <text x="54.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">relationship for the two</text>
+  <text x="54.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">crystal systems.</text>
   <rect x="310.0" y="575.0" width="236.0" height="188.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="324.0" y="602.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Extract parallelisms</text>
-  <text x="324.0" y="621.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Low-index parent planes and</text>
-  <text x="324.0" y="637.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">directions</text>
-  <text x="324.0" y="653.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">carried through R, kept when</text>
-  <text x="324.0" y="669.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the image</text>
-  <text x="324.0" y="685.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">is near a low-index child</text>
-  <text x="324.0" y="701.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">object.</text>
-  <text x="324.0" y="717.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Preference: the winner's own</text>
-  <text x="324.0" y="733.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">families.</text>
+  <text x="324.0" y="602.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Extract parallelisms</text>
+  <text x="324.0" y="621.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Low-index parent planes and</text>
+  <text x="324.0" y="637.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">directions</text>
+  <text x="324.0" y="653.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">carried through R, kept when</text>
+  <text x="324.0" y="669.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the image</text>
+  <text x="324.0" y="685.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">is near a low-index child</text>
+  <text x="324.0" y="701.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">object.</text>
+  <text x="324.0" y="717.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Preference: the winner's own</text>
+  <text x="324.0" y="733.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">families.</text>
   <line x1="276.0" y1="669.0" x2="306.0" y2="669.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="575.0" width="236.0" height="188.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
-  <text x="594.0" y="602.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Report with a verdict</text>
-  <text x="594.0" y="621.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Fitted rotation, pair scatter,</text>
-  <text x="594.0" y="637.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">ranking,</text>
-  <text x="594.0" y="653.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the (hkl)||(hkl) and</text>
-  <text x="594.0" y="669.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">[uvw]||[uvw]</text>
-  <text x="594.0" y="685.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">statement, and is_conclusive.</text>
+  <text x="594.0" y="602.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold" font-family="Arial">Report with a verdict</text>
+  <text x="594.0" y="621.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Fitted rotation, pair scatter,</text>
+  <text x="594.0" y="637.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">ranking,</text>
+  <text x="594.0" y="653.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the (hkl)||(hkl) and</text>
+  <text x="594.0" y="669.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">[uvw]||[uvw]</text>
+  <text x="594.0" y="685.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">statement, and is_conclusive.</text>
   <line x1="546.0" y1="669.0" x2="576.0" y2="669.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="575.0" width="300.0" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="600.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: catalog scope</text>
-  <text x="872.0" y="623.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Only the supplied candidates can win.</text>
-  <text x="872.0" y="642.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Cubic-to-cubic assumes the fcc-&gt;bcc class:</text>
-  <text x="872.0" y="661.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">point-group symmetry cannot tell fcc from</text>
-  <text x="872.0" y="680.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">bcc. Supply a catalog when that is wrong.</text>
+  <text x="872.0" y="600.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: catalog scope</text>
+  <text x="872.0" y="623.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Only the supplied candidates can win.</text>
+  <text x="872.0" y="642.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Cubic-to-cubic assumes the fcc-&gt;bcc class:</text>
+  <text x="872.0" y="661.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">point-group symmetry cannot tell fcc from</text>
+  <text x="872.0" y="680.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">bcc. Supply a catalog when that is wrong.</text>
   <rect x="856.0" y="711.0" width="300.0" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="736.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: several are true at once</text>
-  <text x="872.0" y="759.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A rotation satisfies many exact low-index</text>
-  <text x="872.0" y="778.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">parallelisms. Which one the literature</text>
-  <text x="872.0" y="797.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">quotes depends on the structures, not the</text>
-  <text x="872.0" y="816.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rotation, so a preference is required.</text>
+  <text x="872.0" y="736.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: several are true at once</text>
+  <text x="872.0" y="759.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">A rotation satisfies many exact low-index</text>
+  <text x="872.0" y="778.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">parallelisms. Which one the literature</text>
+  <text x="872.0" y="797.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">quotes depends on the structures, not the</text>
+  <text x="872.0" y="816.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">rotation, so a preference is required.</text>
   <rect x="856.0" y="847.0" width="300.0" height="141.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="872.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Failure mode: admitted, not hidden</text>
-  <text x="872.0" y="895.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">is_conclusive needs the winner to fit within</text>
-  <text x="872.0" y="914.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">tolerance AND to lead the runner-up by more</text>
-  <text x="872.0" y="933.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">than the scatter and its own misfit.</text>
-  <text x="872.0" y="952.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Measured: conclusive to 2 deg of scatter,</text>
-  <text x="872.0" y="971.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">inconclusive at 5 deg (KS-GT spacing 2.4).</text>
-  <text x="40.0" y="1054.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Validation is synthetic: planted variants of a known relationship, recovered with the relationship withheld. Measured-EBSD fixtures remain outstanding.</text>
-  <text x="40.0" y="1072.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Cubic example: Kurdjumov-Sachs, fcc -&gt; bcc.  Hexagonal example: Burgers, bcc -&gt; hcp, whose statement is reported in four-index Miller-Bravais form.</text>
+  <text x="872.0" y="872.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Failure mode: admitted, not hidden</text>
+  <text x="872.0" y="895.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">is_conclusive needs the winner to fit within</text>
+  <text x="872.0" y="914.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">tolerance AND to lead the runner-up by more</text>
+  <text x="872.0" y="933.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">than the scatter and its own misfit.</text>
+  <text x="872.0" y="952.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Measured: conclusive to 2 deg of scatter,</text>
+  <text x="872.0" y="971.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">inconclusive at 5 deg (KS-GT spacing 2.4).</text>
+  <text x="40.0" y="1054.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Validation is synthetic: planted variants of a known relationship, recovered with the relationship withheld. Measured-EBSD fixtures remain outstanding.</text>
+  <text x="40.0" y="1072.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Cubic example: Kurdjumov-Sachs, fcc -&gt; bcc.  Hexagonal example: Burgers, bcc -&gt; hcp, whose statement is reported in four-index Miller-Bravais form.</text>
 </svg>

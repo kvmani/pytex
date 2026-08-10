@@ -16,58 +16,58 @@
     </marker>
   </defs>
   <rect width="1267" height="488" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Bunge Euler Sequence</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Three ordered rotations, ZXZ: phi1 about z, then Phi about the rotated x, then phi2 about the final z. Each panel is the frame after that step, computed not sketched.</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Bunge Euler Sequence</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Three ordered rotations, ZXZ: phi1 about z, then Phi about the rotated x, then phi2 about the final z. Each panel is the frame after that step, computed not sketched.</text>
   <rect x="40.0" y="96.0" width="196.0" height="216.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
-  <text x="138.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">initial frame</text>
-  <text x="138.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle"></text>
+  <text x="138.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">initial frame</text>
+  <text x="138.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial"></text>
     <line x1="138.00" y1="234.00" x2="138.00" y2="195.84" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-2)"/>
-    <text x="138.00" y="183.49" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="138.00" y="183.49" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="138.00" y1="234.00" x2="172.12" y2="242.62" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-1)"/>
-    <text x="184.09" y="245.65" font-size="12" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="184.09" y="245.65" font-size="12" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="138.00" y1="234.00" x2="114.98" y2="246.78" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-0)"/>
-    <text x="104.19" y="252.78" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="104.19" y="252.78" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="138.00" cy="234.00" r="3.4" fill="#07122f"/>
   <line x1="248.0" y1="204.0" x2="356.0" y2="204.0" stroke="#2563eb" stroke-width="2" marker-end="url(#pytex-euler-rel)"/>
-  <text x="302.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle">phi1 = 35° about z</text>
+  <text x="302.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">phi1 = 35° about z</text>
   <rect x="368.0" y="96.0" width="196.0" height="216.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
-  <text x="466.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">after phi1</text>
-  <text x="466.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">axes after this step</text>
+  <text x="466.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">after phi1</text>
+  <text x="466.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">axes after this step</text>
     <line x1="466.00" y1="234.00" x2="507.15" y2="233.73" stroke="#059669" stroke-width="2.2" stroke-linecap="round" opacity="0.55" marker-end="url(#pytex-euler-axis-1)"/>
-    <text x="519.50" y="233.65" font-size="12" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="519.50" y="233.65" font-size="12" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="466.00" y1="234.00" x2="466.00" y2="195.84" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-2)"/>
-    <text x="466.00" y="183.49" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="466.00" y="183.49" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="466.00" y1="234.00" x2="466.72" y2="249.42" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-0)"/>
-    <text x="467.29" y="261.75" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="467.29" y="261.75" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="466.00" cy="234.00" r="3.4" fill="#07122f"/>
   <line x1="576.0" y1="204.0" x2="684.0" y2="204.0" stroke="#2563eb" stroke-width="2" marker-end="url(#pytex-euler-rel)"/>
-  <text x="630.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle">Phi = 45° about x'</text>
+  <text x="630.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">Phi = 45° about x'</text>
   <rect x="696.0" y="96.0" width="196.0" height="216.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
-  <text x="794.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">after Phi</text>
-  <text x="794.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">axes after this step</text>
+  <text x="794.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">after Phi</text>
+  <text x="794.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">axes after this step</text>
     <line x1="794.00" y1="234.00" x2="823.10" y2="206.82" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-1)"/>
-    <text x="832.12" y="198.40" font-size="12" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="832.12" y="198.40" font-size="12" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="794.00" y1="234.00" x2="764.90" y2="207.21" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-2)"/>
-    <text x="755.82" y="198.84" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="755.82" y="198.84" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="794.00" y1="234.00" x2="794.72" y2="249.42" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-0)"/>
-    <text x="795.29" y="261.75" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="795.29" y="261.75" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="794.00" cy="234.00" r="3.4" fill="#07122f"/>
   <line x1="904.0" y1="204.0" x2="1012.0" y2="204.0" stroke="#2563eb" stroke-width="2" marker-end="url(#pytex-euler-rel)"/>
-  <text x="958.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle">phi2 = 30° about z''</text>
+  <text x="958.0" y="195.0" font-size="12" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">phi2 = 30° about z''</text>
   <rect x="1024.0" y="96.0" width="196.0" height="216.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
-  <text x="1122.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle">after phi2</text>
-  <text x="1122.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">axes after this step</text>
+  <text x="1122.0" y="122.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">after phi2</text>
+  <text x="1122.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">axes after this step</text>
     <line x1="1122.00" y1="234.00" x2="1146.84" y2="202.76" stroke="#059669" stroke-width="2.2" stroke-linecap="round" opacity="0.55" marker-end="url(#pytex-euler-axis-1)"/>
-    <text x="1154.53" y="193.09" font-size="12" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="1154.53" y="193.09" font-size="12" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="1122.00" y1="234.00" x2="1092.90" y2="207.21" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-2)"/>
-    <text x="1083.82" y="198.84" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="1083.82" y="198.84" font-size="12" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="1122.00" y1="234.00" x2="1137.17" y2="233.76" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-euler-axis-0)"/>
-    <text x="1149.52" y="233.57" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="1149.52" y="233.57" font-size="12" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="1122.00" cy="234.00" r="3.4" fill="#07122f"/>
   <rect x="40.0" y="338.0" width="1186.9" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="56.0" y="363.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Reading rule</text>
-  <text x="56.0" y="386.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The angle names are not positional placeholders: they belong to this ordered ZXZ</text>
-  <text x="56.0" y="405.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">construction, which is why PyTex keeps a named Bunge entry point rather than</text>
-  <text x="56.0" y="424.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">treating every three-angle input as interchangeable.</text>
-  <text x="56.0" y="443.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Composed form: R = Rz(phi2) Rx(Phi) Rz(phi1).</text>
+  <text x="56.0" y="363.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Reading rule</text>
+  <text x="56.0" y="386.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The angle names are not positional placeholders: they belong to this ordered ZXZ</text>
+  <text x="56.0" y="405.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">construction, which is why PyTex keeps a named Bunge entry point rather than</text>
+  <text x="56.0" y="424.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">treating every three-angle input as interchangeable.</text>
+  <text x="56.0" y="443.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Composed form: R = Rz(phi2) Rx(Phi) Rz(phi1).</text>
 </svg>

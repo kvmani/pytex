@@ -3,8 +3,8 @@
     <marker id="farrow_3f51b5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#3f51b5"/></marker>
     <marker id="farrow_e65100" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#e65100"/></marker>
   </defs>
-  <text x="480" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#263238">The Burgers family on the shared interface plane: (0001)<tspan font-size="13" baseline-shift="sub">hcp</tspan> &#8741; (110)&#945;</text>
-  <text x="480" y="56" text-anchor="middle" font-size="13" fill="#546e7a">why Burgers, Pitsch&#8211;Schrader, and Potter are small rotations of one another</text>
+  <text x="480" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#263238" font-family="Arial">The Burgers family on the shared interface plane: (0001)<tspan font-size="13" baseline-shift="sub">hcp</tspan> &#8741; (110)&#945;</text>
+  <text x="480" y="56" text-anchor="middle" font-size="13" fill="#546e7a" font-family="Arial">why Burgers, Pitsch&#8211;Schrader, and Potter are small rotations of one another</text>
   <line x1="250.0" y1="592.1320343559643" x2="550.0" y2="592.1320343559643" stroke="#c5cae9" stroke-width="1.3"/>
   <line x1="250.0" y1="380.0" x2="550.0" y2="380.0" stroke="#c5cae9" stroke-width="1.3"/>
   <line x1="250.0" y1="167.86796564403573" x2="550.0" y2="167.86796564403573" stroke="#c5cae9" stroke-width="1.3"/>
@@ -25,9 +25,9 @@
   <circle cx="475.0" cy="486.1" r="9" fill="#9fa8da" stroke="#3f51b5" stroke-width="1.4"/>
   <circle cx="475.0" cy="273.9" r="9" fill="#9fa8da" stroke="#3f51b5" stroke-width="1.4"/>
   <line x1="400" y1="380" x2="590.0" y2="380.0" stroke="#3f51b5" stroke-width="3.0" marker-end="url(#farrow_3f51b5)"/>
-  <text x="598" y="406" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#3f51b5">[001]&#945;</text>
+  <text x="598" y="406" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#3f51b5" font-family="Arial">[001]&#945;</text>
   <line x1="400" y1="380" x2="526.2" y2="201.6" stroke="#3f51b5" stroke-width="3.0" marker-end="url(#farrow_3f51b5)"/>
-  <text x="552.3" y="163.1" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#3f51b5">[&#8722;111]&#945;</text>
+  <text x="552.3" y="163.1" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#3f51b5" font-family="Arial">[&#8722;111]&#945;</text>
   <line x1="400" y1="380" x2="469.3" y2="282.0" stroke="#f57c00" stroke-width="2" opacity="0.55"/>
   <line x1="400" y1="380" x2="349.8" y2="271.0" stroke="#f57c00" stroke-width="2" opacity="0.55"/>
   <line x1="400" y1="380" x2="280.5" y2="369.0" stroke="#f57c00" stroke-width="2" opacity="0.55"/>
@@ -43,27 +43,27 @@
   <circle cx="519.5" cy="391.0" r="8" fill="#ffb74d" stroke="#e65100" stroke-width="1.6"/>
   <circle cx="400" cy="380" r="8" fill="#ffb74d" stroke="#e65100" stroke-width="1.6"/>
   <line x1="400" y1="380" x2="476.2" y2="272.2" stroke="#e65100" stroke-width="3.4" marker-end="url(#farrow_e65100)"/>
-  <text x="546.4" y="229.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#e65100">[11&#8722;20]<tspan font-size="9" baseline-shift="sub">hcp</tspan> (a&#8321;)</text>
+  <text x="546.4" y="229.0" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#e65100" font-family="Arial">[11&#8722;20]<tspan font-size="9" baseline-shift="sub">hcp</tspan> (a&#8321;)</text>
   <path d="M 495.0 380.0 A 95 95 0 0 0 454.8 302.4" fill="none" stroke="#00897b" stroke-width="2.2"/>
-  <text x="495.9" y="330.4" font-size="12.5" fill="#00897b" font-weight="bold">54.74&#176;</text>
+  <text x="495.9" y="330.4" font-size="12.5" fill="#00897b" font-weight="bold" font-family="Arial">54.74&#176;</text>
   <path d="M 549.4 393.8 A 150 150 0 0 0 550.0 380.0" fill="none" stroke="#c62828" stroke-width="2.4"/>
-  <text x="561.8" y="404.1" font-size="12.5" font-weight="bold" fill="#c62828">5.26&#176;</text>
-  <text x="140" y="640" font-size="13" fill="#3f51b5">(110) bcc plane: rectangular net + centering atoms</text>
-  <text x="140" y="660" font-size="13" fill="#e65100">hcp basal plane: hexagonal net, a&#8321; = [11&#8722;20]</text>
+  <text x="561.8" y="404.1" font-size="12.5" font-weight="bold" fill="#c62828" font-family="Arial">5.26&#176;</text>
+  <text x="140" y="640" font-size="13" fill="#3f51b5" font-family="Arial">(110) bcc plane: rectangular net + centering atoms</text>
+  <text x="140" y="660" font-size="13" fill="#e65100" font-family="Arial">hcp basal plane: hexagonal net, a&#8321; = [11&#8722;20]</text>
   <rect x="640" y="120" width="290" height="220" rx="9" fill="#fafafa" stroke="#90a4ae" stroke-width="1.5"/>
-  <text x="785" y="146" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#37474f">Three ORs, one picture</text>
-  <text x="655" y="172" font-size="12.5" font-weight="bold" fill="#3f51b5">Burgers</text>
-  <text x="655" y="190" font-size="11.5" fill="#37474f">a&#8321; &#8741; [&#8722;111]&#945; &#8212; hexagon locked to the</text>
-  <text x="655" y="206" font-size="11.5" fill="#37474f">close-packed bcc diagonal (drawn here)</text>
-  <text x="655" y="232" font-size="12.5" font-weight="bold" fill="#3f51b5">Pitsch&#8211;Schrader</text>
-  <text x="655" y="250" font-size="11.5" fill="#37474f">a&#8321; &#8741; [001]&#945; &#8212; in-plane rotation by</text>
-  <text x="655" y="266" font-size="11.5" fill="#37474f">60&#176; &#8722; 54.74&#176; = 5.26&#176; (red wedge)</text>
-  <text x="655" y="292" font-size="12.5" font-weight="bold" fill="#3f51b5">Potter</text>
-  <text x="655" y="310" font-size="11.5" fill="#37474f">keeps a&#8321; &#8741; [&#8722;111]&#945; but tilts the basal off</text>
-  <text x="655" y="326" font-size="11.5" fill="#37474f">(110) by ~1&#8211;2&#176; to make (01&#8722;11) &#8741; {110}</text>
+  <text x="785" y="146" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#37474f" font-family="Arial">Three ORs, one picture</text>
+  <text x="655" y="172" font-size="12.5" font-weight="bold" fill="#3f51b5" font-family="Arial">Burgers</text>
+  <text x="655" y="190" font-size="11.5" fill="#37474f" font-family="Arial">a&#8321; &#8741; [&#8722;111]&#945; &#8212; hexagon locked to the</text>
+  <text x="655" y="206" font-size="11.5" fill="#37474f" font-family="Arial">close-packed bcc diagonal (drawn here)</text>
+  <text x="655" y="232" font-size="12.5" font-weight="bold" fill="#3f51b5" font-family="Arial">Pitsch&#8211;Schrader</text>
+  <text x="655" y="250" font-size="11.5" fill="#37474f" font-family="Arial">a&#8321; &#8741; [001]&#945; &#8212; in-plane rotation by</text>
+  <text x="655" y="266" font-size="11.5" fill="#37474f" font-family="Arial">60&#176; &#8722; 54.74&#176; = 5.26&#176; (red wedge)</text>
+  <text x="655" y="292" font-size="12.5" font-weight="bold" fill="#3f51b5" font-family="Arial">Potter</text>
+  <text x="655" y="310" font-size="11.5" fill="#37474f" font-family="Arial">keeps a&#8321; &#8741; [&#8722;111]&#945; but tilts the basal off</text>
+  <text x="655" y="326" font-size="11.5" fill="#37474f" font-family="Arial">(110) by ~1&#8211;2&#176; to make (01&#8722;11) &#8741; {110}</text>
   <rect x="640" y="360" width="290" height="96" rx="9" fill="#e8f5e9" stroke="#43a047" stroke-width="1.5"/>
-  <text x="785" y="384" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#2e7d32">The separations fall out of geometry</text>
-  <text x="655" y="406" font-size="11.5" fill="#37474f">PyTex reproduces 5.26&#176; (PS) and ~1.37&#176;</text>
-  <text x="655" y="422" font-size="11.5" fill="#37474f">(Potter, c/a-dependent) as symmetry-reduced</text>
-  <text x="655" y="438" font-size="11.5" fill="#37474f">distances between catalog relationships</text>
+  <text x="785" y="384" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#2e7d32" font-family="Arial">The separations fall out of geometry</text>
+  <text x="655" y="406" font-size="11.5" fill="#37474f" font-family="Arial">PyTex reproduces 5.26&#176; (PS) and ~1.37&#176;</text>
+  <text x="655" y="422" font-size="11.5" fill="#37474f" font-family="Arial">(Potter, c/a-dependent) as symmetry-reduced</text>
+  <text x="655" y="438" font-size="11.5" fill="#37474f" font-family="Arial">distances between catalog relationships</text>
 </svg>

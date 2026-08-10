@@ -5,8 +5,8 @@
     </marker>
   </defs>
   <rect width="1180" height="620" fill="#fcfbf7"/>
-  <text x="42" y="52" font-size="30" font-family="Arial" fill="#18212b">Kinematic Spot Projection</text>
-  <text x="42" y="82" font-size="16" font-family="Arial" fill="#56616d">
+  <text x="42" y="52" font-size="30" font-family="Arial" fill="#18212b" font-family="Arial">Kinematic Spot Projection</text>
+  <text x="42" y="82" font-size="16" font-family="Arial" fill="#56616d" font-family="Arial">
     Minimal Phase 4b workflow: reciprocal vector → outgoing direction → detector coordinate.
   </text>
 
@@ -14,26 +14,26 @@
   <rect x="460" y="132" width="260" height="320" rx="22" fill="#f6e9c5" stroke="#a88a2f" stroke-width="2.5"/>
   <rect x="866" y="132" width="260" height="320" rx="22" fill="#e4edf8" stroke="#396890" stroke-width="2.5"/>
 
-  <text x="90" y="174" font-size="25" font-family="Arial" fill="#21402c">Reciprocal vector</text>
-  <text x="90" y="210" font-size="17" font-family="Arial" fill="#21402c">from Miller indices</text>
-  <text x="90" y="236" font-size="17" font-family="Arial" fill="#21402c">and reciprocal basis</text>
-  <text x="90" y="286" font-size="34" font-family="Arial" fill="#21402c">g</text>
+  <text x="90" y="174" font-size="25" font-family="Arial" fill="#21402c" font-family="Arial">Reciprocal vector</text>
+  <text x="90" y="210" font-size="17" font-family="Arial" fill="#21402c" font-family="Arial">from Miller indices</text>
+  <text x="90" y="236" font-size="17" font-family="Arial" fill="#21402c" font-family="Arial">and reciprocal basis</text>
+  <text x="90" y="286" font-size="34" font-family="Arial" fill="#21402c" font-family="Arial">g</text>
 
-  <text x="486" y="174" font-size="25" font-family="Arial" fill="#5b4308">Outgoing direction</text>
-  <text x="486" y="210" font-size="17" font-family="Arial" fill="#5b4308">k_out = k_in + g</text>
-  <text x="486" y="236" font-size="17" font-family="Arial" fill="#5b4308"><tspan x="486" dy="0.0">accept if excitation error is</tspan><tspan x="486" dy="21.8">small</tspan></text>
+  <text x="486" y="174" font-size="25" font-family="Arial" fill="#5b4308" font-family="Arial">Outgoing direction</text>
+  <text x="486" y="210" font-size="17" font-family="Arial" fill="#5b4308" font-family="Arial">k_out = k_in + g</text>
+  <text x="486" y="236" font-size="17" font-family="Arial" fill="#5b4308" font-family="Arial"><tspan x="486" dy="0.0">accept if excitation error is</tspan><tspan x="486" dy="21.8">small</tspan></text>
   <line x1="580" y1="320" x2="664" y2="250" stroke="#c14d39" stroke-width="4" marker-end="url(#arrow)"/>
 
-  <text x="900" y="174" font-size="25" font-family="Arial" fill="#17324a">Detector hit</text>
-  <text x="900" y="210" font-size="17" font-family="Arial" fill="#17324a"><tspan x="900" dy="0.0">project outgoing ray onto</tspan><tspan x="900" dy="21.8">plane</tspan></text>
+  <text x="900" y="174" font-size="25" font-family="Arial" fill="#17324a" font-family="Arial">Detector hit</text>
+  <text x="900" y="210" font-size="17" font-family="Arial" fill="#17324a" font-family="Arial"><tspan x="900" dy="0.0">project outgoing ray onto</tspan><tspan x="900" dy="21.8">plane</tspan></text>
   <rect x="934" y="246" width="120.0" height="144" fill="#dceaf6" stroke="#4e7ea7" stroke-width="2.5"/>
   <circle cx="996" cy="314" r="6" fill="#c13d5a"/>
-  <text x="1010" y="320" font-size="18" font-family="Arial" fill="#17324a">spot</text>
+  <text x="1010" y="320" font-size="18" font-family="Arial" fill="#17324a" font-family="Arial">spot</text>
 
   <line x1="314" y1="292" x2="460" y2="292" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
   <line x1="720" y1="292" x2="866" y2="292" stroke="#223241" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <text x="214" y="510" font-size="18" font-family="Arial" fill="#47515c">
+  <text x="214" y="510" font-size="18" font-family="Arial" fill="#47515c" font-family="Arial">
     Current foundation keeps geometry explicit; intensity modeling remains ahead.
   </text>
 </svg>

@@ -63,7 +63,7 @@
   <rect width="1400" height="900" fill="#f8fafc" />
   
   <!-- Title -->
-  <text x="700" y="40" font-size="32" font-weight="bold" text-anchor="middle" fill="#0f172a">
+  <text x="700" y="40" font-size="32" font-weight="bold" text-anchor="middle" fill="#0f172a" font-family="Arial">
     PyTex Module Architecture
   </text>
   
@@ -72,16 +72,16 @@
   <!-- Core Module (Foundation) -->
   <g filter="url(#shadow)">
     <rect x="525" y="100" width="350" height="120" rx="12" fill="url(#coreGradient)" />
-    <text x="700" y="140" font-size="20" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="700" y="140" font-size="20" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Core
     </text>
-    <text x="700" y="165" font-size="13" text-anchor="middle" fill="#ffffff">
+    <text x="700" y="165" font-size="13" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Canonical Data Model
     </text>
-    <text x="700" y="185" font-size="13" text-anchor="middle" fill="#ffffff">
+    <text x="700" y="185" font-size="13" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Frames, Symmetry, Orientations
     </text>
-    <text x="700" y="205" font-size="13" text-anchor="middle" fill="#ffffff">
+    <text x="700" y="205" font-size="13" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Vectorized Primitives
     </text>
   </g>
@@ -91,19 +91,19 @@
   <!-- Texture Module -->
   <g filter="url(#shadow)">
     <rect x="100" y="300" width="280" height="140" rx="12" fill="url(#textureGradient)" />
-    <text x="240" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="240" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Texture
     </text>
-    <text x="240" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="368" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Pole Figures, IPF
     </text>
-    <text x="240" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="385" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       ODF, Fibers
     </text>
-    <text x="240" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="402" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Orientation Analysis
     </text>
-    <text x="240" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="419" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Texture Visualization
     </text>
   </g>
@@ -111,19 +111,19 @@
   <!-- EBSD Module -->
   <g filter="url(#shadow)">
     <rect x="460" y="300" width="280" height="140" rx="12" fill="url(#ebsdGradient)" />
-    <text x="600" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="600" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       EBSD
     </text>
-    <text x="600" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="368" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Crystal Maps
     </text>
-    <text x="600" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="385" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Grain Analysis
     </text>
-    <text x="600" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="402" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       KAM, Segmentation
     </text>
-    <text x="600" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="419" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Workflow Pipelines
     </text>
   </g>
@@ -131,19 +131,19 @@
   <!-- Diffraction Module -->
   <g filter="url(#shadow)">
     <rect x="820" y="300" width="280" height="140" rx="12" fill="url(#diffractionGradient)" />
-    <text x="960" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="960" y="345" font-size="18" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Diffraction
     </text>
-    <text x="960" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="368" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Geometry, Reciprocal Space
     </text>
-    <text x="960" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="385" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       XRD, SAED
     </text>
-    <text x="960" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="402" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Reflection Families
     </text>
-    <text x="960" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="419" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Simulation
     </text>
   </g>
@@ -164,19 +164,19 @@
   <!-- Plotting Module (Cross-cutting) -->
   <g filter="url(#shadow)">
     <rect x="1180" y="300" width="200" height="140" rx="12" fill="url(#plottingGradient)" />
-    <text x="1280" y="345" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="1280" y="345" font-size="17" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Plotting
     </text>
-    <text x="1280" y="368" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="1280" y="368" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Scientific
     </text>
-    <text x="1280" y="385" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="1280" y="385" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Visualization
     </text>
-    <text x="1280" y="402" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="1280" y="402" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Stereographic
     </text>
-    <text x="1280" y="419" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="1280" y="419" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       3D Rendering
     </text>
   </g>
@@ -195,16 +195,16 @@
   <!-- Contracts Module (Infrastructure) -->
   <g filter="url(#shadow)">
     <rect x="100" y="560" width="280" height="120" rx="12" fill="url(#contractsGradient)" />
-    <text x="240" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="240" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Contracts &amp; Manifests
     </text>
-    <text x="240" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="628" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Import, Experiment
     </text>
-    <text x="240" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="645" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Benchmark, Validation
     </text>
-    <text x="240" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="240" y="662" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Data Interchange
     </text>
   </g>
@@ -212,16 +212,16 @@
   <!-- Adapters Module (External Integration) -->
   <g filter="url(#shadow)">
     <rect x="460" y="560" width="280" height="120" rx="12" fill="url(#adaptersGradient)" />
-    <text x="600" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="600" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Adapters
     </text>
-    <text x="600" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="628" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       ORIX, KikuchiPy
     </text>
-    <text x="600" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="645" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       PyEBSDIndex, pymatgen
     </text>
-    <text x="600" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="600" y="662" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       diffsims, External Tools
     </text>
   </g>
@@ -229,16 +229,16 @@
   <!-- Experimental Module (Unstable Research) -->
   <g filter="url(#shadow)">
     <rect x="820" y="560" width="280" height="120" rx="12" fill="url(#experimentalGradient)" />
-    <text x="960" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white">
+    <text x="960" y="605" font-size="17" font-weight="bold" text-anchor="middle" fill="white" font-family="Arial">
       Experimental
     </text>
-    <text x="960" y="628" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="628" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Research Algorithms
     </text>
-    <text x="960" y="645" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="645" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Unstable Methods
     </text>
-    <text x="960" y="662" font-size="12" text-anchor="middle" fill="#ffffff">
+    <text x="960" y="662" font-size="12" text-anchor="middle" fill="#ffffff" font-family="Arial">
       Future Development
     </text>
   </g>
@@ -262,28 +262,28 @@
   <!-- Legend Box -->
   <rect x="1100" y="560" width="260" height="180" rx="10" fill="#ffffff" stroke="#cbd5e1" stroke-width="2" opacity="0.95" />
   
-  <text x="1230" y="585" font-size="14" font-weight="bold" text-anchor="middle" fill="#0f172a">
+  <text x="1230" y="585" font-size="14" font-weight="bold" text-anchor="middle" fill="#0f172a" font-family="Arial">
     Architecture Tiers
   </text>
   
   <!-- Legend items -->
   <rect x="1115" y="600" width="12" height="12" rx="2" fill="url(#coreGradient)" />
-  <text x="1135" y="609" font-size="12" fill="#1e293b">Foundation</text>
+  <text x="1135" y="609" font-size="12" fill="#1e293b" font-family="Arial">Foundation</text>
   
   <rect x="1115" y="630" width="12" height="12" rx="2" fill="url(#textureGradient)" />
-  <text x="1135" y="639" font-size="12" fill="#1e293b">Domain Modules</text>
+  <text x="1135" y="639" font-size="12" fill="#1e293b" font-family="Arial">Domain Modules</text>
   
   <rect x="1115" y="660" width="12" height="12" rx="2" fill="url(#contractsGradient)" />
-  <text x="1135" y="669" font-size="12" fill="#1e293b">Infrastructure</text>
+  <text x="1135" y="669" font-size="12" fill="#1e293b" font-family="Arial">Infrastructure</text>
   
   <rect x="1115" y="690" width="12" height="12" rx="2" fill="url(#plottingGradient)" />
-  <text x="1135" y="699" font-size="12" fill="#1e293b">Cross-cutting</text>
+  <text x="1135" y="699" font-size="12" fill="#1e293b" font-family="Arial">Cross-cutting</text>
   
   <rect x="1115" y="720" width="12" height="12" rx="2" fill="url(#adaptersGradient)" />
-  <text x="1135" y="729" font-size="12" fill="#1e293b">External Integration</text>
+  <text x="1135" y="729" font-size="12" fill="#1e293b" font-family="Arial">External Integration</text>
   
   <!-- Footer note -->
-  <text x="700" y="850" font-size="11" text-anchor="middle" fill="#64748b" font-style="italic">
+  <text x="700" y="850" font-size="11" text-anchor="middle" fill="#64748b" font-style="italic" font-family="Arial">
     All domain modules depend on Core; Plotting is consumed across the stack; Contracts enable interoperability
   </text>
 </svg>

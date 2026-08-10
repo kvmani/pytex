@@ -5,48 +5,48 @@
     </marker>
   </defs>
   <rect width="1120" height="600" fill="#fbfaf6"/>
-  <text x="48" y="54" font-size="30" font-family="Arial" fill="#16202c">Orientation Reduction Workflow</text>
-  <text x="48" y="86" font-size="16" font-family="Arial" fill="#475569">
+  <text x="48" y="54" font-size="30" font-family="Arial" fill="#16202c" font-family="Arial">Orientation Reduction Workflow</text>
+  <text x="48" y="86" font-size="16" font-family="Arial" fill="#475569" font-family="Arial">
     PyTex separates crystal-direction reduction for IPF work from orientation-space reduction for misorientation and canonicalization.
   </text>
 
   <rect x="70" y="150" width="348.0" height="150" rx="22" fill="#dcebd9" stroke="#4c7a57" stroke-width="2.5"/>
-  <text x="98" y="192" font-size="25" font-family="Arial" fill="#183123">Input orientation or direction</text>
-  <text x="98" y="228" font-size="17" font-family="Arial" fill="#183123"><tspan x="98" dy="0.0">quaternion-backed orientation</tspan><tspan x="98" dy="24.0">or crystal direction family</tspan></text>
+  <text x="98" y="192" font-size="25" font-family="Arial" fill="#183123" font-family="Arial">Input orientation or direction</text>
+  <text x="98" y="228" font-size="17" font-family="Arial" fill="#183123" font-family="Arial"><tspan x="98" dy="0.0">quaternion-backed orientation</tspan><tspan x="98" dy="24.0">or crystal direction family</tspan></text>
 
   <rect x="410" y="100" width="280" height="160" rx="22" fill="#f7e9c0" stroke="#a9892a" stroke-width="2.5"/>
-  <text x="442" y="142" font-size="24" font-family="Arial" fill="#4a3808">IPF sector reduction</text>
-  <text x="442" y="177" font-size="17" font-family="Arial" fill="#4a3808">reduce crystal direction</text>
-  <text x="442" y="201" font-size="17" font-family="Arial" fill="#4a3808">to class-specific sector</text>
-  <text x="442" y="225" font-size="17" font-family="Arial" fill="#4a3808">for inverse pole figures</text>
+  <text x="442" y="142" font-size="24" font-family="Arial" fill="#4a3808" font-family="Arial">IPF sector reduction</text>
+  <text x="442" y="177" font-size="17" font-family="Arial" fill="#4a3808" font-family="Arial">reduce crystal direction</text>
+  <text x="442" y="201" font-size="17" font-family="Arial" fill="#4a3808" font-family="Arial">to class-specific sector</text>
+  <text x="442" y="225" font-size="17" font-family="Arial" fill="#4a3808" font-family="Arial">for inverse pole figures</text>
 
   <rect x="410" y="300" width="361.4" height="160" rx="22" fill="#e5eef8" stroke="#386790" stroke-width="2.5"/>
-  <text x="440" y="342" font-size="24" font-family="Arial" fill="#17314a">Orientation-space reduction</text>
-  <text x="440" y="377" font-size="17" font-family="Arial" fill="#17314a">choose symmetry-reduced</text>
-  <text x="440" y="401" font-size="17" font-family="Arial" fill="#17314a">representative relative to</text>
-  <text x="440" y="425" font-size="17" font-family="Arial" fill="#17314a">a reference orientation</text>
+  <text x="440" y="342" font-size="24" font-family="Arial" fill="#17314a" font-family="Arial">Orientation-space reduction</text>
+  <text x="440" y="377" font-size="17" font-family="Arial" fill="#17314a" font-family="Arial">choose symmetry-reduced</text>
+  <text x="440" y="401" font-size="17" font-family="Arial" fill="#17314a" font-family="Arial">representative relative to</text>
+  <text x="440" y="425" font-size="17" font-family="Arial" fill="#17314a" font-family="Arial">a reference orientation</text>
 
   <rect x="788" y="100" width="268" height="160" rx="22" fill="#f9dfdf" stroke="#9c5050" stroke-width="2.5"/>
-  <text x="824" y="142" font-size="24" font-family="Arial" fill="#4b1d1d">IPF-facing outputs</text>
-  <text x="824" y="177" font-size="17" font-family="Arial" fill="#4b1d1d">sector coordinates</text>
-  <text x="824" y="201" font-size="17" font-family="Arial" fill="#4b1d1d">boundary-aware tests</text>
-  <text x="824" y="225" font-size="17" font-family="Arial" fill="#4b1d1d">class-specific parity</text>
+  <text x="824" y="142" font-size="24" font-family="Arial" fill="#4b1d1d" font-family="Arial">IPF-facing outputs</text>
+  <text x="824" y="177" font-size="17" font-family="Arial" fill="#4b1d1d" font-family="Arial">sector coordinates</text>
+  <text x="824" y="201" font-size="17" font-family="Arial" fill="#4b1d1d" font-family="Arial">boundary-aware tests</text>
+  <text x="824" y="225" font-size="17" font-family="Arial" fill="#4b1d1d" font-family="Arial">class-specific parity</text>
 
   <rect x="788" y="300" width="268" height="160" rx="22" fill="#d9e8f0" stroke="#47687a" stroke-width="2.5"/>
-  <text x="812" y="342" font-size="24" font-family="Arial" fill="#1e2f3a">Orientation outputs</text>
-  <text x="812" y="377" font-size="17" font-family="Arial" fill="#1e2f3a">projected orientation</text>
-  <text x="812" y="401" font-size="17" font-family="Arial" fill="#1e2f3a">disorientation angle</text>
-  <text x="812" y="425" font-size="17" font-family="Arial" fill="#1e2f3a">misorientation workflows</text>
+  <text x="812" y="342" font-size="24" font-family="Arial" fill="#1e2f3a" font-family="Arial">Orientation outputs</text>
+  <text x="812" y="377" font-size="17" font-family="Arial" fill="#1e2f3a" font-family="Arial">projected orientation</text>
+  <text x="812" y="401" font-size="17" font-family="Arial" fill="#1e2f3a" font-family="Arial">disorientation angle</text>
+  <text x="812" y="425" font-size="17" font-family="Arial" fill="#1e2f3a" font-family="Arial">misorientation workflows</text>
 
   <line x1="330" y1="210" x2="410" y2="180" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
   <line x1="330" y1="240" x2="410" y2="380" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
   <line x1="690" y1="180" x2="788" y2="180" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
   <line x1="690" y1="380" x2="788" y2="380" stroke="#223042" stroke-width="3.5" marker-end="url(#arrow)"/>
 
-  <text x="84" y="510" font-size="15" font-family="Arial" fill="#475569">
+  <text x="84" y="510" font-size="15" font-family="Arial" fill="#475569" font-family="Arial">
     This figure is informative: it summarizes the distinction enforced in the PyTex API
   </text>
-  <text x="84" y="534" font-size="15" font-family="Arial" fill="#475569">
+  <text x="84" y="534" font-size="15" font-family="Arial" fill="#475569" font-family="Arial">
     and parity suite between direction-sector and orientation-region reduction.
   </text>
 </svg>

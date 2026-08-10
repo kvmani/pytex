@@ -10,127 +10,127 @@
     </marker>
   </defs>
   <rect width="1196" height="1144" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Composite Parent + Variant SAED Assembly</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">simulate_composite_saed and simulate_composite_saed_from_child_zone: one shared detector geometry, whichever crystal's zone axis was chosen.</text>
-  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">1 - choose the viewing direction</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Composite Parent + Variant SAED Assembly</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">simulate_composite_saed and simulate_composite_saed_from_child_zone: one shared detector geometry, whichever crystal's zone axis was chosen.</text>
+  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">1 - choose the viewing direction</text>
   <rect x="40.0" y="108.0" width="236.0" height="210.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
-  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">Parent zone axis</text>
-  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">z_p, rational [uvw]</text>
-  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The derivation's natural</text>
-  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">choice.</text>
+  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold" font-family="Arial">Parent zone axis</text>
+  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">z_p, rational [uvw]</text>
+  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The derivation's natural</text>
+  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">choice.</text>
   <rect x="310.0" y="108.0" width="236.0" height="210.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
-  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">or a product zone axis</text>
-  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">z_p = R_k^T z_c</text>
-  <text x="324.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The microscope's natural</text>
-  <text x="324.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">choice: tilt</text>
-  <text x="324.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the product on zone. The</text>
-  <text x="324.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">implied</text>
-  <text x="324.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">parent direction is irrational</text>
-  <text x="324.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">and is</text>
-  <text x="324.0" y="272.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">reported exactly plus nearest</text>
-  <text x="324.0" y="288.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rational.</text>
+  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold" font-family="Arial">or a product zone axis</text>
+  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">z_p = R_k^T z_c</text>
+  <text x="324.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The microscope's natural</text>
+  <text x="324.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">choice: tilt</text>
+  <text x="324.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the product on zone. The</text>
+  <text x="324.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">implied</text>
+  <text x="324.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">parent direction is irrational</text>
+  <text x="324.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">and is</text>
+  <text x="324.0" y="272.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">reported exactly plus nearest</text>
+  <text x="324.0" y="288.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">rational.</text>
   <line x1="276.0" y1="213.0" x2="306.0" y2="213.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="108.0" width="236.0" height="210.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="594.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Shared detector basis</text>
-  <text x="594.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">(u, v, z), u x v = z</text>
-  <text x="594.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Built once from z_p by one</text>
-  <text x="594.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">function,</text>
-  <text x="594.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">so both anchoring routes give</text>
-  <text x="594.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">identical geometry.</text>
+  <text x="594.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Shared detector basis</text>
+  <text x="594.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">(u, v, z), u x v = z</text>
+  <text x="594.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Built once from z_p by one</text>
+  <text x="594.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">function,</text>
+  <text x="594.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">so both anchoring routes give</text>
+  <text x="594.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">identical geometry.</text>
   <line x1="546.0" y1="213.0" x2="576.0" y2="213.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="108.0" width="300.0" height="141.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="133.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Identity: the two routes agree</text>
-  <text x="872.0" y="156.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Anchoring on variant k's image of a parent</text>
-  <text x="872.0" y="175.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">zone reproduces the parent-anchored pattern</text>
-  <text x="872.0" y="194.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">for that zone exactly - measured to 1e-13 mm</text>
-  <text x="872.0" y="213.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">- because both build the basis from the same</text>
-  <text x="872.0" y="232.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">parent direction through the same function.</text>
+  <text x="872.0" y="133.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Identity: the two routes agree</text>
+  <text x="872.0" y="156.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Anchoring on variant k's image of a parent</text>
+  <text x="872.0" y="175.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">zone reproduces the parent-anchored pattern</text>
+  <text x="872.0" y="194.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">for that zone exactly - measured to 1e-13 mm</text>
+  <text x="872.0" y="213.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">- because both build the basis from the same</text>
+  <text x="872.0" y="232.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">parent direction through the same function.</text>
   <line x1="158.0" y1="318.0" x2="158.0" y2="358.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
-  <text x="40.0" y="352.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">2 - simulate each sub-pattern on that basis</text>
+  <text x="40.0" y="352.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">2 - simulate each sub-pattern on that basis</text>
   <rect x="40.0" y="364.0" width="236.0" height="194.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
-  <text x="54.0" y="391.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Enumerate and filter</text>
-  <text x="54.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">centring allowed, |g| &lt;=</text>
-  <text x="54.0" y="432.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">g_max</text>
-  <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Reflection cube to max_index,</text>
-  <text x="54.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">then the</text>
-  <text x="54.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">phase's lattice-centring</text>
-  <text x="54.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">condition.</text>
+  <text x="54.0" y="391.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold" font-family="Arial">Enumerate and filter</text>
+  <text x="54.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">centring allowed, |g| &lt;=</text>
+  <text x="54.0" y="432.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">g_max</text>
+  <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Reflection cube to max_index,</text>
+  <text x="54.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">then the</text>
+  <text x="54.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">phase's lattice-centring</text>
+  <text x="54.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">condition.</text>
   <rect x="310.0" y="364.0" width="236.0" height="194.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
-  <text x="324.0" y="391.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Excitation error</text>
-  <text x="324.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">s_g = g_z - lambda |g|^2 / 2</text>
-  <text x="324.0" y="432.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Keep |s_g| &lt;= tolerance. This</text>
-  <text x="324.0" y="448.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">is the</text>
-  <text x="324.0" y="464.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Ewald-sphere proximity test;</text>
-  <text x="324.0" y="480.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">exact</text>
-  <text x="324.0" y="496.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">zone-axis spots have s_g =</text>
-  <text x="324.0" y="512.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">-lambda|g|^2/2.</text>
+  <text x="324.0" y="391.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold" font-family="Arial">Excitation error</text>
+  <text x="324.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">s_g = g_z - lambda |g|^2 / 2</text>
+  <text x="324.0" y="432.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Keep |s_g| &lt;= tolerance. This</text>
+  <text x="324.0" y="448.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">is the</text>
+  <text x="324.0" y="464.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Ewald-sphere proximity test;</text>
+  <text x="324.0" y="480.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">exact</text>
+  <text x="324.0" y="496.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">zone-axis spots have s_g =</text>
+  <text x="324.0" y="512.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">-lambda|g|^2/2.</text>
   <line x1="276.0" y1="461.0" x2="306.0" y2="461.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="364.0" width="236.0" height="194.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="594.0" y="391.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Project and sort</text>
-  <text x="594.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">r = (L lambda) |g_in-plane|</text>
-  <text x="594.0" y="432.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Structure factors,</text>
-  <text x="594.0" y="448.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">max-normalized</text>
-  <text x="594.0" y="464.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">intensity, then a sort whose</text>
-  <text x="594.0" y="480.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">continuous keys are quantized</text>
-  <text x="594.0" y="496.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">so</text>
-  <text x="594.0" y="512.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">ties fall to the exact hkl</text>
-  <text x="594.0" y="528.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">order.</text>
+  <text x="594.0" y="391.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Project and sort</text>
+  <text x="594.0" y="413.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">r = (L lambda) |g_in-plane|</text>
+  <text x="594.0" y="432.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Structure factors,</text>
+  <text x="594.0" y="448.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">max-normalized</text>
+  <text x="594.0" y="464.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">intensity, then a sort whose</text>
+  <text x="594.0" y="480.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">continuous keys are quantized</text>
+  <text x="594.0" y="496.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">so</text>
+  <text x="594.0" y="512.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">ties fall to the exact hkl</text>
+  <text x="594.0" y="528.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">order.</text>
   <line x1="546.0" y1="461.0" x2="576.0" y2="461.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="364.0" width="300.0" height="141.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="389.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: declare the space group</text>
-  <text x="872.0" y="412.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Centring is read from the first letter of the</text>
-  <text x="872.0" y="431.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">space-group symbol. A phase without one is</text>
-  <text x="872.0" y="450.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">simulated as PRIMITIVE, keeping reflections</text>
-  <text x="872.0" y="469.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the real structure forbids. centering_audit()</text>
-  <text x="872.0" y="488.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">reports declared vs assumed; describe() warns.</text>
+  <text x="872.0" y="389.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: declare the space group</text>
+  <text x="872.0" y="412.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Centring is read from the first letter of the</text>
+  <text x="872.0" y="431.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">space-group symbol. A phase without one is</text>
+  <text x="872.0" y="450.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">simulated as PRIMITIVE, keeping reflections</text>
+  <text x="872.0" y="469.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the real structure forbids. centering_audit()</text>
+  <text x="872.0" y="488.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">reports declared vs assumed; describe() warns.</text>
   <rect x="856.0" y="519.0" width="300.0" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="544.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: zero-order Laue zone</text>
-  <text x="872.0" y="567.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The excitation-error window selects the ZOLZ</text>
-  <text x="872.0" y="586.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">at the default tolerance. Higher-order Laue</text>
-  <text x="872.0" y="605.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">zones and double diffraction are out of scope</text>
-  <text x="872.0" y="624.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">for this engine.</text>
+  <text x="872.0" y="544.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: zero-order Laue zone</text>
+  <text x="872.0" y="567.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The excitation-error window selects the ZOLZ</text>
+  <text x="872.0" y="586.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">at the default tolerance. Higher-order Laue</text>
+  <text x="872.0" y="605.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">zones and double diffraction are out of scope</text>
+  <text x="872.0" y="624.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">for this engine.</text>
   <rect x="856.0" y="655.0" width="300.0" height="141.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="680.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: sort keys are quantized</text>
-  <text x="872.0" y="703.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Symmetry-equivalent reflections have equal</text>
-  <text x="872.0" y="722.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">intensity and radius differing by ~1e-14, so</text>
-  <text x="872.0" y="741.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">raw keys let noise decide the order and the</text>
-  <text x="872.0" y="760.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">same pattern came out permuted. Quantized to</text>
-  <text x="872.0" y="779.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">1 pm of radius and 1e-12 of full-scale I.</text>
+  <text x="872.0" y="680.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: sort keys are quantized</text>
+  <text x="872.0" y="703.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Symmetry-equivalent reflections have equal</text>
+  <text x="872.0" y="722.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">intensity and radius differing by ~1e-14, so</text>
+  <text x="872.0" y="741.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">raw keys let noise decide the order and the</text>
+  <text x="872.0" y="760.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">same pattern came out permuted. Quantized to</text>
+  <text x="872.0" y="779.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">1 pm of radius and 1e-12 of full-scale I.</text>
   <line x1="158.0" y1="810.0" x2="158.0" y2="850.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
-  <text x="40.0" y="844.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">3 - assemble and export</text>
+  <text x="40.0" y="844.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start" font-family="Arial">3 - assemble and export</text>
   <rect x="40.0" y="856.0" width="236.0" height="178.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="54.0" y="883.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Child bases</text>
-  <text x="54.0" y="905.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">B_k = V_k B_parent</text>
-  <text x="54.0" y="924.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Each variant's basis is the</text>
-  <text x="54.0" y="940.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">parent's</text>
-  <text x="54.0" y="956.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rotated into that child frame,</text>
-  <text x="54.0" y="972.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">so all</text>
-  <text x="54.0" y="988.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">sub-patterns overlay one</text>
-  <text x="54.0" y="1004.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">detector.</text>
+  <text x="54.0" y="883.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Child bases</text>
+  <text x="54.0" y="905.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start" font-family="Arial">B_k = V_k B_parent</text>
+  <text x="54.0" y="924.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Each variant's basis is the</text>
+  <text x="54.0" y="940.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">parent's</text>
+  <text x="54.0" y="956.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">rotated into that child frame,</text>
+  <text x="54.0" y="972.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">so all</text>
+  <text x="54.0" y="988.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">sub-patterns overlay one</text>
+  <text x="54.0" y="1004.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">detector.</text>
   <rect x="310.0" y="856.0" width="236.0" height="178.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
-  <text x="324.0" y="883.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Coincidences</text>
-  <text x="324.0" y="902.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Parent/child reflection pairs</text>
-  <text x="324.0" y="918.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">within a</text>
-  <text x="324.0" y="934.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">detector tolerance - the</text>
-  <text x="324.0" y="950.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">measurable</text>
-  <text x="324.0" y="966.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">content of an OR in TEM</text>
-  <text x="324.0" y="982.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">practice.</text>
+  <text x="324.0" y="883.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold" font-family="Arial">Coincidences</text>
+  <text x="324.0" y="902.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Parent/child reflection pairs</text>
+  <text x="324.0" y="918.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">within a</text>
+  <text x="324.0" y="934.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">detector tolerance - the</text>
+  <text x="324.0" y="950.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">measurable</text>
+  <text x="324.0" y="966.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">content of an OR in TEM</text>
+  <text x="324.0" y="982.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">practice.</text>
   <line x1="276.0" y1="945.0" x2="306.0" y2="945.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="580.0" y="856.0" width="236.0" height="178.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
-  <text x="594.0" y="883.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Figure, table, manifest</text>
-  <text x="594.0" y="902.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">One row per rendered spot, the</text>
-  <text x="594.0" y="918.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rendered figure, and a JSON</text>
-  <text x="594.0" y="934.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">manifest</text>
-  <text x="594.0" y="950.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">recording how both were</text>
-  <text x="594.0" y="966.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">produced.</text>
+  <text x="594.0" y="883.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold" font-family="Arial">Figure, table, manifest</text>
+  <text x="594.0" y="902.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">One row per rendered spot, the</text>
+  <text x="594.0" y="918.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">rendered figure, and a JSON</text>
+  <text x="594.0" y="934.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">manifest</text>
+  <text x="594.0" y="950.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">recording how both were</text>
+  <text x="594.0" y="966.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">produced.</text>
   <line x1="546.0" y1="945.0" x2="576.0" y2="945.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
   <rect x="856.0" y="856.0" width="300.0" height="141.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="872.0" y="881.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Constraint: intensities are per-pattern</text>
-  <text x="872.0" y="904.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Each sub-pattern is normalized to its own</text>
-  <text x="872.0" y="923.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">maximum. Kinematic theory defines no intensity</text>
-  <text x="872.0" y="942.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">ratio between two phases, so comparing across</text>
-  <text x="872.0" y="961.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">sources is meaningless - a shared scale would</text>
-  <text x="872.0" y="980.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">manufacture a number the theory lacks.</text>
-  <text x="40.0" y="1086.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Kinematic only: no dynamical (Bloch-wave) intensities, no double diffraction, no HOLZ rings. Intensities rank reflections; they do not predict a measured plate.</text>
-  <text x="40.0" y="1104.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Cubic example: Kurdjumov-Sachs down a parent &lt;001&gt;.  Hexagonal example: Burgers down beta [110], where the alpha basal zone appears exactly.</text>
+  <text x="872.0" y="881.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Constraint: intensities are per-pattern</text>
+  <text x="872.0" y="904.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Each sub-pattern is normalized to its own</text>
+  <text x="872.0" y="923.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">maximum. Kinematic theory defines no intensity</text>
+  <text x="872.0" y="942.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">ratio between two phases, so comparing across</text>
+  <text x="872.0" y="961.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">sources is meaningless - a shared scale would</text>
+  <text x="872.0" y="980.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">manufacture a number the theory lacks.</text>
+  <text x="40.0" y="1086.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Kinematic only: no dynamical (Bloch-wave) intensities, no double diffraction, no HOLZ rings. Intensities rank reflections; they do not predict a measured plate.</text>
+  <text x="40.0" y="1104.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Cubic example: Kurdjumov-Sachs down a parent &lt;001&gt;.  Hexagonal example: Burgers down beta [110], where the alpha basal zone appears exactly.</text>
 </svg>

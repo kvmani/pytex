@@ -8,14 +8,14 @@
     </marker>
   </defs>
 
-  <text x="490" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#263238">One orientation relationship, three mathematical objects</text>
-  <text x="490" y="56" text-anchor="middle" font-size="13" fill="#546e7a">PyTex doctrine: the rotation, the index correspondence, and the deformation are distinct, linked descriptions</text>
+  <text x="490" y="34" text-anchor="middle" font-size="22" font-weight="bold" fill="#263238" font-family="Arial">One orientation relationship, three mathematical objects</text>
+  <text x="490" y="56" text-anchor="middle" font-size="13" fill="#546e7a" font-family="Arial">PyTex doctrine: the rotation, the index correspondence, and the deformation are distinct, linked descriptions</text>
 
   <!-- Source box: defining parallelism -->
   <rect x="330" y="80" width="320" height="74" rx="10" fill="#ede7f6" stroke="#3f51b5" stroke-width="2"/>
-  <text x="490" y="106" text-anchor="middle" font-size="15" font-weight="bold" fill="#3f51b5">Defining parallelism</text>
-  <text x="490" y="126" text-anchor="middle" font-size="13" fill="#37474f">plane pair  (hkl)<tspan font-size="9" baseline-shift="sub">p</tspan> &#8741; (hkl)<tspan font-size="9" baseline-shift="sub">c</tspan>   +   in-plane direction pair  [uvw]<tspan font-size="9" baseline-shift="sub">p</tspan> &#8741; [uvw]<tspan font-size="9" baseline-shift="sub">c</tspan></text>
-  <text x="490" y="144" text-anchor="middle" font-size="12" fill="#546e7a">e.g. Kurdjumov&#8211;Sachs:  (111)&#947; &#8741; (011)&#945;,  [&#8722;101]&#947; &#8741; [&#8722;1&#8722;11]&#945;</text>
+  <text x="490" y="106" text-anchor="middle" font-size="15" font-weight="bold" fill="#3f51b5" font-family="Arial">Defining parallelism</text>
+  <text x="490" y="126" text-anchor="middle" font-size="13" fill="#37474f" font-family="Arial">plane pair  (hkl)<tspan font-size="9" baseline-shift="sub">p</tspan> &#8741; (hkl)<tspan font-size="9" baseline-shift="sub">c</tspan>   +   in-plane direction pair  [uvw]<tspan font-size="9" baseline-shift="sub">p</tspan> &#8741; [uvw]<tspan font-size="9" baseline-shift="sub">c</tspan></text>
+  <text x="490" y="144" text-anchor="middle" font-size="12" fill="#546e7a" font-family="Arial">e.g. Kurdjumov&#8211;Sachs:  (111)&#947; &#8741; (011)&#945;,  [&#8722;101]&#947; &#8741; [&#8722;1&#8722;11]&#945;</text>
 
   <!-- Arrows to the three pillars -->
   <line x1="400" y1="154" x2="180" y2="212" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
@@ -24,33 +24,33 @@
 
   <!-- Pillar 1: Rotation -->
   <rect x="30" y="218" width="300" height="176" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
-  <text x="180" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#3f51b5">Rotation  R</text>
-  <text x="180" y="264" text-anchor="middle" font-size="12" fill="#37474f">parent-crystal frame &#8594; child-crystal frame</text>
-  <text x="180" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238">g<tspan font-size="9" baseline-shift="sub">child</tspan> = g<tspan font-size="9" baseline-shift="sub">parent</tspan> &#8728; V<tspan font-size="9" baseline-shift="super">T</tspan>   (canonical composition)</text>
-  <text x="180" y="308" text-anchor="middle" font-size="12" fill="#37474f">variants V&#8342; from the symmetry orbit of R</text>
-  <text x="180" y="328" text-anchor="middle" font-size="12" fill="#37474f">misorientation representative (coset minimum)</text>
-  <text x="180" y="352" text-anchor="middle" font-size="12" fill="#00897b">answers: which orientations appear?</text>
-  <text x="180" y="372" text-anchor="middle" font-size="11" fill="#546e7a">generate_variants &#183; misorientation &#183; or_deviation</text>
+  <text x="180" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#3f51b5" font-family="Arial">Rotation  R</text>
+  <text x="180" y="264" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">parent-crystal frame &#8594; child-crystal frame</text>
+  <text x="180" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238" font-family="Arial">g<tspan font-size="9" baseline-shift="sub">child</tspan> = g<tspan font-size="9" baseline-shift="sub">parent</tspan> &#8728; V<tspan font-size="9" baseline-shift="super">T</tspan>   (canonical composition)</text>
+  <text x="180" y="308" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">variants V&#8342; from the symmetry orbit of R</text>
+  <text x="180" y="328" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">misorientation representative (coset minimum)</text>
+  <text x="180" y="352" text-anchor="middle" font-size="12" fill="#00897b" font-family="Arial">answers: which orientations appear?</text>
+  <text x="180" y="372" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">generate_variants &#183; misorientation &#183; or_deviation</text>
 
   <!-- Pillar 2: Correspondence -->
   <rect x="340" y="218" width="300" height="176" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
-  <text x="490" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#e65100">Correspondence  M</text>
-  <text x="490" y="264" text-anchor="middle" font-size="12" fill="#37474f">parent indices &#8594; child indices</text>
-  <text x="490" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238">M = A<tspan font-size="9" baseline-shift="sub">c</tspan><tspan font-size="9" baseline-shift="super">&#8722;1</tspan> R A<tspan font-size="9" baseline-shift="sub">p</tspan>,   M* = M<tspan font-size="9" baseline-shift="super">&#8722;T</tspan></text>
-  <text x="490" y="308" text-anchor="middle" font-size="12" fill="#37474f">directions map by M, plane normals by M*</text>
-  <text x="490" y="328" text-anchor="middle" font-size="12" fill="#37474f">zone law is preserved exactly</text>
-  <text x="490" y="352" text-anchor="middle" font-size="12" fill="#00897b">answers: which planes/directions coincide?</text>
-  <text x="490" y="372" text-anchor="middle" font-size="11" fill="#546e7a">map_plane_to_child &#183; map_direction_to_child</text>
+  <text x="490" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#e65100" font-family="Arial">Correspondence  M</text>
+  <text x="490" y="264" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">parent indices &#8594; child indices</text>
+  <text x="490" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238" font-family="Arial">M = A<tspan font-size="9" baseline-shift="sub">c</tspan><tspan font-size="9" baseline-shift="super">&#8722;1</tspan> R A<tspan font-size="9" baseline-shift="sub">p</tspan>,   M* = M<tspan font-size="9" baseline-shift="super">&#8722;T</tspan></text>
+  <text x="490" y="308" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">directions map by M, plane normals by M*</text>
+  <text x="490" y="328" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">zone law is preserved exactly</text>
+  <text x="490" y="352" text-anchor="middle" font-size="12" fill="#00897b" font-family="Arial">answers: which planes/directions coincide?</text>
+  <text x="490" y="372" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">map_plane_to_child &#183; map_direction_to_child</text>
 
   <!-- Pillar 3: Deformation -->
   <rect x="650" y="218" width="300" height="176" rx="10" fill="#e0f2f1" stroke="#00897b" stroke-width="2"/>
-  <text x="800" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#00695c">Deformation  F</text>
-  <text x="800" y="264" text-anchor="middle" font-size="12" fill="#37474f">parent lattice &#8594; child lattice (with strain)</text>
-  <text x="800" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238">F = R<tspan font-size="9" baseline-shift="super">T</tspan> A<tspan font-size="9" baseline-shift="sub">c</tspan> M<tspan font-size="9" baseline-shift="sub">int</tspan> A<tspan font-size="9" baseline-shift="sub">p</tspan><tspan font-size="9" baseline-shift="super">&#8722;1</tspan>,   F = R<tspan font-size="9" baseline-shift="sub">rigid</tspan> U</text>
-  <text x="800" y="308" text-anchor="middle" font-size="12" fill="#37474f">principal stretches from the right stretch U</text>
-  <text x="800" y="328" text-anchor="middle" font-size="12" fill="#37474f">volume change = det F</text>
-  <text x="800" y="352" text-anchor="middle" font-size="12" fill="#00897b">answers: how much strain does it cost?</text>
-  <text x="800" y="372" text-anchor="middle" font-size="11" fill="#546e7a">deformation_gradient &#183; DeformationGradientReport</text>
+  <text x="800" y="244" text-anchor="middle" font-size="16" font-weight="bold" fill="#00695c" font-family="Arial">Deformation  F</text>
+  <text x="800" y="264" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">parent lattice &#8594; child lattice (with strain)</text>
+  <text x="800" y="288" text-anchor="middle" font-size="13" font-style="italic" fill="#263238" font-family="Arial">F = R<tspan font-size="9" baseline-shift="super">T</tspan> A<tspan font-size="9" baseline-shift="sub">c</tspan> M<tspan font-size="9" baseline-shift="sub">int</tspan> A<tspan font-size="9" baseline-shift="sub">p</tspan><tspan font-size="9" baseline-shift="super">&#8722;1</tspan>,   F = R<tspan font-size="9" baseline-shift="sub">rigid</tspan> U</text>
+  <text x="800" y="308" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">principal stretches from the right stretch U</text>
+  <text x="800" y="328" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">volume change = det F</text>
+  <text x="800" y="352" text-anchor="middle" font-size="12" fill="#00897b" font-family="Arial">answers: how much strain does it cost?</text>
+  <text x="800" y="372" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">deformation_gradient &#183; DeformationGradientReport</text>
 
   <!-- Consumers row -->
   <line x1="180" y1="394" x2="180" y2="446" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
@@ -58,17 +58,17 @@
   <line x1="800" y1="394" x2="800" y2="446" stroke="#546e7a" stroke-width="2" marker-end="url(#arrow)"/>
 
   <rect x="30" y="452" width="300" height="76" rx="10" fill="#fafafa" stroke="#90a4ae" stroke-width="1.5"/>
-  <text x="180" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f">Microstructure analysis</text>
-  <text x="180" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a">variant selection &#183; packets &#183; intervariant tables</text>
-  <text x="180" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a">identification &#183; refinement &#183; parent reconstruction</text>
+  <text x="180" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f" font-family="Arial">Microstructure analysis</text>
+  <text x="180" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">variant selection &#183; packets &#183; intervariant tables</text>
+  <text x="180" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">identification &#183; refinement &#183; parent reconstruction</text>
 
   <rect x="340" y="452" width="300" height="76" rx="10" fill="#fafafa" stroke="#90a4ae" stroke-width="1.5"/>
-  <text x="490" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f">Interface crystallography</text>
-  <text x="490" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a">habit-plane candidates &#183; slip transfer</text>
-  <text x="490" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a">rationalized indices with angular residuals</text>
+  <text x="490" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f" font-family="Arial">Interface crystallography</text>
+  <text x="490" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">habit-plane candidates &#183; slip transfer</text>
+  <text x="490" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">rationalized indices with angular residuals</text>
 
   <rect x="650" y="452" width="300" height="76" rx="10" fill="#fafafa" stroke="#90a4ae" stroke-width="1.5"/>
-  <text x="800" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f">Transformation physics</text>
-  <text x="800" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a">Bain stretches &#183; rigid-body rotations vs Bain</text>
-  <text x="800" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a">invariant-line reasoning (PTMC, future F13)</text>
+  <text x="800" y="478" text-anchor="middle" font-size="13" font-weight="bold" fill="#37474f" font-family="Arial">Transformation physics</text>
+  <text x="800" y="498" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">Bain stretches &#183; rigid-body rotations vs Bain</text>
+  <text x="800" y="515" text-anchor="middle" font-size="11.5" fill="#546e7a" font-family="Arial">invariant-line reasoning (PTMC, future F13)</text>
 </svg>

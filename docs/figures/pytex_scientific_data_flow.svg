@@ -16,65 +16,65 @@
     </style>
   </defs>
   <rect width="1200" height="720" fill="url(#bg)"/>
-  <text x="600" y="62" text-anchor="middle" class="title">Scientific Data Flow</text>
-  <text x="600" y="96" text-anchor="middle" class="subtitle">Normalize once, compute on canonical objects, publish traceable outputs</text>
+  <text x="600" y="62" text-anchor="middle" class="title" font-family="Arial">Scientific Data Flow</text>
+  <text x="600" y="96" text-anchor="middle" class="subtitle" font-family="Arial">Normalize once, compute on canonical objects, publish traceable outputs</text>
   <rect x="510" y="118" width="180" height="5" rx="3" fill="#2563eb"/>
   <rect x="600" y="118" width="90" height="5" rx="3" fill="#7c3aed"/>
 
   <rect x="58" y="158" width="1084" height="252" rx="18" class="lane" stroke="#2563eb"/>
-  <text x="84" y="190" class="label" fill="#2563eb">Primary Data Path</text>
+  <text x="84" y="190" class="label" fill="#2563eb" font-family="Arial">Primary Data Path</text>
 
   <rect x="80" y="226" width="176" height="124" class="card" fill="#f8fafc" stroke="#40506f"/>
-  <circle cx="168" cy="264" r="24" fill="#e2e8f0"/><text x="168" y="272" text-anchor="middle" class="label">1</text>
-  <text x="168" y="304" text-anchor="middle" class="label">External Sources</text>
-  <text x="168" y="328" text-anchor="middle" class="body">EBSD, CIF, adapters</text>
+  <circle cx="168" cy="264" r="24" fill="#e2e8f0"/><text x="168" y="272" text-anchor="middle" class="label" font-family="Arial">1</text>
+  <text x="168" y="304" text-anchor="middle" class="label" font-family="Arial">External Sources</text>
+  <text x="168" y="328" text-anchor="middle" class="body" font-family="Arial">EBSD, CIF, adapters</text>
 
   <rect x="300" y="226" width="176" height="124" class="card" fill="#fffbeb" stroke="#f59e0b"/>
-  <circle cx="388" cy="264" r="24" fill="#fef3c7"/><text x="388" y="272" text-anchor="middle" class="label">2</text>
-  <text x="388" y="304" text-anchor="middle" class="label">Boundary</text>
-  <text x="388" y="328" text-anchor="middle" class="body">validate manifests</text>
+  <circle cx="388" cy="264" r="24" fill="#fef3c7"/><text x="388" y="272" text-anchor="middle" class="label" font-family="Arial">2</text>
+  <text x="388" y="304" text-anchor="middle" class="label" font-family="Arial">Boundary</text>
+  <text x="388" y="328" text-anchor="middle" class="body" font-family="Arial">validate manifests</text>
 
   <rect x="520" y="226" width="176.6" height="124" class="card" fill="#eff6ff" stroke="#2563eb"/>
-  <circle cx="608" cy="264" r="24" fill="#dbeafe"/><text x="608" y="272" text-anchor="middle" class="label">3</text>
-  <text x="608" y="304" text-anchor="middle" class="label">Canonical Core</text>
-  <text x="608" y="328" text-anchor="middle" class="body">frames, phase, symmetry</text>
+  <circle cx="608" cy="264" r="24" fill="#dbeafe"/><text x="608" y="272" text-anchor="middle" class="label" font-family="Arial">3</text>
+  <text x="608" y="304" text-anchor="middle" class="label" font-family="Arial">Canonical Core</text>
+  <text x="608" y="328" text-anchor="middle" class="body" font-family="Arial">frames, phase, symmetry</text>
 
   <rect x="740" y="226" width="176.6" height="124" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <circle cx="828" cy="264" r="24" fill="#dcfce7"/><text x="828" y="272" text-anchor="middle" class="label">4</text>
-  <text x="828" y="304" text-anchor="middle" class="label">Workflows</text>
-  <text x="828" y="328" text-anchor="middle" class="body">texture, EBSD, diffraction</text>
+  <circle cx="828" cy="264" r="24" fill="#dcfce7"/><text x="828" y="272" text-anchor="middle" class="label" font-family="Arial">4</text>
+  <text x="828" y="304" text-anchor="middle" class="label" font-family="Arial">Workflows</text>
+  <text x="828" y="328" text-anchor="middle" class="body" font-family="Arial">texture, EBSD, diffraction</text>
 
   <rect x="960" y="226" width="156" height="124" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-  <circle cx="1038" cy="264" r="24" fill="#ede9fe"/><text x="1038" y="272" text-anchor="middle" class="label">5</text>
-  <text x="1038" y="304" text-anchor="middle" class="label">Outputs</text>
-  <text x="1038" y="328" text-anchor="middle" class="body">reports, figures</text>
-  <text x="1038" y="346" text-anchor="middle" class="body">JSON contracts</text>
+  <circle cx="1038" cy="264" r="24" fill="#ede9fe"/><text x="1038" y="272" text-anchor="middle" class="label" font-family="Arial">5</text>
+  <text x="1038" y="304" text-anchor="middle" class="label" font-family="Arial">Outputs</text>
+  <text x="1038" y="328" text-anchor="middle" class="body" font-family="Arial">reports, figures</text>
+  <text x="1038" y="346" text-anchor="middle" class="body" font-family="Arial">JSON contracts</text>
 
   <path class="arrow" d="M256 288 H300"/><path class="arrow" d="M476 288 H520"/>
   <path class="arrow" d="M696 288 H740"/><path class="arrow" d="M916 288 H960"/>
 
   <rect x="58" y="462" width="1084" height="160" rx="18" class="lane" stroke="#7c3aed"/>
-  <text x="84" y="494" class="label" fill="#7c3aed">Evidence And Explanation Path</text>
+  <text x="84" y="494" class="label" fill="#7c3aed" font-family="Arial">Evidence And Explanation Path</text>
 
   <rect x="112" y="524" width="282" height="76" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-  <text x="253" y="554" text-anchor="middle" class="label">Documentation + Theory</text>
-  <text x="253" y="578" text-anchor="middle" class="body">concepts, workflows, LaTeX, SVG</text>
+  <text x="253" y="554" text-anchor="middle" class="label" font-family="Arial">Documentation + Theory</text>
+  <text x="253" y="578" text-anchor="middle" class="body" font-family="Arial">concepts, workflows, LaTeX, SVG</text>
 
   <rect x="459" y="524" width="282" height="76" class="card" fill="#ecfeff" stroke="#0f9f9f"/>
-  <text x="600" y="554" text-anchor="middle" class="label">Validation + Reproducibility</text>
-  <text x="600" y="578" text-anchor="middle" class="body">tests, fixtures, parity, manifests</text>
+  <text x="600" y="554" text-anchor="middle" class="label" font-family="Arial">Validation + Reproducibility</text>
+  <text x="600" y="578" text-anchor="middle" class="body" font-family="Arial">tests, fixtures, parity, manifests</text>
 
   <rect x="806" y="524" width="282" height="76" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="947" y="554" text-anchor="middle" class="label">Traceable Claims</text>
-  <text x="947" y="578" text-anchor="middle" class="body">implemented versus foundational</text>
+  <text x="947" y="554" text-anchor="middle" class="label" font-family="Arial">Traceable Claims</text>
+  <text x="947" y="578" text-anchor="middle" class="body" font-family="Arial">implemented versus foundational</text>
 
   <path class="evidence" d="M253 524 C310 430 526 400 608 350"/>
   <path class="evidence" d="M600 524 C650 430 790 400 828 350"/>
   <path class="evidence" d="M947 524 C992 430 1020 400 1038 350"/>
 
   <rect x="150" y="656" width="900" height="50.2" rx="17" fill="#ffffff" stroke="#dbe4f0"/>
-  <circle cx="188" cy="673" r="6" fill="#07122f"/><text x="206" y="679" class="small">solid arrows: canonical data movement</text>
-  <circle cx="480" cy="673" r="6" fill="#2563eb"/><text x="498" y="679" class="small">dashed arrows: documentation and validation constraints</text>
-  <circle cx="874" cy="673" r="6" fill="#16a34a"/><text x="892" y="679" class="small"><tspan x="892" dy="0.0">green: evidence-backed</tspan><tspan x="892" dy="16.6">outputs</tspan></text>
+  <circle cx="188" cy="673" r="6" fill="#07122f"/><text x="206" y="679" class="small" font-family="Arial">solid arrows: canonical data movement</text>
+  <circle cx="480" cy="673" r="6" fill="#2563eb"/><text x="498" y="679" class="small" font-family="Arial">dashed arrows: documentation and validation constraints</text>
+  <circle cx="874" cy="673" r="6" fill="#16a34a"/><text x="892" y="679" class="small" font-family="Arial"><tspan x="892" dy="0.0">green: evidence-backed</tspan><tspan x="892" dy="16.6">outputs</tspan></text>
 </svg>
 

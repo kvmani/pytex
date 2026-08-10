@@ -6,42 +6,42 @@
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#07122f" flood-opacity="0.14"/></filter>
     <marker markerUnits="userSpaceOnUse" id="arrow" markerWidth="24.00" markerHeight="24.00" refX="20.00" refY="12.00" orient="auto"><path d="M4.00,4.00 L20.00,12.00 L4.00,20.00 Z" fill="#07122f"/></marker>
     <marker markerUnits="userSpaceOnUse" id="roseArrow" markerWidth="24.00" markerHeight="24.00" refX="20.00" refY="12.00" orient="auto"><path d="M4.00,4.00 L20.00,12.00 L4.00,20.00 Z" fill="#e11d48"/></marker>
-    <style>.title{font: 700 42px Arial;fill:#07122f}.subtitle{font: 20px Arial;fill:#40506f}.label{font: 700 20px Arial;fill:#07122f}.body{font: 15px Arial;fill:#40506f}.card{rx:8;filter:url(#shadow);stroke-width:2}.arrow{fill:none;stroke:#07122f;stroke-width:2.6;marker-end:url(#arrow)}.reject{fill:none;stroke:#e11d48;stroke-width:2.5;marker-end:url(#roseArrow)}.gate{fill:#fffbeb;stroke:#f59e0b;stroke-width:2;filter:url(#shadow)}</style>
+    <style>.title{font: Arial;fill:#07122f}.subtitle{font: Arial;fill:#40506f}.label{font: Arial;fill:#07122f}.body{font: Arial;fill:#40506f}.card{rx:8;filter:url(#shadow);stroke-width:2}.arrow{fill:none;stroke:#07122f;stroke-width:2.6;marker-end:url(#arrow)}.reject{fill:none;stroke:#e11d48;stroke-width:2.5;marker-end:url(#roseArrow)}.gate{fill:#fffbeb;stroke:#f59e0b;stroke-width:2;filter:url(#shadow)}</style>
   </defs>
   <rect width="1200" height="720" fill="url(#bg)"/>
-  <text x="600" y="62" text-anchor="middle" class="title">Governance And Completion Model</text>
-  <text x="600" y="96" text-anchor="middle" class="subtitle">A feature claim is earned by semantics, documentation, figures, and validation together</text>
+  <text x="600" y="62" text-anchor="middle" class="title" font-family="Arial">Governance And Completion Model</text>
+  <text x="600" y="96" text-anchor="middle" class="subtitle" font-family="Arial">A feature claim is earned by semantics, documentation, figures, and validation together</text>
   <rect x="510" y="118" width="180" height="5" rx="3" fill="#2563eb"/><rect x="600" y="118" width="90" height="5" rx="3" fill="#7c3aed"/>
 
   <rect x="68" y="210" width="189.9" height="109.6" class="card" fill="#fffbeb" stroke="#f59e0b"/>
-  <circle cx="112" cy="258" r="24" fill="#fef3c7"/><text x="112" y="266" text-anchor="middle" class="label">1</text>
-  <text x="154" y="246" class="label">Capability</text><text x="154" y="270" class="body"><tspan x="154" dy="0.0">new</tspan><tspan x="154" dy="19.2">scientific</tspan><tspan x="154" dy="19.2">behavior</tspan></text>
+  <circle cx="112" cy="258" r="24" fill="#fef3c7"/><text x="112" y="266" text-anchor="middle" class="label" font-family="Arial">1</text>
+  <text x="154" y="246" class="label" font-family="Arial">Capability</text><text x="154" y="270" class="body" font-family="Arial"><tspan x="154" dy="0.0">new</tspan><tspan x="154" dy="19.2">scientific</tspan><tspan x="154" dy="19.2">behavior</tspan></text>
 
   <rect x="292" y="170" width="193.5" height="109.6" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-  <circle cx="336" cy="218" r="24" fill="#ede9fe"/><text x="336" y="226" text-anchor="middle" class="label">2</text>
-  <text x="378" y="206" class="label">Standards</text><text x="378" y="230" class="body"><tspan x="378" dy="0.0">notation,</tspan><tspan x="378" dy="19.2">references,</tspan><tspan x="378" dy="19.2">manifests</tspan></text>
+  <circle cx="336" cy="218" r="24" fill="#ede9fe"/><text x="336" y="226" text-anchor="middle" class="label" font-family="Arial">2</text>
+  <text x="378" y="206" class="label" font-family="Arial">Standards</text><text x="378" y="230" class="body" font-family="Arial"><tspan x="378" dy="0.0">notation,</tspan><tspan x="378" dy="19.2">references,</tspan><tspan x="378" dy="19.2">manifests</tspan></text>
   <rect x="292" y="340" width="210.2" height="109.6" class="card" fill="#eff6ff" stroke="#2563eb"/>
-  <circle cx="336" cy="388" r="24" fill="#dbeafe"/><text x="336" y="396" text-anchor="middle" class="label">3</text>
-  <text x="378" y="376" class="label">Architecture</text><text x="378" y="400" class="body"><tspan x="378" dy="0.0">canonical</tspan><tspan x="378" dy="19.2">model</tspan><tspan x="378" dy="19.2">alignment</tspan></text>
+  <circle cx="336" cy="388" r="24" fill="#dbeafe"/><text x="336" y="396" text-anchor="middle" class="label" font-family="Arial">3</text>
+  <text x="378" y="376" class="label" font-family="Arial">Architecture</text><text x="378" y="400" class="body" font-family="Arial"><tspan x="378" dy="0.0">canonical</tspan><tspan x="378" dy="19.2">model</tspan><tspan x="378" dy="19.2">alignment</tspan></text>
 
   <rect x="552" y="250" width="242.3" height="109.6" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <circle cx="596" cy="298" r="24" fill="#dcfce7"/><text x="596" y="306" text-anchor="middle" class="label">4</text>
-  <text x="638" y="286" class="label">Implementation</text><text x="638" y="310" class="body"><tspan x="638" dy="0.0">core,</tspan><tspan x="638" dy="19.2">domains,</tspan><tspan x="638" dy="19.2">adapters</tspan></text>
+  <circle cx="596" cy="298" r="24" fill="#dcfce7"/><text x="596" y="306" text-anchor="middle" class="label" font-family="Arial">4</text>
+  <text x="638" y="286" class="label" font-family="Arial">Implementation</text><text x="638" y="310" class="body" font-family="Arial"><tspan x="638" dy="0.0">core,</tspan><tspan x="638" dy="19.2">domains,</tspan><tspan x="638" dy="19.2">adapters</tspan></text>
 
   <rect x="812" y="170" width="246.5" height="98" class="card" fill="#f5f3ff" stroke="#7c3aed"/>
-  <circle cx="856" cy="218" r="24" fill="#ede9fe"/><text x="856" y="226" text-anchor="middle" class="label">5</text>
-  <text x="898" y="206" class="label">Docs + Figures</text><text x="898" y="230" class="body"><tspan x="898" dy="0.0">Sphinx,</tspan><tspan x="898" dy="19.2">LaTeX, SVG</tspan></text>
+  <circle cx="856" cy="218" r="24" fill="#ede9fe"/><text x="856" y="226" text-anchor="middle" class="label" font-family="Arial">5</text>
+  <text x="898" y="206" class="label" font-family="Arial">Docs + Figures</text><text x="898" y="230" class="body" font-family="Arial"><tspan x="898" dy="0.0">Sphinx,</tspan><tspan x="898" dy="19.2">LaTeX, SVG</tspan></text>
   <rect x="812" y="340" width="190" height="98" class="card" fill="#ecfeff" stroke="#0f9f9f"/>
-  <circle cx="856" cy="388" r="24" fill="#ccfbf1"/><text x="856" y="396" text-anchor="middle" class="label">6</text>
-  <text x="898" y="376" class="label">Validation</text><text x="898" y="400" class="body"><tspan x="898" dy="0.0">tests, parity,</tspan><tspan x="898" dy="19.2">evidence</tspan></text>
+  <circle cx="856" cy="388" r="24" fill="#ccfbf1"/><text x="856" y="396" text-anchor="middle" class="label" font-family="Arial">6</text>
+  <text x="898" y="376" class="label" font-family="Arial">Validation</text><text x="898" y="400" class="body" font-family="Arial"><tspan x="898" dy="0.0">tests, parity,</tspan><tspan x="898" dy="19.2">evidence</tspan></text>
 
   <path d="M1072 248 L1134 300 L1072 352 L1010 300 Z" class="gate"/>
-  <text x="1072" y="294" text-anchor="middle" class="label">Complete?</text><text x="1072" y="318" text-anchor="middle" class="body">claim gate</text>
+  <text x="1072" y="294" text-anchor="middle" class="label" font-family="Arial">Complete?</text><text x="1072" y="318" text-anchor="middle" class="body" font-family="Arial">claim gate</text>
 
   <rect x="482" y="558" width="236" height="82" class="card" fill="#ecfdf5" stroke="#16a34a"/>
-  <text x="600" y="592" text-anchor="middle" class="label">Stable Feature Claim</text><text x="600" y="616" text-anchor="middle" class="body"><tspan x="600" dy="0.0">implemented, explained,</tspan><tspan x="600" dy="19.2">validated</tspan></text>
+  <text x="600" y="592" text-anchor="middle" class="label" font-family="Arial">Stable Feature Claim</text><text x="600" y="616" text-anchor="middle" class="body" font-family="Arial"><tspan x="600" dy="0.0">implemented, explained,</tspan><tspan x="600" dy="19.2">validated</tspan></text>
   <rect x="160" y="558" width="236" height="82" class="card" fill="#fff1f2" stroke="#e11d48"/>
-  <text x="278" y="592" text-anchor="middle" class="label">Return To Hardening</text><text x="278" y="616" text-anchor="middle" class="body"><tspan x="278" dy="0.0">missing docs, figures, tests,</tspan><tspan x="278" dy="19.2">evidence</tspan></text>
+  <text x="278" y="592" text-anchor="middle" class="label" font-family="Arial">Return To Hardening</text><text x="278" y="616" text-anchor="middle" class="body" font-family="Arial"><tspan x="278" dy="0.0">missing docs, figures, tests,</tspan><tspan x="278" dy="19.2">evidence</tspan></text>
 
   <path class="arrow" d="M238 258 C258 226 270 220 292 220"/>
   <path class="arrow" d="M238 258 C258 342 270 390 292 390"/>

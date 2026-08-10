@@ -7,15 +7,15 @@
 
   <rect width="1340" height="1010" fill="#fbf8ef"/>
 
-  <text x="56" y="62" font-size="34" font-family="Arial" fill="#17314a">Inverse pole figure sector geometry</text>
-  <text x="56" y="96" font-size="18" font-family="Arial" fill="#55626e">
+  <text x="56" y="62" font-size="34" font-family="Arial" fill="#17314a" font-family="Arial">Inverse pole figure sector geometry</text>
+  <text x="56" y="96" font-size="18" font-family="Arial" fill="#55626e" font-family="Arial">
     The cubic inverse pole figure sector is defined on the direction sphere first, then projected for plotting.
   </text>
 
   <rect x="42" y="132" width="1256" height="818" rx="26" fill="#fffdf8" stroke="#d8d0c3" stroke-width="1.8"/>
 
-  <text x="86" y="172" font-size="24" font-family="Arial" fill="#17314a">A. Spherical sector on the unit sphere</text>
-  <text x="734" y="172" font-size="24" font-family="Arial" fill="#17314a">B. Stereographic projection of the same sector</text>
+  <text x="86" y="172" font-size="24" font-family="Arial" fill="#17314a" font-family="Arial">A. Spherical sector on the unit sphere</text>
+  <text x="734" y="172" font-size="24" font-family="Arial" fill="#17314a" font-family="Arial">B. Stereographic projection of the same sector</text>
 
   <g transform="translate(350,632)">
     <circle cx="0" cy="0" r="214" fill="#eef4fb" stroke="#1f3144" stroke-width="3"/>
@@ -31,18 +31,18 @@
     <circle cx="151" cy="151" r="8" fill="#2f6f59"/>
     <circle cx="-151" cy="151" r="8" fill="#2f6f59"/>
 
-    <text x="-18" y="-236" font-size="22" font-family="Arial" fill="#1b5541">[001]</text>
-    <text x="164" y="164" font-size="22" font-family="Arial" fill="#1b5541">[101]</text>
-    <text x="-236" y="164" font-size="22" font-family="Arial" fill="#1b5541">[111]</text>
+    <text x="-18" y="-236" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[001]</text>
+    <text x="164" y="164" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[101]</text>
+    <text x="-236" y="164" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[111]</text>
 
     <circle cx="74" cy="-78" r="10" fill="#d94d2b"/>
     <line x1="0" y1="0" x2="74" y2="-78" stroke="#d94d2b" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="94" y="-82" font-size="20" font-family="Arial" fill="#8b2e1d">reduced direction</text>
+    <text x="94" y="-82" font-size="20" font-family="Arial" fill="#8b2e1d" font-family="Arial">reduced direction</text>
 
     <circle cx="-72" cy="-92" r="8" fill="#8a70b6"/>
     <circle cx="126" cy="40" r="8" fill="#8a70b6"/>
     <circle cx="-34" cy="154" r="8" fill="#8a70b6"/>
-    <text x="-236" y="-278" font-size="17" font-family="Arial" fill="#4f5d69">
+    <text x="-236" y="-278" font-size="17" font-family="Arial" fill="#4f5d69" font-family="Arial">
       symmetry orbit -> choose the member inside the sector
     </text>
   </g>
@@ -61,49 +61,49 @@
     <circle cx="214" cy="0" r="8" fill="#2f6f59"/>
     <circle cx="-178" cy="112" r="8" fill="#2f6f59"/>
 
-    <text x="-20" y="-238" font-size="22" font-family="Arial" fill="#1b5541">[001]</text>
-    <text x="226" y="6" font-size="22" font-family="Arial" fill="#1b5541">[101]</text>
-    <text x="-258" y="122" font-size="22" font-family="Arial" fill="#1b5541">[111]</text>
+    <text x="-20" y="-238" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[001]</text>
+    <text x="226" y="6" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[101]</text>
+    <text x="-258" y="122" font-size="22" font-family="Arial" fill="#1b5541" font-family="Arial">[111]</text>
 
     <circle cx="88" cy="-72" r="10" fill="#d94d2b"/>
-    <text x="104" y="-80" font-size="18" font-family="Arial" fill="#8b2e1d">projected reduced</text>
-    <text x="104" y="-58" font-size="18" font-family="Arial" fill="#8b2e1d">direction</text>
+    <text x="104" y="-80" font-size="18" font-family="Arial" fill="#8b2e1d" font-family="Arial">projected reduced</text>
+    <text x="104" y="-58" font-size="18" font-family="Arial" fill="#8b2e1d" font-family="Arial">direction</text>
 
     <circle cx="-52" cy="-86" r="8" fill="#8a70b6"/>
     <circle cx="98" cy="42" r="8" fill="#8a70b6"/>
     <circle cx="-16" cy="126" r="8" fill="#8a70b6"/>
-    <text x="-90" y="230" font-size="18" font-family="Arial" fill="#4f5d69"><tspan x="-90" dy="0">curved boundaries remain tied to the sphere</tspan><tspan x="-90" dy="20">geometry</tspan></text>
+    <text x="-90" y="230" font-size="18" font-family="Arial" fill="#4f5d69" font-family="Arial"><tspan x="-90" dy="0">curved boundaries remain tied to the sphere</tspan><tspan x="-90" dy="20">geometry</tspan></text>
   </g>
 
   <g transform="translate(92,208)">
     <rect x="0" y="0" width="500" height="126" rx="18" fill="#efe4c8" stroke="#b58c39" stroke-width="1.6"/>
-    <text x="24" y="34" font-size="23" font-family="Arial" fill="#5a4213">Key point</text>
-    <text x="24" y="66" font-size="17" font-family="Arial" fill="#5a4213">
+    <text x="24" y="34" font-size="23" font-family="Arial" fill="#5a4213" font-family="Arial">Key point</text>
+    <text x="24" y="66" font-size="17" font-family="Arial" fill="#5a4213" font-family="Arial">
       IPF reduction acts on direction vectors on the unit sphere.
     </text>
-    <text x="24" y="92" font-size="17" font-family="Arial" fill="#5a4213">
+    <text x="24" y="92" font-size="17" font-family="Arial" fill="#5a4213" font-family="Arial">
       The plotted triangle is a projection of that spherical sector,
     </text>
-    <text x="24" y="116" font-size="17" font-family="Arial" fill="#5a4213">
+    <text x="24" y="116" font-size="17" font-family="Arial" fill="#5a4213" font-family="Arial">
       not a free-standing planar search region.
     </text>
   </g>
 
   <g transform="translate(742,208)">
     <rect x="0" y="0" width="486" height="126" rx="18" fill="#e5edf6" stroke="#4b718f" stroke-width="1.6"/>
-    <text x="24" y="34" font-size="23" font-family="Arial" fill="#17314a">Interpretation rule</text>
-    <text x="24" y="66" font-size="17" font-family="Arial" fill="#274659">
+    <text x="24" y="34" font-size="23" font-family="Arial" fill="#17314a" font-family="Arial">Interpretation rule</text>
+    <text x="24" y="66" font-size="17" font-family="Arial" fill="#274659" font-family="Arial">
       Symmetry first generates an orbit of equivalent directions.
     </text>
-    <text x="24" y="92" font-size="17" font-family="Arial" fill="#274659">
+    <text x="24" y="92" font-size="17" font-family="Arial" fill="#274659" font-family="Arial">
       Reduction selects the orbit member inside
     </text>
-    <text x="24" y="116" font-size="17" font-family="Arial" fill="#274659">
+    <text x="24" y="116" font-size="17" font-family="Arial" fill="#274659" font-family="Arial">
       the cubic sector F_dir.
     </text>
   </g>
 
-  <text x="92" y="980" font-size="15" font-family="Arial" fill="#55626e">
+  <text x="92" y="980" font-size="15" font-family="Arial" fill="#55626e" font-family="Arial">
     Source alignment: Randle and Engler for pole-figure and inverse-pole-figure interpretation; the cubic labels [001], [101], and [111] define the standard reduced sector.
   </text>
 </svg>

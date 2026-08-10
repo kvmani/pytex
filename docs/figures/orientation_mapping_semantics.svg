@@ -28,46 +28,46 @@
     </marker>
   </defs>
   <rect width="1160" height="640" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Orientation Mapping Semantics</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">PyTex fixes orientation meaning as crystal frame to specimen frame. Reversing it is a different object and must be requested explicitly, never assumed.</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Orientation Mapping Semantics</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">PyTex fixes orientation meaning as crystal frame to specimen frame. Reversing it is a different object and must be requested explicitly, never assumed.</text>
   <rect x="40.0" y="96.0" width="300.0" height="286.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.0"/>
-  <text x="190.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle">crystal</text>
-  <text x="190.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">crystal · a/b/c</text>
+  <text x="190.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">crystal</text>
+  <text x="190.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">crystal · a/b/c</text>
     <line x1="190.00" y1="269.00" x2="190.00" y2="205.36" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-2)"/>
-    <text x="190.00" y="184.77" font-size="14" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c</text>
+    <text x="190.00" y="184.77" font-size="14" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">c</text>
     <line x1="190.00" y1="269.00" x2="246.91" y2="283.38" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-1)"/>
-    <text x="266.87" y="288.42" font-size="14" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">b</text>
+    <text x="266.87" y="288.42" font-size="14" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">b</text>
     <line x1="190.00" y1="269.00" x2="151.62" y2="290.32" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-0)"/>
-    <text x="133.61" y="300.31" font-size="14" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a</text>
+    <text x="133.61" y="300.31" font-size="14" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">a</text>
     <circle cx="190.00" cy="269.00" r="3.4" fill="#07122f"/>
-  <text x="190.0" y="368.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">the frame the orientation maps from</text>
+  <text x="190.0" y="368.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">the frame the orientation maps from</text>
   <rect x="819.7" y="96.0" width="300.0" height="286.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.0"/>
-  <text x="969.7" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle">crystal in specimen</text>
-  <text x="969.7" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">components in specimen · x/y/z</text>
+  <text x="969.7" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">crystal in specimen</text>
+  <text x="969.7" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">components in specimen · x/y/z</text>
     <line x1="969.65" y1="269.00" x2="969.65" y2="205.36" stroke="#f2a0a0" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-pale-2)"/>
-    <text x="969.65" y="166.23" font-size="13" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="969.65" y="166.23" font-size="13" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="969.65" y1="269.00" x2="1026.56" y2="283.38" stroke="#8fd6bd" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-pale-1)"/>
-    <text x="1063.43" y="292.70" font-size="13" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="1063.43" y="292.70" font-size="13" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="969.65" y1="269.00" x2="931.27" y2="290.32" stroke="#93b4f5" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-pale-0)"/>
-    <text x="900.86" y="307.20" font-size="13" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="900.86" y="307.20" font-size="13" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="969.65" cy="269.00" r="3.4" fill="#07122f"/>
     <line x1="969.65" y1="269.00" x2="1027.87" y2="233.10" stroke="#059669" stroke-width="2.2" stroke-linecap="round" opacity="0.55" marker-end="url(#pytex-map-axis-1)"/>
-    <text x="1045.40" y="222.30" font-size="14" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle">b</text>
+    <text x="1045.40" y="222.30" font-size="14" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle" font-family="Arial">b</text>
     <line x1="969.65" y1="269.00" x2="937.43" y2="213.02" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-2)"/>
-    <text x="927.16" y="195.17" font-size="14" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c</text>
+    <text x="927.16" y="195.17" font-size="14" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">c</text>
     <line x1="969.65" y1="269.00" x2="986.49" y2="286.00" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-map-axis-0)"/>
-    <text x="1000.98" y="300.63" font-size="14" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a</text>
+    <text x="1000.98" y="300.63" font-size="14" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">a</text>
     <circle cx="969.65" cy="269.00" r="3.4" fill="#07122f"/>
-  <text x="969.7" y="368.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">crystal axes solid; specimen axes pale</text>
+  <text x="969.7" y="368.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">crystal axes solid; specimen axes pale</text>
   <line x1="364.0" y1="239.0" x2="795.7" y2="239.0" stroke="#2563eb" stroke-width="2" marker-end="url(#pytex-map-rel)"/>
-  <text x="579.8" y="230.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="middle">orientation g</text>
-  <text x="579.8" y="250.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">crystal → specimen</text>
+  <text x="579.8" y="230.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">orientation g</text>
+  <text x="579.8" y="250.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">crystal → specimen</text>
   <path d="M969.7,378.0 C969.7,450.0 190.0,450.0 190.0,386.0" fill="none" stroke="#9f1239" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#pytex-map-rel-inverse)"/>
-  <text x="579.8" y="468.0" font-size="13" font-family="Arial" fill="#9f1239" text-anchor="middle">the inverse mapping is a separate object: ask for it explicitly</text>
+  <text x="579.8" y="468.0" font-size="13" font-family="Arial" fill="#9f1239" text-anchor="middle" font-family="Arial">the inverse mapping is a separate object: ask for it explicitly</text>
   <rect x="40.0" y="490.0" width="1079.7" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="56.0" y="515.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Reading rule</text>
-  <text x="56.0" y="538.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The right-hand solid triad is the left-hand triad re-expressed: its axes are</text>
-  <text x="56.0" y="557.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the columns of the orientation matrix, quoted in specimen components.</text>
-  <text x="56.0" y="576.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The pale triad is the specimen frame those components are quoted in.</text>
-  <text x="56.0" y="595.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Reversing the mapping is a different object, never an implicit default.</text>
+  <text x="56.0" y="515.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Reading rule</text>
+  <text x="56.0" y="538.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The right-hand solid triad is the left-hand triad re-expressed: its axes are</text>
+  <text x="56.0" y="557.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">the columns of the orientation matrix, quoted in specimen components.</text>
+  <text x="56.0" y="576.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The pale triad is the specimen frame those components are quoted in.</text>
+  <text x="56.0" y="595.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Reversing the mapping is a different object, never an implicit default.</text>
 </svg>

@@ -28,45 +28,45 @@
     </marker>
   </defs>
   <rect width="1124" height="572" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Active Versus Passive Rotation Views</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">The same mathematics, two languages. PyTex keeps the frame-mapping language primary because it is the safer one at scientific workflow boundaries.</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Active Versus Passive Rotation Views</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The same mathematics, two languages. PyTex keeps the frame-mapping language primary because it is the safer one at scientific workflow boundaries.</text>
   <rect x="40.0" y="96.0" width="384.0" height="300.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.0"/>
-  <text x="232.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle">Active view</text>
-  <text x="232.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">the basis is held fixed and the vector moves</text>
+  <text x="232.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">Active view</text>
+  <text x="232.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">the basis is held fixed and the vector moves</text>
     <line x1="232.00" y1="276.00" x2="232.00" y2="220.37" stroke="#f2a0a0" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-2)"/>
-    <text x="232.00" y="202.37" font-size="13" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="232.00" y="202.37" font-size="13" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="232.00" y1="276.00" x2="281.74" y2="288.57" stroke="#8fd6bd" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-1)"/>
-    <text x="299.19" y="292.98" font-size="13" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="299.19" y="292.98" font-size="13" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="232.00" y1="276.00" x2="198.45" y2="294.63" stroke="#93b4f5" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-0)"/>
-    <text x="182.71" y="303.37" font-size="13" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="182.71" y="303.37" font-size="13" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="232.00" cy="276.00" r="3.4" fill="#07122f"/>
-  <text x="232.0" y="382.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">v and its rotated image R v, in one unchanged frame</text>
+  <text x="232.0" y="382.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">v and its rotated image R v, in one unchanged frame</text>
   <line x1="232.0" y1="276.0" x2="246.3" y2="303.6" stroke="#b45309" stroke-width="3.4" stroke-linecap="round" marker-end="url(#pytex-ap-vec-0)"/>
-  <text x="249.4" y="314.5" font-size="15" font-family="Arial" fill="#b45309" text-anchor="middle">v</text>
+  <text x="249.4" y="314.5" font-size="15" font-family="Arial" fill="#b45309" text-anchor="middle" font-family="Arial">v</text>
   <line x1="232.0" y1="276.0" x2="290.0" y2="261.4" stroke="#9f1239" stroke-width="3.4" stroke-linecap="round" marker-end="url(#pytex-ap-vec-1)"/>
-  <text x="302.5" y="263.2" font-size="15" font-family="Arial" fill="#9f1239" text-anchor="middle">R v</text>
+  <text x="302.5" y="263.2" font-size="15" font-family="Arial" fill="#9f1239" text-anchor="middle" font-family="Arial">R v</text>
   <rect x="480.0" y="96.0" width="384.0" height="300.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.0"/>
-  <text x="672.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle">Passive / frame-mapping view</text>
-  <text x="672.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">the object is fixed and the basis describing it changes</text>
+  <text x="672.0" y="122.0" font-size="17" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">Passive / frame-mapping view</text>
+  <text x="672.0" y="140.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">the object is fixed and the basis describing it changes</text>
     <line x1="672.00" y1="276.00" x2="672.00" y2="220.37" stroke="#f2a0a0" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-2)"/>
-    <text x="672.00" y="186.17" font-size="12" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle">z</text>
+    <text x="672.00" y="186.17" font-size="12" font-family="Arial" fill="#f2a0a0" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">z</text>
     <line x1="672.00" y1="276.00" x2="721.74" y2="288.57" stroke="#8fd6bd" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-1)"/>
-    <text x="753.98" y="296.71" font-size="12" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle">y</text>
+    <text x="753.98" y="296.71" font-size="12" font-family="Arial" fill="#8fd6bd" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">y</text>
     <line x1="672.00" y1="276.00" x2="638.45" y2="294.63" stroke="#93b4f5" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-pale-0)"/>
-    <text x="611.87" y="309.40" font-size="12" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle">x</text>
+    <text x="611.87" y="309.40" font-size="12" font-family="Arial" fill="#93b4f5" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">x</text>
     <circle cx="672.00" cy="276.00" r="3.4" fill="#07122f"/>
     <line x1="672.00" y1="276.00" x2="722.89" y2="244.62" stroke="#059669" stroke-width="2.2" stroke-linecap="round" opacity="0.55" marker-end="url(#pytex-ap-axis-1)"/>
-    <text x="738.21" y="235.17" font-size="13" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle">b</text>
+    <text x="738.21" y="235.17" font-size="13" font-family="Arial" fill="#059669" opacity="0.55" text-anchor="middle" dominant-baseline="middle" font-family="Arial">b</text>
     <line x1="672.00" y1="276.00" x2="643.84" y2="227.06" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-2)"/>
-    <text x="634.86" y="211.46" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">c</text>
+    <text x="634.86" y="211.46" font-size="13" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">c</text>
     <line x1="672.00" y1="276.00" x2="686.72" y2="290.86" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-ap-axis-0)"/>
-    <text x="699.39" y="303.64" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">a</text>
+    <text x="699.39" y="303.64" font-size="13" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">a</text>
     <circle cx="672.00" cy="276.00" r="3.4" fill="#07122f"/>
-  <text x="672.0" y="382.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle">crystal axes solid; specimen axes pale</text>
+  <text x="672.0" y="382.0" font-size="11" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">crystal axes solid; specimen axes pale</text>
   <rect x="40.0" y="422.0" width="1043.9" height="122.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="56.0" y="447.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Which language PyTex uses</text>
-  <text x="56.0" y="470.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">PyTex documents an Orientation in the passive, frame-mapping language, because it</text>
-  <text x="56.0" y="489.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">keeps the source and target frames expressed rather than implied.</text>
-  <text x="56.0" y="508.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The active view stays mathematically valid; it is simply easier to misread once</text>
-  <text x="56.0" y="527.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">crystal and specimen frames are both in play.</text>
+  <text x="56.0" y="447.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Which language PyTex uses</text>
+  <text x="56.0" y="470.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">PyTex documents an Orientation in the passive, frame-mapping language, because it</text>
+  <text x="56.0" y="489.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">keeps the source and target frames expressed rather than implied.</text>
+  <text x="56.0" y="508.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">The active view stays mathematically valid; it is simply easier to misread once</text>
+  <text x="56.0" y="527.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">crystal and specimen frames are both in play.</text>
 </svg>

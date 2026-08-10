@@ -8,79 +8,79 @@
     </marker>
   </defs>
 
-  <text x="490" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#263238">From a transformed microstructure back to the parent: the F7/F8 pipeline</text>
-  <text x="490" y="56" text-anchor="middle" font-size="13" fill="#546e7a">identification &#8594; rotation refinement &#8594; parent-grain reconstruction, using child-child boundaries only (no retained parent needed)</text>
+  <text x="490" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#263238" font-family="Arial">From a transformed microstructure back to the parent: the F7/F8 pipeline</text>
+  <text x="490" y="56" text-anchor="middle" font-size="13" fill="#546e7a" font-family="Arial">identification &#8594; rotation refinement &#8594; parent-grain reconstruction, using child-child boundaries only (no retained parent needed)</text>
 
   <!-- Input -->
   <rect x="40" y="86" width="270" height="88" rx="10" fill="#ede7f6" stroke="#3f51b5" stroke-width="2"/>
-  <text x="175" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5">EBSD map of the child phase</text>
-  <text x="175" y="132" text-anchor="middle" font-size="12" fill="#37474f">segment_grains &#8594; grain_graph:</text>
-  <text x="175" y="148" text-anchor="middle" font-size="12" fill="#37474f">grain-mean orientations C&#7522; + adjacency</text>
-  <text x="175" y="166" text-anchor="middle" font-size="11" fill="#546e7a">GrainSegmentation &#183; GrainBoundaryNetwork</text>
+  <text x="175" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5" font-family="Arial">EBSD map of the child phase</text>
+  <text x="175" y="132" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">segment_grains &#8594; grain_graph:</text>
+  <text x="175" y="148" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">grain-mean orientations C&#7522; + adjacency</text>
+  <text x="175" y="166" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">GrainSegmentation &#183; GrainBoundaryNetwork</text>
 
   <line x1="310" y1="130" x2="360" y2="130" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
 
   <!-- Boundary misorientations -->
   <rect x="364" y="86" width="250" height="88" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
-  <text x="489" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5">Boundary misorientations</text>
-  <text x="489" y="134" text-anchor="middle" font-size="13" font-style="italic" fill="#263238">M<tspan font-size="9" baseline-shift="sub">e</tspan> = C<tspan font-size="9" baseline-shift="sub">i</tspan><tspan font-size="9" baseline-shift="super">T</tspan> C<tspan font-size="9" baseline-shift="sub">j</tspan></text>
-  <text x="489" y="154" text-anchor="middle" font-size="12" fill="#37474f">one rotation per grain-graph edge</text>
+  <text x="489" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5" font-family="Arial">Boundary misorientations</text>
+  <text x="489" y="134" text-anchor="middle" font-size="13" font-style="italic" fill="#263238" font-family="Arial">M<tspan font-size="9" baseline-shift="sub">e</tspan> = C<tspan font-size="9" baseline-shift="sub">i</tspan><tspan font-size="9" baseline-shift="super">T</tspan> C<tspan font-size="9" baseline-shift="sub">j</tspan></text>
+  <text x="489" y="154" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">one rotation per grain-graph edge</text>
 
   <line x1="614" y1="130" x2="664" y2="130" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
 
   <!-- Fingerprint -->
   <rect x="668" y="86" width="280" height="88" rx="10" fill="#fff3e0" stroke="#f57c00" stroke-width="2"/>
-  <text x="808" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#e65100">Intervariant fingerprint</text>
-  <text x="808" y="134" text-anchor="middle" font-size="13" font-style="italic" fill="#263238">G<tspan font-size="9" baseline-shift="sub">c</tspan> (R S<tspan font-size="9" baseline-shift="sub">p</tspan> R<tspan font-size="9" baseline-shift="super">T</tspan>) G<tspan font-size="9" baseline-shift="sub">c</tspan></text>
-  <text x="808" y="154" text-anchor="middle" font-size="12" fill="#37474f">same-parent boundaries populate this</text>
-  <text x="808" y="170" text-anchor="middle" font-size="11" fill="#546e7a">double coset of each candidate OR</text>
+  <text x="808" y="112" text-anchor="middle" font-size="14" font-weight="bold" fill="#e65100" font-family="Arial">Intervariant fingerprint</text>
+  <text x="808" y="134" text-anchor="middle" font-size="13" font-style="italic" fill="#263238" font-family="Arial">G<tspan font-size="9" baseline-shift="sub">c</tspan> (R S<tspan font-size="9" baseline-shift="sub">p</tspan> R<tspan font-size="9" baseline-shift="super">T</tspan>) G<tspan font-size="9" baseline-shift="sub">c</tspan></text>
+  <text x="808" y="154" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">same-parent boundaries populate this</text>
+  <text x="808" y="170" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">double coset of each candidate OR</text>
 
   <line x1="808" y1="174" x2="808" y2="216" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
 
   <!-- Stage 1 -->
   <rect x="560" y="222" width="390" height="102" rx="10" fill="#e0f2f1" stroke="#00897b" stroke-width="2"/>
-  <text x="755" y="248" text-anchor="middle" font-size="14" font-weight="bold" fill="#00695c">Stage 1 &#183; Identification (F7a)</text>
-  <text x="755" y="268" text-anchor="middle" font-size="12" fill="#37474f">score every edge against every candidate's fingerprint;</text>
-  <text x="755" y="284" text-anchor="middle" font-size="12" fill="#37474f">smallest mean distance wins (KS vs NW vs GT vs &#8230;)</text>
-  <text x="755" y="302" text-anchor="middle" font-size="11.5" fill="#00897b">identify_orientation_relationship &#8594; ORIdentificationReport</text>
-  <text x="755" y="318" text-anchor="middle" font-size="11" fill="#546e7a">margins vs noise stated honestly in describe()</text>
+  <text x="755" y="248" text-anchor="middle" font-size="14" font-weight="bold" fill="#00695c" font-family="Arial">Stage 1 &#183; Identification (F7a)</text>
+  <text x="755" y="268" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">score every edge against every candidate's fingerprint;</text>
+  <text x="755" y="284" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">smallest mean distance wins (KS vs NW vs GT vs &#8230;)</text>
+  <text x="755" y="302" text-anchor="middle" font-size="11.5" fill="#00897b" font-family="Arial">identify_orientation_relationship &#8594; ORIdentificationReport</text>
+  <text x="755" y="318" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">margins vs noise stated honestly in describe()</text>
 
   <line x1="560" y1="273" x2="440" y2="273" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
 
   <!-- Stage 2: refinement loop -->
   <rect x="40" y="222" width="396" height="182" rx="10" fill="#fce4ec" stroke="#c2185b" stroke-width="2"/>
-  <text x="238" y="248" text-anchor="middle" font-size="14" font-weight="bold" fill="#ad1457">Stage 2 &#183; Rotation refinement (F7b)</text>
-  <text x="238" y="268" text-anchor="middle" font-size="12" fill="#37474f">start from the winning nominal rotation R&#8320;, then iterate:</text>
+  <text x="238" y="248" text-anchor="middle" font-size="14" font-weight="bold" fill="#ad1457" font-family="Arial">Stage 2 &#183; Rotation refinement (F7b)</text>
+  <text x="238" y="268" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">start from the winning nominal rotation R&#8320;, then iterate:</text>
   <rect x="66" y="282" width="160" height="54" rx="8" fill="#ffffff" stroke="#c2185b" stroke-width="1.5"/>
-  <text x="146" y="303" text-anchor="middle" font-size="12" font-weight="bold" fill="#ad1457">assign</text>
-  <text x="146" y="320" text-anchor="middle" font-size="11" fill="#37474f">each edge &#8594; nearest coset</text>
-  <text x="146" y="332" text-anchor="middle" font-size="11" fill="#37474f">element A (R S R<tspan font-size="8" baseline-shift="super">T</tspan>) B</text>
+  <text x="146" y="303" text-anchor="middle" font-size="12" font-weight="bold" fill="#ad1457" font-family="Arial">assign</text>
+  <text x="146" y="320" text-anchor="middle" font-size="11" fill="#37474f" font-family="Arial">each edge &#8594; nearest coset</text>
+  <text x="146" y="332" text-anchor="middle" font-size="11" fill="#37474f" font-family="Arial">element A (R S R<tspan font-size="8" baseline-shift="super">T</tspan>) B</text>
   <rect x="250" y="282" width="160" height="54" rx="8" fill="#ffffff" stroke="#c2185b" stroke-width="1.5"/>
-  <text x="330" y="303" text-anchor="middle" font-size="12" font-weight="bold" fill="#ad1457">optimize</text>
-  <text x="330" y="320" text-anchor="middle" font-size="11" fill="#37474f">least-squares rotation update</text>
-  <text x="330" y="332" text-anchor="middle" font-size="11" fill="#37474f">on 2 sin(&#952;/2) residuals (LM)</text>
+  <text x="330" y="303" text-anchor="middle" font-size="12" font-weight="bold" fill="#ad1457" font-family="Arial">optimize</text>
+  <text x="330" y="320" text-anchor="middle" font-size="11" fill="#37474f" font-family="Arial">least-squares rotation update</text>
+  <text x="330" y="332" text-anchor="middle" font-size="11" fill="#37474f" font-family="Arial">on 2 sin(&#952;/2) residuals (LM)</text>
   <path d="M 226 300 L 246 300" stroke="#c62828" stroke-width="2" marker-end="url(#parrowRed)" fill="none"/>
   <path d="M 330 336 C 330 360, 146 360, 146 336" stroke="#c62828" stroke-width="2" marker-end="url(#parrowRed)" fill="none"/>
-  <text x="238" y="372" text-anchor="middle" font-size="11.5" fill="#37474f">until assignments stable and the update step &#8594; 0</text>
-  <text x="238" y="392" text-anchor="middle" font-size="11.5" fill="#ad1457">refine_orientation_relationship_from_boundaries &#8594; ORRefinementReport</text>
+  <text x="238" y="372" text-anchor="middle" font-size="11.5" fill="#37474f" font-family="Arial">until assignments stable and the update step &#8594; 0</text>
+  <text x="238" y="392" text-anchor="middle" font-size="11.5" fill="#ad1457" font-family="Arial">refine_orientation_relationship_from_boundaries &#8594; ORRefinementReport</text>
 
   <line x1="238" y1="404" x2="238" y2="446" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
 
   <!-- Stage 3 -->
   <rect x="40" y="452" width="396" height="128" rx="10" fill="#e8eaf6" stroke="#3f51b5" stroke-width="2"/>
-  <text x="238" y="478" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5">Stage 3 &#183; Parent-grain reconstruction (F8)</text>
-  <text x="238" y="498" text-anchor="middle" font-size="12" fill="#37474f">1 &#183; edge test: boundary matches the fingerprint &#8594; same parent</text>
-  <text x="238" y="514" text-anchor="middle" font-size="12" fill="#37474f">2 &#183; union-find clustering of linked grains</text>
-  <text x="238" y="530" text-anchor="middle" font-size="12" fill="#37474f">3 &#183; per cluster: candidate parents P = C&#7522; V&#8342;, score, eigen-mean refine</text>
-  <text x="238" y="550" text-anchor="middle" font-size="11.5" fill="#3f51b5">reconstruct_parent_grains_from_graph &#8594; ParentGrainReconstructionResult</text>
-  <text x="238" y="568" text-anchor="middle" font-size="11" fill="#546e7a">experimental status: synthetic + literature-structure validation; measured-data fixtures queued</text>
+  <text x="238" y="478" text-anchor="middle" font-size="14" font-weight="bold" fill="#3f51b5" font-family="Arial">Stage 3 &#183; Parent-grain reconstruction (F8)</text>
+  <text x="238" y="498" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">1 &#183; edge test: boundary matches the fingerprint &#8594; same parent</text>
+  <text x="238" y="514" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">2 &#183; union-find clustering of linked grains</text>
+  <text x="238" y="530" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">3 &#183; per cluster: candidate parents P = C&#7522; V&#8342;, score, eigen-mean refine</text>
+  <text x="238" y="550" text-anchor="middle" font-size="11.5" fill="#3f51b5" font-family="Arial">reconstruct_parent_grains_from_graph &#8594; ParentGrainReconstructionResult</text>
+  <text x="238" y="568" text-anchor="middle" font-size="11" fill="#546e7a" font-family="Arial">experimental status: synthetic + literature-structure validation; measured-data fixtures queued</text>
 
   <!-- Outputs -->
   <line x1="436" y1="516" x2="500" y2="516" stroke="#546e7a" stroke-width="2" marker-end="url(#parrow)"/>
   <rect x="504" y="452" width="446" height="128" rx="10" fill="#fafafa" stroke="#90a4ae" stroke-width="1.5"/>
-  <text x="727" y="478" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#37474f">What you learn</text>
-  <text x="727" y="500" text-anchor="middle" font-size="12" fill="#37474f">the operative OR and its refined rotation (vs the textbook nominal)</text>
-  <text x="727" y="518" text-anchor="middle" font-size="12" fill="#37474f">prior-austenite / prior-beta grain map with per-grain residuals</text>
-  <text x="727" y="536" text-anchor="middle" font-size="12" fill="#37474f">variant indices, packet labels, and variant-selection statistics</text>
-  <text x="727" y="558" text-anchor="middle" font-size="11.5" fill="#00897b">every report carries describe(): conventions, numbers, and caveats in prose</text>
+  <text x="727" y="478" text-anchor="middle" font-size="13.5" font-weight="bold" fill="#37474f" font-family="Arial">What you learn</text>
+  <text x="727" y="500" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">the operative OR and its refined rotation (vs the textbook nominal)</text>
+  <text x="727" y="518" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">prior-austenite / prior-beta grain map with per-grain residuals</text>
+  <text x="727" y="536" text-anchor="middle" font-size="12" fill="#37474f" font-family="Arial">variant indices, packet labels, and variant-selection statistics</text>
+  <text x="727" y="558" text-anchor="middle" font-size="11.5" fill="#00897b" font-family="Arial">every report carries describe(): conventions, numbers, and caveats in prose</text>
 </svg>

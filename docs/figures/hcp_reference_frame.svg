@@ -13,30 +13,30 @@
     </marker>
   </defs>
   <rect width="1224" height="520" fill="#fbfdff"/>
-  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Canonical Hexagonal Crystal Frame</text>
-  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">PyTex fixes a1 along the crystal x axis, a2 at 120 degrees in the basal plane, and c along the crystal z axis. The basal axes are drawn from the lattice itself.</text>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Canonical Hexagonal Crystal Frame</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">PyTex fixes a1 along the crystal x axis, a2 at 120 degrees in the basal plane, and c along the crystal z axis. The basal axes are drawn from the lattice itself.</text>
   <rect x="40.0" y="96.0" width="464.0" height="384.0" rx="8" fill="#ffffff" stroke="#d7e0ef" stroke-width="1.0"/>
   <circle cx="272.0" cy="300.0" r="128.0" fill="none" stroke="#c9d6ea" stroke-width="1.4"/>
   <line x1="272.0" y1="300.0" x2="400.0" y2="300.0" stroke="#1d4ed8" stroke-width="3.2" stroke-linecap="round" marker-end="url(#pytex-hex-0)"/>
-  <text x="434.0" y="305.0" font-size="15" font-family="Arial" fill="#1d4ed8" text-anchor="middle">a1</text>
+  <text x="434.0" y="305.0" font-size="15" font-family="Arial" fill="#1d4ed8" text-anchor="middle" font-family="Arial">a1</text>
   <line x1="272.0" y1="300.0" x2="208.0" y2="189.1" stroke="#059669" stroke-width="3.2" stroke-linecap="round" marker-end="url(#pytex-hex-1)"/>
-  <text x="191.0" y="164.7" font-size="15" font-family="Arial" fill="#059669" text-anchor="middle">a2</text>
+  <text x="191.0" y="164.7" font-size="15" font-family="Arial" fill="#059669" text-anchor="middle" font-family="Arial">a2</text>
   <line x1="272.0" y1="300.0" x2="208.0" y2="410.9" stroke="#b45309" stroke-width="3.2" stroke-linecap="round" marker-end="url(#pytex-hex-2)"/>
-  <text x="191.0" y="445.3" font-size="15" font-family="Arial" fill="#b45309" text-anchor="middle">a3 = -(a1 + a2)</text>
+  <text x="191.0" y="445.3" font-size="15" font-family="Arial" fill="#b45309" text-anchor="middle" font-family="Arial">a3 = -(a1 + a2)</text>
   <circle cx="272.0" cy="300.0" r="7" fill="none" stroke="#dc2626" stroke-width="2.4"/>
   <circle cx="272.0" cy="300.0" r="2.6" fill="#dc2626"/>
-  <text x="288.0" y="326.0" font-size="13" font-family="Arial" fill="#dc2626" text-anchor="start">c (out of page)</text>
+  <text x="288.0" y="326.0" font-size="13" font-family="Arial" fill="#dc2626" text-anchor="start" font-family="Arial">c (out of page)</text>
   <path d="M330.0,300.0 A58.0,58.0 0 0 0 243.0,249.8" fill="none" stroke="#b45309" stroke-width="1.8"/>
-  <text x="276.0" y="230.0" font-size="13" font-family="Arial" fill="#b45309" text-anchor="middle">120°</text>
+  <text x="276.0" y="230.0" font-size="13" font-family="Arial" fill="#b45309" text-anchor="middle" font-family="Arial">120°</text>
   <rect x="552.0" y="132.0" width="348.0" height="160.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
-  <text x="568.0" y="157.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Notation fixed in docs and code</text>
-  <text x="568.0" y="180.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">3-index direct-space direction: [u v w]</text>
-  <text x="568.0" y="199.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">4-index Weber / Miller-Bravais direction: [U V T W]</text>
-  <text x="568.0" y="218.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Constraint: U + V + T = 0</text>
-  <text x="568.0" y="237.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Plane notation: (h k i l), with i = -(h + k)</text>
-  <text x="568.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Reciprocal basis axes carry the star: a*, b*, c*</text>
-  <text x="568.0" y="275.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Internal storage stays canonical 3-component</text>
-  <text x="552.0" y="320.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Drawn from a = 3.2320 angstrom, c = 5.1470 angstrom</text>
-  <text x="552.0" y="340.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">c/a = 1.5925, gamma = 120.0 deg</text>
-  <text x="552.0" y="360.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Basal directions read from Lattice.direct_basis(), not hand-placed.</text>
+  <text x="568.0" y="157.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start" font-family="Arial">Notation fixed in docs and code</text>
+  <text x="568.0" y="180.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">3-index direct-space direction: [u v w]</text>
+  <text x="568.0" y="199.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">4-index Weber / Miller-Bravais direction: [U V T W]</text>
+  <text x="568.0" y="218.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Constraint: U + V + T = 0</text>
+  <text x="568.0" y="237.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Plane notation: (h k i l), with i = -(h + k)</text>
+  <text x="568.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Reciprocal basis axes carry the star: a*, b*, c*</text>
+  <text x="568.0" y="275.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Internal storage stays canonical 3-component</text>
+  <text x="552.0" y="320.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Drawn from a = 3.2320 angstrom, c = 5.1470 angstrom</text>
+  <text x="552.0" y="340.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">c/a = 1.5925, gamma = 120.0 deg</text>
+  <text x="552.0" y="360.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start" font-family="Arial">Basal directions read from Lattice.direct_basis(), not hand-placed.</text>
 </svg>

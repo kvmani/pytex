@@ -13,15 +13,15 @@
     </marker>
   </defs>
   <rect width="560" height="400" fill="#fbfdff"/>
-  <text x="280" y="34" font-size="18" font-family="Arial" fill="#07122f" text-anchor="middle">Sample Frame (RD, TD, ND)</text>
-  <text x="280" y="56" font-size="12" font-family="Arial" fill="#40506f" text-anchor="middle">RD rolling direction; TD transverse direction; ND sheet normal - a right-handed triad</text>
+  <text x="280" y="34" font-size="18" font-family="Arial" fill="#07122f" text-anchor="middle" font-family="Arial">Sample Frame (RD, TD, ND)</text>
+  <text x="280" y="56" font-size="12" font-family="Arial" fill="#40506f" text-anchor="middle" font-family="Arial">RD rolling direction; TD transverse direction; ND sheet normal - a right-handed triad</text>
   <g>
     <line x1="280.00" y1="234.00" x2="280.00" y2="122.74" stroke="#dc2626" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-frame-arrow-43346-2)"/>
-    <text x="280.00" y="86.74" font-size="16" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle">ND</text>
+    <text x="280.00" y="86.74" font-size="16" font-family="Arial" fill="#dc2626" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">ND</text>
     <line x1="280.00" y1="234.00" x2="379.48" y2="259.14" stroke="#059669" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-frame-arrow-43346-1)"/>
-    <text x="414.39" y="267.96" font-size="16" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle">TD</text>
+    <text x="414.39" y="267.96" font-size="16" font-family="Arial" fill="#059669" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">TD</text>
     <line x1="280.00" y1="234.00" x2="212.90" y2="271.27" stroke="#1d4ed8" stroke-width="3.4" stroke-linecap="round" opacity="1" marker-end="url(#pytex-frame-arrow-43346-0)"/>
-    <text x="181.42" y="288.75" font-size="16" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle">RD</text>
+    <text x="181.42" y="288.75" font-size="16" font-family="Arial" fill="#1d4ed8" opacity="1" text-anchor="middle" dominant-baseline="middle" font-family="Arial">RD</text>
     <circle cx="280.00" cy="234.00" r="3.4" fill="#07122f"/>
   </g>
 </svg>
