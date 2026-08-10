@@ -123,8 +123,12 @@ class MisorientationDistribution:
         """Mean misorientation angle in degrees; ``0.0`` when empty.
 
         Compare it against the Mackenzie value for a randomly textured aggregate
-        — about 45 degrees for cubic symmetry — to judge whether the boundary
-        population departs from random.
+        — about 40.7 degrees for cubic symmetry — to judge whether the boundary
+        population departs from random. Note that the Mackenzie distribution's
+        *mode* sits near 45 degrees while its mean is lower, because the
+        distribution is left-skewed: a long low-angle tail pulls the mean down
+        while the hard cutoff at 62.8 degrees stops the other side compensating.
+        Quoting 45 degrees as the mean conflates the two.
         """
 
         return float(np.mean(self.angles_deg)) if self.count else 0.0

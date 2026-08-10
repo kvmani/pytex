@@ -73,7 +73,7 @@ inversion) rather than by notebook number.
 
 | Notebook | Subject it must own | Status |
 | --- | --- | --- |
-| 02 rotations & batch primitives | the metric on SO(3), the symmetry quotient, disorientation, quaternion averaging, the Mackenzie distribution | pending |
+| 02 rotations & batch primitives | the metric on SO(3), the symmetry quotient, disorientation, quaternion averaging, the Mackenzie distribution | **done** — 34 cells, 25.6 k md chars, 3 figures |
 | 06 texture/ODF/PF inversion | kernel normalization, the ghost problem, conditioning of the forward operator, regularization trade-off | pending |
 | 03 symmetry & fundamental regions | point groups as groups, orbit–stabilizer, the fundamental sector's area, Laue vs proper | pending |
 | 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | pending |
