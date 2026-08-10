@@ -261,6 +261,43 @@ def _orientation_dictionary_response(
     )
 
 
+def _project_onto_simplex(vector: np.ndarray) -> np.ndarray:
+    r"""Euclidean projection of a vector onto :math:`\{w \ge 0,\ \sum_j w_j = 1\}`.
+
+    Purpose
+    -------
+    The feasible set of an ODF's dictionary weights. Projected gradient descent
+    converges only if the projection is the *nearest* feasible point, and
+    clipping negatives then dividing by the sum is not that map: it is a
+    radial rescaling, and it makes a Tikhonov term of the form
+    :math:`\lambda\|w\|^2` exactly inert, because the term's gradient
+    :math:`\lambda w` is parallel to :math:`w` and the rescaling removes any
+    change in magnitude. The regularization parameter then has no effect on the
+    answer at any value, which is worse than having no parameter.
+
+    Method
+    ------
+    The standard sort-based algorithm: the projection is
+    :math:`\max(w_j - \theta, 0)` for the unique threshold :math:`\theta` making
+    the result sum to one, found by scanning the descending sort. Cost is one
+    sort per call, negligible beside the gradient evaluation.
+
+    References
+    ----------
+    Duchi, Shalev-Shwartz, Singer and Chandra, *Efficient projections onto the
+    l1-ball for learning in high dimensions*, ICML 2008, Fig. 1.
+    """
+
+    descending = np.sort(vector)[::-1]
+    cumulative = np.cumsum(descending)
+    counts = np.arange(1, vector.size + 1, dtype=np.float64)
+    admissible = descending - (cumulative - 1.0) / counts > 0.0
+    support = int(np.nonzero(admissible)[0][-1]) + 1 if np.any(admissible) else 1
+    threshold = (cumulative[support - 1] - 1.0) / support
+    projected: np.ndarray = np.maximum(vector - threshold, 0.0)
+    return projected
+
+
 def _projected_gradient_nonnegative_weights(
     system_matrix: np.ndarray,
     observations: np.ndarray,
@@ -294,12 +331,7 @@ def _projected_gradient_nonnegative_weights(
     converged = False
     for iteration in range(max_iterations):
         gradient = gram @ weights - rhs + regularization * weights
-        candidate = np.maximum(weights - gradient / lipschitz, 0.0)
-        total = float(np.sum(candidate))
-        if np.isclose(total, 0.0):
-            candidate = np.full_like(candidate, 1.0 / candidate.size)
-        else:
-            candidate /= total
+        candidate = _project_onto_simplex(weights - gradient / lipschitz)
         residual = system_matrix @ candidate - observations
         history[iteration] = 0.5 * float(residual @ residual) + 0.5 * regularization * float(
             candidate @ candidate
@@ -1311,8 +1343,10 @@ class PoleFigureDifference:
     def mean_deviation(self) -> float:
         """Unweighted mean signed difference.
 
-        A value far from zero indicates a scale mismatch — the two figures are
-        not on the same normalization — rather than a shape disagreement.
+        Compare it against :attr:`rms_deviation`, not against zero. A shape
+        disagreement averages out, so its mean is a small fraction of its RMS; a
+        normalization error is a constant offset, so its mean accounts for most
+        of the RMS. Half is the dividing line :meth:`describe` uses.
         """
 
         return float(np.mean(self.values))
@@ -1359,12 +1393,19 @@ class PoleFigureDifference:
         direction = self.sample_directions[worst]
         signed = float(self.values[worst])
         bias = (
-            "The mean signed difference is far from zero, which indicates the two figures are "
-            "not on the same normalization; put both in multiples of random with "
+            "The mean signed difference accounts for most of the deviation, which indicates the "
+            "two figures are not on the same normalization; put both in multiples of random with "
             "normalize_to_mrd before reading the shape of the residual."
-            if abs(self.mean_deviation) > 0.05 * max(self.rms_deviation, 1e-12)
-            else "The mean signed difference is near zero, so the two figures share a scale and "
-            "the residual describes shape disagreement rather than a normalization error."
+            # A constant offset puts all of the deviation into the mean, so the
+            # ratio approaches one; a shape disagreement averages out and leaves
+            # the mean a small fraction of the RMS. The bar was 5 percent of the
+            # RMS, which a well-fitted figure clears routinely -- a residual of
+            # 0.002 m.r.d. on a field of order 1 was being reported as a scale
+            # error. Half puts the test where the distinction actually is.
+            if abs(self.mean_deviation) > 0.5 * max(self.rms_deviation, 1e-12)
+            else "The mean signed difference is small next to the RMS deviation, so the two "
+            "figures share a scale and the residual describes shape disagreement rather than a "
+            "normalization error."
         )
         return (
             f"Difference of {notation} pole figures, {self.left_label} minus {self.right_label}, "

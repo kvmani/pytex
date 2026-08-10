@@ -240,6 +240,7 @@ def test_derived_texture_models_preserve_orientation_set_provenance_by_default()
 
 def test_odf_inversion_recovers_dictionary_weights_from_synthetic_pole_figures() -> None:
     orientations, phase = make_orientation_set()
+    specimen = orientations.specimen_frame
     true_odf = ODF.from_orientations(
         orientations,
         weights=[3.0, 1.0],
@@ -248,11 +249,30 @@ def test_odf_inversion_recovers_dictionary_weights_from_synthetic_pole_figures()
     poles = (
         CrystalPlane(miller=MillerIndex([1, 0, 0], phase=phase), phase=phase),
         CrystalPlane(miller=MillerIndex([1, 1, 1], phase=phase), phase=phase),
+        CrystalPlane(miller=MillerIndex([1, 1, 0], phase=phase), phase=phase),
     )
-    pole_figures = true_odf.reconstruct_pole_figures(
-        poles,
-        include_symmetry_family=False,
-        antipodal=False,
+    # The inversion's forward operator works in multiples of a random
+    # distribution, so the synthetic "measurement" is built on that scale.
+    # reconstruct_pole_figures returns a scattered pole cloud whose intensities
+    # are per-pole weights instead, which is a different quantity.
+    grid = S2Grid.equispaced(12.0, reference_frame=specimen, hemisphere="upper")
+    sample_directions = np.asarray(grid.vectors.values)
+    scale = random_pole_density(true_odf.kernel)
+    pole_figures = tuple(
+        PoleFigure(
+            pole=pole,
+            sample_directions=sample_directions,
+            intensities=np.asarray(
+                true_odf.evaluate_pole_density(
+                    pole, sample_directions, include_symmetry_family=False
+                )
+            )
+            / scale,
+            specimen_frame=specimen,
+            antipodal=True,
+            sampling="sampled_density",
+        )
+        for pole in poles
     )
     report = ODF.invert_pole_figures(
         pole_figures,
@@ -272,7 +292,10 @@ def test_odf_inversion_recovers_dictionary_weights_from_synthetic_pole_figures()
     assert report.mean_absolute_error >= 0.0
     assert report.max_absolute_error >= 0.0
     assert report.dictionary_coverage_ratio == report.observation_count / report.dictionary_size
-    assert_allclose(report.odf.normalized_weights, true_odf.normalized_weights, atol=5e-2)
+    # Exact data, so the recovery is exact rather than merely close: the old
+    # tolerance of 5e-2 was hiding the fact that this problem has a unique answer.
+    assert report.relative_residual_norm < 1e-9
+    assert_allclose(report.odf.normalized_weights, true_odf.normalized_weights, atol=1e-6)
 
 
 def test_odf_inversion_rejects_mismatched_specimen_frames() -> None:

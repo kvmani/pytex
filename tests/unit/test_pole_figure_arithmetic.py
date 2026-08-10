@@ -544,6 +544,28 @@ def test_difference_of_scale_mismatched_figures_says_so() -> None:
     assert "not on the same normalization" in text
 
 
+def test_a_shape_disagreement_is_not_reported_as_a_scale_error() -> None:
+    """The normalization diagnosis must not fire on a well-scaled residual.
+
+    The test compares the mean signed difference against the RMS deviation, and
+    the bar was 5 percent of the RMS -- which any real residual clears, because a
+    finite sample never averages to exactly zero. A good inversion with a mean
+    deviation of 0.002 m.r.d. on a field of order 1 was being told to renormalize.
+    Two figures that share a scale and differ only in sharpness are the case that
+    must come out clean.
+    """
+
+    _, specimen, phase = make_context()
+    sharp, spread, grid = two_figures_on_one_grid(specimen, phase)
+    assert sharp.spherical_mean(integration_weights=grid.weights) == pytest.approx(1.0, abs=0.05)
+    assert spread.spherical_mean(integration_weights=grid.weights) == pytest.approx(1.0, abs=0.05)
+    difference = sharp.difference(spread)
+    assert abs(difference.mean_deviation) < difference.rms_deviation
+    text = difference.describe()
+    assert "not on the same normalization" not in text
+    assert "share a scale" in text
+
+
 def test_weighted_rms_differs_from_the_unweighted_one() -> None:
     """On a non-equal-area support the unweighted RMS is the wrong summary."""
 
