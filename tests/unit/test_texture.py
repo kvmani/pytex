@@ -16,9 +16,18 @@ from pytex.core import (
     ProvenanceRecord,
     ReferenceFrame,
     Rotation,
+    S2Grid,
     SymmetrySpec,
 )
-from pytex.texture import ODF, InversePoleFigure, KernelSpec, ODFInversionReport, PoleFigure
+from pytex.texture import (
+    ODF,
+    InversePoleFigure,
+    KernelSpec,
+    ODFInversionReport,
+    PoleFigure,
+    random_pole_density,
+)
+from pytex.texture.models import _projected_gradient_nonnegative_weights
 
 
 def make_orientation_context() -> tuple[ReferenceFrame, ReferenceFrame, Phase]:
@@ -450,3 +459,96 @@ def test_plot_sigma_sections_uses_sigma_labels() -> None:
     )
     figure = plot_odf_phi2_sections(sections)
     assert figure.axes[0].get_title() == r"$\sigma = 0^\circ$"
+
+
+def test_odf_inversion_accepts_pole_figures_in_multiples_of_random() -> None:
+    """The forward operator must live on the observations' scale.
+
+    A measured pole figure, and anything :meth:`PoleFigure.on_grid` produces, is
+    in multiples of a random distribution. The dictionary response is a raw
+    kernel sum whose value for a random texture is the kernel's spherical mean
+    instead of one. With the operator left on that scale the system is not merely
+    mis-scaled but unfittable, because the weights are constrained to sum to one
+    and cannot absorb the factor into an amplitude: the solver used to stall at a
+    relative residual of 0.99 and return an ODF whose peak was a third of the
+    truth, while reporting that it had converged.
+    """
+
+    crystal, specimen, phase = make_orientation_context()
+    kernel = KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=15.0)
+    population = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [35.0, 45.0, 0.0]]),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    dictionary = OrientationSet.from_bunge_grid(
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+        phi1_step_deg=30.0,
+        big_phi_step_deg=30.0,
+        phi2_step_deg=30.0,
+    )
+    grid = S2Grid.equispaced(20.0, reference_frame=specimen, hemisphere="upper")
+    measured = tuple(
+        PoleFigure.from_orientations(
+            population, CrystalPlane(miller=MillerIndex(indices, phase=phase), phase=phase)
+        ).on_grid(grid, halfwidth_deg=15.0)
+        for indices in ([1, 1, 1], [2, 0, 0], [2, 2, 0])
+    )
+    for pole_figure in measured:
+        assert pole_figure.spherical_mean() == pytest.approx(1.0, abs=0.15)
+
+    report = ODF.invert_pole_figures(
+        measured,
+        orientation_dictionary=dictionary,
+        kernel=kernel,
+        regularization=1e-8,
+        max_iterations=2000,
+        tolerance=1e-9,
+    )
+    assert report.relative_residual_norm < 0.3
+
+    cube = Orientation(
+        Rotation.from_bunge_euler(0.0, 0.0, 0.0),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    scale = random_pole_density(kernel)
+    truth = float(ODF.from_orientations(population, kernel=kernel).evaluate(cube)) / scale
+    recovered = float(report.odf.evaluate(cube)) / scale
+    assert recovered == pytest.approx(truth, rel=0.25)
+
+
+def test_projected_gradient_stopping_rule_is_scale_free() -> None:
+    """Multiplying the whole system by a constant must not change the answer.
+
+    The step length is ``1/L``, so a raw step-size stopping test fires on the
+    first iteration whenever the operator's entries are large -- for a reason that
+    has nothing to do with being at a minimum. Scaling both the operator and the
+    observations leaves the minimizer identical, so the solver must return the
+    same weights and take the same number of iterations.
+    """
+
+    rng = np.random.default_rng(5)
+    operator = np.abs(rng.normal(size=(40, 6))) + 0.1
+    truth = np.array([0.4, 0.3, 0.15, 0.1, 0.04, 0.01])
+    observations = operator @ truth
+
+    baseline = _projected_gradient_nonnegative_weights(
+        operator, observations, regularization=0.0, max_iterations=20_000, tolerance=1e-10
+    )
+    scaled = _projected_gradient_nonnegative_weights(
+        1e4 * operator, 1e4 * observations,
+        regularization=0.0, max_iterations=20_000, tolerance=1e-10,
+    )
+    assert baseline[1].shape == scaled[1].shape
+    assert_allclose(baseline[0], scaled[0], atol=1e-12)
+    # And the answer is the one the problem has, not the uniform starting guess.
+    assert_allclose(baseline[0], truth, atol=1e-3)
+    assert not np.allclose(baseline[0], np.full(truth.size, 1.0 / truth.size), atol=1e-2)

@@ -20,6 +20,7 @@ from pytex import (
     SymmetrySpec,
     invert_xrdml_pole_figures,
     load_xrdml_pole_figure,
+    random_pole_density,
     raster_solid_angle_weights,
     read_xrdml_pole_figure,
     spherical_angles_to_directions,
@@ -214,10 +215,17 @@ def test_invert_xrdml_pole_figures_recovers_synthetic_dictionary_weights(tmp_pat
     )
     paths = []
     for index, pole in enumerate(poles):
-        intensities = true_odf.evaluate_pole_density(
-            pole,
-            directions,
-            include_symmetry_family=False,
+        # A measured pole figure carries multiples of a random distribution, and
+        # that is the scale the inversion's forward operator works on, so the
+        # synthetic file must be written on it too. evaluate_pole_density returns
+        # the raw kernel response.
+        intensities = (
+            true_odf.evaluate_pole_density(
+                pole,
+                directions,
+                include_symmetry_family=False,
+            )
+            / random_pole_density(kernel)
         ).reshape(psi_grid.shape)
         path = tmp_path / f"synthetic_{index}.xrdml"
         write_xrdml_fixture(path, phi_deg=phi_grid, psi_deg=psi_grid, intensity_grid=intensities)

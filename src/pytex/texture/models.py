@@ -280,6 +280,16 @@ def _projected_gradient_nonnegative_weights(
     rhs = system_matrix.T @ observations
     lipschitz = float(np.linalg.norm(gram + regularization * np.eye(gram.shape[0]), ord=2))
     lipschitz = max(lipschitz, 1e-12)
+    # Stationarity is measured scale-free, and this is not a refinement. The step
+    # length is 1/L, so the raw step size ``||w_next - w||`` is proportional to
+    # 1/L: on a system whose operator has large entries the very first step is
+    # tiny for that reason alone, and a test of the raw step size against a fixed
+    # tolerance then declares convergence immediately and returns the uniform
+    # starting guess as the answer. Multiplying the step by L recovers the
+    # projected-gradient magnitude, and dividing by ``||A^T b||`` makes the
+    # comparison dimensionless, so the same tolerance means the same thing
+    # whatever units the pole densities are in.
+    gradient_scale = max(float(np.linalg.norm(rhs)), 1e-12)
     history = np.empty(max_iterations, dtype=np.float64)
     converged = False
     for iteration in range(max_iterations):
@@ -294,10 +304,9 @@ def _projected_gradient_nonnegative_weights(
         history[iteration] = 0.5 * float(residual @ residual) + 0.5 * regularization * float(
             candidate @ candidate
         )
-        delta = np.linalg.norm(candidate - weights)
-        scale = max(1.0, float(np.linalg.norm(weights)))
+        stationarity = float(np.linalg.norm(candidate - weights)) * lipschitz / gradient_scale
         weights = candidate
-        if delta <= tolerance * scale:
+        if stationarity <= tolerance:
             history = history[: iteration + 1]
             converged = True
             break
@@ -2074,7 +2083,12 @@ class ODF:
         ----------
         pole_figures : sequence of PoleFigure
             At least one; all must share a specimen frame with the dictionary.
-            More independent poles give a better-conditioned problem.
+            More independent poles give a better-conditioned problem. The
+            intensities are taken to be pole densities in **multiples of a random
+            distribution**, which is what a measured figure carries and what
+            :meth:`PoleFigure.on_grid` produces. A scattered pole cloud whose
+            intensities are per-pole *weights* is not on that scale; resample it
+            onto a grid first.
         orientation_dictionary : OrientationSet
             The support the ODF is expressed on; its resolution bounds the
             achievable angular detail.
@@ -2108,6 +2122,17 @@ class ODF:
                     "All pole figures and the inversion dictionary must share a specimen frame."
                 )
         inversion_kernel = KernelSpec() if kernel is None else kernel
+        # The observations are pole densities in multiples of a random
+        # distribution -- that is what a measured figure carries and what
+        # PoleFigure.on_grid produces -- while the dictionary response is the raw
+        # kernel sum, whose value for a random texture is the kernel's spherical
+        # mean rather than one. The operator is put on the observations' scale
+        # here. Without this the system is unfittable rather than merely
+        # mis-scaled: the weights are constrained to sum to one, so the model
+        # cannot absorb a factor of 64 (at a 12 degree halfwidth) into its
+        # amplitude, and the solver stalls at a relative residual near 1 while
+        # reporting convergence.
+        kernel_mean = random_pole_density(inversion_kernel)
         blocks = [
             _orientation_dictionary_response(
                 orientation_dictionary,
@@ -2115,6 +2140,7 @@ class ODF:
                 inversion_kernel,
                 include_symmetry_family=include_symmetry_family,
             )
+            / kernel_mean
             for pole_figure in pole_figures
         ]
         system_matrix = np.vstack(blocks)

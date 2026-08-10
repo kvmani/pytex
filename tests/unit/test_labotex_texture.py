@@ -19,6 +19,7 @@ from pytex import (
     SymmetrySpec,
     invert_labotex_pole_figures,
     load_labotex_pole_figures,
+    random_pole_density,
     read_labotex_pole_figures,
 )
 from pytex.adapters.labotex import LaboTexPoleFigureDescriptor
@@ -157,10 +158,15 @@ def test_invert_labotex_pole_figures_recovers_synthetic_dictionary_weights(tmp_p
     ]
     grids = []
     for descriptor, plane in zip(descriptors, planes, strict=True):
-        densities = true_odf.evaluate_pole_density(
-            plane,
-            descriptor.sample_directions,
-            include_symmetry_family=False,
+        # Written in multiples of a random distribution, as a measured file is:
+        # evaluate_pole_density returns the raw kernel response instead.
+        densities = (
+            true_odf.evaluate_pole_density(
+                plane,
+                descriptor.sample_directions,
+                include_symmetry_family=False,
+            )
+            / random_pole_density(kernel)
         )
         grids.append(densities.reshape(descriptor.shape))
     write_labotex_fixture(
