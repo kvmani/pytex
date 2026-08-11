@@ -81,7 +81,7 @@ inversion) rather than by notebook number.
 | 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | **done** — 27 cells, 11.9 k md chars, 1 figure + 9 verification tables |
 | 08 diffraction geometry | Ewald construction, the excitation error, why zone-axis patterns look the way they do | pending |
 | 11 powder XRD | structure factor as a lattice sum, multiplicity, the Lorentz–polarization factor | **done** — 25 cells, 11.8 k md chars, 5 figures |
-| 12 SAED | camera constant, the zone law, double diffraction vs true extinction | pending |
+| 12 SAED | camera constant, the zone law, double diffraction vs true extinction | **done** — 23 cells, 12.5 k md chars, 4 figures |
 | 07 EBSD grid | KAM/GROD as discrete differential geometry on the grid, segmentation as a graph problem | pending |
 | 16 EBSD → texture | from discrete orientations to a density: the estimator and its bandwidth | pending |
 | 09 phase transformations | the OR as a rotation, variant counting from coset decomposition | pending |
@@ -127,6 +127,34 @@ the per-member GROD field, and the Mackenzie mean quoted as 45 degrees when that
 The lesson for the remaining notebooks: **write the exact-value check first.** Every one of these
 was found by asking "what does this return for the case where the answer is known?" — a uniform
 ODF, a random texture, a flat pole figure.
+
+## Resume point (as of 2026-08-11)
+
+Done to the rubric and pushed: **01, 02, 03, 04, 06, 11, 12, 17**, plus the new tutorial 30 for the
+Kikuchi-map capability. Eight of the eighteen rows in the table above.
+
+Still pending: **05, 07, 08, 09, 10, 13, 14, 15, 16** and the 18-25 audit row. Nothing about them is
+blocked; each needs the same treatment as the eight above.
+
+The authoring loop that works, and is worth reusing verbatim:
+
+1. Dump the existing notebook and skim it for what the notebook should *own* that its siblings do not.
+2. Probe the API and the exact numbers in a throwaway script **first**, before writing prose. Never
+   write a number into markdown that has not been printed by a real call. Half the corrections in
+   this round came from prose that was written before the value was known.
+3. Author the notebook as a Python build script (a list of `("markdown"|"code", source)` pairs)
+   emitted through a small writer that clears outputs. Editing a large notebook as JSON by hand is
+   not workable; regenerating it from a script is.
+4. Execute every code cell in order and read the output. Fix the *prose* to match the numbers, not the
+   other way round. Two notebooks in this round had a framing claim contradicted by their own
+   computation (tutorial 11's "the first peak is tallest" - it is not, at this level of model; and
+   tutorial 12's double-diffraction section, where the interesting answer turned out to be zero).
+5. Commit one notebook per commit with the ledger row flipped in the same commit.
+
+Watch for two authoring traps that cost time here: a triple-quoted docstring inside a code cell
+terminates the `r"""..."""` block of the build script, so use `#` comments inside cells; and printing
+a numpy integer array through `str(tuple(...))` yields `(np.int64(1), ...)`, so every notebook needs a
+small `label()`/`indices_label()` helper.
 
 ## Working method
 
