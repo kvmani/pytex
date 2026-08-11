@@ -66,6 +66,7 @@ from pytex.plotting.frames import (
     reference_frame_svg,
 )
 from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
+from pytex.plotting.kikuchi_map import plot_kikuchi_map
 from pytex.plotting.primitives import (
     TRIAD_AXIS_COLORS,
     Arrow3D,
@@ -185,6 +186,7 @@ __all__ = [
     "plot_ipf_map",
     "plot_ipf_xyz_maps",
     "plot_kam_map",
+    "plot_kikuchi_map",
     "plot_kikuchi_pattern",
     "plot_odf",
     "plot_odf_phi2_sections",

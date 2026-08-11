@@ -455,6 +455,13 @@ class KikuchiRouteLeg:
         Zone axes lying on the followed band strictly between the endpoints, in
         the order they are passed. These are the landmarks that confirm the tilt
         is on track.
+    start_direction, end_direction : np.ndarray
+        Unit directions in the map frame, oriented so consecutive legs of a route
+        join up. A zone axis is a *line*, so each end has two equally valid senses
+        and a route has to commit to one of them, or the drawn path jumps across
+        the projection between legs. The indices above carry the same sense as
+        these vectors, which is why they can differ in sign from the map's own
+        canonical representative of the same axis -- both name the same axis.
     """
 
     phase: Phase
@@ -463,6 +470,8 @@ class KikuchiRouteLeg:
     band_indices: tuple[int, ...] | None
     tilt_deg: float
     waypoint_indices: tuple[tuple[int, ...], ...]
+    start_direction: FloatArray
+    end_direction: FloatArray
 
     def describe(self) -> str:
         """Imperative instruction for this leg, in the operator's language."""
@@ -1111,6 +1120,14 @@ def _zone_axes_for_bands(
     if crossings.shape[0] == 0:
         return ()
     crossings = crossings / np.linalg.norm(crossings, axis=1)[:, None]
+    # Snap a numerically-zero z to exactly +0.0 before choosing representatives.
+    # An axis on the equator comes out of the cross product with z of order 1e-17
+    # of either sign, and a one-hemisphere projection folds on the sign of z, so
+    # without this an equatorial axis lands on whichever side of the disc the
+    # round-off happened to choose -- and the two senses of one axis can land on
+    # opposite sides. Snapping makes the equator a definite case.
+    crossings[np.abs(crossings[:, 2]) < 1e-12, 2] = 0.0
+    crossings = crossings / np.linalg.norm(crossings, axis=1)[:, None]
     # One representative per antipodal pair. Taking the upper hemisphere is not
     # enough on its own: an axis exactly on the equator has z = 0 in both senses,
     # so the tie is broken on x and then on y, exactly as a lexicographic
@@ -1319,6 +1336,12 @@ def plan_kikuchi_route(
                     band_indices=None,
                     tilt_deg=direct,
                     waypoint_indices=(),
+                    start_direction=freeze_array(start_direction),
+                    end_direction=freeze_array(
+                        target_direction
+                        if float(np.dot(start_direction, target_direction)) >= 0.0
+                        else -target_direction
+                    ),
                 ),
             ),
             reachable=False,
@@ -1336,68 +1359,91 @@ def plan_kikuchi_route(
         node = parent
     chain.reverse()
 
-    legs = tuple(
-        KikuchiRouteLeg(
-            phase=kikuchi_map.phase,
-            start_indices=axes[parent].indices,
-            end_indices=axes[child].indices,
-            band_indices=kikuchi_map.bands[band_position].indices,
-            tilt_deg=float(separations[parent, child]),
-            waypoint_indices=_waypoints_on_band(
-                kikuchi_map, band_position, axes[parent], axes[child]
-            ),
+    # Orient the chain. Each node is a line, so its stored direction has an
+    # arbitrary sense; the route must take the sense that continues from the
+    # previous node, and the reported indices must carry that same sense or the
+    # printed route and the drawn one disagree about which side of the projection
+    # the path runs down.
+    legs: list[KikuchiRouteLeg] = []
+    current = np.asarray(start_direction, dtype=np.float64)
+    current_indices = origin.indices
+    for _parent, child, band_position in chain:
+        stored = np.asarray(axes[child].direction_map, dtype=np.float64)
+        sign = 1.0 if float(np.dot(current, stored)) >= 0.0 else -1.0
+        # Adding zero is not a no-op here. Negating a component that is exactly
+        # zero produces -0.0, and a one-hemisphere projection decides whether to
+        # fold a direction onto its antipode from the *sign bit* of z -- which is
+        # set for -0.0. An axis on the equator, where z is exactly zero, would
+        # then be drawn on the opposite side of the disc from the arc that reaches
+        # it. Adding zero collapses -0.0 to +0.0 and leaves everything else alone.
+        oriented: np.ndarray = np.asarray(sign * stored, dtype=np.float64) + 0.0
+        oriented_indices = tuple(int(sign * value) for value in axes[child].indices)
+        legs.append(
+            KikuchiRouteLeg(
+                phase=kikuchi_map.phase,
+                start_indices=current_indices,
+                end_indices=oriented_indices,
+                band_indices=kikuchi_map.bands[band_position].indices,
+                tilt_deg=float(
+                    np.degrees(
+                        np.arccos(np.clip(float(np.dot(current, oriented)), -1.0, 1.0))
+                    )
+                ),
+                waypoint_indices=_waypoints_on_band(
+                    kikuchi_map, band_position, current, oriented
+                ),
+                start_direction=freeze_array(current),
+                end_direction=freeze_array(oriented),
+            )
         )
-        for parent, child, band_position in chain
-    )
+        current, current_indices = oriented, oriented_indices
     return KikuchiRoute(
         phase=kikuchi_map.phase,
-        legs=legs,
+        legs=tuple(legs),
         reachable=True,
         start_indices=origin.indices,
-        target_indices=destination.indices,
+        target_indices=current_indices,
         start_direction=freeze_array(start_direction),
-        target_direction=freeze_array(target_direction),
+        target_direction=freeze_array(current),
     )
 
 
 def _waypoints_on_band(
     kikuchi_map: StereographicKikuchiMap,
     band_position: int,
-    origin: KikuchiMapZoneAxis,
-    destination: KikuchiMapZoneAxis,
+    start: np.ndarray,
+    end: np.ndarray,
 ) -> tuple[tuple[int, ...], ...]:
-    """Zone axes on one band, strictly between two of its axes, in passing order.
+    """Zone axes on one band, strictly between two oriented directions, in order.
 
     These are the landmarks that tell an operator the tilt is tracking the right
-    band. Ordering is by the angle turned from the origin, measured along the
-    band's great circle.
+    band. A candidate lies on the arc exactly when the two angles it subtends at
+    the ends sum to the whole span, which is the spherical statement of "between".
+    Ordering is by the angle turned from the start, and the reported indices carry
+    the sense in which the axis is actually passed.
     """
 
     position = int(band_position)
-    start = np.asarray(origin.direction_map, dtype=np.float64)
-    end = np.asarray(destination.direction_map, dtype=np.float64)
-    span = float(np.degrees(np.arccos(np.clip(abs(float(np.dot(start, end))), -1.0, 1.0))))
+    first = np.asarray(start, dtype=np.float64)
+    second = np.asarray(end, dtype=np.float64)
+    span = float(np.degrees(np.arccos(np.clip(float(np.dot(first, second)), -1.0, 1.0))))
     if span <= 0.0:
         return ()
-    # Orient the destination into the same sense as the origin so the arc between
-    # them is the short one.
-    oriented_end = end if float(np.dot(start, end)) >= 0.0 else -end
     passed: list[tuple[float, tuple[int, ...]]] = []
     for axis in kikuchi_map.zone_axes:
-        if axis.indices in (origin.indices, destination.indices):
-            continue
         if position not in axis.band_indices:
             continue
         candidate = np.asarray(axis.direction_map, dtype=np.float64)
-        for sense in (candidate, -candidate):
+        for sign in (1.0, -1.0):
+            sense = sign * candidate
             from_start = float(
-                np.degrees(np.arccos(np.clip(float(np.dot(start, sense)), -1.0, 1.0)))
+                np.degrees(np.arccos(np.clip(float(np.dot(first, sense)), -1.0, 1.0)))
             )
             to_end = float(
-                np.degrees(np.arccos(np.clip(float(np.dot(sense, oriented_end)), -1.0, 1.0)))
+                np.degrees(np.arccos(np.clip(float(np.dot(sense, second)), -1.0, 1.0)))
             )
             if abs(from_start + to_end - span) < 1e-6 and from_start > 1e-6 and to_end > 1e-6:
-                passed.append((from_start, axis.indices))
+                passed.append((from_start, tuple(int(sign * value) for value in axis.indices)))
                 break
     passed.sort()
     return tuple(indices for _, indices in passed)
