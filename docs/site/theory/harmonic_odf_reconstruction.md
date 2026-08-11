@@ -162,6 +162,12 @@ When all input pole figures are antipodal, PyTex defaults to retaining even degr
 This follows the classical diffraction-texture limitation that odd coefficients are not
 uniquely observable from antipodal pole figures.
 
+This is the **ghost problem**, and it is a structural degeneracy rather than a precision
+limitation: pole-figure centrosymmetry annihilates every odd degree exactly, so those coefficients
+are not determined by any amount of data. At bandlimit 22 that is 46.7% of the basis. See
+{doc}`ghost_problem_and_odd_harmonics` for the derivation, what the discarded half costs, and why
+an ODF estimated from EBSD orientations does not suffer from it at all.
+
 ## Interpretation Notes
 
 - Harmonic reconstruction is now implemented, but it remains a band-limited model.

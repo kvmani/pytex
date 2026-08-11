@@ -64,7 +64,8 @@ verified agreement rather than an assertion:
 | 5 | Taylor factor and Schmid analysis note + worked examples | done | (this commit) |
 | 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | done | 0f223d2 |
 | 7 | Pole-figure arithmetic and the m.r.d. scale note + worked examples | done | 35809d9 |
-| 8 | Directional statistics / mean axes note + worked examples | done | (this commit) |
+| 8 | Directional statistics / mean axes note + worked examples | done | f3bd460 |
+| 9 | Ghost problem / odd harmonics note + worked examples | done | (this commit) |
 
 ### Notes added so far
 
@@ -76,6 +77,7 @@ verified agreement rather than an assertion:
 | `schmid_and_taylor_plasticity` | Schmid $\le 1/2$ in two lines; the Taylor LP replaces a 792-way enumeration; $M$ is unique but the slip pattern is not. |
 | `pole_figure_arithmetic_and_mrd` | An unweighted raster mean is biased by exactly +50% and refinement does not fix it; skipping m.r.d. normalization is a 34× error. |
 | `directional_statistics_and_mean_axes` | The vector mean of axes cancels identically; the orientation tensor is the fix, and its eigenvalue gap decides whether a "mean axis" means anything. |
+| `ghost_problem_and_odd_harmonics` | Pole figures determine only even harmonic degrees — ~47% of the basis is undetermined by *any* amount of data — and EBSD has no ghost problem at all. |
 
 ### Method that is working
 
