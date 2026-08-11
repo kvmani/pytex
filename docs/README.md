@@ -95,6 +95,7 @@ index with cross-links to the matching implementation pages.
 - [Vectorized Miller Planes and Directions in PyTex](site/theory/vectorized_miller_planes_and_directions.md)
 - [Orientation Representations and Plane–Direction Construction in PyTex](site/theory/orientation_representations_and_plane_direction_construction.md)
 - [Discrete ODF and Pole-Figure Foundations in PyTex](site/theory/discrete_odf_and_pole_figures.md)
+- [Pole-Figure Arithmetic And The m.r.d. Scale](site/theory/pole_figure_arithmetic_and_mrd.md)
 - [Harmonic ODF Reconstruction in PyTex](site/theory/harmonic_odf_reconstruction.md)
 - [Stereographic Projections and XRDML Texture Import in PyTex](site/theory/stereographic_projections_and_xrdml_texture_import.md)
 - [Preferred Orientation In Powder Intensities](site/theory/preferred_orientation_in_powder_intensities.md)

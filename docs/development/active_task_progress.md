@@ -62,9 +62,36 @@ verified agreement rather than an assertion:
 | 3 | Misorientation distribution / Mackenzie note + worked examples | done | (this commit) |
 | 4 | Elastic anisotropy and homogenisation note + worked examples | done | (this commit) |
 | 5 | Taylor factor and Schmid analysis note + worked examples | done | (this commit) |
-| 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | done | (this commit) |
+| 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | done | 0f223d2 |
+| 7 | Pole-figure arithmetic and the m.r.d. scale note + worked examples | done | (this commit) |
 
-**Resume point.** Step 2.
+### Notes added so far
+
+| Note | The non-obvious thing it fixes |
+| --- | --- |
+| `ipf_color_keys` | Colour is a barycentric coordinate raised to $1/\gamma_{s}$ and renormalized; every IPF colour is fully saturated, so brightness cannot carry a second variable. |
+| `random_disorientation_baseline` | The random cubic mean is 40.7° and the *median* is 42.3°; 2.2% of random boundaries are low-angle by chance. |
+| `elastic_anisotropy_and_homogenization` | Compliance carries Voigt factors that stiffness does not; cubic $K_V = K_R$ exactly, so the whole bound gap is in shear. |
+| `schmid_and_taylor_plasticity` | Schmid $\le 1/2$ in two lines; the Taylor LP replaces a 792-way enumeration; $M$ is unique but the slip pattern is not. |
+| `pole_figure_arithmetic_and_mrd` | An unweighted raster mean is biased by exactly +50% and refinement does not fix it; skipping m.r.d. normalization is a 34× error. |
+
+### Method that is working
+
+Each note follows the same shape and it should be kept: state the closed form, show the code
+agreeing with it to a stated precision, then draw out the consequence that constrains use. Every
+expected value in a worked example is derived by hand or published — never a recorded program
+output — and where no closed form exists (the cubic disorientation mean) an *independently written*
+implementation is used instead, because a check sharing code with the thing it checks is not a
+check.
+
+Probing the code before writing has repeatedly found things worth documenting that were not
+visible in the source: the 7.7 GiB allocation in the disorientation reduction, the exact
+$[110] = [112]$ stiffness coincidence, and the fact that the barycentric sum-normalization in the
+IPF path is arithmetically inert.
+
+**Resume point.** Remaining candidates from the survey, in rough value order: SO(3)/S2 sampling and
+equal-area grids (`core/sphere.py`, 793 lines, thin coverage); texture kernels and the halfwidth
+convention (`texture/kernels.py`, 484 lines); texture components and fibres.
 
 ## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — COMPLETE (2026-08-11)
 
