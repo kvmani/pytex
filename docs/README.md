@@ -97,6 +97,7 @@ index with cross-links to the matching implementation pages.
 - [Harmonic ODF Reconstruction in PyTex](site/theory/harmonic_odf_reconstruction.md)
 - [Stereographic Projections and XRDML Texture Import in PyTex](site/theory/stereographic_projections_and_xrdml_texture_import.md)
 - [Preferred Orientation In Powder Intensities](site/theory/preferred_orientation_in_powder_intensities.md)
+- [Inverse-Pole-Figure Colour Keys](site/theory/ipf_color_keys.md)
 - [EBSD KAM Parameterization](site/theory/ebsd_kam_parameterization.md)
 - [EBSD Local Misorientation Foundations](site/theory/ebsd_local_misorientation.md)
 - [EBSD Grain Segmentation And GROD Foundations](site/theory/ebsd_grain_segmentation_and_grod.md)

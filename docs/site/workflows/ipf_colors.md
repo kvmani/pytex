@@ -56,6 +56,8 @@ This keeps the semantics explicit and deterministic, even though it does not yet
 
 ## Related Material
 
+- {doc}`../theory/ipf_color_keys` — what the colour actually is: the barycentric closed form, the
+  saturation exponent, and why every IPF colour is fully saturated.
 - {doc}`../concepts/orientation_texture`
 - {doc}`plotting_primitives`
 - `docs/testing/mtex_parity_matrix.md`

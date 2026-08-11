@@ -5,6 +5,67 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Deepening The Theory Layer: Closed Forms, Known Answers, Non-Obvious Cases — IN PROGRESS (2026-08-11)
+
+**Objective.** Increase the breadth and depth of the theory and algorithm notes across the repo.
+For every surface treated: state the closed-form solution where one exists, show how the code
+evaluates it, and demonstrate agreement with an independently known answer. Prioritise the
+**non-obvious, non-textbook** decisions — the ones a reader cannot reconstruct from a textbook
+because they are implementation conventions rather than physics.
+
+**The governing test for what deserves a note.** Not "is this important?" but *"would a competent
+crystallographer reading the code be unable to tell why it does that?"* IPF colouring is the
+canonical example: every textbook shows the coloured triangle, none states that the colour is a
+barycentric coordinate, that it is raised to a power to control saturation, or that it is then
+rescaled so the largest channel saturates. Those three choices determine every pixel of an IPF map
+and appear in no reference.
+
+### Gap survey (2026-08-11)
+
+Searched all 37 notes for each concept. Findings:
+
+| Concept | Code | Notes mentioning | Verdict |
+| --- | --- | ---: | --- |
+| IPF colour keys | `plotting/ipf.py` (331) | 0 with the algorithm | **gap** — workflow page is 61 lines, zero mathematics |
+| Taylor factor, Schmid | `properties/taylor.py` (141), `slip.py` (252) | **0** | **gap** |
+| Elastic homogenisation, Voigt/Reuss/Hill | `properties/tensors.py` (689) | **0** | **gap** |
+| Misorientation distribution (Mackenzie) | `core/misorientation_distribution.py` (248) | **0** | **gap** |
+| Sphere sampling / equal-area grids | `core/sphere.py` (793) | partial | thin |
+| Texture kernels | `texture/kernels.py` (484) | partial | thin |
+| Texture components and fibres | `texture/components.py`, `fibres.py` | partial | thin |
+
+`src/pytex/properties/` — roughly 1,080 lines covering slip systems, Schmid tensors, Taylor
+factors, elastic tensors, Voigt/Reuss/Hill homogenisation, and directional modulus surfaces — has
+**no theory note at all**, despite being the richest source of closed-form results and classic
+published reference values in the repository.
+
+### Why these four first
+
+Each has an exact closed form *and* a published number to check against, so each note can end in a
+verified agreement rather than an assertion:
+
+1. **IPF colour keys** — named by the user; the barycentric/gamma/renormalisation chain is pure
+   convention and is invisible in the literature.
+2. **Mackenzie distribution** — an exact analytic density with a published mean disorientation
+   (42.03° for random cubic), so the sampler can be checked against theory rather than itself.
+3. **Elastic anisotropy** — closed-form directional Young's modulus for cubic symmetry, the
+   Voigt/Reuss bounds that must bracket any real aggregate, and the Zener ratio.
+4. **Taylor/Schmid** — maximum Schmid factor exactly 0.5 at 45°/45°, and the Taylor factor ≈3.06
+   for a randomly textured fcc polycrystal (Taylor 1938).
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Gap survey across all 37 notes and the source tree | done | (this commit) |
+| 2 | IPF colour keys note + worked examples | done | (this commit) |
+| 3 | Misorientation distribution / Mackenzie note + worked examples | pending | |
+| 4 | Elastic anisotropy and homogenisation note + worked examples | pending | |
+| 5 | Taylor factor and Schmid analysis note + worked examples | pending | |
+| 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | pending | |
+
+**Resume point.** Step 2.
+
 ## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — COMPLETE (2026-08-11)
 
 **Objective.** Make MyST Markdown the single canonical source for the scientific notes that

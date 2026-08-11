@@ -167,6 +167,11 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\Delta P$ | Signed difference of two pole densities on a shared support. |
 | $w_i$ | Solid-angle integration weight of sampled direction $i$; weights sum to 1 over the sampled region. |
 | $\psi$ | Polar (tilt) angle of a specimen direction from the specimen-frame $+Z$ axis. |
+| $\mathcal{T}$ | Fundamental sector: the spherical region holding one representative of each direction orbit. The standard stereographic triangle, generalized to any point group. |
+| $\mathbf{K}$ | Colour-key basis: the $3\times3$ matrix whose **columns** are the fundamental sector's corner directions. |
+| $\boldsymbol{\beta}$ | Barycentric weights of a direction in the sector-corner basis, $\mathbf{K}\boldsymbol{\beta} = \hat{\mathbf{d}}_{\mathcal{T}}$. Non-negative exactly inside the sector, so the membership test and the colour are the same inequalities. Distinct from the solid-angle weight $w_i$. |
+| $\mathbf{C}_{\mathrm{rgb}}$ | Corner colour matrix whose rows are the RGB triples assigned to the sector corners; the identity gives the standard red/green/blue key. |
+| $\gamma_{s}$ | IPF saturation parameter. Channels are raised to $1/\gamma_{s}$, so the default $\gamma_{s} = 0.5$ squares them. A contrast control with no crystallographic content; distinct from the lattice angle $\gamma$ and the relativistic factor. |
 
 ### Diffraction
 
