@@ -4,7 +4,7 @@
 
 # Diffraction geometry
 
-Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
+Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, zone-axis routing on a stereographic Kikuchi map, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -529,5 +529,74 @@ result = float(model.factors([MillerPlane.from_hkl([1, 1, 1], phase=nickel)])[0]
 **Why this value**: Pole density is defined in multiples of a random distribution, so a uniform orientation distribution has pole density 1 along every specimen direction and the correction is the identity. The tolerance reflects the finite SO(3) grid used to represent the uniform distribution, not any approximation in the correction itself.
 
 **Citation**: Bunge, H.-J., Texture Analysis in Materials Science, DOI: 10.1016/C2013-0-11769-2; Von Dreele, R. B., J. Appl. Cryst. 30, 517-525 (1997), DOI: 10.1107/S0021889897005918 (texture in Rietveld refinement).
+
+**See also**: {doc}`Powder XRD generation <../../workflows/xrd_generation>`, {doc}`Texture foundation <../../concepts/texture_foundation>`
+
+## Kikuchi-map routing reproduces the exact cubic zone-axis angles
+
+Build the stereographic Kikuchi map of nickel and ask it for the tilt from [001] to [011], to [111], and to [112], with a leg budget large enough that each is a single hop along one band. The angles between low-index cubic directions are closed-form - 45 degrees, arccos(1/sqrt(3)), and arccos(2/sqrt(6)) - so the routed travel is checked against arithmetic rather than against a prior run. Getting these right exercises the whole chain: the direct basis, the map frame, the zone law that decides which bands join two axes, and the shortest-path search.
+
+**Symbols**
+
+- $\theta$ &mdash; Angle between two crystal zone axes; the stage travel of one routing leg.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    compute_kikuchi_map,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+kikuchi_map = compute_kikuchi_map(
+    nickel,
+    beam_energy_kev=200.0,
+    max_index=4,
+    zone_axis_max_index=3,
+)
+targets = ([0, 1, 1], [1, 1, 1], [1, 1, 2])
+result = np.array(
+    [
+        kikuchi_map.route_to([0, 0, 1], target, max_leg_deg=90.0).total_tilt_deg
+        for target in targets
+    ]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | 0.00e+00 | 1e-06 | ✅ pass |
+
+**Why this value**: Closed-form angles between cubic directions: arccos(1/sqrt(2)) = 45 deg for [001]-[011], arccos(1/sqrt(3)) = 54.735610 deg for [001]-[111], and arccos(2/sqrt(6)) = 35.264390 deg for [001]-[112]. The two [111] and [112] values are complementary, summing to 90 degrees, because [112] is the reflection of [001] in the plane perpendicular to [111].
+
+**Citation**: Standard cubic interaxial angles; see International Tables for Crystallography Vol. C (1999) for the reciprocal-lattice conventions, and Williams and Carter, Transmission Electron Microscopy 2nd ed. (2009) Ch. 19 for Kikuchi-map tilting.
 
 **See also**: {doc}`Powder XRD generation <../../workflows/xrd_generation>`, {doc}`Texture foundation <../../concepts/texture_foundation>`

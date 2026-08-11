@@ -76,6 +76,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | ODF | Orientation distribution function over orientation space. |
 | fundamental zone | The symmetry-reduced subset of orientation space used for canonical orientation keys. |
 | zone axis | Direct-space crystallographic direction defining an electron-diffraction viewing or incidence condition. |
+| zone-axis order | The number of distinct Kikuchi band centre lines crossing a zone axis. The operational measure of how conspicuous the axis is on the screen: a four-band crossing is unmistakable, a two-band one is a guess. Distinct from the axis's indices, and the quantity a Kikuchi map sorts by. |
+| Kossel cone | Either of the two cones of semi-angle $90^{\circ} - \theta_{B}$ about a plane normal, on which incoherently scattered electrons satisfy that plane's Bragg condition. Their traces are the two edges of a Kikuchi band. |
+| Kikuchi map | The band-and-zone-axis network of a phase drawn on a stereographic projection of the crystal sphere, used to plan a tilt route between zone axes. Distinct from a Kikuchi *pattern*, which is one orientation on one detector in gnomonic coordinates. |
+| band-followable route | A tilt path between zone axes in which every leg lies on a single Kikuchi band, so the operator has a line to track. Coincides with the geodesic, because both are defined by the plane the two axes span. |
 | holder frame | The specimen-domain frame for TEM work: rigidly attached to the specimen and the holder cartridge, coinciding with the laboratory frame at zero tilt. Not a new frame domain. |
 | crystal-to-holder orientation | The rotation $\mathbf{U}$ taking crystal-frame vectors into holder-frame components; absorbs the separately unobservable specimen-mounting rotation. |
 | holder tilt | A stage rotation about one of the two holder axes, $\alpha$ about the rod and $\beta$ about the cradle carried inside it. |
@@ -180,6 +184,10 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\alpha$ | Convergence semi-angle of the illumination cone in CBED; sets the disc radius $\alpha/\lambda$ and the Kossel-Moellenstedt threshold. |
 | $t$ | Foil thickness along the beam. |
 | $H$ | Reciprocal-lattice layer spacing along a zone axis, $1/|\mathbf{r}_{uvw}|$; measured by the HOLZ ring radii $G_{n} \simeq \sqrt{2nH/\lambda}$. |
+| $\theta_{B}$ | Bragg angle of a specific reflection, $\arcsin(\lambda/2d)$. Written with the subscript wherever it must not be confused with the generic scattering half-angle $\theta$. |
+| $2\theta_{B}$ | Angular width of a Kikuchi band, exactly twice the Bragg angle and independent of detector geometry. Since $2\theta_{B} = 2\arcsin(\lambda/2d) \approx \lambda/d$, width is a *decreasing* function of spacing: the widest bands come from high-index planes and the strongest from low-index ones. |
+| $\psi$ | Polar angle from the centre of a projection. Azimuthal projection radii: $\tan\psi$ gnomonic, $\tan(\psi/2)$ stereographic, $2\sin(\psi/2)$ equal-area. |
+| $\delta\varphi$ | Uncertainty in the diffraction rotation: the azimuthal calibration error between the recorded pattern and the stage axes. A tilt of $\theta$ planned under this uncertainty misses by $2\arcsin(\sin(\delta\varphi/2)\sin\theta) \approx \delta\varphi\sin\theta$. |
 | $\nu_{g}$ | Complex Fourier coefficient of the scaled lattice potential, $\lambda F_{g}/(\pi V_{c}\cos\theta_{g})$; the off-diagonal element of the dynamical structure matrix, with $|\nu_{g}| = 1/\xi_{g}$. Its **phase** is what distinguishes a centrosymmetric structure from a non-centrosymmetric one. |
 | $\xi'_{g}$ | Absorption distance of reflection $\mathbf{g}$: the imaginary partner of $\xi_{g}$ in the complex optical potential. $\xi'_{0}$ is normal absorption (a scalar $e^{-2\pi t/\xi'_{0}}$); $\xi'_{g}$ for $g \neq 0$ is anomalous absorption. |
 | $\mathbf{A}$ | Dynamical structure matrix of the coupled beam equations $\mathrm{d}\psi/\mathrm{d}z = i\pi\mathbf{A}\psi$: diagonal $2s_{g} + i/\xi'_{0}$, off-diagonal $\nu_{g-h} + i/\xi'_{g-h}$. |

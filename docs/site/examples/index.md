@@ -39,6 +39,7 @@ The complete set of computed-versus-expected values at a glance:
 | `diffraction-march-dollase-family-factor` | 2.309132723130 | 2.309132723130 | &mdash; | ✅ |
 | `diffraction-march-dollase-normalization` | 1.000000000 | 1.000000000 | &mdash; | ✅ |
 | `diffraction-odf-weighted-random-texture` | 0.9999 | 1.0000 | &mdash; | ✅ |
+| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | ✅ |
 | `ebsd-planted-lattice-curvature` | 13962.634016 | 13962.634016 | rad/m | ✅ |
 | `ebsd-gnd-density-from-curvature` | 5.462689e+13 | 5.462689e+13 | 1/m^2 | ✅ |
 | `composite-electron-wavelength-200kv` | 0.02508 | 0.02508 | angstrom | ✅ |
@@ -86,7 +87,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
 - {doc}`Orientation representations <generated/orientation-representations>` &mdash; The constants and identities behind the equal-volume charts of SO(3), and the inversion that names an orientation as a (hkl)[uvw] texture component.
-- {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
+- {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, zone-axis routing on a stereographic Kikuchi map, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
 - {doc}`EBSD microstructure <generated/ebsd>` &mdash; Lattice curvature and geometrically necessary dislocation density recovered from a planted orientation gradient, checked against the closed-form Nye result.
 - {doc}`Composite OR diffraction <generated/composite-diffraction>` &mdash; Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the identities the exported reflection table must satisfy.
 - {doc}`Convergent-beam diffraction <generated/convergent-beam-diffraction>` &mdash; The absolute scale of the two-beam extinction distance, checked against a published table, and the fringe analysis that measures a foil thickness without needing one.

@@ -130,10 +130,6 @@ DEFAULT_ROUTE_MAX_LEG_DEG = 30.0
 #: candidate axes.
 _ZONE_LAW_ATOL_DEG = 0.05
 
-#: Two candidate zone axes closer than this are the same axis.
-_AXIS_MERGE_ATOL_DEG = 0.5
-
-
 def _format_direction(phase: Phase, indices: Sequence[int]) -> str:
     """Direction indices in the notation the phase's crystal system uses.
 
@@ -200,37 +196,6 @@ def _view_matrix(phase: Phase, centre: ArrayLike, horizontal: ArrayLike) -> Floa
     axis_x = normalize_vector(residual)
     axis_y = np.cross(axis_z, axis_x)
     return freeze_array(np.stack([axis_x, axis_y, axis_z], axis=0))
-
-
-def _rationalize_direction(
-    phase: Phase,
-    cartesian: ArrayLike,
-    *,
-    max_index: int,
-    tolerance_deg: float,
-) -> np.ndarray | None:
-    """Nearest low-index ``[uvw]`` to a Cartesian crystal-frame direction."""
-
-    direction = normalize_vector(np.asarray(cartesian, dtype=np.float64))
-    direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
-    values = np.arange(-max_index, max_index + 1, dtype=np.int64)
-    grid = np.stack(np.meshgrid(values, values, values, indexing="ij"), axis=-1)
-    uvw = grid.reshape(-1, 3)
-    uvw = uvw[np.any(uvw != 0, axis=1)]
-    images = uvw.astype(np.float64) @ direct.T
-    images = images / np.linalg.norm(images, axis=1)[:, None]
-    cosines = images @ direction
-    deviations = np.degrees(np.arccos(np.clip(cosines, -1.0, 1.0)))
-    admissible = deviations <= tolerance_deg
-    if not np.any(admissible):
-        return None
-    candidates = uvw[admissible]
-    # A direction is named by its simplest indices; the higher multiples denote
-    # the same direction.
-    order = np.lexsort(
-        (np.max(np.abs(candidates), axis=1), np.sum(np.abs(candidates), axis=1))
-    )
-    return np.asarray(candidates[order[0]], dtype=np.int64)
 
 
 @dataclass(frozen=True, slots=True)
@@ -636,6 +601,10 @@ class StereographicKikuchiMap:
         Ordered by decreasing kinematic intensity.
     zone_axes : tuple of KikuchiMapZoneAxis
         Ordered by decreasing band count, then by proximity to the map centre.
+    has_intensity_model : bool
+        Whether the phase carried the atomic basis the structure factors need.
+        ``False`` means every band has relative intensity 1 and the band ordering
+        is enumeration order, not prominence -- the geometry is unaffected.
     """
 
     phase: Phase
@@ -646,6 +615,7 @@ class StereographicKikuchiMap:
     view_matrix: FloatArray
     bands: tuple[KikuchiMapBand, ...]
     zone_axes: tuple[KikuchiMapZoneAxis, ...]
+    has_intensity_model: bool = True
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -755,7 +725,12 @@ class StereographicKikuchiMap:
             "cones at 90 deg -/+ the Bragg angle from the plane normal, sampled exactly rather "
             "than approximated as straight.",
             "Intensities are a kinematic |F|^2 proxy: they order the bands but do not predict "
-            "excess-deficiency asymmetry, dynamical contrast, or higher-order Laue zone effects.",
+            "excess-deficiency asymmetry, dynamical contrast, or higher-order Laue zone effects."
+            if self.has_intensity_model
+            else "This phase carries no atomic basis, so there are no structure factors: every "
+            "band is reported at relative intensity 1 and the ordering is enumeration order, "
+            "not prominence. Every geometric quantity -- traces, widths, zone axes, routes -- is "
+            "unaffected.",
         ]
         return "\n".join(lines)
 
@@ -769,6 +744,7 @@ class StereographicKikuchiMap:
             "wavelength_angstrom": self.wavelength_angstrom,
             "centre": list(self.centre_indices),
             "horizontal": list(self.horizontal_indices),
+            "has_intensity_model": self.has_intensity_model,
             "bands": [
                 {
                     "indices": list(band.indices),
@@ -890,8 +866,11 @@ def compute_kikuchi_map(
     Parameters
     ----------
     phase : Phase
-        Lattice, symmetry, and — for intensities — the atomic basis. Without an
-        atomic basis the intensities degenerate to geometry alone.
+        Lattice, symmetry, and -- for intensities -- the atomic basis. A phase
+        carrying only a lattice still gives the full geometry: traces, widths, zone
+        axes and routes are all determined without a structure factor. Only the
+        band *ordering* is lost, and
+        :attr:`StereographicKikuchiMap.has_intensity_model` records that it was.
     beam_energy_kev : float
         Accelerating voltage. It enters only through the wavelength, so it scales
         every band width and changes nothing else about the map's topology.
@@ -1021,14 +1000,24 @@ def compute_kikuchi_map(
     # reflection of a monatomic crystal comes out with the *same* intensity and the
     # band ordering carries no information at all. A map's whole visual grammar is
     # that strong bands are prominent, so the ordering has to be real.
-    structure_factors = electron_structure_factor_angstrom(
-        phase, candidates, beam_energy_kev=beam_energy_kev
-    )
-    intensities = np.abs(structure_factors) ** 2
-    peak = float(np.max(intensities))
-    if peak <= 0.0:
-        raise ValueError("All candidate reflections have zero structure factor.")
-    intensities = intensities / peak
+    #
+    # A phase carrying only a lattice has no structure factor, and inventing one
+    # would be worse than declining to order the bands: the geometry -- traces,
+    # widths, zone axes, routes -- is completely determined without it, and that is
+    # most of what a map is for. So the intensities fall back to uniform and
+    # ``has_intensity_model`` records that they did, which describe() then states.
+    has_intensity_model = phase.unit_cell is not None and bool(phase.unit_cell.sites)
+    if has_intensity_model:
+        structure_factors = electron_structure_factor_angstrom(
+            phase, candidates, beam_energy_kev=beam_energy_kev
+        )
+        intensities = np.abs(structure_factors) ** 2
+        peak = float(np.max(intensities))
+        if peak <= 0.0:
+            raise ValueError("All candidate reflections have zero structure factor.")
+        intensities = intensities / peak
+    else:
+        intensities = np.ones(candidates.shape[0], dtype=np.float64)
     strong = intensities >= min_relative_intensity
     if not np.any(strong):
         raise ValueError("No reflection exceeds min_relative_intensity.")
@@ -1073,6 +1062,7 @@ def compute_kikuchi_map(
         view_matrix=view,
         bands=bands,
         zone_axes=zone_axes,
+        has_intensity_model=has_intensity_model,
         provenance=provenance,
     )
 
@@ -1105,83 +1095,76 @@ def _zone_axes_for_bands(
     min_order: int,
     max_polar_angle_deg: float,
 ) -> tuple[KikuchiMapZoneAxis, ...]:
-    """Zone axes as the crossings of band centre lines, with the bands at each."""
+    """Zone axes as the crossings of band centre lines, with the bands at each.
+
+    The zone axis common to two planes is the **integer** cross product of their
+    Miller indices, because the direct and reciprocal bases are dual: no metric
+    tensor appears in ``h u + k v + l w``, so the cross product of two index
+    triples is a direction triple. Working in integers rather than in Cartesian
+    coordinates makes this exact, makes deduplication a set lookup on tuples
+    instead of an O(n^2) sweep over float vectors, and removes the need to search
+    a grid for the nearest low-index direction. On a map with a few hundred bands
+    -- which a phase carrying no atomic basis produces, since nothing can be
+    filtered on intensity -- the difference is minutes against milliseconds.
+    """
 
     if len(bands) < 2:
         return ()
-    normals = np.asarray([band.normal_map for band in bands], dtype=np.float64)
-
-    # Candidate axes: every pair of band normals spans a plane whose pole is a
-    # potential zone axis. The cross product is in map coordinates.
     left, right = np.triu_indices(len(bands), k=1)
-    crossings = np.cross(normals[left], normals[right])
-    lengths = np.linalg.norm(crossings, axis=1)
-    crossings = crossings[lengths > 1e-9]
+    crossings = np.cross(plane_indices[left], plane_indices[right]).astype(np.int64)
+    crossings = crossings[np.any(crossings != 0, axis=1)]
     if crossings.shape[0] == 0:
         return ()
-    crossings = crossings / np.linalg.norm(crossings, axis=1)[:, None]
-    # Snap a numerically-zero z to exactly +0.0 before choosing representatives.
-    # An axis on the equator comes out of the cross product with z of order 1e-17
-    # of either sign, and a one-hemisphere projection folds on the sign of z, so
-    # without this an equatorial axis lands on whichever side of the disc the
-    # round-off happened to choose -- and the two senses of one axis can land on
-    # opposite sides. Snapping makes the equator a definite case.
-    crossings[np.abs(crossings[:, 2]) < 1e-12, 2] = 0.0
-    crossings = crossings / np.linalg.norm(crossings, axis=1)[:, None]
-    # One representative per antipodal pair. Taking the upper hemisphere is not
-    # enough on its own: an axis exactly on the equator has z = 0 in both senses,
-    # so the tie is broken on x and then on y, exactly as a lexicographic
-    # canonicalization would.
-    flip = (crossings[:, 2] < -1e-12) | (
-        (np.abs(crossings[:, 2]) <= 1e-12)
-        & (
-            (crossings[:, 0] < -1e-12)
-            | ((np.abs(crossings[:, 0]) <= 1e-12) & (crossings[:, 1] < 0.0))
-        )
-    )
-    crossings = np.where(flip[:, None], -crossings, crossings)
+    # Lowest terms: a direction is named by its simplest indices, and the multiples
+    # denote the same direction.
+    divisors = np.gcd.reduce(np.abs(crossings), axis=1)
+    crossings //= divisors[:, None]
+    # One representative per antipodal pair, canonicalized on the first non-zero
+    # component so that [uvw] and its negative -- the same axis, since the beam
+    # traverses the crystal either way -- collapse to one entry.
+    leading = crossings[np.arange(crossings.shape[0]), np.argmax(crossings != 0, axis=1)]
+    crossings = np.where((leading < 0)[:, None], -crossings, crossings)
+    crossings = crossings[np.max(np.abs(crossings), axis=1) <= max_index]
+    if crossings.shape[0] == 0:
+        return ()
+    unique_indices = np.unique(crossings, axis=0)
 
-    merged: list[np.ndarray] = []
-    cosine_merge = np.cos(np.radians(_AXIS_MERGE_ATOL_DEG))
-    for row in crossings:
-        if not any(float(np.dot(row, kept)) > cosine_merge for kept in merged):
-            merged.append(row)
+    # Cartesian directions in the map frame, and the zone law for every
+    # (axis, band) pair at once.
+    direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
+    cartesian = unique_indices.astype(np.float64) @ direct.T
+    cartesian = cartesian / np.linalg.norm(cartesian, axis=1)[:, None]
+    directions = cartesian @ np.asarray(view_matrix, dtype=np.float64).T
+    # A numerically-zero z is snapped to exactly +0.0. An axis on the equator has
+    # z of order 1e-17 of either sign, and a one-hemisphere projection folds on the
+    # sign of z, so without this it lands on whichever side of the disc the
+    # round-off chose -- and the two senses of one axis can land on opposite sides.
+    directions[np.abs(directions[:, 2]) < 1e-12, 2] = 0.0
+    # Draw each axis in the upper hemisphere. On the equator, where both senses have
+    # z = 0, break the tie lexicographically on x then y.
+    flip = (directions[:, 2] < 0.0) | (
+        (directions[:, 2] == 0.0)
+        & ((directions[:, 0] < 0.0) | ((directions[:, 0] == 0.0) & (directions[:, 1] < 0.0)))
+    )
+    drawn = np.where(flip[:, None], -directions, directions)
+    drawn = drawn / np.linalg.norm(drawn, axis=1)[:, None]
+    polar_deg = np.degrees(np.arccos(np.clip(drawn[:, 2], -1.0, 1.0)))
+    membership = (plane_indices @ unique_indices.T) == 0
 
     axes: list[KikuchiMapZoneAxis] = []
-    seen: set[tuple[int, ...]] = set()
-    for direction_map in merged:
-        polar_deg = float(np.degrees(np.arccos(np.clip(float(direction_map[2]), -1.0, 1.0))))
-        if polar_deg > max_polar_angle_deg + 1e-9:
+    for position in range(unique_indices.shape[0]):
+        if polar_deg[position] > max_polar_angle_deg + 1e-9:
             continue
-        # The map frame is a rotation of the crystal Cartesian frame, so the
-        # crystal-frame direction is the transpose applied to the map vector. The
-        # rationalization has to happen there: [uvw] means nothing in map
-        # coordinates.
-        direction_crystal = np.asarray(view_matrix, dtype=np.float64).T @ direction_map
-        indices = _rationalize_direction(
-            phase,
-            direction_crystal,
-            max_index=max_index,
-            tolerance_deg=_ZONE_LAW_ATOL_DEG,
-        )
-        if indices is None:
-            continue
-        key = tuple(int(value) for value in indices)
-        if key in seen:
-            continue
-        # Every band whose plane satisfies the Weiss zone law for this direction.
-        products = plane_indices @ indices
-        members = tuple(int(position) for position in np.nonzero(products == 0)[0])
+        members = tuple(int(index) for index in np.nonzero(membership[:, position])[0])
         if len(members) < min_order:
             continue
-        seen.add(key)
         axes.append(
             KikuchiMapZoneAxis(
                 phase=phase,
-                indices=key,
-                direction_map=direction_map,
+                indices=tuple(int(value) for value in unique_indices[position]),
+                direction_map=drawn[position],
                 band_indices=members,
-                polar_angle_deg=polar_deg,
+                polar_angle_deg=float(polar_deg[position]),
             )
         )
     axes.sort(key=lambda axis: (-axis.order, axis.polar_angle_deg))

@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Stereographic Kikuchi Maps For Zone-Axis Navigation — IN PROGRESS (opened 2026-08-10)
+## Stereographic Kikuchi Maps For Zone-Axis Navigation — CAPABILITY COMPLETE (2026-08-11)
 
 **Objective.** Give PyTex the TEM operator's road atlas: the Kikuchi bands and zone axes of a
 phase, drawn on a stereographic projection of the crystal sphere, with routing along bands
@@ -36,12 +36,48 @@ instrument operation, and band geometry on the crystal sphere is diffraction geo
 | # | Step | Status | Commit |
 | --- | --- | --- | --- |
 | 0 | Survey the three neighbouring surfaces; open this entry and the round-2 notebook rubric | done | (step 0) |
-| 1 | Notebooks 02 and 06 to the round-2 rubric, proving the standard is reachable | pending | |
-| 2 | `pytex.diffraction.kikuchi_map`: bands, zone axes, routing, `describe()`, JSON | pending | |
-| 3 | `pytex.plotting.kikuchi_map`: the rendered atlas, cubic and hexagonal | pending | |
-| 4 | Theory note, worked example, symbol registry, docs index, parity matrix | pending | |
-| 5 | Tutorial 30 | pending | |
+| 1 | Notebooks 02 and 06 to the round-2 rubric, proving the standard is reachable | done | (step 1) |
+| 2 | `pytex.diffraction.kikuchi_map`: bands, zone axes, routing, `describe()`, JSON | done | (step 2) |
+| 3 | `pytex.plotting.kikuchi_map`: the rendered atlas, cubic and hexagonal | done | (step 3) |
+| 4 | Theory note, worked example, symbol registry, docs index, parity matrix | done | (this commit) |
+| 5 | Tutorial 30 | done | (this commit) |
 | 6 | Remaining round-2 notebooks, per `docs/development/notebook_improvement_progress.md` | pending | |
+
+### Steps 2-5 outcome (2026-08-11)
+
+`src/pytex/diffraction/kikuchi_map.py` (~1200 lines) and
+`src/pytex/plotting/kikuchi_map.py`, with 42 tests across
+`tests/unit/test_kikuchi_map.py` and `tests/unit/test_kikuchi_map_plotting.py`, the theory note
+`docs/tex/algorithms/stereographic_kikuchi_maps.tex`, the worked example
+`diffraction-kikuchi-map-zone-axis-tilt-angles`, four new registry symbols and four new terms, a
+parity-matrix row claiming no MTEX parity with the reason, and tutorial 30.
+
+**Zone axes are integer cross products, and that is not a micro-optimization.** The first
+implementation crossed the *Cartesian* band normals, then searched a 7^3 index grid for the nearest
+low-index direction per crossing, then deduplicated by an O(n^2) sweep over float vectors with an
+angular tolerance. On a phase carrying an atomic basis that is tolerable, because the intensity
+filter keeps the band count near 70. On a phase carrying **only a lattice** nothing can be filtered
+on intensity, the band count goes to several hundred, and the sweep hangs — the worked example, which
+builds its phase inline and therefore has no unit cell, never returned. Since the direct and
+reciprocal bases are dual, the zone axis of two planes is the integer cross product of their index
+triples: exact, deduplicated by a set lookup on tuples, no grid search. The same map now builds in
+0.31 s instead of not at all.
+
+**Three sign traps, all the same trap.** A zone axis is a line, not a direction, and the two senses
+are the same axis. (a) Route legs reported each endpoint in the map's canonical sense, so consecutive
+legs did not join and the drawn arc ended on the opposite side of the disc from the target marker.
+(b) An equatorial axis has z of order 1e-17 of either sign, and a one-hemisphere projection folds on
+the sign of z, so which side it landed on was decided by round-off. (c) Negating an exact zero gives
+-0.0, whose sign bit is set, so the fold fired on it. Fixed by orienting the route chain explicitly,
+snapping numerically-zero z to +0.0 at construction, and adding zero after negation. Tutorial 30
+demonstrates the underlying fact as a failure mode, because any code comparing zone axes by index
+equality will eventually hit it.
+
+**A bare lattice degrades rather than raising.** `electron_structure_factor_angstrom` refuses a phase
+without atom positions, correctly. The map now falls back to uniform intensities and records
+`has_intensity_model=False`, which `describe()` states, because every geometric quantity — traces,
+widths, zone axes, routes — is fully determined without a structure factor and that is most of what a
+map is for.
 
 ### Step 0 outcome (2026-08-10)
 

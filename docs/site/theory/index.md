@@ -44,6 +44,7 @@ fixing is what is needed.
 - [../../tex/algorithms/phase_transformation_relationship_construction.tex](../../tex/algorithms/phase_transformation_relationship_construction.tex)
 - [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
 - [../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex](../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
+- [../../tex/algorithms/stereographic_kikuchi_maps.tex](../../tex/algorithms/stereographic_kikuchi_maps.tex)
 - [../../tex/algorithms/preferred_orientation_in_powder_intensities.tex](../../tex/algorithms/preferred_orientation_in_powder_intensities.tex)
 - [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
 - [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)

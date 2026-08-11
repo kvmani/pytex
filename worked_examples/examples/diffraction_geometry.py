@@ -364,14 +364,100 @@ ODF_WEIGHTED_RANDOM_TEXTURE = WorkedExample(
 )
 
 
+KIKUCHI_MAP_SETUP = """
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    compute_kikuchi_map,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+"""
+
+_TILT = SymbolUse(
+    r"\theta",
+    "Angle between two crystal zone axes; the stage travel of one routing leg.",
+)
+
+
+KIKUCHI_MAP_ZONE_AXIS_TILT_ANGLES = WorkedExample(
+    id="diffraction-kikuchi-map-zone-axis-tilt-angles",
+    title="Kikuchi-map routing reproduces the exact cubic zone-axis angles",
+    domain="diffraction",
+    scenario=(
+        "Build the stereographic Kikuchi map of nickel and ask it for the tilt "
+        "from [001] to [011], to [111], and to [112], with a leg budget large "
+        "enough that each is a single hop along one band. The angles between "
+        "low-index cubic directions are closed-form - 45 degrees, "
+        "arccos(1/sqrt(3)), and arccos(2/sqrt(6)) - so the routed travel is "
+        "checked against arithmetic rather than against a prior run. Getting "
+        "these right exercises the whole chain: the direct basis, the map frame, "
+        "the zone law that decides which bands join two axes, and the "
+        "shortest-path search."
+    ),
+    setup=KIKUCHI_MAP_SETUP,
+    code=(
+        "kikuchi_map = compute_kikuchi_map(\n"
+        "    nickel,\n"
+        "    beam_energy_kev=200.0,\n"
+        "    max_index=4,\n"
+        "    zone_axis_max_index=3,\n"
+        ")\n"
+        "targets = ([0, 1, 1], [1, 1, 1], [1, 1, 2])\n"
+        "result = np.array(\n"
+        "    [\n"
+        "        kikuchi_map.route_to([0, 0, 1], target, max_leg_deg=90.0).total_tilt_deg\n"
+        "        for target in targets\n"
+        "    ]\n"
+        ")"
+    ),
+    expected=[45.0, 54.735610317245346, 35.264389682754654],
+    unit="deg",
+    tolerance=1e-6,
+    reference=(
+        "Closed-form angles between cubic directions: arccos(1/sqrt(2)) = 45 deg "
+        "for [001]-[011], arccos(1/sqrt(3)) = 54.735610 deg for [001]-[111], and "
+        "arccos(2/sqrt(6)) = 35.264390 deg for [001]-[112]. The two [111] and "
+        "[112] values are complementary, summing to 90 degrees, because [112] is "
+        "the reflection of [001] in the plane perpendicular to [111]."
+    ),
+    citation=(
+        "Standard cubic interaxial angles; see International Tables for "
+        "Crystallography Vol. C (1999) for the reciprocal-lattice conventions, "
+        "and Williams and Carter, Transmission Electron Microscopy 2nd ed. "
+        "(2009) Ch. 19 for Kikuchi-map tilting."
+    ),
+    symbols=(_TILT,),
+    see_also=(_XRD_WORKFLOW, _XRD_CONCEPT),
+    result_format="{:.6f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="diffraction",
     title="Diffraction geometry",
     summary=(
         "Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band "
-        "and zone-axis geometry in the gnomonic projection, and preferred-orientation "
-        "corrections to powder intensities — each checked against a standard reference value or "
-        "a closed-form identity."
+        "and zone-axis geometry in the gnomonic projection, zone-axis routing on a "
+        "stereographic Kikuchi map, and preferred-orientation corrections to powder "
+        "intensities — each checked against a standard reference value or a closed-form "
+        "identity."
     ),
     examples=(
         NI_111_TWO_THETA,
@@ -380,6 +466,7 @@ GROUP = ExampleGroup(
         MARCH_DOLLASE_FAMILY_FACTOR,
         MARCH_DOLLASE_NORMALIZATION,
         ODF_WEIGHTED_RANDOM_TEXTURE,
+        KIKUCHI_MAP_ZONE_AXIS_TILT_ANGLES,
     ),
 )
 

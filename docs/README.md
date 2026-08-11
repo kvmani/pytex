@@ -88,6 +88,7 @@
 - [EBSD Boundaries And Cleanup](tex/algorithms/ebsd_boundaries_and_cleanup.tex)
 - [Diffraction Geometry And Bragg Rings](tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
 - [Kikuchi Bands And The Gnomonic Projection](tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
+- [Stereographic Kikuchi Maps And Zone-Axis Routing](tex/algorithms/stereographic_kikuchi_maps.tex)
 - [Preferred Orientation In Powder Intensities](tex/algorithms/preferred_orientation_in_powder_intensities.tex)
 - [Powder XRD And SAED](tex/algorithms/powder_xrd_and_saed.tex)
 - [Orientation Relationship Index Correspondence](tex/algorithms/orientation_relationship_index_correspondence.tex)

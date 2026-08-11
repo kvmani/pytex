@@ -55,6 +55,7 @@ notebooks/26_orientation_representations
 notebooks/27_tem_pattern_indexing_round_trip
 notebooks/28_convergent_beam_diffraction
 notebooks/29_dynamical_cbed_and_point_groups
+notebooks/30_kikuchi_maps_and_zone_axis_routing
 ```
 
 ## Orientation-Relationship Teaching Track
