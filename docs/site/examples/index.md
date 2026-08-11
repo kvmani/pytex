@@ -63,6 +63,9 @@ The complete set of computed-versus-expected values at a glance:
 | `ipf-cubic-sector-corners-are-primaries` | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | &mdash; | ✅ |
 | `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | ✅ |
 | `ipf-symmetric-equivalents-share-one-colour` | 7.08e-15 | 0.00e+00 | &mdash; | ✅ |
+| `mdf-triclinic-mean-disorientation-angle` | 126.3581 | 126.4756 | deg | ✅ |
+| `mdf-cubic-maximum-disorientation-angle` | 62.7994 | 62.7994 | deg | ✅ |
+| `mdf-cubic-random-low-angle-fraction` | 0.0223 | 0.0223 | &mdash; | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
@@ -98,6 +101,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Dynamical CBED and symmetry determination <generated/dynamical-cbed-and-symmetry>` &mdash; The exact limits that calibrate a many-beam calculation, the HOLZ degeneracy that makes voltage calibration mandatory, and the diffraction-group construction that determines a point group including its centre of symmetry.
 - {doc}`Texture kernels <generated/texture>` &mdash; Analytic identities of the SO(3) kernel surface - normalization (A_0 = 1) and the halfwidth definition - together with the m.r.d. scale on which pole densities are reported, all computed live.
 - {doc}`Inverse-pole-figure colouring <generated/ipf-coloring>` &mdash; What an IPF colour actually is, checked against hand-derived values: the sector corners colour to exact primaries, a direction on the [001]-[111] edge colours to exactly (1, 0, 3/4) by the closed form, and every symmetric equivalent shares one colour.
+- {doc}`Random disorientation baseline <generated/random-disorientation>` &mdash; The null hypothesis every MDF claim is measured against: the exact (1 - cos w)/pi density with no symmetry, the exact cubic maximum 62.7994 degrees from the Rodrigues zone vertex, and the 2.2 percent of random cubic boundaries that are low-angle by chance.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
@@ -118,6 +122,7 @@ generated/convergent-beam-diffraction
 generated/dynamical-cbed-and-symmetry
 generated/texture
 generated/ipf-coloring
+generated/random-disorientation
 generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
 generated/transformation

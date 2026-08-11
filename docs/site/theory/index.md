@@ -38,6 +38,7 @@ canonical_data_model
 euler_convention_handling
 orientation_representations
 orientation_space_and_disorientation
+random_disorientation_baseline
 fundamental_region_reduction
 hexagonal_conventions
 crystal_structures_and_cif_import
