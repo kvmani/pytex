@@ -5,6 +5,56 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Double Diffraction In The Kinematic SAED Engine — IN PROGRESS (2026-08-11)
+
+**Objective.** Let the kinematic zone-axis engine optionally emit the reflections that appear in
+a real TEM pattern only because a diffracted beam re-diffracts: a reflection whose structure
+factor vanishes still appears when its indices are the algebraic sum of two reflections that are
+themselves excited. Silicon 002 along [110] and hcp 0001-type absences are the canonical cases.
+Such spots must be **labelled as kinematically forbidden and present only through double
+diffraction**, never silently mixed in with genuine reflections.
+
+**Why the integer-sum rule is the right model here.** The engine is kinematic; it cannot solve
+the dynamical coupling that actually produces these spots. What it *can* do exactly is the
+selection rule: the doubly-diffracted beam leaves the crystal along `g1 + g2`, so the set of
+reachable spots is the set of pairwise integer sums of the excited reflections. That set is a
+geometric fact independent of the dynamical theory, which is why the sum rule is what textbooks
+state. Only the *intensity* is a model choice, and it is declared as indicative.
+
+**Key structural fact discovered while designing this.** Lattice-centring conditions define a
+sublattice of reciprocal space, and a sublattice is closed under addition: the sum of two
+centring-allowed reflections is always centring-allowed. So double diffraction can *never*
+revive a centring absence (F-centred 100 stays dark), only a **basis** absence from a glide
+plane, a screw axis, or a motif — which is exactly what the literature reports. The
+implementation therefore needs no special centring handling; the closure does the work, and a
+test pins it.
+
+**Where the code goes.** `src/pytex/diffraction/kinematic.py` — the vectorized engine and
+`SpotTable`, which is what `pytex.diffraction.composite` and the TEM indexing surfaces consume.
+The legacy loop-based `saed.generate_saed_pattern` is not extended; its docstring is corrected
+to point at the engine that models this.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 0 | Survey the SAED surfaces; open this ledger entry | done | (step 0) |
+| 1 | Engine: config flags, sum-rule enumeration, `SpotTable` designation arrays, `describe()` | done | (step 1) |
+| 2 | Export/reflection-table column and JSON contract | in progress | |
+| 3 | Plotting designation (distinct marker for forbidden spots) | todo | |
+| 4 | Docs, worked example, validation matrix, CHANGELOG | todo | |
+
+### Current worktree state
+
+Step 1 landed. `pytex.diffraction.kinematic` carries
+`KinematicSimulationConfig.include_double_diffraction` / `.double_diffraction_coupling`, the
+public `double_diffraction_sums` selection rule, `SpotTable.is_double_diffraction` /
+`.double_diffraction_parents` / `.forbidden_mask()` /
+`.double_diffraction_origin_label(row)`, and a `describe()` that states the designation.
+Verified on silicon [110]: 002, 222 and 442 appear, each flagged, each with a parent pair of
+{111}-type reflections, and all weaker than every genuine reflection. The class-model
+diffraction SVG was regenerated for the two new `SpotTable` fields.
+
 ## Stereographic Kikuchi Maps For Zone-Axis Navigation — CAPABILITY COMPLETE (2026-08-11)
 
 **Objective.** Give PyTex the TEM operator's road atlas: the Kikuchi bands and zone axes of a

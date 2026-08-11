@@ -12,6 +12,7 @@ Pinned references:
 from __future__ import annotations
 
 import itertools
+from collections.abc import Callable
 
 import numpy as np
 import pytest
@@ -29,7 +30,9 @@ from pytex.core.lattice import (
 from pytex.core.symmetry import SymmetrySpec
 from pytex.diffraction.kinematic import (
     KinematicSimulationConfig,
+    SpotTable,
     centering_allowed_mask,
+    double_diffraction_sums,
     electron_structure_factors,
     electron_wavelength_angstrom,
     simulate_zone_axis_spots,
@@ -423,6 +426,9 @@ class TestConfigValidation:
             {"relrod_sigma_inv_angstrom": -1.0},
             {"min_relative_intensity": 1.0},
             {"min_relative_intensity": -0.1},
+            {"double_diffraction_coupling": 0.0},
+            {"double_diffraction_coupling": 1.5},
+            {"double_diffraction_coupling": -0.2},
         ],
     )
     def test_invalid_config_raises(self, kwargs: dict[str, object]) -> None:
@@ -432,3 +438,245 @@ class TestConfigValidation:
     def test_wavelength_property(self) -> None:
         config = KinematicSimulationConfig(beam_energy_kev=200.0)
         assert config.wavelength_angstrom == pytest.approx(0.025079, abs=5e-7)
+
+
+def make_silicon_phase() -> Phase:
+    """Diamond-cubic silicon, a = 5.4309 angstrom (ICDD 27-1402)."""
+
+    crystal = _crystal_frame()
+    lattice = Lattice(5.4309, 5.4309, 5.4309, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    face_centred = [(0.0, 0.0, 0.0), (0.5, 0.5, 0.0), (0.5, 0.0, 0.5), (0.0, 0.5, 0.5)]
+    coordinates = [
+        tuple(np.asarray(base) + offset)
+        for base in face_centred
+        for offset in (np.zeros(3), np.full(3, 0.25))
+    ]
+    sites = tuple(
+        AtomicSite(label=f"Si{i}", species="Si", fractional_coordinates=np.asarray(coords))
+        for i, coords in enumerate(coordinates)
+    )
+    return Phase(
+        "silicon",
+        lattice=lattice,
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+        crystal_frame=crystal,
+        unit_cell=UnitCell(lattice=lattice, sites=sites),
+        space_group_symbol="Fd-3m",
+    )
+
+
+class TestDoubleDiffractionSums:
+    def test_sums_and_weights_are_the_pairwise_products(self) -> None:
+        hkl = np.array([[1, 1, 1], [1, 1, -1]], dtype=np.int64)
+        intensity = np.array([0.8, 0.5])
+        sums, weight, parents = double_diffraction_sums(hkl, intensity)
+        lookup = {
+            tuple(int(v) for v in row): (float(w), p)
+            for row, w, p in zip(sums, weight, parents, strict=True)
+        }
+        assert lookup[(2, 2, 2)][0] == pytest.approx(0.64)
+        assert lookup[(2, 2, 0)][0] == pytest.approx(0.40)
+        assert lookup[(2, 2, -2)][0] == pytest.approx(0.25)
+        assert np.array_equal(lookup[(2, 2, 0)][1].sum(axis=0), np.array([2, 2, 0]))
+
+    def test_transmitted_beam_is_excluded(self) -> None:
+        hkl = np.array([[1, 1, 1], [-1, -1, -1]], dtype=np.int64)
+        sums, _, _ = double_diffraction_sums(hkl, np.array([1.0, 1.0]))
+        assert not np.any(np.all(sums == 0, axis=1))
+
+    def test_repeated_paths_accumulate(self) -> None:
+        # (2 0 0) is reachable both as (1 1 1) + (1 -1 -1) and as (1 -1 1) +
+        # (1 1 -1), so its weight is the sum of the two path products.
+        hkl = np.array([[1, 1, 1], [1, -1, -1], [1, -1, 1], [1, 1, -1]], dtype=np.int64)
+        sums, weight, _ = double_diffraction_sums(hkl, np.full(4, 0.5))
+        row = int(np.flatnonzero(np.all(sums == np.array([2, 0, 0]), axis=1))[0])
+        assert float(weight[row]) == pytest.approx(0.5)
+
+    def test_empty_input(self) -> None:
+        sums, weight, parents = double_diffraction_sums(
+            np.zeros((0, 3), dtype=np.int64), np.zeros(0)
+        )
+        assert sums.shape == (0, 3)
+        assert weight.shape == (0,)
+        assert parents.shape == (0, 2, 3)
+
+    def test_parents_always_sum_to_their_reflection(self) -> None:
+        rng = np.random.default_rng(7)
+        hkl = np.unique(rng.integers(-3, 4, size=(40, 3)), axis=0)
+        sums, _, parents = double_diffraction_sums(hkl, rng.random(hkl.shape[0]))
+        assert np.array_equal(parents.sum(axis=1), sums)
+
+    @pytest.mark.parametrize(
+        "bad",
+        [np.zeros((4, 2), dtype=np.int64), np.zeros(3, dtype=np.int64)],
+    )
+    def test_malformed_indices_raise(self, bad: np.ndarray) -> None:
+        with pytest.raises(ValueError, match=r"shape \(M, 3\)"):
+            double_diffraction_sums(bad, np.zeros(bad.shape[0]))
+
+    def test_mismatched_intensity_length_raises(self) -> None:
+        with pytest.raises(ValueError, match=r"shape \(M,\)"):
+            double_diffraction_sums(np.zeros((4, 3), dtype=np.int64), np.zeros(3))
+
+
+class TestDoubleDiffractionInPatterns:
+    """Silicon [110] is the textbook case.
+
+    In diamond cubic, ``F`` vanishes unless ``h, k, l`` are all odd or all even
+    with ``h + k + l = 4n``, so 002 is forbidden. It is nevertheless present in
+    every recorded Si [110] pattern, produced by the two-step path
+    ``(1 1 1) + (-1 -1 1)``; see Williams and Carter, *Transmission Electron
+    Microscopy*, 2nd ed. (2009), ch. 16.
+    """
+
+    @staticmethod
+    def _silicon_table(*, include: bool) -> SpotTable:
+        phase = make_silicon_phase()
+        config = KinematicSimulationConfig(
+            max_index=4, g_max_inv_angstrom=1.2, include_double_diffraction=include
+        )
+        return simulate_zone_axis_spots(
+            phase, ZoneAxis([1, 1, 0], phase=phase), config=config
+        )
+
+    def test_forbidden_002_absent_by_default(self) -> None:
+        table = self._silicon_table(include=False)
+        assert not np.any(np.all(np.abs(table.hkl) == np.array([0, 0, 2]), axis=1))
+        assert not np.any(table.is_double_diffraction)
+
+    def test_forbidden_002_appears_and_is_designated(self) -> None:
+        table = self._silicon_table(include=True)
+        rows = np.flatnonzero(np.all(np.abs(table.hkl) == np.array([0, 0, 2]), axis=1))
+        assert rows.size == 2
+        for row in rows:
+            assert bool(table.is_double_diffraction[row])
+            assert float(table.structure_factor_amplitude[row]) == pytest.approx(0.0, abs=1e-9)
+            parents = table.double_diffraction_parents[row]
+            assert np.array_equal(parents.sum(axis=0), table.hkl[row])
+            assert np.all(np.abs(parents) == 1)
+
+    def test_added_spots_are_weaker_than_the_genuine_ones(self) -> None:
+        table = self._silicon_table(include=True)
+        forbidden = table.is_double_diffraction
+        assert float(np.max(table.intensity[forbidden])) < float(
+            np.min(table.intensity[~forbidden])
+        )
+        assert float(np.max(table.intensity)) == pytest.approx(1.0)
+
+    def test_enabling_only_adds_rows(self) -> None:
+        plain = self._silicon_table(include=False)
+        extended = self._silicon_table(include=True)
+        plain_rows = {tuple(int(v) for v in row) for row in plain.hkl}
+        extended_rows = {tuple(int(v) for v in row) for row in extended.hkl}
+        assert plain_rows < extended_rows
+        marked = {
+            tuple(int(v) for v in row)
+            for row in extended.hkl[extended.is_double_diffraction]
+        }
+        assert extended_rows - plain_rows == marked
+
+    def test_coupling_scales_the_added_intensity_linearly(self) -> None:
+        phase = make_silicon_phase()
+        zone = ZoneAxis([1, 1, 0], phase=phase)
+        intensities = []
+        for coupling in (0.02, 0.04):
+            table = simulate_zone_axis_spots(
+                phase,
+                zone,
+                config=KinematicSimulationConfig(
+                    max_index=4,
+                    g_max_inv_angstrom=1.2,
+                    include_double_diffraction=True,
+                    double_diffraction_coupling=coupling,
+                ),
+            )
+            row = int(np.flatnonzero(np.all(table.hkl == np.array([0, 0, 2]), axis=1))[0])
+            intensities.append(float(table.intensity[row]))
+        assert intensities[1] == pytest.approx(2.0 * intensities[0])
+
+    def test_describe_reports_the_designation(self) -> None:
+        text = self._silicon_table(include=True).describe()
+        assert "kinematically forbidden" in text
+        assert "double diffraction" in text
+        assert "Double diffraction is disabled" in self._silicon_table(include=False).describe()
+
+    @pytest.mark.parametrize(
+        ("factory", "rule"),
+        [(make_iron_bcc_phase, "I"), (make_nickel_phase, "F")],
+    )
+    def test_centring_absences_are_never_revived(
+        self, factory: Callable[[], Phase], rule: str
+    ) -> None:
+        # Centring conditions define a sublattice of reciprocal space, and a
+        # sublattice is closed under addition, so no sum of two allowed
+        # reflections can land on a centring absence. Double diffraction can
+        # only revive a basis absence.
+        phase = factory()
+        table = simulate_zone_axis_spots(
+            phase,
+            ZoneAxis([1, 1, 0], phase=phase),
+            config=KinematicSimulationConfig(
+                max_index=5, include_double_diffraction=True, double_diffraction_coupling=1.0
+            ),
+        )
+        allowed = centering_allowed_mask(table.hkl, ReflectionCondition(centering=rule))
+        assert bool(np.all(allowed))
+
+    def test_origin_label_is_empty_for_genuine_reflections(self) -> None:
+        table = self._silicon_table(include=True)
+        assert table.double_diffraction_origin_label(0) == ""
+        row = int(np.flatnonzero(table.is_double_diffraction)[0])
+        assert "=" in table.double_diffraction_origin_label(row)
+
+    def test_designation_arrays_are_read_only(self) -> None:
+        table = self._silicon_table(include=True)
+        with pytest.raises(ValueError):
+            table.is_double_diffraction[0] = True
+        with pytest.raises(ValueError):
+            table.double_diffraction_parents[0, 0, 0] = 9
+
+
+class TestSpotTableDesignationValidation:
+    @staticmethod
+    def _minimal_kwargs(phase: Phase) -> dict[str, object]:
+        table = simulate_zone_axis_spots(
+            phase,
+            ZoneAxis([0, 0, 1], phase=phase),
+            config=KinematicSimulationConfig(max_index=2),
+        )
+        return {
+            "phase": table.phase,
+            "zone_axis": table.zone_axis,
+            "basis": table.basis,
+            "config": table.config,
+            "hkl": table.hkl,
+            "g_crystal": table.g_crystal,
+            "g_detector_inv_angstrom": table.g_detector_inv_angstrom,
+            "detector_mm": table.detector_mm,
+            "d_spacing_angstrom": table.d_spacing_angstrom,
+            "structure_factor_amplitude": table.structure_factor_amplitude,
+            "intensity": table.intensity,
+            "excitation_error_inv_angstrom": table.excitation_error_inv_angstrom,
+        }
+
+    def test_wrong_flag_length_raises(self) -> None:
+        kwargs = self._minimal_kwargs(make_nickel_phase())
+        with pytest.raises(ValueError, match="is_double_diffraction"):
+            SpotTable(**kwargs, is_double_diffraction=np.zeros(3, dtype=bool))  # type: ignore[arg-type]
+
+    def test_wrong_parent_shape_raises(self) -> None:
+        kwargs = self._minimal_kwargs(make_nickel_phase())
+        with pytest.raises(ValueError, match="double_diffraction_parents"):
+            SpotTable(**kwargs, double_diffraction_parents=np.zeros((2, 2, 3), dtype=np.int64))  # type: ignore[arg-type]
+
+    def test_parents_that_do_not_sum_to_their_reflection_raise(self) -> None:
+        kwargs = self._minimal_kwargs(make_nickel_phase())
+        count = int(np.asarray(kwargs["hkl"]).shape[0])  # type: ignore[arg-type]
+        flags = np.zeros(count, dtype=bool)
+        flags[0] = True
+        with pytest.raises(ValueError, match="must sum to the reflection"):
+            SpotTable(  # type: ignore[arg-type]
+                **kwargs,
+                is_double_diffraction=flags,
+                double_diffraction_parents=np.zeros((count, 2, 3), dtype=np.int64),
+            )

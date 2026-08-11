@@ -28,6 +28,10 @@ Conventions (pinned; see
   proxy (atomic-number scattering with isotropic Debye-Waller damping),
   optionally damped by a relrod profile ``1 / (1 + (s_g / sigma_s)^2)``;
   intensities are normalized to a maximum of 1 per pattern.
+- Double diffraction is off by default. When enabled, reflections reachable as
+  the integer sum of two excited reflections are added even where the structure
+  factor forbids them, and are flagged as such; see
+  :func:`double_diffraction_sums`.
 """
 
 from __future__ import annotations
@@ -102,6 +106,12 @@ class KinematicSimulationConfig:
     intensity with distance from the exact Bragg condition;
     ``None`` disables damping. ``min_relative_intensity`` removes
     numerically-forbidden reflections after normalization.
+
+    ``include_double_diffraction`` adds the reflections that are kinematically
+    forbidden but observable in a real pattern because a diffracted beam
+    re-diffracts: a spot appears at ``g1 + g2`` for any two excited
+    reflections. ``double_diffraction_coupling`` scales their indicative
+    intensity; see :func:`simulate_zone_axis_spots`.
     """
 
     beam_energy_kev: float = 200.0
@@ -113,6 +123,8 @@ class KinematicSimulationConfig:
     relrod_sigma_inv_angstrom: float | None = None
     apply_centering_absences: bool = True
     min_relative_intensity: float = 1e-4
+    include_double_diffraction: bool = False
+    double_diffraction_coupling: float = 0.05
 
     def __post_init__(self) -> None:
         if not np.isfinite(self.beam_energy_kev) or self.beam_energy_kev <= 0.0:
@@ -151,6 +163,11 @@ class KinematicSimulationConfig:
             or not 0.0 <= self.min_relative_intensity < 1.0
         ):
             raise ValueError("min_relative_intensity must lie in the interval [0, 1).")
+        if (
+            not np.isfinite(self.double_diffraction_coupling)
+            or not 0.0 < self.double_diffraction_coupling <= 1.0
+        ):
+            raise ValueError("double_diffraction_coupling must lie in the interval (0, 1].")
 
     @property
     def wavelength_angstrom(self) -> float:
@@ -305,6 +322,76 @@ _RADIUS_SORT_DECIMALS = 9
 _INTENSITY_SORT_DECIMALS = 12
 
 
+def _hkl_keys(hkl: np.ndarray, max_index: int) -> np.ndarray:
+    """Injective int64 encoding of indices bounded by ``max_index``."""
+
+    span = 2 * int(max_index) + 1
+    shifted = np.asarray(hkl, dtype=np.int64) + int(max_index)
+    return np.asarray(
+        shifted[:, 0] * span * span + shifted[:, 1] * span + shifted[:, 2], dtype=np.int64
+    )
+
+
+def double_diffraction_sums(
+    hkl: np.ndarray, intensity: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Pairwise integer sums of excited reflections — the double-diffraction rule.
+
+    Purpose: enumerate the reflections a doubly-diffracted beam can reach. A
+    beam diffracted by ``g1`` is itself an incident beam inside the crystal, so
+    diffracting it again by ``g2`` sends it out along ``g1 + g2``. The set of
+    reachable spots is therefore the set of pairwise algebraic sums of the
+    excited reflections, which is a geometric selection rule and does not
+    depend on the dynamical theory that supplies the intensities.
+
+    When to use: to decide which kinematically forbidden reflections may still
+    appear in a zone-axis pattern. Note that lattice-centring conditions define
+    a *sublattice* of reciprocal space and a sublattice is closed under
+    addition, so this rule can never revive a centring absence — only a basis
+    absence from a glide plane, a screw axis, or the motif.
+
+    Inputs: ``hkl`` shape ``(M, 3)`` integer reflections, and ``intensity``
+    shape ``(M,)`` their non-negative relative intensities. Each unordered pair
+    is taken once, including a reflection with itself (the ``2g`` path).
+
+    Output: ``(sums, weight, parents)`` — unique sums of shape ``(K, 3)``, the
+    summed two-step coupling weight ``sum over paths of I1 * I2`` of shape
+    ``(K,)``, and the strongest contributing parent pair of shape ``(K, 2, 3)``.
+    The zero sum from a ``g``/``-g`` pair, which is the transmitted beam, is
+    excluded.
+    """
+
+    indices = np.asarray(hkl, dtype=np.int64)
+    if indices.ndim != 2 or indices.shape[1] != 3:
+        raise ValueError("hkl must have shape (M, 3).")
+    weights_in = np.asarray(intensity, dtype=np.float64)
+    if weights_in.shape != (indices.shape[0],):
+        raise ValueError("intensity must have shape (M,).")
+    if indices.shape[0] == 0:
+        return (
+            np.zeros((0, 3), dtype=np.int64),
+            np.zeros((0,), dtype=np.float64),
+            np.zeros((0, 2, 3), dtype=np.int64),
+        )
+
+    left, right = np.triu_indices(indices.shape[0])
+    sums = indices[left] + indices[right]
+    weights = weights_in[left] * weights_in[right]
+    nonzero = np.any(sums != 0, axis=1)
+    sums, weights, left, right = sums[nonzero], weights[nonzero], left[nonzero], right[nonzero]
+
+    unique, inverse = np.unique(sums, axis=0, return_inverse=True)
+    inverse = np.asarray(inverse, dtype=np.int64).ravel()
+    total = np.bincount(inverse, weights=weights, minlength=unique.shape[0])
+    # Last write wins over ascending weight, so each group keeps its strongest
+    # path — a stable way to pick a per-group argmax without a Python loop.
+    order = np.argsort(weights, kind="stable")
+    best = np.zeros(unique.shape[0], dtype=np.int64)
+    best[inverse[order]] = order
+    parents = np.stack([indices[left[best]], indices[right[best]]], axis=1)
+    return unique, np.asarray(total, dtype=np.float64), parents
+
+
 def _enumerate_hkl_cube(max_index: int) -> np.ndarray:
     values = np.arange(-max_index, max_index + 1, dtype=np.int64)
     grid_h, grid_k, grid_l = np.meshgrid(values, values, values, indexing="ij")
@@ -328,6 +415,13 @@ class SpotTable:
     stacks the ``(u, v)`` detector-plane coordinates in millimetres;
     ``g_detector_inv_angstrom`` holds the same coordinates in reciprocal
     angstrom before camera scaling.
+
+    ``is_double_diffraction`` marks the rows that are **kinematically
+    forbidden** and present only because the double-diffraction option was
+    enabled; ``double_diffraction_parents`` gives the strongest contributing
+    reflection pair ``g1 + g2`` for those rows and is all zeros elsewhere.
+    Treat a marked row as an observability statement, not as a kinematic
+    intensity: its structure factor is (near) zero, which is why it is marked.
     """
 
     phase: Phase
@@ -343,6 +437,8 @@ class SpotTable:
     intensity: np.ndarray
     excitation_error_inv_angstrom: np.ndarray
     provenance: ProvenanceRecord | None = None
+    is_double_diffraction: np.ndarray | None = None
+    double_diffraction_parents: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         basis = as_float_array(self.basis, shape=(3, 3))
@@ -359,6 +455,27 @@ class SpotTable:
         amplitude = as_float_array(self.structure_factor_amplitude, shape=(count,))
         intensity = as_float_array(self.intensity, shape=(count,))
         excitation = as_float_array(self.excitation_error_inv_angstrom, shape=(count,))
+        if self.is_double_diffraction is None:
+            forbidden = np.zeros(count, dtype=bool)
+        else:
+            forbidden = np.ascontiguousarray(np.asarray(self.is_double_diffraction, dtype=bool))
+            if forbidden.shape != (count,):
+                raise ValueError("SpotTable.is_double_diffraction must have shape (N,).")
+        if self.double_diffraction_parents is None:
+            parents = np.zeros((count, 2, 3), dtype=np.int64)
+        else:
+            parents = np.ascontiguousarray(
+                np.asarray(self.double_diffraction_parents, dtype=np.int64)
+            )
+            if parents.shape != (count, 2, 3):
+                raise ValueError(
+                    "SpotTable.double_diffraction_parents must have shape (N, 2, 3)."
+                )
+            if count and np.any(parents.sum(axis=1)[forbidden] != hkl[forbidden]):
+                raise ValueError(
+                    "SpotTable.double_diffraction_parents must sum to the reflection they "
+                    "produce."
+                )
         if count:
             if np.any(~np.isfinite(g_crystal)) or np.any(~np.isfinite(detector_mm)):
                 raise ValueError("SpotTable coordinate arrays must be finite.")
@@ -382,6 +499,8 @@ class SpotTable:
             amplitude,
             intensity,
             excitation,
+            forbidden,
+            parents,
         ):
             array.setflags(write=False)
         object.__setattr__(self, "basis", basis)
@@ -393,6 +512,8 @@ class SpotTable:
         object.__setattr__(self, "structure_factor_amplitude", amplitude)
         object.__setattr__(self, "intensity", intensity)
         object.__setattr__(self, "excitation_error_inv_angstrom", excitation)
+        object.__setattr__(self, "is_double_diffraction", forbidden)
+        object.__setattr__(self, "double_diffraction_parents", parents)
 
     def __len__(self) -> int:
         return int(self.hkl.shape[0])
@@ -418,6 +539,28 @@ class SpotTable:
 
     def detector_radius_mm(self) -> np.ndarray:
         return np.asarray(np.linalg.norm(self.detector_mm, axis=1), dtype=np.float64)
+
+    def forbidden_mask(self) -> np.ndarray:
+        """Rows that are kinematically forbidden and present only by double diffraction."""
+
+        return np.asarray(self.is_double_diffraction, dtype=bool)
+
+    def double_diffraction_origin_label(self, row: int) -> str:
+        """How row ``row`` arises by double diffraction, as ``g1 + g2 = g``.
+
+        Returns the empty string for a row that is a genuine kinematic
+        reflection, so a caller can annotate unconditionally.
+        """
+
+        index = int(row)
+        if not bool(self.forbidden_mask()[index]):
+            return ""
+        first, second = np.asarray(self.double_diffraction_parents)[index]
+        return (
+            f"({' '.join(str(int(v)) for v in first)}) + "
+            f"({' '.join(str(int(v)) for v in second)}) = "
+            f"({' '.join(str(int(v)) for v in self.hkl[index])})"
+        )
 
     def describe(self) -> str:
         """Prose summary of the simulated zone-axis pattern and conventions."""
@@ -447,10 +590,115 @@ class SpotTable:
         strongest = ", ".join(
             f"({label})" for label in self.hkl_labels()[: min(4, len(self))]
         )
-        return (
+        summary = (
             f"{header} {selection} {intensity} Strongest reflections: {strongest}. "
             f"Minimum d-spacing {float(np.min(self.d_spacing_angstrom)):.4f} angstrom."
         )
+        forbidden_rows = np.flatnonzero(self.forbidden_mask())
+        if not config.include_double_diffraction:
+            return (
+                f"{summary} Double diffraction is disabled, so kinematically forbidden "
+                "reflections that a real pattern would show are absent."
+            )
+        if forbidden_rows.size == 0:
+            return (
+                f"{summary} Double diffraction is enabled but no forbidden reflection is "
+                "reachable as a sum of two excited reflections here."
+            )
+        examples = "; ".join(
+            self.double_diffraction_origin_label(int(row)) for row in forbidden_rows[:3]
+        )
+        return (
+            f"{summary} {forbidden_rows.size} reflection(s) are kinematically forbidden and "
+            "present only through double diffraction, at an indicative intensity scaled by a "
+            f"coupling of {config.double_diffraction_coupling:g}: {examples}."
+        )
+
+
+def _append_double_diffraction_rows(
+    phase: Phase,
+    *,
+    hkl: np.ndarray,
+    g_crystal: np.ndarray,
+    g_magnitude: np.ndarray,
+    excitation_error: np.ndarray,
+    amplitude: np.ndarray,
+    intensity: np.ndarray,
+    reciprocal_matrix: np.ndarray,
+    zone_unit: np.ndarray,
+    wavelength: float,
+    normalization: float,
+    config: KinematicSimulationConfig,
+) -> tuple[
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+    np.ndarray,
+]:
+    """Extend a kinematic reflection set with its double-diffraction spots."""
+
+    max_index = int(config.max_index)
+    candidates, weight, parents = double_diffraction_sums(hkl, intensity)
+
+    # Sums outside the enumerated cube were never candidates for the kinematic
+    # pass either, so admitting them would smuggle in ordinary allowed
+    # reflections under the double-diffraction label.
+    keep = np.all(np.abs(candidates) <= max_index, axis=1)
+    # A sum that already has a spot is that spot; double diffraction adds an
+    # unresolvable contribution to it, not a new reflection.
+    keep &= ~np.isin(_hkl_keys(candidates, max_index), _hkl_keys(hkl, max_index))
+    candidates, weight, parents = candidates[keep], weight[keep], parents[keep]
+
+    g_new = candidates.astype(np.float64) @ reciprocal_matrix.T
+    g_magnitude_new = np.linalg.norm(g_new, axis=1)
+    keep = g_magnitude_new > 0.0
+    if config.g_max_inv_angstrom is not None:
+        keep &= g_magnitude_new <= config.g_max_inv_angstrom
+    excitation_new = g_new @ zone_unit - 0.5 * wavelength * g_magnitude_new**2
+    keep &= np.abs(excitation_new) <= config.max_excitation_error_inv_angstrom
+    candidates, weight, parents = candidates[keep], weight[keep], parents[keep]
+    g_new = g_new[keep]
+    g_magnitude_new, excitation_new = g_magnitude_new[keep], excitation_new[keep]
+
+    amplitude_new = np.abs(electron_structure_factors(phase, candidates, g_magnitude_new))
+    if config.intensity_model == "unit":
+        base = np.ones_like(amplitude_new)
+    else:
+        base = amplitude_new**2
+    if config.relrod_sigma_inv_angstrom is not None:
+        base = base / (1.0 + (excitation_new / config.relrod_sigma_inv_angstrom) ** 2)
+    residual = base / normalization if normalization > 0.0 else np.zeros_like(base)
+    # The two-step amplitude scales as F(g1) F(g2), so the intensity scales as
+    # the product of the two parent intensities; paths are summed because their
+    # relative phases are outside what a kinematic treatment can supply. The
+    # coupling constant carries everything the kinematic theory cannot — beam
+    # coupling strength and specimen thickness — so the result is an
+    # observability estimate, not a measured intensity. Clipping keeps the
+    # per-pattern "normalized to max 1" invariant intact.
+    intensity_new = np.minimum(
+        1.0, config.double_diffraction_coupling * weight + residual
+    )
+    keep = intensity_new >= config.min_relative_intensity
+    candidates, parents = candidates[keep], parents[keep]
+    g_new = g_new[keep]
+    g_magnitude_new, excitation_new = g_magnitude_new[keep], excitation_new[keep]
+    amplitude_new, intensity_new = amplitude_new[keep], intensity_new[keep]
+
+    count = hkl.shape[0]
+    return (
+        np.concatenate([hkl, candidates]),
+        np.concatenate([g_crystal, g_new]),
+        np.concatenate([g_magnitude, g_magnitude_new]),
+        np.concatenate([excitation_error, excitation_new]),
+        np.concatenate([amplitude, amplitude_new]),
+        np.concatenate([intensity, intensity_new]),
+        np.concatenate([np.zeros(count, dtype=bool), np.ones(candidates.shape[0], dtype=bool)]),
+        np.concatenate([np.zeros((count, 2, 3), dtype=np.int64), parents]),
+    )
 
 
 def simulate_zone_axis_spots(
@@ -483,6 +731,15 @@ def simulate_zone_axis_spots(
 
     Output: a :class:`SpotTable` sorted by decreasing intensity with
     read-only struct-of-arrays reflection data.
+
+    Double diffraction: with ``config.include_double_diffraction`` the table
+    also carries the kinematically forbidden reflections a real pattern shows
+    because a diffracted beam re-diffracts, selected by the integer sum rule of
+    :func:`double_diffraction_sums` and flagged in
+    ``SpotTable.is_double_diffraction``. Their intensity is
+    ``coupling * sum over paths of I1 * I2``, an observability estimate whose
+    scale is set by the ``double_diffraction_coupling`` constant standing in for
+    the beam coupling and specimen thickness a kinematic theory cannot supply.
     """
 
     simulation_config = KinematicSimulationConfig() if config is None else config
@@ -533,6 +790,33 @@ def simulate_zone_axis_spots(
         amplitude[keep],
         intensity[keep],
     )
+    is_double_diffraction = np.zeros(hkl.shape[0], dtype=bool)
+    parents = np.zeros((hkl.shape[0], 2, 3), dtype=np.int64)
+
+    if simulation_config.include_double_diffraction:
+        (
+            hkl,
+            g_crystal,
+            g_magnitude,
+            excitation_error,
+            amplitude,
+            intensity,
+            is_double_diffraction,
+            parents,
+        ) = _append_double_diffraction_rows(
+            phase,
+            hkl=hkl,
+            g_crystal=g_crystal,
+            g_magnitude=g_magnitude,
+            excitation_error=excitation_error,
+            amplitude=amplitude,
+            intensity=intensity,
+            reciprocal_matrix=reciprocal_matrix,
+            zone_unit=zone_basis[:, 2],
+            wavelength=wavelength,
+            normalization=maximum,
+            config=simulation_config,
+        )
 
     g_detector = g_crystal @ zone_basis[:, :2]
     detector_mm = simulation_config.camera_constant_mm_angstrom * g_detector
@@ -573,6 +857,8 @@ def simulate_zone_axis_spots(
         intensity=intensity[order],
         excitation_error_inv_angstrom=excitation_error[order],
         provenance=provenance,
+        is_double_diffraction=is_double_diffraction[order],
+        double_diffraction_parents=parents[order],
     )
 
 
@@ -581,6 +867,7 @@ __all__ = [
     "KinematicSimulationConfig",
     "SpotTable",
     "centering_allowed_mask",
+    "double_diffraction_sums",
     "electron_structure_factors",
     "electron_wavelength_angstrom",
     "simulate_zone_axis_spots",
