@@ -78,7 +78,7 @@ inversion) rather than by notebook number.
 | 03 symmetry & fundamental regions | point groups as groups, orbit–stabilizer, the fundamental sector's area, Laue vs proper | **done** — 28 cells, 15.7 k md chars, 3 figures |
 | 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | **done** — 29 cells, 13.0 k md chars, 1 figure + 8 verification tables |
 | 04 lattices, space groups, CIF | metric tensor arithmetic, reciprocal duality, systematic absences from the space group | pending |
-| 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | pending |
+| 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | **done** — 27 cells, 11.9 k md chars, 1 figure + 9 verification tables |
 | 08 diffraction geometry | Ewald construction, the excitation error, why zone-axis patterns look the way they do | pending |
 | 11 powder XRD | structure factor as a lattice sum, multiplicity, the Lorentz–polarization factor | pending |
 | 12 SAED | camera constant, the zone law, double diffraction vs true extinction | pending |
