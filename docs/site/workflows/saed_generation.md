@@ -90,9 +90,52 @@ The first pinned external-baseline case for this workflow now uses the built-in 
 for a `[001]` zone-axis pattern and records shell geometry against a `diffsims` reference result
 under `fixtures/diffraction/`.
 
+## Forbidden Reflections And Double Diffraction
+
+A kinematic pattern shows a real pattern's spots *minus* the ones that dynamical scattering puts
+there. The largest such class is double diffraction. A beam diffracted by $\mathbf{g}_1$ is
+itself an incident beam inside the crystal, so diffracting it again by $\mathbf{g}_2$ sends it
+out along $\mathbf{g}_1 + \mathbf{g}_2$. A reflection whose structure factor vanishes therefore
+appears anyway, as long as its indices are the algebraic sum of two reflections that are
+themselves excited. Silicon $(002)$ along $[110]$ is the standard example, produced by
+$(111) + (\bar{1}\bar{1}1)$.
+
+The vectorized engine models the selection rule exactly, because the rule is geometric and does
+not depend on the dynamical theory it cannot solve:
+
+```python
+from pytex.diffraction import KinematicSimulationConfig, simulate_zone_axis_spots
+
+spots = simulate_zone_axis_spots(
+    silicon,
+    ZoneAxis(indices=np.array([1, 1, 0]), phase=silicon),
+    config=KinematicSimulationConfig(include_double_diffraction=True),
+)
+forbidden = spots.forbidden_mask()
+print(spots.double_diffraction_origin_label(int(forbidden.argmax())))
+```
+
+Such reflections are never mixed in unlabelled. `SpotTable.is_double_diffraction` marks them,
+`double_diffraction_parents` records the strongest contributing pair, the exported reflection
+table carries `double_diffraction` and `double_diffraction_origin` columns, and
+`render_composite_saed` draws them hollow in a separate collection with its own legend entry.
+Read the intensity as an observability estimate — `coupling * sum over paths of I1 * I2`, scaled
+by `double_diffraction_coupling` — not as a kinematic intensity, since the kinematic intensity
+of a forbidden reflection is exactly zero.
+
+One consequence is worth stating because it is a common misreading: this can never revive a
+**centring** absence. Centring conditions define a sublattice of reciprocal space, and a
+sublattice is closed under addition, so the sum of two centring-allowed reflections is always
+centring-allowed. Only **basis** absences — from a glide plane, a screw axis, or the motif — can
+be revived, which is exactly what is observed.
+
+The option is off by default; the legacy `generate_saed_pattern` does not implement it.
+
 ## Current Limits
 
 - the current intensity is a proxy, not a dynamical diffraction model
+- double diffraction supplies the correct set of extra spots, but their intensities are an
+  indicative coupling estimate rather than a solved multi-beam calculation
 - no Ewald-sphere curvature treatment for high-angle electron diffraction yet
 - external-baseline coverage currently validates shell geometry for a pinned case rather than a
   broad orientation library

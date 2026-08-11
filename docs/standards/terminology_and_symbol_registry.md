@@ -192,6 +192,8 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\xi'_{g}$ | Absorption distance of reflection $\mathbf{g}$: the imaginary partner of $\xi_{g}$ in the complex optical potential. $\xi'_{0}$ is normal absorption (a scalar $e^{-2\pi t/\xi'_{0}}$); $\xi'_{g}$ for $g \neq 0$ is anomalous absorption. |
 | $\mathbf{A}$ | Dynamical structure matrix of the coupled beam equations $\mathrm{d}\psi/\mathrm{d}z = i\pi\mathbf{A}\psi$: diagonal $2s_{g} + i/\xi'_{0}$, off-diagonal $\nu_{g-h} + i/\xi'_{g-h}$. |
 | $\gamma_{j}$ | Bloch-wave excitation: the $j$-th eigenvalue of $\mathbf{A}$. Its real part locates the dispersion surface; its imaginary part is that branch's absorption coefficient. |
+| $I_{\mathrm{dd}}$ | Double-diffraction intensity assigned to a kinematically forbidden reflection reached as $\mathbf{g}_{1} + \mathbf{g}_{2}$. An observability estimate, never a kinematic intensity: the kinematic intensity of such a reflection is exactly zero. |
+| $c$ | Double-diffraction coupling constant scaling $I_{\mathrm{dd}}$. Absorbs what a kinematic treatment cannot supply — beam coupling strength and specimen thickness. Dimensionless, in $(0, 1]$. |
 
 ## References
 

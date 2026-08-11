@@ -124,7 +124,11 @@ class SAEDPattern:
     ------
     Kinematic and geometric: relative intensities are indicative rather than
     quantitative, and double diffraction — which can make a formally
-    forbidden reflection appear — is not modelled.
+    forbidden reflection appear — is not modelled here. For that, use the
+    vectorized engine
+    :func:`pytex.diffraction.kinematic.simulate_zone_axis_spots` with
+    ``KinematicSimulationConfig(include_double_diffraction=True)``, which
+    adds those reflections and flags them.
 
     Attributes
     ----------
@@ -198,7 +202,9 @@ def generate_saed_pattern(
     ``|g|``. Intensities come from electron structure factors with no
     dynamical scattering, so relative intensities within a zone are
     indicative rather than quantitative, and double diffraction — which can
-    make a formally forbidden reflection appear — is not modelled.
+    make a formally forbidden reflection appear — is not modelled here.
+    :func:`pytex.diffraction.kinematic.simulate_zone_axis_spots` models it
+    behind ``KinematicSimulationConfig(include_double_diffraction=True)``.
 
     Parameters
     ----------

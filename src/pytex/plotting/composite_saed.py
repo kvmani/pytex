@@ -383,17 +383,34 @@ def _scatter_sub_pattern(
     axes_units: AxesUnitsName,
 ) -> None:
     coordinates = _spot_coordinates(table, axes_units)
-    collection = ax.scatter(
-        coordinates[:, 0],
-        coordinates[:, 1],
-        s=style.marker_sizes_pt2(table.intensity),
-        marker=style.marker,
-        alpha=style.alpha,
-        zorder=style.zorder,
-        label=label,
-        **_scatter_kwargs(style),
+    forbidden = table.forbidden_mask()
+
+    def _draw(rows: np.ndarray, spot_style: SpotStyle, text: str, name: str) -> None:
+        collection = ax.scatter(
+            coordinates[rows, 0],
+            coordinates[rows, 1],
+            s=spot_style.marker_sizes_pt2(table.intensity[rows]),
+            marker=spot_style.marker,
+            alpha=spot_style.alpha,
+            zorder=spot_style.zorder,
+            label=text,
+            **_scatter_kwargs(spot_style),
+        )
+        collection.set_gid(name)
+
+    if not np.any(forbidden):
+        _draw(np.ones(len(table), dtype=bool), style, label, gid)
+        return
+    # The marker shape identifies the sub-pattern, so it must not change here.
+    # Hollow is the distinction that reads correctly: the spot is on the
+    # detector but the structure factor says nothing should be.
+    _draw(~forbidden, style, label, gid)
+    _draw(
+        forbidden,
+        replace(style, filled=False),
+        f"{label} (double diffraction)",
+        f"{gid}-double-diffraction",
     )
-    collection.set_gid(gid)
 
 
 @dataclass(frozen=True, slots=True)

@@ -13,6 +13,41 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Double diffraction in the kinematic SAED engine.** A kinematic simulation
+  shows a real pattern's spots minus the ones dynamical scattering puts there,
+  and the largest such class is double diffraction: a beam diffracted by `g1`
+  is itself an incident beam inside the crystal, so diffracting it again by
+  `g2` sends it out along `g1 + g2`, and a reflection whose structure factor
+  vanishes appears anyway. Silicon 002 along [110] is the standard case.
+
+  - `KinematicSimulationConfig(include_double_diffraction=True)` adds those
+    reflections. The selection rule — the pairwise integer sums of the excited
+    reflections, exposed as `pytex.diffraction.kinematic.double_diffraction_sums`
+    — is exact, because it follows from the additivity of scattering vectors
+    and not from the dynamical theory the engine cannot solve. Off by default;
+    every existing pattern is unchanged.
+  - They are never mixed in unlabelled. `SpotTable.is_double_diffraction` marks
+    them, `double_diffraction_parents` records the strongest contributing pair,
+    `double_diffraction_origin_label(row)` names the path as `g1 + g2 = g`,
+    `describe()` states the designation, the exported reflection table gains
+    `double_diffraction` and `double_diffraction_origin` columns (appended, so
+    the declared `REFLECTION_TABLE_COLUMNS` contract is preserved), and
+    `render_composite_saed` draws them hollow in a separate collection with its
+    own legend entry.
+  - The intensity is `c * sum over paths of I1 * I2`, an observability estimate
+    scaled by `double_diffraction_coupling`, documented as such everywhere it
+    appears. The kinematic intensity of a forbidden reflection is exactly zero,
+    so there is nothing else it could be.
+  - Worth knowing: this can never revive a **centring** absence. Centring
+    conditions define a sublattice of reciprocal space and a sublattice is
+    closed under addition, so only basis absences — glide plane, screw axis,
+    motif — can be revived. That is exactly what is observed, and it is pinned
+    by a test for both I- and F-centred lattices.
+  - Validated on silicon [110], where the forbidden 002 appears at exactly half
+    the detector radius of 004 (worked example
+    `kinematic-silicon-double-diffraction-002`), with theory in
+    `docs/tex/algorithms/reciprocal_space_and_kinematic_spots.tex`.
+
 - **Dynamical CBED: many-beam coupling, absorption, HOLZ lines, and the point
   group.** Tutorial-28-era CBED computed each disc as an independent two-beam
   calculation, and said so: no coupling, no absorption, no HOLZ lines, and no

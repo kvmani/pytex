@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Double Diffraction In The Kinematic SAED Engine — IN PROGRESS (2026-08-11)
+## Double Diffraction In The Kinematic SAED Engine — CAPABILITY COMPLETE (2026-08-11)
 
 **Objective.** Let the kinematic zone-axis engine optionally emit the reflections that appear in
 a real TEM pattern only because a diffracted beam re-diffracts: a reflection whose structure
@@ -41,8 +41,8 @@ to point at the engine that models this.
 | 0 | Survey the SAED surfaces; open this ledger entry | done | (step 0) |
 | 1 | Engine: config flags, sum-rule enumeration, `SpotTable` designation arrays, `describe()` | done | (step 1) |
 | 2 | Export/reflection-table column and JSON contract | done | (step 2) |
-| 3 | Plotting designation (distinct marker for forbidden spots) | in progress | |
-| 4 | Docs, worked example, validation matrix, CHANGELOG | todo | |
+| 3 | Plotting designation (distinct marker for forbidden spots) | done | (step 3) |
+| 4 | Docs, worked example, validation matrix, CHANGELOG | done | (step 3) |
 
 ### Current worktree state
 
@@ -63,6 +63,33 @@ the matching required properties in `schemas/composite_saed_manifest.schema.json
 One thing to know when writing further tests: the bcc/hcp Burgers composite along the **[110]**
 parent zone yields no double-diffraction spots at all, because the mapped child zone puts every
 basis-absent hcp reflection parallel to the beam. The [001] parent zone yields six.
+
+Steps 3 and 4 landed; the capability is complete. Rendering splits forbidden spots into their
+own hollow collection (same marker shape, own gid and legend entry). Documentation: a theory
+subsection in `docs/tex/algorithms/reciprocal_space_and_kinematic_spots.tex`, a section in
+`docs/site/workflows/saed_generation.md`, a validation-matrix row, registry entries for
+`I_dd` and `c`, corrected limitation claims in tutorials 12 and 21, corrected legacy
+`generate_saed_pattern` docstrings, a CHANGELOG entry, and the worked example
+`kinematic-silicon-double-diffraction-002`.
+
+**On the worked example's expected value.** The check is `r(002)/r(004) = 0.5` on silicon
+[110], taken only if the engine also flags the row as forbidden. It is the sharpest single
+number available here: the ratio follows from `|g_00l| = l/a` for a cubic cell, so it is
+independent of the lattice parameter and the camera constant, and it verifies the selection
+rule, the flagging, and the detector projection at once. No spot count was used as an expected
+value, because a count depends on the enumeration cut-offs rather than on physics.
+
+Verified: `ruff` and `mypy src` clean, full `tests/unit` suite green.
+
+### Next task
+
+None claimed. Two follow-ons a later session could pick up, in rough priority order:
+
+1. The legacy `saed.generate_saed_pattern` still has no double-diffraction path and now
+   documents that it delegates the capability. If that surface is meant to stay, it should
+   either grow the option or be formally deprecated in favour of the engine.
+2. `double_diffraction_coupling` is a single global constant. A thickness-aware estimate would
+   be the natural next increment, but it needs a defensible source before it is worth having.
 
 ## Stereographic Kikuchi Maps For Zone-Axis Navigation — CAPABILITY COMPLETE (2026-08-11)
 

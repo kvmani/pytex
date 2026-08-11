@@ -456,6 +456,106 @@ SOLVE_ROUND_TRIP = WorkedExample(
 )
 
 
+SILICON_SETUP = """
+import numpy as np
+from pytex import (
+    AtomicSite,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    UnitCell,
+    ZoneAxis,
+)
+from pytex.diffraction.kinematic import (
+    KinematicSimulationConfig,
+    simulate_zone_axis_spots,
+)
+
+silicon_frame = ReferenceFrame(
+    "silicon_crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT
+)
+# Diamond cubic: the face-centred lattice with a two-atom basis at 0 and 1/4.
+silicon_lattice = Lattice(
+    5.4309, 5.4309, 5.4309, 90.0, 90.0, 90.0, crystal_frame=silicon_frame
+)
+silicon_sites = tuple(
+    AtomicSite(
+        label=f"Si{index}",
+        species="Si",
+        fractional_coordinates=np.asarray(base) + offset,
+    )
+    for index, (base, offset) in enumerate(
+        (base, offset)
+        for base in ((0.0, 0.0, 0.0), (0.5, 0.5, 0.0), (0.5, 0.0, 0.5), (0.0, 0.5, 0.5))
+        for offset in (np.zeros(3), np.full(3, 0.25))
+    )
+)
+silicon = Phase(
+    "silicon",
+    lattice=silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=silicon_frame),
+    crystal_frame=silicon_frame,
+    unit_cell=UnitCell(lattice=silicon_lattice, sites=silicon_sites),
+    space_group_symbol="Fd-3m",
+)
+spots = simulate_zone_axis_spots(
+    silicon,
+    ZoneAxis(np.array([1, 1, 0]), phase=silicon),
+    config=KinematicSimulationConfig(
+        max_index=4, g_max_inv_angstrom=1.2, include_double_diffraction=True
+    ),
+)
+radius = spots.detector_radius_mm()
+
+
+def row_of(h, k, ell):
+    return int(np.flatnonzero(np.all(spots.hkl == np.array([h, k, ell]), axis=1))[0])
+"""
+
+
+SILICON_DOUBLE_DIFFRACTION = WorkedExample(
+    id="kinematic-silicon-double-diffraction-002",
+    title="The forbidden Si 002 lands exactly halfway to 004 along [110]",
+    domain="diffraction",
+    scenario=(
+        "In diamond cubic the structure factor of 002 vanishes, so a kinematic simulation "
+        "omits it. Every recorded silicon [110] pattern shows it, because the beam diffracted "
+        "by (1 1 1) diffracts again by (-1 -1 1) and leaves along their sum. Enabling double "
+        "diffraction must therefore place a flagged spot on the 004 row of spots, at exactly "
+        "half its detector radius, since |g_002| = 2/a and |g_004| = 4/a. The computed "
+        "quantity is that radius ratio, taken only if the engine also reports the spot as "
+        "kinematically forbidden."
+    ),
+    setup=SILICON_SETUP,
+    code=(
+        "forbidden = row_of(0, 0, 2)\n"
+        "assert bool(spots.forbidden_mask()[forbidden])\n"
+        "result = float(radius[forbidden] / radius[row_of(0, 0, 4)])"
+    ),
+    expected=0.5,
+    unit="dimensionless",
+    tolerance=1e-12,
+    reference=(
+        "Detector radius is proportional to |g|, and |g_00l| = l/a for a cubic cell, so the "
+        "ratio r(002)/r(004) is exactly 1/2 independent of the lattice parameter and the "
+        "camera constant."
+    ),
+    citation=(
+        "Williams and Carter, Transmission Electron Microscopy, 2nd ed., Springer, 2009, "
+        "ch. 16 (double diffraction; the Si [110] 002 spot)."
+    ),
+    symbols=(),
+    see_also=(
+        SeeAlso("SAED generation workflow", "../../workflows/saed_generation"),
+        _DIFF_CONCEPT,
+    ),
+    result_format="{:.6f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="composite-diffraction",
     title="Composite OR diffraction",
@@ -464,7 +564,8 @@ GROUP = ExampleGroup(
         "relativistic electron wavelength against the standard 200 kV value, the exactness of "
         "the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha "
         "signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the "
-        "identities the exported reflection table must satisfy."
+        "identities the exported reflection table must satisfy, and the exact halfway "
+        "position of the double-diffraction Si 002 spot."
     ),
     examples=(
         ELECTRON_WAVELENGTH_200KV,
@@ -474,6 +575,7 @@ GROUP = ExampleGroup(
         BURGERS_REFLECTION_TABLE,
         CHILD_ANCHORED_CONSISTENCY,
         SOLVE_ROUND_TRIP,
+        SILICON_DOUBLE_DIFFRACTION,
     ),
 )
 

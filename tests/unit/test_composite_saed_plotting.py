@@ -26,7 +26,7 @@ from pytex.plotting.composite_saed import (
     SpotStyle,
     render_composite_saed,
 )
-from tests.unit.test_composite_saed import make_fcc_bcc_phases
+from tests.unit.test_composite_saed import make_bcc_hcp_phases, make_fcc_bcc_phases
 
 
 @pytest.fixture(scope="module")
@@ -276,3 +276,86 @@ def test_composite_frame_indicator_shows_parent_crystal_axes_on_the_detector(
         assert parent_frame.name in labels
     finally:
         plt.close(figure)
+
+
+class TestDoubleDiffractionRendering:
+    """Forbidden spots get their own hollow collection, in the same marker."""
+
+    @pytest.fixture(scope="class")
+    def with_double_diffraction(self) -> CompositeSAEDPattern:
+        from pytex.diffraction.kinematic import KinematicSimulationConfig
+
+        parent, child = make_bcc_hcp_phases()
+        burgers = OrientationRelationship.from_burgers_correspondence(
+            parent_phase=parent, child_phase=child
+        )
+        return simulate_composite_saed(
+            burgers,
+            ZoneAxis(np.array([0, 0, 1]), phase=parent),
+            variant_indices=(1,),
+            config=KinematicSimulationConfig(include_double_diffraction=True),
+        )
+
+    def test_no_extra_collection_when_the_option_is_off(
+        self, composite: CompositeSAEDPattern
+    ) -> None:
+        fig = render_composite_saed(composite)
+        assert not any(
+            gid.endswith("-double-diffraction") for gid in _collections_by_gid(fig)
+        )
+        plt.close(fig)
+
+    def test_forbidden_spots_are_drawn_hollow_in_their_own_collection(
+        self, with_double_diffraction: CompositeSAEDPattern
+    ) -> None:
+        fig = render_composite_saed(with_double_diffraction)
+        by_gid = _collections_by_gid(fig)
+        forbidden_gids = [gid for gid in by_gid if gid.endswith("-double-diffraction")]
+        assert forbidden_gids
+        for gid in forbidden_gids:
+            facecolors = by_gid[gid].get_facecolors()
+            assert facecolors.size == 0 or np.allclose(facecolors[:, 3], 0.0)
+            genuine = by_gid[gid.removesuffix("-double-diffraction")]
+            assert np.allclose(
+                by_gid[gid].get_paths()[0].vertices, genuine.get_paths()[0].vertices
+            )
+        plt.close(fig)
+
+    def test_offsets_are_exactly_the_flagged_rows(
+        self, with_double_diffraction: CompositeSAEDPattern
+    ) -> None:
+        fig = render_composite_saed(with_double_diffraction)
+        by_gid = _collections_by_gid(fig)
+        pairs = [
+            (f"{GID_PREFIX}:parent", with_double_diffraction.parent_spots),
+            *(
+                (f"{GID_PREFIX}:variant:{p.variant_index}", p.spots)
+                for p in with_double_diffraction.variant_patterns
+            ),
+        ]
+        marked = 0
+        for gid, table in pairs:
+            assert table is not None
+            mask = table.forbidden_mask()
+            if not np.any(mask):
+                assert f"{gid}-double-diffraction" not in by_gid
+                continue
+            marked += 1
+            forbidden = np.asarray(by_gid[f"{gid}-double-diffraction"].get_offsets())
+            assert np.allclose(forbidden, table.detector_mm[mask])
+            genuine = np.asarray(by_gid[gid].get_offsets())
+            assert np.allclose(genuine, table.detector_mm[~mask])
+        assert marked
+        plt.close(fig)
+
+    def test_the_legend_names_them(
+        self, with_double_diffraction: CompositeSAEDPattern
+    ) -> None:
+        fig = render_composite_saed(with_double_diffraction)
+        labels = [
+            str(collection.get_label())
+            for axes in fig.axes
+            for collection in axes.collections
+        ]
+        assert any("double diffraction" in label for label in labels)
+        plt.close(fig)
