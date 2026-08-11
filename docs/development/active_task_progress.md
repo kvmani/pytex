@@ -61,8 +61,8 @@ verified agreement rather than an assertion:
 | 2 | IPF colour keys note + worked examples | done | (this commit) |
 | 3 | Misorientation distribution / Mackenzie note + worked examples | done | (this commit) |
 | 4 | Elastic anisotropy and homogenisation note + worked examples | done | (this commit) |
-| 5 | Taylor factor and Schmid analysis note + worked examples | pending | |
-| 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | pending | |
+| 5 | Taylor factor and Schmid analysis note + worked examples | done | (this commit) |
+| 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | done | (this commit) |
 
 **Resume point.** Step 2.
 

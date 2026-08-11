@@ -100,6 +100,7 @@ index with cross-links to the matching implementation pages.
 - [Preferred Orientation In Powder Intensities](site/theory/preferred_orientation_in_powder_intensities.md)
 - [Inverse-Pole-Figure Colour Keys](site/theory/ipf_color_keys.md)
 - [Elastic Anisotropy And Polycrystal Homogenization](site/theory/elastic_anisotropy_and_homogenization.md)
+- [Schmid Factors And The Taylor Factor](site/theory/schmid_and_taylor_plasticity.md)
 - [EBSD KAM Parameterization](site/theory/ebsd_kam_parameterization.md)
 - [EBSD Local Misorientation Foundations](site/theory/ebsd_local_misorientation.md)
 - [EBSD Grain Segmentation And GROD Foundations](site/theory/ebsd_grain_segmentation_and_grod.md)

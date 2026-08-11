@@ -185,6 +185,17 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $K_{V}, K_{R}$ | Voigt and Reuss aggregate bulk moduli. **Identical for cubic symmetry**, so a cubic aggregate's bulk modulus is exact rather than bounded. |
 | $\mu_{V}, \mu_{R}, \mu_{H}$ | Voigt, Reuss and Hill aggregate shear moduli. Distinct from the invariant measure $\mathrm{d}\mu$ on $SO(3)$. $\mu_{H}$ is an average of bounds and is not itself a bound. |
 
+### Slip and plasticity
+
+| Symbol | Meaning |
+| --- | --- |
+| $m$ | Schmid factor $\cos\phi\cos\lambda$ of a slip system under uniaxial stress. Bounded above by exactly $1/2$, attained at $\phi = \lambda = 45^{\circ}$. |
+| $\mathbf{N}^{(s)}$ | Symmetric Schmid tensor of slip system $s$, $	frac{1}{2}(\hat{\mathbf{d}}\hat{\mathbf{n}}^{\mathsf{T}} + \hat{\mathbf{n}}\hat{\mathbf{d}}^{\mathsf{T}})$, expressed in the sample frame. |
+| $\gamma^{(s)}$ | Slip amount on system $s$; non-negative, with the two shear senses carried as separate systems. Distinct from the IPF saturation $\gamma_{s}$. |
+| $\Gamma$ | Total slip $\sum_s \gamma^{(s)}$ minimised by the full-constraint Taylor problem. |
+| $M$ | Taylor factor $\Gamma / arepsilon_{\mathrm{eq}}$. Unique even when the slip combination attaining it is not. |
+| $arepsilon_{\mathrm{eq}}$ | Von Mises equivalent strain $\sqrt{	frac{2}{3}oldsymbol{arepsilon}:oldsymbol{arepsilon}}$. |
+
 ### Diffraction
 
 | Symbol | Meaning |

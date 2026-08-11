@@ -69,6 +69,9 @@ The complete set of computed-versus-expected values at a glance:
 | `elastic-cubic-youngs-modulus-110-equals-112` | [66.6888, 130.3376, 130.3376, 191.1497] | [66.6888, 130.3376, 130.3376, 191.1497] | GPa | ✅ |
 | `elastic-cubic-voigt-reuss-bulk-moduli-coincide` | -8.527e-14 | 0.000e+00 | GPa | ✅ |
 | `elastic-random-aggregate-matches-voigt-reuss-closed-form` | [54.6314, 40.0264] | [54.6400, 40.0339] | GPa | ✅ |
+| `plasticity-fcc-cube-schmid-factor` | 0.408248 | 0.408248 | &mdash; | ✅ |
+| `plasticity-fcc-cube-taylor-factor` | 2.449490 | 2.449490 | &mdash; | ✅ |
+| `plasticity-random-fcc-taylor-factor` | 3.0546 | 3.0600 | &mdash; | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
@@ -106,6 +109,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Inverse-pole-figure colouring <generated/ipf-coloring>` &mdash; What an IPF colour actually is, checked against hand-derived values: the sector corners colour to exact primaries, a direction on the [001]-[111] edge colours to exactly (1, 0, 3/4) by the closed form, and every symmetric equivalent shares one colour.
 - {doc}`Random disorientation baseline <generated/random-disorientation>` &mdash; The null hypothesis every MDF claim is measured against: the exact (1 - cos w)/pi density with no symmetry, the exact cubic maximum 62.7994 degrees from the Rodrigues zone vertex, and the 2.2 percent of random cubic boundaries that are low-angle by chance.
 - {doc}`Elastic anisotropy and homogenization <generated/elastic-anisotropy>` &mdash; Cubic elasticity against closed forms: [110] and [112] are exactly equally stiff, the Voigt and Reuss bulk moduli of a cubic aggregate are identical so the entire bound gap is in the shear modulus, and a numerically homogenized random aggregate reproduces both shear bounds.
+- {doc}`Schmid and Taylor plasticity factors <generated/schmid-and-taylor>` &mdash; Slip geometry against exact answers: eight fcc systems share a Schmid factor of 1/sqrt(6) under [001] tension, the cube orientation's full-constraint Taylor factor is exactly sqrt(6), and a random fcc texture averages Taylor's 1938 value of 3.06.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
@@ -128,6 +132,7 @@ generated/texture
 generated/ipf-coloring
 generated/random-disorientation
 generated/elastic-anisotropy
+generated/schmid-and-taylor
 generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
 generated/transformation
