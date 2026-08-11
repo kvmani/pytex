@@ -173,6 +173,18 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\mathbf{C}_{\mathrm{rgb}}$ | Corner colour matrix whose rows are the RGB triples assigned to the sector corners; the identity gives the standard red/green/blue key. |
 | $\gamma_{s}$ | IPF saturation parameter. Channels are raised to $1/\gamma_{s}$, so the default $\gamma_{s} = 0.5$ squares them. A contrast control with no crystallographic content; distinct from the lattice angle $\gamma$ and the relativistic factor. |
 
+### Elastic properties
+
+| Symbol | Meaning |
+| --- | --- |
+| $C_{ijkl}$, $S_{ijkl}$ | Rank-four elastic stiffness and compliance tensors in crystal-frame Cartesian coordinates. The primary representation; the $6\times6$ Voigt matrices are views of them. |
+| $C_{mn}$, $S_{mn}$ | Voigt-compressed stiffness and compliance. Stiffness carries no factors; **compliance carries a factor 2 per shear index**, so $S_{mn} = f_m f_n S_{ijkl}$ with $f_m = 2$ for $m > 3$. Dropping the factors silently corrupts every shear modulus. |
+| $E(\hat{\mathbf{n}})$ | Young's modulus along crystal direction $\hat{\mathbf{n}}$, $1/E = n_i n_j n_k n_l S_{ijkl}$. |
+| $J$ | Cubic orientation factor $n_1^2n_2^2 + n_2^2n_3^2 + n_3^2n_1^2$; the only way direction enters cubic $E(\hat{\mathbf{n}})$. Runs $0$ along $\langle 100\rangle$ to $1/3$ along $\langle 111\rangle$. |
+| $A_{Z}$ | Zener anisotropy ratio $2C_{44}/(C_{11}-C_{12})$; exactly 1 for an elastically isotropic cubic crystal. |
+| $K_{V}, K_{R}$ | Voigt and Reuss aggregate bulk moduli. **Identical for cubic symmetry**, so a cubic aggregate's bulk modulus is exact rather than bounded. |
+| $\mu_{V}, \mu_{R}, \mu_{H}$ | Voigt, Reuss and Hill aggregate shear moduli. Distinct from the invariant measure $\mathrm{d}\mu$ on $SO(3)$. $\mu_{H}$ is an average of bounds and is not itself a bound. |
+
 ### Diffraction
 
 | Symbol | Meaning |
