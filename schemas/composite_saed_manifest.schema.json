@@ -128,7 +128,9 @@
         "intensity_model",
         "relrod_sigma_inv_angstrom",
         "apply_centering_absences",
-        "min_relative_intensity"
+        "min_relative_intensity",
+        "include_double_diffraction",
+        "double_diffraction_coupling"
       ],
       "properties": {
         "beam_energy_kev": { "type": "number", "exclusiveMinimum": 0 },
@@ -146,7 +148,13 @@
           "exclusiveMinimum": 0
         },
         "apply_centering_absences": { "type": "boolean" },
-        "min_relative_intensity": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
+        "min_relative_intensity": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 },
+        "include_double_diffraction": { "type": "boolean" },
+        "double_diffraction_coupling": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        }
       }
     },
     "variant_entry": {

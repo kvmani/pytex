@@ -56,6 +56,8 @@ REFLECTION_TABLE_COLUMNS: tuple[str, ...] = (
     "excitation_error_inv_angstrom",
     "structure_factor_amplitude",
     "relative_intensity",
+    "double_diffraction",
+    "double_diffraction_origin",
 )
 
 
@@ -68,6 +70,12 @@ class ReflectionTableRow:
     sub-pattern**, because kinematic theory does not define an intensity ratio
     between two different phases — comparing intensities across sources in this
     table is not meaningful, and `ReflectionTable.describe` says so.
+
+    ``double_diffraction_origin`` is non-empty exactly for a reflection that is
+    kinematically **forbidden** and appears only because a diffracted beam
+    re-diffracts; it names the path, as ``g1 + g2 = g``. Such a row reports an
+    observability estimate, not a kinematic intensity — its structure-factor
+    amplitude is (near) zero, which is why it is marked.
     """
 
     source: str
@@ -82,6 +90,7 @@ class ReflectionTableRow:
     excitation_error_inv_angstrom: float
     structure_factor_amplitude: float
     relative_intensity: float
+    double_diffraction_origin: str = ""
 
     def __post_init__(self) -> None:
         if self.source not in {"parent", "variant"}:
@@ -98,6 +107,12 @@ class ReflectionTableRow:
     @property
     def detector_radius_mm(self) -> float:
         return float(np.hypot(*self.detector_mm))
+
+    @property
+    def is_double_diffraction(self) -> bool:
+        """Whether this row is a forbidden reflection revived by double diffraction."""
+
+        return bool(self.double_diffraction_origin)
 
     def as_record(self) -> dict[str, Any]:
         """The row as a flat dictionary keyed by `REFLECTION_TABLE_COLUMNS`."""
@@ -119,6 +134,8 @@ class ReflectionTableRow:
             "excitation_error_inv_angstrom": self.excitation_error_inv_angstrom,
             "structure_factor_amplitude": self.structure_factor_amplitude,
             "relative_intensity": self.relative_intensity,
+            "double_diffraction": self.is_double_diffraction,
+            "double_diffraction_origin": self.double_diffraction_origin,
         }
 
 
@@ -200,7 +217,8 @@ class ReflectionTable:
         body = "".join(
             f"| {row.phase_name}"
             f"{'' if row.variant_index is None else f' V{row.variant_index}'} "
-            f"| {row.hkl_label} | {row.d_angstrom:.4f} | {row.detector_radius_mm:.3f} "
+            f"| {row.hkl_label}{' (dd)' if row.is_double_diffraction else ''} "
+            f"| {row.d_angstrom:.4f} | {row.detector_radius_mm:.3f} "
             f"| {row.excitation_error_inv_angstrom:+.5f} | {row.relative_intensity:.4f} |\n"
             for row in rows
         )
@@ -209,7 +227,15 @@ class ReflectionTable:
             if max_rows is None or len(self.rows) <= max_rows
             else f"\n({len(self.rows) - max_rows} further row(s) omitted.)\n"
         )
-        return header + body + omitted
+        # Without the note a reader would take a forbidden reflection for a
+        # genuine one, which is the whole hazard of showing these at all.
+        footnote = (
+            "\n(dd) kinematically forbidden; present only through double diffraction, at an "
+            "indicative intensity.\n"
+            if any(row.is_double_diffraction for row in rows)
+            else ""
+        )
+        return header + body + footnote + omitted
 
     def to_json_dict(self) -> dict[str, Any]:
         """A JSON-ready payload carrying the table and the settings behind it."""
@@ -253,6 +279,15 @@ class ReflectionTable:
             "separately, because kinematic theory defines no intensity ratio between two "
             "different phases: compare intensities within one source, never across sources.",
         ]
+        forbidden = [row for row in self.rows if row.is_double_diffraction]
+        if forbidden:
+            lines.append(
+                f"{len(forbidden)} row(s) are kinematically forbidden and listed only because "
+                "double diffraction is enabled: their indices are the algebraic sum of two "
+                "excited reflections, so a real pattern shows them even though the structure "
+                "factor is zero. Their intensity is an observability estimate, not a kinematic "
+                "intensity; the double_diffraction_origin column names the path."
+            )
         if self.intensity_threshold > 0.0:
             lines.append(
                 f"Reflections below a relative intensity of {self.intensity_threshold:g} "
@@ -340,6 +375,7 @@ def composite_reflection_table(
                         spots.structure_factor_amplitude[position]
                     ),
                     relative_intensity=intensity,
+                    double_diffraction_origin=spots.double_diffraction_origin_label(position),
                 )
             )
 
@@ -428,6 +464,8 @@ def composite_saed_manifest(
             ),
             "apply_centering_absences": bool(config.apply_centering_absences),
             "min_relative_intensity": float(config.min_relative_intensity),
+            "include_double_diffraction": bool(config.include_double_diffraction),
+            "double_diffraction_coupling": float(config.double_diffraction_coupling),
         }
 
 

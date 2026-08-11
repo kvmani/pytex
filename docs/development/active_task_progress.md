@@ -40,8 +40,8 @@ to point at the engine that models this.
 | --- | --- | --- | --- |
 | 0 | Survey the SAED surfaces; open this ledger entry | done | (step 0) |
 | 1 | Engine: config flags, sum-rule enumeration, `SpotTable` designation arrays, `describe()` | done | (step 1) |
-| 2 | Export/reflection-table column and JSON contract | in progress | |
-| 3 | Plotting designation (distinct marker for forbidden spots) | todo | |
+| 2 | Export/reflection-table column and JSON contract | done | (step 2) |
+| 3 | Plotting designation (distinct marker for forbidden spots) | in progress | |
 | 4 | Docs, worked example, validation matrix, CHANGELOG | todo | |
 
 ### Current worktree state
@@ -54,6 +54,15 @@ public `double_diffraction_sums` selection rule, `SpotTable.is_double_diffractio
 Verified on silicon [110]: 002, 222 and 442 appear, each flagged, each with a parent pair of
 {111}-type reflections, and all weaker than every genuine reflection. The class-model
 diffraction SVG was regenerated for the two new `SpotTable` fields.
+
+Step 2 landed. `ReflectionTableRow.double_diffraction_origin` (with the derived
+`is_double_diffraction`), two appended `REFLECTION_TABLE_COLUMNS`, a `(dd)` marker plus footnote
+in the Markdown rendering, a `describe()` sentence, the two config knobs in the manifest, and
+the matching required properties in `schemas/composite_saed_manifest.schema.json`.
+
+One thing to know when writing further tests: the bcc/hcp Burgers composite along the **[110]**
+parent zone yields no double-diffraction spots at all, because the mapped child zone puts every
+basis-absent hcp reflection parallel to the beam. The [001] parent zone yields six.
 
 ## Stereographic Kikuchi Maps For Zone-Axis Navigation — CAPABILITY COMPLETE (2026-08-11)
 

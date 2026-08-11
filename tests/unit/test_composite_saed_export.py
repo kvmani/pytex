@@ -377,3 +377,70 @@ class TestManifest:
         )
         assert total == manifest["total_reflection_count"]
         assert total == burgers_composite.spot_count()
+
+
+class TestDoubleDiffractionDesignation:
+    """A forbidden reflection must never leave the process looking genuine."""
+
+    @staticmethod
+    def _composite(*, include: bool) -> CompositeSAEDPattern:
+        from pytex.diffraction import KinematicSimulationConfig
+
+        parent, child = make_bcc_hcp_phases()
+        relationship = OrientationRelationship.from_burgers_correspondence(
+            parent_phase=parent, child_phase=child
+        )
+        # The [001] parent zone is used rather than the [110] of the module
+        # fixture because along [110] the Burgers-mapped child zone puts every
+        # basis-absent hcp reflection parallel to the beam, so there is nothing
+        # for double diffraction to revive there.
+        return simulate_composite_saed(
+            relationship,
+            ZoneAxis(np.array([0, 0, 1]), phase=parent),
+            variant_indices=(1,),
+            config=KinematicSimulationConfig(include_double_diffraction=include),
+        )
+
+    def test_no_rows_are_marked_when_the_option_is_off(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        table = composite_reflection_table(burgers_composite)
+        assert not any(row.is_double_diffraction for row in table.rows)
+        assert all(row.double_diffraction_origin == "" for row in table.rows)
+        assert "(dd)" not in table.to_markdown()
+
+    def test_marked_rows_carry_their_path_and_a_vanishing_structure_factor(self) -> None:
+        table = composite_reflection_table(self._composite(include=True))
+        marked = [row for row in table.rows if row.is_double_diffraction]
+        assert marked, "the hcp child should gain at least one forbidden reflection"
+        for row in marked:
+            assert row.double_diffraction_origin.endswith(
+                f"= ({' '.join(str(v) for v in row.hkl)})"
+            )
+            assert row.structure_factor_amplitude == pytest.approx(0.0, abs=1e-9)
+
+    def test_the_designation_survives_csv_and_json(self, tmp_path) -> None:
+        table = composite_reflection_table(self._composite(include=True))
+        payload = json.loads(json.dumps(table.to_json_dict()))
+        assert tuple(payload["columns"]) == REFLECTION_TABLE_COLUMNS
+        with table.to_csv(tmp_path / "reflections.csv").open(
+            encoding="utf-8", newline=""
+        ) as handle:
+            records = list(csv.DictReader(handle))
+        for record, row, entry in zip(records, table.rows, payload["rows"], strict=True):
+            assert (record["double_diffraction"] == "True") is row.is_double_diffraction
+            assert record["double_diffraction_origin"] == row.double_diffraction_origin
+            assert entry["double_diffraction"] is row.is_double_diffraction
+
+    def test_markdown_and_describe_warn_the_reader(self) -> None:
+        table = composite_reflection_table(self._composite(include=True))
+        text = table.to_markdown()
+        assert "(dd)" in text
+        assert "present only through double diffraction" in text
+        assert "kinematically forbidden" in table.describe()
+
+    def test_the_manifest_records_the_setting(self) -> None:
+        pattern = self._composite(include=True)
+        manifest = composite_saed_manifest(pattern)
+        assert manifest["parent_config"]["include_double_diffraction"] is True
+        assert manifest["parent_config"]["double_diffraction_coupling"] == pytest.approx(0.05)
