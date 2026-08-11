@@ -76,7 +76,7 @@ inversion) rather than by notebook number.
 | 02 rotations & batch primitives | the metric on SO(3), the symmetry quotient, disorientation, quaternion averaging, the Mackenzie distribution | **done** — 34 cells, 25.6 k md chars, 3 figures |
 | 06 texture/ODF/PF inversion | kernel normalization, the ghost problem, conditioning of the forward operator, regularization trade-off | **done** — 36 cells, 28.4 k md chars, 4 figures; found four library defects |
 | 03 symmetry & fundamental regions | point groups as groups, orbit–stabilizer, the fundamental sector's area, Laue vs proper | **done** — 28 cells, 15.7 k md chars, 3 figures |
-| 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | pending |
+| 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | **done** — 29 cells, 13.0 k md chars, 1 figure + 8 verification tables |
 | 04 lattices, space groups, CIF | metric tensor arithmetic, reciprocal duality, systematic absences from the space group | pending |
 | 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | pending |
 | 08 diffraction geometry | Ewald construction, the excitation error, why zone-axis patterns look the way they do | pending |
