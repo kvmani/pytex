@@ -80,7 +80,7 @@ inversion) rather than by notebook number.
 | 04 lattices, space groups, CIF | metric tensor arithmetic, reciprocal duality, systematic absences from the space group | **done** — 26 cells, 13.6 k md chars, 1 figure + 10 verification tables |
 | 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | **done** — 27 cells, 11.9 k md chars, 1 figure + 9 verification tables |
 | 08 diffraction geometry | Ewald construction, the excitation error, why zone-axis patterns look the way they do | pending |
-| 11 powder XRD | structure factor as a lattice sum, multiplicity, the Lorentz–polarization factor | pending |
+| 11 powder XRD | structure factor as a lattice sum, multiplicity, the Lorentz–polarization factor | **done** — 25 cells, 11.8 k md chars, 5 figures |
 | 12 SAED | camera constant, the zone law, double diffraction vs true extinction | pending |
 | 07 EBSD grid | KAM/GROD as discrete differential geometry on the grid, segmentation as a graph problem | pending |
 | 16 EBSD → texture | from discrete orientations to a density: the estimator and its bandwidth | pending |
