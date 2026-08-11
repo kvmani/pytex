@@ -1,0 +1,91 @@
+# Orientation-Relationship Index Correspondence
+
+An orientation relationship (OR) between a parent phase $p$ and a child phase $c$ stores the
+rigid rotation $\mathbf{R}$ that carries parent crystal-frame Cartesian vectors into the child
+crystal frame. Rotations act on Cartesian vectors, not on Miller indices: pushing $[uvw]$ or
+$(hkl)$ triples through $\mathbf{R}$ directly is only valid for cubic phases with equal lattice
+parameters, and silently wrong otherwise. This note fixes the index-correspondence algorithm
+implemented in `pytex.core.transformation`.
+
+## Correspondence Matrices
+
+Let $\mathbf{A}_{p}$ and $\mathbf{A}_{c}$ be the direct structure matrices of the two phases
+(columns are the lattice basis vectors expressed in the respective crystal Cartesian frames), and
+let $\mathbf{B} = \mathbf{A}^{-\mathsf{T}}$ be the corresponding reciprocal structure matrices
+under the PyTex normalization $\mathbf{a}^{*}_{i} \cdot \mathbf{a}_{j} = \delta_{ij}$.
+
+A direction with components $\mathbf{u}_{p}$ (a $[uvw]$ triple) has the Cartesian image
+$\mathbf{A}_{p}\mathbf{u}_{p}$; its image in the child crystal frame is
+$\mathbf{R}\,\mathbf{A}_{p}\mathbf{u}_{p}$, and reading that vector back in child lattice
+coordinates gives the *direction-index correspondence*
+
+$$
+\mathbf{u}_{c} = \mathbf{M}\,\mathbf{u}_{p},
+\qquad
+\mathbf{M} = \mathbf{A}_{c}^{-1}\,\mathbf{R}\,\mathbf{A}_{p}.
+$$
+
+Plane indices transform through the reciprocal bases:
+
+$$
+\mathbf{h}_{c} = \mathbf{M}^{*}\,\mathbf{h}_{p},
+\qquad
+\mathbf{M}^{*} = \mathbf{B}_{c}^{-1}\,\mathbf{R}\,\mathbf{B}_{p}
+= \mathbf{A}_{c}^{\mathsf{T}}\,\mathbf{R}\,\mathbf{A}_{p}^{-\mathsf{T}}
+= \mathbf{M}^{-\mathsf{T}}
+$$
+
+where the last equality uses $\mathbf{R}^{-\mathsf{T}} = \mathbf{R}$ for a proper rotation. The
+inverse-transpose relation implies zone-law invariance,
+
+$$
+\mathbf{h}_{c} \cdot \mathbf{u}_{c}
+= \mathbf{h}_{p}^{\mathsf{T}} \mathbf{M}^{-1} \mathbf{M} \, \mathbf{u}_{p}
+= \mathbf{h}_{p} \cdot \mathbf{u}_{p}
+$$
+
+so a direction lying in a plane maps to a direction lying in the mapped plane. Both identities
+are pinned by unit tests. Per-variant correspondences replace $\mathbf{R}$ by the variant
+rotation $\mathbf{R}\,\mathbf{S}_{p}^{\mathsf{T}}$.
+
+## Rationalization
+
+$\mathbf{M}$ and $\mathbf{M}^{*}$ are generally irrational, so the exact image of an integer
+triple is generally not an integer triple. PyTex reports both: the exact components, and the
+nearest primitive integer triple $\mathbf{n}$ within a bound $\max_i |n_i| \le N$
+(default $N = 17$, covering the Greninger–Troiano $\langle 5\,12\,17 \rangle$ family). The
+comparison metric is angular and sign-sensitive, evaluated in the correct space: candidate
+triples are compared through their Cartesian images ($\mathbf{A}\mathbf{n}$ for directions,
+$\mathbf{B}\mathbf{n}$ for plane normals), and the winner minimizes the angle to the exact
+image. The residual is computed with the $\operatorname{atan2}$ form,
+
+$$
+\delta = \operatorname{atan2}\!\left(
+  \lVert \hat{\mathbf{x}} \times \hat{\mathbf{t}} \rVert,\;
+  \hat{\mathbf{x}} \cdot \hat{\mathbf{t}}
+\right)
+$$
+
+which keeps full floating-point precision near $\delta = 0$ where $\arccos$ saturates. A zero
+residual therefore certifies an exact crystallographic parallelism, and a nonzero residual
+quantifies "nearly parallel" instead of hiding it in a rounding step.
+
+The candidate set enumerates all signed primitive triples ($\gcd = 1$) with entries in
+$[-N, N]$; the set is cached per bound and the search is a single vectorized matrix product, so
+the cost is negligible against the surrounding workflow.
+
+## Failure Modes And Limits
+
+- The rationalization bound truncates the search: an OR whose true correspondence involves indices beyond $N$ reports the best in-bound triple with a correspondingly large residual. The bound is a keyword argument on every mapping call.
+- Correspondence matrices assume both phases' structure matrices are expressed in their canonical crystal Cartesian frames; construction-time phase checks enforce membership.
+- The deformation gradient (Bain strain) is deliberately *not* part of this surface; index correspondence is purely rotational plus metric, and strain analysis will land as a separate, explicitly named feature.
+
+## Normative references
+
+International Tables for Crystallography, Vol. A (basis and reciprocal-basis conventions).
+
+## Informative references
+
+Kurdjumov, G., Sachs, G., Z. Phys. 64 (1930) 325.
+Bain, E. C., Trans. AIME 70 (1924) 25.
+Bhadeshia, H. K. D. H., *Geometry of Crystals, Polycrystals, and Phase Transformations*.

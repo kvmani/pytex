@@ -5,6 +5,61 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — IN PROGRESS (2026-08-11)
+
+**Objective.** Make MyST Markdown the single canonical source for the scientific notes that
+previously lived as LaTeX under `docs/tex/`. The notes must render as first-class pages inside the
+Sphinx site instead of being emitted as raw `.tex` download links, and PDF output must come from
+Sphinx's own `latexpdf` builder rather than a separate `latexmk` toolchain.
+
+**Why.** The Sphinx site is already the primary browsable and searchable documentation surface, but
+Sphinx has no LaTeX-parsing extension configured, so every `docs/tex/*.tex` link was copied verbatim
+into `_downloads/<hash>/` and surfaced as a download link. The derivations — the actual scientific
+content of these notes — were therefore invisible on the site. Keeping LaTeX canonical while also
+rendering it in Sphinx would require a conversion pipeline and would leave two representations of
+the same content free to drift. Collapsing to one source removes the drift risk and the extra
+toolchain at the same time.
+
+**Why the conversion is safe.** A survey of all 37 notes found a deliberately narrow LaTeX
+vocabulary and, critically, **no** `\cite`, `\ref`, `\includegraphics`, `\newcommand`, `\input`, or
+TikZ anywhere. Environments in use are only: `itemize`, `enumerate`, `equation`, `align`, `align*`,
+`cases`, `tabular`, `center`, `quote`, `thebibliography`, `document`. All of these have direct MyST
+equivalents, and `myst_enable_extensions` already carries `amsmath` and `dollarmath`. The only
+cross-reference machinery present is `\label`/`\eqref` on equations, which maps onto MyST's
+labelled-equation syntax. Nothing in the corpus requires a LaTeX-only feature.
+
+**Second finding: the LaTeX was already not what the standard claimed.** 26 of the 37 files have no
+`\documentclass` at all — they are section fragments that were never standalone-compilable. The
+"canonical LaTeX compiled with latexmk" posture in `AGENTS.md` and
+`docs/standards/latex_and_figures.md` described a build that could not have run for most of the
+corpus. This migration makes the documented posture and the actual state agree.
+
+**Scope decision — format migration only, not content dedup.** Four notes overlap existing
+`docs/site/algorithms/` pages, which are strict supersets of them. Those pages are a *different
+documentation layer* by design (`algorithms/index.md` lists "theory notes" as its own row), so all
+37 notes convert and the layering is preserved. Deduplicating the derivation layer against the
+algorithms layer is a separate editorial question and is explicitly **not** part of this task.
+
+**Target layout.** All 37 notes become pages under `docs/site/theory/`, flat (all basenames are
+unique), grouped by `toctree` into Theory / Algorithms / Validation / Foundations. `docs/tex/` is
+deleted. PDF comes from `sphinx -b latexpdf`.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Survey LaTeX vocabulary; confirm clean convertibility | done | (this commit) |
+| 2 | Record objective, rationale, and target layout in ledger | done | (this commit) |
+| 3 | Convert 37 `.tex` notes to MyST pages under `docs/site/theory/` | pending | |
+| 4 | Rewrite `docs/site/theory/index.md` with grouped toctrees | pending | |
+| 5 | Rewire repo-wide references (57 files, `src/pytex/cli.py`, `scripts/check_repo_integrity.py`) | pending | |
+| 6 | Update `AGENTS.md` + `docs/standards/latex_and_figures.md` to make MyST canonical | pending | |
+| 7 | Delete `docs/tex/`; confirm Sphinx build clean and `pytest`/`ruff`/`mypy` green | pending | |
+
+**Resume point.** Step 3. The conversion is performed by a one-shot migration script kept in the
+session scratchpad and deliberately **not** committed: the `.md` files are the new hand-maintained
+canonical sources, so a committed generator would wrongly imply they are regenerable output.
+
 ## Double Diffraction In The Kinematic SAED Engine — CAPABILITY COMPLETE (2026-08-11)
 
 **Objective.** Let the kinematic zone-axis engine optionally emit the reflections that appear in
