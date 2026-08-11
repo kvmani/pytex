@@ -63,7 +63,8 @@ verified agreement rather than an assertion:
 | 4 | Elastic anisotropy and homogenisation note + worked examples | done | (this commit) |
 | 5 | Taylor factor and Schmid analysis note + worked examples | done | (this commit) |
 | 6 | Wire new notes into `theory/index.md`, `docs/README.md`, cross-links | done | 0f223d2 |
-| 7 | Pole-figure arithmetic and the m.r.d. scale note + worked examples | done | (this commit) |
+| 7 | Pole-figure arithmetic and the m.r.d. scale note + worked examples | done | 35809d9 |
+| 8 | Directional statistics / mean axes note + worked examples | done | (this commit) |
 
 ### Notes added so far
 
@@ -74,6 +75,7 @@ verified agreement rather than an assertion:
 | `elastic_anisotropy_and_homogenization` | Compliance carries Voigt factors that stiffness does not; cubic $K_V = K_R$ exactly, so the whole bound gap is in shear. |
 | `schmid_and_taylor_plasticity` | Schmid $\le 1/2$ in two lines; the Taylor LP replaces a 792-way enumeration; $M$ is unique but the slip pattern is not. |
 | `pole_figure_arithmetic_and_mrd` | An unweighted raster mean is biased by exactly +50% and refinement does not fix it; skipping m.r.d. normalization is a 34× error. |
+| `directional_statistics_and_mean_axes` | The vector mean of axes cancels identically; the orientation tensor is the fix, and its eigenvalue gap decides whether a "mean axis" means anything. |
 
 ### Method that is working
 
@@ -89,9 +91,9 @@ visible in the source: the 7.7 GiB allocation in the disorientation reduction, t
 $[110] = [112]$ stiffness coincidence, and the fact that the barycentric sum-normalization in the
 IPF path is arithmetically inert.
 
-**Resume point.** Remaining candidates from the survey, in rough value order: SO(3)/S2 sampling and
-equal-area grids (`core/sphere.py`, 793 lines, thin coverage); texture kernels and the halfwidth
-convention (`texture/kernels.py`, 484 lines); texture components and fibres.
+**Resume point.** Remaining candidates: texture kernels and the halfwidth convention
+(`texture/kernels.py`, 484 lines); texture components and fibres; equal-area vs latitude-longitude
+S2 grid construction (partly covered now by the raster-bias treatment).
 
 ## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — COMPLETE (2026-08-11)
 

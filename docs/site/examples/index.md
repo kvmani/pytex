@@ -75,6 +75,9 @@ The complete set of computed-versus-expected values at a glance:
 | `pole-figure-raster-unweighted-mean-is-biased` | 0.500000 | 0.500000 | &mdash; | ✅ |
 | `pole-figure-raster-bias-survives-refinement` | 1.000000000 | 1.000000000 | &mdash; | ✅ |
 | `pole-figure-raster-weighted-mean-converges` | [0.31960, 0.32627] | [0.31960, 0.32627] | &mdash; | ✅ |
+| `directional-orientation-tensor-limiting-eigenvalues` | [0.0000, 0.4996, 0.5004, 0.0000, 0.0000, 1.0000] | [0.0000, 0.5000, 0.5000, 0.0000, 0.0000, 1.0000] | &mdash; | ✅ |
+| `directional-orientation-tensor-unit-trace` | 1.000000000000 | 1.000000000000 | &mdash; | ✅ |
+| `directional-mean-axis-of-randomly-signed-axes` | 0.999982 | 1.000000 | &mdash; | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
@@ -114,6 +117,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Elastic anisotropy and homogenization <generated/elastic-anisotropy>` &mdash; Cubic elasticity against closed forms: [110] and [112] are exactly equally stiff, the Voigt and Reuss bulk moduli of a cubic aggregate are identical so the entire bound gap is in the shear modulus, and a numerically homogenized random aggregate reproduces both shear bounds.
 - {doc}`Schmid and Taylor plasticity factors <generated/schmid-and-taylor>` &mdash; Slip geometry against exact answers: eight fcc systems share a Schmid factor of 1/sqrt(6) under [001] tension, the cube orientation's full-constraint Taylor factor is exactly sqrt(6), and a random fcc texture averages Taylor's 1938 value of 3.06.
 - {doc}`Pole-figure raster sampling <generated/pole-figure-sampling>` &mdash; Why a measured pole figure needs solid-angle weights: the unweighted mean of cos^2 over a tilt raster is exactly 1/2 against a true spherical mean of 1/3, a 50 percent bias that survives halving the raster step, while the weighted mean converges.
+- {doc}`Directional statistics and mean axes <generated/directional-statistics>` &mdash; Averaging axes rather than vectors: the orientation tensor has unit trace, its eigenvalues take exact values at the girdle and cluster limits, and it recovers a fibre axis from randomly signed data where the vector resultant fails outright.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
@@ -138,6 +142,7 @@ generated/random-disorientation
 generated/elastic-anisotropy
 generated/schmid-and-taylor
 generated/pole-figure-sampling
+generated/directional-statistics
 generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
 generated/transformation

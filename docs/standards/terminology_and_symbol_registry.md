@@ -174,6 +174,13 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\mathbf{C}_{\mathrm{rgb}}$ | Corner colour matrix whose rows are the RGB triples assigned to the sector corners; the identity gives the standard red/green/blue key. |
 | $\gamma_{s}$ | IPF saturation parameter. Channels are raised to $1/\gamma_{s}$, so the default $\gamma_{s} = 0.5$ squares them. A contrast control with no crystallographic content; distinct from the lattice angle $\gamma$ and the relativistic factor. |
 
+### Directional statistics
+
+| Symbol | Meaning |
+| --- | --- |
+| $oldsymbol{\Theta}$ | Orientation tensor $	frac{1}{n}\sum_i \hat{\mathbf{v}}_i\hat{\mathbf{v}}_i^{\mathsf{T}}$ of a direction set. Invariant under $\hat{\mathbf{v}} \mapsto -\hat{\mathbf{v}}$, so it is the correct summary for axial data where the resultant cancels. Unit trace. Distinct from the rigid placement $\mathbf{T}$. |
+| $\lambda_1 \le \lambda_2 \le \lambda_3$ | Eigenvalues of $oldsymbol{\Theta}$; non-negative and summing to 1. $(	frac13,	frac13,	frac13)$ uniform, $(0,	frac12,	frac12)$ girdle, $(0,0,1)$ cluster. A mean axis is identified only when $\lambda_3 > \lambda_2$. |
+
 ### Elastic properties
 
 | Symbol | Meaning |

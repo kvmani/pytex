@@ -86,6 +86,7 @@ index with cross-links to the matching implementation pages.
 - [Orientation Space, Symmetry Reduction, and Disorientation in PyTex](site/theory/orientation_space_and_disorientation.md)
 - [Random Disorientation And The Mackenzie Baseline](site/theory/random_disorientation_baseline.md)
 - [Fundamental Region Reduction](site/theory/fundamental_region_reduction.md)
+- [Directional Statistics: Mean Axes And The Orientation Tensor](site/theory/directional_statistics_and_mean_axes.md)
 - [Hexagonal and Trigonal Conventions in PyTex](site/theory/hexagonal_conventions.md)
 - [Crystal Structures And CIF Import](site/theory/crystal_structures_and_cif_import.md)
 - [Crystal Visualization Geometry](site/theory/crystal_visualization_geometry.md)
