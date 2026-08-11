@@ -79,7 +79,7 @@ inversion) rather than by notebook number.
 | 01 reference frames | the metric tensor as the frame, active vs passive, the crystal→Cartesian convention choice | **done** — 29 cells, 13.0 k md chars, 1 figure + 8 verification tables |
 | 04 lattices, space groups, CIF | metric tensor arithmetic, reciprocal duality, systematic absences from the space group | **done** — 26 cells, 13.6 k md chars, 1 figure + 10 verification tables |
 | 17 Miller vectorized | index arithmetic as linear algebra in dual bases, Miller–Bravais as a projection | **done** — 27 cells, 11.9 k md chars, 1 figure + 9 verification tables |
-| 08 diffraction geometry | Ewald construction, the excitation error, why zone-axis patterns look the way they do | pending |
+| 08 diffraction geometry | Ewald construction, the relativistic wavelength, the detector chain | **done** — 23 cells, 10.1 k md chars, 1 figure + 8 verification tables |
 | 11 powder XRD | structure factor as a lattice sum, multiplicity, the Lorentz–polarization factor | **done** — 25 cells, 11.8 k md chars, 5 figures |
 | 12 SAED | camera constant, the zone law, double diffraction vs true extinction | **done** — 23 cells, 12.5 k md chars, 4 figures |
 | 07 EBSD grid | KAM/GROD as discrete differential geometry on the grid, segmentation as a graph problem | pending |
@@ -130,11 +130,15 @@ ODF, a random texture, a flat pole figure.
 
 ## Resume point (as of 2026-08-11)
 
-Done to the rubric and pushed: **01, 02, 03, 04, 06, 11, 12, 17**, plus the new tutorial 30 for the
-Kikuchi-map capability. Eight of the eighteen rows in the table above.
+Done to the rubric and pushed: **01, 02, 03, 04, 06, 08, 11, 12, 17**, plus the new tutorial 30 for
+the Kikuchi-map capability. Nine of the eighteen rows in the table above.
 
-Still pending: **05, 07, 08, 09, 10, 13, 14, 15, 16** and the 18-25 audit row. Nothing about them is
-blocked; each needs the same treatment as the eight above.
+Still pending: **05, 07, 09, 10, 13, 14, 15, 16** and the 18-25 audit row. Nothing about them is
+blocked; each needs the same treatment as the nine above. Suggested order by mathematical richness:
+07 (KAM and GROD as discrete differential geometry on the grid, segmentation as a graph problem),
+09 (variant counting from coset decomposition), 16 (from discrete orientations to a density, and the
+bandwidth choice), 10 (what each projection preserves and the distortion cost), 13, 15, 05, 14, then
+the 18-25 audit.
 
 The authoring loop that works, and is worth reusing verbatim:
 
