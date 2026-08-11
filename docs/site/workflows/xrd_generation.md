@@ -92,7 +92,7 @@ figure.savefig("ni_fcc_powder_xrd.png", dpi=200)
 - {doc}`saed_generation`
 - {doc}`../tutorials/notebooks/11_powder_xrd_workflows`
 - {doc}`style_customization`
-- [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
+- {doc}`/theory/powder_xrd_and_saed`
 
 ## References
 

@@ -155,7 +155,7 @@ This is the designated flagship, and it is also where the gap between "primitive
     variant doctrine is unimplemented and transformation code "should remain experimental" —
     contradicted by the shipped, tested stable surface. Foundation docs must be updated in the
     same change that lands the capability they describe.
-25. **[P2] Theory notes lag the transformation subsystem.** `docs/tex/` has no OR/variant
+25. **[P2] Theory notes lag the transformation subsystem.** `docs/site/theory/` has no OR/variant
     theory note while orientation, EBSD, and diffraction all have them. The OR foundation work
     must land with its LaTeX note, per standing policy.
 
@@ -202,7 +202,7 @@ forward:
 These consolidate and extend the existing standards; they are review-gate obligations for every
 merge:
 
-- **Scientific completeness:** a stable numerical feature ships with theory note (`docs/tex/`),
+- **Scientific completeness:** a stable numerical feature ships with theory note (`docs/site/theory/`),
   concept/workflow page, executable worked example with independently-provenanced expected
   values, validation-ledger row, and `describe()` support. Partial landings must be staged in
   `experimental/`.

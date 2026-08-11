@@ -215,7 +215,7 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
 ## 6. Documentation Requirements
 
 - `docs/site/` is the live Sphinx root for the primary browsable and searchable documentation surface.
-- `docs/tex/` is the canonical source for major scientific notes.
+- `docs/site/theory/` is the canonical source for major scientific notes, authored as MyST Markdown so the derivations render on the site; a PDF is produced by `sphinx -b latexpdf`.
 - `docs/figures/` contains canonical SVG figure sources.
 - Runtime plotting APIs should return ordinary Matplotlib figures; canonical repository-tracked documentation figures remain SVG assets.
 - Canonical architecture, process-flow, validation, workflow, and teaching diagrams must follow the
@@ -235,8 +235,8 @@ The broader frame-chain doctrine now lives in `docs/standards/notation_and_conve
   - a theory or architecture note
   - an algorithm or implementation note when algorithms exist
   - a validation and limitations note
-- Root and web-facing docs must link to canonical LaTeX artifacts, concise summaries, and relevant figures.
-- The docs set must maintain a stable terminology and symbol registry so the same scientific symbol is reused consistently across Markdown, LaTeX, notebooks, and explanatory prose.
+- Root and web-facing docs must link to the canonical theory notes, concise summaries, and relevant figures.
+- The docs set must maintain a stable terminology and symbol registry so the same scientific symbol is reused consistently across pages, theory notes, notebooks, and explanatory prose.
 - Pages that depend materially on conventions, algorithms, or workflow prerequisites should link directly to the relevant concept, workflow, validation, or theory page rather than forcing readers to rediscover the dependency tree manually.
 - Major scientific documents must contain explicit citations and separate normative references from informative ones.
 - Conventions for hexagonal and trigonal systems must be fixed centrally and reused across code, figures, examples, and tests.

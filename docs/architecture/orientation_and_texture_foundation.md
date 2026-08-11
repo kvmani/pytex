@@ -76,6 +76,6 @@ The current implementation now covers both explicit discrete inversion and a fir
 
 ### Informative
 
-- <a href="../tex/theory/orientation_space_and_disorientation.tex">Orientation Space And Disorientation</a>
-- <a href="../tex/algorithms/discrete_odf_and_pole_figures.tex">Discrete ODF And Pole Figures</a>
-- <a href="../tex/algorithms/harmonic_odf_reconstruction.tex">Harmonic ODF Reconstruction</a>
+- <a href="../site/theory/orientation_space_and_disorientation.md">Orientation Space And Disorientation</a>
+- <a href="../site/theory/discrete_odf_and_pole_figures.md">Discrete ODF And Pole Figures</a>
+- <a href="../site/theory/harmonic_odf_reconstruction.md">Harmonic ODF Reconstruction</a>

@@ -105,7 +105,7 @@ See Also
 `pytex.diffraction.cbed` : disc geometry and the two-beam surface this extends.
 `pytex.diffraction.holz` : the higher-order reflections whose lines this feeds.
 `pytex.diffraction.diffraction_groups` : the symmetry analysis built on it.
-`docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex` : derivations.
+`docs/site/theory/dynamical_cbed_and_symmetry_determination.md` : derivations.
 """
 
 from __future__ import annotations

@@ -103,7 +103,7 @@ See Also
 --------
 `pytex.diffraction.dynamical` : the forward model that produces the symmetry.
 `pytex.core.point_groups` : the 32 crystallographic point groups and operators.
-`docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex` : derivations.
+`docs/site/theory/dynamical_cbed_and_symmetry_determination.md` : derivations.
 """
 
 from __future__ import annotations

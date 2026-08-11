@@ -105,7 +105,7 @@ When replacing Mermaid with SVG:
 ### Normative
 
 - [Documentation Architecture](documentation_architecture.md)
-- [LaTeX And Figures](latex_and_figures.md)
+- [LaTeX And Figures](scientific_notes_and_figures.md)
 - [Terminology And Symbol Registry](terminology_and_symbol_registry.md)
 
 ### Informative

@@ -111,7 +111,7 @@ This leads to three concrete design commitments:
 If you are evaluating PyTex against MTEX, orix, LaboTex, or vendor EBSD environments, read {doc}`concepts/how_pytex_differs`. That page is the dedicated comparison surface and explains the specific design choices that make PyTex a different kind of project rather than just another feature checklist.
 
 ```{note}
-PyTex is designed to serve both research and teaching. The Sphinx pages explain concepts and workflows; the LaTeX notes under `docs/tex/` remain the canonical deep scientific source for theory, algorithms, and validation posture.
+PyTex is designed to serve both research and teaching. The Sphinx pages explain concepts and workflows; the notes under {doc}`theory/index` are the canonical deep scientific source for theory, algorithms, and validation posture, and render here in full.
 ```
 
 ## Current Scope
@@ -143,7 +143,7 @@ PyTex is designed to serve both research and teaching. The Sphinx pages explain 
 
 1. Read {doc}`concepts/core_model`.
 2. Check {doc}`validation/index`.
-3. Follow the linked architecture notes and LaTeX theory or algorithm notes.
+3. Follow the linked architecture notes and the theory or algorithm notes under {doc}`theory/index`.
 4. Review the MTEX parity ledger in `docs/testing/mtex_parity_matrix.md`.
 
 ## Canonical Assets

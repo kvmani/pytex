@@ -44,7 +44,7 @@ Status terms:
 
 - `strategy.md`
 - `../standards/documentation_architecture.md`
-- `../standards/latex_and_figures.md`
+- `../standards/scientific_notes_and_figures.md`
 
 ### Informative
 

@@ -199,8 +199,8 @@ Sphinx builds zero-warning with all four pages and their figures.
 ### TD6 (2026-08-04) — theory notes, wiring, closure
 
 - **Two canonical LaTeX notes**, both promised by the TX specification and outstanding until
-  now: `docs/tex/algorithms/orientation_relationship_determination.tex` and
-  `docs/tex/algorithms/saed_ratio_angle_indexing.tex`. They carry the derivations and the
+  now: `docs/site/theory/orientation_relationship_determination.md` and
+  `docs/site/theory/saed_ratio_angle_indexing.md`. They carry the derivations and the
   convention fixing; the Sphinx pages carry the same algorithms with worked numbers and
   figures, and each side points at the other.
 - **Wiring**: the theory index, `docs/README.md` (LaTeX tree, the four new figures, and the

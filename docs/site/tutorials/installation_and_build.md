@@ -1,6 +1,6 @@
 # Installation And Build
 
-This page explains how to install PyTex, run the test suite, build the Sphinx documentation, and generate the LaTeX or PDF scientific notes on Windows, macOS, and Linux.
+This page explains how to install PyTex, run the test suite, build the Sphinx documentation, and produce a PDF of it on Windows, macOS, and Linux.
 
 ## Supported Python
 
@@ -120,27 +120,30 @@ metadata is committed.
 In VS Code, clear outputs with the command palette entry **Notebook: Clear All Outputs**; in
 Jupyter, **Kernel > Restart Kernel and Clear All Outputs**.
 
-## Build LaTeX Or PDF Notes
+## Build A PDF
 
-The canonical scientific notes live under `docs/tex/`.
+The canonical scientific notes live under `docs/site/theory/` as ordinary MyST pages, so they
+need no separate toolchain to read: they render with the rest of the site. A typeset PDF of the
+whole documentation set comes from Sphinx's own LaTeX builder:
 
-### Basic LaTeX expectation
+```bash
+python -m sphinx -b latexpdf docs/site docs/_build/latex
+```
 
-You need a modern LaTeX distribution such as:
+This is the only supported PDF path. Because it renders the same sources as the HTML site, the
+print and web forms cannot drift apart.
+
+### LaTeX distribution
+
+`latexpdf` shells out to a real LaTeX installation, so that step needs one:
 
 - TeX Live on Linux
 - MacTeX on macOS
 - MiKTeX or TeX Live on Windows
 
-### Typical PDF build
-
-From `docs/tex/`, use a modern toolchain such as:
-
-```bash
-latexmk -pdf -shell-escape <document>.tex
-```
-
-If your TeX setup lacks the required packages, install them through your distribution package manager or TeX package manager first.
+If your TeX setup lacks the required packages, install them through your distribution package
+manager or TeX package manager first. To produce the intermediate `.tex` without running LaTeX,
+use `-b latex` instead and build it yourself.
 
 ## Optional Jupyter Use
 
@@ -171,9 +174,11 @@ cache. Clear the cache and rebuild:
 rm -rf docs/site/_build && python -m sphinx -b html docs/site docs/site/_build/html
 ```
 
-### LaTeX PDF build fails
+### PDF build fails
 
-Check that your TeX distribution includes `latexmk` and any packages needed by the note you are building.
+Check that your TeX distribution includes `latexmk`, which Sphinx's `latexpdf` builder drives, and
+the packages Sphinx's LaTeX output requires. To isolate the failure, run `-b latex` first: if that
+succeeds, the problem is in the TeX toolchain rather than in the documentation sources.
 
 ## Related Material
 
@@ -186,7 +191,7 @@ Check that your TeX distribution includes `latexmk` and any packages needed by t
 ### Normative
 
 - {doc}`../standards/documentation_architecture`
-- {doc}`../standards/latex_and_figures`
+- {doc}`../standards/scientific_notes_and_figures`
 
 ### Informative
 

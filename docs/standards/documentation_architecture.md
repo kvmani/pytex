@@ -5,7 +5,8 @@ PyTex uses a hybrid documentation architecture so the project can be both scient
 ## Core Policy
 
 - Sphinx is the primary browsable and searchable documentation surface.
-- LaTeX is the canonical source for major scientific notes.
+- MyST Markdown under `docs/site/theory/` is the canonical source for major scientific notes, so
+  every derivation renders on the Sphinx site rather than downloading as a source file.
 - SVG is the canonical source for scientific figures and geometry schematics.
 - Executable worked examples are the canonical source for verified numerical
   claims: their outputs are computed live from the code and checked against cited
@@ -31,7 +32,7 @@ Use the Sphinx layer for:
 - curated API reference
 - links to deeper scientific notes
 
-Use the LaTeX layer for:
+Use the scientific-notes layer (`docs/site/theory/`) for:
 
 - formal theory notes
 - algorithm notes
@@ -47,7 +48,7 @@ Use the LaTeX layer for:
 - Pages that rely on defined terminology, notation, or installation prerequisites should link directly to the corresponding glossary, symbol-registry, or setup page.
 - References to other repository documents must be written as navigable Markdown links, not as backticked plain-text file paths.
 - Bare path listings are only acceptable inside code blocks that intentionally document filesystem layout rather than serving as navigation.
-- Foundational pages must prefer direct links to the relevant Sphinx page when one exists, and should keep source-document links clickable when referring to canonical Markdown or LaTeX files outside the rendered site.
+- Foundational pages must prefer direct links to the relevant Sphinx page when one exists, and should keep source-document links clickable when referring to canonical Markdown files outside the rendered site.
 
 ## Explicitness Requirement
 
@@ -89,7 +90,7 @@ The intended docs surfaces are:
 - executable notebook tutorials rendered or linked through the Sphinx layer
 - an executable worked-example gallery whose computed values are asserted in tests
   and regenerated into the Sphinx layer from a single source of truth
-- downloadable PDF scientific notes built from LaTeX
+- a downloadable PDF of the documentation, built by Sphinx's own `latexpdf` builder
 - reusable SVG figures shared across both surfaces
 - authored visual-reference diagrams that follow the repository visualization style guide
 - validation pages that pair automated assertions with cited formulas and last verified outputs
@@ -116,7 +117,7 @@ The Sphinx layer should eventually expose top-level sections for:
 - Style configuration should be shared across runtime APIs, notebooks, and documentation figure generation through validated YAML themes rather than scattered hard-coded figure choices.
 - Math-heavy web pages should use MathJax-backed equations.
 - Citations in the HTML layer should use a BibTeX-backed workflow.
-- The LaTeX layer should remain suitable for publication-grade mathematical exposition.
+- The scientific-notes layer must remain suitable for publication-grade mathematical exposition.
 - Stable symbols and glossary terms should be defined once in the shared terminology registry and reused across docs layers rather than reintroduced with drifting local notation.
 - Complex Mermaid diagrams that become reusable public references should be replaced by authored
   SVG assets that follow the visualization style guide.
@@ -125,7 +126,7 @@ The Sphinx layer should eventually expose top-level sections for:
 
 - Ordinary users should be able to browse and search the built HTML docs uniformly across Linux, Windows, and macOS.
 - The documentation toolchain should remain practical across Linux, Windows, and macOS for contributors.
-- Full PDF builds may require a documented TeX toolchain, but the public documentation system must not depend on users having LaTeX installed locally.
+- Full PDF builds may require a documented TeX toolchain, but reading any note must not: the notes render as ordinary HTML pages, so no local LaTeX installation is needed.
 
 ## References
 

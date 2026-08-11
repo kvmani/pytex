@@ -52,6 +52,6 @@ symmetries into one local-angular metric.
 
 - {doc}`ebsd_import_normalization`
 - {doc}`ebsd_grains`
-- [../../tex/algorithms/ebsd_local_misorientation.tex](../../tex/algorithms/ebsd_local_misorientation.tex)
-- [../../tex/algorithms/ebsd_kam_parameterization.tex](../../tex/algorithms/ebsd_kam_parameterization.tex)
-- [../../tex/algorithms/multiphase_ebsd_graph_workflows.tex](../../tex/algorithms/multiphase_ebsd_graph_workflows.tex)
+- {doc}`/theory/ebsd_local_misorientation`
+- {doc}`/theory/ebsd_kam_parameterization`
+- {doc}`/theory/multiphase_ebsd_graph_workflows`

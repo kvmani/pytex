@@ -9,8 +9,8 @@ The repository is being built around four non-negotiable foundations:
   diffraction geometry
 - first-class semantic batch support for vectorized operations on vectors, Euler angles,
   quaternions, rotations, and orientations
-- hybrid scientific documentation: Sphinx for the primary browsable and searchable docs surface,
-  LaTeX for authoritative scientific notes, and SVG for canonical figures
+- layered scientific documentation: one Sphinx site carrying concepts, workflows, and the
+  authoritative theory notes with their mathematics rendered, plus SVG for canonical figures
 - MTEX-plus validation, where MTEX parity is the baseline and PyTex-specific interoperability and
   provenance checks extend beyond it
 - explicit reference canon governance, so conventions are fixed from authoritative sources and not
@@ -49,7 +49,7 @@ The PyTex library is organized into complementary, layered modules:
 **Roadmap & Standards**
 - [docs/roadmap/implementation_roadmap.md](docs/roadmap/implementation_roadmap.md) — Implementation roadmap
 - [docs/standards/notation_and_conventions.md](docs/standards/notation_and_conventions.md) — Notation and conventions
-- [docs/standards/latex_and_figures.md](docs/standards/latex_and_figures.md) — LaTeX and figure standards
+- [docs/standards/scientific_notes_and_figures.md](docs/standards/scientific_notes_and_figures.md) — Scientific-note and figure standards
 - [docs/standards/documentation_architecture.md](docs/standards/documentation_architecture.md) — Documentation architecture
 - [docs/standards/scientific_citation_policy.md](docs/standards/scientific_citation_policy.md) — Citation policy
 - [docs/standards/benchmark_and_tolerance_governance.md](docs/standards/benchmark_and_tolerance_governance.md) — Benchmark governance

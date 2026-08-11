@@ -115,11 +115,11 @@ This is why the documentation and parity suite treat IPF-sector reduction and fu
 ## Related Material
 
 - {doc}`../architecture/orientation_and_texture_foundation`
-- [../../tex/theory/euler_convention_handling.tex](../../tex/theory/euler_convention_handling.tex)
-- [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
-- [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
-- [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
-- [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
+- {doc}`/theory/euler_convention_handling`
+- {doc}`/theory/fundamental_region_reduction`
+- {doc}`/theory/orientation_space_and_disorientation`
+- {doc}`/theory/discrete_odf_and_pole_figures`
+- {doc}`/theory/harmonic_odf_reconstruction`
 - [../../figures/crystal_symmetry_actions.svg](../../figures/crystal_symmetry_actions.svg)
 - [../../figures/ipf_sector_reduction.svg](../../figures/ipf_sector_reduction.svg)
 - [../../figures/disorientation_fundamental_region.svg](../../figures/disorientation_fundamental_region.svg)

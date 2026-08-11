@@ -35,16 +35,11 @@ surface, a library guide, and an entry point into the deeper research documentat
 - {doc}`../validation/plotting_validation_matrix`
 - {doc}`../validation/structure_validation_matrix`
 
-## Canonical LaTeX Notes
+## Canonical Scientific Notes
 
-The rendered site links these through {doc}`../theory/index`, but the full source corpus lives
-under `docs/tex/`:
-
-- `../../tex/README.md`
-- <a href="../../tex/README.md">LaTeX README</a>
-- `../../tex/theory/`
-- `../../tex/algorithms/`
-- `../../tex/validation/`
+The theory, algorithm, and validation notes are canonical and render in full on this site,
+mathematics included. {doc}`../theory/index` is the entry point and groups them into
+Foundations, Theory, Algorithms, and Validation.
 
 ## How To Use The Site
 

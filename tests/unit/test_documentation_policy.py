@@ -9,7 +9,14 @@ def _read(path: str) -> str:
     return (REPO_ROOT / path).read_text(encoding="utf-8")
 
 
-def test_foundational_docs_agree_on_hybrid_documentation_policy() -> None:
+def test_foundational_docs_agree_on_layered_documentation_policy() -> None:
+    """Every foundational doc must name the same three documentation pillars.
+
+    Sphinx is the browsable surface, the scientific notes are canonical prose
+    and mathematics, and SVG is canonical for figures. The notes were LaTeX
+    until 2026-08-11; they are now MyST under docs/site/theory/ so that the
+    derivations render on the site instead of downloading as .tex sources.
+    """
     foundational_docs = [
         "README.md",
         "mission.md",
@@ -21,9 +28,26 @@ def test_foundational_docs_agree_on_hybrid_documentation_policy() -> None:
     ]
     for path in foundational_docs:
         content = _read(path).lower()
-        assert "sphinx" in content
-        assert "latex" in content
-        assert "svg" in content
+        assert "sphinx" in content, path
+        assert "notes" in content, path
+        assert "svg" in content, path
+
+
+def test_no_foundational_doc_still_calls_latex_canonical() -> None:
+    """The retired policy must not survive anywhere in the governing docs."""
+    for path in (
+        "README.md",
+        "mission.md",
+        "specifications.md",
+        "AGENTS.md",
+        "docs/README.md",
+        "docs/standards/scientific_notes_and_figures.md",
+        "docs/standards/documentation_architecture.md",
+    ):
+        content = _read(path).lower()
+        assert "docs/tex/" not in content or "until 2026-08-11" in content, path
+        assert "latex is the canonical" not in content, path
+        assert "canonically in latex" not in content, path
 
 
 def test_docs_site_placeholder_encodes_public_entry_point() -> None:
@@ -35,8 +59,8 @@ def test_docs_site_placeholder_encodes_public_entry_point() -> None:
     assert "notebook" in content
 
 
-def test_latex_standard_points_back_to_documentation_architecture() -> None:
-    content = _read("docs/standards/latex_and_figures.md").lower()
+def test_notes_standard_points_back_to_documentation_architecture() -> None:
+    content = _read("docs/standards/scientific_notes_and_figures.md").lower()
     assert "documentation_architecture.md" in content
     assert "visualization_style_guide.md" in content
     assert "sphinx" in content
@@ -64,7 +88,7 @@ def test_foundational_docs_encode_dual_plotting_output_policy() -> None:
     policy_docs = [
         "specifications.md",
         "docs/standards/documentation_architecture.md",
-        "docs/standards/latex_and_figures.md",
+        "docs/standards/scientific_notes_and_figures.md",
     ]
     for path in policy_docs:
         content = _read(path).lower()

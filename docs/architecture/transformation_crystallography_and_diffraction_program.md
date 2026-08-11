@@ -608,7 +608,7 @@ committed text file.
 | Deliverable | Requirement |
 | --- | --- |
 | Documentation | A concept page per feature under `docs/site/concepts/`, one workflow page tying (a)–(e) into an end-to-end story, API pages, and updates to this file plus the OR and phase-transformation foundations. |
-| Theory | LaTeX notes in `docs/tex/` for the OR-statement extraction (TX1) and the ratio/angle indexing algorithm (TX5). |
+| Theory | Theory notes in `docs/site/theory/` for the OR-statement extraction (TX1) and the ratio/angle indexing algorithm (TX5). |
 | Figures | Canonical SVGs: OR statement geometry, variant correspondence fan, child-anchored composite geometry, and the SAED solving flow — all per the visualization style guide. |
 | Worked examples | At least one executable worked example per feature, each with independent provenance (analytic identity or cited literature value). |
 | Notebook | `23_burgers_transformation_crystallography.ipynb` — Burgers β↔α as the end-to-end teaching case covering (a)–(e), committed executed. |

@@ -1,7 +1,7 @@
 # Orientation Representations And The Equal-Volume Maps
 
 *Relationship to the existing note.*
-`docs/tex/algorithms/orientation_representations_and_plane_direction_construction.tex`
+{doc}`/theory/orientation_representations_and_plane_direction_construction`
 already records the classical conversions — matrix, quaternion, axis–angle, Rodrigues and
 Rodrigues–Frank — and the construction of an orientation from a plane and a direction.
 This note does not repeat them. It covers what that note does not: the two *equal-volume*
@@ -32,7 +32,7 @@ homogeneous (Frank) form, in which the magnitude is a projective coordinate: at
 $\omega = \pi$ it is the point at infinity, a well-defined and exactly invertible
 representation, whereas the 3-vector $\boldsymbol{\rho}$ overflows there and loses its
 axis in the product. Finally $\mathbf{h}$ is the homochoric vector. Euler angles follow the axis sequences of
-`docs/tex/theory/euler_convention_handling.tex`: $ZXZ$ for Bunge
+{doc}`/theory/euler_convention_handling`: $ZXZ$ for Bunge
 $(\varphi_1, \Phi, \varphi_2)$, $ZYZ$ for Matthies/ABG $(\alpha, \beta, \gamma)$.
 
 Two degeneracies are intrinsic and are reported rather than hidden. First, $q$ and $-q$
@@ -119,11 +119,14 @@ of the square $[-1,1]^{2}$ onto the spherical sector.
 That map factors as a planar wedge followed by a Lambert azimuthal equal-area lift. For
 $|y| \le |x|$ within the $+z$ pyramid, put
 
-\begin{align}
-\alpha &= \frac{\pi}{12}\,\frac{y}{x}, &
+```{math}
+:label: eq-wedge
+\begin{aligned}
+  \alpha &= \frac{\pi}{12}\,\frac{y}{x}, &
   k &= \frac{2^{1/4}\sqrt{6/\pi}\;x}{\sqrt{\sqrt{2}-\cos\alpha}}, \\
   (T_{1}, T_{2}) &= k\left(\sqrt{2}\cos\alpha - 1,\; \sqrt{2}\sin\alpha\right),
-\end{align}
+\end{aligned}
+```
 
 with $x$ and $y$ exchanging roles on the far side of the face diagonal. The map
  {eq}`eq-wedge` carries the octant onto the plane wedge of half-angle $\pi/4$: at
@@ -189,10 +192,10 @@ a claim the data does not support.
 ## Limits and cross-references
 
 - The equal-volume charts are charts, not algebras: rotations are composed as quaternions, never by adding homochoric or cubochoric coordinates.
-- Neither chart is symmetry-reduced. Fundamental-zone reduction is the separate concern of `docs/tex/theory/fundamental_region_reduction.tex`.
+- Neither chart is symmetry-reduced. Fundamental-zone reduction is the separate concern of {doc}`/theory/fundamental_region_reduction`.
 - Rodrigues and homochoric vectors are both bare triples; PyTex rejects an out-of-ball homochoric input rather than clipping it, because that is the only way the mix-up can be caught.
-- Euler conventions and their aliases: `docs/tex/theory/euler_convention_handling.tex`.
-- Orientation-space distance and disorientation: `docs/tex/theory/orientation_space_and_disorientation.tex`.
+- Euler conventions and their aliases: {doc}`/theory/euler_convention_handling`.
+- Orientation-space distance and disorientation: {doc}`/theory/orientation_space_and_disorientation`.
 
 ## Normative And Informative Sources
 

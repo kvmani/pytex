@@ -11,6 +11,33 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Changed
+
+- **The canonical scientific notes are MyST Markdown, and their mathematics now
+  renders on the site.** The 37 theory, algorithm, and validation notes moved
+  from `docs/tex/*.tex` to `docs/site/theory/*.md`. Sphinx had no LaTeX-parsing
+  extension, so every note had been copied verbatim into `_downloads/<hash>/`
+  and surfaced as a download link: the derivations — the actual content — were
+  invisible to a reader of the documentation. They are now ordinary pages,
+  grouped in `theory/index.md` and reachable from search.
+
+  - No new dependency: `myst_enable_extensions` already carried `amsmath` and
+    `dollarmath`. Equation labels became MyST labelled equations, so
+    cross-referenced equations render numbered and link to their anchors.
+  - PDF output comes from Sphinx itself, `sphinx -b latexpdf docs/site`,
+    replacing a per-document `latexmk` step. Because it renders the same
+    sources as the HTML, the print and web forms cannot drift apart.
+  - The conversion was safe to automate: the corpus used no `\cite`, `\ref`,
+    `\includegraphics`, `\newcommand`, `\input`, or TikZ, and 26 of the 37
+    files had no `\documentclass` at all — they were fragments, so the
+    documented `latexmk` build could not have run for most of them.
+  - Content is unchanged. Four notes overlap `docs/site/algorithms/` pages,
+    which are a separate documentation layer by design; both are kept and
+    `theory/index.md` cross-links each pair.
+  - `docs/standards/latex_and_figures.md` is renamed
+    `docs/standards/scientific_notes_and_figures.md`, and `pytex docs inventory`
+    now lists the notes rather than `.tex` files.
+
 ### Added
 
 - **Double diffraction in the kinematic SAED engine.** A kinematic simulation
@@ -46,7 +73,7 @@ downstream analyses depend on them.
   - Validated on silicon [110], where the forbidden 002 appears at exactly half
     the detector radius of 004 (worked example
     `kinematic-silicon-double-diffraction-002`), with theory in
-    `docs/tex/algorithms/reciprocal_space_and_kinematic_spots.tex`.
+    `docs/site/theory/reciprocal_space_and_kinematic_spots.md`.
 
 - **Dynamical CBED: many-beam coupling, absorption, HOLZ lines, and the point
   group.** Tutorial-28-era CBED computed each disc as an independent two-beam
@@ -103,7 +130,7 @@ downstream analyses depend on them.
     crystal looks centrosymmetric, so `symmetry_observations()` refuses a
     projection calculation unless asked twice and a two-beam pattern outright.
   - Tutorial `29_dynamical_cbed_and_point_groups`, the theory note
-    `docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`, and six
+    `docs/site/theory/dynamical_cbed_and_symmetry_determination.md`, and six
     worked examples whose expected values are analytic identities or published
     counts.
 
@@ -288,11 +315,11 @@ downstream analyses depend on them.
   Burgers `(011)β` correspondence tables, the per-variant child-zone deviations
   for Burgers down β[110], and the solver's noise envelope.
 
-- **Two canonical LaTeX theory notes** the transformation program had promised:
-  `docs/tex/algorithms/orientation_relationship_determination.tex` (double-coset
+- **Two canonical theory notes** the transformation program had promised:
+  `docs/site/theory/orientation_relationship_determination.md` (double-coset
   seeding, symmetry-aware rotation averaging, catalog distance, the
   non-uniqueness of a parallelism statement) and
-  `docs/tex/algorithms/saed_ratio_angle_indexing.tex` (calibration, the
+  `docs/site/theory/saed_ratio_angle_indexing.md` (calibration, the
   admissibility test, triad construction, and the intrinsic zone-sense
   ambiguity).
 

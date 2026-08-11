@@ -58,5 +58,5 @@ validation posture for the same teaching example.
 
 ### Informative
 
-- [../../tex/theory/crystal_visualization_geometry.tex](../../tex/theory/crystal_visualization_geometry.tex)
-- [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
+- {doc}`/theory/crystal_visualization_geometry`
+- {doc}`/theory/powder_xrd_and_saed`

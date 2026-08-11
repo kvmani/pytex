@@ -58,5 +58,5 @@ Before stronger public claims are made, the next validation pass should add:
 
 ### Informative
 
-- `../tex/theory/crystal_structures_and_cif_import.tex`
+- `../site/theory/crystal_structures_and_cif_import.md`
 - `../../benchmarks/structure_import/foundation_benchmark_manifest.json`

@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — IN PROGRESS (2026-08-11)
+## Retiring `docs/tex/`: LaTeX Notes Become Rendered MyST Pages — COMPLETE (2026-08-11)
 
 **Objective.** Make MyST Markdown the single canonical source for the scientific notes that
 previously lived as LaTeX under `docs/tex/`. The notes must render as first-class pages inside the
@@ -31,7 +31,7 @@ labelled-equation syntax. Nothing in the corpus requires a LaTeX-only feature.
 **Second finding: the LaTeX was already not what the standard claimed.** 26 of the 37 files have no
 `\documentclass` at all — they are section fragments that were never standalone-compilable. The
 "canonical LaTeX compiled with latexmk" posture in `AGENTS.md` and
-`docs/standards/latex_and_figures.md` described a build that could not have run for most of the
+`docs/standards/scientific_notes_and_figures.md` described a build that could not have run for most of the
 corpus. This migration makes the documented posture and the actual state agree.
 
 **Scope decision — format migration only, not content dedup.** Four notes overlap existing
@@ -48,17 +48,54 @@ deleted. PDF comes from `sphinx -b latexpdf`.
 
 | # | Step | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | Survey LaTeX vocabulary; confirm clean convertibility | done | (this commit) |
-| 2 | Record objective, rationale, and target layout in ledger | done | (this commit) |
-| 3 | Convert 37 `.tex` notes to MyST pages under `docs/site/theory/` | pending | |
-| 4 | Rewrite `docs/site/theory/index.md` with grouped toctrees | pending | |
-| 5 | Rewire repo-wide references (57 files, `src/pytex/cli.py`, `scripts/check_repo_integrity.py`) | pending | |
-| 6 | Update `AGENTS.md` + `docs/standards/latex_and_figures.md` to make MyST canonical | pending | |
-| 7 | Delete `docs/tex/`; confirm Sphinx build clean and `pytest`/`ruff`/`mypy` green | pending | |
+| 1 | Survey LaTeX vocabulary; confirm clean convertibility | done | 474a071 |
+| 2 | Record objective, rationale, and target layout in ledger | done | 474a071 |
+| 3 | Convert 37 `.tex` notes to MyST pages under `docs/site/theory/` | done | 474a071 |
+| 4 | Rewrite `docs/site/theory/index.md` with grouped toctrees | done | 474a071 |
+| 5 | Rewire repo-wide references, `src/pytex/cli.py`, `scripts/check_repo_integrity.py` | done | (this commit) |
+| 6 | Make MyST canonical in `AGENTS.md`, `mission.md`, `specifications.md`, both standards | done | (this commit) |
+| 7 | Delete `docs/tex/`; confirm build clean and `pytest`/`ruff`/`mypy` green | done | (this commit) |
 
-**Resume point.** Step 3. The conversion is performed by a one-shot migration script kept in the
-session scratchpad and deliberately **not** committed: the `.md` files are the new hand-maintained
-canonical sources, so a committed generator would wrongly imply they are regenerable output.
+### Verification
+
+- `pytest`: 5022 passed. `ruff`, `mypy` (114 files), and `check_repo_integrity.py`: clean.
+- Sphinx HTML build: 602 warnings, down from 604, and all of them pre-existing (autodoc
+  duplicate-object and docstring definition-list warnings that predate this task). The two removed
+  were the `eq-wedge` dangling references described below. **No new warning was introduced**, and
+  no `.tex` file is emitted into `_downloads/` any more.
+- Spot-checked rendering: display and inline mathematics emit MathJax `\[…\]`, `align*` renders
+  through the amsmath container, both converted tables are real `<table>` elements, and a labelled
+  equation renders as numbered `(1)` with a working `#equation-eq-cbed-s` anchor.
+
+### Decisions worth carrying forward
+
+- **The notes are hand-maintained sources now, not generated output.** The migration script lived in
+  the session scratchpad and was deliberately never committed; committing a generator would wrongly
+  imply the `.md` files are regenerable and would invite someone to re-run it over edited prose.
+- **`docs/standards/latex_and_figures.md` was renamed** to `scientific_notes_and_figures.md`. A file
+  by the old name asserting that MyST is canonical is exactly the incoherence this task removed.
+  16 references plus two tests were repointed.
+- **Two tests encoded the retired policy.**
+  `test_foundational_docs_agree_on_hybrid_documentation_policy` asserted the literal string `latex`
+  in every foundational document. It is now `..._layered_documentation_policy` (Sphinx / notes /
+  SVG), joined by `test_no_foundational_doc_still_calls_latex_canonical`, which fails if the old
+  posture reappears.
+- **One conversion defect was found by the build, not by inspection.** A `\label` inside an `align`
+  environment was dropped, dangling `\eqref{eq:wedge}`. An audit of the deleted sources confirmed
+  `eq:wedge` was the only such label in the corpus; it is now a `{math}` directive with `:label:`.
+- **Historical records were repointed, not rewritten.** CHANGELOG and older ledger entries had their
+  paths updated so they still resolve, but their claims were left alone — except one phrase ("Two
+  canonical LaTeX theory notes") whose wording contradicted the path beside it.
+
+### Deliberately not done
+
+Four notes (`orientation_relationship_determination`, `orientation_relationship_index_correspondence`,
+`saed_ratio_angle_indexing`, `tem_specimen_tilt_navigation`) substantially overlap their
+`docs/site/algorithms/` counterparts, which are strict supersets of them. Both layers were kept,
+because `algorithms/index.md` declares them distinct layers, and `theory/index.md` now carries a
+table cross-linking each pair. **Whether the derivation layer should be merged into the algorithms
+layer is an open editorial question**, excluded here on purpose so that a format migration could not
+quietly become a content deletion.
 
 ## Double Diffraction In The Kinematic SAED Engine — CAPABILITY COMPLETE (2026-08-11)
 
@@ -121,7 +158,7 @@ basis-absent hcp reflection parallel to the beam. The [001] parent zone yields s
 
 Steps 3 and 4 landed; the capability is complete. Rendering splits forbidden spots into their
 own hollow collection (same marker shape, own gid and legend entry). Documentation: a theory
-subsection in `docs/tex/algorithms/reciprocal_space_and_kinematic_spots.tex`, a section in
+subsection in `docs/site/theory/reciprocal_space_and_kinematic_spots.md`, a section in
 `docs/site/workflows/saed_generation.md`, a validation-matrix row, registry entries for
 `I_dd` and `c`, corrected limitation claims in tutorials 12 and 21, corrected legacy
 `generate_saed_pattern` docstrings, a CHANGELOG entry, and the worked example
@@ -189,7 +226,7 @@ instrument operation, and band geometry on the crystal sphere is diffraction geo
 `src/pytex/diffraction/kikuchi_map.py` (~1200 lines) and
 `src/pytex/plotting/kikuchi_map.py`, with 42 tests across
 `tests/unit/test_kikuchi_map.py` and `tests/unit/test_kikuchi_map_plotting.py`, the theory note
-`docs/tex/algorithms/stereographic_kikuchi_maps.tex`, the worked example
+`docs/site/theory/stereographic_kikuchi_maps.md`, the worked example
 `diffraction-kikuchi-map-zone-axis-tilt-angles`, four new registry symbols and four new terms, a
 parity-matrix row claiming no MTEX parity with the reason, and tutorial 30.
 
@@ -273,7 +310,7 @@ diffraction engine it extends. Recorded here rather than decided silently.
 
 `src/pytex/diffraction/dynamical.py` (≈900 lines), 20 tests in
 `tests/unit/test_dynamical.py`, and the theory note
-`docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`.
+`docs/site/theory/dynamical_cbed_and_symmetry_determination.md`.
 
 **The scale is inherited, not re-asserted.** The off-diagonal coupling is
 `nu_g = lambda F_g / (pi V_c cos theta_g)`, chosen so that `|nu_g| = 1/xi_g` for the
@@ -578,7 +615,7 @@ described. The two TEM notebooks each cover **Ni (FCC)** and **Zr (HCP)**, the f
 
 `src/pytex/core/representations.py` (≈1150 lines) plus 39 tests in
 `tests/unit/test_orientation_representations.py`, and the theory note
-`docs/tex/theory/orientation_representations.tex`.
+`docs/site/theory/orientation_representations.md`.
 
 **The cube-to-ball map was derived, not transcribed.** The Roşca–Morawiec–De Graef map is
 usually quoted as a block of constants, and a mis-remembered constant produces a map that still
@@ -640,7 +677,7 @@ not satisfy the zone law — `(123)[6 3 -4]` does, and now round-trips exactly.
 ### Step 3 outcome (2026-08-09)
 
 `src/pytex/diffraction/cbed.py`, 31 tests in `tests/unit/test_cbed.py`, and
-`docs/tex/algorithms/convergent_beam_electron_diffraction.tex`.
+`docs/site/theory/convergent_beam_electron_diffraction.md`.
 
 **The hard part was the absolute scale, not the geometry.** Disc geometry and rocking curves
 are easy to make *look* right; an extinction distance that is wrong by a constant produces

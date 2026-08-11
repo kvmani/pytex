@@ -81,7 +81,7 @@ See Also
 --------
 `pytex.diffraction.cbed.holz_ring_radii_inv_angstrom` : the rings, which measure
     the layer spacing; these are the lines, which measure the lattice.
-`docs/tex/algorithms/dynamical_cbed_and_symmetry_determination.tex` : derivations.
+`docs/site/theory/dynamical_cbed_and_symmetry_determination.md` : derivations.
 """
 
 from __future__ import annotations

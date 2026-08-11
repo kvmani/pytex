@@ -46,6 +46,6 @@ cleaned = segmentation.merge_small_grains(min_size=4, until_stable=True)
 
 - {doc}`ebsd_import_normalization`
 - {doc}`ebsd_kam`
-- [../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex](../../tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
-- [../../tex/algorithms/ebsd_boundaries_and_cleanup.tex](../../tex/algorithms/ebsd_boundaries_and_cleanup.tex)
-- [../../tex/algorithms/multiphase_ebsd_graph_workflows.tex](../../tex/algorithms/multiphase_ebsd_graph_workflows.tex)
+- {doc}`/theory/ebsd_grain_segmentation_and_grod`
+- {doc}`/theory/ebsd_boundaries_and_cleanup`
+- {doc}`/theory/multiphase_ebsd_graph_workflows`

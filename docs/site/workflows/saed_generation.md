@@ -147,7 +147,7 @@ The option is off by default; the legacy `generate_saed_pattern` does not implem
 - {doc}`xrd_generation`
 - {doc}`../tutorials/notebooks/12_saed_workflows`
 - {doc}`style_customization`
-- [../../tex/algorithms/powder_xrd_and_saed.tex](../../tex/algorithms/powder_xrd_and_saed.tex)
+- {doc}`/theory/powder_xrd_and_saed`
 
 ## References
 

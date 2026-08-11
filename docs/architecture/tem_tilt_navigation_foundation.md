@@ -16,7 +16,7 @@ dots, not an animation.
 
 **Companion documents.** The rendered algorithm page is
 {doc}`../algorithms/tem_tilt_navigation`; the canonical derivation is
-`docs/tex/algorithms/tem_specimen_tilt_navigation.tex`.
+`docs/site/theory/tem_specimen_tilt_navigation.md`.
 
 **Scope of this document.** Define the problem, the geometry, the algorithm, the ambiguities, the
 calibration burden, the reachability and path-planning logic, the visualization mathematics, the

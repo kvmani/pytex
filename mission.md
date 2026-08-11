@@ -86,7 +86,7 @@ Create a scientific library that enables users to:
    Orientation and texture semantics are the nucleus of the product, but they must scale to multimodal characterization.
 
 3. Documentation as scientific infrastructure
-   Sphinx concepts and workflows, LaTeX scientific notes, SVG figures, and executable worked examples
+   Sphinx concepts and workflows, canonical scientific notes, SVG figures, and executable worked examples
    whose numbers are computed live from the code and checked against cited references are required
    deliverables. A documented method must explain its theory, when and where it is used, and its
    expected inputs and outputs, and demonstrate verifiable numerical behavior with a computed example.
@@ -121,7 +121,7 @@ Create a scientific library that enables users to:
 - Canonical internal convention set
 - Canonical data structures for frames, symmetry, structure, orientations, vectorized batch primitives, maps, acquisition geometry, and diffraction geometry
 - Sphinx as the primary browsable and searchable documentation surface
-- LaTeX as the canonical source for major scientific notes
+- MyST Markdown under `docs/site/theory/` as the canonical source for major scientific notes
 - SVG-first scientific diagrams where geometry or conventions matter
 - Executable worked examples for stable public numerical surfaces, computed live and checked against
   cited reference values, with one governing terminology and symbol registry across all surfaces

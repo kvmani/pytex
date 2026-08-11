@@ -215,6 +215,6 @@ This is useful because indexing decisions are often more interpretable at the fa
 ## Related Material
 
 - `docs/architecture/diffraction_foundation.md`
-- [../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex](../../tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
+- {doc}`/theory/reciprocal_space_and_kinematic_spots`
 - [../../figures/zone_axis_ewald_geometry.svg](../../figures/zone_axis_ewald_geometry.svg)
 - [../../figures/kinematic_spot_projection.svg](../../figures/kinematic_spot_projection.svg)

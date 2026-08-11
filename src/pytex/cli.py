@@ -43,10 +43,11 @@ def _cmd_info(_: argparse.Namespace) -> int:
 
 def _cmd_docs_inventory(_: argparse.Namespace) -> int:
     repo_root = _repo_root()
-    tex_docs = sorted((repo_root / "docs" / "tex").rglob("*.tex"))
+    notes_root = repo_root / "docs" / "site" / "theory"
+    notes = sorted(p for p in notes_root.glob("*.md") if p.stem != "index")
     figures = sorted((repo_root / "docs" / "figures").glob("*.svg"))
-    print("LaTeX documents:")
-    for path in tex_docs:
+    print("Theory and algorithm notes:")
+    for path in notes:
         print(f"  - {path.relative_to(repo_root)}")
     print("SVG figures:")
     for path in figures:
@@ -196,7 +197,7 @@ def build_parser() -> argparse.ArgumentParser:
     docs_subparsers = docs_parser.add_subparsers(dest="docs_command", required=True)
     docs_inventory_parser = docs_subparsers.add_parser(
         "inventory",
-        help="List LaTeX and SVG assets.",
+        help="List scientific-note and SVG assets.",
     )
     docs_inventory_parser.set_defaults(func=_cmd_docs_inventory)
     docs_build_parser = docs_subparsers.add_parser("build", help="Build the Sphinx HTML site.")

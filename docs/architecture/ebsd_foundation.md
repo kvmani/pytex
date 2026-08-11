@@ -38,5 +38,5 @@ Phase 3 should start by proving that EBSD workflows can reuse the same orientati
 
 ### Informative
 
-- <a href="../tex/algorithms/ebsd_kam_parameterization.tex">EBSD KAM Parameterization</a>
-- <a href="../tex/algorithms/ebsd_grain_segmentation_and_grod.tex">EBSD Grain Segmentation And GROD</a>
+- <a href="../site/theory/ebsd_kam_parameterization.md">EBSD KAM Parameterization</a>
+- <a href="../site/theory/ebsd_grain_segmentation_and_grod.md">EBSD Grain Segmentation And GROD</a>

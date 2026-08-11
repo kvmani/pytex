@@ -105,7 +105,7 @@ Annotations use the same Miller-style mathtext path as the crystal-scene overlay
 ### Normative
 
 - `docs/standards/notation_and_conventions.md`
-- `docs/standards/latex_and_figures.md`
+- `docs/standards/scientific_notes_and_figures.md`
 - `docs/testing/plotting_validation_matrix.md`
 
 ### Informative

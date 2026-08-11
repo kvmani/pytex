@@ -24,7 +24,7 @@ Read these first when working on the repository:
 - `docs/standards/notation_and_conventions.md`
 - `docs/standards/documentation_architecture.md`
 - `docs/standards/executable_examples.md`
-- `docs/standards/latex_and_figures.md`
+- `docs/standards/scientific_notes_and_figures.md`
 - `docs/standards/visualization_style_guide.md`
 - `docs/standards/terminology_and_symbol_registry.md`
 - `docs/standards/development_principles.md`
@@ -59,7 +59,9 @@ If implementation choices conflict with these documents, stop and reconcile the 
   ledger and the git history alone. This rule outranks tidiness preferences such as saving up a
   single large commit. See [Commit and push cadence](#commit-and-push-cadence).
 - Sphinx is the primary browsable and searchable documentation surface.
-- LaTeX is the canonical source for major scientific notes.
+- MyST Markdown under `docs/site/theory/` is the canonical source for major scientific notes, so
+  every derivation renders on the Sphinx site and a PDF comes from `sphinx -b latexpdf`. There is
+  no second, LaTeX-only representation to keep in step.
 - Stable public numerical surfaces must be documented with executable worked examples whose outputs
   are computed live from the code and checked against cited reference values. Documentation numbers
   must not be hand-transcribed. See `docs/standards/executable_examples.md`.
@@ -116,7 +118,7 @@ Speed matters, but only after semantics are explicit and scientifically defensib
 - `src/pytex/experimental/`: unstable research methods
 - `docs/site/`: Sphinx-facing concepts, tutorials, worked examples, workflows, and curated API docs
 - `docs/site/examples/`: generated executable-worked-example gallery (do not hand-edit)
-- `docs/tex/`: canonical scientific documentation
+- `docs/site/theory/`: canonical scientific notes (theory, algorithms, validation)
 - `docs/figures/`: canonical SVG figures
 - `worked_examples/`: source of truth for executable worked examples (framework, registry, examples)
 
@@ -239,9 +241,9 @@ remembered.
 
 ### When touching algorithms
 
-- Document the theory path in `docs/tex/`.
+- Document the theory path in `docs/site/theory/`.
 - Record assumptions, normalization rules, and failure modes.
-- Record normative and informative citations in the corresponding Markdown and LaTeX docs.
+- Record normative and informative citations in the corresponding workflow page and theory note.
 - Update `docs/testing/mtex_parity_matrix.md` if the algorithm overlaps MTEX functionality.
 - Add benchmark fixtures or explicit placeholders if the benchmark cannot land yet.
 - Add a computed worked example that demonstrates the algorithm on a case with a known answer.
@@ -261,7 +263,7 @@ The mechanics are fixed centrally:
 
 - Executable worked examples live in `worked_examples/`, are rendered into `docs/site/examples/` by
   `scripts/generate_worked_examples.py`, and are validated by `tests/unit/test_worked_examples.py`.
-- Theory and derivations remain in `docs/tex/`; interactive narratives remain in the notebook
+- Theory and derivations remain in `docs/site/theory/`; interactive narratives remain in the notebook
   tutorials; canonical geometry remains in `docs/figures/` SVGs. Worked examples are the verifiable
   numerical bridge between them, not a replacement.
 - **Notebooks are hand-authored and committed without outputs.** There is no generator and no

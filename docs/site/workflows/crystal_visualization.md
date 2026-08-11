@@ -175,7 +175,7 @@ crystallographic semantics remain the direct-basis unit cell stored in `Lattice`
 - {doc}`style_customization`
 - {doc}`combined_structure_diffraction_visualization`
 - {doc}`../tutorials/notebooks/13_crystal_visualization_workflows`
-- [../../tex/theory/crystal_visualization_geometry.tex](../../tex/theory/crystal_visualization_geometry.tex)
+- {doc}`/theory/crystal_visualization_geometry`
 
 ## References
 

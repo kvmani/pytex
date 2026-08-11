@@ -73,7 +73,7 @@ print(style["xrd"]["annotate_peaks"])
 ### Normative
 
 - `../../standards/documentation_architecture.md`
-- `../../standards/latex_and_figures.md`
+- `../../standards/scientific_notes_and_figures.md`
 
 ### Informative
 

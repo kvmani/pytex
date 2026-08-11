@@ -146,7 +146,7 @@ This case documents the parity-oriented constructor surface for quaternions, mat
 ### Reference basis
 
 - the quaternion, axis-angle, and Rodrigues relations documented in
-  `../tex/algorithms/orientation_representations_and_plane_direction_construction.tex`
+  `../site/theory/orientation_representations_and_plane_direction_construction.md`
 
 ### Algorithm used by PyTex
 

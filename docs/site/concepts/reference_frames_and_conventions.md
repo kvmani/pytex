@@ -249,9 +249,9 @@ in pure Python with no matplotlib involved. The figures on this page are generat
 - {doc}`../architecture/reference_frame_foundation`
 - {doc}`../architecture/canonical_data_model`
 - {doc}`../architecture/orientation_and_texture_foundation`
-- [../../tex/theory/reference_frames.tex](../../tex/theory/reference_frames.tex)
-- [../../tex/theory/euler_convention_handling.tex](../../tex/theory/euler_convention_handling.tex)
-- [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
+- {doc}`/theory/reference_frames`
+- {doc}`/theory/euler_convention_handling`
+- {doc}`/theory/fundamental_region_reduction`
 - [../../figures/reference_frames_vectors.svg](../../figures/reference_frames_vectors.svg)
 - [../../figures/orientation_mapping_semantics.svg](../../figures/orientation_mapping_semantics.svg)
 - [../../figures/active_passive_rotation.svg](../../figures/active_passive_rotation.svg)

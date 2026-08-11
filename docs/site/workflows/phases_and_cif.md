@@ -203,5 +203,5 @@ This keeps the public `AtomicSite` type explicit and avoids smuggling site disor
 - {doc}`../concepts/core_model`
 - {doc}`../concepts/how_pytex_differs`
 - {doc}`../tutorials/notebooks/04_phases_lattices_space_groups_and_cif`
-- [../../tex/theory/canonical_data_model.tex](../../tex/theory/canonical_data_model.tex)
-- [../../tex/theory/crystal_structures_and_cif_import.tex](../../tex/theory/crystal_structures_and_cif_import.tex)
+- {doc}`/theory/canonical_data_model`
+- {doc}`/theory/crystal_structures_and_cif_import`

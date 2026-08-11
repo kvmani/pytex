@@ -157,7 +157,7 @@ crystal → specimen → laboratory → detector chain in closed form.
 - {doc}`diffraction_geometry`
 - {doc}`saed_generation`
 - {doc}`orix_kikuchipy_interop`
-- [../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex](../../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
+- {doc}`/theory/kikuchi_bands_and_gnomonic_projection`
 
 ## References
 

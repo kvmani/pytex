@@ -62,8 +62,8 @@ Phase 4 should begin by making reciprocal-space and detector-space semantics exp
 
 ### Informative
 
-- <a href="../tex/algorithms/diffraction_geometry_and_bragg_rings.tex">Diffraction Geometry And Bragg Rings</a>
-- <a href="../tex/algorithms/powder_xrd_and_saed.tex">Powder XRD And SAED</a>
-- <a href="../tex/algorithms/reciprocal_space_and_kinematic_spots.tex">Reciprocal Space And Kinematic Spots</a>
-- <a href="../tex/algorithms/convergent_beam_electron_diffraction.tex">Convergent-Beam Electron Diffraction</a>
-- <a href="../tex/algorithms/dynamical_cbed_and_symmetry_determination.tex">Dynamical CBED And Symmetry Determination</a>
+- <a href="../site/theory/diffraction_geometry_and_bragg_rings.md">Diffraction Geometry And Bragg Rings</a>
+- <a href="../site/theory/powder_xrd_and_saed.md">Powder XRD And SAED</a>
+- <a href="../site/theory/reciprocal_space_and_kinematic_spots.md">Reciprocal Space And Kinematic Spots</a>
+- <a href="../site/theory/convergent_beam_electron_diffraction.md">Convergent-Beam Electron Diffraction</a>
+- <a href="../site/theory/dynamical_cbed_and_symmetry_determination.md">Dynamical CBED And Symmetry Determination</a>

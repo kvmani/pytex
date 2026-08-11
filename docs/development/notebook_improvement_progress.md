@@ -42,7 +42,7 @@ in doubt, open 26 and match it.
 | R8 | **A failure-mode section, deliberately triggered.** Run the wrong thing, show the wrong answer, show what the library does about it. | 28 §6 forces the wrong fringe order and gets an unphysical fit; 26 §13 mixes Rodrigues for homochoric |
 | R9 | **Honest limits.** A short section stating what the implementation does *not* do, matching what `describe()` says. | 28 §8 |
 | R10 | **Figures that teach**, each with a caption sentence saying what to look at. Multi-panel where a comparison is the point. | 26 §8.3: the cube face and its curvilinear image |
-| R11 | **Close with takeaways** (imperative, memorable) **and Further reading**: the `docs/tex/` note, sibling tutorials by number and name, and literature with volume and page. | 28 §9 |
+| R11 | **Close with takeaways** (imperative, memorable) **and Further reading**: the `docs/site/theory/` note, sibling tutorials by number and name, and literature with volume and page. | 28 §9 |
 | R12 | **Notation per the registry.** `docs/standards/notation_and_conventions.md` — starred reciprocal *basis vectors*, unstarred Miller indices, `{hkl}`/`⟨uvw⟩` for families, overbars for negatives. | |
 | R13 | Committed with **outputs and execution counts cleared**; runs error-free under the Sphinx build; `tests/unit/test_notebooks.py` green. | |
 

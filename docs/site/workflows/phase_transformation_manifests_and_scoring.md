@@ -131,5 +131,5 @@ research workflows that already have a transformation record and a set of candid
 
 - {doc}`../architecture/phase_transformation_foundation`
 - {doc}`../validation/phase_transformation_validation_matrix`
-- [../../tex/algorithms/phase_transformation_relationship_construction.tex](../../tex/algorithms/phase_transformation_relationship_construction.tex)
-- [../../tex/algorithms/experimental_parent_candidate_scoring.tex](../../tex/algorithms/experimental_parent_candidate_scoring.tex)
+- {doc}`/theory/phase_transformation_relationship_construction`
+- {doc}`/theory/experimental_parent_candidate_scoring`

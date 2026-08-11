@@ -9,7 +9,7 @@ This note records two related PyTex foundations:
 
 The implementation is intentionally explicit about mapping direction, singularities, and default specimen references so the batch APIs remain scientifically auditable.
 
-The *equal-volume* representations — homochoric and cubochoric — are not covered here; they, the invariant-measure argument that motivates them, and the inverse construction that recovers $(hkl)[uvw]$ indices from an orientation are in 	exttt{docs/tex/theory/orientation_representations.tex}.
+The *equal-volume* representations — homochoric and cubochoric — are not covered here; they, the invariant-measure argument that motivates them, and the inverse construction that recovers $(hkl)[uvw]$ indices from an orientation are in 	exttt{{doc}`/theory/orientation_representations`}.
 
 ## Canonical Rotation Representation Rules
 

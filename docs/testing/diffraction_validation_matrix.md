@@ -89,10 +89,10 @@ Before stronger diffraction claims are made, the next validation pass should add
 
 ### Informative
 
-- `../tex/algorithms/diffraction_geometry_and_bragg_rings.tex`
-- `../tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex`
-- `../tex/algorithms/preferred_orientation_in_powder_intensities.tex`
-- `../tex/algorithms/powder_xrd_and_saed.tex`
-- `../tex/algorithms/convergent_beam_electron_diffraction.tex`
-- `../tex/algorithms/dynamical_cbed_and_symmetry_determination.tex`
-- `../tex/algorithms/reciprocal_space_and_kinematic_spots.tex`
+- `../site/theory/diffraction_geometry_and_bragg_rings.md`
+- `../site/theory/kikuchi_bands_and_gnomonic_projection.md`
+- `../site/theory/preferred_orientation_in_powder_intensities.md`
+- `../site/theory/powder_xrd_and_saed.md`
+- `../site/theory/convergent_beam_electron_diffraction.md`
+- `../site/theory/dynamical_cbed_and_symmetry_determination.md`
+- `../site/theory/reciprocal_space_and_kinematic_spots.md`

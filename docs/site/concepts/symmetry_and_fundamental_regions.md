@@ -235,5 +235,5 @@ Those APIs are separated on purpose because they solve different mathematical pr
 ## Related Material
 
 - {doc}`orientation_texture`
-- [../../tex/theory/fundamental_region_reduction.tex](../../tex/theory/fundamental_region_reduction.tex)
-- [../../tex/theory/orientation_space_and_disorientation.tex](../../tex/theory/orientation_space_and_disorientation.tex)
+- {doc}`/theory/fundamental_region_reduction`
+- {doc}`/theory/orientation_space_and_disorientation`

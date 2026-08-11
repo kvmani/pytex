@@ -71,8 +71,8 @@ The core model is not “extra structure around NumPy arrays.” It is the mecha
 ## Related Material
 
 - {doc}`../architecture/canonical_data_model`
-- [../../tex/theory/canonical_data_model.tex](../../tex/theory/canonical_data_model.tex)
-- [../../tex/theory/reference_frames.tex](../../tex/theory/reference_frames.tex)
+- {doc}`/theory/canonical_data_model`
+- {doc}`/theory/reference_frames`
 - [../../figures/reference_frames_vectors.svg](../../figures/reference_frames_vectors.svg)
 - [../../figures/reference_frame_catalog.svg](../../figures/reference_frame_catalog.svg)
 - {doc}`../architecture/reference_frame_foundation`

@@ -173,8 +173,8 @@ figure = plot_odf(harmonic_report.odf, kind="sections")
 - {doc}`harmonic_odf_reconstruction`
 - {doc}`xrdml_texture_import`
 - {doc}`../validation/automated_test_cases`
-- [../../tex/algorithms/discrete_odf_and_pole_figures.tex](../../tex/algorithms/discrete_odf_and_pole_figures.tex)
-- [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
+- {doc}`/theory/discrete_odf_and_pole_figures`
+- {doc}`/theory/harmonic_odf_reconstruction`
 
 ## References
 

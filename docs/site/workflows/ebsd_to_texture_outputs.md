@@ -78,5 +78,5 @@ Both plotting calls accept optional grain-boundary overlays.
 - {doc}`ebsd_import_normalization`
 - {doc}`ebsd_kam`
 - {doc}`texture_odf_inversion`
-- [../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex](../../tex/algorithms/orientation_representations_and_plane_direction_construction.tex)
-- [../../tex/algorithms/multiphase_ebsd_graph_workflows.tex](../../tex/algorithms/multiphase_ebsd_graph_workflows.tex)
+- {doc}`/theory/orientation_representations_and_plane_direction_construction`
+- {doc}`/theory/multiphase_ebsd_graph_workflows`

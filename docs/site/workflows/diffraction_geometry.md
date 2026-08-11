@@ -104,5 +104,5 @@ caption. See {doc}`../architecture/reference_frame_foundation`.
 ## Related Material
 
 - `docs/architecture/diffraction_foundation.md`
-- [../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex](../../tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
+- {doc}`/theory/diffraction_geometry_and_bragg_rings`
 - [../../figures/diffraction_geometry.svg](../../figures/diffraction_geometry.svg)

@@ -182,7 +182,7 @@ sections = plot_odf(
 - {doc}`texture_odf_inversion`
 - {doc}`xrdml_texture_import`
 - {doc}`../validation/automated_test_cases`
-- [../../tex/algorithms/harmonic_odf_reconstruction.tex](../../tex/algorithms/harmonic_odf_reconstruction.tex)
+- {doc}`/theory/harmonic_odf_reconstruction`
 
 ## References
 

@@ -40,7 +40,7 @@
 - [Engineering Governance](standards/engineering_governance.md)
 - [Notation And Conventions](standards/notation_and_conventions.md)
 - [Documentation Architecture](standards/documentation_architecture.md)
-- [LaTeX And Figures](standards/latex_and_figures.md)
+- [Scientific Notes And Figures](standards/scientific_notes_and_figures.md)
 - [Visualization Style Guide](standards/visualization_style_guide.md)
 - [Terminology And Symbol Registry](standards/terminology_and_symbol_registry.md)
 - [Scientific Citation Policy](standards/scientific_citation_policy.md)
@@ -67,38 +67,60 @@
 - [Working Notes: Transformation Crystallography And Diffraction Program](roadmap/working_notes_transformation_diffraction_program.md) — the TX phase ledger
 - [Working Notes: Algorithm Documentation Program](roadmap/working_notes_algorithm_documentation_program.md) — the active TD phase ledger
 
-## LaTeX Source Tree
+## Scientific Notes
 
-- [LaTeX README](tex/README.md)
-- [Project Philosophy](tex/foundations/project_philosophy.tex)
-- [Canonical Data Model Theory Note](tex/theory/canonical_data_model.tex)
-- [Euler Convention Handling](tex/theory/euler_convention_handling.tex)
-- [Fundamental Region Reduction](tex/theory/fundamental_region_reduction.tex)
-- [Hexagonal Conventions](tex/theory/hexagonal_conventions.tex)
-- [Orientation Representations And The Equal-Volume Maps](tex/theory/orientation_representations.tex)
-- [Orientation Space And Disorientation](tex/theory/orientation_space_and_disorientation.tex)
-- [Reference Frames](tex/theory/reference_frames.tex)
-- [Crystal Visualization Geometry](tex/theory/crystal_visualization_geometry.tex)
-- [Discrete ODF And Pole Figures](tex/algorithms/discrete_odf_and_pole_figures.tex)
-- [Harmonic ODF Reconstruction](tex/algorithms/harmonic_odf_reconstruction.tex)
-- [EBSD KAM Parameterization](tex/algorithms/ebsd_kam_parameterization.tex)
-- [EBSD Local Misorientation](tex/algorithms/ebsd_local_misorientation.tex)
-- [Lattice Curvature And GND Density](tex/algorithms/lattice_curvature_and_gnd_density.tex)
-- [EBSD Grain Segmentation And GROD](tex/algorithms/ebsd_grain_segmentation_and_grod.tex)
-- [EBSD Boundaries And Cleanup](tex/algorithms/ebsd_boundaries_and_cleanup.tex)
-- [Diffraction Geometry And Bragg Rings](tex/algorithms/diffraction_geometry_and_bragg_rings.tex)
-- [Kikuchi Bands And The Gnomonic Projection](tex/algorithms/kikuchi_bands_and_gnomonic_projection.tex)
-- [Stereographic Kikuchi Maps And Zone-Axis Routing](tex/algorithms/stereographic_kikuchi_maps.tex)
-- [Preferred Orientation In Powder Intensities](tex/algorithms/preferred_orientation_in_powder_intensities.tex)
-- [Powder XRD And SAED](tex/algorithms/powder_xrd_and_saed.tex)
-- [Orientation Relationship Index Correspondence](tex/algorithms/orientation_relationship_index_correspondence.tex)
-- [Orientation Relationship Determination](tex/algorithms/orientation_relationship_determination.tex)
-- [Convergent-Beam Electron Diffraction](tex/algorithms/convergent_beam_electron_diffraction.tex)
-- [Dynamical CBED And Symmetry Determination](tex/algorithms/dynamical_cbed_and_symmetry_determination.tex)
-- [SAED Ratio/Angle Indexing](tex/algorithms/saed_ratio_angle_indexing.tex)
-- [Reciprocal Space And Kinematic Spots](tex/algorithms/reciprocal_space_and_kinematic_spots.tex)
-- [TEM Specimen Tilt Navigation](tex/algorithms/tem_specimen_tilt_navigation.tex)
-- [Validation Program](tex/validation/validation_program.tex)
+Canonical theory, algorithm, and validation notes, authored as MyST Markdown and rendered in
+full on the Sphinx site. See [Theory And Algorithm Notes](site/theory/index.md) for the grouped
+index with cross-links to the matching implementation pages.
+
+### Foundations
+
+- [PyTex Project Philosophy](site/theory/project_philosophy.md)
+
+### Theory
+
+- [Reference Frames and Conventions in PyTex](site/theory/reference_frames.md)
+- [Canonical Data Model for PyTex](site/theory/canonical_data_model.md)
+- [Euler Convention Handling](site/theory/euler_convention_handling.md)
+- [Orientation Representations And The Equal-Volume Maps](site/theory/orientation_representations.md)
+- [Orientation Space, Symmetry Reduction, and Disorientation in PyTex](site/theory/orientation_space_and_disorientation.md)
+- [Fundamental Region Reduction](site/theory/fundamental_region_reduction.md)
+- [Hexagonal and Trigonal Conventions in PyTex](site/theory/hexagonal_conventions.md)
+- [Crystal Structures And CIF Import](site/theory/crystal_structures_and_cif_import.md)
+- [Crystal Visualization Geometry](site/theory/crystal_visualization_geometry.md)
+
+### Algorithms
+
+- [Vectorized Miller Planes and Directions in PyTex](site/theory/vectorized_miller_planes_and_directions.md)
+- [Orientation Representations and Plane–Direction Construction in PyTex](site/theory/orientation_representations_and_plane_direction_construction.md)
+- [Discrete ODF and Pole-Figure Foundations in PyTex](site/theory/discrete_odf_and_pole_figures.md)
+- [Harmonic ODF Reconstruction in PyTex](site/theory/harmonic_odf_reconstruction.md)
+- [Stereographic Projections and XRDML Texture Import in PyTex](site/theory/stereographic_projections_and_xrdml_texture_import.md)
+- [Preferred Orientation In Powder Intensities](site/theory/preferred_orientation_in_powder_intensities.md)
+- [EBSD KAM Parameterization](site/theory/ebsd_kam_parameterization.md)
+- [EBSD Local Misorientation Foundations](site/theory/ebsd_local_misorientation.md)
+- [EBSD Grain Segmentation And GROD Foundations](site/theory/ebsd_grain_segmentation_and_grod.md)
+- [EBSD Grain Boundaries And Cleanup Foundations](site/theory/ebsd_boundaries_and_cleanup.md)
+- [Lattice Curvature And GND Density](site/theory/lattice_curvature_and_gnd_density.md)
+- [Multiphase EBSD Graph Workflows](site/theory/multiphase_ebsd_graph_workflows.md)
+- [Determining An Orientation Relationship From Measured Orientations](site/theory/orientation_relationship_determination.md)
+- [Orientation-Relationship Index Correspondence](site/theory/orientation_relationship_index_correspondence.md)
+- [Phase-Transformation Relationship Construction From Plane-Direction Correspondence](site/theory/phase_transformation_relationship_construction.md)
+- [Experimental Parent Candidate Scoring](site/theory/experimental_parent_candidate_scoring.md)
+- [Diffraction Geometry And Bragg Rings](site/theory/diffraction_geometry_and_bragg_rings.md)
+- [Reciprocal Space And Kinematic Spots](site/theory/reciprocal_space_and_kinematic_spots.md)
+- [Powder XRD And SAED Foundations](site/theory/powder_xrd_and_saed.md)
+- [Ratio/Angle Indexing Of A Measured SAED Pattern](site/theory/saed_ratio_angle_indexing.md)
+- [Kikuchi Bands And The Gnomonic Projection](site/theory/kikuchi_bands_and_gnomonic_projection.md)
+- [Stereographic Kikuchi Maps And Zone-Axis Routing](site/theory/stereographic_kikuchi_maps.md)
+- [TEM Specimen Tilt Navigation](site/theory/tem_specimen_tilt_navigation.md)
+- [Convergent-Beam Electron Diffraction](site/theory/convergent_beam_electron_diffraction.md)
+- [Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, and Point-Group Determination](site/theory/dynamical_cbed_and_symmetry_determination.md)
+- [Foundation Feature Priorities](site/theory/foundation_feature_priorities.md)
+
+### Validation
+
+- [PyTex Validation Program](site/theory/validation_program.md)
 
 ## Figures
 
@@ -137,7 +159,7 @@
 - Root Markdown documents provide discoverable guidance and links.
 - When a document points to another repository document, use a clickable Markdown link rather than a plain backticked path.
 - Sphinx is the primary user-facing documentation layer.
-- Major scientific notes are authored canonically in LaTeX.
+- Major scientific notes are authored canonically as MyST Markdown under `site/theory/`.
 - Scientific geometry diagrams are maintained canonically as SVG.
 - Stable features are not considered complete until docs, figures, examples, and validation notes all exist.
 - Foundational conventions, frame mappings, symmetry reductions, major algorithms, and modality boundaries must be explained through prose, explicit mathematics, and annotated figures together.

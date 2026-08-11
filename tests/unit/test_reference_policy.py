@@ -24,7 +24,7 @@ def test_foundational_docs_declare_normative_and_informative_references() -> Non
         "docs/standards/engineering_governance.md",
         "docs/standards/notation_and_conventions.md",
         "docs/standards/documentation_architecture.md",
-        "docs/standards/latex_and_figures.md",
+        "docs/standards/scientific_notes_and_figures.md",
         "docs/standards/terminology_and_symbol_registry.md",
         "docs/standards/scientific_citation_policy.md",
         "docs/standards/development_principles.md",

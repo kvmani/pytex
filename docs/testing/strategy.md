@@ -116,4 +116,4 @@ transformation, and interoperability.
 
 ### Informative
 
-- <a href="../tex/validation/validation_program.tex">Validation Program</a>
+- <a href="../site/theory/validation_program.md">Validation Program</a>

@@ -227,4 +227,4 @@ The tests assert:
 - {doc}`xrd_generation`
 - {doc}`ebsd_to_texture_outputs`
 - {doc}`phase_transformation_manifests_and_scoring`
-- [../../tex/algorithms/foundation_feature_priorities.tex](../../tex/algorithms/foundation_feature_priorities.tex)
+- {doc}`/theory/foundation_feature_priorities`

@@ -11,7 +11,7 @@ plans the route, and states plainly what the available observations leave
 undetermined.
 
 The theory note is
-[`docs/tex/algorithms/tem_specimen_tilt_navigation.tex`](../../tex/algorithms/tem_specimen_tilt_navigation.tex);
+{doc}`/theory/tem_specimen_tilt_navigation`;
 the design record with the full identifiability analysis is
 {doc}`../architecture/tem_tilt_navigation_foundation`.
 

@@ -84,7 +84,7 @@ every constant in the code.
 Those two conditions fix the map. Within the ``+z`` pyramid it factors through a
 planar wedge and a Lambert azimuthal equal-area lift; see
 :func:`homochoric_from_cubochoric` for the closed form and
-``docs/tex/theory/orientation_representations.tex`` for the derivation.
+``docs/site/theory/orientation_representations.md`` for the derivation.
 
 Vectorization
 -------------

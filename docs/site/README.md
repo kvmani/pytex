@@ -21,7 +21,7 @@ For full platform-specific install, notebook, and PDF-build guidance, see
 - `tutorials/notebooks/`: executable deep-dive tutorials in `.ipynb` form
 - `workflows/`: multi-step domain workflows
 - `api/`: curated API navigation
-- `theory/`: pointers into the canonical LaTeX notes
+- `theory/`: the canonical theory, algorithm, and validation notes
 - `validation/`: testing strategy and parity posture
 - [Implementation roadmap](../roadmap/implementation_roadmap.md): active development guide for the next phase
 
@@ -29,7 +29,7 @@ For full platform-specific install, notebook, and PDF-build guidance, see
 
 - Sphinx is the public documentation entry point.
 - Concept pages, tutorials, workflows, and curated API reference live here.
-- Canonical scientific notes remain under `../tex/`.
+- Canonical scientific notes live under `theory/` and render as ordinary site pages.
 - Canonical SVG figures remain under `../figures/`.
 
 ## Architecture
