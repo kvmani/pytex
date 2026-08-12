@@ -240,8 +240,11 @@ class TiltPath:
         )
         band = ""
         if self.connecting_band is not None:
+            band_text = format_plane_indices(
+                _int_list(self.connecting_band.indices), style="plain"
+            )
             band = (
-                f" Follow the {format_plane_indices(_int_list(self.connecting_band.indices))} "
+                f" Follow the {band_text} "
                 "Kikuchi band, which is the band joining the two zone axes: the "
                 "geodesic path and the band are the same great circle."
             )

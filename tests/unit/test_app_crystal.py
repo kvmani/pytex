@@ -99,7 +99,31 @@ class TestScene:
 
     def test_labels_use_four_index_notation_for_hexagonal_phases(self) -> None:
         payload = scene(phase={"builtin": "zr_hcp"}, planes=[[1, 0, 0]], show_bonds=False)
-        assert payload["planes"][0]["label"] is not None
+        # (100) in a hexagonal phase is the prism plane (1 0 -1 0), and the
+        # browser must be shown the four-index form the literature uses.
+        assert payload["planes"][0]["label"] == "(1 0 -1 0)"
+
+    def test_overlay_labels_are_text_the_browser_can_draw(self) -> None:
+        """No mathtext on the wire: the browser draws the string literally.
+
+        The scene builder labels for matplotlib, where ``$(1\\bar{1}0)$`` is
+        markup. Sent to the browser unchanged it appears on screen with the
+        dollar signs and the backslash showing, which is what a user reported
+        seeing on every superimposed plane.
+        """
+
+        payload = scene(
+            phase={"builtin": "nacl"},
+            planes=[[1, -1, 0], [1, 1, 1]],
+            directions=[[1, -1, 0]],
+            show_bonds=False,
+        )
+        labels = [plane["label"] for plane in payload["planes"]]
+        labels += [direction["label"] for direction in payload["directions"]]
+        assert labels == ["(1 -1 0)", "(111)", "[1 -1 0]"]
+        for label in labels:
+            assert "$" not in label
+            assert "\\" not in label
 
     def test_bonds_can_be_suppressed(self) -> None:
         assert scene(phase={"builtin": "nacl"}, show_bonds=False)["bonds"] == []
@@ -206,6 +230,37 @@ class TestRender:
         )
         assert result["data"]["elevation_deg"] == pytest.approx(90.0)
         assert result["data"]["azimuth_deg"] == pytest.approx(0.0)
+
+    def test_render_accepts_every_scene_parameter(self) -> None:
+        """The Figure button replays the scene request, so render must accept it.
+
+        The viewer sends the inputs it drew with, plus the camera. Any structural
+        parameter the scene understands and the figure does not is a rejected
+        request the moment a user touches that control — and a figure that no
+        longer shows what the screen shows if the mismatch is patched by
+        dropping the parameter instead.
+        """
+
+        manifest = REGISTRY.manifest()
+        operations = {entry["id"]: entry for entry in manifest["operations"]}
+        scene_names = {p["name"] for p in operations["crystal.scene"]["parameters"]}
+        render_names = {p["name"] for p in operations["crystal.render"]["parameters"]}
+        assert scene_names <= render_names
+
+    def test_the_figure_honours_the_scene_structural_controls(self) -> None:
+        result = REGISTRY.call(
+            "crystal.render",
+            {
+                "phase": {"builtin": "nacl"},
+                "repeat_a": 2,
+                "show_unit_cells": True,
+                "atom_labels": "species",
+                "bond_tolerance_angstrom": 0.2,
+                "format": "png",
+                "dpi": 72,
+            },
+        )
+        assert result["data"]["encoding"] == "base64"
 
     def test_rendering_does_not_leak_figures(self) -> None:
         import matplotlib.pyplot as plt

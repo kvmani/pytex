@@ -357,7 +357,7 @@ class TiltSolution:
         """Prose an operator can act on, with the conventions made explicit."""
 
         target_text = (
-            format_direction_indices(_int_list(self.orbit_member_indices))
+            format_direction_indices(_int_list(self.orbit_member_indices), style="plain")
             if self.orbit_member_indices is not None
             else "the requested direction"
         )
@@ -493,7 +493,7 @@ class TiltPlanReport:
                 )
             raise ValueError(
                 f"No reachable solution was found for "
-                f"{format_direction_indices(_int_list(self.target.indices))} within "
+                f"{format_direction_indices(_int_list(self.target.indices), style='plain')} within "
                 f"{self.tolerance_deg:g} deg. None of the {self.orbit_size} "
                 f"symmetry-equivalent directions falls inside the holder envelope."
                 + nearest
@@ -503,7 +503,7 @@ class TiltPlanReport:
     def describe(self) -> str:
         """The whole answer as prose, conventions stated, ambiguity included."""
 
-        target_text = format_direction_indices(_int_list(self.target.indices))
+        target_text = format_direction_indices(_int_list(self.target.indices), style="plain")
         head = (
             f"Target {target_text} in {self.current.phase.name}: the symmetry orbit "
             f"contains {self.orbit_size} distinct directions (counting both senses), of "
@@ -545,7 +545,7 @@ class TiltPlanReport:
         waypoints = ""
         if self.waypoints:
             listed = ", ".join(
-                format_direction_indices(_int_list(direction.coordinates))
+                format_direction_indices(_int_list(direction.coordinates), style="plain")
                 for direction in self.waypoints
             )
             waypoints = (

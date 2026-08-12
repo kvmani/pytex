@@ -230,6 +230,24 @@ class TestCanonicalExamples:
         )
         assert example.operation in REGISTRY.ids()
 
+    @pytest.mark.parametrize("example", REGISTRY.examples(), ids=lambda example: example.id)
+    def test_no_result_carries_matplotlib_mathtext(self, example) -> None:  # type: ignore[no-untyped-def]
+        """Results are read by a browser, which draws mathtext literally.
+
+        `pytex.core.notation` renders indices for matplotlib by default, where
+        ``$(1\\bar{1}0)$`` is markup. Anything crossing the service boundary is
+        read by the browser, by a CSV reader, or by a person at a terminal —
+        none of which typeset it — so every label and every sentence must use
+        the plain style. The whole result is scanned rather than a chosen field,
+        because the leak has appeared in a scene label and in a prose summary.
+        """
+
+        from pytex.app.contracts import dumps
+
+        text = dumps(REGISTRY.call(example.operation, example.request))
+        for marker in ("\\bar{", "\\langle", "\\rangle", "$(", "$["):
+            assert marker not in text, f"{example.id} leaks mathtext {marker!r} into its result"
+
     def test_the_canonical_materials_are_all_reachable(self) -> None:
         from pytex.app.phases import BUILTIN_PHASES
 

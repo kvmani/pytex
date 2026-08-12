@@ -25,6 +25,7 @@ The division of labour
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -83,6 +84,14 @@ def _direction_overlay(indices: tuple[int, ...], phase: Phase) -> CrystalDirecti
     return CrystalDirection(coordinates=np.asarray(indices, dtype=float), phase=phase)
 
 
+def _overlay_label(default: str, replacements: Sequence[str] | None, index: int) -> str:
+    """The caller's label for overlay ``index``, or the scene's own."""
+
+    if replacements is None or index >= len(replacements):
+        return str(default)
+    return str(replacements[index])
+
+
 def camera_angles_from_matrix(matrix: Any) -> tuple[float, float]:
     """Convert a browser camera matrix into the renderer's elevation and azimuth.
 
@@ -136,7 +145,13 @@ def camera_angles_from_matrix(matrix: Any) -> tuple[float, float]:
     return elevation, azimuth
 
 
-def scene_payload(scene: Any, *, spec: PhaseSpec) -> dict[str, Any]:
+def scene_payload(
+    scene: Any,
+    *,
+    spec: PhaseSpec,
+    plane_labels: Sequence[str] | None = None,
+    direction_labels: Sequence[str] | None = None,
+) -> dict[str, Any]:
     """Convert a :class:`CrystalScene` into the JSON the browser draws.
 
     Only what a renderer needs crosses the wire: positions, radii, colours,
@@ -147,6 +162,12 @@ def scene_payload(scene: Any, *, spec: PhaseSpec) -> dict[str, Any]:
     Each atom and each bond carries enough of its own description to answer a
     hover — species, occupancy, bond length — because a scene the user cannot
     interrogate is a picture rather than an instrument.
+
+    Overlay labels are replaced by ``plane_labels`` and ``direction_labels``
+    when given, in scene order. The scene builder labels for matplotlib, whose
+    mathtext ``$(1\\bar{1}0)$`` is markup rather than text; the browser draws
+    the string literally, so it must be handed the plain form the rest of the
+    application already uses in tables and prose.
     """
 
     bounds = np.asarray(scene.bounds(), dtype=float)
@@ -189,18 +210,18 @@ def scene_payload(scene: Any, *, spec: PhaseSpec) -> dict[str, Any]:
             "normal": [float(value) for value in plane.normal_angstrom],
             "color": str(plane.color),
             "alpha": float(plane.alpha),
-            "label": plane.label,
+            "label": _overlay_label(plane.label, plane_labels, index),
         }
-        for plane in scene.planes
+        for index, plane in enumerate(scene.planes)
     ]
     directions = [
         {
             "start": [float(value) for value in direction.start_angstrom],
             "end": [float(value) for value in direction.end_angstrom],
             "color": str(direction.color),
-            "label": direction.label,
+            "label": _overlay_label(direction.label, direction_labels, index),
         }
-        for direction in scene.directions
+        for index, direction in enumerate(scene.directions)
     ]
     return {
         "atoms": atoms,
@@ -384,7 +405,11 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
         plane_overlays=tuple(_plane_overlay(row, phase) for row in plane_rows),
         direction_overlays=tuple(_direction_overlay(row, phase) for row in direction_rows),
     )
-    payload = scene_payload(scene, spec=spec)
+    plane_texts = tuple(plane_label(row, spec=spec) for row in plane_rows)
+    direction_texts = tuple(direction_label(row, spec=spec) for row in direction_rows)
+    payload = scene_payload(
+        scene, spec=spec, plane_labels=plane_texts, direction_labels=direction_texts
+    )
 
     rows = tuple(
         {
@@ -400,12 +425,7 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
     bond_summary = {
         f"{pair[0]}-{pair[1]}": stats for pair, stats in scene.bond_length_summary().items()
     }
-    overlay_text = ", ".join(
-        [
-            *(plane_label(row, spec=spec) for row in plane_rows),
-            *(direction_label(row, spec=spec) for row in direction_rows),
-        ]
-    )
+    overlay_text = ", ".join([*plane_texts, *direction_texts])
     result = AppResult(
         title=f"{spec.name}: crystal structure",
         summary=(
@@ -546,6 +566,41 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
             group="Overlays",
         ),
         BooleanParameter(
+            name="show_unit_cells",
+            label="Outline every cell",
+            help_text="Draw the edges of each repeated cell, not only the outer box.",
+            default=False,
+            group="Overlays",
+        ),
+        ChoiceParameter(
+            name="atom_labels",
+            label="Atom labels",
+            help_text="Label every atom with its element or its site name.",
+            options=(
+                ("none", "None", "No labels; cleanest for dense structures."),
+                ("species", "Element", "The element symbol on each atom."),
+                ("site", "Site", "The crystallographic site label, as in the CIF."),
+            ),
+            default="none",
+            advanced=True,
+            group="Overlays",
+        ),
+        NumberParameter(
+            name="bond_tolerance_angstrom",
+            label="Bond tolerance",
+            help_text=(
+                "Added to the sum of covalent radii when deciding whether two atoms are bonded. "
+                "Must match the viewer's value, or the figure will show a different set of "
+                "bonds from the one on screen."
+            ),
+            units="Å",
+            default=0.45,
+            minimum=0.0,
+            maximum=2.0,
+            advanced=True,
+            group="Overlays",
+        ),
+        BooleanParameter(
             name="show_legend",
             label="Species legend",
             help_text="Add a colour key for the elements present.",
@@ -650,6 +705,9 @@ def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
         repeats=repeats,
         render_style=str(request["render_style"]),
         show_bonds=bool(request["show_bonds"]),
+        bond_tolerance_angstrom=float(request["bond_tolerance_angstrom"]),
+        show_unit_cells=bool(request["show_unit_cells"]),
+        atom_label_mode=str(request["atom_labels"]),
         plane_overlays=tuple(_plane_overlay(row, phase) for row in plane_rows),
         direction_overlays=tuple(_direction_overlay(row, phase) for row in direction_rows),
         elev_deg=elevation,
