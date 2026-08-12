@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PyTex Workbench</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to the workspace</a>
+
+    <header class="masthead">
+      <div class="masthead__brand">
+        <span class="masthead__mark" aria-hidden="true"></span>
+        <div>
+          <h1>PyTex Workbench</h1>
+          <p class="masthead__tagline" id="masthead-tagline">Loading…</p>
+        </div>
+      </div>
+      <nav class="tabs" id="tabs" aria-label="Workspaces"></nav>
+      <div class="masthead__actions">
+        <button type="button" class="button" id="open-palette" title="Search every feature (Ctrl+K)">
+          <span aria-hidden="true">⌕</span> Find a feature
+        </button>
+        <button type="button" class="button" id="open-help" title="What this panel does">
+          <span aria-hidden="true">?</span> Help
+        </button>
+      </div>
+    </header>
+
+    <main id="workspace" class="workspace">
+      <section class="stage" id="stage" aria-live="polite">
+        <div class="stage__placeholder" id="stage-placeholder">
+          <p>Choose a workspace to begin.</p>
+        </div>
+      </section>
+
+      <aside class="rail" id="rail" aria-label="Controls">
+        <div class="rail__body" id="rail-body"></div>
+      </aside>
+    </main>
+
+    <div class="palette" id="palette" hidden role="dialog" aria-modal="true" aria-label="Find a feature">
+      <div class="palette__panel">
+        <input
+          type="search"
+          id="palette-input"
+          class="palette__input"
+          placeholder="Search operations, examples, and materials…"
+          autocomplete="off"
+          aria-label="Search"
+        />
+        <ul class="palette__results" id="palette-results" role="listbox"></ul>
+        <p class="palette__hint">Enter to run · Esc to close</p>
+      </div>
+    </div>
+
+    <div class="drawer" id="help-drawer" hidden role="dialog" aria-modal="true" aria-label="Help">
+      <div class="drawer__panel">
+        <button type="button" class="drawer__close" id="help-close" aria-label="Close help">×</button>
+        <div class="drawer__body" id="help-body"></div>
+      </div>
+    </div>
+
+    <div class="toasts" id="toasts" aria-live="assertive"></div>
+
+    <script type="module" src="/js/main.js"></script>
+  </body>
+</html>

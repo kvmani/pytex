@@ -194,6 +194,28 @@ question with a known textbook answer. Examples are registered beside the operat
 and appear in the manifest, so the same "no drift, discoverable" property of Decision 2 applies to
 them.
 
+## Decision 8 — Every Plot Answers "What Is Under My Cursor?"
+
+Two interactions are mandatory on every plot in the application, not optional per panel, because
+they are how a researcher interrogates a figure rather than merely looking at one:
+
+1. **A live cursor readout.** The bottom corner of every plot shows the current pointer position in
+   the plot's own physical units — Å⁻¹ for a diffraction pattern, degrees for a stereogram, Å for a
+   crystal view — updating as the pointer moves. A plot whose axes carry units but whose cursor
+   does not is a picture, not an instrument.
+2. **Hover detail on every drawn entity.** Pointing at a diffraction spot shows its indices, its
+   d-spacing, its |g|, its relative intensity, and — in a composite pattern — which phase and which
+   variant produced it. The detail comes from the same row the CSV export writes, so what a user
+   reads on screen and what they get in the file cannot disagree.
+
+Both are provided by one shared frontend module (`core/plotframe.js`) that every panel mounts its
+SVG into, so a new plot gets both behaviours by construction and no panel re-implements them. The
+readout formatter is chosen per plot from a declared unit; the hover payload is whatever row the
+service attached to the entity.
+
+This is why services attach the full row to each drawn entity rather than only its coordinates: the
+extra bytes are the difference between a figure and a tool.
+
 ## Frontend Architecture
 
 No framework, but not ad hoc either. The frontend is four layers:

@@ -24,7 +24,9 @@ bundler, no third-party JS, because the deployment target is an offline intranet
 (4) interactive 3D **projects in the browser, publishes from Python** (scene built once in Python,
 camera lives in the browser, export replays the camera through `pytex.plotting`);
 (5) the desktop shell is the web shell in a window (`pywebview` if present, else default browser);
-(6) every result is exportable in a re-plottable form; (7) **every tab ships with 3–4 canonical
+(6) every result is exportable in a re-plottable form; (8) **every plot carries a live cursor
+readout in its own physical units and hover detail on every drawn entity** — a spot shows its hkl,
+d, |g|, intensity, phase and variant, taken from the same row the CSV export writes; (7) **every tab ships with 3–4 canonical
 worked examples** so a user with no data of their own can still exercise every feature — the shared
 material set is NaCl, Fe-fcc (austenite), Fe-bcc (ferrite), and Zr-hcp, all present in the built-in
 phase catalogue with cited parameters and full atomic bases.
@@ -38,13 +40,15 @@ phase catalogue with cited parameters and full atomic bases.
 | 3 | Phase specification + built-in phase catalog (no pymatgen required) | done | (this commit) |
 | 4 | Calculator service (`calc.*`) + tests | done | (this commit) |
 | 4b | Example-scenario registry + named-OR operation; 7 calculator examples | done | (this commit) |
-| 5 | Stdlib HTTP server + routing + in-process loopback tests | pending | |
-| 6 | Frontend shell: tab bar, state store, manifest-driven controls, calculator tab | pending | |
+| 5 | Stdlib HTTP server + routing + in-process loopback tests | done | (this commit) |
+| 6 | Frontend shell: tabs, manifest-driven controls, palette, calculator tab | done | (this commit) |
 | 7 | Crystal viewer service + panel (browser projection, Python export) | pending | |
 | 8 | Export surface: SVG/PDF/PNG/CSV/XLSX/JSON, stdlib xlsx writer | pending | |
 | 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | pending | |
-| 10 | Desktop shell (`pywebview`, browser fallback) + `pytex app` CLI verbs | pending | |
-| 11 | Diffraction and texture tabs | pending | |
+| 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
+| 11 | Diffraction tab: composite SAED of parent + product variants | pending | |
+| 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
+| 11c | Texture tab: pole figures, IPF, ODF | pending | |
 | 12 | User guide, worked example, docs index wiring | pending | |
 
 ### Current worktree state

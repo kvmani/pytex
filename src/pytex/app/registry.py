@@ -666,9 +666,14 @@ class ServiceRegistry:
             self.add_example(example)
 
     def examples(self, *, panel: str | None = None) -> tuple[ExampleScenario, ...]:
-        """Registered examples, optionally filtered to one panel."""
+        """Registered examples in declaration order, optionally filtered to a panel.
 
-        found = tuple(self._examples[key] for key in sorted(self._examples))
+        Declaration order, not sorted order: the first example a panel offers is
+        the one a newcomer runs, so which one comes first is a teaching decision
+        that belongs to whoever wrote them.
+        """
+
+        found = tuple(self._examples.values())
         if panel is None:
             return found
         return tuple(example for example in found if example.panel == panel)

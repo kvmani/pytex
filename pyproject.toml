@@ -62,6 +62,12 @@ docs = [
 plotting = [
   "matplotlib>=3.8",
 ]
+# The desktop window. Optional on purpose: `python -m pytex.app desktop` opens
+# the default browser instead when this is absent, so the application has no
+# mandatory dependency beyond the library itself.
+desktop = [
+  "pywebview>=5.0",
+]
 adapters = [
   "diffsims>=0.6.1",
   "kikuchipy>=0.11.5",
@@ -86,6 +92,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "pytex" = ["py.typed"]
+# The frontend is the application. It must be inside the wheel, or an installed
+# PyTex serves a 500 from an empty static root.
+"pytex.app" = ["static/*.html", "static/*.css", "static/js/*.js", "static/js/**/*.js"]
 "pytex.diffraction._data" = ["*.json"]
 "pytex.plotting.themes" = ["*.yaml"]
 
@@ -143,4 +152,11 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["scipy", "scipy.*"]
+ignore_missing_imports = true
+
+# pywebview backs the optional native desktop window. It is an optional extra
+# by design - the desktop shell falls back to the default browser without it -
+# so the type checker must not require it to be installed.
+[[tool.mypy.overrides]]
+module = ["webview", "webview.*"]
 ignore_missing_imports = true
