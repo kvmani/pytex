@@ -159,23 +159,60 @@ export async function exportResult(result, format) {
   const disposition = response.headers.get('Content-Disposition') ?? '';
   const match = /filename="([^"]+)"/.exec(disposition);
   const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const anchor = el('a', { href: url, download: match ? match[1] : `result.${format}` });
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  return saveBlob(match ? match[1] : `result.${format}`, blob);
 }
 
-/** Trigger a browser download. The desktop shell intercepts this and writes a file. */
+/** Save text produced in the page itself — a figure, a scene, a report. */
 export function download(filename, text, mime) {
-  const blob = new Blob([text], { type: mime });
+  return saveBlob(filename, new Blob([text], { type: mime }));
+}
+
+/**
+ * Put a blob where the user can find it, by whichever route this shell has.
+ *
+ * There are two, and the difference is not cosmetic. A browser takes an anchor
+ * with a `download` attribute and puts the file in its downloads folder. The
+ * embedded web view of the desktop shell accepts that same click and does
+ * nothing whatsoever with it — no file, no error — so the desktop shell hands
+ * the bytes to Python, which asks where to put them and writes them there.
+ *
+ * Both routes announce the outcome as a `pytex:saved` event, so the shell can
+ * say what happened. Silence after pressing an export button is the failure
+ * mode this whole path exists to avoid.
+ *
+ * @param {string} filename
+ * @param {Blob} blob
+ * @returns {Promise<string|null>} Where it went, when the shell can say.
+ */
+export async function saveBlob(filename, blob) {
+  const bridge = window.pywebview?.api?.save_file;
+  if (bridge) {
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    // In chunks: String.fromCharCode(...bytes) overflows the argument limit on
+    // a megabyte-scale figure, which is exactly the case that must not fail.
+    for (let index = 0; index < bytes.length; index += 0x8000) {
+      binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+    }
+    const path = await bridge(filename, btoa(binary));
+    announceSave(path ? `Saved to ${path}` : 'Not saved.', path);
+    return path ?? null;
+  }
   const url = URL.createObjectURL(blob);
   const anchor = el('a', { href: url, download: filename });
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
+  announceSave(`${filename} downloaded.`, null);
+  return null;
+}
+
+function announceSave(message, path) {
+  document.dispatchEvent(
+    new CustomEvent('pytex:saved', { detail: { message, path } }),
+  );
 }
 
 /** Render help for an operation into the help drawer. */

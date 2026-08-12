@@ -42,6 +42,35 @@ export async function fetchManifest() {
 }
 
 /**
+ * Ask the server which shell this page is running in.
+ *
+ * Only file handling differs between them, and the page asks rather than
+ * sniffs for a window object: a shell that changes how it saves should have to
+ * say so in one place on the Python side.
+ *
+ * @returns {Promise<object>} `{shell, can_write_local_files, ...}`; a web shell
+ *   is assumed if the route is unavailable, because that is the capability set
+ *   that needs no cooperation from the host.
+ */
+export async function fetchShell() {
+  try {
+    const response = await fetch('/api/shell', { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(String(response.status));
+    SHELL = await response.json();
+  } catch {
+    SHELL = { shell: 'web', can_write_local_files: false, can_read_local_paths: false };
+  }
+  return SHELL;
+}
+
+let SHELL = { shell: 'web', can_write_local_files: false, can_read_local_paths: false };
+
+/** What the running shell can do, as last reported by {@link fetchShell}. */
+export function shell() {
+  return SHELL;
+}
+
+/**
  * Invoke one operation.
  *
  * @param {string} operation - Identifier from the manifest.

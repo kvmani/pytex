@@ -762,6 +762,11 @@ button:focus-visible {
   pointer-events: auto;
 }
 
+/* A saved file is not a failure; the red edge is reserved for errors. */
+.toast--ok {
+  border-left-color: var(--ok);
+}
+
 .toast strong {
   display: block;
 }

@@ -24,6 +24,9 @@ Routes
     Liveness plus the version, for a reverse proxy or a colleague's bookmark.
 ``GET /api/manifest``
     The self-describing operation manifest the frontend builds itself from.
+``GET /api/shell``
+    What this shell can do that the other cannot — currently, whether a result
+    can be written to a chosen path instead of downloaded.
 ``POST /api/call``
     ``{"operation": "...", "params": {...}}`` in, the call envelope out.
 ``POST /api/export``
@@ -180,12 +183,23 @@ class _Handler(BaseHTTPRequestHandler):
         if path == "/api/manifest":
             self._send_json(HTTPStatus.OK, self.registry.manifest())
             return
+        if path == "/api/shell":
+            from pytex.app.desktop import shell_capabilities
+
+            self._send_json(
+                HTTPStatus.OK,
+                shell_capabilities(desktop=bool(getattr(self.server, "desktop", False))),
+            )
+            return
         if path.startswith("/api/"):
             self._send_error_json(
                 HTTPStatus.NOT_FOUND,
                 "route.unknown",
                 f"No API route {path!r}.",
-                hint=("The API routes are /api/health, /api/manifest, /api/call and /api/export."),
+                hint=(
+                    "The API routes are /api/health, /api/manifest, /api/shell, /api/call and "
+                    "/api/export."
+                ),
             )
             return
         self._serve_static(path)
@@ -397,9 +411,14 @@ class AppServer(ThreadingHTTPServer):
         address: tuple[str, int],
         *,
         registry: ServiceRegistry | None = None,
+        desktop: bool = False,
     ) -> None:
         super().__init__(address, _Handler)
         self.registry: ServiceRegistry = registry if registry is not None else REGISTRY
+        #: Whether this server was started by the desktop shell. The frontend
+        #: asks over ``/api/shell`` rather than sniffing for a window object,
+        #: so the one difference between the shells is stated in one place.
+        self.desktop: bool = desktop
 
     @property
     def url(self) -> str:
@@ -431,6 +450,7 @@ def create_server(
     port: int = DEFAULT_PORT,
     *,
     registry: ServiceRegistry | None = None,
+    desktop: bool = False,
 ) -> AppServer:
     """Bind a server without serving.
 
@@ -445,6 +465,10 @@ def create_server(
         and the tests use.
     registry : ServiceRegistry, optional
         Defaults to the application-wide registry.
+    desktop : bool
+        Whether the desktop shell is starting this server. Reported to the
+        frontend over ``/api/shell``, which is how the page learns that it can
+        save through a native dialog rather than a browser download.
 
     Returns
     -------
@@ -458,7 +482,7 @@ def create_server(
             "pytex.app.static must ship with the package."
         )
     try:
-        return AppServer((host, port), registry=registry)
+        return AppServer((host, port), registry=registry, desktop=desktop)
     except OSError as error:
         raise PortInUseError(host, port, error) from error
 

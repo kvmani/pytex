@@ -60,6 +60,34 @@ class TestApiRoutes:
         assert status == 200
         assert json.loads(body) == {"ok": True, "version": __version__}
 
+    def test_the_shell_reports_that_it_cannot_write_local_files(self, server: AppServer) -> None:
+        """A page served over HTTP must not be told it can save through Python.
+
+        The desktop shell writes files through a bridge only its own window
+        provides. A web page that believed the same would call a bridge that is
+        not there, and the export would fail where the browser's own download
+        would have worked.
+        """
+
+        status, _, body = get(server, "/api/shell")
+        assert status == 200
+        assert json.loads(body)["shell"] == "web"
+        assert json.loads(body)["can_write_local_files"] is False
+
+    def test_the_desktop_shell_says_so_over_the_same_route(self) -> None:
+        from pytex.app.server import create_server
+
+        instance = create_server("127.0.0.1", 0, desktop=True)
+        instance.serve_in_background()
+        try:
+            status, _, body = get(instance, "/api/shell")
+        finally:
+            instance.shutdown()
+            instance.server_close()
+        assert status == 200
+        assert json.loads(body)["shell"] == "desktop"
+        assert json.loads(body)["can_write_local_files"] is True
+
     def test_manifest_is_served(self, server: AppServer) -> None:
         status, headers, body = get(server, "/api/manifest")
         assert status == 200

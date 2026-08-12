@@ -47,16 +47,43 @@ phase catalogue with cited parameters and full atomic bases.
 | 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | done | (this commit) |
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
 | 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
+| 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
 | 11c | Texture tab: pole figures, IPF, ODF | pending | |
 | 12 | User guide, worked example, docs index wiring | pending | |
 
 ### Current worktree state
 
-Steps 1–4b landed. Every panel must carry at least three runnable examples; the manifest test
-enforces it and executes each one, so an example cannot rot. Next action is step 5: `src/pytex/app/server.py` on
-`http.server.ThreadingHTTPServer`, routing `/api/manifest`, `/api/call`, and the static tree, with
-`tests/unit/test_app_server.py` starting a real loopback server in-process.
+Steps 1–11 and 11d landed. Every panel carries at least three runnable examples; the manifest
+test enforces it and executes each one, so an example cannot rot.
+
+**Step 11d — what driving the application found.** The panels were tested by clicking them, in
+the browser and in the real pywebview window, with a synthetic Ni [001] and [011] SAED pattern
+generated to a known camera constant so the indexer could be checked against an answer known in
+advance (it recovers both zone axes, 100% of spots, residual < 0.002 Å⁻¹). Four defects that no
+unit test was positioned to see:
+
+1. **The crystal viewer's Figure button was dead** — `crystal.render` rejected three parameters
+   `crystal.scene` accepts, so the request failed the moment a user touched the unit-cell
+   outline, the atom labels, or the bond tolerance. Fixed by giving the renderer the parameters;
+   a test now asserts every scene parameter is one the figure accepts.
+2. **Mathtext leaked to the browser and to prose** — plane overlays were labelled `$(100)$` on
+   screen, and the tilt planner told an operator to drive to `$[0ar{1}1]$`. The repository
+   convention was already plain style for `describe()`; `pytex.tem` had not followed it.
+3. **The closed overlays covered the whole application** — `.palette, .drawer { display: flex }`
+   outranks the user agent's `[hidden] { display: none }`, so both full-viewport layers sat open
+   over the page and swallowed every click. Nothing in the JavaScript was wrong, which is why no
+   panel test could see it.
+4. **The desktop shell could export nothing** — an anchor with `download` is accepted and
+   silently dropped by the embedded web view, so every export in the desktop shell produced no
+   file and no error. Fixed with a `SaveBridge` js_api that writes through a native save dialog,
+   `GET /api/shell` so the page is told which shell it is in rather than sniffing, and a
+   `pytex:saved` toast in both shells so an export never again passes in silence.
+
+**Resume point.** Step 11b (orientation-relationship visualization). Before adding a panel, note
+what step 11d cost: every defect above was invisible to a passing test suite and obvious within a
+minute of using the application. New panels should be driven the same way before they are called
+done.
 
 ### Decisions taken during implementation
 

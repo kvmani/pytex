@@ -26,7 +26,7 @@ from typing import Any
 
 from pytex.app.server import AppServer, create_server
 
-__all__ = ["native_window_available", "open_desktop", "shell_capabilities"]
+__all__ = ["SaveBridge", "native_window_available", "open_desktop", "shell_capabilities"]
 
 _LOGGER = logging.getLogger("pytex.app.desktop")
 
@@ -81,17 +81,73 @@ def open_desktop(*, port: int = 0, prefer_browser: bool = False) -> int:
         Process exit code.
     """
 
-    server = create_server("127.0.0.1", port)
+    # The native window is what makes local saving possible; falling back to the
+    # default browser gives an ordinary web shell, and it must say so, or the
+    # page offers a save path that leads nowhere.
+    native = not prefer_browser and native_window_available()
+    server = create_server("127.0.0.1", port, desktop=native)
     server.serve_in_background()
     url = server.url
     _LOGGER.info("Desktop shell serving at %s", url)
     try:
-        if prefer_browser or not native_window_available():
+        if not native:
             return _open_in_browser(server, url)
         return _open_native_window(server, url)
     finally:
         server.shutdown()
         server.server_close()
+
+
+class SaveBridge:
+    """Writes an exported file to a path the user chooses.
+
+    The reason this exists is that the browser's own download mechanism — an
+    anchor with a ``download`` attribute pointing at a blob — does nothing at
+    all inside the embedded web view. No error, no file: the click is accepted
+    and silently dropped. Every export in the application goes through that
+    path, so without a bridge the desktop shell can compute anything and save
+    nothing.
+
+    The window calls :meth:`save_file` with the bytes it already holds, rather
+    than a URL to re-fetch, so the file written is the one on screen — the same
+    guarantee the web shell gets from posting the result back to the server.
+    """
+
+    def __init__(self) -> None:
+        self.last_path: str | None = None
+
+    def save_file(self, filename: str, payload_base64: str) -> str | None:
+        """Ask for a destination and write ``payload_base64`` there.
+
+        Returns the path written, or ``None`` if the dialog was dismissed —
+        which the page reports as "not saved" rather than as success.
+        """
+
+        import base64
+        import os
+
+        import webview
+
+        windows = webview.windows
+        if not windows:
+            return None
+        chosen = windows[0].create_file_dialog(
+            webview.SAVE_DIALOG,
+            directory=os.path.expanduser("~"),
+            save_filename=os.path.basename(filename),
+        )
+        if not chosen:
+            return None
+        # Older pywebview returns a sequence here and newer versions a string;
+        # both are in the wild, and picking wrongly writes to a path named
+        # after a tuple.
+        path = chosen if isinstance(chosen, str) else chosen[0]
+        data = base64.b64decode(payload_base64)
+        with open(path, "wb") as handle:
+            handle.write(data)
+        _LOGGER.info("Saved %d bytes to %s", len(data), path)
+        self.last_path = str(path)
+        return str(path)
 
 
 def _open_native_window(server: AppServer, url: str) -> int:
@@ -104,6 +160,7 @@ def _open_native_window(server: AppServer, url: str) -> int:
         width=WINDOW_SIZE[0],
         height=WINDOW_SIZE[1],
         min_size=(960, 640),
+        js_api=SaveBridge(),
     )
     # webview.start() owns the main thread until the window closes, which is
     # why the server runs on a daemon thread rather than the other way round.

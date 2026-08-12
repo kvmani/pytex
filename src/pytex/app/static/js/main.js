@@ -12,7 +12,7 @@
  * remembering to add it to a menu.
  */
 
-import { call, fetchManifest, ServiceCallError } from './core/api.js';
+import { call, fetchManifest, ServiceCallError, fetchShell } from './core/api.js';
 import { clear, el, markdown } from './core/dom.js';
 import { renderHelp } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
@@ -40,6 +40,7 @@ const dom = {
 
 const app = {
   manifest: null,
+  shell: null,
   active: null,
   mounted: null,
   index: [],
@@ -54,6 +55,11 @@ async function start() {
     showFatal(error);
     return;
   }
+
+  // Which shell this is decides only how a file is saved, and the answer comes
+  // from Python rather than from sniffing the window, so that a shell which
+  // changes how it writes files says so in one place.
+  app.shell = await fetchShell();
 
   // The phase picker needs the catalogue before any control renders, so it is
   // fetched once here rather than lazily by each panel that shows a phase.
@@ -241,6 +247,13 @@ function showError(error, { quiet = false } = {}) {
   toast.addEventListener('click', () => toast.remove());
 }
 
+function showNotice(text) {
+  const toast = el('div.toast.toast--ok', {}, [el('strong', { text })]);
+  dom.toasts.append(toast);
+  setTimeout(() => toast.remove(), 6000);
+  toast.addEventListener('click', () => toast.remove());
+}
+
 function showFatal(error) {
   clear(dom.stage);
   dom.stage.append(
@@ -280,6 +293,14 @@ function wireGlobals() {
       event.preventDefault();
       runSelection();
     }
+  });
+
+  // Exports say where the file went. The desktop shell writes through a native
+  // dialog and the web shell hands the browser a download, and neither is
+  // visible from inside the page, so the one thing that must never happen is
+  // pressing an export button and being told nothing at all.
+  document.addEventListener('pytex:saved', (event) => {
+    showNotice(event.detail?.message ?? 'Saved.');
   });
 
   document.addEventListener('keydown', (event) => {
