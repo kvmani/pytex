@@ -139,6 +139,10 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # standard. They cannot be wrapped, and a line-length exemption is preferable to
 # reassembling them from fragments, which would make them unsearchable.
 "src/pytex/app/export.py" = ["E501"]
+# Greek alpha and beta are the published names of the TEM holder tilt axes, and
+# sigma is the standard symbol for their uncertainty, so they are the correct
+# characters in the column headers a microscopist reads.
+"src/pytex/app/services/tem.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.11"

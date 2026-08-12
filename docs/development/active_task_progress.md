@@ -44,7 +44,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 6 | Frontend shell: tabs, manifest-driven controls, palette, calculator tab | done | (this commit) |
 | 7 | Crystal viewer service + panel (browser projection, Python export) | done | (this commit) |
 | 8 | Export surface: PNG/SVG figures, CSV/XLSX/JSON data, stdlib xlsx writer | done | (this commit) |
-| 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | pending | |
+| 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | done | (this commit) |
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
 | 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
