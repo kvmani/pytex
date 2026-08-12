@@ -11,5 +11,6 @@ from __future__ import annotations
 
 from pytex.app.services import calculator as calculator
 from pytex.app.services import crystal as crystal
+from pytex.app.services import diffraction as diffraction
 
-__all__ = ["calculator", "crystal"]
+__all__ = ["calculator", "crystal", "diffraction"]

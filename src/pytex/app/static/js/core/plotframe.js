@@ -41,6 +41,12 @@ export function plotFrame({
   formatCursor = null,
   toolbar = [],
 } = {}) {
+  // Held in one object so `configure` can replace them after construction: a
+  // panel often cannot describe its coordinates until it has a result — the
+  // diffraction panel needs the camera constant before it can report inverse
+  // angstroms — and rebuilding the whole frame to learn that would throw away
+  // the toolbar and the mounted content.
+  const mapping = { toData, formatCursor, units, digits };
   const canvas = el('div.plot__canvas');
   const cursor = el('output.plot__cursor', { text: '' });
   const detail = el('div.plot__detail', { hidden: true });
@@ -72,18 +78,20 @@ export function plotFrame({
   }
 
   function attachCursor(svgNode) {
-    if (!toData) return;
     svgNode.addEventListener('pointermove', (event) => {
+      if (!mapping.toData) return;
       const point = pointerToViewBox(event, svgNode);
       if (!point) return;
-      const data = toData(point.x, point.y);
+      const data = mapping.toData(point.x, point.y);
       if (!data) {
         cursor.textContent = '';
         return;
       }
-      cursor.textContent = formatCursor
-        ? formatCursor(data)
-        : `${formatNumber(data.x, digits)}, ${formatNumber(data.y, digits)} ${units}`.trim();
+      cursor.textContent = mapping.formatCursor
+        ? mapping.formatCursor(data)
+        : `${formatNumber(data.x, mapping.digits)}, ${formatNumber(data.y, mapping.digits)} ${
+            mapping.units
+          }`.trim();
     });
     svgNode.addEventListener('pointerleave', () => {
       cursor.textContent = '';
@@ -92,6 +100,15 @@ export function plotFrame({
 
   return {
     element,
+
+    /**
+     * Change how the cursor position is interpreted, after construction.
+     *
+     * @param {object} next - Any of `toData`, `formatCursor`, `units`, `digits`.
+     */
+    configure(next) {
+      Object.assign(mapping, next);
+    },
 
     /** Put an SVG (or any node) on the stage and wire the cursor readout to it. */
     setContent(node) {

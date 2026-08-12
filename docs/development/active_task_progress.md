@@ -46,7 +46,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 8 | Export surface: PNG/SVG figures, CSV/XLSX/JSON data, stdlib xlsx writer | done | (this commit) |
 | 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | pending | |
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
-| 11 | Diffraction tab: composite SAED of parent + product variants | pending | |
+| 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
 | 11c | Texture tab: pole figures, IPF, ODF | pending | |
 | 12 | User guide, worked example, docs index wiring | pending | |

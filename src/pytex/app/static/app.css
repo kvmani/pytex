@@ -929,3 +929,49 @@ dl.detail dd {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------- legend */
+
+/*
+ * The legend of a composite pattern is also its control: each entry toggles a
+ * source, because "hide every variant but this one" is how a crowded pattern is
+ * actually read, and a separate list of checkboxes would put that control
+ * somewhere other than where the colours are.
+ */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font: inherit;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.125rem 0.5rem 0.125rem 0.25rem;
+  cursor: pointer;
+}
+
+.legend__item[aria-pressed="false"] {
+  opacity: 0.42;
+  text-decoration: line-through;
+}
+
+.legend__item:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.legend__swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  flex: none;
+}
