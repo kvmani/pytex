@@ -200,3 +200,44 @@ def test_service_errors_carry_a_message_and_a_hint() -> None:
     payload = error.to_json()
     assert payload["message"].endswith(".")
     assert payload["hint"] == "Try the other thing."
+
+
+class TestCanonicalExamples:
+    """Every panel ships runnable examples, and they are run here.
+
+    An example that no longer executes is worse than no example: it is the
+    first thing a new user clicks. These tests execute each one against the
+    real operation, so an example cannot drift out of step with the service it
+    demonstrates.
+    """
+
+    def test_every_panel_has_at_least_three_examples(self) -> None:
+        for panel in REGISTRY.panels():
+            examples = REGISTRY.examples(panel=panel)
+            assert len(examples) >= 3, f"panel {panel!r} has only {len(examples)} example(s)"
+
+    @pytest.mark.parametrize("example", REGISTRY.examples(), ids=lambda example: example.id)
+    def test_every_example_runs(self, example) -> None:  # type: ignore[no-untyped-def]
+        result = REGISTRY.call(example.operation, example.request)
+        assert result["summary"]
+
+    @pytest.mark.parametrize("example", REGISTRY.examples(), ids=lambda example: example.id)
+    def test_every_example_explains_what_it_teaches(self, example) -> None:  # type: ignore[no-untyped-def]
+        assert example.title.strip()
+        assert len(example.summary.strip()) > 10
+        assert len(example.teaches.strip()) > 60, (
+            f"{example.id} does not say what to notice once it has run"
+        )
+        assert example.operation in REGISTRY.ids()
+
+    def test_the_canonical_materials_are_all_reachable(self) -> None:
+        from pytex.app.phases import BUILTIN_PHASES
+
+        for identifier in ("nacl", "austenite_fcc", "fe_bcc", "zr_hcp"):
+            assert identifier in BUILTIN_PHASES
+
+    def test_examples_appear_in_the_manifest(self) -> None:
+        manifest = REGISTRY.manifest()
+        listed = {entry["id"] for entry in manifest["examples"]}
+        assert listed == {example.id for example in REGISTRY.examples()}
+        assert manifest["panels"] == list(REGISTRY.panels())

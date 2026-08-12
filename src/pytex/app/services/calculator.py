@@ -35,6 +35,7 @@ from pytex.app.registry import (
     REGISTRY,
     BooleanParameter,
     ChoiceParameter,
+    ExampleScenario,
     IndicesListParameter,
     IndicesParameter,
     IntegerParameter,
@@ -1436,3 +1437,319 @@ def _interphase_angles(request: dict[str, Any]) -> dict[str, Any]:
         citations=(_CITATION_ITA,),
     )
     return result.to_json()
+
+
+# --------------------------------------------------------------------------
+# Named orientation relationships
+# --------------------------------------------------------------------------
+
+#: The named relationships the calculator offers, as choice options.
+#:
+#: Names and defining parallelisms follow the literature they are attributed to;
+#: the constructors live in :mod:`pytex.core.transformation`, so the application
+#: never re-derives a relationship it can look up.
+_RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
+    (
+        "kurdjumov_sachs",
+        "Kurdjumov-Sachs (fcc to bcc)",
+        "{111}γ ∥ {110}α with ⟨110⟩γ ∥ ⟨111⟩α; 24 variants.",
+    ),
+    (
+        "nishiyama_wassermann",
+        "Nishiyama-Wassermann (fcc to bcc)",
+        "{111}γ ∥ {110}α with ⟨112⟩γ ∥ ⟨110⟩α; 12 variants.",
+    ),
+    ("bain", "Bain (fcc to bcc)", "The pure strain path; 3 variants, no shear."),
+    (
+        "greninger_troiano",
+        "Greninger-Troiano (fcc to bcc)",
+        "An irrational relationship lying between Kurdjumov-Sachs and Nishiyama-Wassermann.",
+    ),
+    ("pitsch", "Pitsch (fcc to bcc)", "{100}γ ∥ {110}α with ⟨110⟩γ ∥ ⟨111⟩α."),
+    (
+        "burgers",
+        "Burgers (bcc to hcp)",
+        "{110}β ∥ {0001}α with ⟨111⟩β ∥ ⟨11-20⟩α; the titanium and zirconium relationship.",
+    ),
+)
+
+#: Constructor name on :class:`OrientationRelationship` for each option.
+_RELATIONSHIP_CONSTRUCTORS = {
+    "kurdjumov_sachs": "from_kurdjumov_sachs_correspondence",
+    "nishiyama_wassermann": "from_nishiyama_wassermann_correspondence",
+    "bain": "from_bain_correspondence",
+    "greninger_troiano": "from_greninger_troiano_correspondence",
+    "pitsch": "from_pitsch_correspondence",
+    "burgers": "from_burgers_correspondence",
+}
+
+
+@REGISTRY.operation(
+    "calc.orientation_relationship",
+    title="Named orientation relationship",
+    summary="Parallelisms, misorientation, and variants of a classical OR.",
+    help_text=(
+        "Builds one of the classical orientation relationships between the two phases and "
+        "reports what it actually asserts: the defining plane and direction parallelisms, the "
+        "misorientation angle and axis, and every crystallographically distinct variant.\n\n"
+        "The variant table is the reason to run this rather than to quote a number. One parent "
+        "grain transforming under Kurdjumov-Sachs produces 24 child orientations, not one, and "
+        "that multiplicity is what makes packets and blocks visible in an EBSD map.\n\n"
+        "Bain is included for contrast: 3 variants and no shear, so it is the reference against "
+        "which the shear-carrying relationships are understood."
+    ),
+    parameters=(
+        phase_parameter(
+            label="Parent phase",
+            help_text=(
+                "The phase that transforms — austenite for the fcc-to-bcc relationships, beta "
+                "for Burgers."
+            ),
+        ),
+        ObjectParameter(
+            name="child_phase",
+            label="Child phase",
+            help_text="The product phase — ferrite or martensite, or alpha for Burgers.",
+            editor="phase",
+        ),
+        ChoiceParameter(
+            name="relationship",
+            label="Relationship",
+            help_text="Which classical relationship to build.",
+            options=_RELATIONSHIPS,
+            default="kurdjumov_sachs",
+        ),
+        BooleanParameter(
+            name="reduce_by_child_symmetry",
+            label="Reduce variants by child symmetry",
+            help_text=(
+                "On, the list holds one entry per crystallographically distinct child "
+                "orientation, which is the count quoted in the literature. Off lists every "
+                "symmetry image, which is longer and rarely what is wanted."
+            ),
+            default=True,
+            advanced=True,
+        ),
+    ),
+    returns="One row per variant, with the parallelisms and the OR prose under `data`.",
+    panel="calculator",
+    citations=(
+        "Kurdjumov & Sachs, Z. Phys. 64 (1930) 325.",
+        "Nishiyama, Sci. Rep. Tohoku Univ. 23 (1934) 637.",
+        "Burgers, Physica 1 (1934) 561.",
+        "Morito et al., Acta Mater. 51 (2003) 1789 (variant numbering).",
+    ),
+    tags=("orientation relationship", "variant", "martensite", "Bain", "Burgers", "OR"),
+)
+def _orientation_relationship(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.transformation import OrientationRelationship
+
+    parent_spec, parent_phase = phase_from_request(request["phase"])
+    child_spec, child_phase = phase_from_request(request["child_phase"])
+    name = str(request["relationship"])
+    constructor = getattr(OrientationRelationship, _RELATIONSHIP_CONSTRUCTORS[name])
+    try:
+        relationship = constructor(parent_phase=parent_phase, child_phase=child_phase)
+    except (ValueError, TypeError) as error:
+        raise InvalidInputError(
+            f"The {name.replace('_', '-')} relationship does not apply to these two phases: "
+            f"{error}",
+            field="relationship",
+            hint=(
+                "The fcc-to-bcc relationships need a cubic parent and a cubic child; Burgers "
+                "needs a cubic parent and a hexagonal child."
+            ),
+        ) from error
+    variants = relationship.generate_variants(
+        reduce_by_child_symmetry=bool(request["reduce_by_child_symmetry"])
+    )
+    representative = relationship.misorientation()
+    rows: list[dict[str, Any]] = []
+    for variant in variants:
+        rotation = variant.parent_to_child_rotation
+        variant_axis = np.asarray(rotation.axis, dtype=float)
+        rows.append(
+            {
+                "variant": int(variant.variant_index),
+                "angle_deg": float(rotation.angle_deg),
+                "axis_x": float(variant_axis[0]),
+                "axis_y": float(variant_axis[1]),
+                "axis_z": float(variant_axis[2]),
+            }
+        )
+    plane_pairs = [
+        {
+            "parent": plane_label(
+                tuple(int(value) for value in parent.miller.as_array()), spec=parent_spec
+            ),
+            "child": plane_label(
+                tuple(int(value) for value in child.miller.as_array()), spec=child_spec
+            ),
+        }
+        for parent, child in relationship.parallel_planes
+    ]
+    direction_pairs = [
+        {
+            "parent": direction_label(
+                tuple(round(value) for value in parent.coordinates), spec=parent_spec
+            ),
+            "child": direction_label(
+                tuple(round(value) for value in child.coordinates), spec=child_spec
+            ),
+        }
+        for parent, child in relationship.parallel_directions
+    ]
+    axis = np.asarray(representative.rotation.axis, dtype=float)
+    label = name.replace("_", "-")
+    result = AppResult(
+        title=f"{label}: {parent_spec.name} to {child_spec.name}",
+        summary=(
+            f"The {label} relationship carries {parent_spec.name} into {child_spec.name} with "
+            + (
+                f"{plane_pairs[0]['parent']} ∥ {plane_pairs[0]['child']}"
+                if plane_pairs
+                else "no defining plane parallelism"
+            )
+            + (
+                f" and {direction_pairs[0]['parent']} ∥ {direction_pairs[0]['child']}"
+                if direction_pairs
+                else ""
+            )
+            + f". The representative misorientation is {representative.angle_deg:.2f}° about "
+            f"[{axis[0]:.3f} {axis[1]:.3f} {axis[2]:.3f}], and one parent grain produces "
+            f"{len(rows)} crystallographically distinct child orientations."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("variant", "Variant", numeric=True),
+                Column("angle_deg", "Angle", units="°", numeric=True, digits=4),
+                Column("axis_x", "Axis x", numeric=True, digits=5),
+                Column("axis_y", "Axis y", numeric=True, digits=5),
+                Column("axis_z", "Axis z", numeric=True, digits=5),
+            ),
+            rows=tuple(rows),
+            caption=f"Variants of the {label} relationship.",
+        ),
+        data={
+            "relationship": name,
+            "variant_count": len(rows),
+            "misorientation_angle_deg": float(representative.angle_deg),
+            "misorientation_axis": [float(value) for value in axis],
+            "parallel_planes": plane_pairs,
+            "parallel_directions": direction_pairs,
+            "description": relationship.describe(),
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "relationship": name,
+            "reduce_by_child_symmetry": bool(request["reduce_by_child_symmetry"]),
+        },
+        citations=("Morito et al., Acta Mater. 51 (2003) 1789.",),
+    )
+    return result.to_json()
+
+
+# --------------------------------------------------------------------------
+# Canonical examples
+# --------------------------------------------------------------------------
+
+REGISTRY.add_examples(
+    (
+        ExampleScenario(
+            id="calc.example.fcc_powder",
+            title="Why an fcc powder pattern starts at 111",
+            panel="calculator",
+            summary="The reflection families of austenite, sorted by spacing.",
+            teaches=(
+                "The first four allowed families are 111, 200, 220 and 311 — the mixed-parity "
+                "families such as 100 and 110 are absent because the F centring cancels them "
+                "exactly. The multiplicity column, 8/6/12/24, is what makes 311 a strong peak "
+                "despite its small spacing."
+            ),
+            operation="calc.d_spacings",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "max_index": 4,
+                "min_d_angstrom": 0.8,
+            },
+        ),
+        ExampleScenario(
+            id="calc.example.bcc_vs_fcc",
+            title="Ferrite: the other centring condition",
+            panel="calculator",
+            summary="The reflection families of bcc iron, for comparison with austenite.",
+            teaches=(
+                "Body centring keeps h+k+l even, so the sequence is 110, 200, 211, 220 — a "
+                "different fingerprint from the fcc one. Comparing the two tables is how a bcc "
+                "pattern is told from an fcc pattern without indexing a single spot."
+            ),
+            operation="calc.d_spacings",
+            request={"phase": {"builtin": "fe_bcc"}, "max_index": 4, "min_d_angstrom": 0.8},
+        ),
+        ExampleScenario(
+            id="calc.example.hcp_angles",
+            title="Basal, prism and pyramidal planes in zirconium",
+            panel="calculator",
+            summary="Angles among the three plane families that carry hcp slip.",
+            teaches=(
+                "The basal plane is exactly perpendicular to every prism plane whatever c/a is, "
+                "but the pyramidal angle is not fixed by symmetry — it depends on c/a, which is "
+                "why the same table for magnesium or titanium gives a different number."
+            ),
+            operation="calc.plane_angles",
+            request={
+                "phase": {"builtin": "zr_hcp"},
+                "planes": [[0, 0, 1], [1, 0, 0], [1, 0, 1]],
+            },
+        ),
+        ExampleScenario(
+            id="calc.example.nacl_family",
+            title="Why {100} has three members, not forty-eight",
+            panel="calculator",
+            summary="The symmetry family of the cube plane in halite.",
+            teaches=(
+                "The point group m-3m has 48 operations but the family has 3 members, because "
+                "16 of those operations map (100) onto itself or onto its opposite. That ratio "
+                "— not the group order — is what sets the weight of the corresponding peak."
+            ),
+            operation="calc.symmetry_family",
+            request={"phase": {"builtin": "nacl"}, "family": "plane", "indices": [1, 0, 0]},
+        ),
+        ExampleScenario(
+            id="calc.example.ks_variants",
+            title="Why one austenite grain gives 24 martensite orientations",
+            panel="calculator",
+            summary="The Kurdjumov-Sachs relationship between austenite and ferrite.",
+            teaches=(
+                "K-S asserts (111)γ ∥ (011)α and ⟨110⟩γ ∥ ⟨111⟩α, and the misorientation that "
+                "satisfies both is 42.85° about ⟨0.968 0.178 0.178⟩. The 24 rows are the reason "
+                "a prior-austenite grain shows a patchwork rather than one orientation in an "
+                "EBSD map."
+            ),
+            operation="calc.orientation_relationship",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "relationship": "kurdjumov_sachs",
+            },
+        ),
+        ExampleScenario(
+            id="calc.example.burgers",
+            title="The Burgers path into hexagonal zirconium",
+            panel="calculator",
+            summary="The bcc-to-hcp relationship that governs zirconium and titanium.",
+            teaches=(
+                "{110}β ∥ {0001}α with ⟨111⟩β ∥ ⟨11-20⟩α gives 12 variants rather than 24, "
+                "because the hexagonal child has lower symmetry to absorb. This is the same "
+                "machinery as the steel example, applied across a change of crystal system."
+            ),
+            operation="calc.orientation_relationship",
+            request={
+                "phase": {"builtin": "fe_bcc"},
+                "child_phase": {"builtin": "zr_hcp"},
+                "relationship": "burgers",
+            },
+        ),
+    )
+)

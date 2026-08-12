@@ -37,7 +37,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 2 | `pytex.app` foundation: errors, JSON envelope, operation manifest/registry | done | (this commit) |
 | 3 | Phase specification + built-in phase catalog (no pymatgen required) | done | (this commit) |
 | 4 | Calculator service (`calc.*`) + tests | done | (this commit) |
-| 4b | Example-scenario registry: 3–4 runnable canonical examples per panel | pending | |
+| 4b | Example-scenario registry + named-OR operation; 7 calculator examples | done | (this commit) |
 | 5 | Stdlib HTTP server + routing + in-process loopback tests | pending | |
 | 6 | Frontend shell: tab bar, state store, manifest-driven controls, calculator tab | pending | |
 | 7 | Crystal viewer service + panel (browser projection, Python export) | pending | |
@@ -49,7 +49,8 @@ phase catalogue with cited parameters and full atomic bases.
 
 ### Current worktree state
 
-Steps 1–4 landed. Next action is step 5: `src/pytex/app/server.py` on
+Steps 1–4b landed. Every panel must carry at least three runnable examples; the manifest test
+enforces it and executes each one, so an example cannot rot. Next action is step 5: `src/pytex/app/server.py` on
 `http.server.ThreadingHTTPServer`, routing `/api/manifest`, `/api/call`, and the static tree, with
 `tests/unit/test_app_server.py` starting a real loopback server in-process.
 

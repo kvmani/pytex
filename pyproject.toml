@@ -121,6 +121,11 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # Greek alpha and beta are the published names of the TEM holder tilt axes, so
 # they are the correct characters in figure labels rather than confusable ones.
 "src/pytex/plotting/tilt_stereogram.py" = ["RUF001"]
+# Greek letters are the published names of the phases in every orientation
+# relationship the calculator offers - austenite is gamma, ferrite is alpha,
+# the bcc titanium phase is beta - so they are the correct characters in the
+# help text a metallurgist reads, not confusable Latin ones.
+"src/pytex/app/services/calculator.py" = ["RUF001"]
 
 [tool.mypy]
 python_version = "3.11"

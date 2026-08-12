@@ -46,6 +46,7 @@ __all__ = [
     "REGISTRY",
     "BooleanParameter",
     "ChoiceParameter",
+    "ExampleScenario",
     "IndicesListParameter",
     "IndicesParameter",
     "IntegerParameter",
@@ -514,18 +515,80 @@ class OperationSpec:
         return bound
 
 
+@dataclass(frozen=True)
+class ExampleScenario:
+    """A canonical, runnable demonstration attached to a panel.
+
+    Purpose
+    -------
+    Someone opening a panel for the first time may have no data of their own,
+    and an empty form teaches nothing. An example is a complete set of inputs
+    that runs the *real* operation and leaves the user in a working state they
+    can then modify — not a screenshot, and not a separate demo code path that
+    can rot while the operation moves on.
+
+    Every panel carries at least three, built on the shared canonical materials
+    (NaCl, Fe-fcc, Fe-bcc, Zr-hcp) so familiarity accumulates across tabs
+    instead of restarting in each one.
+
+    Attributes
+    ----------
+    id : str
+        Stable identifier, dotted like an operation.
+    title : str
+        Name shown on the "Try an example" menu.
+    panel : str
+        Tab this example belongs to.
+    summary : str
+        One line: what this example shows.
+    teaches : str
+        The thing to notice once it has run. This is the sentence that turns a
+        demonstration into a lesson, so it states a specific observation rather
+        than repeating the title.
+    operation : str
+        Operation to run.
+    request : mapping
+        Parameters to run it with. Validated by the operation like any request,
+        and exercised by the test suite, so an example cannot drift out of step
+        with the operation it demonstrates.
+    """
+
+    id: str
+    title: str
+    panel: str
+    summary: str
+    teaches: str
+    operation: str
+    request: Mapping[str, Any] = field(default_factory=dict)
+
+    def describe(self) -> dict[str, Any]:
+        """Return the manifest entry for this example."""
+
+        return {
+            "id": self.id,
+            "title": self.title,
+            "panel": self.panel,
+            "summary": self.summary,
+            "teaches": self.teaches,
+            "operation": self.operation,
+            "request": dict(self.request),
+        }
+
+
 class ServiceRegistry:
     """The set of operations an application instance exposes.
 
     Purpose
     -------
-    Holds operations, produces the manifest, and dispatches calls. Deliberately
-    the only lookup path: there is no way to invoke a service that is not in
-    the manifest, so "documented" and "reachable" cannot diverge.
+    Holds operations and their examples, produces the manifest, and dispatches
+    calls. Deliberately the only lookup path: there is no way to invoke a
+    service that is not in the manifest, so "documented" and "reachable" cannot
+    diverge.
     """
 
     def __init__(self) -> None:
         self._operations: dict[str, OperationSpec] = {}
+        self._examples: dict[str, ExampleScenario] = {}
 
     def operation(
         self,
@@ -589,6 +652,32 @@ class ServiceRegistry:
 
         return tuple(self._operations[key] for key in self.ids())
 
+    def add_example(self, example: ExampleScenario) -> None:
+        """Register a runnable example, rejecting duplicate identifiers."""
+
+        if example.id in self._examples:
+            raise ValueError(f"Example {example.id!r} is already registered.")
+        self._examples[example.id] = example
+
+    def add_examples(self, examples: Iterable[ExampleScenario]) -> None:
+        """Register several examples in declaration order."""
+
+        for example in examples:
+            self.add_example(example)
+
+    def examples(self, *, panel: str | None = None) -> tuple[ExampleScenario, ...]:
+        """Registered examples, optionally filtered to one panel."""
+
+        found = tuple(self._examples[key] for key in sorted(self._examples))
+        if panel is None:
+            return found
+        return tuple(example for example in found if example.panel == panel)
+
+    def panels(self) -> tuple[str, ...]:
+        """Panels that have at least one operation."""
+
+        return tuple(sorted({spec.panel for spec in self.operations()}))
+
     def manifest(self) -> dict[str, Any]:
         """Return the document the frontend builds itself from."""
 
@@ -597,7 +686,9 @@ class ServiceRegistry:
         return {
             "schema": "pytex.app_manifest/1",
             "version": __version__,
+            "panels": list(self.panels()),
             "operations": [spec.describe() for spec in self.operations()],
+            "examples": [example.describe() for example in self.examples()],
         }
 
     def call(self, operation_id: str, request: Mapping[str, Any] | None = None) -> dict[str, Any]:

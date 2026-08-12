@@ -410,3 +410,65 @@ class TestResultShape:
         assert result["table"]["columns"]
         for row in result["table"]["rows"]:
             assert set(column["key"] for column in result["table"]["columns"]) <= set(row)
+
+
+class TestOrientationRelationships:
+    """Variant counts and misorientations that the literature fixes."""
+
+    def test_kurdjumov_sachs_gives_24_variants_at_42_85_degrees(self) -> None:
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="kurdjumov_sachs",
+        )
+        assert result["data"]["variant_count"] == 24
+        assert float(result["data"]["misorientation_angle_deg"]) == pytest.approx(42.85, abs=0.01)
+
+    def test_nishiyama_wassermann_gives_12_variants(self) -> None:
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="nishiyama_wassermann",
+        )
+        assert result["data"]["variant_count"] == 12
+
+    def test_bain_gives_three_variants(self) -> None:
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="bain",
+        )
+        assert result["data"]["variant_count"] == 3
+
+    def test_burgers_gives_12_variants_into_a_hexagonal_child(self) -> None:
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "fe_bcc"},
+            child_phase={"builtin": "zr_hcp"},
+            relationship="burgers",
+        )
+        assert result["data"]["variant_count"] == 12
+        assert result["data"]["parallel_planes"][0]["child"] == "(0001)"
+
+    def test_the_defining_parallelism_is_reported(self) -> None:
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+        )
+        planes = result["data"]["parallel_planes"][0]
+        assert planes["parent"] == "(111)"
+        assert planes["child"] == "(011)"
+
+    def test_an_inapplicable_relationship_explains_itself(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            call(
+                "calc.orientation_relationship",
+                phase={"builtin": "zr_hcp"},
+                child_phase={"builtin": "zr_hcp"},
+                relationship="kurdjumov_sachs",
+            )
+        assert excinfo.value.details["field"] == "relationship"
