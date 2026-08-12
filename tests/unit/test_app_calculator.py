@@ -81,6 +81,52 @@ class TestPhaseSpec:
                 point_group="m-3n",
             )
 
+    def test_a_space_group_from_another_crystal_system_is_refused(self) -> None:
+        """The pairing a user reaches by editing a catalogue phase.
+
+        Start from nickel, set the point group to 4/mmm and the cell to
+        4 x 4 x 6, and the space group inherited from the entry is still cubic
+        Fm-3m. Accepted, its F centring deletes every mixed-parity family from a
+        tetragonal phase that has no F centring at all — a wrong pattern with
+        nothing on screen to suggest it.
+        """
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            PhaseSpec(
+                name="tetragonal with a cubic space group",
+                a=4.0,
+                b=4.0,
+                c=6.0,
+                alpha=90.0,
+                beta=90.0,
+                gamma=90.0,
+                point_group="4/mmm",
+                space_group_symbol="Fm-3m",
+                space_group_number=225,
+            )
+        assert excinfo.value.details["field"] == "space_group_number"
+        assert "cubic" in str(excinfo.value) and "tetragonal" in str(excinfo.value)
+
+    def test_every_builtin_phase_agrees_with_its_own_space_group(self) -> None:
+        for identifier in BUILTIN_PHASES:
+            spec = builtin_phase(identifier)
+            assert spec.point_group  # constructed, therefore already validated
+
+    def test_a_space_group_of_the_stated_system_is_accepted(self) -> None:
+        spec = PhaseSpec(
+            name="rutile-like",
+            a=4.594,
+            b=4.594,
+            c=2.959,
+            alpha=90.0,
+            beta=90.0,
+            gamma=90.0,
+            point_group="4/mmm",
+            space_group_symbol="P4_2/mnm",
+            space_group_number=136,
+        )
+        assert spec.crystal_system == "tetragonal"
+
     def test_space_group_symbol_and_number_travel_together(self) -> None:
         with pytest.raises(InvalidInputError, match="together"):
             PhaseSpec(

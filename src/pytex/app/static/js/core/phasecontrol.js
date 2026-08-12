@@ -80,6 +80,17 @@ export function phaseControl(parameter, value, onChange, id) {
       'aria-label': 'Point group',
       onchange: () => {
         state.edited = true;
+        // The space group came from the catalogue entry this edit started from,
+        // and a space group belongs to exactly one crystal system. Left in
+        // place across a symmetry change it decides which reflections are
+        // absent for a phase it does not describe -- a cubic F number quietly
+        // deleting most of a tetragonal pattern. Clearing it computes without
+        // systematic absences, which is the honest default for a phase whose
+        // space group is no longer known.
+        if (crystalSystemOf(pointGroup.value) !== crystalSystemOf(state.spec?.point_group)) {
+          spaceGroup.value = '';
+          spaceGroupNumber.value = '';
+        }
         onChange();
       },
     },
@@ -146,7 +157,11 @@ export function phaseControl(parameter, value, onChange, id) {
       const chosen = catalogue.value;
       if (chosen && !state.edited) return { builtin: chosen };
       const spec = {
-        name: state.spec?.name ?? 'Custom phase',
+        // An edited catalogue phase is not that phase. Titles, summaries and
+        // the provenance sheet of every export take this name, so a 4 x 4 x 6
+        // tetragonal cell must not go out labelled "Nickel (fcc)" because the
+        // edit happened to start there.
+        name: state.spec?.name ? `${state.spec.name} (edited)` : 'Custom phase',
         a: numberOf(cellInputs.a),
         b: numberOf(cellInputs.b),
         c: numberOf(cellInputs.c),
@@ -176,6 +191,11 @@ export function phaseControl(parameter, value, onChange, id) {
 function numberOf(input) {
   if (!input || input.value === '') return null;
   return Number(input.value);
+}
+
+function crystalSystemOf(symbol) {
+  if (!symbol) return null;
+  return CATALOGUE.pointGroups.find((group) => group.symbol === symbol)?.crystal_system ?? null;
 }
 
 function normalise(value) {

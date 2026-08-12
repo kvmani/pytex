@@ -263,6 +263,7 @@ class PhaseSpec:
             )
         object.__setattr__(self, "sites", tuple(self.sites))
         self._check_crystal_system()
+        self._check_space_group_system()
 
     @property
     def crystal_system(self) -> str:
@@ -321,6 +322,52 @@ class PhaseSpec:
                     field=angle_name,
                     hint=f"Either correct {angle_name} or choose a lower-symmetry point group.",
                 )
+
+    def _check_space_group_system(self) -> None:
+        """Reject a space group that belongs to a different crystal system.
+
+        The space group is not decoration: its centring letter decides which
+        reflections are systematically absent, so a cubic F number carried onto
+        a tetragonal phase silently deletes most of its pattern. The pairing
+        arises the moment a user edits a catalogue phase — the cell and the
+        point group change, and the space group inherited from the entry they
+        started from does not.
+
+        Only the system is checked, because that is what the number alone can
+        settle. The ranges are the standard sequence of International Tables
+        Volume A, where space groups are numbered in order of increasing
+        symmetry.
+        """
+
+        if self.space_group_number is None:
+            return
+        ranges = {
+            "triclinic": (1, 2),
+            "monoclinic": (3, 15),
+            "orthorhombic": (16, 74),
+            "tetragonal": (75, 142),
+            "trigonal": (143, 167),
+            "hexagonal": (168, 194),
+            "cubic": (195, 230),
+        }
+        system = self.crystal_system
+        low, high = ranges[system]
+        if not low <= self.space_group_number <= high:
+            actual = next(
+                (name for name, (a, b) in ranges.items() if a <= self.space_group_number <= b),
+                "another system",
+            )
+            symbol = self.space_group_symbol or f"number {self.space_group_number}"
+            raise InvalidInputError(
+                f"Space group {symbol} (number {self.space_group_number}) is {actual}, but "
+                f"point group {self.point_group} is {system}.",
+                field="space_group_number",
+                hint=(
+                    f"A {system} phase takes a space group numbered {low}-{high}. Clear the "
+                    "space group to compute without systematic absences, or correct it to one "
+                    "of this system."
+                ),
+            )
 
     @property
     def uses_miller_bravais(self) -> bool:
