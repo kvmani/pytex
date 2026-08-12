@@ -72,6 +72,19 @@
   box-sizing: border-box;
 }
 
+/*
+ * The `hidden` attribute must beat any layout a component declares for itself.
+ * The palette and the help drawer are `display: flex` full-viewport overlays
+ * that mark themselves closed by setting `hidden`; a class selector outranks
+ * the user agent's `[hidden] { display: none }`, so without this rule both sit
+ * open over the application from the moment the page loads, dimming it and
+ * swallowing every click. It is `!important` because the component rule that
+ * loses here is the one that would otherwise be written next.
+ */
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;

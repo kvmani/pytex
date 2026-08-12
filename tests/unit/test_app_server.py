@@ -260,6 +260,30 @@ class TestFrontendIsSelfContained:
                         offenders.append(f"{path.name}: {line.strip()[:80]}")
         assert not offenders, f"the frontend must not reference the network: {offenders}"
 
+    def test_elements_marked_hidden_are_actually_hidden(self) -> None:
+        """Every overlay in the page closes itself by setting ``hidden``.
+
+        The palette and the help drawer are full-viewport ``display: flex``
+        overlays, and a class selector outranks the user agent's
+        ``[hidden] { display: none }``. Without an explicit rule in the
+        stylesheet both sit open over the application from the moment the page
+        loads: the workbench appears behind two dark scrims, and every click a
+        user makes is swallowed by the topmost one instead of reaching the
+        control it was aimed at. The page is unusable, and nothing in the
+        JavaScript is wrong, so the stylesheet is where this is pinned.
+        """
+
+        import re
+
+        html = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        stylesheet = (STATIC_ROOT / "app.css").read_text(encoding="utf-8")
+        css = re.sub(r"/\*.*?\*/", "", stylesheet, flags=re.S)
+        assert " hidden" in html, "no element relies on the attribute; revisit this test"
+        rule = re.search(r"\[hidden\]\s*\{([^}]*)\}", css)
+        assert rule is not None, "app.css must give [hidden] a rule of its own"
+        body = rule.group(1).replace(" ", "")
+        assert "display:none!important" in body
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()
