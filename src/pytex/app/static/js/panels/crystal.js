@@ -18,7 +18,7 @@
 import { el, formatNumber, svg } from '../core/dom.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
-import { renderResult, download } from '../core/result.js';
+import { renderResult, download, saveBlob } from '../core/result.js';
 import { call } from '../core/api.js';
 
 export const panel = {
@@ -39,6 +39,19 @@ export function mount(context) {
   const camera = { rotation: identity(), zoom: 1, scale: 1, centre: [0, 0, 0] };
   const state = { scene: null, result: null, teaches: null, form: null };
 
+  // The renderer offers both formats and the help explains when each is right,
+  // so the choice has to be on the toolbar. Without it the help describes a
+  // control that does not exist, and an SVG -- the one format that stays
+  // editable -- is unreachable from the viewer that produces the figure.
+  const figureFormat = el(
+    'select.button',
+    { 'aria-label': 'Figure format', title: 'Format for the published figure' },
+    [
+      el('option', { value: 'png', text: 'PNG 600 dpi' }),
+      el('option', { value: 'svg', text: 'SVG' }),
+    ],
+  );
+
   const frame = plotFrame({
     title: 'Structure',
     units: 'Å',
@@ -51,6 +64,7 @@ export function mount(context) {
       viewButton('b', [0, 1, 0]),
       viewButton('c', [0, 0, 1]),
       el('button.button', { type: 'button', text: 'Reset', onclick: () => resetCamera() }),
+      figureFormat,
       el('button.button', {
         type: 'button',
         text: 'Figure',
@@ -137,10 +151,13 @@ export function mount(context) {
         camera_matrix: camera.rotation.join(' '),
         show_legend: true,
         show_frame_indicator: true,
-        format: 'png',
+        format: figureFormat.value,
         dpi: 600,
       });
-      const name = `${state.scene.phase.name.replace(/\W+/g, '-').toLowerCase()}-structure`;
+      // Trim the separator a trailing bracket leaves behind: "Halite (NaCl)"
+      // otherwise files as `halite-nacl--structure`.
+      const slug = state.scene.phase.name.replace(/\W+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+      const name = `${slug}-structure`;
       if (result.data.encoding === 'base64') {
         downloadBase64(`${name}.png`, result.data.image, 'image/png');
       } else {
@@ -554,14 +571,16 @@ function normalise(v) {
   return [v[0] / length, v[1] / length, v[2] / length];
 }
 
+/**
+ * Save a base64 payload, through the one save path the shells share.
+ *
+ * A PNG arrives base64-encoded because JSON has no bytes. Only the decoding
+ * belongs here; handing the blob to an anchor directly is what left the desktop
+ * shell unable to save a figure while the SVG beside it saved fine.
+ */
 function downloadBase64(filename, base64, mime) {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
-  const anchor = el('a', { href: url, download: filename });
-  document.body.append(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  return saveBlob(filename, new Blob([bytes], { type: mime }));
 }

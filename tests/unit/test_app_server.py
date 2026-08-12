@@ -335,6 +335,26 @@ class TestFrontendIsSelfContained:
         assert "pointerdown" not in attach.group(1)
         assert "frame.element.addEventListener('pointermove'" in source
 
+    def test_only_one_place_in_the_frontend_saves_a_file(self) -> None:
+        """Every file leaves through `saveBlob`, or the desktop shell loses it.
+
+        Handing a blob to an anchor with a `download` attribute works in a
+        browser and does nothing at all in the embedded web view, so a second
+        copy of those four lines anywhere in the tree is a feature that saves
+        in one shell and silently fails in the other. That is exactly how the
+        crystal viewer came to publish an SVG the desktop shell could save and
+        a PNG it could not, from adjacent lines of the same function.
+        """
+
+        offenders = []
+        for path in (STATIC_ROOT / "js").rglob("*.js"):
+            text = path.read_text(encoding="utf-8")
+            if "createObjectURL" in text and path.name != "result.js":
+                offenders.append(path.name)
+        assert not offenders, (
+            f"these files save a file without going through saveBlob: {offenders}"
+        )
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()
