@@ -135,6 +135,10 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # the bcc titanium phase is beta - so they are the correct characters in the
 # help text a metallurgist reads, not confusable Latin ones.
 "src/pytex/app/services/calculator.py" = ["RUF001"]
+# The OOXML content-type and relationship URIs are fixed by the ECMA-376
+# standard. They cannot be wrapped, and a line-length exemption is preferable to
+# reassembling them from fragments, which would make them unsearchable.
+"src/pytex/app/export.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.11"

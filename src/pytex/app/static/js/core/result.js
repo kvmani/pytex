@@ -7,9 +7,10 @@
  * exportable the moment it is registered; neither this file nor any panel needs
  * to learn about it.
  *
- * CSV is written here rather than fetched from the server for one reason: the
- * rows are already in the browser, and a round trip to re-derive them would be
- * a second computation that could disagree with the one on screen.
+ * Files are produced by posting the result *back* to the server, which formats
+ * the object the user is looking at. Recomputing from the inputs would be tidier
+ * to write and wrong to ship: the file must be the numbers on screen, and a
+ * second evaluation is a second chance to differ from them.
  */
 
 import { clear, el, formatNumber, markdown } from './dom.js';
@@ -56,18 +57,9 @@ function tableCard(result) {
       el('h2.card__title', { text: 'Data' }),
       caption ? el('p.card__subtitle', { text: caption }) : null,
       el('div.button-row', { style: 'margin-left:auto' }, [
-        el('button.button', {
-          type: 'button',
-          text: 'CSV',
-          title: 'Download these rows as CSV',
-          onclick: () => downloadCsv(result),
-        }),
-        el('button.button', {
-          type: 'button',
-          text: 'JSON',
-          title: 'Download the full result, including the inputs that produced it',
-          onclick: () => downloadJson(result),
-        }),
+        exportButton(result, 'csv', 'CSV', 'One row per entity, at full precision'),
+        exportButton(result, 'xlsx', 'Excel', 'The table plus a sheet recording the inputs'),
+        exportButton(result, 'json', 'JSON', 'The complete result, reloadable into the app'),
         el('button.button', {
           type: 'button',
           text: 'Copy summary',
@@ -130,37 +122,49 @@ export function describe(result) {
   return parts.join('\n');
 }
 
+function exportButton(result, format, label, title) {
+  const button = el('button.button', {
+    type: 'button',
+    text: label,
+    title,
+    onclick: async () => {
+      button.disabled = true;
+      try {
+        await exportResult(result, format);
+      } finally {
+        button.disabled = false;
+      }
+    },
+  });
+  return button;
+}
+
 /**
- * Write the table as CSV.
+ * Ask the server to format this result and save the reply.
  *
- * Full precision, not display precision: the on-screen table rounds so it can be
- * read, and a file that inherited that rounding would be useless for re-plotting.
+ * The filename comes from `Content-Disposition` so that Python owns naming:
+ * a file called `d-spacings-of-nickel-fcc.xlsx` is named the same whether it
+ * was produced from the browser, the desktop shell, or a script.
  */
-export function toCsv(result) {
-  const { columns, rows } = result.table;
-  const header = columns.map((column) =>
-    csvCell(column.units ? `${column.label} (${column.units})` : column.label),
-  );
-  const body = rows.map((row) => columns.map((column) => csvCell(row[column.key])));
-  return [header, ...body].map((row) => row.join(',')).join('\r\n');
-}
-
-function csvCell(value) {
-  if (value === null || value === undefined) return '';
-  const text = String(value);
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-function downloadCsv(result) {
-  download(`${slug(result.title)}.csv`, toCsv(result), 'text/csv;charset=utf-8');
-}
-
-function downloadJson(result) {
-  download(
-    `${slug(result.title)}.json`,
-    JSON.stringify(result, null, 2),
-    'application/json;charset=utf-8',
-  );
+export async function exportResult(result, format) {
+  const response = await fetch('/api/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ result, format }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.error?.message ?? `Export failed (HTTP ${response.status}).`);
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? '';
+  const match = /filename="([^"]+)"/.exec(disposition);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = el('a', { href: url, download: match ? match[1] : `result.${format}` });
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 /** Trigger a browser download. The desktop shell intercepts this and writes a file. */
@@ -172,14 +176,6 @@ export function download(filename, text, mime) {
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
-}
-
-function slug(text) {
-  return String(text)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60) || 'pytex-result';
 }
 
 /** Render help for an operation into the help drawer. */

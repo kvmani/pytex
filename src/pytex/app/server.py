@@ -26,6 +26,8 @@ Routes
     The self-describing operation manifest the frontend builds itself from.
 ``POST /api/call``
     ``{"operation": "...", "params": {...}}`` in, the call envelope out.
+``POST /api/export``
+    ``{"result": {...}, "format": "csv"|"xlsx"|"json"}`` in, a file download out.
 ``GET /<path>``
     A file from the bundled static tree.
 """
@@ -45,6 +47,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 from pytex.app.contracts import dumps, execute
+from pytex.app.errors import ServiceError
 from pytex.app.registry import REGISTRY, ServiceRegistry
 
 __all__ = [
@@ -182,7 +185,7 @@ class _Handler(BaseHTTPRequestHandler):
                 HTTPStatus.NOT_FOUND,
                 "route.unknown",
                 f"No API route {path!r}.",
-                hint="The API routes are /api/health, /api/manifest and /api/call.",
+                hint=("The API routes are /api/health, /api/manifest, /api/call and /api/export."),
             )
             return
         self._serve_static(path)
@@ -192,12 +195,12 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
-        if path != "/api/call":
+        if path not in {"/api/call", "/api/export"}:
             self._send_error_json(
                 HTTPStatus.NOT_FOUND,
                 "route.unknown",
                 f"No POST route {path!r}.",
-                hint="Operations are invoked by POST to /api/call.",
+                hint="Operations are invoked by POST to /api/call; files by POST to /api/export.",
             )
             return
         body = self._read_body()
@@ -219,6 +222,9 @@ class _Handler(BaseHTTPRequestHandler):
                 "The request body must be a JSON object.",
                 hint='Send {"operation": "calc.plane_angles", "params": {...}}.',
             )
+            return
+        if path == "/api/export":
+            self._export(payload)
             return
         operation = payload.get("operation")
         if not isinstance(operation, str):
@@ -253,6 +259,42 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(status, envelope)
+
+    def _export(self, payload: Mapping[str, Any]) -> None:
+        """Turn a result the client already has into a downloadable file.
+
+        The result travels back rather than being recomputed from its inputs.
+        Recomputing would be tidier to write and wrong to ship: the file must be
+        the numbers the user is looking at, and a second evaluation is a second
+        chance to differ from them.
+        """
+
+        from pytex.app.export import export_result
+
+        result = payload.get("result")
+        fmt = payload.get("format")
+        if not isinstance(result, Mapping) or not isinstance(fmt, str):
+            self._send_error_json(
+                HTTPStatus.BAD_REQUEST,
+                "request.malformed",
+                "An export needs a result object and a format.",
+                hint='Send {"result": {...}, "format": "xlsx"}.',
+            )
+            return
+        try:
+            data, mime, filename = export_result(result, fmt=fmt)
+        except ServiceError as error:
+            self._send_json(error.status, {"ok": False, "error": error.to_json()})
+            return
+        self._send(
+            HTTPStatus.OK,
+            data,
+            content_type=mime,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
 
     def _read_body(self) -> bytes | None:
         raw_length = self.headers.get("Content-Length")
