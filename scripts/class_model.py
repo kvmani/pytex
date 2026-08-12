@@ -67,9 +67,16 @@ __all__ = [
     "short_type_name",
 ]
 
-#: Modules excluded from the model: private helpers, vendored data, and the
-#: plotting validation-case registry, none of which describe the object model.
-_EXCLUDED_MODULE_PARTS = ("_data", "themes", "fixtures")
+#: Modules excluded from the model: private helpers, vendored data, the
+#: plotting validation-case registry, and the application layer.
+#:
+#: ``app`` is excluded deliberately. The atlas documents the *scientific* object
+#: model — phases, orientations, patterns, reports — and `pytex.app` contributes
+#: only user-interface plumbing (parameter descriptors, result envelopes, wire
+#: forms) that would triple the class count without describing any
+#: crystallography. The application's own architecture is documented in
+#: ``docs/architecture/application_platform.md``.
+_EXCLUDED_MODULE_PARTS = ("_data", "themes", "fixtures", "app")
 
 
 @dataclass(frozen=True)

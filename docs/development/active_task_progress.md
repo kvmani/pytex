@@ -5,7 +5,65 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Deepening The Theory Layer: Closed Forms, Known Answers, Non-Obvious Cases — IN PROGRESS (2026-08-11)
+## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
+
+**Objective.** Build one interactive application over the PyTex library that ships both as a
+desktop app and as an intranet web app, sharing all scientific code and the entire user interface,
+diverging only in how a window opens and where files are written. Flagship surfaces: an
+interactive 3D crystal viewer with arbitrary superimposed planes/directions/annotations; an
+interactive TEM diffraction-pattern solver (upload → calibrate → pick spots → index → plan the
+tilt to the next zone axis); and a crystallographic calculator for interplanar angles, symmetric
+families, and cross-phase geometry. Every result exports as a publication figure *and* as
+re-plottable numbers (CSV/XLSX/JSON).
+
+**Design record.** `docs/architecture/application_platform.md` — read it first. It fixes six
+decisions: (1) the shared layer is a JSON-in/JSON-out **service layer**, not a widget library;
+(2) the UI is **generated from a self-describing operation manifest**, so help text cannot drift;
+(3) **zero mandatory runtime dependencies** — stdlib `http.server`, hand-written ES modules, no
+bundler, no third-party JS, because the deployment target is an offline intranet host;
+(4) interactive 3D **projects in the browser, publishes from Python** (scene built once in Python,
+camera lives in the browser, export replays the camera through `pytex.plotting`);
+(5) the desktop shell is the web shell in a window (`pywebview` if present, else default browser);
+(6) every result is exportable in a re-plottable form; (7) **every tab ships with 3–4 canonical
+worked examples** so a user with no data of their own can still exercise every feature — the shared
+material set is NaCl, Fe-fcc (austenite), Fe-bcc (ferrite), and Zr-hcp, all present in the built-in
+phase catalogue with cited parameters and full atomic bases.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Architecture and decision record | done | (this commit) |
+| 2 | `pytex.app` foundation: errors, JSON envelope, operation manifest/registry | done | (this commit) |
+| 3 | Phase specification + built-in phase catalog (no pymatgen required) | done | (this commit) |
+| 4 | Calculator service (`calc.*`) + tests | done | (this commit) |
+| 4b | Example-scenario registry: 3–4 runnable canonical examples per panel | pending | |
+| 5 | Stdlib HTTP server + routing + in-process loopback tests | pending | |
+| 6 | Frontend shell: tab bar, state store, manifest-driven controls, calculator tab | pending | |
+| 7 | Crystal viewer service + panel (browser projection, Python export) | pending | |
+| 8 | Export surface: SVG/PDF/PNG/CSV/XLSX/JSON, stdlib xlsx writer | pending | |
+| 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | pending | |
+| 10 | Desktop shell (`pywebview`, browser fallback) + `pytex app` CLI verbs | pending | |
+| 11 | Diffraction and texture tabs | pending | |
+| 12 | User guide, worked example, docs index wiring | pending | |
+
+### Current worktree state
+
+Steps 1–4 landed. Next action is step 5: `src/pytex/app/server.py` on
+`http.server.ThreadingHTTPServer`, routing `/api/manifest`, `/api/call`, and the static tree, with
+`tests/unit/test_app_server.py` starting a real loopback server in-process.
+
+### Decisions taken during implementation
+
+- Phases entering the app are described by a **`PhaseSpec`** (six cell parameters + point group +
+  optional space group and atomic sites), which is JSON-round-trippable and needs no optional
+  dependency. CIF import stays an optional path through `Phase.from_cif`, so the app runs fully
+  without pymatgen.
+- The built-in phase catalog is defined by literal parameters in Python with citations, not by
+  reading the CIF fixtures, so the app's starting catalog cannot be broken by an optional
+  dependency being absent.
+
+## Deepening The Theory Layer: Closed Forms, Known Answers, Non-Obvious Cases — COMPLETE (2026-08-11)
 
 **Objective.** Increase the breadth and depth of the theory and algorithm notes across the repo.
 For every surface treated: state the closed-form solution where one exists, show how the code
