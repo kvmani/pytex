@@ -10,5 +10,6 @@ behind an HTTP request.
 from __future__ import annotations
 
 from pytex.app.services import calculator as calculator
+from pytex.app.services import crystal as crystal
 
-__all__ = ["calculator"]
+__all__ = ["calculator", "crystal"]

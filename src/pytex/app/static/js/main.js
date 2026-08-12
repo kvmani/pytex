@@ -16,9 +16,12 @@ import { call, fetchManifest, ServiceCallError } from './core/api.js';
 import { clear, el, markdown } from './core/dom.js';
 import { renderHelp } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
+import * as crystal from './panels/crystal.js';
 import * as calculator from './panels/calculator.js';
 
-const PANELS = [calculator];
+// Order is the tab order. The viewer leads because it is the panel a newcomer
+// understands without being told what it is for.
+const PANELS = [crystal, calculator];
 
 const dom = {
   tabs: document.getElementById('tabs'),

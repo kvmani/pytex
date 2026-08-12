@@ -801,17 +801,21 @@ button:focus-visible {
 /* ------------------------------------------------------------ plot frame */
 
 /*
- * The stage gives the plot everything it has. `min-height: 0` on the flex child
- * is what actually lets an SVG shrink inside a flex column; without it the
- * plot grows past the viewport and the page scrolls instead of the figure
- * fitting.
+ * The stage gives the plot everything it has, but never nothing.
+ *
+ * `flex: 1` alone collapses the plot to zero height, because the SVG inside is
+ * sized at 100% of a parent whose height is being derived from its content —
+ * a circular dependency the browser resolves as zero, silently. The result is a
+ * blank stage and a cursor readout that never fires because the element has no
+ * area. So the plot declares a floor it can grow from, and the result cards
+ * below it scroll.
  */
 .plot {
   margin: 0;
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  flex: 1 0 auto;
+  min-height: min(62vh, 34rem);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);

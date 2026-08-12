@@ -42,7 +42,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 4b | Example-scenario registry + named-OR operation; 7 calculator examples | done | (this commit) |
 | 5 | Stdlib HTTP server + routing + in-process loopback tests | done | (this commit) |
 | 6 | Frontend shell: tabs, manifest-driven controls, palette, calculator tab | done | (this commit) |
-| 7 | Crystal viewer service + panel (browser projection, Python export) | pending | |
+| 7 | Crystal viewer service + panel (browser projection, Python export) | done | (this commit) |
 | 8 | Export surface: SVG/PDF/PNG/CSV/XLSX/JSON, stdlib xlsx writer | pending | |
 | 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | pending | |
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
