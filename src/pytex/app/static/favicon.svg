@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="PyTex">
+  <!--
+    A diffraction pattern, because that is what the application is for and it is
+    the one motif that still reads at 16 pixels: a bright transmitted beam with
+    a square net of reflections around it, spot size falling off with |g| as it
+    does on a real plate.
+  -->
+  <rect width="32" height="32" rx="6" fill="#16191f"/>
+  <g fill="#ffffff">
+    <circle cx="16" cy="16" r="3.4"/>
+    <circle cx="16" cy="6" r="1.5"/>
+    <circle cx="16" cy="26" r="1.5"/>
+    <circle cx="6" cy="16" r="1.5"/>
+    <circle cx="26" cy="16" r="1.5"/>
+    <circle cx="6" cy="6" r="1.1"/>
+    <circle cx="26" cy="6" r="1.1"/>
+    <circle cx="6" cy="26" r="1.1"/>
+    <circle cx="26" cy="26" r="1.1"/>
+  </g>
+</svg>

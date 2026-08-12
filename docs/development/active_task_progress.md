@@ -74,7 +74,20 @@ unit test was positioned to see:
    outranks the user agent's `[hidden] { display: none }`, so both full-viewport layers sat open
    over the page and swallowed every click. Nothing in the JavaScript was wrong, which is why no
    panel test could see it.
-4. **The desktop shell could export nothing** — an anchor with `download` is accepted and
+4. **A drag turned the crystal once and stopped** — turning redraws the scene, a redraw builds a
+   new SVG, and the drag handlers belonged to the SVG, so every movement after the first reached a
+   node with no drag in progress. The handlers now live on the frame, which outlives the picture.
+5. **Two-phase operations failed on their opening press** — neither the named orientation
+   relationship nor the composite SAED declared a default phase, so the picker started parent and
+   child on the same catalogue entry and the relationship refused them. Every operation is now run
+   from its declared defaults by a test, substituting for an absent phase exactly what the picker
+   sends.
+6. **An edited phase kept the last one's identity** — editing nickel into a tetragonal cell left
+   the name "Nickel (fcc)" on every title and export, and left Fm-3m applying an F centring that
+   deleted two thirds of the reflection families. Edited phases are now named "(edited)", the
+   space group clears when the crystal system changes, and `PhaseSpec` refuses a space group from
+   another system outright.
+7. **The desktop shell could export nothing** — an anchor with `download` is accepted and
    silently dropped by the embedded web view, so every export in the desktop shell produced no
    file and no error. Fixed with a `SaveBridge` js_api that writes through a native save dialog,
    `GET /api/shell` so the page is told which shell it is in rather than sniffing, and a
