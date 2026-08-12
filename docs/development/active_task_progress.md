@@ -60,15 +60,15 @@ test enforces it and executes each one, so an example cannot rot.
 **Step 11d — what driving the application found.** The panels were tested by clicking them, in
 the browser and in the real pywebview window, with a synthetic Ni [001] and [011] SAED pattern
 generated to a known camera constant so the indexer could be checked against an answer known in
-advance (it recovers both zone axes, 100% of spots, residual < 0.002 Å⁻¹). Four defects that no
-unit test was positioned to see:
+advance (it recovers both zone axes, 100% of spots, residual < 0.002 Å⁻¹). Eight defects that
+no unit test was positioned to see:
 
 1. **The crystal viewer's Figure button was dead** — `crystal.render` rejected three parameters
    `crystal.scene` accepts, so the request failed the moment a user touched the unit-cell
    outline, the atom labels, or the bond tolerance. Fixed by giving the renderer the parameters;
    a test now asserts every scene parameter is one the figure accepts.
 2. **Mathtext leaked to the browser and to prose** — plane overlays were labelled `$(100)$` on
-   screen, and the tilt planner told an operator to drive to `$[0ar{1}1]$`. The repository
+   screen, and the tilt planner told an operator to drive to `$[0\bar{1}1]$`. The repository
    convention was already plain style for `describe()`; `pytex.tem` had not followed it.
 3. **The closed overlays covered the whole application** — `.palette, .drawer { display: flex }`
    outranks the user agent's `[hidden] { display: none }`, so both full-viewport layers sat open
@@ -92,6 +92,22 @@ unit test was positioned to see:
    file and no error. Fixed with a `SaveBridge` js_api that writes through a native save dialog,
    `GET /api/shell` so the page is told which shell it is in rather than sniffing, and a
    `pytex:saved` toast in both shells so an export never again passes in silence.
+
+8. **The viewer could not publish an SVG, and its PNG could not be saved on the desktop** — the
+   Figure button hard-coded PNG, so the format the help explains when to choose was unreachable;
+   and the PNG went out through a private copy of the anchor-download trick, so it failed silently
+   in the desktop shell while the SVG beside it saved. A format control is on the toolbar, and
+   every file now leaves through `saveBlob`, which a test enforces by refusing a second
+   `createObjectURL` anywhere in the frontend.
+
+Also: the page names its own favicon, so a load no longer ends in a 404 for `/favicon.ico` in the
+log of a server that otherwise logs only real requests.
+
+**Verification.** Both shells were driven to the end. In the browser: every panel, all ten
+calculator operations, the palette, the help drawer, the examples, custom phases, the error paths,
+and the exports in all three formats. In the real pywebview window, through `evaluate_js`: all
+four panels compute, a drag turns the crystal, a CSV and a 481 kB PNG figure reach disk through
+the save bridge with the toast naming the path, and the console is clean.
 
 **Resume point.** Step 11b (orientation-relationship visualization). Before adding a panel, note
 what step 11d cost: every defect above was invisible to a passing test suite and obvious within a
