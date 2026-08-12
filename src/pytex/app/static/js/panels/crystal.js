@@ -193,27 +193,47 @@ export function mount(context) {
     );
   }
 
-  function attachPointer(node) {
-    let dragging = null;
-    node.addEventListener('pointerdown', (event) => {
-      dragging = { x: event.clientX, y: event.clientY };
-      node.setPointerCapture(event.pointerId);
-    });
-    node.addEventListener('pointerup', (event) => {
+  // The drag is watched on the frame, which outlives the drawing inside it.
+  //
+  // Turning the crystal redraws it, and a redraw builds a new SVG and throws
+  // the old one away. Handlers owned by that SVG therefore see the first
+  // movement of a drag and nothing after it: the element they belong to no
+  // longer exists, and it took its pointer capture with it. The symptom is a
+  // crystal that nudges once however far you pull — the whole of "turn it in
+  // your hands" failing on the second frame, with nothing in the console.
+  //
+  // The frame is created once per mount, so capturing the pointer on it also
+  // keeps a drag alive when the pointer leaves the picture mid-turn, and takes
+  // the listeners with it when the panel is replaced.
+  let dragging = null;
+
+  frame.element.addEventListener('pointerdown', (event) => {
+    if (!state.scene || !event.target.closest('svg')) return;
+    dragging = { x: event.clientX, y: event.clientY };
+    frame.element.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  });
+  frame.element.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const dx = (event.clientX - dragging.x) * 0.01;
+    const dy = (event.clientY - dragging.y) * 0.01;
+    dragging = { x: event.clientX, y: event.clientY };
+    // Rotate about the *screen* axes, not the model's: pre-multiplying keeps
+    // "drag right turns right" true no matter how the crystal is already
+    // oriented, which is what makes the control feel like a physical object.
+    camera.rotation = multiply(multiply(rotationY(dx), rotationX(dy)), camera.rotation);
+    draw();
+  });
+  for (const ending of ['pointerup', 'pointercancel']) {
+    frame.element.addEventListener(ending, (event) => {
       dragging = null;
-      node.releasePointerCapture(event.pointerId);
+      if (frame.element.hasPointerCapture?.(event.pointerId)) {
+        frame.element.releasePointerCapture(event.pointerId);
+      }
     });
-    node.addEventListener('pointermove', (event) => {
-      if (!dragging) return;
-      const dx = (event.clientX - dragging.x) * 0.01;
-      const dy = (event.clientY - dragging.y) * 0.01;
-      dragging = { x: event.clientX, y: event.clientY };
-      // Rotate about the *screen* axes, not the model's: pre-multiplying keeps
-      // "drag right turns right" true no matter how the crystal is already
-      // oriented, which is what makes the control feel like a physical object.
-      camera.rotation = multiply(multiply(rotationY(dx), rotationX(dy)), camera.rotation);
-      draw();
-    });
+  }
+
+  function attachPointer(node) {
     node.addEventListener(
       'wheel',
       (event) => {

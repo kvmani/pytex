@@ -312,6 +312,29 @@ class TestFrontendIsSelfContained:
         body = rule.group(1).replace(" ", "")
         assert "display:none!important" in body
 
+    def test_the_crystal_drag_is_not_bound_to_the_drawing_it_replaces(self) -> None:
+        """Turning the crystal must survive the redraw that turning causes.
+
+        Each step of a drag rebuilds the SVG and discards the old one. A
+        `pointermove` handler owned by that SVG therefore fires once and then
+        belongs to a detached element, and the pointer capture goes with it: the
+        crystal nudges once however far the user pulls, silently. The handler
+        has to live on the frame, which is built once per mount.
+
+        This is asserted against the source because there is no JavaScript test
+        runner in this repository, and the alternative to a blunt check is no
+        check at all for a defect that a passing Python suite cannot see.
+        """
+
+        import re
+
+        source = (STATIC_ROOT / "js" / "panels" / "crystal.js").read_text(encoding="utf-8")
+        attach = re.search(r"function attachPointer\(node\) \{(.*?)\n  \}", source, flags=re.S)
+        assert attach is not None, "attachPointer has been renamed; revisit this invariant"
+        assert "pointermove" not in attach.group(1)
+        assert "pointerdown" not in attach.group(1)
+        assert "frame.element.addEventListener('pointermove'" in source
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()
