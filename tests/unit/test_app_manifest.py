@@ -60,6 +60,47 @@ def test_declared_defaults_are_accepted_by_their_own_validator(spec) -> None:  #
 
 
 @pytest.mark.parametrize("spec", REGISTRY.operations(), ids=lambda spec: spec.id)
+def test_an_operation_runs_from_its_own_defaults(spec) -> None:  # type: ignore[no-untyped-def]
+    """Pressing the button without touching a control must produce a result.
+
+    Defaults are what a user meets first, and a default set that cannot run is
+    an operation that fails on its own opening press. The two that did were both
+    two-phase operations — the picker starts every phase control on the first
+    entry in the catalogue, so parent and child arrived identical and the
+    orientation relationship refused them, correctly.
+
+    Operations that cannot have complete defaults are exempt by declaring a
+    required parameter with no default: a picked-spot list has no sensible
+    value before the user has picked anything.
+    """
+
+    from pytex.app.phases import BUILTIN_PHASES
+
+    # What the phase picker sends when the parameter names no default: the first
+    # entry in the catalogue, per `normalise()` in `js/core/phasecontrol.js`.
+    # Substituting it here is the whole point — it is what put two identical
+    # phases into a two-phase operation and made it fail on its opening press.
+    first_phase = {"builtin": next(iter(BUILTIN_PHASES))}
+
+    request: dict[str, object] = {}
+    incomplete: list[str] = []
+    for parameter in spec.parameters:
+        if parameter.default is not None:
+            request[parameter.name] = parameter.default
+        elif getattr(parameter, "editor", None) == "phase":
+            request[parameter.name] = first_phase
+        elif parameter.required:
+            incomplete.append(parameter.name)
+    if incomplete:
+        pytest.skip(f"{spec.id} needs {', '.join(incomplete)} from the user")
+    try:
+        result = REGISTRY.call(spec.id, request)
+    except ServiceError as error:  # pragma: no cover - the failure is the message
+        pytest.fail(f"{spec.id} cannot run from its declared defaults: {error}")
+    assert result["summary"]
+
+
+@pytest.mark.parametrize("spec", REGISTRY.operations(), ids=lambda spec: spec.id)
 def test_manifest_entry_is_json_serialisable(spec) -> None:  # type: ignore[no-untyped-def]
     json.loads(dumps(spec.describe()))
 

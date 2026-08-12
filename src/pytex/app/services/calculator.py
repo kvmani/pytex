@@ -72,12 +72,18 @@ def phase_parameter(
     *,
     label: str = "Phase",
     help_text: str | None = None,
+    builtin: str | None = None,
 ) -> ObjectParameter:
     """Return the standard phase-selection parameter.
 
     Every operation that needs a material takes exactly this parameter, so the
     frontend renders one phase picker everywhere and a phase chosen in one tab
     can be carried into another without translation.
+
+    ``builtin`` names the phase the picker should start on. Give it wherever the
+    operation relates two phases: the picker otherwise starts both on the first
+    entry in the catalogue, and an operation that needs two *different* phases
+    then refuses the very first press of its own button.
     """
 
     return ObjectParameter(
@@ -90,6 +96,7 @@ def phase_parameter(
             "which reflections are systematically absent."
         ),
         editor="phase",
+        default=None if builtin is None else {"builtin": builtin},
     )
 
 
@@ -1505,12 +1512,14 @@ _RELATIONSHIP_CONSTRUCTORS = {
                 "The phase that transforms — austenite for the fcc-to-bcc relationships, beta "
                 "for Burgers."
             ),
+            builtin="austenite_fcc",
         ),
         ObjectParameter(
             name="child_phase",
             label="Child phase",
             help_text="The product phase — ferrite or martensite, or alpha for Burgers.",
             editor="phase",
+            default={"builtin": "fe_bcc"},
         ),
         ChoiceParameter(
             name="relationship",

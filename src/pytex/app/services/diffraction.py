@@ -182,6 +182,7 @@ def _variant_selection(text: str | None, available: int) -> tuple[int, ...] | No
         phase_parameter(
             label="Parent phase",
             help_text="The phase the zone axis is stated in — austenite, or beta for Burgers.",
+            builtin="austenite_fcc",
         ),
         ChoiceParameter(
             name="relationship",
@@ -282,6 +283,7 @@ def _variant_selection(text: str | None, available: int) -> tuple[int, ...] | No
             name="child_phase",
             label="Product phase",
             help_text="The product phase — ferrite or martensite, or alpha for Burgers.",
+            builtin="fe_bcc",
         ),
     ),
     returns="One row per spot; detector geometry and per-source grouping under `data`.",
