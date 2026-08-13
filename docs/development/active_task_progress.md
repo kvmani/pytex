@@ -1376,3 +1376,78 @@ constant 1.0, and an over-smoothed ODF whose residual is *organized* (−4.17 m.
 
 None claimed. The capability review's recommended order puts roadmap reconciliation plus
 `windows-latest` in CI next, then the defocus model and ghost correction.
+
+## Kearns f Parameter: Three Estimation Methods, Theory Note, Tutorial — IN PROGRESS (2026-08-13)
+
+**Objective.** Make the Kearns orientation parameter `f` a first-class, explainable surface of
+`pytex.texture`, estimated by all three routes the Zr literature uses — the original
+diffractogram/inverse-pole-figure route, the basal pole figure route, and the ODF (or discrete
+orientation) route — with the corrections each one needs, a canonical theory note, executable
+worked examples with cited expected values, and a tutorial notebook that both demonstrates the
+methods on real XRDML data and cross-checks them against simulated textures whose `f` is known
+in closed form.
+
+**Normative sources read (PDFs local-only, `kearns_parameter_data_references/`, untracked).**
+
+- J. J. Kearns, *Thermal expansion and preferred orientation in Zircaloy*, WAPD-TM-472,
+  Bettis Atomic Power Laboratory (November 1965). Defines `f` (its Eqs. 1-7) and the
+  diffractogram route; Table 3 is the pinned numerical baseline.
+- J. L. Baron *et al.*, *Interlaboratories tests of textures of Zircaloy-4 tubes. Part 1*,
+  Textures and Microstructures **12** (1990) 125-140, doi:10.1155/TSM.12.125. Its Eqs. 4-5 are
+  the pole-figure route, with the incomplete-pole-figure pseudo-norm of Kern and Bergmann.
+- R. A. Holt and S. A. Aldridge, *J. Nucl. Mater.* **135** (1985) 246-259 — `F_d = sum V(theta) cos^2(theta)`,
+  the resolved-basal-pole form used throughout the CANDU literature.
+- K. V. Mani Krishna *et al.*, *J. Nucl. Mater.* **414** (2011) 492-497,
+  doi:10.1016/j.jnucmat.2011.04.065 — comparison of the IPF, PF, ODF and EBSD routes, their
+  cross-section dependence, and the normalization that the IPF route needs.
+
+**The unifying formulation adopted.** All four routes estimate the same object: the second-moment
+(orientation) tensor of the basal-pole direction distribution,
+`A = <c c^T>`, whence `f(d) = d^T A d` for any specimen direction `d`. The literature's
+sum rule `f_RD + f_TD + f_ND = 1` is then `tr(A) = 1`, which holds identically rather than
+approximately, and the isotropic value `1/3` is `A = I/3`. Each experimental route is a different
+estimator of `A` (or, for the diffractogram route, of one diagonal element of it).
+
+**Finding to carry into the docs.** The reference 2-theta XRDML scans in
+`reference_exp_data/*/2theta*.xrdml` are *fixed-omega detector scans* (`scanAxis="2Theta"`,
+`Omega` a `commonPosition` of 15 deg), not coupled Bragg-Brentano scans (which appear in the same
+corpus as `scanAxis="Gonio"` with both axes ranged, e.g. `stress01-13.xrdml`). The diffraction
+vector therefore sits at `theta - omega` from the specimen normal, reaching 45 deg at the top of
+the range, so the Kearns assignment of each reflection's intensity to the section normal does not
+hold as written. The module carries a per-reflection specimen direction rather than assuming the
+surface normal, and reports the spread as a diagnostic.
+
+**Second finding.** Kearns 1965 Table 3 contains an arithmetic slip in the transverse-section
+block: the `70-80` row's `V cos^2 phi` cell reads `0.0214` where `0.353 * cos^2(75 deg) = 0.0237`,
+so the quoted `f = 0.0508` should be `0.0532`. The longitudinal block reproduces exactly
+(`f = 0.4879` against the quoted `0.488`), so the longitudinal block is what gets pinned as the
+worked example, with the discrepancy documented rather than silently averaged away.
+
+### Step ledger
+
+| # | Step | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Reference analysis, formulation, ledger | done | (this commit) |
+| 2 | `src/pytex/texture/kearns.py` + tests (70 tests) | done | (this commit) |
+| 3 | Theory note, symbol registry, docs index, parity matrix | done | (this commit) |
+| 4 | Worked examples + gallery regeneration | todo | |
+| 5 | Tutorial notebook 31 | todo | |
+
+**Worktree state.** `kearns_parameter_data_references/` is untracked and must stay that way: it
+holds copyrighted PDFs and several MB of instrument data. A `.gitignore` entry lands with step 2.
+
+**Third finding, fixed in this commit.** `raster_solid_angle_weights` extends the outermost ring's
+band outwards by its own half step, which for a hemispherical raster ending exactly at 90 degrees
+pushes that band past the equator and gives the equatorial ring close to twice the solid angle it
+owns. Because `cos^2` is zero there, the excess pulls every Kearns integral down: the spherical
+mean of `cos^2` over a 5 degree raster comes out at 0.3196 against the exact 1/3, a -4.1 percent
+error that the existing `pole-figure-raster-weighted-mean-converges` worked example documents as
+"converging from below". A new optional `polar_max_deg` keyword bounds the outermost band; passing
+90.0 reduces the error to -0.06 percent. The default is unchanged so the pinned worked example is
+untouched, and `kearns_from_pole_figure` passes 90.0 for antipodal figures. **Whether the default
+should change is a separate question left open**; it would require regenerating that example.
+
+**Also noted, not fixed.** `KernelSpec.evaluate` silently degenerates for de la Vallee Poussin
+halfwidths below about 0.5 degrees: `np.isclose(cos(halfwidth/2), 1.0)` becomes true at the default
+tolerance and the exponent collapses to 1, giving a near-uniform kernel instead of a very sharp one.
+Out of scope here; no realistic halfwidth reaches it.

@@ -499,7 +499,11 @@ def _ring_band_weights(
     return np.asarray(per_point / per_point.sum(), dtype=np.float64)
 
 
-def raster_solid_angle_weights(polar_deg: ArrayLike) -> np.ndarray:
+def raster_solid_angle_weights(
+    polar_deg: ArrayLike,
+    *,
+    polar_max_deg: float | None = None,
+) -> np.ndarray:
     """Integration weights for a measured polar/azimuth raster.
 
     Purpose
@@ -534,6 +538,15 @@ def raster_solid_angle_weights(polar_deg: ArrayLike) -> np.ndarray:
         Polar angle of every sampled point, in degrees. One entry per point, in
         the same order as the intensities they weight. Points sharing a polar
         angle are treated as one ring.
+    polar_max_deg : float, optional
+        Hard upper bound for the outermost band. Without it the outermost ring
+        is extended by its own half step, which for a raster ending exactly at
+        the equator pushes its band past 90 degrees and gives that ring close to
+        twice the solid angle it owns. On a 5 degree hemispherical raster that
+        alone biases the spherical mean of ``cos^2`` by 4 percent; passing
+        ``polar_max_deg=90.0`` reduces the error to 0.06 percent. Pass it
+        whenever the raster is known to stop at a boundary of the integration
+        domain rather than merely at the last angle the instrument reached.
 
     Returns
     -------
@@ -552,6 +565,14 @@ def raster_solid_angle_weights(polar_deg: ArrayLike) -> np.ndarray:
         raise ValueError("raster_solid_angle_weights requires at least one point.")
     if np.any(polar < -1e-9) or np.any(polar > 180.0 + 1e-9):
         raise ValueError("polar_deg must lie in [0, 180].")
+    if polar_max_deg is None:
+        outer_bound = 180.0
+    else:
+        outer_bound = float(polar_max_deg)
+        if not 0.0 < outer_bound <= 180.0:
+            raise ValueError("polar_max_deg must lie in (0, 180].")
+        if np.any(polar > outer_bound + 1e-9):
+            raise ValueError("polar_deg must not exceed polar_max_deg.")
     rings, inverse, counts = np.unique(
         np.round(polar, 9), return_inverse=True, return_counts=True
     )
@@ -566,7 +587,7 @@ def raster_solid_angle_weights(polar_deg: ArrayLike) -> np.ndarray:
     # them; extend each outwards by its own half step, clipped to the sphere.
     # The weights then describe the cap actually measured.
     lower = np.concatenate([[max(rings[0] - half_step[0], 0.0)], midpoints])
-    upper = np.concatenate([midpoints, [min(rings[-1] + half_step[-1], 180.0)]])
+    upper = np.concatenate([midpoints, [min(rings[-1] + half_step[-1], outer_bound)]])
     band = np.cos(np.deg2rad(lower)) - np.cos(np.deg2rad(upper))
     if np.any(band <= 0.0):  # pragma: no cover - only reachable for degenerate rings
         raise ValueError("polar_deg produced a ring of zero solid angle.")

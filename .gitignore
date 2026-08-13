@@ -74,6 +74,11 @@ docs/presentations/
 # now rejects any tracked PDF with no exceptions.
 references/*.pdf
 
+# Kearns-parameter reference corpus: vendor PDFs plus several MB of raw XRDML
+# instrument data, used as a local source for tutorial 31 and never a repository
+# asset. Cite the papers by DOI in references/reference_index.md instead.
+kearns_parameter_data_references/
+
 # Everything above serves one cardinal rule, stated in AGENTS.md under
 # "Repository content: sources and canonical assets only": if a command in this
 # repository can regenerate a file, it is committed only when documentation, a

@@ -175,6 +175,18 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\mathbf{C}_{\mathrm{rgb}}$ | Corner colour matrix whose rows are the RGB triples assigned to the sector corners; the identity gives the standard red/green/blue key. |
 | $\gamma_{s}$ | IPF saturation parameter. Channels are raised to $1/\gamma_{s}$, so the default $\gamma_{s} = 0.5$ squares them. A contrast control with no crystallographic content; distinct from the lattice angle $\gamma$ and the relativistic factor. |
 
+### The Kearns parameter
+
+| Symbol | Meaning |
+| --- | --- |
+| $f$, $f_{\mathrm{RD}}$, $f_{\mathrm{TD}}$, $f_{\mathrm{ND}}$ | Kearns orientation parameter along a specimen direction: the volume-weighted mean of $\cos^{2}$ of the angle between each crystal's basal pole and that direction, and hence the effective fraction of basal poles aligned with it. Bounded to $[0,1]$; exactly $1/3$ for a random texture. Distinct from the ODF density $f(g)$, which is a function on $SO(3)$. |
+| $\mathbf{A}$ | Pole orientation tensor $\langle \mathbf{c}\,\mathbf{c}^{\mathsf{T}}angle$ of the basal-pole distribution in the specimen frame, so that $f(\mathbf{d}) = \mathbf{d}^{\mathsf{T}}\mathbf{A}\mathbf{d}$. Unit trace, which is why the Kearns parameters of an orthonormal triad sum identically to 1. The weighted counterpart of the directional-statistics orientation tensor $oldsymbol{\Theta}$. |
+| $\phi$ | Tilt of a crystal's basal pole $[0001]$ from the specimen reference direction. Distinct from the first Euler angle $arphi_1$ and from the pole-figure azimuth. |
+| $I(\phi)$ | Basal-pole density averaged over the full $360^{\circ}$ of azimuth about the reference direction — the *tilt profile*. Kearns' Eq. (5) integrates it against $\sin\phi\cos^{2}\phi$. Scale-free: only ratios of $I$ enter $f$. |
+| $V_{\Delta\phi}$ | Volume fraction of crystals whose basal pole lies in the tilt band $\Delta\phi$, equal to $I(\phi)\sin\phi\,\Delta\phi$ normalized over $[0,\pi/2]$. Vanishes at $\phi = 0$ however intense the pole is there, because the band has no area. |
+| $\phi_{hkil}$ | Fixed angle between the $(hkil)$ plane normal and $[0001]$, from the phase's reciprocal metric. What lets a $	heta$-$2	heta$ peak intensity be read as a basal-pole density at a known tilt. |
+| $ho$, $eta$ | ODF kernel shrinkage: $ho = \langle\cos^{2}etaangle$ of a pole smeared by the kernel, and $eta = (3ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ from $\mathbf{I}/3$. Here $eta$ is a scalar shrinkage factor, distinct from the lattice angle $eta$ and the holder tilt $eta$. |
+
 ### Directional statistics
 
 | Symbol | Meaning |

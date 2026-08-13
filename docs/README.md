@@ -100,6 +100,7 @@ index with cross-links to the matching implementation pages.
 - [Orientation Representations and Plane–Direction Construction in PyTex](site/theory/orientation_representations_and_plane_direction_construction.md)
 - [Discrete ODF and Pole-Figure Foundations in PyTex](site/theory/discrete_odf_and_pole_figures.md)
 - [Pole-Figure Arithmetic And The m.r.d. Scale](site/theory/pole_figure_arithmetic_and_mrd.md)
+- [The Kearns Parameter And Basal-Pole Texture](site/theory/kearns_parameter_and_basal_pole_texture.md)
 - [Harmonic ODF Reconstruction in PyTex](site/theory/harmonic_odf_reconstruction.md)
 - [The Ghost Problem: What Pole Figures Cannot Determine](site/theory/ghost_problem_and_odd_harmonics.md)
 - [Stereographic Projections and XRDML Texture Import in PyTex](site/theory/stereographic_projections_and_xrdml_texture_import.md)
