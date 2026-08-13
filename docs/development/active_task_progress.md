@@ -1377,7 +1377,7 @@ constant 1.0, and an over-smoothed ODF whose residual is *organized* (−4.17 m.
 None claimed. The capability review's recommended order puts roadmap reconciliation plus
 `windows-latest` in CI next, then the defocus model and ghost correction.
 
-## Kearns f Parameter: Three Estimation Methods, Theory Note, Tutorial — IN PROGRESS (2026-08-13)
+## Kearns f Parameter: Four Estimation Routes, Theory Note, Tutorial — COMPLETE (2026-08-13)
 
 **Objective.** Make the Kearns orientation parameter `f` a first-class, explainable surface of
 `pytex.texture`, estimated by all three routes the Zr literature uses — the original
@@ -1473,3 +1473,40 @@ to 0.913; after normalising both triads the two independent routes agree to a fe
 which is about the interlaboratory spread Baron et al. (1990) report. The dataset contains no
 random-powder standard, so the defocusing curve cannot be measured from it — which is itself the
 lesson the notebook draws.
+
+### Verification
+
+- `ruff check`, `ruff format --check`, `mypy` (132 source files) and the full `pytest tests/unit`
+  lane are green. 76 new tests in `tests/unit/test_kearns_parameter.py`.
+- `python -m sphinx -b html docs/site` exits 0. `theory/kearns_parameter_and_basal_pole_texture`
+  and `tutorials/notebooks/31_kearns_parameter` both render, the notebook executes under
+  `nb_execution_mode = "cache"` with live outputs, and no build warning mentions either page. The
+  603 warnings in the log are the pre-existing autodoc duplicate-object noise on
+  `api/full_reference`.
+- The notebook was executed both with the reference data present and with
+  `PYTEX_KEARNS_DATA` pointing at a missing directory; it completes either way, which is what the
+  docs build needs since the data is untracked.
+- Worked-example gallery regenerated; `tests/unit/test_worked_examples.py` recomputes all four
+  Kearns examples against their cited values on every run.
+
+### What was deliberately not done
+
+- **The `raster_solid_angle_weights` default was not changed.** Bounding the outermost band at the
+  measured edge is the better quadrature everywhere, not only for Kearns integrals, but flipping
+  the default would move the pinned `pole-figure-raster-weighted-mean-converges` worked example
+  (0.31960 -> 0.33354 at a 5 degree step) and any downstream m.r.d. normalization. That is a
+  separate, deliberate change with its own commit; the keyword exists so it can be made
+  incrementally.
+- **`KernelSpec.evaluate` degenerates below about a 0.5 degree de la Vallee Poussin halfwidth**
+  (`np.isclose(cos(halfwidth/2), 1.0)` becomes true and the exponent collapses to 1, giving a
+  near-uniform kernel where a very sharp one was asked for). Pre-existing, unreachable at any
+  realistic halfwidth, and out of scope here.
+- **No defocusing model.** The reference corpus contains no random-powder standard, so the
+  defocusing curve cannot be measured from it; `PoleFigureCorrectionSpec.defocus_factors` already
+  accepts one when a standard exists. A measured-standard workflow remains the gap.
+- **No EBSD-specific Kearns surface.** `kearns_from_orientations` already takes grain weights, so
+  a `CrystalMap` convenience wrapper would add API without adding capability.
+
+### Next task
+
+None claimed. This goal is complete.
