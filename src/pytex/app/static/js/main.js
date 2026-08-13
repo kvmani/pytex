@@ -19,11 +19,15 @@ import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as tem from './panels/tem.js';
 import * as diffraction from './panels/diffraction.js';
+import * as variants from './panels/variants.js';
 import * as calculator from './panels/calculator.js';
 
 // Order is the tab order. The viewer leads because it is the panel a newcomer
-// understands without being told what it is for.
-const PANELS = [crystal, tem, diffraction, calculator];
+// understands without being told what it is for. Variants sits beside
+// diffraction because the two answer the same question from opposite ends: the
+// composite pattern is what variants look like on a plate, the pole figure is
+// where they point.
+const PANELS = [crystal, tem, diffraction, variants, calculator];
 
 const dom = {
   tabs: document.getElementById('tabs'),

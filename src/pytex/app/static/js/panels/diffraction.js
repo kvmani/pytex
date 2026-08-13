@@ -48,7 +48,15 @@ export function mount(context) {
     (entry) => entry.id === 'diffraction.composite_saed',
   );
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
-  const state = { result: null, teaches: null, form: null, hidden: new Set() };
+  const state = {
+    result: null,
+    teaches: null,
+    form: null,
+    hidden: new Set(),
+    // Which pattern the legend was built for, so a redraw that only changes
+    // which sources are shown updates the buttons instead of replacing them.
+    legendFor: null,
+  };
 
   const frame = plotFrame({
     title: 'Composite pattern',
@@ -144,7 +152,12 @@ export function mount(context) {
     });
 
     frame.setContent(renderPattern(data, { scale, frame, hidden: state.hidden }));
-    renderLegend(data);
+    // Built once per pattern, updated in place thereafter. Rebuilding it on
+    // every redraw destroys the button that was just pressed, and the browser
+    // then moves focus to the body — so a keyboard user who hides a variant
+    // loses their place and has to tab back through the whole page.
+    if (state.legendFor !== data) buildLegend(data);
+    else updateLegend();
     const shown = data.spots.filter((spot) => !state.hidden.has(sourceKey(spot))).length;
     frame.setStatus(
       `${shown} of ${data.spots.length} spots · camera constant ` +
@@ -153,19 +166,19 @@ export function mount(context) {
     );
   }
 
-  function renderLegend(data) {
+  /** Build the legend for a new pattern. Called once per pattern, not per redraw. */
+  function buildLegend(data) {
+    state.legendFor = data;
     legend.replaceChildren(
       ...data.sources.map((source, index) => {
         const key = `${source.source}|${source.variant}`;
-        const hidden = state.hidden.has(key);
         return el(
           'button.legend__item',
           {
             type: 'button',
-            'aria-pressed': String(!hidden),
-            title: hidden ? 'Show these spots' : 'Hide these spots',
+            dataset: { key },
             onclick: () => {
-              if (hidden) state.hidden.delete(key);
+              if (state.hidden.has(key)) state.hidden.delete(key);
               else state.hidden.add(key);
               draw();
             },
@@ -179,6 +192,16 @@ export function mount(context) {
         );
       }),
     );
+    updateLegend();
+  }
+
+  /** Reflect the hidden set onto the existing buttons, without replacing them. */
+  function updateLegend() {
+    for (const button of legend.querySelectorAll('button.legend__item')) {
+      const hidden = state.hidden.has(button.dataset.key);
+      button.setAttribute('aria-pressed', String(!hidden));
+      button.title = hidden ? 'Show these spots' : 'Hide these spots';
+    }
   }
 
   renderControls();

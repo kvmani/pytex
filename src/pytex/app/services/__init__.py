@@ -13,5 +13,6 @@ from pytex.app.services import calculator as calculator
 from pytex.app.services import crystal as crystal
 from pytex.app.services import diffraction as diffraction
 from pytex.app.services import tem as tem
+from pytex.app.services import variants as variants
 
-__all__ = ["calculator", "crystal", "diffraction", "tem"]
+__all__ = ["calculator", "crystal", "diffraction", "tem", "variants"]

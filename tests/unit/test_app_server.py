@@ -335,6 +335,39 @@ class TestFrontendIsSelfContained:
         assert "pointerdown" not in attach.group(1)
         assert "frame.element.addEventListener('pointermove'" in source
 
+    def test_no_legend_is_rebuilt_by_its_own_button(self) -> None:
+        """A legend that replaces itself on click throws away the focused button.
+
+        Both plotting panels have a legend whose buttons toggle what is drawn,
+        and both redrew the whole legend as part of the redraw the click causes.
+        The button the user just pressed is then removed from the document, and
+        the browser moves focus to `body` — so a keyboard user who tabs to a
+        packet and presses Enter loses their place and has to tab back through
+        the entire page to reach the next one. Measured in a browser: focus went
+        from "Packet 2 (6 variants)" to BODY on a single click.
+
+        The fix is that the legend is built once per result and updated in
+        place, so the pinned invariant is that neither panel calls a builder
+        from `draw()` unconditionally.
+        """
+
+        import re
+
+        for name in ("variants.js", "diffraction.js"):
+            source = (STATIC_ROOT / "js" / "panels" / name).read_text(encoding="utf-8")
+            assert "function updateLegend()" in source, (
+                f"{name} must be able to update its legend without replacing it"
+            )
+            draw = re.search(r"\n  function draw\(\) \{(.*?)\n  \}\n", source, flags=re.S)
+            assert draw is not None, f"{name}: draw() has been renamed; revisit this invariant"
+            body = draw.group(1)
+            assert "buildLegend(" in body and "updateLegend()" in body, (
+                f"{name}: draw() must choose between building and updating the legend"
+            )
+            assert "legend.replaceChildren" not in body, (
+                f"{name}: draw() must not replace the legend, or it discards the focused button"
+            )
+
     def test_only_one_place_in_the_frontend_saves_a_file(self) -> None:
         """Every file leaves through `saveBlob`, or the desktop shell loses it.
 

@@ -49,7 +49,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
 | 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, 2b45b7e |
 | 11e | Second driving pass: every operation from its own defaults | in progress | (this commit) |
-| 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
+| 11b | Orientation-relationship visualization (variants, pole figures, packets) | done | (this commit) |
 | 11c | Texture tab: pole figures, IPF, ODF | pending | |
 | 12 | User guide, worked example, docs index wiring | pending | |
 
@@ -159,10 +159,59 @@ four tabs on screen, and result tables still scrolling inside their own `.table-
 intended. Two source-level tests pin the wrap rules, because a stylesheet regression is exactly the
 kind a Python suite cannot see.
 
-**Resume point.** Step 11b (orientation-relationship visualization). Before adding a panel, note
-what steps 11d and 11e cost: every defect above was invisible to a passing test suite and obvious
-within a minute of using the application. New panels should be driven the same way before they are
-called done.
+### Step 11b — the variants panel
+
+A fifth workspace, `pytex.app.services.variants` plus `js/panels/variants.js`, answering the two
+questions a variant set is actually asked.
+
+**`variants.pole_figure`** projects the chosen child plane family of every variant into the parent
+frame, coloured by packet. The counts are the published ones and are pinned as such: Kurdjumov-Sachs
+gives 24 variants in 4 packets of 6 on the parent {111}, Nishiyama-Wassermann 12 in 4 packets of 3,
+Burgers 12 in 6 packets of 2 on the parent {110}, Bain 3.
+
+**`variants.intervariant_misorientations`** gives every variant pair its disorientation, with the
+nearest low-index axis and how far that label is from the exact one. The Kurdjumov-Sachs spectrum
+comes out as the ten angles of Morito et al., Table 2 — 10.53, 14.88, 20.61, 21.06, 47.11, 49.47,
+50.51, 51.73, 57.21, 60.00 — and the within-packet subset as the three exact ones, 10.53 about
+⟨111⟩ and ⟨110⟩, 49.47, and 60 about ⟨111⟩ and ⟨011⟩. Nothing in the test file is compared against
+a previous output of this code.
+
+**`variants.render`** publishes the same poles through `pytex.plotting.spherical`, called *through*
+the pole-figure handler rather than recomputing, so the figure and the CSV cannot describe different
+poles.
+
+Four things the implementation had to decide, recorded because none is obvious from the code:
+
+- **Equal-area is not normalised by the library.** `project_directions` returns each projection at
+  its natural radius, and equal-area reaches √2 where stereographic reaches 1. Drawing both in the
+  same circle puts 41% of the equal-area figure outside the rim. The service divides each by its own
+  equatorial radius, so the rim means 90° in both and the exported x and y are comparable.
+- **The packet colours exist twice**, as hex for matplotlib and as HSL for CSS, because neither
+  renderer can read the other's constant. A test converts and compares them; it caught a real
+  disagreement (`#2f7fd4` on screen against `#2c7fdd` in the figure) the first time it ran.
+- **A disorientation axis is a line, not a ray**, and the sign out of a symmetry reduction is
+  arbitrary, so the label is canonicalised to a positive leading index — otherwise ⟨1 -1 1⟩ and
+  ⟨-1 1 -1⟩ appear as two rows of the same table.
+- **The axis index limit is 8, not 6.** At 6 the 14.88° pair was labelled ⟨2 5 0⟩, nearly four
+  degrees away — a label worse than none, since the literature quotes these up to ⟨5 5 7⟩.
+
+**Step 11b — what driving it found.** Two defects, both in code the tests passed over:
+
+13. **Toggling a legend threw away the keyboard user's place.** Both plotting panels rebuilt the
+    whole legend as part of the redraw a legend click causes, so the button just pressed left the
+    document and the browser moved focus to `body`. Measured: focus went from "Packet 2 (6
+    variants)" to BODY on one click. The legend is now built once per result and updated in place.
+    The defect was older than this panel — the diffraction legend had it too, and was fixed with it.
+14. **The Figure button disabled the wrong control**, because the format select carries `.button`
+    for its styling and `.plot__toolbar .button` matches the select first. Held by name now. In the
+    same place: the format list opened on PNG while the operation's own default and its help text
+    both say SVG is the right artefact for line art. SVG is first now, and the three agree.
+
+**Resume point.** Step 11c (texture tab). Note what steps 11d, 11e and 11b cost: every defect above
+was invisible to a passing test suite and obvious within a minute of using the application. New
+panels are driven the same way before they are called done, and the driving now covers three things
+in particular — the opening press with nothing touched, the layout at 390 px, and where focus goes
+after every control that redraws.
 
 ### Decisions taken during implementation
 
