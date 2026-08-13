@@ -1419,7 +1419,8 @@ surface normal, and reports the spread as a diagnostic.
 
 **Second finding.** Kearns 1965 Table 3 contains an arithmetic slip in the transverse-section
 block: the `70-80` row's `V cos^2 phi` cell reads `0.0214` where `0.353 * cos^2(75 deg) = 0.0237`,
-so the quoted `f = 0.0508` should be `0.0532`. The longitudinal block reproduces exactly
+so the quoted `f = 0.0508` should be `0.0529` from his own volume fractions, or `0.0526`
+recomputed from his intensities. The longitudinal block reproduces exactly
 (`f = 0.4879` against the quoted `0.488`), so the longitudinal block is what gets pinned as the
 worked example, with the discrepancy documented rather than silently averaged away.
 
@@ -1510,3 +1511,24 @@ lesson the notebook draws.
 ### Next task
 
 None claimed. This goal is complete.
+
+## Follow-up: Table 3 reproduced column by column (2026-08-13)
+
+Tutorial 31's Kearns-Table-3 section was expanded from 3 cells to 18: both blocks of his table
+are now reproduced one column at a time, with his printed values beside the recomputed ones at
+every step, so a disagreement localises to a cell rather than to a final number.
+
+Two numbers in the earlier commits were wrong and are corrected here. Recomputing the transverse
+block from Kearns' own volume-fraction column gives **0.0529**, not the 0.0532 stated in the
+theory note, CHANGELOG, ledger and worked example; from his intensity column it gives 0.0526. And
+the notebook's closing sum-rule cell paired the wrong value with the rod axis. The correct
+pairing follows his Figure 6 captions: the *longitudinal section* measures a direction
+perpendicular to the rod axis, the *transverse section* measures the axis itself. A swaged rod is
+axially symmetric, so the triad is (f_perp, f_perp, f_axial) = (0.488, 0.488, 0.053), closing to
+**1.028** — a 2.8 percent closure error, which validates his measurement rather than impugning
+it. The earlier cell computed f_long + 2 f_trans = 0.593 and drew the opposite conclusion.
+
+Worth recording as a methodological point the section now makes: correcting the bad cell moves
+the triad sum by 0.002, well inside its own scatter, so the sum rule could not have found this
+error. The row arithmetic did. The two checks are complementary, and both need the intermediate
+columns to be published.

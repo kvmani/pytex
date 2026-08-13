@@ -299,7 +299,7 @@ result = report.value("ND")
 | --- | --- | --- | --- | --- | --- | --- |
 | `kearns-1965-table-3-longitudinal-section` | 0.4879 | 0.4880 | &mdash; | 1.27e-04 | 1e-03 | ✅ pass |
 
-**Why this value**: Kearns (1965) Table 3, longitudinal-section block: his I_phi column is the input above and his tabulated total is f = 0.488. The tolerance is the rounding of his three-significant-figure entries, not a fitted margin. His transverse-section block does not reproduce -- its 70-80 degree row lists 0.0214 where 0.353 cos^2(75 deg) = 0.0237, so the quoted 0.0508 should be 0.0532 -- which is why the longitudinal block is the one pinned here.
+**Why this value**: Kearns (1965) Table 3, longitudinal-section block: his I_phi column is the input above and his tabulated total is f = 0.488. The tolerance is the rounding of his three-significant-figure entries, not a fitted margin. His transverse-section block does not reproduce -- its 70-80 degree row lists 0.0214 where 0.353 cos^2(75 deg) = 0.0237, so the quoted 0.0508 should be 0.0529 -- which is why the longitudinal block is the one pinned here.
 
 **Citation**: J. J. Kearns, Thermal Expansion and Preferred Orientation in Zircaloy, WAPD-TM-472, Bettis Atomic Power Laboratory (1965), Eq. (5) and Table 3.
 

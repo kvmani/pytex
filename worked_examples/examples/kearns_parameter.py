@@ -253,7 +253,7 @@ KEARNS_TABLE_3_LONGITUDINAL = WorkedExample(
         "the rounding of his three-significant-figure entries, not a fitted "
         "margin. His transverse-section block does not reproduce -- its 70-80 "
         "degree row lists 0.0214 where 0.353 cos^2(75 deg) = 0.0237, so the "
-        "quoted 0.0508 should be 0.0532 -- which is why the longitudinal block "
+        "quoted 0.0508 should be 0.0529 -- which is why the longitudinal block "
         "is the one pinned here."
     ),
     citation=(

@@ -325,12 +325,33 @@ calibrations rather than tolerances. `tests/unit/test_kearns_parameter.py` pins:
 ```{admonition} An arithmetic slip in the source of record
 :class: caution
 
-Kearns' Table 3 reproduces exactly for the longitudinal section: his tabulated intensities give
-$f = 0.4879$ against his quoted $0.488$. The transverse-section block does not. Its $70$–$80^{\circ}$
-row lists $V_{\Delta\phi}\cos^{2}\bar{\phi} = 0.0214$ where
-$0.353 \times \cos^{2}(75^{\circ}) = 0.0237$, and the quoted total $f = 0.0508$ carries the error;
-recomputing from his own $I_{\phi}$ column gives $0.0526$. The longitudinal block is therefore what
-this repository pins as a regression baseline.
+Kearns' Table 3 publishes its intermediate columns, which makes it checkable cell by cell — and
+worth checking, because the two blocks behave differently.
+
+The **longitudinal** block reproduces: every one of its five columns agrees with a recomputation
+to within his own three-decimal rounding, and the total is $f = 0.4879$ against his quoted
+$0.488$. That is what this repository pins as a regression baseline.
+
+The **transverse** block reproduces in every cell but one. Its $70$–$80^{\circ}$ row lists
+$V_{\Delta\phi}\cos^{2}\bar{\phi} = 0.0214$, while its own printed inputs give
+$0.353 \times \cos^{2}(75^{\circ}) = 0.0237$. The disagreement is $0.0022$ against at most
+$0.0002$ in every other cell of that block — an order of magnitude larger, and confined to a
+single row, which is the signature of a slip rather than of accumulated rounding. His quoted
+total is the sum of the printed column *including* that cell, so the error propagated into $f$:
+the transverse value is $0.0529$ from his own volume fractions, or $0.0526$ recomputed from his
+intensities, against the printed $0.0508$.
+
+Nothing about the method depends on it. Kearns' own conclusion from these numbers — that they are
+"very close to the values of 0.5 and 0.0 which would correspond to a perfect fiber texture" — is
+untouched by a three-percent change in the smaller one. The sum rule bears that out: a swaged rod
+is axially symmetric, so its triad is $(f_{\perp}, f_{\perp}, f_{\parallel}) = (0.488, 0.488, 0.053)$,
+closing to $1.028$. A $2.8\%$ closure error is a fair account of 1965 practice, with intensities
+integrated by planimeter and $I_{\phi}$ read off a graph by eye.
+
+Note also what the closure test could *not* do here: correcting the bad cell moves the triad sum
+by $0.002$, well inside its own scatter. It was the row arithmetic, not the sum rule, that
+exposed the slip — the two checks are complementary, and publishing the intermediate columns is
+what made the first of them possible.
 ```
 
 ## Assumptions And Limits

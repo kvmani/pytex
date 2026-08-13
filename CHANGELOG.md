@@ -72,7 +72,9 @@ downstream analyses depend on them.
     Kearns' Table 2 to 0.2 degrees, and his Table 3 longitudinal-section
     intensities reproduce his tabulated `f = 0.488`. His transverse-section
     block does not, and the theory note says why: one cell reads 0.0214 where
-    `0.353 cos^2(75 deg) = 0.0237`, so his quoted 0.0508 should be 0.0532.
+    `0.353 cos^2(75 deg) = 0.0237`. Recomputing his transverse block gives 0.0529
+    from his own volume fractions and 0.0526 from his intensities, against the
+    quoted 0.0508.
   - Theory note `kearns_parameter_and_basal_pole_texture`, tutorial notebook 31,
     and four worked examples whose expected values are elementary consequences
     of the definition rather than prior outputs of this code.
