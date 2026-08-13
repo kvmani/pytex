@@ -1275,28 +1275,27 @@ def harris_texture_coefficients(intensities: ArrayLike) -> np.ndarray:
 
     Purpose
     -------
-    The diffractogram route needs pole densities in times-random units, which
-    requires a random-powder standard measured under identical conditions. When
-    none exists, the Harris texture coefficient substitutes an assumption for
-    the standard: that the *mean* of ``I/I0`` over the measured reflections is
-    one. Dividing by that mean then removes the unknown proportionality constant
-    that relates the observed and random intensity scales.
+    Pole densities are wanted in times-random units, which strictly needs a
+    random-powder standard measured under identical conditions. Where the
+    reference intensities are *calculated* instead, they carry an unknown
+    proportionality constant to the times-random scale. The Harris texture
+    coefficient removes it by assuming the *mean* of ``I/I0`` over the measured
+    reflections is one, and dividing by the observed mean.
 
     When to use
     -----------
-    Only when no random standard is available. Kearns measured one and showed
-    the assumption fails: over his samples the mean of ``I/I0`` ran from 1.02 to
-    1.56, averaging 1.23, so texture coefficients underestimated the true pole
-    densities by about 23 percent. Mani Krishna *et al.* (2011) found the same
-    at the level of ``f``, which did not sum to 1 over the three sections until
-    normalized. Prefer a measured standard; use this, and its sum rule, when
-    there is none.
+    When absolute pole densities are wanted from calculated reference
+    intensities. Note what it does **not** buy: the Kearns parameter is a ratio
+    of two integrals over the same profile, so a common scale factor cancels
+    exactly and ``f`` is identical either way. Kearns measured a real standard
+    and showed the assumption fails — over his samples the mean of ``I/I0`` ran
+    from 1.02 to 1.56, averaging 1.23 — so texture coefficients understate
+    absolute pole densities by about that much, and understate ``f`` by nothing.
 
     Parameters
     ----------
     intensities : ArrayLike
-        ``(n,)`` relative intensities, ``I/I0`` if a standard exists or raw
-        integrated intensities if not.
+        ``(n,)`` relative pole densities ``I/I0``.
 
     Returns
     -------
@@ -1340,10 +1339,13 @@ class DiffractogramReflection:
         Integrated intensity of the peak in the textured specimen, in any
         consistent units.
     random_intensity : float, optional
-        Integrated intensity of the same peak from a random powder measured
-        under identical conditions. When every reflection carries one, the
-        densities are genuinely in times-random units; when none does, the
-        Harris normalization is used instead and its assumption is recorded.
+        Intensity of the same peak from a randomly oriented aggregate, either
+        measured on a powder standard under identical conditions or calculated
+        from the structure with
+        :func:`~pytex.diffraction.xrd.generate_powder_reflections`. Required in
+        practice: raw peak intensities are not pole densities, since reflections
+        differ by orders of magnitude in structure factor and multiplicity. Only
+        ratios enter ``f``, so arbitrary units are fine.
     specimen_tilt_deg : float
         Angle between this reflection's diffraction vector and the section
         normal. Zero in a symmetric Bragg-Brentano scan, which is what Kearns'
@@ -1389,41 +1391,42 @@ def _reflection_densities(
         )
     tilts = np.array([reflection.basal_tilt_deg for reflection in reflections], dtype=np.float64)
     measured = np.array([reflection.intensity for reflection in reflections], dtype=np.float64)
-    notes: list[str] = []
-    if normalization == "random_standard":
-        missing = [
-            _plane_label(reflection.plane)
-            for reflection in reflections
-            if reflection.random_intensity is None
-        ]
-        if missing:
-            raise ValueError(
-                "normalization='random_standard' needs a random_intensity on every "
-                f"reflection; missing for {', '.join(missing)}. Measure a random powder "
-                "standard, or pass normalization='harris' and accept its assumption."
-            )
-        standard = np.array(
-            [float(reflection.random_intensity or 0.0) for reflection in reflections],
-            dtype=np.float64,
+    missing = [
+        _plane_label(reflection.plane)
+        for reflection in reflections
+        if reflection.random_intensity is None
+    ]
+    if missing:
+        raise ValueError(
+            "The diffractogram route needs a random_intensity on every reflection: raw "
+            "peak intensities are not pole densities, because reflections differ by "
+            "orders of magnitude in structure factor and multiplicity. "
+            f"Missing for {', '.join(missing)}. Measure a random powder standard, or "
+            "compute the intensities from the structure with "
+            "pytex.diffraction.xrd.generate_powder_reflections -- they need only be "
+            "proportional, since f is scale-invariant."
         )
-        densities = measured / standard
+    standard = np.array(
+        [float(reflection.random_intensity or 0.0) for reflection in reflections],
+        dtype=np.float64,
+    )
+    densities = measured / standard
+    notes: list[str] = []
+    if normalization == "harris":
+        densities = np.asarray(harris_texture_coefficients(densities), dtype=np.float64)
         notes.append(
-            "Pole densities are in times-random units from a measured random-powder "
-            "standard, which is the normalization Kearns (1965) used."
+            "Densities were rescaled to Harris texture coefficients, a mean of 1 over the "
+            "measured reflections. This changes the reported densities but not f, which is "
+            "a ratio and therefore invariant under any common scale factor: the assumption "
+            "Kearns tested and found wrong -- he measured that mean at 1.02 to 1.56, "
+            "averaging 1.23 -- costs about 23 percent on absolute pole densities and "
+            "nothing at all on f."
         )
     else:
-        base = measured
-        if all(reflection.random_intensity is not None for reflection in reflections):
-            base = measured / np.array(
-                [float(reflection.random_intensity or 0.0) for reflection in reflections],
-                dtype=np.float64,
-            )
-        densities = np.asarray(harris_texture_coefficients(base), dtype=np.float64)
         notes.append(
-            "Harris texture coefficients were used: the pole densities are scaled so that "
-            "their mean over the measured reflections is 1. Kearns (1965) measured that "
-            "mean at 1.02 to 1.56 (average 1.23) rather than 1, so densities normalized "
-            "this way are systematically low by that much."
+            "Pole densities are in times-random units from the supplied random-powder "
+            "intensities, the normalization Kearns (1965) used. Only their ratios enter f, "
+            "so calculated intensities in arbitrary units serve as well as measured ones."
         )
     return tilts, densities, notes
 
@@ -1461,9 +1464,10 @@ def basal_tilt_profile(
     reflections : Sequence[DiffractogramReflection]
         At least two, at different basal tilts.
     normalization : str
-        ``"random_standard"`` (default) divides by a measured random powder;
-        ``"harris"`` scales the densities to a mean of one instead. See
-        :func:`harris_texture_coefficients`.
+        ``"random_standard"`` (default) reports ``I/I0`` as given; ``"harris"``
+        rescales it to a mean of one. The choice changes the returned densities
+        but **not** any ``f`` computed from them, which is a ratio and so
+        invariant under a common scale. See :func:`harris_texture_coefficients`.
     bin_width_deg : float
         Width of the tilt bins. Kearns used 10 degrees.
 
@@ -1477,8 +1481,8 @@ def basal_tilt_profile(
     ------
     ValueError
         If fewer than two reflections are given, if all share one tilt, if the
-        bin width does not divide 90, or if a required random intensity is
-        missing.
+        bin width does not divide 90, or if any reflection lacks a random
+        intensity.
     """
 
     if bin_width_deg <= 0.0 or not np.isclose(90.0 / bin_width_deg, round(90.0 / bin_width_deg)):
@@ -1562,7 +1566,8 @@ def kearns_from_diffractogram(
         The pole the profile describes, ``(0002)`` of the reflections' phase by
         default.
     normalization : str
-        ``"random_standard"`` (default) or ``"harris"``.
+        ``"random_standard"`` (default) or ``"harris"``. Both give the same
+        ``f``; see :func:`basal_tilt_profile`.
     bin_width_deg : float
         Tilt bin width for the profile; Kearns used 10 degrees.
     direction, direction_label
@@ -1579,7 +1584,7 @@ def kearns_from_diffractogram(
     ------
     ValueError
         If the reflections do not share a phase, if fewer than two distinct
-        basal tilts are present, or if a required random intensity is missing.
+        basal tilts are present, or if any reflection lacks a random intensity.
 
     Notes
     -----

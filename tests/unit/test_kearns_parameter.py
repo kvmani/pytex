@@ -640,17 +640,47 @@ def test_diffractogram_route_flags_a_fixed_omega_scan() -> None:
     assert any("fixed-omega" in note for note in report.notes)
 
 
-def test_diffractogram_route_requires_a_random_standard_by_default() -> None:
+def test_diffractogram_route_always_requires_reference_intensities() -> None:
+    """Raw peak intensities are not pole densities, whichever normalization is asked for."""
+
     plane_a = CrystalPlane.from_miller_bravais((0, 0, 0, 2), phase=ZIRCONIUM)
     plane_b = CrystalPlane.from_miller_bravais((1, 0, -1, 0), phase=ZIRCONIUM)
     reflections = [
         DiffractogramReflection(plane=plane_a, intensity=3.0),
         DiffractogramReflection(plane=plane_b, intensity=1.0),
     ]
-    with pytest.raises(ValueError, match="random_intensity"):
-        kearns_from_diffractogram(reflections, specimen_frame=SPECIMEN)
+    for normalization in ("random_standard", "harris"):
+        with pytest.raises(ValueError, match="random_intensity"):
+            kearns_from_diffractogram(
+                reflections, specimen_frame=SPECIMEN, normalization=normalization
+            )
+
+
+def test_the_two_normalizations_give_the_same_kearns_parameter() -> None:
+    """f is a ratio, so rescaling every density by a common factor cannot move it.
+
+    The Harris texture coefficient is exactly such a rescaling. It changes the
+    absolute pole densities the profile reports -- Kearns measured that error at
+    about 23 percent -- and changes f by nothing at all. Anyone expecting the
+    normalization to repair a triad that misses 1 is expecting the wrong thing.
+    """
+
+    orientations = basal_fibre(np.array([0.0, 0.0, 1.0]), spread_deg=20.0, count=5000, seed=83)
+    reflections = synthetic_reflections(orientations, ALPHA_ZR_REFLECTIONS)
+    standard = kearns_from_diffractogram(reflections, specimen_frame=SPECIMEN)
     harris = kearns_from_diffractogram(reflections, specimen_frame=SPECIMEN, normalization="harris")
-    assert any("Harris" in note for note in harris.notes)
+    assert harris.value("ND") == pytest.approx(standard.value("ND"), abs=1e-14)
+    assert any("invariant under any common scale" in note for note in harris.notes)
+
+
+def test_diffractogram_route_rejects_an_unknown_normalization() -> None:
+    orientations = basal_fibre(np.array([0.0, 0.0, 1.0]), spread_deg=20.0, count=500, seed=85)
+    with pytest.raises(ValueError, match="normalization must be"):
+        kearns_from_diffractogram(
+            synthetic_reflections(orientations, ALPHA_ZR_REFLECTIONS),
+            specimen_frame=SPECIMEN,
+            normalization="none",
+        )
 
 
 def test_basal_tilt_profile_holds_the_edge_density_outside_the_measured_range() -> None:

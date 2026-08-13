@@ -56,6 +56,7 @@ notebooks/27_tem_pattern_indexing_round_trip
 notebooks/28_convergent_beam_diffraction
 notebooks/29_dynamical_cbed_and_point_groups
 notebooks/30_kikuchi_maps_and_zone_axis_routing
+notebooks/31_kearns_parameter
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -127,6 +128,18 @@ pages.
    each operator on simulated rolling textures where the answer is known in
    advance. Ends on the payoff: a residual pole figure diagnosing an
    over-smoothed ODF from the *shape* of its error, which no scalar norm can do.
+
+9. `31_kearns_parameter` — a zirconium component specification quotes one texture
+   number, and this is where it comes from. Derives the Kearns parameter from the
+   property equation it exists to serve, writes it as the quadratic form of the
+   basal-pole orientation tensor so that the sum rule and the random value become
+   identities rather than rules of thumb, then measures all four routes against
+   simulated textures whose answers are known in closed form. The second half is
+   about error: what pole-figure truncation costs, what an ODF's kernel costs, and
+   what the diffractogram route's interpolation costs, each measured rather than
+   asserted. It ends on real Panalytical scans of three zirconium products, where
+   the three sections of one plate sum to 1.43 instead of 1 — and the diagnosis of
+   that number is the whole point of the notebook.
 
 ## How To Use These
 

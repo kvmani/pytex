@@ -1431,7 +1431,7 @@ worked example, with the discrepancy documented rather than silently averaged aw
 | 2 | `src/pytex/texture/kearns.py` + tests (70 tests) | done | (this commit) |
 | 3 | Theory note, symbol registry, docs index, parity matrix | done | (this commit) |
 | 4 | Worked examples + gallery regeneration | done | (this commit) |
-| 5 | Tutorial notebook 31 | todo | |
+| 5 | Tutorial notebook 31 (55 cells) | done | (this commit) |
 
 **Worktree state.** `kearns_parameter_data_references/` is untracked and must stay that way: it
 holds copyrighted PDFs and several MB of instrument data. A `.gitignore` entry lands with step 2.
@@ -1451,3 +1451,25 @@ should change is a separate question left open**; it would require regenerating 
 halfwidths below about 0.5 degrees: `np.isclose(cos(halfwidth/2), 1.0)` becomes true at the default
 tolerance and the exponent collapses to 1, giving a near-uniform kernel instead of a very sharp one.
 Out of scope here; no realistic halfwidth reaches it.
+
+**Fourth finding, from writing the tutorial.** The `normalization="harris"` option originally
+allowed the diffractogram route to run with no reference intensities at all, treating raw peak
+areas as pole densities. That is wrong — in a *random* powder the alpha-Zr reflections span a
+factor of twenty from structure factor and multiplicity alone — and it silently produced a
+plausible number. Both normalizations now require reference intensities (calculated ones are fine,
+since only ratios enter). The tutorial also makes explicit what the Harris rescaling does *not*
+buy: it changes absolute pole densities by about the 23 percent Kearns measured, and changes `f`
+by exactly nothing, because `f` is a ratio and a common scale cancels. A regression test pins the
+two normalizations to agree to 1e-14.
+
+**Reference-data findings recorded for the notebook.** On the three principal sections of the
+rolled Zircaloy-2 plate, the pole-figure route gives f = 0.658, 0.523, 0.251 along the three
+section normals, summing to 1.432 instead of 1 — a 43 percent one-sided excess from truncation at
+85 degrees plus uncorrected defocusing, both of which suppress the high-tilt rings where cos^2 is
+smallest. The ODF route on four incomplete pole figures per section reproduces the same values to
+within 0.03 and the same 1.44 sum, confirming that inversion inherits the bias rather than
+repairing it. The theta-2theta route on the same plate's scans gives 0.472, 0.301, 0.140, summing
+to 0.913; after normalising both triads the two independent routes agree to a few hundredths,
+which is about the interlaboratory spread Baron et al. (1990) report. The dataset contains no
+random-powder standard, so the defocusing curve cannot be measured from it — which is itself the
+lesson the notebook draws.

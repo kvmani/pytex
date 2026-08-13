@@ -282,12 +282,16 @@ Four approximations enter, in decreasing order of consequence.
    the route's central approximation — over-estimates $I$ at low $\phi$ for a peaked texture and
    therefore over-estimates $f$. This, and not the quadrature, is why the three sections' values
    do not sum to 1 and are normalized before use.
-2. **The random standard.** Times-random units need a random powder measured under identical
-   conditions. Where none exists the Harris texture coefficient assumes instead that the mean of
-   $I/I_{0}$ over the measured reflections is 1. Kearns tested that assumption against his own
-   standard and found the mean ran from $1.02$ to $1.56$, averaging $1.23$, so coefficients
-   normalized that way understate pole densities by about $23\%$
-   ({func}`~pytex.texture.kearns.harris_texture_coefficients` says so in its notes).
+2. **The reference intensities.** Raw peak areas are not pole densities: in a *random* powder
+   $(10ar{1}1)$ and $(20ar{2}0)$ differ by a factor of twenty from structure factor and
+   multiplicity alone, so every reflection needs an $I_{0}$. It may be measured on a powder
+   standard or calculated from the structure — only ratios enter $f$, so arbitrary units serve.
+   The classical Harris texture coefficient rescales $I/I_{0}$ to a mean of one over the measured
+   reflections; Kearns tested that assumption against his own standard and found the mean ran from
+   $1.02$ to $1.56$, averaging $1.23$, so it understates absolute pole densities by about $23\%$.
+   It understates $f$ by nothing at all, because $f$ is a ratio of two integrals over the same
+   profile and a common scale factor cancels identically. Anyone reaching for the normalization to
+   repair a triad that misses 1 is reaching for the wrong tool.
 3. **Three sections, three specimens.** A triad needs all three principal sections, which for thin
    product forms such as clad tubing means stacking slices and correcting for the packing. Where
    the material is inhomogeneous, the three values then describe three different regions.
