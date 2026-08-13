@@ -1430,7 +1430,7 @@ worked example, with the discrepancy documented rather than silently averaged aw
 | 1 | Reference analysis, formulation, ledger | done | (this commit) |
 | 2 | `src/pytex/texture/kearns.py` + tests (70 tests) | done | (this commit) |
 | 3 | Theory note, symbol registry, docs index, parity matrix | done | (this commit) |
-| 4 | Worked examples + gallery regeneration | todo | |
+| 4 | Worked examples + gallery regeneration | done | (this commit) |
 | 5 | Tutorial notebook 31 | todo | |
 
 **Worktree state.** `kearns_parameter_data_references/` is untracked and must stay that way: it

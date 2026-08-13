@@ -82,6 +82,10 @@ The complete set of computed-versus-expected values at a glance:
 | `ghost-odd-degrees-are-half-the-harmonic-basis` | 0.46740 | 0.46739 | &mdash; | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
+| `kearns-random-texture-is-one-third` | 0.001800 | 0.000000 | &mdash; | ✅ |
+| `kearns-triad-sum-is-exactly-one` | 1.000000000000 | 1.000000000000 | &mdash; | ✅ |
+| `kearns-ideal-basal-girdle` | [0.500000, 0.500000, 0.000000] | [0.500000, 0.500000, 0.000000] | &mdash; | ✅ |
+| `kearns-1965-table-3-longitudinal-section` | 0.4879 | 0.4880 | &mdash; | ✅ |
 | `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | ✅ |
 | `tem-tilt-001-to-111-travel` | 54.7356 | 54.7356 | deg | ✅ |
 | `tem-holder-accessible-solid-angle` | 1.04720 | 1.04720 | sr | ✅ |
@@ -126,6 +130,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Directional statistics and mean axes <generated/directional-statistics>` &mdash; Averaging axes rather than vectors: the orientation tensor has unit trace, its eigenvalues take exact values at the girdle and cluster limits, and it recovers a fibre axis from randomly signed data where the vector resultant fails outright.
 - {doc}`The ghost problem <generated/ghost-problem>` &mdash; What diffraction pole figures cannot determine: an asymmetric texture still gives a pole set closed under negation, and excluding the odd harmonic degrees that centrosymmetry annihilates discards nearly half the basis.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
+- {doc}`The Kearns parameter <generated/kearns-parameter>` &mdash; The scalar texture index the zirconium industry specifies components against, checked against the identities that calibrate it -- 1/3 for a random texture, an exact sum of 1 over any orthonormal triad, (1/2, 1/2, 0) for an ideal basal girdle -- and against the tabulated calculation in Kearns' own 1965 report.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
@@ -153,6 +158,7 @@ generated/pole-figure-sampling
 generated/directional-statistics
 generated/ghost-problem
 generated/pole-figure-arithmetic
+generated/kearns-parameter
 generated/tem_tilt_navigation
 generated/transformation
 generated/visualization
