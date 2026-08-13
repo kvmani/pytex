@@ -384,4 +384,5 @@ this repository pins as a regression baseline.
 - {doc}`discrete_odf_and_pole_figures` — the ODF and pole-figure objects the routes consume.
 - {doc}`/tutorials/notebooks/31_kearns_parameter` — the four routes worked end to end on simulated
   and measured zirconium textures.
-- {doc}`/examples/generated/texture` — the identities above computed live.
+- {doc}`/examples/generated/kearns-parameter` — the identities above computed live and checked
+  on every documentation build.

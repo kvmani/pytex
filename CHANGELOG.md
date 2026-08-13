@@ -40,6 +40,43 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The Kearns parameter, computed four ways from one tensor.** `f` is the scalar
+  texture index zirconium components are specified against, and the four
+  techniques that measure it do not always agree. `pytex.texture.kearns`
+  implements all four as estimators of a single object — the second-moment
+  tensor of the basal-pole distribution, `A = <c c^T>`, with
+  `f(d) = d^T A d` — which turns two facts the literature states empirically
+  into identities: the values along an orthonormal triad sum to `tr(A) = 1` for
+  every texture, and a random texture gives `1/3` in every direction. A measured
+  triad that misses 1 is therefore reporting the systematic error of the
+  measurement, and needs no reference specimen to say so.
+
+  - `kearns_from_orientations` (EBSD or simulation, exact),
+    `kearns_from_odf`, `kearns_from_pole_figure` (Baron *et al.* 1990 Eq. 5),
+    `kearns_from_tilt_profile` (Kearns 1965 Eq. 5) and
+    `kearns_from_diffractogram` (the original theta-2theta route), plus
+    `pole_orientation_tensor`, `basal_tilt_angle_deg` — computed from the phase's
+    reciprocal metric rather than a transcribed table — and
+    `harris_texture_coefficients`.
+  - `KearnsReport.describe()` states the route, the values against the `1/3`
+    reference, the triad sum, the measured tilt coverage, and the caveats each
+    route carries; `to_json()` is kept in lockstep with it.
+  - `kernel_axis_shrinkage` gives the closed-form factor
+    `beta = (3 rho - 1)/2` by which a kernel-density ODF's own smoothing pulls
+    every departure from `1/3` toward isotropy — 0.94 at a 10 degree halfwidth,
+    0.78 at 20, so an `f` of 0.70 reads as 0.62 there. Derived from Rodrigues'
+    formula and the moments of a uniform rotation axis, and checked against a
+    Monte-Carlo integral over SO(3). Report the halfwidth with any `f` taken
+    from an ODF.
+  - Pinned against the sources of record: computed basal tilt angles reproduce
+    Kearns' Table 2 to 0.2 degrees, and his Table 3 longitudinal-section
+    intensities reproduce his tabulated `f = 0.488`. His transverse-section
+    block does not, and the theory note says why: one cell reads 0.0214 where
+    `0.353 cos^2(75 deg) = 0.0237`, so his quoted 0.0508 should be 0.0532.
+  - Theory note `kearns_parameter_and_basal_pole_texture`, tutorial notebook 31,
+    and four worked examples whose expected values are elementary consequences
+    of the definition rather than prior outputs of this code.
+
 - **Double diffraction in the kinematic SAED engine.** A kinematic simulation
   shows a real pattern's spots minus the ones dynamical scattering puts there,
   and the largest such class is double diffraction: a beam diffracted by `g1`
@@ -176,6 +213,18 @@ downstream analyses depend on them.
   counting noise. `ScatterLayer2D` gains `vmin`/`vmax` to support this.
 
 ### Fixed
+
+- **`raster_solid_angle_weights` over-weighted the equatorial ring of a
+  hemispherical raster.** The outermost ring's band was extended outwards by its
+  own half step, which for a raster ending exactly at 90 degrees pushed it past
+  the equator and gave that ring close to twice the solid angle it owns. Because
+  `cos^2` vanishes there, it dragged every Kearns integral down: the spherical
+  mean of `cos^2` over a 5 degree raster came out at 0.3196 against the exact
+  `1/3`, a -4.1 percent error. A new optional `polar_max_deg` bounds the band and
+  takes the error to -0.06 percent. **The default is unchanged**, so existing
+  results and the pinned `pole-figure-raster-weighted-mean-converges` worked
+  example are unaffected; `kearns_from_pole_figure` passes `polar_max_deg=90.0`
+  for antipodal figures.
 
 - **The harmonic ODF could not use a bandwidth above 6.** `HarmonicODF` builds
   its basis from Wigner small-`d` functions, whose coefficient is a ratio of
