@@ -26,6 +26,35 @@ from pytex.app.registry import (
 from pytex.app.results import APP_RESULT_SCHEMA
 
 
+def _choice_keys() -> frozenset[str]:
+    """Every multi-word choice key the manifest defines, in both written forms.
+
+    A choice is a key plus the label a reader is meant to see
+    (``kurdjumov_sachs`` / ``Kurdjumov-Sachs (fcc to bcc)``). Prose that reaches
+    for the key instead is the defect this guards, and it has appeared in both
+    spellings — as the raw key, and with the underscore swapped for a hyphen,
+    which is a near-miss that looks deliberate. Both are listed, and the search
+    is case-sensitive, so the correctly capitalised name never registers.
+
+    Single-word keys (``bain``, ``pitsch``, ``plane``) are excluded: they are
+    indistinguishable from ordinary words, and being one word they are also the
+    case where key and name coincide, so no defect is possible.
+    """
+
+    keys: set[str] = set()
+    for spec in REGISTRY.operations():
+        for parameter in spec.parameters:
+            for option in getattr(parameter, "options", ()) or ():
+                key = option[0] if isinstance(option, tuple) else option
+                if isinstance(key, str) and "_" in key:
+                    keys.add(key)
+                    keys.add(key.replace("_", "-"))
+    return frozenset(keys)
+
+
+_CHOICE_KEYS = _choice_keys()
+
+
 def test_manifest_lists_every_registered_operation() -> None:
     manifest = REGISTRY.manifest()
     assert manifest["schema"] == "pytex.app_manifest/1"
@@ -288,6 +317,31 @@ class TestCanonicalExamples:
         text = dumps(REGISTRY.call(example.operation, example.request))
         for marker in ("\\bar{", "\\langle", "\\rangle", "$(", "$["):
             assert marker not in text, f"{example.id} leaks mathtext {marker!r} into its result"
+
+    @pytest.mark.parametrize("example", REGISTRY.examples(), ids=lambda example: example.id)
+    def test_no_result_shows_the_user_a_machine_identifier(self, example) -> None:  # type: ignore[no-untyped-def]
+        """Titles and prose are written for a reader, not for a debugger.
+
+        Choices, phases, and relationships are keyed by snake_case identifiers
+        and each carries a display label beside it. A title built from the
+        identifier instead of the label reads ``kurdjumov-sachs``, which is a
+        variable name where two surnames belong. That is exactly what happened,
+        at three call sites, so the rule is checked rather than remembered.
+
+        Only the prose fields are scanned. The `data` block is a machine
+        surface: it *should* echo the identifier a caller sent, because that is
+        what a caller round-trips.
+        """
+
+        result = REGISTRY.call(example.operation, example.request)
+        prose = " ".join(
+            str(result.get(field, "")) for field in ("title", "summary", "interpretation")
+        )
+        found = sorted(key for key in _CHOICE_KEYS if key in prose)
+        assert not found, (
+            f"{example.id} shows the machine identifier(s) {found} in its prose; "
+            "use the display label the choice list already carries"
+        )
 
     def test_the_canonical_materials_are_all_reachable(self) -> None:
         from pytex.app.phases import BUILTIN_PHASES

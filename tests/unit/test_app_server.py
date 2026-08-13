@@ -351,9 +351,66 @@ class TestFrontendIsSelfContained:
             text = path.read_text(encoding="utf-8")
             if "createObjectURL" in text and path.name != "result.js":
                 offenders.append(path.name)
-        assert not offenders, (
-            f"these files save a file without going through saveBlob: {offenders}"
+        assert not offenders, f"these files save a file without going through saveBlob: {offenders}"
+
+    def test_the_workspace_tabs_wrap_rather_than_scroll(self) -> None:
+        """Navigation must never be hidden, and a hidden scrollbar hides it.
+
+        `.tabs` was a horizontal scroll container with `scrollbar-width: none`.
+        On a 390 px screen that showed one of four workspaces: the other three
+        were in the DOM, focusable, reachable by a scroll gesture, and entirely
+        invisible — no cut-off edge, no scrollbar, no hint they existed. This is
+        the failure mode a wrapping bar cannot have, so the wrap is pinned and
+        the scroll container is forbidden.
+
+        Measured directly in a browser at 390, 768 and 1440 px: all four tabs
+        on screen at every width, no horizontal overflow anywhere.
+        """
+
+        import re
+
+        css = re.sub(
+            r"/\*.*?\*/",
+            "",
+            (STATIC_ROOT / "app.css").read_text(encoding="utf-8"),
+            flags=re.S,
         )
+        rule = re.search(r"\n\.tabs\s*\{([^}]*)\}", css)
+        assert rule is not None, "app.css must style .tabs"
+        body = rule.group(1).replace(" ", "")
+        assert "flex-wrap:wrap" in body, ".tabs must wrap so every workspace stays visible"
+        assert "overflow-x:auto" not in body, (
+            ".tabs must not scroll: an off-screen tab has no affordance to reveal it"
+        )
+        assert "scrollbar-width:none" not in css, (
+            "hiding a scrollbar hides the only sign that content is off-screen"
+        )
+
+    def test_the_figure_toolbar_wraps_instead_of_spilling(self) -> None:
+        """The plot header has visible overflow, so an unwrapped toolbar escapes.
+
+        `.plot__header` does not clip, by design — the cursor readout and the
+        detail popover sit outside the flow. The cost is that a toolbar wider
+        than the card does not get a scrollbar or a cut-off edge: it renders
+        past the card's rounded corner and off the side of the window, which is
+        what it did at 390 px with a preset row, a format select and an export
+        button on one line.
+        """
+
+        import re
+
+        css = re.sub(
+            r"/\*.*?\*/",
+            "",
+            (STATIC_ROOT / "app.css").read_text(encoding="utf-8"),
+            flags=re.S,
+        )
+        for selector in (r"\.plot__header", r"\.plot__toolbar"):
+            rule = re.search(rf"\n{selector}\s*\{{([^}}]*)\}}", css)
+            assert rule is not None, f"app.css must style {selector}"
+            assert "flex-wrap: wrap" in rule.group(1), (
+                f"{selector} must wrap, or it leaves the card at narrow widths"
+            )
 
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()

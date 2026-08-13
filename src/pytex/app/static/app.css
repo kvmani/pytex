@@ -118,11 +118,20 @@ body {
 
 /* ---------------------------------------------------------------- masthead */
 
+/*
+ * The masthead is a row until it cannot be one, then it becomes two.
+ *
+ * `min-height` rather than `height`: the tab bar moves onto its own line below
+ * the reflow width, and a fixed height would clip it. The bar is allowed to
+ * grow because the alternative — the one this replaced — was a scroll container
+ * with a hidden scrollbar, which on a 390 px screen showed one of four
+ * workspaces and gave no sign that the other three existed.
+ */
 .masthead {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  height: var(--masthead-height);
+  min-height: var(--masthead-height);
   padding: 0 1rem;
   background: var(--bg-raised);
   border-bottom: 1px solid var(--line);
@@ -170,15 +179,20 @@ body {
 
 /* ------------------------------------------------------------------- tabs */
 
+/*
+ * Tabs wrap; they never scroll.
+ *
+ * Navigation is the one thing that must never be hidden, and a scroll container
+ * with `scrollbar-width: none` hides it perfectly: the overflowing tabs are
+ * still in the DOM, still focusable, and completely invisible. Wrapping costs a
+ * line of vertical space at narrow widths and shows every workspace at every
+ * width, which is the trade worth making.
+ */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.125rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.tabs::-webkit-scrollbar {
-  display: none;
+  min-width: 0;
 }
 
 .tab {
@@ -242,16 +256,95 @@ body {
   gap: 0.875rem;
 }
 
+/*
+ * Two reflow widths, each named for what stops fitting rather than for a device.
+ *
+ * 60rem: the rail no longer has room beside the stage, so it goes under it. The
+ * stage keeps the larger share because the graphic is the point of the panel.
+ *
+ * 48rem: the masthead can no longer hold brand, tabs and actions on one line.
+ * The tab bar drops to its own full-width row, which is also the arrangement
+ * that makes the tabs comfortable to hit with a thumb.
+ */
 @media (max-width: 60rem) {
   .workspace {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .rail {
     border-left: 0;
     border-top: 1px solid var(--line);
     max-height: 45vh;
+  }
+}
+
+@media (max-width: 48rem) {
+  .masthead {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Brand first, actions beside it, tabs on the line below and full width. */
+  .masthead__brand {
+    order: 1;
+  }
+
+  .masthead__actions {
+    order: 2;
+  }
+
+  .tabs {
+    order: 3;
+    width: 100%;
+  }
+
+  .tab {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  /* The tagline explains the active workspace; at this width the workspace name
+   * is already on screen in the tab bar, and the line costs more than it says. */
+  .masthead__tagline {
+    display: none;
+  }
+
+  .stage {
+    padding: 0.75rem 0.75rem 1.5rem;
+  }
+}
+
+/*
+ * Touch targets.
+ *
+ * The dense control rail is right for a mouse and wrong for a finger. Rather
+ * than guess from viewport width — a large tablet is touch, a small window is
+ * not — this keys off the pointer itself, so a desktop window dragged narrow
+ * keeps its compact controls and a tablet gets 44 px targets at any width.
+ */
+@media (pointer: coarse) {
+  .tab,
+  .button,
+  .field__help-button,
+  .plot__toolbar > * {
+    min-height: 2.75rem;
+  }
+
+  .example {
+    padding-block: 0.75rem;
+  }
+}
+
+/* Honour a stated preference for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -841,10 +934,15 @@ button:focus-visible {
   overflow: hidden;
 }
 
+/* Wraps, because the toolbar carries a view-preset row, a format select and an
+ * export button, and on a narrow stage that is wider than the card. Unwrapped
+ * it did not clip — the header has visible overflow — it spilled out past the
+ * card's rounded corner and off the side of the window. */
 .plot__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem 0.75rem;
   padding: 0.5rem 0.875rem;
   border-bottom: 1px solid var(--line);
 }
@@ -858,7 +956,9 @@ button:focus-visible {
 .plot__toolbar {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.375rem;
+  min-width: 0;
 }
 
 .plot__stage {

@@ -1733,7 +1733,7 @@ REGISTRY.add_examples(
     (
         ExampleScenario(
             id="calc.example.fcc_powder",
-            title="Why an fcc powder pattern starts at 111",
+            title="Why an fcc powder pattern starts at {111}",
             panel="calculator",
             summary="The reflection families of austenite, sorted by spacing.",
             teaches=(

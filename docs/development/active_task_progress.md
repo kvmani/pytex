@@ -134,6 +134,31 @@ The general lesson, now a rule for new panels: **an operation's declared default
 surface and must be exercised as one.** `test_an_operation_runs_from_its_own_defaults` proved they
 *run*; neither it nor anything else asked whether what they produce is worth looking at.
 
+**Step 11f — the layout at widths nobody had opened it at.** The page was measured in a browser at
+390 × 844, 768 × 1024 and 1440 × 900, walking all four panels at each width and collecting every
+element whose box crossed the viewport edge. Two defects, both invisible at the desktop width the
+application had always been developed at:
+
+11. **Three of the four workspaces were unreachable on a phone.** `.tabs` was a horizontal scroll
+    container with `scrollbar-width: none`. At 390 px it was 65 px wide holding 395 px of tabs, so
+    it showed *Crystal Viewer* and nothing else — no cut-off edge, no scrollbar, no hint that a
+    sideways drag would reveal the rest. Navigation is the one thing that must never be hidden,
+    and hiding a scrollbar hides the only sign that content is off-screen. The bar now wraps.
+12. **The figure toolbar left the window.** `.plot__header` has visible overflow by design — the
+    cursor readout and the detail popover sit outside the flow — so an over-wide toolbar gets no
+    scrollbar and no clip: at 390 px the preset buttons, the format select and the export button
+    rendered out to x = 497 on a 390 px screen. Header and toolbar now both wrap.
+
+Also in this pass, deliberately rather than as a fix: the masthead reflows to two rows below 48 rem
+with the tab bar full-width beneath the brand; controls take a 2.75 rem minimum target under
+`(pointer: coarse)`, keyed off the pointer rather than the width so a narrow desktop window keeps
+its compact controls; and `prefers-reduced-motion` is honoured.
+
+After the change, at all three widths and on all four panels: no horizontal overflow anywhere, all
+four tabs on screen, and result tables still scrolling inside their own `.table-wrap` box as
+intended. Two source-level tests pin the wrap rules, because a stylesheet regression is exactly the
+kind a Python suite cannot see.
+
 **Resume point.** Step 11b (orientation-relationship visualization). Before adding a panel, note
 what steps 11d and 11e cost: every defect above was invisible to a passing test suite and obvious
 within a minute of using the application. New panels should be driven the same way before they are
