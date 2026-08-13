@@ -51,7 +51,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 11e | Second driving pass: every operation from its own defaults | in progress | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | done | (this commit) |
 | 11c | Texture tab: pole figures, IPF, ODF | done | (this commit) |
-| 12 | User guide, worked example, docs index wiring | pending | |
+| 12 | User guide, worked example, docs index wiring | done | (this commit) |
 
 ### Current worktree state
 
@@ -252,13 +252,43 @@ first 200 are shown with the caption saying so — a table that quietly shows a 
 one that is too long — and the export still sends the whole result: measured at 200 rows on screen
 and 863 lines in the CSV of an 862-row figure. DOM nodes on the ODF view fell from 6789 to 2360.
 
-**Resume point.** Step 12 (user guide, worked example, docs index wiring). Note what steps 11d,
-11e, 11b and 11c cost: every defect above was invisible to a passing test suite and obvious within
-a minute of using the application or of reading its numbers against what they claimed to be. New
-panels are driven the same way before they are called done, and the driving now covers four things
-in particular — the opening press with nothing touched, the layout at 390 px, where focus goes
-after every control that redraws, and whether a reported quantity is really in the unit its column
-header names.
+### Step 12 — documentation
+
+- **`docs/site/workflows/workbench_application.md`** — the user guide: running both shells, what
+  the six workspaces answer, how to read a result, the two kinds of export and when each format is
+  right, scripting the service layer directly, and what degrades without `pywebview` or
+  `matplotlib`. It ends with two panels a reader can check against answers fixed before the
+  calculation runs.
+- **`worked_examples/examples/workbench_service_layer.py`** — four executable examples over the
+  service layer, rendered into `docs/site/examples/generated/workbench-service-layer.md`: the
+  Kurdjumov-Sachs packet structure and the ten intervariant angles against Morito Table 2, the
+  m.r.d. mean identity checked on a random, a single-component and a five-component texture at
+  once, and the Goss (011)-on-ND claim that a Miller label makes.
+- **Index wiring** — the guide is in the Sphinx workflows toctree; the application-platform design
+  record now has a site stub (it had none, so `{doc}` links into it did not resolve) and is in the
+  architecture toctree; `docs/README.md` points at the guide from the design record's entry.
+- **`test_workbench_guide_quotes_numbers_the_code_actually_produces`** in
+  `tests/unit/test_documentation_policy.py` — the guide's three quantitative claims are recomputed
+  from the service layer and matched against the text, per the `AGENTS.md` rule that documentation
+  numbers must not be hand-transcribed.
+
+### Where the application stands
+
+All twelve steps are done. Six workspaces, 21 operations, 30 runnable examples, both shells driven
+end to end, and the layout measured at 390, 768 and 1440 px on every panel.
+
+**Resume point.** No step is outstanding. The application platform task is **complete**; if it is
+picked up again, the natural next increments are an EBSD-map import path for the texture panel
+(which today builds a model texture only, deliberately — see step 11c), and a `variants.render`
+equivalent for the texture figures, which currently publish from the browser SVG rather than
+through `pytex.plotting`.
+
+Note for whoever continues: every defect recorded above was invisible to a passing test suite and
+obvious within a minute of using the application or of reading its numbers against what they
+claimed to be. New panels are driven the same way before they are called done, and the driving now
+covers four things in particular — the opening press with nothing touched, the layout at 390 px,
+where focus goes after every control that redraws, and whether a reported quantity is really in the
+unit its column header names.
 
 ### Decisions taken during implementation
 

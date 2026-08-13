@@ -22,6 +22,8 @@
 - [Transformation Crystallography And Composite Diffraction Program](architecture/transformation_crystallography_and_diffraction_program.md)
 - [TEM Tilt Navigation Foundation](architecture/tem_tilt_navigation_foundation.md)
 - [Application Platform: One Codebase, Two Shells](architecture/application_platform.md) — the desktop and intranet workbench over the library, and the decisions behind it
+  ([user guide](site/workflows/workbench_application.md) — running it, reading a result, exporting,
+  and two panels whose answers are known before the calculation runs)
 - [Repository Review 2026 Foundation Audit](architecture/repo_review_2026_foundation_audit.md)
 
 ## Testing And Validation

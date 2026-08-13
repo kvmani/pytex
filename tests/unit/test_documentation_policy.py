@@ -149,3 +149,77 @@ def test_interop_docs_state_validation_boundaries_explicitly() -> None:
     assert "current limits" in interop
     assert "what is verified today" in ebsd
     assert "interpretation rule" in ebsd
+
+
+def test_workbench_guide_quotes_numbers_the_code_actually_produces() -> None:
+    """The user guide's numbers are computed here, not trusted.
+
+    `AGENTS.md`: "Documentation numbers must not be hand-transcribed." The
+    workbench guide makes three quantitative claims a reader would act on — that
+    Kurdjumov-Sachs gives 24 variants in 4 packets of 6, that the 276 variant
+    pairs fall on ten specific disorientations, and that only three of those
+    occur within a packet. Each is recomputed from the service layer and matched
+    against the text, so a change in either that leaves them disagreeing is a
+    failure rather than a silently wrong page.
+    """
+
+    from pytex.app import REGISTRY
+
+    guide = _read("docs/site/workflows/workbench_application.md")
+
+    pole_figure = REGISTRY.call(
+        "variants.pole_figure",
+        {
+            "phase": {"builtin": "austenite_fcc"},
+            "child_phase": {"builtin": "fe_bcc"},
+            "relationship": "kurdjumov_sachs",
+            "pole": [1, 0, 0],
+            "packet_plane": [1, 1, 1],
+            "projection": "stereographic",
+            "include_parent": True,
+        },
+    )["data"]
+    assert f"**{pole_figure['variant_count']} variants**" in guide
+    assert f"**{pole_figure['packet_count']} groups of " in guide
+    assert set(pole_figure["packet_sizes"].values()) == {6}, (
+        "the guide says 4 groups of 6; the computation no longer agrees"
+    )
+
+    spectrum = REGISTRY.call(
+        "variants.intervariant_misorientations",
+        {
+            "phase": {"builtin": "austenite_fcc"},
+            "child_phase": {"builtin": "fe_bcc"},
+            "relationship": "kurdjumov_sachs",
+            "packet_plane": [1, 1, 1],
+            "merge_equal_angles": True,
+        },
+    )
+    rows = spectrum["table"]["rows"]
+    assert f"The {spectrum['data']['pair_count']} variant pairs" in guide
+    for row in rows:
+        # The guide quotes each to two decimals, which is how the source table
+        # quotes them.
+        assert f"{float(row['angle_deg']):.2f}°" in guide, (
+            f"the guide does not quote the {row['angle_deg']}° disorientation"
+        )
+    within = [row for row in rows if int(row["same_packet"])]
+    assert len(within) == 3, "the guide says three of the ten occur within a packet"
+
+    # And the m.r.d. claim the texture section rests on.
+    texture = REGISTRY.call(
+        "texture.pole_figure",
+        {
+            "phase": {"builtin": "ni_fcc"},
+            "model": "random",
+            "spread_deg": 10.0,
+            "grain_count": 600,
+            "halfwidth_deg": 10.0,
+            "seed": 7,
+            "pole": [1, 1, 1],
+            "projection": "equal_area",
+            "resolution_deg": 5.0,
+        },
+    )
+    assert abs(texture["data"]["mean_mrd"] - 1.0) < 0.01
+    assert "1.000" in guide, "the guide quotes the random baseline mean as 1.000"

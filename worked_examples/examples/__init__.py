@@ -25,6 +25,7 @@ from . import (
     texture_kernels,
     transformation_correspondence,
     visualization_composition,
+    workbench_service_layer,
 )
 
 GROUPS: tuple[ExampleGroup, ...] = (
@@ -49,6 +50,7 @@ GROUPS: tuple[ExampleGroup, ...] = (
     tem_tilt_navigation.GROUP,
     transformation_correspondence.GROUP,
     visualization_composition.GROUP,
+    workbench_service_layer.GROUP,
 )
 
 __all__ = ["GROUPS"]

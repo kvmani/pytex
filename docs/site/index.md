@@ -51,6 +51,7 @@ examples/index
 :maxdepth: 2
 :caption: Workflows
 
+workflows/workbench_application
 workflows/ebsd_kam
 workflows/ebsd_grains
 workflows/ebsd_import_normalization

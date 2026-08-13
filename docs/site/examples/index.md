@@ -101,6 +101,10 @@ The complete set of computed-versus-expected values at a glance:
 | `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
 | `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |
+| `workbench-ks-packet-size` | [6, 6, 6, 6] | [6, 6, 6, 6] | variants per packet | ✅ |
+| `workbench-ks-intervariant-spectrum` | [10.53, 14.88, 20.61, 21.06, 47.11, 49.47, 50.51, 51.73, 57.21, 60.00] | [10.53, 14.88, 20.61, 21.06, 47.11, 49.47, 50.51, 51.73, 57.21, 60.00] | deg | ✅ |
+| `workbench-mrd-mean-is-one` | [1.000, 1.000, 1.000] | [1.000, 1.000, 1.000] | m.r.d. | ✅ |
+| `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | ✅ |
 
 ## Example groups
 
@@ -125,6 +129,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
+- {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, and the assertion a Miller component label makes about where its poles land.
 
 ```{toctree}
 :maxdepth: 1
@@ -151,4 +156,5 @@ generated/pole-figure-arithmetic
 generated/tem_tilt_navigation
 generated/transformation
 generated/visualization
+generated/workbench-service-layer
 ```
