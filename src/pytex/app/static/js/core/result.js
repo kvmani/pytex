@@ -50,12 +50,34 @@ export function renderResult(container, result, { extra = [], teaches = null } =
   }
 }
 
+/**
+ * How many rows are put on screen before the table is truncated.
+ *
+ * The table is a *preview* of the export, not the export. A texture ODF is 1083
+ * rows and a composite pattern several hundred, and past a couple of hundred
+ * the scroll box stops being something anyone reads — it has no search, no
+ * sort, and no way to reach row 900 except dragging. The export buttons above
+ * it carry every row at full precision, which is what a reader with 1083 rows
+ * of questions actually needs.
+ *
+ * The count is stated in the caption rather than silently applied: a table that
+ * quietly shows a subset is worse than one that is too long, because a reader
+ * counting rows would get the wrong answer and never know.
+ */
+const TABLE_PREVIEW_ROWS = 200;
+
 function tableCard(result) {
   const { columns, rows, caption } = result.table;
+  const truncated = rows.length > TABLE_PREVIEW_ROWS;
+  const shown = truncated ? rows.slice(0, TABLE_PREVIEW_ROWS) : rows;
+  const subtitle = truncated
+    ? `${caption ? `${caption} ` : ''}Showing the first ${TABLE_PREVIEW_ROWS} of ` +
+      `${rows.length} rows; every export below carries all ${rows.length}.`
+    : caption;
   return el('section.card', {}, [
     el('div.card__header', {}, [
       el('h2.card__title', { text: 'Data' }),
-      caption ? el('p.card__subtitle', { text: caption }) : null,
+      subtitle ? el('p.card__subtitle', { text: subtitle }) : null,
       el('div.button-row', { style: 'margin-left:auto' }, [
         exportButton(result, 'csv', 'CSV', 'One row per entity, at full precision'),
         exportButton(result, 'xlsx', 'Excel', 'The table plus a sheet recording the inputs'),
@@ -68,7 +90,7 @@ function tableCard(result) {
         }),
       ]),
     ]),
-    el('div.table-wrap', {}, [buildTable(columns, rows)]),
+    el('div.table-wrap', {}, [buildTable(columns, shown)]),
   ]);
 }
 

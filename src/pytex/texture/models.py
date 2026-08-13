@@ -11,7 +11,7 @@ from pytex.core._arrays import as_float_array, normalize_vector, normalize_vecto
 from pytex.core.batches import VectorSet
 from pytex.core.conventions import FrameDomain
 from pytex.core.frames import ReferenceFrame
-from pytex.core.lattice import CrystalPlane
+from pytex.core.lattice import CrystalPlane, phases_semantically_match
 from pytex.core.notation import format_plane_family_indices, format_plane_indices
 from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
@@ -209,7 +209,7 @@ def _pole_density_response_matrix(
     direction_array = normalize_vectors(sample_directions)
     if dictionary.crystal_frame != pole.phase.crystal_frame:
         raise ValueError("PoleFigure inversion dictionary must use the pole phase crystal frame.")
-    if dictionary.phase is not None and dictionary.phase != pole.phase:
+    if dictionary.phase is not None and not phases_semantically_match(dictionary.phase, pole.phase):
         raise ValueError("PoleFigure inversion dictionary phase must match PoleFigure.pole.phase.")
     if dictionary.symmetry is not None and dictionary.symmetry != pole.phase.symmetry:
         raise ValueError(
@@ -537,9 +537,7 @@ class PoleFigure:
         if np.any(~np.isfinite(intensities)) or np.any(intensities < 0.0):
             raise ValueError("PoleFigure intensities must be finite and non-negative.")
         if self.sampling not in _POLE_FIGURE_SAMPLINGS:
-            raise ValueError(
-                "PoleFigure.sampling must be 'scattered_poles' or 'sampled_density'."
-            )
+            raise ValueError("PoleFigure.sampling must be 'scattered_poles' or 'sampled_density'.")
         if (
             self.sample_symmetry is not None
             and self.sample_symmetry.reference_frame != self.specimen_frame
@@ -597,7 +595,9 @@ class PoleFigure:
 
         if orientations.crystal_frame != pole.phase.crystal_frame:
             raise ValueError("PoleFigure orientations must use the pole phase crystal frame.")
-        if orientations.phase is not None and orientations.phase != pole.phase:
+        if orientations.phase is not None and not phases_semantically_match(
+            orientations.phase, pole.phase
+        ):
             raise ValueError("PoleFigure orientations and pole must reference the same phase.")
         if orientations.symmetry is not None and orientations.symmetry != pole.phase.symmetry:
             raise ValueError("PoleFigure orientations symmetry must match the pole phase symmetry.")
@@ -734,15 +734,11 @@ class PoleFigure:
                 raise ValueError("estimator must be 'density' or 'interpolate'.")
             chosen = estimator
         if grid.vectors.reference_frame != self.specimen_frame:
-            raise ValueError(
-                "PoleFigure.on_grid requires a grid in the figure's specimen frame."
-            )
+            raise ValueError("PoleFigure.on_grid requires a grid in the figure's specimen frame.")
         if self.intensities.size == 0:
             raise ValueError("PoleFigure.on_grid requires at least one sampled direction.")
         if chosen == "density" and float(np.sum(self.intensities)) <= 0.0:
-            raise ValueError(
-                "Kernel density estimation requires a positive total pole weight."
-            )
+            raise ValueError("Kernel density estimation requires a positive total pole weight.")
 
         target = np.asarray(grid.vectors.values, dtype=np.float64)
         estimated = _resample_directions(
@@ -838,9 +834,7 @@ class PoleFigure:
         """
 
         if integration_weights is not None:
-            weights = as_float_array(
-                integration_weights, shape=(self.intensities.shape[0],)
-            )
+            weights = as_float_array(integration_weights, shape=(self.intensities.shape[0],))
             if np.any(weights <= 0.0):
                 raise ValueError("integration_weights must be strictly positive.")
             return float(np.sum(weights * self.intensities) / np.sum(weights))
@@ -904,9 +898,7 @@ class PoleFigure:
             halfwidth_deg=halfwidth_deg,
         )
         if not mean_density > 0.0:
-            raise ValueError(
-                "Cannot normalize to m.r.d.: the mean pole density is not positive."
-            )
+            raise ValueError("Cannot normalize to m.r.d.: the mean pole density is not positive.")
         return replace(self, intensities=self.intensities / mean_density)
 
     # ------------------------------------------------------------------
@@ -1612,8 +1604,7 @@ class ODFSectionData:
         expected = (self.phi2_deg.shape[0], self.big_phi_deg.shape[0], self.phi1_deg.shape[0])
         if self.densities.shape != expected:
             raise ValueError(
-                "ODFSectionData.densities must have shape "
-                "(n_sections, n_big_phi, n_phi1)."
+                "ODFSectionData.densities must have shape (n_sections, n_big_phi, n_phi1)."
             )
         if self.section_kind not in {"phi2", "sigma"}:
             raise ValueError("ODFSectionData.section_kind must be 'phi2' or 'sigma'.")
@@ -1626,8 +1617,7 @@ class ODFSectionData:
 
     @property
     def section_count(self) -> int:
-        """Number of constant-coordinate sections in this data set.
-        """
+        """Number of constant-coordinate sections in this data set."""
 
         return int(self.phi2_deg.shape[0])
 
@@ -1805,7 +1795,7 @@ class ODF:
         if query_set.specimen_frame != self.orientations.specimen_frame:
             raise ValueError("ODF queries must use the same specimen frame as the ODF support.")
         if query_set.phase is not None and self.orientations.phase is not None:
-            if query_set.phase != self.orientations.phase:
+            if not phases_semantically_match(query_set.phase, self.orientations.phase):
                 raise ValueError("ODF queries must use the same phase as the ODF support.")
         if (
             symmetry_aware
@@ -2026,7 +2016,9 @@ class ODF:
 
         if self.orientations.crystal_frame != pole.phase.crystal_frame:
             raise ValueError("Pole density evaluation requires the same crystal frame as the pole.")
-        if self.orientations.phase is not None and self.orientations.phase != pole.phase:
+        if self.orientations.phase is not None and not phases_semantically_match(
+            self.orientations.phase, pole.phase
+        ):
             raise ValueError("Pole density evaluation requires the same phase as the ODF support.")
         response = _pole_density_response_matrix(
             self.orientations,

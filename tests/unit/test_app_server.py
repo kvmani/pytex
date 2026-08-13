@@ -335,6 +335,38 @@ class TestFrontendIsSelfContained:
         assert "pointerdown" not in attach.group(1)
         assert "frame.element.addEventListener('pointermove'" in source
 
+    def test_the_table_preview_is_capped_but_the_export_is_not(self) -> None:
+        """The on-screen table is a preview; the export is the data.
+
+        A texture ODF is 1083 rows and a composite pattern several hundred. Past
+        a couple of hundred the scroll box stops being something anyone reads —
+        no search, no sort, no way to reach row 900 except dragging — while the
+        export buttons directly above it carry every row at full precision.
+
+        Two halves, and both matter. The cap must exist, and the *export* must
+        not be built from the capped list: `exportResult` sends the whole
+        `result` to the server, so it must keep taking `result` and never the
+        truncated rows. Measured in a browser: 200 rows on screen, 863 lines in
+        the CSV of an 862-row figure.
+        """
+
+        import re
+
+        source = (STATIC_ROOT / "js" / "core" / "result.js").read_text(encoding="utf-8")
+        assert "TABLE_PREVIEW_ROWS" in source, "the on-screen table must be capped"
+        card = re.search(r"function tableCard\(result\) \{(.*?)\n\}", source, flags=re.S)
+        assert card is not None, "tableCard has been renamed; revisit this invariant"
+        body = card.group(1)
+        assert "rows.slice(0, TABLE_PREVIEW_ROWS)" in body
+        assert "buildTable(columns, shown)" in body, "the rendered table must use the capped list"
+        # The caption has to say so: a table that quietly shows a subset is
+        # worse than one that is too long, because a reader counting rows would
+        # get the wrong answer and never know.
+        assert "Showing the first" in body
+        assert "exportButton(result," in body, (
+            "exports must be built from the whole result, never from the capped rows"
+        )
+
     def test_no_legend_is_rebuilt_by_its_own_button(self) -> None:
         """A legend that replaces itself on click throws away the focused button.
 

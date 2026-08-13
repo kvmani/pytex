@@ -50,7 +50,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, 2b45b7e |
 | 11e | Second driving pass: every operation from its own defaults | in progress | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | done | (this commit) |
-| 11c | Texture tab: pole figures, IPF, ODF | pending | |
+| 11c | Texture tab: pole figures, IPF, ODF | done | (this commit) |
 | 12 | User guide, worked example, docs index wiring | pending | |
 
 ### Current worktree state
@@ -207,11 +207,58 @@ Four things the implementation had to decide, recorded because none is obvious f
     same place: the format list opened on PNG while the operation's own default and its help text
     both say SVG is the right artefact for line art. SVG is first now, and the three agree.
 
-**Resume point.** Step 11c (texture tab). Note what steps 11d, 11e and 11b cost: every defect above
-was invisible to a passing test suite and obvious within a minute of using the application. New
-panels are driven the same way before they are called done, and the driving now covers three things
-in particular — the opening press with nothing touched, the layout at 390 px, and where focus goes
-after every control that redraws.
+### Step 11c — the texture panel
+
+A sixth workspace, `pytex.app.services.texture` plus `js/panels/texture.js`, showing one model
+polycrystal the three ways texture is read: `texture.pole_figure`, `texture.inverse_pole_figure`
+and `texture.odf_sections`.
+
+**Why a model texture rather than a file import.** The application has no measurement to load, and
+a texture panel that can only say "import an EBSD map first" teaches nothing. The decisive argument
+is not convenience: a model built from the components the literature names has a *known answer*,
+and a data set does not. A random texture must read 1 m.r.d. everywhere; Goss is {011}⟨100⟩, so its
+(011) poles must sit at the centre of the figure. Those are the tests, and neither is available
+from a data set. The panel offers cube, Goss, brass, copper, S, the standard fcc and bcc rolling
+mixtures, and random, with controls for component spread, grain count, kernel halfwidth and seed.
+
+**Two defects found by checking numbers against what they claimed to be.** Both are the same kind
+— a quantity wearing a unit it was not in — and neither could have been caught by a test that
+compared a figure with itself.
+
+15. **A public library method crashed on two independently built phases.** `Phase` is a dataclass
+    with array-valued fields, so `phase != other` raises `ValueError: The truth value of an array
+    with more than one element is ambiguous`. Four guards in `pytex/texture/models.py` used `!=`,
+    including `ODF.evaluate_pole_density`, which therefore failed for any caller who built its pole
+    from its own copy of the phase rather than passing the identical object. `phases_semantically_match`
+    already exists for exactly this and documents itself as the thing to prefer "whenever the two
+    objects may have been constructed independently". Fixed at all four sites, with a regression
+    test in `tests/unit/test_texture.py` that uses two separately built phases — with one shared
+    object the bug is invisible — and a second test that the guard still refuses a genuinely
+    different phase.
+16. **The ODF sections were 24 times too large, in a column labelled "m.r.d."**
+    `ODF.evaluate(normalized=True)` normalises the kernel over the whole of SO(3), but a
+    symmetry-aware evaluation folds every query into the fundamental zone, which is 1/|G| of it. A
+    random texture therefore read |G| rather than 1: measured at 23.9 for m-3m and 11.9 for 6/mmm,
+    against proper-operator counts of 24 and 12. A sharp cube component came out at 737 m.r.d.,
+    which is not a texture strength any material has. Dividing by the operator count puts it on the
+    same scale as the pole figures beside it: cube now reads 19.6 m.r.d. and the fcc rolling texture
+    4.9, which are the published ranges. Both symmetries are checked, because one cannot distinguish
+    a correct normalisation from a constant fudge factor.
+
+Also in this pass, from driving it: **the on-screen table is now a capped preview.** A texture ODF
+is 1083 rows, and past a couple of hundred the scroll box has no search, no sort and no way to
+reach row 900 except dragging, while the export buttons directly above it carry every row. The
+first 200 are shown with the caption saying so — a table that quietly shows a subset is worse than
+one that is too long — and the export still sends the whole result: measured at 200 rows on screen
+and 863 lines in the CSV of an 862-row figure. DOM nodes on the ODF view fell from 6789 to 2360.
+
+**Resume point.** Step 12 (user guide, worked example, docs index wiring). Note what steps 11d,
+11e, 11b and 11c cost: every defect above was invisible to a passing test suite and obvious within
+a minute of using the application or of reading its numbers against what they claimed to be. New
+panels are driven the same way before they are called done, and the driving now covers four things
+in particular — the opening press with nothing touched, the layout at 390 px, where focus goes
+after every control that redraws, and whether a reported quantity is really in the unit its column
+header names.
 
 ### Decisions taken during implementation
 

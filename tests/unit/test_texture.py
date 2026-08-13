@@ -575,3 +575,64 @@ def test_projected_gradient_stopping_rule_is_scale_free() -> None:
     # And the answer is the one the problem has, not the uniform starting guess.
     assert_allclose(baseline[0], truth, atol=1e-3)
     assert not np.allclose(baseline[0], np.full(truth.size, 1.0 / truth.size), atol=1e-2)
+
+
+def test_pole_density_accepts_an_independently_built_phase() -> None:
+    """Two `Phase` objects of the same material must not crash the guard.
+
+    `ODF.evaluate_pole_density` checked its pole against its support with
+    ``!=``. `Phase` is a dataclass with array-valued fields, so that comparison
+    raises ``ValueError: The truth value of an array with more than one element
+    is ambiguous`` for any two phases that were built separately — which is the
+    normal case the moment a caller constructs the pole from its own copy of
+    the phase rather than passing the identical object around.
+
+    `phases_semantically_match` exists for exactly this and documents itself as
+    the thing to prefer "whenever the two objects may have been constructed
+    independently"; three sibling guards in this module and this one were still
+    using ``!=``. The regression is checked with two separately built phases,
+    because with one shared object the bug is invisible.
+    """
+
+    crystal, specimen, phase = make_orientation_context()
+    _crystal_again, _specimen_again, twin = make_orientation_context()
+    assert phase is not twin
+
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [30.0, 20.0, 10.0]]),
+        specimen_frame=specimen,
+        crystal_frame=crystal,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(orientations)
+    pole = CrystalPlane(miller=MillerIndex([1, 1, 1], phase=twin), phase=twin)
+
+    densities = odf.evaluate_pole_density(pole, np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]]))
+    assert densities.shape == (2,)
+    assert np.all(np.isfinite(densities))
+
+
+def test_pole_density_still_refuses_a_genuinely_different_phase() -> None:
+    """Loosening the comparison must not remove the check it was guarding."""
+
+    crystal, specimen, phase = make_orientation_context()
+    other_lattice = Lattice(4.05, 4.05, 4.05, 90.0, 90.0, 90.0, crystal_frame=crystal)
+    other = Phase(
+        name="a-different-material",
+        lattice=other_lattice,
+        symmetry=phase.symmetry,
+        crystal_frame=crystal,
+    )
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0]]),
+        specimen_frame=specimen,
+        crystal_frame=crystal,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    odf = ODF.from_orientations(orientations)
+    pole = CrystalPlane(miller=MillerIndex([1, 1, 1], phase=other), phase=other)
+
+    with pytest.raises(ValueError, match="same phase"):
+        odf.evaluate_pole_density(pole, np.array([[0.0, 0.0, 1.0]]))
