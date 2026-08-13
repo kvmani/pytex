@@ -100,7 +100,7 @@ def phase_parameter(
     )
 
 
-def _second_phase_parameter() -> ObjectParameter:
+def _second_phase_parameter(builtin: str | None = None) -> ObjectParameter:
     return ObjectParameter(
         name="other_phase",
         label="Second phase",
@@ -110,6 +110,7 @@ def _second_phase_parameter() -> ObjectParameter:
         ),
         editor="phase",
         required=False,
+        default=None if builtin is None else {"builtin": builtin},
     )
 
 
@@ -312,52 +313,92 @@ def _rotation_from_request(
     return Rotation.from_axis_angle(axis, math.radians(angle_deg))
 
 
-_ROTATION_PARAMETERS: tuple[Parameter, ...] = (
-    ChoiceParameter(
-        name="rotation_convention",
-        label="Relative orientation",
-        help_text=(
-            "How the rotation carrying the second crystal into the first is stated. "
-            "Bunge Euler angles are what EBSD software reports; axis and angle is what "
-            "a misorientation or orientation-relationship table reports."
+#: The first Kurdjumov-Sachs variant, as the rotation this operation consumes.
+#:
+#: It is the opening state of the cross-phase angle operation, so that the first
+#: press of the button answers the question the help text poses — does this
+#: relationship really put a {111} of the parent on a {110} of the product —
+#: instead of comparing a phase with itself through a null rotation. It does:
+#: the top row of that first table is austenite (111) against ferrite (011) at 0°.
+#:
+#: Two conventions are folded in and both matter. The operation carries the
+#: *second* crystal into the first, so the rotation wanted here is the inverse of
+#: the variant's parent-to-child rotation; the inverse is written by negating the
+#: axis rather than the angle, because a negative angle in a form field reads as
+#: a mistake. And a variant rotation is used rather than the disorientation,
+#: because the disorientation is a symmetry-reduced representative that need not
+#: map (111) onto (011) — it maps *some* member of each family onto the other,
+#: which is the right answer to a different question.
+#:
+#: The numbers are not transcribed from the literature: they are what
+#: :meth:`OrientationRelationship.from_kurdjumov_sachs_correspondence` computes
+#: for austenite and ferrite, and
+#: ``test_app_calculator.py::test_kurdjumov_sachs_default_matches_the_computed_relationship``
+#: recomputes them and fails if the two ever part company.
+KS_VARIANT_AXIS: tuple[float, float, float] = (-0.177620, 0.177620, -0.967937)
+KS_VARIANT_ANGLE_DEG: float = 42.847760
+
+
+def _rotation_parameters(
+    *,
+    convention: str = "bunge",
+    components: tuple[float, float, float] = (0.0, 0.0, 0.0),
+    angle_deg: float = 0.0,
+) -> tuple[Parameter, ...]:
+    """Return the relative-orientation parameter group.
+
+    The defaults are per-operation because "no rotation" is a sensible opening
+    state for some cross-phase questions and a meaningless one for others.
+    """
+
+    return (
+        ChoiceParameter(
+            name="rotation_convention",
+            label="Relative orientation",
+            help_text=(
+                "How the rotation carrying the second crystal into the first is stated. "
+                "Bunge Euler angles are what EBSD software reports; axis and angle is what "
+                "a misorientation or orientation-relationship table reports."
+            ),
+            options=(
+                ("bunge", "Bunge Euler (φ₁, Φ, φ₂)", "Three ZXZ Euler angles in degrees."),
+                ("axis_angle", "Axis and angle", "A rotation axis in crystal 1, plus an angle."),
+            ),
+            default=convention,
+            group="Relative orientation",
         ),
-        options=(
-            ("bunge", "Bunge Euler (φ₁, Φ, φ₂)", "Three ZXZ Euler angles in degrees."),
-            ("axis_angle", "Axis and angle", "A rotation axis in crystal 1, plus an angle."),
+        NumberParameter(
+            name="rotation_1",
+            label="φ₁ or axis x",
+            help_text="First Euler angle in degrees, or the x component of the rotation axis.",
+            default=components[0],
+            group="Relative orientation",
         ),
-        default="bunge",
-        group="Relative orientation",
-    ),
-    NumberParameter(
-        name="rotation_1",
-        label="φ₁ or axis x",
-        help_text="First Euler angle in degrees, or the x component of the rotation axis.",
-        default=0.0,
-        group="Relative orientation",
-    ),
-    NumberParameter(
-        name="rotation_2",
-        label="Φ or axis y",
-        help_text="Second Euler angle in degrees, or the y component of the rotation axis.",
-        default=0.0,
-        group="Relative orientation",
-    ),
-    NumberParameter(
-        name="rotation_3",
-        label="φ₂ or axis z",
-        help_text="Third Euler angle in degrees, or the z component of the rotation axis.",
-        default=0.0,
-        group="Relative orientation",
-    ),
-    NumberParameter(
-        name="rotation_angle_deg",
-        label="Rotation angle",
-        help_text="Rotation angle for the axis-and-angle convention. Ignored for Euler angles.",
-        units="°",
-        default=0.0,
-        group="Relative orientation",
-    ),
-)
+        NumberParameter(
+            name="rotation_2",
+            label="Φ or axis y",
+            help_text="Second Euler angle in degrees, or the y component of the rotation axis.",
+            default=components[1],
+            group="Relative orientation",
+        ),
+        NumberParameter(
+            name="rotation_3",
+            label="φ₂ or axis z",
+            help_text="Third Euler angle in degrees, or the z component of the rotation axis.",
+            default=components[2],
+            group="Relative orientation",
+        ),
+        NumberParameter(
+            name="rotation_angle_deg",
+            label="Rotation angle",
+            help_text=(
+                "Rotation angle for the axis-and-angle convention. Ignored for Euler angles."
+            ),
+            units="°",
+            default=angle_deg,
+            group="Relative orientation",
+        ),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1309,8 +1350,11 @@ def _d_spacings(request: dict[str, Any]) -> dict[str, Any]:
         "asserts."
     ),
     parameters=(
-        phase_parameter(help_text="The reference crystal. Its Cartesian frame is the one used."),
-        _second_phase_parameter(),
+        phase_parameter(
+            help_text="The reference crystal. Its Cartesian frame is the one used.",
+            builtin="austenite_fcc",
+        ),
+        _second_phase_parameter(builtin="fe_bcc"),
         ChoiceParameter(
             name="family",
             label="Compare",
@@ -1325,15 +1369,19 @@ def _d_spacings(request: dict[str, Any]) -> dict[str, Any]:
             name="first_indices",
             label="Indices in phase 1",
             help_text="One row per plane or direction of the first crystal.",
-            default=((1, 1, 1),),
+            default=((1, 1, 1), (2, 0, 0)),
         ),
         IndicesListParameter(
             name="second_indices",
             label="Indices in phase 2",
             help_text="One row per plane or direction of the second crystal.",
-            default=((1, 1, 0),),
+            default=((0, 1, 1), (0, 0, 2)),
         ),
-        *_ROTATION_PARAMETERS,
+        *_rotation_parameters(
+            convention="axis_angle",
+            components=KS_VARIANT_AXIS,
+            angle_deg=KS_VARIANT_ANGLE_DEG,
+        ),
     ),
     returns="One row per cross-phase pair, sorted by increasing angle.",
     panel="calculator",
@@ -1480,6 +1528,24 @@ _RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
     ),
 )
 
+#: How each relationship is written in prose and in a title.
+#:
+#: The identifier is a slug (``kurdjumov_sachs``) and the choice label carries a
+#: parenthetical the picker needs but a sentence does not
+#: (``Kurdjumov-Sachs (fcc to bcc)``). Titles and prose take the name alone, from
+#: here, so that no surface has to reconstruct it — and so that a heading never
+#: reads ``kurdjumov-sachs``, which is a variable name, not a pair of surnames.
+RELATIONSHIP_NAMES: dict[str, str] = {
+    identifier: label.split(" (")[0] for identifier, label, _ in _RELATIONSHIPS
+}
+
+
+def relationship_name(identifier: str) -> str:
+    """Return the human-readable name of a relationship identifier."""
+
+    return RELATIONSHIP_NAMES.get(identifier, identifier.replace("_", "-"))
+
+
 #: Constructor name on :class:`OrientationRelationship` for each option.
 _RELATIONSHIP_CONSTRUCTORS = {
     "kurdjumov_sachs": "from_kurdjumov_sachs_correspondence",
@@ -1561,7 +1627,7 @@ def _orientation_relationship(request: dict[str, Any]) -> dict[str, Any]:
         relationship = constructor(parent_phase=parent_phase, child_phase=child_phase)
     except (ValueError, TypeError) as error:
         raise InvalidInputError(
-            f"The {name.replace('_', '-')} relationship does not apply to these two phases: "
+            f"The {relationship_name(name)} relationship does not apply to these two phases: "
             f"{error}",
             field="relationship",
             hint=(
@@ -1609,7 +1675,7 @@ def _orientation_relationship(request: dict[str, Any]) -> dict[str, Any]:
         for parent, child in relationship.parallel_directions
     ]
     axis = np.asarray(representative.rotation.axis, dtype=float)
-    label = name.replace("_", "-")
+    label = relationship_name(name)
     result = AppResult(
         title=f"{label}: {parent_spec.name} to {child_spec.name}",
         summary=(

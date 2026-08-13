@@ -11,11 +11,24 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pytest
 
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import BUILTIN_PHASES, PhaseSpec, builtin_phase
+from pytex.app.services.calculator import KS_VARIANT_ANGLE_DEG, KS_VARIANT_AXIS
+
+#: An explicit null rotation, for tests that mean "no relative orientation".
+#: The operation's own default is the Kurdjumov-Sachs variant, not the identity,
+#: so a test that wants the identity has to say so.
+NO_ROTATION: dict[str, object] = {
+    "rotation_convention": "bunge",
+    "rotation_1": 0.0,
+    "rotation_2": 0.0,
+    "rotation_3": 0.0,
+    "rotation_angle_deg": 0.0,
+}
 
 NICKEL = {"builtin": "ni_fcc"}
 ZIRCONIUM = {"builtin": "zr_hcp"}
@@ -23,6 +36,21 @@ ZIRCONIUM = {"builtin": "zr_hcp"}
 
 def call(operation: str, **request: object) -> dict:
     return REGISTRY.call(operation, request)
+
+
+def defaults_for(operation: str) -> dict[str, object]:
+    """Return the request an untouched control panel would send.
+
+    This is what the first press of the button submits, which is the state most
+    users see and the one least often tested.
+    """
+
+    spec = REGISTRY.get(operation)
+    return {
+        parameter.name: parameter.default
+        for parameter in spec.parameters
+        if parameter.default is not None
+    }
 
 
 def angle_between(rows: list[dict], left: str, right: str) -> float:
@@ -386,6 +414,7 @@ class TestInterphaseAngles:
             other_phase=NICKEL,
             first_indices=[[1, 0, 0]],
             second_indices=[[1, 1, 0]],
+            **NO_ROTATION,
         )
         assert float(result["table"]["rows"][0]["angle_deg"]) == pytest.approx(45.0)
 
@@ -418,6 +447,45 @@ class TestInterphaseAngles:
             rotation_angle_deg=42.85,
         )
         assert float(result["data"]["rotation_angle_deg"]) == pytest.approx(42.85, abs=1e-6)
+
+    def test_kurdjumov_sachs_default_matches_the_computed_relationship(self) -> None:
+        """The opening rotation is the KS misorientation, recomputed here.
+
+        The parameter defaults are literals because a manifest is static, so this
+        test is what keeps them honest: it builds the relationship from
+        :mod:`pytex.core.transformation` and fails if the literals drift from
+        what the library computes.
+        """
+
+        from pytex.core.transformation import OrientationRelationship
+
+        rotation = (
+            OrientationRelationship.from_kurdjumov_sachs_correspondence(
+                parent_phase=builtin_phase("austenite_fcc").to_phase(),
+                child_phase=builtin_phase("fe_bcc").to_phase(),
+            )
+            .generate_variants()[0]
+            .parent_to_child_rotation
+        )
+        assert float(rotation.angle_deg) == pytest.approx(KS_VARIANT_ANGLE_DEG, abs=1e-5)
+        # The default is the inverse rotation, written by negating the axis.
+        inverse_axis = -np.asarray(rotation.axis, dtype=float)
+        assert inverse_axis == pytest.approx(np.asarray(KS_VARIANT_AXIS), abs=1e-5)
+
+    def test_the_opening_press_compares_two_different_phases(self) -> None:
+        """Running from the declared defaults must not compare a phase with itself.
+
+        The defaults exist so that the first press answers the question the help
+        text poses: does Kurdjumov-Sachs really put a {111} of austenite on a
+        {110} of ferrite? It does — the residual here is 1e-5 degrees, which is
+        the six-decimal rounding of the stored axis and nothing else.
+        """
+
+        result = call("calc.interphase_angles", **defaults_for("calc.interphase_angles"))
+        assert result["title"] == "Austenite (fcc Fe) against Ferrite (bcc Fe)"
+        top = result["table"]["rows"][0]
+        assert (top["first"], top["second"]) == ("(111)", "(011)")
+        assert float(top["angle_deg"]) == pytest.approx(0.0, abs=1e-4)
 
     def test_a_zero_axis_is_refused(self) -> None:
         with pytest.raises(InvalidInputError, match="zero vector"):

@@ -45,6 +45,7 @@ from pytex.app.services.calculator import (
     _RELATIONSHIPS,
     direction_label,
     phase_parameter,
+    relationship_name,
 )
 
 __all__: tuple[str, ...] = ()
@@ -101,7 +102,7 @@ def _relationship(name: str, parent: Any, child: Any) -> Any:
         return constructor(parent_phase=parent, child_phase=child)
     except (ValueError, TypeError) as error:
         raise InvalidInputError(
-            f"The {name.replace('_', '-')} relationship does not apply to these phases: {error}",
+            f"The {relationship_name(name)} relationship does not apply to these phases: {error}",
             field="relationship",
             hint=(
                 "The fcc-to-bcc relationships need a cubic parent and a cubic child; Burgers "
@@ -402,7 +403,7 @@ def _composite_saed(request: dict[str, Any]) -> dict[str, Any]:
         summary=(
             f"{len(rows)} spots down {zone_text}: {parent_spec.name} with {variant_text} of "
             f"{child_spec.name} under the "
-            f"{str(request['relationship']).replace('_', '-')} relationship, on one detector. "
+            f"{relationship_name(str(request['relationship']))} relationship, on one detector. "
             "Positions are exact; intensities are kinematic and should be read with the note "
             "below."
         ),

@@ -47,7 +47,8 @@ phase catalogue with cited parameters and full atomic bases.
 | 9 | TEM solver service + panel (calibrate, pick, index, tilt plan) | done | (this commit) |
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
 | 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
-| 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, (this commit) |
+| 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, 2b45b7e |
+| 11e | Second driving pass: every operation from its own defaults | in progress | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | pending | |
 | 11c | Texture tab: pole figures, IPF, ODF | pending | |
 | 12 | User guide, worked example, docs index wiring | pending | |
@@ -109,10 +110,34 @@ and the exports in all three formats. In the real pywebview window, through `eva
 four panels compute, a drag turns the crystal, a CSV and a 481 kB PNG figure reach disk through
 the save bridge with the toast naming the path, and the console is clean.
 
+**Step 11e — a second driving pass, this time over opening states.** The application was driven
+again in the browser, with every one of the ten calculator operations selected in turn and its
+button pressed *without touching a single control*, which is what a user does first and what step
+11d had not systematically covered. All ten produce a result and no console error. Two defects:
+
+9. **A machine slug reached a heading.** The orientation-relationship result was titled
+   `kurdjumov-sachs: Austenite (fcc Fe) to Ferrite (bcc Fe)` — a Python identifier with its
+   underscore swapped, printed where two surnames belong. Three call sites reconstructed the
+   display name from the identifier by hand, and none of them could reach the proper name the
+   choice list already carried. A single `relationship_name()` now derives it from the choice
+   labels, and titles, prose, and error messages all take it from there.
+10. **The cross-phase angle operation opened on a question with no content.** Its defaults left
+   the second phase unset, so the phase picker sent the same phase twice and the opening press
+   compared nickel with nickel through a null rotation — a table of angles a single-phase
+   operation already answers. The defaults are now austenite against ferrite under the first
+   Kurdjumov-Sachs variant, so the first press produces the parallelism the help text promises:
+   austenite (111) against ferrite (011) at 0°, with 45°, 54.74° and 80.41° beneath it. The
+   rotation is stored as a literal because a manifest is static, and a test recomputes it from
+   `OrientationRelationship` and fails if the two ever part company.
+
+The general lesson, now a rule for new panels: **an operation's declared defaults are a user-facing
+surface and must be exercised as one.** `test_an_operation_runs_from_its_own_defaults` proved they
+*run*; neither it nor anything else asked whether what they produce is worth looking at.
+
 **Resume point.** Step 11b (orientation-relationship visualization). Before adding a panel, note
-what step 11d cost: every defect above was invisible to a passing test suite and obvious within a
-minute of using the application. New panels should be driven the same way before they are called
-done.
+what steps 11d and 11e cost: every defect above was invisible to a passing test suite and obvious
+within a minute of using the application. New panels should be driven the same way before they are
+called done.
 
 ### Decisions taken during implementation
 
