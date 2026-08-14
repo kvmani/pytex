@@ -207,6 +207,21 @@ the sheet plane — so its (011) pole must sit at the **centre** of the figure, 
 The notation is a testable claim about where the poles go, and checking it needs no reference
 figure.
 
+### Contour presentation
+
+Pole figures and ODF sections can be shown as **contour lines**, **filled contours**, or both. The
+**Contour properties** section controls the automatic number of levels or an exact positive level
+list (for example `0.5, 1, 2, 4` m.r.d.), the upper colour limit, palette, isoline colour/weight,
+fill opacity, and pole-figure display-grid resolution. The default m.r.d. palette keeps 1 m.r.d.
+as the neutral random baseline; Viridis and Turbo are available for presentation needs.
+
+Pole-figure values arrive on a spherical sampling support, so the browser inverse-distance
+interpolates them onto a clipped projection grid for display. Marching squares draws isolines and
+the same grid is quantised into filled bands, guaranteeing that line and fill boundaries use the
+same declared levels. This interpolation is presentation-only: hover targets remain the computed
+samples, and CSV/XLSX/JSON/Report exports retain the service values. **SVG** in the plot toolbar
+saves the current line/filled appearance through the same saver used by both app shells.
+
 ```{warning}
 The kernel halfwidth is a **smoothing choice, not a property of the material**. Too small and the
 figure shows the individual grains that were sampled; too large and real detail is washed out. It is

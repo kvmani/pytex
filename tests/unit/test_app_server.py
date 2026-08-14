@@ -596,6 +596,40 @@ class TestFrontendIsSelfContained:
         ):
             assert object_name in source
 
+    def test_texture_contours_have_real_isolines_and_adjustable_shared_levels(self) -> None:
+        """A coloured point mosaic is not a contour plot, however smooth it looks."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "texture.js").read_text(encoding="utf-8")
+        controls = source.split("function contourStyleControl")[1].split("export function mount")[0]
+        assert "call(" not in controls, "contour appearance must not recompute the texture"
+        for algorithm in (
+            "function interpolatePoleFigure",
+            "function crossingPoint",
+            "function contourPath",
+            "function drawContourGrid",
+            "data-contour-level",
+            "vector-effect",
+        ):
+            assert algorithm in source
+        for control in (
+            "Filled + lines",
+            "Filled contours",
+            "Contour lines",
+            "Automatic levels",
+            "Custom levels",
+            "Upper colour limit",
+            "Colour palette",
+            "Line width",
+            "Fill opacity",
+            "Display grid",
+        ):
+            assert control in source
+        assert "preserveViewport" in source
+        assert "pytex-texture-figure.svg" in source
+        density = source.split("function renderDensity")[1].split("function renderScatter")[0]
+        assert "frame.hoverable(node, point, columns)" in density
+        assert "fill: 'transparent'" in density
+
     def test_the_tem_gallery_is_read_from_the_manifest_not_hard_coded(self) -> None:
         """A fourth practice plate must appear by adding it in Python, not here."""
 

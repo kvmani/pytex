@@ -40,7 +40,7 @@ calculation parameters. Scientific inputs and export provenance remain manifest-
 | --- | --- | --- | --- |
 | 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | (this commit) |
 | 2 | Crystal object appearance editor with live redraw and publication-export parity | done | (this commit) |
-| 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | planned | — |
+| 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | done | (this commit) |
 | 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | planned | — |
 | 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | planned | — |
 
@@ -97,6 +97,38 @@ files, and the entire unit suite passes with the two existing skips.
 
 **Exact next action.** Run the controlling quality lane, commit and push increment 2, then replace
 the Texture panel's disc/raster mosaics with real configurable filled/line contour geometry.
+
+### Increment 2 landing
+
+Committed and pushed to `main` as `210d5fd` (`Add live crystal object property controls`).
+
+### Increment 3 design
+
+Pole-figure samples will be resampled for display only onto a clipped regular projection grid;
+ODF sections already have a rectangular grid. One shared marching-squares implementation will draw
+actual isolines over either grid. Filled contours quantize the same interpolated grid into the same
+declared bands, so line, filled and combined views cannot disagree about levels. Controls will
+offer automatic level count or explicit comma-separated levels, upper colour limit, palette, line
+colour/weight, fill opacity and display-grid resolution. The source m.r.d. rows and their export
+remain unchanged, and transparent hit regions retain hover readout of computed—not interpolated—
+sample values. The current SVG becomes directly exportable through the shared desktop/web saver.
+
+### Increment 3 verification
+
+The Texture workbench now renders pole figures and ODF sections through one SVG contour pipeline:
+filled bands and marching-squares isolines share the same interpolated field and declared levels.
+Automatic and exact levels, colour upper limit and palette, line colour/weight, fill opacity and
+display-grid density update live without recomputing scientific results. SVG export preserves the
+configured presentation while CSV/workbook/JSON exports continue to carry computed source values.
+
+Focused Texture/server tests pass. In the in-app browser, the Goss reference example produced all
+eight requested automatic isolines; exact levels `0.5, 1, 2, 4` produced four matching SVG paths;
+the plot zoomed to 228% under mouse-wheel input and Fit restored 100%; SVG export completed with no
+browser warnings or errors.
+
+**Exact next action.** Run the controlling quality lane, commit and push increment 3, then add a
+shared operation-progress/activity surface and tune responsive plot/property allocation before the
+final browser and native-desktop validation pass.
 
 ## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 

@@ -1292,6 +1292,17 @@ button:focus-visible {
   font-size: 0.72rem;
 }
 
+.contour-controls {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.contour-controls:disabled {
+  opacity: 0.48;
+}
+
 .docs-link {
   margin: 1.25rem 0;
   padding: 1rem;
