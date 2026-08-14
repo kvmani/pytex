@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — IN PROGRESS (2026-08-14)
+## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 
 **Objective.** Make the TEM panel of both shells usable for a researcher's day-to-day workflow
 without needing a micrograph in hand. Ship a gallery of synthetic but scientifically exact SAED
@@ -44,7 +44,7 @@ gallery entry.
 | 3 | App: gallery catalogue, `tem.gallery_pattern`, `tem.zone_axis_atlas`, calibration helper | done | (this commit) |
 | 4 | Frontend: gallery, synthetic rendering, auto-pick, answer check, atlas navigation | done | (this commit) |
 | 5 | Docs: workflow page, theory cross-links, user guide, worked examples | done | (this commit) |
-| 6 | Human-style browser + desktop pass, defect fixes, closeout | pending | |
+| 6 | Human-style browser + desktop pass, defect fixes, closeout | done | (this commit) |
 
 ### Increments 1 and 2 result
 
@@ -159,8 +159,86 @@ so `screenshot` was unavailable throughout. Appearance was checked by extracting
 own circle, line and text attributes from the DOM and rasterising *those* — a view of the real
 output, not of a parallel implementation — which is how defects 4 and 5 were found.
 
-**Exact next action.** Increment 6: drive the real desktop shell, re-check the full lane, and
-close out.
+### Increment 6 result
+
+**Driven end to end in the browser**, repeatedly and from a cold reload: choose a plate, auto-pick,
+index, read the verdict, list the zone axes, choose a destination, plan the tilt. Also: manual
+picking at real screen coordinates (the beam plus three spots, indexed correctly), uploading an
+image of one's own, the Show answer overlay, undo and clear, the example menu, the command palette,
+the help drawer, 375 px and 1280 px layout, and dark mode. Zero console messages throughout; no
+page-level horizontal overflow at either width (the only elements wider than the viewport are
+inside `.table-wrap`, which scrolls).
+
+**Driven in the real desktop shell.** `python -m pytex.app desktop` opens a native `pywebview`
+window over a loopback server, reports `native_window: true`, serves the byte-identical frontend,
+and answers `tem.gallery_pattern` through the same route. The window's *contents* could not be
+scripted, so the panel itself was exercised through the browser shell, which loads the same files.
+
+**A programmatic sweep stands in for the clicks nobody has time to make.** Every gallery plate at
+three camera lengths, indexed through the real operation and checked against its construction; then
+every atlas row at three index depths pushed back through the planner, which is exactly the pairing
+a user makes by clicking a destination. 0 failures — after the sweep found the one below.
+
+**Four further defects, all found by driving rather than by reading.**
+
+8. **Pressing "Index the pattern" with nothing picked did nothing at all.** The error is real and
+   well worded, but its field is the spot picker, which the panel hides because the value comes
+   from the canvas — so the message landed on an invisible row. Errors on hidden fields now go to
+   the toast and the plot status.
+9. **A stale "Correct — that is the axis" card stood beside a failed index.** A verdict answers one
+   attempt; a failed attempt now removes it, while the rest of the previous result stays.
+10. **Loading your own micrograph kept the practice plate's calibration silently.** A camera
+    constant from another exposure is the one error this panel cannot detect — it indexes to a
+    plausible, self-consistent, wrong material rather than failing — so the plot now says so.
+11. **`tem.plan_tilt` returned a 500 on a legitimate high-index hexagonal target.**
+    `TiltSolution.orbit_member_indices` is `None` when the member has no low-index integer form
+    within the navigation module's bound; both the tilt panel and the new atlas read it as an
+    integer array regardless. Pre-existing, and reachable from the shipped panel by typing
+    `[4 -3 1]` for zirconium. The row now reports the family form, which is what is known.
+
+**Two loose scientific claims tightened.** The bcc entry named "110-type" reflections, but the zone
+law `h + k = 0` excludes 110 from the [110] zone entirely — what is present is 11̄0. And the fcc
+entry called 220 "the next ring in" when it is further out than 200. All three entries' claims are
+now *measured on the plates the gallery produces*: equal lengths at 90° with a √2 diagonal at 45°
+for fcc, a perpendicular √2 rectangle for bcc, √3·a/c for hcp, and 0001 absent while 0002 is
+present.
+
+### Verification
+
+- `ruff check .`, `mypy src` (136 files) and the full `pytest tests/unit` lane are green.
+- `python -m sphinx -b html docs/site` exits 0; `workflows/tem_pattern_indexing` and
+  `examples/generated/saed_practice_patterns` both render. The seven non-autodoc warnings are
+  pre-existing docstring formatting in `cbed`, `holz`, `models` and `plotting.runtime`; none comes
+  from the new modules or pages. The remaining 595 are the known autodoc duplicate-object noise on
+  `api/full_reference`.
+- Three new worked examples recompute on every run against analytic values: `L·λ/d` for the
+  camera-constant identity, `√3·a/c` for the hcp prism-zone aspect ratio, and the exactly-90°
+  basal-to-prism angle.
+- Class-model atlas figures and the count on its page were regenerated: two new modules moved it to
+  272 public classes and 255 dataclasses, with still only 6 inheritance relations.
+- `pytest --cov=pytex --cov-fail-under=87` passes at **91% overall**, with the new surfaces at 93%
+  (`tem/synthetic.py`), 95% (`tem/atlas.py`), 97% (`app/tem_gallery.py`) and 88%
+  (`app/services/tem.py`). Coverage did not decrease.
+
+### What was deliberately not done
+
+- **No dynamical intensities.** The plates are kinematic, so relative brightness is indicative and
+  double diffraction is absent — a forbidden reflection a real plate shows through double
+  diffraction is missing here. `pytex.diffraction.kinematic` can add and flag those; wiring it into
+  the gallery would change what the plates teach and belongs in its own change.
+- **No automatic spot detection on an uploaded micrograph.** Auto-pick works from the simulated
+  truth, not from image analysis. Detecting spots in a real plate is a different problem — local
+  maxima, background, a beam stop — and pretending otherwise would be worse than not offering it.
+- **No fourth practice plate.** The gallery is read from the manifest, so adding one is a Python
+  edit with no frontend change; three cover fcc, bcc and hcp, which is what was asked for.
+- **The atlas takes about two seconds** for twelve rows, because reachability is computed by the
+  real planner rather than a cheaper approximation. That was the right trade — a row marked
+  reachable here is reachable there, and a test pins the two to agree — but it is the obvious place
+  to optimise if the row count grows.
+
+### Next task
+
+None claimed. This goal is complete.
 
 ## Workbench Visual Modernization And GUI Completeness — COMPLETE (2026-08-14)
 
