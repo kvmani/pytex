@@ -43,7 +43,7 @@ form at every stage, across every panel.**
 | --- | --- | --- | --- |
 | 1 | `pytex.diffraction.lattice_fit`: 2D lattice fit with least-squares centre refinement | done | (this commit) |
 | 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | done | (this commit) |
-| 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | pending | |
+| 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | done | (this commit) |
 | 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | pending | |
 | 5 | Export: a human-readable report format on every panel, manifest-published | pending | |
 | 6 | Docs, human-style pass, closeout | pending | |
@@ -124,8 +124,37 @@ instead of both underflowing to zero.
 calibration does, and neither term moves when the pattern is rolled about the beam — which one
 pattern cannot fix, so scoring must not pretend otherwise.
 
-**Exact next action.** Increment 3: wire both into the app — `tem.fit_lattice`, scoring and
-per-solution overlay data in `tem.solve_pattern`.
+### Increment 3 result
+
+- **`tem.fit_lattice`** exposes the fit: one row per pick with the lattice node it was assigned to
+  and its residual, the refined centre, the overlay nodes clipped to the frame, and the notes. The
+  centre of every practice plate is recovered to within 3 px from offsets of 0, 14 and 25 px, and a
+  44 px mis-pick is named in the table rather than averaged away.
+- **`tem.solve_pattern` now scores every candidate and ranks by the score**, not by the solver's own
+  sort key. That key orders by matched fraction then residual and is explicitly not a quality; the
+  score is one, and a list sorted by something other than the number printed beside it would be a
+  trap. When the two orders disagree, a note says so and explains that the disagreement is itself
+  evidence the pattern does not settle the answer.
+- **Every candidate carries its calculated pattern** in picking coordinates, so accepting a solution
+  can be a judgement made by looking. Pinned hard: for all three plates with scatter off, every
+  simulated spot has a predicted node within 1e-6 px of it. Getting the scale or the rotation wrong
+  would look like a disagreement the crystallography never had, so the test is exact rather than
+  approximate.
+- The per-spot table gained a Δd column in percent. A wrong camera constant shows as *the same*
+  deviation on every spot — driving a 5 percent error gives exactly +5.00 on all six — which is the
+  signature that separates a calibration error from an indexing error, and a test pins it.
+- Scoring weights and both tolerances are exposed as advanced parameters in a Scoring group, and the
+  policy travels in `data.score.weights` and in `inputs`.
+
+**One sign error found by driving it.** The library test scales the measured `g` up, which makes
+measured `d` smaller; the app test scales the *camera constant* up, which makes measured `d`
+larger. The first draft of the app test asserted the library's sign and failed. The code was right
+both times; the expectation was not.
+
+28 new app tests.
+
+**Exact next action.** Increment 4: the frontend — live overlay, centre nudges, the scored solution
+list, superimposing a candidate, and accepting one into tilt planning.
 
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 

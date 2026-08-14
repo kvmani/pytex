@@ -234,6 +234,12 @@ _CALIBRATION_PARAMETERS = (
         "tolerance and their angle within the angle tolerance, and then projects every remaining "
         "spot. Intensities are never used, which is deliberate: kinematic intensities are "
         "unreliable in a real pattern and geometry alone is enough.\n\n"
+        "**Every candidate carries its calculated pattern.** Superimposing what a solution "
+        "*predicts* on what was *measured* turns accepting it into a judgement made by looking: a "
+        "calculated pattern uniformly too large is a camera constant, one turned is a roll, one "
+        "with rows the plate does not show is the wrong phase. The prediction is bounded by the "
+        "index limit below, so a plate spot with no calculated node beside it means "
+        "*check the index limit* before doubting the solution.\n\n"
         "**Read the verdict, not just the answer.** A pattern with two solutions of similar score "
         "is genuinely ambiguous, and the result says so. That usually means the zone axis is a "
         "high-symmetry one where two phases give the same spot arrangement, and the way out is a "
@@ -283,6 +289,76 @@ _CALIBRATION_PARAMETERS = (
             maximum=8,
             advanced=True,
         ),
+        NumberParameter(
+            name="score_length_weight",
+            label="Weight: d-spacing agreement",
+            help_text=(
+                "How much a d-spacing disagreement counts in the fused accuracy score. Sensitive "
+                "to the camera constant, which is the one calibration that can be wrong while "
+                "everything else stays self-consistent."
+            ),
+            default=1.0,
+            minimum=0.0,
+            maximum=10.0,
+            group="Scoring",
+            advanced=True,
+        ),
+        NumberParameter(
+            name="score_angle_weight",
+            label="Weight: angle agreement",
+            help_text=(
+                "How much an interspot-angle disagreement counts. Weighted above d-spacings by "
+                "default because angles are calibration-free: a wrong camera constant scales "
+                "every length and leaves every angle alone, so an angular disagreement is "
+                "evidence about the crystallography rather than about the instrument."
+            ),
+            default=1.5,
+            minimum=0.0,
+            maximum=10.0,
+            group="Scoring",
+            advanced=True,
+        ),
+        NumberParameter(
+            name="score_coverage_weight",
+            label="Weight: spots explained",
+            help_text=(
+                "How much the fraction of picked spots indexed counts. Weighted highest by "
+                "default: an unindexed spot is unexplained evidence, and precision on the others "
+                "does not answer it."
+            ),
+            default=2.0,
+            minimum=0.0,
+            maximum=10.0,
+            group="Scoring",
+            advanced=True,
+        ),
+        NumberParameter(
+            name="score_length_tolerance",
+            label="Half-score d-spacing deviation",
+            help_text=(
+                "The relative d-spacing deviation that scores one half on its term. 0.02 is two "
+                "percent, about what a well-calibrated instrument achieves."
+            ),
+            default=0.02,
+            minimum=0.0001,
+            maximum=0.5,
+            group="Scoring",
+            advanced=True,
+        ),
+        NumberParameter(
+            name="score_angle_tolerance_deg",
+            label="Half-score angle deviation",
+            help_text=(
+                "The angular deviation that scores one half on its term. One degree is roughly "
+                "the precision of picking two spots and measuring the angle between them."
+            ),
+            units="deg",
+            default=1.0,
+            minimum=0.01,
+            maximum=30.0,
+            group="Scoring",
+            advanced=True,
+        ),
         IndicesParameter(
             name="expected_zone_axis",
             label="Check against axis [uvw]",
@@ -307,10 +383,13 @@ _CALIBRATION_PARAMETERS = (
             required=False,
         ),
     ),
-    returns="One row per spot with its index and residual; the ranked solutions under `data`.",
+    returns=(
+        "One row per spot with its index and its d-spacing deviation; the scored, ranked "
+        "solutions and their calculated patterns under `data`."
+    ),
     panel="tem",
     citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
-    tags=("TEM", "SAED", "indexing", "solve", "zone axis", "pattern", "calibration"),
+    tags=("TEM", "SAED", "indexing", "solve", "zone axis", "pattern", "calibration", "score"),
 )
 def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
     from pytex.diffraction.solving import solve_saed_pattern
@@ -344,7 +423,27 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
                 "limit."
             ),
         )
-    best = report.best()
+    from pytex.diffraction.solution_scoring import ScoringWeights, score_solution
+
+    weights = ScoringWeights(
+        length=float(request["score_length_weight"]),
+        angle=float(request["score_angle_weight"]),
+        coverage=float(request["score_coverage_weight"]),
+        length_tolerance=float(request["score_length_tolerance"]),
+        angle_tolerance_deg=float(request["score_angle_tolerance_deg"]),
+    )
+    measured_g = np.asarray(pattern.g_vectors_inv_angstrom(), dtype=float)
+    scored = [
+        (solution, score_solution(solution, measured_g, weights=weights))
+        for solution in report.solutions
+    ]
+    # Rank by the fused score rather than by the solver own sort key. That key
+    # orders by matched fraction then residual and is explicitly not a quality;
+    # the score is one, it is the thing the user configured, and a list sorted
+    # by something other than the number printed beside it would be a trap.
+    ranked = sorted(scored, key=lambda item: -item[1].score)
+    best, best_score = ranked[0]
+    reordered = best is not report.solutions[0]
 
     spec_by_name = {item.name: item for item in specs}
     best_spec = spec_by_name.get(best.phase_name, spec)
@@ -355,12 +454,18 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
         indices = tuple(int(value) for value in np.asarray(spot.hkl, dtype=int))
         # `predicted_g_inv_angstrom` is the in-plane vector, not its length.
         predicted = float(np.linalg.norm(np.asarray(spot.predicted_g_inv_angstrom, dtype=float)))
+        calculated_d = 1.0 / predicted if predicted > 0.0 else float("nan")
         rows.append(
             {
                 "spot": index + 1,
                 "hkl": plane_label(indices, spec=best_spec) if any(indices) else "—",
                 "d_observed": float(observed_d[index]),
-                "d_calculated": 1.0 / predicted if predicted > 0.0 else float("nan"),
+                "d_calculated": calculated_d,
+                "d_deviation_percent": (
+                    100.0 * (observed_d[index] - calculated_d) / calculated_d
+                    if calculated_d > 0.0
+                    else float("nan")
+                ),
                 "residual": float(spot.residual_inv_angstrom),
                 "x": picks[index]["x"],
                 "y": picks[index]["y"],
@@ -374,14 +479,30 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
         {
             "phase": solution.phase_name,
             "zone_axis": solution.zone_axis_label,
-            # `score` is a sort key (matched fraction, then residual), not a
-            # scalar quality: reporting it as a number would invite a comparison
-            # it does not support.
+            "zone_axis_indices": [
+                int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)
+            ],
             "matched_spots": round(solution.matched_fraction * solution.measured_spot_count),
             "matched_fraction": float(solution.matched_fraction),
             "mean_residual_inv_angstrom": float(solution.mean_residual_inv_angstrom),
+            "score": float(item.score),
+            "length_agreement": float(item.length_agreement),
+            "angle_agreement": float(item.angle_agreement),
+            "coverage_agreement": float(item.coverage_agreement),
+            "rms_relative_length_deviation": float(item.rms_relative_length_deviation),
+            "rms_angle_deviation_deg": float(item.rms_angle_deviation_deg),
+            # Everything the browser needs to draw this candidate over the
+            # measured pattern, so accepting a solution can be a judgement made
+            # by looking rather than by reading a residual column.
+            "overlay": _calculated_overlay(
+                spec_by_name.get(solution.phase_name, spec),
+                solution,
+                request=request,
+                centre=centre,
+            ),
+            "describe": item.describe(),
         }
-        for solution in report.solutions
+        for solution, item in ranked
     ]
     conclusive = bool(report.is_conclusive)
     notes: list[str] = []
@@ -411,6 +532,14 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
                 "Check the beam pick first — an error there biases every d-spacing — then the "
                 "camera constant, then whether every picked spot really is a reflection."
             )
+        )
+    if reordered:
+        notes.append(
+            "The accuracy score puts a different solution first than the solver ordering does. "
+            "The two ask different questions - the solver ranks by how many spots were indexed "
+            "and how tightly, the score weighs d-spacings, angles and coverage by the policy you "
+            "set - and a disagreement between them is a sign the pattern does not settle the "
+            "answer on its own."
         )
     if not conclusive:
         notes.append(
@@ -444,6 +573,17 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
                 Column("d_observed", "d measured", units="Å", numeric=True, digits=4),
                 Column("d_calculated", "d calculated", units="Å", numeric=True, digits=4),
                 Column(
+                    "d_deviation_percent",
+                    "Δd",
+                    units="%",
+                    numeric=True,
+                    digits=2,
+                    help_text=(
+                        "Measured minus calculated, as a percentage. The same sign on every spot "
+                        "is the signature of a wrong camera constant rather than a wrong indexing."
+                    ),
+                ),
+                Column(
                     "residual",
                     "Residual",
                     units="Å⁻¹",
@@ -470,6 +610,8 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             "unindexed_spots": [int(value) + 1 for value in best.unindexed_spot_indices],
             "seed_spots": [int(value) + 1 for value in best.seed_spot_indices],
             "alternatives": alternatives,
+            "score": best_score.to_json(),
+            "reordered_by_score": reordered,
             "conclusive": conclusive,
             "check": check,
             "centre": list(centre),
@@ -485,6 +627,11 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             "length_tolerance": float(request["length_tolerance"]),
             "angle_tolerance_deg": float(request["angle_tolerance_deg"]),
             "max_index": int(request["max_index"]),
+            "score_length_weight": float(request["score_length_weight"]),
+            "score_angle_weight": float(request["score_angle_weight"]),
+            "score_coverage_weight": float(request["score_coverage_weight"]),
+            "score_length_tolerance": float(request["score_length_tolerance"]),
+            "score_angle_tolerance_deg": float(request["score_angle_tolerance_deg"]),
             "expected_zone_axis": (
                 list(request["expected_zone_axis"]) if request.get("expected_zone_axis") else None
             ),
@@ -847,6 +994,205 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
             "not known, index a second pattern at a different tilt to fix it.",
         ),
         citations=(_CITATION_WILLIAMS,),
+    )
+    return result.to_json()
+
+
+@REGISTRY.operation(
+    "tem.fit_lattice",
+    title="Fit a lattice to the picks",
+    summary="Refine the beam centre from the spots, and show which picks do not belong.",
+    help_text=(
+        "A zone-axis pattern is a plane of the reciprocal lattice, so its spots lie on a "
+        "two-dimensional lattice. Imposing that — before any phase, camera constant or zone axis "
+        "enters — buys two things.\n\n"
+        "**The beam centre stops being a guess.** Picking the transmitted beam by eye is the "
+        "largest avoidable error in the whole workflow: it biases every d-spacing at once, and it "
+        "does so while leaving the pattern self-consistent, so the result is a plausible answer "
+        "for the wrong material rather than an obvious failure. But four or more spots give more "
+        "equations than unknowns, so the centre can be *solved for* instead of clicked.\n\n"
+        "**A mis-picked spot becomes visible.** The fitted lattice is drawn over the pattern; a "
+        "spot clicked one node out, or clicked on a dust particle, stops matching the grid. That "
+        "is a judgement anyone makes instantly from a picture, and slowly from residuals.\n\n"
+        "**This is geometry, not indexing.** A good fit says the picks are consistent with some "
+        "lattice, which is necessary for a correct indexing and nowhere near sufficient. It does "
+        "not know what phase this is and cannot tell you.\n\n"
+        "Two limits are worth knowing. A centre wrong by an exact lattice vector is undetectable "
+        "here — every spot is still an exact node — and what identifies the transmitted beam is "
+        "that it is the brightest thing on the plate. And a centre more than half a spacing out "
+        "cannot be refined without changing which node the origin is, so the fit is held there and "
+        "says so."
+    ),
+    parameters=(
+        ObjectParameter(
+            name="picks",
+            label="Picked spots",
+            help_text=(
+                "The transmitted beam and the reflections. The beam is the starting point for the "
+                "refinement, not the answer."
+            ),
+            editor="spot-picker",
+        ),
+        BooleanParameter(
+            name="refine_centre",
+            label="Refine the beam centre",
+            help_text=(
+                "Solve for the centre along with the lattice. Turn it off to hold a centre "
+                "established another way — a measured beam-stop position, for instance."
+            ),
+            default=True,
+        ),
+        NumberParameter(
+            name="inlier_fraction",
+            label="Pick tolerance",
+            help_text=(
+                "How close a click must land to a lattice node to count as that node, as a "
+                "fraction of the shortest separation between two picked spots. It stands in for "
+                "picking precision: 0.04 is a few pixels on a typical plate."
+            ),
+            default=0.04,
+            minimum=0.001,
+            maximum=0.5,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="node_limit",
+            label="Overlay extent",
+            help_text="Largest lattice index drawn in the overlay, in each direction.",
+            default=6,
+            minimum=1,
+            maximum=20,
+            advanced=True,
+        ),
+        NumberParameter(
+            name="frame_width",
+            label="Frame width",
+            help_text="Image width, so the overlay carries no nodes outside the picture.",
+            default=1024.0,
+            minimum=1.0,
+            required=False,
+            advanced=True,
+        ),
+        NumberParameter(
+            name="frame_height",
+            label="Frame height",
+            help_text="Image height, so the overlay carries no nodes outside the picture.",
+            default=1024.0,
+            minimum=1.0,
+            required=False,
+            advanced=True,
+        ),
+    ),
+    returns="One row per picked spot with its lattice node and residual; the overlay under `data`.",
+    panel="tem",
+    citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
+    tags=("TEM", "SAED", "lattice", "centre", "refine", "picks", "overlay"),
+)
+def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.diffraction.lattice_fit import fit_planar_lattice
+
+    centre, picks = _picks(request.get("picks"))
+    positions = np.asarray([[spot["x"], spot["y"]] for spot in picks], dtype=float)
+    try:
+        fit = fit_planar_lattice(
+            positions,
+            centre,
+            refine_centre=bool(request["refine_centre"]),
+            inlier_fraction=float(request["inlier_fraction"]),
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            str(error),
+            field="picks",
+            hint=(
+                "A lattice needs two directions. Pick at least one spot off the row you already "
+                "have, and check that the transmitted beam was marked first."
+            ),
+        ) from error
+
+    rows = [
+        {
+            "spot": spot.index + 1,
+            "node": f"({spot.lattice_indices[0]}, {spot.lattice_indices[1]})",
+            "x": float(spot.position[0]),
+            "y": float(spot.position[1]),
+            "predicted_x": float(spot.predicted[0]),
+            "predicted_y": float(spot.predicted[1]),
+            "residual": float(spot.residual),
+            "verdict": "on the lattice" if spot.inlier else "off the lattice",
+        }
+        for spot in fit.spots
+    ]
+    bounds = (
+        float(request["frame_width"]) if request.get("frame_width") else None,
+        float(request["frame_height"]) if request.get("frame_height") else None,
+    )
+    nodes = fit.node_positions(
+        max_index=int(request["node_limit"]),
+        bounds=(bounds[0], bounds[1]) if bounds[0] and bounds[1] else None,
+    )
+    short, long_ = fit.basis_lengths
+
+    result = AppResult(
+        title="Lattice fitted to the picks",
+        summary=(
+            f"The {len(fit.spots)} picked spots fit a lattice with sides of {short:.1f} and "
+            f"{long_:.1f} picking units at {fit.basis_angle_deg:.2f} degrees, explaining "
+            f"{fit.inlier_count} of them to an r.m.s. of {fit.rms_residual:.2f} units. "
+            + (
+                f"The transmitted beam refines to ({fit.centre[0]:.1f}, {fit.centre[1]:.1f}), "
+                f"{fit.centre_shift:.1f} units from where it was picked."
+                if fit.centre_shift > 0.05
+                else "The transmitted beam is already where the spots say it should be."
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("spot", "Spot", numeric=True),
+                Column(
+                    "node",
+                    "Lattice node",
+                    help_text="Which (m, n) node of the fitted lattice this pick was assigned to.",
+                ),
+                Column("x", "x", numeric=True, digits=1),
+                Column("y", "y", numeric=True, digits=1),
+                Column("predicted_x", "Node x", numeric=True, digits=1),
+                Column("predicted_y", "Node y", numeric=True, digits=1),
+                Column(
+                    "residual",
+                    "Residual",
+                    numeric=True,
+                    digits=2,
+                    help_text="Distance from the pick to its node, in picking units.",
+                ),
+                Column("verdict", "Verdict"),
+            ),
+            rows=tuple(rows),
+            caption="Every pick, and the lattice node it was assigned to.",
+        ),
+        data={
+            "fit": fit.to_json(),
+            "centre": [float(value) for value in fit.centre],
+            "supplied_centre": [float(value) for value in fit.supplied_centre],
+            "centre_shift": float(fit.centre_shift),
+            "nodes": [
+                {"x": float(row[0]), "y": float(row[1]), "m": int(row[2]), "n": int(row[3])}
+                for row in nodes
+            ],
+            "outliers": [spot.index + 1 for spot in fit.outliers],
+            "describe": fit.describe(),
+        },
+        inputs={
+            "picks": {"centre": list(centre), "spots": picks},
+            "refine_centre": bool(request["refine_centre"]),
+            "inlier_fraction": float(request["inlier_fraction"]),
+        },
+        notes=(
+            *fit.notes,
+            "This is geometry, not indexing: a lattice that fits says the picks are mutually "
+            "consistent, which is necessary for a correct indexing and far from sufficient.",
+        ),
+        citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
     )
     return result.to_json()
 
@@ -1435,6 +1781,97 @@ def _member_label(solution: Any, requested: Sequence[int], spec: Any) -> tuple[s
         family_label(tuple(requested_indices), spec=spec, family="direction"),
         requested_indices,
     )
+
+
+def _picking_scale(request: Mapping[str, Any]) -> float:
+    """Picking units per inverse angstrom, for the calibration in ``request``.
+
+    The inverse of what :meth:`PatternCalibration.to_reciprocal_angstrom` does.
+    Kept as one function because a calculated pattern drawn at a different scale
+    from the measured one it is superimposed on would look like a disagreement
+    the crystallography never had.
+    """
+
+    units = str(request["units"])
+    if units == "reciprocal_angstrom":
+        return 1.0
+    camera_constant = float(request.get("camera_constant_mm_angstrom") or 0.0)
+    if camera_constant <= 0.0:
+        return 0.0
+    if units == "px":
+        pixel_size = float(request.get("pixel_size_mm") or 0.0)
+        if pixel_size <= 0.0:
+            return 0.0
+        return camera_constant / pixel_size
+    return camera_constant
+
+
+def _calculated_overlay(
+    spec: Any,
+    solution: Any,
+    *,
+    request: Mapping[str, Any],
+    centre: tuple[float, float],
+    limit: int = 240,
+) -> list[dict[str, Any]]:
+    """Where this solution says every reflection of its zone should appear.
+
+    Purpose
+    -------
+    Accepting an indexing is a judgement, and the honest way to make it is to
+    look: draw the pattern the candidate *predicts* on top of the pattern that
+    was *measured* and see whether the two coincide. A residual column can hide a
+    systematic error that this makes obvious at a glance — a calculated pattern
+    uniformly too large is a camera constant, one rotated is a roll, one with
+    extra rows is the wrong phase.
+
+    Every reflection of the zone is returned, not only the ones a spot was picked
+    for. The unmatched predictions are the informative part: they are where a
+    user should look for the spots they have not picked yet, and their absence
+    from the plate is evidence against the candidate.
+
+    Notes
+    -----
+    Positions come from the solution's own orientation, through the same
+    projection the indexer used, and are converted to picking coordinates by the
+    inverse of the supplied calibration — so the overlay is in the coordinates
+    the user clicks in and needs no separate scale.
+    """
+
+    from pytex.diffraction.solving import _allowed_reflections
+
+    scale = _picking_scale(request)
+    if scale <= 0.0:
+        return []
+    phase = spec.to_phase()
+    hkl, g_crystal = _allowed_reflections(phase, int(request["max_index"]))
+    rotation = np.asarray(solution.orientation.as_matrix(), dtype=float)
+    projected = g_crystal @ rotation.T
+    in_plane = np.linalg.norm(projected[:, :2], axis=1)
+    # The zone tolerance is relative to the pattern's own reach, so a plate
+    # recorded at a long camera length does not admit reflections a short one
+    # would reject.
+    reach = float(in_plane.max()) if in_plane.size else 0.0
+    on_zone = np.abs(projected[:, 2]) <= max(1e-3 * reach, 1e-9)
+    visible = on_zone & (in_plane > 0.0)
+    order = np.argsort(np.where(visible, in_plane, np.inf))[: int(limit)]
+    overlay: list[dict[str, Any]] = []
+    for index in order:
+        if not bool(visible[index]):
+            continue
+        indices = tuple(int(value) for value in hkl[index])
+        magnitude = float(in_plane[index])
+        overlay.append(
+            {
+                "hkl": list(indices),
+                "label": plane_label(indices, spec=spec),
+                "x": float(centre[0] + projected[index, 0] * scale),
+                "y": float(centre[1] + projected[index, 1] * scale),
+                "g": magnitude,
+                "d": 1.0 / magnitude,
+            }
+        )
+    return overlay
 
 
 def _symmetry_angle_deg(phase: Any, first: Any, second: Any) -> float:
