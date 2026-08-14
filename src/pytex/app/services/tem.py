@@ -44,9 +44,19 @@ from pytex.app.registry import (
     ObjectParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
-from pytex.app.services.calculator import direction_label, phase_parameter, plane_label
+from pytex.app.services.calculator import (
+    direction_label,
+    family_label,
+    phase_parameter,
+    plane_label,
+)
+from pytex.app.tem_gallery import GALLERY, gallery_entry, gallery_options
 
 __all__ = ["measured_pattern_from_picks"]
+
+_CITATION_HIRSCH = (
+    "Hirsch et al., Electron Microscopy of Thin Crystals (1965), appendix on zone-axis patterns."
+)
 
 _CITATION_WILLIAMS = "Williams & Carter, Transmission Electron Microscopy, 2nd ed., chapters 16-18."
 _CITATION_EDINGTON = "Edington, Practical Electron Microscopy in Materials Science (1975)."
@@ -797,6 +807,565 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+@REGISTRY.operation(
+    "tem.gallery_pattern",
+    title="Open a practice pattern",
+    summary="A simulated SAED plate with a known answer, ready to pick and index.",
+    help_text=(
+        "Loads one of three simulated diffraction patterns onto the picking canvas, so the whole "
+        "indexing workflow can be run without a micrograph — and, because the pattern was built "
+        "from a known zone axis, checked afterwards against the answer.\n\n"
+        "**These are calculations, not pictures.** Every spot sits exactly where the lattice, the "
+        "zone axis and the camera constant put it: radial position is the camera constant divided "
+        "by the d-spacing, which is the one identity a real pattern is calibrated by. Relative "
+        "brightness is kinematic and therefore indicative; double diffraction is not modelled, so "
+        "a reflection that a real plate shows through double diffraction is absent here.\n\n"
+        "**The realism is deliberate.** The beam is not always at the centre of the frame, the "
+        "pattern is rolled about the beam so it does not line up with the detector axes, and each "
+        "spot carries a small centroiding scatter. A workflow that only works on an idealised "
+        "pattern has not been tested.\n\n"
+        "**The calibration is computed, not typed.** The camera constant is the camera length "
+        "times the relativistic electron wavelength at the stated accelerating voltage — change "
+        "either and the pattern rescales, which is exactly what happens at the microscope."
+    ),
+    parameters=(
+        ChoiceParameter(
+            name="pattern",
+            label="Practice pattern",
+            help_text="Which of the gallery plates to open.",
+            options=gallery_options(),
+            default=GALLERY[0].identifier,
+        ),
+        NumberParameter(
+            name="camera_length_mm",
+            label="Camera length",
+            help_text=(
+                "The projected camera length L. With the accelerating voltage it fixes the camera "
+                "constant L·λ, and therefore how much of reciprocal space fits on the plate: a "
+                "longer camera spreads the pattern out and loses the outer reflections."
+            ),
+            units="mm",
+            default=400.0,
+            minimum=50.0,
+            maximum=4000.0,
+            group="Instrument",
+        ),
+        NumberParameter(
+            name="beam_energy_kev",
+            label="Accelerating voltage",
+            help_text=(
+                "Sets the relativistic electron wavelength. A higher voltage shortens λ and so "
+                "shrinks the pattern at fixed camera length."
+            ),
+            units="kV",
+            default=200.0,
+            minimum=20.0,
+            maximum=1000.0,
+            group="Instrument",
+        ),
+        NumberParameter(
+            name="extra_rotation_deg",
+            label="Extra roll about the beam",
+            help_text=(
+                "Added to the entry's own roll. Turn it to get a fresh exercise from the same "
+                "pattern: the indexed answer must not change, because one pattern cannot fix the "
+                "rotation about the beam in the first place."
+            ),
+            units="°",
+            default=0.0,
+            group="Instrument",
+        ),
+        BooleanParameter(
+            name="realistic_scatter",
+            label="Include centroiding scatter",
+            help_text=(
+                "Displace each spot by a fraction of a pixel, as a measurement of a real plate "
+                "would be. Switch it off for an exactly constructed pattern, where indexing "
+                "residuals fall to machine precision and stop being informative."
+            ),
+            default=True,
+            advanced=True,
+        ),
+    ),
+    returns="One row per simulated spot; the pattern, the answer and the calibration under `data`.",
+    panel="tem",
+    citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
+    tags=("TEM", "SAED", "gallery", "practice", "simulation", "pattern", "teaching"),
+)
+def _gallery_pattern(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.lattice import ZoneAxis
+    from pytex.diffraction.kinematic import electron_wavelength_angstrom
+    from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+    entry = gallery_entry(str(request["pattern"]))
+    spec = entry.phase_spec()
+    phase = spec.to_phase()
+    camera_length = float(request["camera_length_mm"])
+    beam_energy = float(request["beam_energy_kev"])
+    camera_constant = float(
+        camera_length * electron_wavelength_angstrom(beam_energy)
+    )
+    roll = float(entry.in_plane_rotation_deg) + float(request["extra_rotation_deg"])
+    image = synthesize_saed_image(
+        phase,
+        ZoneAxis(indices=np.asarray(entry.zone_axis, dtype=int), phase=phase),
+        camera_constant_mm_angstrom=camera_constant,
+        raster=DetectorRaster(
+            width_px=entry.width_px,
+            height_px=entry.height_px,
+            pixel_size_mm=entry.pixel_size_mm,
+            centre_px=entry.centre_px,
+        ),
+        in_plane_rotation_deg=roll,
+        position_jitter_px=entry.jitter_px if request["realistic_scatter"] else 0.0,
+        rng_seed=entry.rng_seed,
+    )
+    if not image.spots:
+        raise InvalidInputError(
+            "No reflection of this zone falls on the detector at that camera length.",
+            field="camera_length_mm",
+            hint=(
+                f"At {camera_length:g} mm the innermost reflection is already off the plate. "
+                "Shorten the camera length until the pattern fits."
+            ),
+        )
+
+    zone_text = direction_label(tuple(entry.zone_axis), spec=spec)
+    rows = [
+        {
+            "spot": index + 1,
+            "hkl": plane_label(
+                tuple(int(value) for value in spot.miller_indices), spec=spec
+            ),
+            "d": float(spot.d_spacing_angstrom),
+            "g": float(spot.g_inv_angstrom),
+            "intensity": float(spot.relative_intensity),
+            "x": float(spot.position_px[0]),
+            "y": float(spot.position_px[1]),
+        }
+        for index, spot in enumerate(image.spots)
+    ]
+
+    payload = image.to_json()
+    # The browser draws from the same numbers the table shows, and labels a
+    # hexagonal reflection in four indices as the literature does; the library
+    # deals only in the three-index basis it computes with.
+    for spot_payload, row in zip(payload["spots"], rows, strict=True):
+        spot_payload["label"] = row["hkl"]
+
+    suggested = image.independent_seed_spots(6)
+    targets = [
+        {
+            **target.to_json(),
+            "label": direction_label(tuple(target.indices), spec=spec),
+        }
+        for target in entry.targets
+    ]
+
+    result = AppResult(
+        title=f"{entry.title}",
+        summary=(
+            f"A simulated {spec.name} pattern with the beam along {zone_text}, recorded at "
+            f"{beam_energy:g} kV with a {camera_length:g} mm camera length — a camera constant of "
+            f"{camera_constant:.4f} mm·Å. {len(rows)} reflections fall on the "
+            f"{entry.width_px}×{entry.height_px} detector. Click the transmitted beam, then the "
+            "spots, and index it; the answer is known, so the panel can tell you whether you got "
+            "it right."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("spot", "Spot", numeric=True),
+                Column("hkl", "Index"),
+                Column("d", "d", units="Å", numeric=True, digits=4),
+                Column("g", "|g|", units="Å⁻¹", numeric=True, digits=4),
+                Column(
+                    "intensity",
+                    "Relative intensity",
+                    numeric=True,
+                    digits=3,
+                    help_text=(
+                        "Kinematic, normalized to the strongest spot. Indicative rather than "
+                        "quantitative — a real plate redistributes intensity dynamically."
+                    ),
+                ),
+                Column("x", "x", units="px", numeric=True, digits=1),
+                Column("y", "y", units="px", numeric=True, digits=1),
+            ),
+            rows=tuple(rows),
+            caption=f"Simulated reflections of {spec.name} down {zone_text}.",
+        ),
+        data={
+            "entry": {
+                "id": entry.identifier,
+                "title": entry.title,
+                "summary": entry.summary,
+                "teaches": entry.teaches,
+                "phase_key": entry.phase_key,
+            },
+            "pattern": payload,
+            "zone_axis_label": zone_text,
+            "phase_name": spec.name,
+            # Everything the solver needs, so a user never has to transcribe a
+            # calibration from this panel into the one beside it.
+            "calibration": {
+                "units": "px",
+                "camera_constant_mm_angstrom": camera_constant,
+                "pixel_size_mm": float(entry.pixel_size_mm),
+                "phase": spec.to_json(),
+            },
+            "suggested_picks": {
+                "centre": [float(value) for value in image.centre_px],
+                "spots": [
+                    {"x": float(spot.position_px[0]), "y": float(spot.position_px[1])}
+                    for spot in suggested
+                ],
+            },
+            "targets": targets,
+            "describe": image.describe(),
+        },
+        inputs={
+            "pattern": entry.identifier,
+            "camera_length_mm": camera_length,
+            "beam_energy_kev": beam_energy,
+            "extra_rotation_deg": float(request["extra_rotation_deg"]),
+            "realistic_scatter": bool(request["realistic_scatter"]),
+        },
+        notes=(
+            "Spot positions are exact for this lattice, zone axis and camera constant. Relative "
+            "intensities are kinematic, and double diffraction is not modelled — so a forbidden "
+            "reflection that a real plate shows will be missing here.",
+        ),
+        citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
+    )
+    return result.to_json()
+
+
+@REGISTRY.operation(
+    "tem.zone_axis_atlas",
+    title="Find the zone axes worth going to",
+    summary="Nearby axes of this phase: pattern, angle, and whether the holder can get there.",
+    help_text=(
+        "The other half of tilt planning. Planning a tilt answers *can I reach the axis I named*; "
+        "this answers *which axis should I name* — which is the question actually asked at the "
+        "column, with the beam already down something and the specimen still uncharacterised.\n\n"
+        "Each row is one symmetry-distinct zone-axis family, with four things that decide the "
+        "choice. **How far** it is, measured to the nearest member of the family rather than to "
+        "the one you typed, because they are all the same pattern. **How many members** it has: a "
+        "family of twelve offers twelve chances that one of them is inside the holder's range. "
+        "**How rich** its pattern is, as the number of reflections inside a fixed cut-off — a "
+        "trip to a two-spot zone buys very little. **What it looks like**, as the n-fold symmetry "
+        "you will recognise on the screen when you arrive, which is the first confirmation that "
+        "you arrived where you meant to.\n\n"
+        "Reachability is computed by the same planner the tilt panel uses, against the same holder "
+        "envelope and rotation about the beam, so a row marked reachable here is reachable there."
+    ),
+    parameters=(
+        phase_parameter(help_text="The phase whose zone axes to enumerate."),
+        IndicesParameter(
+            name="current_zone_axis",
+            label="Current zone axis [uvw]",
+            help_text="The axis on the beam now. Angles in the table are measured from it.",
+            default=(0, 0, 1),
+        ),
+        NumberParameter(
+            name="max_angle_deg",
+            label="Search within",
+            help_text=(
+                "Ignore families farther than this from the current axis. 60° reaches every "
+                "low-index cubic axis — ⟨110⟩ at 45° and ⟨111⟩ at 54.74° — while staying short "
+                "of the far side of the stereographic triangle."
+            ),
+            units="°",
+            default=60.0,
+            minimum=1.0,
+            maximum=90.0,
+        ),
+        NumberParameter(
+            name="alpha_deg",
+            label="Current alpha",
+            help_text="The holder's primary tilt, as the stage reads now.",
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beta_deg",
+            label="Current beta",
+            help_text="The holder's secondary tilt, as the stage reads now.",
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="alpha_limit_deg",
+            label="Alpha limit",
+            help_text="The holder's alpha range, plus and minus.",
+            units="°",
+            default=30.0,
+            minimum=1.0,
+            maximum=90.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beta_limit_deg",
+            label="Beta limit",
+            help_text="The holder's beta range. Usually what makes a target unreachable.",
+            units="°",
+            default=20.0,
+            minimum=1.0,
+            maximum=90.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beam_rotation_deg",
+            label="Rotation about the beam",
+            help_text=(
+                "How the crystal is rolled about the beam. It does not change which axes are "
+                "near, but it does change how the move divides between alpha and beta, and "
+                "therefore which rows come back reachable."
+            ),
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Index limit",
+            help_text=(
+                "Largest |u|, |v| or |w| considered. 2 gives the axes a standard stereogram "
+                "labels — ⟨100⟩, ⟨110⟩, ⟨111⟩, ⟨210⟩, ⟨211⟩, ⟨221⟩ — which is what a session "
+                "normally uses. Raising it admits axes such as ⟨320⟩ and ⟨331⟩: nearer, but with "
+                "sparse patterns that are harder to recognise and buy less information."
+            ),
+            default=2,
+            minimum=1,
+            maximum=5,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="limit",
+            label="Rows",
+            help_text="How many families to return, after ranking by distance.",
+            default=12,
+            minimum=1,
+            maximum=40,
+            advanced=True,
+        ),
+    ),
+    returns="One row per zone-axis family, nearest first; the full atlas under `data`.",
+    panel="tem",
+    citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON, _CITATION_HIRSCH),
+    tags=("TEM", "zone axis", "atlas", "navigation", "tilt", "stage", "planning"),
+)
+def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.lattice import CrystalDirection, ZoneAxis
+    from pytex.tem.atlas import zone_axis_atlas
+    from pytex.tem.navigation import plan_tilt_to_zone_axis
+    from pytex.tem.reconstruction import CurrentState
+    from pytex.tem.stage import DoubleTiltStage, RectangularEnvelope, StagePosition
+
+    spec, phase = phase_from_request(request["phase"])
+    current_indices = tuple(request["current_zone_axis"])
+    current_axis = ZoneAxis(indices=np.asarray(current_indices, dtype=int), phase=phase)
+    limit = int(request["limit"])
+
+    atlas = zone_axis_atlas(
+        phase,
+        current_zone_axis=current_axis,
+        max_index=int(request["max_index"]),
+        max_angle_deg=float(request["max_angle_deg"]),
+        limit=limit,
+    )
+
+    alpha_limit = float(request["alpha_limit_deg"])
+    beta_limit = float(request["beta_limit_deg"])
+    stage = DoubleTiltStage(
+        envelope=RectangularEnvelope(
+            alpha_min_deg=-alpha_limit,
+            alpha_max_deg=alpha_limit,
+            beta_min_deg=-beta_limit,
+            beta_max_deg=beta_limit,
+        )
+    )
+    position = StagePosition(
+        alpha_deg=float(request["alpha_deg"]), beta_deg=float(request["beta_deg"])
+    )
+    state = CurrentState.from_orientation(
+        _orientation_with_axis_on_beam(
+            phase, current_axis, position, roll_deg=float(request["beam_rotation_deg"])
+        ),
+        position,
+        current_zone_axis=current_axis,
+    )
+
+    rows: list[dict[str, Any]] = []
+    reachable_count = 0
+    for entry in atlas.entries:
+        indices = tuple(int(value) for value in entry.indices)
+        row: dict[str, Any] = {
+            "family": family_label(indices, spec=spec, family="direction"),
+            "target": direction_label(indices, spec=spec),
+            "angle_deg": float(entry.angle_from_current_deg),
+            "family_size": int(entry.family_size),
+            "reflections": int(entry.reflection_count),
+            "symmetry": f"{entry.rotational_order}-fold",
+            "verdict": "current axis",
+            "reachable": False,
+            "delta_alpha_deg": 0.0,
+            "delta_beta_deg": 0.0,
+            "travel_deg": 0.0,
+            "margin_deg": float("nan"),
+        }
+        # A thousandth of a degree, not machine epsilon: the angle is an arccos
+        # near 1, where the square-root behaviour turns 1e-16 of cosine error
+        # into ~1e-6 of a degree — enough for the axis already on the beam to
+        # miss a tighter test and be reported as somewhere worth tilting to.
+        if entry.angle_from_current_deg > 1e-3:
+            report = plan_tilt_to_zone_axis(
+                state,
+                CrystalDirection(coordinates=np.asarray(indices, dtype=float), phase=phase),
+                stage,
+            )
+            solution = (
+                report.solutions[0] if report.solutions else report.nearest_approach
+            )
+            if solution is None:
+                row["verdict"] = "no solution"
+            else:
+                member = tuple(
+                    int(value)
+                    for value in np.asarray(
+                        solution.orbit_member_indices, dtype=int
+                    ).reshape(-1)
+                )
+                row["target"] = direction_label(member, spec=spec)
+                # The same four verdicts the tilt panel reports, so a row here
+                # and the plan it produces there cannot describe the same move
+                # in two different vocabularies.
+                row["verdict"] = str(solution.verdict)
+                row["delta_alpha_deg"] = float(solution.delta_alpha_deg)
+                row["delta_beta_deg"] = float(solution.delta_beta_deg)
+                row["travel_deg"] = float(solution.travel_deg)
+                row["margin_deg"] = float(solution.envelope_margin_deg)
+                row["indices"] = list(member)
+                row["reachable"] = bool(report.solutions)
+                if report.solutions:
+                    reachable_count += 1
+        row.setdefault("indices", list(indices))
+        rows.append(row)
+
+    if not rows:
+        raise InvalidInputError(
+            "No zone-axis family of this phase lies within the search angle.",
+            field="max_angle_deg",
+            hint="Widen the search angle, or raise the index limit to admit higher-index axes.",
+        )
+
+    current_text = direction_label(current_indices, spec=spec)
+    candidates = [row for row in rows if row["verdict"] != "current axis"]
+    nearest_reachable = next((row for row in candidates if row["reachable"]), None)
+    result = AppResult(
+        title=f"Zone axes near {current_text}",
+        summary=(
+            f"{len(candidates)} zone-axis families of {spec.name} lie within "
+            f"{float(request['max_angle_deg']):g}° of {current_text}, of which {reachable_count} "
+            f"are reachable within ±{alpha_limit:g}° alpha and ±{beta_limit:g}° beta. "
+            + (
+                f"The nearest reachable one is {nearest_reachable['target']} at "
+                f"{nearest_reachable['angle_deg']:.2f}°, showing "
+                f"{nearest_reachable['reflections']} reflections with "
+                f"{nearest_reachable['symmetry']} symmetry."
+                if nearest_reachable is not None
+                else (
+                    "None of them is reachable in one move from this position: tilt to the "
+                    "closest partial approach, re-index there, and plan the rest from the new "
+                    "orientation."
+                )
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("family", "Family"),
+                Column(
+                    "target",
+                    "Nearest member",
+                    help_text="The member of the family the holder would actually go to.",
+                ),
+                Column("angle_deg", "Angle", units="°", numeric=True, digits=2),
+                Column(
+                    "family_size",
+                    "Members",
+                    numeric=True,
+                    help_text=(
+                        "Symmetry-equivalent axes giving the same pattern. More members means "
+                        "more chances one of them is inside the holder's range."
+                    ),
+                ),
+                Column(
+                    "reflections",
+                    "Reflections",
+                    numeric=True,
+                    help_text=(
+                        "Kinematic reflections inside 1.5 Å⁻¹. How much the pattern has to say."
+                    ),
+                ),
+                Column(
+                    "symmetry",
+                    "Pattern",
+                    help_text="Apparent rotational symmetry — what you will recognise on arrival.",
+                ),
+                Column("verdict", "Reachable"),
+                Column("delta_alpha_deg", "Δα", units="°", numeric=True, digits=2),
+                Column("delta_beta_deg", "Δβ", units="°", numeric=True, digits=2),
+                Column("travel_deg", "Crystal rotation", units="°", numeric=True, digits=2),
+                Column(
+                    "margin_deg",
+                    "Envelope margin",
+                    units="°",
+                    numeric=True,
+                    digits=2,
+                    help_text="Tilt range left over. Negative means out of reach.",
+                ),
+            ),
+            rows=tuple(rows),
+            caption=f"Zone-axis families of {spec.name} within reach of {current_text}.",
+        ),
+        data={
+            "current_zone_axis": list(current_indices),
+            "current_zone_axis_label": current_text,
+            "entries": [entry.to_json() for entry in atlas.entries],
+            "reachable_count": reachable_count,
+            "envelope": {"alpha_limit_deg": alpha_limit, "beta_limit_deg": beta_limit},
+            "start": {
+                "alpha_deg": float(request["alpha_deg"]),
+                "beta_deg": float(request["beta_deg"]),
+            },
+            "describe": atlas.describe(),
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "current_zone_axis": list(current_indices),
+            "max_angle_deg": float(request["max_angle_deg"]),
+            "alpha_deg": float(request["alpha_deg"]),
+            "beta_deg": float(request["beta_deg"]),
+            "alpha_limit_deg": alpha_limit,
+            "beta_limit_deg": beta_limit,
+            "beam_rotation_deg": float(request["beam_rotation_deg"]),
+            "max_index": int(request["max_index"]),
+            "limit": limit,
+        },
+        notes=(
+            "Reflection counts are kinematic and exclude double diffraction, so a real plate of a "
+            "diamond-structure or hcp phase will show a few more spots than the count states.",
+            "Angles between zone axes are fixed by the lattice and are independent of the holder, "
+            "the rotation about the beam, and the calibration. Only the reachability columns "
+            "depend on those.",
+        ),
+        citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
+    )
+    return result.to_json()
+
+
 def _orientation_with_axis_on_beam(
     phase: Any, axis: Any, position: Any, *, roll_deg: float = 0.0
 ) -> Any:
@@ -915,6 +1484,78 @@ def _rotation_between(source: np.ndarray, target: np.ndarray) -> np.ndarray:
 
 REGISTRY.add_examples(
     (
+        ExampleScenario(
+            id="tem.example.gallery_fcc_001",
+            title="Practice: index an fcc [001] pattern",
+            panel="tem",
+            summary="A simulated aluminium plate down [001], with the answer known.",
+            teaches=(
+                "Start here. The four innermost spots are 200-type, at 90° to each other and all "
+                "the same length; the next four are 220-type, at 45° and longer by √2. That "
+                "ratio-and-angle signature identifies a cubic ⟨001⟩ zone without using the camera "
+                "constant at all — the calibration only enters when you want the lattice "
+                "parameter, which is exactly why a wrong camera constant produces a "
+                "self-consistent pattern of the wrong material."
+            ),
+            operation="tem.gallery_pattern",
+            request={"pattern": "fcc_al_001"},
+        ),
+        ExampleScenario(
+            id="tem.example.gallery_bcc_110",
+            title="Practice: the bcc [110] rectangle",
+            panel="tem",
+            summary="A simulated ferrite plate down [110], off-centre and rolled.",
+            teaches=(
+                "The two shortest vectors here are perpendicular but unequal, in the ratio √2 for "
+                "any bcc metal — so the rectangle is a lattice-independent check on your beam "
+                "centre and your calibration. This is the pattern most often misread as a cubic "
+                "⟨001⟩ square, which then indexes to a plausible and entirely wrong lattice "
+                "parameter. Note also that the beam is not at the middle of the frame, as it "
+                "generally is not on a real plate."
+            ),
+            operation="tem.gallery_pattern",
+            request={"pattern": "bcc_fe_110"},
+        ),
+        ExampleScenario(
+            id="tem.example.gallery_hcp_prism",
+            title="Practice: measuring c/a from one hcp pattern",
+            panel="tem",
+            summary="A simulated zirconium plate down [2̄110], the prism zone.",
+            teaches=(
+                "The rectangle's aspect ratio here is √3·a/c — 1.088 for zirconium, 1.091 for "
+                "titanium, 1.067 for magnesium — so this single pattern measures the axial ratio "
+                "and separates the hcp metals from one another with no calibration whatsoever, "
+                "because a ratio of two lengths on the same plate does not care what the camera "
+                "constant is. Note that 0001 is absent while 0002 is present: the hcp basis "
+                "extinguishes odd l on the 000l row, so a 0001 spot on a real plate is double "
+                "diffraction rather than a lattice reflection."
+            ),
+            operation="tem.gallery_pattern",
+            request={"pattern": "hcp_zr_2-1-10"},
+        ),
+        ExampleScenario(
+            id="tem.example.atlas_from_bcc_110",
+            title="Where can I go from bcc [110]?",
+            panel="tem",
+            summary="Every zone axis within 60° of ⟨110⟩ in ferrite, ranked and checked.",
+            teaches=(
+                "The answer is not the axis with the smallest angle. ⟨210⟩ is nearest at 18.43° "
+                "but shows twelve reflections; ⟨111⟩ is twice as far at 35.26° and shows "
+                "thirty-six, with six-fold symmetry that is unmistakable the moment it arrives. "
+                "The cost of a tilt is a few minutes and the risk of losing the grain; the value "
+                "is the information the new pattern carries, and this table is what lets you "
+                "weigh one against the other before touching the controls. Raise the index limit "
+                "to 3 and nearer families appear — ⟨320⟩ at 11.31° with eight reflections — which "
+                "is the trade-off made explicit."
+            ),
+            operation="tem.zone_axis_atlas",
+            request={
+                "phase": {"builtin": "fe_bcc"},
+                "current_zone_axis": [1, 1, 0],
+                "alpha_limit_deg": 30.0,
+                "beta_limit_deg": 20.0,
+            },
+        ),
         ExampleScenario(
             id="tem.example.tilt_001_to_011",
             title="A 45 degree move a standard holder cannot make",

@@ -56,7 +56,7 @@ from pytex.core.notation import format_miller_indices
 from pytex.core.orientation import Rotation
 from pytex.core.point_groups import PointGroup, all_point_group_symbols
 
-__all__ = ["direction_label", "phase_parameter", "plane_label"]
+__all__ = ["direction_label", "family_label", "phase_parameter", "plane_label"]
 
 _CITATION_ITA = "International Tables for Crystallography, Volume A (Space-Group Symmetry), 6th ed."
 _CITATION_CULLITY = "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Appendix 3."
@@ -148,7 +148,14 @@ def direction_label(indices: Sequence[int], *, spec: PhaseSpec, style: str = "pl
     return format_miller_indices(values, family="direction", style=style, scope="specific")
 
 
-def _family_label(indices: Sequence[int], *, spec: PhaseSpec, family: str) -> str:
+def family_label(indices: Sequence[int], *, spec: PhaseSpec, family: str) -> str:
+    """Render one symmetry family in the notation natural to its phase.
+
+    ``family`` is ``"plane"`` for ``{hkl}`` or ``"direction"`` for
+    ``<uvw>``. Hexagonal and trigonal phases get four-index labels, matching
+    :func:`plane_label` and :func:`direction_label` for the specific forms.
+    """
+
     from pytex.core.miller import direction_uvw_to_uvtw_array, plane_hkl_to_hkil_array
 
     values = tuple(int(value) for value in indices)
@@ -995,7 +1002,7 @@ def _symmetry_family(request: dict[str, Any]) -> dict[str, Any]:
     )
     multiplicity = len(rows)
     group = PointGroup.from_symbol(spec.point_group)
-    label = _family_label(indices, spec=spec, family=family)
+    label = family_label(indices, spec=spec, family=family)
     stabilizer = int(group.order) // max(multiplicity, 1)
     extras: dict[str, Any] = {}
     if family == "plane":
@@ -1249,7 +1256,7 @@ def _d_spacings(request: dict[str, Any]) -> dict[str, Any]:
         row = tuple(int(value) for value in indices)
         allowed = bool(condition.is_allowed(row)) if condition is not None else True
         seen[family_key] = {
-            "family": _family_label(family_key, spec=spec, family="plane"),
+            "family": family_label(family_key, spec=spec, family="plane"),
             "h": family_key[0],
             "k": family_key[1],
             "l": family_key[2],

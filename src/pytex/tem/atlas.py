@@ -482,7 +482,11 @@ def zone_axis_atlas(
             best = int(np.argmax(np.clip(cosines, -1.0, 1.0)))
             angle = float(math.degrees(math.acos(float(np.clip(cosines[best], -1.0, 1.0)))))
             nearest = np.asarray(orbit[best], dtype=np.int64)
-            if max_angle_deg is not None and angle > float(max_angle_deg):
+            # The tolerance is not cosmetic. ⟨110⟩ is at exactly 45° from
+            # ⟨001⟩, and computing that through a basis product lands a few
+            # ulps either side of it, so a bare comparison drops the single
+            # most-wanted target from a 45° search about half the time.
+            if max_angle_deg is not None and angle > float(max_angle_deg) + 1e-9:
                 continue
 
         axis_cartesian = direct @ representative.astype(float)

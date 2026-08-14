@@ -41,7 +41,7 @@ gallery entry.
 | --- | --- | --- | --- |
 | 1 | `pytex.tem.synthetic`: detector-pixel synthetic SAED patterns, with tests | done | (this commit) |
 | 2 | `pytex.tem.atlas`: symmetry-reduced zone-axis atlas with angles from a current axis | done | (this commit) |
-| 3 | App: gallery catalogue, `tem.gallery_pattern`, `tem.zone_axis_atlas`, calibration helper | pending | |
+| 3 | App: gallery catalogue, `tem.gallery_pattern`, `tem.zone_axis_atlas`, calibration helper | done | (this commit) |
 | 4 | Frontend: gallery, synthetic rendering, auto-pick, answer check, atlas navigation | pending | |
 | 5 | Docs: workflow page, theory cross-links, user guide, worked examples | pending | |
 | 6 | Human-style browser + desktop pass, defect fixes, closeout | pending | |
@@ -74,8 +74,43 @@ gallery entry.
   families, not index triples.
 - `ruff check .`, `mypy src` (135 files) and the new test module are green.
 
-**Exact next action.** Implement increment 3: the curated gallery catalogue and the two new
-operations in `pytex.app.services.tem`.
+### Increment 3 result
+
+- `pytex.app.tem_gallery` holds the three curated plates: aluminium fcc [001], ferrite bcc [110],
+  and zirconium hcp [2̄110]. Each carries the lesson it teaches, three suggested next axes with
+  reasons, and its own instrument setting — 200 kV, 400 mm camera length — from which the camera
+  constant is *computed* as `L·λ`, never typed, so the field a user reads and the geometry the
+  pattern used cannot drift apart.
+- `tem.gallery_pattern` returns the pattern, the answer, the calibration and a set of suggested
+  picks in one payload, so the browser never has to transcribe a calibration between panels.
+- `tem.zone_axis_atlas` answers the question the panel could not: not "can I reach the axis I
+  typed" but "which axis should I name". Reachability is computed by the same planner
+  `tem.plan_tilt` uses, against the same envelope and roll, and a test pins the two to name the
+  same destination and the same Δα.
+- `_family_label` in the calculator service was promoted to a public `family_label`, since two
+  services now need ⟨uvw⟩ and {hkl} rendering and reaching into a private name is how two
+  renderings of one convention start.
+- 23 new app tests. The important one is the end-to-end round trip: every gallery entry is opened,
+  its suggested picks are handed to the real `tem.solve_pattern` with the calibration it reported,
+  and the indexed axis must be the one the entry was built from.
+
+**Three defects found and fixed while driving the new surfaces.**
+
+1. **⟨110⟩ vanished from a 45° search.** The angle is computed as an arccos through a basis
+   product, which lands a few ulps either side of exactly 45°, so a bare `>` comparison dropped
+   the single most-wanted target about half the time. The filter now carries a tolerance.
+2. **The axis already on the beam was offered as somewhere to tilt to.** The same arccos is
+   square-root-behaved near 1, turning 1e-16 of cosine error into ~1e-6 of a degree — enough to
+   pass a `> 1e-6` test. For ferrite [110] the summary read "the nearest reachable one is [110] at
+   0.00°". The threshold is now a thousandth of a degree, which no distinct family can be inside.
+3. **The default index limit buried the useful axes.** At `max_index = 3` a dozen high-index
+   families with six-spot patterns crowded ⟨111⟩ — the six-fold axis anyone would actually want —
+   off the end of a twelve-row table. The default is now 2, which is exactly the set a standard
+   stereogram labels, and the help text explains what raising it admits and what it costs.
+
+**Exact next action.** Increment 4: the TEM panel frontend — gallery cards, synthetic pattern
+rendering on the picking canvas, auto-pick, the answer check, and the atlas as a navigation
+surface whose rows set the tilt target.
 
 ## Workbench Visual Modernization And GUI Completeness — COMPLETE (2026-08-14)
 
