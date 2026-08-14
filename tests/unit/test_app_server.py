@@ -566,6 +566,36 @@ class TestFrontendIsSelfContained:
         assert "appearance.fill === 'outline'" in panel
         assert "dashed: spot.double_diffraction" in panel
 
+    def test_crystal_object_properties_redraw_geometry_without_recomputing_it(self) -> None:
+        """Atoms and planes are view properties; changing them must not call Python again."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "crystal.js").read_text(encoding="utf-8")
+        control = source.split("function appearanceControl")[1].split("export function mount")[0]
+        assert "call(" not in control
+        assert "onChange();" in control
+        assert "publicationAppearance(state.appearance)" in source
+        for label in (
+            "Object properties",
+            "Atom size",
+            "Atom opacity",
+            "Bond colour",
+            "Cell opacity",
+            "Plane colour",
+            "Plane opacity",
+            "Direction colour",
+            "Annotation size",
+        ):
+            assert label in source
+        for object_name in (
+            "showAtoms",
+            "showBonds",
+            "showCells",
+            "showPlanes",
+            "showDirections",
+            "showGizmo",
+        ):
+            assert object_name in source
+
     def test_the_tem_gallery_is_read_from_the_manifest_not_hard_coded(self) -> None:
         """A fourth practice plate must appear by adding it in Python, not here."""
 

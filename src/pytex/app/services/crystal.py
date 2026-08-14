@@ -25,6 +25,7 @@ The division of labour
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from typing import Any
 
@@ -40,6 +41,7 @@ from pytex.app.registry import (
     IndicesListParameter,
     IntegerParameter,
     NumberParameter,
+    ObjectParameter,
     TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
@@ -72,6 +74,151 @@ _RENDER_STYLES = (
         "Coordination polyhedra instead of individual bonds. The mineralogist's view.",
     ),
 )
+
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+_APPEARANCE_DEFAULTS: dict[str, Any] = {
+    "show_atoms": True,
+    "show_bonds": True,
+    "show_cells": True,
+    "show_planes": True,
+    "show_directions": True,
+    "show_labels": True,
+    "show_gizmo": True,
+    "atom_scale": 1.0,
+    "atom_opacity": 1.0,
+    "species_colors": {},
+    "bond_color": "#64748b",
+    "bond_width": 1.0,
+    "bond_opacity": 0.85,
+    "cell_color": "#64748b",
+    "cell_width": 1.0,
+    "cell_opacity": 0.5,
+    "plane_color": "#0f766e",
+    "plane_opacity": 0.28,
+    "direction_color": "#2563eb",
+    "direction_width": 1.0,
+    "direction_opacity": 0.96,
+    "annotation_scale": 1.0,
+}
+
+
+def _appearance(request_value: Any) -> dict[str, Any]:
+    """Validate presentation-only crystal properties from the shared frontend."""
+
+    raw = dict(request_value or {})
+    unknown = sorted(set(raw) - set(_APPEARANCE_DEFAULTS))
+    if unknown:
+        raise InvalidInputError(
+            f"Unknown crystal appearance setting(s): {', '.join(unknown)}.",
+            field="appearance",
+            hint="Reset object properties in the Crystal Viewer and try again.",
+        )
+    result = {**_APPEARANCE_DEFAULTS, **raw}
+    for key in (
+        "show_atoms",
+        "show_bonds",
+        "show_cells",
+        "show_planes",
+        "show_directions",
+        "show_labels",
+        "show_gizmo",
+    ):
+        if not isinstance(result[key], bool):
+            raise InvalidInputError(f"appearance.{key} must be true or false.", field="appearance")
+    bounds = {
+        "atom_scale": (0.2, 2.5),
+        "atom_opacity": (0.1, 1.0),
+        "bond_width": (0.2, 3.0),
+        "bond_opacity": (0.05, 1.0),
+        "cell_width": (0.2, 3.0),
+        "cell_opacity": (0.05, 1.0),
+        "plane_opacity": (0.02, 0.85),
+        "direction_width": (0.2, 3.0),
+        "direction_opacity": (0.05, 1.0),
+        "annotation_scale": (0.5, 2.5),
+    }
+    for key, (minimum, maximum) in bounds.items():
+        try:
+            value = float(result[key])
+        except (TypeError, ValueError) as error:
+            raise InvalidInputError(
+                f"appearance.{key} must be a number.", field="appearance"
+            ) from error
+        if not np.isfinite(value) or not minimum <= value <= maximum:
+            raise InvalidInputError(
+                f"appearance.{key} must be between {minimum:g} and {maximum:g}.",
+                field="appearance",
+            )
+        result[key] = value
+    for key in ("bond_color", "cell_color", "plane_color", "direction_color"):
+        if not isinstance(result[key], str) or not _HEX_COLOR.fullmatch(result[key]):
+            raise InvalidInputError(
+                f"appearance.{key} must be a #RRGGBB colour.", field="appearance"
+            )
+        result[key] = result[key].lower()
+    species_colors = result["species_colors"]
+    if not isinstance(species_colors, dict) or len(species_colors) > 64:
+        raise InvalidInputError(
+            "appearance.species_colors must be an object with at most 64 entries.",
+            field="appearance",
+        )
+    clean_species: dict[str, str] = {}
+    for species, color in species_colors.items():
+        if not isinstance(species, str) or not species.strip() or len(species) > 16:
+            raise InvalidInputError(
+                "Invalid species name in appearance colours.", field="appearance"
+            )
+        if not isinstance(color, str) or not _HEX_COLOR.fullmatch(color):
+            raise InvalidInputError(
+                f"The appearance colour for {species!r} must be #RRGGBB.", field="appearance"
+            )
+        clean_species[species] = color.lower()
+    result["species_colors"] = clean_species
+    return result
+
+
+def _appearance_style(appearance: dict[str, Any], render_style: str) -> dict[str, Any]:
+    atom_base = {
+        "space_filling": 1.0,
+        "stick": 0.24,
+        "wireframe": 0.3,
+        "polyhedral": 0.4,
+    }.get(render_style, 0.55)
+    bond_base = 1.0 if render_style == "stick" else 0.22
+    crystal: dict[str, Any] = {
+        "atom_radius_scale": atom_base * appearance["atom_scale"],
+        "atom_alpha": appearance["atom_opacity"],
+        "species_colors": appearance["species_colors"],
+        "bond_color_mode": "uniform",
+        "bond_color": appearance["bond_color"],
+        "bond_alpha": appearance["bond_opacity"],
+        "bond_radius_scale": bond_base * appearance["bond_width"],
+        "bond_radius": 1.2 * appearance["bond_width"],
+        "cell_color": appearance["cell_color"],
+        "cell_alpha": appearance["cell_opacity"],
+        "cell_linewidth": appearance["cell_width"],
+        "lattice_color": appearance["cell_color"],
+        "lattice_linewidth": 1.5 * appearance["cell_width"],
+        "plane_color": appearance["plane_color"],
+        "plane_alpha": appearance["plane_opacity"],
+        "direction_color": appearance["direction_color"],
+        "direction_alpha": appearance["direction_opacity"],
+        "direction_linewidth": 2.2 * appearance["direction_width"],
+        "atom_label_fontsize": 10.0 * appearance["annotation_scale"],
+        "plane_label_fontsize": 11.0 * appearance["annotation_scale"],
+        "direction_label_fontsize": 11.0 * appearance["annotation_scale"],
+    }
+    if not appearance["show_atoms"]:
+        crystal["atom_render_mode"] = "none"
+    if not appearance["show_cells"]:
+        crystal["cell_alpha"] = 0.0
+        crystal["cell_linewidth"] = 0.0
+        crystal["lattice_linewidth"] = 0.0
+    if not appearance["show_labels"]:
+        crystal["atom_label_fontsize"] = 0.01
+        crystal["plane_label_fontsize"] = 0.01
+        crystal["direction_label_fontsize"] = 0.01
+    return {"crystal": crystal}
 
 
 def _plane_overlay(indices: tuple[int, ...], phase: Phase) -> CrystalPlane:
@@ -600,6 +747,19 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
             advanced=True,
             group="Overlays",
         ),
+        ObjectParameter(
+            name="appearance",
+            label="Object properties",
+            help_text=(
+                "Presentation-only atom, bond, cell, plane, direction and annotation settings. "
+                "The interactive viewer supplies this object automatically when publishing."
+            ),
+            editor="json",
+            required=False,
+            default={},
+            advanced=True,
+            group="Appearance",
+        ),
         BooleanParameter(
             name="show_legend",
             label="Species legend",
@@ -679,6 +839,7 @@ def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
     repeats = (int(request["repeat_a"]), int(request["repeat_b"]), int(request["repeat_c"]))
     plane_rows = tuple(request.get("planes") or ())
     direction_rows = tuple(request.get("directions") or ())
+    appearance = _appearance(request.get("appearance"))
     image_format = str(request["format"])
     dpi = int(request["dpi"])
     elevation = float(request["elevation_deg"])
@@ -694,26 +855,34 @@ def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
     # for SVG keeps the file openable, at a cost invisible at figure size. PNG
     # keeps the full mesh, because there the cost is a fixed pixel count either
     # way.
-    style_overrides = (
-        {"crystal": {"atom_surface_resolution": 18, "bond_surface_resolution": 16}}
-        if image_format == "svg"
-        else None
-    )
+    style_overrides = _appearance_style(appearance, str(request["render_style"]))
+    if image_format == "svg":
+        style_overrides["crystal"].update(
+            {"atom_surface_resolution": 18, "bond_surface_resolution": 16}
+        )
 
     axes = plot_crystal_structure_3d(
         phase,
         repeats=repeats,
         render_style=str(request["render_style"]),
-        show_bonds=bool(request["show_bonds"]),
+        show_bonds=bool(request["show_bonds"]) and appearance["show_bonds"],
         bond_tolerance_angstrom=float(request["bond_tolerance_angstrom"]),
-        show_unit_cells=bool(request["show_unit_cells"]),
-        atom_label_mode=str(request["atom_labels"]),
-        plane_overlays=tuple(_plane_overlay(row, phase) for row in plane_rows),
-        direction_overlays=tuple(_direction_overlay(row, phase) for row in direction_rows),
+        show_unit_cells=bool(request["show_unit_cells"]) and appearance["show_cells"],
+        atom_label_mode=str(request["atom_labels"]) if appearance["show_labels"] else "none",
+        plane_overlays=(
+            tuple(_plane_overlay(row, phase) for row in plane_rows)
+            if appearance["show_planes"]
+            else ()
+        ),
+        direction_overlays=(
+            tuple(_direction_overlay(row, phase) for row in direction_rows)
+            if appearance["show_directions"]
+            else ()
+        ),
         elev_deg=elevation,
         azim_deg=azimuth,
         show_legend=bool(request["show_legend"]),
-        show_frame_indicator=bool(request["show_frame_indicator"]),
+        show_frame_indicator=bool(request["show_frame_indicator"]) and appearance["show_gizmo"],
         style_overrides=style_overrides,
     )
     figure = axes.get_figure()
@@ -755,6 +924,7 @@ def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
             "encoding": "text" if image_format == "svg" else "base64",
             "bytes": len(payload),
             "dpi": dpi,
+            "appearance": appearance,
             "elevation_deg": elevation,
             "azimuth_deg": azimuth,
         },

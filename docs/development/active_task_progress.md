@@ -39,7 +39,7 @@ calculation parameters. Scientific inputs and export provenance remain manifest-
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
 | 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | (this commit) |
-| 2 | Crystal object appearance editor with live redraw and publication-export parity | planned | — |
+| 2 | Crystal object appearance editor with live redraw and publication-export parity | done | (this commit) |
 | 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | planned | — |
 | 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | planned | — |
 | 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | planned | — |
@@ -64,6 +64,39 @@ other unit test in the controlling run passed (two existing skips).
 
 **Exact next action.** Commit and push increment 1 to `main`, then build the Crystal Viewer
 appearance editor against the scene glyphs and publication renderer.
+
+### Increment 1 landing
+
+Committed and pushed to `main` as `579dd6e` (`Give every 2D workbench plot a shared viewport`).
+
+### Increment 2 design
+
+The editor will expose object-class visibility plus atom size/opacity and per-species colours;
+bond, cell, plane and direction colour/opacity/width; annotation scale; and axis-gizmo visibility.
+It redraws the JSON scene already returned by Python. `crystal.render` receives a validated nested
+appearance object and translates the same settings into the shared YAML-style renderer; object
+styles remain outside the scientific inputs/rows and never trigger scene recomputation in the UI.
+
+**Exact next action.** Add the appearance model/control and renderer bindings, then pin both the
+frontend-only redraw boundary and the validated publication-export mapping in focused tests.
+
+### Increment 2 result
+
+The Crystal Viewer now has one open **Object properties** section in the control rail. It toggles
+atoms, bonds, cells, planes, directions, labels and the axis gizmo; scales/fades atoms; exposes a
+colour picker for every species in the current scene; and controls colour, width and opacity for
+bonds/cells/planes/directions plus annotation scale. Every input mutates presentation state and
+calls `draw()` only—never the scientific service. The Figure path serializes the same state into a
+strictly validated `appearance` object. Python maps it to the shared crystal style, filters hidden
+overlay classes, and now supports theme-level per-species colour overrides.
+
+**Verification.** JavaScript syntax passes. The focused Crystal/app-server/crystal-renderer suite
+passes (96 tests). The first focused ruff call found one 102-character validation line; it was
+wrapped immediately. The full base lane is green: ruff passes, strict mypy passes over 138 source
+files, and the entire unit suite passes with the two existing skips.
+
+**Exact next action.** Run the controlling quality lane, commit and push increment 2, then replace
+the Texture panel's disc/raster mosaics with real configurable filled/line contour geometry.
 
 ## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 

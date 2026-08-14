@@ -130,6 +130,13 @@ about the pointer, Shift-drag (or middle-drag) to pan, and press **Fit** to rest
 The percentage in the plot toolbar is the current magnification. The Crystal Viewer uses scroll to
 zoom and ordinary drag to rotate its three-dimensional camera, so it keeps its own Reset control.
 
+The Crystal Viewer's **Object properties** section separates structure from presentation. It can
+hide object classes; scale and fade atoms; recolour each species; set bond and cell edge weight;
+adjust plane and direction colour/opacity; scale annotations; and show or hide the axis gizmo. A
+change redraws the existing scene immediately—no crystallographic service is called, and no atom,
+plane or index moves. Publishing the figure sends the validated appearance object with the camera,
+so the Python renderer uses the same visible object classes, colours, opacities and relative sizes.
+
 ```{note}
 The on-screen table is a **preview**: the first 200 rows, with the caption saying so. Every export
 carries all of them. A texture ODF is over a thousand rows, and a scroll box with no search is not

@@ -1188,6 +1188,11 @@ def _atom_glyphs_from_sites(
     radius_kind = str(crystal_style.get("atom_radius_kind", "covalent"))
     alpha = float(crystal_style["atom_alpha"])
     species_colors = _separated_species_colors([site.species for site, _ in atom_data])
+    configured_colors = crystal_style.get("species_colors", {})
+    if isinstance(configured_colors, Mapping):
+        for species, color in configured_colors.items():
+            if species in species_colors:
+                species_colors[species] = _to_hex(color)
     groups: dict[tuple[float, float, float], list[tuple[AtomicSite, np.ndarray]]] = {}
     for site, position in atom_data:
         key = (round(position[0], 6), round(position[1], 6), round(position[2], 6))

@@ -42,6 +42,7 @@ saed:
 crystal:
   background: "#ffffff"
   atom_alpha: 1.0
+  species_colors: {}
   bond_alpha: 1.0
   plane_alpha: 0.28
   lattice_color: "#334155"

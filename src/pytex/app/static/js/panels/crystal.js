@@ -30,6 +30,200 @@ export const panel = {
 /** Half-width of the drawing area in viewBox units. The scene is scaled to fit. */
 const VIEW = 100;
 
+const DEFAULT_APPEARANCE = Object.freeze({
+  showAtoms: true,
+  showBonds: true,
+  showCells: true,
+  showPlanes: true,
+  showDirections: true,
+  showLabels: true,
+  showGizmo: true,
+  atomScale: 1,
+  atomOpacity: 1,
+  bondColor: '#64748b',
+  bondWidth: 1,
+  bondOpacity: 0.85,
+  cellColor: '#64748b',
+  cellWidth: 1,
+  cellOpacity: 0.5,
+  planeColor: '#0f766e',
+  planeOpacity: 0.28,
+  directionColor: '#2563eb',
+  directionWidth: 1,
+  directionOpacity: 0.96,
+  annotationScale: 1,
+});
+
+function defaultAppearance() {
+  return { ...DEFAULT_APPEARANCE, speciesColors: {} };
+}
+
+function seedSpeciesColors(appearance, scene) {
+  for (const atom of scene?.atoms ?? []) {
+    if (!appearance.speciesColors[atom.species]) {
+      appearance.speciesColors[atom.species] = atom.color;
+    }
+  }
+}
+
+function publicationAppearance(appearance) {
+  return {
+    show_atoms: appearance.showAtoms,
+    show_bonds: appearance.showBonds,
+    show_cells: appearance.showCells,
+    show_planes: appearance.showPlanes,
+    show_directions: appearance.showDirections,
+    show_labels: appearance.showLabels,
+    show_gizmo: appearance.showGizmo,
+    atom_scale: appearance.atomScale,
+    atom_opacity: appearance.atomOpacity,
+    species_colors: appearance.speciesColors,
+    bond_color: appearance.bondColor,
+    bond_width: appearance.bondWidth,
+    bond_opacity: appearance.bondOpacity,
+    cell_color: appearance.cellColor,
+    cell_width: appearance.cellWidth,
+    cell_opacity: appearance.cellOpacity,
+    plane_color: appearance.planeColor,
+    plane_opacity: appearance.planeOpacity,
+    direction_color: appearance.directionColor,
+    direction_width: appearance.directionWidth,
+    direction_opacity: appearance.directionOpacity,
+    annotation_scale: appearance.annotationScale,
+  };
+}
+
+function appearanceToggle(label, appearance, key, onChange) {
+  return el('label.object-toggle', {}, [
+    el('input', {
+      type: 'checkbox',
+      checked: appearance[key],
+      onchange: (event) => {
+        appearance[key] = event.currentTarget.checked;
+        onChange();
+      },
+    }),
+    el('span', { text: label }),
+  ]);
+}
+
+function appearanceRange(label, hint, appearance, key, { min, max, step, suffix = '' }, onChange) {
+  const output = el('output', { text: `${Number(appearance[key]).toFixed(2)}${suffix}` });
+  return el('label.field', {}, [
+    el('span.field__label', { text: label }),
+    el('span.range-control', {}, [
+      el('input', {
+        type: 'range', min, max, step, value: appearance[key],
+        oninput: (event) => {
+          appearance[key] = Number(event.currentTarget.value);
+          output.textContent = `${appearance[key].toFixed(2)}${suffix}`;
+          onChange();
+        },
+      }),
+      output,
+    ]),
+    el('span.field__hint', { text: hint }),
+  ]);
+}
+
+function appearanceColor(label, hint, appearance, key, onChange) {
+  const output = el('output', { text: appearance[key].toUpperCase() });
+  return el('label.field', {}, [
+    el('span.field__label', { text: label }),
+    el('span.color-control', {}, [
+      el('input', {
+        type: 'color', value: appearance[key],
+        oninput: (event) => {
+          appearance[key] = event.currentTarget.value;
+          output.textContent = appearance[key].toUpperCase();
+          onChange();
+        },
+      }),
+      output,
+    ]),
+    el('span.field__hint', { text: hint }),
+  ]);
+}
+
+function appearanceControl(appearance, scene, { onChange, onReset }) {
+  seedSpeciesColors(appearance, scene);
+  const species = Object.entries(appearance.speciesColors).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  return el('details.group.appearance', { open: true }, [
+    el('summary', { text: 'Object properties' }),
+    el('div.group__body', {}, [
+      el('p.field__help', {
+        text: 'Presentation only: these controls redraw existing geometry. Positions, planes, indices and exported data do not change.',
+      }),
+      el('div.object-toggle-grid', {}, [
+        appearanceToggle('Atoms', appearance, 'showAtoms', onChange),
+        appearanceToggle('Bonds', appearance, 'showBonds', onChange),
+        appearanceToggle('Cells', appearance, 'showCells', onChange),
+        appearanceToggle('Planes', appearance, 'showPlanes', onChange),
+        appearanceToggle('Directions', appearance, 'showDirections', onChange),
+        appearanceToggle('Labels', appearance, 'showLabels', onChange),
+        appearanceToggle('Axis gizmo', appearance, 'showGizmo', onChange),
+      ]),
+      el('h3.group__subheading', { text: 'Atoms' }),
+      appearanceRange('Atom size', 'Scale every atomic radius without moving its centre.', appearance, 'atomScale', {
+        min: 0.2, max: 2.5, step: 0.05, suffix: '×',
+      }, onChange),
+      appearanceRange('Atom opacity', 'Lower opacity reveals bonds and planes inside dense cells.', appearance, 'atomOpacity', {
+        min: 0.1, max: 1, step: 0.05,
+      }, onChange),
+      ...(species.length
+        ? [el('div.object-style-list', {}, species.map(([name, color]) => {
+            const output = el('output', { text: color.toUpperCase() });
+            return el('label.object-style-row', {}, [
+              el('span', { text: name }),
+              el('input', {
+                type: 'color', value: color, 'aria-label': `${name} atom colour`,
+                oninput: (event) => {
+                  appearance.speciesColors[name] = event.currentTarget.value;
+                  output.textContent = event.currentTarget.value.toUpperCase();
+                  onChange();
+                },
+              }),
+              output,
+            ]);
+          }))]
+        : [el('p.field__hint', { text: 'Build a structure to edit its per-species colours.' })]),
+      el('h3.group__subheading', { text: 'Bonds and cells' }),
+      appearanceColor('Bond colour', 'A uniform interactive colour keeps the network legible.', appearance, 'bondColor', onChange),
+      appearanceRange('Bond width', 'Scales the bond stroke or cylinder diameter.', appearance, 'bondWidth', {
+        min: 0.2, max: 3, step: 0.05, suffix: '×',
+      }, onChange),
+      appearanceRange('Bond opacity', 'Reduce when bonds obscure atom positions.', appearance, 'bondOpacity', {
+        min: 0.05, max: 1, step: 0.05,
+      }, onChange),
+      appearanceColor('Cell colour', 'Colour of the direct-basis cell edges.', appearance, 'cellColor', onChange),
+      appearanceRange('Cell width', 'Scales every cell edge.', appearance, 'cellWidth', {
+        min: 0.2, max: 3, step: 0.05, suffix: '×',
+      }, onChange),
+      appearanceRange('Cell opacity', 'Keep the cell visible without competing with atoms.', appearance, 'cellOpacity', {
+        min: 0.05, max: 1, step: 0.05,
+      }, onChange),
+      el('h3.group__subheading', { text: 'Planes, directions and labels' }),
+      appearanceColor('Plane colour', 'Applied to all bounded plane overlays in this view.', appearance, 'planeColor', onChange),
+      appearanceRange('Plane opacity', 'Low values reveal which atoms lie before and behind a plane.', appearance, 'planeOpacity', {
+        min: 0.02, max: 0.85, step: 0.01,
+      }, onChange),
+      appearanceColor('Direction colour', 'Applied to direction arrows and their labels.', appearance, 'directionColor', onChange),
+      appearanceRange('Direction width', 'Scales arrow strokes and publication linewidth.', appearance, 'directionWidth', {
+        min: 0.2, max: 3, step: 0.05, suffix: '×',
+      }, onChange),
+      appearanceRange('Direction opacity', 'Reduce for dense overlay comparisons.', appearance, 'directionOpacity', {
+        min: 0.05, max: 1, step: 0.05,
+      }, onChange),
+      appearanceRange('Annotation size', 'Scales atom, plane and direction labels together.', appearance, 'annotationScale', {
+        min: 0.5, max: 2.5, step: 0.05, suffix: '×',
+      }, onChange),
+      el('button.button', { type: 'button', text: 'Reset object properties', onclick: onReset }),
+    ]),
+  ]);
+}
+
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
   const sceneOperation = operations.find((entry) => entry.id === 'crystal.scene');
@@ -37,7 +231,13 @@ export function mount(context) {
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
   const camera = { rotation: identity(), zoom: 1, scale: 1, centre: [0, 0, 0] };
-  const state = { scene: null, result: null, teaches: null, form: null };
+  const state = {
+    scene: null,
+    result: null,
+    teaches: null,
+    form: null,
+    appearance: defaultAppearance(),
+  };
 
   // The renderer offers both formats and the help explains when each is right,
   // so the choice has to be on the toolbar. Without it the help describes a
@@ -81,6 +281,7 @@ export function mount(context) {
   /* ------------------------------------------------------------ controls */
 
   const formHost = el('div');
+  const appearanceHost = el('div');
   const drawButton = el('button.button.button--primary.button--block', {
     type: 'button',
     text: 'Build structure',
@@ -90,6 +291,7 @@ export function mount(context) {
   context.rail.append(
     formHost,
     drawButton,
+    appearanceHost,
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
@@ -115,6 +317,20 @@ export function mount(context) {
     formHost.replaceChildren(state.form.element);
   }
 
+  function renderAppearanceControls() {
+    appearanceHost.replaceChildren(
+      appearanceControl(state.appearance, state.scene, {
+        onChange: () => draw(),
+        onReset: () => {
+          state.appearance = defaultAppearance();
+          seedSpeciesColors(state.appearance, state.scene);
+          renderAppearanceControls();
+          draw();
+        },
+      }),
+    );
+  }
+
   function loadExample(example) {
     state.teaches = example.teaches;
     renderControls(example.request);
@@ -129,6 +345,8 @@ export function mount(context) {
       const result = await call('crystal.scene', state.form.values());
       state.result = result;
       state.scene = result.data.scene;
+      seedSpeciesColors(state.appearance, state.scene);
+      renderAppearanceControls();
       resetCamera();
       renderResult(details, result, { teaches: state.teaches });
     } catch (error) {
@@ -150,6 +368,7 @@ export function mount(context) {
         // figure cannot drift from the on-screen view through two slightly
         // different derivations of the same thing.
         camera_matrix: camera.rotation.join(' '),
+        appearance: publicationAppearance(state.appearance),
         show_legend: true,
         show_frame_indicator: true,
         format: figureFormat.value,
@@ -200,7 +419,7 @@ export function mount(context) {
 
   function draw() {
     if (!state.scene) return;
-    const node = renderScene(state.scene, camera, frame);
+    const node = renderScene(state.scene, camera, frame, state.appearance);
     frame.setContent(node);
     attachPointer(node);
     const scene = state.scene;
@@ -264,6 +483,7 @@ export function mount(context) {
   }
 
   renderControls();
+  renderAppearanceControls();
   if (examples.length) loadExample(examples[0]);
 
   return { help: () => sceneOperation ?? renderOperation };
@@ -271,7 +491,7 @@ export function mount(context) {
 
 /* ------------------------------------------------------------------ scene */
 
-function renderScene(scene, camera, frame) {
+function renderScene(scene, camera, frame, appearance) {
   const root = svg('svg', {
     viewBox: `${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`,
     preserveAspectRatio: 'xMidYMid meet',
@@ -283,33 +503,33 @@ function renderScene(scene, camera, frame) {
   const project = (point) => projectPoint(camera, point);
   const items = [];
 
-  for (const edge of scene.cell_edges) {
+  for (const edge of appearance.showCells ? scene.cell_edges : []) {
     const a = project(edge[0]);
     const b = project(edge[1]);
     items.push({
       depth: (a.depth + b.depth) / 2 - 1e3, // cell edges sit behind matter at equal depth
       node: svg('line', {
         x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-        stroke: 'currentColor',
-        'stroke-width': 0.45,
-        'stroke-opacity': 0.5,
+        stroke: appearance.cellColor,
+        'stroke-width': 0.45 * appearance.cellWidth,
+        'stroke-opacity': appearance.cellOpacity,
       }),
     });
   }
 
-  for (const plane of scene.planes) {
+  for (const plane of appearance.showPlanes ? scene.planes : []) {
     const points = plane.vertices.map(project);
     if (points.length < 3) continue;
     const polygon = svg('polygon', {
       points: points.map((point) => `${point.x},${point.y}`).join(' '),
-      fill: plane.color,
-      'fill-opacity': plane.alpha ?? 0.28,
-      stroke: plane.color,
-      'stroke-width': 0.5,
+      fill: appearance.planeColor,
+      'fill-opacity': appearance.planeOpacity,
+      stroke: appearance.planeColor,
+      'stroke-width': 0.5 * appearance.cellWidth,
     });
     const depth = points.reduce((sum, point) => sum + point.depth, 0) / points.length;
     items.push({ depth, node: polygon, row: { Plane: plane.label ?? 'plane' } });
-    if (plane.label) {
+    if (plane.label && appearance.showLabels) {
       const centroid = points.reduce(
         (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
         { x: 0, y: 0 },
@@ -319,8 +539,8 @@ function renderScene(scene, camera, frame) {
         node: svg('text', {
           x: centroid.x, y: centroid.y,
           'text-anchor': 'middle',
-          'font-size': 4.5,
-          fill: plane.color,
+          'font-size': 4.5 * appearance.annotationScale,
+          fill: appearance.planeColor,
           'paint-order': 'stroke',
           stroke: 'var(--bg-raised)',
           'stroke-width': 1.2,
@@ -330,30 +550,31 @@ function renderScene(scene, camera, frame) {
     }
   }
 
-  for (const bond of scene.bonds) {
+  for (const bond of appearance.showBonds ? scene.bonds : []) {
     const a = project(bond.start);
     const b = project(bond.end);
     items.push({
       depth: (a.depth + b.depth) / 2,
       node: svg('line', {
         x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-        stroke: bond.color,
-        'stroke-width': 1.1,
+        stroke: appearance.bondColor,
+        'stroke-width': 1.1 * appearance.bondWidth,
         'stroke-linecap': 'round',
-        'stroke-opacity': 0.85,
+        'stroke-opacity': appearance.bondOpacity,
       }),
       row: { Bond: bond.species, 'Length / Å': formatNumber(bond.length, 4) },
     });
   }
 
-  for (const atom of scene.atoms) {
+  for (const atom of appearance.showAtoms ? scene.atoms : []) {
     const point = project(atom.position);
-    const radius = atom.radius * camera.scale * camera.zoom;
+    const radius = atom.radius * camera.scale * camera.zoom * appearance.atomScale;
     items.push({
       depth: point.depth,
       node: svg('circle', {
         cx: point.x, cy: point.y, r: radius,
-        fill: atom.color,
+        fill: appearance.speciesColors[atom.species] ?? atom.color,
+        'fill-opacity': appearance.atomOpacity,
         stroke: 'var(--bg-raised)',
         'stroke-width': 0.35,
       }),
@@ -366,13 +587,13 @@ function renderScene(scene, camera, frame) {
         Occupancy: formatNumber(atom.occupancy, 3),
       },
     });
-    if (atom.label) {
+    if (atom.label && appearance.showLabels) {
       items.push({
         depth: point.depth + 1e-3,
         node: svg('text', {
           x: point.x, y: point.y + radius * 0.35,
           'text-anchor': 'middle',
-          'font-size': Math.max(radius * 0.8, 2.5),
+          'font-size': Math.max(radius * 0.8, 2.5) * appearance.annotationScale,
           fill: 'var(--ink)',
           text: atom.label,
         }),
@@ -380,7 +601,7 @@ function renderScene(scene, camera, frame) {
     }
   }
 
-  for (const direction of scene.directions) {
+  for (const direction of appearance.showDirections ? scene.directions : []) {
     const a = project(direction.start);
     const b = project(direction.end);
     items.push({
@@ -388,16 +609,18 @@ function renderScene(scene, camera, frame) {
       node: svg('g', {}, [
         svg('line', {
           x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-          stroke: direction.color,
-          'stroke-width': 1.4,
+          stroke: appearance.directionColor,
+          'stroke-width': 1.4 * appearance.directionWidth,
+          'stroke-opacity': appearance.directionOpacity,
         }),
-        arrowHead(a, b, direction.color),
-        direction.label
+        arrowHead(a, b, appearance.directionColor, appearance.directionOpacity),
+        direction.label && appearance.showLabels
           ? svg('text', {
               x: b.x, y: b.y - 2,
               'text-anchor': 'middle',
-              'font-size': 5,
-              fill: direction.color,
+              'font-size': 5 * appearance.annotationScale,
+              fill: appearance.directionColor,
+              'fill-opacity': appearance.directionOpacity,
               'paint-order': 'stroke',
               stroke: 'var(--bg-raised)',
               'stroke-width': 1.4,
@@ -415,7 +638,7 @@ function renderScene(scene, camera, frame) {
     if (item.row) frame.hoverable(item.node, item.row);
   }
 
-  root.append(axisGizmo(scene.axes, camera));
+  if (appearance.showGizmo) root.append(axisGizmo(scene.axes, camera));
   return root;
 }
 
@@ -453,7 +676,7 @@ function axisGizmo(axes, camera) {
   return group;
 }
 
-function arrowHead(from, to, color) {
+function arrowHead(from, to, color, opacity = 1) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -468,6 +691,7 @@ function arrowHead(from, to, color) {
   return svg('polygon', {
     points: points.map(([x, y]) => `${x},${y}`).join(' '),
     fill: color,
+    'fill-opacity': opacity,
   });
 }
 

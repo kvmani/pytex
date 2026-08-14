@@ -1238,6 +1238,60 @@ button:focus-visible {
   cursor: pointer;
 }
 
+.group__subheading {
+  margin: 1rem 0 0.35rem;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.object-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+}
+
+.object-toggle,
+.object-style-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.object-toggle input {
+  accent-color: var(--accent);
+}
+
+.object-style-list {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.object-style-row {
+  display: grid;
+  grid-template-columns: minmax(4rem, 1fr) 2.5rem 5.25rem;
+}
+
+.object-style-row input[type="color"] {
+  width: 2.5rem;
+  height: 1.75rem;
+  padding: 0.1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.object-style-row output {
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
 .docs-link {
   margin: 1.25rem 0;
   padding: 1rem;

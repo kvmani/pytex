@@ -16,7 +16,7 @@ import pytest
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import builtin_phase
-from pytex.app.services.crystal import camera_angles_from_matrix
+from pytex.app.services.crystal import _appearance, _appearance_style, camera_angles_from_matrix
 
 pytest.importorskip("matplotlib", reason="the crystal scene is built by the plotting layer")
 
@@ -198,6 +198,40 @@ class TestCameraAngles:
 
 
 class TestRender:
+    def test_object_properties_are_validated_and_mapped_to_the_renderer(self) -> None:
+        appearance = _appearance(
+            {
+                "atom_scale": 1.4,
+                "plane_color": "#123456",
+                "plane_opacity": 0.42,
+                "species_colors": {"Fe": "#abcdef"},
+                "show_cells": False,
+            }
+        )
+        style = _appearance_style(appearance, "ball_and_stick")["crystal"]
+        assert style["atom_radius_scale"] == pytest.approx(0.55 * 1.4)
+        assert style["plane_color"] == "#123456"
+        assert style["plane_alpha"] == pytest.approx(0.42)
+        assert style["species_colors"] == {"Fe": "#abcdef"}
+        assert style["lattice_linewidth"] == 0.0
+
+    def test_invalid_object_properties_are_rejected_at_the_boundary(self) -> None:
+        with pytest.raises(InvalidInputError, match="plane_opacity"):
+            _appearance({"plane_opacity": 4.2})
+        with pytest.raises(InvalidInputError, match="RRGGBB"):
+            _appearance({"direction_color": "blue"})
+
+    def test_per_species_colours_reach_the_scene_glyphs(self) -> None:
+        from pytex.plotting.crystal3d import build_crystal_scene
+
+        phase = builtin_phase("fe_bcc").to_phase()
+        rendered = build_crystal_scene(
+            phase,
+            show_bonds=False,
+            style_overrides={"crystal": {"species_colors": {"Fe": "#123456"}}},
+        )
+        assert {atom.color for atom in rendered.atoms} == {"#123456"}
+
     def test_png_export_returns_a_decodable_image(self) -> None:
         result = REGISTRY.call(
             "crystal.render", {"phase": {"builtin": "fe_bcc"}, "format": "png", "dpi": 100}
