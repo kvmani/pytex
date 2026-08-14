@@ -395,6 +395,7 @@ export function mount(context) {
     reader.onload = () => {
       const image = new Image();
       image.onload = () => {
+        const hadGallery = state.gallery !== null;
         state.image = { source: reader.result, width: image.width, height: image.height };
         state.source = { kind: 'image' };
         state.gallery = null;
@@ -403,6 +404,18 @@ export function mount(context) {
         answerButton.hidden = true;
         autoPickButton.hidden = true;
         drawPattern();
+        // The calibration fields still hold whatever the last practice plate
+        // put there, and a camera constant belonging to a different exposure is
+        // the one error this panel cannot detect: it produces a
+        // self-consistent, plausible, wrong answer rather than a failure.
+        if (hadGallery) {
+          frame.setStatus(
+            'Your own pattern. Set the camera constant and pixel size for this image before ' +
+              'indexing — the fields still hold the practice plate’s calibration, and a ' +
+              'camera constant from another exposure indexes a pattern to the wrong material ' +
+              'without ever looking wrong.',
+          );
+        }
       };
       image.src = reader.result;
     };

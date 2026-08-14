@@ -582,6 +582,28 @@ class TestFrontendIsSelfContained:
         assert "drawScaleBar" in source
         assert "Å⁻¹" in source
 
+    def test_an_error_on_a_hidden_field_is_still_visible(self) -> None:
+        """The likeliest failure in the TEM panel has no on-screen field to land on."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "hiddenFields.add(name)" in source
+        assert "function reportError(form, error)" in source
+        assert "hiddenFields.has(error.field)" in source
+        # Every action routes failures through it; none calls showError directly.
+        assert source.count("reportError(state.") == 3
+
+    def test_a_failed_index_does_not_leave_a_correct_verdict_standing(self) -> None:
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "card--verdict" in source
+        assert "details.querySelectorAll('.card--verdict')" in source
+
+    def test_loading_your_own_image_warns_that_the_calibration_is_not_yours(self) -> None:
+        """A camera constant from another exposure fails silently and plausibly."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "Set the camera constant and pixel size for this image before" in source
+        assert "without ever looking wrong" in source
+
     def test_an_atlas_row_can_be_acted_on_rather_than_transcribed(self) -> None:
         """Retyping indices from a table into a form is how wrong indices get planned."""
 

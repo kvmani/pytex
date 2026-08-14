@@ -276,3 +276,98 @@ class TestNotation:
         for row in result["table"]["rows"]:
             assert row["family"].startswith("<") and row["family"].endswith(">")
             assert row["target"].startswith("[") and row["target"].endswith("]")
+
+
+class TestTheLessonsAreTrueOfThePatterns:
+    """Each entry's prose makes a measurable claim. Measure it on the pattern.
+
+    A teaching string is documentation, and documentation that states a number is
+    held to the same standard as any other: it must be recomputed, not
+    remembered. These check the three claims the gallery makes against the plates
+    it actually produces.
+    """
+
+    def geometry(self, entry_id: str):
+        opened = open_entry(entry_id, realistic_scatter=False)
+        pattern = opened["data"]["pattern"]
+        centre = np.asarray(pattern["centre_px"], dtype=float)
+        return pattern, centre
+
+    def test_fcc_001_is_square_with_a_root_two_diagonal(self) -> None:
+        """"Equal lengths at 90 degrees; the next ring out at 45 degrees, longer by root 2."""
+
+        pattern, centre = self.geometry("fcc_al_001")
+        by_indices = {
+            tuple(spot["hkl"]): np.asarray([spot["x"], spot["y"]]) - centre
+            for spot in pattern["spots"]
+        }
+        first = by_indices[(2, 0, 0)]
+        second = by_indices[(0, 2, 0)]
+        diagonal = by_indices[(2, 2, 0)]
+        assert np.linalg.norm(first) == pytest.approx(np.linalg.norm(second), rel=1e-9)
+        cosine = float(np.dot(first, second)) / (np.linalg.norm(first) * np.linalg.norm(second))
+        assert math.degrees(math.acos(cosine)) == pytest.approx(90.0, abs=1e-6)
+        assert np.linalg.norm(diagonal) / np.linalg.norm(first) == pytest.approx(
+            math.sqrt(2.0), rel=1e-9
+        )
+        angle = math.degrees(
+            math.acos(
+                float(np.dot(first, diagonal))
+                / (np.linalg.norm(first) * np.linalg.norm(diagonal))
+            )
+        )
+        assert angle == pytest.approx(45.0, abs=1e-6)
+
+    def test_bcc_110_is_a_rectangle_of_aspect_root_two(self) -> None:
+        """Perpendicular, unequal, and in the ratio root 2 for any bcc metal."""
+
+        pattern, centre = self.geometry("bcc_fe_110")
+        by_indices = {
+            tuple(spot["hkl"]): np.asarray([spot["x"], spot["y"]]) - centre
+            for spot in pattern["spots"]
+        }
+        prism = by_indices[(1, -1, 0)]
+        basal = by_indices[(0, 0, 2)]
+        cosine = float(np.dot(prism, basal)) / (np.linalg.norm(prism) * np.linalg.norm(basal))
+        assert math.degrees(math.acos(cosine)) == pytest.approx(90.0, abs=1e-6)
+        assert np.linalg.norm(basal) / np.linalg.norm(prism) == pytest.approx(
+            math.sqrt(2.0), rel=1e-9
+        )
+
+    def test_hcp_prism_zone_measures_the_axial_ratio(self) -> None:
+        """The aspect ratio is sqrt(3) a / c, and nothing else enters it."""
+
+        from pytex.app.phases import BUILTIN_PHASES
+
+        spec = BUILTIN_PHASES["zr_hcp"]
+        pattern, centre = self.geometry("hcp_zr_2-1-10")
+        by_indices = {
+            tuple(spot["hkl"]): np.asarray([spot["x"], spot["y"]]) - centre
+            for spot in pattern["spots"]
+        }
+        basal = by_indices[(0, 0, 2)]
+        prism = by_indices[(0, 1, 0)]
+        ratio = float(np.linalg.norm(basal) / np.linalg.norm(prism))
+        assert ratio == pytest.approx(math.sqrt(3.0) * spec.a / spec.c, rel=1e-9)
+        # The claim the entry makes about telling the hcp metals apart.
+        assert ratio == pytest.approx(1.0876, abs=5e-4)
+
+    def test_hcp_extinguishes_odd_l_on_the_000l_row(self) -> None:
+        """0001 is absent while 0002 is present, which the entry says in words."""
+
+        pattern, _ = self.geometry("hcp_zr_2-1-10")
+        rows = {tuple(spot["hkl"]) for spot in pattern["spots"]}
+        assert (0, 0, 2) in rows
+        assert (0, 0, 1) not in rows
+        assert (0, 0, -1) not in rows
+
+    def test_fcc_never_shows_a_mixed_parity_reflection(self) -> None:
+        pattern, _ = self.geometry("fcc_al_001")
+        for spot in pattern["spots"]:
+            parities = {abs(int(value)) % 2 for value in spot["hkl"]}
+            assert len(parities) == 1
+
+    def test_bcc_never_shows_an_odd_index_sum(self) -> None:
+        pattern, _ = self.geometry("bcc_fe_110")
+        for spot in pattern["spots"]:
+            assert sum(int(value) for value in spot["hkl"]) % 2 == 0

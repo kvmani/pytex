@@ -146,10 +146,11 @@ GALLERY: tuple[GalleryEntry, ...] = (
         title="Aluminium (fcc) down [001]",
         summary="A square four-fold pattern; the reference case for ratio-and-angle indexing.",
         teaches=(
-            "Every reflection here has unmixed indices — 200, 220, 400 — because face centring "
-            "extinguishes the mixed ones, and that alone identifies the lattice before any "
-            "measurement. The pattern is four-fold, so the two shortest independent spots are at "
-            "90° and their lengths are equal; the next ring in is at 45° and longer by √2. Index "
+            "Every reflection here has unmixed indices — 200, 020, 220, 400 — because face "
+            "centring extinguishes the mixed ones, and that alone identifies the lattice before "
+            "any measurement. The pattern is four-fold, so the two shortest independent spots are "
+            "at 90° and their lengths are equal; the next ring out is at 45° and longer by √2. "
+            "Index "
             "the innermost four spots first: the ratio 1 : 1 : √2 with a 45° angle is the "
             "signature of a cubic ⟨001⟩ zone and does not depend on the camera constant at all. "
             "The camera constant only enters when you want the lattice parameter, which is why a "
@@ -183,9 +184,11 @@ GALLERY: tuple[GalleryEntry, ...] = (
         title="Ferrite (bcc Fe) down [110]",
         summary="A centred rectangle, two-fold; the pattern most often mistaken for a square.",
         teaches=(
-            "Body centring extinguishes every reflection with h + k + l odd, so the shortest "
-            "vectors are 110-type and 002-type — and those two are perpendicular but *not* equal "
-            "in length. Their ratio is exactly √2 for any bcc metal, so the rectangle's aspect "
+            "Body centring extinguishes every reflection with h + k + l odd, and the zone law "
+            "h + k = 0 admits only half of what survives that, so the two shortest vectors here "
+            "are 11̄0 — a member of {110} — and 002. They are perpendicular but *not* equal in "
+            "length: |g| is √2/a and 2/a respectively, so their ratio is exactly √2 for any bcc "
+            "metal, whatever a is. The rectangle's aspect "
             "ratio is a lattice-independent check on your calibration: measure it, and if it is "
             "not √2 the beam centre is misplaced or the pattern is not what you think. This is "
             "the classic trap — a bcc ⟨110⟩ read as a cubic ⟨001⟩ square, which then indexes to a "
