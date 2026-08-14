@@ -31,6 +31,12 @@ import * as calculator from './panels/calculator.js';
 // pole-figure reading applied to a whole polycrystal rather than one grain.
 const PANELS = [crystal, tem, diffraction, variants, texture, calculator];
 
+const THEMES = {
+  auto: { label: 'Auto', icon: '◐', description: 'follow the system' },
+  light: { label: 'Light', icon: '☀', description: 'light' },
+  dark: { label: 'Dark', icon: '☾', description: 'dark' },
+};
+
 const dom = {
   tabs: document.getElementById('tabs'),
   stage: document.getElementById('stage'),
@@ -42,6 +48,9 @@ const dom = {
   paletteResults: document.getElementById('palette-results'),
   helpDrawer: document.getElementById('help-drawer'),
   helpBody: document.getElementById('help-body'),
+  themeButton: document.getElementById('cycle-theme'),
+  themeIcon: document.getElementById('theme-icon'),
+  themeLabel: document.getElementById('theme-label'),
 };
 
 const app = {
@@ -53,6 +62,39 @@ const app = {
 };
 
 start();
+
+function savedTheme() {
+  try {
+    const value = localStorage.getItem('pytex-theme') ?? 'auto';
+    return Object.hasOwn(THEMES, value) ? value : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+
+function applyTheme(theme) {
+  const chosen = THEMES[theme] ?? THEMES.auto;
+  document.documentElement.dataset.theme = theme in THEMES ? theme : 'auto';
+  dom.themeIcon.textContent = chosen.icon;
+  dom.themeLabel.textContent = chosen.label;
+  dom.themeButton.title = `Colour theme: ${chosen.description}`;
+  dom.themeButton.setAttribute('aria-label', `Colour theme: ${chosen.description}`);
+}
+
+function cycleTheme() {
+  const order = Object.keys(THEMES);
+  const current = document.documentElement.dataset.theme || 'auto';
+  const next = order[(order.indexOf(current) + 1) % order.length];
+  try {
+    localStorage.setItem('pytex-theme', next);
+  } catch {
+    // A locked-down intranet webview may disable storage; the theme still
+    // changes for the current session, which is the useful part.
+  }
+  applyTheme(next);
+}
+
+applyTheme(savedTheme());
 
 async function start() {
   try {
@@ -276,6 +318,7 @@ function showFatal(error) {
 /* ----------------------------------------------------------------- globals */
 
 function wireGlobals() {
+  dom.themeButton.addEventListener('click', cycleTheme);
   document.getElementById('open-palette').addEventListener('click', openPalette);
   document.getElementById('open-help').addEventListener('click', () => openHelp());
   document.getElementById('help-close').addEventListener('click', closeHelp);

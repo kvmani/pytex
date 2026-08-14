@@ -23,11 +23,23 @@
       </div>
       <nav class="tabs" id="tabs" aria-label="Workspaces"></nav>
       <div class="masthead__actions">
+        <button
+          type="button"
+          class="button button--icon"
+          id="cycle-theme"
+          title="Colour theme: follow the system"
+          aria-label="Colour theme: follow the system"
+        >
+          <span id="theme-icon" aria-hidden="true">◐</span>
+          <span class="masthead__action-label" id="theme-label">Auto</span>
+        </button>
         <button type="button" class="button" id="open-palette" title="Search every feature (Ctrl+K)">
-          <span aria-hidden="true">⌕</span> Find a feature
+          <span aria-hidden="true">⌕</span>
+          <span class="masthead__action-label">Find a feature</span>
         </button>
         <button type="button" class="button" id="open-help" title="What this panel does">
-          <span aria-hidden="true">?</span> Help
+          <span aria-hidden="true">?</span>
+          <span class="masthead__action-label">Help</span>
         </button>
       </div>
     </header>

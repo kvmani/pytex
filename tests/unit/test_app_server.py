@@ -477,6 +477,32 @@ class TestFrontendIsSelfContained:
                 f"{selector} must wrap, or it leaves the card at narrow widths"
             )
 
+        select_rule = re.search(r"\.plot__toolbar\s+select\s*\{([^}]*)\}", css)
+        assert select_rule is not None, "toolbar selects need a local width rule"
+        assert "width: auto" in select_rule.group(1), (
+            "the global full-width select rule must not turn a plot toolbar into a vertical stack"
+        )
+
+    def test_the_colour_theme_is_explicit_persistent_and_system_aware(self) -> None:
+        """A theme switch must work identically in the browser and desktop shell.
+
+        The shared page owns presentation, so the control belongs in that page rather than in
+        either launcher. ``auto`` remains a real third state: forcing light/dark with a class and
+        offering only a binary switch would prevent a user from returning to the OS preference.
+        """
+
+        html = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        source = (STATIC_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        stylesheet = (STATIC_ROOT / "app.css").read_text(encoding="utf-8")
+        assert 'id="cycle-theme"' in html
+        assert "const THEMES" in source
+        for theme in ("auto", "light", "dark"):
+            assert f"{theme}:" in source
+        assert "localStorage.setItem('pytex-theme'" in source
+        assert 'data-theme="dark"' in stylesheet
+        assert 'data-theme="light"' in stylesheet
+        assert 'data-theme="auto"' in stylesheet
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()

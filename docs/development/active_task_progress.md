@@ -36,19 +36,36 @@ deployment rule remains in force.
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | in progress | — |
-| 2 | Manifest-backed documentation links and richer inline help | planned | — |
+| 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | done | (this commit) |
+| 2 | Manifest-backed documentation links and richer inline help | in progress | — |
 | 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | planned | — |
 | 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | planned | — |
 | 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
 | 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
 
-**Verification so far.** Playwright's Node prerequisite (`npx`) is installed. No implementation
-change has been made yet.
+### Increment 1 result
 
-**Exact next action.** Record the current manifest/panel surface, then implement increment 1 with
-source-level regression tests and drive it at phone, tablet and desktop widths before committing
-and pushing.
+- Reworked the shared visual tokens around the canonical PyTex ink/blue/violet language, with
+  softer hierarchy, modern card/control geometry, disciplined shadows and a subtle stage glow.
+- Added a three-state Auto/Light/Dark theme control. The choice persists in local storage, Auto
+  continues to follow the operating system, and the button retains a useful accessible name when
+  its visible label collapses on a phone.
+- Repaired the crystal toolbar's desktop composition: the global full-width `select` rule had
+  made the figure-format picker consume a complete flex row, stacking a six-control toolbar into
+  three lines at 1440 px. Toolbar selects are now intrinsically sized while the toolbar still
+  wraps at narrow widths.
+- At 390×844, all six tabs and all three masthead actions are visible, the actions collapse to
+  icons with titles/ARIA labels, and document width equals viewport width. At 768×1024 the rail
+  moves below the stage and both are exactly viewport width; at 1440×900 the rail remains beside
+  the plot and the toolbar stays on one line.
+- Playwright verified theme cycling, persistence across reload, light and dark rendering, and a
+  clean browser console. Source-level tests pin the three theme states, shared-shell placement,
+  persistence, and the toolbar width exception. `tests/unit/test_app_server.py` (35 tests) and
+  targeted Ruff checks are green.
+
+**Exact next action.** Add first-class Sphinx documentation targets to the operation manifest and
+render them in the shared help drawer, then link each panel's operations to the closest workflow
+or theory page without introducing external-network dependencies.
 
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 
