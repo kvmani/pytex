@@ -61,6 +61,49 @@ __all__ = [
 #: A handler takes a validated parameter mapping and returns a JSON-ready result.
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
 
+_SPHINX_SOURCE_BASE = "https://github.com/kvmani/pytex/blob/main/docs/site/"
+
+
+@dataclass(frozen=True)
+class DocumentationLink:
+    """A canonical Sphinx page attached to operation help.
+
+    ``path`` is the document name below ``docs/site`` without ``.md``. Keeping
+    the source-relative name in the manifest lets tests prove the page exists;
+    ``url`` points at GitHub's rendered view of that canonical MyST source until
+    the project publishes a dedicated Sphinx host.
+    """
+
+    title: str
+    path: str
+
+    def describe(self) -> dict[str, str]:
+        """Return the browser-facing documentation target."""
+
+        return {
+            "title": self.title,
+            "path": self.path,
+            "url": f"{_SPHINX_SOURCE_BASE}{self.path}.md",
+        }
+
+
+_PANEL_DOCUMENTATION = {
+    "calculator": DocumentationLink(
+        "Miller planes and directions", "concepts/miller_planes_directions"
+    ),
+    "crystal": DocumentationLink(
+        "Crystal visualization workflow", "workflows/crystal_visualization"
+    ),
+    "diffraction": DocumentationLink(
+        "Composite orientation-relationship diffraction", "workflows/composite_or_diffraction"
+    ),
+    "tem": DocumentationLink("TEM specimen tilt navigation", "theory/tem_specimen_tilt_navigation"),
+    "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
+    "variants": DocumentationLink(
+        "Orientation relationships", "concepts/orientation_relationships"
+    ),
+}
+
 
 @dataclass(frozen=True)
 class Parameter:
@@ -454,6 +497,8 @@ class OperationSpec:
         Normative sources for the science, per `AGENTS.md`.
     tags : tuple of str
         Extra search keywords for feature discovery.
+    documentation : DocumentationLink or None
+        Closest canonical Sphinx page for the inline help drawer.
     """
 
     id: str
@@ -466,6 +511,7 @@ class OperationSpec:
     panel: str = "general"
     citations: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
+    documentation: DocumentationLink | None = None
 
     def describe(self) -> dict[str, Any]:
         """Return the manifest entry for this operation."""
@@ -479,6 +525,7 @@ class OperationSpec:
             "returns": self.returns,
             "citations": list(self.citations),
             "tags": list(self.tags),
+            "documentation": self.documentation.describe() if self.documentation else None,
             "parameters": [parameter.describe() for parameter in self.parameters],
         }
 
@@ -602,6 +649,7 @@ class ServiceRegistry:
         panel: str = "general",
         citations: Iterable[str] = (),
         tags: Iterable[str] = (),
+        documentation: DocumentationLink | None = None,
     ) -> Callable[[Handler], Handler]:
         """Register a handler, returning it unchanged.
 
@@ -621,6 +669,7 @@ class ServiceRegistry:
                 panel=panel,
                 citations=tuple(citations),
                 tags=tuple(tags),
+                documentation=documentation or _PANEL_DOCUMENTATION.get(panel),
             )
             self.register(spec)
             return handler

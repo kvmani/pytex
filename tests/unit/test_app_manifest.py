@@ -73,6 +73,21 @@ def test_every_operation_is_documented(spec) -> None:  # type: ignore[no-untyped
 
 
 @pytest.mark.parametrize("spec", REGISTRY.operations(), ids=lambda spec: spec.id)
+def test_every_operation_links_to_an_existing_sphinx_page(spec) -> None:  # type: ignore[no-untyped-def]
+    from pathlib import Path
+
+    link = spec.documentation
+    assert link is not None, f"{spec.id} has no Sphinx documentation link"
+    assert link.title.strip()
+    assert ".." not in Path(link.path).parts
+    source = Path("docs/site") / f"{link.path}.md"
+    assert source.is_file(), f"{spec.id} links to missing Sphinx source {source}"
+    described = link.describe()
+    assert described["path"] == link.path
+    assert described["url"].endswith(f"docs/site/{link.path}.md")
+
+
+@pytest.mark.parametrize("spec", REGISTRY.operations(), ids=lambda spec: spec.id)
 def test_every_parameter_is_documented(spec) -> None:  # type: ignore[no-untyped-def]
     for parameter in spec.parameters:
         assert parameter.label.strip(), f"{spec.id}.{parameter.name} has no label"

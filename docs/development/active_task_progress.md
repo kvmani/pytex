@@ -37,8 +37,8 @@ deployment rule remains in force.
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
 | 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | done | (this commit) |
-| 2 | Manifest-backed documentation links and richer inline help | in progress | — |
-| 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | planned | — |
+| 2 | Manifest-backed documentation links and richer inline help | done | (this commit) |
+| 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | in progress | — |
 | 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | planned | — |
 | 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
 | 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
@@ -63,9 +63,27 @@ deployment rule remains in force.
   persistence, and the toolbar width exception. `tests/unit/test_app_server.py` (35 tests) and
   targeted Ruff checks are green.
 
-**Exact next action.** Add first-class Sphinx documentation targets to the operation manifest and
-render them in the shared help drawer, then link each panel's operations to the closest workflow
-or theory page without introducing external-network dependencies.
+### Increment 2 result
+
+- Every operation now carries a typed `DocumentationLink` in the manifest, selected by panel from
+  the closest canonical Sphinx concept, workflow or theory page.
+- Manifest tests prove that every target exists below `docs/site/`, rejects traversal, and checks
+  the emitted source URL. A renamed or deleted page now fails the base lane instead of leaving a
+  silently stale Help button.
+- The shared help drawer renders a prominent Sphinx documentation card before its input reference,
+  so concise inline guidance remains close to the control and the deeper scientific explanation is
+  one deliberate click away. The target opens separately and cannot replace a user's working GUI
+  state.
+- Because PyTex has no published Sphinx host yet, the link opens GitHub's rendered view of the
+  canonical MyST source. This preserves the single-source documentation doctrine; the architecture
+  note records how an intranet deployment may mirror the same source.
+- The user guide now documents the field help, operation drawer, documentation link, theme states,
+  and narrow-screen accessible names. Browser driving verified the new card in dark mode and a
+  clean console. The combined manifest/server target (306 tests) is green.
+
+**Exact next action.** Build a reusable presentation-control surface and apply it to composite
+SAED: marker shape, spot-size scale, intensity sizing mode, parent colour and variant palette,
+with immediate redraw from one simulation and no scientific recomputation.
 
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 

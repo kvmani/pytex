@@ -70,6 +70,9 @@ validates against.
 The properties this buys are exactly the ones the requirement asks for:
 
 - **No drift.** Help text lives beside the implementation and is served from it.
+- **A path to depth.** Every operation also carries the closest canonical Sphinx document. The
+  help drawer keeps the concise answer in place and offers the full theory, conventions, worked
+  examples, and related APIs without making the control rail read like a manual.
 - **Feature discovery.** A global command palette and a searchable capability index are generated
   from the manifest, so a new operation is discoverable the moment it is registered — nobody has to
   remember to add it to a menu.
@@ -78,6 +81,12 @@ The properties this buys are exactly the ones the requirement asks for:
 Hand-written panels remain for the three flagship surfaces (crystal viewer, TEM solver,
 calculator), because their interactions are genuinely bespoke. Even there, the *parameters* come
 from the manifest; only the layout and the canvas are custom.
+
+Documentation targets are stored as source-relative Sphinx document names and checked against
+`docs/site/` in the manifest tests, so a renamed page fails the base lane instead of leaving a
+quietly broken Help link. Until PyTex has a dedicated hosted Sphinx URL, the manifest opens the
+GitHub-rendered canonical MyST source; an intranet deployment may mirror that source alongside the
+application without changing the operation declarations.
 
 ## Decision 3 — Zero Mandatory Runtime Dependencies For The Shells
 

@@ -62,6 +62,21 @@ behaviour.
 
 Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to search every operation, example and material at once.
 
+## Help, Documentation, And Appearance
+
+The **?** beside a field explains that input in place. The **Help** button explains the active
+operation, every input, the returned result and the scientific sources. Each operation also names
+the closest canonical Sphinx page; **Read the full guide** opens that page for the theory,
+conventions, worked examples and related APIs. The manifest test verifies that every operation has
+a link and that its MyST source exists under `docs/site/`, so documentation moves cannot leave a
+stale button behind.
+
+The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
+system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
+browser and desktop window. On a narrow screen the three masthead actions collapse to icons while
+retaining their full titles and accessible names, and the six workspace tabs wrap rather than
+disappearing into an unmarked horizontal scroller.
+
 ## Reading A Result
 
 Every result carries four things, and the fourth is the one that makes the application usable as an

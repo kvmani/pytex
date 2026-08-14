@@ -245,6 +245,21 @@ export function renderHelp(container, operation) {
     el('p', { text: operation.summary }),
     ...markdown(operation.help),
   );
+  if (operation.documentation) {
+    container.append(
+      el('aside.docs-link', {}, [
+        el('span.docs-link__eyebrow', { text: 'Sphinx documentation' }),
+        el('strong', { text: operation.documentation.title }),
+        el('p', { text: 'Open the full guide for theory, conventions, worked examples and related APIs.' }),
+        el('a.button.button--primary', {
+          href: operation.documentation.url,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          text: 'Read the full guide ↗',
+        }),
+      ]),
+    );
+  }
   if (operation.parameters?.length) {
     container.append(
       el('h3', { text: 'Inputs' }),
