@@ -737,6 +737,7 @@ class ServiceRegistry:
         """Return the document the frontend builds itself from."""
 
         from pytex import __version__
+        from pytex.app.export import EXPORT_FORMATS
 
         return {
             "schema": "pytex.app_manifest/1",
@@ -744,6 +745,18 @@ class ServiceRegistry:
             "panels": list(self.panels()),
             "operations": [spec.describe() for spec in self.operations()],
             "examples": [example.describe() for example in self.examples()],
+            # Published rather than hard-coded in the browser: a format added in
+            # Python then appears on every result in every panel at once, which
+            # is the same rule the operations themselves follow.
+            "export_formats": [
+                {
+                    "id": identifier,
+                    "label": spec["label"],
+                    "description": spec["description"],
+                    "extension": spec["extension"],
+                }
+                for identifier, spec in EXPORT_FORMATS.items()
+            ],
         }
 
     def call(self, operation_id: str, request: Mapping[str, Any] | None = None) -> dict[str, Any]:

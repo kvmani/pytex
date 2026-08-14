@@ -46,6 +46,7 @@ __all__ = [
     "export_result",
     "result_to_csv",
     "result_to_json",
+    "result_to_markdown",
     "result_to_xlsx",
     "write_xlsx",
 ]
@@ -69,6 +70,12 @@ EXPORT_FORMATS: dict[str, dict[str, str]] = {
         "mime": "application/json; charset=utf-8",
         "extension": "json",
         "description": "The complete result, round-trippable back into the application.",
+    },
+    "md": {
+        "label": "Report",
+        "mime": "text/markdown; charset=utf-8",
+        "extension": "md",
+        "description": "A readable report: what was computed, from what, with the sources.",
     },
 }
 
@@ -148,6 +155,90 @@ def result_to_xlsx(result: Mapping[str, Any]) -> bytes:
     )
 
 
+def result_to_markdown(result: Mapping[str, Any]) -> bytes:
+    """Write the result as a report a person can read without a spreadsheet.
+
+    Purpose
+    -------
+    The other three formats are for machines or for grids. CSV is a table with no
+    account of where it came from; JSON is complete and unreadable; a workbook is
+    a table plus a sheet of key-value pairs. None of them is the thing to paste
+    into a notebook entry or attach to an email, which is a page saying *what was
+    computed, from what, and on whose authority*.
+
+    That is what this writes, in the order a reader needs it: the answer in
+    prose, then the caveats, then the numbers, then the exact inputs that produced
+    them, then the citations. Markdown because it is readable as plain text,
+    renders everywhere, and survives being pasted into anything.
+
+    A result with no table still exports — the prose and the provenance are the
+    point — which is why this does not go through ``_table_of``.
+    """
+
+    lines: list[str] = [f"# {result.get('title', 'PyTex result')}", ""]
+    summary = str(result.get("summary") or "").strip()
+    if summary:
+        lines += [summary, ""]
+
+    notes = [str(note) for note in (result.get("notes") or ())]
+    if notes:
+        lines += ["## Notes", ""]
+        lines += [f"- {note}" for note in notes]
+        lines.append("")
+
+    table = result.get("table") or {}
+    columns = table.get("columns") or []
+    rows = table.get("rows") or []
+    if columns and rows:
+        lines += ["## Data", ""]
+        caption = str(table.get("caption") or "").strip()
+        if caption:
+            lines += [caption, ""]
+        headers = [
+            f"{column['label']} / {column['units']}" if column.get("units") else column["label"]
+            for column in columns
+        ]
+        lines.append("| " + " | ".join(headers) + " |")
+        lines.append("| " + " | ".join("---" for _ in headers) + " |")
+        for row in rows:
+            lines.append(
+                "| " + " | ".join(_markdown_cell(row.get(column["key"])) for column in columns) + " |"
+            )
+        lines.append("")
+
+    inputs = result.get("inputs") or {}
+    if inputs:
+        lines += ["## Inputs", "", "| Field | Value |", "| --- | --- |"]
+        for key, value in sorted(inputs.items()):
+            rendered = value if isinstance(value, str | int | float | bool) else json.dumps(value)
+            lines.append(f"| {key} | {_markdown_cell(rendered)} |")
+        lines.append("")
+
+    citations = [str(item) for item in (result.get("citations") or ())]
+    if citations:
+        lines += ["## Sources", ""]
+        lines += [f"- {citation}" for citation in citations]
+        lines.append("")
+
+    lines += [
+        "---",
+        "",
+        f"Produced by PyTex, exported {datetime.now(UTC).isoformat(timespec='seconds')}.",
+        "",
+    ]
+    return "\n".join(lines).encode("utf-8")
+
+
+def _markdown_cell(value: Any) -> str:
+    """Render one cell, escaping the pipe that would otherwise split the row."""
+
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    return str(value).replace("|", r"\|").replace("\n", " ")
+
+
 def export_result(result: Mapping[str, Any], *, fmt: str) -> tuple[bytes, str, str]:
     """Export a result in one of :data:`EXPORT_FORMATS`.
 
@@ -163,7 +254,12 @@ def export_result(result: Mapping[str, Any], *, fmt: str) -> tuple[bytes, str, s
             field="format",
             hint="Available: " + ", ".join(sorted(EXPORT_FORMATS)) + ".",
         )
-    writers = {"csv": result_to_csv, "xlsx": result_to_xlsx, "json": result_to_json}
+    writers = {
+        "csv": result_to_csv,
+        "xlsx": result_to_xlsx,
+        "json": result_to_json,
+        "md": result_to_markdown,
+    }
     payload = writers[fmt](result)
     spec = EXPORT_FORMATS[fmt]
     return (

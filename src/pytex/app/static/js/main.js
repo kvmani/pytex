@@ -14,7 +14,7 @@
 
 import { call, fetchManifest, ServiceCallError, fetchShell } from './core/api.js';
 import { clear, el, markdown } from './core/dom.js';
-import { renderHelp } from './core/result.js';
+import { renderHelp, setExportFormats } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as tem from './panels/tem.js';
@@ -109,6 +109,7 @@ async function start() {
   // from Python rather than from sniffing the window, so that a shell which
   // changes how it writes files says so in one place.
   app.shell = await fetchShell();
+  setExportFormats(app.manifest.export_formats);
 
   // The phase picker needs the catalogue before any control renders, so it is
   // fetched once here rather than lazily by each panel that shows a phase.

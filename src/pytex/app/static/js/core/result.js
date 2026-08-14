@@ -16,6 +16,25 @@
 import { clear, el, formatNumber, markdown } from './dom.js';
 
 /**
+ * The export formats, as the manifest declares them.
+ *
+ * Set once at start-up rather than hard-coded here, so a format added in Python
+ * appears on every result in every panel without an edit in the browser — the
+ * same rule the operations themselves follow. The fallback covers the case of a
+ * server older than this file, where three formats is better than none.
+ */
+let EXPORT_FORMATS = [
+  { id: 'csv', label: 'CSV', description: 'One row per entity, at full precision.' },
+  { id: 'xlsx', label: 'Excel', description: 'The table, plus a sheet recording the inputs.' },
+  { id: 'json', label: 'JSON', description: 'The complete result, reloadable into the app.' },
+];
+
+/** Adopt the formats the server publishes. Called once, from the shell. */
+export function setExportFormats(formats) {
+  if (Array.isArray(formats) && formats.length) EXPORT_FORMATS = formats;
+}
+
+/**
  * Render a result into a container.
  *
  * @param {HTMLElement} container
@@ -79,9 +98,9 @@ function tableCard(result) {
       el('h2.card__title', { text: 'Data' }),
       subtitle ? el('p.card__subtitle', { text: subtitle }) : null,
       el('div.button-row', { style: 'margin-left:auto' }, [
-        exportButton(result, 'csv', 'CSV', 'One row per entity, at full precision'),
-        exportButton(result, 'xlsx', 'Excel', 'The table plus a sheet recording the inputs'),
-        exportButton(result, 'json', 'JSON', 'The complete result, reloadable into the app'),
+        ...EXPORT_FORMATS.map((format) =>
+          exportButton(result, format.id, format.label, format.description),
+        ),
         el('button.button', {
           type: 'button',
           text: 'Copy summary',

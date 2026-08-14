@@ -45,7 +45,7 @@ form at every stage, across every panel.**
 | 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | done | (this commit) |
 | 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | done | (this commit) |
 | 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | done | (this commit) |
-| 5 | Export: a human-readable report format on every panel, manifest-published | pending | |
+| 5 | Export: a human-readable report format on every panel, manifest-published | done | (this commit) |
 | 6 | Docs, human-style pass, closeout | pending | |
 
 ### Increment 1 result
@@ -197,8 +197,25 @@ displaced 22, -16 px and one pick moved 46, 30 px, the grid still passes through
 the arrows still point at the two generating picks, and the mis-picked spot sits visibly off the
 lattice between two rows.
 
-**Exact next action.** Increment 5: a human-readable export format on every panel, published in the
-manifest so the buttons are generated rather than hard-coded.
+### Increment 5 result
+
+Export already covered every table-bearing result in CSV, XLSX and JSON. The gap was a genuinely
+*human-readable* document: CSV is a grid with no provenance, JSON is complete and unreadable, and a
+workbook is those two in separate sheets. None is the thing to paste into a notebook entry.
+
+- **`result_to_markdown`** writes a report in the order a reader needs it: the answer in prose, the
+  caveats, the data, the exact inputs that produced it, and the citations. It works on results with
+  no table at all, because the prose and the provenance are the point.
+- **`EXPORT_FORMATS` is now published in the manifest**, and the browser builds its export buttons
+  from it. The three formats were hard-coded in `result.js`; a fourth would have needed an edit in
+  Python and an edit in JavaScript, which is exactly the drift the manifest exists to prevent. A
+  format added in Python now appears on every result in every panel at once.
+- Verified in the running application: all seven panels offer CSV, Excel, JSON and Report, and
+  driving the Report button produces `aluminium-fcc-down-001.md` with the title, the summary and
+  the notes intact.
+
+**Exact next action.** Increment 6: docs for the three new surfaces, a human pass over the whole
+TEM workflow, and closeout.
 
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 

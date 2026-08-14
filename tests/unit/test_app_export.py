@@ -25,6 +25,7 @@ from pytex.app.export import (
     export_result,
     result_to_csv,
     result_to_json,
+    result_to_markdown,
     result_to_xlsx,
     write_xlsx,
 )
@@ -225,3 +226,98 @@ class TestExportRoute:
         finally:
             server.shutdown()
             server.server_close()
+
+
+class TestMarkdownReport:
+    """The human-readable format: what was computed, from what, on whose authority.
+
+    CSV is a grid with no provenance, JSON is complete and unreadable, and a
+    workbook is both of those in separate sheets. None of them is the thing to
+    paste into a notebook entry, which is what this one is for.
+    """
+
+    def test_the_report_leads_with_the_answer_in_prose(self, result: dict[str, Any]) -> None:
+        text = result_to_markdown(result).decode("utf-8")
+        assert text.startswith(f"# {result['title']}")
+        assert result["summary"] in text
+
+    def test_every_section_a_reader_needs_is_present(self, result: dict[str, Any]) -> None:
+        text = result_to_markdown(result).decode("utf-8")
+        for heading in ("## Data", "## Inputs"):
+            assert heading in text
+        assert "Produced by PyTex, exported" in text
+
+    def test_the_table_survives_as_a_markdown_table(self, result: dict[str, Any]) -> None:
+        text = result_to_markdown(result).decode("utf-8")
+        header = next(
+            line
+            for line in text.splitlines()
+            if line.startswith("| ") and "---" not in line
+        )
+        for column in result["table"]["columns"]:
+            assert column["label"] in header
+        body = [line for line in text.splitlines() if line.startswith("|") and "---" not in line]
+        # One header row per table plus one row per datum, plus the inputs table.
+        assert len(body) >= 1 + len(result["table"]["rows"])
+
+    def test_units_travel_with_the_column(self, result: dict[str, Any]) -> None:
+        text = result_to_markdown(result).decode("utf-8")
+        for column in result["table"]["columns"]:
+            if column.get("units"):
+                assert f"{column['label']} / {column['units']}" in text
+
+    def test_notes_and_citations_are_kept(self) -> None:
+        payload = {
+            "title": "T",
+            "summary": "S",
+            "notes": ["a caveat worth reading"],
+            "citations": ["Someone, Some Journal (1999)."],
+        }
+        text = result_to_markdown(payload).decode("utf-8")
+        assert "a caveat worth reading" in text
+        assert "## Sources" in text
+        assert "Someone, Some Journal (1999)." in text
+
+    def test_a_result_without_a_table_still_reports(self) -> None:
+        """The prose and the provenance are the point; the grid is optional."""
+
+        text = result_to_markdown({"title": "T", "summary": "S"}).decode("utf-8")
+        assert "# T" in text
+        assert "## Data" not in text
+
+    def test_a_pipe_in_a_value_does_not_break_the_row(self) -> None:
+        payload = {
+            "title": "T",
+            "summary": "S",
+            "table": {
+                "columns": [{"key": "k", "label": "K"}],
+                "rows": [{"k": "a|b"}],
+            },
+        }
+        text = result_to_markdown(payload).decode("utf-8")
+        row = next(line for line in text.splitlines() if "a" in line and line.startswith("| a"))
+        assert row.count("|") == 2 + 1  # the two delimiters plus the escaped one
+        assert r"\|" in row
+
+    def test_the_format_is_offered_like_any_other(self) -> None:
+        assert "md" in EXPORT_FORMATS
+        assert EXPORT_FORMATS["md"]["extension"] == "md"
+
+    def test_export_result_routes_to_it(self, result: dict[str, Any]) -> None:
+        payload, mime, filename = export_result(result, fmt="md")
+        assert payload.startswith(b"# ")
+        assert "markdown" in mime
+        assert filename.endswith(".md")
+
+
+class TestManifestPublishesTheFormats:
+    def test_every_writer_is_declared_to_the_frontend(self) -> None:
+        """A format added in Python must appear in the browser without an edit there."""
+
+        from pytex.app import REGISTRY
+
+        published = {entry["id"] for entry in REGISTRY.manifest()["export_formats"]}
+        assert published == set(EXPORT_FORMATS)
+        for entry in REGISTRY.manifest()["export_formats"]:
+            assert entry["label"]
+            assert entry["description"]

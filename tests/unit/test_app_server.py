@@ -682,6 +682,19 @@ class TestFrontendIsSelfContained:
         assert "key !== focusKey" in source
         assert "key !== parentKey" in source
 
+    def test_export_buttons_are_generated_from_the_manifest(self) -> None:
+        """A format added in Python must reach every panel without an edit here."""
+
+        source = (STATIC_ROOT / "js" / "core" / "result.js").read_text(encoding="utf-8")
+        shell = (STATIC_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        assert "export function setExportFormats(" in source
+        assert "EXPORT_FORMATS.map((format) =>" in source
+        assert "setExportFormats(app.manifest.export_formats)" in shell
+        # The hard-coded trio is gone from the render path.
+        card = source.split("function tableCard")[1].split("function buildTable")[0]
+        for hard_coded in ("'csv'", "'xlsx'", "'json'"):
+            assert hard_coded not in card
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()
