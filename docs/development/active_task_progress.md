@@ -5,6 +5,51 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Workbench Visual Modernization And GUI Completeness — IN PROGRESS (2026-08-14)
+
+**Objective.** Improve the shared desktop/web workbench with a professional, responsive modern
+interface; manifest-backed inline help linked to the Sphinx documentation; user-editable
+visualization styling (beginning with diffraction spot shape, scale and colour); canonical
+ready-to-run data for every GUI feature; a scientifically explicit Burgers beta-Zr (bcc) to
+alpha-Zr (hcp) example; and human-style end-to-end testing of both shells with every discovered
+defect fixed.
+
+**Architecture kept.** Both shells continue to use the byte-identical frontend and the existing
+JSON-in/JSON-out service layer in `pytex.app`. Scientific calculations remain in Python; browser
+code controls presentation and camera state only. The zero-build, zero-third-party-JavaScript
+deployment rule remains in force.
+
+### Initial audit
+
+- Worktree is clean on `main` at `9a916a9`, matching `origin/main`.
+- Six panels exist (calculator, crystal, TEM, diffraction, variants, texture), each already has
+  at least three runnable manifest examples and tests execute every example.
+- Existing responsiveness tests cover 390, 768 and 1440 px widths; prior work fixed hidden tabs,
+  overflowing plot toolbars, desktop export, drag lifetime, opening defaults and legend focus.
+- Diffraction spots are still hard-coded as circles with one fourth-root radius mapping and
+  generated variant colours; users cannot select marker shape, scale, palette or parent colour.
+- Operation help is manifest-backed but has no first-class link to the matching Sphinx page.
+- Burgers examples currently use the Fe-bcc phase as a symmetry-compatible stand-in for beta Zr,
+  while labelling the case as zirconium. A real built-in beta-Zr phase is therefore required.
+
+### Planned increments
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | in progress | — |
+| 2 | Manifest-backed documentation links and richer inline help | planned | — |
+| 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | planned | — |
+| 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | planned | — |
+| 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
+| 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
+
+**Verification so far.** Playwright's Node prerequisite (`npx`) is installed. No implementation
+change has been made yet.
+
+**Exact next action.** Record the current manifest/panel surface, then implement increment 1 with
+source-level regression tests and drive it at phone, tablet and desktop widths before committing
+and pushing.
+
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 
 **Objective.** Build one interactive application over the PyTex library that ships both as a
