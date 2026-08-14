@@ -44,7 +44,7 @@ form at every stage, across every panel.**
 | 1 | `pytex.diffraction.lattice_fit`: 2D lattice fit with least-squares centre refinement | done | (this commit) |
 | 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | done | (this commit) |
 | 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | done | (this commit) |
-| 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | pending | |
+| 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | done | (this commit) |
 | 5 | Export: a human-readable report format on every panel, manifest-published | pending | |
 | 6 | Docs, human-style pass, closeout | pending | |
 
@@ -153,8 +153,52 @@ both times; the expectation was not.
 
 28 new app tests.
 
-**Exact next action.** Increment 4: the frontend — live overlay, centre nudges, the scored solution
-list, superimposing a candidate, and accepting one into tilt planning.
+### Increment 4 result
+
+The picking canvas now carries four layers, each answering a different question, each toggleable.
+
+- **The fitted lattice**, refitted on every pick, nudge and auto-pick, debounced at 200 ms because
+  picking is a burst of clicks and a request per click asks a question only the last one wants
+  answered. Drawn as two families of ruled lines rather than dots — a grid of points is a second
+  set of spots to confuse with the first.
+- **The two basis vectors, as labelled arrows** from the beam to the picks that generate them
+  (added at the user's request mid-increment). The grid shows *that* the picks are consistent; the
+  arrows show *which two* are carrying the whole lattice, which is what a user needs while
+  adjusting. Each arrow ends on the picked spot rather than on the ideal node, so the gap between
+  head and node is the error in that pick, visible without reading anything. `tem.fit_lattice`
+  returns `basis_vectors` with the pick each one lands on, and reports honestly when no pick sits
+  on a unit node.
+- **The beam-centre tool**: a readout of where the beam is and where the spots say it should be, a
+  directional pad with a step size, "Refine from the spots", and "Undo refinement". A pad rather
+  than two number fields because the judgement is visual — nudge, look, nudge again — and a number
+  box breaks that loop by demanding a value before showing its effect.
+- **The calculated pattern of the selected candidate**, as open rings wide enough for the measured
+  spot to show through the middle.
+
+Candidates are listed ranked by score with three bars — d, angle, spots — so "why is this one
+lower" is answered without a click. Selecting one draws its calculated pattern; **accepting** is a
+separate deliberate act that carries the phase and axis into the atlas and tilt panels. Looking
+costs nothing and commits to nothing.
+
+**Two defects found by rendering the live SVG and looking at it.**
+
+12. **The calculated rings were drawn smaller than the spots they explain**, so they sat *inside*
+    the bright core and read as part of the spot rather than as a prediction about it — the one
+    thing a superimposed pattern must never do. They are now wider than the core.
+13. **The overlays used `var(--teal)` and `var(--violet)`.** The plate is always dark whatever the
+    interface theme, and those tokens resolve to deep saturated values in light mode — a dark line
+    on a near-black ground for half the users. Overlay colours are now fixed bright values drawn
+    over a dark halo, which is legible on a dark plate and on a light-ground micrograph both.
+
+Also: the arrowheads at `marker * 1.5` were invisible against the spot and are now `2.6`.
+
+Verified by rebuilding the page's own layers from the services and rasterising them: with the beam
+displaced 22, -16 px and one pick moved 46, 30 px, the grid still passes through the true spots,
+the arrows still point at the two generating picks, and the mis-picked spot sits visibly off the
+lattice between two rows.
+
+**Exact next action.** Increment 5: a human-readable export format on every panel, published in the
+manifest so the buttons are generated rather than hard-coded.
 
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 

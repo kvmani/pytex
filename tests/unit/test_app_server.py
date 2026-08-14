@@ -604,6 +604,60 @@ class TestFrontendIsSelfContained:
         assert "Set the camera constant and pixel size for this image before" in source
         assert "without ever looking wrong" in source
 
+    def test_the_lattice_overlay_is_refitted_whenever_the_picks_move(self) -> None:
+        """An overlay that lags the picks is worse than none: it looks authoritative."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "tem.fit_lattice" in source
+        assert "function scheduleFit()" in source
+        # Every path that changes a pick or the centre has to re-fit.
+        assert source.count("scheduleFit()") >= 6
+        # Debounced, because picking is a burst of clicks.
+        assert "setTimeout" in source and "clearTimeout" in source
+
+    def test_the_centre_can_be_nudged_and_refined_and_put_back(self) -> None:
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "function nudgeCentre(dx, dy)" in source
+        assert "function adoptRefinedCentre()" in source
+        assert "function restorePickedCentre()" in source
+        assert "state.nudgeStep" in source
+
+    def test_the_basis_vectors_are_drawn_at_the_picks_that_generate_them(self) -> None:
+        """The arrows must follow the spots, which is what makes them worth drawing."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "function drawBasisVectors(" in source
+        assert "state.fit?.data.basis_vectors" in source
+        assert "polygon" in source
+
+    def test_overlay_colours_are_fixed_and_haloed_not_theme_tokens(self) -> None:
+        """The plate is dark in both themes; a theme token would vanish in one."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        for constant in ("LATTICE_COLOUR", "CALCULATED_COLOUR", "HALO_COLOUR"):
+            assert constant in source
+        drawing = source.split("function drawFittedLattice")[1].split("function eventToImage")[0]
+        assert "var(--teal)" not in drawing
+        assert "var(--violet)" not in drawing
+
+    def test_a_candidate_is_selected_to_look_at_and_accepted_separately(self) -> None:
+        """Looking at a solution must cost nothing and commit to nothing."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "function solutionsCard(" in source
+        assert "function acceptSolution(" in source
+        assert "Accept this solution" in source
+        # Selecting redraws; accepting is what carries the axis onward.
+        assert "state.selected = index" in source
+        assert "state.tiltForm.setValues({ phase, current_zone_axis: axis })" in source
+
+    def test_the_scored_terms_are_shown_beside_the_fused_number(self) -> None:
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "function scoreBar(" in source
+        for term in ("length_agreement", "angle_agreement", "coverage_agreement"):
+            assert term in source
+        assert "function deviationCard(" in source
+
     def test_an_atlas_row_can_be_acted_on_rather_than_transcribed(self) -> None:
         """Retyping indices from a table into a form is how wrong indices get planned."""
 

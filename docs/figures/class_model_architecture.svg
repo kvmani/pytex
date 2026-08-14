@@ -54,7 +54,7 @@
   <rect x="995.4" y="110.0" width="164.9" height="143.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
   <rect x="996.4" y="111.0" width="162.9" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
   <text x="1010.4" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">pytex.diffraction</text>
-  <text x="1010.4" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">64 public classes</text>
+  <text x="1010.4" y="156.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">70 public classes</text>
   <text x="1010.4" y="174.0" font-size="13" font-family="Arial" fill="#f59e0b" text-anchor="start">«domain»</text>
   <line x1="996.4" y1="178.0" x2="1159.3" y2="178.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
   <text x="1010.4" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">geometry, XRD</text>

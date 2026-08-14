@@ -1123,6 +1123,37 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
         }
         for spot in fit.spots
     ]
+    # The two basis vectors, aimed at the picks that actually generate them.
+    #
+    # Pointing the arrow at the *picked spot* rather than at the ideal node is
+    # the whole value of drawing it: the arrow then moves with the spot as it is
+    # adjusted, and the gap between where it lands and where the lattice says it
+    # should be is visible directly. When no pick sits on a unit node — the user
+    # picked only second-order reflections, say — the ideal node is used instead
+    # and the row says so, because an arrow to a spot that is not there would be
+    # a lie about which pick is driving the fit.
+    by_node = {spot.lattice_indices: spot for spot in fit.spots}
+    basis_vectors: list[dict[str, Any]] = []
+    for label, node, opposite in (("a", (1, 0), (-1, 0)), ("b", (0, 1), (0, -1))):
+        spot = by_node.get(node)
+        sense = 1
+        if spot is None:
+            spot = by_node.get(opposite)
+            sense = -1
+        row = 0 if label == "a" else 1
+        ideal = np.asarray(fit.centre, dtype=float) + sense * np.asarray(fit.basis[row])
+        tip = np.asarray(spot.position, dtype=float) if spot is not None else ideal
+        basis_vectors.append(
+            {
+                "label": label if sense > 0 else f"-{label}",
+                "from": [float(value) for value in fit.centre],
+                "to": [float(tip[0]), float(tip[1])],
+                "length": float(np.linalg.norm(tip - np.asarray(fit.centre, dtype=float))),
+                "spot": (spot.index + 1) if spot is not None else None,
+                "on_a_pick": spot is not None,
+            }
+        )
+
     bounds = (
         float(request["frame_width"]) if request.get("frame_width") else None,
         float(request["frame_height"]) if request.get("frame_height") else None,
@@ -1179,6 +1210,7 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
                 {"x": float(row[0]), "y": float(row[1]), "m": int(row[2]), "n": int(row[3])}
                 for row in nodes
             ],
+            "basis_vectors": basis_vectors,
             "outliers": [spot.index + 1 for spot in fit.outliers],
             "describe": fit.describe(),
         },

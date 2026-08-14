@@ -40,6 +40,21 @@ export const panel = {
 /** Colour of a simulated reflection. A plate is monochrome; so is this. */
 const SPOT_COLOUR = '#eaf2ff';
 
+/*
+ * Overlay colours are fixed, not theme tokens, and each is drawn over a dark
+ * halo.
+ *
+ * The plate is always dark whatever the interface theme, so `var(--teal)` and
+ * `var(--violet)` — which resolve to deep, saturated values in light mode —
+ * would put a dark line on a near-black ground for half the users. And an
+ * uploaded micrograph may be a light-ground print, where the reverse happens.
+ * A bright stroke over a dark one is legible on both, which is the only way to
+ * be right about a background this code does not control.
+ */
+const LATTICE_COLOUR = '#4fd3d3';
+const CALCULATED_COLOUR = '#c9b0ff';
+const HALO_COLOUR = '#05070d';
+
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
   const galleryOperation = operations.find((entry) => entry.id === 'tem.gallery_pattern');
@@ -62,6 +77,15 @@ export function mount(context) {
     image: null,
     gallery: null,
     picks: { centre: null, spots: [] },
+    pickedCentre: null, // where the beam was clicked, before any refinement
+    fit: null, // the live 2D lattice fitted to the picks
+    fitPending: null,
+    showLattice: true,
+    showCalculated: true,
+    solutions: [],
+    selected: 0,
+    accepted: null,
+    nudgeStep: 1,
     showAnswer: false,
     solveForm: null,
     atlasForm: null,
@@ -92,10 +116,37 @@ export function mount(context) {
     onclick: () => autoPick(),
   });
 
+  const latticeButton = el('button.button', {
+    type: 'button',
+    text: 'Lattice',
+    'aria-pressed': 'true',
+    title: 'Draw the lattice fitted to the picked spots',
+    onclick: () => {
+      state.showLattice = !state.showLattice;
+      latticeButton.setAttribute('aria-pressed', String(state.showLattice));
+      drawPattern();
+    },
+  });
+
+  const calculatedButton = el('button.button', {
+    type: 'button',
+    text: 'Calculated',
+    hidden: true,
+    'aria-pressed': 'true',
+    title: 'Superimpose the pattern the selected solution predicts',
+    onclick: () => {
+      state.showCalculated = !state.showCalculated;
+      calculatedButton.setAttribute('aria-pressed', String(state.showCalculated));
+      drawPattern();
+    },
+  });
+
   const frame = plotFrame({
     title: 'Pattern',
     toolbar: [
       autoPickButton,
+      latticeButton,
+      calculatedButton,
       answerButton,
       el('button.button', {
         type: 'button',
@@ -103,6 +154,7 @@ export function mount(context) {
         onclick: () => {
           if (state.picks.spots.length) state.picks.spots.pop();
           else state.picks.centre = null;
+          scheduleFit();
           drawPattern();
         },
       }),
@@ -111,6 +163,11 @@ export function mount(context) {
         text: 'Clear picks',
         onclick: () => {
           state.picks = { centre: null, spots: [] };
+          state.pickedCentre = null;
+          state.fit = null;
+          state.solutions = [];
+          calculatedButton.hidden = true;
+          renderCentreTool();
           drawPattern();
         },
       }),
@@ -129,6 +186,7 @@ export function mount(context) {
   });
 
   const galleryHost = el('div');
+  const centreHost = el('div.centre-tool');
   const solveHost = el('div');
   const atlasHost = el('div');
   const tiltHost = el('div');
@@ -189,6 +247,7 @@ export function mount(context) {
             'reflection: it is the origin every spot is measured from, so an error there biases ' +
             'every d-spacing in the pattern.',
         }),
+        centreHost,
         solveHost,
         solveButton,
       ]),
@@ -311,6 +370,11 @@ export function mount(context) {
       state.source = { kind: 'gallery' };
       state.mode = 'pick';
       state.picks = { centre: null, spots: [] };
+      state.pickedCentre = null;
+      state.fit = null;
+      state.solutions = [];
+      state.accepted = null;
+      calculatedButton.hidden = true;
       state.image = null;
       state.showAnswer = false;
       answerButton.hidden = false;
@@ -401,6 +465,11 @@ export function mount(context) {
         state.gallery = null;
         state.mode = 'pick';
         state.picks = { centre: null, spots: [] };
+        state.pickedCentre = null;
+        state.fit = null;
+        state.solutions = [];
+        state.accepted = null;
+        calculatedButton.hidden = true;
         answerButton.hidden = true;
         autoPickButton.hidden = true;
         drawPattern();
@@ -431,11 +500,196 @@ export function mount(context) {
       centre: [...suggested.centre],
       spots: suggested.spots.map((spot) => ({ x: spot.x, y: spot.y })),
     };
+    state.pickedCentre = null;
+    scheduleFit();
     drawPattern();
     frame.setStatus(
       `Beam and ${state.picks.spots.length} spots placed for you — they are the strongest ` +
         'reflections whose directions are all different, which is what indexing needs. Index ' +
         'them, or clear and pick your own.',
+    );
+  }
+
+  /**
+   * Re-fit the 2D lattice to the current picks, and redraw.
+   *
+   * Debounced rather than immediate: picking is a burst of clicks, and a request
+   * per click would put a dozen in flight to answer a question only the last one
+   * asks. 200 ms is below the threshold where a user reads the overlay as
+   * lagging and above the interval between two deliberate clicks.
+   *
+   * A failure here is not an error to shout about. Two spots on one row cannot
+   * define a lattice, and that is a normal state halfway through picking, so the
+   * overlay simply goes away until the picks can support it.
+   */
+  function scheduleFit() {
+    if (state.fitPending) clearTimeout(state.fitPending);
+    state.fitPending = setTimeout(() => {
+      state.fitPending = null;
+      refreshFit();
+    }, 200);
+  }
+
+  async function refreshFit() {
+    const size = frameSize();
+    if (!state.picks.centre || state.picks.spots.length < 2 || !size) {
+      state.fit = null;
+      renderCentreTool();
+      drawPattern();
+      return;
+    }
+    try {
+      const result = await call('tem.fit_lattice', {
+        picks: state.picks,
+        frame_width: size.width,
+        frame_height: size.height,
+      });
+      state.fit = result;
+    } catch {
+      // Not yet a lattice. Say nothing; the picks are mid-flight.
+      state.fit = null;
+    }
+    renderCentreTool();
+    drawPattern();
+  }
+
+  /** Move the transmitted beam by a whole number of picking units. */
+  function nudgeCentre(dx, dy) {
+    if (!state.picks.centre) return;
+    if (!state.pickedCentre) state.pickedCentre = [...state.picks.centre];
+    state.picks.centre = [
+      state.picks.centre[0] + dx * state.nudgeStep,
+      state.picks.centre[1] + dy * state.nudgeStep,
+    ];
+    scheduleFit();
+    drawPattern();
+  }
+
+  function adoptRefinedCentre() {
+    if (!state.fit) return;
+    if (!state.pickedCentre) state.pickedCentre = [...state.picks.centre];
+    state.picks.centre = [...state.fit.data.centre];
+    scheduleFit();
+    drawPattern();
+  }
+
+  function restorePickedCentre() {
+    if (!state.pickedCentre) return;
+    state.picks.centre = [...state.pickedCentre];
+    state.pickedCentre = null;
+    scheduleFit();
+    drawPattern();
+  }
+
+  /**
+   * The beam-centre panel: where it is, where the spots say it should be, and
+   * the controls to close the gap.
+   *
+   * The nudge buttons exist because the refinement cannot always be trusted
+   * blindly — a centre wrong by an exact lattice vector fits perfectly, and only
+   * a person looking at which spot is brightest can settle it. So the tool
+   * offers both: solve for it, or move it by hand and watch the overlay.
+   */
+  function renderCentreTool() {
+    if (!state.picks.centre) {
+      centreHost.replaceChildren(
+        el('p.field__help', {
+          text: 'Click the transmitted beam to enable centre refinement.',
+        }),
+      );
+      return;
+    }
+    const fit = state.fit?.data;
+    const shift = fit ? fit.centre_shift : null;
+    const arrow = (label, dx, dy, description) =>
+      el('button.button.button--small', {
+        type: 'button',
+        text: label,
+        title: description,
+        'aria-label': description,
+        onclick: () => nudgeCentre(dx, dy),
+      });
+
+    centreHost.replaceChildren(
+      el('div.field__label', { text: 'Transmitted beam' }),
+      el('p.field__help', {
+        text:
+          'The largest avoidable error in the whole workflow: it biases every d-spacing at once, ' +
+          'and leaves the pattern self-consistent while doing it. Nudge it and watch the fitted ' +
+          'lattice, or let the spots solve for it.',
+      }),
+      el('div.centre-tool__readout', {
+        text:
+          `Now at ${formatNumber(state.picks.centre[0], 1)}, ` +
+          `${formatNumber(state.picks.centre[1], 1)}` +
+          (shift === null
+            ? ' · pick two more spots to fit a lattice'
+            : ` · the spots put it ${formatNumber(shift, 1)} away`),
+      }),
+      el('div.centre-tool__pad', {}, [
+        arrow('◀', -1, 0, 'Move the beam left'),
+        el('div.centre-tool__column', {}, [
+          arrow('▲', 0, -1, 'Move the beam up'),
+          arrow('▼', 0, 1, 'Move the beam down'),
+        ]),
+        arrow('▶', 1, 0, 'Move the beam right'),
+        el(
+          'select.centre-tool__step',
+          {
+            'aria-label': 'Nudge step',
+            onchange: (event) => {
+              state.nudgeStep = Number(event.target.value);
+            },
+          },
+          [0.5, 1, 2, 5, 10].map((step) =>
+            el('option', {
+              value: String(step),
+              text: `${step} px`,
+              selected: step === state.nudgeStep,
+            }),
+          ),
+        ),
+      ]),
+      el('div.button-row', {}, [
+        el('button.button.button--small', {
+          type: 'button',
+          text: 'Refine from the spots',
+          disabled: !fit,
+          title: 'Move the beam to where the fitted lattice puts it',
+          onclick: () => adoptRefinedCentre(),
+        }),
+        el('button.button.button--small', {
+          type: 'button',
+          text: 'Undo refinement',
+          disabled: !state.pickedCentre,
+          title: 'Put the beam back where it was clicked',
+          onclick: () => restorePickedCentre(),
+        }),
+      ]),
+      fit && fit.basis_vectors?.length
+        ? el('p.field__hint', {
+            text:
+              'The arrows on the pattern are the two lattice vectors ' +
+              fit.basis_vectors
+                .map((vector) =>
+                  vector.on_a_pick
+                    ? `${vector.label} (spot ${vector.spot}, ` +
+                      `${formatNumber(vector.length, 1)} px)`
+                    : `${vector.label} (no pick on this node)`,
+                )
+                .join(' and ') +
+              '. Every line in the grid turns with them, so those are the two picks worth ' +
+              'adjusting first.',
+          })
+        : null,
+      fit && fit.fit.notes.length
+        ? el('p.field__hint', { text: fit.fit.notes.join(' ') })
+        : null,
+      fit && fit.outliers.length
+        ? el('p.field__hint', {
+            text: `Spot(s) ${fit.outliers.join(', ')} do not sit on the fitted lattice.`,
+          })
+        : null,
     );
   }
 
@@ -499,6 +753,9 @@ export function mount(context) {
       drawSimulatedPattern(root, state.gallery.data.pattern);
     }
 
+    if (state.showLattice && state.fit) drawFittedLattice(root, width, height);
+    if (state.showCalculated) drawCalculatedPattern(root, width, height);
+
     const marker = Math.max(width, height) / 140;
     if (state.picks.centre) {
       const [cx, cy] = state.picks.centre;
@@ -555,8 +812,11 @@ export function mount(context) {
     root.addEventListener('click', (event) => {
       const point = eventToImage(event, root, width, height);
       if (!point) return;
-      if (!state.picks.centre) state.picks.centre = [point.x, point.y];
-      else state.picks.spots.push({ x: point.x, y: point.y });
+      if (!state.picks.centre) {
+        state.picks.centre = [point.x, point.y];
+        state.pickedCentre = null;
+      } else state.picks.spots.push({ x: point.x, y: point.y });
+      scheduleFit();
       drawPattern();
     });
 
@@ -705,6 +965,188 @@ export function mount(context) {
     );
   }
 
+  /**
+   * The fitted lattice, as two families of lines through the refined centre.
+   *
+   * Lines rather than dots. A grid of points is a second set of spots to confuse
+   * with the first; ruled lines are unmistakably an overlay, and they make the
+   * two things a user is checking visible at a glance — whether the rows pass
+   * through the spots, and whether their intersection sits on the beam.
+   */
+  function drawFittedLattice(root, width, height) {
+    const data = state.fit.data;
+    const [ax, ay] = data.fit.basis[0];
+    const [bx, by] = data.fit.basis[1];
+    const [cx, cy] = data.centre;
+    const reach = Math.ceil(Math.hypot(width, height) / Math.min(
+      Math.hypot(ax, ay), Math.hypot(bx, by),
+    ));
+    const lines = [];
+    for (let k = -reach; k <= reach; k += 1) {
+      lines.push([
+        cx + k * bx - reach * ax, cy + k * by - reach * ay,
+        cx + k * bx + reach * ax, cy + k * by + reach * ay,
+      ]);
+      lines.push([
+        cx + k * ax - reach * bx, cy + k * ay - reach * by,
+        cx + k * ax + reach * bx, cy + k * ay + reach * by,
+      ]);
+    }
+    const group = svg('g', { 'pointer-events': 'none' });
+    const weight = Math.max(width, height) / 900;
+    for (const [x1, y1, x2, y2] of lines) {
+      group.append(
+        svg('line', {
+          x1, y1, x2, y2,
+          stroke: HALO_COLOUR,
+          'stroke-opacity': 0.55,
+          'stroke-width': weight * 3,
+        }),
+      );
+    }
+    for (const [x1, y1, x2, y2] of lines) {
+      group.append(
+        svg('line', {
+          x1, y1, x2, y2,
+          stroke: LATTICE_COLOUR,
+          'stroke-opacity': 0.55,
+          'stroke-width': weight,
+        }),
+      );
+    }
+    // The origin of the fitted lattice, which is where the spots say the beam is.
+    const marker = Math.max(width, height) / 110;
+    group.append(
+      svg('circle', {
+        cx, cy, r: marker,
+        fill: 'none',
+        stroke: LATTICE_COLOUR,
+        'stroke-width': marker / 4,
+        'stroke-dasharray': `${marker / 2} ${marker / 2}`,
+      }),
+    );
+    root.append(group);
+    drawBasisVectors(root, width, height);
+  }
+
+  /**
+   * The two basis vectors, as labelled arrows from the beam to the spots that
+   * generate them.
+   *
+   * The grid alone shows *that* the picks are consistent; the arrows show
+   * *which two* picks are carrying the whole lattice. That matters while
+   * adjusting: move the spot an arrow points at and every line in the grid
+   * turns with it, so the two picks worth being careful about are the two the
+   * arrows are on. Each arrow ends on the picked spot rather than on the ideal
+   * node, so the gap between the head and the node is the error in that pick,
+   * visible without reading anything.
+   */
+  function drawBasisVectors(root, width, height) {
+    const vectors = state.fit?.data.basis_vectors ?? [];
+    if (!vectors.length) return;
+    const marker = Math.max(width, height) / 110;
+    const group = svg('g', { 'pointer-events': 'none' });
+    for (const vector of vectors) {
+      const [x1, y1] = vector.from;
+      const [x2, y2] = vector.to;
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const length = Math.hypot(dx, dy);
+      if (!length) continue;
+      const ux = dx / length;
+      const uy = dy / length;
+      // Stop the shaft short of the spot so the arrowhead sits beside it rather
+      // than on top of the thing being measured.
+      const tipX = x2 - ux * marker * 1.4;
+      const tipY = y2 - uy * marker * 1.4;
+      // Generous, because the head is the only part of the arrow that says
+      // which end is which, and at marker * 1.5 it was lost against the spot.
+      const head = marker * 2.6;
+      const wing = marker * 1.1;
+      const points = [
+        `${tipX},${tipY}`,
+        `${tipX - ux * head + -uy * wing},${tipY - uy * head + ux * wing}`,
+        `${tipX - ux * head - -uy * wing},${tipY - uy * head - ux * wing}`,
+      ].join(' ');
+      for (const [colour, weight, opacity] of [
+        [HALO_COLOUR, marker / 2, 0.6],
+        [LATTICE_COLOUR, marker / 5, 1],
+      ]) {
+        group.append(
+          svg('line', {
+            x1, y1, x2: tipX, y2: tipY,
+            stroke: colour,
+            'stroke-width': weight,
+            'stroke-opacity': opacity,
+            'stroke-linecap': 'round',
+          }),
+        );
+      }
+      group.append(svg('polygon', { points, fill: LATTICE_COLOUR }));
+      group.append(
+        svg('text', {
+          x: x1 + dx * 0.55 - uy * marker * 1.6,
+          y: y1 + dy * 0.55 + ux * marker * 1.6,
+          'font-size': marker * 2.2,
+          'font-style': 'italic',
+          fill: LATTICE_COLOUR,
+          'paint-order': 'stroke',
+          stroke: HALO_COLOUR,
+          'stroke-width': marker / 2,
+          'text-anchor': 'middle',
+          text: vector.label,
+        }),
+      );
+    }
+    root.append(group);
+  }
+
+  /**
+   * The pattern a chosen solution predicts, drawn over the one measured.
+   *
+   * Open rings, so a measured spot showing through the middle of one reads as
+   * agreement. Every reflection of the zone is drawn, not only those a spot was
+   * picked for: a predicted ring with nothing inside it is either a spot not yet
+   * picked or evidence against the candidate, and both are worth seeing.
+   */
+  function drawCalculatedPattern(root, width, height) {
+    const solution = state.solutions[state.selected];
+    if (!solution?.overlay?.length) return;
+    // The ring must be wider than the spot it is claiming to explain. Drawn at
+    // half this size it sat *inside* the bright core and read as part of the
+    // spot rather than as a prediction about it, which is the one thing a
+    // superimposed pattern must never do.
+    const marker = Math.max(width, height) / 90;
+    const group = svg('g');
+    for (const spot of solution.overlay) {
+      group.append(
+        svg('circle', {
+          cx: spot.x, cy: spot.y, r: marker,
+          fill: 'none',
+          stroke: HALO_COLOUR,
+          'stroke-width': marker / 3,
+          'stroke-opacity': 0.5,
+        }),
+      );
+      const node = svg('circle', {
+        cx: spot.x, cy: spot.y, r: marker,
+        fill: 'none',
+        stroke: CALCULATED_COLOUR,
+        'stroke-width': marker / 7,
+        'stroke-opacity': 0.95,
+      });
+      group.append(node);
+      frame.hoverable(node, {
+        Calculated: spot.label,
+        'd / Å': spot.d,
+        '|g| / Å⁻¹': spot.g,
+        x: spot.x,
+        y: spot.y,
+      });
+    }
+    root.append(group);
+  }
+
   function eventToImage(event, node, width, height) {
     const rect = node.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
@@ -733,21 +1175,23 @@ export function mount(context) {
       }
       const result = await call('tem.solve_pattern', request);
       state.solution = result;
-      renderResult(details, result, { extra: [verdictCard(result)].filter(Boolean) });
+      state.solutions = result.data.alternatives ?? [];
+      state.selected = 0;
+      state.accepted = null;
+      calculatedButton.hidden = state.solutions.length === 0;
+      state.showCalculated = true;
+      calculatedButton.setAttribute('aria-pressed', 'true');
+      renderResult(details, result, {
+        extra: [verdictCard(result), solutionsCard(result), deviationCard(result)].filter(Boolean),
+      });
+      drawPattern();
       // Carry the answer into the panels below: the axis just indexed is the
       // axis the next move starts from, and retyping it is both tedious and a
       // chance to get it wrong.
-      // The phase carried forward is the value the picker emitted, not the
-      // expanded description the result echoes back. A catalogue choice that
-      // makes a round trip through `PhaseSpec.to_json` comes back as a full
-      // description, which the picker then labels "(edited)" — untrue, and
-      // alarming on a phase nobody edited.
-      const phase = state.solveForm.values().phase;
-      state.atlasForm?.setValues({ phase, current_zone_axis: result.data.zone_axis });
-      state.tiltForm.setValues({ phase, current_zone_axis: result.data.zone_axis });
       frame.setStatus(
         `Indexed as ${result.data.phase_name} down ${result.data.zone_axis_label}` +
-          ` · ${state.picks.spots.length} picks`,
+          ` · score ${formatNumber(result.data.score.score, 3)}` +
+          ` · ${state.picks.spots.length} picks · accept a solution to plan from it`,
       );
     } catch (error) {
       // The verdict answers one attempt. Leaving the previous "Correct" card on
@@ -787,6 +1231,163 @@ export function mount(context) {
         }),
       ]),
     ]);
+  }
+
+  /**
+   * The candidates, ranked by the score, each one selectable and acceptable.
+   *
+   * Selecting draws that candidate's calculated pattern over the measured one,
+   * which is how the choice should be made; accepting is a separate, deliberate
+   * act that carries the answer into the panels below. Keeping them apart means
+   * looking at a candidate costs nothing and commits to nothing.
+   */
+  function solutionsCard(result) {
+    const alternatives = result.data.alternatives ?? [];
+    if (!alternatives.length) return null;
+    const list = el('div.examples');
+
+    const paint = () => {
+      list.replaceChildren(
+        ...alternatives.map((entry, index) =>
+          el(
+            'button.example',
+            {
+              type: 'button',
+              class: index === state.selected ? 'example--selected' : null,
+              'aria-pressed': String(index === state.selected),
+              onclick: () => {
+                state.selected = index;
+                paint();
+                drawPattern();
+              },
+            },
+            [
+              el('strong', {
+                text: `${entry.phase} ${entry.zone_axis} · score ${formatNumber(entry.score, 3)}`,
+              }),
+              el('span', {
+                text:
+                  `${entry.matched_spots} of ${state.picks.spots.length} spots indexed · ` +
+                  `d to ${formatNumber(100 * entry.rms_relative_length_deviation, 2)}% · ` +
+                  `angles to ${formatNumber(entry.rms_angle_deviation_deg, 2)}°`,
+              }),
+              scoreBar(entry),
+            ],
+          ),
+        ),
+      );
+    };
+    paint();
+
+    return el('section.card', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', { text: 'Candidate solutions' }),
+        el('p.card__subtitle', {
+          text:
+            'Ranked by the accuracy score. Choosing one draws the pattern it predicts over the ' +
+            'one you measured — the honest way to decide is to look at whether they coincide.',
+        }),
+        el('div.button-row', { style: 'margin-left:auto' }, [
+          el('button.button.button--primary', {
+            type: 'button',
+            text: 'Accept this solution',
+            onclick: () => acceptSolution(result),
+          }),
+        ]),
+      ]),
+      el('div.card__body', {}, [list]),
+    ]);
+  }
+
+  /** Three bars: how well lengths, angles and coverage each agree. */
+  function scoreBar(entry) {
+    const term = (label, value, colour) =>
+      el('span.score-term', { title: `${label}: ${formatNumber(value, 3)} of 1` }, [
+        el('span.score-term__label', { text: label }),
+        el('span.score-term__track', {}, [
+          el('span.score-term__fill', {
+            style: `width:${Math.max(0, Math.min(1, value)) * 100}%;background:${colour}`,
+          }),
+        ]),
+      ]);
+    return el('span.score-bars', {}, [
+      term('d', entry.length_agreement, 'var(--accent)'),
+      term('angle', entry.angle_agreement, 'var(--teal)'),
+      term('spots', entry.coverage_agreement, 'var(--violet)'),
+    ]);
+  }
+
+  /** The measured-against-calculated evidence, spot by spot and pair by pair. */
+  function deviationCard(result) {
+    const score = result.data.score;
+    if (!score) return null;
+    const angles = score.angle_deviations.slice(0, 10);
+    return el('section.card', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', { text: 'Where it disagrees' }),
+        el('p.card__subtitle', {
+          text:
+            'The same deviation on every spot is a camera constant; a scatter of them is an ' +
+            'indexing error. Angles do not depend on the calibration at all, so an angular ' +
+            'disagreement is evidence about the phase.',
+        }),
+      ]),
+      el('div.card__body', {}, [
+        el('p.summary', { text: score.describe }),
+        angles.length
+          ? el('table.table--compact', {}, [
+              el('thead', {}, [
+                el('tr', {}, [
+                  el('th', { text: 'Pair' }),
+                  el('th.numeric', { text: 'Measured / °' }),
+                  el('th.numeric', { text: 'Calculated / °' }),
+                  el('th.numeric', { text: 'Δ / °' }),
+                ]),
+              ]),
+              el(
+                'tbody',
+                {},
+                angles.map((pair) =>
+                  el('tr', {}, [
+                    el('td', { text: pair.pair }),
+                    el('td.numeric', { text: formatNumber(pair.measured_deg, 2) }),
+                    el('td.numeric', { text: formatNumber(pair.calculated_deg, 2) }),
+                    el('td.numeric', { text: formatNumber(pair.deviation_deg, 2) }),
+                  ]),
+                ),
+              ),
+            ])
+          : null,
+      ]),
+    ]);
+  }
+
+  /**
+   * Accept a candidate: it becomes the orientation everything downstream uses.
+   *
+   * Explicit rather than automatic. Indexing produces candidates; deciding which
+   * one is right is the user's judgement, and a tilt planned from a solution
+   * nobody chose is a tilt planned from a guess.
+   */
+  function acceptSolution(result) {
+    const entry = state.solutions[state.selected];
+    if (!entry) return;
+    state.accepted = entry;
+    // The phase carried forward is the value the picker emitted, not the
+    // expanded description the result echoes back: a catalogue choice that makes
+    // a round trip through `PhaseSpec.to_json` comes back as a full description,
+    // which the picker then labels "(edited)" — untrue, and alarming on a phase
+    // nobody edited.
+    const phase = state.solveForm.values().phase;
+    const axis = entry.zone_axis_indices ?? result.data.zone_axis;
+    state.atlasForm?.setValues({ phase, current_zone_axis: axis });
+    state.tiltForm.setValues({ phase, current_zone_axis: axis });
+    frame.setStatus(
+      `Accepted ${entry.phase} down ${entry.zone_axis} (score ` +
+        `${formatNumber(entry.score, 3)}). It is now the starting orientation for the zone-axis ` +
+        'list and the tilt plan below.',
+    );
+    atlasButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   async function runAtlas() {
@@ -888,6 +1489,7 @@ export function mount(context) {
   }
 
   renderForms();
+  renderCentreTool();
   drawPattern();
   if (galleryEntries.length) loadGallery(galleryEntries[0].value);
 

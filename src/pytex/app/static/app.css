@@ -932,6 +932,112 @@ button:focus-visible {
   border-left: 3px solid var(--danger, #b3261e);
 }
 
+/* ------------------------------------------------ TEM centre refinement */
+
+/*
+ * The beam-centre tool. A directional pad rather than two number fields,
+ * because the judgement being made is visual - nudge, look at the overlay,
+ * nudge again - and a number box breaks that loop by demanding a value before
+ * showing its effect.
+ */
+.centre-tool {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-raised) 76%, var(--bg));
+}
+
+.centre-tool__readout {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.centre-tool__pad {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.centre-tool__column {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.centre-tool__step {
+  width: auto;
+  margin-left: auto;
+  min-height: 1.875rem;
+  padding-block: 0.2rem;
+  font-size: 0.75rem;
+}
+
+/*
+ * The three score terms, as bars beside the number they add up to. A single
+ * fused score hides which of its parts failed; three bars answer "why is this
+ * one lower" without a second click.
+ */
+.score-bars {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.score-term {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.score-term__label {
+  font-size: 0.6875rem;
+  color: var(--ink-faint);
+  flex: none;
+}
+
+.score-term__track {
+  flex: 1;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.score-term__fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.example--selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.table--compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.table--compact th,
+.table--compact td {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.table--compact .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 /*
  * The indexing verdict on a practice pattern. Correct and incorrect must be
  * distinguishable before the sentence is read, but never *only* by colour: the
