@@ -451,6 +451,31 @@ class TestFrontendIsSelfContained:
             "hiding a scrollbar hides the only sign that content is off-screen"
         )
 
+    def test_every_service_call_reports_progress_to_the_shared_activity_log(self) -> None:
+        """Long calculations need one persistent status surface in both shells."""
+
+        html = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        api = (STATIC_ROOT / "js" / "core" / "api.js").read_text(encoding="utf-8")
+        shell = (STATIC_ROOT / "js" / "main.js").read_text(encoding="utf-8")
+        stylesheet = (STATIC_ROOT / "app.css").read_text(encoding="utf-8")
+        for element_id in (
+            "activity-toggle",
+            "activity-summary",
+            "activity-count",
+            "activity-panel",
+            "activity-log",
+            "activity-clear",
+        ):
+            assert f'id="{element_id}"' in html
+        assert "pytex:operation-start" in api
+        assert "pytex:operation-finish" in api
+        assert "durationMs" in api
+        assert "ACTIVITY_SEQUENCE" in api, "parallel calls must keep independent progress entries"
+        assert "function wireActivity()" in shell
+        assert "history.slice(0, 40)" in shell, "the persistent log must remain bounded"
+        assert ".activity__indicator--busy" in stylesheet
+        assert "@keyframes activity-spin" in stylesheet
+
     def test_the_figure_toolbar_wraps_instead_of_spilling(self) -> None:
         """The plot header has visible overflow, so an unwrapped toolbar escapes.
 

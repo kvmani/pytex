@@ -160,6 +160,7 @@ def _open_native_window(server: AppServer, url: str) -> int:
         width=WINDOW_SIZE[0],
         height=WINDOW_SIZE[1],
         min_size=(960, 640),
+        maximized=True,
         js_api=SaveBridge(),
     )
     # webview.start() owns the main thread until the window closes, which is

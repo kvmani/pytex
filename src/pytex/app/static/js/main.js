@@ -52,6 +52,15 @@ const dom = {
   themeButton: document.getElementById('cycle-theme'),
   themeIcon: document.getElementById('theme-icon'),
   themeLabel: document.getElementById('theme-label'),
+  activity: document.getElementById('activity'),
+  activityToggle: document.getElementById('activity-toggle'),
+  activityPanel: document.getElementById('activity-panel'),
+  activityIndicator: document.getElementById('activity-indicator'),
+  activitySummary: document.getElementById('activity-summary'),
+  activityCount: document.getElementById('activity-count'),
+  activityLog: document.getElementById('activity-log'),
+  activityEmpty: document.getElementById('activity-empty'),
+  activityClear: document.getElementById('activity-clear'),
 };
 
 const app = {
@@ -60,9 +69,82 @@ const app = {
   active: null,
   mounted: null,
   index: [],
+  activity: { active: new Map(), history: [] },
 };
 
+wireActivity();
 start();
+
+function operationTitle(operation) {
+  return app.manifest?.operations.find((entry) => entry.id === operation)?.title ?? operation;
+}
+
+function durationLabel(durationMs) {
+  return durationMs < 1000 ? `${Math.round(durationMs)} ms` : `${(durationMs / 1000).toFixed(1)} s`;
+}
+
+function renderActivity() {
+  const running = app.activity.active.size;
+  dom.activity.classList.toggle('activity--busy', running > 0);
+  dom.activityIndicator.classList.toggle('activity__indicator--busy', running > 0);
+  dom.activitySummary.textContent = running
+    ? `Running ${[...app.activity.active.values()].at(-1)}…`
+    : app.activity.history[0]
+      ? `${app.activity.history[0].title} ${app.activity.history[0].outcome}`
+      : 'Ready';
+  const completed = app.activity.history.length;
+  dom.activityCount.textContent = running
+    ? `${running} active · ${completed} recent`
+    : completed
+      ? `${completed} recent calculation${completed === 1 ? '' : 's'}`
+      : 'No calculations yet';
+  dom.activityEmpty.hidden = completed > 0;
+  clear(dom.activityLog);
+  for (const entry of app.activity.history) {
+    dom.activityLog.append(
+      el(`li.activity__entry.activity__entry--${entry.outcome}`, {}, [
+        el('span.activity__entry-mark', { text: entry.outcome === 'completed' ? '✓' : '!' }),
+        el('span', {}, [
+          el('strong', { text: entry.title }),
+          entry.message ? el('small', { text: entry.message }) : null,
+        ]),
+        el('time', { text: durationLabel(entry.durationMs) }),
+      ]),
+    );
+  }
+}
+
+function wireActivity() {
+  document.addEventListener('pytex:operation-start', (event) => {
+    app.activity.active.set(event.detail.id, operationTitle(event.detail.operation));
+    renderActivity();
+  });
+  document.addEventListener('pytex:operation-finish', (event) => {
+    app.activity.active.delete(event.detail.id);
+    app.activity.history.unshift({
+      title: operationTitle(event.detail.operation),
+      outcome: event.detail.outcome,
+      durationMs: event.detail.durationMs,
+      message: event.detail.message,
+    });
+    app.activity.history = app.activity.history.slice(0, 40);
+    renderActivity();
+  });
+  dom.activityToggle.addEventListener('click', () => {
+    const open = dom.activityPanel.hidden;
+    dom.activityPanel.hidden = !open;
+    dom.activityToggle.setAttribute('aria-expanded', String(open));
+    dom.activityToggle.setAttribute(
+      'aria-label',
+      `${open ? 'Close' : 'Open'} calculation activity`,
+    );
+  });
+  dom.activityClear.addEventListener('click', () => {
+    app.activity.history = [];
+    renderActivity();
+  });
+  renderActivity();
+}
 
 function savedTheme() {
   try {

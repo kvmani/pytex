@@ -41,7 +41,7 @@ calculation parameters. Scientific inputs and export provenance remain manifest-
 | 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | (this commit) |
 | 2 | Crystal object appearance editor with live redraw and publication-export parity | done | (this commit) |
 | 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | done | (this commit) |
-| 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | planned | — |
+| 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | done | (this commit) |
 | 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | planned | — |
 
 ### Increment 1 result
@@ -129,6 +129,50 @@ browser warnings or errors.
 **Exact next action.** Run the controlling quality lane, commit and push increment 3, then add a
 shared operation-progress/activity surface and tune responsive plot/property allocation before the
 final browser and native-desktop validation pass.
+
+### Increment 3 landing
+
+Committed and pushed to `main` as `243acc5` (`Add configurable texture contour plots`). The full
+base lane passed: ruff, strict mypy over 138 source files, and the complete unit suite with the two
+existing skips.
+
+### Increment 4 design
+
+The one shared API call path now emits uniquely identified start/finish events, including duration
+and failure text. A persistent bottom activity bar reports current work without consuming plot
+space; its bounded, expandable history overlays the stage only when requested. This makes progress
+and recent operational messages available in every panel and both shells without duplicating panel
+logic. The large-screen rail now scales between 21 and 25 rem. At mid-size desktop widths the
+duplicated tagline and then action labels yield before tabs wrap; tablet behaviour still places a
+height-bounded property sheet below the main graphic.
+
+**Exact next action.** Reload the live app and verify current/finished/error activity, layout and
+navigation at wide, laptop, tablet and phone widths; then source-test, commit and push increment 4.
+
+### Increment 4 verification
+
+At the 1164 × 655 in-app-browser viewport all seven workspaces remain on one 64 px masthead row;
+the plot receives the flexible width, the rail receives 29% within its 21–25 rem bounds, and the
+36 px activity bar remains visible below both independent scroll regions. Opening history showed
+the catalogue and crystal operations with durations and did not reflow either region. Browser logs
+contained no warnings or errors.
+
+After installing the repository's declared `desktop` extra, Computer Use exercised the real
+pywebview window rather than the browser fallback. The native Texture panel exposed all contour
+controls; a real wheel gesture over the pole figure reached 192%, Fit returned it to 100%, and the
+history panel listed pole-figure, crystal and catalogue calls with timings. Windows snap testing at
+947 px confirmed all seven tabs and the below-plot property sheet remain reachable. The resulting
+breakpoint pass gives the plot more vertical space (rail capped at 36 vh, 34 vh on phones), moves
+all tabs to a deliberate full row at tablet width, and opens native windows maximized so the
+activity bar cannot begin under the OS taskbar.
+
+Focused app-server/desktop tests, JavaScript syntax checks, ruff and strict mypy are green. The
+complete unit lane also passes: 6,002 passed and the two existing skips in 15:26. An initial
+buffered invocation exceeded a 15-minute outer tool timeout without reporting a failure; an
+unbuffered controlling rerun exposed continuous test-by-test progress and completed successfully.
+
+**Exact next action.** Run the complete unit lane, commit and push increment 4, then relaunch from
+that commit for final browser/native smoke coverage and close this ledger and goal.
 
 ## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 

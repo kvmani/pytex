@@ -22,6 +22,7 @@ from typing import Any
 
 import pytest
 
+from pytex.app import desktop
 from pytex.app.desktop import SaveBridge, shell_capabilities
 
 
@@ -119,3 +120,22 @@ class TestShellCapabilities:
         capabilities = shell_capabilities(desktop=True)
         assert capabilities["shell"] == "desktop"
         assert capabilities["can_write_local_files"] is True
+
+
+def test_native_window_opens_maximized(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The status/activity bar must not begin underneath the OS taskbar."""
+
+    captured: dict[str, Any] = {}
+    module = types.ModuleType("webview")
+
+    def create_window(title: str, url: str, **kwargs: Any) -> object:
+        captured.update(title=title, url=url, **kwargs)
+        return object()
+
+    module.create_window = create_window  # type: ignore[attr-defined]
+    module.start = lambda: None  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "webview", module)
+
+    assert desktop._open_native_window(object(), "http://127.0.0.1:1/") == 0
+    assert captured["maximized"] is True
+    assert captured["min_size"] == (960, 640)

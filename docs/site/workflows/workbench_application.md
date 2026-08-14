@@ -18,8 +18,10 @@ hand-written ES modules with no bundler and no third-party JavaScript.
 $ python -m pytex.app desktop
 ```
 
-Opens a native window through `pywebview` if it is installed, and the default browser otherwise.
-Use `--browser` to force the browser, and `--port` to pin the loopback port.
+Opens a maximized native window through `pywebview` if it is installed, and the default browser
+otherwise. Maximizing by default keeps the calculation-activity bar inside the operating system's
+work area; the window remains resizable down to 960 × 640. Use `--browser` to force the browser, and
+`--port` to pin the loopback port.
 
 ```{code-block} console
 $ python -m pytex.app serve
@@ -221,6 +223,15 @@ the same grid is quantised into filled bands, guaranteeing that line and fill bo
 same declared levels. This interpolation is presentation-only: hover targets remain the computed
 samples, and CSV/XLSX/JSON/Report exports retain the service values. **SVG** in the plot toolbar
 saves the current line/filled appearance through the same saver used by both app shells.
+
+### Calculation progress and history
+
+Every Python service call appears in the activity bar at the bottom of both the browser and desktop
+app. While work is in flight the bar names the latest operation and shows an indeterminate progress
+indicator; when it finishes, the result remains in a bounded history with its success/failure state
+and elapsed time. Open the bar to review the latest 40 calls or clear the local display. This log is
+an interface aid, not a scientific record: reproducible parameters and provenance remain in result
+exports and reports.
 
 ```{warning}
 The kernel halfwidth is a **smoothing choice, not a property of the material**. Too small and the

@@ -253,13 +253,16 @@ No framework, but not ad hoc either. The frontend is four layers:
 
 - `core/state.js` — a small observable store; panels subscribe to the slices they render.
 - `core/api.js` — one `call(operation, params)` function over the JSON envelope, with error
-  surfacing that shows the server's user-facing message and hint rather than a stack trace.
+  surfacing that shows the server's user-facing message and hint rather than a stack trace, and
+  start/finish activity events consumed by the shared progress/history bar.
 - `core/controls.js` — the manifest-driven control renderer (Decision 2).
 - `panels/*.js` — one module per tab.
 
 Layout follows the "visualisation gets the room" rule: a persistent tab bar, a single large canvas
-region, and controls in a collapsible side rail plus a context strip under the canvas. Panels are
-responsive down to tablet width, at which point the side rail becomes a sheet.
+region, a width-bounded control rail, and a compact activity bar that expands over the stage only
+when its history is requested. At tablet width the control rail becomes a vertically bounded sheet
+below the figure. Mid-size mastheads progressively omit duplicated tagline/action text before any
+workspace navigation wraps, preserving vertical plot space.
 
 ## Tab Inventory
 

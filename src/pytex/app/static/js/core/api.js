@@ -64,6 +64,7 @@ export async function fetchShell() {
 }
 
 let SHELL = { shell: 'web', can_write_local_files: false, can_read_local_paths: false };
+let ACTIVITY_SEQUENCE = 0;
 
 /** What the running shell can do, as last reported by {@link fetchShell}. */
 export function shell() {
@@ -79,6 +80,36 @@ export function shell() {
  * @throws {ServiceCallError} On any deliberate failure.
  */
 export async function call(operation, params = {}) {
+  const started = performance.now();
+  const activityId = ++ACTIVITY_SEQUENCE;
+  document.dispatchEvent(
+    new CustomEvent('pytex:operation-start', { detail: { id: activityId, operation } }),
+  );
+  let outcome = 'failed';
+  let failure = null;
+  try {
+    const result = await invoke(operation, params);
+    outcome = 'completed';
+    return result;
+  } catch (error) {
+    failure = error;
+    throw error;
+  } finally {
+    document.dispatchEvent(
+      new CustomEvent('pytex:operation-finish', {
+        detail: {
+          operation,
+          id: activityId,
+          outcome,
+          durationMs: performance.now() - started,
+          message: failure?.message ?? null,
+        },
+      }),
+    );
+  }
+}
+
+async function invoke(operation, params) {
   let response;
   try {
     response = await fetch('/api/call', {
