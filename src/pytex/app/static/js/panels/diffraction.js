@@ -24,6 +24,7 @@ import {
   markerRadius,
   markerStyleControl,
   productColor,
+  variantMarkerStyle,
 } from '../core/visualstyle.js';
 
 export const panel = {
@@ -245,6 +246,9 @@ export function mount(context) {
       {},
       data.sources.map((source, index) => {
         const key = `${source.source}|${source.variant}`;
+        const marker = source.source === 'parent'
+          ? { shape: state.appearance.shape, scale: 1 }
+          : variantMarkerStyle(index, state.appearance);
         return el(
           'button.legend__item',
           {
@@ -258,12 +262,12 @@ export function mount(context) {
           },
           [
             el('span.legend__swatch', {
-              dataset: { shape: state.appearance.shape },
-              style: `background:${
+              dataset: { shape: marker.shape, fill: state.appearance.fill },
+              style: `--swatch-color:${
                 source.source === 'parent'
                   ? state.appearance.parentColor
                   : productColor(index, state.appearance)
-              }`,
+              };--swatch-scale:${marker.scale}`,
             }),
             el('span', { text: `${source.label} (${source.spots.length})` }),
           ],
@@ -273,6 +277,13 @@ export function mount(context) {
     legend.replaceChildren(
       visibilityTools,
       items,
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', {
+          dataset: { shape: 'transmitted' },
+          style: '--swatch-color:var(--ink);--swatch-scale:1',
+        }),
+        el('span', { text: 'Transmitted beam (000)' }),
+      ]),
     );
     updateLegend();
   }
@@ -284,10 +295,17 @@ export function mount(context) {
       button.setAttribute('aria-pressed', String(!hidden));
       button.title = hidden ? 'Show these spots' : 'Hide these spots';
       const swatch = button.querySelector('.legend__swatch');
-      swatch.dataset.shape = state.appearance.shape;
-      swatch.style.background = button.dataset.source === 'parent'
+      const marker = button.dataset.source === 'parent'
+        ? { shape: state.appearance.shape, scale: 1 }
+        : variantMarkerStyle(Number(button.dataset.colorIndex), state.appearance);
+      swatch.dataset.shape = marker.shape;
+      swatch.dataset.fill = state.appearance.fill;
+      swatch.style.setProperty('--swatch-scale', marker.scale);
+      const color = button.dataset.source === 'parent'
         ? state.appearance.parentColor
         : productColor(Number(button.dataset.colorIndex), state.appearance);
+      swatch.style.setProperty('--swatch-color', color);
+      swatch.style.background = state.appearance.fill === 'outline' ? 'transparent' : color;
     }
   }
 
@@ -333,11 +351,19 @@ function renderPattern(data, { scale, frame, hidden, appearance }) {
     );
   }
 
-  const colors = new Map();
+  const sourceStyles = new Map();
   data.sources.forEach((source, index) => {
-    colors.set(
+    const marker = source.source === 'parent'
+      ? { shape: appearance.shape, scale: 1 }
+      : variantMarkerStyle(index, appearance);
+    sourceStyles.set(
       `${source.source}|${source.variant}`,
-      source.source === 'parent' ? appearance.parentColor : productColor(index, appearance),
+      {
+        color: source.source === 'parent'
+          ? appearance.parentColor
+          : productColor(index, appearance),
+        ...marker,
+      },
     );
   });
 
@@ -350,6 +376,9 @@ function renderPattern(data, { scale, frame, hidden, appearance }) {
   for (const spot of ordered) {
     const key = sourceKey(spot);
     if (hidden.has(key)) continue;
+    const sourceStyle = sourceStyles.get(key) ?? {
+      color: 'currentColor', shape: appearance.shape, scale: 1,
+    };
     const x = spot.detector_x_mm * scale;
     const y = -spot.detector_y_mm * scale;
     // Radius by the fourth root of intensity: a linear map makes everything
@@ -358,10 +387,11 @@ function renderPattern(data, { scale, frame, hidden, appearance }) {
     const node = markerNode(svg, {
       x,
       y,
-      radius: markerRadius(spot.relative_intensity, appearance),
-      shape: appearance.shape,
-      color: colors.get(key) ?? 'currentColor',
-      hollow: spot.double_diffraction,
+      radius: markerRadius(spot.relative_intensity, appearance) * sourceStyle.scale,
+      shape: sourceStyle.shape,
+      color: sourceStyle.color,
+      hollow: appearance.fill === 'outline' || spot.double_diffraction,
+      dashed: spot.double_diffraction,
     });
     node.setAttribute('fill-opacity', spot.double_diffraction ? '0.35' : '0.92');
     root.append(node);
@@ -370,9 +400,16 @@ function renderPattern(data, { scale, frame, hidden, appearance }) {
 
   // The direct beam, marked so the centre of the pattern is never ambiguous.
   root.append(
-    svg('circle', { cx: 0, cy: 0, r: 1.6, fill: 'none', stroke: 'currentColor', 'stroke-width': 0.5 }),
-    svg('line', { x1: -3, y1: 0, x2: 3, y2: 0, stroke: 'currentColor', 'stroke-width': 0.3 }),
-    svg('line', { x1: 0, y1: -3, x2: 0, y2: 3, stroke: 'currentColor', 'stroke-width': 0.3 }),
+    svg('circle', { cx: 0, cy: 0, r: 2.2, fill: 'none', stroke: 'currentColor', 'stroke-width': 0.75 }),
+    svg('circle', { cx: 0, cy: 0, r: 0.8, fill: 'currentColor' }),
+    svg('line', { x1: -3.8, y1: 0, x2: -2.5, y2: 0, stroke: 'currentColor', 'stroke-width': 0.45 }),
+    svg('line', { x1: 2.5, y1: 0, x2: 3.8, y2: 0, stroke: 'currentColor', 'stroke-width': 0.45 }),
+    svg('line', { x1: 0, y1: -3.8, x2: 0, y2: -2.5, stroke: 'currentColor', 'stroke-width': 0.45 }),
+    svg('line', { x1: 0, y1: 2.5, x2: 0, y2: 3.8, stroke: 'currentColor', 'stroke-width': 0.45 }),
+    svg('text', {
+      x: 4.2, y: -3.2, 'font-size': 3.2, fill: 'currentColor',
+      'font-weight': 600, text: '(000) transmitted',
+    }),
   );
   return root;
 }

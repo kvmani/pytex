@@ -10,6 +10,8 @@ import { el } from './dom.js';
 
 export const DEFAULT_MARKER_STYLE = Object.freeze({
   shape: 'circle',
+  fill: 'filled',
+  variantEncoding: 'color_shape_size',
   scale: 1,
   sizeMode: 'perceptual',
   parentColor: '#64748b',
@@ -20,8 +22,25 @@ export const DEFAULT_MARKER_STYLE = Object.freeze({
 const SHAPES = [
   ['circle', 'Circle'],
   ['square', 'Square'],
+  ['triangle', 'Triangle'],
   ['diamond', 'Diamond'],
+  ['star', 'Star'],
   ['cross', 'Cross'],
+];
+
+const FILLS = [
+  ['filled', 'Filled'],
+  ['outline', 'Outline (unfilled)'],
+];
+
+const VARIANT_ENCODINGS = [
+  ['color', 'Colour'],
+  ['shape', 'Shape'],
+  ['size', 'Size'],
+  ['color_shape', 'Shape + colour'],
+  ['color_size', 'Size + colour'],
+  ['shape_size', 'Shape + size'],
+  ['color_shape_size', 'Shape + size + colour (24 distinct)'],
 ];
 
 const SIZE_MODES = [
@@ -97,7 +116,7 @@ export function markerStyleControl({ onChange }) {
   );
   const child = colorField(
     'Product colour',
-    'Used when the palette is set to a single product colour.',
+    'Used when colour is not a variant channel or the palette uses one product colour.',
     style.childColor,
     (event) => {
       style.childColor = event.currentTarget.value;
@@ -105,7 +124,9 @@ export function markerStyleControl({ onChange }) {
       onChange(style);
     },
   );
-  child.input.disabled = true;
+  const usesPaletteColor = () =>
+    style.variantEncoding.includes('color') && style.palette !== 'single';
+  child.input.disabled = usesPaletteColor();
 
   const root = el('details.group.appearance', { open: true }, [
     el('summary', { text: 'Appearance' }),
@@ -120,6 +141,27 @@ export function markerStyleControl({ onChange }) {
         style.shape,
         (event) => {
           style.shape = event.currentTarget.value;
+          onChange(style);
+        },
+      ),
+      selectField(
+        'Spot fill',
+        'Outline leaves spots unfilled. Double-diffraction spots retain a dashed edge in either mode.',
+        FILLS,
+        style.fill,
+        (event) => {
+          style.fill = event.currentTarget.value;
+          onChange(style);
+        },
+      ),
+      selectField(
+        'Variant encoding',
+        'Choose shape, size, colour, or a combination. Shape + size + colour guarantees 24 distinct symbols even if a palette repeats.',
+        VARIANT_ENCODINGS,
+        style.variantEncoding,
+        (event) => {
+          style.variantEncoding = event.currentTarget.value;
+          child.input.disabled = usesPaletteColor();
           onChange(style);
         },
       ),
@@ -146,7 +188,7 @@ export function markerStyleControl({ onChange }) {
         style.palette,
         (event) => {
           style.palette = event.currentTarget.value;
-          child.input.disabled = style.palette !== 'single';
+          child.input.disabled = usesPaletteColor();
           onChange(style);
         },
       ),
@@ -173,10 +215,22 @@ const ACCESSIBLE_COLORS = [
 
 /** Return the colour for one product source under a marker style. */
 export function productColor(index, style) {
-  if (style.palette === 'single') return style.childColor;
+  if (!style.variantEncoding.includes('color') || style.palette === 'single') {
+    return style.childColor;
+  }
   if (style.palette === 'accessible') return ACCESSIBLE_COLORS[index % ACCESSIBLE_COLORS.length];
   const hue = (index * 137.508 + 212) % 360;
   return `hsl(${hue.toFixed(1)} 72% 54%)`;
+}
+
+/** Shape and size channels for one product variant. */
+export function variantMarkerStyle(index, style) {
+  const useShape = style.variantEncoding.includes('shape');
+  const useSize = style.variantEncoding.includes('size');
+  const shape = useShape ? SHAPES[index % SHAPES.length][0] : style.shape;
+  const sizeCycle = [0.82, 0.94, 1.06, 1.18];
+  const sizeIndex = Math.floor(index / SHAPES.length) % sizeCycle.length;
+  return { shape, scale: useSize ? sizeCycle[sizeIndex] : 1 };
 }
 
 /** Convert relative intensity to marker radius in plot-view units. */
@@ -189,12 +243,14 @@ export function markerRadius(intensity, style) {
 }
 
 /** Build an SVG marker centred on x/y. */
-export function markerNode(svg, { x, y, radius, shape, color, hollow = false }) {
+export function markerNode(svg, {
+  x, y, radius, shape, color, hollow = false, dashed = false,
+}) {
   const paint = {
     fill: hollow || shape === 'cross' ? 'none' : color,
     stroke: hollow || shape === 'cross' ? color : 'none',
     'stroke-width': shape === 'cross' ? Math.max(radius * 0.38, 0.5) : 0.4,
-    'stroke-dasharray': hollow && shape !== 'cross' ? '1 1' : null,
+    'stroke-dasharray': dashed && shape !== 'cross' ? '1 1' : null,
   };
   if (shape === 'square') {
     return svg('rect', { x: x - radius, y: y - radius, width: radius * 2, height: radius * 2, ...paint });
@@ -204,6 +260,22 @@ export function markerNode(svg, { x, y, radius, shape, color, hollow = false }) 
       points: `${x},${y - radius} ${x + radius},${y} ${x},${y + radius} ${x - radius},${y}`,
       ...paint,
     });
+  }
+  if (shape === 'triangle') {
+    const halfWidth = radius * 0.92;
+    return svg('polygon', {
+      points: `${x},${y - radius} ${x + halfWidth},${y + radius * 0.72} ` +
+        `${x - halfWidth},${y + radius * 0.72}`,
+      ...paint,
+    });
+  }
+  if (shape === 'star') {
+    const points = Array.from({ length: 10 }, (_, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 5;
+      const pointRadius = index % 2 === 0 ? radius : radius * 0.42;
+      return `${x + Math.cos(angle) * pointRadius},${y + Math.sin(angle) * pointRadius}`;
+    }).join(' ');
+    return svg('polygon', { points, ...paint });
   }
   if (shape === 'cross') {
     return svg('path', {

@@ -5,7 +5,7 @@ as an intranet web app from **one codebase**: the scientific code, the service l
 user interface are shared, and the two diverge only in how a window opens and where a saved file is
 written.
 
-The design record — including the six decisions that fix the architecture — is
+The design record — including the decisions that fix the architecture — is
 {doc}`../architecture/application_platform`. This page is the user guide.
 
 ## Running It
@@ -43,7 +43,7 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Six workspaces. Every one of them ships with runnable examples, so a user with no data of their own
+Seven workspaces. Every one of them ships with runnable examples, so a user with no data of their own
 can still exercise every feature — the manifest test executes each example, so an example cannot rot.
 
 | Workspace | What it answers |
@@ -51,6 +51,7 @@ can still exercise every feature — the manifest test executes each example, so
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Solver** | Which zone axis is this pattern, and how do I tilt to the next one? |
 | **Diffraction** | What does a two-phase SAED pattern contain, and which variant is that spot? |
+| **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
@@ -74,22 +75,39 @@ stale button behind.
 The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
 system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
 browser and desktop window. On a narrow screen the three masthead actions collapse to icons while
-retaining their full titles and accessible names, and the six workspace tabs wrap rather than
+retaining their full titles and accessible names, and the seven workspace tabs wrap rather than
 disappearing into an unmarked horizontal scroller.
 
-The Diffraction workspace adds an **Appearance** group below **Simulate pattern**. Marker shape,
-overall spot-size scale, intensity-to-size mapping, parent colour and variant palette redraw the
-current result immediately. These are presentation choices: changing them does not run the
-simulation again and cannot alter detector coordinates, indices, intensities, hover data or
-exports. **Perceptual intensity** keeps weak reflections legible, **Area follows intensity** makes
-marker area quantitative, and **Constant size** is useful when comparing geometry alone. The
-colourblind-safe cycle is the preferred palette when colour must distinguish variants.
+The Diffraction workspace adds an **Appearance** group below **Simulate pattern**. Filled or
+unfilled circle, square, triangle, diamond, star and cross symbols, overall spot-size scale,
+intensity-to-size mapping, parent colour and variant palette redraw the current result immediately.
+Variant encoding can use shape, size, colour or any combination of those channels. The default
+shape + size + colour mode gives every one of the 24 product variants a distinct symbol, and each
+legend chip mirrors the exact marker shown in the pattern.
+These are presentation choices: changing them does not run the simulation again and cannot alter
+detector coordinates, indices, intensities, hover data or exports. **Perceptual intensity** keeps
+weak reflections legible, **Area follows intensity** makes marker area quantitative, and
+**Constant size** is useful when comparing geometry alone. The colourblind-safe cycle is the
+preferred palette when colour must distinguish variants. Double-diffraction spots keep their
+dashed edge when all spots are unfilled, preserving their scientific designation. The transmitted
+beam is always rendered independently as a double-ring centre mark, labelled **(000) transmitted**
+in the plot and **Transmitted beam (000)** in the legend.
 
 The legend is also a visibility controller. Click any source chip to hide or restore that source;
 its pressed state remains visible and keyboard focus is preserved. **Show all** restores the full
 composite, **Parent only** removes every product lattice, and **Focus a variantâ€¦** retains the
 parent reference plus one selected variant. Visibility is presentation-only too: hidden rows remain
 in the result table and every numerical export.
+
+The **XRD** workspace uses the same canonical phase picker to generate structure-aware powder
+patterns. It exposes Cu, Mo and Co radiation, single-line or Kα1/Kα2 doublets, tabulated X-ray form
+factors, Gaussian or pseudo-Voigt broadening, scan range, angular sampling and index limit. The
+result retains both the sampled profile and an indexed Kα1 reflection table with $2\theta$, $d$,
+multiplicity, $|F|$ and Lorentz–polarization factor. Hovering a peak reads that exported row.
+Profile and reflection-stick colours, line width, area fill, labels and linear, square-root or
+log-like display scaling update immediately without recomputing or altering the scientific result.
+Four built-in standards demonstrate fcc indexing and Cu doublet splitting, silicon extinctions,
+the wavelength shift under Mo radiation and the hcp zirconium metric.
 
 ## Reading A Result
 

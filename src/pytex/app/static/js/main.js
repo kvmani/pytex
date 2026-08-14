@@ -19,6 +19,7 @@ import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as tem from './panels/tem.js';
 import * as diffraction from './panels/diffraction.js';
+import * as xrd from './panels/xrd.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
 import * as calculator from './panels/calculator.js';
@@ -29,7 +30,7 @@ import * as calculator from './panels/calculator.js';
 // composite pattern is what variants look like on a plate, the pole figure is
 // where they point — and texture follows variants because it is the same
 // pole-figure reading applied to a whole polycrystal rather than one grain.
-const PANELS = [crystal, tem, diffraction, variants, texture, calculator];
+const PANELS = [crystal, tem, diffraction, xrd, variants, texture, calculator];
 
 const THEMES = {
   auto: { label: 'Auto', icon: '◐', description: 'follow the system' },

@@ -1287,6 +1287,19 @@ dl.detail dd {
   height: 0.625rem;
   border-radius: 50%;
   flex: none;
+  position: relative;
+  background: var(--swatch-color);
+  border: 1px solid var(--swatch-color);
+  box-sizing: border-box;
+  scale: var(--swatch-scale, 1);
+}
+
+.legend__swatch[data-fill="outline"]::after {
+  content: "";
+  position: absolute;
+  inset: 20%;
+  background: var(--bg-raised);
+  border-radius: inherit;
 }
 
 .legend__swatch[data-shape="square"] {
@@ -1298,7 +1311,33 @@ dl.detail dd {
   transform: rotate(45deg) scale(0.82);
 }
 
+.legend__swatch[data-shape="triangle"] {
+  border-radius: 0;
+  clip-path: polygon(50% 0, 100% 86%, 0 86%);
+}
+
+.legend__swatch[data-shape="star"] {
+  border-radius: 0;
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 94%, 50% 72%, 21% 94%, 32% 57%, 2% 35%, 39% 35%);
+}
+
 .legend__swatch[data-shape="cross"] {
   border-radius: 0;
   clip-path: polygon(38% 0, 62% 0, 62% 38%, 100% 38%, 100% 62%, 62% 62%, 62% 100%, 38% 100%, 38% 62%, 0 62%, 0 38%, 38% 38%);
+}
+
+
+.legend__swatch[data-shape="cross"]::after {
+  display: none;
+}
+
+.legend__swatch[data-shape="transmitted"] {
+  border-radius: 50%;
+  background: var(--swatch-color);
+  border: 2px solid var(--bg-raised);
+  box-shadow: 0 0 0 1px var(--swatch-color);
+}
+
+.legend__swatch[data-shape="transmitted"]::after {
+  display: none;
 }

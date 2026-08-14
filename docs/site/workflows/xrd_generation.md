@@ -11,8 +11,12 @@ reciprocal-space semantics used elsewhere in the library.
 - reflection enumeration from the canonical lattice model
 - $d$-spacing and $2\theta$ computation from Bragg's law
 - approximate intensity estimation from crystal structure and multiplicity
-- optional Gaussian broadening into a continuous powder spectrum
+- angle-dependent tabulated X-ray form factors or simpler teaching proxies
+- Cu, Mo, Co, Cr and Fe radiation presets, including explicit Kα1/Kα2 doublets
+- Gaussian or pseudo-Voigt broadening, constant or Caglioti angle-dependent width
+- optional preferred-orientation correction through the shared diffraction model
 - runtime plotting through the shared YAML style system
+- a desktop/web workbench with indexed peak hover, canonical examples and live display controls
 
 ## Scientific Model
 
@@ -28,14 +32,15 @@ then reports the observable angle $2\theta$. The current implementation computes
 - $d_{hkl} = 1 / ||\mathbf{g}_{hkl}||$
 - $2\theta = 2 \arcsin(\lambda / 2d_{hkl})$
 
-The current intensity model is intentionally modest. It uses:
+The default research-facing intensity model uses:
 
 - multiplicity inferred from the phase point-group symmetry
-- a simple x-ray structure-factor proxy based on atomic numbers and fractional coordinates
+- tabulated angle-dependent X-ray form factors, fractional coordinates, occupancy and isotropic
+  displacement where supplied
 - a Lorentz-polarization factor
 
-This is a useful foundational spectrum model, but it is not yet a fully calibrated
-scattering-factor implementation.
+The constant-atomic-number and unit-amplitude models remain explicit alternatives for teaching and
+controlled comparisons. None of these is a calibrated instrument response.
 
 ## Example
 
@@ -71,19 +76,30 @@ figure.savefig("ni_fcc_powder_xrd.png", dpi=200)
   multiplicity, and intensity metadata.
 - `PowderPattern` is the broadened spectrum object carrying the reflection list plus
   grid-sampled intensity.
-- The current intensity surface is suitable for teaching, method prototyping, and
-  structure-sensitive inspection, but it is not yet a full Rietveld-grade scattering engine.
+- The current intensity surface is suitable for indexing, teaching, method prototyping, and
+  structure-sensitive inspection, but it is not a Rietveld-grade refinement engine.
 - The first pinned external-baseline case for this workflow now uses the built-in `ni_fcc`
   fixture and a `pymatgen`-generated Cu Ka reference pattern recorded under
   `fixtures/diffraction/`.
 
 ## Current Limits
 
-- no tabulated atomic form factors yet
-- no preferred-orientation, absorption, or instrument-function model yet
-- no profile families beyond the current Gaussian broadening path
+- no absorption, fluorescence, specimen-displacement or axial-divergence model
+- no fitted background or detector response
+- no crystallite-size/microstrain refinement (profile width is supplied, not inferred)
 - external-baseline coverage currently proves peak-position and multiplicity agreement for a small
   pinned case rather than a broad materials library
+
+## Workbench
+
+Open **XRD** in either the desktop or web workbench. Scientific controls generate a new pattern;
+the separate **Appearance** group redraws the existing arrays. Profile/stick colours, line width,
+area fill, reflection labels, label threshold and vertical display transform therefore cannot
+change the exported angles or intensities. Each visible reflection has a keyboard-focusable hover
+target backed by the same row written to CSV and Excel.
+
+The built-in nickel, silicon, Mo-on-nickel and alpha-zirconium cases make radiation, extinction,
+doublet and crystal-metric behaviour testable without external files.
 
 ## Related Material
 

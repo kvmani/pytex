@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Workbench Visual Modernization And GUI Completeness — IN PROGRESS (2026-08-14)
+## Workbench Visual Modernization And GUI Completeness — COMPLETE (2026-08-14)
 
 **Objective.** Improve the shared desktop/web workbench with a professional, responsive modern
 interface; manifest-backed inline help linked to the Sphinx documentation; user-editable
@@ -40,8 +40,9 @@ deployment rule remains in force.
 | 2 | Manifest-backed documentation links and richer inline help | done | (this commit) |
 | 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | done | (this commit) |
 | 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | done | (this commit) |
-| 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
-| 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
+| 5 | Full powder-XRD workbench with rigorous service, plot, help and examples | done | (this commit) |
+| 6 | Browser + real desktop human-style feature pass and defect fixes | done | (this commit) |
+| 7 | User guide/architecture/testing docs, full verification, closeout | done | (this commit) |
 
 ### Increment 1 result
 
@@ -87,13 +88,15 @@ with immediate redraw from one simulation and no scientific recomputation.
 
 ### Increment 3 result
 
-- Added a reusable, dependency-free marker-style module with circle, square, diamond and cross
-  shapes; a 0.5–2.5× visual scale; perceptual, intensity-proportional-area and constant sizing;
+- Added a reusable, dependency-free marker-style module with circle, square, triangle, diamond,
+  star and cross shapes; filled and unfilled rendering; a 0.5–2.5× visual scale; perceptual,
+  intensity-proportional-area and constant sizing;
   editable parent/product colours; distinct, colourblind-safe and single-product palettes; and a
   complete reset action.
 - Applied it to composite diffraction without changing the service contract. Appearance changes
   redraw the existing rows immediately, while coordinates, indices, intensity values, hover
-  records and exports remain unchanged. Legend swatches follow both palette and marker shape.
+  records and exports remain unchanged. Legend swatches follow palette, marker shape and fill.
+  Double-diffraction reflections remain dashed when the global display is unfilled.
 - Made composite visibility deliberate rather than implicit: individual source chips still toggle
   one lattice and preserve keyboard focus, while Show all, Parent only and Focus a variant provide
   one-action recovery, decluttering and parent-plus-variant isolation for a 24-variant pattern.
@@ -131,6 +134,56 @@ beta-Zr to alpha-Zr case in manifest and GUI tests.
 **Exact next action.** Perform the complete human-style web pass across every example, control,
 export and responsive width, then read the computer-use confirmation/API guidance and repeat the
 critical workflows in the real desktop shell. Fix every reproducible GUI defect before closeout.
+
+### Increment 5 result
+
+- Added a seventh shared workspace, **XRD**, backed directly by
+  `pytex.diffraction.xrd.generate_xrd_pattern`. The service exposes the canonical phase catalogue,
+  Cu/Mo/Co single-line or doublet radiation, tabulated or teaching scattering models, scan range,
+  Gaussian/pseudo-Voigt profile, width, mixing, angular sampling and reflection-index limit.
+- The result contract carries a normalized sampled diffractogram and one exportable/hoverable row
+  per primary reflection family: canonical label, $2\theta$, $d$, relative integrated intensity,
+  multiplicity, $|F|$ and Lorentz–polarization factor. Its prose explicitly bounds the result as
+  kinematic, background-free and unsuitable for quantitative phase or Rietveld analysis.
+- Added live presentation-only profile/stick colours, line width, area fill, reflection sticks,
+  peak labels and threshold, plus linear, square-root and log-like display transforms. These redraw
+  the existing arrays without a second service request. Four canonical examples cover the fcc
+  sequence and resolved Cu doublet, silicon extinctions, Mo wavelength shift and alpha-Zr metrics.
+- Scientific tests pin nickel 111 at 44.495° and the conventional 111/200/220/311 sequence, prove
+  single/doublet and Gaussian/pseudo-Voigt distinctions, require shared hover/export columns, and
+  exercise every example. Human browser driving verified the indexed chart, log transform, live
+  colour/width/fill/stick changes, dark-theme presentation and a clean console.
+- Extended composite-SAED appearance with triangle and star symbols plus a global filled/unfilled
+  mode. Variant identity can use any selectable combination of shape, size and colour; the default
+  three-channel encoding gives all 24 product variants distinct symbols and the interactive legend
+  mirrors them. Unfilled double-diffraction spots retain their dashed edge, while the transmitted
+  beam has an independent double-ring marker and explicit `(000)` plot/legend labels. Human browser
+  driving rendered a 192-spot pattern as enlarged outline stars, changed its parent colour live,
+  and found no console warning or error.
+
+### Increments 6–7 result and closeout
+
+- Playwright exercised the final shared frontend at desktop and 390-pixel phone widths. The XRD
+  workspace produced an indexed nickel pattern, responded live to log-like scale, colour, width,
+  fill and stick controls, retained all seven tabs without horizontal overflow, and emitted no
+  console warning or error. Composite SAED proved 24 distinct shape/size signatures even under a
+  single colour, 24 distinct full signatures in the default mode, all seven selectable channel
+  combinations, and a real SVG `(000)` transmitted label.
+- The restarted native desktop shell loaded the same final assets. It rendered the XRD chart and
+  log transform, filled and unfilled star spots, the default 24-way shape/size/colour pattern, the
+  independent double-ring transmitted marker and the complete variant-encoding control. No
+  desktop-only interaction or layout defect was found.
+- Final verification is green: JavaScript syntax checks; focused server, diffraction and XRD tests;
+  Ruff over `src` and `tests`; mypy over all 133 source files; Sphinx HTML with warnings as errors;
+  and the complete unit suite (one expected optional-stack skip). The unit lane took 722.5 seconds,
+  including live worked-example and teaching-notebook checks.
+- The objective is complete. The shared workbench now has seven responsive, documented workspaces;
+  canonical runnable examples for every manifest operation; explicit beta-Zr to alpha-Zr Burgers
+  examples; presentation-only diffraction decluttering and styling; and a rigorous powder-XRD
+  surface with clearly stated scientific limitations.
+
+**Exact next action.** None for this objective. Resume future application work from a new ledger
+entry after reviewing this closeout and the commits listed above.
 
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 

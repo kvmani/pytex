@@ -97,6 +97,7 @@ _PANEL_DOCUMENTATION = {
     "diffraction": DocumentationLink(
         "Composite orientation-relationship diffraction", "workflows/composite_or_diffraction"
     ),
+    "xrd": DocumentationLink("Powder XRD generation", "workflows/xrd_generation"),
     "tem": DocumentationLink("TEM specimen tilt navigation", "theory/tem_specimen_tilt_navigation"),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
     "variants": DocumentationLink(

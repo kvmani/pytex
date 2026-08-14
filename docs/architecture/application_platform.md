@@ -261,7 +261,8 @@ responsive down to tablet width, at which point the side rail becomes a sheet.
 | Crystal Viewer | 3D structure, arbitrary superimposed planes/directions/annotations | `crystal.*` |
 | TEM Pattern Solver | upload, calibrate, pick spots, index, plan the tilt to the next zone axis | `tem.*` |
 | Calculator | interplanar angles, d-spacings, symmetry families, zone axes, cross-phase angles | `calc.*` |
-| Diffraction | simulated SAED, Kikuchi maps, powder XRD | `diffraction.*` |
+| Diffraction | composite SAED with per-variant visibility and runtime spot styling | `diffraction.*` |
+| XRD | powder peaks, broadened profiles, radiation/profile choices, indexed inspection | `xrd.*` |
 | Texture | pole figures, IPF, ODF | `texture.*` |
 
 The first three are the starting scope; the last two follow, and both are already backed by

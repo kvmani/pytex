@@ -513,6 +513,8 @@ class TestFrontendIsSelfContained:
         assert "call(operation.id" not in shared
         for control in (
             "Spot shape",
+            "Spot fill",
+            "Variant encoding",
             "Spot-size scale",
             "Intensity sizing",
             "Parent colour",
@@ -520,8 +522,25 @@ class TestFrontendIsSelfContained:
             "Product colour",
         ):
             assert control in shared
-        for shape in ("circle", "square", "diamond", "cross"):
+        for shape in ("circle", "square", "triangle", "diamond", "star", "cross"):
             assert f"['{shape}'" in shared
+        for fill in ("filled", "outline"):
+            assert f"['{fill}'" in shared
+        for encoding in (
+            "color",
+            "shape",
+            "size",
+            "color_shape",
+            "color_size",
+            "shape_size",
+            "color_shape_size",
+        ):
+            assert f"['{encoding}'" in shared
+        assert "variantMarkerStyle" in shared
+        assert "Transmitted beam (000)" in panel
+        assert "(000) transmitted" in panel
+        assert "appearance.fill === 'outline'" in panel
+        assert "dashed: spot.double_diffraction" in panel
 
     def test_composite_visibility_controls_support_toggle_bulk_and_focus(self) -> None:
         """A 24-variant pattern must not require 23 clicks to isolate one variant."""

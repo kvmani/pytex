@@ -15,5 +15,6 @@ from pytex.app.services import diffraction as diffraction
 from pytex.app.services import tem as tem
 from pytex.app.services import texture as texture
 from pytex.app.services import variants as variants
+from pytex.app.services import xrd as xrd
 
-__all__ = ["calculator", "crystal", "diffraction", "tem", "texture", "variants"]
+__all__ = ["calculator", "crystal", "diffraction", "tem", "texture", "variants", "xrd"]
