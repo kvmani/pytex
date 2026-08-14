@@ -42,7 +42,7 @@ form at every stage, across every panel.**
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
 | 1 | `pytex.diffraction.lattice_fit`: 2D lattice fit with least-squares centre refinement | done | (this commit) |
-| 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | pending | |
+| 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | done | (this commit) |
 | 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | pending | |
 | 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | pending | |
 | 5 | Export: a human-readable report format on every panel, manifest-published | pending | |
@@ -90,8 +90,42 @@ Against the three practice plates: the true centre is recovered to within 3 px (
 sub-pixel scatter) from offsets of 0, 12, 28 and 30 px, and a 47 px mis-pick is flagged in all nine
 placements tried.
 
-**Exact next action.** Increment 2: `pytex.diffraction.solution_scoring` — per-spot d-spacing and
-interspot-angle deviations, and a configurable fused score.
+### Increment 2 result
+
+`pytex.diffraction.solution_scoring` keeps the evidence and the opinion apart, which is the whole
+design.
+
+**Deviations are measurements.** Per indexed spot, measured d against calculated d, absolute and
+relative. Per pair of indexed spots, measured angle against calculated angle. No weighting, no
+judgement — the numbers a user would read off the plate themselves.
+
+**The score is a policy**, and it lives in `ScoringWeights` where it can be read and changed.
+Length, angle and coverage each map to [0, 1] through `1 / (1 + (x/t)^s)`, which scores one half at
+the stated tolerance; the fused score is their weighted mean, normalised so 1 means perfect
+agreement on everything picked and 0.5 means disagreement at tolerance. Every default is documented
+with its reasoning, and the score carries the weights that produced it — a number whose policy is
+invisible is an assertion, not a measurement.
+
+**Why angles outweigh lengths (1.5 against 1.0), and the test that proves it earns the weight.**
+A wrong camera constant scales every length and leaves every angle untouched, so an angular
+disagreement is evidence about the *crystallography* while a length disagreement may only be
+evidence about the *instrument*. Driving it: a 5 percent camera-constant error moves the length
+deviation from 0.20 percent to 5.01 percent and the angle deviation not at all — 0.214 degrees
+before and after — dropping the fused score from 0.983 to 0.794. Coverage is weighted highest
+(2.0) because an unindexed spot is unexplained evidence that precision elsewhere cannot answer.
+
+**Two judgements worth recording.** A solution with one indexed spot has *no* pair to measure an
+angle between; that is missing evidence rather than disagreement, so the term is held neutral at
+0.5 instead of scoring zero and punishing a solution for a spot the user did not pick. And the
+agreement curve is polynomial rather than Gaussian, so two badly wrong solutions stay comparable
+instead of both underflowing to zero.
+
+31 tests. The invariances are the load-bearing ones: the angle term does not move when the
+calibration does, and neither term moves when the pattern is rolled about the beam — which one
+pattern cannot fix, so scoring must not pretend otherwise.
+
+**Exact next action.** Increment 3: wire both into the app — `tem.fit_lattice`, scoring and
+per-solution overlay data in `tem.solve_pattern`.
 
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 
