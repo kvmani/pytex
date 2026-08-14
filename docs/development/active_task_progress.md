@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Scientific Workbench Visual Interaction And Layout — IN PROGRESS (2026-08-14)
+## Scientific Workbench Visual Interaction And Layout — COMPLETE (2026-08-14)
 
 **Objective.** Bring the byte-identical desktop/web workbench closer to a professional texture and
 crystallography application: mouse-wheel zoom and direct manipulation in every graphic area,
@@ -38,11 +38,11 @@ calculation parameters. Scientific inputs and export provenance remain manifest-
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | (this commit) |
-| 2 | Crystal object appearance editor with live redraw and publication-export parity | done | (this commit) |
-| 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | done | (this commit) |
-| 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | done | (this commit) |
-| 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | planned | — |
+| 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | `579dd6e` |
+| 2 | Crystal object appearance editor with live redraw and publication-export parity | done | `210d5fd` |
+| 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | done | `243acc5` |
+| 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | done | `1598fd5` |
+| 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | done | (closeout commit) |
 
 ### Increment 1 result
 
@@ -173,6 +173,22 @@ unbuffered controlling rerun exposed continuous test-by-test progress and comple
 
 **Exact next action.** Run the complete unit lane, commit and push increment 4, then relaunch from
 that commit for final browser/native smoke coverage and close this ledger and goal.
+
+### Increment 4 landing and final closeout
+
+Committed and pushed to `main` as `1598fd5` (`Add shared calculation activity and responsive
+layout`). A committed-build browser reload at 1164 × 655 rendered two random-baseline contour paths,
+kept all tabs visible, allocated 826 px to the stage and 337 px to the rail, recorded the pole-figure
+call, and emitted no warnings/errors. The committed native build relaunched maximized at 1536 × 816
+with the activity bar inside the OS work area, all tabs visible, and the same Texture contour
+controls. Earlier real native interaction on this exact viewport implementation reached 192% by
+wheel and returned to 100% with Fit; the browser reached 228% and likewise returned to 100%.
+
+Final quality evidence: JavaScript syntax checks pass; ruff passes; strict mypy passes over 138
+source files; the focused app-server/desktop/integrity suites pass; and the complete unit suite
+passes with 6,002 tests and the two existing skips. The optional `desktop` extra was installed only
+into the local virtual environment to exercise pywebview; it added no repository artifact. The
+implementation is complete and no follow-up code work is required for this objective.
 
 ## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 
