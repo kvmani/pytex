@@ -371,3 +371,62 @@ class TestTheLessonsAreTrueOfThePatterns:
         pattern, _ = self.geometry("bcc_fe_110")
         for spot in pattern["spots"]:
             assert sum(int(value) for value in spot["hkl"]) % 2 == 0
+
+
+class TestHighIndexTargetsDoNotCrash:
+    """A member that does not rationalize is a naming problem, not a failure.
+
+    `TiltSolution.orbit_member_indices` is None when the direction placed on the
+    beam has no low-index integer form within the navigation module's bound,
+    which happens routinely for a high-index hexagonal family. Reading it as an
+    integer array raised, so a legitimate target returned a 500 while the plan
+    behind it was perfectly good.
+    """
+
+    def test_a_high_index_hexagonal_target_still_plans(self) -> None:
+        result = REGISTRY.call(
+            "tem.plan_tilt",
+            {
+                "phase": {"builtin": "zr_hcp"},
+                "current_zone_axis": [1, 0, 0],
+                "target_zone_axis": [4, -3, 1],
+                "alpha_limit_deg": 30.0,
+                "beta_limit_deg": 20.0,
+            },
+        )
+        row = result["table"]["rows"][0]
+        assert row["member"]
+        assert math.isfinite(row["travel_deg"])
+
+    def test_every_atlas_row_of_a_deep_hexagonal_search_survives_planning(self) -> None:
+        result = REGISTRY.call(
+            "tem.zone_axis_atlas",
+            {
+                "phase": {"builtin": "zr_hcp"},
+                "current_zone_axis": [1, 0, 0],
+                "max_index": 4,
+                "limit": 40,
+                "max_angle_deg": 90.0,
+            },
+        )
+        rows = result["table"]["rows"]
+        assert len(rows) == 40
+        for row in rows:
+            assert row["target"]
+            assert len(row["indices"]) == 3
+
+    def test_an_unnameable_member_is_reported_as_its_family(self) -> None:
+        """Honest: the move is to some member of that family, and the tilts are its."""
+
+        result = REGISTRY.call(
+            "tem.plan_tilt",
+            {
+                "phase": {"builtin": "zr_hcp"},
+                "current_zone_axis": [1, 0, 0],
+                "target_zone_axis": [4, -3, 1],
+                "alpha_limit_deg": 30.0,
+                "beta_limit_deg": 20.0,
+            },
+        )
+        member = result["table"]["rows"][0]["member"]
+        assert member.startswith(("<", "["))

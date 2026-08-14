@@ -69,6 +69,13 @@ downstream analyses depend on them.
   members; the sentence that counts symmetry-equivalent members now writes the
   family form ⟨012⟩, per the notation standard, while the title keeps the
   direction the user typed.
+- **`tem.plan_tilt` failed with a 500 on a high-index hexagonal target.**
+  `TiltSolution.orbit_member_indices` is `None` when the direction placed on the
+  beam has no low-index integer form within the navigation module's bound, which
+  happens routinely for a hexagonal family such as ⟨4 3̄ 1⟩; the service read it
+  as an integer array regardless. The plan itself was correct — only the name of
+  the member was unavailable — so the row now reports the *family* form, which is
+  what is actually known.
 
 ### Changed
 

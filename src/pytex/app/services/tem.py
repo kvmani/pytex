@@ -682,13 +682,7 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
 
     rows = [
         {
-            "member": direction_label(
-                tuple(
-                    int(value)
-                    for value in np.asarray(solution.orbit_member_indices, dtype=int).reshape(-1)
-                ),
-                spec=spec,
-            ),
+            "member": _member_label(solution, target_indices, spec)[0],
             "verdict": str(solution.verdict),
             "alpha_deg": float(solution.position.alpha_deg),
             "beta_deg": float(solution.position.beta_deg),
@@ -1286,13 +1280,8 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
             if solution is None:
                 row["verdict"] = "no solution"
             else:
-                member = tuple(
-                    int(value)
-                    for value in np.asarray(
-                        solution.orbit_member_indices, dtype=int
-                    ).reshape(-1)
-                )
-                row["target"] = direction_label(member, spec=spec)
+                label, member = _member_label(solution, indices, spec)
+                row["target"] = label
                 # The same four verdicts the tilt panel reports, so a row here
                 # and the plan it produces there cannot describe the same move
                 # in two different vocabularies.
@@ -1301,7 +1290,7 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
                 row["delta_beta_deg"] = float(solution.delta_beta_deg)
                 row["travel_deg"] = float(solution.travel_deg)
                 row["margin_deg"] = float(solution.envelope_margin_deg)
-                row["indices"] = list(member)
+                row["indices"] = member
                 row["reachable"] = bool(report.solutions)
                 if report.solutions:
                     reachable_count += 1
@@ -1418,6 +1407,34 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
         citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
     )
     return result.to_json()
+
+
+def _member_label(solution: Any, requested: Sequence[int], spec: Any) -> tuple[str, list[int]]:
+    """How to name the orbit member a tilt solution places on the beam.
+
+    ``TiltSolution.orbit_member_indices`` is ``None`` whenever the member does
+    not rationalize to a low-index triple within the navigation module's bound,
+    which happens routinely for a high-index hexagonal family: the member is a
+    perfectly good lattice direction, it simply has no tidy integer form at that
+    bound. Reading it as an integer array in that case raised, so asking the
+    planner for a target such as [4 3̄ 1] in zirconium returned a 500 rather than
+    a plan — and the plan itself was fine; only its label was missing.
+
+    Falling back to the *family* form is the honest answer. The move is to some
+    member of that family; every number in the row — the tilts, the travel, the
+    margin — belongs to the member the planner chose, and only the name of that
+    member is unavailable.
+    """
+
+    indices = getattr(solution, "orbit_member_indices", None)
+    if indices is not None:
+        member = [int(value) for value in np.asarray(indices, dtype=int).reshape(-1)]
+        return direction_label(tuple(member), spec=spec), member
+    requested_indices = [int(value) for value in requested]
+    return (
+        family_label(tuple(requested_indices), spec=spec, family="direction"),
+        requested_indices,
+    )
 
 
 def _symmetry_angle_deg(phase: Any, first: Any, second: Any) -> float:
