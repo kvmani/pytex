@@ -542,6 +542,57 @@ class TestFrontendIsSelfContained:
         assert "appearance.fill === 'outline'" in panel
         assert "dashed: spot.double_diffraction" in panel
 
+    def test_the_tem_gallery_is_read_from_the_manifest_not_hard_coded(self) -> None:
+        """A fourth practice plate must appear by adding it in Python, not here."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "tem.gallery_pattern" in source
+        assert "parameter.name === 'pattern'" in source
+        for identifier in ("fcc_al_001", "bcc_fe_110", "hcp_zr_2-1-10"):
+            assert identifier not in source
+
+    def test_the_practice_pattern_carries_its_calibration_across(self) -> None:
+        """A camera constant retyped by hand is a camera constant retyped wrongly."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "const calibration = result.data.calibration;" in source
+        assert "camera_constant_mm_angstrom: calibration.camera_constant_mm_angstrom" in source
+        assert "pixel_size_mm: calibration.pixel_size_mm" in source
+
+    def test_the_answer_check_is_made_in_python_not_in_the_browser(self) -> None:
+        """Symmetry lives in the library; [110] and [101] are the same bcc pattern."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "request.expected_zone_axis = state.gallery.data.pattern.zone_axis;" in source
+        # The verdict is read from the payload, never recomputed here: nothing in
+        # the panel touches symmetry operators or compares index triples.
+        assert "check.correct" in source
+        assert "check.deviation_deg" in source
+        for arithmetic in ("operators", "symmetry.operators", "Math.acos"):
+            assert arithmetic not in source
+
+    def test_the_simulated_plate_is_legible_as_a_diffraction_pattern(self) -> None:
+        """A dark ground, an unmistakable direct beam, and a reciprocal scale bar."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "#05070d" in source
+        # The beam is sized against the nearest reflection so a dense zone does
+        # not have its innermost spots swallowed.
+        assert "Math.min(0.5 * nearest" in source
+        assert "drawScaleBar" in source
+        assert "Å⁻¹" in source
+
+    def test_an_atlas_row_can_be_acted_on_rather_than_transcribed(self) -> None:
+        """Retyping indices from a table into a form is how wrong indices get planned."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        assert "Choose a destination" in source
+        assert "chooseTarget(row.indices, row.target)" in source
+        assert "state.tiltForm.setValues({ target_zone_axis: indices })" in source
+        # Reachability is never carried by colour alone.
+        assert "out of the holder" in source
+        assert "s range in one move" in source
+
     def test_composite_visibility_controls_support_toggle_bulk_and_focus(self) -> None:
         """A 24-variant pattern must not require 23 clicks to isolate one variant."""
 

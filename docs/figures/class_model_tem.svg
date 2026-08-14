@@ -235,7 +235,7 @@
   <text x="803.2" y="720.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">ambiguity</text>
   <rect x="954.0" y="708.5" width="50.8" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
   <text x="979.4" y="720.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">position</text>
-  <rect x="40.0" y="1599.0" width="464.9" height="182.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <rect x="40.0" y="1599.0" width="469.4" height="182.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
   <text x="56.0" y="1625.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="1647.0" x2="98.0" y2="1647.0" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
   <text x="116.0" y="1651.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">composition - a required field: the owner cannot exist without it</text>
@@ -244,6 +244,6 @@
   <line x1="58.0" y1="1689.0" x2="98.0" y2="1689.0" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <text x="116.0" y="1693.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
   <text x="58.0" y="1714.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
-  <text x="56.0" y="1741.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 99 classes carry it, on every result object.</text>
+  <text x="56.0" y="1741.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 100 classes carry it, on every result object.</text>
   <text x="56.0" y="1759.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>

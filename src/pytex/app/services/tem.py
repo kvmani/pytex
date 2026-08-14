@@ -283,6 +283,19 @@ _CALIBRATION_PARAMETERS = (
             maximum=8,
             advanced=True,
         ),
+        IndicesParameter(
+            name="expected_zone_axis",
+            label="Check against axis [uvw]",
+            help_text=(
+                "Optional. If you already know which axis this pattern is down — a practice "
+                "plate, a reference specimen, a pattern you have indexed before — give it here "
+                "and the result states whether the indexing agrees, measuring the disagreement in "
+                "degrees. The comparison is made up to symmetry, because a bcc [110] pattern is "
+                "indistinguishable from a [101] one and calling that a mismatch would be wrong."
+            ),
+            required=False,
+            advanced=True,
+        ),
         ObjectParameter(
             name="second_phase",
             label="Second candidate phase",
@@ -372,6 +385,33 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
     ]
     conclusive = bool(report.is_conclusive)
     notes: list[str] = []
+    check: dict[str, Any] | None = None
+    if request.get("expected_zone_axis"):
+        expected = tuple(int(value) for value in request["expected_zone_axis"])
+        deviation = _symmetry_angle_deg(phase, expected, zone_indices)
+        expected_text = direction_label(expected, spec=best_spec)
+        # Half a degree is the same tolerance the tilt planner treats as
+        # on-axis; anything inside it is the same zone, differently rounded.
+        matched = deviation <= 0.5
+        check = {
+            "expected": list(expected),
+            "expected_label": expected_text,
+            "deviation_deg": deviation,
+            "correct": matched,
+        }
+        notes.append(
+            (
+                f"This agrees with the expected axis {expected_text}, up to symmetry — the two "
+                f"differ by {deviation:.3f}°."
+            )
+            if matched
+            else (
+                f"This does *not* agree with the expected axis {expected_text}: the indexed axis "
+                f"is {deviation:.2f}° away from it, which is more than a rounding difference. "
+                "Check the beam pick first — an error there biases every d-spacing — then the "
+                "camera constant, then whether every picked spot really is a reflection."
+            )
+        )
     if not conclusive:
         notes.append(
             "Two or more solutions score similarly, so this pattern does not identify the phase "
@@ -431,6 +471,7 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             "seed_spots": [int(value) + 1 for value in best.seed_spot_indices],
             "alternatives": alternatives,
             "conclusive": conclusive,
+            "check": check,
             "centre": list(centre),
             "describe": report.describe(),
         },
@@ -444,6 +485,9 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             "length_tolerance": float(request["length_tolerance"]),
             "angle_tolerance_deg": float(request["angle_tolerance_deg"]),
             "max_index": int(request["max_index"]),
+            "expected_zone_axis": (
+                list(request["expected_zone_axis"]) if request.get("expected_zone_axis") else None
+            ),
         },
         notes=notes,
         citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
@@ -673,6 +717,11 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
     best = rows[0]
     current_text = direction_label(current_indices, spec=spec)
     target_text = direction_label(target_indices, spec=spec)
+    # The repository notation standard is explicit: a specific direction is
+    # [uvw] and a symmetry family is <uvw>. "Members of [012]" is a category
+    # error — [012] has no members — so the sentence that counts members writes
+    # the family form even though the title keeps the direction the user typed.
+    target_family = family_label(target_indices, spec=spec, family="direction")
     route = (
         f"{best['member']}: alpha {best['delta_alpha_deg']:+.2f}° to {best['alpha_deg']:.2f}°, "
         f"beta {best['delta_beta_deg']:+.2f}° to {best['beta_deg']:.2f}°, a crystal rotation of "
@@ -683,14 +732,15 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
         summary=(
             (
                 f"{report.reachable_orbit_size} of {report.orbit_size} symmetry-equivalent "
-                f"members of {target_text} are reachable from {current_text} within the holder's "
+                f"members of {target_family} are reachable from {current_text} within the "
+                f"holder's "
                 f"range. The cheapest is {route}. Predicted to ±"
                 f"{best['sigma_alpha_deg']:.2f}° in alpha and ±{best['sigma_beta_deg']:.2f}° in "
                 "beta from the stated orientation uncertainty."
             )
             if exact
             else (
-                f"No member of {target_text} is reachable from {current_text} within ±"
+                f"No member of {target_family} is reachable from {current_text} within ±"
                 f"{alpha_limit:g}° alpha and ±{beta_limit:g}° beta. The closest the holder can "
                 f"come is {route}, leaving the target {best['residual_deg']:.2f}° off axis — "
                 "often still enough to see and work with, and the usual answer is to tilt to an "
@@ -1011,7 +1061,11 @@ def _gallery_pattern(request: dict[str, Any]) -> dict[str, Any]:
                 "units": "px",
                 "camera_constant_mm_angstrom": camera_constant,
                 "pixel_size_mm": float(entry.pixel_size_mm),
-                "phase": spec.to_json(),
+                # A catalogue *reference*, not an expanded description. The phase
+                # picker treats a full description as a user-edited phase and
+                # renames it "(edited)", which is both untrue and alarming on a
+                # pattern the user has not touched.
+                "phase": {"builtin": entry.phase_key},
             },
             "suggested_picks": {
                 "centre": [float(value) for value in image.centre_px],
@@ -1364,6 +1418,40 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
         citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
     )
     return result.to_json()
+
+
+def _symmetry_angle_deg(phase: Any, first: Any, second: Any) -> float:
+    """Smallest angle between two lattice directions, over the symmetry orbit.
+
+    Purpose
+    -------
+    Comparing an indexed zone axis with an expected one is not a comparison of
+    index triples. A bcc [110] pattern is indistinguishable from a [101] one —
+    the crystal symmetry maps one onto the other — so the honest question is how
+    far apart the two directions are once every symmetry-equivalent version of
+    the first has been tried. That is what this returns.
+
+    Parameters
+    ----------
+    phase : Phase
+    first, second : array_like
+        Direction indices in the phase's three-index basis.
+
+    Returns
+    -------
+    float
+        Degrees, in ``[0, 90]``. Zero when the two are the same direction up to
+        symmetry and sense.
+    """
+
+    direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+    operators = np.asarray(phase.symmetry.operators, dtype=float)
+    left = direct @ np.asarray(first, dtype=float)
+    left = left / float(np.linalg.norm(left))
+    right = direct @ np.asarray(second, dtype=float)
+    right = right / float(np.linalg.norm(right))
+    cosines = np.abs(np.einsum("nij,j->ni", operators, left) @ right)
+    return float(math.degrees(math.acos(float(np.clip(cosines.max(), -1.0, 1.0)))))
 
 
 def _orientation_with_axis_on_beam(

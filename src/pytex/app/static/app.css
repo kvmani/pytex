@@ -915,6 +915,30 @@ button:focus-visible {
   font-size: 0.75rem;
 }
 
+/*
+ * Destination buttons in the TEM zone-axis atlas.
+ *
+ * Reachability is the one thing a microscopist checks before reading anything
+ * else in the row, so it is carried by a colour stripe rather than by a word
+ * inside the sentence. The stripe is an addition to the border, not a
+ * replacement for the text, because colour alone is not an accessible signal:
+ * every row still says "reachable" or "out of the holder's range" in words.
+ */
+.example--reachable {
+  border-left: 3px solid var(--ok, #17683a);
+}
+
+.example--unreachable {
+  border-left: 3px solid var(--danger, #b3261e);
+}
+
+.destinations__heading {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  color: var(--ink-muted);
+}
+
 .teaches {
   margin: 0.75rem 0 0;
   padding: 0.625rem 0.75rem;

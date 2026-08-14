@@ -247,3 +247,32 @@ class TestZoneAxisAtlas:
     def test_too_narrow_a_search_is_explained(self) -> None:
         with pytest.raises(InvalidInputError):
             self.atlas(max_angle_deg=1.0, max_index=1, current_zone_axis=[1, 2, 3])
+
+
+class TestNotation:
+    """A specific direction is [uvw]; a symmetry family is <uvw>. Never the other."""
+
+    def test_the_tilt_plan_counts_members_of_a_family_not_of_a_direction(self) -> None:
+        result = REGISTRY.call(
+            "tem.plan_tilt",
+            {
+                "phase": {"builtin": "austenite_fcc"},
+                "current_zone_axis": [0, 0, 1],
+                "target_zone_axis": [0, 1, 2],
+                "alpha_limit_deg": 40.0,
+                "beta_limit_deg": 40.0,
+            },
+        )
+        assert "members of <012>" in result["summary"]
+        assert "members of [012]" not in result["summary"]
+        # The title still names the direction the user typed.
+        assert result["title"] == "[001] → [012]"
+
+    def test_the_atlas_family_column_uses_family_brackets(self) -> None:
+        result = REGISTRY.call(
+            "tem.zone_axis_atlas",
+            {"phase": {"builtin": "austenite_fcc"}, "current_zone_axis": [0, 0, 1]},
+        )
+        for row in result["table"]["rows"]:
+            assert row["family"].startswith("<") and row["family"].endswith(">")
+            assert row["target"].startswith("[") and row["target"].endswith("]")

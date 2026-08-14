@@ -11,6 +11,65 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **The TEM panel can be used without a micrograph, and its answers can be
+  checked.** Three practice SAED plates ship with the workbench — aluminium fcc
+  down [001], ferrite bcc down [110], zirconium hcp down [2̄110] — each a real
+  kinematic calculation projected onto a stated detector raster, so the whole
+  workflow (calibrate, pick the beam, pick the spots, index) runs on a pattern
+  whose zone axis is known by construction. `tem.solve_pattern` gained an
+  optional `expected_zone_axis`, and the verdict it returns compares the two
+  directions **up to symmetry**: a bcc [110] pattern is indistinguishable from a
+  [101] one, and calling that a mismatch would be wrong.
+
+  - `pytex.tem.synthetic` projects a simulated zone-axis pattern onto a
+    `DetectorRaster` and returns pixel coordinates, relative intensities and
+    display radii. The raster is the recorded image — no handedness flip — so a
+    picked `(column, row)` is the detector `(X, Y)` divided by the pixel pitch.
+    The beam may sit off the geometric centre, the pattern carries a roll about
+    the beam, and a seeded sub-pixel scatter makes indexing residuals realistic.
+    Positions are exact; intensities are kinematic and double diffraction is not
+    modelled.
+  - `SyntheticSAEDImage.independent_seed_spots` picks strong reflections whose
+    directions from the beam all differ. Selecting the top *n* by brightness
+    alone returns Friedel pairs, which are collinear through the beam and cannot
+    seed an index.
+  - The gallery's camera constant is *computed* as `L·λ` from the camera length
+    and accelerating voltage, not typed, so the calibration field and the
+    geometry cannot drift apart.
+
+- **A zone-axis atlas: which axis to tilt to, not just whether you can reach the
+  one you named.** `pytex.tem.atlas.zone_axis_atlas` enumerates the
+  symmetry-distinct zone-axis families of a phase with the angle from the axis on
+  the beam, the family size, the number of reflections inside a stated cut-off,
+  and the pattern's apparent *n*-fold symmetry — the last measured on the
+  simulated spot set rather than deduced from the point group, so it reports what
+  an operator will actually recognise on arrival. Exposed as
+  `tem.zone_axis_atlas`, whose reachability column is computed by the same
+  planner `tem.plan_tilt` uses, against the same envelope and roll.
+
+### Fixed
+
+- **⟨110⟩ could vanish from a 45° zone-axis search.** The angle between two zone
+  axes is an arccos through a basis product and lands a few ulps either side of
+  exactly 45°, so a bare comparison against the search limit dropped the single
+  most-wanted cubic target about half the time.
+- **The axis already on the beam was offered as somewhere to tilt to.** The same
+  arccos is square-root-behaved near 1, turning 1e-16 of cosine error into ~1e-6
+  of a degree — enough to pass a `> 1e-6` test. For ferrite [110] the atlas
+  summary read "the nearest reachable one is [110] at 0.00°".
+- **A catalogue phase carried into the TEM panel was renamed "(edited)".** The
+  gallery sent an expanded `PhaseSpec`, and the phase picker treats a full
+  description as a user-edited phase; the indexed result was then titled
+  "Aluminium (fcc) (edited)" on a phase nobody had touched. The gallery now sends
+  a catalogue reference, and the panel carries forward the value the picker
+  emitted rather than the description the result echoes back.
+- **A tilt plan counted "members of [012]".** A specific direction has no
+  members; the sentence that counts symmetry-equivalent members now writes the
+  family form ⟨012⟩, per the notation standard, while the title keeps the
+  direction the user typed.
+
 ### Changed
 
 - **The canonical scientific notes are MyST Markdown, and their mathematics now

@@ -4,6 +4,10 @@ This workflow answers the question asked in front of a microscope: *here are the
 spots I picked — which phase is this, down which zone axis, and what is every
 spot?*
 
+For the surrounding session — where the picked spots come from, how the pattern
+is calibrated, and which zone axis to tilt to once this one is indexed — see
+{doc}`tem_pattern_indexing`.
+
 The input is deliberately minimal: spot positions relative to the transmitted
 beam, plus enough calibration to turn them into reciprocal-space lengths. That
 is all a printed pattern gives you, and it is all this needs.

@@ -289,13 +289,13 @@
   <text x="626.8" y="720.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">phase</text>
   <rect x="499.5" y="708.5" width="60.2" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
   <text x="529.6" y="720.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">geometry</text>
-  <rect x="40.0" y="2102.0" width="464.9" height="161.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <rect x="40.0" y="2102.0" width="469.4" height="161.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
   <text x="56.0" y="2128.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="2150.0" x2="98.0" y2="2150.0" stroke="#07122f" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-diamond)"/>
   <text x="116.0" y="2154.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">composition - a required field: the owner cannot exist without it</text>
   <line x1="58.0" y1="2171.0" x2="98.0" y2="2171.0" stroke="#40506f" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#cd-arrow)"/>
   <text x="116.0" y="2175.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">association - an optional or defaulted field</text>
   <text x="58.0" y="2196.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
-  <text x="56.0" y="2223.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 99 classes carry it, on every result object.</text>
+  <text x="56.0" y="2223.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 100 classes carry it, on every result object.</text>
   <text x="56.0" y="2241.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>

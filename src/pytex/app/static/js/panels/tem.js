@@ -1,5 +1,5 @@
 /**
- * The TEM solver panel: upload, calibrate, pick, index, tilt.
+ * The TEM solver panel: open a pattern, calibrate, pick, index, choose, tilt.
  *
  * The picking surface is the whole point. A diffraction pattern is indexed by
  * clicking on it, and everything a user needs while clicking — which pick is
@@ -8,12 +8,24 @@
  * cursor readout reports the distance from the marked beam in both millimetres
  * and inverse angstroms, and every pick is a hoverable entity like any other.
  *
- * The image never leaves the browser. Only the picked coordinates are sent,
- * which keeps an unpublished micrograph on the machine it was opened on and
- * makes the request small enough to be instant on a slow intranet.
+ * Two kinds of pattern arrive on that surface and are treated identically from
+ * the first click onward:
+ *
+ * 1. **An uploaded micrograph.** The image never leaves the browser. Only the
+ *    picked coordinates are sent, which keeps an unpublished micrograph on the
+ *    machine it was opened on and makes the request small enough to be instant
+ *    on a slow intranet.
+ * 2. **A practice pattern from the gallery.** Simulated in Python and sent as
+ *    coordinates and brightnesses rather than as a raster — a few kilobytes
+ *    instead of a megabyte, drawn here as SVG, and crisp at any zoom. Because it
+ *    was built from a known zone axis, the answer travels with it, and indexing
+ *    can be checked rather than merely performed.
+ *
+ * The panel is deliberately ordered as the microscope session is: what am I
+ * looking at, what is it, where should I go next, how do I get there.
  */
 
-import { el, formatNumber, svg } from '../core/dom.js';
+import { el, formatNumber, markdown, svg } from '../core/dom.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
@@ -22,33 +34,73 @@ import { call } from '../core/api.js';
 export const panel = {
   id: 'tem',
   title: 'TEM Solver',
-  tagline: 'Pick a pattern, index it, and plan the tilt to the next zone axis.',
+  tagline: 'Open a pattern, index it, and plan the tilt to the next zone axis.',
 };
+
+/** Colour of a simulated reflection. A plate is monochrome; so is this. */
+const SPOT_COLOUR = '#eaf2ff';
 
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
+  const galleryOperation = operations.find((entry) => entry.id === 'tem.gallery_pattern');
   const solveOperation = operations.find((entry) => entry.id === 'tem.solve_pattern');
+  const atlasOperation = operations.find((entry) => entry.id === 'tem.zone_axis_atlas');
   const tiltOperation = operations.find((entry) => entry.id === 'tem.plan_tilt');
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
+  // The gallery is declared once, in Python, as the options of the operation's
+  // `pattern` parameter. Reading it from the manifest means a fourth practice
+  // plate appears here the moment it is added there, with no edit in this file.
+  const galleryEntries =
+    galleryOperation?.parameters.find((parameter) => parameter.name === 'pattern')?.options ?? [];
+
   const state = {
-    mode: 'tilt', // 'pick' once an image is loaded
+    mode: 'tilt', // 'pick' once a pattern is on the canvas
+    source: null, // {kind: 'image'} or {kind: 'gallery'}
     image: null,
+    gallery: null,
     picks: { centre: null, spots: [] },
+    showAnswer: false,
     solveForm: null,
+    atlasForm: null,
     tiltForm: null,
     teaches: null,
     solution: null,
   };
 
+  const answerButton = el('button.button', {
+    type: 'button',
+    text: 'Show answer',
+    hidden: true,
+    'aria-pressed': 'false',
+    title: 'Label every simulated spot with its indices',
+    onclick: () => {
+      state.showAnswer = !state.showAnswer;
+      answerButton.setAttribute('aria-pressed', String(state.showAnswer));
+      answerButton.textContent = state.showAnswer ? 'Hide answer' : 'Show answer';
+      drawPattern();
+    },
+  });
+
+  const autoPickButton = el('button.button', {
+    type: 'button',
+    text: 'Auto-pick',
+    hidden: true,
+    title: 'Place the beam and six well-separated strong spots',
+    onclick: () => autoPick(),
+  });
+
   const frame = plotFrame({
     title: 'Pattern',
     toolbar: [
+      autoPickButton,
+      answerButton,
       el('button.button', {
         type: 'button',
         text: 'Undo pick',
         onclick: () => {
-          state.picks.spots.pop();
+          if (state.picks.spots.length) state.picks.spots.pop();
+          else state.picks.centre = null;
           drawPattern();
         },
       }),
@@ -74,13 +126,25 @@ export function mount(context) {
     onchange: (event) => loadImage(event.target.files?.[0]),
   });
 
+  const galleryHost = el('div');
   const solveHost = el('div');
+  const atlasHost = el('div');
   const tiltHost = el('div');
 
+  const galleryButton = el('button.button.button--block', {
+    type: 'button',
+    text: 'Reload with these settings',
+    onclick: () => loadGallery(state.gallery?.inputs.pattern ?? galleryEntries[0]?.value),
+  });
   const solveButton = el('button.button.button--primary.button--block', {
     type: 'button',
     text: 'Index the pattern',
     onclick: () => solve(),
+  });
+  const atlasButton = el('button.button.button--primary.button--block', {
+    type: 'button',
+    text: 'List the zone axes',
+    onclick: () => runAtlas(),
   });
   const tiltButton = el('button.button.button--primary.button--block', {
     type: 'button',
@@ -90,27 +154,65 @@ export function mount(context) {
 
   context.rail.append(
     el('details.group', { open: true }, [
-      el('summary', { text: '1 · Pattern and picks' }),
+      el('summary', { text: '1 · Open a pattern' }),
       el('div.group__body', {}, [
         el('p.field__help', {
           text:
-            'Open a pattern image, then click the transmitted beam first and the reflections ' +
-            'after. The image stays on this machine; only the coordinates are sent.',
+            'Pick a practice plate to try the workflow on — each one is a real calculation with ' +
+            'the answer attached — or open a micrograph of your own. Your image stays on this ' +
+            'machine; only the coordinates you click are sent.',
         }),
+        el(
+          'div.examples',
+          {},
+          galleryEntries.map((entry) =>
+            el('button.example', { type: 'button', onclick: () => loadGallery(entry.value) }, [
+              el('strong', { text: entry.label }),
+              el('span', { text: entry.help }),
+            ]),
+          ),
+        ),
+        el('p.field__help', { text: 'Or open your own pattern image:' }),
         fileInput,
+        galleryHost,
+        galleryButton,
+      ]),
+    ]),
+    el('details.group', { open: true }, [
+      el('summary', { text: '2 · Calibrate and index' }),
+      el('div.group__body', {}, [
+        el('p.field__help', {
+          text:
+            'Click the transmitted beam first, then the reflections. The beam is not a ' +
+            'reflection: it is the origin every spot is measured from, so an error there biases ' +
+            'every d-spacing in the pattern.',
+        }),
         solveHost,
         solveButton,
       ]),
     ]),
     el('details.group', { open: true }, [
-      el('summary', { text: '2 · Tilt to the next zone axis' }),
-      el('div.group__body', {}, [tiltHost, tiltButton]),
+      el('summary', { text: '3 · Where to go next' }),
+      el('div.group__body', {}, [
+        el('p.field__help', {
+          text:
+            'Every zone axis of this phase near the one on the beam, with how far it is, how ' +
+            'much its pattern shows, and whether the holder can reach it. Choose a destination ' +
+            'from the list and it becomes the tilt target below.',
+        }),
+        atlasHost,
+        atlasButton,
+      ]),
     ]),
     el('details.group', { open: true }, [
+      el('summary', { text: '4 · Tilt to the target' }),
+      el('div.group__body', {}, [tiltHost, tiltButton]),
+    ]),
+    el('details.group', {}, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
         el('p.field__help', {
-          text: 'Tilt plans you can run without a pattern of your own.',
+          text: 'Complete scenarios you can run without a pattern of your own.',
         }),
         el(
           'div.examples',
@@ -126,16 +228,27 @@ export function mount(context) {
     ]),
   );
 
-  function renderForms(solveInitial = {}, tiltInitial = {}) {
-    state.solveForm = buildForm(solveOperation, {
-      initial: solveInitial,
-      // The picks live on the canvas, not in a text box, so the parameter is
-      // hidden from the generated form and supplied at call time.
-    });
+  function renderForms({ gallery = {}, index = {}, atlas = {}, tilt = {} } = {}) {
+    if (galleryOperation) {
+      state.galleryForm = buildForm(galleryOperation, { initial: gallery });
+      hideField(state.galleryForm.element, 'pattern');
+      galleryHost.replaceChildren(state.galleryForm.element);
+    }
+
+    state.solveForm = buildForm(solveOperation, { initial: index });
+    // The picks live on the canvas, not in a text box, and the expected axis
+    // comes from the gallery entry; both are hidden from the generated form and
+    // supplied at call time.
     hideField(state.solveForm.element, 'picks');
+    hideField(state.solveForm.element, 'expected_zone_axis');
     solveHost.replaceChildren(state.solveForm.element);
 
-    state.tiltForm = buildForm(tiltOperation, { initial: tiltInitial });
+    if (atlasOperation) {
+      state.atlasForm = buildForm(atlasOperation, { initial: atlas });
+      atlasHost.replaceChildren(state.atlasForm.element);
+    }
+
+    state.tiltForm = buildForm(tiltOperation, { initial: tilt });
     tiltHost.replaceChildren(state.tiltForm.element);
   }
 
@@ -148,8 +261,106 @@ export function mount(context) {
 
   function loadExample(example) {
     state.teaches = example.teaches;
-    renderForms({}, example.request);
+    if (example.operation === 'tem.gallery_pattern') {
+      loadGallery(example.request.pattern, example.request);
+      return;
+    }
+    if (example.operation === 'tem.zone_axis_atlas') {
+      renderForms({ atlas: example.request });
+      runAtlas();
+      return;
+    }
+    renderForms({ tilt: example.request });
     planTilt();
+  }
+
+  /* --------------------------------------------------------- the gallery */
+
+  async function loadGallery(entryId, overrides = null) {
+    if (!entryId || !galleryOperation) return;
+    galleryButton.disabled = true;
+    try {
+      const request = { ...(state.galleryForm?.values() ?? {}), ...(overrides ?? {}) };
+      request.pattern = entryId;
+      const result = await call('tem.gallery_pattern', request);
+      state.gallery = result;
+      state.source = { kind: 'gallery' };
+      state.mode = 'pick';
+      state.picks = { centre: null, spots: [] };
+      state.image = null;
+      state.showAnswer = false;
+      answerButton.hidden = false;
+      answerButton.textContent = 'Show answer';
+      answerButton.setAttribute('aria-pressed', 'false');
+      autoPickButton.hidden = false;
+
+      const calibration = result.data.calibration;
+      // Carrying the calibration across is the whole point of sending it: a
+      // camera constant retyped by hand is a camera constant that can be
+      // retyped wrongly, and a pattern indexed against the wrong one indexes
+      // to a plausible, self-consistent, wrong material.
+      state.solveForm.setValues({
+        phase: calibration.phase,
+        units: calibration.units,
+        camera_constant_mm_angstrom: calibration.camera_constant_mm_angstrom,
+        pixel_size_mm: calibration.pixel_size_mm,
+      });
+      state.atlasForm?.setValues({
+        phase: calibration.phase,
+        current_zone_axis: result.data.pattern.zone_axis,
+      });
+      state.tiltForm.setValues({
+        phase: calibration.phase,
+        current_zone_axis: result.data.pattern.zone_axis,
+      });
+      if (state.galleryForm) state.galleryForm.setValues({ pattern: entryId });
+
+      drawPattern();
+      renderResult(details, result, {
+        teaches: state.teaches,
+        extra: [galleryGuidance(result)],
+      });
+      state.teaches = null;
+    } catch (error) {
+      context.showError(error);
+    } finally {
+      galleryButton.disabled = false;
+    }
+  }
+
+  /** What this plate teaches, and where it is worth going from here. */
+  function galleryGuidance(result) {
+    const targets = result.data.targets ?? [];
+    return el('section.card', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', { text: 'What this pattern teaches' }),
+        el('p.card__subtitle', {
+          text: 'Read this before picking; it is the reasoning the indexing will confirm.',
+        }),
+      ]),
+      el('div.card__body', {}, [
+        ...markdown(result.data.entry.teaches),
+        targets.length
+          ? el('h3.destinations__heading', { text: 'Worth going to from here' })
+          : null,
+        targets.length
+          ? el(
+              'div.examples',
+              {},
+              targets.map((target) =>
+                el(
+                  'button.example',
+                  {
+                    type: 'button',
+                    onclick: () => chooseTarget(target.indices, target.label),
+                  },
+                  [el('strong', { text: target.label }), el('span', { text: target.reason })],
+                ),
+              ),
+            )
+          : null,
+      ]),
+    ]);
   }
 
   /* --------------------------------------------------------------- image */
@@ -161,8 +372,12 @@ export function mount(context) {
       const image = new Image();
       image.onload = () => {
         state.image = { source: reader.result, width: image.width, height: image.height };
+        state.source = { kind: 'image' };
+        state.gallery = null;
         state.mode = 'pick';
         state.picks = { centre: null, spots: [] };
+        answerButton.hidden = true;
+        autoPickButton.hidden = true;
         drawPattern();
       };
       image.src = reader.result;
@@ -171,6 +386,21 @@ export function mount(context) {
   }
 
   /* -------------------------------------------------------------- picking */
+
+  function autoPick() {
+    const suggested = state.gallery?.data.suggested_picks;
+    if (!suggested) return;
+    state.picks = {
+      centre: [...suggested.centre],
+      spots: suggested.spots.map((spot) => ({ x: spot.x, y: spot.y })),
+    };
+    drawPattern();
+    frame.setStatus(
+      `Beam and ${state.picks.spots.length} spots placed for you — they are the strongest ` +
+        'reflections whose directions are all different, which is what indexing needs. Index ' +
+        'them, or clear and pick your own.',
+    );
+  }
 
   function calibrationValues() {
     const values = state.solveForm ? state.solveForm.values() : {};
@@ -190,32 +420,47 @@ export function mount(context) {
     return camera > 0 ? mm / camera : 0;
   }
 
+  function frameSize() {
+    if (state.source?.kind === 'gallery') {
+      const pattern = state.gallery.data.pattern;
+      return { width: pattern.width_px, height: pattern.height_px };
+    }
+    if (state.image) return { width: state.image.width, height: state.image.height };
+    return null;
+  }
+
   function drawPattern() {
-    if (!state.image) {
+    const size = frameSize();
+    if (!size) {
       frame.setContent(
         el('div.stage__placeholder', {
-          text: 'Open a pattern image to start picking, or run a tilt example below.',
+          text: 'Choose a practice pattern or open a micrograph to start picking.',
         }),
       );
       frame.setStatus('');
       return;
     }
-    const { width, height } = state.image;
+    const { width, height } = size;
     const root = svg('svg', {
       viewBox: `0 0 ${width} ${height}`,
       preserveAspectRatio: 'xMidYMid meet',
       'aria-label': 'Diffraction pattern',
     });
-    root.append(
-      svg('image', {
-        href: state.image.source,
-        x: 0,
-        y: 0,
-        width,
-        height,
-        preserveAspectRatio: 'none',
-      }),
-    );
+
+    if (state.source.kind === 'image') {
+      root.append(
+        svg('image', {
+          href: state.image.source,
+          x: 0,
+          y: 0,
+          width,
+          height,
+          preserveAspectRatio: 'none',
+        }),
+      );
+    } else {
+      drawSimulatedPattern(root, state.gallery.data.pattern);
+    }
 
     const marker = Math.max(width, height) / 140;
     if (state.picks.centre) {
@@ -299,6 +544,130 @@ export function mount(context) {
     );
   }
 
+  /**
+   * Draw a simulated pattern: dark ground, glowing spots, optional indices.
+   *
+   * A plate is dark with bright spots in every theme, because that is what a
+   * diffraction pattern is; inverting it for a light theme would make the
+   * practice pattern look unlike the thing it is practice for. Each reflection
+   * is a soft radial glow with a solid core, scaled by the apparent radius the
+   * simulation reports, so a strong reflection reads as strong at a glance in
+   * the way it does on a real exposure.
+   */
+  function drawSimulatedPattern(root, pattern) {
+    const [cx, cy] = pattern.centre_px;
+    const gradientId = 'saed-glow';
+    root.append(
+      svg('defs', {}, [
+        svg('radialGradient', { id: gradientId }, [
+          svg('stop', { offset: '0%', 'stop-color': SPOT_COLOUR, 'stop-opacity': '0.95' }),
+          svg('stop', { offset: '45%', 'stop-color': SPOT_COLOUR, 'stop-opacity': '0.28' }),
+          svg('stop', { offset: '100%', 'stop-color': SPOT_COLOUR, 'stop-opacity': '0' }),
+        ]),
+      ]),
+      svg('rect', {
+        x: 0, y: 0, width: pattern.width_px, height: pattern.height_px, fill: '#05070d',
+      }),
+    );
+
+    // The transmitted beam, drawn unmistakably brighter and larger than any
+    // reflection. This is not decoration: the first instruction the panel gives
+    // is "click the transmitted beam", and in an earlier draft the beam was
+    // barely distinguishable from a strong 200 spot, which makes that
+    // instruction impossible to follow. On a real plate the direct beam is
+    // orders of magnitude brighter — that is why a beam stop exists.
+    //
+    // Its size is tied to the nearest reflection rather than fixed, so a dense
+    // hexagonal zone does not have its innermost spots swallowed by the glow.
+    const nearest = pattern.spots.length
+      ? Math.min(...pattern.spots.map((spot) => Math.hypot(spot.x - cx, spot.y - cy)))
+      : pattern.width_px / 8;
+    const beamGlow = Math.max(28, Math.min(0.5 * nearest, pattern.width_px / 8));
+    root.append(
+      svg('circle', { cx, cy, r: beamGlow, fill: `url(#${gradientId})`, opacity: 0.95 }),
+      svg('circle', { cx, cy, r: beamGlow * 0.55, fill: `url(#${gradientId})`, opacity: 0.95 }),
+      svg('circle', { cx, cy, r: beamGlow * 0.2, fill: '#ffffff', opacity: 0.95 }),
+    );
+
+    const marker = Math.max(pattern.width_px, pattern.height_px) / 140;
+    for (const spot of pattern.spots) {
+      const glow = svg('circle', {
+        cx: spot.x, cy: spot.y, r: spot.radius_px * 3.0,
+        fill: `url(#${gradientId})`,
+        // Opacity carries the intensity, because apparent radius alone barely
+        // separates reflections whose kinematic intensities differ by tens of
+        // percent — which within one zone is the usual case.
+        opacity: 0.25 + 0.7 * spot.intensity,
+      });
+      const core = svg('circle', {
+        cx: spot.x, cy: spot.y, r: spot.radius_px * 0.62,
+        fill: SPOT_COLOUR,
+        opacity: 0.45 + 0.55 * spot.intensity,
+      });
+      root.append(glow, core);
+      frame.hoverable(core, {
+        Index: spot.label,
+        'd / Å': spot.d_angstrom,
+        '|g| / Å⁻¹': spot.g_inv_angstrom,
+        'Relative intensity': spot.intensity,
+        x: spot.x,
+        y: spot.y,
+      });
+      if (state.showAnswer) {
+        root.append(
+          svg('text', {
+            x: spot.x + spot.radius_px * 1.6,
+            y: spot.y - spot.radius_px * 1.2,
+            'font-size': marker * 2.1,
+            fill: '#9fd2ff',
+            text: spot.label,
+          }),
+        );
+      }
+    }
+
+    drawScaleBar(root, pattern, marker);
+  }
+
+  /**
+   * A reciprocal-space scale bar, in inverse angstroms.
+   *
+   * A diffraction pattern without a scale is a picture. The bar makes the
+   * calibration visible rather than merely stored: change the camera length and
+   * the bar changes with the pattern, which is the relation the calibration
+   * field is trying to teach. Its length is chosen from a 1-2-5 sequence so the
+   * label is a round number and the bar lands between a sixth and a third of the
+   * frame — long enough to read against, short enough not to cross the pattern.
+   */
+  function drawScaleBar(root, pattern, marker) {
+    const pxPerInvAngstrom = pattern.camera_constant_mm_angstrom / pattern.pixel_size_mm;
+    if (!Number.isFinite(pxPerInvAngstrom) || pxPerInvAngstrom <= 0) return;
+    const target = pattern.width_px * 0.22;
+    const choices = [0.05, 0.1, 0.2, 0.5, 1, 2, 5];
+    let best = choices[0];
+    for (const value of choices) {
+      if (Math.abs(value * pxPerInvAngstrom - target) < Math.abs(best * pxPerInvAngstrom - target)) {
+        best = value;
+      }
+    }
+    const length = best * pxPerInvAngstrom;
+    const x = pattern.width_px * 0.06;
+    const y = pattern.height_px * 0.94;
+    root.append(
+      svg('line', {
+        x1: x, y1: y, x2: x + length, y2: y,
+        stroke: SPOT_COLOUR, 'stroke-width': marker * 0.5, 'stroke-opacity': 0.75,
+      }),
+      svg('text', {
+        x, y: y - marker * 1.1,
+        'font-size': marker * 2.2,
+        fill: SPOT_COLOUR,
+        'fill-opacity': 0.75,
+        text: `${best} Å⁻¹`,
+      }),
+    );
+  }
+
   function eventToImage(event, node, width, height) {
     const rect = node.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
@@ -318,19 +687,27 @@ export function mount(context) {
     solveButton.textContent = 'Indexing…';
     state.solveForm.clearErrors();
     try {
-      const result = await call('tem.solve_pattern', {
-        ...state.solveForm.values(),
-        picks: state.picks,
-      });
+      const request = { ...state.solveForm.values(), picks: state.picks };
+      // A practice plate knows its own answer, so the indexing is checked
+      // rather than merely reported. The comparison happens in Python, where
+      // the symmetry lives: [110] and [101] are the same bcc pattern.
+      if (state.source?.kind === 'gallery') {
+        request.expected_zone_axis = state.gallery.data.pattern.zone_axis;
+      }
+      const result = await call('tem.solve_pattern', request);
       state.solution = result;
-      renderResult(details, result);
-      // Carry the answer into the tilt form: the axis just indexed is the axis
-      // the next move starts from, and retyping it is both tedious and a chance
-      // to get it wrong.
-      state.tiltForm.setValues({
-        phase: result.inputs.phase,
-        current_zone_axis: result.data.zone_axis,
-      });
+      renderResult(details, result, { extra: [verdictCard(result)].filter(Boolean) });
+      // Carry the answer into the panels below: the axis just indexed is the
+      // axis the next move starts from, and retyping it is both tedious and a
+      // chance to get it wrong.
+      // The phase carried forward is the value the picker emitted, not the
+      // expanded description the result echoes back. A catalogue choice that
+      // makes a round trip through `PhaseSpec.to_json` comes back as a full
+      // description, which the picker then labels "(edited)" — untrue, and
+      // alarming on a phase nobody edited.
+      const phase = state.solveForm.values().phase;
+      state.atlasForm?.setValues({ phase, current_zone_axis: result.data.zone_axis });
+      state.tiltForm.setValues({ phase, current_zone_axis: result.data.zone_axis });
       frame.setStatus(
         `Indexed as ${result.data.phase_name} down ${result.data.zone_axis_label}` +
           ` · ${state.picks.spots.length} picks`,
@@ -344,6 +721,111 @@ export function mount(context) {
     }
   }
 
+  /** The answer check, when the pattern came with an answer. */
+  function verdictCard(result) {
+    const check = result.data.check;
+    if (!check) return null;
+    return el('section.card', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', {
+          text: check.correct ? 'Correct — that is the axis' : 'Not the expected axis',
+        }),
+      ]),
+      el('div.card__body', {}, [
+        el('p.summary', {
+          text: check.correct
+            ? `You indexed this pattern as ${result.data.zone_axis_label}, which is the axis it ` +
+              `was built from, to within ${formatNumber(check.deviation_deg, 3)}°. The check is ` +
+              'made up to symmetry, because symmetry-equivalent axes give identical patterns.'
+            : `You indexed this pattern as ${result.data.zone_axis_label}, but it was built from ` +
+              `${check.expected_label} — ${formatNumber(check.deviation_deg, 2)}° away. Check the ` +
+              'beam pick first: an error there biases every d-spacing at once. Then the camera ' +
+              'constant, then whether every spot you picked really is a reflection.',
+        }),
+      ]),
+    ]);
+  }
+
+  async function runAtlas() {
+    if (!state.atlasForm) return;
+    atlasButton.disabled = true;
+    atlasButton.textContent = 'Searching…';
+    state.atlasForm.clearErrors();
+    try {
+      const result = await call('tem.zone_axis_atlas', state.atlasForm.values());
+      renderResult(details, result, {
+        teaches: state.teaches,
+        extra: [destinationsCard(result)],
+      });
+      state.teaches = null;
+    } catch (error) {
+      if (!state.atlasForm.showError(error)) context.showError(error);
+      else context.showError(error, { quiet: true });
+    } finally {
+      atlasButton.disabled = false;
+      atlasButton.textContent = 'List the zone axes';
+    }
+  }
+
+  /**
+   * The atlas rows as destinations you can act on.
+   *
+   * The table below states the numbers; this turns each row into the decision
+   * it represents. Reading "⟨111⟩ at 35.26°, 36 reflections, six-fold,
+   * reachable" and then retyping [111] into a form two sections down is exactly
+   * the kind of transcription that puts the wrong indices into a tilt plan.
+   */
+  function destinationsCard(result) {
+    const rows = result.table.rows.filter((row) => row.verdict !== 'current axis');
+    return el('section.card', {}, [
+      el('div.card__header', {}, [
+        el('h2.card__title', { text: 'Choose a destination' }),
+        el('p.card__subtitle', {
+          text:
+            'Nearest first. Choosing one sets it as the tilt target below — the number of ' +
+            'reflections is what the trip buys, and the symmetry is what you will recognise ' +
+            'when you arrive.',
+        }),
+      ]),
+      el('div.card__body', {}, [
+        el(
+          'div.examples',
+          {},
+          rows.map((row) =>
+            el(
+              'button.example',
+              {
+                type: 'button',
+                class: row.reachable ? 'example--reachable' : 'example--unreachable',
+                onclick: () => chooseTarget(row.indices, row.target),
+              },
+              [
+                el('strong', { text: `${row.family} · ${row.target}` }),
+                el('span', {
+                  text:
+                    `${formatNumber(row.angle_deg, 2)}° away · ${row.reflections} reflections · ` +
+                    `${row.symmetry} · ${row.family_size} members · ` +
+                    (row.reachable
+                      ? `reachable, Δα ${formatNumber(row.delta_alpha_deg, 1)}° ` +
+                        `Δβ ${formatNumber(row.delta_beta_deg, 1)}°`
+                      : 'out of the holder’s range in one move'),
+                }),
+              ],
+            ),
+          ),
+        ),
+      ]),
+    ]);
+  }
+
+  function chooseTarget(indices, label) {
+    if (!indices) return;
+    state.tiltForm.setValues({ target_zone_axis: indices });
+    frame.setStatus(`Target set to ${label ?? indices.join(' ')} — plan the tilt below.`);
+    tiltButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    tiltButton.focus();
+  }
+
   async function planTilt() {
     tiltButton.disabled = true;
     tiltButton.textContent = 'Planning…';
@@ -354,6 +836,7 @@ export function mount(context) {
         teaches: state.teaches,
         extra: [tiltMap(result)],
       });
+      state.teaches = null;
     } catch (error) {
       if (!state.tiltForm.showError(error)) context.showError(error);
       else context.showError(error, { quiet: true });
@@ -365,9 +848,14 @@ export function mount(context) {
 
   renderForms();
   drawPattern();
-  if (examples.length) loadExample(examples[0]);
+  if (galleryEntries.length) loadGallery(galleryEntries[0].value);
 
-  return { help: () => (state.mode === 'pick' ? solveOperation : tiltOperation) };
+  return {
+    help: () => {
+      if (state.mode === 'pick') return solveOperation;
+      return atlasOperation ?? tiltOperation;
+    },
+  };
 }
 
 /**

@@ -34,10 +34,17 @@ different from one another in the way that matters:
 
 Instrument setting
 ------------------
-All three are recorded at 200 kV with a 400 mm camera length, so the camera
-constant is ``L·λ`` with ``λ`` from :func:`electron_wavelength_angstrom` — a
-computed quantity, not a typed-in one, which is the relation the calibration
-field exists to teach.
+The accelerating voltage and camera length are **not** properties of an entry.
+They belong to the microscope, one set of them applies to whatever specimen is
+in the column, and the panel exposes them as controls shared by all three
+plates — defaulting to 200 kV and 400 mm. The camera constant is then computed
+as ``L·λ`` with ``λ`` from :func:`electron_wavelength_angstrom`, rather than
+typed in, which is the relation the calibration field exists to teach: shorten
+the camera and more of reciprocal space fits on the plate.
+
+What *is* per-entry is everything the specimen and the exposure decide: the
+phase, the zone axis, where the beam falls on the detector, how the pattern is
+rolled about it, and the centroiding scatter.
 """
 
 from __future__ import annotations
@@ -95,9 +102,6 @@ class GalleryEntry:
         Catalogue identifier of the phase, from :data:`pytex.app.phases.BUILTIN_PHASES`.
     zone_axis : tuple of int
         Beam direction in the phase's three-index basis.
-    beam_energy_kev, camera_length_mm : float
-        The instrument setting. The camera constant is their product with the
-        electron wavelength, computed rather than stated.
     width_px, height_px, pixel_size_mm : int, int, float
         The detector raster.
     centre_px : tuple of float
@@ -121,8 +125,6 @@ class GalleryEntry:
     teaches: str
     phase_key: str
     zone_axis: tuple[int, ...]
-    beam_energy_kev: float = 200.0
-    camera_length_mm: float = 400.0
     width_px: int = 1024
     height_px: int = 1024
     pixel_size_mm: float = 0.024
@@ -131,18 +133,6 @@ class GalleryEntry:
     jitter_px: float = 0.9
     rng_seed: int = 20260814
     targets: tuple[SuggestedTarget, ...] = ()
-
-    def camera_constant_mm_angstrom(self) -> float:
-        """``L·λ`` for this entry's camera length and accelerating voltage.
-
-        Computed from the relativistic electron wavelength rather than stated, so
-        the number in the calibration field and the number the geometry used
-        cannot drift apart.
-        """
-
-        from pytex.diffraction.kinematic import electron_wavelength_angstrom
-
-        return float(self.camera_length_mm * electron_wavelength_angstrom(self.beam_energy_kev))
 
     def phase_spec(self) -> Any:
         """The catalogue phase this entry is built from."""

@@ -42,8 +42,8 @@ gallery entry.
 | 1 | `pytex.tem.synthetic`: detector-pixel synthetic SAED patterns, with tests | done | (this commit) |
 | 2 | `pytex.tem.atlas`: symmetry-reduced zone-axis atlas with angles from a current axis | done | (this commit) |
 | 3 | App: gallery catalogue, `tem.gallery_pattern`, `tem.zone_axis_atlas`, calibration helper | done | (this commit) |
-| 4 | Frontend: gallery, synthetic rendering, auto-pick, answer check, atlas navigation | pending | |
-| 5 | Docs: workflow page, theory cross-links, user guide, worked examples | pending | |
+| 4 | Frontend: gallery, synthetic rendering, auto-pick, answer check, atlas navigation | done | (this commit) |
+| 5 | Docs: workflow page, theory cross-links, user guide, worked examples | done | (this commit) |
 | 6 | Human-style browser + desktop pass, defect fixes, closeout | pending | |
 
 ### Increments 1 and 2 result
@@ -108,9 +108,59 @@ gallery entry.
    off the end of a twelve-row table. The default is now 2, which is exactly the set a standard
    stereogram labels, and the help text explains what raising it admits and what it costs.
 
-**Exact next action.** Increment 4: the TEM panel frontend — gallery cards, synthetic pattern
-rendering on the picking canvas, auto-pick, the answer check, and the atlas as a navigation
-surface whose rows set the tilt target.
+### Increments 4 and 5 result
+
+- The TEM panel is now laid out as the session is: open a pattern, calibrate and index, choose
+  where to go next, tilt. The gallery cards are read from the manifest — from the `pattern`
+  parameter's options — so a fourth practice plate appears in the browser the moment it is added
+  in Python, with no edit to the panel.
+- A simulated plate is drawn as SVG from coordinates and brightnesses, a few kilobytes rather than
+  a raster, crisp at any zoom, on a dark ground in both themes because that is what a diffraction
+  pattern is. Auto-pick places the beam and six mutually non-collinear strong reflections; Show
+  answer labels every spot; and the indexed result is checked against the construction, with the
+  symmetry comparison done in Python where the symmetry lives.
+- Atlas rows are actionable rather than transcribable: choosing one sets the tilt target below.
+  Reachability is carried by a border stripe *and* by words, never by colour alone.
+- Docs: a new workflow page `workflows/tem_pattern_indexing`, a step-by-step TEM section in the
+  user guide, cross-links from `saed_pattern_solving`, and three executable worked examples whose
+  expected values are analytic — `L·λ/d` for the calibration identity, `√3·a/c` for the hcp
+  prism-zone aspect ratio, and the exactly-90° basal-to-prism angle.
+
+**Four more defects found by driving the running application.**
+
+4. **The transmitted beam was indistinguishable from a strong reflection.** Rendering the live SVG
+   showed the direct beam as a 9 px core against 7.4 px for a 200 spot — while the panel's first
+   instruction is "click the transmitted beam". It is now sized against the *nearest* reflection,
+   so it is unmistakable without swallowing the inner spots of a dense hexagonal zone.
+5. **The plate had no scale.** A diffraction pattern without one is a picture. A reciprocal-space
+   bar in Å⁻¹, chosen from a 1-2-5 sequence, now makes the calibration visible: change the camera
+   length and the bar changes with the pattern.
+6. **A catalogue phase carried into the panel was renamed "(edited)".** The gallery sent an
+   expanded `PhaseSpec`, which the phase picker reads as a user-edited phase; the indexed result
+   was titled "Aluminium (fcc) (edited)" on a phase nobody had touched.
+7. **A tilt plan counted "members of [012]".** A specific direction has no members. The sentence
+   now writes the family form ⟨012⟩ per the notation standard, with a test pinning it.
+
+**Also removed:** `GalleryEntry.beam_energy_kev` and `camera_length_mm` were dead — the operation
+always used the request values — while the module docstring claimed each entry carried "its own
+instrument setting". The voltage and camera length belong to the microscope, not the specimen, and
+the docstring now says so.
+
+**Verification.** `ruff check .`, `mypy src` (136 files) and the full `pytest tests/unit` lane are
+green. The class-model atlas figures and the count stated on its page were regenerated, since two
+new modules changed the model (272 public classes, 255 dataclasses, still only 6 inheritance
+relations). Browser driving covered: gallery load, auto-pick, index, the correct-answer verdict,
+the atlas, choosing a destination, and the resulting tilt plan; zero console messages; no
+page-level horizontal overflow at 375 px or 1280 px; and the reachable/unreachable stripes checked
+in dark mode.
+
+**Known limitation of this session's verification.** The Browser pane would not composite frames,
+so `screenshot` was unavailable throughout. Appearance was checked by extracting the live SVG's
+own circle, line and text attributes from the DOM and rasterising *those* — a view of the real
+output, not of a parallel implementation — which is how defects 4 and 5 were found.
+
+**Exact next action.** Increment 6: drive the real desktop shell, re-check the full lane, and
+close out.
 
 ## Workbench Visual Modernization And GUI Completeness — COMPLETE (2026-08-14)
 

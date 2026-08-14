@@ -49,7 +49,7 @@ can still exercise every feature — the manifest test executes each example, so
 | Workspace | What it answers |
 | --- | --- |
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
-| **TEM Solver** | Which zone axis is this pattern, and how do I tilt to the next one? |
+| **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
 | **Diffraction** | What does a two-phase SAED pattern contain, and which variant is that spot? |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
@@ -195,6 +195,36 @@ the setting most often left unreported in the literature, which is why the appli
 control rail rather than burying it in a default.
 ```
 
+## The TEM Solver, Step By Step
+
+This panel is laid out as the microscope session is, and its four numbered sections are the four
+questions in order.
+
+**1 · Open a pattern.** Three practice plates ship with the application — aluminium down [001],
+ferrite down [110], zirconium down [2̄110] — each a real crystallographic calculation with the
+answer attached, so the indexing workflow can be tried and *checked* without a micrograph. Or open
+your own image: it never leaves the machine, and only the coordinates you click are sent. The
+accelerating voltage and camera length are microscope settings shared by all three plates, and the
+camera constant is computed from them rather than typed.
+
+**2 · Calibrate and index.** Click the transmitted beam first — it is the origin every spot is
+measured from, not a reflection — then the spots. **Auto-pick** places the beam and six strong,
+mutually non-collinear reflections, which is what indexing needs: the brightest spots of a pattern
+almost always include a Friedel pair, and a pair collinear through the beam cannot seed anything.
+**Show answer** labels every simulated spot with its indices, for checking your reading against the
+construction. When a practice plate is loaded, the indexed result is compared with the axis it was
+built from — up to symmetry, because a bcc [110] pattern is indistinguishable from a [101] one.
+
+**3 · Where to go next.** Every zone-axis family of the phase near the one on the beam, with its
+angle, its number of symmetry-equivalent members, how many reflections its pattern shows, the
+rotational symmetry you will recognise on arrival, and whether the holder can reach it. The answer
+is usually not the nearest axis: a two-spot zone 11° away buys less than a thirty-six-spot six-fold
+zone at 35°. Choosing a row sets it as the tilt target below, so no indices are retyped.
+
+**4 · Tilt to the target.** The plan, the alpha and beta angles, the margin against the tilt
+envelope, and the tilt map showing at a glance which candidates sit comfortably inside the holder's
+range and which are pressed against a stop.
+
 ## Using Your Own Material
 
 Every phase control offers the built-in catalogue — NaCl, austenite, ferrite, beta-bcc and
@@ -257,6 +287,7 @@ bundler, no CDN. Two things are optional and degrade gracefully:
 
 - {doc}`../architecture/application_platform` — the design record and the six decisions
 - {doc}`composite_or_diffraction` — the composite two-phase pattern the Diffraction panel simulates
+- {doc}`tem_pattern_indexing` — the full TEM Solver workflow, from a plate to the next zone axis
 - {doc}`saed_pattern_solving` — the indexing the TEM Solver performs
 - {doc}`crystal_visualization` — the renderer behind the Crystal Viewer's figures
 - {doc}`stereographic_projections` — the projections the Variants and Texture panels use
