@@ -89,7 +89,38 @@ constant enters only when an absolute spacing is wanted. That is exactly why a
 wrong camera constant is dangerous: it produces a self-consistent pattern of the
 wrong material rather than an obviously broken one.
 
-## 3. Pick and index
+## 3. Fit the lattice, and settle the beam centre
+
+Before indexing, impose the one constraint the pattern already satisfies: its
+spots lie on a plane lattice. `pytex.diffraction.lattice_fit.fit_planar_lattice`
+does that, and two things follow.
+
+**The beam centre is solved for rather than clicked.** Four or more spots
+over-determine it, so least squares gives the centre that best explains all of
+them at once. This is worth more than it sounds: the camera equation measures
+every radius *from the beam*, so an error there biases every spacing in the same
+direction and produces a self-consistent answer for the wrong material.
+
+**A mis-picked spot becomes visible.** The workbench draws the fitted lattice
+over the pattern as two families of ruled lines, with the two basis vectors as
+labelled arrows from the beam to the picks that generate them. Move the spot an
+arrow points at and every line in the grid turns with it — so the two picks worth
+being careful about are the two the arrows are on, and a spot clicked one node
+out, or on a dust particle, stops matching the grid.
+
+The panel offers both a directional pad for nudging the beam by a chosen step and
+a *Refine from the spots* button, because the two are needed for different
+reasons. The refinement is better than any single click; but a centre wrong by an
+exact lattice vector fits perfectly, and only a person looking at which spot is
+brightest can settle that one.
+
+The full method, its three failure modes and its two irreducible limits are in
+[Fitting the pattern lattice, and scoring the solutions](../theory/lattice_fit_and_solution_scoring.md).
+**This step is geometry, not indexing**: a lattice that fits says the picks are
+mutually consistent, which is necessary for a correct indexing and far from
+sufficient.
+
+## 4. Pick and index
 
 Click the transmitted beam first. It is not a reflection; it is the origin every
 spot is measured from, so an error there biases every d-spacing in the pattern at
@@ -116,7 +147,38 @@ the crystal symmetry maps one onto the other, so comparing index triples would
 call a correct answer wrong. What is compared is the smallest angle between the
 two directions over the symmetry orbit.
 
-## 4. Choose where to go next
+### Reading the candidates
+
+Every candidate carries three things beyond its indices.
+
+**Deviations**, which are measurements: the measured d-spacing against the
+calculated one for each spot, and the measured angle against the calculated one
+for each pair. The *same* relative deviation on every spot is the signature of a
+wrong camera constant; a scatter of them is the signature of a wrong indexing.
+
+**A fused accuracy score**, which is a policy — length agreement, angle agreement
+and coverage, weighted and combined into one number in `[0, 1]`. The weights are
+configurable, documented, and travel with every score, because a number whose
+policy is invisible is an assertion rather than a measurement. Angles are
+weighted above lengths by default: a wrong camera constant scales every length
+and leaves every angle alone, so an angular disagreement is evidence about the
+crystallography while a length disagreement may only be evidence about the
+instrument. Candidates are ranked by this score rather than by the solver's own
+sort key, and when the two orders disagree the result says so — that disagreement
+is itself a sign the pattern does not settle the answer.
+
+**Its calculated pattern**, in the picking coordinates. Superimposing what a
+solution predicts on what was measured turns accepting it into a judgement made
+by looking: a calculated pattern uniformly too large is a camera constant, one
+turned is a roll, one with rows the plate does not show is the wrong phase. The
+prediction is bounded by the index limit, so a plate spot with no calculated
+ring beside it means *check the index limit* before doubting the solution.
+
+Selecting a candidate draws it. **Accepting** one is a separate, deliberate act,
+and it is what carries the phase and axis into the steps below — a tilt planned
+from a solution nobody chose is a tilt planned from a guess.
+
+## 5. Choose where to go next
 
 Tilt planning answers *can I reach the axis I named*. At the column the question
 usually comes the other way round, and `pytex.tem.atlas.zone_axis_atlas` answers
@@ -165,7 +227,7 @@ than by default.
 plate of a diamond-structure or hexagonal phase shows a few more spots than the
 count states. The count understates richness; it never invents it.
 
-## 5. Tilt
+## 6. Tilt
 
 The chosen destination goes to `plan_tilt_to_zone_axis`, which is documented in
 [TEM specimen tilt navigation](../theory/tem_specimen_tilt_navigation.md). Two
@@ -182,6 +244,24 @@ make the move at all. Fix it from a second pattern at a different tilt.
 of routes that can be traded off. There is no combining a large alpha with a
 large beta to reach further, which is why a ±30° holder cannot make a 54.7° move
 however the tilts are divided.
+
+## Exporting, at every stage
+
+Every result in every panel exports in four formats, and the buttons are
+generated from the manifest rather than written into the browser, so a format
+added in Python appears everywhere at once.
+
+| Format | For |
+| --- | --- |
+| **CSV** | One row per entity, at full precision, for another program. |
+| **Excel** | The same table plus a sheet recording the inputs it came from. |
+| **JSON** | The complete result, round-trippable back into the application. |
+| **Report** | A readable Markdown page: the answer in prose, the caveats, the data, the exact inputs, and the citations. |
+
+The first three are machine-readable to varying degrees; the last is the one to
+paste into a notebook entry, because it says what was computed, from what, and on
+whose authority. A result with no table still exports as a report — the prose and
+the provenance are the point.
 
 ## What the numbers rest on
 

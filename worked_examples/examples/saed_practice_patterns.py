@@ -206,6 +206,109 @@ BASAL_TO_PRISM_ANGLE = WorkedExample(
 )
 
 
+CENTRE_REFINEMENT = WorkedExample(
+    id="saed-lattice-fit-recovers-the-beam-centre",
+    title="A beam centre picked 30 pixels out, recovered from the spots",
+    domain="tem",
+    scenario=(
+        "Picking the transmitted beam by eye is the largest avoidable error in the indexing "
+        "workflow: it biases every d-spacing at once, and it does so while leaving the pattern "
+        "self-consistent, so the result is a plausible answer for the wrong material rather than "
+        "an obvious failure. But the spots of a zone-axis pattern lie on a plane lattice, and with "
+        "four or more of them that constraint over-determines the centre. Here eight nodes of an "
+        "exact square lattice are given with the centre deliberately misplaced by 30 pixels in "
+        "each direction, and the fit is asked to put it back."
+    ),
+    setup=PATTERN_SETUP,
+    code=(
+        "from pytex.diffraction.lattice_fit import fit_planar_lattice\n"
+        "\n"
+        "basis = np.array([[100.0, 0.0], [0.0, 100.0]])\n"
+        "indices = np.array([[1, 0], [0, 1], [-1, 0], [0, -1],\n"
+        "                    [1, 1], [-1, -1], [2, 0], [0, 2]], dtype=float)\n"
+        "truth = np.array([512.0, 384.0])\n"
+        "nodes = truth + indices @ basis\n"
+        "fit = fit_planar_lattice(nodes, truth + np.array([30.0, 30.0]))\n"
+        "result = float(np.linalg.norm(fit.centre - truth))"
+    ),
+    expected=0.0,
+    unit="px",
+    tolerance=1e-6,
+    reference=(
+        "Exact. The eight points are exact nodes of the lattice about the true centre, so the "
+        "least-squares problem for the centre with the integer assignment held fixed has that "
+        "point as its exact solution: the residual is zero and the recovered centre is the "
+        "generating one. Independent of the basis chosen and of the starting error, up to the "
+        "half-spacing limit at which a fit would be relabelling which node the origin is."
+    ),
+    citation=(
+        "Standard linear least squares on the lattice model p = c + m a + n b; Williams, D. B. "
+        "and Carter, C. B., Transmission Electron Microscopy, 2nd ed., "
+        "DOI: 10.1007/978-0-387-76501-3, chapter 18 on why the beam position governs every "
+        "measured spacing."
+    ),
+    symbols=(_G,),
+    see_also=(_WORKFLOW, _INDEXING),
+    result_format="{:.9f}",
+)
+
+
+CALIBRATION_BIAS = WorkedExample(
+    id="saed-scoring-calibration-bias",
+    title="A camera constant five percent high, read back from the scoring",
+    domain="tem",
+    scenario=(
+        "The one calibration error that does not announce itself. A camera constant taken from "
+        "the wrong camera length rescales every measured spacing and leaves every measured angle "
+        "untouched, so the pattern stays perfectly self-consistent while pointing at the wrong "
+        "material. The scoring keeps lengths and angles apart for exactly this reason, and "
+        "weights angles higher, because an angular disagreement is evidence about the "
+        "crystallography while a length disagreement may only be evidence about the instrument."
+    ),
+    setup=PATTERN_SETUP,
+    code=(
+        "from dataclasses import dataclass\n"
+        "from pytex.diffraction.solution_scoring import score_solution\n"
+        "\n"
+        "@dataclass(frozen=True)\n"
+        "class Spot:\n"
+        "    measured_index: int\n"
+        "    hkl: tuple\n"
+        "    label: str\n"
+        "    predicted_g_inv_angstrom: tuple\n"
+        "\n"
+        "@dataclass(frozen=True)\n"
+        "class Solution:\n"
+        "    solved_spots: tuple\n"
+        "    matched_fraction: float = 1.0\n"
+        "\n"
+        "calculated = np.array([[0.5, 0.0], [0.0, 0.5], [0.5, 0.5], [1.0, 0.0]])\n"
+        "solution = Solution(tuple(\n"
+        "    Spot(index, (2, 0, 0), 'g', tuple(calculated[index]))\n"
+        "    for index in range(len(calculated))\n"
+        "))\n"
+        "score = score_solution(solution, 1.05 * calculated)\n"
+        "result = float(score.rms_relative_length_deviation)"
+    ),
+    expected=1.0 - 1.0 / 1.05,
+    unit="",
+    tolerance=1e-12,
+    reference=(
+        "d = 1/|g|, so measured g larger by a factor 1.05 makes every measured d smaller by "
+        "1/1.05. The relative deviation is 1/1.05 - 1 = -0.0476190476 on every spot, and the "
+        "r.m.s. of a constant is that constant. Identical on every spot is the signature that "
+        "distinguishes a calibration error from an indexing error."
+    ),
+    citation=(
+        "Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., "
+        "DOI: 10.1007/978-0-387-76501-3, chapter 18 (R d = L lambda)."
+    ),
+    symbols=(_D, _G),
+    see_also=(_WORKFLOW, _INDEXING),
+    result_format="{:.10f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="saed_practice_patterns",
     title="Simulated SAED plates and the zone-axis atlas",
@@ -213,12 +316,16 @@ GROUP = ExampleGroup(
         "The geometry a practice diffraction pattern must reproduce if indexing it is to teach "
         "anything: the camera-constant identity that places every reflection, the hcp prism-zone "
         "aspect ratio that measures c/a without any calibration at all, and the basal-to-prism "
-        "angle the zone-axis atlas has to report as exactly 90 degrees."
+        "angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice "
+        "fit recovers from the spots, and the length bias a mis-set camera constant leaves "
+        "in the scoring while the angles stay put."
     ),
     examples=(
         CALIBRATION_IDENTITY,
         PRISM_ZONE_AXIAL_RATIO,
         BASAL_TO_PRISM_ANGLE,
+        CENTRE_REFINEMENT,
+        CALIBRATION_BIAS,
     ),
 )
 

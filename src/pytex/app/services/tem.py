@@ -478,7 +478,17 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
     alternatives = [
         {
             "phase": solution.phase_name,
-            "zone_axis": solution.zone_axis_label,
+            # `PatternSolution.zone_axis_label` is the solver's own three-index
+            # rendering. Everything the user sees elsewhere goes through
+            # `direction_label`, which writes four indices for a hexagonal phase,
+            # and a candidate list that says [010] beside a title reading
+            # [1̄21̄0] is describing the same axis in two notations.
+            "zone_axis": direction_label(
+                tuple(
+                    int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)
+                ),
+                spec=spec_by_name.get(solution.phase_name, spec),
+            ),
             "zone_axis_indices": [
                 int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)
             ],

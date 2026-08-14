@@ -13,6 +13,60 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The beam centre is solved for, not clicked.** `pytex.diffraction.lattice_fit`
+  fits the plane lattice that a zone-axis pattern's spots must lie on, which
+  over-determines the transmitted beam with four or more picks and names any pick
+  the lattice cannot explain. This matters because the camera equation measures
+  every radius *from the beam*: an error there biases every spacing in the same
+  direction and yields a self-consistent answer for the wrong material rather
+  than an obvious failure. Exposed as `tem.fit_lattice`, and drawn live over the
+  pattern in the workbench, with the two basis vectors as labelled arrows from
+  the beam to the picks that generate them.
+
+  - Seeding uses *differences between spots*, never offsets to the picked centre:
+    a difference is a lattice vector however badly the centre was picked, while
+    an offset is one only if the pick was already right. The alternative fails in
+    exactly the case the method exists to repair.
+  - Candidate lattices are ranked by evidence rather than by inlier count, since
+    halving a cell explains every spot it explained before plus the mis-picked
+    one. A cell of area `A` puts `π t² / A` of the plane within tolerance of a
+    node, so each inlier carries `log(A / π t²)` nats and a denser lattice pays
+    `log 4` per inlier for its extra nodes.
+  - The reported basis is Gauss-reduced, so its lengths and included angle are
+    lattice invariants. Before that, a square lattice could be reported as two
+    vectors 135° apart, which is correct and useless.
+  - Two limits are documented and tested rather than papered over: a centre wrong
+    by an exact lattice vector is undetectable from geometry, and refinement is
+    leashed at half a spacing because beyond that it relabels which node the
+    origin is.
+
+- **Candidate solutions carry deviations, a configurable score, and their own
+  calculated pattern.** `pytex.diffraction.solution_scoring` reports measured
+  against calculated d-spacings per spot and angles per pair — the evidence — and
+  fuses them through an explicit, documented `ScoringWeights` policy that travels
+  with every number it produces. `tem.solve_pattern` now ranks candidates by that
+  score rather than by the solver's sort key, which is deliberately not a
+  quality, and says so when the two orders disagree.
+
+  - Angles are weighted above lengths because a wrong camera constant scales
+    every length and leaves every angle untouched: an angular disagreement is
+    evidence about the crystallography, a length disagreement may only be
+    evidence about the instrument. A 5 percent calibration error moves the length
+    deviation to 5.01 percent and the angle deviation not at all.
+  - Every candidate returns the pattern it predicts, in picking coordinates, so a
+    solution can be accepted by looking at whether it lands on the measured
+    spots. Accepting is explicit, and is what carries the phase and axis into
+    zone-axis listing and tilt planning.
+  - The per-spot table gained a Δd column. The *same* deviation on every spot is
+    the signature of a calibration error; a scatter of them is an indexing error.
+
+- **A human-readable export, on every result in every panel.** `Report` writes a
+  Markdown page — the answer in prose, the caveats, the data, the exact inputs,
+  the citations — which is the one thing CSV, XLSX and JSON are each unsuited to.
+  `EXPORT_FORMATS` is now published in the manifest and the browser generates its
+  export buttons from it, so a format added in Python reaches every panel without
+  a matching edit in JavaScript.
+
 - **The TEM panel can be used without a micrograph, and its answers can be
   checked.** Three practice SAED plates ship with the workbench — aluminium fcc
   down [001], ferrite bcc down [110], zirconium hcp down [2̄110] — each a real

@@ -143,9 +143,16 @@ Choose the format for the drawing, not by habit: a lit sphere is a mesh and a ve
 every facet of it, so PNG is right for the crystal viewer; a pole figure is line art, so SVG is
 right there and is roughly twenty times smaller.
 
-**Re-plottable numbers.** CSV, XLSX and JSON. The CSV is one row per entity at full precision; the
-XLSX adds a sheet recording the inputs; the JSON is the complete result, reloadable. No result in
-the application is exportable only as a picture.
+**Re-plottable numbers, and a readable account of them.** Four formats, on every result in every
+panel. The CSV is one row per entity at full precision; the XLSX adds a sheet recording the inputs;
+the JSON is the complete result, reloadable. The **Report** is a Markdown page written for a person
+rather than a program: the answer in prose, the caveats, the data, the exact inputs that produced
+it, and the citations — the thing to paste into a notebook entry, which none of the other three is.
+No result in the application is exportable only as a picture, and a result with no table at all
+still exports as a report, because the prose and the provenance are the point.
+
+The buttons are generated from the manifest, like everything else here, so a format added in Python
+appears on every result at once.
 
 ```{note}
 In the desktop shell every export goes through a native save dialog, because an embedded web view
@@ -214,6 +221,23 @@ almost always include a Friedel pair, and a pair collinear through the beam cann
 **Show answer** labels every simulated spot with its indices, for checking your reading against the
 construction. When a practice plate is loaded, the indexed result is compared with the axis it was
 built from — up to symmetry, because a bcc [110] pattern is indistinguishable from a [101] one.
+
+As soon as two spots are picked, a **lattice fitted to them** is drawn over the pattern, with the
+two basis vectors as labelled arrows from the beam to the picks that generate them. Move a spot an
+arrow points at and every line in the grid turns with it, so the picks worth being careful about
+are obvious. The **beam-centre tool** beside the form reports where the beam is and where the spots
+say it should be; nudge it with the pad and watch the grid, or press *Refine from the spots* and
+let least squares place it. That number matters more than it looks: the camera equation measures
+every radius from the beam, so an error there biases every spacing at once and yields a
+self-consistent answer for the wrong material.
+
+Indexing then lists **candidates ranked by an accuracy score**, each with three bars — how well
+d-spacings agree, how well angles agree, and how many spots were explained. Selecting one draws
+**the pattern it predicts** over the one you measured, which is the honest way to choose between
+them; *Accept this solution* is a separate act, and it is what carries the phase and axis into the
+two steps below. The *Where it disagrees* card gives the evidence: the same deviation on every spot
+is a camera constant, a scatter of them is an indexing error, and angles do not depend on the
+calibration at all.
 
 **3 · Where to go next.** Every zone-axis family of the phase near the one on the beam, with its
 angle, its number of symmetry-equivalent members, how many reflections its pattern shows, the

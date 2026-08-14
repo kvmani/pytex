@@ -157,6 +157,14 @@ class TestScoringAndRanking:
             assert 0.0 <= entry["score"] <= 1.0
             assert entry["describe"]
 
+    def test_a_hexagonal_candidate_is_labelled_like_everything_else(self) -> None:
+        """One axis must not be written in two notations on one screen."""
+
+        result = solve(plate("hcp_zr_2-1-10"))
+        label = result["data"]["alternatives"][0]["zone_axis"]
+        assert len(label.strip("[]").split()) == 4
+        assert label in result["title"]
+
     def test_the_policy_travels_with_the_number(self) -> None:
         result = solve(plate(), score_angle_weight=4.0, score_length_tolerance=0.005)
         assert result["data"]["score"]["weights"]["angle"] == pytest.approx(4.0)

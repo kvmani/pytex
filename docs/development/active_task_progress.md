@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — IN PROGRESS (2026-08-14)
+## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 
 **Objective.** Close the loop between picking and trusting an answer. Five things, in the order a
 microscopist meets them:
@@ -46,7 +46,7 @@ form at every stage, across every panel.**
 | 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | done | (this commit) |
 | 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | done | (this commit) |
 | 5 | Export: a human-readable report format on every panel, manifest-published | done | (this commit) |
-| 6 | Docs, human-style pass, closeout | pending | |
+| 6 | Docs, human-style pass, closeout | done | (this commit) |
 
 ### Increment 1 result
 
@@ -214,8 +214,51 @@ workbook is those two in separate sheets. None is the thing to paste into a note
   driving the Report button produces `aluminium-fcc-down-001.md` with the title, the summary and
   the notes intact.
 
-**Exact next action.** Increment 6: docs for the three new surfaces, a human pass over the whole
-TEM workflow, and closeout.
+### Increment 6 result
+
+- **Theory note** `theory/lattice_fit_and_solution_scoring` carries the derivations: why the centre
+  is over-determined and why solving for it matters, the three failure modes of the fit and what
+  answers each, the evidence criterion with its `log(A / πt²)` per inlier, Gauss reduction, and the
+  scoring policy with the calibration argument that sets the weights. Indexed in
+  `theory/index` and `docs/README`.
+- **Workflow page** gained the fit-and-settle-the-centre step, the reading-the-candidates section,
+  and an export section; the user guide gained the same in the TEM walkthrough and a rewritten
+  export paragraph naming the fourth format.
+- **Two more executable worked examples**, both analytic: a beam centre displaced 30 px in each
+  direction is recovered exactly from eight lattice nodes, and measured vectors stretched by 5
+  percent report a relative length deviation of exactly `1/1.05 - 1` on every spot.
+
+**One more defect, found by driving the hcp plate end to end.** The accepted-solution message read
+"down [010]" while the card above it read "down [1̄21̄0]" — the same axis in two notations on one
+screen, because the candidate list used `PatternSolution.zone_axis_label` (the solver's own
+three-index rendering) instead of the phase-aware `direction_label` everything else goes through.
+
+**Final verification.** `ruff check .`, `mypy src` (138 files), the full `pytest tests/unit` lane
+and `scripts/check_repo_integrity.py` are green. `python -m sphinx -b html docs/site` exits 0 with
+the new theory page rendering; the seven non-autodoc warnings are the pre-existing docstring
+formatting in `cbed`, `holz`, `models` and `plotting.runtime`. Driving the running application: the
+hcp plate opened, auto-picked, the beam displaced 22 px and refined back to 0.0, indexed with the
+correct-axis verdict, a candidate accepted, and the zone-axis list produced from the accepted
+orientation. All seven panels export CSV, Excel, JSON and Report, and the Report button produces a
+readable Markdown file.
+
+### What was deliberately not done
+
+- **No automatic spot detection.** Auto-pick works from the simulated truth, not from image
+  analysis; finding spots in a real micrograph is local maxima, background estimation and a beam
+  stop, and pretending otherwise would be worse than not offering it.
+- **No intensity term in the score.** Relative intensities in a real pattern are dynamical and vary
+  with thickness and tilt, so a solution scored on them would be scored on the specimen rather than
+  on the crystallography.
+- **The overlay is bounded by the index limit**, so a plate spot with no calculated ring beside it
+  means the limit is too low, not that the solution is wrong. Stated in the help text rather than
+  worked around.
+- **The report export is Markdown, not PDF.** PDF would need a rendering dependency the zero-build
+  deployment rule excludes; Markdown is readable as plain text and converts anywhere.
+
+### Next task
+
+None claimed. This goal is complete.
 
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 

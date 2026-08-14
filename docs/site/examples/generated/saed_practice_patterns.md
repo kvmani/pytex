@@ -4,7 +4,7 @@
 
 # Simulated SAED plates and the zone-axis atlas
 
-The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees.
+The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -256,3 +256,175 @@ result = prism.angle_from_current_deg
 **Citation**: International Tables for Crystallography, Volume A, on the hexagonal cell setting; Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., DOI: 10.1007/978-0-387-76501-3, chapter 18.
 
 **See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`TEM specimen tilt navigation <../../theory/tem_specimen_tilt_navigation>`
+
+## A beam centre picked 30 pixels out, recovered from the spots
+
+Picking the transmitted beam by eye is the largest avoidable error in the indexing workflow: it biases every d-spacing at once, and it does so while leaving the pattern self-consistent, so the result is a plausible answer for the wrong material rather than an obvious failure. But the spots of a zone-axis pattern lie on a plane lattice, and with four or more of them that constraint over-determines the centre. Here eight nodes of an exact square lattice are given with the centre deliberately misplaced by 30 pixels in each direction, and the fit is asked to put it back.
+
+**Symbols**
+
+- $g$ &mdash; Reciprocal-lattice vector of a reflection; |g| = 1/d.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Aluminium, a = 4.0495 A (Wyckoff, Crystal Structures Vol. 1).
+aluminium = Phase(
+    "aluminium-fcc",
+    lattice=Lattice(4.0495, 4.0495, 4.0495, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# Alpha zirconium, a = 3.232 A, c = 5.147 A, so c/a = 1.5925.
+zirconium = Phase(
+    "zirconium-hcp",
+    lattice=Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
+RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex.diffraction.lattice_fit import fit_planar_lattice
+
+basis = np.array([[100.0, 0.0], [0.0, 100.0]])
+indices = np.array([[1, 0], [0, 1], [-1, 0], [0, -1],
+                    [1, 1], [-1, -1], [2, 0], [0, 2]], dtype=float)
+truth = np.array([512.0, 384.0])
+nodes = truth + indices @ basis
+fit = fit_planar_lattice(nodes, truth + np.array([30.0, 30.0]))
+result = float(np.linalg.norm(fit.centre - truth))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | 1.27e-13 | 1e-06 | ✅ pass |
+
+**Why this value**: Exact. The eight points are exact nodes of the lattice about the true centre, so the least-squares problem for the centre with the integer assignment held fixed has that point as its exact solution: the residual is zero and the recovered centre is the generating one. Independent of the basis chosen and of the starting error, up to the half-spacing limit at which a fit would be relabelling which node the origin is.
+
+**Citation**: Standard linear least squares on the lattice model p = c + m a + n b; Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., DOI: 10.1007/978-0-387-76501-3, chapter 18 on why the beam position governs every measured spacing.
+
+**See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`
+
+## A camera constant five percent high, read back from the scoring
+
+The one calibration error that does not announce itself. A camera constant taken from the wrong camera length rescales every measured spacing and leaves every measured angle untouched, so the pattern stays perfectly self-consistent while pointing at the wrong material. The scoring keeps lengths and angles apart for exactly this reason, and weights angles higher, because an angular disagreement is evidence about the crystallography while a length disagreement may only be evidence about the instrument.
+
+**Symbols**
+
+- $d$ &mdash; Interplanar spacing of a reflecting plane.
+- $g$ &mdash; Reciprocal-lattice vector of a reflection; |g| = 1/d.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Aluminium, a = 4.0495 A (Wyckoff, Crystal Structures Vol. 1).
+aluminium = Phase(
+    "aluminium-fcc",
+    lattice=Lattice(4.0495, 4.0495, 4.0495, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# Alpha zirconium, a = 3.232 A, c = 5.147 A, so c/a = 1.5925.
+zirconium = Phase(
+    "zirconium-hcp",
+    lattice=Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
+RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+```
+
+:::
+
+**Compute**
+
+```python
+from dataclasses import dataclass
+from pytex.diffraction.solution_scoring import score_solution
+
+@dataclass(frozen=True)
+class Spot:
+    measured_index: int
+    hkl: tuple
+    label: str
+    predicted_g_inv_angstrom: tuple
+
+@dataclass(frozen=True)
+class Solution:
+    solved_spots: tuple
+    matched_fraction: float = 1.0
+
+calculated = np.array([[0.5, 0.0], [0.0, 0.5], [0.5, 0.5], [1.0, 0.0]])
+solution = Solution(tuple(
+    Spot(index, (2, 0, 0), 'g', tuple(calculated[index]))
+    for index in range(len(calculated))
+))
+score = score_solution(solution, 1.05 * calculated)
+result = float(score.rms_relative_length_deviation)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `saed-scoring-calibration-bias` | 0.0476190476 | 0.0476190476 | &mdash; | 4.16e-17 | 1e-12 | ✅ pass |
+
+**Why this value**: d = 1/|g|, so measured g larger by a factor 1.05 makes every measured d smaller by 1/1.05. The relative deviation is 1/1.05 - 1 = -0.0476190476 on every spot, and the r.m.s. of a constant is that constant. Identical on every spot is the signature that distinguishes a calibration error from an indexing error.
+
+**Citation**: Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., DOI: 10.1007/978-0-387-76501-3, chapter 18 (R d = L lambda).
+
+**See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`
