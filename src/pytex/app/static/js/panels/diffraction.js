@@ -19,6 +19,12 @@ import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
+import {
+  markerNode,
+  markerRadius,
+  markerStyleControl,
+  productColor,
+} from '../core/visualstyle.js';
 
 export const panel = {
   id: 'diffraction',
@@ -36,13 +42,6 @@ const VIEW = 100;
  * which lattice is the parent. Variants cycle through a hue wheel, which is
  * honest about there being no meaningful order to them.
  */
-const PARENT_COLOR = 'var(--ink)';
-
-function variantColor(index) {
-  const hue = (index * 137.508) % 360; // golden angle: adjacent variants stay distinguishable
-  return `hsl(${hue.toFixed(1)} 70% 52%)`;
-}
-
 export function mount(context) {
   const operation = context.manifest.operations.find(
     (entry) => entry.id === 'diffraction.composite_saed',
@@ -56,6 +55,7 @@ export function mount(context) {
     // Which pattern the legend was built for, so a redraw that only changes
     // which sources are shown updates the buttons instead of replacing them.
     legendFor: null,
+    appearance: null,
   };
 
   const frame = plotFrame({
@@ -75,10 +75,18 @@ export function mount(context) {
     text: 'Simulate pattern',
     onclick: () => run(),
   });
+  const appearance = markerStyleControl({
+    onChange: (style) => {
+      state.appearance = style;
+      if (state.result) draw();
+    },
+  });
+  state.appearance = appearance.style;
 
   context.rail.append(
     formHost,
     runButton,
+    appearance.element,
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
@@ -151,7 +159,14 @@ export function mount(context) {
       },
     });
 
-    frame.setContent(renderPattern(data, { scale, frame, hidden: state.hidden }));
+    frame.setContent(
+      renderPattern(data, {
+        scale,
+        frame,
+        hidden: state.hidden,
+        appearance: state.appearance,
+      }),
+    );
     // Built once per pattern, updated in place thereafter. Rebuilding it on
     // every redraw destroys the button that was just pressed, and the browser
     // then moves focus to the body — so a keyboard user who hides a variant
@@ -169,14 +184,72 @@ export function mount(context) {
   /** Build the legend for a new pattern. Called once per pattern, not per redraw. */
   function buildLegend(data) {
     state.legendFor = data;
-    legend.replaceChildren(
-      ...data.sources.map((source, index) => {
+    const sourceKeys = data.sources.map((source) => `${source.source}|${source.variant}`);
+    const parentSource = data.sources.find((source) => source.source === 'parent');
+    const parentKey = parentSource ? `${parentSource.source}|${parentSource.variant}` : null;
+    const focusSelect = el('select.legend__focus', {
+      'aria-label': 'Focus on one variant while retaining the parent pattern',
+      title: 'Show the parent and one selected variant; use the legend chips for finer control.',
+      onchange: (event) => {
+        const focusKey = event.currentTarget.value;
+        if (!focusKey) return;
+        state.hidden = new Set(
+          sourceKeys.filter((key) => key !== focusKey && key !== parentKey),
+        );
+        event.currentTarget.value = '';
+        draw();
+      },
+    });
+    focusSelect.append(
+      el('option', { value: '', text: 'Focus a variant…', selected: true }),
+      ...data.sources
+        .filter((source) => source.source !== 'parent')
+        .map((source) =>
+          el('option', {
+            value: `${source.source}|${source.variant}`,
+            text: `${source.label} + parent`,
+          }),
+        ),
+    );
+
+    const visibilityTools = el('div.legend__toolbar', {}, [
+      el('span.legend__guide', { text: 'Display' }),
+      el('button.button.button--small', {
+        type: 'button',
+        text: 'Show all',
+        title: 'Restore every source in this composite pattern.',
+        onclick: () => {
+          state.hidden.clear();
+          draw();
+        },
+      }),
+      ...(parentSource
+        ? [
+            el('button.button.button--small', {
+              type: 'button',
+              text: 'Parent only',
+              title: 'Hide every product variant and retain the parent reference pattern.',
+              onclick: () => {
+                state.hidden = new Set(sourceKeys.filter((key) => key !== parentKey));
+                draw();
+              },
+            }),
+          ]
+        : []),
+      focusSelect,
+      el('span.legend__guide', { text: 'Click a chip to toggle one source.' }),
+    ]);
+
+    const items = el(
+      'div.legend__items',
+      {},
+      data.sources.map((source, index) => {
         const key = `${source.source}|${source.variant}`;
         return el(
           'button.legend__item',
           {
             type: 'button',
-            dataset: { key },
+            dataset: { key, source: source.source, colorIndex: index },
             onclick: () => {
               if (state.hidden.has(key)) state.hidden.delete(key);
               else state.hidden.add(key);
@@ -185,12 +258,21 @@ export function mount(context) {
           },
           [
             el('span.legend__swatch', {
-              style: `background:${source.source === 'parent' ? PARENT_COLOR : variantColor(index)}`,
+              dataset: { shape: state.appearance.shape },
+              style: `background:${
+                source.source === 'parent'
+                  ? state.appearance.parentColor
+                  : productColor(index, state.appearance)
+              }`,
             }),
             el('span', { text: `${source.label} (${source.spots.length})` }),
           ],
         );
       }),
+    );
+    legend.replaceChildren(
+      visibilityTools,
+      items,
     );
     updateLegend();
   }
@@ -201,6 +283,11 @@ export function mount(context) {
       const hidden = state.hidden.has(button.dataset.key);
       button.setAttribute('aria-pressed', String(!hidden));
       button.title = hidden ? 'Show these spots' : 'Hide these spots';
+      const swatch = button.querySelector('.legend__swatch');
+      swatch.dataset.shape = state.appearance.shape;
+      swatch.style.background = button.dataset.source === 'parent'
+        ? state.appearance.parentColor
+        : productColor(Number(button.dataset.colorIndex), state.appearance);
     }
   }
 
@@ -214,7 +301,7 @@ function sourceKey(spot) {
   return `${spot.source}|${spot.variant}`;
 }
 
-function renderPattern(data, { scale, frame, hidden }) {
+function renderPattern(data, { scale, frame, hidden, appearance }) {
   const root = svg('svg', {
     viewBox: `${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`,
     preserveAspectRatio: 'xMidYMid meet',
@@ -250,7 +337,7 @@ function renderPattern(data, { scale, frame, hidden }) {
   data.sources.forEach((source, index) => {
     colors.set(
       `${source.source}|${source.variant}`,
-      source.source === 'parent' ? PARENT_COLOR : variantColor(index),
+      source.source === 'parent' ? appearance.parentColor : productColor(index, appearance),
     );
   });
 
@@ -268,15 +355,15 @@ function renderPattern(data, { scale, frame, hidden }) {
     // Radius by the fourth root of intensity: a linear map makes everything
     // below a tenth of the maximum invisible, and those are exactly the
     // superlattice and variant spots the panel exists to show.
-    const radius = 0.7 + 2.6 * Math.pow(Math.max(spot.relative_intensity, 0), 0.25);
-    const node = svg('circle', {
-      cx: x, cy: y, r: radius,
-      fill: colors.get(key) ?? 'currentColor',
-      'fill-opacity': spot.double_diffraction ? 0.35 : 0.92,
-      stroke: spot.double_diffraction ? colors.get(key) ?? 'currentColor' : 'none',
-      'stroke-width': 0.4,
-      'stroke-dasharray': spot.double_diffraction ? '1 1' : null,
+    const node = markerNode(svg, {
+      x,
+      y,
+      radius: markerRadius(spot.relative_intensity, appearance),
+      shape: appearance.shape,
+      color: colors.get(key) ?? 'currentColor',
+      hollow: spot.double_diffraction,
     });
+    node.setAttribute('fill-opacity', spot.double_diffraction ? '0.35' : '0.92');
     root.append(node);
     frame.hoverable(node, spot, columns);
   }

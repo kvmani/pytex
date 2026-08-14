@@ -38,7 +38,7 @@ deployment rule remains in force.
 | --- | --- | --- | --- |
 | 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | done | (this commit) |
 | 2 | Manifest-backed documentation links and richer inline help | done | (this commit) |
-| 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | in progress | — |
+| 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | done | (this commit) |
 | 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | planned | — |
 | 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
 | 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
@@ -84,6 +84,31 @@ deployment rule remains in force.
 **Exact next action.** Build a reusable presentation-control surface and apply it to composite
 SAED: marker shape, spot-size scale, intensity sizing mode, parent colour and variant palette,
 with immediate redraw from one simulation and no scientific recomputation.
+
+### Increment 3 result
+
+- Added a reusable, dependency-free marker-style module with circle, square, diamond and cross
+  shapes; a 0.5–2.5× visual scale; perceptual, intensity-proportional-area and constant sizing;
+  editable parent/product colours; distinct, colourblind-safe and single-product palettes; and a
+  complete reset action.
+- Applied it to composite diffraction without changing the service contract. Appearance changes
+  redraw the existing rows immediately, while coordinates, indices, intensity values, hover
+  records and exports remain unchanged. Legend swatches follow both palette and marker shape.
+- Made composite visibility deliberate rather than implicit: individual source chips still toggle
+  one lattice and preserve keyboard focus, while Show all, Parent only and Focus a variant provide
+  one-action recovery, decluttering and parent-plus-variant isolation for a 24-variant pattern.
+- Added concise in-place guidance explaining the scientific/display boundary and the trade-off of
+  each sizing and palette choice. The workflow guide now documents those controls and the
+  architecture note pins presentation choices to the frontend side of the service boundary.
+- Human browser driving changed circle markers to diamonds, changed to the colourblind-safe cycle,
+  switched intensity sizing, and reset every option. It isolated Variant 7 plus the parent (32 of
+  192 spots), reduced to the parent alone (24), restored all sources, then hid Variant 3 alone
+  while focus remained on its chip. Layout had zero horizontal overflow and the console stayed
+  clean. Targeted JavaScript syntax, Ruff and 59 server/diffraction tests are green.
+
+**Exact next action.** Add a first-class beta-zirconium bcc phase with a cited high-temperature
+lattice parameter, replace the Fe-bcc stand-in in each Burgers example, and pin the 12-variant
+beta-Zr to alpha-Zr case in manifest and GUI tests.
 
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 

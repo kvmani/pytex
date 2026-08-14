@@ -503,6 +503,39 @@ class TestFrontendIsSelfContained:
         assert 'data-theme="light"' in stylesheet
         assert 'data-theme="auto"' in stylesheet
 
+    def test_diffraction_marker_style_is_a_presentation_only_shared_control(self) -> None:
+        """Spot styling redraws computed rows; it must not become fake science input."""
+
+        panel = (STATIC_ROOT / "js" / "panels" / "diffraction.js").read_text(encoding="utf-8")
+        shared = (STATIC_ROOT / "js" / "core" / "visualstyle.js").read_text(encoding="utf-8")
+        assert "markerStyleControl" in panel
+        assert "if (state.result) draw()" in panel
+        assert "call(operation.id" not in shared
+        for control in (
+            "Spot shape",
+            "Spot-size scale",
+            "Intensity sizing",
+            "Parent colour",
+            "Variant palette",
+            "Product colour",
+        ):
+            assert control in shared
+        for shape in ("circle", "square", "diamond", "cross"):
+            assert f"['{shape}'" in shared
+
+    def test_composite_visibility_controls_support_toggle_bulk_and_focus(self) -> None:
+        """A 24-variant pattern must not require 23 clicks to isolate one variant."""
+
+        source = (STATIC_ROOT / "js" / "panels" / "diffraction.js").read_text(encoding="utf-8")
+        assert "Click a chip to toggle one source." in source
+        assert "Show all" in source
+        assert "Parent only" in source
+        assert "Focus a variant" in source
+        assert "state.hidden.clear()" in source
+        assert "sourceKeys.filter" in source
+        assert "key !== focusKey" in source
+        assert "key !== parentKey" in source
+
     def test_the_entry_points_exist(self) -> None:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()

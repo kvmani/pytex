@@ -77,6 +77,20 @@ browser and desktop window. On a narrow screen the three masthead actions collap
 retaining their full titles and accessible names, and the six workspace tabs wrap rather than
 disappearing into an unmarked horizontal scroller.
 
+The Diffraction workspace adds an **Appearance** group below **Simulate pattern**. Marker shape,
+overall spot-size scale, intensity-to-size mapping, parent colour and variant palette redraw the
+current result immediately. These are presentation choices: changing them does not run the
+simulation again and cannot alter detector coordinates, indices, intensities, hover data or
+exports. **Perceptual intensity** keeps weak reflections legible, **Area follows intensity** makes
+marker area quantitative, and **Constant size** is useful when comparing geometry alone. The
+colourblind-safe cycle is the preferred palette when colour must distinguish variants.
+
+The legend is also a visibility controller. Click any source chip to hide or restore that source;
+its pressed state remains visible and keyboard focus is preserved. **Show all** restores the full
+composite, **Parent only** removes every product lattice, and **Focus a variantâ€¦** retains the
+parent reference plus one selected variant. Visibility is presentation-only too: hidden rows remain
+in the result table and every numerical export.
+
 ## Reading A Result
 
 Every result carries four things, and the fourth is the one that makes the application usable as an

@@ -173,6 +173,13 @@ The JSON export is the contract that matters most: it carries the `ProvenanceRec
 input parameters, so a figure in a paper can be regenerated from the file that produced it. This is
 the `describe()`/explainable-results doctrine of `AGENTS.md` applied to the application surface.
 
+Presentation-only controls are deliberately outside that scientific contract. Marker shape,
+visual scale and display palette operate on the rows already returned by the service and trigger a
+frontend redraw, not a second scientific request. Their shared implementation lives in
+`static/js/core/visualstyle.js`; operation inputs and exported numerical values remain manifest- and
+service-owned. This boundary lets users prepare legible displays without implying that cosmetic
+choices changed a calculation.
+
 ## Decision 7 — Every Tab Ships With Canonical Worked Examples
 
 A researcher opening the TEM solver for the first time may have no pattern to hand, and a
