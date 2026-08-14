@@ -50,8 +50,10 @@ zirconium = Phase(
     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
     crystal_frame=crystal,
 )
-# 200 kV and a 400 mm camera length: L*lambda = 10.0317 mm.A.
-CAMERA_CONSTANT = 10.031748206
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
 """
 
@@ -97,12 +99,12 @@ CALIBRATION_IDENTITY = WorkedExample(
         "radius_px = float(np.linalg.norm(np.asarray(spot.position_px) - centre))\n"
         "result = radius_px * image.raster.pixel_size_mm"
     ),
-    expected=10.031748206 / (4.0495 / 2.0),
+    expected=10.0317 / (4.0495 / 2.0),
     unit="mm",
     tolerance=1e-9,
     reference=(
         "r = (L*lambda) / d with d_200 = a/2 = 2.02475 A for a = 4.0495 A, giving "
-        "r = 10.031748206 / 2.02475 = 4.95456 mm. Analytic from the lattice parameter "
+        "r = 10.0317 / 2.02475 = 4.95454 mm. Analytic from the lattice parameter "
         "and the definition of the camera constant; no program output enters it."
     ),
     citation=(
@@ -147,7 +149,7 @@ PRISM_ZONE_AXIAL_RATIO = WorkedExample(
     tolerance=1e-9,
     reference=(
         "|g_0002| / |g_01-10| = (2/c) / (2 / (sqrt(3) a)) = sqrt(3) a / c = "
-        "sqrt(3) * 3.232 / 5.147 = 1.08757, from the hexagonal reciprocal metric alone. "
+        "sqrt(3) * 3.232 / 5.147 = 1.08762, from the hexagonal reciprocal metric alone. "
         "Independent of the camera constant, which cancels in the ratio."
     ),
     citation=(

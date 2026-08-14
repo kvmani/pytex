@@ -932,6 +932,20 @@ button:focus-visible {
   border-left: 3px solid var(--danger, #b3261e);
 }
 
+/*
+ * The indexing verdict on a practice pattern. Correct and incorrect must be
+ * distinguishable before the sentence is read, but never *only* by colour: the
+ * card's own heading says "Correct — that is the axis" or "Not the expected
+ * axis" in words.
+ */
+.card--verdict-correct {
+  border-left: 4px solid var(--ok, #17683a);
+}
+
+.card--verdict-wrong {
+  border-left: 4px solid var(--danger, #b3261e);
+}
+
 .destinations__heading {
   margin: 1rem 0 0.5rem;
   font-size: 0.8125rem;

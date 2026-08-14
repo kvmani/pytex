@@ -94,7 +94,7 @@ The complete set of computed-versus-expected values at a glance:
 | `tem-symmetry-orbit-multiplicity` | 48 | 48 | directions | ✅ |
 | `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | ✅ |
 | `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | ✅ |
-| `saed-practice-camera-constant-identity` | 4.95456 | 4.95456 | mm | ✅ |
+| `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | ✅ |
 | `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | ✅ |
 | `saed-practice-atlas-basal-to-prism` | 90.000000 | 90.000000 | deg | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |

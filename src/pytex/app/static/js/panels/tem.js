@@ -54,6 +54,8 @@ export function mount(context) {
   const galleryEntries =
     galleryOperation?.parameters.find((parameter) => parameter.name === 'pattern')?.options ?? [];
 
+  const hiddenFields = new Set();
+
   const state = {
     mode: 'tilt', // 'pick' once a pattern is on the canvas
     source: null, // {kind: 'image'} or {kind: 'gallery'}
@@ -252,11 +254,33 @@ export function mount(context) {
     tiltHost.replaceChildren(state.tiltForm.element);
   }
 
+  /**
+   * Hide a generated field whose value comes from somewhere other than the form.
+   *
+   * The name is remembered, because a validation error on a hidden field has
+   * nowhere to appear. "The transmitted beam has not been marked" is the most
+   * likely error this panel produces and its field is the hidden picker: routed
+   * to the form it landed on an invisible row, so pressing Index did nothing at
+   * all. Errors on these fields go to the toast and the plot status instead.
+   */
   function hideField(root, name) {
     for (const field of root.querySelectorAll('.field')) {
       const control = field.querySelector(`[id^="ctl-${name}-"]`);
       if (control) field.hidden = true;
     }
+    hiddenFields.add(name);
+  }
+
+  /** Report a failure on the form, or visibly if its field is not on screen. */
+  function reportError(form, error) {
+    if (error?.field && hiddenFields.has(error.field)) {
+      form.clearErrors();
+      context.showError(error);
+      frame.setStatus(error.message);
+      return;
+    }
+    if (!form.showError(error)) context.showError(error);
+    else context.showError(error, { quiet: true });
   }
 
   function loadExample(example) {
@@ -713,8 +737,12 @@ export function mount(context) {
           ` · ${state.picks.spots.length} picks`,
       );
     } catch (error) {
-      if (!state.solveForm.showError(error)) context.showError(error);
-      else context.showError(error, { quiet: true });
+      // The verdict answers one attempt. Leaving the previous "Correct" card on
+      // screen beside a failed index reads as if the failure were the correct
+      // answer, so it goes; the rest of the previous result stays, because
+      // losing it to a mistyped camera constant would be worse.
+      for (const card of details.querySelectorAll('.card--verdict')) card.remove();
+      reportError(state.solveForm, error);
     } finally {
       solveButton.disabled = false;
       solveButton.textContent = 'Index the pattern';
@@ -725,7 +753,9 @@ export function mount(context) {
   function verdictCard(result) {
     const check = result.data.check;
     if (!check) return null;
-    return el('section.card', {}, [
+    return el('section.card.card--verdict', {
+      class: check.correct ? 'card--verdict-correct' : 'card--verdict-wrong',
+    }, [
       el('div.card__header', {}, [
         el('h2.card__title', {
           text: check.correct ? 'Correct — that is the axis' : 'Not the expected axis',
@@ -759,8 +789,7 @@ export function mount(context) {
       });
       state.teaches = null;
     } catch (error) {
-      if (!state.atlasForm.showError(error)) context.showError(error);
-      else context.showError(error, { quiet: true });
+      reportError(state.atlasForm, error);
     } finally {
       atlasButton.disabled = false;
       atlasButton.textContent = 'List the zone axes';
@@ -838,8 +867,7 @@ export function mount(context) {
       });
       state.teaches = null;
     } catch (error) {
-      if (!state.tiltForm.showError(error)) context.showError(error);
-      else context.showError(error, { quiet: true });
+      reportError(state.tiltForm, error);
     } finally {
       tiltButton.disabled = false;
       tiltButton.textContent = 'Plan the tilt';

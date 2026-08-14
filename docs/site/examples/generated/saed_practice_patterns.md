@@ -56,8 +56,10 @@ zirconium = Phase(
     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
     crystal_frame=crystal,
 )
-# 200 kV and a 400 mm camera length: L*lambda = 10.0317 mm.A.
-CAMERA_CONSTANT = 10.031748206
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
 ```
 
@@ -86,9 +88,9 @@ result = radius_px * image.raster.pixel_size_mm
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-camera-constant-identity` | 4.95456 | 4.95456 | mm | 0.00e+00 | 1e-09 | ✅ pass |
+| `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | 0.00e+00 | 1e-09 | ✅ pass |
 
-**Why this value**: r = (L*lambda) / d with d_200 = a/2 = 2.02475 A for a = 4.0495 A, giving r = 10.031748206 / 2.02475 = 4.95456 mm. Analytic from the lattice parameter and the definition of the camera constant; no program output enters it.
+**Why this value**: r = (L*lambda) / d with d_200 = a/2 = 2.02475 A for a = 4.0495 A, giving r = 10.0317 / 2.02475 = 4.95454 mm. Analytic from the lattice parameter and the definition of the camera constant; no program output enters it.
 
 **Citation**: Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., Springer, DOI: 10.1007/978-0-387-76501-3, chapter 18 (the camera equation R d = L lambda); Wyckoff, R. W. G., Crystal Structures Vol. 1 (1963) for a.
 
@@ -140,8 +142,10 @@ zirconium = Phase(
     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
     crystal_frame=crystal,
 )
-# 200 kV and a 400 mm camera length: L*lambda = 10.0317 mm.A.
-CAMERA_CONSTANT = 10.031748206
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
 ```
 
@@ -168,7 +172,7 @@ result = by_indices[(0, 0, 2)].g_inv_angstrom / by_indices[(0, 1, 0)].g_inv_angs
 | --- | --- | --- | --- | --- | --- | --- |
 | `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
 
-**Why this value**: |g_0002| / |g_01-10| = (2/c) / (2 / (sqrt(3) a)) = sqrt(3) a / c = sqrt(3) * 3.232 / 5.147 = 1.08757, from the hexagonal reciprocal metric alone. Independent of the camera constant, which cancels in the ratio.
+**Why this value**: |g_0002| / |g_01-10| = (2/c) / (2 / (sqrt(3) a)) = sqrt(3) a / c = sqrt(3) * 3.232 / 5.147 = 1.08762, from the hexagonal reciprocal metric alone. Independent of the camera constant, which cancels in the ratio.
 
 **Citation**: Edington, J. W., Practical Electron Microscopy in Materials Science, Macmillan (1975), on interpreting hexagonal zone-axis patterns; lattice parameters from Wyckoff, R. W. G., Crystal Structures Vol. 1 (1963).
 
@@ -218,8 +222,10 @@ zirconium = Phase(
     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
     crystal_frame=crystal,
 )
-# 200 kV and a 400 mm camera length: L*lambda = 10.0317 mm.A.
-CAMERA_CONSTANT = 10.031748206
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
 ```
 
