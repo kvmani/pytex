@@ -202,6 +202,13 @@ class TestRender:
         appearance = _appearance(
             {
                 "atom_scale": 1.4,
+                "surface_finish": "matte",
+                "light_direction": [0.0, 3.0, 4.0],
+                "light_ambient": 0.3,
+                "light_diffuse": 0.9,
+                "light_specular": 0.6,
+                "atom_shininess": 48,
+                "depth_cue_strength": 0.25,
                 "plane_color": "#123456",
                 "plane_opacity": 0.42,
                 "species_colors": {"Fe": "#abcdef"},
@@ -214,12 +221,23 @@ class TestRender:
         assert style["plane_alpha"] == pytest.approx(0.42)
         assert style["species_colors"] == {"Fe": "#abcdef"}
         assert style["lattice_linewidth"] == 0.0
+        assert style["light_direction"] == pytest.approx([0.0, 0.6, 0.8])
+        assert style["light_ambient"] == pytest.approx(0.3)
+        assert style["light_diffuse"] == pytest.approx(0.9)
+        assert style["light_specular"] == pytest.approx(0.6)
+        assert style["atom_specular_strength"] == pytest.approx(0.12)
+        assert style["atom_shininess"] == pytest.approx(48)
+        assert style["depth_cue_strength"] == pytest.approx(0.25)
 
     def test_invalid_object_properties_are_rejected_at_the_boundary(self) -> None:
         with pytest.raises(InvalidInputError, match="plane_opacity"):
             _appearance({"plane_opacity": 4.2})
         with pytest.raises(InvalidInputError, match="RRGGBB"):
             _appearance({"direction_color": "blue"})
+        with pytest.raises(InvalidInputError, match="surface_finish"):
+            _appearance({"surface_finish": "chrome"})
+        with pytest.raises(InvalidInputError, match="light_direction"):
+            _appearance({"light_direction": [0, 0, 0]})
 
     def test_per_species_colours_reach_the_scene_glyphs(self) -> None:
         from pytex.plotting.crystal3d import build_crystal_scene

@@ -1512,6 +1512,17 @@ def _normalize_light_direction(direction: Any) -> np.ndarray:
     return vector / norm
 
 
+def _view_vector_from_angles(elev_deg: float, azim_deg: float) -> np.ndarray:
+    """Unit vector from the scene toward the matplotlib camera."""
+
+    elev = np.deg2rad(elev_deg)
+    azim = np.deg2rad(azim_deg)
+    return np.array(
+        [np.cos(elev) * np.cos(azim), np.cos(elev) * np.sin(azim), np.sin(elev)],
+        dtype=np.float64,
+    )
+
+
 @lru_cache(maxsize=8)
 def _unit_sphere_quads(resolution: int) -> tuple[np.ndarray, np.ndarray]:
     """Quad faces and outward face normals of a unit sphere at the origin.
@@ -1584,13 +1595,7 @@ def _apply_depth_cue(
 
     if strength <= 0.0 or faces.shape[0] == 0:
         return colors
-    elev = np.deg2rad(elev_deg)
-    azim = np.deg2rad(azim_deg)
-    # unit vector from the scene toward the viewer for matplotlib view angles
-    view = np.array(
-        [np.cos(elev) * np.cos(azim), np.cos(elev) * np.sin(azim), np.sin(elev)],
-        dtype=np.float64,
-    )
+    view = _view_vector_from_angles(elev_deg, azim_deg)
     depth = faces.mean(axis=1) @ view
     span = float(np.max(depth) - np.min(depth))
     if span <= 1e-12:
@@ -1640,6 +1645,7 @@ def _lit_face_colors(
     *,
     alpha: float,
     light_direction: np.ndarray,
+    view_direction: np.ndarray,
     ambient: float,
     diffuse: float,
     specular: float,
@@ -1647,14 +1653,13 @@ def _lit_face_colors(
 ) -> np.ndarray:
     """Blinn-Phong-style RGBA per face for ``(n, 3)`` outward unit normals.
 
-    Lambert diffuse plus a view-fixed specular highlight (viewer along +z of
-    the display frame), matching the ball-and-stick look of dedicated crystal
-    viewers. Returns ``(n, 4)`` facecolors.
+    Lambert diffuse plus a camera-aware specular highlight, matching the
+    ball-and-stick look of dedicated crystal viewers. Returns ``(n, 4)``
+    facecolors.
     """
 
     base_rgb = np.asarray(_to_rgb(color), dtype=np.float64)
     lambert = np.clip(normals @ light_direction, 0.0, 1.0)
-    view_direction = np.array([0.0, 0.0, 1.0], dtype=np.float64)
     reflected = 2.0 * lambert[:, None] * normals - light_direction
     reflected_norm = np.linalg.norm(reflected, axis=-1, keepdims=True)
     reflected = np.divide(reflected, np.where(reflected_norm == 0.0, 1.0, reflected_norm))
@@ -1750,6 +1755,7 @@ def _accumulate_crystal_mesh(
     crystal_style: dict[str, Any],
     *,
     light_direction: np.ndarray,
+    view_direction: np.ndarray,
 ) -> tuple[list[np.ndarray], list[np.ndarray]]:
     """Accumulate lit atom/bond/polyhedron faces for one scene.
 
@@ -1796,6 +1802,7 @@ def _accumulate_crystal_mesh(
                         normals,
                         alpha=bond.alpha,
                         light_direction=light_direction,
+                        view_direction=view_direction,
                         ambient=ambient,
                         diffuse=diffuse,
                         specular=bond_specular,
@@ -1841,6 +1848,7 @@ def _accumulate_crystal_mesh(
                         normals,
                         alpha=float(crystal_style["atom_alpha"]),
                         light_direction=light_direction,
+                        view_direction=view_direction,
                         ambient=ambient,
                         diffuse=diffuse,
                         specular=atom_specular,
@@ -1893,6 +1901,7 @@ def _accumulate_crystal_mesh(
                 polyhedron.face_normals,
                 alpha=polyhedron.alpha,
                 light_direction=light_direction,
+                view_direction=view_direction,
                 ambient=ambient,
                 diffuse=diffuse,
                 specular=0.0,
@@ -2102,8 +2111,13 @@ def plot_crystal_structure_3d(
     # depth-sorts every face globally: bonds correctly disappear behind
     # atoms (and vice versa) from any viewing angle, which per-artist
     # painter's ordering cannot guarantee.
+    camera_direction = _view_vector_from_angles(elev_deg, azim_deg)
     mesh_faces, mesh_colors = _accumulate_crystal_mesh(
-        axes, scene, crystal_style, light_direction=light_direction
+        axes,
+        scene,
+        crystal_style,
+        light_direction=light_direction,
+        view_direction=camera_direction,
     )
     if mesh_faces:
         all_faces = np.concatenate(mesh_faces, axis=0)

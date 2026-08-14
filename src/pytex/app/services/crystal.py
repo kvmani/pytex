@@ -86,6 +86,13 @@ _APPEARANCE_DEFAULTS: dict[str, Any] = {
     "show_gizmo": True,
     "atom_scale": 1.0,
     "atom_opacity": 1.0,
+    "surface_finish": "glossy",
+    "light_direction": [-0.5, 0.5, 0.7071067811865476],
+    "light_ambient": 0.42,
+    "light_diffuse": 0.78,
+    "light_specular": 0.38,
+    "atom_shininess": 26.0,
+    "depth_cue_strength": 0.18,
     "species_colors": {},
     "bond_color": "#64748b",
     "bond_width": 1.0,
@@ -125,9 +132,19 @@ def _appearance(request_value: Any) -> dict[str, Any]:
     ):
         if not isinstance(result[key], bool):
             raise InvalidInputError(f"appearance.{key} must be true or false.", field="appearance")
+    if result["surface_finish"] not in {"flat", "matte", "glossy"}:
+        raise InvalidInputError(
+            "appearance.surface_finish must be 'flat', 'matte', or 'glossy'.",
+            field="appearance",
+        )
     bounds = {
         "atom_scale": (0.2, 2.5),
         "atom_opacity": (0.1, 1.0),
+        "light_ambient": (0.05, 1.0),
+        "light_diffuse": (0.0, 1.25),
+        "light_specular": (0.0, 1.0),
+        "atom_shininess": (2.0, 96.0),
+        "depth_cue_strength": (0.0, 0.75),
         "bond_width": (0.2, 3.0),
         "bond_opacity": (0.05, 1.0),
         "cell_width": (0.2, 3.0),
@@ -150,6 +167,22 @@ def _appearance(request_value: Any) -> dict[str, Any]:
                 field="appearance",
             )
         result[key] = value
+    try:
+        light_direction = np.asarray(result["light_direction"], dtype=np.float64)
+    except (TypeError, ValueError) as error:
+        raise InvalidInputError(
+            "appearance.light_direction must contain three numbers.", field="appearance"
+        ) from error
+    if (
+        light_direction.shape != (3,)
+        or not np.all(np.isfinite(light_direction))
+        or np.linalg.norm(light_direction) <= 1e-12
+    ):
+        raise InvalidInputError(
+            "appearance.light_direction must be a finite, non-zero three-vector.",
+            field="appearance",
+        )
+    result["light_direction"] = (light_direction / np.linalg.norm(light_direction)).tolist()
     for key in ("bond_color", "cell_color", "plane_color", "direction_color"):
         if not isinstance(result[key], str) or not _HEX_COLOR.fullmatch(result[key]):
             raise InvalidInputError(
@@ -185,10 +218,24 @@ def _appearance_style(appearance: dict[str, Any], render_style: str) -> dict[str
         "polyhedral": 0.4,
     }.get(render_style, 0.55)
     bond_base = 1.0 if render_style == "stick" else 0.22
+    finish = str(appearance["surface_finish"])
+    finish_specular = {"flat": 0.0, "matte": 0.12, "glossy": 1.0}[finish]
+    light_ambient = 1.0 if finish == "flat" else appearance["light_ambient"]
+    light_diffuse = 0.0 if finish == "flat" else appearance["light_diffuse"]
+    light_specular = 0.0 if finish == "flat" else appearance["light_specular"]
     crystal: dict[str, Any] = {
         "atom_radius_scale": atom_base * appearance["atom_scale"],
         "atom_alpha": appearance["atom_opacity"],
         "species_colors": appearance["species_colors"],
+        "light_direction": appearance["light_direction"],
+        "light_ambient": light_ambient,
+        "light_diffuse": light_diffuse,
+        "light_specular": light_specular,
+        "atom_specular_strength": finish_specular,
+        "bond_specular_strength": 0.28 * finish_specular,
+        "atom_shininess": appearance["atom_shininess"],
+        "bond_shininess": max(4.0, appearance["atom_shininess"] * 0.55),
+        "depth_cue_strength": appearance["depth_cue_strength"],
         "bond_color_mode": "uniform",
         "bond_color": appearance["bond_color"],
         "bond_alpha": appearance["bond_opacity"],

@@ -23,8 +23,9 @@ crystallographic direction overlays.
 - camera alignment by view direction or manual angles
 - publication-oriented rendering through shared YAML styles
 - interactive object properties for visibility, per-species atom colours, atom scale/opacity,
-  bond and cell styling, plane and direction styling, and annotation scale; the same properties
-  are validated and forwarded to publication export
+  bond and cell styling, plane and direction styling, annotation scale, glossy/matte/flat surface
+  finish, studio-light direction and strengths, highlight sharpness, and depth cue; the same
+  properties are validated and forwarded to publication export
 
 ## Scientific Model
 

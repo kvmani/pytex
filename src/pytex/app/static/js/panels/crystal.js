@@ -40,6 +40,14 @@ const DEFAULT_APPEARANCE = Object.freeze({
   showGizmo: true,
   atomScale: 1,
   atomOpacity: 1,
+  surfaceFinish: 'glossy',
+  lightAzimuth: -135,
+  lightElevation: 45,
+  ambientLight: 0.42,
+  diffuseLight: 0.78,
+  specularLight: 0.38,
+  atomShininess: 26,
+  depthCue: 0.18,
   bondColor: '#64748b',
   bondWidth: 1,
   bondOpacity: 0.85,
@@ -66,7 +74,13 @@ function seedSpeciesColors(appearance, scene) {
   }
 }
 
-function publicationAppearance(appearance) {
+function publicationAppearance(appearance, camera) {
+  const screenLight = lightingDirection(appearance);
+  const lightDirection = applyTranspose(camera.rotation, [
+    screenLight.x,
+    -screenLight.y,
+    screenLight.z,
+  ]);
   return {
     show_atoms: appearance.showAtoms,
     show_bonds: appearance.showBonds,
@@ -77,6 +91,13 @@ function publicationAppearance(appearance) {
     show_gizmo: appearance.showGizmo,
     atom_scale: appearance.atomScale,
     atom_opacity: appearance.atomOpacity,
+    surface_finish: appearance.surfaceFinish,
+    light_direction: lightDirection,
+    light_ambient: appearance.ambientLight,
+    light_diffuse: appearance.diffuseLight,
+    light_specular: appearance.specularLight,
+    atom_shininess: appearance.atomShininess,
+    depth_cue_strength: appearance.depthCue,
     species_colors: appearance.speciesColors,
     bond_color: appearance.bondColor,
     bond_width: appearance.bondWidth,
@@ -91,6 +112,25 @@ function publicationAppearance(appearance) {
     direction_opacity: appearance.directionOpacity,
     annotation_scale: appearance.annotationScale,
   };
+}
+
+function appearanceSelect(label, hint, appearance, key, options, onChange) {
+  return el('label.field', {}, [
+    el('span.field__label', { text: label }),
+    el(
+      'select',
+      {
+        onchange: (event) => {
+          appearance[key] = event.currentTarget.value;
+          onChange();
+        },
+      },
+      options.map(([value, text]) =>
+        el('option', { value, text, selected: appearance[key] === value }),
+      ),
+    ),
+    el('span.field__hint', { text: hint }),
+  ]);
 }
 
 function appearanceToggle(label, appearance, key, onChange) {
@@ -171,6 +211,40 @@ function appearanceControl(appearance, scene, { onChange, onReset }) {
       }, onChange),
       appearanceRange('Atom opacity', 'Lower opacity reveals bonds and planes inside dense cells.', appearance, 'atomOpacity', {
         min: 0.1, max: 1, step: 0.05,
+      }, onChange),
+      el('h3.group__subheading', { text: 'Lighting and depth' }),
+      appearanceSelect(
+        'Surface finish',
+        'Flat is diagrammatic; matte and glossy use sphere-normal shading.',
+        appearance,
+        'surfaceFinish',
+        [
+          ['glossy', 'Glossy spheres'],
+          ['matte', 'Matte spheres'],
+          ['flat', 'Flat colour'],
+        ],
+        onChange,
+      ),
+      appearanceRange('Light azimuth', 'Moves the studio light around the screen.', appearance, 'lightAzimuth', {
+        min: -180, max: 180, step: 5, suffix: '°',
+      }, onChange),
+      appearanceRange('Light elevation', 'Higher values move the highlight toward each sphere centre.', appearance, 'lightElevation', {
+        min: 0, max: 90, step: 5, suffix: '°',
+      }, onChange),
+      appearanceRange('Ambient light', 'Base illumination retained on the shadowed limb.', appearance, 'ambientLight', {
+        min: 0.05, max: 1, step: 0.01,
+      }, onChange),
+      appearanceRange('Diffuse light', 'Controls broad light-to-shadow modelling of each surface.', appearance, 'diffuseLight', {
+        min: 0, max: 1.25, step: 0.01,
+      }, onChange),
+      appearanceRange('Specular highlight', 'Controls the bright reflection on glossy atoms and bonds.', appearance, 'specularLight', {
+        min: 0, max: 1, step: 0.01,
+      }, onChange),
+      appearanceRange('Highlight sharpness', 'Higher values make a smaller, harder highlight.', appearance, 'atomShininess', {
+        min: 2, max: 96, step: 1,
+      }, onChange),
+      appearanceRange('Depth cue', 'Fades distant atoms so foreground structure separates immediately.', appearance, 'depthCue', {
+        min: 0, max: 0.75, step: 0.01,
       }, onChange),
       ...(species.length
         ? [el('div.object-style-list', {}, species.map(([name, color]) => {
@@ -368,7 +442,7 @@ export function mount(context) {
         // figure cannot drift from the on-screen view through two slightly
         // different derivations of the same thing.
         camera_matrix: camera.rotation.join(' '),
-        appearance: publicationAppearance(state.appearance),
+        appearance: publicationAppearance(state.appearance, camera),
         show_legend: true,
         show_frame_indicator: true,
         format: figureFormat.value,
@@ -491,6 +565,132 @@ export function mount(context) {
 
 /* ------------------------------------------------------------------ scene */
 
+function clamp(value, minimum = 0, maximum = 1) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function rgb(color) {
+  const value = String(color).replace('#', '');
+  return [0, 2, 4].map((offset) => Number.parseInt(value.slice(offset, offset + 2), 16));
+}
+
+function hex(values) {
+  return `#${values.map((value) => Math.round(clamp(value, 0, 255)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function mixColor(color, target, amount) {
+  const source = rgb(color);
+  const destination = rgb(target);
+  const fraction = clamp(amount);
+  return hex(source.map((value, index) => value + (destination[index] - value) * fraction));
+}
+
+function scaleColor(color, factor) {
+  return hex(rgb(color).map((value) => value * factor));
+}
+
+function lightingDirection(appearance) {
+  const azimuth = (appearance.lightAzimuth * Math.PI) / 180;
+  const elevation = (appearance.lightElevation * Math.PI) / 180;
+  const radial = Math.cos(elevation);
+  return {
+    x: Math.cos(azimuth) * radial,
+    y: Math.sin(azimuth) * radial,
+    z: Math.sin(elevation),
+  };
+}
+
+function spherePaint(defs, cache, color, appearance) {
+  if (appearance.surfaceFinish === 'flat') return color;
+  const key = [
+    color,
+    appearance.surfaceFinish,
+    appearance.lightAzimuth,
+    appearance.lightElevation,
+    appearance.ambientLight,
+    appearance.diffuseLight,
+    appearance.specularLight,
+    appearance.atomShininess,
+  ].join('|');
+  if (cache.has(key)) return `url(#${cache.get(key)})`;
+
+  const light = lightingDirection(appearance);
+  const id = `atom-sphere-${cache.size}`;
+  const glossy = appearance.surfaceFinish === 'glossy';
+  const specular = appearance.specularLight * (glossy ? 1 : 0.12);
+  const ambient = appearance.ambientLight;
+  const diffuse = appearance.diffuseLight;
+  const highlightStop = clamp(0.3 - appearance.atomShininess * 0.0023, 0.07, 0.3);
+  const highlight = mixColor(
+    scaleColor(color, clamp(ambient + diffuse, 0.12, 1.18)),
+    '#ffffff',
+    specular * 0.88,
+  );
+  const lit = scaleColor(color, clamp(ambient + diffuse * 0.82, 0.12, 1.18));
+  const middle = scaleColor(color, clamp(ambient + diffuse * 0.42, 0.1, 1.02));
+  const limb = scaleColor(color, clamp(ambient + diffuse * 0.12, 0.08, 0.72));
+  const gradient = svg('radialGradient', {
+    id,
+    cx: '50%', cy: '50%', r: '62%',
+    fx: `${50 + light.x * 30}%`, fy: `${50 + light.y * 30}%`,
+  }, [
+    svg('stop', { offset: '0%', 'stop-color': highlight }),
+    svg('stop', { offset: `${Math.round(highlightStop * 100)}%`, 'stop-color': lit }),
+    svg('stop', { offset: '58%', 'stop-color': middle }),
+    svg('stop', { offset: '84%', 'stop-color': limb }),
+    svg('stop', { offset: '100%', 'stop-color': scaleColor(limb, 0.68) }),
+  ]);
+  defs.append(gradient);
+  cache.set(key, id);
+  return `url(#${id})`;
+}
+
+function bondGlyph(a, b, color, width, opacity, appearance) {
+  if (appearance.surfaceFinish === 'flat') {
+    return svg('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: color,
+      'stroke-width': width,
+      'stroke-linecap': 'round',
+      'stroke-opacity': opacity,
+    });
+  }
+  const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  let nx = -(b.y - a.y) / length;
+  let ny = (b.x - a.x) / length;
+  const light = lightingDirection(appearance);
+  if (nx * light.x + ny * light.y < 0) {
+    nx *= -1;
+    ny *= -1;
+  }
+  const shift = width * 0.2;
+  const gloss = appearance.surfaceFinish === 'glossy' ? appearance.specularLight : 0.08;
+  return svg('g', { 'data-surface': 'cylinder' }, [
+    svg('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: scaleColor(color, clamp(appearance.ambientLight * 0.75, 0.16, 0.62)),
+      'stroke-width': width * 1.35,
+      'stroke-linecap': 'round',
+      'stroke-opacity': opacity,
+    }),
+    svg('line', {
+      x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+      stroke: scaleColor(color, clamp(appearance.ambientLight + appearance.diffuseLight * 0.58, 0.2, 1.1)),
+      'stroke-width': width,
+      'stroke-linecap': 'round',
+      'stroke-opacity': opacity,
+    }),
+    svg('line', {
+      x1: a.x + nx * shift, y1: a.y + ny * shift,
+      x2: b.x + nx * shift, y2: b.y + ny * shift,
+      stroke: '#ffffff',
+      'stroke-width': Math.max(width * 0.18, 0.12),
+      'stroke-linecap': 'round',
+      'stroke-opacity': opacity * gloss * 0.72,
+    }),
+  ]);
+}
+
 function renderScene(scene, camera, frame, appearance) {
   const root = svg('svg', {
     viewBox: `${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`,
@@ -502,6 +702,14 @@ function renderScene(scene, camera, frame, appearance) {
 
   const project = (point) => projectPoint(camera, point);
   const items = [];
+  const gradientCache = new Map();
+  const projectedAtoms = (appearance.showAtoms ? scene.atoms : []).map((atom) => ({
+    atom,
+    point: project(atom.position),
+  }));
+  const atomDepths = projectedAtoms.map(({ point }) => point.depth);
+  const minimumAtomDepth = atomDepths.length ? Math.min(...atomDepths) : 0;
+  const atomDepthSpan = atomDepths.length ? Math.max(...atomDepths) - minimumAtomDepth : 0;
 
   for (const edge of appearance.showCells ? scene.cell_edges : []) {
     const a = project(edge[0]);
@@ -553,31 +761,62 @@ function renderScene(scene, camera, frame, appearance) {
   for (const bond of appearance.showBonds ? scene.bonds : []) {
     const a = project(bond.start);
     const b = project(bond.end);
+    const width = 1.1 * appearance.bondWidth;
     items.push({
       depth: (a.depth + b.depth) / 2,
-      node: svg('line', {
-        x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-        stroke: appearance.bondColor,
-        'stroke-width': 1.1 * appearance.bondWidth,
-        'stroke-linecap': 'round',
-        'stroke-opacity': appearance.bondOpacity,
-      }),
+      node: bondGlyph(
+        a,
+        b,
+        appearance.bondColor,
+        width,
+        appearance.bondOpacity,
+        appearance,
+      ),
       row: { Bond: bond.species, 'Length / Å': formatNumber(bond.length, 4) },
     });
   }
 
-  for (const atom of appearance.showAtoms ? scene.atoms : []) {
-    const point = project(atom.position);
+  for (const { atom, point } of projectedAtoms) {
     const radius = atom.radius * camera.scale * camera.zoom * appearance.atomScale;
+    const color = appearance.speciesColors[atom.species] ?? atom.color;
+    const nearness = atomDepthSpan > 1e-12
+      ? (point.depth - minimumAtomDepth) / atomDepthSpan
+      : 1;
+    const depthFade = appearance.depthCue * (1 - nearness);
+    const depthOpacity = 1 - depthFade;
+    const light = lightingDirection(appearance);
+    const shadowOpacity = appearance.surfaceFinish === 'flat'
+      ? 0
+      : (1 - depthFade * 0.6) * (0.055 + appearance.diffuseLight * 0.055);
+    const shadow = svg('circle', {
+      cx: point.x - light.x * radius * 0.09,
+      cy: point.y - light.y * radius * 0.09,
+      r: radius * 1.015,
+      fill: '#000000',
+      'fill-opacity': shadowOpacity,
+    });
+    const sphere = svg('circle', {
+      cx: point.x, cy: point.y, r: radius,
+      fill: spherePaint(defs, gradientCache, color, appearance),
+      'fill-opacity': 1,
+      stroke: scaleColor(color, clamp(appearance.ambientLight * 0.7, 0.12, 0.55)),
+      'stroke-opacity': appearance.surfaceFinish === 'flat' ? 0.55 : 0.82,
+      'stroke-width': appearance.surfaceFinish === 'flat' ? 0.35 : 0.28,
+      'data-surface': appearance.surfaceFinish === 'flat' ? 'disc' : 'sphere',
+      'data-depth-opacity': depthOpacity.toFixed(3),
+    });
+    const depthVeil = svg('circle', {
+      cx: point.x, cy: point.y, r: radius,
+      fill: 'var(--bg-raised)',
+      'fill-opacity': depthFade * 0.62,
+      'pointer-events': 'none',
+    });
     items.push({
       depth: point.depth,
-      node: svg('circle', {
-        cx: point.x, cy: point.y, r: radius,
-        fill: appearance.speciesColors[atom.species] ?? atom.color,
-        'fill-opacity': appearance.atomOpacity,
-        stroke: 'var(--bg-raised)',
-        'stroke-width': 0.35,
-      }),
+      node: svg('g', {
+        'data-atom': atom.species,
+        opacity: appearance.atomOpacity,
+      }, [shadow, sphere, depthVeil]),
       row: {
         Element: atom.species,
         Site: atom.label ?? '—',

@@ -130,8 +130,14 @@ The resolution is to split by *what changes*:
   `pytex.plotting.crystal3d.build_crystal_scene` and sent to the browser as JSON.
 - The **camera** — a rotation matrix, a projection, a zoom — lives in the browser. Dragging applies
   a rotation to vertices already in hand and redraws SVG. No round trip, no server load, no lag.
+- **Presentation** — sphere and cylinder shading, surface finish, light direction and strengths,
+  and depth cue — is also evaluated in the browser for immediate feedback. These settings change
+  only how the projected geometry is painted. Reusable SVG gradients keep the interaction light,
+  and an explicit flat mode preserves a diagrammatic alternative.
 - **Export** sends the camera back to Python, which renders the identical scene through the
-  existing publication renderer at the requested size, DPI, and format.
+  existing publication renderer at the requested size, DPI, and format. The screen-space light is
+  transformed through the camera rotation before export so highlights remain camera-aware rather
+  than silently reverting to a fixed laboratory axis.
 
 The duplicated mathematics is a 3×3 rotation and an orthographic divide — under fifty lines of
 JavaScript — and it is duplication of *viewing*, not of crystallography. Nothing about lattices,

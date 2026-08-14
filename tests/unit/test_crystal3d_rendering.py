@@ -19,7 +19,37 @@ from pytex import (
 )
 from pytex.core._chemistry import cpk_color
 from pytex.core.lattice import AtomicSite, UnitCell
-from pytex.plotting.crystal3d import _cylinder_quads, _unit_sphere_quads
+from pytex.plotting.crystal3d import _cylinder_quads, _lit_face_colors, _unit_sphere_quads
+
+
+def test_specular_highlight_tracks_the_actual_camera_direction() -> None:
+    normals = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    light = np.array([1.0, 0.0, 1.0]) / np.sqrt(2.0)
+    from_z = _lit_face_colors(
+        "#000000",
+        normals,
+        alpha=1.0,
+        light_direction=light,
+        view_direction=np.array([0.0, 0.0, 1.0]),
+        ambient=0.0,
+        diffuse=0.0,
+        specular=1.0,
+        shininess=2.0,
+    )
+    from_x = _lit_face_colors(
+        "#000000",
+        normals,
+        alpha=1.0,
+        light_direction=light,
+        view_direction=np.array([1.0, 0.0, 0.0]),
+        ambient=0.0,
+        diffuse=0.0,
+        specular=1.0,
+        shininess=2.0,
+    )
+
+    assert from_z[0, 0] > from_z[1, 0]
+    assert from_x[1, 0] > from_x[0, 0]
 
 
 def make_two_species_phase() -> Phase:

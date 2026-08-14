@@ -134,10 +134,16 @@ zoom and ordinary drag to rotate its three-dimensional camera, so it keeps its o
 
 The Crystal Viewer's **Object properties** section separates structure from presentation. It can
 hide object classes; scale and fade atoms; recolour each species; set bond and cell edge weight;
-adjust plane and direction colour/opacity; scale annotations; and show or hide the axis gizmo. A
-change redraws the existing scene immediately—no crystallographic service is called, and no atom,
-plane or index moves. Publishing the figure sends the validated appearance object with the camera,
-so the Python renderer uses the same visible object classes, colours, opacities and relative sizes.
+adjust plane and direction colour/opacity; scale annotations; show or hide the axis gizmo; and tune
+the studio lighting and depth cue. Atoms are shaded as spheres and bonds as cylinders by default;
+**Matte** softens the highlight and **Flat** gives an intentionally diagrammatic disc-and-line view.
+Azimuth and elevation move the light in screen space, while ambient, diffuse, specular, highlight
+sharpness, and depth cue controls expose the professional rendering model without mixing it into
+the crystallographic inputs. A change redraws the existing scene immediately—no crystallographic
+service is called, and no atom, plane or index moves. Publishing the figure sends the validated
+appearance object with the camera; the browser converts its screen-space light into the crystal
+frame so the Python renderer uses the same camera-relative illumination, visible object classes,
+colours, opacities, and relative sizes.
 
 ```{note}
 The on-screen table is a **preview**: the first 200 rows, with the caption saying so. Every export

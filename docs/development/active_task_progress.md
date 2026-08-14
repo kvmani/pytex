@@ -5,6 +5,58 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
+
+**Objective.** Replace the Crystal Viewer's flat atom discs and flat bond strokes with a
+professional sphere/cylinder presentation: configurable studio lighting, diffuse and specular
+response, depth cueing and soft shadows in the byte-identical web/desktop viewer, with the same
+lighting parameters carried into publication export.
+
+**Initial evidence.** On clean `main` at `0fbf4b1`, browser inspection shows atoms as uniform SVG
+`circle` fills with a thin outline; their radius and painter-order occlusion convey size/depth, but
+there is no surface-normal cue, highlight, limb darkening or depth fade. Bonds are uniform SVG
+lines. The Python publication renderer already has lit sphere/cylinder meshes and depth cueing, but
+the shared appearance envelope exposes none of those theme keys, so the interactive and exported
+looks cannot be tuned together.
+
+**Design.** Keep orthographic geometry and crystallographic semantics unchanged. The interactive
+renderer will use reusable SVG radial gradients for sphere lighting and perpendicular linear
+gradients for cylindrical bonds, with bounded depth buckets to avoid one definition per atom.
+Lighting controls will cover ambient/diffuse/specular strength, highlight size, azimuth/elevation,
+depth cue and soft shadow. The export envelope will validate and map those same values to the
+existing Blinn–Phong/depth-cue renderer; light direction will be transformed from screen space back
+to the crystal frame using the exported camera matrix.
+
+**Implemented.** The shared viewer now paints atoms with reusable, species-aware radial gradients,
+bonds with layered cylindrical glyphs, and distant atoms with an opaque background veil that
+preserves painter-order occlusion. The property rail exposes glossy/matte/flat finish, light
+azimuth/elevation, ambient/diffuse/specular strengths, highlight sharpness, and depth cue. Export
+normalizes and validates the appearance envelope, transforms the screen-space light through the
+camera matrix, and maps it to the existing publication renderer. Publication specular response is
+now camera-aware in both the single-crystal and composed-world render paths.
+
+**Verification so far.** `node --check` passes. Targeted Ruff and 114 focused app/rendering tests
+pass. Browser validation at `127.0.0.1:8765` confirms 27 sphere glyphs, two reused species
+gradients, 54 cylindrical bonds, depth values that vary with projected distance, a genuinely flat
+fallback with no gradients, and a highlight that moves from 35% to 65% across the glyph when light
+azimuth changes. Light and system-dark screenshots keep the labels legible and give the crystal
+the intended three-dimensional reading. A 150 dpi NaCl publication export was decoded and visually
+inspected: its sphere highlights, cylindrical bonds, depth ordering, plane, labels, legend, and
+frame indicator are all intact.
+
+**Final verification.** The full base lane is green: `ruff check .`, mypy over all 138 source files,
+and the complete pytest suite (two pre-existing skips) pass in 704 seconds. Native pywebview
+inspection at 1536×816 confirms the same glossy sphere/cylindrical-bond presentation as the web
+shell, a large uninterrupted crystal canvas, independently scrollable input/property rail, visible
+completion status, and usable lighting controls. The native Surface finish selector was exercised
+from glossy to flat and back to glossy; the scene redrew immediately and no calculation or shell
+restart was triggered. No generated inspection image or runtime output was added to the repository.
+
+**Outcome.** The flat-disc defect is resolved across both application shells and publication
+export. All controls are presentation-only, documented, bounded by service validation, and covered
+by interaction/source contracts plus camera-aware numerical shading tests. This task is complete;
+no follow-up work remains in this ledger entry.
+
 ## Scientific Workbench Visual Interaction And Layout — COMPLETE (2026-08-14)
 
 **Objective.** Bring the byte-identical desktop/web workbench closer to a professional texture and

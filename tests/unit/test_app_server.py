@@ -598,11 +598,19 @@ class TestFrontendIsSelfContained:
         control = source.split("function appearanceControl")[1].split("export function mount")[0]
         assert "call(" not in control
         assert "onChange();" in control
-        assert "publicationAppearance(state.appearance)" in source
+        assert "publicationAppearance(state.appearance, camera)" in source
         for label in (
             "Object properties",
             "Atom size",
             "Atom opacity",
+            "Surface finish",
+            "Light azimuth",
+            "Light elevation",
+            "Ambient light",
+            "Diffuse light",
+            "Specular highlight",
+            "Highlight sharpness",
+            "Depth cue",
             "Bond colour",
             "Cell opacity",
             "Plane colour",
@@ -620,6 +628,16 @@ class TestFrontendIsSelfContained:
             "showGizmo",
         ):
             assert object_name in source
+        for lighting_contract in (
+            "function spherePaint",
+            "function bondGlyph",
+            "radialGradient",
+            "data-surface",
+            "data-depth-opacity",
+            "lightingDirection(appearance)",
+            "applyTranspose(camera.rotation",
+        ):
+            assert lighting_contract in source
 
     def test_texture_contours_have_real_isolines_and_adjustable_shared_levels(self) -> None:
         """A coloured point mosaic is not a contour plot, however smooth it looks."""

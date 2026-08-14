@@ -36,6 +36,7 @@ from pytex.plotting.crystal3d import (
     _draw_crystal_planes_and_directions,
     _normalize_light_direction,
     _view_angles_from_direction,
+    _view_vector_from_angles,
     build_crystal_scene,
 )
 from pytex.plotting.primitives import (
@@ -346,10 +347,15 @@ def render_world_scene_3d(
     placed_scenes = world.placed_scenes()
     mesh_faces: list[np.ndarray] = []
     mesh_colors: list[np.ndarray] = []
+    camera_direction = _view_vector_from_angles(elev_deg, azim_deg)
     for scene in placed_scenes:
         _draw_crystal_frame(axes, scene, crystal_style)
         faces, colors = _accumulate_crystal_mesh(
-            axes, scene, crystal_style, light_direction=light_direction
+            axes,
+            scene,
+            crystal_style,
+            light_direction=light_direction,
+            view_direction=camera_direction,
         )
         mesh_faces.extend(faces)
         mesh_colors.extend(colors)

@@ -28,7 +28,7 @@ testing, theme systems). PyTex does not aim to reproduce VESTA's GUI or its elec
 
 | Feature | VESTA behavior | PyTex status | Notes |
 | --- | --- | --- | --- |
-| Ball-and-stick rendering | lit spheres + cylinders | implemented | `render_style="ball_and_stick"` (default). Blinn-Phong-style lighting, one globally depth-sorted mesh so atoms/bonds occlude correctly (`plot_crystal_structure_3d`). |
+| Ball-and-stick rendering | lit spheres + cylinders | implemented | `render_style="ball_and_stick"` (default). Blinn-Phong-style lighting and one globally depth-sorted mesh give publication figures correct atom/bond occlusion (`plot_crystal_structure_3d`); the shared desktop/web workbench uses responsive radial sphere shading and layered cylindrical bonds for the same visual reading while the camera moves. |
 | Space-filling rendering | full-radius spheres | implemented | `render_style="space_filling"`: Slater atomic radii (`atomic_radius_angstrom`), bonds suppressed. Ionic-radius selection per oxidation state is planned. |
 | Polyhedral rendering | coordination polyhedra | implemented | `render_style="polyhedral"` auto-selects every ≥4-coordinated species; `polyhedra_species` narrows it. Convex-hull faces with outward normals ride in the depth-sorted mesh. Polyhedron volume/distortion metrics are planned. |
 | Stick rendering | uniform thin cylinders | implemented | `render_style="stick"`: bond cylinders and atom caps share one radius. |
@@ -44,8 +44,8 @@ testing, theme systems). PyTex does not aim to reproduce VESTA's GUI or its elec
 | Atom labels | per-atom text | implemented | `atom_label_mode="species"` or `"site"`. |
 | Two-tone bonds | each half in its atom color | implemented | Default `bond_color_mode="two_tone"`; uniform mode available. |
 | Dashed / hydrogen-bond styles | per-bond-type line styles | planned | Bonds currently share one solid style per scene. |
-| Depth cueing (fog) | distance fade | implemented | `depth_cue_strength` theme key; fades mesh faces toward the background along the view direction. Static per rendered view (recomputed per export, not per interactive drag). |
-| Lighting model | ambient/diffuse/specular | implemented | Theme-controlled ambient, diffuse, specular strengths, shininess, and light direction. |
+| Depth cueing (fog) | distance fade | implemented | `depth_cue_strength` theme key; fades mesh faces toward the background along the view direction. The workbench exposes the strength and recomputes the cue on every camera change; publication export recomputes it for the exported view. |
+| Lighting model | ambient/diffuse/specular | implemented | Theme-controlled ambient, diffuse, specular strengths, shininess, and light direction. The workbench exposes those controls with glossy, matte, and flat presets, and transforms its screen-space light into the crystal frame for camera-aware export. |
 | Perspective / orthographic projection | both | implemented | `projection="persp"` / `"ortho"`. |
 | View along crystal axes / directions | align view to [uvw] or a,b,c | implemented | `view_preset="a"/"b"/"c"`, `view_direction=` vector or `CrystalDirection`. |
 | Distance measurement | interactive click readout | exceeded | Programmatic: `CrystalScene.bond_lengths_angstrom()` and `bond_length_summary()` (per species-pair count/min/mean/max) are scriptable and regression-tested rather than click-driven. |
