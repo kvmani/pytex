@@ -23,6 +23,7 @@ from pytex.app.errors import InvalidInputError
 AUSTENITE = {"builtin": "austenite_fcc"}
 FERRITE = {"builtin": "fe_bcc"}
 ZIRCONIUM = {"builtin": "zr_hcp"}
+BETA_ZIRCONIUM = {"builtin": "zr_bcc_beta"}
 
 #: The ten distinct Kurdjumov-Sachs intervariant disorientations, in degrees.
 #:
@@ -78,7 +79,7 @@ class TestVariantCounts:
             ("kurdjumov_sachs", AUSTENITE, FERRITE, 24),
             ("nishiyama_wassermann", AUSTENITE, FERRITE, 12),
             ("bain", AUSTENITE, FERRITE, 3),
-            ("burgers", FERRITE, ZIRCONIUM, 12),
+            ("burgers", BETA_ZIRCONIUM, ZIRCONIUM, 12),
         ],
     )
     def test_the_variant_count_is_the_published_one(
@@ -116,7 +117,7 @@ class TestPackets:
     def test_burgers_gives_six_packets_of_two_on_the_parent_110(self) -> None:
         data = pole_figure(
             relationship="burgers",
-            phase=FERRITE,
+            phase=BETA_ZIRCONIUM,
             child_phase=ZIRCONIUM,
             pole=[0, 0, 1],
             packet_plane=[1, 1, 0],
@@ -374,7 +375,7 @@ class TestIntervariantSpectrum:
 
     def test_burgers_has_its_own_spectrum(self) -> None:
         data = self.spectrum(
-            phase=FERRITE,
+            phase=BETA_ZIRCONIUM,
             child_phase=ZIRCONIUM,
             relationship="burgers",
             packet_plane=[1, 1, 0],

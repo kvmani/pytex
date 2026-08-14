@@ -39,7 +39,7 @@ deployment rule remains in force.
 | 1 | Shared visual design refresh, explicit responsive/theme/accessibility checks | done | (this commit) |
 | 2 | Manifest-backed documentation links and richer inline help | done | (this commit) |
 | 3 | Reusable visualization-style controls; diffraction spot shape/scale/colour first | done | (this commit) |
-| 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | planned | — |
+| 4 | Canonical example audit and beta-Zr → alpha-Zr Burgers scenario | done | (this commit) |
 | 5 | Browser + real desktop human-style feature pass and defect fixes | planned | — |
 | 6 | User guide/architecture/testing docs, full verification, closeout | planned | — |
 
@@ -109,6 +109,28 @@ with immediate redraw from one simulation and no scientific recomputation.
 **Exact next action.** Add a first-class beta-zirconium bcc phase with a cited high-temperature
 lattice parameter, replace the Fe-bcc stand-in in each Burgers example, and pin the 12-variant
 beta-Zr to alpha-Zr case in manifest and GUI tests.
+
+### Increment 4 result
+
+- Added `zr_bcc_beta` as a first-class catalogue phase: monatomic bcc Zr, `Im-3m` (229), two-Zr
+  conventional basis, and `a = 3.6090 Å` at 863 °C. The display name includes the temperature so a
+  high-temperature allotrope is not presented as a room-temperature constant. Provenance names the
+  Zuzek phase assessment and the IUCr journal table with DOI `10.1107/S1600577515009054`.
+- Replaced the Fe-bcc symmetry stand-in in all three Burgers GUI examples. Calculator,
+  Diffraction and Variants now share the explicit `zr_bcc_beta` parent and `zr_hcp` child; manifest
+  tests pin that exact pair and catalogue tests pin the cell, space group and Zr basis.
+- The focused application lane is green (397 passed, one optional-stack skip). Human browser
+  driving ran all three examples: Calculator reported the named zirconium pair and 12 variants;
+  Diffraction rendered 426 spots from 12 variant sources; Variants rendered 12 basal poles in six
+  packets of two. Both phase pickers showed the expected catalogue identifiers, all layouts had no
+  horizontal overflow and the browser console remained clean.
+- The architecture record and workbench guide now distinguish beta-bcc and alpha-hcp zirconium,
+  document the temperature-specific cell parameter, and explain that the examples exercise real Zr
+  spacings, scattering and provenance rather than iron with compatible symmetry.
+
+**Exact next action.** Perform the complete human-style web pass across every example, control,
+export and responsive width, then read the computer-use confirmation/API guidance and repeat the
+critical workflows in the real desktop shell. Fix every reproducible GUI defect before closeout.
 
 ## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
 

@@ -1821,7 +1821,7 @@ REGISTRY.add_examples(
             ),
             operation="calc.orientation_relationship",
             request={
-                "phase": {"builtin": "fe_bcc"},
+                "phase": {"builtin": "zr_bcc_beta"},
                 "child_phase": {"builtin": "zr_hcp"},
                 "relationship": "burgers",
             },

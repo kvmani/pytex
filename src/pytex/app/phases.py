@@ -673,6 +673,24 @@ BUILTIN_PHASES: dict[str, PhaseSpec] = {
         sites=_bcc_sites("Fe"),
         source="Wyckoff, Crystal Structures Vol. 1 (1963); COD 9008536.",
     ),
+    "zr_bcc_beta": PhaseSpec(
+        name="Zirconium (bcc, beta at 863 °C)",
+        a=3.6090,
+        b=3.6090,
+        c=3.6090,
+        alpha=90.0,
+        beta=90.0,
+        gamma=90.0,
+        point_group="m-3m",
+        space_group_symbol="Im-3m",
+        space_group_number=229,
+        sites=_bcc_sites("Zr"),
+        source=(
+            "Zuzek et al., Bull. Alloy Phase Diagrams 11 (1990) 385; "
+            "Maimaitiyili et al., J. Synchrotron Rad. 22 (2015) 995, "
+            "doi:10.1107/S1600577515009054 (a = 3.6090 Å at 863 °C)."
+        ),
+    ),
     "w_bcc": PhaseSpec(
         name="Tungsten (bcc)",
         a=3.1652,

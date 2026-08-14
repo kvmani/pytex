@@ -1091,7 +1091,7 @@ REGISTRY.add_examples(
             ),
             operation="variants.pole_figure",
             request={
-                "phase": {"builtin": "fe_bcc"},
+                "phase": {"builtin": "zr_bcc_beta"},
                 "child_phase": {"builtin": "zr_hcp"},
                 "relationship": "burgers",
                 "pole": [0, 0, 1],

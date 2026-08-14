@@ -199,6 +199,7 @@ new structure in every panel:
 | NaCl (halite) | Two species, F-centred, the textbook case for structure-factor absences |
 | Fe-fcc (austenite) | The parent phase of every orientation-relationship example |
 | Fe-bcc (ferrite) | The product phase; together with austenite it demonstrates cross-phase work |
+| Zr-bcc (beta, 863 °C) | The physically correct parent for the canonical Burgers beta-to-alpha example |
 | Zr-hcp | Hexagonal, so four-index notation and c/a effects appear rather than being described |
 
 Each of these is in the built-in phase catalogue (`pytex.app.phases.BUILTIN_PHASES`) with literal,
@@ -209,6 +210,13 @@ viewer, a structure with a slip plane and Burgers direction superimposed; for th
 question with a known textbook answer. Examples are registered beside the operations they exercise
 and appear in the manifest, so the same "no drift, discoverable" property of Decision 2 applies to
 them.
+
+The beta-zirconium entry is `Im-3m` with `a = 3.6090 Å` at 863 °C, rather than ferrite used as a
+cubic symmetry stand-in. The value is tabulated by Maimaitiyili *et al.*, *J. Synchrotron Rad.* 22
+(2015) 995–1000, [doi:10.1107/S1600577515009054](https://doi.org/10.1107/S1600577515009054),
+from the Zuzek *et al.* zirconium phase assessment. Temperature belongs in the display name because
+beta Zr is the high-temperature allotrope and its lattice parameter is not a room-temperature
+material constant.
 
 ## Decision 8 — Every Plot Answers "What Is Under My Cursor?"
 

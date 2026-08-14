@@ -361,8 +361,31 @@ class TestCanonicalExamples:
     def test_the_canonical_materials_are_all_reachable(self) -> None:
         from pytex.app.phases import BUILTIN_PHASES
 
-        for identifier in ("nacl", "austenite_fcc", "fe_bcc", "zr_hcp"):
+        for identifier in ("nacl", "austenite_fcc", "fe_bcc", "zr_bcc_beta", "zr_hcp"):
             assert identifier in BUILTIN_PHASES
+
+        beta_zr = BUILTIN_PHASES["zr_bcc_beta"]
+        assert beta_zr.name == "Zirconium (bcc, beta at 863 °C)"
+        assert beta_zr.a == beta_zr.b == beta_zr.c == 3.6090
+        assert beta_zr.space_group_symbol == "Im-3m"
+        assert beta_zr.space_group_number == 229
+        assert len(beta_zr.sites) == 2
+        assert {site.species for site in beta_zr.sites} == {"Zr"}
+
+    def test_every_burgers_gui_example_uses_the_canonical_zirconium_pair(self) -> None:
+        examples = {
+            example.id: example
+            for example in REGISTRY.examples()
+            if example.request.get("relationship") == "burgers"
+        }
+        assert set(examples) == {
+            "calc.example.burgers",
+            "diffraction.example.burgers",
+            "variants.example.burgers_poles",
+        }
+        for example in examples.values():
+            assert example.request["phase"] == {"builtin": "zr_bcc_beta"}
+            assert example.request["child_phase"] == {"builtin": "zr_hcp"}
 
     def test_examples_appear_in_the_manifest(self) -> None:
         manifest = REGISTRY.manifest()

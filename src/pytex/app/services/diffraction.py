@@ -513,7 +513,7 @@ REGISTRY.add_examples(
             ),
             operation="diffraction.composite_saed",
             request={
-                "phase": {"builtin": "fe_bcc"},
+                "phase": {"builtin": "zr_bcc_beta"},
                 "child_phase": {"builtin": "zr_hcp"},
                 "relationship": "burgers",
                 "zone_axis": [1, 1, 1],

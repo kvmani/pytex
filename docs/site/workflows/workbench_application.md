@@ -179,11 +179,18 @@ control rail rather than burying it in a default.
 
 ## Using Your Own Material
 
-Every phase control offers the built-in catalogue — NaCl, austenite, ferrite, hcp zirconium, nickel
-and the rest, all with cited parameters and full atomic bases — or six cell parameters and a point
-group typed in directly. A CIF can be loaded through `Phase.from_cif` in the library, but the
+Every phase control offers the built-in catalogue — NaCl, austenite, ferrite, beta-bcc and
+alpha-hcp zirconium, nickel and the rest, all with cited parameters and full atomic bases — or six
+cell parameters and a point group typed in directly. A CIF can be loaded through `Phase.from_cif`
+in the library, but the
 application never requires it: the catalogue is defined by literal parameters in Python, so the
 starting materials cannot be broken by an optional dependency being absent.
+
+For the Burgers orientation relationship, choose the built-in example in Calculator, Diffraction
+or Variants. All three use the same explicit `Zirconium (bcc, beta at 863 °C)` parent and
+`Zirconium (hcp, alpha)` child. The beta phase uses `Im-3m`, `a = 3.6090 Å`, and a two-Zr-atom
+conventional basis; the examples therefore exercise zirconium scattering, spacings and provenance,
+not merely the cubic symmetry of an iron stand-in.
 
 ```{note}
 An edited phase is renamed "(edited)" and its space group is cleared when the crystal system changes.

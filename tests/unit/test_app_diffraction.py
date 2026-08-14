@@ -21,6 +21,7 @@ pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plo
 
 AUSTENITE = {"builtin": "austenite_fcc"}
 FERRITE = {"builtin": "fe_bcc"}
+BETA_ZIRCONIUM = {"builtin": "zr_bcc_beta"}
 
 
 def simulate(**request: object) -> dict:
@@ -194,7 +195,7 @@ class TestBurgers:
         result = REGISTRY.call(
             "diffraction.composite_saed",
             {
-                "phase": {"builtin": "fe_bcc"},
+                "phase": BETA_ZIRCONIUM,
                 "child_phase": {"builtin": "zr_hcp"},
                 "relationship": "burgers",
                 "zone_axis": [1, 1, 1],

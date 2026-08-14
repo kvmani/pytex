@@ -32,6 +32,7 @@ NO_ROTATION: dict[str, object] = {
 
 NICKEL = {"builtin": "ni_fcc"}
 ZIRCONIUM = {"builtin": "zr_hcp"}
+BETA_ZIRCONIUM = {"builtin": "zr_bcc_beta"}
 
 
 def call(operation: str, **request: object) -> dict:
@@ -560,7 +561,7 @@ class TestOrientationRelationships:
     def test_burgers_gives_12_variants_into_a_hexagonal_child(self) -> None:
         result = call(
             "calc.orientation_relationship",
-            phase={"builtin": "fe_bcc"},
+            phase=BETA_ZIRCONIUM,
             child_phase={"builtin": "zr_hcp"},
             relationship="burgers",
         )
