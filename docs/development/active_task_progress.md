@@ -5,6 +5,66 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Scientific Workbench Visual Interaction And Layout — IN PROGRESS (2026-08-14)
+
+**Objective.** Bring the byte-identical desktop/web workbench closer to a professional texture and
+crystallography application: mouse-wheel zoom and direct manipulation in every graphic area,
+presentation-only property controls for scientific scene objects, real contour-line and filled-
+contour texture plots with user-controlled levels, and a layout pass that reserves space for the
+plot, controls, results, progress, and operational messages without hiding any of them.
+
+**Governing boundary.** Desktop and web remain one application (`docs/architecture/application_platform.md`):
+all changes belong in the shared static frontend or shared Python services, never in one launcher.
+Presentation controls redraw existing scientific rows/scene geometry and do not masquerade as
+calculation parameters. Scientific inputs and export provenance remain manifest-owned.
+
+### Initial audit (clean `main` at `388ac5b`)
+
+- `core/plotframe.js` supplies the mandated cursor and hover-detail surfaces, but has no viewport
+  model. Only the Crystal Viewer implements wheel zoom, locally, so every 2-D SVG plot is static.
+- The Crystal Viewer already receives explicit atom, bond, cell, plane, and direction glyphs and
+  correctly separates camera arithmetic from crystallography, but presentation properties are
+  hard-coded in `crystal.js` (atom radius, plane opacity, bond/cell/direction widths, labels).
+- Texture calls pole-figure discs and ODF raster cells “filled contours”. They are mosaics over
+  discrete samples: there is no interpolated isoline geometry, line-only/filled/combined mode, or
+  adjustable contour-level policy. The service already returns the numerical grid/support needed
+  to build those display layers without changing the ODF calculation.
+- The shared shell already has a wide-screen control rail, plot stage, result cards, loading button
+  state, error toasts, and responsive breakpoints. Interactive validation must check whether the
+  new appearance sections and viewport toolbar keep those regions usable at desktop and tablet
+  widths rather than assuming the existing grid is sufficient.
+
+### Planned increments
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | Shared 2-D SVG viewport: wheel zoom, drag pan, reset/fit, cursor-correct coordinates | done | (this commit) |
+| 2 | Crystal object appearance editor with live redraw and publication-export parity | planned | — |
+| 3 | Professional texture isolines/filled contours, adjustable level count/values and colour scale | planned | — |
+| 4 | Homogeneous interaction/layout pass: plot allocation, property/result/log/progress space | planned | — |
+| 5 | Browser + native desktop interaction validation, automated quality lanes, docs closeout | planned | — |
+
+### Increment 1 result
+
+`core/plotframe.js` now owns the 2-D viewport as part of the instrument contract: wheel zoom is
+anchored at the pointer, Shift-left-drag and middle-drag pan without stealing ordinary plot clicks,
+the header reports magnification and supplies Zoom in/out plus Fit, and viewBox coordinates remain
+the source of the cursor conversion after every camera change. The optional preserved-viewport
+path lets a presentation-only redraw retain the user's inspection location. Crystal explicitly
+disables the 2-D viewport because its existing wheel/drag handlers are a 3-D camera.
+
+**Verification so far.** `node --check` is green for the shared plot frame and crystal panel;
+`pytest tests/unit/test_app_server.py tests/unit/test_app_desktop.py -q` passes (60 tests). Ruff
+passes and strict mypy passes over 138 source files. The full unit lane reached 100% with one
+unrelated stale canonical asset: the EBSD class-model generator produced a 1984 px canvas while the
+committed SVG still declared 1975 px. Per the failing test's required repair path,
+`scripts/generate_class_model_figures.py` regenerated the referenced atlas; only
+`class_model_ebsd.svg` changed, and all eight generator/committed-asset comparisons now pass. Every
+other unit test in the controlling run passed (two existing skips).
+
+**Exact next action.** Commit and push increment 1 to `main`, then build the Crystal Viewer
+appearance editor against the scene glyphs and publication renderer.
+
 ## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — COMPLETE (2026-08-14)
 
 **Objective.** Close the loop between picking and trusting an answer. Five things, in the order a

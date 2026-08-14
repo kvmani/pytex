@@ -54,6 +54,7 @@ export function mount(context) {
 
   const frame = plotFrame({
     title: 'Structure',
+    viewport: false,
     units: 'Å',
     digits: 2,
     toData: (x, y) => cameraToCrystal(camera, x, y),

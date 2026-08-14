@@ -218,7 +218,7 @@ from the Zuzek *et al.* zirconium phase assessment. Temperature belongs in the d
 beta Zr is the high-temperature allotrope and its lattice parameter is not a room-temperature
 material constant.
 
-## Decision 8 — Every Plot Answers "What Is Under My Cursor?"
+## Decision 8 — Every Plot Answers "What Is Under My Cursor?" And Lets It Be Inspected
 
 Two interactions are mandatory on every plot in the application, not optional per panel, because
 they are how a researcher interrogates a figure rather than merely looking at one:
@@ -232,7 +232,14 @@ they are how a researcher interrogates a figure rather than merely looking at on
    variant produced it. The detail comes from the same row the CSV export writes, so what a user
    reads on screen and what they get in the file cannot disagree.
 
-Both are provided by one shared frontend module (`core/plotframe.js`) that every panel mounts its
+For two-dimensional figures, the same frame also owns one viewport language: the mouse wheel zooms
+about the pointer, Shift-drag or middle-drag pans, the toolbar reports the magnification, and **Fit**
+restores the complete figure. Zoom changes the SVG view box rather than applying a CSS transform,
+so the coordinate readout and hover hit regions remain in the plotted coordinate system at every
+magnification. A genuinely three-dimensional panel may disable this viewport only when it supplies
+its own camera interaction; the Crystal Viewer does so because dragging rotates rather than pans.
+
+All three behaviours are provided by one shared frontend module (`core/plotframe.js`) that every panel mounts its
 SVG into, so a new plot gets both behaviours by construction and no panel re-implements them. The
 readout formatter is chosen per plot from a declared unit; the hover payload is whatever row the
 service attached to the entity.

@@ -483,6 +483,30 @@ class TestFrontendIsSelfContained:
             "the global full-width select rule must not turn a plot toolbar into a vertical stack"
         )
 
+    def test_every_2d_plot_gets_one_cursor_correct_viewport(self) -> None:
+        """Zoom and pan belong to the plot frame, not whichever panel remembered them.
+
+        A CSS transform would make the drawing larger while leaving the cursor conversion in the
+        old coordinate system. The shared implementation must therefore move the SVG viewBox,
+        zoom about the pointer, provide a keyboard-visible reset, and reserve the bespoke crystal
+        camera as the one explicit opt-out.
+        """
+
+        source = (STATIC_ROOT / "js" / "core" / "plotframe.js").read_text(encoding="utf-8")
+        crystal = (STATIC_ROOT / "js" / "panels" / "crystal.js").read_text(encoding="utf-8")
+        for contract in (
+            "'wheel'",
+            "event.shiftKey",
+            "event.button === 1",
+            "setAttribute(\n      'viewBox'",
+            "pointerToViewBox(event, svgNode)",
+            "text: 'Fit'",
+            "preserveViewport",
+        ):
+            assert contract in source
+        assert "viewport = true" in source
+        assert "viewport: false" in crystal
+
     def test_the_colour_theme_is_explicit_persistent_and_system_aware(self) -> None:
         """A theme switch must work identically in the browser and desktop shell.
 

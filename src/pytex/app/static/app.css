@@ -1292,6 +1292,22 @@ button:focus-visible {
   display: block;
 }
 
+.plot__surface {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.plot__surface[data-panning="true"] {
+  cursor: grabbing;
+}
+
+.plot__zoom {
+  min-width: 3.25rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 /* The cursor readout. Bottom corner, monospace so digits do not jitter as the
  * pointer moves, and non-interactive so it never swallows a click. */
 .plot__cursor {

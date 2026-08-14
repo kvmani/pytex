@@ -125,6 +125,11 @@ instrument rather than a picture generator.
    packet and Miller indices. The payload is the same row the CSV export writes, so what the screen
    says and what the file contains cannot disagree.
 
+Every two-dimensional graphic uses the same inspection gestures: scroll over the graphic to zoom
+about the pointer, Shift-drag (or middle-drag) to pan, and press **Fit** to restore the full figure.
+The percentage in the plot toolbar is the current magnification. The Crystal Viewer uses scroll to
+zoom and ordinary drag to rotate its three-dimensional camera, so it keeps its own Reset control.
+
 ```{note}
 The on-screen table is a **preview**: the first 200 rows, with the caption saying so. Every export
 carries all of them. A texture ODF is over a thousand rows, and a scroll box with no search is not
