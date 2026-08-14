@@ -5,6 +5,94 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## TEM Indexing: Lattice Overlay, Centre Refinement, Scored Solutions — IN PROGRESS (2026-08-14)
+
+**Objective.** Close the loop between picking and trusting an answer. Five things, in the order a
+microscopist meets them:
+
+1. **A live 2D lattice overlay** fitted to the picked spots, drawn over the pattern, so a wrong
+   beam centre or a mis-picked spot is visible rather than inferred.
+2. **Centre refinement** — least-squares from the fit, plus small manual nudges — with the overlay
+   updating live so the user can judge when it is right.
+3. **Explicit deviations** for every candidate solution: measured against calculated d-spacings and
+   interspot angles, not just a single residual.
+4. **A fused, configurable, documented accuracy score** that ranks the candidates.
+5. **The calculated pattern superimposed on the experimental one** for a chosen solution, an
+   explicit accept, and the accepted solution carried into tilt planning.
+
+Plus a cross-cutting requirement: **detailed export in both human-readable and machine-readable
+form at every stage, across every panel.**
+
+### Initial audit (worktree clean on `main` at `fb0df52`)
+
+- Picking is blind. Nothing is drawn from the picks except the picks, so the beam centre is placed
+  by eye and never checked. `PatternCalibration.centre` is taken as given.
+- `PatternSolution` reports `residual_inv_angstrom` per spot and a `(matched_fraction, mean
+  residual)` sort key. Ranking is documented as *a sort key, not a scalar quality* — deliberately,
+  and the app says so. There is no per-spot d-spacing deviation, no interspot-angle deviation, and
+  no single number a user can weigh.
+- Nothing renders a calculated pattern over a measured one anywhere in the application.
+- Export exists on every table-bearing result — CSV, XLSX, JSON — from one shared path, plus a
+  "Copy summary" button. The gap is a genuinely *human-readable* document: JSON is machine-only,
+  CSV is a grid. `EXPORT_FORMATS` is not published in the manifest, so the frontend hard-codes
+  three buttons.
+
+### Planned increments
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | `pytex.diffraction.lattice_fit`: 2D lattice fit with least-squares centre refinement | done | (this commit) |
+| 2 | `pytex.diffraction.solution_scoring`: deviations and a configurable fused score | pending | |
+| 3 | App: `tem.fit_lattice`, scoring and overlay data in `tem.solve_pattern` | pending | |
+| 4 | Frontend: overlay, nudges, scored solution list, calculated-pattern fit, accept | pending | |
+| 5 | Export: a human-readable report format on every panel, manifest-published | pending | |
+| 6 | Docs, human-style pass, closeout | pending | |
+
+### Increment 1 result
+
+`pytex.diffraction.lattice_fit` imposes the one constraint a zone-axis pattern satisfies before any
+crystallography — that its spots lie on a plane lattice — and gets two things out of it: a beam
+centre that is over-determined by the picks rather than guessed from one of them, and a name for
+any pick the lattice cannot explain. 39 tests, every case built from a lattice whose answer is known
+before the fit runs.
+
+**The first four drafts were each wrong in an instructive way, and driving them is what found it.**
+
+1. **Seeding from offsets to the picked centre subdivided the cell.** A centre half a spacing out
+   makes some offsets spuriously short; the shortest pair then generates a sub-lattice; and the fit
+   explains every spot perfectly by halving the cell *around the wrong centre* — machine-precision
+   residuals, an uncorrected centre, and nothing anywhere to say something was wrong. It failed in
+   exactly the case the module exists to repair. Seeding from *differences between spots* cannot do
+   that: a difference of two spots is a lattice vector however badly the centre was picked.
+2. **One shortest difference is not enough either.** A spot clicked forty pixels off creates short
+   differences that are not lattice vectors, and a fit seeded from one of those is confident about a
+   lattice that does not exist. The seed is now a small search — six candidates, each fitted, the
+   best kept.
+3. **Ranking candidates by inlier count always prefers the finer lattice**, because halving a cell
+   explains every spot it explained before plus the mis-picked one. Candidates are now ranked by
+   evidence: a cell of area `A` puts about `π t² / A` of the plane within tolerance of some node, so
+   an inlier is worth `log(A / π t²)` nats and a lattice half as coarse pays `log 4` per inlier for
+   its extra nodes. The tolerance must be shared across candidates or the comparison is empty —
+   which is why it is a fraction of the shortest *observed spot separation*, a stand-in for picking
+   precision, and not a fraction of each candidate's own basis.
+4. **The reported basis angle was not a property of the lattice.** A square lattice came back as two
+   vectors 135° apart, which is correct and useless. The basis is now Gauss-reduced, so lengths and
+   included angle are invariants a user can read and 90° means rectangular.
+
+**Two honest limits, both now pinned by tests.** A centre wrong by an *exact lattice vector* is
+undetectable from geometry alone — every spot is still an exact node — and what identifies the
+transmitted beam is that it is the brightest thing on the plate, which is a judgement about
+intensity. And a centre more than half a spacing out cannot be refined without relabelling which
+node the origin is, so the fit is leashed there and says so rather than quietly choosing a different
+origin.
+
+Against the three practice plates: the true centre is recovered to within 3 px (the plates' own
+sub-pixel scatter) from offsets of 0, 12, 28 and 30 px, and a 47 px mis-pick is flagged in all nine
+placements tried.
+
+**Exact next action.** Increment 2: `pytex.diffraction.solution_scoring` — per-spot d-spacing and
+interspot-angle deviations, and a configurable fused score.
+
 ## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — COMPLETE (2026-08-14)
 
 **Objective.** Make the TEM panel of both shells usable for a researcher's day-to-day workflow

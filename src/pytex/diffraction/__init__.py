@@ -94,6 +94,11 @@ from pytex.diffraction.kinematic import (
     simulate_zone_axis_spots,
     zone_basis_from_axis,
 )
+from pytex.diffraction.lattice_fit import (
+    LatticeFitSpot,
+    PlanarLatticeFit,
+    fit_planar_lattice,
+)
 from pytex.diffraction.models import (
     DetectedSpotCluster,
     DetectorAcceptanceMask,
@@ -212,6 +217,7 @@ __all__ = [
     "KinematicSimulation",
     "KinematicSimulationConfig",
     "KinematicSpot",
+    "LatticeFitSpot",
     "MarchDollaseModel",
     "MeasuredSAEDPattern",
     "MeasuredSpot",
@@ -221,6 +227,7 @@ __all__ = [
     "PatternCalibration",
     "PatternSolution",
     "PatternSolutionReport",
+    "PlanarLatticeFit",
     "PointGroupDetermination",
     "PowderPattern",
     "PowderReflection",
@@ -269,6 +276,7 @@ __all__ = [
     "export_composite_saed",
     "extinction_distance_angstrom",
     "find_spot_coincidences",
+    "fit_planar_lattice",
     "flatten_direction_grid",
     "fringe_minimum_excitation_errors",
     "generate_powder_reflections",
