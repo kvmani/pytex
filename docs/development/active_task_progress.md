@@ -5,6 +5,78 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## TEM Module: Practice SAED Gallery And Zone-Axis Navigation — IN PROGRESS (2026-08-14)
+
+**Objective.** Make the TEM panel of both shells usable for a researcher's day-to-day workflow
+without needing a micrograph in hand. Ship a gallery of synthetic but scientifically exact SAED
+patterns — fcc [001], hcp [2̄110]-family, bcc [110] — that can be picked and indexed exactly like a
+real plate; add the infrastructure a real pattern needs (calibration from a known reflection,
+auto-detected picks, an answer-check against the simulated truth); and add a zone-axis navigation
+atlas that answers "what else can I reach from here, and how" rather than only "can I reach the one
+axis I typed".
+
+**Architecture.** Science stays in the library (`pytex.tem`, `pytex.diffraction`); the app layer
+holds only the curated catalogue and the JSON contract; the browser holds presentation only. No new
+JavaScript dependency, no build step. The synthetic pattern is transmitted as coordinates plus
+intensities, not as a raster, so the same picking code serves both a real uploaded image and a
+gallery entry.
+
+### Initial audit (worktree clean on `main` at `ff3cfcc`)
+
+- The TEM panel has two operations: `tem.solve_pattern` (pick → index) and `tem.plan_tilt`
+  (orientation → alpha/beta). Both are sound and well documented.
+- **The panel is unusable without a file.** Every one of its four examples is a tilt plan; the
+  picking canvas shows a placeholder until the user uploads an image, so the indexing half of the
+  panel — the half the microscope actually starts with — cannot be tried at all.
+- `pytex.diffraction.saed.generate_saed_pattern` already produces exact zone-axis spot geometry in
+  detector millimetres. Nothing converts that into the pixel-coordinate, finite-spot-size,
+  noise-bearing thing a user clicks on, and nothing renders it.
+- Tilt planning requires the user to already know which target axis they want. There is no surface
+  that enumerates the low-index axes of a phase, their angles from the current one, and which of
+  them the holder can reach — which is the question a microscopist actually has at the column.
+
+### Planned increments
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| 1 | `pytex.tem.synthetic`: detector-pixel synthetic SAED patterns, with tests | done | (this commit) |
+| 2 | `pytex.tem.atlas`: symmetry-reduced zone-axis atlas with angles from a current axis | done | (this commit) |
+| 3 | App: gallery catalogue, `tem.gallery_pattern`, `tem.zone_axis_atlas`, calibration helper | pending | |
+| 4 | Frontend: gallery, synthetic rendering, auto-pick, answer check, atlas navigation | pending | |
+| 5 | Docs: workflow page, theory cross-links, user guide, worked examples | pending | |
+| 6 | Human-style browser + desktop pass, defect fixes, closeout | pending | |
+
+### Increments 1 and 2 result
+
+- `pytex.tem.synthetic` projects a simulated zone-axis pattern onto a stated detector raster and
+  returns pixel coordinates, relative intensities and display radii — the last step between
+  `generate_saed_pattern` and something a user can click. `DetectorRaster` allows an off-centre
+  beam, because a real plate has one and a workflow that assumes the middle of the frame has not
+  been tested. Deterministic seeded jitter emulates centroiding error so residuals are realistic
+  rather than machine-epsilon, and `independent_seed_spots` skips Friedel pairs, which are
+  collinear through the beam and cannot seed an index.
+- `pytex.tem.atlas` enumerates the symmetry-distinct zone-axis families of a phase with the angle
+  from the axis currently on the beam, the family size, the reflection count inside a stated
+  cut-off, and the pattern's apparent n-fold symmetry — the last measured on the simulated spot
+  set rather than deduced from the point group, so it reports what the operator will actually
+  recognise on the screen.
+- **Convention fixed and documented:** the raster is the recorded image, with no handedness flip,
+  so a picked `(column, row)` is the detector `(X, Y)` scaled by the pixel pitch. The round-trip
+  tests hold the construction and `solve_saed_pattern` to that one convention.
+- 44 tests. Radii are checked against `r = (camera constant)/d`; angles against the cubic closed
+  forms (45°, 54.7356°) and the hcp basal-to-prism 90°; family sizes against the point-group orbit
+  sizes (3, 6, 4); and every gallery pattern is round-tripped through the real indexer at three
+  different rolls about the beam.
+- **Two assumptions were wrong and the tests now say so.** A roll about the beam does *not*
+  preserve the set of visible reflections, because a square frame clips differently as the pattern
+  turns — which is what a real plate does. And an indexed pattern fixes the zone axis only up to
+  symmetry, so a bcc [110] pattern legitimately indexes as [101]; the round-trip check compares
+  families, not index triples.
+- `ruff check .`, `mypy src` (135 files) and the new test module are green.
+
+**Exact next action.** Implement increment 3: the curated gallery catalogue and the two new
+operations in `pytex.app.services.tem`.
+
 ## Workbench Visual Modernization And GUI Completeness — COMPLETE (2026-08-14)
 
 **Objective.** Improve the shared desktop/web workbench with a professional, responsive modern

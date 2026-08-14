@@ -50,6 +50,12 @@ from pytex.tem.ambiguity import (
     analyze_ambiguity,
     observation_stabilizer,
 )
+from pytex.tem.atlas import (
+    ZoneAxisAtlas,
+    ZoneAxisEntry,
+    pattern_rotational_order,
+    zone_axis_atlas,
+)
 from pytex.tem.calibration import (
     TiltExcursionObservation,
     calibrate_from_tilt_excursions,
@@ -102,6 +108,12 @@ from pytex.tem.stage import (
     TiltRotateStage,
     beam_direction_holder,
 )
+from pytex.tem.synthetic import (
+    DetectorRaster,
+    SyntheticSAEDImage,
+    SyntheticSpot,
+    synthesize_saed_image,
+)
 
 __all__ = [
     "BEAM_AXIS_LABORATORY",
@@ -111,6 +123,7 @@ __all__ = [
     "AmbiguityLayer",
     "AmbiguityReport",
     "CurrentState",
+    "DetectorRaster",
     "DiscriminatingExperiment",
     "DoubleTiltStage",
     "EllipticalEnvelope",
@@ -130,6 +143,8 @@ __all__ = [
     "StageCalibration",
     "StageModel",
     "StagePosition",
+    "SyntheticSAEDImage",
+    "SyntheticSpot",
     "TiltEnvelope",
     "TiltExcursionObservation",
     "TiltPath",
@@ -137,6 +152,8 @@ __all__ = [
     "TiltPlanReport",
     "TiltRotateStage",
     "TiltSolution",
+    "ZoneAxisAtlas",
+    "ZoneAxisEntry",
     "ZoneAxisObservation",
     "analyze_ambiguity",
     "beam_direction_holder",
@@ -147,7 +164,10 @@ __all__ = [
     "orientation_from_indexed_pattern",
     "orientation_from_indexed_patterns",
     "orientations_from_pattern_report",
+    "pattern_rotational_order",
     "plan_path",
     "plan_tilt_to_zone_axis",
     "solve_tilts_for_direction",
+    "synthesize_saed_image",
+    "zone_axis_atlas",
 ]
