@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## TEM Spot Picking: Trustworthy Fit And Exact Coordinates — IN PROGRESS (2026-08-15)
+## TEM Spot Picking: Trustworthy Fit And Exact Coordinates — COMPLETE (2026-08-15)
 
 **Objective.** Make the TEM solver's picking surface trustworthy and exact. A user picking the
 beam and two spots was shown a lattice overlay whose origin and basis were nowhere near the picks.
@@ -35,33 +35,53 @@ type, and nudge — with the overlay re-fitting live.
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| T1 | Lattice fit: degrees-of-freedom guard, exact two-pick path, rank check, `centre_refined` | done | (this commit) |
-| T2 | Service contract: report what was refined and why; honest basis vectors | done | (this commit) |
-| T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | done | (this commit) |
-| T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | done | (this commit) |
-| T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | done | (this commit) |
-| T6 | Tests: unit, service, and Playwright; docs and changelog | done | (this commit) |
+| T1 | Lattice fit: degrees-of-freedom guard, exact two-pick path, rank check, `centre_refined` | done | `1b6a8da` |
+| T2 | Service contract: report what was refined and why; honest basis vectors | done | `1b6a8da` |
+| T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | done | `d615ff1` |
+| T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | done | `d615ff1` |
+| T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | done | `d615ff1`, `111c5e4` |
+| T6 | Tests, documentation and changelog | done | `2374ec5`, `111c5e4`, `de7f6b1` |
 
 ### Current worktree state
 
-Clean at `3473711` when the task started.
+Clean at `de7f6b1`, pushed to `main`.
 
-### Verified so far
+### Verified
 
-Driven in a real Chromium at 1520x900. Picking at 182% zoom after a pan stores exactly the
-coordinates aimed at (512.00/512.00, 452.48/709.30, 313.59/452.73); the fitted grid passes through
-all three; both basis arrows land on the picked spots; a typed beam x of 460 moves the beam and
-raises the green "fitted centre" marker 51.5 px away; indexing from those picks returns Al fcc
-[001] at score 0.989. 13 Playwright cases and the Python unit suite pass; ruff and mypy clean.
+Driven in a real Chromium at 1520x900, in light and dark, on a practice plate and on an uploaded
+micrograph:
 
-Two defects found and fixed during that verification, both invisible to the unit suite: focusing a
-coordinate field rebuilt the table and destroyed the field (so typing did nothing), and
-`state.selected` was already the *chosen solution*, so the pick selection silently broke the
-solution picker. The pick selection is now `state.selectedPick`.
+- **Picking under a moved camera.** At 182% zoom after a pan, three clicks store exactly the three
+  coordinates aimed at (512.00/512.00, 452.48/709.30, 313.59/452.73). The zoom survives each pick.
+- **Two picks.** The fitted grid passes through the beam and both spots; both basis arrows end on
+  the picked spots; the panel says the beam is held and why, and disables the refine button.
+- **Typed coordinates.** A beam x of 460 moves the beam, survives the fit that lands 200 ms later,
+  and raises the green "fitted centre" mark 51.5 px away with the distance stated.
+- **Centroid snap.** On an uploaded synthetic plate, clicks 4 px off three spots store coordinates
+  within 0.5 px of the true centres. A click on background stays where it was put.
+- **Indexing still follows.** Beam plus two picks index as Al fcc [001] at score 0.989.
 
-### Next actions
+14 Playwright cases (6 new), 6125 unit tests and the integration suite pass; `ruff check` and
+`mypy` are clean; the Sphinx warning ratchet holds.
 
-T6: documentation, changelog, and a final full-suite run.
+Three defects were found *by* that browser verification, none of them visible to the Python suite:
+focusing a coordinate field rebuilt the table and destroyed the field being typed into; the fit
+returning rebuilt it again 200 ms later; and `state.selected` already meant the *chosen solution*,
+so the new pick selection silently broke the solution picker. The pick selection is now
+`state.selectedPick`, and the panel updates in place rather than rebuilding.
+
+### Deliberately not done
+
+- **The centroid snap is not offered as a toggle.** It moves a click at most one window radius and
+  refuses when it would move further, and the status line says when and how far it moved. A switch
+  for it would be a setting to get wrong rather than a capability.
+- **`refine_centre=True` on three spots is declined, not honoured with a warning.** An exactly
+  determined solve reproduces the picks whatever they are; reporting it as a refined centre with a
+  caveat would still put a number on screen that means nothing.
+
+### Next task
+
+None claimed. This goal is complete.
 
 ## Repository Governance And Five-Feature Delivery Program — COMPLETE (2026-08-15)
 
