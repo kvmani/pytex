@@ -95,11 +95,29 @@ Before indexing, impose the one constraint the pattern already satisfies: its
 spots lie on a plane lattice. `pytex.diffraction.lattice_fit.fit_planar_lattice`
 does that, and two things follow.
 
-**The beam centre is solved for rather than clicked.** Four or more spots
-over-determine it, so least squares gives the centre that best explains all of
-them at once. This is worth more than it sounds: the camera equation measures
-every radius *from the beam*, so an error there biases every spacing in the same
-direction and produces a self-consistent answer for the wrong material.
+**The beam centre is solved for rather than clicked — once there are enough
+spots.** Four or more over-determine it, so least squares gives the centre that
+best explains all of them at once. This is worth more than it sounds: the camera
+equation measures every radius *from the beam*, so an error there biases every
+spacing in the same direction and produces a self-consistent answer for the wrong
+material.
+
+Below four spots the centre is *held where it was clicked*, and the fit says so.
+The model has six free parameters — four for the two basis vectors, two for the
+centre — and each spot contributes two equations, so three spots make the system
+exactly determined and two make it rank-deficient. Least squares does not refuse
+a rank-deficient system: it returns the minimum-norm solution, which shrinks the
+basis and slides the centre because that has a smaller norm while still passing
+through every pick. What comes back is a confident lattice with small residuals
+and no relation to the pattern. `PlanarLatticeFit.centre_refined` reports which
+happened, and the workbench disables *Refine beam from the spots* until a
+refinement would mean something.
+
+Two picks are a special case with an exact answer: they *are* the basis, one
+vector each, about the clicked origin. The fit returns exactly that, unreduced,
+so the arrow labelled $a$ keeps pointing at the spot picked first. It carries a
+note saying what it cannot do — with two picks nothing disagrees with anything,
+so the overlay is a restatement of the clicks rather than a test of them.
 
 **A mis-picked spot becomes visible.** The workbench draws the fitted lattice
 over the pattern as two families of ruled lines, with the two basis vectors as
@@ -108,11 +126,17 @@ arrow points at and every line in the grid turns with it — so the two picks wo
 being careful about are the two the arrows are on, and a spot clicked one node
 out, or on a dust particle, stops matching the grid.
 
-The panel offers both a directional pad for nudging the beam by a chosen step and
-a *Refine from the spots* button, because the two are needed for different
+The panel offers both a directional pad for nudging by a chosen step and a
+*Refine beam from the spots* button, because the two are needed for different
 reasons. The refinement is better than any single click; but a centre wrong by an
 exact lattice vector fits perfectly, and only a person looking at which spot is
 brightest can settle that one.
+
+When the fit does solve for the centre and disagrees with the click, both are
+drawn: the clicked beam as the white crosshair it always was, the fitted centre
+as a separate dashed green mark joined to it by a dashed line, with the distance
+between them in the pick table. The fitted centre is a proposal until the button
+is pressed — it is never substituted for the pick silently.
 
 The full method, its three failure modes and its two irreducible limits are in
 [Fitting the pattern lattice, and scoring the solutions](../theory/lattice_fit_and_solution_scoring.md).
@@ -125,6 +149,30 @@ sufficient.
 Click the transmitted beam first. It is not a reflection; it is the origin every
 spot is measured from, so an error there biases every d-spacing in the pattern at
 once.
+
+### Picking exactly
+
+A click carries the precision of a mouse over a spot a few pixels across, which
+is not always the precision the measurement deserves. Three things close that
+gap, and none of them replaces clicking:
+
+- **The click is snapped to the spot it landed on** — to the intensity-weighted
+  centroid of a small window on an uploaded micrograph, and to the known centre
+  on a practice plate. A click on background stays where it was put, because
+  picking background is a legitimate thing to do.
+- **Zoom in and pick.** The wheel, the zoom buttons and the pan tool move the
+  camera, and the view now stays where it was put across the redraw that follows
+  each pick. Coordinates are read through the camera, so a pick made at any zoom
+  or pan lands under the pointer.
+- **Type the coordinate.** Every pick — the beam included — appears in the rail
+  as an editable `x` and `y` in picking units, with its radius, d-spacing and
+  angle from the first spot beside it. Type a coordinate, or select a row and
+  nudge it with the pad or the arrow keys, down to 0.1 px. The lattice re-fits
+  as you go. A row can also be removed, or promoted to the transmitted beam,
+  which swaps it with the current beam rather than discarding it.
+
+The whole set is readable and writable as text, one `x, y` per line with the
+beam first, so a measurement can leave the session and come back to it.
 
 Then pick reflections. Two non-collinear ones are the minimum that fixes a zone
 axis, and *non-collinear* is the operative word: the brightest spots of a pattern

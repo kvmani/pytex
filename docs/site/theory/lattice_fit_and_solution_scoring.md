@@ -44,6 +44,34 @@ right-hand side. There is no optimizer and no starting-value sensitivity. The
 integers come from rounding $B^{-1}(\mathbf{p}_i - \mathbf{c})$, and the two
 steps alternate until the integers stop moving — usually two or three rounds.
 
+### When there are not enough spots to estimate it
+
+$2N \ge 6$ is a condition, not a remark. At $N = 3$ the system is exactly
+determined: it reproduces the three picks whatever they are, and the "refined"
+centre is an algebraic consequence of the clicks rather than a measurement of
+anything. At $N = 2$ it is rank-deficient, with a whole one-parameter family of
+$(\mathbf{a}, \mathbf{b}, \mathbf{c})$ passing through both picks — trade a
+shorter basis against a displaced origin and the residuals stay at zero.
+
+`lstsq` does not report this. Given a rank-deficient design it returns the
+**minimum-norm** member of the solution space, which is precisely the one with
+the shrunken basis and the moved centre. Two spots $208$ units from the beam,
+orthogonal, returned basis vectors of $25$ and $54$ units, the two picks
+assigned to nodes $(3, 4)$ and $(-8, 1)$, and a centre $12.7$ units from the
+click — with residuals small enough to look like a good fit, because a lattice
+that fine explains anything.
+
+So refinement requires $N \ge 4$, and is declined with a stated reason below
+that; `PlanarLatticeFit.centre_refined` records what was done. Every design
+matrix is rank-checked before `lstsq` sees it, and a deficient one is a dead
+trial rather than a silent answer.
+
+$N = 2$ then has an exact treatment: the two offsets from the held centre *are*
+the basis, one vector each, and the fit returns them without Gauss reduction so
+that $\mathbf{a}$ still points at the spot picked first. It is honest about being
+a restatement: with two picks nothing can disagree with anything, so the overlay
+tests nothing until a third spot arrives.
+
 ### Three failure modes, and what answers them
 
 **Seeding from the centre subdivides the cell.** The trial basis must come from

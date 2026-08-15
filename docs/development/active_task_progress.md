@@ -40,7 +40,7 @@ type, and nudge — with the overlay re-fitting live.
 | T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | done | (this commit) |
 | T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | done | (this commit) |
 | T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | done | (this commit) |
-| T6 | Tests: unit, service, and Playwright; docs and changelog | pending | |
+| T6 | Tests: unit, service, and Playwright; docs and changelog | done | (this commit) |
 
 ### Current worktree state
 

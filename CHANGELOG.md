@@ -11,7 +11,45 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A lattice fitted to two or three picks was silently wrong.** `fit_planar_lattice` refined the
+  beam centre whenever it was asked to, including where the picks cannot support it: the model has
+  six free parameters and each spot gives two equations, so three spots make the system exactly
+  determined and two make it rank-deficient. `lstsq` answers a rank-deficient system with the
+  minimum-norm solution rather than failing, which shrinks the basis and displaces the origin while
+  still passing through every pick. Two orthogonal picks 208 units from the beam produced basis
+  vectors of 25 and 54 units, nodes (3, 4) and (−8, 1), and a centre 12.7 units from the click —
+  with small residuals, so nothing looked wrong. The centre is now refined only from four spots up
+  and held with a stated reason below that, every design matrix is rank-checked before it is
+  solved, and two picks take an exact path: they *are* the basis, about the clicked origin,
+  unreduced so that `a` still points at the spot picked first. `PlanarLatticeFit.centre_refined`
+  reports which happened. **Any two- or three-pick lattice fit, and any beam centre taken from
+  one, should be recomputed.**
+
+- **A TEM pick made after zooming or panning landed in the wrong place.** The solver panel
+  converted pointer events against the element's bounding box, which ignores the `viewBox` camera
+  introduced with the zoom and pan controls, so every pick after a camera move was displaced by the
+  camera offset. Picking now goes through the plot frame that owns the camera, and the view is
+  preserved across the redraw that follows a pick, so zooming in to place a spot precisely works.
+
 ### Added
+
+- **The TEM picks are editable coordinates, not only clicks.** Every pick — the transmitted beam
+  included — appears in the rail as an editable `x` and `y` with its radius, d-spacing and angle
+  from the first spot beside it. Type a coordinate, or select a row and nudge it with the pad or
+  the arrow keys down to 0.1 px, and the lattice re-fits live. Rows can be removed or promoted to
+  the transmitted beam, which swaps with the current beam rather than discarding it, and the whole
+  set reads and writes as text so a measurement survives the session. A click is snapped to the
+  spot it landed on — the intensity-weighted centroid on an uploaded micrograph, the known centre
+  on a practice plate — while a click on background stays where it was put.
+
+- **The pattern overlay says which marks are measured and which are fitted.** The fitted centre is
+  drawn as its own mark joined to the clicked beam by a dashed line, and only when the fit actually
+  solved for it, instead of the grid being drawn from one origin and the crosshair from another
+  with nothing to say so. The picks, the fitted grid, the basis vectors and the calculated pattern
+  now carry four distinct colours, and a basis arrow that lands on no pick is dashed rather than
+  drawn as if it were a picked spot.
 
 - **The figure fits the window, and its controls travel with it.** Every plot card is now sized by
   the visible stage rather than by the drawing inside it, so the complete figure is on screen when a
