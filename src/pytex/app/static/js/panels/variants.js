@@ -365,7 +365,10 @@ export function mount(context) {
   }
 
   renderControls();
-  context.stage.append(frame.element, legend, details);
+  // The legend is a control, so it rides inside the frame rather than under it:
+  // toggling a source and seeing the drawing change must not need a scroll.
+  frame.setControls(legend);
+  context.stage.append(frame.element, details);
   if (examples.length) loadExample(examples[0]);
 
   return { help: () => state.operation };

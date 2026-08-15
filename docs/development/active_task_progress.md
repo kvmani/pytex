@@ -2657,3 +2657,62 @@ Worth recording as a methodological point the section now makes: correcting the 
 the triad sum by 0.002, well inside its own scatter, so the sum rule could not have found this
 error. The row arithmetic did. The two checks are complementary, and both need the intermediate
 columns to be published.
+
+## Workbench viewport: figures that fit, pan everywhere, measured picks on the plate (2026-08-15)
+
+Reported from the desktop shell: every panel opened with the figure running past the bottom of the
+window, so the first action on every tab was a vertical scroll; the plot controls that live below a
+figure (the variant packet legend, the pattern source chips) were under the fold with it; zoom
+stopped at 100%; and there was no pan control other than the undiscoverable Shift-drag.
+
+### What was wrong
+
+The plot card had `flex: 1 0 auto` and a `min-height` floor, and the SVG inside it was in flow with
+`height: 100%` of a parent whose height was being derived from its content. The browser resolves
+that by falling back to the SVG's intrinsic aspect ratio, so a square pole figure on a 1057 px wide
+stage claimed 1147 px of height in a 759 px window. Nothing reported an error; the figure simply
+never fitted.
+
+### What changed
+
+- `.plot` is sized from the stage — `height: calc(100% - 1.5rem)` against a definite stage height —
+  and the drawing is positioned out of flow inside it, so content can no longer drive the card.
+  The sliver left over shows the top of the next card, which is how the result tables announce
+  themselves now that the figure no longer overflows into them.
+- `plotFrame` gained a control strip (inside the card, under the drawing) and an overlay slot (top
+  left of the drawing). Every panel's legend moved into the strip; the hover detail card moved to
+  the opposite corner so the two cannot collide.
+- Zoom floor dropped from 1.0 to 0.2, and the camera bound was restated in terms of the box centre
+  rather than its edges — the edge form has no solution once the viewport is wider than the drawing
+  plus its margins, which is exactly what zooming out produces.
+- A pan tool on every plot toolbar, including the Crystal Viewer, which now carries a view-space
+  `camera.pan` and the same zoom/pan/readout controls as the 2-D frames. A drag that moved swallows
+  the click it synthesises, so panning the TEM plate no longer drops a pick.
+- Rail load: presentation-only groups (`.appearance`) start collapsed behind a gear mark, and the
+  TEM solver's four steps are a native `<details name>` accordion that `openStep` advances with the
+  workflow. Its rail went from 3483 px to 1068 px against a 759 px window.
+- TEM measurement overlay: radius, d-spacing, ratio to the first pick and angle from it, computed
+  from the picked coordinates and the calibration only. Deliberately not from the fit or the
+  solution, so it can be compared with the indexed answer instead of restating it.
+
+### Verified
+
+Driven in the browser at 1520x860, 1280x720 and 375x812. Three new Playwright cases pin the
+behaviour: every panel's card and control strip inside the stage with a drawing over 150 px tall;
+zoom below 100% then pan then Fit; and the TEM overlay appearing on pick, reporting a 1.000 self
+ratio, and clearing with the picks. Seven browser tests and the Python unit and integration suites
+pass.
+
+### Deliberately not done
+
+- **The phone layout keeps its scroll.** Below 48 rem the stage is a third of the window, and a card
+  sized to it would be all frame and no drawing, so there the figure takes 62vh and the page
+  scrolls. Stated after `.plot` in the stylesheet, not in the earlier narrow-width block, which
+  would lose on source order.
+- **The measurement overlay is not exported.** It reports picks, which the CSV export already
+  carries as coordinates; a second, differently-rounded copy of the same numbers in a file is a
+  disagreement waiting to happen.
+
+### Next task
+
+None claimed. This goal is complete.

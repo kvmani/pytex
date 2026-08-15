@@ -25,7 +25,7 @@
  * looking at, what is it, where should I go next, how do I get there.
  */
 
-import { el, formatNumber, markdown, svg } from '../core/dom.js';
+import { append, el, formatNumber, markdown, svg } from '../core/dom.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
@@ -212,9 +212,38 @@ export function mount(context) {
     onclick: () => planTilt(),
   });
 
+  /*
+   * The four steps are one accordion, not four open panels.
+   *
+   * Open together they are 3400 px of rail against 760 px of window, so every
+   * step but the first was reached by scrolling and the step being worked on was
+   * rarely the one on screen. `name` makes the browser close the others when one
+   * opens — the steps are sequential, so exactly one is ever the current one —
+   * and `openStep` moves the accordion on as the workflow advances, which is
+   * what the scroll calls below were already trying to do by hand.
+   */
+  const STEP_GROUP = 'tem-workflow';
+  const stepOne = el('details.group.step', { name: STEP_GROUP, open: true }, [
+    el('summary', { text: '1 · Open a pattern' }),
+  ]);
+  const stepTwo = el('details.group.step', { name: STEP_GROUP }, [
+    el('summary', { text: '2 · Calibrate and index' }),
+  ]);
+  const stepThree = el('details.group.step', { name: STEP_GROUP }, [
+    el('summary', { text: '3 · Where to go next' }),
+  ]);
+  const stepFour = el('details.group.step', { name: STEP_GROUP }, [
+    el('summary', { text: '4 · Tilt to the target' }),
+  ]);
+
+  /** Open a step and put it on screen; a no-op if it is already the open one. */
+  function openStep(step) {
+    step.open = true;
+    step.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   context.rail.append(
-    el('details.group', { open: true }, [
-      el('summary', { text: '1 · Open a pattern' }),
+    append(stepOne, [
       el('div.group__body', {}, [
         el('p.field__help', {
           text:
@@ -238,8 +267,7 @@ export function mount(context) {
         galleryButton,
       ]),
     ]),
-    el('details.group', { open: true }, [
-      el('summary', { text: '2 · Calibrate and index' }),
+    append(stepTwo, [
       el('div.group__body', {}, [
         el('p.field__help', {
           text:
@@ -252,8 +280,7 @@ export function mount(context) {
         solveButton,
       ]),
     ]),
-    el('details.group', { open: true }, [
-      el('summary', { text: '3 · Where to go next' }),
+    append(stepThree, [
       el('div.group__body', {}, [
         el('p.field__help', {
           text:
@@ -265,10 +292,7 @@ export function mount(context) {
         atlasButton,
       ]),
     ]),
-    el('details.group', { open: true }, [
-      el('summary', { text: '4 · Tilt to the target' }),
-      el('div.group__body', {}, [tiltHost, tiltButton]),
-    ]),
+    append(stepFour, [el('div.group__body', {}, [tiltHost, tiltButton])]),
     el('details.group', {}, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
@@ -409,6 +433,8 @@ export function mount(context) {
         extra: [galleryGuidance(result)],
       });
       state.teaches = null;
+      // The pattern is open; picking is what happens next.
+      openStep(stepTwo);
     } catch (error) {
       context.showError(error);
     } finally {
@@ -834,11 +860,86 @@ export function mount(context) {
       },
     });
     frame.setContent(root);
+    frame.setOverlay(measurementCard());
     frame.setStatus(
       state.picks.centre
         ? `Beam marked · ${state.picks.spots.length} spot(s) picked · click to add more`
         : 'Click the transmitted beam first — it is the origin every spot is measured from',
     );
+  }
+
+  /**
+   * What the picks measure, on the pattern rather than under it.
+   *
+   * A zone axis is identified from three numbers per spot and nothing else:
+   * the d-spacing, its ratio to the first spot's, and the angle between them.
+   * Those are the numbers an experienced microscopist reads off a plate against
+   * a table of the phase, and they are worth having in view *while* picking —
+   * a ratio near 1.000 with a 90° angle says "two ⟨220⟩ at right angles" before
+   * any indexing runs, and a ratio that lands on nothing sensible says a pick
+   * is on the wrong spot while it is still cheap to undo.
+   *
+   * Measured, not fitted: these come from the clicked coordinates and the
+   * calibration, with no solution involved, so they can be compared with the
+   * indexed answer rather than being a restatement of it. The first picked spot
+   * is the reference for both the ratio and the angle, which is the convention
+   * of every ratio table in the literature.
+   */
+  function measurementCard() {
+    const spots = state.picks.spots;
+    if (!state.picks.centre || !spots.length) return null;
+    const [cx, cy] = state.picks.centre;
+    const rows = spots.map((spot, index) => {
+      const dx = spot.x - cx;
+      const dy = spot.y - cy;
+      const g = reciprocalRadius(dx, dy);
+      return { index: index + 1, dx, dy, r: Math.hypot(dx, dy), d: g > 0 ? 1 / g : null };
+    });
+    const reference = rows[0];
+
+    /** The angle at the beam between this spot and the first, in degrees. */
+    const angleToReference = (row) => {
+      const norms = row.r * reference.r;
+      if (!norms) return null;
+      const cosine = (row.dx * reference.dx + row.dy * reference.dy) / norms;
+      return (Math.acos(Math.min(Math.max(cosine, -1), 1)) * 180) / Math.PI;
+    };
+
+    const cell = (text, className = '') =>
+      el(className ? `td.${className}` : 'td', { text });
+
+    return el('div.measure', {}, [
+      el('div.measure__title', { text: `Measured picks · ${rows.length} spot(s)` }),
+      el('table.measure__table', {}, [
+        el('thead', {}, [
+          el('tr', {}, [
+            el('th', { text: '#' }),
+            el('th', { text: 'R / px' }),
+            el('th', { text: 'd / Å' }),
+            el('th', { text: `d${reference.index}/d`, title: 'Ratio to the first picked spot' }),
+            el('th', { text: '∠ / °', title: 'Angle at the beam from the first picked spot' }),
+          ]),
+        ]),
+        el(
+          'tbody',
+          {},
+          rows.map((row) => {
+            const angle = angleToReference(row);
+            const ratio = row.d && reference.d ? reference.d / row.d : null;
+            return el('tr', {}, [
+              cell(String(row.index)),
+              cell(formatNumber(row.r, 1), 'measure__num'),
+              cell(row.d ? formatNumber(row.d, 4) : '—', 'measure__num'),
+              cell(ratio ? formatNumber(ratio, 3) : '—', 'measure__num'),
+              cell(row.index === reference.index ? '—' : formatNumber(angle, 2), 'measure__num'),
+            ]);
+          }),
+        ),
+      ]),
+      el('p.measure__note', {
+        text: 'From the picked coordinates and the calibration — no solution involved.',
+      }),
+    ]);
   }
 
   /**
@@ -1387,7 +1488,7 @@ export function mount(context) {
         `${formatNumber(entry.score, 3)}). It is now the starting orientation for the zone-axis ` +
         'list and the tilt plan below.',
     );
-    atlasButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    openStep(stepThree);
   }
 
   async function runAtlas() {
@@ -1465,7 +1566,7 @@ export function mount(context) {
     if (!indices) return;
     state.tiltForm.setValues({ target_zone_axis: indices });
     frame.setStatus(`Target set to ${label ?? indices.join(' ')} — plan the tilt below.`);
-    tiltButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    openStep(stepFour);
     tiltButton.focus();
   }
 

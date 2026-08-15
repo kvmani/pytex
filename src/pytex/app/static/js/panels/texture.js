@@ -265,7 +265,7 @@ function contourStyleControl(style, { disabled, onChange, onReset }) {
     ]),
     el('button.button', { type: 'button', text: 'Reset contour properties', onclick: onReset }),
   );
-  return el('details.group.appearance', { open: true }, [
+  return el('details.group.appearance', {}, [
     el('summary', { text: 'Contour properties' }),
     el('div.group__body', {}, [
       el('p.field__help', {
@@ -517,7 +517,10 @@ export function mount(context) {
 
   renderControls();
   renderAppearanceControls();
-  context.stage.append(frame.element, legend, details);
+  // The legend is a control, so it rides inside the frame rather than under it:
+  // toggling a source and seeing the drawing change must not need a scroll.
+  frame.setControls(legend);
+  context.stage.append(frame.element, details);
   if (examples.length) loadExample(examples[0]);
 
   return { help: () => state.operation };

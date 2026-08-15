@@ -30,6 +30,12 @@ export const panel = {
 /** Half-width of the drawing area in viewBox units. The scene is scaled to fit. */
 const VIEW = 100;
 
+/* Zoom limits. Reset draws the scene at 100%, and below it is as useful as
+ * above: a large supercell seen whole, with room around it, is what "zoom out"
+ * is asked for. */
+const ZOOM_MIN = 0.2;
+const ZOOM_MAX = 12;
+
 const DEFAULT_APPEARANCE = Object.freeze({
   showAtoms: true,
   showBonds: true,
@@ -190,7 +196,7 @@ function appearanceControl(appearance, scene, { onChange, onReset }) {
   const species = Object.entries(appearance.speciesColors).sort(([left], [right]) =>
     left.localeCompare(right),
   );
-  return el('details.group.appearance', { open: true }, [
+  return el('details.group.appearance', {}, [
     el('summary', { text: 'Object properties' }),
     el('div.group__body', {}, [
       el('p.field__help', {
@@ -304,7 +310,17 @@ export function mount(context) {
   const renderOperation = operations.find((entry) => entry.id === 'crystal.render');
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
-  const camera = { rotation: identity(), zoom: 1, scale: 1, centre: [0, 0, 0] };
+  // `pan` is a translation in view coordinates, applied after the projection:
+  // the 3-D camera has no viewBox to move, so panning is the only way to bring
+  // a corner of a large cell to the middle of the picture without turning it.
+  const camera = {
+    rotation: identity(),
+    zoom: 1,
+    scale: 1,
+    centre: [0, 0, 0],
+    pan: { x: 0, y: 0 },
+    panTool: false,
+  };
   const state = {
     scene: null,
     result: null,
@@ -326,6 +342,40 @@ export function mount(context) {
     ],
   );
 
+  /*
+   * The viewer owns its own camera, so it also owns the buttons the shared plot
+   * frame gives every other panel. They are the same controls in the same order
+   * — zoom out, readout, zoom in, pan — because a reader moving between the
+   * structure and a pole figure should not have to learn two viewers.
+   */
+  const zoomReadout = el('output.plot__zoom', { text: '100%', title: 'Current view zoom' });
+  const setZoom = (value) => {
+    camera.zoom = Math.min(Math.max(value, ZOOM_MIN), ZOOM_MAX);
+    zoomReadout.textContent = `${Math.round(camera.zoom * 100)}%`;
+    draw();
+  };
+  const zoomOutButton = el('button.button.button--icon', {
+    type: 'button', text: '−', title: 'Zoom out', 'aria-label': 'Zoom out',
+    onclick: () => setZoom(camera.zoom / 1.2),
+  });
+  const zoomInButton = el('button.button.button--icon', {
+    type: 'button', text: '+', title: 'Zoom in', 'aria-label': 'Zoom in',
+    onclick: () => setZoom(camera.zoom * 1.2),
+  });
+  const panButton = el('button.button.button--icon', {
+    type: 'button',
+    text: '✥',
+    title: 'Pan tool: drag to move the structure instead of turning it',
+    'aria-label': 'Pan tool',
+    'aria-pressed': 'false',
+    onclick: () => {
+      camera.panTool = !camera.panTool;
+      panButton.setAttribute('aria-pressed', String(camera.panTool));
+      const surface = frame.element.querySelector('svg');
+      if (surface) surface.dataset.pan = camera.panTool ? 'tool' : '';
+    },
+  });
+
   const frame = plotFrame({
     title: 'Structure',
     viewport: false,
@@ -335,6 +385,10 @@ export function mount(context) {
     formatCursor: (point) =>
       `${formatNumber(point.x, 2)}, ${formatNumber(point.y, 2)}, ${formatNumber(point.z, 2)} Å`,
     toolbar: [
+      zoomOutButton,
+      zoomReadout,
+      zoomInButton,
+      panButton,
       viewButton('a', [1, 0, 0]),
       viewButton('b', [0, 1, 0]),
       viewButton('c', [0, 0, 1]),
@@ -482,6 +536,8 @@ export function mount(context) {
   function resetCamera() {
     camera.rotation = multiply(rotationX(-1.2), rotationY(0.6));
     camera.zoom = 1;
+    camera.pan = { x: 0, y: 0 };
+    zoomReadout.textContent = '100%';
     if (state.scene) {
       camera.centre = state.scene.centre;
       camera.scale = (VIEW * 0.82) / (state.scene.radius || 1);
@@ -520,19 +576,39 @@ export function mount(context) {
 
   frame.element.addEventListener('pointerdown', (event) => {
     if (!state.scene || !event.target.closest('svg')) return;
-    dragging = { x: event.clientX, y: event.clientY };
+    // Panning and turning are the same gesture told apart by modifier, tool or
+    // button, in the same way as on every other plot in the application.
+    const panning = event.button === 1 || event.shiftKey || camera.panTool;
+    dragging = { x: event.clientX, y: event.clientY, panning };
     frame.element.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
   frame.element.addEventListener('pointermove', (event) => {
     if (!dragging) return;
-    const dx = (event.clientX - dragging.x) * 0.01;
-    const dy = (event.clientY - dragging.y) * 0.01;
-    dragging = { x: event.clientX, y: event.clientY };
+    const moveX = event.clientX - dragging.x;
+    const moveY = event.clientY - dragging.y;
+    dragging = { ...dragging, x: event.clientX, y: event.clientY };
+    if (dragging.panning) {
+      // Screen pixels to view units: the drawing is VIEW-wide in a box the
+      // browser letterboxes, so a pixel is worth 2·VIEW / the rendered width.
+      const surface = frame.element.querySelector('svg');
+      const width = surface?.getBoundingClientRect().width || 1;
+      const height = surface?.getBoundingClientRect().height || 1;
+      const perPixel = (2 * VIEW) / Math.min(width, height);
+      camera.pan = {
+        x: camera.pan.x + moveX * perPixel,
+        y: camera.pan.y + moveY * perPixel,
+      };
+      draw();
+      return;
+    }
     // Rotate about the *screen* axes, not the model's: pre-multiplying keeps
     // "drag right turns right" true no matter how the crystal is already
     // oriented, which is what makes the control feel like a physical object.
-    camera.rotation = multiply(multiply(rotationY(dx), rotationX(dy)), camera.rotation);
+    camera.rotation = multiply(
+      multiply(rotationY(moveX * 0.01), rotationX(moveY * 0.01)),
+      camera.rotation,
+    );
     draw();
   });
   for (const ending of ['pointerup', 'pointercancel']) {
@@ -549,8 +625,7 @@ export function mount(context) {
       'wheel',
       (event) => {
         event.preventDefault();
-        camera.zoom = Math.min(Math.max(camera.zoom * (event.deltaY < 0 ? 1.12 : 0.89), 0.2), 12);
-        draw();
+        setZoom(camera.zoom * (event.deltaY < 0 ? 1.12 : 0.89));
       },
       { passive: false },
     );
@@ -951,14 +1026,16 @@ function projectPoint(camera, point) {
   ];
   const rotated = applyMatrix(camera.rotation, centred);
   const scale = camera.scale * camera.zoom;
-  return { x: rotated[0] * scale, y: -rotated[1] * scale, depth: rotated[2] };
+  const pan = camera.pan ?? { x: 0, y: 0 };
+  return { x: rotated[0] * scale + pan.x, y: -rotated[1] * scale + pan.y, depth: rotated[2] };
 }
 
 /** Invert the projection for the cursor readout, on the plane through the centre. */
 function cameraToCrystal(camera, x, y) {
   const scale = camera.scale * camera.zoom;
   if (!scale) return null;
-  const view = [x / scale, -y / scale, 0];
+  const pan = camera.pan ?? { x: 0, y: 0 };
+  const view = [(x - pan.x) / scale, -(y - pan.y) / scale, 0];
   const model = applyTranspose(camera.rotation, view);
   return {
     x: model[0] + camera.centre[0],

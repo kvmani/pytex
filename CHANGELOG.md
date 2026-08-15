@@ -13,6 +13,20 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The figure fits the window, and its controls travel with it.** Every plot card is now sized by
+  the visible stage rather than by the drawing inside it, so the complete figure is on screen when a
+  panel opens instead of running past the bottom of the window. A legend that toggles what is drawn
+  moved inside the card, under the figure, where it stays visible with the plot it controls. Zoom
+  now runs below 100% as well as above it, and every plot — including the Crystal Viewer's 3-D
+  camera — carries a pan tool alongside the existing Shift-drag and middle-drag. Presentation-only
+  control groups start collapsed behind a settings mark, and the TEM solver's four workflow steps
+  are one accordion that advances with the work.
+
+- **Measured picks on the TEM pattern.** The solver draws the picked spots' radius, d-spacing, ratio
+  to the first pick and angle from it in the top-left of the pattern, taken from the clicked
+  coordinates and the calibration with no solution involved — the numbers a zone axis is identified
+  from, beside the pattern while picking rather than in a table under it.
+
 - **Named-component ODF fitting.** `fit_odf_components` fits declared texture-component kernels
   plus an optional random term with non-negative fractions constrained to sum to one.
   `ODFComponentFit` carries observed/predicted normalized densities, RMS/maximum residuals, $R^2$,

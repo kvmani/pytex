@@ -695,6 +695,21 @@ table.result tbody tr:hover {
   color: var(--accent);
 }
 
+/*
+ * The presentation-only groups carry a settings mark and start closed.
+ *
+ * They are long — a dozen colour and level controls each — and they change only
+ * how the figure is drawn, never a number. Open by default they pushed the run
+ * button and the inputs that do change numbers below the fold of the rail on a
+ * laptop. The gear says what kind of group this is, so it is found when wanted.
+ */
+.group.appearance > summary::after {
+  content: "⚙";
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-size: 0.875rem;
+}
+
 .group__body {
   padding: 0.25rem 0.75rem 0.75rem;
   display: flex;
@@ -1280,21 +1295,31 @@ button:focus-visible {
 /* ------------------------------------------------------------ plot frame */
 
 /*
- * The stage gives the plot everything it has, but never nothing.
+ * The plot is sized by the window, not by its content.
  *
  * `flex: 1` alone collapses the plot to zero height, because the SVG inside is
  * sized at 100% of a parent whose height is being derived from its content —
- * a circular dependency the browser resolves as zero, silently. The result is a
- * blank stage and a cursor readout that never fires because the element has no
- * area. So the plot declares a floor it can grow from, and the result cards
- * below it scroll.
+ * a circular dependency the browser resolves as zero, silently. Letting the SVG
+ * win instead is the opposite failure and the one that shipped: a square figure
+ * on a wide stage took its width as its height, so a 1057 px pole figure stood
+ * in a 759 px window and the reader met a plot they had to scroll to see whole.
+ *
+ * So the height is stated in terms of the stage, which has a definite height of
+ * its own: the plot fills the visible stage bar a sliver, which both guarantees
+ * the whole figure is on screen at Fit and leaves the top of the next card
+ * showing, so the result tables below announce themselves. `.plot__canvas`
+ * takes the SVG out of flow (below) so nothing inside can push back.
  */
 .plot {
   margin: 0;
   display: flex;
   flex-direction: column;
-  flex: 1 0 auto;
-  min-height: min(62vh, 34rem);
+  flex: none;
+  height: calc(100% - 1.5rem);
+  /* A floor, but never one taller than the window it is in: on a phone the
+   * stage is shorter than 20 rem and a fixed floor would reintroduce the very
+   * scroll this height is here to remove. */
+  min-height: min(20rem, 60vh);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -1475,13 +1500,22 @@ button:focus-visible {
   display: flex;
 }
 
+/* The SVG is positioned out of flow deliberately. In flow, an SVG with an
+ * aspect-ratio-bearing viewBox and `height: 100%` of an indefinite parent falls
+ * back to its intrinsic size and drives the card's height from the inside;
+ * absolute means the card's height is the only input and the drawing letterboxes
+ * into whatever is left. */
 .plot__canvas {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
 }
 
-.plot__canvas > svg {
+.plot__canvas > svg,
+.plot__canvas > canvas {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
@@ -1492,8 +1526,61 @@ button:focus-visible {
   touch-action: none;
 }
 
-.plot__surface[data-panning="true"] {
+/* Keyed off the attribute rather than `.plot__surface`, because the crystal
+ * viewer drives its own camera and never gets that class, but it offers the
+ * same pan tool and must show the same cursor for it. */
+.plot__canvas > svg[data-pan="tool"] {
+  cursor: grab;
+}
+
+.plot__surface[data-panning="true"],
+.plot__canvas > svg[data-pan="tool"][data-panning="true"] {
   cursor: grabbing;
+}
+
+/*
+ * The figure's own controls, inside the card and under the drawing.
+ *
+ * Capped and scrolled internally rather than allowed to grow: a pattern with
+ * twenty-four legend chips must not be able to take the drawing's height, and
+ * three lines of chips is already more than anyone reads at once.
+ */
+.plot__controls {
+  flex: none;
+  /* Never more than a third of the card, whatever 6.5 rem is worth in it: on a
+   * short window the strip and the header together could otherwise leave the
+   * drawing a few pixels tall. */
+  max-height: min(6.5rem, 32%);
+  overflow: auto;
+  padding: 0.4rem 0.875rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-raised) 88%, var(--accent-soft));
+}
+
+.plot__controls > .legend {
+  padding: 0;
+}
+
+/*
+ * On a phone the stage is a third of the window — the masthead, the rail and
+ * the activity bar have the rest — and a plot sized to it would be all frame
+ * and no drawing. There the figure takes a fixed share of the window and the
+ * page scrolls, which is the trade the wide layout does not have to make.
+ *
+ * Stated here rather than in the narrow-width block above, because that block
+ * is earlier in the file than `.plot` and would lose to it on source order.
+ */
+@media (max-width: 48rem) {
+  .plot {
+    height: auto;
+    min-height: min(62vh, 34rem);
+  }
+}
+
+/* A panel that hides its legend — the spectrum view has nothing to toggle —
+ * must not leave a bordered empty strip behind where the legend used to be. */
+.plot__controls:not(:has(> :not([hidden]))) {
+  display: none;
 }
 
 .plot__zoom {
@@ -1522,9 +1609,79 @@ button:focus-visible {
   text-align: right;
 }
 
-.plot__detail {
+/*
+ * A panel's own readout, over the top-left of the drawing.
+ *
+ * Non-interactive, capped, and scrolled internally: it reports on the picture
+ * it sits on and must never take a click from it or grow over it. The hover
+ * card moved to the opposite corner so the two cannot cover each other.
+ */
+.plot__overlay {
   position: absolute;
   left: 0.5rem;
+  top: 0.5rem;
+  max-width: min(24rem, 46%);
+  max-height: min(18rem, 70%);
+  overflow: auto;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg-raised) 86%, transparent);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+  font-size: 0.72rem;
+}
+
+/* The TEM measurement card. Monospaced numerals and tabular figures, because
+ * the column is read down as a set of ratios and jittering digit widths make
+ * that comparison harder than it needs to be. */
+.measure {
+  padding: 0.4rem 0.5rem;
+}
+
+.measure__title {
+  color: var(--ink-muted);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.measure__table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.measure__table th,
+.measure__table td {
+  padding: 0.05rem 0.4rem 0.05rem 0;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.measure__table th {
+  color: var(--ink-faint);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+}
+
+.measure__num {
+  text-align: right;
+}
+
+.measure__note {
+  margin: 0.3rem 0 0;
+  color: var(--ink-faint);
+  font-size: 0.65rem;
+  max-width: 18rem;
+}
+
+.plot__detail {
+  position: absolute;
+  right: 0.5rem;
   top: 0.5rem;
   background: var(--bg-raised);
   border: 1px solid var(--line-strong);

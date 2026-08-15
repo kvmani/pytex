@@ -717,8 +717,17 @@ class TestFrontendIsSelfContained:
         # the panel touches symmetry operators or compares index triples.
         assert "check.correct" in source
         assert "check.deviation_deg" in source
-        for arithmetic in ("operators", "symmetry.operators", "Math.acos"):
+        for arithmetic in ("operators", "symmetry.operators"):
             assert arithmetic not in source
+        # `Math.acos` appears once, in the measurement overlay, and measures the
+        # angle at the beam between two *clicked image points*. That is the same
+        # class of image-plane arithmetic as the cursor readout's distance and
+        # d-spacing, which this panel has always done: it reports what was picked
+        # and carries no crystallography. The line that must never appear is one
+        # that turns picks into an orientation or an index triple, which is what
+        # the operator bans above are for.
+        assert source.count("Math.acos") == 1
+        assert "angleToReference" in source
 
     def test_the_simulated_plate_is_legible_as_a_diffraction_pattern(self) -> None:
         """A dark ground, an unmistakable direct beam, and a reciprocal scale bar."""

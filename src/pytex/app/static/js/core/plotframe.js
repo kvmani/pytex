@@ -13,9 +13,17 @@
  *    d, |g|, relative intensity, and which phase and variant produced it. The
  *    payload is the same row the CSV export writes, so screen and file cannot
  *    disagree.
- * 3. **One viewport language.** The wheel zooms about the pointer, Shift-drag
- *    or middle-drag pans, and Fit restores the complete figure. The viewBox is
- *    the camera, so cursor coordinates remain correct after either operation.
+ * 3. **One viewport language.** The wheel zooms about the pointer, Shift-drag,
+ *    middle-drag or the pan tool moves the camera, and Fit restores the
+ *    complete figure. The viewBox is the camera, so cursor coordinates remain
+ *    correct after either operation. Zoom runs below 100% as well as above it,
+ *    because "show me the whole figure and its surroundings" is as common a
+ *    request as "show me this spot closely".
+ * 4. **The figure's own controls travel with it.** Anything that changes what
+ *    the plot shows — a legend that toggles a packet, a variant picker — is
+ *    mounted in the frame's control strip rather than as a sibling below it, so
+ *    it stays on screen with the figure instead of being pushed under the fold
+ *    by the result tables.
  *
  * The panel supplies a mapping from screen coordinates to data coordinates,
  * because only the panel knows its own projection; everything else is here.
@@ -58,14 +66,37 @@ export function plotFrame({
     base: null,
     current: null,
     drag: null,
-    minZoom: 1,
+    // Below 1 as well as above it: Fit shows the drawing at exactly 100%, and a
+    // reader who wants to see a wide pattern's tails, or to leave room around a
+    // pole figure before exporting it, has nowhere to go if 100% is the floor.
+    minZoom: 0.2,
     maxZoom: 24,
+    // The pan tool: a sticky mode for pointers that have no middle button and
+    // for anyone who should not have to know that Shift-drag is a thing.
+    panTool: false,
+    // Whether the pointer moved during the drag now ending, so the click it
+    // synthesises can be swallowed rather than read as a pick.
+    dragged: false,
   };
   const canvas = el('div.plot__canvas');
   const cursor = el('output.plot__cursor', { text: '' });
+  // A panel-owned readout pinned to the top-left of the drawing: the TEM panel
+  // puts the measurements taken off the pattern there, where they are read
+  // against the pattern itself rather than in a table below it.
+  const overlay = el('div.plot__overlay', { hidden: true });
   const detail = el('div.plot__detail', { hidden: true });
   const status = el('p.plot__status', { text: '' });
+  const controls = el('div.plot__controls', { hidden: true });
   const zoomReadout = el('output.plot__zoom', { text: '100%', title: 'Current plot zoom' });
+
+  const panButton = el('button.button.button--icon', {
+    type: 'button',
+    text: '✥',
+    title: 'Pan tool: drag the figure with the left button',
+    'aria-label': 'Pan tool',
+    'aria-pressed': 'false',
+    onclick: () => setPanTool(!view.panTool),
+  });
 
   const viewportToolbar = viewport
     ? [
@@ -78,6 +109,7 @@ export function plotFrame({
           type: 'button', text: '+', title: 'Zoom in', 'aria-label': 'Zoom in',
           onclick: () => zoomBy(1.35),
         }),
+        panButton,
         el('button.button', {
           type: 'button', text: 'Fit', title: 'Fit the complete plot',
           onclick: () => fitView(),
@@ -90,9 +122,19 @@ export function plotFrame({
       el('h2.plot__title', { text: title }),
       el('div.plot__toolbar', {}, [...viewportToolbar, ...toolbar]),
     ]),
-    el('div.plot__stage', {}, [canvas, detail, cursor]),
+    el('div.plot__stage', {}, [canvas, overlay, detail, cursor]),
+    controls,
     status,
   ]);
+
+  function setPanTool(active) {
+    view.panTool = Boolean(active);
+    panButton.setAttribute('aria-pressed', String(view.panTool));
+    panButton.title = view.panTool
+      ? 'Pan tool on: drag the figure; click again for the cursor'
+      : 'Pan tool: drag the figure with the left button';
+    if (view.svg) view.svg.dataset.pan = view.panTool ? 'tool' : '';
+  }
 
   function pointerToViewBox(event, svgNode) {
     const box = svgNode.viewBox.baseVal;
@@ -125,15 +167,32 @@ export function plotFrame({
     zoomReadout.textContent = `${Math.round(zoom * 100)}%`;
   }
 
+  /**
+   * Keep the camera near the drawing.
+   *
+   * Stated as a bound on the camera's *centre* rather than on its edges. The
+   * edge form has no answer once the zoom is below 100%: the viewport is then
+   * wider than the drawing plus its margins, the lower bound crosses the upper
+   * one, and the figure either snaps to a corner or refuses to pan at all. The
+   * centre always has an interval to live in, at any zoom, so panning while
+   * zoomed out behaves like panning while zoomed in.
+   */
   function boundedBox(box) {
     const base = view.base;
     if (!base) return box;
-    const marginX = base.width * 0.55;
-    const marginY = base.height * 0.55;
+    const axis = (start, size, baseStart, baseSize) => {
+      const margin = baseSize * 0.45;
+      const centre = start + size / 2;
+      const bounded = Math.min(
+        Math.max(centre, baseStart - margin),
+        baseStart + baseSize + margin,
+      );
+      return bounded - size / 2;
+    };
     return {
       ...box,
-      x: Math.min(Math.max(box.x, base.x - marginX), base.x + base.width + marginX - box.width),
-      y: Math.min(Math.max(box.y, base.y - marginY), base.y + base.height + marginY - box.height),
+      x: axis(box.x, box.width, base.x, base.width),
+      y: axis(box.y, box.height, base.y, base.height),
     };
   }
 
@@ -185,7 +244,11 @@ export function plotFrame({
 
   function attachViewport(svgNode) {
     svgNode.classList.add('plot__surface');
-    svgNode.setAttribute('data-viewport-help', 'Scroll to zoom; Shift-drag or middle-drag to pan');
+    svgNode.setAttribute(
+      'data-viewport-help',
+      'Scroll to zoom; Shift-drag, middle-drag or the pan tool to pan',
+    );
+    svgNode.dataset.pan = view.panTool ? 'tool' : '';
     svgNode.addEventListener(
       'wheel',
       (event) => {
@@ -197,7 +260,9 @@ export function plotFrame({
       { passive: false },
     );
     svgNode.addEventListener('pointerdown', (event) => {
-      if (!(event.button === 1 || (event.button === 0 && event.shiftKey))) return;
+      const panning =
+        event.button === 1 || (event.button === 0 && (event.shiftKey || view.panTool));
+      if (!panning) return;
       const point = pointerToViewBox(event, svgNode);
       if (!point) return;
       view.drag = { pointerId: event.pointerId, point };
@@ -211,6 +276,7 @@ export function plotFrame({
       if (!point) return;
       const dx = view.drag.point.x - point.x;
       const dy = view.drag.point.y - point.y;
+      if (dx || dy) view.dragged = true;
       setBox(boundedBox({ ...view.current, x: view.current.x + dx, y: view.current.y + dy }));
       view.drag.point = pointerToViewBox(event, svgNode) ?? point;
     });
@@ -222,6 +288,21 @@ export function plotFrame({
     };
     svgNode.addEventListener('pointerup', endPan);
     svgNode.addEventListener('pointercancel', endPan);
+    // A drag on a panel that picks by clicking — the TEM pattern is picked
+    // entirely by clicking — ends with a click event on the same node, so
+    // moving the view would silently drop a pick where the drag finished. The
+    // capture phase is the only place to stop it before the panel's own
+    // handler, which was attached to the same element first.
+    svgNode.addEventListener(
+      'click',
+      (event) => {
+        if (!view.panTool && !view.dragged) return;
+        view.dragged = false;
+        event.stopPropagation();
+        event.preventDefault();
+      },
+      true,
+    );
   }
 
   return {
@@ -275,6 +356,38 @@ export function plotFrame({
 
     /** Restore the complete drawing; useful to bespoke panel toolbars too. */
     fitView,
+
+    /**
+     * Put a panel's own readout in the top-left of the drawing.
+     *
+     * Non-interactive and outside the SVG, so it neither scales with the zoom
+     * nor swallows a click meant for the picture underneath it.
+     *
+     * @param {Node|null} node - Pass null to clear it.
+     */
+    setOverlay(node) {
+      if (node) overlay.replaceChildren(node);
+      else overlay.replaceChildren();
+      overlay.hidden = overlay.childElementCount === 0;
+      return overlay;
+    },
+
+    /**
+     * Mount the figure's own controls inside the frame, under the drawing.
+     *
+     * For a legend that toggles what is drawn, or a variant picker: these are
+     * part of the instrument, and a reader who has to scroll away from the
+     * figure to reach them cannot see the effect of what they just pressed.
+     * The strip scrolls internally if it is long, so it can never push the
+     * drawing off the screen.
+     *
+     * @param {...Node} nodes
+     */
+    setControls(...nodes) {
+      controls.replaceChildren(...nodes.filter(Boolean));
+      controls.hidden = controls.childElementCount === 0;
+      return controls;
+    },
 
     /** One line under the plot: counts, scale, what is being shown. */
     setStatus(text) {

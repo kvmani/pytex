@@ -239,15 +239,37 @@ they are how a researcher interrogates a figure rather than merely looking at on
    reads on screen and what they get in the file cannot disagree.
 
 For two-dimensional figures, the same frame also owns one viewport language: the mouse wheel zooms
-about the pointer, Shift-drag or middle-drag pans, the toolbar reports the magnification, and **Fit**
-restores the complete figure. Zoom changes the SVG view box rather than applying a CSS transform,
+about the pointer, Shift-drag, middle-drag or the toolbar's **pan tool** moves the camera, the
+toolbar reports the magnification, and **Fit** restores the complete figure. Zoom runs below 100% as
+well as above it — a figure seen whole with room around it is as ordinary a request as a spot seen
+closely — and the camera is bounded by its centre rather than its edges so that panning behaves the
+same at every magnification. Zoom changes the SVG view box rather than applying a CSS transform,
 so the coordinate readout and hover hit regions remain in the plotted coordinate system at every
-magnification. A genuinely three-dimensional panel may disable this viewport only when it supplies
-its own camera interaction; the Crystal Viewer does so because dragging rotates rather than pans.
+magnification. A three-dimensional panel supplies its own camera and gets the same four controls
+over it; the Crystal Viewer does, because dragging there rotates unless the pan tool or Shift says
+otherwise.
 
-All three behaviours are provided by one shared frontend module (`core/plotframe.js`) that every panel mounts its
-SVG into, so a new plot gets both behaviours by construction and no panel re-implements them. The
-readout formatter is chosen per plot from a declared unit; the hover payload is whatever row the
+Two further slots belong to the frame rather than to the stage below it, because both are read
+against the drawing:
+
+- **The control strip**, under the figure and inside the card, for anything that changes what is
+  drawn — the packet legend of a variant pole figure, the source chips of a composite pattern. As a
+  sibling below the card these were pushed under the fold by the result tables, so toggling a source
+  and seeing the effect needed a scroll in each direction.
+- **The overlay**, in the top-left of the drawing, for a panel's own live readout. The TEM solver
+  puts the measurements taken off the picks there — d-spacing, ratio to the first pick, and the
+  angle between them — because those are the three numbers a pattern is actually identified from,
+  and they are worth having beside the pattern while picking rather than in a table under it.
+
+The card is sized by the window, not by its content: it fills the visible stage bar a sliver, so the
+complete figure and its controls are on screen when a panel opens and the result tables announce
+themselves below. An SVG left in flow sizes itself from its own aspect ratio, which on a wide stage
+made a square figure taller than the window; the drawing is therefore positioned out of flow inside
+the card.
+
+All of these behaviours are provided by one shared frontend module (`core/plotframe.js`) that every
+panel mounts its SVG into, so a new plot gets them by construction and no panel re-implements them.
+The readout formatter is chosen per plot from a declared unit; the hover payload is whatever row the
 service attached to the entity.
 
 This is why services attach the full row to each drawn entity rather than only its coordinates: the

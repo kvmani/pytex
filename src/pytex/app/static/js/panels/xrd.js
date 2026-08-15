@@ -71,7 +71,10 @@ export function mount(context) {
       ]),
     ]),
   );
-  context.stage.append(frame.element, legend, details);
+  // The legend is a control, so it rides inside the frame rather than under it:
+  // toggling a source and seeing the drawing change must not need a scroll.
+  frame.setControls(legend);
+  context.stage.append(frame.element, details);
 
   function renderControls(initial = {}) {
     state.form = buildForm(operation, { initial });
@@ -145,7 +148,7 @@ export function mount(context) {
 }
 
 function appearanceControls(style, onChange) {
-  const root = el('details.group.appearance', { open: true });
+  const root = el('details.group.appearance');
   const body = el('div.group__body');
 
   const colorControl = (label, key, help) => {

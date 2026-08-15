@@ -128,7 +128,7 @@ export function markerStyleControl({ onChange }) {
     style.variantEncoding.includes('color') && style.palette !== 'single';
   child.input.disabled = usesPaletteColor();
 
-  const root = el('details.group.appearance', { open: true }, [
+  const root = el('details.group.appearance', {}, [
     el('summary', { text: 'Appearance' }),
     el('div.group__body', {}, [
       el('p.field__help', {
