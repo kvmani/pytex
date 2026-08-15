@@ -37,19 +37,31 @@ type, and nudge — with the overlay re-fitting live.
 | --- | --- | --- | --- |
 | T1 | Lattice fit: degrees-of-freedom guard, exact two-pick path, rank check, `centre_refined` | done | (this commit) |
 | T2 | Service contract: report what was refined and why; honest basis vectors | done | (this commit) |
-| T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | pending | |
-| T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | pending | |
-| T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | pending | |
+| T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | done | (this commit) |
+| T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | done | (this commit) |
+| T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | done | (this commit) |
 | T6 | Tests: unit, service, and Playwright; docs and changelog | pending | |
 
 ### Current worktree state
 
 Clean at `3473711` when the task started.
 
+### Verified so far
+
+Driven in a real Chromium at 1520x900. Picking at 182% zoom after a pan stores exactly the
+coordinates aimed at (512.00/512.00, 452.48/709.30, 313.59/452.73); the fitted grid passes through
+all three; both basis arrows land on the picked spots; a typed beam x of 460 moves the beam and
+raises the green "fitted centre" marker 51.5 px away; indexing from those picks returns Al fcc
+[001] at score 0.989. 13 Playwright cases and the Python unit suite pass; ruff and mypy clean.
+
+Two defects found and fixed during that verification, both invisible to the unit suite: focusing a
+coordinate field rebuilt the table and destroyed the field (so typing did nothing), and
+`state.selected` was already the *chosen solution*, so the pick selection silently broke the
+solution picker. The pick selection is now `state.selectedPick`.
+
 ### Next actions
 
-T3: replace `eventToImage` in `tem.js` with the frame's own pointer transform, and preserve
-the viewport across redraws.
+T6: documentation, changelog, and a final full-suite run.
 
 ## Repository Governance And Five-Feature Delivery Program — COMPLETE (2026-08-15)
 

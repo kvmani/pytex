@@ -317,6 +317,31 @@ export function plotFrame({
       Object.assign(mapping, next);
     },
 
+    /**
+     * Where a pointer event lands, in the panel's own data coordinates.
+     *
+     * The camera is the `viewBox`, so this is the *only* correct conversion once
+     * zoom and pan exist: a panel that measures from the element's bounding box
+     * alone is right at the base view and wrong everywhere else. The TEM panel
+     * had exactly that private copy, and every pick made after a pan landed off
+     * by the camera offset — visibly, since the marker is drawn at the stored
+     * coordinate rather than under the cursor.
+     *
+     * Returns null when there is no drawing, so a caller can ignore the event
+     * rather than pick at NaN.
+     *
+     * @param {PointerEvent|MouseEvent} event
+     * @returns {object|null} The result of `toData`, or viewBox coordinates if
+     *   the panel supplied no mapping.
+     */
+    pointerToData(event) {
+      const node = view.svg ?? canvas.firstElementChild;
+      if (!(node instanceof SVGSVGElement)) return null;
+      const point = pointerToViewBox(event, node);
+      if (!point) return null;
+      return mapping.toData ? mapping.toData(point.x, point.y) : point;
+    },
+
     /** Put an SVG (or any node) on the stage and wire the instrument interactions to it. */
     setContent(node, { preserveViewport = false } = {}) {
       const oldBase = view.base;

@@ -55,6 +55,25 @@ const LATTICE_COLOUR = '#4fd3d3';
 const CALCULATED_COLOUR = '#c9b0ff';
 const HALO_COLOUR = '#05070d';
 
+/*
+ * Four things are drawn over the plate and each means something different, so
+ * each gets its own colour. They were not all distinct before, and the picture
+ * could not be read: the fitted grid and the two basis vectors shared the teal,
+ * so an arrow into empty space looked like part of the grid rather than like the
+ * claim it is — "this pick generates this lattice".
+ *
+ * What is clicked is warm; what is computed is cool. Picks and the beam are
+ * amber and white — the user's own marks. The fitted grid is teal and the basis
+ * arrows gold, both derived. The calculated pattern stays violet.
+ */
+const PICK_COLOUR = '#ffc46b';
+const BEAM_COLOUR = '#ffffff';
+const BASIS_COLOUR = '#ffd447';
+/** The centre the fit prefers, when it is not the one that was clicked. */
+const REFINED_COLOUR = '#7ce4a8';
+/** The pick under the pointer or selected in the coordinate table. */
+const SELECTED_COLOUR = '#ff7ad9';
+
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
   const galleryOperation = operations.find((entry) => entry.id === 'tem.gallery_pattern');
@@ -80,6 +99,19 @@ export function mount(context) {
     pickedCentre: null, // where the beam was clicked, before any refinement
     fit: null, // the live 2D lattice fitted to the picks
     fitPending: null,
+    // Which pick the coordinate table is working on: 'centre', or a spot index.
+    // The nudge pad and the arrow keys act on it, and it is drawn ringed. Named
+    // apart from `selected` below, which is the chosen *solution*: one object,
+    // two selections, and sharing the key silently broke the solution picker.
+    selectedPick: 'centre',
+    // Which pick the pointer is over, in the table or on the plate.
+    highlight: null,
+    // The live coordinate inputs, so a committed edit can refresh the derived
+    // columns without rebuilding the table under the user's cursor.
+    pickRows: [],
+    nudgeLabel: null,
+    // The uploaded micrograph's pixels, for snapping a click to a spot centroid.
+    pixels: null,
     showLattice: true,
     showCalculated: true,
     solutions: [],
@@ -154,6 +186,9 @@ export function mount(context) {
         onclick: () => {
           if (state.picks.spots.length) state.picks.spots.pop();
           else state.picks.centre = null;
+          state.selectedPick = state.picks.spots.length ? state.picks.spots.length - 1 : 'centre';
+          state.highlight = null;
+          renderPickTool();
           scheduleFit();
           drawPattern();
         },
@@ -166,8 +201,10 @@ export function mount(context) {
           state.pickedCentre = null;
           state.fit = null;
           state.solutions = [];
+          state.selectedPick = 'centre';
+          state.highlight = null;
           calculatedButton.hidden = true;
-          renderCentreTool();
+          renderPickTool();
           drawPattern();
         },
       }),
@@ -187,6 +224,9 @@ export function mount(context) {
 
   const galleryHost = el('div');
   const centreHost = el('div.centre-tool');
+  // Inside the pick tool, and stable across a fit: see `syncFitViews`.
+  const centreButtonHost = el('div.button-row');
+  const hintHost = el('div');
   const solveHost = el('div');
   const atlasHost = el('div');
   const tiltHost = el('div');
@@ -398,8 +438,11 @@ export function mount(context) {
       state.fit = null;
       state.solutions = [];
       state.accepted = null;
+      state.selectedPick = 'centre';
+      state.highlight = null;
       calculatedButton.hidden = true;
       state.image = null;
+      state.pixels = null;
       state.showAnswer = false;
       answerButton.hidden = false;
       answerButton.textContent = 'Show answer';
@@ -427,6 +470,7 @@ export function mount(context) {
       });
       if (state.galleryForm) state.galleryForm.setValues({ pattern: entryId });
 
+      renderPickTool();
       drawPattern();
       renderResult(details, result, {
         teaches: state.teaches,
@@ -487,6 +531,7 @@ export function mount(context) {
       image.onload = () => {
         const hadGallery = state.gallery !== null;
         state.image = { source: reader.result, width: image.width, height: image.height };
+        state.pixels = readLuminance(image);
         state.source = { kind: 'image' };
         state.gallery = null;
         state.mode = 'pick';
@@ -495,9 +540,12 @@ export function mount(context) {
         state.fit = null;
         state.solutions = [];
         state.accepted = null;
+        state.selectedPick = 'centre';
+        state.highlight = null;
         calculatedButton.hidden = true;
         answerButton.hidden = true;
         autoPickButton.hidden = true;
+        renderPickTool();
         drawPattern();
         // The calibration fields still hold whatever the last practice plate
         // put there, and a camera constant belonging to a different exposure is
@@ -517,6 +565,41 @@ export function mount(context) {
     reader.readAsDataURL(file);
   }
 
+  /**
+   * The micrograph's brightness, one byte per pixel, for centroiding a pick.
+   *
+   * Read once on load rather than per click: a click is an interaction and a
+   * megapixel `getImageData` is not free. It stays in this tab — the panel's
+   * promise is that only coordinates are sent, and this is what makes the
+   * coordinates worth sending.
+   *
+   * Returns null if the canvas refuses to give up its pixels, which happens for
+   * a cross-origin image; picking then works exactly as before, without the
+   * snap.
+   */
+  function readLuminance(image) {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context2d = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context2d) return null;
+      context2d.drawImage(image, 0, 0);
+      const { data } = context2d.getImageData(0, 0, image.width, image.height);
+      const luminance = new Uint8ClampedArray(image.width * image.height);
+      for (let index = 0; index < luminance.length; index += 1) {
+        const at = index * 4;
+        // Rec. 601 luma. A diffraction plate is grey, so any sensible weighting
+        // agrees; this one is the conventional choice.
+        luminance[index] =
+          0.299 * data[at] + 0.587 * data[at + 1] + 0.114 * data[at + 2];
+      }
+      return { width: image.width, height: image.height, data: luminance };
+    } catch {
+      return null;
+    }
+  }
+
   /* -------------------------------------------------------------- picking */
 
   function autoPick() {
@@ -527,6 +610,9 @@ export function mount(context) {
       spots: suggested.spots.map((spot) => ({ x: spot.x, y: spot.y })),
     };
     state.pickedCentre = null;
+    state.selectedPick = 'centre';
+    state.highlight = null;
+    renderPickTool();
     scheduleFit();
     drawPattern();
     frame.setStatus(
@@ -560,7 +646,7 @@ export function mount(context) {
     const size = frameSize();
     if (!state.picks.centre || state.picks.spots.length < 2 || !size) {
       state.fit = null;
-      renderCentreTool();
+      syncFitViews();
       drawPattern();
       return;
     }
@@ -575,26 +661,145 @@ export function mount(context) {
       // Not yet a lattice. Say nothing; the picks are mid-flight.
       state.fit = null;
     }
-    renderCentreTool();
+    // Update, never rebuild: the answer arrives while the user is still typing.
+    syncFitViews();
     drawPattern();
   }
 
-  /** Move the transmitted beam by a whole number of picking units. */
+  /* --------------------------------------------------- the picks as numbers */
+
+  /** Every pick as one addressable thing: `'centre'`, or a spot's index. */
+  function pickAt(which) {
+    if (which === 'centre') {
+      return state.picks.centre
+        ? { x: state.picks.centre[0], y: state.picks.centre[1] }
+        : null;
+    }
+    const spot = state.picks.spots[which];
+    return spot ? { x: spot.x, y: spot.y } : null;
+  }
+
+  /**
+   * Put a pick at an exact coordinate, from a typed value or a nudge.
+   *
+   * One route for every way a coordinate can change, so that a typed number, an
+   * arrow key and a click all leave the same state behind and all trigger the
+   * same re-fit. `structural` rebuilds the table; a coordinate change does not,
+   * because the table holds the input the user is typing into.
+   */
+  function movePick(which, x, y, { structural = false } = {}) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (which === 'centre') {
+      if (!state.picks.centre) return;
+      // Remember where the beam was clicked the first time it is moved by hand,
+      // so "Undo refinement" has something to go back to.
+      if (!state.pickedCentre) state.pickedCentre = [...state.picks.centre];
+      state.picks.centre = [x, y];
+    } else {
+      const spot = state.picks.spots[which];
+      if (!spot) return;
+      spot.x = x;
+      spot.y = y;
+    }
+    if (structural) renderPickTool();
+    else refreshPickReadouts();
+    scheduleFit();
+    drawPattern();
+  }
+
+  /** Move the selected pick by the current step, in picking units. */
+  function nudgeSelected(dx, dy) {
+    const pick = pickAt(state.selectedPick);
+    if (!pick) return;
+    movePick(state.selectedPick, pick.x + dx * state.nudgeStep, pick.y + dy * state.nudgeStep);
+    const row = pickRowFor(state.selectedPick);
+    if (row) {
+      row.x.value = formatNumber(pickAt(state.selectedPick).x, 2);
+      row.y.value = formatNumber(pickAt(state.selectedPick).y, 2);
+    }
+  }
+
+  function pickRowFor(which) {
+    return state.pickRows.find((row) => row.which === which) ?? null;
+  }
+
+  /** Move the transmitted beam by the current step. Kept for the beam pad. */
   function nudgeCentre(dx, dy) {
     if (!state.picks.centre) return;
-    if (!state.pickedCentre) state.pickedCentre = [...state.picks.centre];
-    state.picks.centre = [
-      state.picks.centre[0] + dx * state.nudgeStep,
-      state.picks.centre[1] + dy * state.nudgeStep,
-    ];
+    movePick('centre', state.picks.centre[0] + dx * state.nudgeStep,
+      state.picks.centre[1] + dy * state.nudgeStep);
+    const row = pickRowFor('centre');
+    if (row) {
+      row.x.value = formatNumber(state.picks.centre[0], 2);
+      row.y.value = formatNumber(state.picks.centre[1], 2);
+    }
+  }
+
+  /**
+   * Make a pick the one the pad and the arrow keys act on.
+   *
+   * In place, never by rebuilding the table. Selection happens on focus, and a
+   * rebuild on focus destroys the input the user has just clicked into — the
+   * field is replaced, the caret goes with it, and typing a coordinate becomes
+   * impossible in a way that looks like the keyboard is broken.
+   */
+  function selectPick(which) {
+    state.selectedPick = which;
+    for (const row of state.pickRows) {
+      row.element.classList.toggle('picks__row--selected', state.selectedPick === row.which);
+      row.element.classList.toggle('picks__row--marked', isMarked(row.which));
+    }
+    if (state.nudgeLabel) state.nudgeLabel.textContent = nudgeLabelText();
+    drawPattern();
+  }
+
+  function highlightPick(which) {
+    state.highlight = which;
+    for (const row of state.pickRows) {
+      row.element.classList.toggle('picks__row--marked', isMarked(row.which));
+    }
+    drawPattern();
+  }
+
+  function removeSpot(index) {
+    state.picks.spots.splice(index, 1);
+    if (state.selectedPick === index) state.selectedPick = 'centre';
+    else if (typeof state.selectedPick === 'number' && state.selectedPick > index) state.selectedPick -= 1;
+    state.highlight = null;
+    renderPickTool();
+    scheduleFit();
+    drawPattern();
+  }
+
+  /**
+   * Make a spot the transmitted beam, and the old beam a spot.
+   *
+   * A swap rather than a move, because the commonest way to get this wrong is to
+   * click a strong reflection first and realise on seeing the overlay; throwing
+   * the old beam away would then lose a perfectly good pick, and it is usually a
+   * reflection.
+   */
+  function promoteToBeam(index) {
+    const spot = state.picks.spots[index];
+    if (!spot) return;
+    const previous = state.picks.centre;
+    state.picks.spots.splice(index, 1);
+    if (previous) state.picks.spots.splice(index, 0, { x: previous[0], y: previous[1] });
+    state.picks.centre = [spot.x, spot.y];
+    state.pickedCentre = null;
+    state.selectedPick = 'centre';
+    renderPickTool();
     scheduleFit();
     drawPattern();
   }
 
   function adoptRefinedCentre() {
-    if (!state.fit) return;
+    // Only a centre that was actually solved for is worth adopting; below four
+    // spots the "refined" centre is the clicked one.
+    if (!state.fit?.data.centre_refined) return;
     if (!state.pickedCentre) state.pickedCentre = [...state.picks.centre];
     state.picks.centre = [...state.fit.data.centre];
+    renderPickTool();
     scheduleFit();
     drawPattern();
   }
@@ -603,119 +808,438 @@ export function mount(context) {
     if (!state.pickedCentre) return;
     state.picks.centre = [...state.pickedCentre];
     state.pickedCentre = null;
+    renderPickTool();
     scheduleFit();
     drawPattern();
   }
 
   /**
-   * The beam-centre panel: where it is, where the spots say it should be, and
-   * the controls to close the gap.
+   * The picks as numbers: every coordinate readable, typable and nudgeable.
    *
-   * The nudge buttons exist because the refinement cannot always be trusted
-   * blindly — a centre wrong by an exact lattice vector fits perfectly, and only
-   * a person looking at which spot is brightest can settle it. So the tool
-   * offers both: solve for it, or move it by hand and watch the overlay.
+   * Clicking is how a pattern is picked and it is not enough on its own. A click
+   * carries the precision of a mouse over a spot a few pixels across, there is
+   * no way to say "put it exactly there" or to check what was actually stored,
+   * and a coordinate that can only be produced by clicking cannot be copied out
+   * of a previous session or a published figure. So every pick appears here as
+   * two editable numbers, with what they measure — radius, d-spacing, and the
+   * angle from the first spot — beside them.
+   *
+   * **Rebuilt only when the set of rows changes.** Everything that happens while
+   * a coordinate is being edited — the fit returning two hundred milliseconds
+   * later, the derived columns changing, a hint appearing — updates the existing
+   * nodes instead. Replacing the table under an editor destroys the input it is
+   * typing into, which looks from the outside like a keyboard that has stopped
+   * working, and that is exactly what an earlier draft of this panel did on
+   * every fit and on every focus.
    */
-  function renderCentreTool() {
+  function renderPickTool() {
+    state.pickRows = [];
     if (!state.picks.centre) {
       centreHost.replaceChildren(
         el('p.field__help', {
-          text: 'Click the transmitted beam to enable centre refinement.',
+          text:
+            'Click the transmitted beam on the pattern to start. Every pick then appears here ' +
+            'as a coordinate you can read, type over, or nudge a fraction of a pixel at a time.',
         }),
       );
       return;
     }
-    const fit = state.fit?.data;
-    const shift = fit ? fit.centre_shift : null;
-    const arrow = (label, dx, dy, description) =>
-      el('button.button.button--small', {
-        type: 'button',
-        text: label,
-        title: description,
-        'aria-label': description,
-        onclick: () => nudgeCentre(dx, dy),
-      });
-
     centreHost.replaceChildren(
-      el('div.field__label', { text: 'Transmitted beam' }),
+      el('div.field__label', { text: 'Picked coordinates' }),
       el('p.field__help', {
         text:
-          'The largest avoidable error in the whole workflow: it biases every d-spacing at once, ' +
-          'and leaves the pattern self-consistent while doing it. Nudge it and watch the fitted ' +
-          'lattice, or let the spots solve for it.',
+          'The beam is not a reflection: it is the origin every spot is measured from, so an ' +
+          'error there biases every d-spacing at once while leaving the pattern ' +
+          'self-consistent. Select a row to nudge it with the pad or the arrow keys; the ' +
+          'overlay re-fits as you go.',
       }),
-      el('div.centre-tool__readout', {
-        text:
-          `Now at ${formatNumber(state.picks.centre[0], 1)}, ` +
-          `${formatNumber(state.picks.centre[1], 1)}` +
-          (shift === null
-            ? ' · pick two more spots to fit a lattice'
-            : ` · the spots put it ${formatNumber(shift, 1)} away`),
-      }),
-      el('div.centre-tool__pad', {}, [
-        arrow('◀', -1, 0, 'Move the beam left'),
-        el('div.centre-tool__column', {}, [
-          arrow('▲', 0, -1, 'Move the beam up'),
-          arrow('▼', 0, 1, 'Move the beam down'),
-        ]),
-        arrow('▶', 1, 0, 'Move the beam right'),
-        el(
-          'select.centre-tool__step',
-          {
-            'aria-label': 'Nudge step',
-            onchange: (event) => {
-              state.nudgeStep = Number(event.target.value);
-            },
+      pickTable(),
+      nudgePad(),
+      centreButtonHost,
+      hintHost,
+      coordinateText(),
+    );
+    syncFitViews();
+  }
+
+  /**
+   * Bring everything that depends on the fit up to date, without rebuilding.
+   *
+   * The fit arrives while the user is still working — that is the point of it
+   * being live — so it must not be able to take the panel apart while they are
+   * mid-edit.
+   */
+  function syncFitViews() {
+    if (!state.picks.centre) return;
+    const fit = state.fit?.data;
+    const refined = Boolean(fit?.centre_refined);
+    centreButtonHost.replaceChildren(...centreButtons(refined));
+    hintHost.replaceChildren(...fitHints(fit));
+    refreshPickReadouts();
+  }
+
+  /** One row per pick: label, x, y, and what the pair measures. */
+  function pickTable() {
+    const rows = [
+      pickRow('centre', 'Beam'),
+      ...state.picks.spots.map((_, index) => pickRow(index, `Spot ${index + 1}`)),
+    ];
+    return el('div.picks', {}, [
+      el('div.picks__head', {}, [
+        el('span', { text: 'Pick' }),
+        el('span', { text: 'x / px' }),
+        el('span', { text: 'y / px' }),
+        el('span', { text: '' }),
+      ]),
+      ...rows,
+    ]);
+  }
+
+  function pickRow(which, label) {
+    const pick = pickAt(which);
+    const coordinate = (axis) =>
+      el('input.picks__input', {
+        type: 'number',
+        step: '0.1',
+        value: formatNumber(pick[axis], 2),
+        'aria-label': `${label} ${axis}`,
+        onfocus: () => selectPick(which),
+        // `change` rather than `input`: a re-fit per keystroke would fire a
+        // request for "5", "51" and "512" on the way to a three-digit
+        // coordinate, and the first two are somewhere else entirely.
+        onchange: (event) => commitCoordinate(which, axis, event.target),
+      });
+    const x = coordinate('x');
+    const y = coordinate('y');
+    const readout = el('span.picks__measure', { text: measureText(which) });
+    const element = el(
+      'div.picks__row',
+      {
+        onpointerenter: () => highlightPick(which),
+        onpointerleave: () => highlightPick(null),
+        onkeydown: (event) => onPickKey(event, which),
+      },
+      [
+        el('button.picks__label', {
+          type: 'button',
+          text: label,
+          title: 'Select this pick for the nudge pad and the arrow keys',
+          onclick: () => selectPick(which),
+        }),
+        x,
+        y,
+        which === 'centre'
+          ? el('span')
+          : el('span.picks__actions', {}, [
+              el('button.button.button--small', {
+                type: 'button',
+                text: '⌖',
+                title: 'Make this spot the transmitted beam, and the beam a spot',
+                'aria-label': `Make spot ${which + 1} the transmitted beam`,
+                onclick: () => promoteToBeam(which),
+              }),
+              el('button.button.button--small', {
+                type: 'button',
+                text: '×',
+                title: 'Remove this pick',
+                'aria-label': `Remove spot ${which + 1}`,
+                onclick: () => removeSpot(which),
+              }),
+            ]),
+        // What the pair measures, on its own line under the numbers. Beside
+        // them it took the width the numbers needed, and a coordinate field too
+        // narrow to show its own value is worse than no field at all.
+        readout,
+      ],
+    );
+    element.classList.toggle('picks__row--selected', state.selectedPick === which);
+    element.classList.toggle('picks__row--marked', isMarked(which));
+    if (fitVerdict(which) === 'off') element.classList.add('picks__row--outlier');
+    state.pickRows.push({ which, element, x, y, readout });
+    return element;
+  }
+
+  /**
+   * Accept a typed coordinate, or refuse it and put the old one back.
+   *
+   * Refusing in place matters more than it sounds: an empty or malformed field
+   * that silently became `NaN` would move the pick to nowhere, take the overlay
+   * with it, and leave the user looking at a blank field wondering what they
+   * broke.
+   */
+  function commitCoordinate(which, axis, input) {
+    const pick = pickAt(which);
+    if (!pick) return;
+    const value = Number(input.value);
+    if (!Number.isFinite(value)) {
+      input.value = formatNumber(pick[axis], 2);
+      return;
+    }
+    const next = { ...pick, [axis]: value };
+    movePick(which, next.x, next.y);
+    input.value = formatNumber(value, 2);
+  }
+
+  /** Arrow keys nudge the pick whose row has focus, by the current step. */
+  function onPickKey(event, which) {
+    const steps = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const step = steps[event.key];
+    // A number input spends its own arrow keys on incrementing itself, which is
+    // the same gesture by a different route; leave it to do that.
+    if (!step || event.target.tagName === 'INPUT') return;
+    event.preventDefault();
+    state.selectedPick = which;
+    nudgeSelected(step[0], step[1]);
+  }
+
+  /** Update the derived columns without touching the inputs. */
+  function refreshPickReadouts() {
+    for (const row of state.pickRows) {
+      row.readout.textContent = measureText(row.which);
+      row.element.classList.toggle('picks__row--outlier', fitVerdict(row.which) === 'off');
+    }
+  }
+
+  /** What a pick measures: radius from the beam, d, and angle from spot 1. */
+  function measureText(which) {
+    if (which === 'centre') {
+      const fit = state.fit?.data;
+      if (!fit) return 'origin';
+      if (!fit.centre_refined) return 'origin · held';
+      return `origin · fit says ${formatNumber(fit.centre_shift, 1)} px away`;
+    }
+    const pick = pickAt(which);
+    const centre = state.picks.centre;
+    if (!pick || !centre) return '';
+    const dx = pick.x - centre[0];
+    const dy = pick.y - centre[1];
+    const radius = Math.hypot(dx, dy);
+    const g = reciprocalRadius(dx, dy);
+    const first = state.picks.spots[0];
+    let angle = '';
+    if (which !== 0 && first) {
+      const fx = first.x - centre[0];
+      const fy = first.y - centre[1];
+      const degrees = angleAtBeamDeg(
+        { dx, dy, r: radius },
+        { dx: fx, dy: fy, r: Math.hypot(fx, fy) },
+      );
+      if (degrees !== null) angle = ` · ${formatNumber(degrees, 2)}°`;
+    }
+    return (
+      `${formatNumber(radius, 1)} px · ` +
+      `${g > 0 ? formatNumber(1 / g, 4) : '∞'} Å${angle}`
+    );
+  }
+
+  /**
+   * The angle at the beam between two offsets, in degrees.
+   *
+   * Image-plane arithmetic on two clicked points and nothing more — the same
+   * class of measurement as the cursor's distance readout. It is defined once
+   * and used by both the overlay card and the coordinate table, so the number
+   * beside a row and the number in the card cannot disagree.
+   *
+   * @param {{dx: number, dy: number, r: number}} row
+   * @param {{dx: number, dy: number, r: number}} reference
+   * @returns {number|null} Null when either offset has no length to take an
+   *   angle from.
+   */
+  function angleAtBeamDeg(row, reference) {
+    const norms = row.r * reference.r;
+    if (!norms) return null;
+    const cosine = (row.dx * reference.dx + row.dy * reference.dy) / norms;
+    return (Math.acos(Math.min(Math.max(cosine, -1), 1)) * 180) / Math.PI;
+  }
+
+  /** Whether the fit explains this pick: 'on', 'off', or null if there is no fit. */
+  function fitVerdict(which) {
+    if (which === 'centre' || !state.fit) return null;
+    return state.fit.data.outliers.includes(which + 1) ? 'off' : 'on';
+  }
+
+  function nudgeLabelText() {
+    return state.selectedPick === 'centre' ? 'Nudging: beam' : `Nudging: spot ${state.selectedPick + 1}`;
+  }
+
+  function nudgePad() {
+    // The buttons name the selection rather than a fixed pick, because which
+    // pick they move changes without the pad being rebuilt.
+    const arrow = (glyph, dx, dy, description) =>
+      el('button.button.button--small', {
+        type: 'button',
+        text: glyph,
+        title: description,
+        'aria-label': description,
+        onclick: () => nudgeSelected(dx, dy),
+      });
+    state.nudgeLabel = el('span.centre-tool__readout', { text: nudgeLabelText() });
+    return el('div.centre-tool__pad', {}, [
+      state.nudgeLabel,
+      arrow('◀', -1, 0, 'Move the selected pick left'),
+      el('div.centre-tool__column', {}, [
+        arrow('▲', 0, -1, 'Move the selected pick up'),
+        arrow('▼', 0, 1, 'Move the selected pick down'),
+      ]),
+      arrow('▶', 1, 0, 'Move the selected pick right'),
+      el(
+        'select.centre-tool__step',
+        {
+          'aria-label': 'Nudge step',
+          onchange: (event) => {
+            state.nudgeStep = Number(event.target.value);
           },
-          [0.5, 1, 2, 5, 10].map((step) =>
-            el('option', {
-              value: String(step),
-              text: `${step} px`,
-              selected: step === state.nudgeStep,
-            }),
-          ),
+        },
+        [0.1, 0.5, 1, 2, 5, 10].map((step) =>
+          el('option', {
+            value: String(step),
+            text: `${step} px`,
+            selected: step === state.nudgeStep,
+          }),
         ),
-      ]),
-      el('div.button-row', {}, [
-        el('button.button.button--small', {
-          type: 'button',
-          text: 'Refine from the spots',
-          disabled: !fit,
-          title: 'Move the beam to where the fitted lattice puts it',
-          onclick: () => adoptRefinedCentre(),
+      ),
+    ]);
+  }
+
+  function centreButtons(refined) {
+    // Offering to adopt a centre the fit did not solve for would hand the user a
+    // copy of their own click dressed up as a measurement.
+    return [
+      el('button.button.button--small', {
+        type: 'button',
+        text: 'Refine beam from the spots',
+        disabled: !refined,
+        title: refined
+          ? 'Move the beam to where the fitted lattice puts it'
+          : 'Needs four or more spots: with fewer, the centre cannot be solved for',
+        onclick: () => adoptRefinedCentre(),
+      }),
+      el('button.button.button--small', {
+        type: 'button',
+        text: 'Undo beam move',
+        disabled: !state.pickedCentre,
+        title: 'Put the beam back where it was clicked',
+        onclick: () => restorePickedCentre(),
+      }),
+    ];
+  }
+
+  function fitHints(fit) {
+    if (!fit) {
+      return [
+        el('p.field__hint', {
+          text: 'Pick two spots to lay a lattice over the pattern, and four to solve for the beam.',
         }),
-        el('button.button.button--small', {
-          type: 'button',
-          text: 'Undo refinement',
-          disabled: !state.pickedCentre,
-          title: 'Put the beam back where it was clicked',
-          onclick: () => restorePickedCentre(),
-        }),
-      ]),
-      fit && fit.basis_vectors?.length
+      ];
+    }
+    return [
+      fit.basis_vectors?.length
         ? el('p.field__hint', {
             text:
-              'The arrows on the pattern are the two lattice vectors ' +
+              'The gold arrows are the two lattice vectors ' +
               fit.basis_vectors
                 .map((vector) =>
                   vector.on_a_pick
                     ? `${vector.label} (spot ${vector.spot}, ` +
                       `${formatNumber(vector.length, 1)} px)`
-                    : `${vector.label} (no pick on this node)`,
+                    : `${vector.label} (drawn dashed: no pick sits on this node)`,
                 )
                 .join(' and ') +
-              '. Every line in the grid turns with them, so those are the two picks worth ' +
+              '. Every line in the teal grid turns with them, so those are the two picks worth ' +
               'adjusting first.',
           })
         : null,
-      fit && fit.fit.notes.length
-        ? el('p.field__hint', { text: fit.fit.notes.join(' ') })
-        : null,
-      fit && fit.outliers.length
+      fit.fit.notes.length ? el('p.field__hint', { text: fit.fit.notes.join(' ') }) : null,
+      fit.outliers.length
         ? el('p.field__hint', {
             text: `Spot(s) ${fit.outliers.join(', ')} do not sit on the fitted lattice.`,
           })
         : null,
+    ].filter(Boolean);
+  }
+
+  /**
+   * The whole pick set as text, to carry out of the session and back into it.
+   *
+   * A set of picks is a measurement, and a measurement that exists only as
+   * clicks in a browser tab cannot be checked, repeated, or handed to anyone.
+   * One line per pick, beam first — the same order the table shows and the
+   * service receives.
+   */
+  function coordinateText() {
+    // A textarea's value is its content, not an attribute.
+    const area = el(
+      'textarea.picks__text',
+      { rows: 4, spellcheck: 'false', 'aria-label': 'Every pick as text, beam first' },
+      [picksAsText()],
+    );
+    return el('details.picks__io', {}, [
+      el('summary', { text: 'Coordinates as text' }),
+      el('div.group__body', {}, [
+        el('p.field__help', {
+          text:
+            'One "x, y" per line, transmitted beam first. Copy it to keep this measurement, ' +
+            'or paste a set in and apply it.',
+        }),
+        area,
+        el('div.button-row', {}, [
+          el('button.button.button--small', {
+            type: 'button',
+            text: 'Apply these coordinates',
+            onclick: () => applyPicksFromText(area),
+          }),
+          el('button.button.button--small', {
+            type: 'button',
+            text: 'Reset to the picks',
+            onclick: () => {
+              area.value = picksAsText();
+            },
+          }),
+        ]),
+      ]),
+    ]);
+  }
+
+  function picksAsText() {
+    if (!state.picks.centre) return '';
+    return [state.picks.centre, ...state.picks.spots.map((spot) => [spot.x, spot.y])]
+      .map(([x, y]) => `${formatNumber(x, 2)}, ${formatNumber(y, 2)}`)
+      .join('\n');
+  }
+
+  function applyPicksFromText(area) {
+    const points = [];
+    for (const line of area.value.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(/[,;\s]+/).map(Number);
+      if (parts.length < 2 || !parts.slice(0, 2).every(Number.isFinite)) {
+        frame.setStatus(`Could not read "${trimmed}" as a coordinate pair. Nothing was changed.`);
+        return;
+      }
+      points.push([parts[0], parts[1]]);
+    }
+    if (!points.length) {
+      frame.setStatus('No coordinates to apply.');
+      return;
+    }
+    state.picks = {
+      centre: [points[0][0], points[0][1]],
+      spots: points.slice(1).map(([x, y]) => ({ x, y })),
+    };
+    state.pickedCentre = null;
+    state.selectedPick = 'centre';
+    state.highlight = null;
+    renderPickTool();
+    scheduleFit();
+    drawPattern();
+    frame.setStatus(
+      `Beam and ${state.picks.spots.length} spot(s) set from the coordinates you entered.`,
     );
   }
 
@@ -785,42 +1309,60 @@ export function mount(context) {
     const marker = Math.max(width, height) / 140;
     if (state.picks.centre) {
       const [cx, cy] = state.picks.centre;
+      const beamStroke = isMarked('centre') ? SELECTED_COLOUR : BEAM_COLOUR;
       root.append(
         svg('circle', {
           cx, cy, r: marker * 1.4,
           fill: 'none',
-          stroke: 'var(--accent)',
+          stroke: beamStroke,
           'stroke-width': marker / 3,
         }),
         svg('line', {
           x1: cx - marker * 2.4, y1: cy, x2: cx + marker * 2.4, y2: cy,
-          stroke: 'var(--accent)', 'stroke-width': marker / 4,
+          stroke: beamStroke, 'stroke-width': marker / 4,
         }),
         svg('line', {
           x1: cx, y1: cy - marker * 2.4, x2: cx, y2: cy + marker * 2.4,
-          stroke: 'var(--accent)', 'stroke-width': marker / 4,
+          stroke: beamStroke, 'stroke-width': marker / 4,
         }),
       );
+      drawRefinedCentre(root, cx, cy, marker);
     }
 
     state.picks.spots.forEach((spot, index) => {
       const dx = state.picks.centre ? spot.x - state.picks.centre[0] : 0;
       const dy = state.picks.centre ? spot.y - state.picks.centre[1] : 0;
       const g = reciprocalRadius(dx, dy);
+      const marked = isMarked(index);
+      const colour = marked ? SELECTED_COLOUR : PICK_COLOUR;
       const node = svg('circle', {
         cx: spot.x, cy: spot.y, r: marker,
         fill: 'none',
-        stroke: 'var(--ok, #17683a)',
+        stroke: colour,
         'stroke-width': marker / 3,
       });
       root.append(node);
+      // A second, wider ring on the pick the coordinate table is working on, so
+      // "row 2" and "that spot" are the same thing without having to count.
+      if (marked) {
+        root.append(
+          svg('circle', {
+            cx: spot.x, cy: spot.y, r: marker * 2.2,
+            fill: 'none',
+            stroke: SELECTED_COLOUR,
+            'stroke-width': marker / 4,
+            'stroke-opacity': 0.8,
+            'stroke-dasharray': `${marker / 2} ${marker / 2}`,
+          }),
+        );
+      }
       root.append(
         svg('text', {
           x: spot.x + marker * 1.8, y: spot.y - marker * 0.6,
           'font-size': marker * 2.4,
-          fill: 'var(--ok, #17683a)',
+          fill: colour,
           'paint-order': 'stroke',
-          stroke: 'var(--bg-raised)',
+          stroke: HALO_COLOUR,
           'stroke-width': marker / 2,
           text: String(index + 1),
         }),
@@ -836,12 +1378,28 @@ export function mount(context) {
     });
 
     root.addEventListener('click', (event) => {
-      const point = eventToImage(event, root, width, height);
-      if (!point) return;
+      // The frame owns the camera, so the frame converts the pointer. A private
+      // copy of this arithmetic is right only while the view is unzoomed and
+      // unpanned, which is exactly when nobody is picking carefully.
+      const point = frame.pointerToData(event);
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+      const snapped = snapToSpot(point);
       if (!state.picks.centre) {
-        state.picks.centre = [point.x, point.y];
+        state.picks.centre = [snapped.x, snapped.y];
         state.pickedCentre = null;
-      } else state.picks.spots.push({ x: point.x, y: point.y });
+        state.selectedPick = 'centre';
+      } else {
+        state.picks.spots.push({ x: snapped.x, y: snapped.y });
+        state.selectedPick = state.picks.spots.length - 1;
+      }
+      if (snapped.moved > 0.05) {
+        frame.setStatus(
+          `Picked at ${formatNumber(point.x, 1)}, ${formatNumber(point.y, 1)} and moved ` +
+            `${formatNumber(snapped.moved, 1)} px to the spot centroid. Type an exact ` +
+            'coordinate in the rail if you want it somewhere else.',
+        );
+      }
+      renderPickTool();
       scheduleFit();
       drawPattern();
     });
@@ -859,13 +1417,163 @@ export function mount(context) {
         );
       },
     });
-    frame.setContent(root);
+    // The camera survives the redraw. Every pick, nudge and typed coordinate
+    // rebuilds this SVG, and without this the view snapped back to Fit each
+    // time — so zooming in to place a spot precisely was impossible, which is
+    // the one situation where zooming in is the point.
+    frame.setContent(root, { preserveViewport: true });
     frame.setOverlay(measurementCard());
     frame.setStatus(
       state.picks.centre
         ? `Beam marked · ${state.picks.spots.length} spot(s) picked · click to add more`
         : 'Click the transmitted beam first — it is the origin every spot is measured from',
     );
+  }
+
+  /** Whether this pick is the selected or hovered one, and so drawn ringed. */
+  function isMarked(which) {
+    return state.selectedPick === which || state.highlight === which;
+  }
+
+  /**
+   * The centre the fit prefers, drawn beside the one that was clicked.
+   *
+   * Only when the two differ, and never *instead of* the clicked beam. The
+   * overlay used to draw its grid from the refined centre while the crosshair
+   * stayed on the click, with nothing on screen to say they were two different
+   * points — so a refinement that had run away looked like a pick that had
+   * landed in the wrong place. Two marks and a stated distance is the honest
+   * form: it is a proposal until the user adopts it.
+   */
+  function drawRefinedCentre(root, cx, cy, marker) {
+    const data = state.fit?.data;
+    if (!data?.centre_refined) return;
+    const [rx, ry] = data.centre;
+    if (Math.hypot(rx - cx, ry - cy) < 0.25) return;
+    const group = svg('g', { 'pointer-events': 'none' });
+    group.append(
+      svg('line', {
+        x1: cx, y1: cy, x2: rx, y2: ry,
+        stroke: REFINED_COLOUR,
+        'stroke-width': marker / 4,
+        'stroke-dasharray': `${marker} ${marker}`,
+        'stroke-opacity': 0.9,
+      }),
+      svg('circle', {
+        cx: rx, cy: ry, r: marker * 1.4,
+        fill: 'none',
+        stroke: REFINED_COLOUR,
+        'stroke-width': marker / 3,
+        'stroke-dasharray': `${marker / 2} ${marker / 2}`,
+      }),
+      svg('text', {
+        x: rx + marker * 2, y: ry + marker * 3,
+        'font-size': marker * 2,
+        fill: REFINED_COLOUR,
+        'paint-order': 'stroke',
+        stroke: HALO_COLOUR,
+        'stroke-width': marker / 2,
+        text: 'fitted centre',
+      }),
+    );
+    root.append(group);
+  }
+
+  /**
+   * Move a click to the centre of the spot it landed on, if it landed on one.
+   *
+   * A click is worth a few pixels; a spot centroid is worth a fraction of one,
+   * and every d-spacing in the pattern is measured from these two points. The
+   * radius is generous enough to catch a click on the edge of a spot and tight
+   * enough that a click on background stays where it was put — a pick on
+   * background is a legitimate thing to do, and moving it silently to a
+   * neighbouring reflection would be worse than not snapping at all.
+   *
+   * On a practice plate the true centres are known, so the nearest one is the
+   * answer. On a micrograph the intensity-weighted centroid of a small window is
+   * used, with the window's own floor subtracted so the background does not drag
+   * the answer toward the middle of the box.
+   *
+   * @returns {{x: number, y: number, moved: number}}
+   */
+  function snapToSpot(point) {
+    const size = frameSize();
+    if (!size) return { x: point.x, y: point.y, moved: 0 };
+    const radius = Math.max(6, Math.max(size.width, size.height) / 90);
+    const centred = state.gallery
+      ? nearestSimulatedSpot(point, radius)
+      : centroidOfPixels(point, radius);
+    if (!centred) return { x: point.x, y: point.y, moved: 0 };
+    return {
+      x: centred.x,
+      y: centred.y,
+      moved: Math.hypot(centred.x - point.x, centred.y - point.y),
+    };
+  }
+
+  function nearestSimulatedSpot(point, radius) {
+    const pattern = state.gallery.data.pattern;
+    let best = null;
+    let bestDistance = radius;
+    // The transmitted beam is a feature of the plate like any other, and it is
+    // the brightest one: a centroid on a real micrograph would find it too.
+    const beam = pattern.centre_px;
+    const candidates = beam
+      ? [{ x: beam[0], y: beam[1] }, ...(pattern.spots ?? [])]
+      : (pattern.spots ?? []);
+    for (const spot of candidates) {
+      const distance = Math.hypot(spot.x - point.x, spot.y - point.y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { x: spot.x, y: spot.y };
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Intensity-weighted centroid of an uploaded image, in a window about a point.
+   *
+   * The window's minimum is subtracted before weighting. Without that, a uniform
+   * background contributes a large, perfectly symmetric weight centred on the
+   * *window*, which pulls every centroid toward the click and makes the snap
+   * look like it is working when it is doing nothing.
+   */
+  function centroidOfPixels(point, radius) {
+    const pixels = state.pixels;
+    if (!pixels) return null;
+    const left = Math.max(0, Math.floor(point.x - radius));
+    const top = Math.max(0, Math.floor(point.y - radius));
+    const right = Math.min(pixels.width - 1, Math.ceil(point.x + radius));
+    const bottom = Math.min(pixels.height - 1, Math.ceil(point.y + radius));
+    if (right <= left || bottom <= top) return null;
+    let floor = Infinity;
+    let peak = -Infinity;
+    for (let y = top; y <= bottom; y += 1) {
+      for (let x = left; x <= right; x += 1) {
+        const value = pixels.data[y * pixels.width + x];
+        if (value < floor) floor = value;
+        if (value > peak) peak = value;
+      }
+    }
+    // Nothing to centre on: a window with no contrast is background, and a pick
+    // on background belongs where it was put.
+    if (!(peak - floor > 8)) return null;
+    let sum = 0;
+    let sumX = 0;
+    let sumY = 0;
+    for (let y = top; y <= bottom; y += 1) {
+      for (let x = left; x <= right; x += 1) {
+        if (Math.hypot(x - point.x, y - point.y) > radius) continue;
+        const weight = pixels.data[y * pixels.width + x] - floor;
+        if (weight <= 0) continue;
+        sum += weight;
+        sumX += weight * x;
+        sumY += weight * y;
+      }
+    }
+    if (!(sum > 0)) return null;
+    return { x: sumX / sum, y: sumY / sum };
   }
 
   /**
@@ -898,12 +1606,7 @@ export function mount(context) {
     const reference = rows[0];
 
     /** The angle at the beam between this spot and the first, in degrees. */
-    const angleToReference = (row) => {
-      const norms = row.r * reference.r;
-      if (!norms) return null;
-      const cosine = (row.dx * reference.dx + row.dy * reference.dy) / norms;
-      return (Math.acos(Math.min(Math.max(cosine, -1), 1)) * 180) / Math.PI;
-    };
+    const angleToReference = (row) => angleAtBeamDeg(row, reference);
 
     const cell = (text, className = '') =>
       el(className ? `td.${className}` : 'td', { text });
@@ -1115,17 +1818,9 @@ export function mount(context) {
         }),
       );
     }
-    // The origin of the fitted lattice, which is where the spots say the beam is.
-    const marker = Math.max(width, height) / 110;
-    group.append(
-      svg('circle', {
-        cx, cy, r: marker,
-        fill: 'none',
-        stroke: LATTICE_COLOUR,
-        'stroke-width': marker / 4,
-        'stroke-dasharray': `${marker / 2} ${marker / 2}`,
-      }),
-    );
+    // The origin of the fitted lattice is drawn by `drawRefinedCentre`, with the
+    // clicked beam beside it, because the only useful thing to say about it is
+    // whether it agrees with the pick.
     root.append(group);
     drawBasisVectors(root, width, height);
   }
@@ -1169,9 +1864,15 @@ export function mount(context) {
         `${tipX - ux * head + -uy * wing},${tipY - uy * head + ux * wing}`,
         `${tipX - ux * head - -uy * wing},${tipY - uy * head - ux * wing}`,
       ].join(' ');
+      // An arrow to a node with no pick on it is a different claim from an arrow
+      // to a picked spot — it says "the lattice puts a node here and you have
+      // not picked it" — so it is drawn dashed rather than solid. Drawn
+      // identically, as it was, it read as a pick that had landed in empty
+      // space, which is precisely the thing it is not.
+      const dashed = !vector.on_a_pick;
       for (const [colour, weight, opacity] of [
         [HALO_COLOUR, marker / 2, 0.6],
-        [LATTICE_COLOUR, marker / 5, 1],
+        [BASIS_COLOUR, marker / 5, 1],
       ]) {
         group.append(
           svg('line', {
@@ -1180,17 +1881,25 @@ export function mount(context) {
             'stroke-width': weight,
             'stroke-opacity': opacity,
             'stroke-linecap': 'round',
+            'stroke-dasharray': dashed ? `${marker} ${marker}` : null,
           }),
         );
       }
-      group.append(svg('polygon', { points, fill: LATTICE_COLOUR }));
+      group.append(
+        svg('polygon', {
+          points,
+          fill: dashed ? 'none' : BASIS_COLOUR,
+          stroke: BASIS_COLOUR,
+          'stroke-width': marker / 5,
+        }),
+      );
       group.append(
         svg('text', {
           x: x1 + dx * 0.55 - uy * marker * 1.6,
           y: y1 + dy * 0.55 + ux * marker * 1.6,
           'font-size': marker * 2.2,
           'font-style': 'italic',
-          fill: LATTICE_COLOUR,
+          fill: BASIS_COLOUR,
           'paint-order': 'stroke',
           stroke: HALO_COLOUR,
           'stroke-width': marker / 2,
@@ -1246,18 +1955,6 @@ export function mount(context) {
       });
     }
     root.append(group);
-  }
-
-  function eventToImage(event, node, width, height) {
-    const rect = node.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    const scale = Math.min(rect.width / width, rect.height / height);
-    const offsetX = (rect.width - width * scale) / 2;
-    const offsetY = (rect.height - height * scale) / 2;
-    return {
-      x: (event.clientX - rect.left - offsetX) / scale,
-      y: (event.clientY - rect.top - offsetY) / scale,
-    };
   }
 
   /* -------------------------------------------------------------- actions */
@@ -1590,7 +2287,7 @@ export function mount(context) {
   }
 
   renderForms();
-  renderCentreTool();
+  renderPickTool();
   drawPattern();
   if (galleryEntries.length) loadGallery(galleryEntries[0].value);
 

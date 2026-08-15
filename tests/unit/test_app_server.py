@@ -792,9 +792,19 @@ class TestFrontendIsSelfContained:
         """The plate is dark in both themes; a theme token would vanish in one."""
 
         source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
-        for constant in ("LATTICE_COLOUR", "CALCULATED_COLOUR", "HALO_COLOUR"):
+        for constant in (
+            "LATTICE_COLOUR",
+            "CALCULATED_COLOUR",
+            "HALO_COLOUR",
+            # Each overlay means a different thing, so each carries its own
+            # colour: the fitted grid and the basis vectors shared one, and an
+            # arrow into empty space then read as part of the grid.
+            "BASIS_COLOUR",
+            "PICK_COLOUR",
+            "REFINED_COLOUR",
+        ):
             assert constant in source
-        drawing = source.split("function drawFittedLattice")[1].split("function eventToImage")[0]
+        drawing = source.split("function drawFittedLattice")[1].split("function drawCalculated")[0]
         assert "var(--teal)" not in drawing
         assert "var(--violet)" not in drawing
 

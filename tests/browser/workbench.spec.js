@@ -221,6 +221,207 @@ test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
   expect(browserErrors).toEqual([]);
 });
 
+/* ------------------------------------------------ picking the TEM pattern
+ *
+ * Three failures these pin, all of them things a user saw on screen and could
+ * not have diagnosed:
+ *
+ * 1. A pick made after zooming or panning landed off by the camera offset,
+ *    because the panel converted the pointer itself instead of asking the frame
+ *    that owns the viewBox.
+ * 2. Two picks produced a lattice through neither of them, because a
+ *    rank-deficient least squares answered anyway.
+ * 3. A typed coordinate reverted, because focusing the field rebuilt the table
+ *    the field was in.
+ */
+
+/** Open a practice plate and return a screen<->image coordinate converter. */
+async function openPlate(page) {
+  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+  const surface = page.locator('#stage .plot svg');
+  await expect(surface).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('.plot__zoom')).toHaveText('100%');
+  return async (x, y) => {
+    const geometry = await page.evaluate(() => {
+      const svg = document.querySelector('#stage .plot svg');
+      const box = svg.viewBox.baseVal;
+      const rect = svg.getBoundingClientRect();
+      const scale = Math.min(rect.width / box.width, rect.height / box.height);
+      return {
+        left: rect.left,
+        top: rect.top,
+        box: { x: box.x, y: box.y, width: box.width, height: box.height },
+        scale,
+        offsetX: (rect.width - box.width * scale) / 2,
+        offsetY: (rect.height - box.height * scale) / 2,
+      };
+    });
+    return {
+      x: geometry.left + geometry.offsetX + (x - geometry.box.x) * geometry.scale,
+      y: geometry.top + geometry.offsetY + (y - geometry.box.y) * geometry.scale,
+    };
+  };
+}
+
+/** Every coordinate the pick table is showing, beam first. */
+async function pickedCoordinates(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('.picks__row')].map((row) =>
+      [...row.querySelectorAll('.picks__input')].map((input) => Number(input.value)),
+    ),
+  );
+}
+
+test('a pick lands where the pointer is, after zooming and panning', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const toScreen = await openPlate(page);
+
+  // Move the camera first, then pick. At the fitted view every conversion
+  // agrees; the offset is what separates a correct one from a plausible one.
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  const pan = page.getByRole('button', { name: 'Pan tool', exact: true });
+  await pan.click();
+  const rect = await page.locator('#stage .plot svg').boundingBox();
+  await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width / 2 - 70, rect.y + rect.height / 2 + 40, { steps: 6 });
+  await page.mouse.up();
+  await pan.click();
+  await expect(pan).toHaveAttribute('aria-pressed', 'false');
+
+  const target = { x: 512, y: 512 };
+  const point = await toScreen(target.x, target.y);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('.picks__row')).toHaveCount(1);
+
+  const [beam] = await pickedCoordinates(page);
+  expect(beam[0]).toBeCloseTo(target.x, 0);
+  expect(beam[1]).toBeCloseTo(target.y, 0);
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('the view stays where it was put while picking', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const toScreen = await openPlate(page);
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  const zoomed = await page.locator('.plot__zoom').textContent();
+  expect(Number(zoomed.replace('%', ''))).toBeGreaterThan(100);
+
+  const point = await toScreen(512, 512);
+  await page.mouse.click(point.x, point.y);
+  await expect(page.locator('.picks__row')).toHaveCount(1);
+  // The redraw that follows a pick used to snap the camera back to Fit, which
+  // made zooming in to place a spot precisely impossible.
+  await expect(page.locator('.plot__zoom')).toHaveText(zoomed);
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('two picks lay the lattice through the two picks', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const toScreen = await openPlate(page);
+
+  // A beam and two reflections of this plate, clicked as a user would.
+  const clicks = [
+    [512, 512],
+    [452.48, 709.3],
+    [313.59, 452.73],
+  ];
+  for (const [x, y] of clicks) {
+    const point = await toScreen(x, y);
+    await page.mouse.click(point.x, point.y);
+  }
+  await expect(page.locator('.picks__row')).toHaveCount(3);
+  const coordinates = await pickedCoordinates(page);
+  for (const [index, [x, y]] of clicks.entries()) {
+    expect(coordinates[index][0]).toBeCloseTo(x, 0);
+    expect(coordinates[index][1]).toBeCloseTo(y, 0);
+  }
+
+  // The beam is where it was clicked and says so, rather than being quietly
+  // replaced by a centre that two spots cannot determine.
+  const rail = page.locator('.centre-tool');
+  await expect(rail).toContainText('held where it was picked', { timeout: 10_000 });
+  await expect(rail).toContainText('at least 4 spots');
+  await expect(rail.getByRole('button', { name: 'Refine beam from the spots' })).toBeDisabled();
+  // Both basis arrows are on picked spots, not on empty nodes.
+  await expect(rail).toContainText('a (spot 1');
+  await expect(rail).toContainText('b (spot 2');
+  await expect(rail).not.toContainText('no pick sits on this node');
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('a coordinate typed into the table moves the pick', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+  await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
+  await expect(page.locator('.picks__row').first()).toBeVisible();
+
+  const beamX = page.locator('.picks__input').first();
+  await expect(beamX).toHaveValue('512.00');
+  await beamX.click();
+  await beamX.press('Control+a');
+  await beamX.type('460');
+  await beamX.press('Enter');
+
+  // It must survive the fit that lands a moment later, which used to rebuild
+  // the table and put the old value back.
+  await expect(beamX).toHaveValue('460.00');
+  await page.waitForTimeout(800);
+  await expect(beamX).toHaveValue('460.00');
+  // With the beam moved off the spots, the fit says so and offers its own.
+  await expect(page.locator('.centre-tool')).toContainText('fit says');
+
+  // And the nudge pad moves the same pick, by the step it advertises.
+  await page.getByRole('button', { name: 'Move the selected pick right' }).click();
+  await expect(beamX).toHaveValue('461.00');
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('a pick can be renumbered, promoted and removed from the table', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+  await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
+  await expect(page.locator('.picks__row')).toHaveCount(7);
+
+  const before = await pickedCoordinates(page);
+  await page.getByRole('button', { name: 'Make spot 1 the transmitted beam' }).click();
+  const after = await pickedCoordinates(page);
+  // A swap, not a move: the old beam is still a pick, in the row vacated.
+  expect(after[0]).toEqual(before[1]);
+  expect(after[1]).toEqual(before[0]);
+
+  await page.getByRole('button', { name: 'Remove spot 1' }).click();
+  await expect(page.locator('.picks__row')).toHaveCount(6);
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('picks can be set from typed coordinates alone', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+  await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
+  await expect(page.locator('.picks__row').first()).toBeVisible();
+
+  await page.locator('.picks__io summary').click();
+  const area = page.locator('.picks__text');
+  await area.fill('512, 512\n452.48, 709.30\n313.59, 452.73');
+  await page.getByRole('button', { name: 'Apply these coordinates' }).click();
+
+  await expect(page.locator('.picks__row')).toHaveCount(3);
+  expect(await pickedCoordinates(page)).toEqual([
+    [512, 512],
+    [452.48, 709.3],
+    [313.59, 452.73],
+  ]);
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('keeps all workspaces reachable in the narrow responsive layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const browserErrors = await openWorkbench(page);
