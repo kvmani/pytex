@@ -225,6 +225,8 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\theta$ | Bragg half-angle. |
 | $2\theta$ | Powder-diffraction scattering angle reported in XRD plots. |
 | $F_{hkl}$ | Reflection structure-factor quantity or current PyTex proxy where explicitly stated. |
+| $R_{p}$ | Unweighted powder-profile agreement factor, $\sum_i |I_{\mathrm{obs},i}-I_{\mathrm{calc},i}| / \sum_i I_{\mathrm{obs},i}$, following the IUCr pdCIF definition. |
+| $R_{wp}$ | Weighted powder-profile agreement factor, $[\sum_i w_i(I_{\mathrm{obs},i}-I_{\mathrm{calc},i})^2 / \sum_i w_i I_{\mathrm{obs},i}^2]^{1/2}$, following the IUCr pdCIF definition. Distinct from an expected R factor or a full Rietveld goodness of fit. |
 | $\hat{\mathbf{z}}$ | Unit zone-axis direction in direct space. |
 | $u, v$ | Detector-plane plotting coordinates in SAED or detector geometry contexts. |
 | $s_{g}$ | Excitation error of reflection $\mathbf{g}$: its deviation from the exact Bragg condition, measured along the zone axis in reciprocal angstrom. |

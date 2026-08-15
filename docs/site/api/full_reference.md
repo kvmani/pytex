@@ -203,6 +203,10 @@ support objects that are imported elsewhere in the library.
 .. automodule:: pytex.diffraction.xrd
 ```
 
+```{eval-rst}
+.. automodule:: pytex.diffraction.xrd_measurement
+```
+
 ## Plotting
 
 ```{eval-rst}

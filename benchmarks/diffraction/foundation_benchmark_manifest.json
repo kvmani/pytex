@@ -10,14 +10,16 @@
     "geometry_invariants",
     "kinematic_spot_simulation",
     "reflection_family_grouping",
-    "orientation_candidate_ranking"
+    "orientation_candidate_ranking",
+    "measured_powder_profile_comparison"
   ],
   "fixture_ids": [
     "fe_bcc",
     "zr_hcp",
     "ni_fcc",
     "nicl",
-    "diamond"
+    "diamond",
+    "fixtures/diffraction/synthetic_powder_profile.xy"
   ],
   "artifact_paths": [
     "benchmarks/diffraction/foundation_benchmark_manifest.json",
@@ -26,16 +28,19 @@
     "fixtures/phases/zr_hcp/phase.cif",
     "fixtures/phases/ni_fcc/phase.cif",
     "fixtures/phases/nicl/phase.cif",
-    "fixtures/phases/diamond/phase.cif"
+    "fixtures/phases/diamond/phase.cif",
+    "fixtures/diffraction/synthetic_powder_profile.xy"
   ],
   "tolerances": {
     "projection_atol": 1e-08,
-    "bragg_argument_atol": 1e-12
+    "bragg_argument_atol": 1e-12,
+    "powder_affine_fit_atol": 1e-12
   },
   "status": "foundational",
   "notes": [
     "Benchmark harness is still lightweight, but the schema and benchmark identity are now stable.",
     "This manifest anchors the current diffraction foundation benchmark surface.",
-    "The bundled phase corpus under fixtures/phases provides small pinned diffraction inputs for easy local validation."
+    "The bundled phase corpus under fixtures/phases provides small pinned diffraction inputs for easy local validation.",
+    "The measured-profile case is explicitly labelled synthetic; its exact affine scale/background solution is independent of PyTex output."
   ]
 }

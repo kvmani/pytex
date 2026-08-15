@@ -17,6 +17,9 @@ reciprocal-space semantics used elsewhere in the library.
 - optional preferred-orientation correction through the shared diffraction model
 - runtime plotting through the shared YAML style system
 - a desktop/web workbench with indexed peak hover, canonical examples and live display controls
+- measured whitespace/CSV profile import and deterministic canonical export
+- measured-versus-simulated overlap comparison with scale, optional constant background,
+  residual profile, $R_p$, $R_{wp}$, and correlation
 
 ## Scientific Model
 
@@ -70,12 +73,41 @@ figure = plot_xrd_pattern(pattern, theme="journal")
 figure.savefig("ni_fcc_powder_xrd.png", dpi=200)
 ```
 
+## Compare A Measured Profile
+
+```python
+from pytex import compare_powder_patterns, read_powder_xy
+
+measured = read_powder_xy(
+    "instrument_export.xy",
+    uncertainty_column=2,  # omit when the file has no standard-uncertainty column
+)
+comparison = compare_powder_patterns(measured, pattern, fit_background=True)
+print(comparison.describe())
+```
+
+`read_powder_xy` accepts numeric whitespace files and comma-separated `.csv` files. Comment lines
+may declare `name`, `intensity_unit`, `radiation_name`, `wavelength_angstrom`, and `synthetic` as
+`# key: value`. Explicit arguments override header metadata. Construction rejects unsorted angles,
+negative/non-finite intensities, non-positive uncertainties, and all-zero scans before they reach a
+comparison. `write_powder_xy` emits the canonical comment header and two or three numeric columns.
+
+`PowderPatternComparison` uses only the shared angular interval and linearly interpolates the
+simulated profile onto the measured support. It fits a non-negative scale and, by default, one
+constant background. Standard uncertainties select inverse-variance weighting; their absence is
+reported as unit weighting. The result's `describe()` states every choice and the IUCr pdCIF basis
+of $R_p$ and $R_{wp}$. Both measurement and comparison round-trip through the shared JSON contract.
+
 ## Interpretation Notes
 
 - `PowderReflection` is the reflection-level object carrying $d$ spacing, $2\theta$,
   multiplicity, and intensity metadata.
 - `PowderPattern` is the broadened spectrum object carrying the reflection list plus
   grid-sampled intensity.
+- `MeasuredPowderPattern` preserves the observed grid, intensity semantics, uncertainty,
+  synthetic/experimental label, and provenance without applying hidden corrections.
+- `PowderPatternComparison` carries the observed, calculated, and residual arrays together with
+  fitted scale/background and IUCr profile agreement factors.
 - The current intensity surface is suitable for indexing, teaching, method prototyping, and
   structure-sensitive inspection, but it is not a Rietveld-grade refinement engine.
 - The first pinned external-baseline case for this workflow now uses the built-in `ni_fcc`
@@ -85,7 +117,8 @@ figure.savefig("ni_fcc_powder_xrd.png", dpi=200)
 ## Current Limits
 
 - no absorption, fluorescence, specimen-displacement or axial-divergence model
-- no fitted background or detector response
+- comparison can align one constant background, but it does not infer a physical background or
+  calibrated detector response
 - no crystallite-size/microstrain refinement (profile width is supplied, not inferred)
 - external-baseline coverage currently proves peak-position and multiplicity agreement for a small
   pinned case rather than a broad materials library

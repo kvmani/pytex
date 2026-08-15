@@ -1,0 +1,13 @@
+# pytex-powder-pattern: 1
+# name: synthetic-affine-powder-reference
+# synthetic: true
+# intensity_unit: counts
+# radiation_name: Cu Ka
+# wavelength_angstrom: 1.5406
+# columns: two_theta_deg intensity standard_uncertainty
+# This is labelled synthetic validation data, not an experimental measurement.
+20.0 10.0 1.0
+21.0 15.0 1.0
+22.0 20.0 1.0
+23.0 25.0 1.0
+24.0 30.0 1.0

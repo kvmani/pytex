@@ -49,6 +49,7 @@ _LAMBDA = SymbolUse(r"\lambda", "Radiation wavelength.")
 
 _XRD_WORKFLOW = SeeAlso("Powder XRD generation", "../../workflows/xrd_generation")
 _DIFF_CONCEPT = SeeAlso("Diffraction foundation", "../../concepts/diffraction_foundation")
+_XRD_THEORY = SeeAlso("Powder XRD and SAED theory", "../../theory/powder_xrd_and_saed")
 
 
 NI_111_TWO_THETA = WorkedExample(
@@ -364,6 +365,77 @@ ODF_WEIGHTED_RANDOM_TEXTURE = WorkedExample(
 )
 
 
+POWDER_PROFILE_AFFINE_COMPARISON = WorkedExample(
+    id="diffraction-powder-profile-affine-comparison",
+    title="Measured powder-profile comparison recovers a known scale and background",
+    domain="diffraction",
+    scenario=(
+        "You have imported a measured powder profile and want an auditable first comparison with "
+        "a simulated profile before attempting any structural refinement. This deliberately "
+        "synthetic validation case sets I_obs = 5 I_sim + 5 at five points with equal standard "
+        "uncertainty. Weighted least squares must therefore recover scale 5 and background 5 "
+        "exactly, while both IUCr profile residuals vanish."
+    ),
+    setup=(
+        NICKEL_SETUP
+        + """
+from pytex import (
+    MeasuredPowderPattern,
+    PowderPattern,
+    compare_powder_patterns,
+)
+
+axis = np.arange(20.0, 25.0)
+simulated_intensity = np.arange(1.0, 6.0)
+simulated = PowderPattern(
+    phase=nickel,
+    radiation=RadiationSpec.cu_ka(),
+    reflections=(),
+    two_theta_grid_deg=axis,
+    intensity_grid=simulated_intensity,
+)
+measured = MeasuredPowderPattern(
+    name="synthetic affine validation profile",
+    two_theta_deg=axis,
+    intensity=5.0 * simulated_intensity + 5.0,
+    standard_uncertainty=np.ones(5),
+    intensity_unit="counts",
+    radiation=RadiationSpec.cu_ka(),
+    synthetic=True,
+    metadata={"fixture_kind": "synthetic_validation"},
+)
+"""
+    ),
+    code=(
+        "comparison = compare_powder_patterns(measured, simulated)\n"
+        "result = np.array([\n"
+        "    comparison.scale_factor,\n"
+        "    comparison.background_offset,\n"
+        "    comparison.profile_r_factor,\n"
+        "    comparison.weighted_profile_r_factor,\n"
+        "])"
+    ),
+    expected=[5.0, 5.0, 0.0, 0.0],
+    unit="",
+    tolerance=1e-12,
+    reference=(
+        "The five observed values are constructed independently as 5*x + 5 from x = 1,...,5. "
+        "The weighted design matrix therefore contains the exact affine solution (5, 5), every "
+        "residual is zero, and the numerators of both R_p and R_wp are exactly zero."
+    ),
+    citation=(
+        "IUCr pdCIF dictionary definitions _pd_proc_ls.prof_R_factor and "
+        "_pd_proc_ls.prof_wR_factor; Young, The Rietveld Method (1993), Ch. 1."
+    ),
+    symbols=(
+        SymbolUse(r"R_p", "Unweighted whole-profile agreement factor."),
+        SymbolUse(r"R_{wp}", "Weighted whole-profile agreement factor."),
+    ),
+    see_also=(_XRD_WORKFLOW, _XRD_THEORY, _DIFF_CONCEPT),
+    result_format="{:.12f}",
+)
+
+
 KIKUCHI_MAP_SETUP = """
 import numpy as np
 from pytex import (
@@ -466,6 +538,7 @@ GROUP = ExampleGroup(
         MARCH_DOLLASE_FAMILY_FACTOR,
         MARCH_DOLLASE_NORMALIZATION,
         ODF_WEIGHTED_RANDOM_TEXTURE,
+        POWDER_PROFILE_AFFINE_COMPARISON,
         KIKUCHI_MAP_ZONE_AXIS_TILT_ANGLES,
     ),
 )

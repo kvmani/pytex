@@ -425,6 +425,12 @@ class PowderPattern:
         )
         if self.two_theta_grid_deg.shape != self.intensity_grid.shape:
             raise ValueError("PowderPattern grid arrays must have the same shape.")
+        if self.two_theta_grid_deg.size < 2:
+            raise ValueError("PowderPattern needs at least two angular grid points.")
+        if np.any(~np.isfinite(self.two_theta_grid_deg)) or np.any(
+            np.diff(self.two_theta_grid_deg) <= 0.0
+        ):
+            raise ValueError("PowderPattern angular grid must be finite and strictly increasing.")
         if np.any(~np.isfinite(self.intensity_grid)) or np.any(self.intensity_grid < 0.0):
             raise ValueError("PowderPattern intensity_grid must be finite and non-negative.")
 

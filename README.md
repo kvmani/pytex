@@ -80,8 +80,9 @@ The repository is now best described as a validated foundation build rather than
   and classical contour or section plotting surfaces
 - regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and
   import-manifest workflow foundations
-- diffraction geometry, reciprocal-space primitives, powder XRD generation, SAED spot generation,
-  reflection-family grouping, and local indexing candidate scaffolding
+- diffraction geometry, reciprocal-space primitives, powder XRD generation, measured-profile
+  import/export and whole-profile comparison, SAED spot generation, reflection-family grouping,
+  and local indexing candidate scaffolding
 - runtime scientific plotting for texture, diffraction, and structure, including YAML-driven styles
   and VESTA-like 3D crystal viewing
 - publication-grade stereographic plotting for Wulff nets, crystal directions, crystal planes, and

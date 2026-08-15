@@ -52,7 +52,9 @@ from pytex.core import (
 from pytex.diffraction import (
     DiffractionGeometry,
     DiffractionPattern,
+    MeasuredPowderPattern,
     PowderPattern,
+    PowderPatternComparison,
     PowderReflection,
     RadiationSpec,
     SAEDPattern,
@@ -1412,13 +1414,26 @@ def _serialize_radiation(radiation: RadiationSpec) -> dict[str, Any]:
         **_base_payload("pytex.diffraction.radiation_spec"),
         "name": radiation.name,
         "wavelength_angstrom": radiation.wavelength_angstrom,
+        "kalpha2_wavelength_angstrom": radiation.kalpha2_wavelength_angstrom,
+        "kalpha2_relative_intensity": radiation.kalpha2_relative_intensity,
+        "anode": radiation.anode,
+        "kind": radiation.kind,
     }
 
 
 def _deserialize_radiation(payload: dict[str, Any]) -> RadiationSpec:
     _require_schema(payload, "pytex.diffraction.radiation_spec")
     return RadiationSpec(
-        name=payload["name"], wavelength_angstrom=float(payload["wavelength_angstrom"])
+        name=payload["name"],
+        wavelength_angstrom=float(payload["wavelength_angstrom"]),
+        kalpha2_wavelength_angstrom=(
+            None
+            if payload.get("kalpha2_wavelength_angstrom") is None
+            else float(payload["kalpha2_wavelength_angstrom"])
+        ),
+        kalpha2_relative_intensity=float(payload.get("kalpha2_relative_intensity", 0.5)),
+        anode=payload.get("anode"),
+        kind=str(payload.get("kind", "xray")),
     )
 
 
@@ -1487,6 +1502,90 @@ def _deserialize_powder_pattern(payload: dict[str, Any]) -> PowderPattern:
         intensity_grid=np.asarray(payload["intensity_grid"], dtype=np.float64),
         broadening_fwhm_deg=payload.get("broadening_fwhm_deg"),
         provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_measured_powder_pattern(
+    pattern: MeasuredPowderPattern,
+) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.diffraction.measured_powder_pattern"),
+        "name": pattern.name,
+        "two_theta_deg": _as_float_list(pattern.two_theta_deg),
+        "intensity": _as_float_list(pattern.intensity),
+        "standard_uncertainty": (
+            None
+            if pattern.standard_uncertainty is None
+            else _as_float_list(pattern.standard_uncertainty)
+        ),
+        "intensity_unit": pattern.intensity_unit,
+        "radiation": (
+            None if pattern.radiation is None else _serialize_radiation(pattern.radiation)
+        ),
+        "synthetic": pattern.synthetic,
+        "metadata": dict(pattern.metadata),
+        "provenance": _serialize_provenance(pattern.provenance),
+    }
+
+
+def _deserialize_measured_powder_pattern(payload: dict[str, Any]) -> MeasuredPowderPattern:
+    _require_schema(payload, "pytex.diffraction.measured_powder_pattern")
+    uncertainty = payload.get("standard_uncertainty")
+    radiation = payload.get("radiation")
+    return MeasuredPowderPattern(
+        name=str(payload["name"]),
+        two_theta_deg=np.asarray(payload["two_theta_deg"], dtype=np.float64),
+        intensity=np.asarray(payload["intensity"], dtype=np.float64),
+        standard_uncertainty=(
+            None if uncertainty is None else np.asarray(uncertainty, dtype=np.float64)
+        ),
+        intensity_unit=cast(Any, payload.get("intensity_unit", "counts")),
+        radiation=None if radiation is None else _deserialize_radiation(radiation),
+        synthetic=bool(payload.get("synthetic", False)),
+        metadata=dict(payload.get("metadata", {})),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
+def _serialize_powder_pattern_comparison(
+    comparison: PowderPatternComparison,
+) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.diffraction.powder_pattern_comparison"),
+        "measured": _serialize_measured_powder_pattern(comparison.measured),
+        "simulated": _serialize_powder_pattern(comparison.simulated),
+        "two_theta_deg": _as_float_list(comparison.two_theta_deg),
+        "observed_intensity": _as_float_list(comparison.observed_intensity),
+        "calculated_intensity": _as_float_list(comparison.calculated_intensity),
+        "residual_intensity": _as_float_list(comparison.residual_intensity),
+        "scale_factor": comparison.scale_factor,
+        "background_offset": comparison.background_offset,
+        "profile_r_factor": comparison.profile_r_factor,
+        "weighted_profile_r_factor": comparison.weighted_profile_r_factor,
+        "correlation_coefficient": comparison.correlation_coefficient,
+        "weight_model": comparison.weight_model,
+        "fitted_background": comparison.fitted_background,
+    }
+
+
+def _deserialize_powder_pattern_comparison(
+    payload: dict[str, Any],
+) -> PowderPatternComparison:
+    _require_schema(payload, "pytex.diffraction.powder_pattern_comparison")
+    return PowderPatternComparison(
+        measured=_deserialize_measured_powder_pattern(payload["measured"]),
+        simulated=_deserialize_powder_pattern(payload["simulated"]),
+        two_theta_deg=np.asarray(payload["two_theta_deg"], dtype=np.float64),
+        observed_intensity=np.asarray(payload["observed_intensity"], dtype=np.float64),
+        calculated_intensity=np.asarray(payload["calculated_intensity"], dtype=np.float64),
+        residual_intensity=np.asarray(payload["residual_intensity"], dtype=np.float64),
+        scale_factor=float(payload["scale_factor"]),
+        background_offset=float(payload["background_offset"]),
+        profile_r_factor=float(payload["profile_r_factor"]),
+        weighted_profile_r_factor=float(payload["weighted_profile_r_factor"]),
+        correlation_coefficient=float(payload["correlation_coefficient"]),
+        weight_model=cast(Any, payload["weight_model"]),
+        fitted_background=bool(payload["fitted_background"]),
     )
 
 
@@ -1712,6 +1811,8 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     RadiationSpec: _serialize_radiation,
     PowderReflection: _serialize_powder_reflection,
     PowderPattern: _serialize_powder_pattern,
+    MeasuredPowderPattern: _serialize_measured_powder_pattern,
+    PowderPatternComparison: _serialize_powder_pattern_comparison,
     SAEDSpot: _serialize_saed_spot,
     SAEDPattern: _serialize_saed_pattern,
     DiffractionGeometry: _serialize_diffraction_geometry,
@@ -1765,6 +1866,8 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.diffraction.radiation_spec": _deserialize_radiation,
     "pytex.diffraction.powder_reflection": _deserialize_powder_reflection,
     "pytex.diffraction.powder_pattern": _deserialize_powder_pattern,
+    "pytex.diffraction.measured_powder_pattern": _deserialize_measured_powder_pattern,
+    "pytex.diffraction.powder_pattern_comparison": _deserialize_powder_pattern_comparison,
     "pytex.diffraction.saed_spot": _deserialize_saed_spot,
     "pytex.diffraction.saed_pattern": _deserialize_saed_pattern,
     "pytex.diffraction.diffraction_geometry": _deserialize_diffraction_geometry,

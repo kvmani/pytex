@@ -33,10 +33,10 @@ as such in both its metadata and documentation.
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| G1 | Reconcile governing roadmaps and completed application ledger state | done | this commit |
-| G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | this commit |
-| G3 | Add minimal critical Playwright workbench tests and CI lane | done | this commit |
-| F1 | Measured powder-XRD I/O and comparison | pending | — |
+| G1 | Reconcile governing roadmaps and completed application ledger state | done | `ff93592` |
+| G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | `ff93592` |
+| G3 | Add minimal critical Playwright workbench tests and CI lane | done | `2967e32` |
+| F1 | Measured powder-XRD I/O and comparison | done | (this commit) |
 | F2 | Random-standard defocus calibration | pending | — |
 | F3 | Hex-grid EBSD support | pending | — |
 | F4 | Finite-thickness SAED shape factor | pending | — |
@@ -72,8 +72,25 @@ as such in both its metadata and documentation.
 - G3 verification: `npm run test:browser` (4 passed), 95 focused Python tests, repository integrity,
   Ruff, strict mypy over 138 source files, JavaScript syntax checks, CI YAML parsing, the full pytest
   suite (two expected skips), and the 602-warning Sphinx ratchet all pass.
-- Next action: commit and push G3, then begin F1 measured powder-XRD I/O and comparison by reconciling
-  its data model with the existing forward simulator, contracts, XRDML adapter, and benchmark ledger.
+- F1 adds immutable `MeasuredPowderPattern` and `PowderPatternComparison` models, commentable
+  whitespace/CSV import, deterministic canonical export, overlap interpolation, inverse-variance
+  or unit-weight affine alignment, IUCr $R_p$/$R_{wp}$ metrics, explainable summaries, and portable
+  JSON contracts. The pre-existing radiation contract now preserves the full Kα-doublet/anode/kind
+  semantics required by a measurement round trip.
+- The pinned `fixtures/diffraction/synthetic_powder_profile.xy` fixture is labelled as synthetic in
+  both file metadata and provenance. Its independently constructed relation
+  $I_{obs}=5I_{sim}+5$ proves exact recovery of scale 5, background 5, and zero $R_p$/$R_{wp}$;
+  a second test computes the IUCr formulas directly for a nonzero residual.
+- F1 documentation covers theory, workflow, limits, terminology, API, architecture, validation and
+  the root capability index. The executable gallery, diffraction benchmark manifest, integrity
+  inventory and generated canonical class-model atlas were updated in lockstep.
+- F1 focused verification passes across measurement, contracts, XRD/SAED realism, worked
+  examples, manifests, class-model generation, documentation policy and repository
+  integrity. Ruff, strict mypy over 139 source files, and the Sphinx ratchet at exactly 602 warnings
+  also pass. The complete pytest suite passes with the same two expected skips; its public-API pass
+  caught and drove repair of one initially missing `point_count` property docstring.
+- Next action: commit and push F1, then begin F2 random-standard pole-figure defocus calibration by
+  reconciling the existing XRDML pole-figure model and m.r.d. normalization surfaces.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 

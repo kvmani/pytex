@@ -39,6 +39,7 @@ The complete set of computed-versus-expected values at a glance:
 | `diffraction-march-dollase-family-factor` | 2.309132723130 | 2.309132723130 | &mdash; | ✅ |
 | `diffraction-march-dollase-normalization` | 1.000000000 | 1.000000000 | &mdash; | ✅ |
 | `diffraction-odf-weighted-random-texture` | 0.9999 | 1.0000 | &mdash; | ✅ |
+| `diffraction-powder-profile-affine-comparison` | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | &mdash; | ✅ |
 | `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | ✅ |
 | `ebsd-planted-lattice-curvature` | 13962.634016 | 13962.634016 | rad/m | ✅ |
 | `ebsd-gnd-density-from-curvature` | 5.462689e+13 | 5.462689e+13 | 1/m^2 | ✅ |

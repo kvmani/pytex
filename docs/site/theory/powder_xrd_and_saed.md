@@ -22,28 +22,68 @@ $$
 
 and reports the observable angle $2\theta$.
 
-The current intensity model is a deliberately modest structure-sensitive approximation:
+The powder intensity model is a deliberately bounded kinematic approximation:
 
 $$
 I_{hkl} \propto m_{hkl} \, |F_{hkl}|^2 \, L_{p}(2\theta)
 $$
 
-where $m_{hkl}$ is the multiplicity inferred from the phase point-group symmetry, $F_{hkl}$ is a simple atomic-number-based structure-factor proxy over the unit cell, and $L_p$ is a Lorentz-polarization term.
+where $m_{hkl}$ is the multiplicity inferred from the phase point-group symmetry, $F_{hkl}$
+comes from the selected tabulated-X-ray, constant-atomic-number, or unit-amplitude model, and
+$L_p$ is a Lorentz-polarization term.
 
 Enumeration returns one deterministic representative for each symmetry orbit $\{hkl\}$, while
 $m_{hkl}$ records the size of that orbit. Emitting every equivalent index as a separate reflection
 would apply multiplicity twice when constructing a powder spectrum and is therefore excluded by the
 family-uniqueness invariant.
 
-This is suitable for foundational workflows and teaching. It is not yet a complete scattering-factor or instrument model.
+This is suitable for phase-identification workflows, controlled comparison, and teaching. It is
+not a calibrated instrument model or a Rietveld refinement.
 
 ## Spectrum Construction
 
-The broadened powder spectrum is constructed by depositing each reflection onto a sampled $2\theta$ grid. The current broadening path uses a Gaussian profile with configurable full width at half maximum. For a reflection centered at $2\theta_{hkl}$ and Gaussian width $\sigma$,
+The broadened powder spectrum is constructed by depositing each reflection onto a sampled
+$2\theta$ grid. Gaussian and pseudo-Voigt profiles are available with constant width or a Caglioti
+angle-dependent width. For the Gaussian case centered at $2\theta_{hkl}$ with width $\sigma$,
 
 $$
 I(2\theta) = \sum_{hkl} I_{hkl} \exp\left[-\frac{(2\theta - 2\theta_{hkl})^2}{2\sigma^2}\right]
 $$
+
+## Measured Profiles And Whole-Profile Comparison
+
+`MeasuredPowderPattern` is the experiment-facing object. Its angular support must be finite and
+strictly increasing; intensity must be finite and non-negative; optional standard uncertainties
+must be positive. It records whether intensity means counts, counts per second, or arbitrary units,
+and it carries radiation, metadata, provenance, and an explicit `synthetic` label. The whitespace or
+CSV reader accepts comment metadata without silently normalizing, subtracting background, or
+resampling the observation.
+
+Comparison interpolates the simulated profile onto measured angles only inside their shared range.
+It then solves
+
+$$
+I_{\mathrm{calc},i} = a I_{\mathrm{sim},i} + b
+$$
+
+for non-negative scale $a$ and optional constant background $b$ by weighted least squares. If the
+measurement supplies standard uncertainties $\sigma_i$, $w_i=1/\sigma_i^2$; otherwise $w_i=1$.
+PyTex reports the IUCr pdCIF whole-profile agreement factors
+
+$$
+R_p = \frac{\sum_i |I_{\mathrm{obs},i}-I_{\mathrm{calc},i}|}
+           {\sum_i I_{\mathrm{obs},i}},
+\qquad
+R_{wp} = \left[
+\frac{\sum_i w_i(I_{\mathrm{obs},i}-I_{\mathrm{calc},i})^2}
+     {\sum_i w_i I_{\mathrm{obs},i}^2}
+\right]^{1/2}.
+$$
+
+These numbers describe pointwise profile agreement after only scale/background alignment. They are
+not an expected R factor, reduced $\chi^2$, structure refinement, phase quantification, or permission
+to compare patterns whose peaks are substantially displaced. The residual array remains attached to
+the result because the difference profile is more diagnostic than a scalar alone.
 
 ## SAED
 
@@ -70,6 +110,16 @@ The current spot intensity is again a proxy quantity intended for ranking and vi
 
 ## Current Limits
 
-- No tabulated atomic form-factor or electron-scattering-factor model yet.
-- No dynamical diffraction treatment.
-- No instrument-function refinement or calibrated detector response model yet.
+- Powder comparison does not refine peak shift, lattice parameters, profile width, structure,
+  specimen displacement, or an instrument response.
+- Powder XRD remains kinematic; absorption, fluorescence, extinction and detector response are not
+  inferred from a measured profile.
+- SAED spot intensity remains a proxy in this module; dynamical electron diffraction is provided by
+  the separate CBED/Bloch-wave surfaces rather than by the kinematic SAED generator.
+
+## References
+
+- IUCr, [Powder CIF dictionary: profile R-factor definitions](https://www.iucr.org/resources/cif/dictionaries/browse/cif_pd).
+- McCusker *et al.*, “Rietveld refinement guidelines,” *J. Appl. Cryst.* 32 (1999),
+  [doi:10.1107/S0021889898009856](https://doi.org/10.1107/S0021889898009856).
+- Young (ed.), *The Rietveld Method*, IUCr Monographs on Crystallography 5 (1993).

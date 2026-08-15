@@ -532,6 +532,99 @@ result = float(model.factors([MillerPlane.from_hkl([1, 1, 1], phase=nickel)])[0]
 
 **See also**: {doc}`Powder XRD generation <../../workflows/xrd_generation>`, {doc}`Texture foundation <../../concepts/texture_foundation>`
 
+## Measured powder-profile comparison recovers a known scale and background
+
+You have imported a measured powder profile and want an auditable first comparison with a simulated profile before attempting any structural refinement. This deliberately synthetic validation case sets I_obs = 5 I_sim + 5 at five points with equal standard uncertainty. Weighted least squares must therefore recover scale 5 and background 5 exactly, while both IUCr profile residuals vanish.
+
+**Symbols**
+
+- $R_p$ &mdash; Unweighted whole-profile agreement factor.
+- $R_{wp}$ &mdash; Weighted whole-profile agreement factor.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerPlane,
+    Phase,
+    RadiationSpec,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Nickel (FCC), lattice parameter from the pinned PyTex fixture corpus.
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+cu_ka1 = RadiationSpec.cu_ka().wavelength_angstrom
+
+from pytex import (
+    MeasuredPowderPattern,
+    PowderPattern,
+    compare_powder_patterns,
+)
+
+axis = np.arange(20.0, 25.0)
+simulated_intensity = np.arange(1.0, 6.0)
+simulated = PowderPattern(
+    phase=nickel,
+    radiation=RadiationSpec.cu_ka(),
+    reflections=(),
+    two_theta_grid_deg=axis,
+    intensity_grid=simulated_intensity,
+)
+measured = MeasuredPowderPattern(
+    name="synthetic affine validation profile",
+    two_theta_deg=axis,
+    intensity=5.0 * simulated_intensity + 5.0,
+    standard_uncertainty=np.ones(5),
+    intensity_unit="counts",
+    radiation=RadiationSpec.cu_ka(),
+    synthetic=True,
+    metadata={"fixture_kind": "synthetic_validation"},
+)
+```
+
+:::
+
+**Compute**
+
+```python
+comparison = compare_powder_patterns(measured, simulated)
+result = np.array([
+    comparison.scale_factor,
+    comparison.background_offset,
+    comparison.profile_r_factor,
+    comparison.weighted_profile_r_factor,
+])
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `diffraction-powder-profile-affine-comparison` | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | &mdash; | 2.66e-15 | 1e-12 | ✅ pass |
+
+**Why this value**: The five observed values are constructed independently as 5*x + 5 from x = 1,...,5. The weighted design matrix therefore contains the exact affine solution (5, 5), every residual is zero, and the numerators of both R_p and R_wp are exactly zero.
+
+**Citation**: IUCr pdCIF dictionary definitions _pd_proc_ls.prof_R_factor and _pd_proc_ls.prof_wR_factor; Young, The Rietveld Method (1993), Ch. 1.
+
+**See also**: {doc}`Powder XRD generation <../../workflows/xrd_generation>`, {doc}`Powder XRD and SAED theory <../../theory/powder_xrd_and_saed>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
+
 ## Kikuchi-map routing reproduces the exact cubic zone-axis angles
 
 Build the stereographic Kikuchi map of nickel and ask it for the tilt from [001] to [011], to [111], and to [112], with a leg budget large enough that each is a single hop along one band. The angles between low-index cubic directions are closed-form - 45 degrees, arccos(1/sqrt(3)), and arccos(2/sqrt(6)) - so the routed travel is checked against arithmetic rather than against a prior run. Getting these right exercises the whole chain: the direct basis, the map frame, the zone law that decides which bands join two axes, and the shortest-path search.

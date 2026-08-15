@@ -13,6 +13,10 @@ This document records the initial Phase 4 implementation posture for diffraction
 - Bragg-angle and ring-radius prediction from $d$ spacing or `CrystalPlane`
 - powder XRD reflection enumeration and $2\theta$ spectrum generation with configurable radiation and broadening
 - explicit `RadiationSpec`, `PowderReflection`, and `PowderPattern` objects for XRD workflows
+- measured powder-XRD import/export through `MeasuredPowderPattern`, with explicit units,
+  uncertainty, radiation, provenance, and synthetic/experimental labelling
+- explainable measured-versus-simulated `PowderPatternComparison` results carrying residual arrays,
+  IUCr $R_p$/$R_{wp}$ factors, correlation, fitted scale/background, and JSON contracts
 - explicit `ReciprocalLatticeVector` and `ZoneAxis` core-model objects
 - specimen-to-laboratory rotation as an explicit diffraction-geometry contract
 - minimal Ewald-style kinematic spot simulation with excitation-error filtering and detector projection
@@ -36,16 +40,15 @@ This document records the initial Phase 4 implementation posture for diffraction
 ## Deliberate Current Limits
 
 - no full detector-to-specimen transform calibration workflow yet
-- dynamical intensity is **two-beam only**, and each CBED disc is computed independently, so
-  the discs of one simulated pattern are not mutually consistent and their relative
-  intensities carry no information; there is no many-beam or Bloch-wave solver
-- no absorption model, so simulated thickness fringes do not decay as real ones do
-- no HOLZ *line* simulation inside the bright-field disc, and no diffraction-group symmetry
-  determination, so CBED cannot yet supply a point group or decide centrosymmetry
+- powder-profile comparison aligns scale and an optional constant background only; it is not a
+  Rietveld engine and does not refine peak position, lattice, structure, or an instrument response
+- the many-beam Bloch-wave surface has phenomenological absorption but not computed absorptive form
+  factors, Bethe weak-beam perturbation, wedge/bending/strain-gradient specimen realism, or a broad
+  external dynamical-code parity campaign
 - the absolute structure-factor scale rests on a fitted parametrization: good to about
   1.5 percent for light elements (aluminium, validated against published extinction
   distances) and only indicative for heavy ones
-- no continuous or probabilistic orientation-refinement workflow yet
+- no probabilistically calibrated orientation-refinement workflow yet
 - no adapter-backed bridges to diffsims or related diffraction stacks yet
 
 ## Why This Is The Right First Step

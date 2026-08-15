@@ -244,6 +244,6 @@
   <line x1="58.0" y1="1689.0" x2="98.0" y2="1689.0" stroke="#334155" stroke-width="1.6" marker-end="url(#cd-arrow)" marker-start="url(#cd-triangle)"/>
   <text x="116.0" y="1693.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">inheritance - the triangle touches the base class</text>
   <text x="58.0" y="1714.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">*  after a field name: the field holds a sequence</text>
-  <text x="56.0" y="1741.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 100 classes carry it, on every result object.</text>
+  <text x="56.0" y="1741.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">ProvenanceRecord is omitted: 101 classes carry it, on every result object.</text>
   <text x="56.0" y="1759.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Fields naming another card are listed first; the rest are summarized.</text>
 </svg>
