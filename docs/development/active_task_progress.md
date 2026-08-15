@@ -38,8 +38,8 @@ as such in both its metadata and documentation.
 | G3 | Add minimal critical Playwright workbench tests and CI lane | done | `2967e32` |
 | F1 | Measured powder-XRD I/O and comparison | done | `c71eb15` |
 | F2 | Random-standard defocus calibration | done | `9a9ba91` |
-| F3 | Hex-grid EBSD support | done | (this commit) |
-| F4 | Finite-thickness SAED shape factor | pending | — |
+| F3 | Hex-grid EBSD support | done | `075a926` |
+| F4 | Finite-thickness SAED shape factor | done | (this commit) |
 | F5 | Named-component ODF fitting | pending | — |
 | C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | pending | — |
 
@@ -139,8 +139,38 @@ as such in both its metadata and documentation.
   pytest suite passes with the same two expected skips. The Sphinx ratchet passes at 601 warnings,
   one below the 602 ceiling: two new documented-field duplicate warnings were offset by repairing
   three genuine pre-existing malformed docstrings rather than raising the baseline.
-- Next action: commit and push F3, then begin F4 finite-thickness SAED shape factors by tracing the
-  current excitation-error intensity proxy and defining a zero-thickness-compatible contract.
+- F3 landed and was pushed to `main` in `075a926`.
+- F4 entry audit found that the vectorized SAED engine and the detector/indexing engine both use a
+  Lorentzian excitation-error weight as a thickness proxy. A plane-parallel thin foil instead has
+  the normalized amplitude shape factor `sinc(t s_g)` and intensity factor `sinc^2(t s_g)`, with
+  first zero at `|s_g| = 1/t`. F4 will add that exact finite-thickness model as an explicit,
+  explainable contract; preserve the legacy Lorentzian when thickness is absent; reject ambiguous
+  simultaneous configuration; and leave the integer-zone-law compatibility generator unchanged
+  because its selected rational-zone reflections have no useful continuous excitation-error
+  distribution to weight.
+- F4 adds immutable `FiniteThicknessShapeFactor`: normalized plane-parallel amplitude
+  `sinc(t s_g)`, intensity `sinc^2(t s_g)`, first-zero property, convention-and-limits
+  `describe()`, public exports, and a portable JSON round trip. `KinematicSimulationConfig` and
+  the calibrated detector/indexing engine both accept `foil_thickness_angstrom`; the former rejects
+  simultaneous legacy Lorentzian configuration, and both preserve historical output when physical
+  thickness is absent. Composite export manifests preserve parent and child thickness, and both
+  `SpotTable` and composite descriptions name the selected intensity envelope.
+- The independent rectangular-slab transform fixes the 100 angstrom case at intensity `1` for
+  `s_g=0`, `4/pi^2` for `s_g=1/(2t)`, and zero at the first relrod zero `s_g=1/t=0.01`
+  inverse angstrom. This is pinned in focused unit tests and the executable composite-diffraction
+  gallery. Documentation cites Marx and Epp, *Structural Dynamics* 12 (2025), DOI
+  `10.1063/4.0000286`, whose metadata was verified through Crossref, plus Williams and Carter.
+- F4 updates theory, workflow, algorithm, architecture, terminology, capability/governing
+  roadmaps, validation matrix, diffraction benchmark, composite manifest schema, CHANGELOG,
+  generated gallery, and canonical class-model atlas. No fixture is needed because the analytic
+  slab transform is a stronger independent reference than synthetic simulation data.
+- F4 verification: focused feature/kinematic/detector/composite-export/contract/gallery/class-atlas/
+  public-docstring/integrity tests pass; Ruff and strict mypy over 140 source files pass; the full
+  unit suite passes with the same two expected skips. The ordinary Sphinx build and warning ratchet
+  pass at 601 warnings, still one below the 602 ceiling.
+- Next action: commit and push F4, then begin F5 named-component ODF fitting by auditing existing
+  `TextureComponent`, ODF evaluation/inversion, standard rolling-component catalogs, positivity and
+  normalization contracts, and available independently solvable mixtures.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 

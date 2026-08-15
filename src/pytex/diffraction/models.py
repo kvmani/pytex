@@ -29,6 +29,7 @@ from pytex.core.lattice import (
 )
 from pytex.core.orientation import Orientation, OrientationSet, Rotation
 from pytex.core.provenance import ProvenanceRecord
+from pytex.diffraction.shape_factors import FiniteThicknessShapeFactor
 
 if TYPE_CHECKING:
     from pytex.adapters import ExperimentManifest
@@ -99,14 +100,24 @@ def _kinematic_intensity(
     *,
     model: str,
     excitation_sigma_inv_angstrom: float,
+    foil_thickness_angstrom: float | None,
 ) -> float:
-    if model == "unit":
-        return 1.0
-    if model != "kinematic_proxy":
+    if model not in {"unit", "kinematic_proxy"}:
         raise ValueError("intensity_model must be either 'unit' or 'kinematic_proxy'.")
+    if foil_thickness_angstrom is not None:
+        excitation_weight = float(
+            FiniteThicknessShapeFactor(foil_thickness_angstrom).intensity_factor(
+                excitation_error_inv_angstrom
+            )
+        )
+    elif model == "unit":
+        return 1.0
+    else:
+        excitation_ratio = excitation_error_inv_angstrom / excitation_sigma_inv_angstrom
+        excitation_weight = 1.0 / (1.0 + excitation_ratio * excitation_ratio)
+    if model == "unit":
+        return excitation_weight
     reciprocal_magnitude = float(np.linalg.norm(reciprocal_vector_lab))
-    excitation_ratio = excitation_error_inv_angstrom / excitation_sigma_inv_angstrom
-    excitation_weight = 1.0 / (1.0 + excitation_ratio * excitation_ratio)
     resolution_weight = 1.0 / (1.0 + reciprocal_magnitude * reciprocal_magnitude)
     return float(excitation_weight * resolution_weight)
 
@@ -988,6 +999,7 @@ class KinematicSimulation:
         max_excitation_error_inv_angstrom: float = 5e-2,
         intensity_model: str = "kinematic_proxy",
         excitation_sigma_inv_angstrom: float = 5e-2,
+        foil_thickness_angstrom: float | None = None,
         acceptance_mask: DetectorAcceptanceMask | None = None,
         max_distance_px: float = 10.0,
         cluster_radius_px: float = 5.0,
@@ -1011,7 +1023,8 @@ class KinematicSimulation:
             accuracy; refine the winner with
             :meth:`refine_orientation_candidate`.
         zone_axis, max_excitation_error_inv_angstrom, intensity_model,
-        excitation_sigma_inv_angstrom, acceptance_mask : see :meth:`simulate_spots`.
+        excitation_sigma_inv_angstrom, foil_thickness_angstrom,
+        acceptance_mask : see :meth:`simulate_spots`.
         max_distance_px, cluster_radius_px, use_only_accepted : see
             :meth:`associate_to_pattern`.
 
@@ -1038,6 +1051,7 @@ class KinematicSimulation:
                 max_excitation_error_inv_angstrom=max_excitation_error_inv_angstrom,
                 intensity_model=intensity_model,
                 excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+                foil_thickness_angstrom=foil_thickness_angstrom,
                 acceptance_mask=acceptance_mask,
             )
             indexing = simulation.associate_to_pattern(
@@ -1076,6 +1090,7 @@ class KinematicSimulation:
         max_excitation_error_inv_angstrom: float = 5e-2,
         intensity_model: str = "kinematic_proxy",
         excitation_sigma_inv_angstrom: float = 5e-2,
+        foil_thickness_angstrom: float | None = None,
         acceptance_mask: DetectorAcceptanceMask | None = None,
         max_distance_px: float = 10.0,
         cluster_radius_px: float = 5.0,
@@ -1136,6 +1151,7 @@ class KinematicSimulation:
             max_excitation_error_inv_angstrom=max_excitation_error_inv_angstrom,
             intensity_model=intensity_model,
             excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+            foil_thickness_angstrom=foil_thickness_angstrom,
             acceptance_mask=acceptance_mask,
         )
         best_indexing = best_simulation.associate_to_pattern(
@@ -1180,6 +1196,7 @@ class KinematicSimulation:
                             max_excitation_error_inv_angstrom=max_excitation_error_inv_angstrom,
                             intensity_model=intensity_model,
                             excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+                            foil_thickness_angstrom=foil_thickness_angstrom,
                             acceptance_mask=acceptance_mask,
                         )
                         candidate_indexing = candidate_simulation.associate_to_pattern(
@@ -1325,6 +1342,7 @@ class KinematicSimulation:
         max_excitation_error_inv_angstrom: float = 5e-2,
         intensity_model: str = "kinematic_proxy",
         excitation_sigma_inv_angstrom: float = 5e-2,
+        foil_thickness_angstrom: float | None = None,
         acceptance_mask: DetectorAcceptanceMask | None = None,
         deduplicate_families: bool = False,
         provenance: ProvenanceRecord | None = None,
@@ -1365,8 +1383,12 @@ class KinematicSimulation:
         intensity_model : str
             Intensity weighting model, ``"kinematic_proxy"`` by default.
         excitation_sigma_inv_angstrom : float
-            Width of the excitation-error falloff, standing in for specimen
-            thickness: a thinner foil gives longer relrods and a larger sigma.
+            Width of the legacy Lorentzian excitation-error falloff. Used only
+            when ``foil_thickness_angstrom`` is ``None``.
+        foil_thickness_angstrom : float, optional
+            Positive plane-parallel foil thickness. When supplied, the exact
+            normalized ``sinc^2(t s_g)`` shape factor replaces the legacy
+            Lorentzian excitation-error proxy.
         acceptance_mask : DetectorAcceptanceMask, optional
             Marks which spots would be observable.
         deduplicate_families : bool
@@ -1385,6 +1407,12 @@ class KinematicSimulation:
             raise ValueError("max_excitation_error_inv_angstrom must be non-negative.")
         if excitation_sigma_inv_angstrom <= 0.0:
             raise ValueError("excitation_sigma_inv_angstrom must be strictly positive.")
+        if foil_thickness_angstrom is not None and (
+            not np.isfinite(foil_thickness_angstrom) or foil_thickness_angstrom <= 0.0
+        ):
+            raise ValueError(
+                "foil_thickness_angstrom must be finite and strictly positive when set."
+            )
         rounded_miller = np.rint(miller_array)
         if not np.allclose(miller_array, rounded_miller, atol=1e-12):
             raise ValueError("miller_indices must contain integer-valued triplets.")
@@ -1469,6 +1497,7 @@ class KinematicSimulation:
                             excitation_error,
                             model=intensity_model,
                             excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+                            foil_thickness_angstrom=foil_thickness_angstrom,
                         ),
                         "two_theta_rad": float(two_theta_all[local]),
                         "azimuth_rad": float(azimuth_all[local]),
@@ -1614,14 +1643,12 @@ class DiffractionPattern:
         object.__setattr__(self, "intensities", intensities)
 
     def detector_coordinates_mm(self) -> np.ndarray:
-        """Detector-plane offsets of the observed spots, in millimetres.
-        """
+        """Detector-plane offsets of the observed spots, in millimetres."""
 
         return self.geometry.detector_coordinates_mm(self.coordinates_px)
 
     def outgoing_directions_lab(self) -> np.ndarray:
-        """Unit scattered-beam directions of the observed spots, in the lab frame.
-        """
+        """Unit scattered-beam directions of the observed spots, in the lab frame."""
 
         return self.geometry.outgoing_directions_lab(self.coordinates_px)
 
@@ -1635,14 +1662,12 @@ class DiffractionPattern:
         return self.geometry.scattering_vectors_lab(self.coordinates_px)
 
     def two_theta_rad(self) -> np.ndarray:
-        """Scattering angles ``2*theta`` of the observed spots, in radians.
-        """
+        """Scattering angles ``2*theta`` of the observed spots, in radians."""
 
         return self.geometry.two_theta_rad(self.coordinates_px)
 
     def azimuth_rad(self) -> np.ndarray:
-        """Azimuthal angles of the observed spots about the beam, in radians.
-        """
+        """Azimuthal angles of the observed spots about the beam, in radians."""
 
         return self.geometry.azimuth_rad(self.coordinates_px)
 
@@ -2169,6 +2194,7 @@ def index_saed_pattern(
     max_excitation_error_inv_angstrom: float = 5e-2,
     intensity_model: str = "kinematic_proxy",
     excitation_sigma_inv_angstrom: float = 5e-2,
+    foil_thickness_angstrom: float | None = None,
     acceptance_mask: DetectorAcceptanceMask | None = None,
     max_distance_px: float = 10.0,
     cluster_radius_px: float = 5.0,
@@ -2198,6 +2224,9 @@ def index_saed_pattern(
         Spot-intensity policy; see :meth:`KinematicSimulation.simulate_spots`.
     excitation_sigma_inv_angstrom : float
         Excitation envelope width; see :meth:`KinematicSimulation.simulate_spots`.
+    foil_thickness_angstrom : float, optional
+        Exact finite-thickness shape-factor input; see
+        :meth:`KinematicSimulation.simulate_spots`.
     acceptance_mask : DetectorAcceptanceMask, optional
         Detector acceptance; see :meth:`KinematicSimulation.simulate_spots`.
     max_distance_px : float
@@ -2227,6 +2256,7 @@ def index_saed_pattern(
         max_excitation_error_inv_angstrom=max_excitation_error_inv_angstrom,
         intensity_model=intensity_model,
         excitation_sigma_inv_angstrom=excitation_sigma_inv_angstrom,
+        foil_thickness_angstrom=foil_thickness_angstrom,
         acceptance_mask=acceptance_mask,
     )
     return simulation.associate_to_pattern(

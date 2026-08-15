@@ -90,8 +90,9 @@ objective-aperture / dark-field selection.
 **Implemented.** `diffraction/kinematic.py::simulate_zone_axis_spots` is the
 engine: fully vectorized, selects reflections by Ewald-sphere excitation error
 `s_g = g_z - g^2*lambda/2`, applies centering absences, computes electron
-structure factors with isotropic Debye-Waller damping, optional Lorentzian
-relrod damping, `g_max`/`max_index` cuts, and a deterministic right-handed
+structure factors with isotropic Debye-Waller damping, an exact optional plane-parallel
+`sinc^2(t s_g)` finite-thickness factor (with the older Lorentzian retained as an explicitly
+separate compatibility proxy), `g_max`/`max_index` cuts, and a deterministic right-handed
 detector triad with `align_g` and in-plane rotation control. It accepts an
 irrational `CrystalDirection`, so *any* beam direction — not just a rational zone
 — is exact. `diffraction/saed.py::generate_saed_pattern` remains as the simple
@@ -99,17 +100,17 @@ zone-law route, and `DiffractionGeometry` / `KinematicSimulation` provide the
 calibrated detector projection (pattern centre, non-square pixels, detector
 tilts, acceptance masks).
 
-**Lacking.** The relrod model is a Lorentzian proxy, not the physical
-`sin(pi*t*s)/(pi*s)` shape factor — specimen thickness is not a parameter
-anywhere. Higher-order Laue zones are excluded by the default `s_g` window and
-there is no Laue-zone index on spots and no HOLZ-ring geometry. No dynamical
-theory of any kind (no two-beam, Bloch-wave, or multislice), no absorption, no
-precession, no CBED.
+**Lacking.** The plane-parallel finite-thickness shape factor is implemented and independently
+pinned at its analytic landmarks, but no bending, thickness distribution, mosaic spread, or
+absorption broadens it. Higher-order Laue zones are excluded by the default `s_g` window and
+there is no Laue-zone index on spots; existing HOLZ-ring geometry is not integrated into each
+spot table. The separate CBED/Bloch-wave foundations do not yet make this SAED surface a general
+dynamical simulation, and precession is absent.
 
 **Next.**
-1. Add specimen thickness and the true shape factor — cheap, and the single largest realism gain.
-2. Tag every spot with its Laue-zone index and emit HOLZ ring radii.
-3. Two-beam / Bloch-wave intensities as the first dynamical step, validated against a pinned external reference.
+1. Add bending/thickness-distribution specimen envelopes without weakening the explicit slab model.
+2. Tag every spot with its Laue-zone index and connect the existing HOLZ-ring geometry.
+3. Expand two-beam / Bloch-wave intensity integration and external validation.
 
 ## 4. Tilts required to reach a target zone axis — 9.5/10
 

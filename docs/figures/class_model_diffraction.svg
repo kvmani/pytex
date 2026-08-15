@@ -155,8 +155,8 @@
   <text x="873.3" y="1269.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">g_max_inv_angstrom: float?</text>
   <text x="873.3" y="1289.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">max_excitation_error_inv_angstrom: float</text>
   <text x="873.3" y="1309.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">intensity_model: Literal[electron_atomic_num…</text>
-  <text x="873.3" y="1329.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">relrod_sigma_inv_angstrom: float?</text>
-  <text x="873.3" y="1349.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 4 more</text>
+  <text x="873.3" y="1329.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">foil_thickness_angstrom: float?</text>
+  <text x="873.3" y="1349.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 5 more</text>
   <rect x="711.6" y="776.0" width="286.5" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
   <rect x="712.6" y="777.0" width="284.5" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
   <text x="726.6" y="805.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">SpotTable</text>

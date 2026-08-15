@@ -21,10 +21,13 @@ This document records the initial Phase 4 implementation posture for diffraction
 - specimen-to-laboratory rotation as an explicit diffraction-geometry contract
 - minimal Ewald-style kinematic spot simulation with excitation-error filtering and detector projection
 - explicit SAED spot-pattern generation from a `ZoneAxis` with detector coordinates in a named detector frame
+- `FiniteThicknessShapeFactor` and vectorized SAED integration for the exact plane-parallel
+  `sinc^2(t s_g)` intensity envelope, with explainable and JSON-contract surfaces
 - validation of detector projection edge cases, integer Miller inputs, and off-detector spot semantics
 - symmetry-aware reflection-family grouping with explicit multiplicity records
 - explicit detector acceptance masks for workflow-level detector gating
-- minimal proxy intensity weighting for spot ranking and family representation
+- kinematic intensity weighting for spot ranking and family representation, including an optional
+  physical finite-thickness envelope and a retained legacy Lorentzian proxy
 - detector-space clustering and simulated/observed indexing-candidate association
 - local orientation-candidate ranking and deterministic local refinement
 - family-level indexing reports built from matched reflection families

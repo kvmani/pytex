@@ -13,6 +13,12 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Finite-thickness SAED shape factors.** `FiniteThicknessShapeFactor` implements the normalized
+  plane-parallel amplitude `sinc(t s_g)` and intensity `sinc^2(t s_g)`, with its first zero,
+  `describe()`, and JSON round trip. Both vectorized SAED engines accept a physical foil thickness;
+  the legacy Lorentzian remains available only when thickness is absent. The analytic 100 angstrom
+  slab landmarks are pinned by tests and an executable worked example.
+
 - **The beam centre is solved for, not clicked.** `pytex.diffraction.lattice_fit`
   fits the plane lattice that a zone-axis pattern's spots must lie on, which
   over-determines the transmitted beam with four or more picks and names any pick

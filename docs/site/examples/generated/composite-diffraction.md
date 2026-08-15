@@ -4,7 +4,7 @@
 
 # Composite OR diffraction
 
-Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the identities the exported reflection table must satisfy, and the exact halfway position of the double-diffraction Si 002 spot.
+Numerical cornerstones of composite orientation-relationship SAED simulation: the relativistic electron wavelength against the standard 200 kV value, the exactness of the Kurdjumov-Sachs child-zone mapping, and the two defining Burgers beta->alpha signatures (exact basal zone and the {110}/(0002) near-coincidence), plus the identities the exported reflection table must satisfy, and the exact halfway position of the double-diffraction Si 002 spot, and the analytic landmarks of the finite-thickness relrod shape factor.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -627,3 +627,43 @@ result = float(radius[forbidden] / radius[row_of(0, 0, 4)])
 **Citation**: Williams and Carter, Transmission Electron Microscopy, 2nd ed., Springer, 2009, ch. 16 (double diffraction; the Si [110] 002 spot).
 
 **See also**: {doc}`SAED generation workflow <../../workflows/saed_generation>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
+
+## First two landmarks of a 100 angstrom SAED relrod
+
+You know the thickness of a plane-parallel TEM foil and need a physical excitation-error weight instead of an adjustable Lorentzian width. A uniform 100 angstrom slab has unit intensity at the exact Bragg condition, intensity (2/pi)^2 halfway to its first zero, and zero intensity at |s_g| = 1/t = 0.01 1/angstrom. These landmarks independently check the complete finite-thickness convention, including the factor of pi.
+
+**Symbols**
+
+- $t$ &mdash; Plane-parallel foil thickness normal to the electron beam.
+- $s_g$ &mdash; Excitation error of reciprocal-lattice vector g.
+- $S_t(s_g)$ &mdash; Normalized finite-thickness amplitude shape factor.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import FiniteThicknessShapeFactor
+shape = FiniteThicknessShapeFactor(thickness_angstrom=100.0)
+```
+
+:::
+
+**Compute**
+
+```python
+excitation = np.array([0.0, 0.5 / shape.thickness_angstrom, shape.first_zero_inv_angstrom])
+result = np.asarray(shape.intensity_factor(excitation))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `saed-finite-thickness-rectangular-slab` | [1.000000000000, 0.405284734569, 0.000000000000] | [1.000000000000, 0.405284734569, 0.000000000000] | dimensionless | 5.55e-17 | 1e-15 | ✅ pass |
+
+**Why this value**: The Fourier transform of a uniform slab of thickness t is sin(pi t s_g)/(pi t s_g). Squaring gives intensity 1 at s_g=0, 4/pi^2 at t s_g=1/2, and the first zero at |s_g|=1/t.
+
+**Citation**: Marx and Epp, GARFIELD, a toolkit for interpreting ultrafast electron diffraction data of imperfect quasi-single crystals, Structural Dynamics 12 (2025), DOI 10.1063/4.0000286; Williams and Carter, Transmission Electron Microscopy, 2nd ed., ch. 18.
+
+**See also**: {doc}`SAED generation workflow <../../workflows/saed_generation>`, {doc}`Powder XRD and SAED theory <../../theory/powder_xrd_and_saed>`

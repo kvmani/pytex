@@ -370,9 +370,7 @@ def _single_grain_map(coordinates: np.ndarray) -> CrystalMap:
 
 def test_grain_fitted_ellipse_captures_elongation_and_orientation() -> None:
     # A horizontal 1x4 strip forms one grain elongated along x.
-    crystal_map = _single_grain_map(
-        np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]])
-    )
+    crystal_map = _single_grain_map(np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]]))
     segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
     assert len(segmentation.grains) == 1
     ellipse = segmentation.grain_fitted_ellipse(segmentation.grains[0])
@@ -384,9 +382,7 @@ def test_grain_fitted_ellipse_captures_elongation_and_orientation() -> None:
 
 
 def test_grain_fitted_ellipse_is_isotropic_for_square_grain() -> None:
-    crystal_map = _single_grain_map(
-        np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]])
-    )
+    crystal_map = _single_grain_map(np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]))
     segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
     ellipse = segmentation.grain_fitted_ellipse(segmentation.grains[0])
     assert ellipse.aspect_ratio == pytest.approx(1.0, abs=1e-9)
@@ -442,9 +438,7 @@ def test_grain_perimeter_respects_rectangular_steps() -> None:
 
 def test_grain_shape_orientation_tracks_vertical_elongation() -> None:
     # A vertical 4x1 strip is elongated along y, so the major axis is at 90 deg.
-    crystal_map = _single_grain_map(
-        np.array([[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]])
-    )
+    crystal_map = _single_grain_map(np.array([[0.0, 0.0], [0.0, 1.0], [0.0, 2.0], [0.0, 3.0]]))
     segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, symmetry_aware=False)
     angle = segmentation.grain_shape_orientations_deg()[0]
     assert angle == pytest.approx(90.0, abs=1e-6)
@@ -1353,6 +1347,31 @@ def test_kinematic_simulation_projects_zone_axis_spots() -> None:
     for spot in simulation.spots:
         assert spot.on_detector
         assert spot.two_theta_rad >= 0.0
+
+    finite = KinematicSimulation.simulate_spots(
+        geometry,
+        phase,
+        np.array([[1, 0, 0], [-1, 0, 0], [0, 0, 1]]),
+        orientation=orientation,
+        zone_axis=ZoneAxis(indices=np.array([0, 0, 1]), phase=phase),
+        max_excitation_error_inv_angstrom=0.2,
+        intensity_model="unit",
+        foil_thickness_angstrom=100.0,
+    )
+    for spot in finite.spots:
+        expected = np.sinc(100.0 * spot.excitation_error_inv_angstrom) ** 2
+        assert spot.intensity == pytest.approx(expected)
+
+    unit = KinematicSimulation.simulate_spots(
+        geometry,
+        phase,
+        np.array([[1, 0, 0], [-1, 0, 0], [0, 0, 1]]),
+        orientation=orientation,
+        zone_axis=ZoneAxis(indices=np.array([0, 0, 1]), phase=phase),
+        max_excitation_error_inv_angstrom=0.2,
+        intensity_model="unit",
+    )
+    assert all(spot.intensity == 1.0 for spot in unit.spots)
 
 
 def test_kinematic_simulation_vectorized_filters_are_consistent() -> None:

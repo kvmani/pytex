@@ -50,8 +50,10 @@ from pytex.core import (
     as_axis_vectors,
 )
 from pytex.diffraction import (
+    FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA,
     DiffractionGeometry,
     DiffractionPattern,
+    FiniteThicknessShapeFactor,
     MeasuredPowderPattern,
     PowderPattern,
     PowderPatternComparison,
@@ -108,6 +110,22 @@ def _require_schema(payload: dict[str, Any], schema_id: str) -> None:
 
 def _base_payload(schema_id: str) -> dict[str, Any]:
     return {"schema_id": schema_id, "schema_version": JSON_CONTRACT_SCHEMA_VERSION}
+
+
+def _serialize_finite_thickness_shape_factor(
+    shape_factor: FiniteThicknessShapeFactor,
+) -> dict[str, Any]:
+    return {
+        **_base_payload(FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA),
+        "thickness_angstrom": shape_factor.thickness_angstrom,
+    }
+
+
+def _deserialize_finite_thickness_shape_factor(
+    payload: dict[str, Any],
+) -> FiniteThicknessShapeFactor:
+    _require_schema(payload, FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA)
+    return FiniteThicknessShapeFactor(thickness_angstrom=payload["thickness_angstrom"])
 
 
 def _serialize_provenance(provenance: ProvenanceRecord | None) -> dict[str, Any] | None:
@@ -1238,9 +1256,7 @@ def _serialize_crystal_map(crystal_map: CrystalMap) -> dict[str, Any]:
         else [float(value) for value in crystal_map.step_sizes],
         "properties": {
             name: _as_float_list(values)
-            for name, values in cast(
-                "Mapping[str, np.ndarray]", crystal_map.properties
-            ).items()
+            for name, values in cast("Mapping[str, np.ndarray]", crystal_map.properties).items()
         },
         "acquisition_geometry": None
         if crystal_map.acquisition_geometry is None
@@ -1866,6 +1882,7 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     PowderPattern: _serialize_powder_pattern,
     MeasuredPowderPattern: _serialize_measured_powder_pattern,
     PowderPatternComparison: _serialize_powder_pattern_comparison,
+    FiniteThicknessShapeFactor: _serialize_finite_thickness_shape_factor,
     SAEDSpot: _serialize_saed_spot,
     SAEDPattern: _serialize_saed_pattern,
     DiffractionGeometry: _serialize_diffraction_geometry,
@@ -1922,6 +1939,7 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.diffraction.powder_pattern": _deserialize_powder_pattern,
     "pytex.diffraction.measured_powder_pattern": _deserialize_measured_powder_pattern,
     "pytex.diffraction.powder_pattern_comparison": _deserialize_powder_pattern_comparison,
+    "pytex.diffraction.finite_thickness_shape_factor": (_deserialize_finite_thickness_shape_factor),
     "pytex.diffraction.saed_spot": _deserialize_saed_spot,
     "pytex.diffraction.saed_pattern": _deserialize_saed_pattern,
     "pytex.diffraction.diffraction_geometry": _deserialize_diffraction_geometry,

@@ -143,6 +143,10 @@
         },
         "max_excitation_error_inv_angstrom": { "type": "number", "exclusiveMinimum": 0 },
         "intensity_model": { "enum": ["electron_atomic_number", "unit"] },
+        "foil_thickness_angstrom": {
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
         "relrod_sigma_inv_angstrom": {
           "type": ["number", "null"],
           "exclusiveMinimum": 0

@@ -135,6 +135,10 @@ from pytex.diffraction.scattering import (
     electron_scattering_factors,
     electron_structure_factor_angstrom,
 )
+from pytex.diffraction.shape_factors import (
+    FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA,
+    FiniteThicknessShapeFactor,
+)
 from pytex.diffraction.solution_scoring import (
     AngleDeviation,
     ScoringWeights,
@@ -198,6 +202,7 @@ __all__ = [
     "DEFAULT_ANGLE_TOLERANCE_DEG",
     "DEFAULT_LENGTH_TOLERANCE_RELATIVE",
     "DEFAULT_ROUTE_MAX_LEG_DEG",
+    "FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA",
     "HOLZ_LINE_PATTERN_SCHEMA",
     "INTENSITY_UNITS",
     "MEASURED_PATTERN_SCHEMA",
@@ -223,6 +228,7 @@ __all__ = [
     "DiffractionIntensityModel",
     "DiffractionPattern",
     "FamilyIndexingReport",
+    "FiniteThicknessShapeFactor",
     "GnomonicProjection",
     "HOLZLine",
     "HOLZLineIntersection",

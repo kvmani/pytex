@@ -232,6 +232,7 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\hat{\mathbf{z}}$ | Unit zone-axis direction in direct space. |
 | $u, v$ | Detector-plane plotting coordinates in SAED or detector geometry contexts. |
 | $s_{g}$ | Excitation error of reflection $\mathbf{g}$: its deviation from the exact Bragg condition, measured along the zone axis in reciprocal angstrom. |
+| $S_t(s_g)$ | Normalized finite-thickness amplitude shape factor for a plane-parallel foil, $\sin(\pi t s_g)/(\pi t s_g)=\operatorname{sinc}(t s_g)$; the corresponding kinematic intensity factor is $|S_t(s_g)|^2$. |
 | $\xi_{g}$ | Two-beam extinction distance of reflection $\mathbf{g}$: the depth period of the intensity exchange between the transmitted and diffracted beams, $\pi V_{c}\cos\theta_{B}/(\lambda|F_{g}|)$. |
 | $f_{e}(s)$ | Electron atomic scattering factor in angstrom, from the X-ray form factor by Mott-Bethe: $(Z - f_{x})/(8\pi^{2}a_{0}s^{2})$. |
 | $\alpha$ | Convergence semi-angle of the illumination cone in CBED; sets the disc radius $\alpha/\lambda$ and the Kossel-Moellenstedt threshold. |

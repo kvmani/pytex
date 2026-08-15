@@ -48,6 +48,16 @@ A reflection is kept when $\lvert s_g \rvert \le$
 zero-order-Laue-zone reflection within the default $\lVert\mathbf{g}\rVert$ range
 while excluding higher-order zones.
 
+When a foil thickness $t$ is supplied, the plane-parallel finite-size transform
+
+$$
+S_t(s_g)=\frac{\sin(\pi t s_g)}{\pi t s_g}
+$$
+
+multiplies the amplitude, so the intensity is weighted by $|S_t(s_g)|^2$. The exact-Bragg limit
+is one and the first relrod zero is at $|s_g|=1/t$. The older Lorentzian width is retained as a
+mutually exclusive compatibility model; neither envelope adds dynamical scattering.
+
 The detector position follows from the camera constant $L\lambda$:
 
 $$\mathbf{r}_{\text{mm}} = (L\lambda)\,

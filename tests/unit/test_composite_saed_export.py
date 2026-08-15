@@ -30,6 +30,7 @@ from pytex.diffraction import (
     COMPOSITE_SAED_MANIFEST_SCHEMA,
     REFLECTION_TABLE_COLUMNS,
     CompositeSAEDPattern,
+    KinematicSimulationConfig,
     composite_reflection_table,
     composite_saed_manifest,
     export_composite_saed,
@@ -104,10 +105,7 @@ class TestReflectionTableGeometry:
         self, burgers_composite: CompositeSAEDPattern
     ) -> None:
         table = composite_reflection_table(burgers_composite)
-        sources = [
-            (row.source, row.variant_index)
-            for row in table.rows
-        ]
+        sources = [(row.source, row.variant_index) for row in table.rows]
         # Every parent row precedes every variant row.
         first_variant = next(i for i, entry in enumerate(sources) if entry[0] == "variant")
         assert all(entry[0] == "parent" for entry in sources[:first_variant])
@@ -136,12 +134,8 @@ class TestReflectionTableGeometry:
             assert opposite in by_hkl, f"Friedel partner of {hkl} missing"
             partner = by_hkl[opposite]
             assert_allclose(partner.d_angstrom, row.d_angstrom, rtol=1e-12)
-            assert_allclose(
-                partner.detector_radius_mm, row.detector_radius_mm, rtol=1e-9
-            )
-            assert_allclose(
-                partner.relative_intensity, row.relative_intensity, rtol=1e-12
-            )
+            assert_allclose(partner.detector_radius_mm, row.detector_radius_mm, rtol=1e-9)
+            assert_allclose(partner.relative_intensity, row.relative_intensity, rtol=1e-12)
             assert_allclose(partner.detector_mm, -np.asarray(row.detector_mm), atol=1e-9)
 
 
@@ -155,9 +149,7 @@ class TestIntensityThreshold:
         assert all(row.relative_intensity >= 0.5 for row in filtered.rows)
         assert "were excluded from this table" in filtered.describe()
 
-    def test_the_pattern_itself_is_untouched(
-        self, burgers_composite: CompositeSAEDPattern
-    ) -> None:
+    def test_the_pattern_itself_is_untouched(self, burgers_composite: CompositeSAEDPattern) -> None:
         before = burgers_composite.spot_count()
         composite_reflection_table(burgers_composite, intensity_threshold=0.9)
         assert burgers_composite.spot_count() == before
@@ -294,12 +286,8 @@ class TestCsvContract:
             records = list(csv.DictReader(handle))
         for record, row in zip(records, table.rows, strict=True):
             assert (int(record["h"]), int(record["k"]), int(record["l"])) == row.hkl
-            assert float(record["detector_x_mm"]) == pytest.approx(
-                row.detector_mm[0], abs=1e-9
-            )
-            assert float(record["detector_y_mm"]) == pytest.approx(
-                row.detector_mm[1], abs=1e-9
-            )
+            assert float(record["detector_x_mm"]) == pytest.approx(row.detector_mm[0], abs=1e-9)
+            assert float(record["detector_y_mm"]) == pytest.approx(row.detector_mm[1], abs=1e-9)
 
     def test_markdown_truncation_states_what_it_omitted(
         self, burgers_composite: CompositeSAEDPattern
@@ -326,9 +314,7 @@ class TestManifest:
         jsonschema = pytest.importorskip("jsonschema")
         export = export_composite_saed(burgers_composite, tmp_path, figure_formats=("svg",))
         payload = json.loads(export.manifest_path.read_text(encoding="utf-8"))
-        schema = json.loads(
-            composite_saed_manifest_schema_path().read_text(encoding="utf-8")
-        )
+        schema = json.loads(composite_saed_manifest_schema_path().read_text(encoding="utf-8"))
         jsonschema.validate(payload, schema)
         assert payload["schema"] == COMPOSITE_SAED_MANIFEST_SCHEMA
 
@@ -356,6 +342,21 @@ class TestManifest:
         manifest = composite_saed_manifest(burgers_composite)
         assert manifest["theory_level"] == "kinematic"
         assert manifest["intensity_normalization"] == "per_sub_pattern_max"
+
+    def test_manifest_preserves_finite_thickness_configuration(
+        self, burgers_composite: CompositeSAEDPattern
+    ) -> None:
+        pattern = simulate_composite_saed(
+            burgers_composite.relationship,
+            burgers_composite.parent_zone_axis,
+            variant_indices=(1,),
+            config=KinematicSimulationConfig(foil_thickness_angstrom=100.0),
+        )
+        manifest = composite_saed_manifest(pattern)
+
+        assert manifest["parent_config"]["foil_thickness_angstrom"] == 100.0
+        assert manifest["child_config"]["foil_thickness_angstrom"] == 100.0
+        assert "sinc^2(t s_g)" in pattern.describe()
 
     def test_manifest_file_inventory_matches_what_was_written(
         self, burgers_composite: CompositeSAEDPattern, tmp_path

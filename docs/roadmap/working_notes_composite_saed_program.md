@@ -72,7 +72,9 @@ status, deliverables, and exactly what remains. Master context:
 - `KinematicSimulationConfig` (frozen): `beam_energy_kev`,
   `camera_constant_mm_angstrom`, `max_index`, `g_max_inv_angstrom`,
   `max_excitation_error_inv_angstrom`, `intensity_model`
-  (`"electron_atomic_number" | "unit"`), `relrod_sigma_inv_angstrom | None`,
+  (`"electron_atomic_number" | "unit"`), `foil_thickness_angstrom | None` for the
+  exact plane-parallel `sinc^2(t s_g)` factor, or the mutually exclusive legacy
+  `relrod_sigma_inv_angstrom | None`,
   `apply_centering_absences`, `min_relative_intensity`.
 - `SpotTable` (frozen, struct-of-arrays, read-only ndarrays): `hkl (N,3)`,
   `g_crystal (N,3)`, `detector_mm (N,2)`, `g_detector_inv_angstrom (N,2)`,

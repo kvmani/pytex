@@ -40,6 +40,7 @@ from pytex.diffraction.kinematic import (
 )
 from pytex.diffraction.physics import ReflectionCondition
 from pytex.diffraction.saed import _choose_zone_basis, generate_saed_pattern
+from pytex.diffraction.shape_factors import FiniteThicknessShapeFactor
 
 
 def _crystal_frame(name: str = "crystal") -> ReferenceFrame:
@@ -169,9 +170,7 @@ class TestStructureFactors:
     def test_fcc_all_even_all_odd_rule(self) -> None:
         phase = make_nickel_phase()
         hkl = np.array([[1, 1, 1], [2, 0, 0], [1, 1, 0], [2, 1, 0]])
-        g = np.linalg.norm(
-            hkl.astype(float) @ phase.lattice.reciprocal_basis().matrix.T, axis=1
-        )
+        g = np.linalg.norm(hkl.astype(float) @ phase.lattice.reciprocal_basis().matrix.T, axis=1)
         factors = np.abs(electron_structure_factors(phase, hkl, g))
         assert factors[0] == pytest.approx(4.0 * 28.0)
         assert factors[1] == pytest.approx(4.0 * 28.0)
@@ -217,9 +216,7 @@ class TestSimulateZoneAxisSpots:
     def test_parity_with_legacy_saed_ni_011(self) -> None:
         phase = make_nickel_phase()
         zone = ZoneAxis(np.array([0, 1, 1]), phase=phase)
-        legacy = generate_saed_pattern(
-            phase, zone, camera_constant_mm_angstrom=180.0, max_index=3
-        )
+        legacy = generate_saed_pattern(phase, zone, camera_constant_mm_angstrom=180.0, max_index=3)
         config = KinematicSimulationConfig(
             beam_energy_kev=200.0,
             camera_constant_mm_angstrom=180.0,
@@ -233,8 +230,7 @@ class TestSimulateZoneAxisSpots:
             if spot.intensity > 1e-8
         }
         new_map = {
-            tuple(int(v) for v in row): table.detector_mm[i]
-            for i, row in enumerate(table.hkl)
+            tuple(int(v) for v in row): table.detector_mm[i] for i, row in enumerate(table.hkl)
         }
         assert set(new_map) == set(legacy_map)
         for key, coords in new_map.items():
@@ -318,11 +314,32 @@ class TestSimulateZoneAxisSpots:
         damped_map = dict(zip(damped.hkl_labels(), damped.intensity, strict=False))
         outer = max(
             base_map,
-            key=lambda label: float(
-                np.linalg.norm(base.g_crystal[base.hkl_labels().index(label)])
-            ),
+            key=lambda label: float(np.linalg.norm(base.g_crystal[base.hkl_labels().index(label)])),
         )
         assert damped_map[outer] < base_map[outer]
+
+    def test_finite_thickness_uses_exact_normalized_shape_factor(self) -> None:
+        phase = make_nickel_phase()
+        zone = ZoneAxis(np.array([0, 1, 1]), phase=phase)
+        thickness = 100.0
+        table = simulate_zone_axis_spots(
+            phase,
+            zone,
+            config=KinematicSimulationConfig(
+                intensity_model="unit",
+                foil_thickness_angstrom=thickness,
+                min_relative_intensity=0.0,
+            ),
+        )
+        expected = np.asarray(
+            FiniteThicknessShapeFactor(thickness).intensity_factor(
+                table.excitation_error_inv_angstrom
+            )
+        )
+        expected /= np.max(expected)
+
+        assert table.intensity == pytest.approx(expected)
+        assert "sinc^2(t s_g)" in table.describe()
 
     def test_g_max_filter(self) -> None:
         phase = make_nickel_phase()
@@ -358,9 +375,7 @@ class TestSimulateZoneAxisSpots:
         table = simulate_zone_axis_spots(phase, zone, basis=basis)
         default = simulate_zone_axis_spots(phase, zone)
         angle = np.deg2rad(30.0)
-        rotation = np.array(
-            [[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]]
-        )
+        rotation = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
         default_map = dict(zip(default.hkl_labels(), default.detector_mm, strict=False))
         for label, coords in zip(table.hkl_labels(), table.detector_mm, strict=False):
             assert np.allclose(coords, rotation @ default_map[label], atol=1e-9)
@@ -424,6 +439,7 @@ class TestConfigValidation:
             {"max_excitation_error_inv_angstrom": 0.0},
             {"intensity_model": "dynamical"},
             {"relrod_sigma_inv_angstrom": -1.0},
+            {"foil_thickness_angstrom": 0.0},
             {"min_relative_intensity": 1.0},
             {"min_relative_intensity": -0.1},
             {"double_diffraction_coupling": 0.0},
@@ -535,9 +551,7 @@ class TestDoubleDiffractionInPatterns:
         config = KinematicSimulationConfig(
             max_index=4, g_max_inv_angstrom=1.2, include_double_diffraction=include
         )
-        return simulate_zone_axis_spots(
-            phase, ZoneAxis([1, 1, 0], phase=phase), config=config
-        )
+        return simulate_zone_axis_spots(phase, ZoneAxis([1, 1, 0], phase=phase), config=config)
 
     def test_forbidden_002_absent_by_default(self) -> None:
         table = self._silicon_table(include=False)
@@ -570,8 +584,7 @@ class TestDoubleDiffractionInPatterns:
         extended_rows = {tuple(int(v) for v in row) for row in extended.hkl}
         assert plain_rows < extended_rows
         marked = {
-            tuple(int(v) for v in row)
-            for row in extended.hkl[extended.is_double_diffraction]
+            tuple(int(v) for v in row) for row in extended.hkl[extended.is_double_diffraction]
         }
         assert extended_rows - plain_rows == marked
 

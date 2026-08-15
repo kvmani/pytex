@@ -179,9 +179,9 @@ class ReflectionTable:
                 seen.append(row.variant_index)
         return tuple(seen)
 
-    def rows_for_source(self, source: str, *, variant_index: int | None = None) -> tuple[
-        ReflectionTableRow, ...
-    ]:
+    def rows_for_source(
+        self, source: str, *, variant_index: int | None = None
+    ) -> tuple[ReflectionTableRow, ...]:
         """Rows of one sub-pattern: the parent, or one variant."""
 
         return tuple(
@@ -371,9 +371,7 @@ def composite_reflection_table(
                     excitation_error_inv_angstrom=float(
                         spots.excitation_error_inv_angstrom[position]
                     ),
-                    structure_factor_amplitude=float(
-                        spots.structure_factor_amplitude[position]
-                    ),
+                    structure_factor_amplitude=float(spots.structure_factor_amplitude[position]),
                     relative_intensity=intensity,
                     double_diffraction_origin=spots.double_diffraction_origin_label(position),
                 )
@@ -387,7 +385,6 @@ def composite_reflection_table(
             source="variant",
             variant_index=variant_pattern.variant_index,
         )
-
 
     return ReflectionTable(
         relationship_name=pattern.relationship.name,
@@ -453,10 +450,13 @@ def composite_saed_manifest(
             "g_max_inv_angstrom": (
                 None if config.g_max_inv_angstrom is None else float(config.g_max_inv_angstrom)
             ),
-            "max_excitation_error_inv_angstrom": float(
-                config.max_excitation_error_inv_angstrom
-            ),
+            "max_excitation_error_inv_angstrom": float(config.max_excitation_error_inv_angstrom),
             "intensity_model": str(config.intensity_model),
+            "foil_thickness_angstrom": (
+                None
+                if config.foil_thickness_angstrom is None
+                else float(config.foil_thickness_angstrom)
+            ),
             "relrod_sigma_inv_angstrom": (
                 None
                 if config.relrod_sigma_inv_angstrom is None
@@ -467,7 +467,6 @@ def composite_saed_manifest(
             "include_double_diffraction": bool(config.include_double_diffraction),
             "double_diffraction_coupling": float(config.double_diffraction_coupling),
         }
-
 
     manifest: dict[str, Any] = {
         "schema": COMPOSITE_SAED_MANIFEST_SCHEMA,
@@ -481,22 +480,16 @@ def composite_saed_manifest(
             None
             if pattern.nearest_parent_zone_axis is None
             else {
-                "indices": [
-                    int(value) for value in pattern.nearest_parent_zone_axis.indices
-                ],
+                "indices": [int(value) for value in pattern.nearest_parent_zone_axis.indices],
                 "label": pattern.nearest_parent_zone_axis.label(),
-                "deviation_deg": float(
-                    pattern.nearest_parent_zone_axis.deviation_deg
-                ),
+                "deviation_deg": float(pattern.nearest_parent_zone_axis.deviation_deg),
             }
         ),
         "includes_parent": pattern.parent_spots is not None,
         "parent_reflection_count": (
             0 if pattern.parent_spots is None else len(pattern.parent_spots)
         ),
-        "zone_basis_parent": [
-            [float(value) for value in row] for row in pattern.zone_basis_parent
-        ],
+        "zone_basis_parent": [[float(value) for value in row] for row in pattern.zone_basis_parent],
         "centering_audit": [
             {"phase": name, "centering": centering, "declared": declared}
             for name, centering, declared in pattern.centering_audit()
@@ -614,9 +607,7 @@ def export_composite_saed(
     coincidence_report: SpotCoincidenceReport | None = None
     coincidence_path: Path | None = None
     if include_coincidences and pattern.parent_spots is not None:
-        coincidence_report = find_spot_coincidences(
-            pattern, tolerance_mm=coincidence_tolerance_mm
-        )
+        coincidence_report = find_spot_coincidences(pattern, tolerance_mm=coincidence_tolerance_mm)
         coincidence_path = _write_coincidence_csv(
             coincidence_report, output_directory / f"{stem}_coincidences.csv"
         )
@@ -643,19 +634,13 @@ def export_composite_saed(
         files={
             "reflection_table": table_path.name,
             **(
-                {"coincidence_table": coincidence_path.name}
-                if coincidence_path is not None
-                else {}
+                {"coincidence_table": coincidence_path.name} if coincidence_path is not None else {}
             ),
-            **{
-                f"figure_{path.suffix.lstrip('.')}": path.name for path in figure_paths
-            },
+            **{f"figure_{path.suffix.lstrip('.')}": path.name for path in figure_paths},
         },
     )
     manifest_path = output_directory / f"{stem}_manifest.json"
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
     return CompositeSAEDExport(
         directory=output_directory,
@@ -686,12 +671,8 @@ def _write_coincidence_csv(report: SpotCoincidenceReport, path: Path) -> Path:
             writer.writerow(
                 {
                     "variant": coincidence.variant_index,
-                    "parent_hkl": " ".join(
-                        str(int(value)) for value in coincidence.parent_hkl
-                    ),
-                    "child_hkl": " ".join(
-                        str(int(value)) for value in coincidence.child_hkl
-                    ),
+                    "parent_hkl": " ".join(str(int(value)) for value in coincidence.parent_hkl),
+                    "child_hkl": " ".join(str(int(value)) for value in coincidence.child_hkl),
                     "separation_mm": float(coincidence.separation_mm),
                     "parent_detector_x_mm": float(coincidence.parent_detector_mm[0]),
                     "parent_detector_y_mm": float(coincidence.parent_detector_mm[1]),

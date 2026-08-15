@@ -105,9 +105,7 @@ class RationalizedZoneAxis:
         if self.indices_bravais is not None:
             bravais = as_int_array(self.indices_bravais, shape=(4,))
             if int(bravais[0] + bravais[1] + bravais[2]) != 0:
-                raise ValueError(
-                    "RationalizedZoneAxis.indices_bravais must satisfy U + V + T = 0."
-                )
+                raise ValueError("RationalizedZoneAxis.indices_bravais must satisfy U + V + T = 0.")
             bravais = np.ascontiguousarray(bravais)
             bravais.setflags(write=False)
             object.__setattr__(self, "indices_bravais", bravais)
@@ -153,9 +151,7 @@ def rationalize_zone_axis(
     sine = float(np.linalg.norm(np.cross(units[best], target_unit)))
     deviation_deg = float(np.degrees(np.arctan2(sine, cosines[best])))
     best_indices = candidates[best].copy()
-    bravais = (
-        direction_uvw_to_uvtw(best_indices) if is_hexagonal_phase(direction.phase) else None
-    )
+    bravais = direction_uvw_to_uvtw(best_indices) if is_hexagonal_phase(direction.phase) else None
     return RationalizedZoneAxis(
         indices=best_indices,
         deviation_deg=deviation_deg,
@@ -194,9 +190,7 @@ class VariantZonePattern:
     def label(self) -> str:
         deviation = self.nearest_zone_axis.deviation_deg
         suffix = "" if deviation < 0.05 else f" ({deviation:.2f} deg off)"
-        return (
-            f"V{self.variant_index}: {self.nearest_zone_axis.label()}{suffix}"
-        )
+        return f"V{self.variant_index}: {self.nearest_zone_axis.label()}{suffix}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,9 +227,7 @@ class CompositeSAEDPattern:
         if not phases_semantically_match(
             self.parent_zone_axis.phase, self.relationship.parent_phase
         ):
-            raise ValueError(
-                "CompositeSAEDPattern.parent_zone_axis must use the parent phase."
-            )
+            raise ValueError("CompositeSAEDPattern.parent_zone_axis must use the parent phase.")
         if self.anchor_variant_index is not None and self.anchor_variant_index <= 0:
             raise ValueError("anchor_variant_index must be a positive variant index.")
         basis = as_float_array(self.zone_basis_parent, shape=(3, 3))
@@ -270,9 +262,9 @@ class CompositeSAEDPattern:
             return format_direction_indices(
                 tuple(int(value) for value in self.parent_zone_axis.indices), style="plain"
             )
-        components = "[" + " ".join(
-            f"{value:.3f}" for value in self.parent_zone_axis.coordinates
-        ) + "]"
+        components = (
+            "[" + " ".join(f"{value:.3f}" for value in self.parent_zone_axis.coordinates) + "]"
+        )
         if self.nearest_parent_zone_axis is None:
             return components
         return (
@@ -286,8 +278,7 @@ class CompositeSAEDPattern:
         if self.anchor_variant_index is None:
             return f"parent '{self.relationship.parent_phase.name}'"
         return (
-            f"variant {self.anchor_variant_index} of child "
-            f"'{self.relationship.child_phase.name}'"
+            f"variant {self.anchor_variant_index} of child '{self.relationship.child_phase.name}'"
         )
 
     def variant_pattern(self, variant_index: int) -> VariantZonePattern:
@@ -344,8 +335,11 @@ class CompositeSAEDPattern:
         """
 
         return tuple(
-            (phase.name, ReflectionCondition.from_phase(phase).centering,
-             phase_centering_is_declared(phase))
+            (
+                phase.name,
+                ReflectionCondition.from_phase(phase).centering,
+                phase_centering_is_declared(phase),
+            )
             for phase in (self.relationship.parent_phase, self.relationship.child_phase)
         )
 
@@ -378,6 +372,11 @@ class CompositeSAEDPattern:
 
         relationship = self.relationship
         parent_label = self.parent_zone_axis_label()
+        parent_shape = _shape_factor_description(self.config)
+        child_shape = _shape_factor_description(self.child_config)
+        shape_part = (
+            f" Parent intensity envelope: {parent_shape} Child intensity envelope: {child_shape}"
+        )
         parent_part = (
             f"{len(self.parent_spots)} parent reflection(s) included"
             if self.parent_spots is not None
@@ -411,7 +410,7 @@ class CompositeSAEDPattern:
                 f"{self.config.camera_constant_mm_angstrom:g} mm*angstrom). Child zone axes "
                 "are exact mapped directions; rational labels report their angular deviation. "
                 "Each sub-pattern's intensities are max-normalized (kinematic cross-phase "
-                "ratios are undefined at this level of theory)."
+                f"ratios are undefined at this level of theory).{shape_part}"
             ),
             self._centering_sentence(),
         ]
@@ -423,6 +422,14 @@ class CompositeSAEDPattern:
                 f"{len(pattern.spots)} reflection(s)."
             )
         return " ".join(lines)
+
+
+def _shape_factor_description(config: KinematicSimulationConfig) -> str:
+    if config.foil_thickness_angstrom is not None:
+        return f"sinc^2(t s_g) for t = {config.foil_thickness_angstrom:g} angstrom."
+    if config.relrod_sigma_inv_angstrom is not None:
+        return f"legacy Lorentzian with sigma_s = {config.relrod_sigma_inv_angstrom:g} 1/angstrom."
+    return "none."
 
 
 def simulate_composite_saed(
@@ -491,9 +498,7 @@ def simulate_composite_saed(
     if align_parent_g is not None:
         if not phases_semantically_match(align_parent_g.phase, relationship.parent_phase):
             raise ValueError("align_parent_g.phase must match relationship.parent_phase.")
-        align_cartesian = ReciprocalLatticeVector.from_miller_index(
-            align_parent_g
-        ).cartesian_vector
+        align_cartesian = ReciprocalLatticeVector.from_miller_index(align_parent_g).cartesian_vector
     elif align_g_cartesian is not None:
         align_cartesian = as_float_array(align_g_cartesian, shape=(3,))
 
@@ -637,8 +642,7 @@ def simulate_composite_saed_from_child_zone(
     anchor = available.get(int(anchor_variant_index))
     if anchor is None:
         raise ValueError(
-            f"Unknown anchor_variant_index {anchor_variant_index}; available: "
-            f"1..{len(variants)}."
+            f"Unknown anchor_variant_index {anchor_variant_index}; available: 1..{len(variants)}."
         )
 
     rotation = anchor.parent_to_child_rotation.as_matrix()
@@ -711,10 +715,7 @@ class SpotCoincidence:
     def label(self) -> str:
         parent = _reflection_label(self.parent_hkl, bravais=self.parent_bravais)
         child = _reflection_label(self.child_hkl, bravais=self.child_bravais)
-        return (
-            f"{parent}_p || {child}_V{self.variant_index} "
-            f"({self.separation_mm:.2f} mm)"
-        )
+        return f"{parent}_p || {child}_V{self.variant_index} ({self.separation_mm:.2f} mm)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -754,23 +755,17 @@ class SpotCoincidenceReport:
                     f"{coincidence.variant_index} missing from variant_spot_counts."
                 )
             if coincidence.separation_mm > self.tolerance_mm:
-                raise ValueError(
-                    "SpotCoincidenceReport.coincidences must respect tolerance_mm."
-                )
+                raise ValueError("SpotCoincidenceReport.coincidences must respect tolerance_mm.")
 
     @property
     def variant_indices(self) -> tuple[int, ...]:
         return tuple(index for index, _ in self.variant_spot_counts)
 
     def count_for_variant(self, variant_index: int) -> int:
-        return sum(
-            1 for item in self.coincidences if item.variant_index == variant_index
-        )
+        return sum(1 for item in self.coincidences if item.variant_index == variant_index)
 
     def coincidences_for_variant(self, variant_index: int) -> tuple[SpotCoincidence, ...]:
-        return tuple(
-            item for item in self.coincidences if item.variant_index == variant_index
-        )
+        return tuple(item for item in self.coincidences if item.variant_index == variant_index)
 
     def describe(self) -> str:
         """Prose summary: per-variant superposition counts and their meaning."""
@@ -822,8 +817,7 @@ def find_spot_coincidences(
     parent_table = pattern.parent_spots
     if parent_table is None:
         raise ValueError(
-            "find_spot_coincidences requires a composite simulated with "
-            "include_parent=True."
+            "find_spot_coincidences requires a composite simulated with include_parent=True."
         )
     coincidences: list[SpotCoincidence] = []
     variant_counts: list[tuple[int, int]] = []
@@ -835,9 +829,7 @@ def find_spot_coincidences(
         variant_counts.append((variant_pattern.variant_index, len(child_table)))
         if parent_tree is None or not len(child_table):
             continue
-        neighbor_lists = parent_tree.query_ball_point(
-            child_table.detector_mm, r=tolerance_mm
-        )
+        neighbor_lists = parent_tree.query_ball_point(child_table.detector_mm, r=tolerance_mm)
         for child_row, parent_rows in enumerate(neighbor_lists):
             child_xy = child_table.detector_mm[child_row]
             for parent_row in parent_rows:

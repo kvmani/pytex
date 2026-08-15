@@ -106,7 +106,38 @@ $$
 
 where $C$ is the camera-constant-style scale factor in millimeter-angstrom units.
 
-The current spot intensity is again a proxy quantity intended for ranking and visualization, not a dynamical diffraction model.
+### Finite-thickness relrod intensity
+
+For the vectorized excitation-error engines, a plane-parallel foil of thickness $t$ normal to the
+beam has the normalized amplitude shape factor
+
+$$
+S_t(s_g) = \frac{\sin(\pi t s_g)}{\pi t s_g} = \operatorname{sinc}(t s_g),
+$$
+
+with the analytic limiting value $S_t(0)=1$. The kinematic intensity multiplier is therefore
+$|S_t(s_g)|^2$. It is even in $s_g$, reaches its first zero at $|s_g|=1/t$, and approaches one at
+every fixed excitation error as $t\rightarrow 0$. This is the Fourier transform of a uniform
+rectangular slab; the factor of $t$ in the denominator is required for a dimensionless,
+unit-normalized amplitude.
+
+`FiniteThicknessShapeFactor(thickness_angstrom=t)` exposes the amplitude, intensity, first-zero,
+`describe()`, and portable JSON contract. Pass the same thickness as
+`KinematicSimulationConfig(foil_thickness_angstrom=t)` to
+`simulate_zone_axis_spots`, or as `foil_thickness_angstrom=t` to
+`KinematicSimulation.simulate_spots`. The former max-normalizes each pattern after multiplying
+$|F_{hkl}|^2$ by the shape factor; the latter preserves its existing detector/indexing intensity
+scale. The old `relrod_sigma_inv_angstrom` Lorentzian remains available for reproducibility, but a
+configuration cannot request both models because their parameters express competing thickness
+assumptions.
+
+The compatibility `generate_saed_pattern` route uses the integer zone law rather than a continuous
+Ewald-sphere excitation-error distribution and therefore does not accept a foil thickness. Use the
+vectorized engines when finite thickness matters.
+
+These remain kinematic relative intensities intended for ranking and visualization. A sinc-squared
+relrod does not add dynamical scattering, absorption, bending, mosaicity, surface roughness, or a
+thickness distribution.
 
 ## Current Limits
 
@@ -114,8 +145,9 @@ The current spot intensity is again a proxy quantity intended for ranking and vi
   specimen displacement, or an instrument response.
 - Powder XRD remains kinematic; absorption, fluorescence, extinction and detector response are not
   inferred from a measured profile.
-- SAED spot intensity remains a proxy in this module; dynamical electron diffraction is provided by
-  the separate CBED/Bloch-wave surfaces rather than by the kinematic SAED generator.
+- SAED supports the exact plane-parallel finite-thickness shape factor, but the structure-factor
+  intensity remains kinematic; dynamical electron diffraction is provided by the separate
+  CBED/Bloch-wave surfaces.
 
 ## References
 
@@ -123,3 +155,8 @@ The current spot intensity is again a proxy quantity intended for ranking and vi
 - McCusker *et al.*, “Rietveld refinement guidelines,” *J. Appl. Cryst.* 32 (1999),
   [doi:10.1107/S0021889898009856](https://doi.org/10.1107/S0021889898009856).
 - Young (ed.), *The Rietveld Method*, IUCr Monographs on Crystallography 5 (1993).
+- Marx and Epp, “GARFIELD, a toolkit for interpreting ultrafast electron diffraction data of
+  imperfect quasi-single crystals,” *Structural Dynamics* 12 (2025),
+  [doi:10.1063/4.0000286](https://doi.org/10.1063/4.0000286) (finite plate gives a sinc amplitude
+  and sinc-squared relrod intensity).
+- Williams and Carter, *Transmission Electron Microscopy*, 2nd ed., Springer (2009), ch. 18.

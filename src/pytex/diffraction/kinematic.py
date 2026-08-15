@@ -26,8 +26,10 @@ Conventions (pinned; see
   ``r_mm = (camera constant) * g_perp`` with the camera constant in mm*angstrom.
 - Kinematic intensity is ``|F_hkl|^2`` from the electron structure-factor
   proxy (atomic-number scattering with isotropic Debye-Waller damping),
-  optionally damped by a relrod profile ``1 / (1 + (s_g / sigma_s)^2)``;
-  intensities are normalized to a maximum of 1 per pattern.
+  optionally multiplied by the exact plane-parallel finite-thickness profile
+  ``sinc^2(t s_g)`` or the retained legacy Lorentzian
+  ``1 / (1 + (s_g / sigma_s)^2)``; intensities are normalized to a maximum
+  of 1 per pattern.
 - Double diffraction is off by default. When enabled, reflections reachable as
   the integer sum of two excited reflections are added even where the structure
   factor forbids them, and are flagged as such; see
@@ -53,6 +55,7 @@ from pytex.core.lattice import (
 from pytex.core.notation import format_direction_indices
 from pytex.core.provenance import ProvenanceRecord
 from pytex.diffraction.physics import ReflectionCondition
+from pytex.diffraction.shape_factors import FiniteThicknessShapeFactor
 
 IntensityModelName = Literal["electron_atomic_number", "unit"]
 
@@ -102,9 +105,11 @@ class KinematicSimulationConfig:
     half-width: a reflection is retained when ``|s_g|`` does not exceed it.
     The default (0.05 1/angstrom) keeps every zero-order-Laue-zone reflection
     within the default ``g`` range at common TEM voltages while excluding
-    higher-order Laue zones. ``relrod_sigma_inv_angstrom`` optionally damps
-    intensity with distance from the exact Bragg condition;
-    ``None`` disables damping. ``min_relative_intensity`` removes
+    higher-order Laue zones. ``foil_thickness_angstrom`` applies the exact
+    plane-parallel ``sinc^2(t s_g)`` finite-thickness intensity factor.
+    ``relrod_sigma_inv_angstrom`` retains the legacy Lorentzian proxy; the two
+    are mutually exclusive and ``None`` disables either damping model.
+    ``min_relative_intensity`` removes
     numerically-forbidden reflections after normalization.
 
     ``include_double_diffraction`` adds the reflections that are kinematically
@@ -120,6 +125,7 @@ class KinematicSimulationConfig:
     g_max_inv_angstrom: float | None = 1.5
     max_excitation_error_inv_angstrom: float = 0.05
     intensity_model: IntensityModelName = "electron_atomic_number"
+    foil_thickness_angstrom: float | None = None
     relrod_sigma_inv_angstrom: float | None = None
     apply_centering_absences: bool = True
     min_relative_intensity: float = 1e-4
@@ -148,15 +154,23 @@ class KinematicSimulationConfig:
                 "max_excitation_error_inv_angstrom must be finite and strictly positive."
             )
         if self.intensity_model not in {"electron_atomic_number", "unit"}:
-            raise ValueError(
-                "intensity_model must be 'electron_atomic_number' or 'unit'."
-            )
+            raise ValueError("intensity_model must be 'electron_atomic_number' or 'unit'.")
         if self.relrod_sigma_inv_angstrom is not None and (
-            not np.isfinite(self.relrod_sigma_inv_angstrom)
-            or self.relrod_sigma_inv_angstrom <= 0.0
+            not np.isfinite(self.relrod_sigma_inv_angstrom) or self.relrod_sigma_inv_angstrom <= 0.0
         ):
             raise ValueError(
                 "relrod_sigma_inv_angstrom must be finite and strictly positive when set."
+            )
+        if self.foil_thickness_angstrom is not None and (
+            not np.isfinite(self.foil_thickness_angstrom) or self.foil_thickness_angstrom <= 0.0
+        ):
+            raise ValueError(
+                "foil_thickness_angstrom must be finite and strictly positive when set."
+            )
+        if self.foil_thickness_angstrom is not None and self.relrod_sigma_inv_angstrom is not None:
+            raise ValueError(
+                "foil_thickness_angstrom and relrod_sigma_inv_angstrom are mutually "
+                "exclusive finite-thickness models."
             )
         if (
             not np.isfinite(self.min_relative_intensity)
@@ -209,9 +223,7 @@ def zone_basis_from_axis(
         in_plane = align - float(np.dot(align, zone_unit)) * zone_unit
         norm = float(np.linalg.norm(in_plane))
         if np.isclose(norm, 0.0, atol=1e-12):
-            raise ValueError(
-                "align_g_cartesian must not be parallel to the zone axis."
-            )
+            raise ValueError("align_g_cartesian must not be parallel to the zone axis.")
         u_axis = normalize_vector(in_plane)
         v_axis = np.cross(zone_unit, u_axis)
     angle_rad = float(np.deg2rad(in_plane_rotation_deg))
@@ -468,13 +480,10 @@ class SpotTable:
                 np.asarray(self.double_diffraction_parents, dtype=np.int64)
             )
             if parents.shape != (count, 2, 3):
-                raise ValueError(
-                    "SpotTable.double_diffraction_parents must have shape (N, 2, 3)."
-                )
+                raise ValueError("SpotTable.double_diffraction_parents must have shape (N, 2, 3).")
             if count and np.any(parents.sum(axis=1)[forbidden] != hkl[forbidden]):
                 raise ValueError(
-                    "SpotTable.double_diffraction_parents must sum to the reflection they "
-                    "produce."
+                    "SpotTable.double_diffraction_parents must sum to the reflection they produce."
                 )
         if count:
             if np.any(~np.isfinite(g_crystal)) or np.any(~np.isfinite(detector_mm)):
@@ -533,9 +542,7 @@ class SpotTable:
         return "[" + " ".join(f"{value:.3f}" for value in coordinates) + "]"
 
     def hkl_labels(self) -> tuple[str, ...]:
-        return tuple(
-            " ".join(str(int(value)) for value in row) for row in self.hkl
-        )
+        return tuple(" ".join(str(int(value)) for value in row) for row in self.hkl)
 
     def detector_radius_mm(self) -> np.ndarray:
         return np.asarray(np.linalg.norm(self.detector_mm, axis=1), dtype=np.float64)
@@ -585,11 +592,21 @@ class SpotTable:
             if config.intensity_model == "electron_atomic_number"
             else "Intensities use the geometry-only unit model."
         )
+        if config.foil_thickness_angstrom is not None:
+            intensity += (
+                " They include the plane-parallel finite-thickness factor "
+                f"sinc^2(t s_g) for t = {config.foil_thickness_angstrom:g} angstrom."
+            )
+        elif config.relrod_sigma_inv_angstrom is not None:
+            intensity += (
+                " They include the legacy Lorentzian relrod proxy with sigma_s = "
+                f"{config.relrod_sigma_inv_angstrom:g} 1/angstrom."
+            )
+        else:
+            intensity += " No excitation-error intensity shape factor is applied."
         if len(self) == 0:
             return f"{header} {selection} {intensity} The pattern is empty."
-        strongest = ", ".join(
-            f"({label})" for label in self.hkl_labels()[: min(4, len(self))]
-        )
+        strongest = ", ".join(f"({label})" for label in self.hkl_labels()[: min(4, len(self))])
         summary = (
             f"{header} {selection} {intensity} Strongest reflections: {strongest}. "
             f"Minimum d-spacing {float(np.min(self.d_spacing_angstrom)):.4f} angstrom."
@@ -669,7 +686,11 @@ def _append_double_diffraction_rows(
         base = np.ones_like(amplitude_new)
     else:
         base = amplitude_new**2
-    if config.relrod_sigma_inv_angstrom is not None:
+    if config.foil_thickness_angstrom is not None:
+        base = base * FiniteThicknessShapeFactor(config.foil_thickness_angstrom).intensity_factor(
+            excitation_new
+        )
+    elif config.relrod_sigma_inv_angstrom is not None:
         base = base / (1.0 + (excitation_new / config.relrod_sigma_inv_angstrom) ** 2)
     residual = base / normalization if normalization > 0.0 else np.zeros_like(base)
     # The two-step amplitude scales as F(g1) F(g2), so the intensity scales as
@@ -679,9 +700,7 @@ def _append_double_diffraction_rows(
     # coupling strength and specimen thickness — so the result is an
     # observability estimate, not a measured intensity. Clipping keeps the
     # per-pattern "normalized to max 1" invariant intact.
-    intensity_new = np.minimum(
-        1.0, config.double_diffraction_coupling * weight + residual
-    )
+    intensity_new = np.minimum(1.0, config.double_diffraction_coupling * weight + residual)
     keep = intensity_new >= config.min_relative_intensity
     candidates, parents = candidates[keep], parents[keep]
     g_new = g_new[keep]
@@ -777,7 +796,11 @@ def simulate_zone_axis_spots(
         intensity = np.ones_like(amplitude)
     else:
         intensity = amplitude**2
-    if simulation_config.relrod_sigma_inv_angstrom is not None:
+    if simulation_config.foil_thickness_angstrom is not None:
+        intensity = intensity * FiniteThicknessShapeFactor(
+            simulation_config.foil_thickness_angstrom
+        ).intensity_factor(excitation_error)
+    elif simulation_config.relrod_sigma_inv_angstrom is not None:
         ratio = excitation_error / simulation_config.relrod_sigma_inv_angstrom
         intensity = intensity / (1.0 + ratio**2)
     maximum = float(np.max(intensity)) if intensity.size else 0.0

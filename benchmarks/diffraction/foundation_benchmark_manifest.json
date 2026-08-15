@@ -11,7 +11,8 @@
     "kinematic_spot_simulation",
     "reflection_family_grouping",
     "orientation_candidate_ranking",
-    "measured_powder_profile_comparison"
+    "measured_powder_profile_comparison",
+    "finite_thickness_saed_shape_factor"
   ],
   "fixture_ids": [
     "fe_bcc",
@@ -34,13 +35,15 @@
   "tolerances": {
     "projection_atol": 1e-08,
     "bragg_argument_atol": 1e-12,
-    "powder_affine_fit_atol": 1e-12
+    "powder_affine_fit_atol": 1e-12,
+    "finite_thickness_shape_factor_atol": 1e-15
   },
   "status": "foundational",
   "notes": [
     "Benchmark harness is still lightweight, but the schema and benchmark identity are now stable.",
     "This manifest anchors the current diffraction foundation benchmark surface.",
     "The bundled phase corpus under fixtures/phases provides small pinned diffraction inputs for easy local validation.",
-    "The measured-profile case is explicitly labelled synthetic; its exact affine scale/background solution is independent of PyTex output."
+    "The measured-profile case is explicitly labelled synthetic; its exact affine scale/background solution is independent of PyTex output.",
+    "The finite-thickness SAED case uses the analytic Fourier transform of a uniform 100 angstrom slab: intensities 1, 4/pi^2, and 0 at t*s_g = 0, 1/2, and 1."
   ]
 }

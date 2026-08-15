@@ -48,8 +48,9 @@ The workflow is strictly kinematic (no dynamical / multi-beam effects):
    zones and irrational child zones uniformly and stays honest about Ewald-sphere
    curvature ($s_g = -g^{2}\lambda / 2 \le 0$ for exact zero-order-Laue-zone spots).
 4. **Intensity.** $I \propto |F_{hkl}|^{2}$ from the atomic-number electron
-   structure-factor proxy (with isotropic Debye-Waller damping), optionally
-   relrod-damped, with lattice-centering systematic absences applied. Each
+   structure-factor proxy (with isotropic Debye-Waller damping), optionally multiplied by the
+   plane-parallel finite-thickness factor $\operatorname{sinc}^{2}(t s_g)$ or by the legacy
+   Lorentzian relrod proxy, with lattice-centering systematic absences applied. Each
    sub-pattern is max-normalized; kinematic cross-phase intensity ratios are
    undefined at this level of theory and are a rendering choice.
 5. **Detector map.** $r_{\mathrm{mm}} = \Lambda\, g_{\perp}$ with camera constant

@@ -12,6 +12,8 @@ reciprocal-space and detector semantics.
 - reflection filtering by zone condition
 - detector-space projection through a camera-constant abstraction
 - spot labeling and styling through the shared runtime plotting system
+- an optional plane-parallel finite-thickness `sinc^2(t s_g)` intensity factor in the vectorized
+  engines
 
 ## Scientific Model
 
@@ -21,7 +23,8 @@ The current SAED workflow is a geometric and kinematic foundation:
 2. convert them into reciprocal-lattice vectors
 3. apply the zone condition with the explicit direct-space zone axis
 4. project in-zone reciprocal vectors into a detector basis orthogonal to the zone axis
-5. assign a proxy intensity for ranking and plotting
+5. assign a kinematic relative intensity for ranking and plotting, optionally multiplied by the
+   exact plane-parallel finite-thickness shape factor
 
 The detector map is controlled by `camera_constant_mm_angstrom`, which acts as a simple
 camera-length style scale factor between reciprocal-length units and detector millimeters.
@@ -54,6 +57,27 @@ pattern = generate_saed_pattern(
 figure = plot_saed_pattern(pattern, theme="dark")
 figure.savefig("ni_fcc_saed.png", dpi=200)
 ```
+
+The concise example uses the integer-zone-law compatibility route. For Ewald-sphere excitation
+errors and a known foil thickness, use the vectorized engine:
+
+```python
+from pytex.diffraction import KinematicSimulationConfig, simulate_zone_axis_spots
+
+spots = simulate_zone_axis_spots(
+    phase,
+    ZoneAxis(indices=np.array([0, 0, 1]), phase=phase),
+    config=KinematicSimulationConfig(foil_thickness_angstrom=100.0),
+)
+print(spots.describe())
+```
+
+The model multiplies each kinematic intensity by
+$[\sin(\pi t s_g)/(\pi t s_g)]^2$. Its first zero is at $|s_g|=1/t$; for a
+100 angstrom foil this is 0.01 inverse angstrom. `FiniteThicknessShapeFactor` can evaluate and
+serialize this envelope independently. Do not also set `relrod_sigma_inv_angstrom`: that legacy
+Lorentzian is retained for reproducibility, not combined with the physical slab model. See the
+[executable slab-transform check](../examples/generated/composite-diffraction.md).
 
 ## Coordinate Semantics
 
@@ -133,7 +157,9 @@ The option is off by default; the legacy `generate_saed_pattern` does not implem
 
 ## Current Limits
 
-- the current intensity is a proxy, not a dynamical diffraction model
+- the finite-thickness envelope is exact for a uniform plane-parallel slab, but the full intensity
+  remains kinematic rather than a dynamical diffraction model
+- bending, thickness distributions, absorption, mosaicity, and surface roughness are not modelled
 - double diffraction supplies the correct set of extra spots, but their intensities are an
   indicative coupling estimate rather than a solved multi-beam calculation
 - no Ewald-sphere curvature treatment for high-angle electron diffraction yet
@@ -159,3 +185,7 @@ The option is off by default; the legacy `generate_saed_pattern` does not implem
 ### Informative
 
 - `../../testing/diffraction_validation_matrix.md`
+- Marx and Epp, “GARFIELD, a toolkit for interpreting ultrafast electron diffraction data of
+  imperfect quasi-single crystals,” *Structural Dynamics* 12 (2025),
+  [doi:10.1063/4.0000286](https://doi.org/10.1063/4.0000286).
+- Williams and Carter, *Transmission Electron Microscopy*, 2nd ed., Springer (2009), ch. 18.
