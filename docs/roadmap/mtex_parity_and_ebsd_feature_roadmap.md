@@ -51,12 +51,12 @@ capabilities PyTex does not yet have:
    `fibreODF`, `volume` along fibres) and central to rolling-texture analysis.
 5. **No named texture-component vocabulary.** Cube, Goss, Brass, Copper, S, and named fibres are
    the daily language of texture analysis and are absent.
-6. **No direct vendor EBSD file readers.** Import currently requires JSON manifests or optional
-   adapter payloads. MTEX reads `.ang`, `.ctf`, `.cpr/.crc`, `.osc`, h5ebsd and more directly;
-   this is the single largest practical-adoption gap.
-7. **Grain model is regular-grid raster-first.** Grain boundaries are pixel-edge segments, not
-   polyline geometry; there is no hex-grid support, no grain shape analysis, no CSL/twin
-   classification, and no MDF.
+6. **Vendor-reader breadth remains limited.** Direct square/hex `.ang` and `.ctf` readers now
+   exist; `.cpr/.crc`, `.osc`, and h5ebsd-family formats still require adapters or remain absent.
+7. **Grain geometry remains segment-based.** Rectangular and hexagonal graph topology, shape
+   descriptors, CSL/twin classification, and MDF now exist, but boundaries are still discrete
+   measurement-center segments rather than reconstructed physical polylines; hex cell perimeters
+   and curvature/GND stencils remain open.
 8. **Kernel family is minimal.** MTEX's de la Vallée Poussin kernel with halfwidth ↔ bandwidth
    duality is the workhorse for both ODF estimation and PF inversion; `KernelSpec` does not yet
    model kernels with Chebyshev/Legendre coefficient expansions.
@@ -312,8 +312,8 @@ Consolidated EBSD-specific list across horizons (I = immediate, M = medium, L = 
 | IPF key legend figures | I | `FundamentalSector` polygons |
 | Grain mean orientation, GOS, GAM, equivalent diameter | I | orientation mean |
 | Wild-spike removal, CI/IQ filtering | I | — |
-| KAM maps (exists) → KAM with all orders/thresholds on hex grids | M | hex-grid `CrystalMap` |
-| Hex-grid segmentation and neighbor semantics | M | `CrystalMap` upgrade |
+| KAM with all orders/thresholds on hex grids | implemented | labelled analytic fixture; shared real MTEX fixture remains |
+| Hex-grid segmentation and neighbor semantics | implemented | `CrystalMap.grid_kind` + `row_lengths` |
 | Polyline grain boundaries, shape descriptors, fitted ellipses | M | Grains 2.0 |
 | CSL/twin boundary classification and twin merging | M | `Misorientation` + laws |
 | MDF and boundary character distributions | M | `MisorientationDistribution` |

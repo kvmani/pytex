@@ -43,7 +43,7 @@ does this passing test justify?"
 
 - Euler, quaternion, matrix, axis-angle, and Miller-surface semantics
 - harmonic ODF reconstruction invariance, retained-basis diagnostics, and synthetic PF refit behavior
-- regular-grid and graph-backed EBSD neighborhood workflows
+- rectangular, staggered-hexagonal, and graph-backed EBSD neighborhood workflows
 - multiphase EBSD normalization, phase selection, and phase-aware texture extraction
 - optional ORIX adapter transfer for Miller, rotation, orientation, symmetry, and phase semantics
 - stable import, experiment, transformation, benchmark, validation, and workflow-result manifests

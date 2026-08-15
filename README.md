@@ -78,8 +78,8 @@ The repository is now best described as a validated foundation build rather than
 - symmetry-aware orientation and disorientation foundations
 - PF/IPF containers, class-specific IPF sector reduction, discrete kernel-based ODF foundations,
   and classical contour or section plotting surfaces
-- regular-grid EBSD neighborhood, KAM, grain segmentation, GROD, grain-boundary, cleanup, and
-  import-manifest workflow foundations
+- rectangular and staggered-hexagonal EBSD neighborhoods, KAM, grain segmentation, GROD,
+  grain-boundary, cleanup, direct `.ang`/`.ctf` import, and import-manifest workflow foundations
 - diffraction geometry, reciprocal-space primitives, powder XRD generation, measured-profile
   import/export and whole-profile comparison, SAED spot generation, reflection-family grouping,
   and local indexing candidate scaffolding

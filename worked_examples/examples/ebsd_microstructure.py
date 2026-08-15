@@ -89,6 +89,52 @@ _BURGERS = SymbolUse("b", "Burgers vector magnitude.")
 
 _KAM_WORKFLOW = SeeAlso("EBSD local misorientation", "../../workflows/ebsd_kam")
 _EBSD_CONCEPT = SeeAlso("EBSD foundation", "../../concepts/ebsd_foundation")
+_EBSD_GRAPH_THEORY = SeeAlso(
+    "Multiphase and hex-grid EBSD graphs",
+    "../../theory/multiphase_ebsd_graph_workflows",
+)
+
+
+HEX_GRID_KAM = WorkedExample(
+    id="ebsd-hex-grid-six-neighbor-kam",
+    title="Six-neighbour KAM on a staggered hexagonal scan",
+    domain="ebsd",
+    scenario=(
+        "EDAX/TSL .ang scans can alternate long and short rows. Treating those points as a "
+        "rectangle invents pixels and changes every local average, so the reader preserves the "
+        "3/2/3 row topology and KAM uses the six-neighbour graph directly."
+    ),
+    setup="""
+from pathlib import Path
+import numpy as np
+from pytex.adapters import read_ang
+
+hex_map = read_ang(Path("fixtures/ebsd/synthetic_hex_grid.ang")).crystal_map
+""",
+    code=(
+        "graph = hex_map.neighbor_graph()\n"
+        "kam = hex_map.kernel_average_misorientation_deg()\n"
+        "result = np.concatenate([[len(graph.pairs)], kam])"
+    ),
+    expected=[13.0, 3.0, 6.0, 3.0, 1.2, 1.2, 0.0, 0.0, 0.0],
+    unit="degree (KAM entries)",
+    tolerance=2e-7,
+    reference=(
+        "The synthetic scan has five horizontal edges and four edges across each of its two "
+        "staggered row boundaries: 5 + 4 + 4 = 13. Only point 1 is rotated by 6 degrees. Its "
+        "four incident edges therefore give KAM 6 degrees; points 0 and 2 average one 6-degree "
+        "edge over degree 2 (3 degrees), points 3 and 4 over degree 5 (1.2 degrees), and the "
+        "remaining points see only zero-angle edges."
+    ),
+    citation=(
+        "MTEX, 'Gridded EBSD Data', Hexagonal Grids section, documenting EBSDhex as the distinct "
+        "hexagonal-grid topology and warning that square resampling distorts the unit cells: "
+        "https://mtex-toolbox.github.io/EBSDGrid.html. Fixture metadata states explicitly that "
+        "the values are analytically constructed and not experimental."
+    ),
+    see_also=(_KAM_WORKFLOW, _EBSD_GRAPH_THEORY, _EBSD_CONCEPT),
+    result_format="{:.6f}",
+)
 
 
 PLANTED_LATTICE_CURVATURE = WorkedExample(
@@ -170,10 +216,11 @@ GROUP = ExampleGroup(
     slug="ebsd",
     title="EBSD microstructure",
     summary=(
-        "Lattice curvature and geometrically necessary dislocation density recovered from a "
-        "planted orientation gradient, checked against the closed-form Nye result."
+        "Hex-grid KAM, lattice curvature, and geometrically necessary dislocation density "
+        "recovered from analytically planted topology or orientation gradients."
     ),
     examples=(
+        HEX_GRID_KAM,
         PLANTED_LATTICE_CURVATURE,
         GND_DENSITY_FROM_CURVATURE,
     ),

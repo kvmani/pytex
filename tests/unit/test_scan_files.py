@@ -124,10 +124,10 @@ def test_read_ang_multiphase_drops_unindexed_rows(tmp_path: Path) -> None:
     assert crystal_map.grid_shape is None
 
 
-def test_read_ang_rejects_hex_grids_and_unknown_symmetry(tmp_path: Path) -> None:
-    hex_content = SINGLE_PHASE_ANG.replace("SqrGrid", "HexGrid")
-    with pytest.raises(ValueError, match="HexGrid"):
-        read_ang(write(tmp_path, "hex.ang", hex_content))
+def test_read_ang_rejects_unknown_grids_and_unknown_symmetry(tmp_path: Path) -> None:
+    unknown_grid = SINGLE_PHASE_ANG.replace("SqrGrid", "TriGrid")
+    with pytest.raises(ValueError, match="TriGrid"):
+        read_ang(write(tmp_path, "unknown.ang", unknown_grid))
     bad_symmetry = SINGLE_PHASE_ANG.replace("# Symmetry              43", "# Symmetry  99")
     with pytest.raises(ValueError, match="symmetry code"):
         read_ang(write(tmp_path, "bad.ang", bad_symmetry))

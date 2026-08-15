@@ -216,22 +216,52 @@ def read_ang(
     phase: Phase | None = None,
     phases: dict[int | str, Phase] | tuple[Phase, ...] | list[Phase] | None = None,
 ) -> EBSDScanFileResult:
-    """Read an EDAX/TSL .ang scan into a normalized EBSD dataset."""
+    """Read an EDAX/TSL ``.ang`` scan into a normalized EBSD dataset.
+
+    Use this direct pure-Python reader when orientations, map coordinates,
+    phase declarations, and scalar quality channels are needed without a live
+    vendor or optional EBSD package. ``SqrGrid`` metadata becomes a rectangular
+    ``grid_shape``. ``HexGrid`` metadata becomes an explicit staggered
+    ``grid_kind`` with alternating row lengths and six-neighbour topology.
+
+    Parameters
+    ----------
+    path : str or Path
+        EDAX/TSL text ``.ang`` file. Euler angles are interpreted as Bunge
+        radians, following the format convention.
+    crystal_frame, specimen_frame, map_frame : ReferenceFrame, optional
+        Explicit canonical frames. EBSD defaults are constructed when omitted.
+    phase : Phase, optional
+        Full phase semantics for a single-phase file.
+    phases : mapping or sequence of Phase, optional
+        Full phase semantics resolved against a multiphase file's ids or names.
+
+    Returns
+    -------
+    EBSDScanFileResult
+        A ``CrystalMap``, generated import manifest, immutable per-point IQ/CI/
+        fit channels, and the parsed header metadata.
+
+    Notes
+    -----
+    If multiphase filtering drops points, the reader deliberately drops the
+    logical grid claim too: a row with holes is no longer the complete vendor
+    topology. Hexagonal curvature/GND stencils remain unsupported even though
+    graph-backed KAM and segmentation preserve the six-neighbour scan.
+    """
 
     file_path = Path(path)
     text = file_path.read_text(encoding="utf-8", errors="replace")
     header_lines = [line for line in text.splitlines() if line.startswith("#")]
-    data_lines = [
-        line for line in text.splitlines() if line.strip() and not line.startswith("#")
-    ]
+    data_lines = [line for line in text.splitlines() if line.strip() and not line.startswith("#")]
     if not data_lines:
         raise ValueError(f".ang file '{file_path}' contains no data rows.")
     header, blocks = _parse_ang_header(header_lines)
     grid_kind = header.get("GRID", "SqrGrid").strip()
-    if grid_kind.lower() != "sqrgrid":
+    normalized_grid_kind = grid_kind.lower()
+    if normalized_grid_kind not in {"sqrgrid", "hexgrid"}:
         raise ValueError(
-            f".ang grid type '{grid_kind}' is not supported yet; "
-            "only SqrGrid scans are currently readable."
+            f".ang grid type '{grid_kind}' is not supported; expected SqrGrid or HexGrid."
         )
     if not blocks:
         raise ValueError(f".ang file '{file_path}' declares no phase information.")
@@ -253,9 +283,7 @@ def read_ang(
         keep_mask = np.isin(phase_column, sorted(declared_ids))
         dropped_points = int(np.count_nonzero(~keep_mask))
         if not np.any(keep_mask):
-            raise ValueError(
-                ".ang data phase column does not reference any declared phase block."
-            )
+            raise ValueError(".ang data phase column does not reference any declared phase block.")
 
     metadata = {
         "reader": "pytex.adapters.scan_files.read_ang",
@@ -281,17 +309,33 @@ def read_ang(
     if step_x > 0.0 and step_y > 0.0:
         payload["step_sizes"] = (step_x, step_y)
     n_rows = int(header.get("NROWS", "0") or 0)
-    n_cols = int(header.get("NCOLS_ODD", "0") or 0)
-    if n_rows > 0 and n_cols > 0 and n_rows * n_cols == int(np.count_nonzero(keep_mask)):
-        payload["grid_shape"] = (n_rows, n_cols)
+    n_cols_odd = int(header.get("NCOLS_ODD", "0") or 0)
+    n_cols_even = int(header.get("NCOLS_EVEN", "0") or 0)
+    kept_count = int(np.count_nonzero(keep_mask))
+    if normalized_grid_kind == "sqrgrid":
+        if n_rows > 0 and n_cols_odd > 0 and n_rows * n_cols_odd == kept_count:
+            payload["grid_shape"] = (n_rows, n_cols_odd)
+    elif n_rows <= 0 or n_cols_odd <= 0 or n_cols_even <= 0:
+        raise ValueError(
+            ".ang HexGrid scans require positive NROWS, NCOLS_ODD, and NCOLS_EVEN headers."
+        )
+    else:
+        row_lengths = tuple(n_cols_odd if row % 2 == 0 else n_cols_even for row in range(n_rows))
+        expected_count = sum(row_lengths)
+        if expected_count != len(data):
+            raise ValueError(
+                ".ang HexGrid row metadata does not match the number of data rows "
+                f"(expected {expected_count}, found {len(data)})."
+            )
+        if kept_count == len(data):
+            payload["grid_kind"] = "hexagonal"
+            payload["row_lengths"] = row_lengths
 
     if len(blocks) == 1:
         block = blocks[0]
         name = block.material_name or block.formula or f"phase_{block.phase_id}"
         payload["phase_name"] = name
-        payload["point_group"] = _point_group_for_tsl_code(
-            block.symmetry_code, phase_name=name
-        )
+        payload["point_group"] = _point_group_for_tsl_code(block.symmetry_code, phase_name=name)
     else:
         payload["phases"] = [
             {
@@ -394,9 +438,7 @@ def read_ctf(
             for offset in range(1, declared + 1):
                 if index + offset >= len(lines):
                     raise ValueError(".ctf file ends before all declared phases are listed.")
-                phase_records.append(
-                    _parse_ctf_phase_line(lines[index + offset], phase_id=offset)
-                )
+                phase_records.append(_parse_ctf_phase_line(lines[index + offset], phase_id=offset))
             index += declared + 1
             continue
         if first_token.lower() == "phase" and "euler1" in stripped.lower():

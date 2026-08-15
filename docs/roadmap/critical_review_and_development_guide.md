@@ -58,7 +58,7 @@ it is **not** a current missing-feature list. Current disposition:
 | 5: habit plane / PTMC | Open, long-term; no current parity claim. |
 | 8: kernel breadth | Implemented for the planned kernel family. |
 | 9–10: harmonic completion, ghost correction, statistics | Partial; harmonic inversion and random-standard defocusing calibration exist, but ghost correction, component fitting, and uncertainty breadth remain open. |
-| 11: EBSD scale and grids | Partial; direct `.ang`/`.ctf` readers and coordinate graphs exist, but hex-grid `.ang`, HDF5, and out-of-core backing remain open. |
+| 11: EBSD scale and grids | Partial; direct square/hex `.ang`, `.ctf`, and topology graphs exist, but hex curvature/GND, HDF5, and out-of-core backing remain open. |
 | 12: GND density | Implemented with theory, tests, and worked evidence. |
 | 13: quantitative XRD | Partial; scattering, profiles, and preferred orientation exist, but measured-pattern I/O, background/multiphase fitting, and refinement remain open. |
 | 14–15: TEM geometry and dynamical diffraction | Substantially advanced: Kikuchi, double diffraction, HOLZ, CBED and dynamical foundations exist; finite-thickness kinematic shape factors, ring SAED, and full dynamical/Rietveld breadth remain open. |
@@ -131,8 +131,9 @@ This is the designated flagship, and it is also where the gap between "primitive
 
 ### 2.3 EBSD
 
-11. **[P2] Square-grid, in-RAM only.** No hex-grid `CrystalMap`, no h5ebsd-family readers, no
-    chunked backing. These bound the size and provenance of real datasets PyTex can ingest.
+11. **[P2] In-RAM and HDF5 gap.** Hex-grid `CrystalMap`, `.ang` import, KAM, and segmentation now
+    exist, but hex curvature/GND stencils, h5ebsd-family readers, and chunked backing do not. These
+    still bound the size and provenance of real datasets PyTex can ingest.
 12. **[P2] No GND density** (curvature-tensor route) despite KAM/GROD existing — the natural
     next step users expect after local-misorientation maps.
 

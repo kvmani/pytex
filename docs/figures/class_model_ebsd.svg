@@ -46,7 +46,7 @@
   <text x="691.4" y="946.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">orientations: OrientationSet</text>
   <text x="691.4" y="966.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">map_frame: ReferenceFrame</text>
   <text x="691.4" y="986.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">phase_ids: ndarray?</text>
-  <text x="691.4" y="1006.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 5 more</text>
+  <text x="691.4" y="1006.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 7 more</text>
   <rect x="1021.1" y="453.0" width="253.4" height="223.0" rx="8" fill="#e9f7f7" stroke="#0f9f9f" stroke-width="1.2"/>
   <rect x="1022.1" y="454.0" width="251.4" height="4" rx="2" fill="#0f9f9f" opacity="0.85"/>
   <text x="1036.1" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">GrainSegmentation</text>

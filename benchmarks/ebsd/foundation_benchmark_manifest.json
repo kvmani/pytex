@@ -8,13 +8,15 @@
   "baseline_kind": "mtex_plus_internal",
   "workflows": [
     "kernel_average_misorientation",
+    "hexagonal_neighbor_graph",
     "grain_segmentation",
     "grod",
     "boundary_extraction",
     "cleanup"
   ],
   "fixture_ids": [
-    "fixtures/mtex_parity/ebsd/kam_cases.json"
+    "fixtures/mtex_parity/ebsd/kam_cases.json",
+    "fixtures/ebsd/synthetic_hex_grid.ang"
   ],
   "artifact_paths": [
     "benchmarks/ebsd/foundation_benchmark_manifest.json"
@@ -24,6 +26,7 @@
   },
   "status": "implemented",
   "notes": [
-    "This benchmark manifest anchors the regular-grid EBSD foundation benchmark surface."
+    "This benchmark manifest anchors rectangular, coordinate-graph, and staggered-hexagonal EBSD workflows.",
+    "The 3/2/3-row .ang fixture is analytically constructed and explicitly not experimental; it pins 13 first-shell edges and a direct KAM vector."
   ]
 }

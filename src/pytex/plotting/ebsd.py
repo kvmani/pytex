@@ -172,7 +172,7 @@ def plot_kam_map(
     crystal_map: CrystalMap,
     *,
     symmetry_aware: bool = True,
-    connectivity: int = 4,
+    connectivity: int | None = None,
     order: int = 1,
     threshold_deg: float | None = None,
     statistic: str = "mean",
@@ -225,13 +225,23 @@ def plot_kam_map(
         axes = ax
         fig = axes.figure
     axes.set_facecolor(common["figure"]["axes_facecolor"])
-    image = axes.imshow(
-        values,
-        origin="lower",
-        extent=_regular_grid_extent(crystal_map),
-        interpolation="nearest",
-        cmap=cmap,
-    )
+    if values.ndim == 2:
+        image = axes.imshow(
+            values,
+            origin="lower",
+            extent=_regular_grid_extent(crystal_map),
+            interpolation="nearest",
+            cmap=cmap,
+        )
+    else:
+        image = axes.scatter(
+            crystal_map.coordinates[:, 0],
+            crystal_map.coordinates[:, 1],
+            c=values,
+            s=float(common["marker"]["size"]) * 1.2,
+            cmap=cmap,
+            edgecolors="none",
+        )
     colorbar = fig.colorbar(image, ax=axes)
     colorbar.set_label("KAM (deg)")
     _overlay_boundaries(

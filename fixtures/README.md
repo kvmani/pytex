@@ -10,6 +10,9 @@ The initial scaffold focuses on semantic fixtures and compact, pinned benchmark 
   MTEX-aligned parity fixtures for rotations, symmetry reduction, and EBSD behavior.
 - `fixtures/phases/`
   Built-in crystallographic phase fixtures backed by pinned CIF files and explicit provenance metadata.
+- `fixtures/ebsd/`
+  Compact analytic scan files. `synthetic_hex_grid.ang` is explicitly non-experimental and plants
+  a 3/2/3 staggered topology plus one six-degree orientation perturbation for exact graph/KAM tests.
 
 ## Fixture Policy
 

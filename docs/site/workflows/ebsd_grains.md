@@ -18,6 +18,7 @@ deterministic cleanup.
 ## What Is New In The Hardened Surface
 
 - regular-grid and graph-backed coordinate modes share one adjacency substrate
+- staggered hexagonal scans use that same substrate with six-neighbour first-shell topology
 - cross-phase neighbor pairs are never merged into the same grain
 - grain-boundary extraction keeps topological edges explicit while respecting phase consistency
 - majority smoothing remains available as a deterministic regular-grid label operation
@@ -28,7 +29,6 @@ deterministic cleanup.
 segmentation = crystal_map.segment_grains(
     max_misorientation_deg=5.0,
     symmetry_aware=True,
-    connectivity=4,
 )
 
 grod = segmentation.grod_map_deg()
@@ -41,6 +41,9 @@ cleaned = segmentation.merge_small_grains(min_size=4, until_stable=True)
 - GROD remains defined relative to a representative measured orientation
 - graph-backed segmentation is geometric, not confidence-weighted
 - multiphase maps preserve adjacency but do not permit cross-phase unions
+- omitted connectivity selects four neighbours for rectangular maps and six for hexagonal maps
+- hexagonal `label_grid` views are padded with `-1`; numerical GROD remains one value per point
+- staircase perimeters remain rectangular-only until a cell-boundary model is declared
 
 ## Related Material
 

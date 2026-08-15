@@ -37,8 +37,8 @@ as such in both its metadata and documentation.
 | G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | `ff93592` |
 | G3 | Add minimal critical Playwright workbench tests and CI lane | done | `2967e32` |
 | F1 | Measured powder-XRD I/O and comparison | done | `c71eb15` |
-| F2 | Random-standard defocus calibration | done | (this commit) |
-| F3 | Hex-grid EBSD support | pending | — |
+| F2 | Random-standard defocus calibration | done | `9a9ba91` |
+| F3 | Hex-grid EBSD support | done | (this commit) |
 | F4 | Finite-thickness SAED shape factor | pending | — |
 | F5 | Named-component ODF fitting | pending | — |
 | C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | pending | — |
@@ -114,8 +114,33 @@ as such in both its metadata and documentation.
   public API/docstring policy, class-model generation, documentation policy and repository
   integrity. Ruff, strict mypy over 139 source files, and the Sphinx ratchet at exactly 602 warnings
   pass. The complete pytest suite passes with the same two expected skips.
-- Next action: commit and push F2, then begin F3 hex-grid EBSD support by reconciling
-  coordinate-neighbour graphs, `.ang` grid metadata, segmentation and KAM semantics.
+- F2 landed and was pushed to `main` in `9a9ba91`.
+- F3 entry audit found that `.ang` import deliberately rejected `HexGrid`, while every downstream
+  local-orientation workflow shares `CrystalMap.neighbor_graph()`. Rectangular `grid_shape` cannot
+  represent alternating EDAX row lengths without inventing pixels. F3 therefore adds explicit
+  `grid_kind="hexagonal"` plus immutable `row_lengths`, derives the exact six-neighbour graph from
+  those logical rows, and keeps curvature/GND routines explicitly rectangular-only. KAM and grain
+  segmentation consume the common graph and therefore gain hex support without private topology.
+- F3 now accepts square and `HexGrid` `.ang` files. `CrystalMap.grid_kind` and immutable
+  `row_lengths` enforce complete staggered rows, validate their coordinate alignment, preserve the
+  topology through selections/copies/JSON, and select natural connectivity (4 rectangular, 6 hex).
+  Exact sparse graph powers implement cumulative higher-order hex neighborhoods. KAM, grain
+  segmentation, GROD, boundaries, cleanup graphs, property display, and coordinate-scatter KAM
+  plotting consume the same topology. Curvature/GND and cell-face perimeters reject hex input with
+  explicit scientific limits rather than silently applying rectangular formulas.
+- The synthetic, non-experimental 3/2/3-row `.ang` fixture has exactly 13 first-shell edges by
+  direct row-topology counting. Its planted six-degree perturbation reproduces the independently
+  calculated KAM vector `[3, 6, 3, 1.2, 1.2, 0, 0, 0]`. The executable example, theory/workflow
+  docs, MTEX parity ledger, benchmark manifest, fixture inventory, integrity inventory, and
+  canonical class atlas pin that result. The map JSON contract now also preserves per-point
+  property channels, closing a pre-existing lossy round trip exposed by the feature.
+- F3 verification: focused reader/topology/KAM/segmentation/plotting/contracts/gallery/class-atlas/
+  documentation/integrity tests pass; Ruff and strict mypy over 139 source files pass; the complete
+  pytest suite passes with the same two expected skips. The Sphinx ratchet passes at 601 warnings,
+  one below the 602 ceiling: two new documented-field duplicate warnings were offset by repairing
+  three genuine pre-existing malformed docstrings rather than raising the baseline.
+- Next action: commit and push F3, then begin F4 finite-thickness SAED shape factors by tracing the
+  current excitation-error intensity proxy and defining a zero-thickness-compatible contract.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 

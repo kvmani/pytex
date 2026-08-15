@@ -5,8 +5,8 @@ This page drills into the EBSD layer as the map-and-neighborhood specialization 
 ## What The EBSD Layer Owns
 
 - `CrystalMap` as the canonical orientation-map container
-- map-frame metadata and regular-grid semantics
-- neighborhood topology on 2D grids
+- map-frame metadata plus rectangular, staggered-hexagonal, and coordinate-graph semantics
+- four/eight-neighbour rectangular and six-neighbour hexagonal topology on 2D scans
 - KAM, segmentation, GROD, boundaries, and cleanup
 - grain-graph aggregation and reproducible normalization contracts
 - import-manifest normalization for vendor or third-party inputs
@@ -30,9 +30,12 @@ EBSD is where PyTex must combine scientific semantics with measurement topology.
 ## Current State
 
 - `CrystalMap` exists as the canonical map container
-- KAM, segmentation, GROD, boundary extraction, cleanup, and grain graphs are implemented
+- direct `.ang` import preserves square or EDAX/TSL `HexGrid` topology; `.ctf` import preserves
+  rectangular topology when indexed rows are complete
+- KAM, segmentation, GROD, boundary extraction, cleanup, and grain graphs are implemented on the
+  shared topology graph
 - stable import manifests exist
-- richer vendor detector/pattern metadata normalization remains ahead
+- hex curvature/GND stencils, HDF5-family readers, and richer detector/pattern metadata remain ahead
 
 ## Related Material
 

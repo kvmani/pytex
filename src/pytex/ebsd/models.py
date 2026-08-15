@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from itertools import pairwise
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 from numpy.typing import ArrayLike
+from scipy.sparse import csr_matrix, triu
 
 from pytex.core._arrays import normalize_vector
 from pytex.core.acquisition import AcquisitionGeometry, CalibrationRecord, MeasurementQuality
@@ -84,10 +86,7 @@ def _coerce_pole_sequence(
 
 
 def _coerce_sample_direction_sequence(
-    sample_directions: str
-    | ArrayLike
-    | tuple[str | ArrayLike, ...]
-    | list[str | ArrayLike],
+    sample_directions: str | ArrayLike | tuple[str | ArrayLike, ...] | list[str | ArrayLike],
     specimen_frame: ReferenceFrame,
 ) -> tuple[np.ndarray, ...]:
     if isinstance(sample_directions, str):
@@ -100,8 +99,7 @@ def _coerce_sample_direction_sequence(
             if candidate.shape == (3,):
                 return (_specimen_direction_vector(candidate, specimen_frame),)
         return tuple(
-            _specimen_direction_vector(direction, specimen_frame)
-            for direction in sample_directions
+            _specimen_direction_vector(direction, specimen_frame) for direction in sample_directions
         )
     return (_specimen_direction_vector(sample_directions, specimen_frame),)
 
@@ -268,6 +266,78 @@ def _vectorized_regular_grid_pairs(
     return pairs
 
 
+def _vectorized_hexagonal_grid_pairs(
+    coordinates: np.ndarray,
+    row_lengths: tuple[int, ...],
+    *,
+    order: int,
+) -> np.ndarray:
+    """Unique pairs within ``order`` graph steps on a staggered hexagonal grid."""
+
+    if order <= 0:
+        raise ValueError("order must be strictly positive.")
+    row_starts = np.concatenate(
+        [np.array([0], dtype=np.int64), np.cumsum(row_lengths, dtype=np.int64)]
+    )
+    pair_blocks: list[np.ndarray] = []
+    for row, length in enumerate(row_lengths):
+        if length > 1:
+            start = int(row_starts[row])
+            left = np.arange(start, start + length - 1, dtype=np.int64)
+            pair_blocks.append(np.column_stack([left, left + 1]))
+    for row in range(len(row_lengths) - 1):
+        upper = np.arange(row_starts[row], row_starts[row + 1], dtype=np.int64)
+        lower = np.arange(row_starts[row + 1], row_starts[row + 2], dtype=np.int64)
+        x_delta = np.abs(coordinates[upper, 0, None] - coordinates[lower, 0][None, :])
+        tolerance = max(float(np.max(np.abs(coordinates[:, 0]))) * 1e-12, 1e-12)
+        nearest_from_upper = x_delta <= np.min(x_delta, axis=1, keepdims=True) + tolerance
+        nearest_from_lower = x_delta <= np.min(x_delta, axis=0, keepdims=True) + tolerance
+        upper_positions, lower_positions = np.nonzero(nearest_from_upper | nearest_from_lower)
+        cross_row_pairs = np.column_stack(
+            [upper[upper_positions], lower[lower_positions]]
+        )
+        expected_cross_pairs = (
+            2 * min(upper.size, lower.size)
+            if upper.size != lower.size
+            else max(2 * upper.size - 1, 1)
+        )
+        if cross_row_pairs.shape[0] != expected_cross_pairs:
+            raise ValueError(
+                "CrystalMap hexagonal coordinates do not form staggered adjacent rows "
+                f"{row} and {row + 1}."
+            )
+        pair_blocks.append(cross_row_pairs)
+    if not pair_blocks:
+        return np.empty((0, 2), dtype=np.int64)
+    first_shell = np.unique(np.concatenate(pair_blocks, axis=0), axis=0)
+    if order == 1:
+        pairs = np.ascontiguousarray(first_shell, dtype=np.int64)
+        pairs.setflags(write=False)
+        return pairs
+
+    point_count = int(coordinates.shape[0])
+    sources = np.concatenate([first_shell[:, 0], first_shell[:, 1]])
+    targets = np.concatenate([first_shell[:, 1], first_shell[:, 0]])
+    adjacency = csr_matrix(
+        (np.ones(sources.size, dtype=np.int8), (sources, targets)),
+        shape=(point_count, point_count),
+    )
+    frontier = adjacency.copy()
+    reachable = adjacency.copy()
+    for _ in range(1, order):
+        frontier = frontier @ adjacency
+        frontier.data[:] = 1
+        frontier.setdiag(0)
+        frontier.eliminate_zeros()
+        reachable = reachable.maximum(frontier)
+    upper_triangle = triu(reachable, k=1, format="coo")
+    pairs = np.column_stack([upper_triangle.row, upper_triangle.col])
+    pairs = pairs[np.lexsort((pairs[:, 1], pairs[:, 0]))]
+    pairs = np.ascontiguousarray(pairs, dtype=np.int64)
+    pairs.setflags(write=False)
+    return pairs
+
+
 @dataclass(frozen=True, slots=True)
 class CrystalMapPhase:
     """One phase declared in a crystal map.
@@ -348,8 +418,7 @@ class CrystalMapPhase:
 
     @property
     def point_group(self) -> str:
-        """The Hermann-Mauguin point-group symbol of this map phase.
-        """
+        """The Hermann-Mauguin point-group symbol of this map phase."""
 
         return self.symmetry.point_group
 
@@ -402,13 +471,15 @@ class CoordinateNeighborGraph:
     distances : np.ndarray
         ``(m,)`` distances between the paired points.
     connectivity : int
-        ``4`` (edge neighbours) or ``8`` (edge and corner).
+        ``4`` (square edges), ``6`` (hexagonal first shell), or ``8``
+        (square edges and corners).
     order : int
         Neighbour shell; ``1`` is nearest neighbours.
     mode : str
         How the pairs were built: ``"regular_grid"`` for the vectorized grid
-        construction, ``"coordinate_radius"`` for the distance-based
-        fallback used on irregular point sets.
+        construction, ``"hexagonal_grid"`` for staggered logical rows, or
+        ``"coordinate_radius"`` for the distance-based fallback used on
+        irregular point sets.
     max_distance : float, optional
         Radius cut-off, when the coordinate-radius path was used.
     """
@@ -431,15 +502,16 @@ class CoordinateNeighborGraph:
             shape=(pairs.shape[0],),
             name="CoordinateNeighborGraph.distances",
         )
-        if self.connectivity not in {4, 8}:
-            raise ValueError("CoordinateNeighborGraph.connectivity must be either 4 or 8.")
+        if self.connectivity not in {4, 6, 8}:
+            raise ValueError("CoordinateNeighborGraph.connectivity must be 4, 6, or 8.")
         if self.order <= 0:
             raise ValueError("CoordinateNeighborGraph.order must be strictly positive.")
         if self.max_distance is not None and self.max_distance <= 0.0:
             raise ValueError("CoordinateNeighborGraph.max_distance must be positive when provided.")
-        if self.mode not in {"regular_grid", "coordinate_radius"}:
+        if self.mode not in {"regular_grid", "hexagonal_grid", "coordinate_radius"}:
             raise ValueError(
-                "CoordinateNeighborGraph.mode must be 'regular_grid' or 'coordinate_radius'."
+                "CoordinateNeighborGraph.mode must be 'regular_grid', 'hexagonal_grid', "
+                "or 'coordinate_radius'."
             )
         object.__setattr__(self, "pairs", pairs)
         object.__setattr__(self, "distances", distances)
@@ -659,8 +731,7 @@ class GrainBoundaryNetwork:
 
     @property
     def count(self) -> int:
-        """Number of boundary segments in the network.
-        """
+        """Number of boundary segments in the network."""
 
         return len(self.segments)
 
@@ -679,15 +750,13 @@ class GrainBoundaryNetwork:
 
     @property
     def total_length(self) -> float:
-        """Summed length of all boundary segments, in map coordinate units.
-        """
+        """Summed length of all boundary segments, in map coordinate units."""
 
         return float(np.sum([segment.length for segment in self.segments]))
 
     @property
     def high_angle_count(self) -> int:
-        """Number of segments at or above the network's high-angle threshold.
-        """
+        """Number of segments at or above the network's high-angle threshold."""
 
         return int(
             sum(
@@ -776,9 +845,7 @@ class GrainBoundaryNetwork:
         crystal_map = self.segmentation.crystal_map
         entries = crystal_map.resolved_phase_entries
         if len(entries) != 1:
-            raise ValueError(
-                "CSL classification currently supports single-phase cubic maps only."
-            )
+            raise ValueError("CSL classification currently supports single-phase cubic maps only.")
         symmetry = entries[0].symmetry
         if symmetry is None or symmetry.point_group not in {"m-3m", "m-3", "432", "23"}:
             raise ValueError(
@@ -934,8 +1001,7 @@ class GrainGraphEdge:
 
     @property
     def grain_pair(self) -> tuple[int, int]:
-        """The ``(left_grain_id, right_grain_id)`` pair this edge connects.
-        """
+        """The ``(left_grain_id, right_grain_id)`` pair this edge connects."""
 
         return (self.left_grain_id, self.right_grain_id)
 
@@ -979,8 +1045,7 @@ class GrainGraph:
 
     @property
     def edge_count(self) -> int:
-        """Number of grain-pair edges in the graph.
-        """
+        """Number of grain-pair edges in the graph."""
 
         return len(self.edges)
 
@@ -1070,8 +1135,8 @@ class GrainSegmentation:
             )
         if self.max_misorientation_deg < 0.0:
             raise ValueError("GrainSegmentation.max_misorientation_deg must be non-negative.")
-        if self.connectivity not in {4, 8}:
-            raise ValueError("GrainSegmentation.connectivity must be either 4 or 8.")
+        if self.connectivity not in {4, 6, 8}:
+            raise ValueError("GrainSegmentation.connectivity must be 4, 6, or 8.")
         labels = np.ascontiguousarray(labels)
         labels.setflags(write=False)
         object.__setattr__(self, "labels", labels)
@@ -1081,12 +1146,26 @@ class GrainSegmentation:
     def label_grid(self) -> np.ndarray:
         """Per-pixel grain labels reshaped to the map grid.
 
-        Requires a regular 2-D map. The values are grain ids, so the array can
-        be used directly as an index into per-grain quantities.
+        Rectangular maps return their native shape. Hexagonal maps return a
+        padded ``(n_rows, max_row_length)`` array with ``-1`` in positions that
+        are not measurement points. The non-negative values are grain ids.
         """
 
-        rows, cols = self.crystal_map._require_regular_2d_grid()
-        labels = np.ascontiguousarray(self.labels.reshape((rows, cols)))
+        if self.crystal_map.grid_kind == "hexagonal":
+            assert self.crystal_map.row_lengths is not None
+            labels = np.full(
+                (len(self.crystal_map.row_lengths), max(self.crystal_map.row_lengths)),
+                -1,
+                dtype=np.int64,
+            )
+            offset = 0
+            for row, length in enumerate(self.crystal_map.row_lengths):
+                labels[row, :length] = self.labels[offset : offset + length]
+                offset += length
+        else:
+            rows, cols = self.crystal_map._require_regular_2d_grid()
+            labels = self.labels.reshape((rows, cols))
+        labels = np.ascontiguousarray(labels)
         labels.setflags(write=False)
         return labels
 
@@ -1113,7 +1192,8 @@ class GrainSegmentation:
         Returns
         -------
         np.ndarray
-            ``(rows, cols)`` degrees, read-only. Requires a regular 2-D grid.
+            Degrees, read-only. Rectangular maps return ``(rows, cols)``;
+            hexagonal and unstructured maps return one value per point.
             Symmetry-aware iff the segmentation was built that way.
 
         See Also
@@ -1123,7 +1203,6 @@ class GrainSegmentation:
             grain-referenced deviation.
         """
 
-        rows, cols = self.crystal_map._require_regular_2d_grid()
         point_count = len(self.crystal_map.orientations)
         # Per-point reference-orientation index: each point takes its grain's
         # representative orientation. Vectorised over all points at once.
@@ -1140,7 +1219,11 @@ class GrainSegmentation:
             )
         else:
             angles_rad = _rotation_angles_from_matrices(relative)
-        deviations = np.ascontiguousarray(np.rad2deg(angles_rad).reshape((rows, cols)))
+        deviations = np.rad2deg(angles_rad)
+        if self.crystal_map.grid_shape is not None:
+            rows, cols = self.crystal_map._require_regular_2d_grid()
+            deviations = deviations.reshape((rows, cols))
+        deviations = np.ascontiguousarray(deviations)
         deviations.setflags(write=False)
         return deviations
 
@@ -1154,8 +1237,7 @@ class GrainSegmentation:
         return self.crystal_map.orientations.subset(grain.member_indices).mean_orientation()
 
     def grain_mean_orientations(self) -> dict[int, Orientation]:
-        """Mean orientation of every grain, keyed by grain id.
-        """
+        """Mean orientation of every grain, keyed by grain id."""
 
         return {grain.grain_id: self.grain_mean_orientation(grain) for grain in self.grains}
 
@@ -1210,9 +1292,7 @@ class GrainSegmentation:
             ),
             dtype=np.float64,
         ).ravel()
-        return {
-            grain.grain_id: float(np.mean(kam[grain.member_indices])) for grain in self.grains
-        }
+        return {grain.grain_id: float(np.mean(kam[grain.member_indices])) for grain in self.grains}
 
     def gam_map_deg(self) -> np.ndarray:
         """Grain Average Misorientation broadcast to every pixel of its grain.
@@ -1242,8 +1322,7 @@ class GrainSegmentation:
         }
 
     def grain_sizes(self) -> dict[int, int]:
-        """Member pixel count of every grain, keyed by grain id.
-        """
+        """Member pixel count of every grain, keyed by grain id."""
 
         return {grain.grain_id: grain.size for grain in self.grains}
 
@@ -1293,8 +1372,7 @@ class GrainSegmentation:
         return self._fitted_ellipse(grain)
 
     def grain_fitted_ellipses(self) -> dict[int, FittedEllipse]:
-        """Best-fit ellipse of every grain, keyed by grain id.
-        """
+        """Best-fit ellipse of every grain, keyed by grain id."""
 
         return {grain.grain_id: self._fitted_ellipse(grain) for grain in self.grains}
 
@@ -1336,6 +1414,11 @@ class GrainSegmentation:
         ``dx``; step sizes are honoured for rectangular grids.
         """
 
+        if self.crystal_map.grid_kind == "hexagonal":
+            raise ValueError(
+                "grain_perimeters is currently defined only for rectangular pixel faces; "
+                "hexagonal center sampling requires a declared cell-boundary model."
+            )
         label_grid = self.label_grid
         rows, cols = label_grid.shape
         dx, dy = self._grid_step_sizes()
@@ -1354,9 +1437,7 @@ class GrainSegmentation:
             up_boundary.astype(np.float64) + down_boundary
         )
         grain_count = len(self.grains)
-        totals = np.bincount(
-            label_grid.ravel(), weights=per_cell.ravel(), minlength=grain_count
-        )
+        totals = np.bincount(label_grid.ravel(), weights=per_cell.ravel(), minlength=grain_count)
         return {grain.grain_id: float(totals[grain.grain_id]) for grain in self.grains}
 
     def grain_areas(self) -> dict[int, float]:
@@ -1690,10 +1771,10 @@ class CrystalMap:
 
     Grid versus graph mode
     ----------------------
-    With ``grid_shape`` set, the map is a regular raster and grid-shaped
-    outputs are available. Without it the map operates in graph mode, where
-    neighbourhoods come from coordinate distances instead; most metrics still
-    work but return per-point rather than gridded arrays.
+    With ``grid_shape`` set, the map is a regular rectangular raster and
+    grid-shaped outputs are available. A staggered hexagonal scan instead uses
+    ``grid_kind="hexagonal"`` and ``row_lengths`` because alternating rows are
+    ragged. Without either topology the map operates in coordinate-graph mode.
 
     Attributes
     ----------
@@ -1711,7 +1792,12 @@ class CrystalMap:
     phase_ids : np.ndarray, optional
         Per-point phase assignment.
     grid_shape : tuple of int, optional
-        Raster shape; ``None`` selects graph mode.
+        Rectangular raster shape.
+    grid_kind : {"square", "hexagonal"}, optional
+        Logical scan topology. Existing rectangular maps infer ``"square"``
+        from ``grid_shape``.
+    row_lengths : tuple of int, optional
+        Number of points in each staggered row of a hexagonal scan.
     step_sizes : tuple of float, optional
         Physical step per axis; required for areas and diameters in specimen
         units.
@@ -1729,6 +1815,8 @@ class CrystalMap:
     phase_entries: tuple[CrystalMapPhase, ...] = ()
     phase_ids: np.ndarray | None = None
     grid_shape: tuple[int, ...] | None = None
+    grid_kind: Literal["square", "hexagonal"] | None = None
+    row_lengths: tuple[int, ...] | None = None
     step_sizes: tuple[float, ...] | None = None
     acquisition_geometry: AcquisitionGeometry | None = None
     calibration_record: CalibrationRecord | None = None
@@ -1846,11 +1934,55 @@ class CrystalMap:
             _freeze_property_channels(self.properties, point_count=len(self.orientations)),
         )
         coordinate_dims = int(coordinates.shape[1])
+        grid_shape = None
         if self.grid_shape is not None:
-            if len(self.grid_shape) != coordinate_dims:
+            grid_shape = tuple(int(size) for size in self.grid_shape)
+            if len(grid_shape) != coordinate_dims:
                 raise ValueError("CrystalMap.grid_shape must match the coordinate dimensionality.")
-            if any(size <= 0 for size in self.grid_shape):
+            if any(size <= 0 for size in grid_shape):
                 raise ValueError("CrystalMap.grid_shape entries must be strictly positive.")
+            if int(np.prod(grid_shape)) != len(self.orientations):
+                raise ValueError(
+                    "CrystalMap.grid_shape must contain exactly one cell per orientation."
+                )
+            object.__setattr__(self, "grid_shape", grid_shape)
+        grid_kind = self.grid_kind
+        if grid_kind is None and grid_shape is not None:
+            grid_kind = "square"
+        if grid_kind not in {None, "square", "hexagonal"}:
+            raise ValueError("CrystalMap.grid_kind must be 'square', 'hexagonal', or None.")
+        row_lengths = None
+        if self.row_lengths is not None:
+            row_lengths = tuple(int(length) for length in self.row_lengths)
+            if not row_lengths or any(length <= 0 for length in row_lengths):
+                raise ValueError("CrystalMap.row_lengths entries must be strictly positive.")
+            if sum(row_lengths) != len(self.orientations):
+                raise ValueError(
+                    "CrystalMap.row_lengths must contain exactly one entry per orientation."
+                )
+            if any(abs(left - right) > 1 for left, right in pairwise(row_lengths)):
+                raise ValueError(
+                    "Adjacent CrystalMap hexagonal row lengths may differ by at most one point."
+                )
+        if grid_kind == "square":
+            if grid_shape is None:
+                raise ValueError("CrystalMap square topology requires grid_shape.")
+            if row_lengths is not None:
+                raise ValueError("CrystalMap square topology does not use row_lengths.")
+        elif grid_kind == "hexagonal":
+            if coordinate_dims != 2:
+                raise ValueError("CrystalMap hexagonal topology requires 2-D coordinates.")
+            if grid_shape is not None:
+                raise ValueError(
+                    "CrystalMap hexagonal topology uses row_lengths, not rectangular grid_shape."
+                )
+            if row_lengths is None:
+                raise ValueError("CrystalMap hexagonal topology requires row_lengths.")
+            _vectorized_hexagonal_grid_pairs(coordinates, row_lengths, order=1)
+        elif row_lengths is not None:
+            raise ValueError("CrystalMap.row_lengths requires grid_kind='hexagonal'.")
+        object.__setattr__(self, "grid_kind", grid_kind)
+        object.__setattr__(self, "row_lengths", row_lengths)
         if self.step_sizes is not None:
             if len(self.step_sizes) != coordinate_dims:
                 raise ValueError("CrystalMap.step_sizes must match the coordinate dimensionality.")
@@ -1979,12 +2111,27 @@ class CrystalMap:
     def property_map(self, name: str) -> np.ndarray:
         """One auxiliary channel reshaped to the map grid.
 
-        Requires a regular 2-D grid. Use this to display or threshold image
-        quality or confidence index alongside orientation-derived maps.
+        Rectangular maps return their native shape. Hexagonal maps use a
+        padded array with ``NaN`` where the shorter rows have no measurement.
+        Use the flat :meth:`get_property` values for numerical reductions.
         """
 
-        rows, cols = self._require_regular_2d_grid()
-        values = np.ascontiguousarray(self.get_property(name).reshape((rows, cols)))
+        raw = self.get_property(name)
+        if self.grid_kind == "hexagonal":
+            assert self.row_lengths is not None
+            values = np.full(
+                (len(self.row_lengths), max(self.row_lengths)),
+                np.nan,
+                dtype=np.float64,
+            )
+            offset = 0
+            for row, length in enumerate(self.row_lengths):
+                values[row, :length] = raw[offset : offset + length]
+                offset += length
+        else:
+            rows, cols = self._require_regular_2d_grid()
+            values = raw.reshape((rows, cols))
+        values = np.ascontiguousarray(values)
         values.setflags(write=False)
         return values
 
@@ -2026,6 +2173,8 @@ class CrystalMap:
             phase_entries=self.phase_entries,
             phase_ids=self.phase_ids,
             grid_shape=self.grid_shape,
+            grid_kind=self.grid_kind,
+            row_lengths=self.row_lengths,
             step_sizes=self.step_sizes,
             acquisition_geometry=self.acquisition_geometry,
             calibration_record=self.calibration_record,
@@ -2063,11 +2212,11 @@ class CrystalMap:
         return {
             "point_count": len(self.orientations),
             "coordinate_dimensions": int(self.coordinates.shape[1]),
+            "grid_kind": self.grid_kind,
             "grid_shape": (
-                None
-                if self.grid_shape is None
-                else tuple(int(value) for value in self.grid_shape)
+                None if self.grid_shape is None else tuple(int(value) for value in self.grid_shape)
             ),
+            "row_lengths": self.row_lengths,
             "step_sizes": (
                 None
                 if self.step_sizes is None
@@ -2078,6 +2227,56 @@ class CrystalMap:
             "map_frame": self.map_frame.name,
             "specimen_frame": self.orientations.specimen_frame.name,
         }
+
+    @property
+    def default_connectivity(self) -> int:
+        """Natural first-shell connectivity of the declared topology.
+
+        Hexagonal scans use six neighbours. Rectangular and unstructured maps
+        retain the historical four-neighbour default.
+        """
+
+        return 6 if self.grid_kind == "hexagonal" else 4
+
+    def describe(self) -> str:
+        """Convention-explicit scientific prose describing this EBSD map.
+
+        The description names the scan topology, neighbourhood convention,
+        phase state, output-shape behavior, and the rectangular-only limit on
+        curvature and pixel-face perimeter calculations.
+        """
+
+        if self.grid_kind == "hexagonal":
+            assert self.row_lengths is not None
+            topology = (
+                f"a staggered hexagonal scan with {len(self.row_lengths)} rows "
+                f"({', '.join(str(value) for value in self.row_lengths)} points) and "
+                "six-neighbour first-shell topology"
+            )
+            limits = (
+                "Local metrics return one value per measured point; padded display arrays mark "
+                "missing row positions. Curvature/GND and pixel-face perimeter calculations "
+                "remain rectangular-grid-only."
+            )
+        elif self.grid_shape is not None:
+            topology = (
+                "a rectangular " + " x ".join(str(value) for value in self.grid_shape) + " grid"
+            )
+            limits = "Grid-shaped local metrics use the declared row-major raster."
+        else:
+            topology = "an unstructured coordinate graph"
+            limits = "Local metrics return one value per point and require coordinate neighbours."
+        phases = self.phase_summary()
+        phase_text = (
+            ", ".join(f"{name}: {count}" for name, count in phases.items())
+            if phases
+            else "no explicit phase counts"
+        )
+        return (
+            f"CrystalMap contains {len(self.orientations)} orientations in the "
+            f"{self.map_frame.name} frame on {topology}. Phase assignments: {phase_text}. "
+            f"{limits}"
+        )
 
     def validate(self) -> tuple[str, ...]:
         """Advisory notes about limitations of this map, as human-readable strings.
@@ -2102,8 +2301,13 @@ class CrystalMap:
                 notes.append(
                     "Full Phase objects are not attached for phases: " + ", ".join(unresolved)
                 )
-        if self.grid_shape is None:
+        if self.grid_shape is None and self.grid_kind is None:
             notes.append("Map is operating in graph mode rather than regular-grid mode.")
+        if self.grid_kind == "hexagonal":
+            notes.append(
+                "Hexagonal topology supports neighbourhood metrics, KAM, and segmentation; "
+                "curvature/GND and pixel-face perimeters require a rectangular grid."
+            )
         return tuple(notes)
 
     def _phase_entry_by_id(self) -> dict[int, CrystalMapPhase]:
@@ -2203,6 +2407,8 @@ class CrystalMap:
             orientations=orientations,
             map_frame=self.map_frame,
             grid_shape=self.grid_shape if full_selection else None,
+            grid_kind=self.grid_kind if full_selection else None,
+            row_lengths=self.row_lengths if full_selection else None,
             step_sizes=self.step_sizes,
             acquisition_geometry=self.acquisition_geometry,
             calibration_record=self.calibration_record,
@@ -2239,6 +2445,8 @@ class CrystalMap:
             phase_entries=self.phase_entries,
             phase_ids=phase_ids,
             grid_shape=self.grid_shape if full_selection else None,
+            grid_kind=self.grid_kind if full_selection else None,
+            row_lengths=self.row_lengths if full_selection else None,
             step_sizes=self.step_sizes,
             acquisition_geometry=self.acquisition_geometry,
             calibration_record=self.calibration_record,
@@ -2286,7 +2494,7 @@ class CrystalMap:
         *,
         threshold_deg: float,
         symmetry_aware: bool = True,
-        connectivity: int = 8,
+        connectivity: int | None = None,
     ) -> CrystalMap:
         """Replace isolated wild-spike points with their neighborhood mean orientation.
 
@@ -2298,9 +2506,10 @@ class CrystalMap:
 
         if threshold_deg <= 0.0:
             raise ValueError("threshold_deg must be strictly positive.")
-        if connectivity not in {4, 8}:
-            raise ValueError("connectivity must be either 4 or 8.")
-        neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs
+        resolved_connectivity = (
+            (6 if self.grid_kind == "hexagonal" else 8) if connectivity is None else connectivity
+        )
+        neighbor_pairs = self.neighbor_graph(connectivity=resolved_connectivity, order=1).pairs
         neighbor_pairs = neighbor_pairs[self._same_phase_pair_mask(neighbor_pairs)]
         point_count = len(self.orientations)
         adjacency: dict[int, list[int]] = {index: [] for index in range(point_count)}
@@ -2347,6 +2556,8 @@ class CrystalMap:
             phase_entries=self.phase_entries,
             phase_ids=self.phase_ids,
             grid_shape=self.grid_shape,
+            grid_kind=self.grid_kind,
+            row_lengths=self.row_lengths,
             step_sizes=self.step_sizes,
             acquisition_geometry=self.acquisition_geometry,
             calibration_record=self.calibration_record,
@@ -2645,10 +2856,11 @@ class CrystalMap:
         | ArrayLike
         | tuple[CrystalPlane | ArrayLike, ...]
         | list[CrystalPlane | ArrayLike] = (),
-        sample_directions: str
-        | ArrayLike
-        | tuple[str | ArrayLike, ...]
-        | list[str | ArrayLike] = ("x", "y", "z"),
+        sample_directions: str | ArrayLike | tuple[str | ArrayLike, ...] | list[str | ArrayLike] = (
+            "x",
+            "y",
+            "z",
+        ),
         phase: int | str | Phase | CrystalMapPhase | None = None,
         weights: ArrayLike | None = None,
         kernel: KernelSpec | None = None,
@@ -2772,7 +2984,7 @@ class CrystalMap:
     def neighbor_graph(
         self,
         *,
-        connectivity: int = 4,
+        connectivity: int | None = None,
         order: int = 1,
         max_distance: float | None = None,
     ) -> CoordinateNeighborGraph:
@@ -2788,8 +3000,9 @@ class CrystalMap:
         Parameters
         ----------
         connectivity : int
-            ``4`` (edge neighbours) or ``8`` (edge and corner neighbours) on a
-            regular grid.
+            ``4`` (edges) or ``8`` (edges and corners) on a rectangular grid;
+            ``6`` on a hexagonal grid. The default follows the declared
+            topology.
         order : int
             Neighbour shell. ``1`` is nearest neighbours; higher orders reach
             further and are what "KAM of order n" means.
@@ -2802,21 +3015,44 @@ class CrystalMap:
         CoordinateNeighborGraph
             Unique unordered pairs and their distances. ``mode`` records which
             path produced them: ``"regular_grid"`` for the fast vectorized grid
-            construction, ``"coordinate_radius"`` for the distance-based
-            fallback.
+            construction, ``"hexagonal_grid"`` for staggered logical rows, or
+            ``"coordinate_radius"`` for the distance-based fallback.
         """
 
-        if connectivity not in {4, 8}:
-            raise ValueError("connectivity must be either 4 or 8.")
+        resolved_connectivity = self.default_connectivity if connectivity is None else connectivity
+        if resolved_connectivity not in {4, 6, 8}:
+            raise ValueError("connectivity must be 4, 6, or 8.")
+        if self.grid_kind == "hexagonal" and resolved_connectivity != 6:
+            raise ValueError("Hexagonal CrystalMap topology requires connectivity=6.")
+        if self.grid_kind == "square" and resolved_connectivity == 6:
+            raise ValueError("Rectangular CrystalMap topology requires connectivity=4 or 8.")
         if order <= 0:
             raise ValueError("order must be strictly positive.")
+        if self.grid_kind == "hexagonal" and max_distance is None:
+            assert self.row_lengths is not None
+            pairs = _vectorized_hexagonal_grid_pairs(
+                self.coordinates,
+                self.row_lengths,
+                order=order,
+            )
+            distances = np.linalg.norm(
+                self.coordinates[pairs[:, 0]] - self.coordinates[pairs[:, 1]],
+                axis=1,
+            )
+            return CoordinateNeighborGraph(
+                pairs=pairs,
+                distances=distances,
+                connectivity=6,
+                order=order,
+                mode="hexagonal_grid",
+            )
         if self.grid_shape is not None and len(self.grid_shape) == 2:
             rows, cols = self._require_regular_2d_grid()
             if max_distance is None:
                 pairs = _vectorized_regular_grid_pairs(
                     rows,
                     cols,
-                    connectivity=connectivity,
+                    connectivity=resolved_connectivity,
                     order=order,
                 )
                 distances = np.linalg.norm(
@@ -2826,14 +3062,14 @@ class CrystalMap:
                 return CoordinateNeighborGraph(
                     pairs=pairs,
                     distances=distances,
-                    connectivity=connectivity,
+                    connectivity=resolved_connectivity,
                     order=order,
                     mode="regular_grid",
                 )
         radius = max_distance
         if radius is None:
             base_spacing = _inferred_base_spacing(self.coordinates, self.step_sizes)
-            radius_scale = float(order) * (np.sqrt(2.0) if connectivity == 8 else 1.0)
+            radius_scale = float(order) * (np.sqrt(2.0) if resolved_connectivity == 8 else 1.0)
             radius = base_spacing * radius_scale + 1e-9
         distances = _pairwise_distances(self.coordinates)
         upper_mask = np.triu(np.ones_like(distances, dtype=bool), k=1)
@@ -2843,13 +3079,13 @@ class CrystalMap:
         return CoordinateNeighborGraph(
             pairs=indices,
             distances=pair_distances,
-            connectivity=connectivity,
+            connectivity=resolved_connectivity,
             order=order,
             mode="coordinate_radius",
             max_distance=radius,
         )
 
-    def neighbor_pairs(self, *, connectivity: int = 4) -> np.ndarray:
+    def neighbor_pairs(self, *, connectivity: int | None = None) -> np.ndarray:
         """First-shell neighbour index pairs, as an ``(m, 2)`` array.
 
         Shorthand for ``neighbor_graph(connectivity=..., order=1).pairs``.
@@ -2860,17 +3096,17 @@ class CrystalMap:
     def kam_neighbor_pairs(self, *, order: int = 1) -> np.ndarray:
         """Neighbour pairs for a KAM calculation at the given shell order.
 
-        Fixes 4-connectivity, which is the conventional KAM neighbourhood on a
-        square grid.
+        Uses four-connectivity on a square grid and six-connectivity on a
+        hexagonal grid.
         """
 
-        return self.neighbor_graph(connectivity=4, order=order).pairs
+        return self.neighbor_graph(order=order).pairs
 
     def kernel_average_misorientation_deg(
         self,
         *,
         symmetry_aware: bool = True,
-        connectivity: int = 4,
+        connectivity: int | None = None,
         order: int = 1,
         threshold_deg: float | None = None,
         statistic: str = "mean",
@@ -2891,7 +3127,8 @@ class CrystalMap:
         symmetry_aware : bool
             Reduce each pair misorientation by crystal symmetry (default).
         connectivity : int
-            ``4`` or ``8`` neighbourhood.
+            ``4`` or ``8`` on a rectangular grid, ``6`` on a hexagonal grid;
+            omitted to use the natural topology.
         order : int
             Neighbour shell; higher orders average over a wider kernel.
         threshold_deg : float, optional
@@ -2915,8 +3152,6 @@ class CrystalMap:
             misorientation between different phases is not defined here.
         """
 
-        if connectivity not in {4, 8}:
-            raise ValueError("connectivity must be either 4 or 8.")
         if threshold_deg is not None and threshold_deg < 0.0:
             raise ValueError("threshold_deg must be non-negative when provided.")
         if statistic not in {"mean", "max"}:
@@ -3101,7 +3336,7 @@ class CrystalMap:
         *,
         max_misorientation_deg: float,
         symmetry_aware: bool = True,
-        connectivity: int = 4,
+        connectivity: int | None = None,
     ) -> GrainSegmentation:
         """Group measurement points into grains by neighbour misorientation.
 
@@ -3128,7 +3363,8 @@ class CrystalMap:
         symmetry_aware : bool
             Use disorientation rather than raw rotation angle (default).
         connectivity : int
-            ``4`` or ``8`` neighbourhood.
+            ``4`` or ``8`` on a rectangular grid, ``6`` on a hexagonal grid;
+            omitted to use the natural topology.
 
         Returns
         -------
@@ -3139,7 +3375,8 @@ class CrystalMap:
 
         if max_misorientation_deg < 0.0:
             raise ValueError("max_misorientation_deg must be non-negative.")
-        neighbor_pairs = self.neighbor_graph(connectivity=connectivity, order=1).pairs
+        graph = self.neighbor_graph(connectivity=connectivity, order=1)
+        neighbor_pairs = graph.pairs
         same_phase = self._same_phase_pair_mask(neighbor_pairs)
         neighbor_pairs = neighbor_pairs[same_phase]
         parent = np.arange(len(self.orientations), dtype=np.int64)
@@ -3183,5 +3420,5 @@ class CrystalMap:
             labels,
             max_misorientation_deg=max_misorientation_deg,
             symmetry_aware=symmetry_aware,
-            connectivity=connectivity,
+            connectivity=graph.connectivity,
         )

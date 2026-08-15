@@ -24,7 +24,7 @@ governance increment.
 | 5 | ODF from XRDML / LaboTex / EBSD | 8 | Full stack minus ghost correction and a defocus model |
 | 6 | Pole-figure arithmetic | 2 → **8** | Was the clearest hole; addressed in full, see below |
 | 7 | XRD pattern computation | 7 | Excellent forward model, zero analysis of measured data |
-| 8 | EBSD | 8 | Broad and deep; square-grid-only and no HDF5 readers |
+| 8 | EBSD | 8.5 | Broad and deep; square plus `.ang` hex-grid topology, but no HDF5 readers |
 | 9 | OR from two grains' Euler angles | 9 | Exactly the asked-for entry point, with honest ambiguity reporting |
 | 10 | Visualization | 8 | Superb architecture, static-matplotlib ceiling |
 
@@ -258,9 +258,10 @@ readers (`adapters/scan_files.py`) and kikuchipy / pyebsdindex / orix adapters
 KAM, GND, phase and property maps with boundary overlays. MTEX parity tests guard
 rotations, fundamental regions and EBSD behaviour.
 
-**Lacking.** Square grids only — `.ang` `HexGrid` is explicitly rejected and there
-is no hexagonal neighbour topology, which silently excludes a large share of EDAX
-data. No HDF5 readers (`.h5oina`, `.oh5`, Bruker H5), which is how modern systems
+**Lacking.** `.ang` `HexGrid` import, six-neighbour KAM, segmentation, explainable metadata, and
+portable contracts are now implemented with a labelled analytic fixture. Hexagonal curvature/GND
+finite differences and pixel-cell perimeters remain deliberately unsupported. No HDF5 readers
+(`.h5oina`, `.oh5`, Bruker H5), which is how modern systems
 actually export. Native pattern indexing does not exist: Hough and dictionary
 indexing are delegated to optional adapters, so the pure-Python-first claim does
 not hold for indexing. No in-fill of non-indexed points and no pluggable filter
@@ -269,9 +270,9 @@ so large maps will fail rather than degrade. No 3D EBSD, no five-parameter
 boundary character.
 
 **Next.**
-1. Hex-grid support end to end (reader acceptance plus honeycomb neighbour graph) — today's rejection is a silent capability gap.
-2. One HDF5 core with `.h5oina` and `.oh5` readers.
-3. Non-indexed in-fill and a `CrystalMapFilter` policy layer; then native Hough indexing to close the pure-Python claim.
+1. Add hexagonal finite-difference curvature/GND and a declared cell-boundary perimeter model.
+2. Add one HDF5 core with `.h5oina` and `.oh5` readers.
+3. Add non-indexed in-fill and a `CrystalMapFilter` policy layer; then native Hough indexing to close the pure-Python claim.
 
 ## 9. OR between two grains from Euler angles — 9/10
 

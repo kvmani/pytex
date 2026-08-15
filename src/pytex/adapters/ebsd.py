@@ -144,8 +144,7 @@ class EBSDImportManifest:
         object.__setattr__(self, "phases", tuple(normalized_phases))
 
     def to_dict(self) -> dict[str, Any]:
-        """The import manifest as a schema-conformant JSON-ready dictionary.
-        """
+        """The import manifest as a schema-conformant JSON-ready dictionary."""
 
         payload: dict[str, Any] = {
             "schema_id": self.schema_id,
@@ -169,8 +168,7 @@ class EBSDImportManifest:
         return payload
 
     def write_json(self, path: str | Path) -> Path:
-        """Write the import manifest to a JSON file and return the path.
-        """
+        """Write the import manifest to a JSON file and return the path."""
 
         output_path = Path(path)
         output_path.write_text(
@@ -180,8 +178,7 @@ class EBSDImportManifest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> EBSDImportManifest:
-        """Reconstruct an import manifest from a payload, validating it first.
-        """
+        """Reconstruct an import manifest from a payload, validating it first."""
 
         validate_ebsd_import_manifest(payload)
         return cls(
@@ -298,15 +295,13 @@ def validate_ebsd_import_manifest(payload: dict[str, Any]) -> None:
 
 
 def manifest_schema_path() -> Path:
-    """Path to the JSON schema for EBSD import manifests.
-    """
+    """Path to the JSON schema for EBSD import manifests."""
 
     return Path(__file__).resolve().parents[3] / "schemas" / "ebsd_import_manifest.schema.json"
 
 
 def read_ebsd_import_manifest(path: str | Path) -> EBSDImportManifest:
-    """Read and validate an EBSD import manifest from a JSON file.
-    """
+    """Read and validate an EBSD import manifest from a JSON file."""
 
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -431,7 +426,7 @@ def _normalize_vendor_payload(
     if angle_key is None:
         raise ValueError(
             f"{source_system} payload must contain one of: {', '.join(angle_key_candidates)}"
-    )
+        )
     if "coordinates" not in payload:
         raise ValueError(f"{source_system} payload must contain 'coordinates'.")
     convention = str(payload.get("orientation_convention", "bunge"))
@@ -522,6 +517,8 @@ def _normalize_vendor_payload(
         phase_entries=phase_entries,
         phase_ids=phase_ids,
         grid_shape=tuple(payload["grid_shape"]) if "grid_shape" in payload else None,
+        grid_kind=payload.get("grid_kind"),
+        row_lengths=(tuple(payload["row_lengths"]) if "row_lengths" in payload else None),
         step_sizes=tuple(payload["step_sizes"]) if "step_sizes" in payload else None,
     )
     manifest = EBSDImportManifest(

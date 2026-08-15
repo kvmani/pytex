@@ -22,7 +22,9 @@ features are added aggressively.
 > [Critical Review And Development Guide](critical_review_and_development_guide.md): roadmap and
 > ledger repair, Windows CI, a Sphinx-warning ratchet, critical Playwright coverage, then measured
 > XRD I/O, defocus calibration, hex-grid EBSD, finite-thickness SAED, and named-component ODF
-> fitting. Parent reconstruction remains experimental until measured and MTEX evidence lands.
+> fitting. Measured XRD I/O, defocus calibration, and the bounded hex-grid EBSD slice are now
+> complete; finite-thickness SAED is next. Parent reconstruction remains experimental until
+> measured and MTEX evidence lands.
 
 ## Immediate Development Roadmap
 

@@ -2192,10 +2192,21 @@ def index_saed_pattern(
         Fixes the in-plane rotation when known.
     zone_axis : ZoneAxis, optional
         Skips the estimation step; supply it when the axis is known.
-    max_excitation_error_inv_angstrom, intensity_model,
-    excitation_sigma_inv_angstrom, acceptance_mask : see
-        :meth:`KinematicSimulation.simulate_spots`.
-    max_distance_px, cluster_radius_px, use_only_accepted : see
+    max_excitation_error_inv_angstrom : float
+        Excitation-error limit; see :meth:`KinematicSimulation.simulate_spots`.
+    intensity_model : str
+        Spot-intensity policy; see :meth:`KinematicSimulation.simulate_spots`.
+    excitation_sigma_inv_angstrom : float
+        Excitation envelope width; see :meth:`KinematicSimulation.simulate_spots`.
+    acceptance_mask : DetectorAcceptanceMask, optional
+        Detector acceptance; see :meth:`KinematicSimulation.simulate_spots`.
+    max_distance_px : float
+        Matching radius; see :meth:`KinematicSimulation.associate_to_pattern`.
+    cluster_radius_px : float
+        Observed-spot clustering radius; see
+        :meth:`KinematicSimulation.associate_to_pattern`.
+    use_only_accepted : bool
+        Whether to match only accepted simulated spots; see
         :meth:`KinematicSimulation.associate_to_pattern`.
 
     Returns

@@ -4,11 +4,47 @@
 
 # EBSD microstructure
 
-Lattice curvature and geometrically necessary dislocation density recovered from a planted orientation gradient, checked against the closed-form Nye result.
+Hex-grid KAM, lattice curvature, and geometrically necessary dislocation density recovered from analytically planted topology or orientation gradients.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
 ```
+
+## Six-neighbour KAM on a staggered hexagonal scan
+
+EDAX/TSL .ang scans can alternate long and short rows. Treating those points as a rectangle invents pixels and changes every local average, so the reader preserves the 3/2/3 row topology and KAM uses the six-neighbour graph directly.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+from pathlib import Path
+import numpy as np
+from pytex.adapters import read_ang
+
+hex_map = read_ang(Path("fixtures/ebsd/synthetic_hex_grid.ang")).crystal_map
+```
+
+:::
+
+**Compute**
+
+```python
+graph = hex_map.neighbor_graph()
+kam = hex_map.kernel_average_misorientation_deg()
+result = np.concatenate([[len(graph.pairs)], kam])
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `ebsd-hex-grid-six-neighbor-kam` | [13.000000, 3.000000, 6.000000, 3.000000, 1.200000, 1.200000, 0.000000, 0.000000, 0.000000] | [13.000000, 3.000000, 6.000000, 3.000000, 1.200000, 1.200000, 0.000000, 0.000000, 0.000000] | degree (KAM entries) | 6.86e-09 | 2e-07 | ✅ pass |
+
+**Why this value**: The synthetic scan has five horizontal edges and four edges across each of its two staggered row boundaries: 5 + 4 + 4 = 13. Only point 1 is rotated by 6 degrees. Its four incident edges therefore give KAM 6 degrees; points 0 and 2 average one 6-degree edge over degree 2 (3 degrees), points 3 and 4 over degree 5 (1.2 degrees), and the remaining points see only zero-angle edges.
+
+**Citation**: MTEX, 'Gridded EBSD Data', Hexagonal Grids section, documenting EBSDhex as the distinct hexagonal-grid topology and warning that square resampling distorts the unit cells: https://mtex-toolbox.github.io/EBSDGrid.html. Fixture metadata states explicitly that the values are analytically constructed and not experimental.
+
+**See also**: {doc}`EBSD local misorientation <../../workflows/ebsd_kam>`, {doc}`Multiphase and hex-grid EBSD graphs <../../theory/multiphase_ebsd_graph_workflows>`, {doc}`EBSD foundation <../../concepts/ebsd_foundation>`
 
 ## Lattice curvature recovered from a known orientation gradient
 

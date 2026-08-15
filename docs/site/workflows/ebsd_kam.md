@@ -20,6 +20,7 @@ depending on `symmetry_aware`.
 ## What PyTex Exposes
 
 - regular-grid adjacency for 4- and 8-connectivity
+- staggered hexagonal-grid adjacency with the natural 6-connectivity
 - graph-backed adjacency for irregular coordinate sets
 - explicit neighbor order
 - optional thresholding
@@ -39,8 +40,9 @@ kam = crystal_map.kernel_average_misorientation_deg(
 )
 ```
 
-If `grid_shape` is not available, PyTex falls back to graph mode and infers a neighborhood radius
-from the scan geometry.
+For `grid_kind="hexagonal"`, the default follows the exact six-neighbour logical-row graph and the
+result remains a flat value per measured point. If neither rectangular nor hexagonal topology is
+available, PyTex falls back to graph mode and infers a neighborhood radius from the coordinates.
 
 ## Phase Semantics
 

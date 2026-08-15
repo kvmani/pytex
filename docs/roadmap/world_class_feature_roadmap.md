@@ -137,8 +137,9 @@ answer they validate.
 
 ### 2.5 EBSD and scale
 
-- Hex-grid `CrystalMap` (offset rows, honeycomb neighbors); h5ebsd-family
-  readers (EDAX/Oxford/Bruker H5) behind one HDF5 core.
+- Hex-grid `CrystalMap` (offset rows, six-neighbour topology) is implemented for `.ang` import,
+  KAM, segmentation, contracts, and graph-backed grain workflows. Hex curvature/GND stencils and
+  h5ebsd-family readers (EDAX/Oxford/Bruker H5) behind one HDF5 core remain.
 - Denoising suite as `CrystalMapFilter` policy objects (spline and
   half-quadratic smoothing, Kuwahara, non-indexed in-fill).
 - GND density from orientation gradients (curvature-tensor route).

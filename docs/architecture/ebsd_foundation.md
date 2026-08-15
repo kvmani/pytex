@@ -5,10 +5,11 @@ This document records the initial Phase 3 implementation posture for EBSD-facing
 ## Implemented
 
 - `CrystalMap` as the canonical container for coordinates, orientations, and map-frame metadata
-- regular-grid validation through `grid_shape`
-- deterministic neighbor-pair generation for 4- and 8-connectivity
-- kernel-average misorientation (KAM) for regular 2D grids
-- thresholded grain segmentation on regular 2D grids
+- rectangular-grid validation through `grid_shape`
+- ragged hexagonal-grid validation through `grid_kind` and immutable `row_lengths`
+- deterministic neighbor-pair generation for rectangular 4/8-connectivity and hexagonal
+  6-connectivity, including cumulative graph order
+- kernel-average misorientation (KAM) and thresholded grain segmentation on both topologies
 - grain reference orientations via within-grain representative selection
 - grain reference orientation deviation (GROD) maps
 - grain-boundary extraction from segmentation-adjacent pixel pairs
@@ -23,10 +24,14 @@ This document records the initial Phase 3 implementation posture for EBSD-facing
 - no denoising workflows yet
 - no dependency-pinned live-package integration tests for KikuchiPy or PyEBSDIndex yet
 - no vendor-specific detector/pattern metadata normalization contract yet
+- no hexagonal finite-difference curvature/GND stencil or cell-boundary perimeter model yet
 
 ## Why This Is The Right First Step
 
-Phase 3 should start by proving that EBSD workflows can reuse the same orientation, frame, and symmetry semantics already established in the core model. KAM on regular grids is a useful first boundary test because it requires neighbor topology, misorientation semantics, and map-shape metadata without forcing premature commitment to full grain-analysis infrastructure.
+The EBSD layer proves that workflows can reuse the same orientation, frame, and symmetry semantics
+already established in the core model while keeping acquisition topology explicit. Rectangular and
+hexagonal KAM are useful boundary tests because they require neighborhood, misorientation, and scan
+metadata without allowing one grid convention to masquerade as another.
 
 ## References
 

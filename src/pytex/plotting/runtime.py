@@ -298,6 +298,13 @@ def plot_stereographic_vectors(
     title : str, optional
     ax : matplotlib Axes, optional
 
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+
+    Notes
+    -----
     The ``method`` argument selects the projection: ``"equal_area"``
     (Schmidt) preserves area, so densities are comparable across the figure,
     while ``"stereographic"`` (Wulff) preserves angles and is the right
@@ -611,6 +618,13 @@ def plot_inverse_pole_figure(
     title : str, optional
     ax : matplotlib Axes, optional
 
+    Returns
+    -------
+    Any
+        The Matplotlib axes.
+
+    Notes
+    -----
     The ``method`` argument selects the projection: ``"equal_area"``
     (Schmidt) preserves area, so densities are comparable across the figure,
     while ``"stereographic"`` (Wulff) preserves angles and is the right

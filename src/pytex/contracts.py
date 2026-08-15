@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -1021,9 +1021,7 @@ def _deserialize_pole_figure_defocus_calibration(
         tilt_deg=np.asarray(payload["tilt_deg"], dtype=np.float64),
         defocus_factors=np.asarray(payload["defocus_factors"], dtype=np.float64),
         ring_intensities=np.asarray(payload["ring_intensities"], dtype=np.float64),
-        azimuthal_relative_std=np.asarray(
-            payload["azimuthal_relative_std"], dtype=np.float64
-        ),
+        azimuthal_relative_std=np.asarray(payload["azimuthal_relative_std"], dtype=np.float64),
         ring_counts=np.asarray(payload["ring_counts"], dtype=np.int64),
         reference_tilt_deg=float(payload["reference_tilt_deg"]),
         reference_intensity=float(payload["reference_intensity"]),
@@ -1227,15 +1225,23 @@ def _serialize_crystal_map(crystal_map: CrystalMap) -> dict[str, Any]:
         "phase_entries": [
             _serialize_crystal_map_phase(entry) for entry in crystal_map.phase_entries
         ],
-        "phase_ids": None
-        if crystal_map.phase_ids is None
-        else _as_int_list(crystal_map.phase_ids),
+        "phase_ids": None if crystal_map.phase_ids is None else _as_int_list(crystal_map.phase_ids),
         "grid_shape": None
         if crystal_map.grid_shape is None
         else [int(value) for value in crystal_map.grid_shape],
+        "grid_kind": crystal_map.grid_kind,
+        "row_lengths": None
+        if crystal_map.row_lengths is None
+        else [int(value) for value in crystal_map.row_lengths],
         "step_sizes": None
         if crystal_map.step_sizes is None
         else [float(value) for value in crystal_map.step_sizes],
+        "properties": {
+            name: _as_float_list(values)
+            for name, values in cast(
+                "Mapping[str, np.ndarray]", crystal_map.properties
+            ).items()
+        },
         "acquisition_geometry": None
         if crystal_map.acquisition_geometry is None
         else _serialize_acquisition_geometry(crystal_map.acquisition_geometry),
@@ -1256,8 +1262,7 @@ def _deserialize_crystal_map(payload: dict[str, Any]) -> CrystalMap:
         orientations=_deserialize_orientation_set(payload["orientations"]),
         map_frame=_deserialize_reference_frame(payload["map_frame"]),
         phase_entries=tuple(
-            _deserialize_crystal_map_phase(entry)
-            for entry in payload.get("phase_entries", ())
+            _deserialize_crystal_map_phase(entry) for entry in payload.get("phase_entries", ())
         ),
         phase_ids=None
         if payload.get("phase_ids") is None
@@ -1265,9 +1270,17 @@ def _deserialize_crystal_map(payload: dict[str, Any]) -> CrystalMap:
         grid_shape=None
         if payload.get("grid_shape") is None
         else tuple(int(value) for value in payload["grid_shape"]),
+        grid_kind=payload.get("grid_kind"),
+        row_lengths=None
+        if payload.get("row_lengths") is None
+        else tuple(int(value) for value in payload["row_lengths"]),
         step_sizes=None
         if payload.get("step_sizes") is None
         else tuple(float(value) for value in payload["step_sizes"]),
+        properties={
+            str(name): np.asarray(values, dtype=np.float64)
+            for name, values in payload.get("properties", {}).items()
+        },
         acquisition_geometry=None
         if payload.get("acquisition_geometry") is None
         else _deserialize_acquisition_geometry(payload["acquisition_geometry"]),
@@ -1300,12 +1313,10 @@ def _deserialize_texture_report(payload: dict[str, Any]) -> TextureReport:
     return TextureReport(
         odf=_deserialize_odf(payload["odf"]),
         pole_figures=tuple(
-            _deserialize_pole_figure(pole_figure)
-            for pole_figure in payload.get("pole_figures", ())
+            _deserialize_pole_figure(pole_figure) for pole_figure in payload.get("pole_figures", ())
         ),
         inverse_pole_figures=tuple(
-            _deserialize_inverse_pole_figure(ipf)
-            for ipf in payload.get("inverse_pole_figures", ())
+            _deserialize_inverse_pole_figure(ipf) for ipf in payload.get("inverse_pole_figures", ())
         ),
         provenance=_deserialize_provenance(payload.get("provenance")),
     )
@@ -1432,9 +1443,7 @@ def _serialize_phase_transformation_record(
     }
 
 
-def _deserialize_phase_transformation_record(
-    payload: dict[str, Any]
-) -> PhaseTransformationRecord:
+def _deserialize_phase_transformation_record(payload: dict[str, Any]) -> PhaseTransformationRecord:
     _require_schema(payload, "pytex.core.phase_transformation_record")
     variant_indices = payload.get("variant_indices")
     return PhaseTransformationRecord(
@@ -1898,9 +1907,7 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.orientation_set": _deserialize_orientation_set,
     "pytex.texture.kernel_spec": _deserialize_kernel,
     "pytex.texture.pole_figure": _deserialize_pole_figure,
-    "pytex.texture.pole_figure_defocus_calibration": (
-        _deserialize_pole_figure_defocus_calibration
-    ),
+    "pytex.texture.pole_figure_defocus_calibration": (_deserialize_pole_figure_defocus_calibration),
     "pytex.texture.inverse_pole_figure": _deserialize_inverse_pole_figure,
     "pytex.texture.odf": _deserialize_odf,
     "pytex.texture.odf_inversion_report": _deserialize_odf_inversion_report,
