@@ -422,6 +422,80 @@ test('picks can be set from typed coordinates alone', async ({ page }) => {
   expect(browserErrors).toEqual([]);
 });
 
+test('a click on an uploaded micrograph snaps to the spot centroid', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+
+  // The micrograph is drawn in the page and handed to the file input as a real
+  // File, so this exercises the upload path — including the pixel read that the
+  // centroid needs — without a binary fixture in the repository.
+  const truth = await page.evaluate(async () => {
+    const size = 600;
+    const centre = [300, 300];
+    const basis = [
+      [120, 20],
+      [-20, 120],
+    ];
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#080808';
+    context.fillRect(0, 0, size, size);
+    for (let m = -3; m <= 3; m += 1) {
+      for (let n = -3; n <= 3; n += 1) {
+        const x = centre[0] + m * basis[0][0] + n * basis[1][0];
+        const y = centre[1] + m * basis[0][1] + n * basis[1][1];
+        if (x < 0 || x >= size || y < 0 || y >= size) continue;
+        const radius = m === 0 && n === 0 ? 16 : 10;
+        const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, 'rgba(255,255,255,1)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        context.fillStyle = gradient;
+        context.beginPath();
+        context.arc(x, y, radius, 0, 2 * Math.PI);
+        context.fill();
+      }
+    }
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([blob], 'plate.png', { type: 'image/png' }));
+    const input = document.querySelector('input[type=file]');
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return { centre, spot: [centre[0] + basis[0][0], centre[1] + basis[0][1]] };
+  });
+  await expect(page.locator('#stage .plot svg image')).toBeVisible();
+
+  const toScreen = async (x, y) =>
+    page.evaluate(
+      ([px, py]) => {
+        const svg = document.querySelector('#stage .plot svg');
+        const box = svg.viewBox.baseVal;
+        const rect = svg.getBoundingClientRect();
+        const scale = Math.min(rect.width / box.width, rect.height / box.height);
+        return {
+          x: rect.left + (rect.width - box.width * scale) / 2 + (px - box.x) * scale,
+          y: rect.top + (rect.height - box.height * scale) / 2 + (py - box.y) * scale,
+        };
+      },
+      [x, y],
+    );
+
+  // Deliberately four pixels off the spot, the way a click actually lands.
+  const aimed = await toScreen(truth.spot[0] + 4, truth.spot[1] - 4);
+  await page.mouse.click(aimed.x, aimed.y);
+  await expect(page.locator('.picks__row')).toHaveCount(1);
+
+  const [beam] = await pickedCoordinates(page);
+  // One pass of centre-of-mass lands back near the click, because the window is
+  // centred on the click rather than on the spot; the iteration is what makes
+  // this assertion pass.
+  expect(Math.hypot(beam[0] - truth.spot[0], beam[1] - truth.spot[1])).toBeLessThan(1.5);
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('keeps all workspaces reachable in the narrow responsive layout', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const browserErrors = await openWorkbench(page);

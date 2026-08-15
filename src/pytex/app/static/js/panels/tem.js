@@ -1499,16 +1499,40 @@ export function mount(context) {
   function snapToSpot(point) {
     const size = frameSize();
     if (!size) return { x: point.x, y: point.y, moved: 0 };
-    const radius = Math.max(6, Math.max(size.width, size.height) / 90);
+    const radius = Math.max(8, Math.max(size.width, size.height) / 64);
     const centred = state.gallery
       ? nearestSimulatedSpot(point, radius)
-      : centroidOfPixels(point, radius);
+      : iteratedCentroid(point, radius);
     if (!centred) return { x: point.x, y: point.y, moved: 0 };
-    return {
-      x: centred.x,
-      y: centred.y,
-      moved: Math.hypot(centred.x - point.x, centred.y - point.y),
-    };
+    const moved = Math.hypot(centred.x - point.x, centred.y - point.y);
+    // A centroid that has walked further than the window it started in has
+    // found a different spot, not this one. Refusing is the safe answer: the
+    // pick stays where it was put and the user can see that it did.
+    if (moved > radius) return { x: point.x, y: point.y, moved: 0 };
+    return { x: centred.x, y: centred.y, moved };
+  }
+
+  /**
+   * Centre of mass, re-centred on its own answer until it stops moving.
+   *
+   * One pass is not enough and is worse than it looks. The window is centred on
+   * the *click*, so on a peak wider than the window the intensity across it is
+   * near-linear and the centre of mass lands close to the middle of the window —
+   * that is, back at the click. A snap that returns the click looks like a snap
+   * that is working. Re-centring the window on each estimate makes the true
+   * peak the fixed point, and three or four passes reach it from anywhere inside
+   * the starting window.
+   */
+  function iteratedCentroid(point, radius) {
+    let current = { x: point.x, y: point.y };
+    for (let pass = 0; pass < 6; pass += 1) {
+      const next = centroidOfPixels(current, radius);
+      if (!next) return pass === 0 ? null : current;
+      const step = Math.hypot(next.x - current.x, next.y - current.y);
+      current = next;
+      if (step < 0.05) break;
+    }
+    return current;
   }
 
   function nearestSimulatedSpot(point, radius) {
