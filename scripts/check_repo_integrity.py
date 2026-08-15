@@ -47,6 +47,7 @@ REQUIRED_PATHS = [
     "worked_examples/framework.py",
     "worked_examples/registry.py",
     "scripts/generate_worked_examples.py",
+    "scripts/check_sphinx_warnings.py",
     "tests/unit/test_worked_examples.py",
     "docs/site/examples/index.md",
     "docs/site/theory/index.md",

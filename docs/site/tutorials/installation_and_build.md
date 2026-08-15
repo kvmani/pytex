@@ -63,7 +63,7 @@ python scripts/check_repo_integrity.py
 python -m ruff check .
 python -m mypy src
 python -m pytest -q
-python -m sphinx -b html docs/site docs/_build/html
+python scripts/check_sphinx_warnings.py --max-warnings 602
 ```
 
 ### Full Scientific Lane

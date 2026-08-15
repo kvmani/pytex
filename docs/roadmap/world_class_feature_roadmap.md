@@ -25,7 +25,26 @@ Strategic decisions governing this roadmap:
 Size tags: **S** (one commit), **M** (one focused session), **L** (multi-session
 program with its own working notes).
 
-## 1. Immediate Horizon (next 1-2 cycles)
+## 2026-08-15 Reconciliation
+
+The original immediate horizon below is complete: I1–I15 all landed. Its tables remain as the
+historical rationale and validation contract, not as an open queue. The active program is defined
+by the governing [Critical Review And Development Guide](critical_review_and_development_guide.md):
+
+1. governance/ledger reconciliation, Windows CI, a Sphinx-warning ratchet, and minimal critical
+   Playwright coverage;
+2. measured powder-XRD I/O and comparison;
+3. random-standard defocus calibration;
+4. hex-grid EBSD support;
+5. a finite-thickness kinematic SAED shape factor;
+6. named-component ODF fitting.
+
+Ghost correction, measured OR/parent-reconstruction validation, quantitative multiphase XRD, and
+the remaining medium/long-term items follow that bounded cycle. All new synthetic measurement
+fixtures must identify themselves as synthetic and state the analytic or independently generated
+answer they validate.
+
+## 1. Completed Immediate Horizon (historical)
 
 ### 1.1 Engineering robustness
 

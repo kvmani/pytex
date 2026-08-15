@@ -5,10 +5,13 @@ users actually come to PyTex for, plus the cross-cutting concerns that decide
 whether those capabilities are usable. Scores are *usability by a researcher for
 real work*, not lines of code.
 
-Verified facts at review time: 106 source modules, ~66.1k source lines, 470
-symbols in `pytex.__all__`, 4281 tests passing in ~4.6 min, strict mypy and ruff
-clean, `py.typed` shipped, CI matrix ubuntu+macos x Python 3.11-3.13 with an
-87% coverage ratchet plus a full-scientific lane.
+Verified facts at the 2026-08-15 reconciliation: 138 Python source files, about
+82.5k Python source lines, 558 symbols in `pytex.__all__`, 2,059 test functions
+before parametrization, 31 executable tutorial notebooks, and 28 worked-example
+sources. Strict mypy and Ruff lint are clean, `py.typed` ships, and the CI matrix
+covers Ubuntu and macOS on Python 3.11–3.13 with an 87% coverage ratchet plus a
+full-scientific lane. Windows and documentation-warning ratchets are the active
+governance increment.
 
 ## Scorecard
 
@@ -337,14 +340,14 @@ roadmap.
 
 ## 11. Cross-cutting findings not in the original list
 
-**Strengths worth protecting.** 4281 passing tests, strict mypy, ruff, `py.typed`,
+**Strengths worth protecting.** A large warning-strict test suite, strict mypy, Ruff, `py.typed`,
 JSON schemas and manifests for every serialized contract, provenance records
 threaded through the domain objects, a worked-example framework, MTEX/VESTA/
 diffraction parity ledgers, a terminology registry and an enforced citation
 policy. Very few academic packages have this governance layer; it is the
 repository's real moat.
 
-**Risk 1 — roadmap drift (fix first, it is nearly free).**
+**Risk 1 — roadmap drift (governance increment in progress).**
 `docs/roadmap/world_class_feature_roadmap.md` and
 `docs/roadmap/critical_review_and_development_guide.md` (dated 2026-07) describe a
 31.7k-line, 804-test repository with CI on Python 3.11/ubuntu only and no
@@ -362,7 +365,7 @@ helper exist, but a flat namespace this size is hard to learn and hard to evolve
 Surface stability tiers (stable / provisional / experimental) *in the API itself*
 and add a task-oriented "how do I…" index keyed to the nine workflows above.
 
-**Risk 3 — no Windows in CI.** The matrix is ubuntu and macos; primary
+**Risk 3 — no Windows in CI (governance increment in progress).** The matrix is Ubuntu and macOS; primary
 development happens on Windows. Path, encoding and line-ending regressions will
 be found by the developer rather than by CI. Adding `windows-latest` to the base
 lane is a one-line change.
@@ -371,17 +374,19 @@ lane is a one-line change.
 `benchmarks/` holds evidence manifests rather than timings. There is no CI timing
 lane, so a scale regression on map-scale EBSD or ODF inversion would go unnoticed.
 
-**Risk 5 — adoption surface is thin.** One notebook, two foundation scripts and
-ten worked examples for 470 public symbols. For uptake, a cookbook with one
-end-to-end recipe per capability above is worth more than the next feature.
+**Risk 5 — adoption and discoverability trail the API.** Thirty-one notebooks and 28 worked
+examples now provide substantial teaching coverage, but 558 flat stable exports remain difficult
+to discover. A task-oriented index and stability tiers are now more valuable than simply adding
+more examples by count.
 
 ## Recommended next sprint
 
 Ordered by payoff per unit effort, not by ambition:
 
 1. ~~**Pole-figure arithmetic sprint** (section 6)~~ — **done 2026-08-08.** Resampling, m.r.d. normalization, arithmetic and residual figures all landed; see section 6.
-2. **Reconcile the roadmap documents** with the verified state (section 11, risk 1) and add `windows-latest` to CI.
-3. **Defocus model plus ghost correction** (section 5) — makes XRDML → ODF a genuinely complete workflow rather than one that needs external correction.
-4. **Measured XRD pattern I/O** (section 7) — the single missing piece that converts a good forward model into an analysis capability.
-5. **Hex-grid EBSD support** (section 8) — removes a silent rejection that excludes a large fraction of real EDAX data.
-6. **Specimen thickness and the true shape factor** (section 3) — one parameter, materially better SAED intensities, and the prerequisite for any later dynamical work.
+2. **Governance repair** — reconcile the roadmap/ledger, add `windows-latest`, ratchet Sphinx warnings, and automate critical browser behavior.
+3. **Measured XRD pattern I/O** (section 7) — converts the forward model into an analysis capability.
+4. **Random-standard defocus calibration** (section 5) — completes the correction input already accepted by `PoleFigureCorrectionSpec`; ghost correction follows as a separate, higher-risk algorithm.
+5. **Hex-grid EBSD support** (section 8) — removes an explicit rejection that excludes real EDAX data.
+6. **Finite-thickness SAED and the true shape factor** (section 3) — one parameter, materially better SAED intensities, and the prerequisite for later quantitative work.
+7. **Named-component ODF fitting** — reuses the existing component library and non-negative SciPy solvers to turn an ODF into interpretable component fractions plus a residual.

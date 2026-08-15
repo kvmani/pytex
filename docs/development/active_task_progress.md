@@ -5,6 +5,64 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Repository Governance And Five-Feature Delivery Program — IN PROGRESS (2026-08-15)
+
+**Objective.** Repair the governing roadmap/ledger and executable quality gates, add a minimal
+critical Playwright lane for the shared web/desktop workbench, then deliver five deliberately
+bounded scientific features in order: measured powder-XRD I/O and comparison, random-standard
+pole-figure defocus calibration, hex-grid EBSD support, a finite-thickness SAED shape factor, and
+named-component fitting for measured ODFs. Each feature lands with tests, an independently known
+numerical result, `describe()`, a portable JSON contract where scientifically appropriate, a
+worked example, theory/workflow documentation, a parity-ledger update, and a benchmark case.
+Where an open redistributable measurement is unavailable, the fixture is synthetic and labelled
+as such in both its metadata and documentation.
+
+### Governing decisions
+
+1. Hardening precedes feature breadth: stale roadmap claims, the contradictory application-ledger
+   state, Windows CI, the Sphinx-warning ratchet, and browser automation land before scientific
+   feature 1.
+2. The warning ratchet measures the ordinary CI Sphinx build first. It forbids warning growth
+   immediately while the existing warning families are reduced deliberately; it is not a claim
+   that the baseline warnings are acceptable.
+3. Playwright covers critical user-visible behavior in a real Chromium browser without changing
+   the workbench's zero-bundler, zero-third-party-runtime architecture.
+4. Each scientific increment is independently revertible and leaves the full base lane green.
+
+### Step ledger
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| G1 | Reconcile governing roadmaps and completed application ledger state | done | this commit |
+| G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | this commit |
+| G3 | Add minimal critical Playwright workbench tests and CI lane | pending | — |
+| F1 | Measured powder-XRD I/O and comparison | pending | — |
+| F2 | Random-standard defocus calibration | pending | — |
+| F3 | Hex-grid EBSD support | pending | — |
+| F4 | Finite-thickness SAED shape factor | pending | — |
+| F5 | Named-component ODF fitting | pending | — |
+| C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | pending | — |
+
+### Current evidence and resume point
+
+- Clean `main` at `33a4f45`; `origin/main` matches.
+- Repository integrity, Ruff lint, and strict mypy over 138 source files are green at entry.
+- The live tree contains roughly 82.5k Python source lines and 558 top-level exports; the July
+  governing review still reports 31.7k lines, 804 tests, and no CI coverage.
+- The ordinary Sphinx build passes at the enforced 602-warning ceiling. A nitpicky audit builds
+  successfully but reports 2,300 warnings, including genuine unresolved current API references;
+  those are tracked as documentation debt beyond the no-growth baseline.
+- Windows/Python 3.11 now participates in the base CI lane; Linux and macOS retain the 3.11–3.13
+  matrix. The ratchet parser has focused unit coverage and contributor commands use the same gate.
+- Full-suite verification exposed one pre-existing generated-asset drift in
+  `docs/figures/class_model_ebsd.svg`; the canonical generator refreshed it and its byte-exact test
+  now passes.
+- Governance verification: repository integrity, Ruff, strict mypy over 138 source files, the
+  focused governance/class-atlas tests, the full pytest suite (two expected skips), and the
+  602-warning Sphinx build pass.
+- Next action: commit and push G1/G2 after the final suite passes, then start G3 by adding the
+  test-only Playwright dependency, critical Chromium journeys, and the dedicated CI lane.
+
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 
 **Objective.** Replace the Crystal Viewer's flat atom discs and flat bond strokes with a
@@ -912,7 +970,7 @@ critical workflows in the real desktop shell. Fix every reproducible GUI defect 
 **Exact next action.** None for this objective. Resume future application work from a new ledger
 entry after reviewing this closeout and the commits listed above.
 
-## Application Platform: Desktop + Intranet Workbench — IN PROGRESS (2026-08-12)
+## Application Platform: Desktop + Intranet Workbench — COMPLETE (2026-08-12)
 
 **Objective.** Build one interactive application over the PyTex library that ships both as a
 desktop app and as an intranet web app, sharing all scientific code and the entire user interface,
@@ -955,7 +1013,7 @@ phase catalogue with cited parameters and full atomic bases.
 | 10 | Desktop shell (`pywebview`, browser fallback) + `python -m pytex.app` verbs | done | (this commit) |
 | 11 | Diffraction tab: composite SAED of parent + product variants | done | (this commit) |
 | 11d | Drive the running app in both shells; fix what only running it reveals | done | d81b26b, e1b627e, 2b45b7e |
-| 11e | Second driving pass: every operation from its own defaults | in progress | (this commit) |
+| 11e | Second driving pass: every operation from its own defaults | done | (this commit) |
 | 11b | Orientation-relationship visualization (variants, pole figures, packets) | done | (this commit) |
 | 11c | Texture tab: pole figures, IPF, ODF | done | (this commit) |
 | 12 | User guide, worked example, docs index wiring | done | (this commit) |

@@ -9,8 +9,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13"]
+        exclude:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: windows-latest
+            python-version: "3.13"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +34,7 @@ jobs:
         run: python -m mypy src
       - name: Docs build
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
-        run: python -m sphinx -b html docs/site docs/_build/html
+        run: python scripts/check_sphinx_warnings.py --max-warnings 602
       - name: Test with coverage ratchet
         run: python -m pytest -q --cov=pytex --cov-report=term --cov-fail-under=87
 

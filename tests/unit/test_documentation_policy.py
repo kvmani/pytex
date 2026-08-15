@@ -115,6 +115,42 @@ def test_site_index_and_readme_expose_active_roadmap() -> None:
     assert "implementation roadmap" in site_readme
 
 
+def test_governing_roadmaps_point_to_the_current_delivery_cycle() -> None:
+    critical = _read("docs/roadmap/critical_review_and_development_guide.md")
+    feature_review = _read("docs/roadmap/feature_capability_review_2026_08.md")
+    world_class = _read("docs/roadmap/world_class_feature_roadmap.md")
+    for content in (critical, feature_review, world_class):
+        lowered = " ".join(content.lower().split())
+        for tokens in (
+            ("measured", "xrd"),
+            ("defocus",),
+            ("hex-grid", "ebsd"),
+            ("finite-thickness", "saed"),
+            ("component", "odf", "fitting"),
+        ):
+            assert all(token in lowered for token in tokens), tokens
+    assert "804 tests pass" not in critical
+    assert "i1" in world_class.lower()
+    assert "i15 all landed" in world_class.lower()
+
+
+def test_completed_application_ledger_has_no_open_status() -> None:
+    ledger = _read("docs/development/active_task_progress.md")
+    section = ledger.split(
+        "## Application Platform: Desktop + Intranet Workbench — COMPLETE", maxsplit=1
+    )[1].split("\n## ", maxsplit=1)[0]
+    assert "| in progress |" not in section.lower()
+    assert "all twelve steps are done" in section.lower()
+
+
+def test_ci_covers_windows_and_ratchets_sphinx_warnings() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    strategy = _read("docs/testing/strategy.md")
+    assert "windows-latest" in workflow
+    assert "scripts/check_sphinx_warnings.py --max-warnings 602" in workflow
+    assert "scripts/check_sphinx_warnings.py --max-warnings 602" in strategy
+
+
 def test_executable_examples_standard_is_encoded_and_cross_linked() -> None:
     standard = _read("docs/standards/executable_examples.md").lower()
     for token in ("worked example", "computed", "reference value", "tolerance", "citation"):

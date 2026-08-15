@@ -18,6 +18,12 @@ PyTex now treats the test and quality surface as two explicit lanes:
 - `base lane`: `.[dev,docs]` for integrity, linting, typing, docs builds, and the default lightweight test suite
 - `full scientific lane`: `.[dev,docs,adapters]` for CIF-backed structure import, pinned diffraction external baselines, and adapter-heavy interoperability coverage
 
+The base CI matrix covers Ubuntu and macOS on Python 3.11–3.13 plus Windows on Python 3.11.
+The Ubuntu/Python 3.11 job owns the executable Sphinx build and runs
+`python scripts/check_sphinx_warnings.py --max-warnings 602`. The number is a no-growth ratchet,
+not an accepted quality target: warning reductions lower it, and any increase fails CI. A future
+zero-warning state replaces the ratchet with `sphinx -W -n`.
+
 The base lane is the default contributor environment. The full scientific lane is the controlling
 environment for claims that depend on optional scientific packages such as `pymatgen`, ORIX,
 KikuchiPy, PyEBSDIndex, or diffsims.

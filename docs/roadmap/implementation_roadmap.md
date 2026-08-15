@@ -16,11 +16,20 @@ phase. Repository integrity, the default test suite, the rendered Sphinx surface
 scientific lane are now green. The next phase must broaden evidence-backed validation before new
 features are added aggressively.
 
+> **2026-08-15 reconciliation.** The dated Phase 1 material below remains the validation-hardening
+> ledger, but its “next cycle” wording is historical. The active executable program is the
+> governance-plus-five-feature cycle in the
+> [Critical Review And Development Guide](critical_review_and_development_guide.md): roadmap and
+> ledger repair, Windows CI, a Sphinx-warning ratchet, critical Playwright coverage, then measured
+> XRD I/O, defocus calibration, hex-grid EBSD, finite-thickness SAED, and named-component ODF
+> fitting. Parent reconstruction remains experimental until measured and MTEX evidence lands.
+
 ## Immediate Development Roadmap
 
 ### Current Status Snapshot
 
-As of 2026-07-12, the current working baseline adds the next validation-hardening slice while keeping
+The snapshot below records the 2026-07-12 baseline and is retained for provenance. At that time the
+working baseline added the next validation-hardening slice while keeping
 Phase 1 claim discipline intact: powder reflection enumeration now emits one representative per
 symmetry family, and a pinned HCP zirconium baseline extends external XRD evidence beyond cubic
 index canonicalization. The preceding interim slice added EBSD calibration geometry primitives, Miller-Bravais

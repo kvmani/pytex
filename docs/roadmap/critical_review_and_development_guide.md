@@ -1,9 +1,10 @@
-# Critical Review And Development Guide (2026-07)
+# Critical Review And Development Guide (reconciled 2026-08-15)
 
 This document is the governing development guide for PyTex going forward. It records a
-repo-wide critical review of the implemented code, algorithms, tests, and documentation as of
-July 2026, and converts that review into the priorities, quality bars, and doctrine that every
-subsequent change — human- or agent-authored — must follow.
+repo-wide critical review of the implemented code, algorithms, tests, and documentation. The
+original July 2026 findings remain below as the historical baseline; the verified state and
+priority program were reconciled against the live tree on 2026-08-15. Every subsequent change —
+human- or agent-authored — must follow the current program and the standing doctrine.
 
 Precedence: this guide sits directly below `mission.md` and `specifications.md` and above all
 roadmap documents. Where an older roadmap or working note conflicts with this guide, this guide
@@ -16,29 +17,55 @@ Companion documents introduced with this guide:
 - `AGENTS.md` and `mission.md` (repository root) — refreshed alongside this review; the
   explainable-results doctrine below is now part of both.
 
-## 1. State Of The Repository (verified 2026-07)
+## 1. State Of The Repository (verified 2026-08-15)
 
 Facts checked directly against the working tree, not inherited from prior notes:
 
-- 804 tests pass in ~27 s on the base lane; strict mypy passes; ruff (`E,F,I,B,UP,N,RUF`) passes;
-  `py.typed` ships; zero `TODO`/`FIXME` markers in `src/`.
-- ~31.7k source lines across `core`, `texture`, `ebsd`, `diffraction`, `plotting`, `properties`,
-  `adapters`, `contracts`, `experimental`.
-- CI runs two lanes (base, full-scientific no-skip) on ubuntu / Python 3.11 only. No coverage
-  measurement, no OS or Python matrix, no timing/benchmark lane.
+- The tree contains 138 Python source files, about 82.5k Python source lines, 558 symbols in
+  `pytex.__all__`, 31 executable tutorial notebooks, and 2,059 test functions before
+  parametrization. The complete base suite at the current head records two intentional skips and
+  a runtime of about 12 minutes on the Windows development machine.
+- Strict mypy and Ruff lint pass; `py.typed` ships; pytest treats new runtime warnings as errors;
+  CI enforces an 87% whole-package coverage floor.
+- The base CI lane covers Python 3.11–3.13 on Ubuntu and macOS. Windows coverage and a Sphinx
+  warning-count ratchet are part of the 2026-08-15 governance increment; the full-scientific
+  no-skip lane remains pinned to Ubuntu/Python 3.11.
 - Worked-example framework, parity ledgers (MTEX, VESTA, diffraction, structure, plotting,
   phase-transformation), terminology registry, and citation policy all exist and are enforced in
   tests. This governance layer is the repository's strongest asset and must not erode.
-- The immediate-horizon items I1–I9 and I11–I15 of the
-  [World-Class Feature Roadmap](world_class_feature_roadmap.md) have landed (named ORs, variant
-  machinery, intervariant tables, scattering factors, doublets, pseudo-Voigt, crystal-viewer
-  parity, sigma sections). I10 (OR-deviation metric) has **not** landed.
+- All original immediate-horizon items I1–I15 in the
+  [World-Class Feature Roadmap](world_class_feature_roadmap.md) have landed, including the
+  OR-deviation metric. Subsequent programs added OR fitting and experimental map-scale parent
+  reconstruction, pole-figure arithmetic, GND density, TEM tilt navigation, kinematic and
+  dynamical CBED foundations, stereographic Kikuchi maps, the Kearns parameter, and a shared
+  desktop/intranet workbench.
 
 Verdict: the foundations are genuinely strong — explicit semantics, real validation culture,
-unusually disciplined documentation. The risks are now concentration risks: uneven scientific
-depth across subsystems, algorithmic scaffolding that stops one step short of the workflows
-researchers actually run (OR analysis being the clearest case), and an explainability story that
-exists in the mission text but barely exists in code.
+unusually disciplined documentation, and broad scientific capability. The present risks are
+growth risks: governing prose and ledgers drifting behind implementation, stable code depending on
+experimental internals, a 558-symbol flat stable namespace, browser behavior validated more by
+manual driving than automation, documentation warnings hidden by a permissive build, and external
+validation lagging the flagship OR implementation.
+
+### 1.1 Disposition of the July findings
+
+Section 2 is retained because its defect descriptions explain why the later architecture exists;
+it is **not** a current missing-feature list. Current disposition:
+
+| July findings | 2026-08-15 disposition |
+| --- | --- |
+| 1–4, 6–7: OR correspondence, deviation, fitting, reconstruction, consistency, vectorization | Implemented; map-scale reconstruction remains experimental pending measured-data and MTEX evidence. One new boundary defect remains: stable `core.parent_reconstruction` imports an experimental scoring primitive. |
+| 5: habit plane / PTMC | Open, long-term; no current parity claim. |
+| 8: kernel breadth | Implemented for the planned kernel family. |
+| 9–10: harmonic completion, ghost correction, statistics | Partial; harmonic inversion exists, but ghost correction, random-standard defocus calibration, component fitting, and uncertainty breadth remain open. |
+| 11: EBSD scale and grids | Partial; direct `.ang`/`.ctf` readers and coordinate graphs exist, but hex-grid `.ang`, HDF5, and out-of-core backing remain open. |
+| 12: GND density | Implemented with theory, tests, and worked evidence. |
+| 13: quantitative XRD | Partial; scattering, profiles, and preferred orientation exist, but measured-pattern I/O, background/multiphase fitting, and refinement remain open. |
+| 14–15: TEM geometry and dynamical diffraction | Substantially advanced: Kikuchi, double diffraction, HOLZ, CBED and dynamical foundations exist; finite-thickness kinematic shape factors, ring SAED, and full dynamical/Rietveld breadth remain open. |
+| 16: explainable results | Broadly adopted, but several stable texture/indexing reports and JSON contracts still need closure. |
+| 17–20: coverage, warnings, CI, property tests | Coverage, runtime warning hygiene, OS/Python matrix (except Windows), and property suites implemented. Documentation warnings require the new ratchet. |
+| 21–22: performance and release engineering | Performance has a runnable quick benchmark but no CI regression lane; release remains `0.1.0.dev0` with no tags. |
+| 23–25: documentation index, stale foundations, OR theory | Original gaps closed; continuing roadmap/ledger drift and Sphinx reference warnings are the active documentation defects. |
 
 ## 2. Critical Findings
 
@@ -161,20 +188,26 @@ This is the designated flagship, and it is also where the gap between "primitive
 
 ## 3. Priority Program
 
-The sequencing rule is unchanged from the world-class roadmap — foundations before breadth —
-with one amendment: **OR analysis is the flagship and takes precedence within each horizon.**
+The sequencing rule remains foundations before breadth, with OR analysis the flagship when
+priorities compete within a horizon. The active program as of 2026-08-15 is:
 
-**Cycle A (next):** findings 1, 2, 6, 16, 17, 18, 23, 24 — Miller-index correspondence mapping
-(both directions, per variant, with residuals), OR-as-misorientation + deviation metric, the
-consistency fixes, the `describe()` doctrine on transformation and texture reports, coverage
-gate, warning hygiene, docs-index and stale-claim repairs.
-
-**Cycle B:** findings 3, 4, 7, 19, 20 — OR fitting, parent-grain reconstruction v1 on synthetic
-+ literature fixtures, vectorization of variant hot paths, CI matrix, first property-based
-suites.
-
-**Cycle C+:** findings 5, 8–15, 21, 22 per the world-class roadmap horizons, each landing with
-its validation ledger row, theory note, worked example, and `describe()` surface.
+1. **Governance and executable gates:** reconcile the roadmap and durable ledger, add Windows to
+   the base CI lane, forbid growth in Sphinx warnings, and add a minimal real-browser Playwright
+   lane for critical workbench behavior.
+2. **Architecture and validation hardening:** remove the stable-core dependency on experimental
+   parent scoring, finish `describe()`/JSON coverage for stable reports, and execute the prepared
+   MTEX OR-fitting/reconstruction campaign before stronger parity claims.
+3. **Five-feature delivery cycle, in dependency order:** measured powder-XRD I/O and comparison;
+   random-standard defocus calibration; hex-grid EBSD; finite-thickness SAED; named-component ODF
+   fitting.
+4. **Feature completion rule:** every feature includes tests, an independently known numerical
+   reference, `describe()`, portable JSON where appropriate, a worked example, theory/workflow
+   documentation, a parity-ledger update, and a benchmark case. Synthetic measurements are
+   permitted only when no redistributable real data is available and must be labelled as
+   synthetic in the fixture metadata, worked example, and validation prose.
+5. **After this cycle:** ghost/zero-range correction, measured OR/EBSD validation, and
+   quantitative multiphase XRD fitting are the next scientific priorities; habit-plane/PTMC and
+   full Rietveld remain longer-horizon programs.
 
 ## 4. Explainable-Results Doctrine (normative)
 
@@ -229,6 +262,11 @@ merge:
 
 ## Changelog
 
+- **2026-08-15 reconciliation:** Re-verified repository scale and quality lanes; converted the
+  July findings into an explicit disposition table; replaced the completed Cycle A/B program with
+  the governance-plus-five-feature delivery cycle; recorded Windows, Sphinx-warning, browser-test,
+  stable/experimental-boundary, report-contract, and external-validation debt without reopening
+  capabilities that have already landed.
 - **2026-07:** Initial review and guide; OR-analysis flagship program established;
   explainable-results doctrine adopted.
 - **2026-07 (Cycle A executed):** Findings 1, 2, 6, 16, 17, 18, 23, 24 closed — index
