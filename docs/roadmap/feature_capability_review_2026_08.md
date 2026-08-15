@@ -164,8 +164,9 @@ side. Ingest: `read_xrdml_pole_figure` / `invert_xrdml_pole_figures`,
 MDF core.
 
 **Lacking.** No ghost correction and no zero-range method — the odd part of the
-ODF is unconstrained, and the docstrings say so. No inverse fitting of components
-(Gauss/Bingham) to a measured ODF.
+ODF is unconstrained, and the docstrings say so. Named ideal-component mixture fitting now returns
+non-negative fractions plus a random term and density residual, but component-centre/halfwidth
+refinement with Gauss/Bingham shapes is not implemented.
 No uncertainty quantification (bootstrap on ODF or volume fractions). No `.epf`,
 `.uxd` or popLA `.xpc` readers.
 
@@ -173,7 +174,7 @@ No uncertainty quantification (bootstrap on ODF or volume fractions). No `.epf`,
 1. Ghost correction (zero-range / positivity) — the biggest scientific credibility gap in texture.
 2. ~~A defocus model plus random-standard calibration~~ — implemented as
    `defocus_from_random_standard(...)`; broader experimental fixtures remain desirable.
-3. Component fitting: recover Gauss components and volume fractions from a measured ODF.
+3. Extend named-component fitting with centre/halfwidth refinement and bootstrap uncertainty.
 
 ## 6. Pole-figure arithmetic — 2/10 at review, **8/10 after the 2026-08-08 sprint**
 

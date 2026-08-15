@@ -11,6 +11,7 @@ The current PyTex texture layer implements the foundational algorithms needed be
 - discrete pole-figure inversion over an explicit orientation dictionary,
 - contour pole-figure plotting from projected density grids,
 - kernel-smoothed Bunge-section plotting for discrete ODF inspection.
+- non-negative fitting of named texture-component mixtures to normalized ODF density.
 
 ## Pole-Figure Construction
 
@@ -47,6 +48,30 @@ followed by normalization of the recovered weights so they define a discrete ODF
 
 This fits the present PyTex architecture because the orientation support remains explicit and scientifically inspectable.
 
+## Named-Component Mixture Fitting
+
+Given normalized ODF density $f(g_i)$ on explicit evaluation orientations and normalized kernel
+responses $K(g_i,c_j)$ around named ideal components $c_j$, PyTex solves
+
+$$
+\min_{a_j,a_r\geq 0}\left\|\sum_j a_j K(g_i,c_j)+a_r-f(g_i)\right\|_2^2,
+\qquad \sum_j a_j+a_r=1.
+$$
+
+The constant $a_r$ column is the optional random-texture contribution because a random ODF has
+density one multiple of random everywhere. `fit_odf_components(...)` uses SciPy's constrained
+SLSQP solver, checks that the design has full column rank, and returns `ODFComponentFit` with the
+fractions, observed and predicted densities, RMS/maximum residuals, $R^2$, `describe()`, and a JSON
+contract. The default component peaks use the ODF kernel; a different declared `KernelSpec` can be
+supplied.
+
+This is a basis fit, not an automatic phase-discovery method. Fractions depend on the named
+components offered, the kernel halfwidth, and the orientation sampling used for the unweighted
+residual. The default evaluates on the ODF support; a sparse or strongly non-uniform support should
+be replaced with an explicit approximately uniform `evaluation_orientations` grid. A deficient
+support raises instead of returning arbitrary fractions. The random term absorbs only uniform
+density, not an omitted broad component, ghost correction, or uncertainty.
+
 ## Plotting And Inspection
 
 PyTex uses the same discrete texture model for computation and plotting.
@@ -60,7 +85,8 @@ should not yet be read as a claim of full harmonic ODF reconstruction.
 
 ## Current Limits
 
-Full harmonic ODF expansion, broad experimental PF inversion doctrine, and rigorous kernel normalization on $SO(3)$ remain future work. The current representation is deliberately explicit and testable so later algorithms can be layered on top of a stable semantic core.
+Bootstrap uncertainty and automatic component-centre/halfwidth refinement remain future work. The
+current named-component surface fits declared ideal centres and keeps its residual explicit.
 
 ## Normative References
 

@@ -46,6 +46,8 @@ from pytex import (
     Phase,
     ReferenceFrame,
     SymmetrySpec,
+    TextureComponent,
+    fit_odf_components,
     random_pole_density,
 )
 
@@ -98,8 +100,7 @@ GAUSSIAN_KERNEL_IDENTITIES = WorkedExample(
         "kernel halfwidth (both analytic identities)."
     ),
     citation=(
-        "Bunge, Texture Analysis in Materials Science (1982), harmonic "
-        "expansion of ODF kernels."
+        "Bunge, Texture Analysis in Materials Science (1982), harmonic expansion of ODF kernels."
     ),
     symbols=(_PSI,),
     see_also=(_TEXTURE_CONCEPT, _API),
@@ -159,13 +160,66 @@ UNIFORM_ODF_POLE_DENSITY = WorkedExample(
 )
 
 
+NAMED_COMPONENT_FIT = WorkedExample(
+    id="texture-odf-named-component-fit-recovers-exact-mixture",
+    title="A named ODF fit recovers a 70/30 cube-Goss mixture",
+    domain="texture",
+    scenario=(
+        "A reconstructed sheet-texture ODF appears dominated by cube and Goss peaks. Fit those "
+        "named components plus a random term and retain the density residual, rather than "
+        "integrating independent angular windows that may overlap. Here the ODF is constructed "
+        "algebraically from 70% cube and 30% Goss kernels; zero-weight dictionary points make "
+        "the inverse basis identifiable without changing the known mixture."
+    ),
+    setup=MRD_SETUP,
+    code=(
+        "components = (\n"
+        "    TextureComponent('cube', (0.0, 0.0, 0.0), '{001}<100>'),\n"
+        "    TextureComponent('goss', (0.0, 45.0, 0.0), '{011}<100>'),\n"
+        ")\n"
+        "euler = np.array([\n"
+        "    [0.0, 0.0, 0.0], [0.0, 45.0, 0.0], [15.0, 20.0, 10.0],\n"
+        "    [30.0, 55.0, 15.0], [70.0, 35.0, 40.0], [10.0, 75.0, 80.0],\n"
+        "])\n"
+        "support = OrientationSet.from_euler_angles(\n"
+        "    euler, crystal_frame=crystal, specimen_frame=specimen,\n"
+        "    symmetry=symmetry, phase=phase, degrees=True,\n"
+        ")\n"
+        "odf = ODF.from_orientations(\n"
+        "    support, weights=[0.7, 0.3, 0.0, 0.0, 0.0, 0.0],\n"
+        "    kernel=KernelSpec(halfwidth_deg=12.0),\n"
+        ")\n"
+        "fit = fit_odf_components(odf, components)\n"
+        "result = np.array([fit.fraction_for('cube'), fit.fraction_for('goss'), "
+        "fit.random_fraction])"
+    ),
+    expected=[0.7, 0.3, 0.0],
+    unit="volume fraction",
+    tolerance=1e-9,
+    reference=(
+        "The target density is defined as the exact linear combination 0.7*K(g,cube) + "
+        "0.3*K(g,Goss). The component design uses those same two normalized kernel columns plus "
+        "a constant random-density column, so the unique full-rank constrained solution is "
+        "[0.7, 0.3, 0.0]."
+    ),
+    citation=(
+        "Bunge, Texture Analysis in Materials Science (1982), component method and normalized "
+        "ODFs; SciPy SLSQP documentation for constrained least squares."
+    ),
+    symbols=(),
+    see_also=(_TEXTURE_CONCEPT, _API),
+    result_format="{:.9f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="texture",
     title="Texture kernels",
     summary=(
         "Analytic identities of the SO(3) kernel surface - normalization "
         "(A_0 = 1) and the halfwidth definition - together with the m.r.d. "
-        "scale on which pole densities are reported, all computed live."
+        "scale on which pole densities are reported, plus an exactly identifiable named-component "
+        "mixture, all computed live."
     ),
-    examples=(GAUSSIAN_KERNEL_IDENTITIES, UNIFORM_ODF_POLE_DENSITY),
+    examples=(GAUSSIAN_KERNEL_IDENTITIES, UNIFORM_ODF_POLE_DENSITY, NAMED_COMPONENT_FIT),
 )

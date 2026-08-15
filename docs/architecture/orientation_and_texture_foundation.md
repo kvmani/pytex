@@ -23,6 +23,8 @@ This document records the current implementation posture for Phase 2.
 - class-specific IPF sector reduction for supported proper point groups
 - explicit orientation projection to a symmetry-reduced representative
 - kernel-backed ODF evaluation and simple volume-fraction queries
+- constrained named-component ODF mixture fitting with a random term, identifiability checks,
+  retained density residuals, `describe()`, and a JSON contract
 - discrete pole-figure inversion over an explicit orientation dictionary with a regularized non-negative solver
 - band-limited harmonic ODF reconstruction with explicit crystal and specimen symmetry handling
 - construction-time validation of frame, phase, and symmetry consistency across the orientation and texture domain models

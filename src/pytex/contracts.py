@@ -65,14 +65,17 @@ from pytex.diffraction import (
 from pytex.ebsd import CrystalMap, CrystalMapPhase, TextureReport
 from pytex.texture import (
     ODF,
+    ODF_COMPONENT_FIT_SCHEMA,
     HarmonicBasisTerm,
     HarmonicODF,
     InversePoleFigure,
     KernelSpec,
+    ODFComponentFit,
     ODFInversionReport,
     PoleFigure,
     PoleFigureDefocusCalibration,
     PoleFigureSampling,
+    TextureComponent,
 )
 
 JSON_CONTRACT_SCHEMA_VERSION = "1.0.0"
@@ -953,6 +956,48 @@ def _serialize_kernel(kernel: KernelSpec) -> dict[str, Any]:
 def _deserialize_kernel(payload: dict[str, Any]) -> KernelSpec:
     _require_schema(payload, "pytex.texture.kernel_spec")
     return KernelSpec(name=str(payload["name"]), halfwidth_deg=float(payload["halfwidth_deg"]))
+
+
+def _serialize_odf_component_fit(fit: ODFComponentFit) -> dict[str, Any]:
+    return {
+        **_base_payload(ODF_COMPONENT_FIT_SCHEMA),
+        "components": [
+            {
+                "name": component.name,
+                "bunge_euler_deg": list(component.bunge_euler_deg),
+                "miller_label": component.miller_label,
+                "notes": component.notes,
+            }
+            for component in fit.components
+        ],
+        "fractions": _as_float_list(fit.fractions),
+        "random_fraction": fit.random_fraction,
+        "kernel": _serialize_kernel(fit.kernel),
+        "observed_density": _as_float_list(fit.observed_density),
+        "predicted_density": _as_float_list(fit.predicted_density),
+        "solver_message": fit.solver_message,
+    }
+
+
+def _deserialize_odf_component_fit(payload: dict[str, Any]) -> ODFComponentFit:
+    _require_schema(payload, ODF_COMPONENT_FIT_SCHEMA)
+    return ODFComponentFit(
+        components=tuple(
+            TextureComponent(
+                name=component["name"],
+                bunge_euler_deg=tuple(component["bunge_euler_deg"]),
+                miller_label=component.get("miller_label", ""),
+                notes=component.get("notes", ""),
+            )
+            for component in payload["components"]
+        ),
+        fractions=np.asarray(payload["fractions"], dtype=np.float64),
+        random_fraction=payload["random_fraction"],
+        kernel=_deserialize_kernel(payload["kernel"]),
+        observed_density=np.asarray(payload["observed_density"], dtype=np.float64),
+        predicted_density=np.asarray(payload["predicted_density"], dtype=np.float64),
+        solver_message=payload.get("solver_message", ""),
+    )
 
 
 def _require_pole_figure_sampling(value: Any) -> PoleFigureSampling:
@@ -1870,6 +1915,7 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     PoleFigureDefocusCalibration: _serialize_pole_figure_defocus_calibration,
     InversePoleFigure: _serialize_inverse_pole_figure,
     ODF: _serialize_odf,
+    ODFComponentFit: _serialize_odf_component_fit,
     ODFInversionReport: _serialize_odf_inversion_report,
     HarmonicODF: _serialize_harmonic_odf,
     CrystalMap: _serialize_crystal_map,
@@ -1927,6 +1973,7 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.texture.pole_figure_defocus_calibration": (_deserialize_pole_figure_defocus_calibration),
     "pytex.texture.inverse_pole_figure": _deserialize_inverse_pole_figure,
     "pytex.texture.odf": _deserialize_odf,
+    ODF_COMPONENT_FIT_SCHEMA: _deserialize_odf_component_fit,
     "pytex.texture.odf_inversion_report": _deserialize_odf_inversion_report,
     "pytex.texture.harmonic_odf": _deserialize_harmonic_odf,
     "pytex.ebsd.crystal_map": _deserialize_crystal_map,

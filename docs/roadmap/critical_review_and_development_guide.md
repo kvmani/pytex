@@ -57,7 +57,7 @@ it is **not** a current missing-feature list. Current disposition:
 | 1–4, 6–7: OR correspondence, deviation, fitting, reconstruction, consistency, vectorization | Implemented; map-scale reconstruction remains experimental pending measured-data and MTEX evidence. One new boundary defect remains: stable `core.parent_reconstruction` imports an experimental scoring primitive. |
 | 5: habit plane / PTMC | Open, long-term; no current parity claim. |
 | 8: kernel breadth | Implemented for the planned kernel family. |
-| 9–10: harmonic completion, ghost correction, statistics | Partial; harmonic inversion and random-standard defocusing calibration exist, but ghost correction, component fitting, and uncertainty breadth remain open. |
+| 9–10: harmonic completion, ghost correction, statistics | Partial; harmonic inversion, random-standard defocusing calibration, and constrained named-component ODF fitting exist, but ghost correction, component-shape refinement, and uncertainty breadth remain open. |
 | 11: EBSD scale and grids | Partial; direct square/hex `.ang`, `.ctf`, and topology graphs exist, but hex curvature/GND, HDF5, and out-of-core backing remain open. |
 | 12: GND density | Implemented with theory, tests, and worked evidence. |
 | 13: quantitative XRD | Partial; scattering, profiles, and preferred orientation exist, but measured-pattern I/O, background/multiphase fitting, and refinement remain open. |

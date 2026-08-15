@@ -12,6 +12,10 @@ PyTex now supports two explicit PF-to-ODF reconstruction surfaces:
 Both methods use the same `PoleFigure` object, the same phase and symmetry semantics, and
 the same plotting and validation surfaces. The distinction is algorithmic, not semantic.
 
+After either route produces a discrete `ODF`, `fit_odf_components(...)` can fit declared named
+ideal components plus an optional random fraction. This is an interpretation step, not part of PF
+inversion.
+
 ## Choosing Between The Two
 
 Use the discrete dictionary path when:
@@ -158,6 +162,21 @@ print(harmonic_report.relative_residual_norm)
 
 figure = plot_odf(harmonic_report.odf, kind="sections")
 ```
+
+For a discrete ODF, fit named components and inspect the residual before quoting fractions:
+
+```python
+from pytex import STANDARD_FCC_ROLLING_COMPONENTS, fit_odf_components
+
+component_fit = fit_odf_components(report.odf, STANDARD_FCC_ROLLING_COMPONENTS)
+print(component_fit.describe())
+print(component_fit.fraction_for("cube"))
+```
+
+Use an approximately uniform `evaluation_orientations` grid when the ODF support is sparse or
+clustered. The fitter rejects rank-deficient designs, constrains all component and random fractions
+to be non-negative and sum to one, and preserves observed/predicted normalized densities in its
+portable JSON contract. It does not discover omitted components or provide bootstrap uncertainty.
 
 ## Scientific Review Guidance
 

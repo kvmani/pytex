@@ -1,0 +1,28 @@
+{
+  "schema_id": "pytex.benchmark_manifest",
+  "schema_version": "1.0.0",
+  "pytex_version": "0.1.0.dev0",
+  "created_at": "2026-08-15T00:00:00Z",
+  "benchmark_id": "texture_named_odf_component_fit",
+  "subsystem": "texture",
+  "baseline_kind": "analytic_component_mixture",
+  "workflows": [
+    "odf_named_component_fit"
+  ],
+  "fixture_ids": [],
+  "artifact_paths": [
+    "benchmarks/texture/odf_component_fit_benchmark_manifest.json",
+    "worked_examples/examples/texture_kernels.py",
+    "tests/unit/test_odf_component_fitting.py"
+  ],
+  "tolerances": {
+    "component_fraction_atol": 1e-09,
+    "normalized_density_residual_atol": 1e-09
+  },
+  "status": "implemented",
+  "notes": [
+    "The target ODF is algebraically 70 percent cube and 30 percent Goss using the same declared normalized kernel columns as the inverse design.",
+    "Four additional zero-weight orientation-dictionary points change no target density but make the component-plus-random design identifiable.",
+    "The unique constrained solution is [0.7, 0.3, 0.0] for cube, Goss, and random, with zero density residual to numerical precision."
+  ]
+}

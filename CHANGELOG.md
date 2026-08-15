@@ -13,6 +13,12 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Named-component ODF fitting.** `fit_odf_components` fits declared texture-component kernels
+  plus an optional random term with non-negative fractions constrained to sum to one.
+  `ODFComponentFit` carries observed/predicted normalized densities, RMS/maximum residuals, $R^2$,
+  `describe()`, and a JSON contract; rank-deficient supports raise. An executable analytic 70/30
+  cube-Goss mixture pins the fractions and zero residual.
+
 - **Finite-thickness SAED shape factors.** `FiniteThicknessShapeFactor` implements the normalized
   plane-parallel amplitude `sinc(t s_g)` and intensity `sinc^2(t s_g)`, with its first zero,
   `describe()`, and JSON round trip. Both vectorized SAED engines accept a physical foil thickness;

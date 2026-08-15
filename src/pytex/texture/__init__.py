@@ -1,8 +1,11 @@
 from pytex.texture.components import (
+    ODF_COMPONENT_FIT_SCHEMA,
     STANDARD_BCC_ROLLING_COMPONENTS,
     STANDARD_FCC_ROLLING_COMPONENTS,
+    ODFComponentFit,
     TextureComponent,
     component_volume_fractions,
+    fit_odf_components,
 )
 from pytex.texture.fibres import NAMED_BCC_FIBRES, Fibre, fibre_axis_alignment_quaternion
 from pytex.texture.harmonics import HarmonicBasisTerm, HarmonicODF, HarmonicODFReconstructionReport
@@ -55,6 +58,7 @@ __all__ = [
     "KEARNS_ISOTROPIC_VALUE",
     "NAMED_BCC_FIBRES",
     "ODF",
+    "ODF_COMPONENT_FIT_SCHEMA",
     "POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
@@ -70,6 +74,7 @@ __all__ = [
     "KearnsMethod",
     "KearnsReport",
     "KernelSpec",
+    "ODFComponentFit",
     "ODFInversionReport",
     "ODFReconstructionConfig",
     "ODFSectionData",
@@ -86,6 +91,7 @@ __all__ = [
     "component_volume_fractions",
     "defocus_from_random_standard",
     "fibre_axis_alignment_quaternion",
+    "fit_odf_components",
     "harris_texture_coefficients",
     "kearns_from_diffractogram",
     "kearns_from_odf",

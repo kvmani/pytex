@@ -39,8 +39,8 @@ as such in both its metadata and documentation.
 | F1 | Measured powder-XRD I/O and comparison | done | `c71eb15` |
 | F2 | Random-standard defocus calibration | done | `9a9ba91` |
 | F3 | Hex-grid EBSD support | done | `075a926` |
-| F4 | Finite-thickness SAED shape factor | done | (this commit) |
-| F5 | Named-component ODF fitting | pending | — |
+| F4 | Finite-thickness SAED shape factor | done | `b6b1801` |
+| F5 | Named-component ODF fitting | done | (this commit) |
 | C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | pending | — |
 
 ### Current evidence and resume point
@@ -168,9 +168,39 @@ as such in both its metadata and documentation.
   public-docstring/integrity tests pass; Ruff and strict mypy over 140 source files pass; the full
   unit suite passes with the same two expected skips. The ordinary Sphinx build and warning ratchet
   pass at 601 warnings, still one below the 602 ceiling.
-- Next action: commit and push F4, then begin F5 named-component ODF fitting by auditing existing
-  `TextureComponent`, ODF evaluation/inversion, standard rolling-component catalogs, positivity and
-  normalization contracts, and available independently solvable mixtures.
+- F4 landed and was pushed to `main` in `b6b1801`.
+- F5 entry audit found the named FCC/BCC `TextureComponent` catalogs and symmetry-aware threshold
+  reporting already exist, while a discrete `ODF` can evaluate normalized density on arbitrary
+  orientations. The missing surface is an inverse mixture fit. F5 will build one normalized kernel
+  response per named component on an explicit evaluation support, optionally add the random-density
+  column, and solve non-negative fractions constrained to sum to one with SciPy. The report will
+  retain observed/predicted density and residual diagnostics so fractions are not presented without
+  goodness-of-fit evidence. The default evaluation support will be the ODF support; callers fitting
+  sparse ODFs must supply a richer orientation set, and rank deficiency will raise rather than yield
+  arbitrary fractions.
+- F5 adds `fit_odf_components(...)` and immutable `ODFComponentFit`. Each declared ideal component
+  becomes a symmetry-aware normalized kernel-density column; the optional constant density-one
+  column represents random texture. SciPy SLSQP minimizes the unweighted normalized-density
+  residual subject to non-negative coefficients summing exactly to one. Duplicate names, frame
+  mismatches, and rank-deficient evaluation supports raise. The report retains component/random
+  fractions, observed and predicted densities, residual, RMS/maximum residual, R-squared,
+  `fraction_for(...)`, a convention-and-limits `describe()`, and a portable JSON contract.
+- The independently constructed target is exactly `0.7*K(g,cube) + 0.3*K(g,Goss)` on a full-rank
+  six-orientation dictionary. Four zero-weight points add inverse-design evidence without changing
+  the target. Tests and the executable texture example recover cube `0.7`, Goss `0.3`, random `0`,
+  and zero density residual to numerical precision. The documentation labels it as an analytic
+  constructed case rather than experimental measurement; no redistributable fixture is needed.
+- F5 updates discrete-ODF theory, the inversion workflow, texture architecture, terminology,
+  governing capability reviews, MTEX parity ledger, CHANGELOG, a dedicated texture benchmark
+  manifest, generated gallery, and canonical class atlas. It states the remaining limits:
+  component basis/kernel/evaluation-support dependence, no automatic centre or halfwidth fitting,
+  no omitted-component discovery, no ghost correction, and no bootstrap uncertainty.
+- F5 verification: focused component/contract/manifest/public-API/gallery/class-atlas/
+  documentation/integrity tests pass; Ruff and strict mypy over 140 source files pass; the complete
+  unit suite passes with the same two expected skips. Sphinx and the warning ratchet pass at 601
+  warnings, one below the 602 ceiling.
+- Next action: commit and push F5, then perform the final completion audit from clean `main`, record
+  every landed increment and remaining explicitly deferred limitation, and close this program.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 

@@ -171,6 +171,7 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $d_i$ | Positive random-standard defocusing factor at specimen tilt $i$, normalized to 1 at the lowest calibrated tilt. A specimen intensity is corrected as $(I_i-b)/d_i$, never $I_i/d_i-b$. |
 | $\ell$ | Degree of a generalized spherical harmonic term. Diffraction pole figures determine only **even** $\ell$, which is the ghost problem and removes close to half the ODF basis. |
 | $P_{\mathrm{rand}}$ | Kernel-density response a random texture produces. Dividing a raw KDE response by it is what puts a pole figure on the m.r.d. scale; it depends on the kernel halfwidth, so un-normalized figures from different kernels are not comparable. |
+| $a_j$, $a_r$ | Non-negative volume fractions in a named-component ODF mixture: $a_j$ multiplies component-kernel response $j$, $a_r$ multiplies the constant random-density response, and $\sum_j a_j+a_r=1$. |
 | $\mathcal{T}$ | Fundamental sector: the spherical region holding one representative of each direction orbit. The standard stereographic triangle, generalized to any point group. |
 | $\mathbf{K}$ | Colour-key basis: the $3\times3$ matrix whose **columns** are the fundamental sector's corner directions. |
 | $\boldsymbol{\beta}$ | Barycentric weights of a direction in the sector-corner basis, $\mathbf{K}\boldsymbol{\beta} = \hat{\mathbf{d}}_{\mathcal{T}}$. Non-negative exactly inside the sector, so the membership test and the colour are the same inequalities. Distinct from the solid-angle weight $w_i$. |
