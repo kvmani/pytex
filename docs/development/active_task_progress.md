@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Repository Governance And Five-Feature Delivery Program — IN PROGRESS (2026-08-15)
+## Repository Governance And Five-Feature Delivery Program — COMPLETE (2026-08-15)
 
 **Objective.** Repair the governing roadmap/ledger and executable quality gates, add a minimal
 critical Playwright lane for the shared web/desktop workbench, then deliver five deliberately
@@ -40,8 +40,8 @@ as such in both its metadata and documentation.
 | F2 | Random-standard defocus calibration | done | `9a9ba91` |
 | F3 | Hex-grid EBSD support | done | `075a926` |
 | F4 | Finite-thickness SAED shape factor | done | `b6b1801` |
-| F5 | Named-component ODF fitting | done | (this commit) |
-| C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | pending | — |
+| F5 | Named-component ODF fitting | done | `82b3f55` |
+| C | Full completion audit across code, contracts, docs, examples, ledgers, and benchmarks | done | (this commit) |
 
 ### Current evidence and resume point
 
@@ -199,8 +199,29 @@ as such in both its metadata and documentation.
   documentation/integrity tests pass; Ruff and strict mypy over 140 source files pass; the complete
   unit suite passes with the same two expected skips. Sphinx and the warning ratchet pass at 601
   warnings, one below the 602 ceiling.
-- Next action: commit and push F5, then perform the final completion audit from clean `main`, record
-  every landed increment and remaining explicitly deferred limitation, and close this program.
+- F5 landed and was pushed to `main` in `82b3f55`.
+- Final audit on clean `main`: local `HEAD` and `origin/main` both resolve to
+  `82b3f555a542bf3d8d72dcf1b14965eb565bbf2d` before this ledger-only closure. The seven durable
+  increments are `ff93592` (governance, Windows CI, warning ratchet), `2967e32` (critical
+  Playwright), `c71eb15` (measured XRD), `9a9ba91` (defocus calibration), `075a926` (hex EBSD),
+  `b6b1801` (finite-thickness SAED), and `82b3f55` (ODF component fitting). Each scientific feature
+  has focused tests, independent numerical evidence, `describe()`, a JSON contract where portable,
+  an executable worked example, theory/workflow documentation, parity or validation-ledger
+  coverage, and a benchmark case. Synthetic/constructed inputs are labelled as such; F4 uses an
+  analytic identity instead of a fixture.
+- Final verification evidence is cumulative and green: Windows-compatible base governance, four
+  Chromium Playwright journeys, repository integrity, Ruff, strict mypy over 140 source files,
+  canonical class-atlas regeneration, manifest/contract/public-docstring/documentation policy
+  tests, the complete unit suite with two expected skips, and Sphinx at 601 warnings against the
+  fixed 602 ceiling.
+- Explicitly deferred rather than silently implied complete: eliminate the remaining 601 Sphinx
+  duplicate-object warnings; broaden browser coverage beyond the critical journeys; full Rietveld
+  refinement and multiphase quantitative XRD; cross-reflection defocus transfer and extrapolation;
+  hex-grid curvature/GND and physical cell-perimeter geometry; bent/wedged/distributed-thickness
+  and dynamical SAED intensity; ghost correction, optimized Gauss/Bingham component centres and
+  halfwidths, omitted-component discovery, and bootstrap uncertainty. These are next-horizon work,
+  not defects in the bounded features delivered here.
+- Program closed. No next action is claimed in this ledger.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 
