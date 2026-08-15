@@ -113,9 +113,7 @@ def test_a_centre_beyond_half_a_spacing_is_not_silently_accepted() -> None:
         nodes_from(SQUARE, RING), CENTRE + np.array([61.0, 58.0]), centre_leash_fraction=0.5
     )
     assert fit.notes
-    assert any(
-        "half a lattice spacing" in note or "transmitted beam" in note for note in fit.notes
-    )
+    assert any("half a lattice spacing" in note or "transmitted beam" in note for note in fit.notes)
 
 
 def test_the_leash_holds_the_centre_when_a_candidate_wants_to_run() -> None:
@@ -236,6 +234,7 @@ def test_json_carries_the_fit_and_every_spot() -> None:
         "centre",
         "supplied_centre",
         "centre_shift",
+        "centre_refined",
         "basis",
         "basis_lengths",
         "basis_angle_deg",
@@ -258,6 +257,76 @@ def test_json_carries_the_fit_and_every_spot() -> None:
         "residual",
         "inlier",
     }
+
+
+# ------------------------------------------ too few spots to be over-determined
+#
+# The regression these pin: a two-spot fit with the centre refinement left on ran
+# `lstsq` on a rank-deficient system, which answers with the minimum-norm
+# solution instead of failing. The overlay that produced had a basis an eighth of
+# the true spacing, nodes at (3, 4) and (-8, 1), and an origin 12.7 units from the
+# clicked beam — all with small residuals, so nothing on screen said it was wrong.
+
+
+def test_two_picks_are_the_basis_and_the_clicked_centre_is_held() -> None:
+    """Two offsets determine a basis exactly; there is nothing to fit or search."""
+
+    picks = nodes_from(SQUARE, [(1, 0), (0, 1)])
+    fit = fit_planar_lattice(picks, CENTRE)
+    assert fit.centre == pytest.approx(CENTRE, abs=1e-12)
+    assert fit.centre_refined is False
+    assert [spot.lattice_indices for spot in fit.spots] == [(1, 0), (0, 1)]
+    assert fit.basis == pytest.approx(picks - CENTRE, abs=1e-12)
+    assert fit.rms_residual == pytest.approx(0.0, abs=1e-12)
+
+
+def test_two_picks_put_the_basis_arrows_on_the_picked_spots() -> None:
+    """Whatever the pair, node (1, 0) and node (0, 1) are the two clicks."""
+
+    picks = nodes_from(OBLIQUE, [(1, 0), (0, 1)])
+    fit = fit_planar_lattice(picks, CENTRE)
+    predicted = {spot.lattice_indices: spot.predicted for spot in fit.spots}
+    assert predicted[(1, 0)] == pytest.approx(picks[0], abs=1e-12)
+    assert predicted[(0, 1)] == pytest.approx(picks[1], abs=1e-12)
+
+
+def test_a_two_pick_fit_says_it_cannot_detect_a_bad_pick() -> None:
+    fit = fit_planar_lattice(nodes_from(SQUARE, [(1, 0), (0, 1)]), CENTRE)
+    assert any("held where it was picked" in note for note in fit.notes)
+    assert any("restatement" in note for note in fit.notes)
+    assert "is not a measurement" in fit.describe()
+
+
+def test_two_collinear_picks_are_refused() -> None:
+    with pytest.raises(ValueError, match="single line"):
+        fit_planar_lattice(nodes_from(SQUARE, [(1, 0), (2, 0)]), CENTRE)
+
+
+def test_three_picks_hold_the_centre_because_the_solve_would_be_exact() -> None:
+    """Three spots give six equations for six unknowns: an echo, not a measurement."""
+
+    offset = np.array([9.0, -7.0])
+    fit = fit_planar_lattice(nodes_from(SQUARE, [(1, 0), (0, 1), (1, 1)]), CENTRE + offset)
+    assert fit.centre_refined is False
+    assert fit.centre == pytest.approx(CENTRE + offset, abs=1e-12)
+    assert any("at least 4 spots" in note for note in fit.notes)
+
+
+def test_four_picks_are_enough_to_refine_the_centre() -> None:
+    fit = fit_planar_lattice(
+        nodes_from(SQUARE, [(1, 0), (0, 1), (1, 1), (2, 0)]), CENTRE + np.array([9.0, -7.0])
+    )
+    assert fit.centre_refined is True
+    assert fit.centre == pytest.approx(CENTRE, abs=1e-9)
+
+
+def test_a_held_centre_is_never_moved_however_wrong_it_is() -> None:
+    """`refine_centre=False` is honoured; the two-spot path is not an exception."""
+
+    away = CENTRE + np.array([40.0, 25.0])
+    fit = fit_planar_lattice(nodes_from(SQUARE, [(1, 0), (0, 1)]), away, refine_centre=False)
+    assert fit.centre == pytest.approx(away, abs=1e-12)
+    assert fit.centre_refined is False
 
 
 # ---------------------------------------------------------- the guardrails

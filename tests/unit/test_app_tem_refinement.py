@@ -100,8 +100,12 @@ class TestFitLattice:
         opened = plate()
         result = REGISTRY.call(
             "tem.fit_lattice",
-            {"picks": opened["data"]["suggested_picks"], "frame_width": 1024.0,
-             "frame_height": 1024.0, "node_limit": 8},
+            {
+                "picks": opened["data"]["suggested_picks"],
+                "frame_width": 1024.0,
+                "frame_height": 1024.0,
+                "node_limit": 8,
+            },
         )
         nodes = np.asarray([[node["x"], node["y"]] for node in result["data"]["nodes"]])
         picks = np.asarray(
@@ -114,6 +118,55 @@ class TestFitLattice:
         result = REGISTRY.call("tem.fit_lattice", {"picks": plate()["data"]["suggested_picks"]})
         assert any("not indexing" in note for note in result["notes"])
         assert "geometry, not indexing" in result["data"]["describe"]
+
+    def test_two_picks_give_the_lattice_through_the_two_picks(self) -> None:
+        """The panel fits from two spots, and this is what it must get back.
+
+        The regression: the beam moved off the click, the basis came back an
+        eighth of the picked spacing, and both arrows pointed at nothing. Every
+        assertion here is a thing the user could see was wrong on the screen.
+        """
+
+        picks = {
+            "centre": [500.0, 500.0],
+            "spots": [{"x": 500.0, "y": 292.0}, {"x": 708.0, "y": 500.0}],
+        }
+        result = REGISTRY.call("tem.fit_lattice", {"picks": picks})
+        data = result["data"]
+        assert data["centre"] == pytest.approx([500.0, 500.0], abs=1e-9)
+        assert data["centre_refined"] is False
+        assert data["centre_shift"] == pytest.approx(0.0, abs=1e-9)
+        assert sorted(data["fit"]["basis_lengths"]) == pytest.approx([208.0, 208.0], abs=1e-9)
+        # Both arrows sit on the spots that were clicked, in the order they were.
+        assert [vector["spot"] for vector in data["basis_vectors"]] == [1, 2]
+        assert all(vector["on_a_pick"] for vector in data["basis_vectors"])
+        assert data["basis_vectors"][0]["to"] == pytest.approx([500.0, 292.0], abs=1e-9)
+        assert data["basis_vectors"][1]["to"] == pytest.approx([708.0, 500.0], abs=1e-9)
+        assert data["outliers"] == []
+
+    def test_a_two_pick_overlay_passes_through_both_picks(self) -> None:
+        picks = {
+            "centre": [512.0, 512.0],
+            "spots": [{"x": 612.0, "y": 452.0}, {"x": 452.0, "y": 592.0}],
+        }
+        result = REGISTRY.call(
+            "tem.fit_lattice",
+            {"picks": picks, "frame_width": 1024.0, "frame_height": 1024.0, "node_limit": 6},
+        )
+        nodes = np.asarray([[node["x"], node["y"]] for node in result["data"]["nodes"]])
+        clicked = np.asarray([[612.0, 452.0], [452.0, 592.0], [512.0, 512.0]])
+        distances = np.linalg.norm(clicked[:, None, :] - nodes[None, :, :], axis=2).min(axis=1)
+        assert float(distances.max()) < 1e-6
+
+    def test_the_summary_does_not_claim_a_refinement_it_did_not_do(self) -> None:
+        picks = {
+            "centre": [500.0, 500.0],
+            "spots": [{"x": 500.0, "y": 292.0}, {"x": 708.0, "y": 500.0}],
+        }
+        result = REGISTRY.call("tem.fit_lattice", {"picks": picks})
+        assert "held where it was picked" in result["summary"]
+        assert "refines to" not in result["summary"]
+        assert any("at least 4 spots" in note for note in result["notes"])
 
     def test_spots_on_one_row_are_explained_not_crashed(self) -> None:
         picks = {
@@ -217,9 +270,7 @@ class TestCalculatedOverlay:
         simulated = np.asarray(
             [[spot["x"], spot["y"]] for spot in opened["data"]["pattern"]["spots"]]
         )
-        distances = np.linalg.norm(
-            simulated[:, None, :] - overlay[None, :, :], axis=2
-        ).min(axis=1)
+        distances = np.linalg.norm(simulated[:, None, :] - overlay[None, :, :], axis=2).min(axis=1)
         assert float(distances.max()) < 1e-6
 
     def test_the_overlay_is_bounded_by_the_index_limit_not_by_the_plate(self) -> None:
@@ -242,9 +293,9 @@ class TestCalculatedOverlay:
             ]
         )
         assert len(wide) > len(narrow)
-        narrow_worst = np.linalg.norm(
-            simulated[:, None, :] - narrow[None, :, :], axis=2
-        ).min(axis=1).max()
+        narrow_worst = (
+            np.linalg.norm(simulated[:, None, :] - narrow[None, :, :], axis=2).min(axis=1).max()
+        )
         wide_worst = (
             np.linalg.norm(simulated[:, None, :] - wide[None, :, :], axis=2).min(axis=1).max()
         )

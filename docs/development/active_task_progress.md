@@ -5,6 +5,52 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## TEM Spot Picking: Trustworthy Fit And Exact Coordinates — IN PROGRESS (2026-08-15)
+
+**Objective.** Make the TEM solver's picking surface trustworthy and exact. A user picking the
+beam and two spots was shown a lattice overlay whose origin and basis were nowhere near the picks.
+Fix the cause, make the overlay honest about what it refined, make clicking correct under the
+zoom/pan camera added in `3473711`, and give every pick a numeric coordinate the user can read,
+type, and nudge — with the overlay re-fitting live.
+
+### Diagnosis (confirmed, not inferred)
+
+1. **Under-determined fit, silently answered.** `tem.js` calls `tem.fit_lattice` from two spots
+   with `refine_centre` defaulting true. `_solve_basis_and_centre` then runs `lstsq` on a design
+   matrix of three columns (`1, m, n`) against two observations. Rank-deficient; numpy returns the
+   *minimum-norm* solution, which shrinks the basis and slides the centre because that has smaller
+   norm and still fits both points. Reproduced: two orthogonal picks 208 units from the centre give
+   a basis of ~25 and ~54 units, nodes `(3, 4)` and `(-8, 1)`, and a centre 12.7 units off.
+2. **Overlay drew two different origins.** The crosshair comes from `state.picks.centre`, the grid
+   from `data.centre` (refined). Nothing said they differed.
+3. **Basis arrows lied on fallback.** `tem.py` aims each arrow at the pick on node `(1,0)`/`(0,1)`;
+   with a corrupted basis no pick sits there, so it drew to the *ideal* node — into empty space —
+   with `on_a_pick: false` mentioned only in prose.
+4. **Picking ignored the camera.** `tem.js` had a private `eventToImage` hardcoding the frame as
+   `0 0 w h`, ignoring `viewBox.x/y/width` that zoom and pan move. Correct only at base view.
+5. **The view reset on every pick.** `frame.setContent(root)` without `preserveViewport`, so
+   zooming in to pick accurately was impossible.
+
+### Step ledger
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| T1 | Lattice fit: degrees-of-freedom guard, exact two-pick path, rank check, `centre_refined` | done | (this commit) |
+| T2 | Service contract: report what was refined and why; honest basis vectors | done | (this commit) |
+| T3 | Picking geometry: one shared pointer→data transform, viewport preserved across redraws | pending | |
+| T4 | Overlay honesty: distinct colours, both centres drawn, dashed arrow when not on a pick | pending | |
+| T5 | Pick coordinate panel: read/type/nudge every coordinate, live re-fit, centroid snap | pending | |
+| T6 | Tests: unit, service, and Playwright; docs and changelog | pending | |
+
+### Current worktree state
+
+Clean at `3473711` when the task started.
+
+### Next actions
+
+T3: replace `eventToImage` in `tem.js` with the frame's own pointer transform, and preserve
+the viewport across redraws.
+
 ## Repository Governance And Five-Feature Delivery Program — COMPLETE (2026-08-15)
 
 **Objective.** Repair the governing roadmap/ledger and executable quality gates, add a minimal

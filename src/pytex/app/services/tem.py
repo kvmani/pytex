@@ -484,9 +484,7 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             # and a candidate list that says [010] beside a title reading
             # [1̄21̄0] is describing the same axis in two notations.
             "zone_axis": direction_label(
-                tuple(
-                    int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)
-                ),
+                tuple(int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)),
                 spec=spec_by_name.get(solution.phase_name, spec),
             ),
             "zone_axis_indices": [
@@ -1181,10 +1179,15 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
             f"{long_:.1f} picking units at {fit.basis_angle_deg:.2f} degrees, explaining "
             f"{fit.inlier_count} of them to an r.m.s. of {fit.rms_residual:.2f} units. "
             + (
-                f"The transmitted beam refines to ({fit.centre[0]:.1f}, {fit.centre[1]:.1f}), "
-                f"{fit.centre_shift:.1f} units from where it was picked."
-                if fit.centre_shift > 0.05
-                else "The transmitted beam is already where the spots say it should be."
+                f"The transmitted beam is held where it was picked, at ({fit.centre[0]:.1f}, "
+                f"{fit.centre[1]:.1f})."
+                if not fit.centre_refined
+                else (
+                    f"The transmitted beam refines to ({fit.centre[0]:.1f}, {fit.centre[1]:.1f}), "
+                    f"{fit.centre_shift:.1f} units from where it was picked."
+                    if fit.centre_shift > 0.05
+                    else "The transmitted beam is already where the spots say it should be."
+                )
             )
         ),
         table=ResultTable(
@@ -1216,6 +1219,12 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
             "centre": [float(value) for value in fit.centre],
             "supplied_centre": [float(value) for value in fit.supplied_centre],
             "centre_shift": float(fit.centre_shift),
+            # Whether `centre` is a measurement or an echo of the click. The
+            # overlay draws the grid from it and the panel offers to adopt it, so
+            # a caller that cannot tell the two apart will present a clicked
+            # position as a refined one — which is the misreading this whole
+            # operation exists to prevent.
+            "centre_refined": bool(fit.centre_refined),
             "nodes": [
                 {"x": float(row[0]), "y": float(row[1]), "m": int(row[2]), "n": int(row[3])}
                 for row in nodes
@@ -1334,9 +1343,7 @@ def _gallery_pattern(request: dict[str, Any]) -> dict[str, Any]:
     phase = spec.to_phase()
     camera_length = float(request["camera_length_mm"])
     beam_energy = float(request["beam_energy_kev"])
-    camera_constant = float(
-        camera_length * electron_wavelength_angstrom(beam_energy)
-    )
+    camera_constant = float(camera_length * electron_wavelength_angstrom(beam_energy))
     roll = float(entry.in_plane_rotation_deg) + float(request["extra_rotation_deg"])
     image = synthesize_saed_image(
         phase,
@@ -1366,9 +1373,7 @@ def _gallery_pattern(request: dict[str, Any]) -> dict[str, Any]:
     rows = [
         {
             "spot": index + 1,
-            "hkl": plane_label(
-                tuple(int(value) for value in spot.miller_indices), spec=spec
-            ),
+            "hkl": plane_label(tuple(int(value) for value in spot.miller_indices), spec=spec),
             "d": float(spot.d_spacing_angstrom),
             "g": float(spot.g_inv_angstrom),
             "intensity": float(spot.relative_intensity),
@@ -1662,9 +1667,7 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
                 CrystalDirection(coordinates=np.asarray(indices, dtype=float), phase=phase),
                 stage,
             )
-            solution = (
-                report.solutions[0] if report.solutions else report.nearest_approach
-            )
+            solution = report.solutions[0] if report.solutions else report.nearest_approach
             if solution is None:
                 row["verdict"] = "no solution"
             else:

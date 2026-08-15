@@ -122,6 +122,30 @@ _MAX_TRIMMED = 2
 #: the same thing for a pattern picked in pixels and one picked in millimetres.
 _DEGENERATE_SINE = 1e-6
 
+#: Fewest spots that make a refined centre mean anything.
+#:
+#: The model ``p = c + m a + n b`` has six free parameters — four for the basis,
+#: two for the centre — and each spot supplies two equations. Three spots give
+#: six equations for six unknowns: an exact solve that reproduces the picks
+#: whatever they are and measures nothing. Two spots give four, and the system is
+#: rank-deficient; ``lstsq`` does not fail on that, it returns the *minimum-norm*
+#: solution, which shrinks the basis and slides the centre because doing so has a
+#: smaller norm and still passes through both picks. The result is a confident,
+#: badly wrong lattice with small residuals — the worst kind of answer.
+#:
+#: So the centre is refined from four spots up, where the system is genuinely
+#: over-determined and least squares is doing the job it is being asked to do.
+#: Below that the picked centre is *held*, and :func:`fit_planar_lattice` says so
+#: in its notes rather than quietly producing a number nobody can trust.
+_MIN_SPOTS_FOR_CENTRE_REFINEMENT = 4
+
+#: Spot count at which the basis is exactly the two picked vectors.
+#:
+#: Two picks and a held centre determine a basis exactly — one vector each — and
+#: any search, reduction or reassignment can only move the answer away from what
+#: the user pointed at. See :func:`fit_planar_lattice`.
+_EXACT_BASIS_SPOTS = 2
+
 #: How many trial bases to fit before choosing between them.
 #:
 #: Each costs a handful of 2x2 solves on a few dozen points, so the search is
@@ -201,6 +225,12 @@ class PlanarLatticeFit:
     notes : tuple of str
         Findings a user must see: two picks on one node, a centre that reached
         its leash, and anything else the fit detects but cannot resolve.
+    centre_refined : bool
+        Whether ``centre`` was solved for or held at ``supplied_centre``. A
+        caller drawing the overlay needs this to say whose origin it is drawing;
+        a caller reporting a centre needs it to know whether the number is a
+        measurement or an echo of the click. See
+        :data:`_MIN_SPOTS_FOR_CENTRE_REFINEMENT` for when refinement is allowed.
     """
 
     centre: np.ndarray
@@ -210,6 +240,7 @@ class PlanarLatticeFit:
     rms_residual: float
     iterations: int
     notes: tuple[str, ...] = ()
+    centre_refined: bool = True
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "notes", tuple(self.notes))
@@ -305,12 +336,21 @@ class PlanarLatticeFit:
             f"to each other, explaining {self.inlier_count} of them with an r.m.s. residual of "
             f"{self.rms_residual:.3f} units after {self.iterations} refinement round(s). "
         )
-        centre = (
-            f"The transmitted beam refines to ({self.centre[0]:.2f}, {self.centre[1]:.2f}), "
-            f"{self.centre_shift:.2f} units from where it was picked. "
-            if self.centre_shift > 1e-9
-            else f"The transmitted beam was held at ({self.centre[0]:.2f}, {self.centre[1]:.2f}). "
-        )
+        if not self.centre_refined:
+            centre = (
+                f"The transmitted beam was held where it was picked, at "
+                f"({self.centre[0]:.2f}, {self.centre[1]:.2f}), and is not a measurement: with "
+                f"{len(self.spots)} spot(s) there are too few equations to solve for it. "
+            )
+        elif self.centre_shift > 1e-9:
+            centre = (
+                f"The transmitted beam refines to ({self.centre[0]:.2f}, {self.centre[1]:.2f}), "
+                f"{self.centre_shift:.2f} units from where it was picked. "
+            )
+        else:
+            centre = (
+                f"The transmitted beam was held at ({self.centre[0]:.2f}, {self.centre[1]:.2f}). "
+            )
         outliers = (
             ""
             if not self.outliers
@@ -341,6 +381,7 @@ class PlanarLatticeFit:
             "centre": [float(value) for value in self.centre],
             "supplied_centre": [float(value) for value in self.supplied_centre],
             "centre_shift": float(self.centre_shift),
+            "centre_refined": bool(self.centre_refined),
             "basis": [[float(value) for value in row] for row in self.basis],
             "basis_lengths": list(self.basis_lengths),
             "basis_angle_deg": float(self.basis_angle_deg),
@@ -461,15 +502,26 @@ def _solve_basis_and_centre(
     ``x`` and ``y`` share one design matrix and differ only in the right-hand
     side, which is why this is a single ``lstsq`` on a two-column right-hand side
     rather than a loop over coordinates.
+
+    **The design matrix is checked for rank before it is trusted.** ``lstsq``
+    answers a rank-deficient system as readily as a well-posed one, by returning
+    the minimum-norm member of the solution space, and nothing in the return
+    value distinguishes the two. That silent answer is a wrong lattice with
+    machine-precision residuals. Here it is a :class:`_DegenerateBasisError`
+    instead, which the caller treats as a dead trial.
     """
 
     if refine_centre:
         design = np.column_stack(
             [np.ones(len(indices)), indices[:, 0].astype(float), indices[:, 1].astype(float)]
         )
-        solution, *_ = np.linalg.lstsq(design, positions, rcond=None)
+    else:
+        design = indices.astype(float)
+    if np.linalg.matrix_rank(design) < design.shape[1]:
+        raise _DegenerateBasisError
+    solution, *_ = np.linalg.lstsq(design, positions, rcond=None)
+    if refine_centre:
         return np.ascontiguousarray(solution[1:3]), np.ascontiguousarray(solution[0])
-    solution, *_ = np.linalg.lstsq(indices.astype(float), positions, rcond=None)
     return np.ascontiguousarray(solution), np.zeros(2)
 
 
@@ -663,6 +715,78 @@ def _fit_from_seed(
     )
 
 
+#: Said whenever a requested centre refinement was declined for want of spots.
+_DECLINED_REFINEMENT_NOTE = (
+    "The transmitted beam was held where it was picked. Solving for it needs at least "
+    f"{_MIN_SPOTS_FOR_CENTRE_REFINEMENT} spots — six unknowns against two equations per spot — and "
+    "there are {count}. Pick more reflections to refine the centre, or move it by hand and watch "
+    "the overlay."
+)
+
+
+def _fit_from_two_picks(
+    picked: np.ndarray, supplied_centre: np.ndarray, declined_refinement: bool
+) -> PlanarLatticeFit:
+    """The exact fit: two picks, a held centre, and nothing to search for.
+
+    Two offsets from a fixed centre determine a basis exactly — four numbers from
+    four — so there is no least-squares problem here and no choice between
+    candidate lattices. The right answer is the one the user pointed at: ``a`` to
+    the first spot, ``b`` to the second, origin at the clicked beam. Running the
+    general search on this case can only move the answer away from that, and did:
+    the seeding, reduction and reassignment machinery exists to *disagree* with
+    the picks when many of them are available to outvote a bad one, and with two
+    picks there is nothing to outvote.
+
+    The basis is deliberately **not** Gauss-reduced. Reduction returns an
+    equivalent basis of the same lattice, which is the right thing to report when
+    the basis was fitted; here it would swap the vectors the user drew for a
+    different pair generating the same nodes, so the arrow labelled ``a`` would
+    stop pointing at the spot the user picked first. The lattice is identical
+    either way; what changes is whether the picture matches the clicks. Once a
+    third spot arrives the fit becomes a fit, and reduction resumes.
+    """
+
+    basis = np.ascontiguousarray(picked - supplied_centre)
+    sine = abs(float(np.linalg.det(basis))) / (
+        float(np.linalg.norm(basis[0])) * float(np.linalg.norm(basis[1])) or 1.0
+    )
+    if not sine >= _DEGENERATE_SINE:
+        raise ValueError(
+            "The two picked spots lie on a single line through the transmitted beam, so they span "
+            "a row rather than a lattice. Pick a spot off that row."
+        )
+    spots = tuple(
+        LatticeFitSpot(
+            index=index,
+            position=picked[index],
+            lattice_indices=((1, 0) if index == 0 else (0, 1)),
+            predicted=picked[index],
+            residual=0.0,
+            inlier=True,
+        )
+        for index in range(2)
+    )
+    notes = [
+        "Two spots fix a lattice exactly, so this is the lattice through the two picks rather "
+        "than a fit to them: the vectors are the picked offsets themselves and every residual is "
+        "zero by construction. It cannot detect a mis-picked spot — nothing here disagrees with "
+        "anything. Pick a third reflection to make the overlay a test rather than a restatement."
+    ]
+    if declined_refinement:
+        notes.insert(0, _DECLINED_REFINEMENT_NOTE.format(count=2))
+    return PlanarLatticeFit(
+        centre=supplied_centre,
+        supplied_centre=supplied_centre,
+        basis=basis,
+        spots=spots,
+        rms_residual=0.0,
+        iterations=1,
+        notes=tuple(notes),
+        centre_refined=False,
+    )
+
+
 def fit_planar_lattice(
     positions: Any,
     centre: Any,
@@ -701,6 +825,13 @@ def fit_planar_lattice(
         non-degenerate spots the system is over-determined and the answer beats
         any single pick. Turn it off to hold a centre established another way — a
         measured beam-stop position, for instance.
+
+        **A request, not a command.** With fewer than four spots the request is
+        declined, the picked centre is held, and ``notes`` says why:
+        the system is exactly determined at three spots and rank-deficient at
+        two, so a "refined" centre there is an artefact of the solver rather than
+        a measurement. :attr:`PlanarLatticeFit.centre_refined` reports what
+        actually happened. See :data:`_MIN_SPOTS_FOR_CENTRE_REFINEMENT`.
     inlier_fraction : float
         Residual tolerance as a fraction of the shorter basis vector. See
         :data:`DEFAULT_INLIER_FRACTION`.
@@ -749,6 +880,17 @@ def fit_planar_lattice(
         True
         >>> round(fit.basis_angle_deg, 6)
         90.0
+
+    Two picks are taken at face value: they *are* the basis, and the centre is
+    the one that was clicked::
+
+        >>> fit = fit_planar_lattice([[500.0, 292.0], [708.0, 500.0]], (500.0, 500.0))
+        >>> bool(np.allclose(fit.centre, [500.0, 500.0]))
+        True
+        >>> [spot.lattice_indices for spot in fit.spots]
+        [(1, 0), (0, 1)]
+        >>> fit.centre_refined
+        False
     """
 
     picked = as_float_array(np.asarray(positions, dtype=float).reshape(-1, 2), shape=(None, 2))
@@ -761,6 +903,15 @@ def fit_planar_lattice(
         raise ValueError("centre_leash_fraction must lie in [0, 2].")
     if max_iterations <= 0:
         raise ValueError("max_iterations must be strictly positive.")
+
+    # Too few spots to solve for the centre. Say so and hold it; see
+    # `_MIN_SPOTS_FOR_CENTRE_REFINEMENT` for why this is not a conservative
+    # choice but the only correct one.
+    declined_refinement = refine_centre and picked.shape[0] < _MIN_SPOTS_FOR_CENTRE_REFINEMENT
+    refine_centre = refine_centre and not declined_refinement
+
+    if picked.shape[0] == _EXACT_BASIS_SPOTS:
+        return _fit_from_two_picks(picked, supplied_centre, declined_refinement)
 
     # One tolerance, derived from the data and shared by every candidate. The
     # shortest difference between two picks is an upper bound on the lattice
@@ -815,6 +966,8 @@ def fit_planar_lattice(
     leashed = best.leashed
 
     notes: list[str] = []
+    if declined_refinement:
+        notes.append(_DECLINED_REFINEMENT_NOTE.format(count=picked.shape[0]))
     if poorly_determined:
         notes.append(
             "No candidate lattice explains most of these picks, so the overlay is a best effort "
@@ -873,4 +1026,5 @@ def fit_planar_lattice(
         rms_residual=rms,
         iterations=iterations,
         notes=tuple(notes),
+        centre_refined=refine_centre,
     )
