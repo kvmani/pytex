@@ -239,6 +239,15 @@ and elapsed time. Open the bar to review the latest 40 calls or clear the local 
 an interface aid, not a scientific record: reproducible parameters and provenance remain in result
 exports and reports.
 
+### Browser verification
+
+The repository exercises the shared frontend in Chromium with `npm run test:browser`. The critical
+suite opens every workspace, completes each panel's default scientific calculation (including the
+TEM auto-pick/index path), verifies the visible error and activity-history envelopes, rejects page
+and console errors, and checks that all seven workspaces remain reachable at 390 × 844. These are
+real requests to a loopback PyTex server. Playwright exists only in the development lockfile; the
+application delivered to users remains hand-written ES modules with no third-party browser code.
+
 ```{warning}
 The kernel halfwidth is a **smoothing choice, not a property of the material**. Too small and the
 figure shows the individual grains that were sampled; too large and real detail is washed out. It is

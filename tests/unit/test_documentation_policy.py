@@ -151,6 +151,17 @@ def test_ci_covers_windows_and_ratchets_sphinx_warnings() -> None:
     assert "scripts/check_sphinx_warnings.py --max-warnings 602" in strategy
 
 
+def test_ci_and_strategy_define_the_critical_browser_lane() -> None:
+    workflow = _read(".github/workflows/ci.yml")
+    strategy = _read("docs/testing/strategy.md")
+
+    assert 'node-version: "22"' in workflow
+    assert "npx playwright install --with-deps chromium" in workflow
+    assert "npm run test:browser" in workflow
+    assert "all seven workspaces" in strategy
+    assert "test-only" in strategy
+
+
 def test_executable_examples_standard_is_encoded_and_cross_linked() -> None:
     standard = _read("docs/standards/executable_examples.md").lower()
     for token in ("worked example", "computed", "reference value", "tolerance", "citation"):

@@ -122,6 +122,18 @@ class _Handler(BaseHTTPRequestHandler):
     sys_version = ""
     protocol_version = "HTTP/1.1"
 
+    def handle(self) -> None:
+        """Serve a connection without reporting an expected browser disconnect."""
+
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+            # A browser may close its page while a calculation is finishing or
+            # while an HTTP/1.1 keep-alive socket is awaiting another request.
+            # Neither case is a server defect, so do not let socketserver print
+            # an alarming traceback to the operator's terminal.
+            _LOGGER.debug("Client disconnected while an HTTP connection was active")
+
     @property
     def registry(self) -> ServiceRegistry:
         return getattr(self.server, "registry", REGISTRY)

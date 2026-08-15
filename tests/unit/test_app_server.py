@@ -13,11 +13,13 @@ import json
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
-from pytex.app.server import STATIC_ROOT, AppServer, create_server
+from pytex.app.server import STATIC_ROOT, AppServer, _Handler, create_server
 
 
 @pytest.fixture(scope="module")
@@ -141,6 +143,22 @@ class TestApiRoutes:
         assert status == 404
         assert headers["Content-Type"].startswith("application/json")
         assert json.loads(body)["error"]["code"] == "route.unknown"
+
+    @pytest.mark.parametrize(
+        "disconnect",
+        [BrokenPipeError(), ConnectionAbortedError(), ConnectionResetError()],
+    )
+    def test_a_client_disconnect_does_not_escape_the_connection_handler(
+        self, disconnect: OSError, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Closing a browser page mid-response is expected transport behaviour."""
+
+        base_handle = Mock(side_effect=disconnect)
+        monkeypatch.setattr(BaseHTTPRequestHandler, "handle", base_handle)
+        handler = object.__new__(_Handler)
+        handler.handle()
+
+        base_handle.assert_called_once_with()
 
 
 class TestStaticFiles:

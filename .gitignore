@@ -25,8 +25,12 @@ docs/site/_build/
 # Only the MTEX-side reference results and the campaign case files are canonical.
 fixtures/mtex_parity/results/pytex/*/
 
-# npm scratch file created by local tooling; PyTex has no JavaScript build.
-/package.json
+# Browser-test dependencies and generated Playwright output. The workbench still
+# has no JavaScript build or third-party browser runtime.
+/node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
 
 # Notebook and local editor artifacts
 .ipynb_checkpoints/

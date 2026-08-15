@@ -1,0 +1,12 @@
+{
+  "name": "pytex-browser-tests",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Test-only browser automation for the PyTex workbench; no runtime JavaScript dependencies.",
+  "scripts": {
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
+  }
+}

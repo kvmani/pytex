@@ -290,9 +290,13 @@ library code.
 - The manifest is validated structurally: every operation reachable, every parameter documented,
   every declared default accepted by its own validator. A missing help string fails a test.
 - The HTTP layer is tested against a live loopback server started in-process, covering routing,
-  error envelopes, and content types — with no browser.
+  error envelopes, content types, and expected client disconnects.
 - Frontend logic that is worth testing (the projection maths) is mirrored by a Python
   implementation and checked against it, so the browser cannot silently disagree with the exporter.
+- A dedicated Playwright/Chromium lane opens the real loopback application and checks all seven
+  workspaces, the critical default calculation path in every panel, deliberate service-error
+  surfacing, browser console/page errors, and the 390 × 844 responsive layout. Playwright is a
+  test-only development dependency: no third-party JavaScript is shipped to the browser.
 
 ## See Also
 

@@ -35,7 +35,7 @@ as such in both its metadata and documentation.
 | --- | --- | --- | --- |
 | G1 | Reconcile governing roadmaps and completed application ledger state | done | this commit |
 | G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | this commit |
-| G3 | Add minimal critical Playwright workbench tests and CI lane | pending | — |
+| G3 | Add minimal critical Playwright workbench tests and CI lane | done | this commit |
 | F1 | Measured powder-XRD I/O and comparison | pending | — |
 | F2 | Random-standard defocus calibration | pending | — |
 | F3 | Hex-grid EBSD support | pending | — |
@@ -60,8 +60,20 @@ as such in both its metadata and documentation.
 - Governance verification: repository integrity, Ruff, strict mypy over 138 source files, the
   focused governance/class-atlas tests, the full pytest suite (two expected skips), and the
   602-warning Sphinx build pass.
-- Next action: commit and push G1/G2 after the final suite passes, then start G3 by adding the
-  test-only Playwright dependency, critical Chromium journeys, and the dedicated CI lane.
+- G1/G2 landed and were pushed to `main` in `ff93592`.
+- G3 adds a pinned test-only Playwright dependency and dedicated Ubuntu/Python 3.11/Node 22 CI job.
+  Four Chromium tests cover all seven workspaces, the panels' critical successful calculations,
+  TEM auto-pick/indexing, a synthetic injected service failure, browser/page errors, and the
+  390 × 844 responsive layout. Manual CLI inspection also confirmed the XRD journey and a clean
+  browser console.
+- Browser teardown exposed expected Windows client disconnects as noisy `socketserver` tracebacks;
+  `_Handler.handle()` now treats broken/reset/aborted connections as normal transport closure, with
+  three focused regression cases. The repeated browser run is clean.
+- G3 verification: `npm run test:browser` (4 passed), 95 focused Python tests, repository integrity,
+  Ruff, strict mypy over 138 source files, JavaScript syntax checks, CI YAML parsing, the full pytest
+  suite (two expected skips), and the 602-warning Sphinx ratchet all pass.
+- Next action: commit and push G3, then begin F1 measured powder-XRD I/O and comparison by reconciling
+  its data model with the existing forward simulator, contracts, XRDML adapter, and benchmark ledger.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 
