@@ -723,18 +723,6 @@ export function mount(context) {
     return state.pickRows.find((row) => row.which === which) ?? null;
   }
 
-  /** Move the transmitted beam by the current step. Kept for the beam pad. */
-  function nudgeCentre(dx, dy) {
-    if (!state.picks.centre) return;
-    movePick('centre', state.picks.centre[0] + dx * state.nudgeStep,
-      state.picks.centre[1] + dy * state.nudgeStep);
-    const row = pickRowFor('centre');
-    if (row) {
-      row.x.value = formatNumber(state.picks.centre[0], 2);
-      row.y.value = formatNumber(state.picks.centre[1], 2);
-    }
-  }
-
   /**
    * Make a pick the one the pad and the arrow keys act on.
    *

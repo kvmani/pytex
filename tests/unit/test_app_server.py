@@ -775,10 +775,14 @@ class TestFrontendIsSelfContained:
 
     def test_the_centre_can_be_nudged_and_refined_and_put_back(self) -> None:
         source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
-        assert "function nudgeCentre(dx, dy)" in source
+        # The pad moves whichever pick is selected, the beam included, so there
+        # is one nudge path rather than one per kind of pick.
+        assert "function nudgeSelected(dx, dy)" in source
         assert "function adoptRefinedCentre()" in source
         assert "function restorePickedCentre()" in source
         assert "state.nudgeStep" in source
+        # A centre the fit did not solve for must not be offered for adoption.
+        assert "if (!state.fit?.data.centre_refined) return;" in source
 
     def test_the_basis_vectors_are_drawn_at_the_picks_that_generate_them(self) -> None:
         """The arrows must follow the spots, which is what makes them worth drawing."""
