@@ -9,22 +9,28 @@
   "status": "implemented",
   "reference_ids": [
     "MTEX_loadPoleFigure_xrdml",
-    "xrayutilities_polefig_Ge113"
+    "xrayutilities_polefig_Ge113",
+    "MTEX_ExAlODFReconstruction_background_defocusing"
   ],
-  "fixture_ids": [],
+  "fixture_ids": [
+    "fixtures/xrdml/synthetic_random_standard.xrdml"
+  ],
   "artifact_paths": [
     "docs/testing/mtex_parity_matrix.md",
     "docs/site/workflows/xrdml_texture_import.md",
     "benchmarks/texture/xrdml_import_benchmark_manifest.json",
     "fixtures/xrdml/README.md",
     "fixtures/xrdml/polefig_Ge113_xrayutilities.xrdml.bz2",
-    "tests/unit/test_xrdml_texture.py"
+    "fixtures/xrdml/synthetic_random_standard.xrdml",
+    "tests/unit/test_xrdml_texture.py",
+    "tests/unit/test_defocus_calibration.py"
   ],
   "linked_benchmark_ids": [
     "texture_xrdml_import_and_inversion"
   ],
   "notes": [
     "The implemented validation surface covers PANalytical-style XRDML import, compressed-file handling, explicit intensity-normalization policy, and deterministic handoff into PyTex ODF inversion.",
-    "PyTex currently validates geometric and import semantics, not full harmonic MTEX-class ODF reconstruction parity."
+    "PyTex currently validates geometric and import semantics, not full harmonic MTEX-class ODF reconstruction parity.",
+    "Random-standard correction follows the MTEX background-first order and has an exact labelled synthetic reference; no claim is made that the synthetic loss curve represents a particular instrument."
   ]
 }

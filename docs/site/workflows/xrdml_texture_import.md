@@ -130,7 +130,8 @@ print(harmonic_report.condition_number)
 - the implemented parser targets pole-figure-style `Phi` and `Psi` scans, not every XRDML measurement family
 - PyTex does not currently infer reflection metadata from free-text file comments
 - the adapter helper `invert_xrdml_pole_figures(...)` is still the dictionary-based convenience route; harmonic reconstruction is reached by converting the imported measurements to `PoleFigure` and then calling `HarmonicODF.invert_pole_figures(...)`
-- intensity normalization is explicit but still caller-controlled; PyTex does not silently apply defocusing or instrument corrections
+- intensity normalization is explicit and caller-controlled; random-standard defocusing correction
+  is available through `defocus_from_random_standard(...)` but is never applied silently
 
 ## Related Material
 

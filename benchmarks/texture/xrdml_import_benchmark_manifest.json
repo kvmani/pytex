@@ -8,26 +8,33 @@
   "baseline_kind": "open_source_vendor_xml_and_synthetic_inversion",
   "workflows": [
     "xrdml_pole_figure_import",
-    "xrdml_odf_reconstruction"
+    "xrdml_odf_reconstruction",
+    "random_standard_defocus_calibration"
   ],
-  "fixture_ids": [],
+  "fixture_ids": [
+    "fixtures/xrdml/synthetic_random_standard.xrdml"
+  ],
   "artifact_paths": [
     "benchmarks/texture/xrdml_import_benchmark_manifest.json",
     "benchmarks/texture/README.md",
     "fixtures/xrdml/README.md",
     "fixtures/xrdml/polefig_Ge113_xrayutilities.xrdml.bz2",
+    "fixtures/xrdml/synthetic_random_standard.xrdml",
     "tests/unit/test_xrdml_texture.py",
+    "tests/unit/test_defocus_calibration.py",
     "src/pytex/adapters/xrdml.py"
   ],
   "tolerances": {
     "synthetic_odf_weight_atol": 0.05,
     "synthetic_relative_residual_atol": 0.05,
-    "xrdml_grid_shape_atol": 0.0
+    "xrdml_grid_shape_atol": 0.0,
+    "synthetic_defocus_factor_atol": 1e-12
   },
   "status": "implemented",
   "notes": [
     "This benchmark combines one pinned real XRDML pole-figure import case with deterministic synthetic inversion cases.",
     "The open-source Ge(113) pole figure from xrayutilities validates vendor-style XML parsing, axis-alias normalization, compressed-file handling, and explicit import metadata.",
-    "Synthetic fixtures validate that XRDML-backed pole figures pass cleanly into the current discrete kernel ODF inversion surface and expose auditable residual diagnostics."
+    "Synthetic fixtures validate that XRDML-backed pole figures pass cleanly into the current discrete kernel ODF inversion surface and expose auditable residual diagnostics.",
+    "The explicitly labelled synthetic random standard independently fixes the expected background-subtracted factors at [1, 0.8, 0.5] and the correction-order result at 20."
   ]
 }

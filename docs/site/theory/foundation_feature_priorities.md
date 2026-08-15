@@ -7,14 +7,31 @@ breadth.
 
 ## Pole-Figure Correction And Residual Auditing
 
-For a pole-figure observation $I_i$, scale $s$, background $b$, and optional defocussing factor
+For a pole-figure observation $I_i$, scale $s$, background $b$, and optional defocusing factor
 $d_i$, PyTex applies
 
 $$
-I_i^{\mathrm{corr}} = s\left(\frac{I_i}{d_i} - b\right)
+I_i^{\mathrm{corr}} = s\frac{I_i-b}{d_i}.
 $$
 
-Negative values are either clipped or rejected according to the correction policy.
+Background is subtracted before division: background is not specimen diffraction signal and must
+not be amplified by the defocusing correction. Negative values are either clipped or rejected
+according to the correction policy.
+
+For an untextured reference measured on polar-angle rings, let $I_{ij}^{\mathrm{rand}}$ be the
+intensity at tilt ring $i$ and azimuth $j$. After subtracting the standard's declared background,
+PyTex reduces each ring by a mean or median, $\bar I_i^{\mathrm{rand}}$, and normalizes to the
+lowest measured tilt $i=0$:
+
+$$
+d_i = \frac{\bar I_i^{\mathrm{rand}}}{\bar I_0^{\mathrm{rand}}}.
+$$
+
+The result retains ring counts and the within-ring relative standard deviation. A true random
+standard should be azimuthally uniform; large scatter is therefore evidence against the calibration
+assumption rather than texture in the specimen. The curve is tied to the same reflection and
+instrument configuration and is interpolated only inside its measured tilt interval. PyTex refuses
+extrapolation because no data constrain the loss beyond that interval.
 
 Given a fitted ODF-derived pole density $I_i^{\mathrm{fit}}$, the residual report records
 
@@ -23,6 +40,14 @@ r_i = I_i^{\mathrm{fit}} - I_i^{\mathrm{obs}},
 \qquad
 \rho = \frac{\|r\|_2}{\max(\|I^{\mathrm{obs}}\|_2,\epsilon)}
 $$
+
+### References
+
+- MTEX, [ODF reconstruction from X-ray diffraction data of an Al alloy rolled sheet](https://mtex-toolbox.github.io/ExAlODFReconstruction.html), “Background and Defocusing Correction.”
+- MTEX, [`PoleFigure.correct`](https://mtex-toolbox.github.io/PoleFigure.correct.html).
+- Welzel and Leoni, “Use of polycapillary X-ray lenses in the X-ray diffraction measurement of
+  texture,” *J. Appl. Cryst.* 35 (2002),
+  [doi:10.1107/S0021889802000481](https://doi.org/10.1107/S0021889802000481).
 
 ## Euler Convention Transforms
 

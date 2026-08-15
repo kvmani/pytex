@@ -7,7 +7,9 @@ from typing import Literal
 import numpy as np
 
 from pytex.core._arrays import as_float_array
+from pytex.core.lattice import CrystalPlane
 from pytex.core.provenance import ProvenanceRecord
+from pytex.core.sphere import directions_to_spherical_angles
 from pytex.texture.harmonics import HarmonicODF, HarmonicODFReconstructionReport
 from pytex.texture.models import (
     ODF,
@@ -20,6 +22,275 @@ from pytex.texture.models import (
 
 CorrectionPolicy = Literal["clip_zero", "raise"]
 ReconstructionAlgorithm = Literal["discrete", "harmonic"]
+DefocusReducer = Literal["mean", "median"]
+
+POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA = "pytex.texture.pole_figure_defocus_calibration"
+
+
+@dataclass(frozen=True, slots=True)
+class PoleFigureDefocusCalibration:
+    """A radial defocusing curve measured from a same-reflection random standard.
+
+    Use this result to evaluate auditable correction factors on a specimen pole
+    figure before ODF inversion. Each factor is the background-subtracted random
+    standard intensity at one tilt ring divided by the corresponding intensity
+    at the lowest calibrated tilt. The curve is reflection-specific and never
+    extrapolates beyond its measured range.
+    """
+
+    pole: CrystalPlane
+    tilt_deg: np.ndarray
+    defocus_factors: np.ndarray
+    ring_intensities: np.ndarray
+    azimuthal_relative_std: np.ndarray
+    ring_counts: np.ndarray
+    reference_tilt_deg: float
+    reference_intensity: float
+    background: float = 0.0
+    reducer: DefocusReducer = "mean"
+    synthetic: bool = False
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        tilt = as_float_array(self.tilt_deg, shape=(None,))
+        factors = as_float_array(self.defocus_factors, shape=tilt.shape)
+        intensities = as_float_array(self.ring_intensities, shape=tilt.shape)
+        spread = as_float_array(self.azimuthal_relative_std, shape=tilt.shape)
+        counts = np.asarray(self.ring_counts, dtype=np.int64).reshape(-1)
+        if tilt.size < 2:
+            raise ValueError("A defocusing calibration requires at least two tilt rings.")
+        if np.any(~np.isfinite(tilt)) or np.any(np.diff(tilt) <= 0.0):
+            raise ValueError("Calibration tilt angles must be finite and strictly increasing.")
+        if tilt[0] < 0.0 or tilt[-1] > 90.0:
+            raise ValueError("Reflection-geometry calibration tilts must lie in [0, 90] degrees.")
+        if np.any(~np.isfinite(factors)) or np.any(factors <= 0.0):
+            raise ValueError("Defocusing factors must be positive and finite.")
+        if not np.isclose(factors[0], 1.0, rtol=1e-12, atol=1e-12):
+            raise ValueError("The lowest-tilt defocusing factor must be normalized to one.")
+        if np.any(~np.isfinite(intensities)) or np.any(intensities <= 0.0):
+            raise ValueError("Background-subtracted ring intensities must be positive and finite.")
+        if np.any(~np.isfinite(spread)) or np.any(spread < 0.0):
+            raise ValueError("Azimuthal relative standard deviations must be non-negative.")
+        if counts.shape != tilt.shape or np.any(counts <= 0):
+            raise ValueError("ring_counts must contain one positive count per tilt ring.")
+        if not np.isclose(self.reference_tilt_deg, tilt[0], rtol=0.0, atol=1e-12):
+            raise ValueError("reference_tilt_deg must equal the lowest calibrated tilt.")
+        if not np.isclose(self.reference_intensity, intensities[0], rtol=1e-12, atol=1e-12):
+            raise ValueError("reference_intensity must equal the lowest-tilt ring intensity.")
+        if not np.allclose(
+            factors, intensities / self.reference_intensity, rtol=1e-12, atol=1e-12
+        ):
+            raise ValueError(
+                "Defocusing factors must equal ring intensities divided by reference intensity."
+            )
+        if not np.isfinite(self.background) or self.background < 0.0:
+            raise ValueError("Calibration background must be finite and non-negative.")
+        if self.reducer not in {"mean", "median"}:
+            raise ValueError("Calibration reducer must be 'mean' or 'median'.")
+        counts = np.ascontiguousarray(counts)
+        counts.setflags(write=False)
+        object.__setattr__(self, "tilt_deg", tilt)
+        object.__setattr__(self, "defocus_factors", factors)
+        object.__setattr__(self, "ring_intensities", intensities)
+        object.__setattr__(self, "azimuthal_relative_std", spread)
+        object.__setattr__(self, "ring_counts", counts)
+
+    @property
+    def max_azimuthal_relative_std(self) -> float:
+        """Return the largest within-ring standard deviation divided by its mean."""
+
+        return float(np.max(self.azimuthal_relative_std))
+
+    def factors_for(self, pole_figure: PoleFigure) -> np.ndarray:
+        """Interpolate factors onto a same-reflection pole figure without extrapolation.
+
+        Parameters
+        ----------
+        pole_figure
+            Measured specimen figure. Its pole must match the random standard,
+            and every effective polar angle must lie inside the calibrated range.
+
+        Returns
+        -------
+        np.ndarray
+            One positive read-only defocusing factor per measured direction.
+        """
+
+        if pole_figure.pole != self.pole:
+            raise ValueError(
+                "A defocusing calibration is reflection-specific; target and standard poles differ."
+            )
+        polar_deg, _ = directions_to_spherical_angles(
+            pole_figure.sample_directions, antipodal=pole_figure.antipodal
+        )
+        tolerance = 1e-9
+        if np.any(polar_deg < self.tilt_deg[0] - tolerance) or np.any(
+            polar_deg > self.tilt_deg[-1] + tolerance
+        ):
+            raise ValueError(
+                "Target pole-figure tilt lies outside the calibrated range; extrapolation is "
+                "not permitted."
+            )
+        factors = np.interp(polar_deg, self.tilt_deg, self.defocus_factors)
+        factors = np.ascontiguousarray(factors, dtype=np.float64)
+        factors.setflags(write=False)
+        return factors
+
+    def correction_spec(
+        self,
+        pole_figure: PoleFigure,
+        *,
+        scale: float = 1.0,
+        background: float = 0.0,
+        missing_intensity_policy: CorrectionPolicy = "clip_zero",
+    ) -> PoleFigureCorrectionSpec:
+        """Build a correction spec evaluated on one target pole-figure support.
+
+        ``background`` is the target specimen scan's background in its own
+        intensity units; it is deliberately independent of the background used
+        to calibrate the random standard. The returned spec subtracts that value
+        before dividing by the interpolated factors.
+        """
+
+        return PoleFigureCorrectionSpec(
+            scale=scale,
+            background=background,
+            defocus_factors=self.factors_for(pole_figure),
+            missing_intensity_policy=missing_intensity_policy,
+            provenance=self.provenance or pole_figure.provenance,
+        )
+
+    def describe(self) -> str:
+        """Return the calibration source, normalization, diagnostics, and limits."""
+
+        origin = "synthetic validation standard" if self.synthetic else "experimental standard"
+        return (
+            f"Random-standard pole-figure defocusing calibration from an explicitly labelled "
+            f"{origin}: {len(self.tilt_deg)} tilt rings span {self.tilt_deg[0]:.3f} to "
+            f"{self.tilt_deg[-1]:.3f} degrees. Background {self.background:.6g} was subtracted "
+            f"before {self.reducer} ring reduction; factors are normalized to 1 at "
+            f"{self.reference_tilt_deg:.3f} degrees and range from "
+            f"{np.min(self.defocus_factors):.6g} to {np.max(self.defocus_factors):.6g}. "
+            f"The largest azimuthal relative standard deviation is "
+            f"{self.max_azimuthal_relative_std:.6g}. The curve is valid only for the same "
+            "reflection and measured tilt interval; factors_for() refuses extrapolation. "
+            "Target correction subtracts its declared background before dividing by this curve."
+        )
+
+
+def defocus_from_random_standard(
+    random_standard: PoleFigure,
+    *,
+    background: float = 0.0,
+    reducer: DefocusReducer = "mean",
+    ring_tolerance_deg: float = 1e-6,
+    synthetic: bool | None = None,
+    provenance: ProvenanceRecord | None = None,
+) -> PoleFigureDefocusCalibration:
+    """Calibrate a radial defocusing curve from an untextured reference specimen.
+
+    Use this after importing a random-standard scan for the same reflection and
+    instrument configuration as the specimen scan. Intensities are first
+    background-subtracted, then grouped by polar-angle ring and reduced over
+    azimuth. Ring values are divided by the lowest-tilt ring value, matching the
+    established experimental correction ``(I - background) / defocus``.
+
+    Parameters
+    ----------
+    random_standard
+        A ``sampling='sampled_density'`` pole figure whose ideal texture signal
+        is azimuthally and radially constant before instrument losses.
+    background
+        Constant background in the random-standard intensity units.
+    reducer
+        Arithmetic mean (default) or median across each azimuthal ring.
+    ring_tolerance_deg
+        Maximum adjacent tilt difference joined into one nominal ring.
+    synthetic
+        Explicit data-origin label. When omitted, a ``synthetic=true``
+        provenance metadata entry is honored; otherwise the data are treated as
+        experimental.
+    provenance
+        Override for the result; the standard provenance is retained by default.
+
+    Returns
+    -------
+    PoleFigureDefocusCalibration
+        Radial factors, ring intensities/counts, azimuthal-scatter diagnostics,
+        and the interpolation/correction helpers.
+    """
+
+    if random_standard.sampling != "sampled_density":
+        raise ValueError(
+            "Random-standard calibration requires sampled_density intensities, not pole weights."
+        )
+    if not np.isfinite(background) or background < 0.0:
+        raise ValueError("Random-standard background must be finite and non-negative.")
+    if reducer not in {"mean", "median"}:
+        raise ValueError("Random-standard reducer must be 'mean' or 'median'.")
+    if not np.isfinite(ring_tolerance_deg) or ring_tolerance_deg <= 0.0:
+        raise ValueError("ring_tolerance_deg must be positive and finite.")
+    polar_deg, _ = directions_to_spherical_angles(
+        random_standard.sample_directions, antipodal=random_standard.antipodal
+    )
+    if np.any(polar_deg > 90.0 + ring_tolerance_deg):
+        raise ValueError("Random-standard directions must lie on the reflection upper hemisphere.")
+    corrected = np.asarray(random_standard.intensities, dtype=np.float64) - background
+    if np.any(corrected <= 0.0):
+        raise ValueError(
+            "Random-standard intensities must remain positive after background subtraction."
+        )
+    order = np.argsort(polar_deg, kind="stable")
+    sorted_tilt = polar_deg[order]
+    sorted_intensity = corrected[order]
+    group_starts = np.concatenate(
+        ([0], np.flatnonzero(np.diff(sorted_tilt) > ring_tolerance_deg) + 1)
+    )
+    group_ends = np.concatenate((group_starts[1:], [sorted_tilt.size]))
+    if group_starts.size < 2:
+        raise ValueError("Random-standard calibration requires at least two distinct tilt rings.")
+    tilt = np.array(
+        [
+            np.mean(sorted_tilt[start:end])
+            for start, end in zip(group_starts, group_ends, strict=True)
+        ]
+    )
+    ring_values = [
+        sorted_intensity[start:end] for start, end in zip(group_starts, group_ends, strict=True)
+    ]
+    reduce = np.mean if reducer == "mean" else np.median
+    ring_intensities = np.array([reduce(values) for values in ring_values], dtype=np.float64)
+    ring_spread = np.array(
+        [
+            np.std(values, ddof=0) / mean
+            for values, mean in zip(ring_values, ring_intensities, strict=True)
+        ],
+        dtype=np.float64,
+    )
+    ring_counts = np.array([values.size for values in ring_values], dtype=np.int64)
+    factors = ring_intensities / ring_intensities[0]
+    effective_provenance = provenance or random_standard.provenance
+    if synthetic is None:
+        declared = (
+            effective_provenance.metadata.get("synthetic", "false")
+            if effective_provenance is not None
+            else "false"
+        )
+        synthetic = str(declared).lower() in {"1", "true", "yes"}
+    return PoleFigureDefocusCalibration(
+        pole=random_standard.pole,
+        tilt_deg=tilt,
+        defocus_factors=factors,
+        ring_intensities=ring_intensities,
+        azimuthal_relative_std=ring_spread,
+        ring_counts=ring_counts,
+        reference_tilt_deg=float(tilt[0]),
+        reference_intensity=float(ring_intensities[0]),
+        background=float(background),
+        reducer=reducer,
+        synthetic=synthetic,
+        provenance=effective_provenance,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +331,10 @@ class PoleFigureCorrectionSpec:
 
         Order of operations
         -------------------
-        Defocus division first, then background subtraction, then scaling.
+        Background subtraction first, then defocus division, then scaling.
+        This is the experimental random-standard convention: the background
+        is not part of the specimen signal and must not be amplified by the
+        defocusing correction.
 
         Parameters
         ----------
@@ -77,12 +351,12 @@ class PoleFigureCorrectionSpec:
             than hidden.
         """
 
-        intensities = np.asarray(pole_figure.intensities, dtype=np.float64)
+        intensities = np.asarray(pole_figure.intensities, dtype=np.float64) - self.background
         if self.defocus_factors is not None:
             if self.defocus_factors.shape != intensities.shape:
                 raise ValueError("defocus_factors must match the pole-figure intensity shape.")
             intensities = intensities / self.defocus_factors
-        corrected = self.scale * (intensities - self.background)
+        corrected = self.scale * intensities
         if np.any(corrected < 0.0):
             if self.missing_intensity_policy == "raise":
                 raise ValueError("Pole-figure correction produced negative intensities.")
@@ -410,8 +684,11 @@ def residual_reports_for_pole_figures(
 
 
 __all__ = [
+    "POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA",
     "ODFReconstructionConfig",
     "PoleFigureCorrectionSpec",
+    "PoleFigureDefocusCalibration",
     "PoleFigureResidualReport",
+    "defocus_from_random_standard",
     "residual_reports_for_pole_figures",
 ]

@@ -69,6 +69,7 @@ from pytex.texture import (
     KernelSpec,
     ODFInversionReport,
     PoleFigure,
+    PoleFigureDefocusCalibration,
     PoleFigureSampling,
 )
 
@@ -991,6 +992,48 @@ def _deserialize_pole_figure(payload: dict[str, Any]) -> PoleFigure:
     )
 
 
+def _serialize_pole_figure_defocus_calibration(
+    calibration: PoleFigureDefocusCalibration,
+) -> dict[str, Any]:
+    return {
+        **_base_payload("pytex.texture.pole_figure_defocus_calibration"),
+        "pole": _serialize_crystal_plane(calibration.pole),
+        "tilt_deg": _as_float_list(calibration.tilt_deg),
+        "defocus_factors": _as_float_list(calibration.defocus_factors),
+        "ring_intensities": _as_float_list(calibration.ring_intensities),
+        "azimuthal_relative_std": _as_float_list(calibration.azimuthal_relative_std),
+        "ring_counts": _as_int_list(calibration.ring_counts),
+        "reference_tilt_deg": calibration.reference_tilt_deg,
+        "reference_intensity": calibration.reference_intensity,
+        "background": calibration.background,
+        "reducer": calibration.reducer,
+        "synthetic": calibration.synthetic,
+        "provenance": _serialize_provenance(calibration.provenance),
+    }
+
+
+def _deserialize_pole_figure_defocus_calibration(
+    payload: dict[str, Any],
+) -> PoleFigureDefocusCalibration:
+    _require_schema(payload, "pytex.texture.pole_figure_defocus_calibration")
+    return PoleFigureDefocusCalibration(
+        pole=_deserialize_crystal_plane(payload["pole"]),
+        tilt_deg=np.asarray(payload["tilt_deg"], dtype=np.float64),
+        defocus_factors=np.asarray(payload["defocus_factors"], dtype=np.float64),
+        ring_intensities=np.asarray(payload["ring_intensities"], dtype=np.float64),
+        azimuthal_relative_std=np.asarray(
+            payload["azimuthal_relative_std"], dtype=np.float64
+        ),
+        ring_counts=np.asarray(payload["ring_counts"], dtype=np.int64),
+        reference_tilt_deg=float(payload["reference_tilt_deg"]),
+        reference_intensity=float(payload["reference_intensity"]),
+        background=float(payload.get("background", 0.0)),
+        reducer=cast(Any, payload.get("reducer", "mean")),
+        synthetic=bool(payload.get("synthetic", False)),
+        provenance=_deserialize_provenance(payload.get("provenance")),
+    )
+
+
 def _serialize_inverse_pole_figure(ipf: InversePoleFigure) -> dict[str, Any]:
     return {
         **_base_payload("pytex.texture.inverse_pole_figure"),
@@ -1799,6 +1842,7 @@ _SERIALIZERS: dict[type[Any], Callable[[Any], dict[str, Any]]] = {
     OrientationSet: _serialize_orientation_set,
     KernelSpec: _serialize_kernel,
     PoleFigure: _serialize_pole_figure,
+    PoleFigureDefocusCalibration: _serialize_pole_figure_defocus_calibration,
     InversePoleFigure: _serialize_inverse_pole_figure,
     ODF: _serialize_odf,
     ODFInversionReport: _serialize_odf_inversion_report,
@@ -1854,6 +1898,9 @@ _DESERIALIZERS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "pytex.core.orientation_set": _deserialize_orientation_set,
     "pytex.texture.kernel_spec": _deserialize_kernel,
     "pytex.texture.pole_figure": _deserialize_pole_figure,
+    "pytex.texture.pole_figure_defocus_calibration": (
+        _deserialize_pole_figure_defocus_calibration
+    ),
     "pytex.texture.inverse_pole_figure": _deserialize_inverse_pole_figure,
     "pytex.texture.odf": _deserialize_odf,
     "pytex.texture.odf_inversion_report": _deserialize_odf_inversion_report,

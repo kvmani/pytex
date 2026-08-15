@@ -32,6 +32,8 @@ This document records the current implementation posture for Phase 2.
 - multiples-of-random normalization from solid-angle integration weights, including a raster weighting for measured tilt/rotation grids
 - pole-figure arithmetic on a shared support, with a signed `PoleFigureDifference` for subtraction
 - residual pole figures from an ODF reconstruction, as a plottable diagnosis rather than a scalar norm
+- same-reflection random-standard defocusing calibration with background-first correction,
+  azimuthal ring diagnostics, bounded interpolation, `describe()`, and a JSON contract
 
 ### Why pole-figure arithmetic needed three steps, not one
 
@@ -58,6 +60,8 @@ the entire content of the result. Hence `PoleFigureDifference`.
   cap; it equals the true spherical mean only if the unmeasured region has the
   same mean. Defocusing limits the reachable tilt, so this assumption is real
   and is stated at the call site rather than hidden
+- random-standard calibration remains reflection- and instrument-configuration-specific; PyTex
+  does not transfer a curve between reflections or extrapolate beyond the measured tilt interval
 - the resampling kernel is a fixed von Mises-Fisher shape; a kernel library on
   S2 matching the existing SO(3) one is not yet implemented
 - ghost correction and zero-range methods are still absent, so the odd part of

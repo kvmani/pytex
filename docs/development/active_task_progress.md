@@ -36,8 +36,8 @@ as such in both its metadata and documentation.
 | G1 | Reconcile governing roadmaps and completed application ledger state | done | `ff93592` |
 | G2 | Add Windows base CI and a tested Sphinx-warning ratchet | done | `ff93592` |
 | G3 | Add minimal critical Playwright workbench tests and CI lane | done | `2967e32` |
-| F1 | Measured powder-XRD I/O and comparison | done | (this commit) |
-| F2 | Random-standard defocus calibration | pending | — |
+| F1 | Measured powder-XRD I/O and comparison | done | `c71eb15` |
+| F2 | Random-standard defocus calibration | done | (this commit) |
 | F3 | Hex-grid EBSD support | pending | — |
 | F4 | Finite-thickness SAED shape factor | pending | — |
 | F5 | Named-component ODF fitting | pending | — |
@@ -89,8 +89,33 @@ as such in both its metadata and documentation.
   integrity. Ruff, strict mypy over 139 source files, and the Sphinx ratchet at exactly 602 warnings
   also pass. The complete pytest suite passes with the same two expected skips; its public-API pass
   caught and drove repair of one initially missing `point_count` property docstring.
-- Next action: commit and push F1, then begin F2 random-standard pole-figure defocus calibration by
-  reconciling the existing XRDML pole-figure model and m.r.d. normalization surfaces.
+- F1 landed and was pushed to `main` in `c71eb15`.
+- F2 entry audit found that `PoleFigureCorrectionSpec` already accepts caller-supplied factors but
+  has no calibrated curve object or random-standard estimator. More importantly, its declared
+  $s(I/d-b)$ order conflicts with the established random-standard procedure $(I-b)/d$ shown in the
+  MTEX aluminium XRD reconstruction reference. F2 will repair and pin the physical order, derive a
+  radial same-reflection calibration with azimuthal-scatter diagnostics, forbid extrapolation by
+  default, and preserve the curve through an explainable JSON contract.
+- F2 adds `PoleFigureDefocusCalibration` and `defocus_from_random_standard(...)`. The estimator
+  requires sampled-density data, subtracts the standard background, reduces equal-tilt azimuthal
+  rings by a declared mean/median, normalizes to the lowest calibrated tilt, carries ring counts and
+  relative scatter, enforces same-reflection use, and refuses extrapolation. `describe()` states the
+  source label, curve range, scatter diagnostic and limits; the full result round-trips through the
+  shared JSON contract.
+- `PoleFigureCorrectionSpec.apply()` now follows the established physical order
+  $s(I-b)/d$ rather than $s(I/d-b)$. The explicitly labelled synthetic XRDML standard has raw rings
+  $[110,90,60]$ and background 10, independently fixing $d=[1,0.8,0.5]$; a specimen point of 12
+  with background 2 at $d=0.5$ corrects to exactly 20, distinguishing the repaired order from 22.
+- F2 updates the theory/workflow pages, XRDML guidance, terminology, root capability index,
+  orientation foundation, governing capability reviews, MTEX parity row, texture benchmark and
+  validation manifests, fixture inventory, executable gallery, integrity inventory and canonical
+  class-model atlas. The synthetic fixture is labelled as not experimental in both XML and docs.
+- F2 focused verification passes across calibration, XRDML, contracts, manifests, worked examples,
+  public API/docstring policy, class-model generation, documentation policy and repository
+  integrity. Ruff, strict mypy over 139 source files, and the Sphinx ratchet at exactly 602 warnings
+  pass. The complete pytest suite passes with the same two expected skips.
+- Next action: commit and push F2, then begin F3 hex-grid EBSD support by reconciling
+  coordinate-neighbour graphs, `.ang` grid metadata, segmentation and KAM semantics.
 
 ## Crystal Sphere Lighting And Depth — COMPLETE (2026-08-15)
 
@@ -2496,9 +2521,9 @@ lesson the notebook draws.
   (`np.isclose(cos(halfwidth/2), 1.0)` becomes true and the exponent collapses to 1, giving a
   near-uniform kernel where a very sharp one was asked for). Pre-existing, unreachable at any
   realistic halfwidth, and out of scope here.
-- **No defocusing model.** The reference corpus contains no random-powder standard, so the
-  defocusing curve cannot be measured from it; `PoleFigureCorrectionSpec.defocus_factors` already
-  accepts one when a standard exists. A measured-standard workflow remains the gap.
+- **No defocusing model (historical note; resolved by F2 above).** At this point the reference
+  corpus contained no random-powder standard, so the defocusing curve could not be measured from
+  it; `PoleFigureCorrectionSpec.defocus_factors` only accepted a caller-supplied array.
 - **No EBSD-specific Kearns surface.** `kearns_from_orientations` already takes grain weights, so
   a `CrystalMap` convenience wrapper would add API without adding capability.
 

@@ -76,6 +76,7 @@ The complete set of computed-versus-expected values at a glance:
 | `pole-figure-raster-unweighted-mean-is-biased` | 0.500000 | 0.500000 | &mdash; | ✅ |
 | `pole-figure-raster-bias-survives-refinement` | 1.000000000 | 1.000000000 | &mdash; | ✅ |
 | `pole-figure-raster-weighted-mean-converges` | [0.31960, 0.32627] | [0.31960, 0.32627] | &mdash; | ✅ |
+| `pole-figure-random-standard-defocus-calibration` | [1.000000, 0.800000, 0.500000, 20.000000] | [1.000000, 0.800000, 0.500000, 20.000000] | &mdash; | ✅ |
 | `directional-orientation-tensor-limiting-eigenvalues` | [0.0000, 0.4996, 0.5004, 0.0000, 0.0000, 1.0000] | [0.0000, 0.5000, 0.5000, 0.0000, 0.0000, 1.0000] | &mdash; | ✅ |
 | `directional-orientation-tensor-unit-trace` | 1.000000000000 | 1.000000000000 | &mdash; | ✅ |
 | `directional-mean-axis-of-randomly-signed-axes` | 0.999982 | 1.000000 | &mdash; | ✅ |

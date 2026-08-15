@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic validation data; this is not an experimental measurement. -->
+<xrdMeasurements xmlns="http://www.xrdml.com/XRDMeasurement/1.3" status="Completed">
+  <sample>
+    <name>synthetic_random_standard_not_experimental</name>
+  </sample>
+  <xrdMeasurement measurementType="Area measurement" measurementStepAxis="Psi" sampleMode="Reflection">
+    <usedWavelength>
+      <kAlpha1 unit="Angstrom">1.540600</kAlpha1>
+    </usedWavelength>
+    <scan mode="Continuous" scanAxis="Phi" status="Completed">
+      <dataPoints>
+        <commonCountingTime>1.000000</commonCountingTime>
+        <intensities>110.0 110.0 110.0 110.0</intensities>
+        <positions axis="2Theta"><commonPosition>44.5000</commonPosition></positions>
+        <positions axis="Omega"><commonPosition>22.2500</commonPosition></positions>
+        <positions axis="Phi"><startPosition>0.0000</startPosition><endPosition>270.0000</endPosition></positions>
+        <positions axis="Psi"><commonPosition>0.0000</commonPosition></positions>
+      </dataPoints>
+    </scan>
+    <scan mode="Continuous" scanAxis="Phi" status="Completed">
+      <dataPoints>
+        <commonCountingTime>1.000000</commonCountingTime>
+        <intensities>90.0 90.0 90.0 90.0</intensities>
+        <positions axis="2Theta"><commonPosition>44.5000</commonPosition></positions>
+        <positions axis="Omega"><commonPosition>22.2500</commonPosition></positions>
+        <positions axis="Phi"><startPosition>0.0000</startPosition><endPosition>270.0000</endPosition></positions>
+        <positions axis="Psi"><commonPosition>30.0000</commonPosition></positions>
+      </dataPoints>
+    </scan>
+    <scan mode="Continuous" scanAxis="Phi" status="Completed">
+      <dataPoints>
+        <commonCountingTime>1.000000</commonCountingTime>
+        <intensities>60.0 60.0 60.0 60.0</intensities>
+        <positions axis="2Theta"><commonPosition>44.5000</commonPosition></positions>
+        <positions axis="Omega"><commonPosition>22.2500</commonPosition></positions>
+        <positions axis="Phi"><startPosition>0.0000</startPosition><endPosition>270.0000</endPosition></positions>
+        <positions axis="Psi"><commonPosition>60.0000</commonPosition></positions>
+      </dataPoints>
+    </scan>
+  </xrdMeasurement>
+</xrdMeasurements>

@@ -89,8 +89,8 @@ The repository is now best described as a validated foundation build rather than
   rotational symmetry elements with mathtext Miller-style annotation support
 - a hash-pinned phase-fixture corpus with manifest-backed structure-import audit coverage
 - first open-source external-baseline cases for powder XRD and SAED using pinned in-repo artifacts
-- XRDML pole-figure import with pinned open-source fixture coverage and dictionary-based ODF
-  reconstruction from imported measurements
+- XRDML pole-figure import with pinned open-source fixture coverage, random-standard defocusing
+  calibration, and dictionary-based ODF reconstruction from imported measurements
 - structural runtime plotting validation for XRD, SAED, crystal scenes, IPF plotting, and the new stereographic surfaces without tracking SVG byte baselines
 - smoke-executed priority notebooks for the immediate fixture-to-visualization-to-diffraction
   teaching path

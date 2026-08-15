@@ -152,6 +152,8 @@ library: de la Vallee Poussin, Gaussian SO(3), Abel-Poisson.
 algorithm, kernel, regularization and bandlimit into one declared object so the
 correction cannot be skipped; `PoleFigureCorrectionSpec` applies background,
 defocus and scale in a fixed, documented order;
+`defocus_from_random_standard` derives same-reflection radial factors, retains
+azimuthal-scatter diagnostics, and refuses extrapolation;
 `residual_reports_for_pole_figures` closes the QC loop. Sections (`phi2_sections`,
 `sigma_sections`), `volume_fraction`, `TextureComponent` / `Fibre` with standard
 fcc/bcc rolling components, and `component_volume_fractions` cover the reporting
@@ -161,16 +163,15 @@ side. Ingest: `read_xrdml_pole_figure` / `invert_xrdml_pole_figures`,
 MDF core.
 
 **Lacking.** No ghost correction and no zero-range method — the odd part of the
-ODF is unconstrained, and the docstrings say so. Defocus factors must be supplied
-by the caller: there is no defocus model and no calibration from a random
-(powder) standard, so an XRD pole figure cannot actually be corrected end-to-end
-inside PyTex. No inverse fitting of components (Gauss/Bingham) to a measured ODF.
+ODF is unconstrained, and the docstrings say so. No inverse fitting of components
+(Gauss/Bingham) to a measured ODF.
 No uncertainty quantification (bootstrap on ODF or volume fractions). No `.epf`,
 `.uxd` or popLA `.xpc` readers.
 
 **Next.**
 1. Ghost correction (zero-range / positivity) — the biggest scientific credibility gap in texture.
-2. A defocus model plus `defocus_from_random_sample(...)` calibration, making XRDML → ODF a complete workflow.
+2. ~~A defocus model plus random-standard calibration~~ — implemented as
+   `defocus_from_random_standard(...)`; broader experimental fixtures remain desirable.
 3. Component fitting: recover Gauss components and volume fractions from a measured ODF.
 
 ## 6. Pole-figure arithmetic — 2/10 at review, **8/10 after the 2026-08-08 sprint**

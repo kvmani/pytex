@@ -69,6 +69,7 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | pole figure | Distribution of crystal directions or plane normals expressed relative to specimen directions. |
 | multiples of a random distribution (m.r.d.) | The scale on which a pole density or ODF value is 1 where the distribution is random. Defined by the solid-angle-weighted mean over the sampled region being exactly 1, so it is a property of an integral and not of a maximum or a sum. |
 | pole-figure sampling | Whether a pole figure's intensities are per-pole weights of a cloud of poles (**scattered poles**) or densities already evaluated at the given directions (**sampled density**). The two require different resampling estimators, so the reading is recorded rather than inferred. |
+| random-standard defocusing calibration | A reflection-specific radial intensity-loss curve measured from an untextured reference specimen under the specimen scan's instrument conditions. Background is subtracted before azimuthal ring reduction and normalization to the lowest calibrated tilt; it is not a texture model. |
 | pole-figure difference | The signed field $\Delta P$ obtained by subtracting one pole figure from another on a shared support. Signed, and therefore not itself a pole figure. |
 | residual pole figure | A pole-figure difference between a measurement and the figure an ODF recalculates for it; the spatial form of a goodness-of-fit check. |
 | solid-angle weights | Per-point integration weights making a sum over a sampled support approximate an integral over the sphere. Required whenever a mean is taken over a tilt/rotation raster, which over-samples the specimen normal. |
@@ -167,6 +168,7 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\Delta P$ | Signed difference of two pole densities on a shared support. |
 | $w_i$ | Solid-angle integration weight of sampled direction $i$; weights sum to 1 over the sampled region. |
 | $\psi$ | Polar (tilt) angle of a specimen direction from the specimen-frame $+Z$ axis. |
+| $d_i$ | Positive random-standard defocusing factor at specimen tilt $i$, normalized to 1 at the lowest calibrated tilt. A specimen intensity is corrected as $(I_i-b)/d_i$, never $I_i/d_i-b$. |
 | $\ell$ | Degree of a generalized spherical harmonic term. Diffraction pole figures determine only **even** $\ell$, which is the ghost problem and removes close to half the ODF basis. |
 | $P_{\mathrm{rand}}$ | Kernel-density response a random texture produces. Dividing a raw KDE response by it is what puts a pole figure on the m.r.d. scale; it depends on the kernel halfwidth, so un-normalized figures from different kernels are not comparable. |
 | $\mathcal{T}$ | Fundamental sector: the spherical region holding one representative of each direction orbit. The standard stereographic triangle, generalized to any point group. |

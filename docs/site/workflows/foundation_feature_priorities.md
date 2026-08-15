@@ -9,6 +9,7 @@ symmetry, diffraction, EBSD, and phase-transformation work explicit, testable, a
 PyTex now separates pole-figure correction, reconstruction configuration, and residual auditing:
 
 - `PoleFigureCorrectionSpec`
+- `PoleFigureDefocusCalibration`
 - `ODFReconstructionConfig`
 - `PoleFigureResidualReport`
 - `residual_reports_for_pole_figures(...)`
@@ -16,12 +17,37 @@ PyTex now separates pole-figure correction, reconstruction configuration, and re
 The correction layer applies a deterministic intensity transform:
 
 $$
-I_i^{\mathrm{corr}} = s \left(\frac{I_i}{d_i} - b\right),
+I_i^{\mathrm{corr}} = s \frac{I_i-b}{d_i},
 $$
 
-where $s$ is the scale, $d_i$ is an optional defocussing factor, and $b$ is a constant
+where $s$ is the scale, $d_i$ is an optional defocusing factor, and $b$ is a constant
 background. Negative corrected intensities are either clipped to zero or rejected, depending on
-the configured policy.
+the configured policy. The order is deliberate: subtract the background, then divide by the
+random-standard loss curve.
+
+Calibrate that curve from a same-reflection random standard before reconstructing:
+
+```python
+from pytex import defocus_from_random_standard
+
+calibration = defocus_from_random_standard(
+    random_standard_pole_figure,
+    background=10.0,
+)
+correction = calibration.correction_spec(
+    measured_pole_figure,
+    background=measured_background,
+    missing_intensity_policy="raise",
+)
+corrected_pole_figure = correction.apply(measured_pole_figure)
+print(calibration.describe())
+```
+
+The input must be a `sampled_density` pole figure, not a cloud of orientation weights. The
+calibration groups equal-tilt directions into azimuthal rings, records ring count and relative
+scatter, normalizes to the lowest measured tilt, and linearly interpolates the factors onto the
+target support. Target and standard poles must match. Tilts outside the calibrated interval raise;
+the method does not invent an extrapolation model. The calibration has a portable JSON contract.
 
 The residual report compares a measured pole figure against a fitted ODF:
 

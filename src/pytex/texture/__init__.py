@@ -41,9 +41,12 @@ from pytex.texture.models import (
     random_pole_density,
 )
 from pytex.texture.reconstruction import (
+    POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA,
     ODFReconstructionConfig,
     PoleFigureCorrectionSpec,
+    PoleFigureDefocusCalibration,
     PoleFigureResidualReport,
+    defocus_from_random_standard,
     residual_reports_for_pole_figures,
 )
 
@@ -52,6 +55,7 @@ __all__ = [
     "KEARNS_ISOTROPIC_VALUE",
     "NAMED_BCC_FIBRES",
     "ODF",
+    "POLE_FIGURE_DEFOCUS_CALIBRATION_SCHEMA",
     "STANDARD_BCC_ROLLING_COMPONENTS",
     "STANDARD_FCC_ROLLING_COMPONENTS",
     "AbelPoissonKernel",
@@ -71,6 +75,7 @@ __all__ = [
     "ODFSectionData",
     "PoleFigure",
     "PoleFigureCorrectionSpec",
+    "PoleFigureDefocusCalibration",
     "PoleFigureDifference",
     "PoleFigureResidualReport",
     "PoleFigureSampling",
@@ -79,6 +84,7 @@ __all__ = [
     "basal_tilt_angle_deg",
     "basal_tilt_profile",
     "component_volume_fractions",
+    "defocus_from_random_standard",
     "fibre_axis_alignment_quaternion",
     "harris_texture_coefficients",
     "kearns_from_diffractogram",

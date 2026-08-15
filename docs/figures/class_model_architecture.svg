@@ -37,7 +37,7 @@
   <rect x="229.0" y="576.0" width="160.0" height="143.0" rx="8" fill="#f5efff" stroke="#7c3aed" stroke-width="1.2"/>
   <rect x="230.0" y="577.0" width="158.0" height="4" rx="2" fill="#7c3aed" opacity="0.85"/>
   <text x="244.0" y="605.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">pytex.texture</text>
-  <text x="244.0" y="622.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">20 public classes</text>
+  <text x="244.0" y="622.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">21 public classes</text>
   <text x="244.0" y="640.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">«domain»</text>
   <line x1="230.0" y1="644.0" x2="388.0" y2="644.0" stroke="#7c3aed" stroke-width="1" opacity="0.35"/>
   <text x="244.0" y="666.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">ODF, pole figures</text>
@@ -119,12 +119,12 @@
   <rect x="869.9" y="265.5" width="20.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
   <text x="880.2" y="277.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">22</text>
   <rect x="298.7" y="731.5" width="20.5" height="13" rx="3" fill="#ffffff" opacity="0.86"/>
-  <text x="309.0" y="743.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">28</text>
+  <text x="309.0" y="743.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="middle">30</text>
   <rect x="40.0" y="996.0" width="520.0" height="137.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
   <text x="56.0" y="1022.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">Notation</text>
   <line x1="58.0" y1="1044.0" x2="98.0" y2="1044.0" stroke="#2563eb" stroke-width="1.6" marker-end="url(#cd-arrow)"/>
   <text x="116.0" y="1048.0" font-size="14" font-family="Arial" fill="#40506f" text-anchor="start">typed references crossing a package boundary</text>
-  <text x="56.0" y="1075.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Arrow numbers count typed field references: 167 cross a package boundary.</text>
+  <text x="56.0" y="1075.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Arrow numbers count typed field references: 169 cross a package boundary.</text>
   <text x="56.0" y="1093.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Every arrow points toward the core. No domain package is referenced by the core.</text>
   <text x="56.0" y="1111.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">Plotting and adapters take their inputs as call arguments, so few appear as fields.</text>
 </svg>

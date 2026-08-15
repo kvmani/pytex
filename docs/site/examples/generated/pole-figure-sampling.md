@@ -149,3 +149,83 @@ result = np.array(means)
 **Citation**: Bunge, Texture Analysis in Materials Science (1982) - spherical integration of pole densities.
 
 **See also**: {doc}`Pole-figure arithmetic and the m.r.d. scale <../../theory/pole_figure_arithmetic_and_mrd>`
+
+## A random standard recovers the defocusing curve and correction order exactly
+
+A synthetic, explicitly labelled random standard has raw ring intensities 110, 90 and 60 counts at 0, 30 and 60 degrees, with a known 10-count background. Subtracting that background and normalizing to the zero-tilt ring must give defocusing factors 1, 0.8 and 0.5. A specimen point measured as 12 counts at 60 degrees with a 2-count background then corrects to (12 - 2) / 0.5 = 20. This last value distinguishes the physical order from the incorrect 12 / 0.5 - 2 = 22.
+
+**Symbols**
+
+- $d_i$ &mdash; Random-standard defocusing factor at specimen tilt i.
+- $b$ &mdash; Declared constant background in the same intensity units.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CRYSTAL_FRAME,
+    SPECIMEN_FRAME,
+    Lattice,
+    Phase,
+    PoleFigure,
+    SymmetrySpec,
+    defocus_from_random_standard,
+    spherical_angles_to_directions,
+)
+from pytex.core.lattice import CrystalPlane, MillerIndex
+
+lattice = Lattice(3.52, 3.52, 3.52, 90.0, 90.0, 90.0, crystal_frame=CRYSTAL_FRAME)
+phase = Phase(
+    "synthetic nickel reference",
+    lattice=lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=CRYSTAL_FRAME),
+    crystal_frame=CRYSTAL_FRAME,
+)
+pole = CrystalPlane(MillerIndex([1, 1, 1], phase=phase), phase=phase)
+tilt = np.repeat([0.0, 30.0, 60.0], 4)
+azimuth = np.tile([0.0, 90.0, 180.0, 270.0], 3)
+standard = PoleFigure(
+    pole=pole,
+    sample_directions=spherical_angles_to_directions(tilt, azimuth),
+    intensities=np.repeat([110.0, 90.0, 60.0], 4),
+    specimen_frame=SPECIMEN_FRAME,
+    antipodal=True,
+    sampling="sampled_density",
+)
+target = PoleFigure(
+    pole=pole,
+    sample_directions=spherical_angles_to_directions([60.0], [0.0]),
+    intensities=np.array([12.0]),
+    specimen_frame=SPECIMEN_FRAME,
+    antipodal=True,
+    sampling="sampled_density",
+)
+```
+
+:::
+
+**Compute**
+
+```python
+calibration = defocus_from_random_standard(
+    standard, background=10.0, synthetic=True
+)
+corrected = calibration.correction_spec(
+    target, background=2.0, missing_intensity_policy="raise"
+).apply(target)
+result = np.concatenate((calibration.defocus_factors, corrected.intensities))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `pole-figure-random-standard-defocus-calibration` | [1.000000, 0.800000, 0.500000, 20.000000] | [1.000000, 0.800000, 0.500000, 20.000000] | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+
+**Why this value**: Direct arithmetic independent of PyTex: ([110, 90, 60] - 10) / (110 - 10) = [1, 0.8, 0.5], and the corrected specimen value is (12 - 2) / 0.5 = 20.
+
+**Citation**: MTEX, ODF Reconstruction from X-Ray Diffraction Data of an Al Alloy Rolled Sheet, Background and Defocusing Correction: pf = (pf - pf_bg) ./ pf_def.
+
+**See also**: {doc}`Pole-figure correction and residual auditing <../../theory/foundation_feature_priorities>`, {doc}`Texture reconstruction correction workflow <../../workflows/foundation_feature_priorities>`, {doc}`Pole-figure arithmetic and the m.r.d. scale <../../theory/pole_figure_arithmetic_and_mrd>`
