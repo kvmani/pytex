@@ -159,3 +159,41 @@ def test_fewer_planes_than_files_reuses_the_last_one() -> None:
         },
     )
     assert [figure["label"] for figure in result["data"]["figures"]] == ["{111}"] * 3
+
+
+def test_the_odf_is_reconstructed_from_the_opened_figures() -> None:
+    """The inversion runs, is sliced, and reports what it cost.
+
+    The claim is deliberately modest, because the inversion is ill-posed: the
+    sections exist, they are on the m.r.d. scale, and the residual travels with
+    them. A test asserting a *particular* ODF from three copies of one random
+    standard would be asserting the regularization.
+    """
+
+    result = measured(
+        [("a.xrdml", [1, 1, 1]), ("b.xrdml", [2, 0, 0]), ("c.xrdml", [2, 2, 0])],
+        reconstruct_odf=True,
+        dictionary_count=300,
+    )
+    odf = result["data"]["odf"]
+
+    assert odf["pole_figure_count"] == 3
+    assert odf["dictionary_count"] == 300
+    # The three sections every fcc texture paper prints.
+    assert [section["phi2_deg"] for section in odf["sections"]] == [0.0, 45.0, 65.0]
+    for section in odf["sections"]:
+        assert len(section["densities"]) == len(section["phi1_deg"])
+        assert len(section["densities"][0]) == len(section["big_phi_deg"])
+        assert all(value >= 0.0 for row in section["densities"] for value in row)
+    assert odf["max_mrd"] > 0.0
+    assert odf["residual"] >= 0.0
+    # The summary and the notes both say the inversion is ill-posed, because a
+    # number offered without that caveat would be read as a measurement.
+    assert "residual" in result["summary"]
+    assert any("ill-posed" in note for note in result["notes"])
+
+
+def test_no_odf_is_computed_unless_it_is_asked_for() -> None:
+    """It is the expensive branch, and most sessions only want the figures."""
+
+    assert measured([("a.xrdml", [1, 1, 1])])["data"]["odf"] is None

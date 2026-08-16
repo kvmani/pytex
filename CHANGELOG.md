@@ -35,7 +35,10 @@ downstream analyses depend on them.
     scales cannot be compared, and comparing them is the reason to measure more than one. Contour
     levels are set explicitly (`1, 2, 4, 7, 10`) or spaced automatically, and apply to every figure
     in the set. m.r.d., peak-normalised and as-recorded intensities are all available; only m.r.d.
-    makes two instruments comparable.
+    makes two instruments comparable. **Reconstruct the ODF** inverts the opened set into an
+    orientation distribution and adds it as a further tab, sliced at the three phi-2 sections
+    texture papers print — with its residual reported beside it, because the inversion is
+    ill-posed and a peak without a residual is not a result.
 - **Calibration from the image itself, in the TEM workspace.** The camera equation uses one number —
   how much reciprocal space a pixel spans — and an image that arrives without its recorded camera
   length usually still carries something whose length is known. **Calibrate** measures a line across

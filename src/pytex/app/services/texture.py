@@ -34,6 +34,7 @@ from typing import Any
 import numpy as np
 
 from pytex.app.errors import InvalidInputError
+from pytex.app.logbook import APP_LOG
 from pytex.app.phases import PhaseSpec, phase_from_request
 from pytex.app.registry import (
     REGISTRY,
@@ -921,6 +922,92 @@ def _contour_levels(
     return [minimum + step * (index + 1) for index in range(count)]
 
 
+def _measured_odf(
+    pole_figures: list[Any],
+    *,
+    phase: Any,
+    dictionary_count: int,
+    halfwidth_deg: float,
+    resolution_deg: float,
+    seed: int = 12345,
+) -> dict[str, Any]:
+    """Reconstruct an ODF from measured pole figures, and slice it.
+
+    Purpose
+    -------
+    A pole figure is a projection, and projections lose information: the ghost
+    problem is exactly that loss. What physical models need is the orientation
+    distribution, and getting it from measurements is the classical inverse
+    problem of quantitative texture analysis.
+
+    Method and honesty
+    ------------------
+    The inversion is :meth:`pytex.texture.ODF.invert_pole_figures` — a
+    non-negative regularized least squares over a dictionary of orientations —
+    and it is **ill-posed**. The answer depends on the dictionary, the kernel and
+    the regularization, and one pole figure cannot constrain it at all. So the
+    residual travels back with the sections rather than being discarded, and the
+    caller reports it: a reconstruction whose residual is large is a picture of
+    the regularization, not of the specimen.
+
+    The dictionary is sampled uniformly on SO(3) — Phi through its sine measure,
+    because uniform Euler angles crowd the poles and would weight the
+    reconstruction towards them before any data was seen.
+
+    Returns
+    -------
+    dict
+        ``sections`` in the same shape :func:`_odf_sections` produces, plus
+        ``residual``, ``dictionary_count`` and ``pole_figure_count``.
+    """
+
+    from pytex.core.orientation import OrientationSet
+    from pytex.texture.models import ODF, KernelSpec
+
+    generator = np.random.default_rng(seed)
+    phi1 = generator.uniform(0.0, 360.0, size=dictionary_count)
+    big_phi = np.degrees(np.arccos(generator.uniform(-1.0, 1.0, size=dictionary_count)))
+    phi2 = generator.uniform(0.0, 360.0, size=dictionary_count)
+    dictionary = OrientationSet.from_euler_angles(
+        np.column_stack([phi1, big_phi, phi2]),
+        specimen_frame=_specimen_frame(),
+        crystal_frame=phase.crystal_frame,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    report = ODF.invert_pole_figures(
+        pole_figures,
+        orientation_dictionary=dictionary,
+        kernel=KernelSpec(halfwidth_deg=halfwidth_deg),
+    )
+    sections = report.odf.phi2_sections(
+        phi2_deg=(0.0, 45.0, 65.0),
+        resolution_deg=resolution_deg,
+        normalized=True,
+    )
+    reference = _odf_random_reference(phase)
+    densities = np.asarray(sections.densities, dtype=float) / reference
+    phi1_axis = [float(value) for value in np.asarray(sections.phi1_deg, dtype=float)]
+    big_phi_axis = [float(value) for value in np.asarray(sections.big_phi_deg, dtype=float)]
+    payload = [
+        {
+            "phi2_deg": float(phi2_value),
+            "phi1_deg": phi1_axis,
+            "big_phi_deg": big_phi_axis,
+            "densities": [[float(value) for value in row] for row in densities[index]],
+            "max_mrd": float(densities[index].max()),
+        }
+        for index, phi2_value in enumerate(np.asarray(sections.phi2_deg, dtype=float))
+    ]
+    return {
+        "sections": payload,
+        "max_mrd": float(densities.max()),
+        "residual": float(report.residual_norm),
+        "dictionary_count": int(dictionary_count),
+        "pole_figure_count": len(pole_figures),
+    }
+
+
 @REGISTRY.operation(
     "texture.measured_pole_figures",
     title="Measured pole figures",
@@ -1005,6 +1092,47 @@ def _contour_levels(
             maximum=20,
         ),
         BooleanParameter(
+            name="reconstruct_odf",
+            label="Reconstruct the ODF",
+            help_text=(
+                "Invert the opened figures into an orientation distribution and add it as a "
+                "further tab, sliced at the three phi-2 sections texture papers print.\n\n"
+                "**This is an ill-posed inversion.** Pole figures are projections and lose the "
+                "odd-order information, so the answer depends on the dictionary, the kernel and "
+                "the regularization. One pole figure cannot constrain it at all; three from "
+                "different planes is the usual minimum. The residual is reported beside the "
+                "sections, and a large one means you are looking at the regularization rather "
+                "than at the specimen."
+            ),
+            default=False,
+        ),
+        IntegerParameter(
+            name="dictionary_count",
+            label="Dictionary orientations",
+            help_text=(
+                "How many orientations the inversion solves over. More resolves a sharper "
+                "texture and costs time roughly linearly."
+            ),
+            default=800,
+            minimum=100,
+            maximum=5000,
+            advanced=True,
+        ),
+        NumberParameter(
+            name="odf_halfwidth_deg",
+            label="ODF kernel halfwidth",
+            help_text=(
+                "Width of the bell on each dictionary orientation. As for a model texture this "
+                "is a smoothing choice, and here it is also the regularization: too small and "
+                "the inversion fits noise."
+            ),
+            units="°",
+            default=10.0,
+            minimum=2.0,
+            maximum=30.0,
+            advanced=True,
+        ),
+        BooleanParameter(
             name="shared_scale",
             label="One scale for every figure",
             help_text=(
@@ -1043,6 +1171,7 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
 
     figures: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
+    reconstructed: list[Any] = []
     for index, item in enumerate(items):
         indices = tuple(int(value) for value in poles[min(index, len(poles) - 1)])
         with uploaded_file(item, field="files", suffixes=POLE_FIGURE_SUFFIXES) as (path, name):
@@ -1093,6 +1222,7 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             for point in range(directions.shape[0])
         ]
         rows.extend({**point, "figure": label, "file": name} for point in points)
+        reconstructed.append(pole_figure)
         figures.append(
             {
                 "file": name,
@@ -1128,6 +1258,26 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             else {"minimum": figure["minimum"], "maximum": figure["maximum"]}
         )
 
+    odf: dict[str, Any] | None = None
+    if bool(request["reconstruct_odf"]):
+        APP_LOG.info(
+            f"Inverting {len(reconstructed)} pole figure(s) over "
+            f"{int(request['dictionary_count'])} orientations.",
+            source="texture.measured_pole_figures",
+        )
+        odf = _measured_odf(
+            reconstructed,
+            phase=phase,
+            dictionary_count=int(request["dictionary_count"]),
+            halfwidth_deg=float(request["odf_halfwidth_deg"]),
+            resolution_deg=5.0,
+        )
+        APP_LOG.notice(
+            f"ODF reconstructed: peak {odf['max_mrd']:.2f} m.r.d., residual {odf['residual']:.4g}.",
+            source="texture.measured_pole_figures",
+            detail={"residual": odf["residual"], "peak_mrd": odf["max_mrd"]},
+        )
+
     unit = {"mrd": "m.r.d.", "max": "peak = 1", "none": "counts"}[normalization]
     names = ", ".join(figure["label"] for figure in figures)
     result = AppResult(
@@ -1142,6 +1292,15 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
                 else "Each is drawn on its own scale, so they cannot be compared with each other."
             )
             + f" Contours at {', '.join(f'{level:g}' for level in levels)}."
+            + (
+                ""
+                if odf is None
+                else (
+                    f" The ODF reconstructed from them peaks at {odf['max_mrd']:.2f} m.r.d. with "
+                    f"a residual of {odf['residual']:.4g} over {odf['dictionary_count']} "
+                    "dictionary orientations."
+                )
+            )
         ),
         table=ResultTable(
             columns=(
@@ -1157,6 +1316,7 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             "levels": levels,
             "shared_scale": shared,
             "scale": {"minimum": overall_min, "maximum": overall_max},
+            "odf": odf,
             "projection": method,
             "unit": unit,
             "specimen_axes": list(_SPECIMEN_AXES),
@@ -1170,6 +1330,9 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             "contour_levels": str(request["contour_levels"] or ""),
             "contour_count": int(request["contour_count"]),
             "shared_scale": shared,
+            "reconstruct_odf": bool(request["reconstruct_odf"]),
+            "dictionary_count": int(request["dictionary_count"]),
+            "odf_halfwidth_deg": float(request["odf_halfwidth_deg"]),
             "files": [str(item.get("name", "")) for item in items if isinstance(item, dict)],
         },
         notes=(
@@ -1181,6 +1344,10 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             "outer rim of an uncorrected figure is the part to distrust.",
             "The plane assigned to each file comes from the order the files were opened, not from "
             "the file: XRDML records the diffraction angle rather than the reflection.",
+            "ODF reconstruction from pole figures is ill-posed: projections lose the odd-order "
+            "information, so the result depends on the dictionary, the kernel and the "
+            "regularization. Three figures from different planes is the usual minimum, and the "
+            "reported residual is what says whether the estimate is worth anything.",
         ),
         citations=(_CITATION_BUNGE, _CITATION_RANDLE),
     )

@@ -580,6 +580,13 @@ Two controls decide whether the set can be read as a set:
   is the sequence most of the texture literature uses — or leave the field empty for evenly spaced
   ones. Whatever is chosen applies to every figure in the set.
 
+**Reconstruct the ODF** inverts the opened set into an orientation distribution and adds it as a
+further tab, sliced at φ₂ = 0°, 45° and 65°. This is the classical inverse problem of quantitative
+texture analysis and it is **ill-posed**: pole figures are projections and lose the odd-order
+information, so the answer depends on the dictionary, the kernel and the regularization. One pole
+figure cannot constrain it at all and three from different planes is the usual minimum. The residual
+is printed beside the sections; read it before the peaks.
+
 Normalisation decides what the numbers mean at all. A measured figure arrives in detector counts,
 which depend on the counting time and the instrument; **m.r.d.** rescales it so a texture-free
 specimen reads 1 everywhere, which is the only form in which two instruments' figures mean the same

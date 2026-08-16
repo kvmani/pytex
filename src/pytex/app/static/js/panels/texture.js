@@ -521,19 +521,28 @@ export function mount(context) {
    * makes flipping between full-size figures a comparison.
    */
   function renderFigureTabs() {
-    const figures = state.result?.data?.figures ?? [];
-    tabs.hidden = state.operation.id !== MEASURED || figures.length < 2;
+    const data = state.result?.data ?? {};
+    const figures = data.figures ?? [];
+    // The reconstructed ODF is a further tab, last, because it is derived from
+    // every figure before it rather than being one of them.
+    const entries = [
+      ...figures.map((figure) => ({ label: figure.label, title: figure.file })),
+      ...(data.odf
+        ? [{ label: 'ODF', title: 'Orientation distribution reconstructed from these figures' }]
+        : []),
+    ];
+    tabs.hidden = state.operation.id !== MEASURED || entries.length < 2;
     if (tabs.hidden) {
       tabs.replaceChildren();
       return;
     }
     tabs.replaceChildren(
-      ...figures.map((figure, index) =>
+      ...entries.map((entry, index) =>
         el('button.figure-tab', {
           type: 'button',
           role: 'tab',
-          text: figure.label,
-          title: figure.file,
+          text: entry.label,
+          title: entry.title,
           'aria-selected': String(index === state.figureIndex),
           onclick: () => {
             state.figureIndex = index;
@@ -550,6 +559,26 @@ export function mount(context) {
     const data = state.result.data;
     const figures = data.figures ?? [];
     if (!figures.length) return;
+    // The last tab is the reconstructed ODF, which is drawn as sections rather
+    // than as a disc: it lives in Euler space, not on the specimen hemisphere.
+    if (data.odf && state.figureIndex >= figures.length) {
+      frame.configure({ toData: null, formatCursor: null });
+      state.plotNode = renderSections(
+        { sections: data.odf.sections, max_mrd: data.odf.max_mrd },
+        frame,
+        state.contour,
+      );
+      frame.setContent(state.plotNode, { preserveViewport });
+      renderRampLegend(data.odf.max_mrd, state.contour);
+      renderFigureTabs();
+      frame.setStatus(
+        `ODF from ${data.odf.pole_figure_count} measured figure(s) · peak ` +
+          `${formatNumber(data.odf.max_mrd, 2)} m.r.d. · residual ` +
+          `${formatNumber(data.odf.residual, 4)} over ${data.odf.dictionary_count} dictionary ` +
+          'orientations · ill-posed: read the residual before the peaks',
+      );
+      return;
+    }
     const figure = figures[Math.min(state.figureIndex, figures.length - 1)];
     // The service decided the levels and the scale, because both are shared
     // across the set; the renderer is told them rather than inventing its own.

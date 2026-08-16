@@ -684,6 +684,17 @@ test('XRDML pole figures open into tabs on one shared scale', async ({ page }) =
   // The shared scale is the point: the second figure reports the same range.
   await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
 
+  // The reconstructed ODF is a further tab, after the figures it came from.
+  await page.locator('[id^="ctl-reconstruct_odf-"]').check();
+  await page.getByRole('button', { name: 'Build texture', exact: true }).click();
+  await expect(tabs).toHaveCount(3, { timeout: 60_000 });
+  await expect(tabs.nth(2)).toHaveText('ODF');
+  await tabs.nth(2).click();
+  await expect(status).toContainText('ODF from 2 measured figure(s)');
+  // The inversion is ill-posed, and the figure has to say so where it is read.
+  await expect(status).toContainText('residual');
+  await expect(status).toContainText('ill-posed');
+
   expect(browserErrors).toEqual([]);
 });
 
