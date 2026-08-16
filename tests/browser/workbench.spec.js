@@ -295,6 +295,40 @@ test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
   expect(angle).toBeGreaterThanOrEqual(0);
   expect(angle).toBeLessThanOrEqual(180);
 
+  /*
+   * The picture is not blocked by the card that reports on it.
+   *
+   * The readout is pinned to the top-left corner of the drawing, which on a
+   * diffraction pattern is a corner of the data. It is painted *under* the
+   * figure, so the opaque part of the pattern masks it; bringing the pointer
+   * onto its rectangle raises it in full, and leaving restores the clear view.
+   */
+  const stacking = await page.evaluate(() => {
+    const card = document.querySelector('.plot__overlay');
+    const canvas = document.querySelector('.plot__canvas');
+    return {
+      card: getComputedStyle(card).zIndex,
+      canvas: getComputedStyle(canvas).zIndex,
+      raised: card.classList.contains('plot__overlay--raised'),
+    };
+  });
+  expect(Number(stacking.card)).toBeLessThan(Number(stacking.canvas));
+  expect(stacking.raised).toBe(false);
+
+  const hovered = await page.evaluate(() => {
+    const card = document.querySelector('.plot__overlay');
+    const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+    const box = card.getBoundingClientRect();
+    const move = (clientX, clientY) =>
+      svg.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX, clientY }));
+    move(box.left + box.width / 2, box.top + box.height / 2);
+    const onCard = card.classList.contains('plot__overlay--raised');
+    move(box.right + 200, box.bottom + 200);
+    return { onCard, afterLeaving: card.classList.contains('plot__overlay--raised') };
+  });
+  expect(hovered.onCard).toBe(true);
+  expect(hovered.afterLeaving).toBe(false);
+
   // It reports the picks, so clearing them takes it away again.
   await page.getByRole('button', { name: 'Clear picks', exact: true }).click();
   await expect(overlay).toBeHidden();

@@ -1961,14 +1961,22 @@ button:focus-visible {
 }
 
 /*
- * A panel's own readout, over the top-left of the drawing.
+ * A panel's own readout, at the top-left of the drawing — and *under* it.
  *
  * Non-interactive, capped, and scrolled internally: it reports on the picture
  * it sits on and must never take a click from it or grow over it. The hover
  * card moved to the opposite corner so the two cannot cover each other.
+ *
+ * The picture wins by default. Painted above the card, the opaque part of the
+ * drawing masks whatever it overlaps, so the figure is seen whole and the card
+ * shows only where the letterbox margin leaves room. Bringing the pointer onto
+ * its rectangle raises it in full — `plot__overlay--raised`, set from the
+ * surface above it, because behind an opaque drawing this element never
+ * receives a pointer of its own — and leaving restores the clear view.
  */
 .plot__overlay {
   position: absolute;
+  z-index: 0;
   left: 0.5rem;
   top: 0.5rem;
   max-width: min(24rem, 46%);
@@ -1981,6 +1989,17 @@ button:focus-visible {
   box-shadow: var(--shadow);
   backdrop-filter: blur(6px);
   font-size: 0.72rem;
+  transition: opacity 120ms ease;
+}
+
+.plot__overlay--raised {
+  z-index: 3;
+}
+
+/* The drawing is above the readout, so an opaque figure masks it. The stage's
+ * own children keep their painting order otherwise. */
+.plot__canvas {
+  z-index: 1;
 }
 
 /* The TEM measurement card. Monospaced numerals and tabular figures, because

@@ -154,6 +154,32 @@ Both were visible on the practice plate and neither was reachable from the numbe
   across the same part of the plate, so the route read as part of the fitted-lattice annotation. The
   route is now `#a3e635`. Two different claims about the crystal must not share a colour.
 
+### K5: the readout card gives the picture right of way
+
+Raised from use: the measured-picks table pinned to the top-left of the pattern covered a corner of
+the plate — which on a diffraction pattern is a corner of the data, not of the margin.
+
+`.plot__overlay` is now painted *under* `.plot__canvas`, so the opaque part of the figure masks it
+and only the letterbox margin shows it through. Moving the pointer onto its rectangle sets
+`plot__overlay--raised` and it comes forward in full; leaving clears it. This is in the shared plot
+frame, so every panel's readout behaves the same way.
+
+The hover cannot be the card's own `:hover`: behind an opaque drawing the element never receives a
+pointer, so the rectangle is tested against pointer moves on the surface above it. Nothing about
+clicking changed — the card has always been `pointer-events: none`, and a click in that corner has
+always gone to the figure.
+
+Measured in Chromium at the TEM stage: the card's rectangle is 91 percent covered by the picture at
+this viewport, so the pattern is effectively unobstructed, and the surviving strip is the letterbox
+margin. The browser case asserts the stacking order and both hover transitions, and was confirmed to
+fail with the card's `z-index` put back above the canvas -- the only way to know a painting-order
+test is testing anything.
+
+**Known trade-off, not a defect:** over a dark pattern the card is nearly invisible until hovered,
+so it is discoverable only by knowing where it is. If that proves awkward, the fix is a one-line
+title tab left above the drawing with the body behind it; it was not done here because it was not
+what was asked for.
+
 ### Decisions worth not re-litigating (K)
 
 - **The overlay is drawn from the accepted solution, not from the best-ranked one.** Accepting is a

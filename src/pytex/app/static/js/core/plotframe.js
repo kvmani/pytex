@@ -221,6 +221,40 @@ export function plotFrame({
     setBox(view.base);
   }
 
+  /*
+   * The readout sits *behind* the drawing, and lifts while the pointer is on it.
+   *
+   * A card pinned over the top-left corner reports on the picture — and covers
+   * a corner of it, which on a diffraction pattern is a corner of the data. The
+   * picture wins by default: the card is painted under the drawing, so the
+   * opaque part of the figure masks it and only the letterbox margin shows it.
+   * Bringing the pointer onto its rectangle raises it in full, and leaving
+   * restores the unobstructed view.
+   *
+   * The hover cannot be the card's own `:hover`, because behind an opaque
+   * drawing it never receives the pointer — so the rectangle is tested against
+   * the pointer on the surface above it. Nothing about clicking changes: the
+   * card has always been `pointer-events: none`, and a click in that corner has
+   * always gone to the figure.
+   */
+  function attachOverlayReveal(svgNode) {
+    const raise = (event) => {
+      if (overlay.hidden) return;
+      const box = overlay.getBoundingClientRect();
+      if (!box.width) return;
+      const inside =
+        event.clientX >= box.left &&
+        event.clientX <= box.right &&
+        event.clientY >= box.top &&
+        event.clientY <= box.bottom;
+      overlay.classList.toggle('plot__overlay--raised', inside);
+    };
+    svgNode.addEventListener('pointermove', raise);
+    svgNode.addEventListener('pointerleave', () => {
+      overlay.classList.remove('plot__overlay--raised');
+    });
+  }
+
   function attachCursor(svgNode) {
     svgNode.addEventListener('pointermove', (event) => {
       if (!mapping.toData) return;
@@ -350,6 +384,7 @@ export function plotFrame({
       canvas.append(node);
       if (node instanceof SVGSVGElement) {
         attachCursor(node);
+        attachOverlayReveal(node);
         if (viewport) {
           const box = node.viewBox.baseVal;
           view.svg = node;

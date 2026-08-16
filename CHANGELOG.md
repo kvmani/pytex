@@ -11,6 +11,15 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Changed
+
+- **A figure's own readout no longer covers the figure.** The panel readout pinned to the top-left
+  of a plot — the TEM measured-picks table above all — is now painted *under* the drawing, so the
+  opaque part of the picture masks it and the data behind that corner is visible again. Bringing
+  the pointer onto its rectangle raises it in full; leaving restores the clear view. Clicking is
+  unchanged: the card has always been `pointer-events: none` and a click in that corner has always
+  reached the figure.
+
 ### Added
 
 - **Kikuchi bands on the solved TEM pattern.** `tem.kikuchi_overlay` draws the bands the accepted
