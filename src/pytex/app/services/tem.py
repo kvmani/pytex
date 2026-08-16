@@ -3051,18 +3051,37 @@ def _kikuchi_overlay(request: dict[str, Any]) -> dict[str, Any]:
             # is very nearly straight over a SAED field.
             for edge in band.edge_traces(projection, samples=1441)
         ]
-        # Label out where the bands separate: at an exact zone axis every band
-        # of the zone crosses at 000, which is the most crowded and least
-        # informative point of the figure, and the beam marker lives there.
+        # Label out near the frame, and beside the band rather than on it.
+        #
+        # Two collisions to avoid, both of which were visible on the practice
+        # plate before this. Halfway out, a label lands in the middle of the
+        # spot pattern and sits on a reflection — the one thing the overlay must
+        # not obscure, since the spots are what the bands are being checked
+        # against. And near the pole it collides with the beam marker, the
+        # fitted centre and the basis arrows, because at an exact zone axis
+        # every band of the zone crosses at 000. So the label goes most of the
+        # way to the frame, where the spot density has fallen off and the bands
+        # have separated, offset clear of its own band edge.
         first, second = (np.asarray(point, dtype=float) for point in endpoints)
+        origin_point = np.asarray(centre, dtype=float)
         towards = (
             second
-            if np.linalg.norm(second - np.asarray(centre))
-            > np.linalg.norm(first - np.asarray(centre))
+            if np.linalg.norm(second - origin_point) > np.linalg.norm(first - origin_point)
             else first
         )
-        anchor = np.asarray(centre) - np.array([a, b]) * (a * centre[0] + b * centre[1] + c)
-        label_at = anchor + 0.42 * (towards - anchor)
+        anchor = origin_point - np.array([a, b]) * (a * centre[0] + b * centre[1] + c)
+        along = anchor + 0.82 * (towards - anchor)
+        clearance = width_px / 2.0 + 0.035 * min(width, height)
+        label_at = along + np.array([a, b]) * clearance
+        # Offsetting can push the text off the picture, where the clip would eat
+        # it; nudged back inside by the same margin the clearance uses.
+        inset = 0.035 * min(width, height)
+        label_at = np.array(
+            [
+                float(np.clip(label_at[0], inset, width - inset)),
+                float(np.clip(label_at[1], inset, height - inset)),
+            ]
+        )
 
         payload = {
             "hkl": list(indices),

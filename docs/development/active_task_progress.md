@@ -139,6 +139,21 @@ the toggle's absence before acceptance, the clip, that the drawn edges really do
 the honesty text in the status line, and that switching it off removes the bands rather than leaving
 them stale.
 
+### K4: two label collisions found by looking at the drawing
+
+Both were visible on the practice plate and neither was reachable from the numbers.
+
+- **Band labels sat on the spots.** Placed 42 percent of the way from the band's closest approach
+  to the frame, a label lands in the middle of the spot pattern — and the spots are the one thing
+  the overlay must not obscure, since they are what the bands are checked against. Labels now go 82
+  percent of the way out, where the spot density has fallen off and the bands have separated, and
+  are offset clear of their own band edge by half the band width plus a margin, clamped back inside
+  the picture so the clip cannot eat them. On the aluminium plate the four labels move from roughly
+  300 px from the beam, among the reflections, to 442-558 px, at the frame.
+- **The connecting band shared the basis vectors' colour.** Both were `#ffd447`, and both are drawn
+  across the same part of the plate, so the route read as part of the fitted-lattice annotation. The
+  route is now `#a3e635`. Two different claims about the crystal must not share a colour.
+
 ### Decisions worth not re-litigating (K)
 
 - **The overlay is drawn from the accepted solution, not from the best-ranked one.** Accepting is a

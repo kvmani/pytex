@@ -55,8 +55,12 @@ const SPOT_COLOUR = '#eaf2ff';
 const LATTICE_COLOUR = '#4fd3d3';
 const CALCULATED_COLOUR = '#c9b0ff';
 // Kikuchi bands, and the one band that is a route rather than a landmark.
+//
+// The route is deliberately not the amber of the basis vectors below: they are
+// drawn in the same region of the plate, and two different claims about the
+// crystal must not share a colour.
 const KIKUCHI_COLOUR = '#8fd9ff';
-const KIKUCHI_ROUTE_COLOUR = '#ffd447';
+const KIKUCHI_ROUTE_COLOUR = '#a3e635';
 const HALO_COLOUR = '#05070d';
 
 /*
