@@ -552,7 +552,6 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
                 "rather than from anything assumed here."
             ),
             required=False,
-            group="Data",
         ),
         _colouring_parameter(),
         ChoiceParameter(

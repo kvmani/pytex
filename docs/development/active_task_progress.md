@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Workbench Round Two: Data Import, Stereogram Tilting, Calibration, About — IN PROGRESS (2026-08-16)
+## Workbench Round Two: Data Import, Stereogram Tilting, Calibration, About — COMPLETE (2026-08-16)
 
 **Objective.** Six requested items, in one goal because five of them are the same complaint from
 different workspaces — the workbench simulates well and *ingests* nothing, and the TEM stage wastes
@@ -32,18 +32,30 @@ half its width:
 | S1 | Vectorized fundamental-sector reduction, with a parity test against an independent orbit search | done | `157f09c` |
 | A1 | `pytex.app.about` + manifest `about` + masthead About drawer | done | `4ff435e` |
 | T1 | TEM overlay clipped to the image bounds | done | `4ff435e` |
-| T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | done | (pending) |
-| T3a | Serialize `/api/call` — the crash the second figure made routine | done | (pending) |
-| T2 | TEM calibration: direct scale and interactive line measurement | done | (pending) |
-| U1 | `pytex.app.uploads`: the one browser-to-reader crossing | done | (pending) |
-| E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | done | (pending) |
-| X1 | Texture: `.xrdml` import, tabs, shared and user-set contour levels | done | (pending) |
-| D1 | Documentation and changelog for all of the above | todo | |
+| T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | done | `8d28d67` |
+| T3a | Serialize `/api/call` — the crash the second figure made routine | done | `8d28d67` |
+| T2 | TEM calibration: direct scale and interactive line measurement | done | `58a27b9` |
+| U1 | `pytex.app.uploads`: the one browser-to-reader crossing | done | `73587a7` |
+| E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | done | `73587a7` |
+| X1 | Texture: `.xrdml` import, tabs, shared and user-set contour levels | done | `73587a7` |
+| X2 | Texture: ODF reconstructed from the opened figures, as a further tab | done | `6646cfe` |
+| D1 | Documentation and changelog for all of the above | done | with each increment |
 
 ### Current worktree state
 
-`main`, one commit behind the work: S1 and A1 are written, tested and verified, awaiting the
-commit below.
+`main`, clean, pushed. All six requested items are landed. The full unit suite and the 21-case
+browser suite are green, and the server survives the whole browser run — which it did not before
+`8d28d67`.
+
+### Left open, deliberately
+
+- **One shared stereographic projection helper.** `pytex.plotting.tilt_stereogram._project` and
+  `pytex.app.services.tem._stereographic` are the same five lines in two places; a task chip is
+  raised. Both take their geometry from the same `pytex.tem.stage` forward model, so this is
+  tidiness rather than a correctness risk.
+- **The repository is not `ruff format` clean.** Running the formatter over `src/` and `tests/`
+  rewrites 68 files. Nothing in this task did that — the reformat was reverted — but a later session
+  should decide whether to adopt the formatter wholesale or to stop implying it is in use.
 
 ### Verified (S1)
 
