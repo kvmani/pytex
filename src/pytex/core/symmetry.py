@@ -198,15 +198,6 @@ def _vector_in_fundamental_sector(vector: np.ndarray, proper_group: str) -> bool
     return bool(np.all(normals @ np.asarray(vector, dtype=np.float64) >= -_SECTOR_TOLERANCE))
 
 
-def _sector_sort_key(vector: np.ndarray) -> tuple[float, float, float]:
-    rounded = np.round(vector, decimals=12)
-    return (
-        float(rounded[2]),
-        float(rounded[0]),
-        float(rounded[1]),
-    )
-
-
 @cache
 def _operators_for_proper_point_group(proper_group: str) -> np.ndarray:
     operators = _group_from_generators(_point_group_generators()[proper_group])
@@ -217,6 +208,97 @@ def _operators_for_proper_point_group(proper_group: str) -> np.ndarray:
 def _canonical_vector_index(vectors: np.ndarray) -> int:
     rounded = np.round(vectors, decimals=12)
     return int(np.lexsort((rounded[:, 1], rounded[:, 0], rounded[:, 2]))[-1])
+
+
+# Orbit block held in memory while reducing: rows x operators x 3 doubles. 8192
+# rows against the largest antipodal orbit (48 members for m-3m) is roughly
+# 9 MB, which keeps a million-point EBSD map inside cache-friendly chunks
+# instead of materializing a gigabyte-scale orbit array in one allocation.
+_SECTOR_REDUCTION_CHUNK = 8192
+
+
+def _reduce_normalized_vectors_to_sector(
+    normalized: np.ndarray,
+    operators: np.ndarray,
+    edge_normals: np.ndarray,
+    *,
+    antipodal: bool,
+) -> np.ndarray:
+    """Fundamental-sector representatives for a block of unit vectors.
+
+    The vectorized core of
+    :meth:`SymmetrySpec.reduce_vectors_to_fundamental_sector`. For every input
+    direction the full symmetry orbit is formed at once, tested against the
+    sector bounding planes in one matrix product, and the representative chosen
+    by a single ``lexsort`` whose key ordering reproduces the scalar rule
+    exactly: prefer members inside the sector, and among equals take the
+    largest ``(z, x, y)`` after rounding to 12 decimals. When no orbit member
+    passes the sector test — possible on a sector boundary within tolerance —
+    the ordering falls through to the canonical representative, which is the
+    same fallback the scalar routine takes.
+
+    Parameters
+    ----------
+    normalized : np.ndarray
+        ``(n, 3)`` unit vectors.
+    operators : np.ndarray
+        ``(order, 3, 3)`` proper rotations of the group.
+    edge_normals : np.ndarray
+        ``(k, 3)`` inward normals of the sector bounding planes.
+    antipodal : bool
+        Include the negated orbit, treating a direction and its reverse as
+        equivalent.
+
+    Returns
+    -------
+    np.ndarray
+        ``(n, 3)`` unit representatives, one per input row.
+    """
+
+    count = normalized.shape[0]
+    if count == 0:
+        return np.zeros((0, 3), dtype=np.float64)
+
+    reduced = np.empty((count, 3), dtype=np.float64)
+    for start in range(0, count, _SECTOR_REDUCTION_CHUNK):
+        block = normalized[start : start + _SECTOR_REDUCTION_CHUNK]
+        # (rows, members, 3): every operator applied to every direction.
+        orbit = np.einsum("oij,nj->noi", operators, block, optimize=True)
+        if antipodal:
+            orbit = np.concatenate([orbit, -orbit], axis=1)
+        orbit = normalize_vectors(orbit.reshape(-1, 3)).reshape(orbit.shape)
+
+        rows, members = orbit.shape[0], orbit.shape[1]
+        inside = np.all(orbit @ edge_normals.T >= -_SECTOR_TOLERANCE, axis=-1)
+
+        # A direction in general position has exactly one orbit member in the
+        # sector, and that member needs no ordering to identify. Only rows on a
+        # sector boundary (several members admitted within tolerance) or just
+        # outside it (none admitted) need the full lexicographic rule, so the
+        # sort runs over those rows alone.
+        chosen = np.argmax(inside, axis=1)
+        ambiguous = np.flatnonzero(inside.sum(axis=1) != 1)
+        if ambiguous.size:
+            subset = orbit[ambiguous]
+            flat = np.round(subset, decimals=12).reshape(-1, 3)
+            row_index = np.repeat(np.arange(ambiguous.size), members)
+            # Last lexsort key is the primary one: group by row, then put the
+            # in-sector members after the outside ones, then order by (z, x, y).
+            # The final entry of each row group is the representative — falling
+            # through to the canonical member when the sector admitted none.
+            order = np.lexsort(
+                (
+                    flat[:, 1],
+                    flat[:, 0],
+                    flat[:, 2],
+                    inside[ambiguous].ravel(),
+                    row_index,
+                ),
+            )
+            chosen[ambiguous] = order.reshape(ambiguous.size, members)[:, -1] % members
+
+        reduced[start : start + rows] = orbit[np.arange(rows), chosen]
+    return reduced
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -326,8 +408,7 @@ class SymmetrySpec:
 
     @property
     def is_laue(self) -> bool:
-        """Whether this symmetry is already a Laue (centrosymmetric) group.
-        """
+        """Whether this symmetry is already a Laue (centrosymmetric) group."""
 
         return normalize_point_group_symbol(self.point_group) == self.laue_group_symbol
 
@@ -703,16 +784,14 @@ class SymmetrySpec:
             returned instead, so the function always yields a usable direction.
         """
 
-        candidates = self.equivalent_vectors(vector, antipodal=antipodal)
-        matching = [
-            candidate
-            for candidate in candidates
-            if _vector_in_fundamental_sector(candidate, self.proper_point_group)
-        ]
-        if matching:
-            selected = max(matching, key=_sector_sort_key)
-            return as_float_array(selected, shape=(3,))
-        return self.canonicalize_vector(vector, antipodal=antipodal)
+        normalized = normalize_vector(vector).reshape(1, 3)
+        reduced = _reduce_normalized_vectors_to_sector(
+            normalized,
+            self.operators,
+            _sector_edge_normals_for_group(self.proper_point_group),
+            antipodal=antipodal,
+        )
+        return as_float_array(reduced[0], shape=(3,))
 
     def reduce_vectors_to_fundamental_sector(
         self,
@@ -740,12 +819,13 @@ class SymmetrySpec:
             provenance = vectors.provenance
         else:
             normalized = normalize_vectors(vectors)
-        reduced = [
-            self.reduce_vector_to_fundamental_sector(vector, antipodal=antipodal)
-            for vector in normalized
-        ]
-        array = np.stack(reduced, axis=0)
-        array = np.ascontiguousarray(array)
+        reduced = _reduce_normalized_vectors_to_sector(
+            np.asarray(normalized, dtype=np.float64).reshape(-1, 3),
+            self.operators,
+            _sector_edge_normals_for_group(self.proper_point_group),
+            antipodal=antipodal,
+        )
+        array = np.ascontiguousarray(reduced)
         array.setflags(write=False)
         if reference_frame is not None:
             return VectorSet(
@@ -865,9 +945,7 @@ class FundamentalSector:
             raise ValueError("boundary_trace requires at least two samples per edge.")
         if self.vertices.shape[0] == 0:
             angles = np.linspace(0.0, 2.0 * np.pi, 4 * samples_per_edge)
-            trace = np.column_stack(
-                [np.cos(angles), np.sin(angles), np.zeros_like(angles)]
-            )
+            trace = np.column_stack([np.cos(angles), np.sin(angles), np.zeros_like(angles)])
             return as_float_array(np.ascontiguousarray(trace), shape=(None, 3))
         if self.edge_normals.shape[0] != self.vertices.shape[0]:
             raise ValueError(
@@ -882,17 +960,11 @@ class FundamentalSector:
             tangent = np.cross(normal, start)
             tangent_norm = float(np.linalg.norm(tangent))
             if np.isclose(tangent_norm, 0.0):
-                raise ValueError(
-                    "Sector edge normal must be perpendicular to its starting vertex."
-                )
+                raise ValueError("Sector edge normal must be perpendicular to its starting vertex.")
             tangent = tangent / tangent_norm
-            sweep = float(
-                np.mod(np.arctan2(float(tangent @ end), float(start @ end)), 2.0 * np.pi)
-            )
+            sweep = float(np.mod(np.arctan2(float(tangent @ end), float(start @ end)), 2.0 * np.pi))
             angles = np.linspace(0.0, sweep, samples_per_edge, endpoint=False)
-            segments.append(
-                np.outer(np.cos(angles), start) + np.outer(np.sin(angles), tangent)
-            )
+            segments.append(np.outer(np.cos(angles), start) + np.outer(np.sin(angles), tangent))
         segments.append(self.vertices[:1])
         trace = np.concatenate(segments, axis=0)
         return as_float_array(np.ascontiguousarray(trace), shape=(None, 3))

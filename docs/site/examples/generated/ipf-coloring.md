@@ -98,7 +98,7 @@ result = key.colors_from_crystal_directions(direction)[0]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | 9.45e-30 | 1e-12 | ✅ pass |
+| `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | 9.58e-30 | 1e-12 | ✅ pass |
 
 **Why this value**: Closed form: beta = (dz - dx, sqrt(2)(dx - dy), sqrt(3) dy) evaluated at (1,1,3)/sqrt(11) gives (2, 0, sqrt(3))/sqrt(11), and (beta / max beta) ** 2 = (1, 0, 3/4) exactly.
 

@@ -101,6 +101,114 @@ def test_monoclinic_wedge_covers_half_hemisphere() -> None:
     assert not sector.contains([0.0, 0.5, -0.5])
 
 
+BOUNDARY_DIRECTIONS = np.array(
+    [
+        [0.0, 0.0, 1.0],
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [1.0, 1.0, 0.0],
+        [1.0, 0.0, 1.0],
+        [1.0, 1.0, 1.0],
+        [1.0, 1.0, 2.0],
+        [-1.0, 2.0, 3.0],
+        [0.0, 0.0, -1.0],
+        [-1.0, -1.0, -1.0],
+    ]
+)
+
+
+def reduce_by_orbit_search(
+    spec: SymmetrySpec,
+    vector: np.ndarray,
+    *,
+    antipodal: bool,
+) -> np.ndarray:
+    """A deliberately naive reduction, used as the reference answer.
+
+    Enumerates the orbit one operator at a time and picks the in-sector member
+    with the largest ``(z, x, y)``, falling back to the canonical representative
+    when the sector admits none. This is the definition the vectorized
+    :meth:`SymmetrySpec.reduce_vectors_to_fundamental_sector` must reproduce, so
+    it is written independently of that implementation.
+    """
+
+    sector = spec.fundamental_sector(antipodal=antipodal)
+    candidates = spec.equivalent_vectors(vector, antipodal=antipodal)
+    inside = [
+        candidate
+        for candidate in candidates
+        if bool(np.all(sector.edge_normals @ candidate >= -1e-8))
+    ]
+
+    def order_key(item: np.ndarray) -> tuple[float, float, float]:
+        rounded = np.round(item, decimals=12)
+        return (float(rounded[2]), float(rounded[0]), float(rounded[1]))
+
+    if inside:
+        return np.asarray(max(inside, key=order_key), dtype=float)
+    return np.asarray(spec.canonicalize_vector(vector, antipodal=antipodal), dtype=float)
+
+
+@pytest.mark.parametrize("proper_group", PROPER_GROUPS)
+@pytest.mark.parametrize("antipodal", [True, False])
+def test_batch_reduction_matches_an_independent_orbit_search(
+    proper_group: str,
+    antipodal: bool,
+) -> None:
+    spec = SymmetrySpec.from_point_group(proper_group)
+    samples = np.concatenate(
+        [
+            random_unit_vectors(120, seed=23),
+            BOUNDARY_DIRECTIONS / np.linalg.norm(BOUNDARY_DIRECTIONS, axis=1, keepdims=True),
+        ]
+    )
+    reduced = np.asarray(spec.reduce_vectors_to_fundamental_sector(samples, antipodal=antipodal))
+    expected = np.stack(
+        [reduce_by_orbit_search(spec, vector, antipodal=antipodal) for vector in samples]
+    )
+    assert_allclose(reduced, expected, atol=1e-12)
+    # The single-vector entry point must agree with its own batch form.
+    for index in (0, 5, len(samples) - 1):
+        single = spec.reduce_vector_to_fundamental_sector(samples[index], antipodal=antipodal)
+        assert_allclose(single, reduced[index], atol=1e-12)
+
+
+def test_batch_reduction_is_independent_of_the_chunk_boundary() -> None:
+    from pytex.core import symmetry as symmetry_module
+
+    spec = SymmetrySpec.from_point_group("432")
+    samples = random_unit_vectors(symmetry_module._SECTOR_REDUCTION_CHUNK + 37, seed=5)
+    whole = np.asarray(spec.reduce_vectors_to_fundamental_sector(samples))
+    split = np.concatenate(
+        [
+            np.asarray(spec.reduce_vectors_to_fundamental_sector(samples[:1000])),
+            np.asarray(spec.reduce_vectors_to_fundamental_sector(samples[1000:])),
+        ]
+    )
+    assert whole.shape == samples.shape
+    assert_allclose(whole, split, atol=1e-14)
+
+
+def test_batch_reduction_accepts_an_empty_set() -> None:
+    spec = SymmetrySpec.from_point_group("m-3m")
+    reduced = np.asarray(spec.reduce_vectors_to_fundamental_sector(np.zeros((0, 3))))
+    assert reduced.shape == (0, 3)
+
+
+def test_cubic_reduction_sends_symmetry_axes_to_the_sector_corners() -> None:
+    spec = SymmetrySpec.from_point_group("m-3m")
+    axes = np.array([[-1.0, 0.0, 0.0], [0.0, -1.0, 1.0], [-1.0, 1.0, -1.0]])
+    reduced = np.asarray(spec.reduce_vectors_to_fundamental_sector(axes))
+    expected = np.array(
+        [
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0] / np.sqrt(2.0),
+            [1.0, 1.0, 1.0] / np.sqrt(3.0),
+        ]
+    )
+    assert_allclose(reduced, expected, atol=1e-12)
+
+
 def make_cubic_key() -> IPFColorKey:
     symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=make_crystal_frame())
     return IPFColorKey(crystal_symmetry=symmetry, specimen_direction="ND")

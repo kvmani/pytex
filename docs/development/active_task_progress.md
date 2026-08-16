@@ -5,6 +5,104 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Workbench Round Two: Data Import, Stereogram Tilting, Calibration, About — IN PROGRESS (2026-08-16)
+
+**Objective.** Six requested items, in one goal because five of them are the same complaint from
+different workspaces — the workbench simulates well and *ingests* nothing, and the TEM stage wastes
+half its width:
+
+1. **TEM.** Clip the lattice overlay to the image; move the pattern to the left half and use the
+   freed half for a **stereogram** of the phase, with annotated zone axes, the solved zone axis
+   superimposed, a dotted tilt path to a target zone axis through highlighted low-index zones, and a
+   live hover readout of α/β tilt and the zone axis under the cursor.
+2. **TEM.** A **calibration** control: either a direct scale (`1 px = 0.05 Å⁻¹`) or an interactive
+   line drawn on the image against a known length in cm or Å⁻¹, used by every downstream number.
+3. **Texture.** Load **user data files** (`.xrdml` first), plot several pole figures and ODF
+   sections **in tabs**, with contour levels shared across all pole figures and freely settable.
+4. **EBSD.** Load and analyse **user `.ang` and `.ctf` files**.
+5. **Shell.** An **About** panel: version, description, author (Dr K V Mani Krishna, Materials
+   Group, BARC), contacts, licence.
+6. **Core.** Vectorize `SymmetrySpec.reduce_vectors_to_fundamental_sector`, the per-vector Python
+   loop that dominates EBSD IPF colouring. (Raised as a deferred task by the previous goal.)
+
+### Step ledger
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| S1 | Vectorized fundamental-sector reduction, with a parity test against an independent orbit search | done | (pending) |
+| A1 | `pytex.app.about` + manifest `about` + masthead About drawer | done | (pending) |
+| T1 | TEM overlay clipped to the image bounds | done | (pending) |
+| T2 | TEM calibration: direct scale and interactive line measurement | todo | |
+| T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | todo | |
+| X1 | Texture: `.xrdml` (and text) import service | todo | |
+| X2 | Texture: tabbed pole-figure / ODF stage with shared, user-set contour levels | todo | |
+| E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | todo | |
+| D1 | Documentation and changelog for all of the above | todo | |
+
+### Current worktree state
+
+`main`, one commit behind the work: S1 and A1 are written, tested and verified, awaiting the
+commit below.
+
+### Verified (S1)
+
+`_reduce_normalized_vectors_to_sector` forms each direction's whole orbit at once, tests it against
+the sector planes in one matrix product, and picks the representative by a single ordering rule.
+Two properties made the rewrite safe to trust:
+
+- **It reproduces the scalar rule exactly, not approximately.** A scratch harness compared the new
+  batch against the old element-by-element code over 409 directions × 12 point groups × both
+  antipodal settings: maximum difference 2.2e-16, which is the normalization round-off and not a
+  choice difference. The check deliberately included directions *on* sector boundaries (001, 110,
+  111, 112, -123), because that is where the "which of several admitted members" and "none admitted,
+  fall back to canonical" branches actually run.
+- **Speed.** 200,000 cubic directions: 1.17 s against 114 s extrapolated from the scalar path — 98x.
+  On the 80x80 practice map that turns the 6.2 s IPF stage into ~0.06 s.
+
+The ordering rule is preserved by construction rather than by re-derivation: one `lexsort` keyed
+`(row, inside, z, x, y)` puts the wanted member last in every row group, so "prefer in-sector, then
+largest (z, x, y), else canonical" is a single sort rather than a branch. The common case —
+exactly one orbit member in the sector — skips the sort entirely via `argmax`, which is where most
+of the speed comes from (the sort was 75% of the runtime).
+
+`tests/unit/test_fundamental_sector.py` gained the parity test against an *independently written*
+orbit search, a chunk-boundary test (the routine processes 8192 rows at a time so a million-point
+map does not allocate a gigabyte), an empty-input test, and a fixed-answer test that cubic 100, 011
+and 111 land on the sector corners.
+
+### Verified (A1)
+
+`pytex.app.about.about_document()` is the single source: the version is imported from
+`pytex._version`, and `tests/unit/test_app_about.py` reads `pyproject.toml` and `LICENSE` to assert
+the displayed licence *is* the licence shipped. Driven in Chromium at 1280x720: the drawer opens
+from the masthead and reads "PyTex 0.1.0.dev0", the description, "Dr K V Mani Krishna", "Materials
+Group, Bhabha Atomic Research Centre (BARC)", both addresses as `mailto:` links, and the GPL
+warranty disclaimer. Escape closes it; no console errors.
+
+### Verified (T1)
+
+A `viewBox` is a coordinate system, not a boundary: with `preserveAspectRatio="… meet"` the drawing
+is letterboxed, and anything painted outside the box lands on the margins. The fitted lattice walks
+node indices outwards until the grid certainly covers the image diagonal, so it always overshoots —
+measured at −1550 to +2573 on a 1024 px plate — and that overshoot was being drawn across blank page
+beside the pattern. Everything the panel draws now sits in one group clipped to the image rectangle,
+and a click outside the picture is refused with a message instead of placing a spot on no pixels.
+
+The browser test asserts the mechanism rather than the appearance, because that is where a
+regression would appear: no child of the plot SVG except `<defs>` may be unclipped, the clip
+rectangle must equal the viewBox, *and* the raw line coordinates must still run past the frame — so
+the case cannot pass by the overshoot quietly disappearing and leaving the clip untested.
+
+One thing the ledger should record because it cost a test run: the **Lattice** button is on by
+default, so a test that presses it turns the grid *off*.
+
+### Decisions worth not re-litigating
+
+- **About is served on the manifest, not by a new endpoint.** The frontend already fetches the
+  manifest at startup, and the version shown must be the version that answered that request.
+- **About reuses the help drawer's chrome.** It is the same gesture; a second visual language for it
+  would imply it is a different kind of surface.
+
 ## Workbench Modules: CBED, EBSD Plotter, And One Centralized Log — COMPLETE (2026-08-16)
 
 **Objective.** Add three things to the shared web/desktop workbench:
