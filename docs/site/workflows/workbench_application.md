@@ -397,6 +397,53 @@ holder frame so that position *is* tilt, and drawn whether or not a target has b
 take their geometry from the same `pytex.tem.stage` forward model.
 ```
 
+### Kikuchi bands on the solved pattern
+
+Once a solution is **accepted**, a **Kikuchi** toggle joins *Lattice* and *Calculated* on the
+pattern toolbar, and draws the bands that solution predicts as fine dotted lines under the spots.
+
+It is the same angular space. A detector records the directions of the outgoing electrons, and both
+the spots and the bands are placed in that space by the same reciprocal lattice and the same
+orientation, so superimposing them mixes nothing: a plane $(hkl)$ and its normal $\mathbf{g}$ are
+one crystallographic object, and the spot at $\mathbf{g}$ and the band centre line for $(hkl)$ are
+pole and polar of one another.
+
+The metrics agree too, and that is what makes the overlay checkable. A band's width is
+$L\,2\theta_B \approx \lambda L / d = r_g$, so
+
+> the band for $(hkl)$ is exactly as wide as the $000 \rightarrow \mathbf{g}$ spot distance, and
+> perpendicular to it.
+
+At an exact zone axis the band edges therefore bisect the $000 \rightarrow \mathbf{g}$ and
+$000 \rightarrow -\mathbf{g}$ segments, and every band of the zone runs through the transmitted
+beam. That is also why the bands are labelled *out* where they separate and never at the pole: at
+000 every band of the zone crosses, which is the most crowded and least informative point of the
+figure, and where the beam marker and the picks live.
+
+**Nothing new has to be calibrated.** The overlay lives entirely in the pattern frame and is driven
+by the accepted solution's `crystal_to_pattern` plus the pixel scale that already indexed the
+pattern — not the diffraction rotation $\varphi_D$, not the parity, not $\lambda$ or $L$
+separately. Picking two non-collinear spots measures their azimuths on the recorded image, so
+`crystal_to_pattern` is fully determined by the picks, *including* the roll. What one pattern does
+not determine is pattern-to-holder, and nothing here needs it.
+
+That is the real value of the feature rather than a technicality. "Keep the (200) band aligned and
+travel along it" is an instruction in the pattern frame, so it survives exactly the calibration
+nobody has, where "tilt α by +12.3°" does not. This is why microscopists navigate by bands, and why
+naming a **target zone axis** in the tilt form draws the connecting band distinctly and labels it
+`follow (200) toward [011]`, with the low-index waypoint zones named beside it. The band comes from
+{func}`pytex.tem.path.connecting_band`, which reports *no single band connects these zones* rather
+than inventing one when the two axes span no low-index plane.
+
+```{warning}
+The positions and widths are exact geometry; the **contrast is not modelled at all**. Which side of
+a band is excess and which deficient, how dark one band is against another, and the HOLZ lines
+crossing a zone axis are dynamical. A thin foil may show strong spots and no visible bands, because
+the diffuse internal source needs thickness. And the overlay is a *prediction from the accepted
+solution*, not independent evidence for it — though it is checkable, since the pattern it is drawn
+on was recorded before the prediction was made.
+```
+
 ### Calibrating from the image
 
 The camera equation uses one number: how much reciprocal space one pixel spans. An image that

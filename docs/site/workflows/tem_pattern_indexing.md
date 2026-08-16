@@ -226,6 +226,24 @@ Selecting a candidate draws it. **Accepting** one is a separate, deliberate act,
 and it is what carries the phase and axis into the steps below — a tilt planned
 from a solution nobody chose is a tilt planned from a guess.
 
+### The bands the answer predicts
+
+An accepted solution can be drawn back onto the plate as Kikuchi bands as well as
+as spots. It is the same reciprocal lattice in the same angular space, and the
+two measurements agree by construction: **a band is exactly as wide as the
+000 -> g distance of its own plane, and perpendicular to it**. That makes the
+overlay checkable against the pattern already on screen, and it needs nothing
+beyond the pixel scale that indexed the pattern -- not the diffraction rotation,
+not the parity. The workbench does this behind the **Kikuchi** toggle; see
+[the workbench page](workbench_application.md#kikuchi-bands-on-the-solved-pattern).
+
+The point of drawing them is navigation rather than decoration. Bands move
+rigidly with the crystal while spots do not, so "follow this band toward that
+pole" is an instruction in the pattern frame and survives the holder calibration
+nobody has. {func}`pytex.tem.path.connecting_band` names the band joining two
+zone axes, and returns nothing rather than a guess when no low-index plane
+contains both.
+
 ## 5. Choose where to go next
 
 Tilt planning answers *can I reach the axis I named*. At the column the question

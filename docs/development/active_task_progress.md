@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Shared Stereographic Projection, Then Kikuchi Bands On The Solved TEM Pattern — IN PROGRESS (2026-08-16)
+## Shared Stereographic Projection, Then Kikuchi Bands On The Solved TEM Pattern — COMPLETE (2026-08-16)
 
 **Objective.** Two increments, landed separately:
 
@@ -22,10 +22,10 @@ after every substantial increment.
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| P1 | `pytex.core.sphere.project_directions` / `fold_upper_hemisphere` as the one public helper; both private copies removed | done | (this commit) |
-| K1 | `tem.kikuchi_overlay` service: band geometry in pattern pixels | planned | |
-| K2 | TEM panel: Kikuchi toggle, dotted bands under the spots, connecting band labelled | planned | |
-| K3 | Geometry unit tests and browser coverage | planned | |
+| P1 | `pytex.core.sphere.project_directions` / `fold_upper_hemisphere` as the one public helper; both private copies removed | done | `fca129e` |
+| K1 | `tem.kikuchi_overlay` service: band geometry in pattern pixels | done | (this commit) |
+| K2 | TEM panel: Kikuchi toggle, dotted bands under the spots, connecting band labelled | done | (this commit) |
+| K3 | Geometry unit tests and browser coverage | done | (this commit) |
 
 ### Why the overlay needs no new calibration (P-increment design note, recorded so it is not re-litigated)
 
@@ -70,6 +70,110 @@ parameters / returns docstring the repository requires, including the two radial
   are unit holder vectors, so the numbers move by round-off only (~1e-16); the existing stereogram
   tests, which check the drawn poles against `solve_tilts_for_direction` and the `tan(rho/2)` law at
   1e-9, pass unchanged.
+
+### Verified (K1-K3)
+
+**The one design fact that made this small.** The overlay lives entirely in the pattern frame, so
+it needs no calibration that does not already exist. `tem.kikuchi_overlay` takes the accepted
+solution's `crystal_to_pattern` and the pixel scale, builds a stand-in detector facing the beam at
+`D = scale / lambda` pixels, and hands the exact Kossel-cone machinery in
+`pytex.diffraction.kikuchi` its own gnomonic plane. The wavelength cancels out of every pixel
+distance drawn -- it survives only in the curvature of the conics, which over a SAED field is
+sub-pixel -- so the accelerating voltage is a refinement rather than a calibration, and phi_D and
+the parity are never needed.
+
+**Numbers checked against geometry, not against the program.**
+
+- **Band width equals the spot radius.** On the aluminium practice plate the (020) band is
+  206.4 px wide and its own 000->g distance is 206.4 px; (220) is 292.0 px against 292.0 px. The
+  test asserts the ratio is `1 / cos(theta_B)` -- the exact Kossel-cone value, 1.00002 at 200 kV --
+  rather than exactly one, which is the difference between checking the geometry and checking that
+  two numbers came out of the same line of code.
+- **The drawn edges are the reported width.** `width_px` is computed analytically from the cones;
+  the edge polylines come from sampling them. A test measures the drawn edges against the band's
+  own centre line and finds `+/-103.222 px` at closest approach for a 206.444 px band, widening to
+  103.616 px at the frame edge -- so the edges are the hyperbolae they should be, not two parallel
+  lines, and the two constructions agree to 1e-9.
+- **The centre line is perpendicular to g**, and at an exact zone axis every band of the zone
+  passes through 000 to 1e-6 px. Which bands those are is decided in the test from the lattice
+  (`g . [001] = l = 0`) and the service's own `in_zone` flag is checked against it.
+- **A band's `in_zone` flag is a claim about the drawing** -- the centre line passes within a
+  pixel of the transmitted beam -- rather than a floating-point comparison on the plane normal.
+  A solved orientation is a fit to noisy picks, so an exact zero never occurs; and 0.4 degrees
+  off axis already moves the four aluminium bands 16 to 115 px off the pole, which is the
+  sensitivity that makes bands worth navigating by.
+- **The connecting band from [001] to [011] in a cubic phase is (100)**, derived from
+  `g . [001] = 0` and `g . [011] = 0`. Aluminium is face-centred, so the band actually drawn is its
+  first allowed order (200); the payload carries both, and the label sends the user looking for the
+  reflection the crystal produces rather than the forbidden one.
+- **Rotating `crystal_to_pattern` by 37 degrees about the beam rotates every band with it** and
+  changes no width, which is the rigid-body claim the navigation argument rests on.
+
+**Three things the implementation got wrong first, all caught by tests or by the browser.**
+
+1. The strongest-`max_bands` cut was taken *before* the visible-field filter, so a zone-axis pattern
+   drew one band: the bands that miss the plate are the majority, and they were consuming the
+   ranking. The cut is now taken after the filter.
+2. `connecting_band` names the lowest-index plane, which in a centred lattice can be a forbidden
+   reflection -- the first version labelled the route "follow (100)" beside a band drawn as (200).
+   `_same_band` compares reduced triples up to sign, and the label is taken from the band that is
+   drawn.
+3. The band edges were sampled at 361 points around the whole cone, of which only about eleven fell
+   near the plate, so a nearly-straight edge was drawn as a visibly kinked polyline. Sampled at
+   1441 now.
+
+**Driven in Chromium at 1600x900** against a live server on 127.0.0.1:8814 (8813 was occupied by
+another session's server): the **Kikuchi** toggle is absent until a solution is accepted, appears
+with it, and draws 4 bands -- `(020)`, `(2 -2 0)`, `(200)`, `(220)` -- as dotted edges with a dashed
+centre line, all inside `#tem-pattern-clip` with no unclipped children, labelled at ~300 px from the
+beam rather than at the pole. The connecting band is drawn in a distinct colour and labelled
+`follow (200) toward [011]`, and the status line reads
+
+> 4 predicted band(s), each as wide as its own 000->g distance - follow (200) toward [011] via
+> [012] - positions and widths are geometry; contrast, excess/deficient sides and HOLZ lines are
+> not modelled, and a thin foil may show these spots with no bands at all
+
+The browser suite is **22/22** with the server alive at the end, including a new case that asserts
+the toggle's absence before acceptance, the clip, that the drawn edges really do run past the frame
+(so the case cannot pass by drawing nothing), the plane-notation labels, the connecting-band label,
+the honesty text in the status line, and that switching it off removes the bands rather than leaving
+them stale.
+
+### Decisions worth not re-litigating (K)
+
+- **The overlay is drawn from the accepted solution, not from the best-ranked one.** Accepting is a
+  judgement; drawing from a candidate nobody chose would be drawing from a guess. Each alternative
+  in `tem.solve_pattern` now carries its own `crystal_to_pattern` so that is possible at all.
+- **The toggle appears on acceptance rather than being permanently present and disabled.** Before
+  there is an orientation there is nothing to draw, and a control that draws nothing reads as
+  broken.
+- **Bands are drawn through the pole and labelled away from it.** At an exact zone axis every band
+  of the zone crosses at 000, which is the most crowded and least informative point in the figure
+  and where the beam marker and the picks live.
+- **The waypoint zones are named in the label and the status line rather than marked on the plate.**
+  A waypoint 26.6 degrees off the beam projects some 8000 px out on this geometry: marking it where
+  it truly falls would put it far off the picture, and marking it anywhere else would be a lie about
+  where it is.
+- **The stand-in detector's millimetres are arbitrary and never surface.** Only the ratio
+  `D = scale / lambda` reaches the answer; inventing a camera length and a pixel size whose quotient
+  happens to be right would put two fictional numbers into a result that reports its inputs.
+
+### Left open, deliberately (recorded rather than started)
+
+**`_orientation_with_axis_on_beam` explains itself wrongly.** The TEM panel's stereogram and tilt
+planner build their orientation from the zone-axis indices plus a hand-typed `beam_rotation_deg`,
+discarding `crystal_to_pattern` entirely. Its docstring justifies this by claiming the roll is
+undetermined "because every roll produces the same spot positions", which is **false**: a roll
+visibly rotates the pattern, and clicking two non-collinear spots measures it. The conclusion is
+right for the wrong reason -- what one indexed pattern leaves undetermined is **pattern-to-holder**
+(the diffraction rotation phi_D and the parity), not crystal-to-pattern.
+`pytex.tem.reconstruction.CurrentState.from_pattern_solution` already models that composition
+explicitly and raises rather than guessing. Composing `crystal_to_pattern` with an explicit
+diffraction rotation in the stereogram and the tilt planner is a separate increment, because it
+touches the orientation model the planner depends on. It was **not** started here.
+
+**Still not `ruff format` clean repository-wide.** Only the files touched here were formatted, per
+the standing note below.
 
 ## Workbench Round Two: Data Import, Stereogram Tilting, Calibration, About — COMPLETE (2026-08-16)
 

@@ -54,6 +54,9 @@ const SPOT_COLOUR = '#eaf2ff';
  */
 const LATTICE_COLOUR = '#4fd3d3';
 const CALCULATED_COLOUR = '#c9b0ff';
+// Kikuchi bands, and the one band that is a route rather than a landmark.
+const KIKUCHI_COLOUR = '#8fd9ff';
+const KIKUCHI_ROUTE_COLOUR = '#ffd447';
 const HALO_COLOUR = '#05070d';
 
 /*
@@ -116,6 +119,12 @@ export function mount(context) {
     pixels: null,
     showLattice: true,
     showCalculated: true,
+    // The Kikuchi bands the accepted solution predicts. There is nothing to
+    // draw before a solution is accepted, so the toggle appears with it.
+    showKikuchi: false,
+    kikuchi: null,
+    kikuchiRequest: null,
+    kikuchiPending: null,
     // The calibration tool: whether it is taking clicks, the two ends of the
     // measured line, and the length the user says it is.
     calibrate: { active: false, points: [], length: '', unit: 'inv_angstrom' },
@@ -205,6 +214,31 @@ export function mount(context) {
     },
   });
 
+  /*
+   * Kikuchi: the bands the accepted orientation predicts, on the same plate.
+   *
+   * A detector records directions of outgoing electrons, and the spots and the
+   * bands are placed in that one angular space by the same reciprocal lattice
+   * and the same orientation, so superimposing them mixes nothing. The metrics
+   * agree as well: a band is exactly as wide as its own 000→g distance and
+   * perpendicular to it, which is a check the user can make by eye — and the
+   * reason nothing here needs the diffraction rotation or the parity, neither
+   * of which one indexed pattern determines.
+   */
+  const kikuchiButton = el('button.button', {
+    type: 'button',
+    text: 'Kikuchi',
+    hidden: true,
+    'aria-pressed': 'false',
+    title: 'Superimpose the Kikuchi bands the accepted solution predicts',
+    onclick: () => {
+      state.showKikuchi = !state.showKikuchi;
+      kikuchiButton.setAttribute('aria-pressed', String(state.showKikuchi));
+      if (state.showKikuchi) refreshKikuchi();
+      else drawPattern();
+    },
+  });
+
   const frame = plotFrame({
     title: 'Pattern',
     toolbar: [
@@ -212,6 +246,7 @@ export function mount(context) {
       calibrateButton,
       latticeButton,
       calculatedButton,
+      kikuchiButton,
       answerButton,
       el('button.button', {
         type: 'button',
@@ -237,6 +272,7 @@ export function mount(context) {
           state.selectedPick = 'centre';
           state.highlight = null;
           calculatedButton.hidden = true;
+          resetKikuchi();
           renderPickTool();
           drawPattern();
         },
@@ -450,7 +486,12 @@ export function mount(context) {
     // rather than waiting for the plan to be pressed.
     state.tiltForm = buildForm(tiltOperation, {
       initial: tilt,
-      onChange: () => scheduleStereogram(),
+      onChange: () => {
+        scheduleStereogram();
+        // The target zone axis chooses the connecting band, so the overlay
+        // follows the same control rather than adding one of its own.
+        scheduleKikuchi();
+      },
     });
     tiltHost.replaceChildren(state.tiltForm.element);
     scheduleStereogram();
@@ -520,6 +561,7 @@ export function mount(context) {
       state.selectedPick = 'centre';
       state.highlight = null;
       calculatedButton.hidden = true;
+      resetKikuchi();
       state.image = null;
       state.pixels = null;
       state.showAnswer = false;
@@ -622,6 +664,7 @@ export function mount(context) {
         state.selectedPick = 'centre';
         state.highlight = null;
         calculatedButton.hidden = true;
+        resetKikuchi();
         answerButton.hidden = true;
         autoPickButton.hidden = true;
         renderPickTool();
@@ -1399,6 +1442,8 @@ export function mount(context) {
       drawSimulatedPattern(root, state.gallery.data.pattern);
     }
 
+    // Under the spots: the bands are the background the spots are read against.
+    if (state.showKikuchi) drawKikuchiBands(root, width, height);
     if (state.showLattice && state.fit) drawFittedLattice(root, width, height);
     if (state.showCalculated) drawCalculatedPattern(root, width, height);
     if (state.calibrate.active) drawCalibrationLine(root, width, height);
@@ -2176,6 +2221,150 @@ export function mount(context) {
    * keep in step with it. Debounced, because it redraws on every keystroke in
    * those fields.
    */
+  /* ----------------------------------------------------- Kikuchi bands */
+
+  /** Forget the bands: they belong to an orientation that no longer stands. */
+  function resetKikuchi() {
+    clearTimeout(state.kikuchiPending);
+    state.kikuchi = null;
+    state.kikuchiRequest = null;
+    state.showKikuchi = false;
+    kikuchiButton.hidden = true;
+    kikuchiButton.setAttribute('aria-pressed', 'false');
+  }
+
+  function scheduleKikuchi() {
+    if (!state.showKikuchi) return;
+    clearTimeout(state.kikuchiPending);
+    state.kikuchiPending = setTimeout(() => refreshKikuchi(), 180);
+  }
+
+  /**
+   * Ask for the bands of the accepted solution, in this plate's own pixels.
+   *
+   * Everything sent is already on screen: the accepted orientation, the
+   * calibration that indexed the pattern, the picked beam, and the image size.
+   * Nothing is asked of the microscope — the overlay never leaves the pattern
+   * frame, so the diffraction rotation and the parity, which one indexed
+   * pattern cannot determine, are not needed and are not guessed.
+   */
+  async function refreshKikuchi() {
+    const size = frameSize();
+    const accepted = state.accepted;
+    if (!accepted?.crystal_to_pattern || !state.picks.centre || !size) return;
+    const values = state.solveForm.values();
+    const request = {
+      phase: values.phase,
+      orientation: { crystal_to_pattern: accepted.crystal_to_pattern },
+      units: values.units,
+      camera_constant_mm_angstrom: values.camera_constant_mm_angstrom,
+      pixel_size_mm: values.pixel_size_mm,
+      reciprocal_per_px_angstrom: values.reciprocal_per_px_angstrom,
+      centre_x: state.picks.centre[0],
+      centre_y: state.picks.centre[1],
+      frame_width: size.width,
+      frame_height: size.height,
+      target_zone_axis: state.tiltForm?.values().target_zone_axis ?? [0, 0, 0],
+    };
+    const key = JSON.stringify(request);
+    if (key === state.kikuchiRequest && state.kikuchi) {
+      drawPattern();
+      return;
+    }
+    try {
+      const result = await call('tem.kikuchi_overlay', request);
+      state.kikuchiRequest = key;
+      state.kikuchi = result;
+      drawPattern();
+      const data = result.data;
+      const route = data.connecting
+        ? ` · ${data.connecting.text}` +
+          (data.connecting.waypoints.length
+            ? ` via ${data.connecting.waypoints.map((way) => way.label).join(', ')}`
+            : '')
+        : data.connecting_note
+          ? ` · ${data.connecting_note}`
+          : '';
+      frame.setStatus(
+        `${data.bands.length} predicted band(s), each as wide as its own 000→g distance` +
+          `${route} · positions and widths are geometry; contrast, excess/deficient sides and ` +
+          'HOLZ lines are not modelled, and a thin foil may show these spots with no bands at all',
+      );
+    } catch (error) {
+      // The bands are an aid; failing to draw them must not disturb the picking
+      // and indexing the user is actually doing.
+      state.kikuchi = null;
+      state.showKikuchi = false;
+      kikuchiButton.setAttribute('aria-pressed', 'false');
+      drawPattern();
+      frame.setStatus(error?.message ?? String(error));
+    }
+  }
+
+  /**
+   * Draw the bands: fine dotted edges under everything else.
+   *
+   * Two rules the geometry dictates. Bands are drawn *through* the transmitted
+   * beam but labelled well away from it, because at an exact zone axis every
+   * band of the zone crosses at 000 — the most crowded and least informative
+   * point of the figure, and where the beam marker and the picks live. And the
+   * connecting band is drawn distinctly, because it is the one instruction here
+   * that survives the missing holder calibration: following a band is a
+   * pattern-frame move, where "tilt alpha by +12.3" is not.
+   */
+  function drawKikuchiBands(root, width, height) {
+    const data = state.kikuchi?.data;
+    if (!data?.bands?.length) return;
+    const group = svg('g', { 'pointer-events': 'none' });
+    const weight = Math.max(width, height) / 900;
+    const font = Math.max(width, height) / 52;
+    for (const band of data.bands) {
+      const colour = band.connecting ? KIKUCHI_ROUTE_COLOUR : KIKUCHI_COLOUR;
+      const prominence = 0.35 + 0.45 * Math.min(1, Number(band.intensity) || 0);
+      const [[x1, y1], [x2, y2]] = band.centre;
+      group.append(
+        svg('line', {
+          x1, y1, x2, y2,
+          stroke: colour,
+          'stroke-opacity': band.connecting ? 0.85 : prominence * 0.6,
+          'stroke-width': band.connecting ? weight * 1.6 : weight * 0.9,
+          'stroke-dasharray': `${weight * 6} ${weight * 6}`,
+        }),
+      );
+      for (const edge of band.edges) {
+        for (const run of edge) {
+          group.append(
+            svg('polyline', {
+              points: run.map(([x, y]) => `${x},${y}`).join(' '),
+              fill: 'none',
+              stroke: colour,
+              'stroke-opacity': prominence,
+              'stroke-width': band.connecting ? weight * 2 : weight * 1.2,
+              'stroke-dasharray': `${weight * 2} ${weight * 3}`,
+            }),
+          );
+        }
+      }
+      const [labelX, labelY] = band.label_at;
+      const text = band.connecting && data.connecting ? data.connecting.text : band.label;
+      group.append(
+        svg('text', {
+          x: labelX, y: labelY,
+          'font-size': band.connecting ? font * 1.1 : font,
+          'font-weight': band.connecting ? '600' : '400',
+          fill: colour,
+          stroke: HALO_COLOUR,
+          'stroke-width': font / 6,
+          'paint-order': 'stroke',
+          'text-anchor': 'middle',
+          'dominant-baseline': 'middle',
+          text,
+        }),
+      );
+    }
+    root.append(group);
+  }
+
   function scheduleStereogram() {
     clearTimeout(state.stereoPending);
     state.stereoPending = setTimeout(() => refreshStereogram(), 180);
@@ -2600,6 +2789,9 @@ export function mount(context) {
       state.solutions = result.data.alternatives ?? [];
       state.selected = 0;
       state.accepted = null;
+      // A new indexing supersedes the accepted orientation, and with it the
+      // bands that were drawn from it.
+      resetKikuchi();
       calculatedButton.hidden = state.solutions.length === 0;
       state.showCalculated = true;
       calculatedButton.setAttribute('aria-pressed', 'true');
@@ -2803,6 +2995,9 @@ export function mount(context) {
     const phase = state.solveForm.values().phase;
     const axis = entry.zone_axis_indices ?? result.data.zone_axis;
     state.atlasForm?.setValues({ phase, current_zone_axis: axis });
+    // There is nothing to draw before a solution is accepted, so the toggle
+    // arrives with the orientation that makes it meaningful.
+    kikuchiButton.hidden = !entry.crystal_to_pattern;
     state.tiltForm.setValues({ phase, current_zone_axis: axis });
     // `setValues` is a programmatic write and fires no change event, so the
     // stereogram is told explicitly. Without this the solved axis appeared in

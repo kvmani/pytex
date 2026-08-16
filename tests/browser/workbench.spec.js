@@ -887,6 +887,99 @@ test('the stereogram sits beside the pattern and reads out the tilt under the cu
 });
 
 /*
+ * The Kikuchi bands appear with the accepted orientation, and only then.
+ *
+ * Two things are worth pinning in a browser rather than in Python. The toggle
+ * must not exist before a solution has been accepted, because before that there
+ * is no orientation to draw from and a control that draws nothing reads as a
+ * broken one. And the bands must go inside the clipped group with everything
+ * else: a band centre line is generated from a lattice plane and runs the whole
+ * width of the pattern, so an overlay appended to the outer element would paint
+ * across the margins beside the picture.
+ */
+test('the accepted solution draws its Kikuchi bands inside the clip', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+
+  const kikuchi = patternButton(page, 'Kikuchi');
+  await expect(kikuchi).toBeHidden();
+
+  await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
+  await expect(page.locator('.picks__row')).toHaveCount(7, { timeout: 20_000 });
+  await page.getByRole('button', { name: 'Index the pattern', exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Accept this solution', exact: true })
+    .click({ timeout: 20_000 });
+
+  // It arrives with the orientation that makes it meaningful.
+  await expect(kikuchi).toBeVisible();
+  await expect(kikuchi).toHaveAttribute('aria-pressed', 'false');
+  await kikuchi.click();
+  await expect(kikuchi).toHaveAttribute('aria-pressed', 'true');
+
+  const drawn = await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+          return svg.querySelectorAll('polyline').length;
+        }),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(0);
+  void drawn;
+
+  const geometry = await page.evaluate(() => {
+    const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+    const labels = [...svg.querySelectorAll('text')].map((node) => node.textContent);
+    const box = svg.viewBox.baseVal;
+    let farthest = 0;
+    for (const polyline of svg.querySelectorAll('polyline')) {
+      for (const pair of polyline.getAttribute('points').split(' ')) {
+        const [x, y] = pair.split(',').map(Number);
+        farthest = Math.max(farthest, Math.abs(x - box.width / 2), Math.abs(y - box.height / 2));
+      }
+    }
+    return {
+      labels,
+      farthest,
+      halfWidth: box.width / 2,
+      unclipped: [...svg.children]
+        .filter((child) => child.tagName !== 'defs')
+        .filter((child) => !child.getAttribute('clip-path'))
+        .map((child) => child.tagName),
+    };
+  });
+
+  // Nothing new escaped the clip, and the band edges really do run past the
+  // frame — so the case cannot pass by the overlay quietly drawing nothing.
+  expect(geometry.unclipped).toEqual([]);
+  expect(geometry.farthest).toBeGreaterThan(geometry.halfWidth);
+  // Bands are named as planes, and the route to the target names the band to
+  // follow rather than a tilt nobody can dial without the holder calibration.
+  expect(geometry.labels.some((label) => /^\(\d/.test(label ?? ''))).toBe(true);
+  expect(geometry.labels.some((label) => /^follow \(.*\) toward \[/.test(label ?? ''))).toBe(true);
+
+  // The status line says what the overlay is and what it is not.
+  const status = await patternControl(page, '.plot__status').textContent();
+  expect(status).toContain('000');
+  expect(status).toMatch(/not modelled/);
+
+  // Turning it off takes the bands away rather than leaving them stale.
+  await kikuchi.click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+        return svg.querySelectorAll('polyline').length;
+      }),
+    )
+    .toBe(0);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * About is a legal surface as much as a courtesy one: the GPL asks an
  * interactive program to display its warranty disclaimer, and a user filing a
  * bug needs the build number. The assertion is therefore on the content, not

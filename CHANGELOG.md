@@ -13,6 +13,27 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Kikuchi bands on the solved TEM pattern.** `tem.kikuchi_overlay` draws the bands the accepted
+  solution predicts over the plate it was solved from, behind a **Kikuchi** toggle that appears
+  beside *Lattice* and *Calculated* once a solution is accepted. A detector records directions of
+  outgoing electrons, and the spots and the bands are placed in that one angular space by the same
+  reciprocal lattice and the same orientation, so a plane and its normal are drawn as what they
+  are — pole and polar of one another. The metrics agree too: **a band is exactly as wide as the
+  000→g distance of its own plane and perpendicular to it**, which is a check the user can make by
+  eye on the pattern in front of them, and the reason the overlay needs no calibration beyond the
+  pixel scale that already indexed the pattern — not the diffraction rotation, not the parity, not
+  λ or L separately. Naming a target zone axis draws the connecting band distinctly and labels it
+  `follow (200) toward [011]` with the low-index waypoints named, from
+  `pytex.tem.path.connecting_band`, which says *no single band connects these zones* rather than
+  inventing one. Band edges are the exact Kossel-cone conics, not the straight-line small-angle
+  approximation. The result and the status line state what is *not* modelled: excess and deficient
+  contrast, relative darkness and HOLZ lines are dynamical; bands move rigidly with the crystal
+  while spots do not, which is why bands navigate and spots identify; a thin foil may show strong
+  spots and no bands at all; and the overlay is a prediction from the accepted orientation rather
+  than independent evidence for it.
+- Each candidate returned by `tem.solve_pattern` now carries its own `crystal_to_pattern`, not only
+  the best-ranked one, because accepting a candidate is a judgement and everything drawn from the
+  accepted solution needs *its* orientation.
 - **A stereogram beside the TEM pattern.** `tem.stereogram` projects every zone axis of the phase
   onto the upper hemisphere in *holder* coordinates, so a pole's position on the drawing is the tilt
   that reaches it. It carries the holder envelope as the region of poles the stage can actually

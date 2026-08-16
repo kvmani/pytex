@@ -61,6 +61,10 @@ _CITATION_HIRSCH = (
 
 _CITATION_WILLIAMS = "Williams & Carter, Transmission Electron Microscopy, 2nd ed., chapters 16-18."
 _CITATION_EDINGTON = "Edington, Practical Electron Microscopy in Materials Science (1975)."
+_CITATION_KIKUCHI = (
+    "Kikuchi, Japanese Journal of Physics 5 (1928), 83 - the diffuse-scattering origin of the "
+    "band pattern."
+)
 
 
 _UNIT_OPTIONS = (
@@ -554,6 +558,14 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             ),
             "zone_axis_indices": [
                 int(value) for value in np.asarray(solution.zone_axis.indices, dtype=int)
+            ],
+            # Each candidate carries its own orientation, not only the best one:
+            # accepting a candidate is a judgement, and everything drawn from the
+            # accepted solution — the Kikuchi overlay above all — needs the
+            # orientation of the one that was accepted.
+            "crystal_to_pattern": [
+                float(value)
+                for value in np.asarray(solution.orientation.as_matrix(), dtype=float).reshape(-1)
             ],
             "matched_spots": round(solution.matched_fraction * solution.measured_spot_count),
             "matched_fraction": float(solution.matched_fraction),
@@ -2588,6 +2600,665 @@ def _rotation_between(source: np.ndarray, target: np.ndarray) -> np.ndarray:
         + (1.0 - math.cos(angle)) * (cross_matrix @ cross_matrix)
     )
     return np.asarray(rotation, dtype=float)
+
+
+# --------------------------------------------------------------- Kikuchi bands
+
+#: What the Kikuchi overlay claims and what it does not.
+#:
+#: Kept in one place because the result prose, the panel status line and the
+#: tests all have to make the same statement; three wordings of one caveat is
+#: how a caveat quietly stops being true.
+_KIKUCHI_LIMITS = (
+    "Band positions and widths are exact geometry. A band's centre line is the trace of its own "
+    "lattice plane and its width is 2θ_B, which in pixels is the 000→g distance for that same "
+    "plane — so the overlay can be checked against the plate it is drawn on.",
+    "Band contrast is not modelled. Which side of a band is excess and which deficient, how dark "
+    "one band is against another, and the HOLZ lines crossing a zone axis are dynamical effects "
+    "outside this kinematic geometry; only |F|² sets the prominence quoted here.",
+    "Bands move rigidly with the crystal; spots do not. A tilt slides the whole band pattern "
+    "across the screen, while the spot pattern only changes which reflections are excited. That "
+    "asymmetry is why bands are what an operator navigates by and spots are what identify the "
+    "phase.",
+    "A thin foil can show strong spots and no visible bands at all. Kikuchi lines come from "
+    "electrons scattered diffusely inside the specimen, so they need thickness to be produced; "
+    "this says where they would be, not that they will be there.",
+    "The overlay is a prediction from the accepted solution, not independent evidence for it. It "
+    "is worth what that orientation is worth — but it is checkable, because the pattern it is "
+    "drawn on was recorded before the prediction was made.",
+)
+
+
+def _crystal_to_pattern(payload: Mapping[str, Any] | None) -> np.ndarray:
+    """The accepted solution's orientation matrix, validated as a rotation.
+
+    ``tem.solve_pattern`` returns ``crystal_to_pattern`` as nine numbers, and
+    this is the only place they are read back. Picking two non-collinear spots
+    measures their azimuths on the recorded image, so this matrix — including
+    the roll about the beam — is fully determined by the picks. What the picks
+    do *not* give is pattern-to-holder, which needs the diffraction rotation and
+    the parity; nothing here needs it, because the overlay never leaves the
+    pattern frame.
+    """
+
+    if not isinstance(payload, Mapping):
+        raise InvalidInputError(
+            "The overlay needs the orientation of an accepted solution.",
+            field="orientation",
+            hint="Index the pattern and accept a solution; its orientation is carried here.",
+        )
+    values = payload.get("crystal_to_pattern")
+    if not isinstance(values, Sequence) or len(values) != 9:
+        raise InvalidInputError(
+            "crystal_to_pattern must be nine numbers, row by row.",
+            field="orientation",
+        )
+    matrix = np.asarray([float(value) for value in values], dtype=float).reshape(3, 3)
+    orthogonal = np.allclose(matrix @ matrix.T, np.eye(3), atol=1e-6)
+    if not orthogonal or float(np.linalg.det(matrix)) < 0.0:
+        raise InvalidInputError(
+            "crystal_to_pattern must be a proper rotation.",
+            field="orientation",
+            hint=(
+                "It comes from the solver as one; a matrix that is not orthogonal would stretch "
+                "the bands and the spots by different amounts."
+            ),
+        )
+    return matrix
+
+
+def _pattern_frame_geometry(voltage_kv: float) -> Any:
+    """A detector facing the beam, so the plate *is* its gnomonic plane.
+
+    :mod:`pytex.diffraction.kikuchi` expresses band geometry in gnomonic
+    coordinates — units of the detector distance — and a SAED plate is a central
+    projection of the same angular space. Reusing that machinery therefore needs
+    only the detector distance measured in picked pixels, which
+    :func:`_kikuchi_detector_distance_px` supplies. Nothing about this stand-in
+    detector's own millimetres reaches the answer.
+    """
+
+    from pytex.core.frame_catalog import STANDARD_FRAMES
+    from pytex.diffraction.models import DiffractionGeometry
+
+    return DiffractionGeometry(
+        detector_frame=STANDARD_FRAMES["detector"],
+        specimen_frame=STANDARD_FRAMES["specimen"],
+        laboratory_frame=STANDARD_FRAMES["laboratory"],
+        beam_energy_kev=float(voltage_kv),
+        camera_length_mm=100.0,
+        pattern_center=np.array([0.5, 0.5, 1.0]),
+        detector_pixel_size_um=(10.0, 10.0),
+        detector_shape=(1024, 1024),
+    )
+
+
+def _kikuchi_detector_distance_px(scale_px_per_inv_angstrom: float, wavelength: float) -> float:
+    """One gnomonic unit, in picked pixels.
+
+    A spot sits at ``r_g = |g| · scale`` pixels and at ``2θ_B`` from the beam
+    with ``sin θ_B = λ|g| / 2``, so a gnomonic distance ``D`` has to satisfy
+    ``D · 2θ_B = |g| · scale``. That gives ``D = scale / λ`` for every plane at
+    once, which is the same statement as "a band is as wide as its own spot is
+    far out". The wavelength cancels from every pixel distance the overlay
+    draws and survives only in the curvature of the exact Kossel conics, which
+    over a SAED field is sub-pixel — so the accelerating voltage is a refinement
+    here, not a calibration the overlay depends on.
+    """
+
+    return float(scale_px_per_inv_angstrom) / float(wavelength)
+
+
+def _line_through_frame(
+    line: tuple[float, float, float], width: float, height: float
+) -> list[list[float]] | None:
+    """Where a straight line ``a x + b y + c = 0`` crosses the image rectangle.
+
+    Band centre lines are great circles, and great circles are exactly straight
+    in gnomonic coordinates, so a centre line needs two endpoints rather than a
+    sampled polyline. Returning the crossings of the frame itself keeps the
+    drawing inside the picture instead of relying on the clip to hide a line
+    that ran to the horizon.
+    """
+
+    a, b, c = line
+    points: list[list[float]] = []
+    if abs(b) > 1e-12:
+        for x in (0.0, width):
+            y = -(a * x + c) / b
+            if -1e-9 <= y <= height + 1e-9:
+                points.append([x, y])
+    if abs(a) > 1e-12:
+        for y in (0.0, height):
+            x = -(b * y + c) / a
+            if -1e-9 <= x <= width + 1e-9:
+                points.append([x, y])
+    unique: list[list[float]] = []
+    for point in points:
+        if all(math.hypot(point[0] - other[0], point[1] - other[1]) > 1e-6 for other in unique):
+            unique.append(point)
+    if len(unique) < 2:
+        return None
+    return unique[:2]
+
+
+def _clipped_runs(points: np.ndarray, width: float, height: float) -> list[list[list[float]]]:
+    """Split a sampled trace into the runs that are near the picture.
+
+    A Kossel-cone edge is a conic whose far branch can run to the horizon; drawn
+    as one polyline it would be closed by a chord straight across the pattern —
+    a line the crystal never produced. Points far outside the frame are dropped
+    and the remainder is broken wherever the trace jumped, so only genuine
+    stretches are drawn.
+    """
+
+    if points.size == 0:
+        return []
+    margin = max(width, height)
+    inside = (
+        (points[:, 0] > -margin)
+        & (points[:, 0] < width + margin)
+        & (points[:, 1] > -margin)
+        & (points[:, 1] < height + margin)
+    )
+    runs: list[list[list[float]]] = []
+    current: list[list[float]] = []
+    limit = 0.5 * math.hypot(width, height)
+    previous: np.ndarray | None = None
+    for index, keep in enumerate(inside):
+        point = points[index]
+        if not keep:
+            if len(current) > 1:
+                runs.append(current)
+            current = []
+            previous = None
+            continue
+        if previous is not None and float(np.linalg.norm(point - previous)) > limit:
+            if len(current) > 1:
+                runs.append(current)
+            current = []
+        current.append([float(point[0]), float(point[1])])
+        previous = point
+    if len(current) > 1:
+        runs.append(current)
+    return runs
+
+
+@REGISTRY.operation(
+    "tem.kikuchi_overlay",
+    title="Superimpose the Kikuchi bands of the accepted solution",
+    summary="Where the bands fall on this pattern, and which one to follow to the next zone axis.",
+    help_text=(
+        "A detector records the *directions* of the outgoing electrons, and both the spots and "
+        "the Kikuchi bands are placed in that angular space by the same reciprocal lattice and "
+        "the same orientation. Superimposing them mixes nothing: a plane (hkl) and its normal "
+        "**g** are one crystallographic object, and in the space of directions the spot at **g** "
+        "and the band centre line for (hkl) are pole and polar of one another.\n\n"
+        "**The metrics agree too, which is the useful part.** A band's width is L·2θ_B ≈ λL/d, "
+        "which is exactly the 000→g distance. So *the band for (hkl) is as wide as its own spot "
+        "is far out, and perpendicular to it* — a check the user can make by eye on the plate in "
+        "front of them, and the reason this overlay needs no calibration beyond the pixel scale "
+        "that already indexed the pattern. Not the diffraction rotation, not the parity, not the "
+        "camera length or the wavelength separately.\n\n"
+        "**Why bands are what one navigates by.** Bands move rigidly with the crystal; spots do "
+        "not. 'Keep the (200) band aligned and travel along it' is an instruction in the pattern "
+        "frame, and so is robust to precisely the calibration nobody has — where 'tilt α by "
+        "+12.3°' is not. That is why the connecting band to a named target is drawn distinctly, "
+        "with the low-index zones along the way marked: it is a route that can be followed on "
+        "the screen rather than dialled in open loop.\n\n"
+        "**What this is not.** The positions and widths are exact geometry; the *contrast* is "
+        "not modelled at all — excess and deficient sides, relative darkness, and HOLZ lines are "
+        "dynamical. And a thin foil may show strong spots with no visible bands, because the "
+        "diffuse internal source needs thickness. The overlay is a prediction from the accepted "
+        "orientation, not independent evidence for it."
+    ),
+    parameters=(
+        phase_parameter(help_text="The phase of the accepted solution."),
+        ObjectParameter(
+            name="orientation",
+            label="Crystal-to-pattern orientation",
+            help_text=(
+                "The accepted solution's `crystal_to_pattern` matrix, as nine numbers. The picks "
+                "determine it completely, including the roll about the beam, because clicking two "
+                "non-collinear spots measures their azimuths on the recorded image."
+            ),
+            editor="json",
+        ),
+        *_CALIBRATION_PARAMETERS,
+        NumberParameter(
+            name="centre_x",
+            label="Beam x",
+            help_text="The transmitted beam, in picked coordinates. Every band is placed from it.",
+            default=512.0,
+            group="Frame",
+        ),
+        NumberParameter(
+            name="centre_y",
+            label="Beam y",
+            help_text="The transmitted beam's second coordinate.",
+            default=512.0,
+            group="Frame",
+        ),
+        NumberParameter(
+            name="frame_width",
+            label="Frame width",
+            help_text="Image width, so only bands crossing the visible field are returned.",
+            default=1024.0,
+            minimum=1.0,
+            group="Frame",
+        ),
+        NumberParameter(
+            name="frame_height",
+            label="Frame height",
+            help_text="Image height.",
+            default=1024.0,
+            minimum=1.0,
+            group="Frame",
+        ),
+        IndicesParameter(
+            name="target_zone_axis",
+            label="Target zone axis [uvw]",
+            help_text=(
+                "The axis to travel to. The band joining it to the axis on the beam is drawn "
+                "distinctly and labelled; leave at 0 0 0 to draw the bands alone."
+            ),
+            default=(0, 0, 0),
+            allow_zero=True,
+        ),
+        NumberParameter(
+            name="accelerating_voltage_kv",
+            label="Accelerating voltage",
+            help_text=(
+                "Sets the wavelength, which cancels out of every pixel distance drawn here — a "
+                "band's width in pixels is fixed by the pixel scale alone. It survives only in "
+                "the curvature of the exact Kossel conics, which over a SAED field is sub-pixel, "
+                "so a wrong value here does not move a band."
+            ),
+            units="kV",
+            default=200.0,
+            minimum=1.0,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Index limit",
+            help_text=(
+                "Largest |h|, |k| or |l| considered. Band width grows as d falls, so raising "
+                "this admits *wider*, weaker bands rather than finer ones."
+            ),
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="max_bands",
+            label="Bands drawn",
+            help_text=(
+                "The strongest this many bands. A few-degree SAED field holds a handful; drawing "
+                "every band of the zone would cover the pattern the overlay exists to explain."
+            ),
+            default=12,
+            minimum=1,
+            maximum=60,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per band with its plane, spacing, width and prominence; the centre line, both "
+        "edges and the connecting band under `data`, all in picked pixel coordinates."
+    ),
+    panel="tem",
+    citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON, _CITATION_KIKUCHI),
+    tags=("TEM", "Kikuchi", "bands", "overlay", "navigation", "zone axis", "SAED"),
+)
+def _kikuchi_overlay(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.orientation import Orientation, Rotation
+    from pytex.diffraction.kikuchi import GnomonicProjection, simulate_kikuchi_pattern
+    from pytex.tem.path import connecting_band, suggest_waypoints
+
+    spec, phase = phase_from_request(request["phase"])
+    matrix = _crystal_to_pattern(request.get("orientation"))
+    scale = _picking_scale(request)
+    if scale <= 0.0:
+        raise InvalidInputError(
+            "The pattern has no pixel scale, so a band width would be drawn at a guess.",
+            field="reciprocal_per_px_angstrom",
+            hint=(
+                "Calibrate the image, or supply the camera constant. A band is as wide as its "
+                "own spot is far out, and both need the same one number."
+            ),
+        )
+    centre = (float(request["centre_x"]), float(request["centre_y"]))
+    width = float(request["frame_width"])
+    height = float(request["frame_height"])
+    geometry = _pattern_frame_geometry(float(request["accelerating_voltage_kv"]))
+    wavelength = float(geometry.electron_wavelength_angstrom)
+    distance_px = _kikuchi_detector_distance_px(scale, wavelength)
+    projection = GnomonicProjection(geometry)
+
+    orientation = Orientation(
+        rotation=Rotation.from_matrix(matrix),
+        crystal_frame=phase.crystal_frame,
+        specimen_frame=geometry.specimen_frame,
+        phase=phase,
+    )
+    # Every candidate is simulated and the cut to `max_bands` is taken *after*
+    # the visible-field filter. Cutting first would rank a band that misses the
+    # plate ahead of one crossing it, and on a zone-axis pattern the bands that
+    # miss are the majority.
+    pattern = simulate_kikuchi_pattern(
+        geometry,
+        phase,
+        orientation,
+        max_index=int(request["max_index"]),
+    )
+
+    # The beam is pattern +z, so the zone axis on the beam is the crystal
+    # direction the orientation maps there. It is what the connecting band is
+    # measured from, and it is read back from the matrix rather than asked for.
+    beam_crystal = np.asarray(matrix.T @ np.array([0.0, 0.0, 1.0]), dtype=float)
+    target_indices = tuple(int(value) for value in request["target_zone_axis"])
+    connecting_hkl: tuple[int, ...] | None = None
+    connecting_note: str | None = None
+    connecting: dict[str, Any] | None = None
+    if any(target_indices):
+        direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+        target_crystal = np.asarray(target_indices, dtype=float) @ direct.T
+        band_indices = connecting_band(phase, beam_crystal, target_crystal)
+        if band_indices is None:
+            connecting_note = (
+                "No single band connects these zones: the two axes are parallel, or the plane "
+                "they span is not a low-index one. Travel in two hops through a waypoint "
+                "instead."
+            )
+        else:
+            connecting_hkl = tuple(
+                int(value) for value in np.asarray(band_indices.indices, dtype=int).reshape(-1)
+            )
+            target_label = direction_label(target_indices, spec=spec)
+            waypoints = [
+                {
+                    "uvw": [int(value) for value in np.rint(way.coordinates).astype(int)],
+                    "label": direction_label(
+                        tuple(int(value) for value in np.rint(way.coordinates).astype(int)),
+                        spec=spec,
+                    ),
+                }
+                for way in suggest_waypoints(phase, beam_crystal, target_crystal)
+            ]
+            connecting = {
+                "hkl": list(connecting_hkl),
+                "label": plane_label(connecting_hkl, spec=spec),
+                # The plane as `connecting_band` names it: the lowest-index
+                # member, which in a centred lattice may be a forbidden
+                # reflection. `hkl` above is replaced by the order actually
+                # drawn once the bands are known.
+                "plane_hkl": list(connecting_hkl),
+                "plane_label": plane_label(connecting_hkl, spec=spec),
+                "target_label": target_label,
+                "text": (f"follow {plane_label(connecting_hkl, spec=spec)} toward {target_label}"),
+                "waypoints": waypoints,
+            }
+
+    half_diagonal = 0.5 * math.hypot(width, height)
+    bands: list[dict[str, Any]] = []
+    for band in pattern.bands:
+        normal = np.asarray(band.plane_normal_lab, dtype=float)
+        in_plane = float(math.hypot(normal[0], normal[1]))
+        if in_plane < 1e-9:
+            # The plane is perpendicular to the beam: its trace is at infinity.
+            # That plane is a spot on this pattern, never a band.
+            continue
+        # a x + b y + c = 0 in picked pixels, normalized so c is a distance.
+        a = float(normal[0]) / in_plane
+        b = float(normal[1]) / in_plane
+        c = float(normal[2]) * distance_px - normal[0] * centre[0] - normal[1] * centre[1]
+        c = float(c) / in_plane
+        offset = abs(a * centre[0] + b * centre[1] + c)
+        if offset > half_diagonal:
+            continue
+        endpoints = _line_through_frame((a, b, c), width, height)
+        if endpoints is None:
+            continue
+
+        theta = float(band.bragg_angle_rad)
+        cosine = float(normal[2])
+        # The two points where the band's own edges cross the line joining them
+        # to the beam: the exact Kossel cones evaluated in the plane containing
+        # the beam and the plane normal, which is where the width is measured.
+        foot = np.array([0.0, 0.0, 1.0]) - cosine * normal
+        foot_norm = float(np.linalg.norm(foot))
+        foot = foot / foot_norm
+        edge_points = []
+        for sign in (1.0, -1.0):
+            direction = math.cos(theta) * foot + sign * math.sin(theta) * normal
+            edge_points.append(
+                np.array([direction[0], direction[1]], dtype=float) / float(direction[2])
+            )
+        width_px = float(np.linalg.norm(edge_points[0] - edge_points[1]) * distance_px)
+
+        g_magnitude = 1.0 / float(band.d_spacing_angstrom)
+        indices = tuple(
+            int(value) for value in np.asarray(band.plane.indices, dtype=int).reshape(-1)
+        )
+        centre_trace = np.asarray(band.center_trace(projection), dtype=float)
+        origin = np.asarray(centre, dtype=float)
+        edges = [
+            _clipped_runs(np.asarray(edge, dtype=float) * distance_px + origin, width, height)
+            # Sampled finely: only the stretch near the plate survives the clip,
+            # and a coarse polyline would show its vertices on a band edge that
+            # is very nearly straight over a SAED field.
+            for edge in band.edge_traces(projection, samples=1441)
+        ]
+        # Label out where the bands separate: at an exact zone axis every band
+        # of the zone crosses at 000, which is the most crowded and least
+        # informative point of the figure, and the beam marker lives there.
+        first, second = (np.asarray(point, dtype=float) for point in endpoints)
+        towards = (
+            second
+            if np.linalg.norm(second - np.asarray(centre))
+            > np.linalg.norm(first - np.asarray(centre))
+            else first
+        )
+        anchor = np.asarray(centre) - np.array([a, b]) * (a * centre[0] + b * centre[1] + c)
+        label_at = anchor + 0.42 * (towards - anchor)
+
+        payload = {
+            "hkl": list(indices),
+            "label": plane_label(indices, spec=spec),
+            "d_angstrom": float(band.d_spacing_angstrom),
+            "g_inv_angstrom": g_magnitude,
+            "radius_px": float(g_magnitude * scale),
+            "width_px": width_px,
+            "bragg_angle_deg": float(math.degrees(theta)),
+            "intensity": float(band.intensity),
+            # "In the zone" is a statement about the drawing, and the useful
+            # one: the plane contains the beam closely enough that its band
+            # runs through the transmitted spot. Half a degree off axis already
+            # moves a band tens of pixels, which is exactly the sensitivity
+            # that makes bands worth navigating by.
+            "in_zone": bool(offset <= 1.0),
+            "connecting": bool(connecting_hkl is not None and _same_band(indices, connecting_hkl)),
+            "line_px": [a, b, c],
+            "g_direction_px": [float(normal[0]) / in_plane, float(normal[1]) / in_plane],
+            "centre": [[float(point[0]), float(point[1])] for point in endpoints],
+            "centre_samples": _clipped_runs(
+                centre_trace * distance_px + np.asarray(centre), width, height
+            ),
+            "edges": edges,
+            "label_at": [float(label_at[0]), float(label_at[1])],
+        }
+        bands.append(payload)
+
+    # The strongest bands that actually cross the field, in the order they were
+    # ranked by |F|.
+    bands.sort(key=lambda band: -float(band["intensity"]))
+    bands = bands[: int(request["max_bands"])]
+    rows = [
+        {
+            "plane": band["label"],
+            "d": band["d_angstrom"],
+            "width": band["width_px"],
+            "radius": band["radius_px"],
+            "intensity": band["intensity"],
+            "zone": "in the zone" if band["in_zone"] else "crossing",
+        }
+        for band in bands
+    ]
+
+    if connecting is not None:
+        # Name the band by the reflection the crystal actually produces. In an
+        # fcc phase the plane joining [001] and [011] is (100), whose first
+        # allowed order is (200); quoting the forbidden one would send the user
+        # looking for a band beside the one that is drawn.
+        drawn = next((band for band in bands if band["connecting"]), None)
+        if drawn is not None:
+            connecting["label"] = drawn["label"]
+            connecting["hkl"] = list(drawn["hkl"])
+            connecting["text"] = f"follow {drawn['label']} toward {connecting['target_label']}"
+
+    if connecting_hkl is not None and not any(band["connecting"] for band in bands):
+        connecting_note = (
+            f"The connecting band {plane_label(connecting_hkl, spec=spec)} is not among the "
+            "bands drawn: it is weaker than the cut-off, or its indices are above the index "
+            "limit. Raise either to see it."
+        )
+
+    describe = _kikuchi_describe(
+        phase_name=phase.name,
+        bands=bands,
+        connecting=connecting,
+        connecting_note=connecting_note,
+        scale=scale,
+    )
+    result = AppResult(
+        title=f"Kikuchi bands predicted for {phase.name}",
+        summary=(
+            f"{len(bands)} band(s) cross the field, "
+            f"{sum(1 for band in bands if band['in_zone'])} of them belonging to the zone on the "
+            "beam. Each is drawn as wide as the 000→g distance of its own plane, which is the "
+            "check to make against the pattern itself."
+            + (f" To travel: {connecting['text']}." if connecting else "")
+        ),
+        table=ResultTable(
+            columns=(
+                Column("plane", "Band"),
+                Column("d", "d", units="Å", numeric=True, digits=4),
+                Column(
+                    "width",
+                    "Band width",
+                    units="px",
+                    numeric=True,
+                    digits=1,
+                    help_text="2θ_B in pixels. It equals the 000→g distance for the same plane.",
+                ),
+                Column("radius", "000→g", units="px", numeric=True, digits=1),
+                Column(
+                    "intensity",
+                    "Prominence",
+                    numeric=True,
+                    digits=3,
+                    help_text=(
+                        "Kinematic |F|² relative to the strongest band. Indicative only: band "
+                        "contrast is dynamical and is not modelled."
+                    ),
+                ),
+                Column("zone", "Zone"),
+            ),
+            rows=tuple(rows),
+            caption=f"Kikuchi bands of {phase.name} predicted from the accepted orientation.",
+        ),
+        data={
+            "bands": bands,
+            "connecting": connecting,
+            "connecting_note": connecting_note,
+            "beam": {"x": centre[0], "y": centre[1]},
+            "scale_px_per_inv_angstrom": float(scale),
+            "detector_distance_px": float(distance_px),
+            "wavelength_angstrom": wavelength,
+            "zone_axes": [
+                {
+                    "uvw": [int(value) for value in np.asarray(axis.indices, dtype=int)],
+                    "label": direction_label(
+                        tuple(int(value) for value in np.asarray(axis.indices, dtype=int)),
+                        spec=spec,
+                    ),
+                    "x": float(centre[0] + float(axis.coordinates[0]) * distance_px),
+                    "y": float(centre[1] + float(axis.coordinates[1]) * distance_px),
+                    "band_count": int(axis.band_count),
+                }
+                for axis in pattern.zone_axes[:12]
+            ],
+            "limits": list(_KIKUCHI_LIMITS),
+            "describe": describe,
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "crystal_to_pattern": [float(value) for value in matrix.reshape(-1)],
+            "centre": list(centre),
+            "units": request["units"],
+            "target_zone_axis": list(target_indices),
+            "accelerating_voltage_kv": float(request["accelerating_voltage_kv"]),
+            "max_index": int(request["max_index"]),
+            "max_bands": int(request["max_bands"]),
+        },
+        notes=[*(_KIKUCHI_LIMITS), *([connecting_note] if connecting_note else [])],
+        citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON, _CITATION_KIKUCHI),
+    )
+    return result.to_json()
+
+
+def _same_band(first: Sequence[int], second: Sequence[int]) -> bool:
+    """Whether two index triples name the same physical band.
+
+    ``(200)`` and ``(100)`` are the same plane at different order, and a plane
+    and its opposite normal are the same band, so the comparison is on the
+    reduced triple up to sign rather than on the integers as written.
+    """
+
+    left = np.asarray(first, dtype=int)
+    right = np.asarray(second, dtype=int)
+    for values in (left, right):
+        if not np.any(values):
+            return False
+    left = left // int(np.gcd.reduce(np.abs(left)))
+    right = right // int(np.gcd.reduce(np.abs(right)))
+    return bool(np.array_equal(left, right) or np.array_equal(left, -right))
+
+
+def _kikuchi_describe(
+    *,
+    phase_name: str,
+    bands: Sequence[Mapping[str, Any]],
+    connecting: Mapping[str, Any] | None,
+    connecting_note: str | None,
+    scale: float,
+) -> str:
+    """Convention-explicit prose for the overlay, per the explainable-results rule."""
+
+    lines = [
+        f"Kikuchi bands of {phase_name}, predicted in the pattern frame from the accepted "
+        f"crystal-to-pattern orientation and the pixel scale of {1.0 / scale:.6f} Å⁻¹ per pixel.",
+        f"{len(bands)} band(s) cross the visible field.",
+    ]
+    if bands:
+        widest = max(bands, key=lambda band: float(band["width_px"]))
+        lines.append(
+            f"The widest is {widest['label']} at {float(widest['width_px']):.1f} px, which is the "
+            f"000→g distance of the same plane ({float(widest['radius_px']):.1f} px) — band width "
+            "and spot radius are two measurements of one |g|."
+        )
+    if connecting is not None:
+        waypoints = ", ".join(way["label"] for way in connecting["waypoints"])
+        lines.append(
+            f"To reach {connecting['target_label']}, {connecting['text']}"
+            + (f", re-indexing at {waypoints} on the way." if waypoints else ".")
+        )
+    if connecting_note:
+        lines.append(connecting_note)
+    lines.extend(_KIKUCHI_LIMITS)
+    return " ".join(lines)
 
 
 REGISTRY.add_examples(
