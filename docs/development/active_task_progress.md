@@ -182,12 +182,15 @@ what was asked for.
 
 ### Decisions worth not re-litigating (K)
 
-- **The overlay is drawn from the accepted solution, not from the best-ranked one.** Accepting is a
-  judgement; drawing from a candidate nobody chose would be drawing from a guess. Each alternative
-  in `tem.solve_pattern` now carries its own `crystal_to_pattern` so that is possible at all.
-- **The toggle appears on acceptance rather than being permanently present and disabled.** Before
-  there is an orientation there is nothing to draw, and a control that draws nothing reads as
-  broken.
+- **The overlay is drawn from the accepted solution when there is one, and otherwise from the
+  candidate currently selected.** This is the rule the calculated spots already follow, and for
+  the same reason: deciding between candidates is done by looking. Each alternative in
+  `tem.solve_pattern` carries its own `crystal_to_pattern` so that is possible at all.
+- **The toggle appears with the indexing, not with an acceptance.** It was first gated on
+  acceptance, which was wrong in use: a pattern that is plainly indexed, with the calculated
+  spots on screen, had no Kikuchi control at all and the absence read as a defect. What the
+  bands need is an orientation, and indexing is what produces one. It stays hidden before
+  indexing, because a control that draws nothing reads as broken too.
 - **Bands are drawn through the pole and labelled away from it.** At an exact zone axis every band
   of the zone crosses at 000, which is the most crowded and least informative point in the figure
   and where the beam marker and the picks live.

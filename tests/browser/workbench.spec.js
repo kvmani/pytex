@@ -921,17 +921,19 @@ test('the stereogram sits beside the pattern and reads out the tilt under the cu
 });
 
 /*
- * The Kikuchi bands appear with the accepted orientation, and only then.
+ * The Kikuchi bands appear with the indexing, which is what supplies an
+ * orientation to draw them from.
  *
- * Two things are worth pinning in a browser rather than in Python. The toggle
- * must not exist before a solution has been accepted, because before that there
- * is no orientation to draw from and a control that draws nothing reads as a
- * broken one. And the bands must go inside the clipped group with everything
- * else: a band centre line is generated from a lattice plane and runs the whole
- * width of the pattern, so an overlay appended to the outer element would paint
- * across the margins beside the picture.
+ * Three things are worth pinning in a browser rather than in Python. The toggle
+ * must not exist before the pattern is indexed, because before that there is no
+ * orientation and a control that draws nothing reads as a broken one; it must
+ * appear as soon as there is one, without waiting for an acceptance, since
+ * every candidate carries its own. And the bands must go inside the clipped
+ * group with everything else: a band centre line is generated from a lattice
+ * plane and runs the whole width of the pattern, so an overlay appended to the
+ * outer element would paint across the margins beside the picture.
  */
-test('the accepted solution draws its Kikuchi bands inside the clip', async ({ page }) => {
+test('the indexed solution draws its Kikuchi bands inside the clip', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPlate(page);
 
@@ -940,13 +942,13 @@ test('the accepted solution draws its Kikuchi bands inside the clip', async ({ p
 
   await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
   await expect(page.locator('.picks__row')).toHaveCount(7, { timeout: 20_000 });
-  await page.getByRole('button', { name: 'Index the pattern', exact: true }).click();
-  await page
-    .getByRole('button', { name: 'Accept this solution', exact: true })
-    .click({ timeout: 20_000 });
+  // Picks alone are not an orientation, so there is still nothing to draw.
+  await expect(kikuchi).toBeHidden();
 
-  // It arrives with the orientation that makes it meaningful.
-  await expect(kikuchi).toBeVisible();
+  await page.getByRole('button', { name: 'Index the pattern', exact: true }).click();
+
+  // It arrives with the indexing, before any acceptance.
+  await expect(kikuchi).toBeVisible({ timeout: 20_000 });
   await expect(kikuchi).toHaveAttribute('aria-pressed', 'false');
   await kikuchi.click();
   await expect(kikuchi).toHaveAttribute('aria-pressed', 'true');
@@ -998,6 +1000,22 @@ test('the accepted solution draws its Kikuchi bands inside the clip', async ({ p
   const status = await patternControl(page, '.plot__status').textContent();
   expect(status).toContain('000');
   expect(status).toMatch(/not modelled/);
+
+  // Accepting a solution settles which orientation the bands come from; it
+  // neither removes the toggle nor turns it off.
+  await page
+    .getByRole('button', { name: 'Accept this solution', exact: true })
+    .click({ timeout: 20_000 });
+  await expect(kikuchi).toBeVisible();
+  await expect(kikuchi).toHaveAttribute('aria-pressed', 'true');
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+        return svg.querySelectorAll('polyline').length;
+      }),
+    )
+    .toBeGreaterThan(0);
 
   // Turning it off takes the bands away rather than leaving them stale.
   await kikuchi.click();

@@ -2244,17 +2244,26 @@ export function mount(context) {
   }
 
   /**
-   * Ask for the bands of the accepted solution, in this plate's own pixels.
+   * Ask for the bands of the current orientation, in this plate's own pixels.
    *
-   * Everything sent is already on screen: the accepted orientation, the
-   * calibration that indexed the pattern, the picked beam, and the image size.
-   * Nothing is asked of the microscope — the overlay never leaves the pattern
-   * frame, so the diffraction rotation and the parity, which one indexed
-   * pattern cannot determine, are not needed and are not guessed.
+   * The accepted solution when there is one, and otherwise the candidate
+   * currently selected — the same rule the calculated spots follow, and for the
+   * same reason: deciding between candidates is done by looking, and the bands
+   * are one more thing to look at.
+   *
+   * Everything sent is already on screen: that orientation, the calibration
+   * that indexed the pattern, the picked beam, and the image size. Nothing is
+   * asked of the microscope — the overlay never leaves the pattern frame, so
+   * the diffraction rotation and the parity, which one indexed pattern cannot
+   * determine, are not needed and are not guessed.
    */
+  function kikuchiSolution() {
+    return state.accepted ?? state.solutions[state.selected] ?? null;
+  }
+
   async function refreshKikuchi() {
     const size = frameSize();
-    const accepted = state.accepted;
+    const accepted = kikuchiSolution();
     if (!accepted?.crystal_to_pattern || !state.picks.centre || !size) return;
     const values = state.solveForm.values();
     const request = {
@@ -2793,10 +2802,15 @@ export function mount(context) {
       state.solutions = result.data.alternatives ?? [];
       state.selected = 0;
       state.accepted = null;
-      // A new indexing supersedes the accepted orientation, and with it the
+      // A new indexing supersedes the previous orientation, and with it the
       // bands that were drawn from it.
       resetKikuchi();
       calculatedButton.hidden = state.solutions.length === 0;
+      // The bands need an orientation, and every candidate carries one, so the
+      // toggle arrives with the indexing rather than waiting for an acceptance.
+      // Which candidate it draws is the one selected below — looking at its
+      // bands is part of judging it, exactly as the calculated spots are.
+      kikuchiButton.hidden = !state.solutions[0]?.crystal_to_pattern;
       state.showCalculated = true;
       calculatedButton.setAttribute('aria-pressed', 'true');
       renderResult(details, result, {
@@ -2877,6 +2891,9 @@ export function mount(context) {
                 state.selected = index;
                 paint();
                 drawPattern();
+                // The bands belong to the candidate being considered, so they
+                // follow the selection rather than staying on the last one.
+                scheduleKikuchi();
               },
             },
             [
@@ -2999,9 +3016,10 @@ export function mount(context) {
     const phase = state.solveForm.values().phase;
     const axis = entry.zone_axis_indices ?? result.data.zone_axis;
     state.atlasForm?.setValues({ phase, current_zone_axis: axis });
-    // There is nothing to draw before a solution is accepted, so the toggle
-    // arrives with the orientation that makes it meaningful.
+    // Already visible from the indexing; accepting only settles which
+    // orientation the bands are drawn from.
     kikuchiButton.hidden = !entry.crystal_to_pattern;
+    scheduleKikuchi();
     state.tiltForm.setValues({ phase, current_zone_axis: axis });
     // `setValues` is a programmatic write and fires no change event, so the
     // stereogram is told explicitly. Without this the solved axis appeared in

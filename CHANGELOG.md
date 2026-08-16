@@ -24,7 +24,8 @@ downstream analyses depend on them.
 
 - **Kikuchi bands on the solved TEM pattern.** `tem.kikuchi_overlay` draws the bands the accepted
   solution predicts over the plate it was solved from, behind a **Kikuchi** toggle that appears
-  beside *Lattice* and *Calculated* once a solution is accepted. A detector records directions of
+  beside *Lattice* and *Calculated* as soon as the pattern is indexed, drawing from the accepted
+  solution when there is one and otherwise from the candidate currently selected. A detector records directions of
   outgoing electrons, and the spots and the bands are placed in that one angular space by the same
   reciprocal lattice and the same orientation, so a plane and its normal are drawn as what they
   are — pole and polar of one another. The metrics agree too: **a band is exactly as wide as the

@@ -399,8 +399,11 @@ take their geometry from the same `pytex.tem.stage` forward model.
 
 ### Kikuchi bands on the solved pattern
 
-Once a solution is **accepted**, a **Kikuchi** toggle joins *Lattice* and *Calculated* on the
-pattern toolbar, and draws the bands that solution predicts as fine dotted lines under the spots.
+Once the pattern is **indexed**, a **Kikuchi** toggle joins *Lattice* and *Calculated* on the
+pattern toolbar, and draws the bands the solution predicts as fine dotted lines under the spots. It
+draws from the accepted solution when one has been accepted, and otherwise from the candidate
+currently selected in the list — deciding between candidates is done by looking, and the bands are
+one more thing to look at, exactly as the calculated spots are.
 
 It is the same angular space. A detector records the directions of the outgoing electrons, and both
 the spots and the bands are placed in that space by the same reciprocal lattice and the same
