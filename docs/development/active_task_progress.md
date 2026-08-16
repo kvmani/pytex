@@ -31,10 +31,10 @@ added to one alone.
 | L4 | Existing surfaces wired: panel switches, exports, bad numeric input, TEM spot coordinates | done | `8131d25` |
 | C1 | CBED service: `cbed.pattern`, `cbed.thickness_from_fringes`, `cbed.holz_rings` | done | `3e0b9be` |
 | C2 | CBED panel: rasterised discs under a vector overlay, contrast control, fit and ring views | done | `3e0b9be` |
-| E1 | `pytex.app.ebsd_gallery`: three constructed datasets with known answers | done | `<this commit>` |
-| E2 | `ebsd.map` service: IPF/grain/GROD/KAM/channel colourings, scalar modulation, boundary network | done | `<this commit>` |
-| E3 | EBSD panel: native-resolution raster, vector boundaries, labelled colour bar | done | `<this commit>` |
-| D1 | Documentation (workbench page: console, CBED and EBSD workspaces) and changelog | done | `<this commit>` |
+| E1 | `pytex.app.ebsd_gallery`: three constructed datasets with known answers | done | `90e2ca2` |
+| E2 | `ebsd.map` service: IPF/grain/GROD/KAM/channel colourings, scalar modulation, boundary network | done | `90e2ca2` |
+| E3 | EBSD panel: native-resolution raster, vector boundaries, labelled colour bar | done | `90e2ca2` |
+| D1 | Documentation (workbench page: console, CBED and EBSD workspaces) and changelog | done | `90e2ca2` |
 
 ### Current worktree state
 
