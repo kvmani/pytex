@@ -51,6 +51,7 @@ from pytex.app.services.calculator import (
     plane_label,
 )
 from pytex.app.tem_gallery import GALLERY, gallery_entry, gallery_options
+from pytex.core.sphere import project_directions
 
 __all__ = ["measured_pattern_from_picks"]
 
@@ -1887,20 +1888,6 @@ def _primitive_directions(max_index: int) -> np.ndarray:
     return np.unique(uvw, axis=0)
 
 
-def _stereographic(holder: np.ndarray) -> np.ndarray:
-    """Project holder-frame unit vectors onto the equatorial plane.
-
-    The upper-hemisphere stereographic projection from the south pole,
-    ``(x, y) = (w_x, w_y) / (1 + w_z)``, after folding every direction onto the
-    upper hemisphere — a zone axis and its reverse are the same axis. The unit
-    circle is then the 90-degree cone about the holder ``z`` axis.
-    """
-
-    folded = np.where(holder[:, 2:3] < 0.0, -holder, holder)
-    denominator = 1.0 + folded[:, 2:3]
-    return np.asarray(folded[:, :2] / denominator, dtype=np.float64)
-
-
 def _stage_angles_for_holder(holder: np.ndarray) -> tuple[float, float]:
     """The stage reading that brings a holder-frame direction onto the beam.
 
@@ -2091,12 +2078,12 @@ def _stereogram(request: dict[str, Any]) -> dict[str, Any]:
     flip = holder[:, 2] < 0.0
     holder = np.where(flip[:, None], -holder, holder)
     uvw = np.where(flip[:, None], -uvw, uvw)
-    projected = _stereographic(holder)
+    projected = project_directions(holder, method="stereographic")
 
     beam_holder = np.asarray(
         _beam_direction(position.alpha_deg, position.beta_deg), dtype=np.float64
     )
-    beam_projected = _stereographic(beam_holder[None, :])[0]
+    beam_projected = project_directions(beam_holder, method="stereographic")[0]
     beam_crystal = crystal_to_holder.T @ beam_holder
 
     rows: list[dict[str, Any]] = []
@@ -2162,7 +2149,7 @@ def _stereogram(request: dict[str, Any]) -> dict[str, Any]:
         ]
     )
     boundary_holder = np.asarray(_beam_direction(boundary_alpha, boundary_beta))
-    boundary = _stereographic(boundary_holder)
+    boundary = project_directions(boundary_holder, method="stereographic")
 
     target: dict[str, Any] | None = None
     path: dict[str, Any] | None = None
@@ -2177,11 +2164,12 @@ def _stereogram(request: dict[str, Any]) -> dict[str, Any]:
         span_deg = math.degrees(
             math.acos(float(np.clip(np.dot(target_holder, beam_holder), -1.0, 1.0)))
         )
+        target_point = project_directions(target_holder, method="stereographic")[0]
         target = {
             "indices": [int(value) for value in target_indices],
             "label": direction_label(target_indices, spec=spec),
-            "x": float(_stereographic(target_holder[None, :])[0, 0]),
-            "y": float(_stereographic(target_holder[None, :])[0, 1]),
+            "x": float(target_point[0]),
+            "y": float(target_point[1]),
             "alpha_deg": target_alpha,
             "beta_deg": target_beta,
             "delta_alpha_deg": target_alpha - position.alpha_deg,
@@ -2202,7 +2190,7 @@ def _stereogram(request: dict[str, Any]) -> dict[str, Any]:
             for direction in suggest_waypoints(phase, beam_crystal, target_crystal)
         ]
         path = {
-            "points": _stereographic(route).tolist(),
+            "points": project_directions(route, method="stereographic").tolist(),
             "waypoints": waypoints,
             "span_deg": span_deg,
         }
@@ -2317,7 +2305,7 @@ def _waypoint_geometry(
     holder = crystal_to_holder @ cartesian
     if float(holder[2]) < 0.0:
         holder = -holder
-    projected = _stereographic(holder[None, :])[0]
+    projected = project_directions(holder, method="stereographic")[0]
     alpha_deg, beta_deg = _stage_angles_for_holder(holder)
     return {
         "x": float(projected[0]),

@@ -20,6 +20,14 @@ These functions sit on the same explicit frame, phase, and notation model as the
 - rotational symmetry-element plots with order-specific symbols
 - shared YAML house-style support through the existing plotting theme system
 
+Every one of these — and the TEM tilt stereograms, the Kikuchi maps, and the workbench's
+interactive stereogram — takes its plane coordinates from the single helper
+`pytex.core.sphere.project_directions(directions, method=..., antipodal=...)`, which states both
+radial laws ($r = \tan(\rho/2)$ stereographic, $r = 2\sin(\rho/2)$ equal area) and applies the
+antipodal folding first. `pytex.texture.projections` re-exports it under the name the texture
+subsystem has always used. There is deliberately no second implementation: a projection that
+differs by a factor between two figures is invisible until two figures are compared.
+
 `plot_symmetry_elements(...)` currently visualizes proper rotational symmetry axes only. Mirror planes, inversion centers, and nonsymmorphic element symbols are not yet part of this stable plotting surface.
 
 ## Direction And Plane Example

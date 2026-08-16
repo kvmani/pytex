@@ -5,6 +5,72 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Shared Stereographic Projection, Then Kikuchi Bands On The Solved TEM Pattern — IN PROGRESS (2026-08-16)
+
+**Objective.** Two increments, landed separately:
+
+1. **One shared stereographic projection helper**, replacing the two private copies
+   (`pytex.plotting.tilt_stereogram._project` and `pytex.app.services.tem._stereographic`), with
+   the repository docstring contract and a test pinning `r = tan(rho/2)`. No drawn output may
+   change.
+2. **Kikuchi bands superimposed on the solved TEM pattern**: a `tem.kikuchi_overlay` service
+   driven by the accepted solution's `crystal_to_pattern` and the existing pixel calibration, a
+   toolbar toggle in the TEM panel, the connecting band to a chosen target drawn distinctly, and
+   honest labelling of what is and is not modelled.
+
+### Step ledger
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| P1 | `pytex.core.sphere.project_directions` / `fold_upper_hemisphere` as the one public helper; both private copies removed | done | (this commit) |
+| K1 | `tem.kikuchi_overlay` service: band geometry in pattern pixels | planned | |
+| K2 | TEM panel: Kikuchi toggle, dotted bands under the spots, connecting band labelled | planned | |
+| K3 | Geometry unit tests and browser coverage | planned | |
+
+### Why the overlay needs no new calibration (P-increment design note, recorded so it is not re-litigated)
+
+A detector records directions of outgoing electrons. A spot at **g** and the band centre line for
+the plane `(hkl)` are pole and polar of one another in that angular space, and the metrics agree:
+band width `= L·2θ_B ≈ λL/d = r_g`. **The band for `(hkl)` is exactly as wide as the 000→g spot
+distance and perpendicular to it**, so the existing px→Å⁻¹ calibration fixes the band width in
+pixels with no separate λ or camera length. The picks determine `crystal_to_pattern` completely,
+including the roll, because clicking two non-collinear spots measures their azimuths on the
+recorded image. What the picks cannot give is `pattern→holder`, which needs the diffraction
+rotation φ_D and the parity; `CurrentState.from_pattern_solution` models that explicitly and
+raises rather than guessing. The overlay therefore lives entirely in the pattern frame.
+
+### Recorded, and deliberately out of scope here
+
+`_orientation_with_axis_on_beam` in the TEM panel builds its orientation from the zone-axis indices
+plus a hand-typed `beam_rotation_deg`, discarding `crystal_to_pattern`. Its docstring justifies this
+by claiming the roll is undetermined "because every roll produces the same spot positions", which is
+**wrong** — a roll visibly rotates the pattern, and the picks measure it. The conclusion is right for
+the wrong reason: what is undetermined is `pattern→holder`, not `crystal→pattern`. Composing
+`crystal_to_pattern` with an explicit diffraction rotation in the stereogram and tilt planner is a
+separate increment, because it touches the orientation model the planner depends on.
+
+### Verified (P1)
+
+`pytex.core.sphere` now owns the projection. `fold_upper_hemisphere` and `project_directions` moved
+there from `pytex.texture.projections`, which re-exports them so none of the ten modules that import
+it changed a line. Both are exported from `pytex.core` and carry the purpose / when-to-use / method /
+parameters / returns docstring the repository requires, including the two radial laws written out.
+
+- The tilt stereogram's `_project` and the TEM service's `_stereographic` are deleted; every call
+  site now names the shared helper with an explicit `method=`.
+- The helper accepts a single `(3,)` direction as well as an `(N, 3)` stack, which is what the two
+  private wrappers were adding, and returns read-only contiguous coordinates.
+- `tests/unit/test_sphere.py` pins the projection against closed forms rather than against stored
+  output: `r = tan(rho/2)` across the hemisphere in 5-degree steps, the azimuth carried through
+  unchanged, `tan(30°)` at a 60-degree pole, `r = 2 sin(rho/2)` and the `sqrt(2)` equator for equal
+  area, antipodal folding collapsing `±v` to one point while `antipodal=False` keeps them apart,
+  and an unknown method raising.
+- One behaviour difference is deliberate and is a fix rather than a change of output: the TEM
+  service's copy did not normalize its input and did not clip the projection denominator. Its inputs
+  are unit holder vectors, so the numbers move by round-off only (~1e-16); the existing stereogram
+  tests, which check the drawn poles against `solve_tilts_for_direction` and the `tan(rho/2)` law at
+  1e-9, pass unchanged.
+
 ## Workbench Round Two: Data Import, Stereogram Tilting, Calibration, About — COMPLETE (2026-08-16)
 
 **Objective.** Six requested items, in one goal because five of them are the same complaint from

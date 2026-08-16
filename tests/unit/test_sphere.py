@@ -12,6 +12,8 @@ from pytex.core import (
     S2Grid,
     SphericalVectorSet,
     VectorSet,
+    fold_upper_hemisphere,
+    project_directions,
 )
 
 
@@ -252,3 +254,63 @@ def test_grid_validation_rejects_bad_inputs() -> None:
         S2Grid.equispaced(10.0, reference_frame=frame, hemisphere="lower")
     with pytest.raises(ValueError):
         S2Grid.regular(30.0, 50.0, reference_frame=frame)
+
+
+def test_stereographic_projection_follows_the_tangent_half_angle_law() -> None:
+    """``r = tan(rho / 2)``: the property that defines a stereographic net.
+
+    Checked against the closed form rather than against stored output, at
+    angles spanning the hemisphere, and separately at 60 degrees where the
+    radius is the independently known ``tan(30 deg)``.
+    """
+
+    polar_deg = np.arange(0.0, 91.0, 5.0)
+    azimuth_deg = np.full_like(polar_deg, 37.0)
+    polar = np.deg2rad(polar_deg)
+    azimuth = np.deg2rad(azimuth_deg)
+    directions = np.column_stack(
+        [np.sin(polar) * np.cos(azimuth), np.sin(polar) * np.sin(azimuth), np.cos(polar)]
+    )
+
+    points = project_directions(directions, method="stereographic")
+    radii = np.linalg.norm(points, axis=1)
+    assert_allclose(radii, np.tan(polar / 2.0), atol=1e-12)
+    # The azimuth is carried through unchanged, which is the other half of the map.
+    plotted_azimuth = np.arctan2(points[1:, 1], points[1:, 0])
+    assert_allclose(plotted_azimuth, np.full(polar.size - 1, azimuth[0]), atol=1e-12)
+
+    single = project_directions(
+        [np.sin(np.pi / 3.0), 0.0, np.cos(np.pi / 3.0)], method="stereographic"
+    )
+    assert_allclose(single, [[np.tan(np.pi / 6.0), 0.0]], atol=1e-12)
+
+
+def test_equal_area_projection_follows_the_lambert_law() -> None:
+    """``r = 2 sin(rho / 2)``, so the equator lands at ``sqrt(2)``."""
+
+    polar = np.deg2rad(np.arange(0.0, 91.0, 5.0))
+    directions = np.column_stack([np.sin(polar), np.zeros_like(polar), np.cos(polar)])
+    radii = np.linalg.norm(project_directions(directions, method="equal_area"), axis=1)
+    assert_allclose(radii, 2.0 * np.sin(polar / 2.0), atol=1e-12)
+    assert_allclose(radii[-1], np.sqrt(2.0), atol=1e-12)
+
+
+def test_projection_folds_antipodal_directions_onto_one_point() -> None:
+    """A pole and its reverse are one axis, so they must project together."""
+
+    direction = np.array([0.3, -0.5, 0.8])
+    direction = direction / np.linalg.norm(direction)
+    for method in ("stereographic", "equal_area"):
+        folded = project_directions(np.stack([direction, -direction]), method=method)
+        assert_allclose(folded[0], folded[1], atol=1e-15)
+        signed = project_directions(
+            np.stack([direction, -direction]), method=method, antipodal=False
+        )
+        assert not np.allclose(signed[0], signed[1])
+
+    assert_allclose(fold_upper_hemisphere(-direction)[0], direction, atol=1e-15)
+
+
+def test_projection_rejects_an_unknown_method() -> None:
+    with pytest.raises(ValueError):
+        project_directions([[0.0, 0.0, 1.0]], method="gnomonic")

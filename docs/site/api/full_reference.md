@@ -93,6 +93,10 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.core.sphere
+```
+
+```{eval-rst}
 .. automodule:: pytex.core.symmetry
 ```
 

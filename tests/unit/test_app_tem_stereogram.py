@@ -16,11 +16,8 @@ from numpy.testing import assert_allclose
 
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
-from pytex.app.services.tem import (
-    _primitive_directions,
-    _stage_angles_for_holder,
-    _stereographic,
-)
+from pytex.app.services.tem import _primitive_directions, _stage_angles_for_holder
+from pytex.core.sphere import project_directions
 from pytex.tem.navigation import solve_tilts_for_direction
 from pytex.tem.stage import beam_direction_holder
 
@@ -161,7 +158,7 @@ def test_the_envelope_outline_encloses_exactly_the_reachable_poles() -> None:
     boundary = np.asarray(result["data"]["envelope"]["boundary"], dtype=float)
     assert boundary.shape[1] == 2
     # The outline is a closed loop through the four corners of the tilt range.
-    corner = _stereographic(np.asarray(beam_direction_holder(30.0, 20.0)).reshape(1, 3))[0]
+    corner = project_directions(beam_direction_holder(30.0, 20.0), method="stereographic")[0]
     assert np.min(np.linalg.norm(boundary - corner, axis=1)) < 1e-9
 
 

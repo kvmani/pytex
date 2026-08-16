@@ -98,6 +98,133 @@ def directions_to_spherical_angles(
     return polar, azimuth
 
 
+def fold_upper_hemisphere(directions: ArrayLike, *, antipodal: bool = True) -> np.ndarray:
+    """Unit directions with the lower hemisphere folded through the origin.
+
+    Purpose
+    -------
+    A plane normal and a zone axis are quoted without a sense: ``+v`` and
+    ``-v`` name the same crystallographic object. Folding makes that identity
+    explicit before any projection, so a pole and its antipode land on one
+    point rather than on opposite sides of the drawing.
+
+    When to use
+    -----------
+    Before projecting directions onto a stereonet or an equal-area net, which
+    is what :func:`project_directions` does with it. Pass ``antipodal=False``
+    for genuinely signed directions — a beam direction, a tilt sense — where
+    the reversed vector is a different physical thing and belongs on the
+    lower hemisphere.
+
+    Parameters
+    ----------
+    directions : ArrayLike
+        A single ``(3,)`` direction or an ``(N, 3)`` stack. Normalized
+        internally; a zero vector raises.
+    antipodal : bool
+        Fold when true (the default). When false the input is only
+        normalized.
+
+    Returns
+    -------
+    np.ndarray
+        Read-only ``(N, 3)`` unit vectors, contiguous.
+
+    See Also
+    --------
+    project_directions : the projection this prepares vectors for.
+    """
+
+    array = np.atleast_2d(np.asarray(directions, dtype=np.float64))
+    folded = np.array(normalize_vectors(array), copy=True)
+    if antipodal:
+        mask = folded[:, 2] < 0.0
+        folded[mask] *= -1.0
+    return freeze_array(np.ascontiguousarray(folded))
+
+
+def project_directions(
+    directions: ArrayLike,
+    *,
+    method: str = "equal_area",
+    antipodal: bool = True,
+) -> np.ndarray:
+    """Project directions from the unit sphere onto the equatorial plane.
+
+    Purpose
+    -------
+    The single azimuthal projection used everywhere PyTex draws directions on
+    a plane: pole figures, inverse pole figures, stereonets, Kikuchi maps and
+    the TEM tilt stereograms. Both supported maps view the upper hemisphere
+    from the south pole and are centred on ``+z`` of the frame the directions
+    are expressed in, so the drawing's centre is that frame's ``z`` axis and
+    the unit circle (stereographic) is its equator.
+
+    When to use
+    -----------
+    Whenever direction data must become plot coordinates. Use
+    ``method="equal_area"`` (Schmidt/Lambert) when area on the drawing must be
+    proportional to solid angle — the correct choice for density, since it is
+    the projection under which a random distribution is uniform. Use
+    ``method="stereographic"`` (Wulff) when angles matter: it is conformal, and
+    it maps every circle on the sphere to a circle on the plane, which is why
+    zone circles and reachable tilt regions are exact arcs under it.
+
+    Method
+    ------
+    With the polar angle ``rho`` measured from ``+z``, the radial coordinate is
+
+    - stereographic: ``r = sin(rho) / (1 + cos(rho)) = tan(rho / 2)``
+    - equal area: ``r = sqrt(2 / (1 + cos(rho))) * sin(rho) = 2 sin(rho / 2)``
+
+    with the azimuth carried through unchanged. Directions are folded by
+    :func:`fold_upper_hemisphere` first, so an antipodal pair projects to one
+    point. The denominator is clipped away from zero, so a signed direction on
+    the south pole (reachable only with ``antipodal=False``) yields a large
+    finite coordinate rather than a non-finite one.
+
+    Parameters
+    ----------
+    directions : ArrayLike
+        A single ``(3,)`` direction or an ``(N, 3)`` stack, in any one frame.
+        Normalized internally.
+    method : str
+        ``"equal_area"`` (default) or ``"stereographic"``. Any other value
+        raises.
+    antipodal : bool
+        Fold onto the upper hemisphere before projecting. True by default,
+        which is right for planes and zone axes.
+
+    Returns
+    -------
+    np.ndarray
+        Read-only ``(N, 2)`` plane coordinates in the same order as the input.
+        The equator projects to radius 1 under ``"stereographic"`` and to
+        ``sqrt(2)`` under ``"equal_area"``.
+
+    Examples
+    --------
+    A direction 90 degrees from the centre lands on the rim, and one at 60
+    degrees lands at ``tan(30 deg) = 0.5774`` under the stereographic map —
+    the defining property pinned in ``tests/unit/test_sphere.py``.
+
+    See Also
+    --------
+    fold_upper_hemisphere : the antipodal folding applied first.
+    """
+
+    vectors = fold_upper_hemisphere(directions, antipodal=antipodal)
+    denominator = np.clip(1.0 + vectors[:, 2], 1e-12, None)
+    if method == "equal_area":
+        scale = np.sqrt(2.0 / denominator)
+    elif method == "stereographic":
+        scale = 1.0 / denominator
+    else:
+        raise ValueError("Projection method must be either 'equal_area' or 'stereographic'.")
+    projected = np.column_stack([vectors[:, 0] * scale, vectors[:, 1] * scale])
+    return freeze_array(np.ascontiguousarray(projected))
+
+
 def _broadcast_unit_rows(
     left: np.ndarray,
     right: np.ndarray,
@@ -244,8 +371,7 @@ class SphericalVectorSet:
         )
 
     def as_array(self) -> np.ndarray:
-        """The underlying ``(n, 3)`` unit-vector array, without frame meaning.
-        """
+        """The underlying ``(n, 3)`` unit-vector array, without frame meaning."""
 
         return self.values
 
@@ -362,9 +488,7 @@ class SphericalVectorSet:
         products = np.cross(left, right)
         norms = np.linalg.norm(products, axis=1)
         if np.any(np.isclose(norms, 0.0)):
-            raise ValueError(
-                "cross is undefined for parallel or antiparallel direction pairs."
-            )
+            raise ValueError("cross is undefined for parallel or antiparallel direction pairs.")
         return SphericalVectorSet(
             values=products,
             reference_frame=self.reference_frame,
@@ -437,10 +561,7 @@ class SphericalVectorSet:
             principal = eigenvectors[:, int(np.argmax(eigenvalues))]
             if principal[2] < 0.0 or (
                 np.isclose(principal[2], 0.0)
-                and (
-                    principal[0] < 0.0
-                    or (np.isclose(principal[0], 0.0) and principal[1] < 0.0)
-                )
+                and (principal[0] < 0.0 or (np.isclose(principal[0], 0.0) and principal[1] < 0.0))
             ):
                 principal = -principal
             return as_float_array(principal, shape=(3,))
@@ -472,9 +593,7 @@ class SphericalVectorSet:
 def _require_hemisphere(hemisphere: str) -> str:
     if hemisphere not in _HEMISPHERES:
         supported = ", ".join(_HEMISPHERES)
-        raise ValueError(
-            f"Unsupported hemisphere '{hemisphere}'. Supported values: {supported}."
-        )
+        raise ValueError(f"Unsupported hemisphere '{hemisphere}'. Supported values: {supported}.")
     return hemisphere
 
 
@@ -573,9 +692,7 @@ def raster_solid_angle_weights(
             raise ValueError("polar_max_deg must lie in (0, 180].")
         if np.any(polar > outer_bound + 1e-9):
             raise ValueError("polar_deg must not exceed polar_max_deg.")
-    rings, inverse, counts = np.unique(
-        np.round(polar, 9), return_inverse=True, return_counts=True
-    )
+    rings, inverse, counts = np.unique(np.round(polar, 9), return_inverse=True, return_counts=True)
     if rings.size == 1:
         # A single ring carries the whole measured band; every point on it is
         # equivalent, so the weights are uniform.
@@ -770,9 +887,7 @@ class S2Grid:
         if not 0.0 < azimuth_step <= 120.0 or not np.isclose(
             np.mod(360.0, azimuth_step), 0.0, atol=1e-10
         ):
-            raise ValueError(
-                "azimuth_step_deg must lie in (0, 120] and divide 360 degrees evenly."
-            )
+            raise ValueError("azimuth_step_deg must lie in (0, 120] and divide 360 degrees evenly.")
         hemisphere = _require_hemisphere(hemisphere)
         polar_max = 90.0 if hemisphere == "upper" else 180.0
         ring_count = round(polar_max / polar_step)

@@ -94,6 +94,18 @@ downstream analyses depend on them.
   session as plain text. It replaces the former activity strip, which counted calculations rather
   than describing them.
 
+### Changed
+
+- **One stereographic projection, in one documented public place.** `project_directions` and
+  `fold_upper_hemisphere` now live in `pytex.core.sphere` and are exported from `pytex.core`, with
+  the full docstring contract: both radial laws stated (`r = tan(rho/2)` stereographic,
+  `r = 2 sin(rho/2)` equal area), when each is the right map, and what the antipodal folding means.
+  `pytex.texture.projections` re-exports them, so no caller changed. The two private copies that
+  had grown beside it — the publication tilt stereogram's `_project` and the TEM workbench
+  stereogram's `_stereographic` — are gone; both call the shared helper. No drawn output changes,
+  and the tangent-half-angle law is pinned directly on the helper in
+  `tests/unit/test_sphere.py`.
+
 ### Fixed
 
 - **The server could die mid-session under two concurrent operations.** `ThreadingHTTPServer` ran

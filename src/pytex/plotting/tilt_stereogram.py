@@ -53,11 +53,11 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 import numpy as np
-from numpy.typing import ArrayLike
 
 from pytex.core._arrays import normalize_vector
 from pytex.core.lattice import Phase
 from pytex.core.notation import format_direction_indices, format_plane_indices
+from pytex.core.sphere import project_directions
 from pytex.diffraction.stereonets import projection_boundary_radius
 from pytex.plotting._render import (
     FigureSpec2D,
@@ -70,7 +70,6 @@ from pytex.plotting.spherical import build_wulff_net_figure_spec
 from pytex.tem.navigation import TiltPlanReport, TiltSolution
 from pytex.tem.path import TiltPath
 from pytex.tem.stage import StageModel
-from pytex.texture.projections import project_directions
 
 __all__ = [
     "TILT_STEREOGRAM_COLORS",
@@ -134,13 +133,6 @@ _LABEL_SEPARATION = 0.085
 
 #: Which panel a spec describes.
 StereogramView = Literal["overview", "detail"]
-
-
-def _project(directions: ArrayLike, method: str) -> np.ndarray:
-    """Project directions with antipodal folding, as a stereogram requires."""
-
-    array = np.atleast_2d(np.asarray(directions, dtype=np.float64))
-    return project_directions(array, method=method, antipodal=True)
 
 
 def _radial_offset(point: np.ndarray, distance: float) -> np.ndarray:
@@ -273,7 +265,7 @@ def _reachable_region_layers(
 
     for index, (alphas, betas) in enumerate(edges):
         crystal = _to_crystal(_beam_grid(stage, alphas, betas), crystal_to_holder)
-        for segment in _split_on_wrap(_project(crystal, method)):
+        for segment in _split_on_wrap(project_directions(crystal, method=method)):
             layers.append(
                 LineLayer2D(
                     points=segment,
@@ -312,7 +304,7 @@ def _tilt_axis_layers(
     )
     for index, (label, alphas, betas) in enumerate(excursions):
         crystal = _to_crystal(_beam_grid(stage, alphas, betas), crystal_to_holder)
-        projected = _project(crystal, method)
+        projected = project_directions(crystal, method=method)
         lines.append(
             LineLayer2D(
                 points=projected,
@@ -370,7 +362,7 @@ def _equivalent_points(
     def stack(items: list[np.ndarray]) -> np.ndarray:
         if not items:
             return np.zeros((0, 2), dtype=np.float64)
-        return _project(np.stack(items), method)
+        return project_directions(np.stack(items), method=method)
 
     return stack(reachable), stack(unreachable)
 
@@ -509,11 +501,15 @@ def build_tilt_stereogram_figure_spec(
     radius = projection_boundary_radius(method)
     is_detail = view == "detail"
 
-    current_point = _project(report.current.beam_direction_crystal(stage), method)
-    target_point = _project(solution.orbit_member, method)
+    current_point = project_directions(
+        report.current.beam_direction_crystal(stage), method=method
+    )
+    target_point = project_directions(solution.orbit_member, method=method)
     path: TiltPath | None = solution.path
     trajectory: np.ndarray | None = (
-        _project(path.beam_directions_crystal(), method) if path is not None else None
+        project_directions(path.beam_directions_crystal(), method=method)
+        if path is not None
+        else None
     )
 
     # The detail limits must be known *before* the annotation layers are built:
@@ -562,7 +558,7 @@ def build_tilt_stereogram_figure_spec(
     if show_poles:
         poles, labels = _pole_directions(phase, pole_families, max_poles)
         if poles.shape[0]:
-            projected = _project(poles, method)
+            projected = project_directions(poles, method=method)
             visible = in_view(projected)
             projected = projected[visible]
             labels = tuple(
@@ -777,11 +773,11 @@ def _detail_limits(
     alphas = np.linspace(alpha_min, alpha_max, 40)
     betas = np.linspace(beta_min, beta_max, 40)
     grid_alpha, grid_beta = np.meshgrid(alphas, betas, indexing="ij")
-    region = _project(
+    region = project_directions(
         _to_crystal(
             _beam_grid(stage, grid_alpha.ravel(), grid_beta.ravel()), crystal_to_holder
         ),
-        method,
+        method=method,
     )
     points = [region, current_point, target_point]
     if trajectory is not None:
