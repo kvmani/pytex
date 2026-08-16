@@ -1123,6 +1123,33 @@ button:focus-visible {
   border-radius: 0.1875rem;
 }
 
+/* ------------------------------------------------------------------ about */
+
+/* The author block is a stack rather than a paragraph: a name, an institute and
+   two addresses run together on one line read as a single sentence, and the
+   reader is looking for one of the four. */
+.about__author {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.about__author span {
+  color: var(--ink-muted);
+}
+
+.about__notice {
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  border-left: 2px solid var(--line);
+  padding-left: 0.75rem;
+}
+
+.about__links {
+  margin: 0;
+  padding-left: 1.125rem;
+}
+
 /* --------------------------------------------------------------- examples */
 
 .examples {

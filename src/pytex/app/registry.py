@@ -743,11 +743,17 @@ class ServiceRegistry:
         """Return the document the frontend builds itself from."""
 
         from pytex import __version__
+        from pytex.app.about import about_document
         from pytex.app.export import EXPORT_FORMATS
 
         return {
             "schema": "pytex.app_manifest/1",
             "version": __version__,
+            # Identity, authorship and licence travel with the manifest the
+            # frontend already fetches at startup, so the About panel needs no
+            # request of its own and cannot show a version the running code was
+            # not built from.
+            "about": about_document(),
             "panels": list(self.panels()),
             "operations": [spec.describe() for spec in self.operations()],
             "examples": [example.describe() for example in self.examples()],

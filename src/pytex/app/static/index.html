@@ -41,6 +41,10 @@
           <span aria-hidden="true">?</span>
           <span class="masthead__action-label">Help</span>
         </button>
+        <button type="button" class="button" id="open-about" title="Version, authorship, and licence">
+          <span aria-hidden="true">ⓘ</span>
+          <span class="masthead__action-label">About</span>
+        </button>
       </div>
     </header>
 
@@ -82,6 +86,16 @@
       <div class="drawer__panel">
         <button type="button" class="drawer__close" id="help-close" aria-label="Close help">×</button>
         <div class="drawer__body" id="help-body"></div>
+      </div>
+    </div>
+
+    <!-- About reuses the help drawer's chrome deliberately: it is the same
+         gesture — a panel of prose slid in over the workspace — and giving it a
+         second visual language would say it is a different kind of thing. -->
+    <div class="drawer" id="about-drawer" hidden role="dialog" aria-modal="true" aria-label="About PyTex">
+      <div class="drawer__panel">
+        <button type="button" class="drawer__close" id="about-close" aria-label="Close about">×</button>
+        <div class="drawer__body" id="about-body"></div>
       </div>
     </div>
 

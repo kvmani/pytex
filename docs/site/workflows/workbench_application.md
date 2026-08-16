@@ -76,9 +76,16 @@ conventions, worked examples and related APIs. The manifest test verifies that e
 a link and that its MyST source exists under `docs/site/`, so documentation moves cannot leave a
 stale button behind.
 
+The **About** button opens the identity panel: the running version, what the program is, the author
+and their institute, contact addresses, and the licence with its warranty disclaimer. Every fact in
+it is served by {mod}`pytex.app.about` on the application manifest, so the version shown is the
+version that answered the request rather than a number typed into a page — and the licence shown is
+the one `pyproject.toml` and `LICENSE` declare, which `tests/unit/test_app_about.py` checks against
+both files.
+
 The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
 system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
-browser and desktop window. On a narrow screen the three masthead actions collapse to icons while
+browser and desktop window. On a narrow screen the masthead actions collapse to icons while
 retaining their full titles and accessible names, and the nine workspace tabs wrap rather than
 disappearing into an unmarked horizontal scroller.
 

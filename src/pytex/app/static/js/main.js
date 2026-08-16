@@ -64,6 +64,8 @@ const dom = {
   paletteResults: document.getElementById('palette-results'),
   helpDrawer: document.getElementById('help-drawer'),
   helpBody: document.getElementById('help-body'),
+  aboutDrawer: document.getElementById('about-drawer'),
+  aboutBody: document.getElementById('about-body'),
   themeButton: document.getElementById('cycle-theme'),
   themeIcon: document.getElementById('theme-icon'),
   themeLabel: document.getElementById('theme-label'),
@@ -300,6 +302,84 @@ function closeHelp() {
   dom.helpDrawer.hidden = true;
 }
 
+/* ------------------------------------------------------------------- about */
+
+/**
+ * Render the identity panel: what this program is, which build is running, who
+ * wrote it, and the licence it is distributed under.
+ *
+ * Every fact comes from `manifest.about`, which Python builds in
+ * `pytex/app/about.py` from the same version literal the package metadata reads.
+ * Nothing here is written twice, so the version on screen is the version that
+ * answered the request.
+ */
+function renderAbout(body, about) {
+  if (!about) {
+    body.append(...markdown('This build did not publish an About document.'));
+    return;
+  }
+  const { author = {}, license = {}, links = [] } = about;
+  body.append(
+    el('h2', { text: `${about.name} ${about.version ?? ''}`.trim() }),
+    about.tagline ? el('p.summary', { text: about.tagline }) : null,
+
+    el('h3', { text: 'What it is' }),
+    ...markdown(about.description ?? ''),
+    about.audience ? el('p', { text: about.audience }) : null,
+
+    el('h3', { text: 'Developed by' }),
+    el('p.about__author', {}, [
+      el('strong', { text: author.name ?? '' }),
+      author.affiliation ? el('span', { text: author.affiliation }) : null,
+      ...(author.emails ?? []).map((address) =>
+        el('a', { href: `mailto:${address}`, text: address }),
+      ),
+    ]),
+
+    el('h3', { text: 'Licence' }),
+    el('p', {}, [
+      el('strong', { text: license.name ?? '' }),
+      license.spdx ? ' · ' : null,
+      license.spdx ? el('code', { text: license.spdx }) : null,
+    ]),
+    license.notice ? el('p.about__notice', { text: license.notice }) : null,
+
+    links.length ? el('h3', { text: 'Links' }) : null,
+    links.length
+      ? el(
+          'ul.about__links',
+          {},
+          links.map((link) =>
+            el('li', {}, [
+              el('a', { href: link.url, target: '_blank', rel: 'noreferrer', text: link.label }),
+            ]),
+          ),
+        )
+      : null,
+
+    el('h3', { text: 'This session' }),
+    el('p.field__help', {
+      text:
+        `${app.manifest?.operations?.length ?? 0} operations across ${PANELS.length} ` +
+        `workspaces, running in the ${app.shell?.shell ?? 'unknown'} shell.`,
+    }),
+  );
+}
+
+function openAbout() {
+  clear(dom.aboutBody);
+  renderAbout(dom.aboutBody, app.manifest?.about);
+  dom.aboutDrawer.hidden = false;
+  log.info('Opened the About panel.', {
+    source: 'app',
+    detail: { version: app.manifest?.about?.version ?? null },
+  });
+}
+
+function closeAbout() {
+  dom.aboutDrawer.hidden = true;
+}
+
 /* ------------------------------------------------------------------ errors */
 
 /**
@@ -361,12 +441,17 @@ function wireGlobals() {
   document.getElementById('open-palette').addEventListener('click', openPalette);
   document.getElementById('open-help').addEventListener('click', () => openHelp());
   document.getElementById('help-close').addEventListener('click', closeHelp);
+  document.getElementById('open-about').addEventListener('click', openAbout);
+  document.getElementById('about-close').addEventListener('click', closeAbout);
 
   dom.palette.addEventListener('click', (event) => {
     if (event.target === dom.palette) closePalette();
   });
   dom.helpDrawer.addEventListener('click', (event) => {
     if (event.target === dom.helpDrawer) closeHelp();
+  });
+  dom.aboutDrawer.addEventListener('click', (event) => {
+    if (event.target === dom.aboutDrawer) closeAbout();
   });
 
   dom.paletteInput.addEventListener('input', () => renderPalette(search(dom.paletteInput.value)));
@@ -401,6 +486,7 @@ function wireGlobals() {
     } else if (event.key === 'Escape') {
       closePalette();
       closeHelp();
+      closeAbout();
     }
   });
 }
