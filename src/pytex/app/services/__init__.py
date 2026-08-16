@@ -13,6 +13,7 @@ from pytex.app.services import calculator as calculator
 from pytex.app.services import cbed as cbed
 from pytex.app.services import crystal as crystal
 from pytex.app.services import diffraction as diffraction
+from pytex.app.services import ebsd as ebsd
 from pytex.app.services import tem as tem
 from pytex.app.services import texture as texture
 from pytex.app.services import variants as variants
@@ -23,6 +24,7 @@ __all__ = [
     "cbed",
     "crystal",
     "diffraction",
+    "ebsd",
     "tem",
     "texture",
     "variants",

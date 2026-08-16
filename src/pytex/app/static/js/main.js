@@ -28,6 +28,7 @@ import * as tem from './panels/tem.js';
 import * as cbed from './panels/cbed.js';
 import * as diffraction from './panels/diffraction.js';
 import * as xrd from './panels/xrd.js';
+import * as ebsd from './panels/ebsd.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
 import * as calculator from './panels/calculator.js';
@@ -41,7 +42,10 @@ import * as calculator from './panels/calculator.js';
 // CBED sits beside the TEM solver because it is the same specimen under a
 // converged probe: the solver indexes a pattern of spots, and a CBED disc is
 // what one of those spots becomes when the beam stops being parallel.
-const PANELS = [crystal, tem, cbed, diffraction, xrd, variants, texture, calculator];
+// EBSD follows XRD because it is the other way a texture is measured rather
+// than modelled, and texture follows both because it is what those measurements
+// are read as.
+const PANELS = [crystal, tem, cbed, diffraction, xrd, ebsd, variants, texture, calculator];
 
 const THEMES = {
   auto: { label: 'Auto', icon: '◐', description: 'follow the system' },

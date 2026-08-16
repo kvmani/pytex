@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Workbench Modules: CBED, EBSD Plotter, And One Centralized Log — IN PROGRESS (2026-08-16)
+## Workbench Modules: CBED, EBSD Plotter, And One Centralized Log — COMPLETE (2026-08-16)
 
 **Objective.** Add three things to the shared web/desktop workbench:
 
@@ -29,15 +29,16 @@ added to one alone.
 | L2 | Envelope carries each call's narration; `GET /api/log?since=`; every operation narrates itself in `execute` | done | `8131d25` |
 | L3 | Console frontend (`js/core/logbook.js`), replacing the old activity strip; filters, progress bars, copy | done | `8131d25` |
 | L4 | Existing surfaces wired: panel switches, exports, bad numeric input, TEM spot coordinates | done | `8131d25` |
-| C1 | CBED service: `cbed.pattern`, `cbed.thickness_from_fringes`, `cbed.holz_rings` | done | pending push |
-| C2 | CBED panel: rasterised discs under a vector overlay, contrast control, fit and ring views | done | pending push |
-| E1 | EBSD service operations: map loading, IPF, boundaries, GROD, KAM, scalar modulation | pending | |
-| E2 | EBSD panel: map canvas, colouring picker, boundary overlay, greyscale-by-channel | pending | |
-| D1 | Documentation, worked examples, changelog | pending | |
+| C1 | CBED service: `cbed.pattern`, `cbed.thickness_from_fringes`, `cbed.holz_rings` | done | `3e0b9be` |
+| C2 | CBED panel: rasterised discs under a vector overlay, contrast control, fit and ring views | done | `3e0b9be` |
+| E1 | `pytex.app.ebsd_gallery`: three constructed datasets with known answers | done | `<this commit>` |
+| E2 | `ebsd.map` service: IPF/grain/GROD/KAM/channel colourings, scalar modulation, boundary network | done | `<this commit>` |
+| E3 | EBSD panel: native-resolution raster, vector boundaries, labelled colour bar | done | `<this commit>` |
+| D1 | Documentation (workbench page: console, CBED and EBSD workspaces) and changelog | done | `<this commit>` |
 
 ### Current worktree state
 
-`main`, clean at the CBED commit; the EBSD plotter (E1, E2) is the next increment.
+`main`, clean at the EBSD commit. All three modules of the goal are landed.
 
 ### Verified so far (L1–L4)
 
@@ -92,6 +93,65 @@ run's line. The counter is now per instance.
 
 27 unit cases in `tests/unit/test_app_cbed.py`.
 
+### Verified (E1-E3)
+
+Driven in a real Chromium at 1440x900, light and dark, all five examples:
+
+- **Known answers reproduced exactly.** The bicrystal boundary is 40.000 degrees on every one of its
+  80 segments; every one of the twin map's 320 segments is 60.000 degrees; the polycrystal segments
+  into exactly the twelve grains it was built from.
+- **KAM inside the linear gradient is 0.175 degrees at every interior point** — exactly half the
+  0.35 degree per-step rotation, which is the claim the dataset exists to make.
+- **GROD on the same map is a V, not a ramp**, reaching 7.000 degrees and falling to zero at the
+  grain's reference orientation. Seen side by side with the KAM map, which is uniform, this is the
+  local-versus-grain-referenced distinction rendered.
+- **Boundaries land on the geometry.** The bicrystal's 80 segments are drawn at x = 350 in a 700-unit
+  drawing — the exact midline — each one step long and contiguous.
+- **Modulation darkens and never brightens**, applies to all four colourings, and inverts for fit.
+- **The colour bar carries its range** (`GROD / deg  0.000 - 7.000`); a bar without numbers cannot be
+  read.
+- All nine workspaces mount with an empty console-error log.
+
+32 unit cases in `tests/unit/test_app_ebsd.py`, green on the first run.
+
+### Defects the suites caught, all fixed
+
+- **A layout defect**, found by eye: a `<strong>` beside a `<span>` in the figure caption is two
+  inline boxes, so the dataset name and the grid size rendered as one run-on line. Fixed for both
+  new panels with a shared `.plot__caption`.
+- **Both new panels opened to an empty stage.** Every other panel draws on mount; these waited for a
+  button press. Caught by the Playwright case that encodes exactly that convention
+  (`shows every figure and its controls without scrolling the stage`), which is the whole reason it
+  measures the drawing rather than the card.
+- **The log poll replayed stale history.** The `/api/log` buffer is process-wide and outlives any
+  page, so a fresh load ingested 307 records from earlier sessions — and, on a shared intranet
+  server, from other people. The first poll now seeds its cursor from the server's head instead of
+  reading from it: the console narrates *this* session, and a call's own records still arrive on its
+  envelope. Verified: a fresh load now opens at 6 messages.
+- **A brittle ordering assertion in an unrelated test.** `test_app_xrd.py` pinned the tab order as
+  the substring `'diffraction, xrd, variants'`, so inserting EBSD between XRD and Variants failed an
+  *XRD* test. Rewritten to assert membership of the `PANELS` list.
+- **A grid-dependent number in an answer key.** Lowering the default map from 80 to 56 points (6.2 s
+  to 2.0 s, which matters now that the panel draws on mount) would have made the bicrystal's printed
+  GROD answer wrong, because it was a fixed number computed at 80. The boundary and KAM figures are
+  grid-independent; the GROD magnitude is not, and the answer key now says so rather than quoting a
+  number that only held at one size.
+
+Final state: 15/15 Playwright cases and the full unit suite pass.
+
+### Deferred deliberately, with a task chip raised
+
+`pytex.core.symmetry.reduce_vectors_to_fundamental_sector` loops one vector at a time, calling
+`_vector_in_fundamental_sector` 48 times each. On a routine 80x80 map that is 307,200 scalar calls
+and 6.2 s — against 0.78 s for *every other stage combined* (segmentation, KAM, GROD, boundary
+network, GOS). IPF colouring is therefore ~80% of an EBSD map's runtime, and this violates
+`development_principles` principle 9a explicitly.
+
+It was not fixed here. Core symmetry has a wide blast radius, and vectorising it needs its own
+element-by-element equivalence test against the scalar path across several point groups — that is a
+separate change, not a rider on a panel. The panel narrates the wait instead, so it reads as work
+rather than as a hang.
+
 ### Decisions worth not re-litigating
 
 - **The console supersedes the old activity strip rather than sitting beside it.** Two bottom bars,
@@ -107,6 +167,12 @@ run's line. The counter is now per instance.
   all-even; what extinguishes it is the diamond glide putting the second atom exactly out of phase.
   Drawing it with zero intensity is honest; dropping it would claim a systematic absence where
   there is a cancellation.
+- **The EBSD panel is one operation with four orthogonal parameters, not a dozen operations.** A
+  dozen buttons cannot express "boundaries on a GROD map greyed by confidence index"; four
+  parameters do, without anyone having enumerated it.
+- **The practice datasets live in the app layer, beside `tem_gallery.py`.** They are example data
+  for the interface, not a scientific capability, and putting a synthetic-microstructure generator
+  into `pytex.ebsd` would create a public surface owing theory notes and worked examples.
 - **The HTTP access log is excluded from the bridge.** Every stylesheet fetch is an `INFO` record;
   routing those to a user-facing console would bury the science under a transcript of the
   transport.

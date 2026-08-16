@@ -3,8 +3,10 @@ import { expect, test } from '@playwright/test';
 const WORKSPACES = [
   'Crystal Viewer',
   'TEM Solver',
+  'CBED',
   'Diffraction',
   'XRD',
+  'EBSD',
   'Variants',
   'Texture',
   'Calculator',
@@ -134,12 +136,17 @@ test('the console narrates a session and filters it by severity', async ({ page 
   await openWorkbench(page);
 
   // Collapsed, the bar still reports: a user who never opens the console must
-  // still see that something happened and whether it went wrong.
-  await expect(page.locator('#console-toggle')).toContainText('ready in the web shell');
+  // still see that something happened. It shows the *newest* message, so the
+  // assertion is that it is not idle rather than that it holds any one line —
+  // by the time the first panel has drawn, the start-up notice is history.
+  await expect(page.locator('#console-toggle')).not.toContainText('Ready');
+  await expect(page.locator('#console-toggle')).toContainText('messages');
 
   await openConsole(page);
   const stream = page.locator('#console-stream');
   await expect(stream.locator('.console__entry')).not.toHaveCount(0);
+  // The start-up notice lives in the stream, where nothing displaces it.
+  await expect(stream).toContainText('ready in the web shell');
 
   // Every entry carries a time, a severity mark and the surface that reported
   // it, so a message can be traced back without guessing.

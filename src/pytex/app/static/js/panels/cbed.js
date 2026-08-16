@@ -133,6 +133,10 @@ export function mount(context) {
 
   renderControls();
   renderAppearance();
+  // Draw immediately, as every other panel does. An empty stage waiting to be
+  // pressed teaches nothing, and the default pattern is the one that shows what
+  // the convergence-angle control is for.
+  run();
 
   function updateRunLabel(busy = false) {
     const labels = {
@@ -317,7 +321,7 @@ export function mount(context) {
         `${formatNumber(data.nearest_disc_separation_mm, 2)} mm apart`,
     );
     frame.setOverlay(
-      el('div', {}, [
+      el('div.plot__caption', {}, [
         el('strong', { text: `${data.phase_name} ${data.zone_axis_label}` }),
         el('span', {
           text: `${data.method === 'bloch' ? 'Bloch wave' : 'Two-beam'} · ${data.regime}`,

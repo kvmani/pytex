@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -97,7 +98,13 @@ def test_shared_frontend_exposes_xrd_plot_and_live_appearance_controls() -> None
     main = (static / "js" / "main.js").read_text(encoding="utf-8")
     panel = (static / "js" / "panels" / "xrd.js").read_text(encoding="utf-8")
     assert "import * as xrd" in main
-    assert "diffraction, xrd, variants" in main
+    # Mounted in the tab bar. Asserted as membership rather than as a substring
+    # of the whole list: pinning the neighbours makes inserting an unrelated
+    # workspace fail an XRD test, which is what happened when EBSD was added
+    # between XRD and Variants.
+    panels = re.search(r"const PANELS = \[([^\]]*)\]", main)
+    assert panels is not None, "main.js must declare a PANELS list"
+    assert "xrd" in [name.strip() for name in panels.group(1).split(",")]
     assert "xrd.powder_pattern" in panel
     assert "frame.hoverable(hit, reflection, data.columns)" in panel
     assert "Display controls redraw the existing profile" in panel

@@ -45,15 +45,17 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Seven workspaces. Every one of them ships with runnable examples, so a user with no data of their own
+Nine workspaces. Every one of them ships with runnable examples, so a user with no data of their own
 can still exercise every feature — the manifest test executes each example, so an example cannot rot.
 
 | Workspace | What it answers |
 | --- | --- |
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
+| **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Diffraction** | What does a two-phase SAED pattern contain, and which variant is that spot? |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
+| **EBSD** | What does this orientation map show — orientation, grains, local or grain-referenced misorientation — and where should it be believed? |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
@@ -77,7 +79,7 @@ stale button behind.
 The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
 system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
 browser and desktop window. On a narrow screen the three masthead actions collapse to icons while
-retaining their full titles and accessible names, and the seven workspace tabs wrap rather than
+retaining their full titles and accessible names, and the nine workspace tabs wrap rather than
 disappearing into an unmarked horizontal scroller.
 
 The Diffraction workspace adds an **Appearance** group below **Simulate pattern**. Filled or
@@ -150,6 +152,45 @@ The on-screen table is a **preview**: the first 200 rows, with the caption sayin
 carries all of them. A texture ODF is over a thousand rows, and a scroll box with no search is not
 how anyone reads a thousand numbers.
 ```
+
+## The Message Log
+
+One console is docked at the bottom of the window, and every part of the application reports into
+it: the panels when a spot is picked or a control is rejected, the service layer when a calculation
+starts and finishes, and Python's own `logging` — the last of which a desktop user could otherwise
+never see, since a native window has no terminal behind it.
+
+It exists because the same session's story used to be split four ways: a toast that vanished after
+nine seconds, a strip that counted calculations without describing them, an error line beside a
+control, and a terminal. There was no way to answer "what did the application just do, and in what
+order".
+
+Each record carries a severity, a timestamp, the surface that reported it, and structured detail:
+
+| Level | For |
+| --- | --- |
+| **Progress** | A long task's percentage and estimated time remaining, e.g. `50% progress. ETA: 2 min 30 sec`. |
+| **Debug** | Detail only a maintainer wants. |
+| **Info** | Ordinary narration: a workspace opened, a calculation started. |
+| **Important** | A result worth noticing — the number of grains found, the disc regime, where a file was saved. |
+| **Success** | Something completed, with how long it took. |
+| **Warning** | Something suspect that did not stop the work, such as a malformed entry in a control. |
+| **Error** | Work that failed, quoting the same sentence shown beside the offending control. |
+| **Critical** | A failure that leaves the application unusable, such as the server becoming unreachable. |
+
+Collapsed, the bar shows the newest message and a count of unseen warnings and errors. Opened, the
+stream filters by severity and by text, and copies as plain text for pasting into an issue. A long
+task's progress ticks collapse onto a single line that counts up, rather than burying everything
+else under a thousand entries.
+
+Two delivery paths, deliberately. A call's own records ride back **on its response envelope**, so a
+message about a calculation can never arrive before the result it describes; everything else —
+server start-up, background work — is polled from `GET /api/log?since=<sequence>`. Merging on the
+sequence number is what keeps a record delivered by both paths from appearing twice.
+
+The rule for what belongs here: a record is a finished sentence, addressed to the researcher, with
+the numbers in it. `Spot 2 is selected: coordinates are (452.48, 709.30) px.` — not
+`handleClick fired`.
 
 ## Exporting
 
@@ -232,19 +273,20 @@ saves the current line/filled appearance through the same saver used by both app
 
 ### Calculation progress and history
 
-Every Python service call appears in the activity bar at the bottom of both the browser and desktop
-app. While work is in flight the bar names the latest operation and shows an indeterminate progress
-indicator; when it finishes, the result remains in a bounded history with its success/failure state
-and elapsed time. Open the bar to review the latest 40 calls or clear the local display. This log is
-an interface aid, not a scientific record: reproducible parameters and provenance remain in result
-exports and reports.
+Every Python service call narrates itself into the message console described above: one record when
+it starts, one when it finishes with its elapsed time, and an error record quoting the same sentence
+shown beside the offending control when it fails. While work is in flight the collapsed bar names
+the operation and shows an indeterminate indicator.
+
+The console is an interface aid, not a scientific record. Reproducible parameters and provenance
+remain in result exports and reports; the log is bounded and is discarded when the process ends.
 
 ### Browser verification
 
 The repository exercises the shared frontend in Chromium with `npm run test:browser`. The critical
 suite opens every workspace, completes each panel's default scientific calculation (including the
-TEM auto-pick/index path), verifies the visible error and activity-history envelopes, rejects page
-and console errors, and checks that all seven workspaces remain reachable at 390 × 844. These are
+TEM auto-pick/index path), verifies the visible error envelope and the message console, rejects page
+and console errors, and checks that all nine workspaces remain reachable at 390 × 844. These are
 real requests to a loopback PyTex server. Playwright exists only in the development lockfile; the
 application delivered to users remains hand-written ES modules with no third-party browser code.
 
@@ -301,6 +343,104 @@ zone at 35°. Choosing a row sets it as the tilt target below, so no indices are
 **4 · Tilt to the target.** The plan, the alpha and beta angles, the margin against the tilt
 envelope, and the tilt map showing at a glance which candidates sit comfortably inside the holder's
 range and which are pressed against a stop.
+
+## The CBED Workspace
+
+Three views of one technique, chosen with the **View** picker.
+
+**CBED pattern** simulates a zone-axis exposure. Every zeroth-Laue-zone reflection becomes a disc
+whose angular radius is the convergence semi-angle, and the disc is filled with the diffracted
+intensity at the excitation error of every incident direction in the illumination cone. Position
+inside a disc is therefore *incident-beam direction*, which is what makes its fringes readable.
+
+The convergence semi-angle is the parameter that matters, and the panel reports what it produced:
+
+- **Kossel–Moellenstedt**, discs separated. Each disc is an independent rocking curve, and its
+  fringes measure the foil thickness. This is the regime a thickness measurement requires.
+- **Kossel**, discs overlapping. A disc is no longer an independent rocking curve. The overlaps are
+  drawn as the sum of the contributing discs, and the result says so — the *interference* between
+  the overlapping beams, which is what an experiment records there, is not modelled.
+
+Whether the discs separate depends on the material and the zone, not on the instrument alone: the
+disc diameter `2α/λ` has to fall below the closest reciprocal-lattice spacing of that zone. Silicon
+down [001] separates at 3 mrad and overlaps at 6.
+
+**Two-beam** computes each disc independently — cheap, and exactly the model the thickness
+measurement inverts. It is also symmetric in the excitation error by construction, so a two-beam
+pattern displays a symmetry belonging to the *method* rather than to the crystal; symmetry
+determination is refused on one, rather than answered with a caveat. **Bloch wave** solves the
+coupled many-beam problem, and is the only method whose relative intensities and symmetry mean
+anything — and the only one that can decide whether the crystal has a centre of symmetry, which
+kinematic diffraction cannot determine at all.
+
+**Thickness from CBED fringes** inverts the two-beam minima. `(s_n/n)²` is linear in `1/n²` with
+intercept `t⁻²` and slope `−ξ_g⁻²`, so one least-squares fit returns the thickness *and* the
+extinction distance. The extinction distance is the check: compare it with the value the structure
+predicts, because a large disagreement means the fringe orders were misassigned, which is this
+measurement's usual failure. The panel draws the fit as the straight line it is, so a misassignment
+shows as a point off the line rather than only as a wrong number.
+
+**HOLZ ring radii** reports where the higher-order Laue zones fall, and the reciprocal-lattice layer
+spacing `H` behind them. This is the one dimension a zone-axis pattern is blind to — every
+zeroth-zone reflection is perpendicular to the zone axis — and a change in `H` is a change in the
+lattice parameter along the beam, which is how CBED measures local strain and composition.
+
+## The EBSD Workspace
+
+One map, from four independent choices. Declaring them as parameters rather than as a dozen separate
+buttons is what makes a combination like *grain boundaries superimposed on a GROD map, greyed by
+confidence index* reachable — nobody would have enumerated it, and it is what a real analysis asks
+for.
+
+**Colour by** decides what a pixel's colour means. *IPF* is the standard orientation map: each pixel
+is coloured by which crystal direction lies along the specimen axis you choose, folded into the
+symmetry fundamental sector so symmetrically equivalent orientations share a colour. The colour key
+belongs to the point group, so two maps of different symmetries are not colour-comparable, and one
+direction alone does not fix an orientation — X, Y and Z together do. *Grain identity* colours each
+segmented grain arbitrarily. *GROD* and *KAM* render the two misorientation fields, and the
+remaining choices render the measured channels.
+
+**Modulate by** darkens any colouring by a scalar channel while keeping its hue. This is how an IPF
+map is made to show *where the indexing should be believed* without giving up the orientation it is
+showing: at a boundary the diffraction pattern overlaps two lattices, so the confidence index falls
+and those pixels recede. Fit is an error rather than a quality, so its scale is inverted — without
+that, modulating by fit would darken exactly the pixels indexed best.
+
+**Grain boundaries** superimposes the network on whatever is underneath, classified into low- and
+high-angle. They are drawn as line geometry rather than as pixels, so they stay sharp under zoom;
+each segment is one pixel face, reconstructed onto the face itself rather than smoothed through the
+midpoints, which would round off the corners where three grains meet.
+
+**Grain threshold** is what counts as one grain, and it changes the grain table, GROD and the
+boundary network together. The KAM threshold is separate and does a different job: it excludes
+neighbour pairs above it from the average, which is the standard way to keep grain boundaries out of
+an intragranular KAM.
+
+### GROD and KAM are not the same picture
+
+The `bicrystal_gradient` dataset exists to make this concrete. Its right-hand grain carries a linear
+orientation gradient, and the same microstructure looks completely different in the two maps:
+
+- **KAM is flat** across the whole gradient, at *half* the per-step rotation. Half, because the
+  four-neighbour kernel averages two neighbours a full step along the gradient with two across it
+  that are identical to the centre point. A KAM is an average over a kernel, not a gradient
+  magnitude.
+- **GROD is strongly graded**, and is a *deviation* rather than a ramp: it falls to zero at the
+  grain's own reference orientation and rises on both sides of it.
+
+### The practice datasets
+
+Each is a construction whose answer is fixed before the calculation runs, and the answer travels
+with the result rather than living only in the documentation:
+
+| Dataset | Known by construction |
+| --- | --- |
+| **Bicrystal with a deformation gradient** | Boundary misorientation exactly 40° about [001]; KAM exactly half the per-step rotation; GROD reaching 7°. |
+| **Annealing twins in a cubic metal** | Every boundary segment a Σ3 twin at exactly 60° about [111], so the misorientation histogram is a single spike. |
+| **Equiaxed polycrystal** | Twelve grains, so a segmentation below the smallest boundary misorientation must find twelve. |
+
+They are constructions, not measurements: no detector geometry, no indexing step, and no noise model
+beyond the stated spread.
 
 ## Using Your Own Material
 

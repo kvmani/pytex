@@ -2067,3 +2067,66 @@ dl.detail dd {
 .legend__swatch[data-shape="transmitted"]::after {
   display: none;
 }
+
+/*
+ * The EBSD scalar colour bar.
+ *
+ * A colour bar without numbers on it is decoration: a GROD map whose brightest
+ * pixel might be two degrees or twenty cannot be read at all. So the ends
+ * always carry the range the colours actually stand for, and the row is laid
+ * out to keep them beside the gradient rather than under it.
+ */
+.legend__scale {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.legend__scale-label {
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.legend__scale-bar {
+  flex: 1 1 8rem;
+  min-width: 6rem;
+  height: 0.6rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+}
+
+.legend__scale-ends {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.legend__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/*
+ * A two-line caption pinned inside a figure: what is being shown, and the
+ * setting it was computed at. Block children, because a <strong> beside a
+ * <span> is two inline boxes and renders as one run-on sentence.
+ */
+.plot__caption {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.4rem 0.55rem;
+}
+
+.plot__caption strong {
+  display: block;
+  color: var(--ink);
+}
+
+.plot__caption span {
+  display: block;
+  color: var(--ink-muted);
+}

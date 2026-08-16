@@ -492,6 +492,12 @@ async function copyToClipboard() {
  */
 function startPolling() {
   if (state.poller) return;
+  // The first poll seeds the cursor from the server's head instead of reading
+  // from it. The buffer is process-wide and outlives any one page, so replaying
+  // it would open every reload with hundreds of records from earlier sessions —
+  // and from other people, on a shared intranet server. The console narrates
+  // *this* session; a call's own records still arrive on its envelope.
+  let seeded = false;
   const tick = async () => {
     if (document.hidden) return;
     try {
@@ -500,6 +506,11 @@ function startPolling() {
       });
       if (!response.ok) return;
       const payload = await response.json();
+      if (!seeded) {
+        seeded = true;
+        state.serverSequence = Math.max(state.serverSequence, payload.latest ?? 0);
+        return;
+      }
       ingest(payload.records ?? []);
     } catch {
       // The console must never be the thing that reports the server is down —

@@ -13,6 +13,21 @@ downstream analyses depend on them.
 
 ### Added
 
+- **An EBSD workspace in the workbench.** `ebsd.map` draws one orientation map from four
+  independent choices — what the colour means, whether a scalar channel modulates it, whether the
+  grain boundaries are superimposed, and what counts as a grain — so combinations nobody would
+  enumerate as separate buttons stay reachable. Colourings are IPF along a chosen specimen
+  direction, grain identity, GROD, KAM, and the measured confidence-index, fit and image-quality
+  channels. Any of them can be greyed by any scalar channel, which is how an IPF map is made to show
+  where the indexing should be believed without giving up the orientation; fit is inverted, since it
+  is an error rather than a quality. The map travels as a raster at its native grid resolution — one
+  pixel is one measurement, so nothing is interpolated — with the boundary network as line geometry
+  on top, reconstructed onto the pixel faces so it stays sharp under zoom. Three practice datasets
+  (`pytex.app.ebsd_gallery`) are constructions with answers fixed before the calculation runs: a
+  bicrystal at exactly 40° with a linear deformation gradient, coherent Σ3 twins at exactly 60°, and
+  a twelve-grain equiaxed polycrystal. Each result carries its dataset's known answer, so a user can
+  check the numbers rather than trust them.
+
 - **A CBED workspace in the workbench.** `cbed.pattern` simulates a zone-axis convergent-beam
   pattern over `pytex.diffraction.cbed` by either the two-beam closed form or the coupled
   Bloch-wave solution, and reports the overlap regime explicitly — the discs being separated is
