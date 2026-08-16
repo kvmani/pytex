@@ -116,6 +116,9 @@ export function mount(context) {
     pixels: null,
     showLattice: true,
     showCalculated: true,
+    // The calibration tool: whether it is taking clicks, the two ends of the
+    // measured line, and the length the user says it is.
+    calibrate: { active: false, points: [], length: '', unit: 'inv_angstrom' },
     // The stereogram beside the pattern: its last result, the request that
     // produced it, and the two things it can be asked to stop drawing.
     stereo: null,
@@ -169,6 +172,26 @@ export function mount(context) {
     },
   });
 
+  /*
+   * Calibrate: measure a known length on the image itself.
+   *
+   * An image that arrives by email has a scale bar and no recorded camera
+   * length, and the camera equation only ever uses one number — the reciprocal
+   * space one pixel spans. Drawing a line across something whose length is known
+   * measures that number directly. Two known lengths are useful and they answer
+   * different questions, so the tool asks which: a reciprocal length (a scale
+   * bar in Å⁻¹, or a reflection whose spacing is known) fixes the scale itself;
+   * a real length on the plate (cm on a print, mm on the detector) fixes the
+   * pixel size, and the camera constant then does the rest as before.
+   */
+  const calibrateButton = el('button.button', {
+    type: 'button',
+    text: 'Calibrate',
+    'aria-pressed': 'false',
+    title: 'Measure a known length on the image to set the scale',
+    onclick: () => setCalibrating(!state.calibrate.active),
+  });
+
   const calculatedButton = el('button.button', {
     type: 'button',
     text: 'Calculated',
@@ -186,6 +209,7 @@ export function mount(context) {
     title: 'Pattern',
     toolbar: [
       autoPickButton,
+      calibrateButton,
       latticeButton,
       calculatedButton,
       answerButton,
@@ -1292,14 +1316,22 @@ export function mount(context) {
       units: values.units ?? 'px',
       camera: Number(values.camera_constant_mm_angstrom ?? 180),
       pixel: Number(values.pixel_size_mm ?? 0.05),
+      scale: Number(values.reciprocal_per_px_angstrom ?? 0),
     };
   }
 
-  /** Convert a picked coordinate offset into the reciprocal-space radius. */
+  /**
+   * Convert a picked coordinate offset into the reciprocal-space radius.
+   *
+   * The same four cases the service applies, because the cursor readout and the
+   * indexed result must be the same measurement: a readout that disagreed with
+   * the table below it would be worse than no readout.
+   */
   function reciprocalRadius(dx, dy) {
-    const { units, camera, pixel } = calibrationValues();
+    const { units, camera, pixel, scale } = calibrationValues();
     const distance = Math.hypot(dx, dy);
     if (units === 'reciprocal_angstrom') return distance;
+    if (units === 'px_scale') return scale > 0 ? distance * scale : 0;
     const mm = units === 'px' ? distance * pixel : distance;
     return camera > 0 ? mm / camera : 0;
   }
@@ -1369,6 +1401,7 @@ export function mount(context) {
 
     if (state.showLattice && state.fit) drawFittedLattice(root, width, height);
     if (state.showCalculated) drawCalculatedPattern(root, width, height);
+    if (state.calibrate.active) drawCalibrationLine(root, width, height);
 
     const marker = Math.max(width, height) / 140;
     if (state.picks.centre) {
@@ -1455,6 +1488,15 @@ export function mount(context) {
         frame.setStatus('That is outside the image — pick inside the pattern.');
         return;
       }
+      // While calibrating, a click is a ruler end rather than a pick. The tool
+      // is modal on purpose: the two gestures are the same gesture, and a
+      // modifier key nobody is told about is not a discoverable alternative.
+      if (state.calibrate.active) {
+        if (state.calibrate.points.length >= 2) state.calibrate.points = [];
+        state.calibrate.points.push({ x: point.x, y: point.y });
+        drawPattern();
+        return;
+      }
       const snapped = snapToSpot(point);
       let picked;
       if (!state.picks.centre) {
@@ -1513,6 +1555,15 @@ export function mount(context) {
     // the one situation where zooming in is the point.
     frame.setContent(outer, { preserveViewport: true });
     frame.setOverlay(measurementCard());
+    frame.setControls(state.calibrate.active ? calibrationCard() : null);
+    if (state.calibrate.active) {
+      frame.setStatus(
+        state.calibrate.points.length === 2
+          ? `Measured ${formatNumber(calibrationLengthPx(), 1)} px — say how long that is below.`
+          : 'Calibrating: click the two ends of a length you know.',
+      );
+      return;
+    }
     frame.setStatus(
       state.picks.centre
         ? `Beam marked · ${state.picks.spots.length} spot(s) picked · click to add more`
@@ -1937,6 +1988,181 @@ export function mount(context) {
     // whether it agrees with the pick.
     root.append(group);
     drawBasisVectors(root, width, height);
+  }
+
+  /* --------------------------------------------------------- calibration */
+
+  /** Units a measured line can be given in, and what each one calibrates. */
+  const CALIBRATION_UNITS = [
+    { id: 'inv_angstrom', label: 'Å⁻¹', reciprocal: true, toAngstrom: (value) => value },
+    // 1 nm⁻¹ = 0.1 Å⁻¹, and a published scale bar is as often in nm⁻¹.
+    { id: 'inv_nm', label: 'nm⁻¹', reciprocal: true, toAngstrom: (value) => value * 0.1 },
+    { id: 'cm', label: 'cm on the plate', reciprocal: false, toMillimetre: (v) => v * 10 },
+    { id: 'mm', label: 'mm on the plate', reciprocal: false, toMillimetre: (v) => v },
+  ];
+
+  function setCalibrating(active) {
+    state.calibrate.active = Boolean(active);
+    calibrateButton.setAttribute('aria-pressed', String(state.calibrate.active));
+    if (!state.calibrate.active) state.calibrate.points = [];
+    drawPattern();
+  }
+
+  function calibrationLengthPx() {
+    const [first, second] = state.calibrate.points;
+    if (!first || !second) return 0;
+    return Math.hypot(second.x - first.x, second.y - first.y);
+  }
+
+  /**
+   * Turn the measured line into a calibration and write it into the index form.
+   *
+   * Whichever unit was chosen, the result is one of the two numbers the form
+   * already has, so nothing downstream learns a new concept: a reciprocal
+   * length sets the direct scale and switches the coordinate units to it; a
+   * length on the plate sets the pixel size and leaves the camera constant
+   * doing its usual job.
+   */
+  function applyCalibration() {
+    const distance = calibrationLengthPx();
+    const unit = CALIBRATION_UNITS.find((entry) => entry.id === state.calibrate.unit);
+    const length = Number(state.calibrate.length);
+    if (!(distance > 0) || !Number.isFinite(length) || length <= 0 || !unit) {
+      frame.setStatus('Draw a line across a known length, then say how long it is.');
+      return;
+    }
+    let announcement;
+    if (unit.reciprocal) {
+      const scale = unit.toAngstrom(length) / distance;
+      state.solveForm.setValues({ units: 'px_scale', reciprocal_per_px_angstrom: scale });
+      announcement =
+        `Calibrated: ${formatNumber(distance, 1)} px across ${length} ${unit.label} means ` +
+        `1 px = ${formatNumber(scale, 5)} Å⁻¹. Every spacing below now uses it.`;
+      log.notice(announcement, {
+        source: 'tem',
+        detail: { distance_px: Number(distance.toFixed(2)), reciprocal_per_px_angstrom: scale },
+      });
+    } else {
+      const pixelSize = unit.toMillimetre(length) / distance;
+      state.solveForm.setValues({ units: 'px', pixel_size_mm: pixelSize });
+      announcement =
+        `Calibrated: ${formatNumber(distance, 1)} px across ${length} ${unit.label} means a ` +
+        `pixel size of ${formatNumber(pixelSize, 5)} mm, used with the camera constant.`;
+      log.notice(announcement, {
+        source: 'tem',
+        detail: { distance_px: Number(distance.toFixed(2)), pixel_size_mm: pixelSize },
+      });
+    }
+    // Leaving the tool redraws, and the redraw writes the ordinary picking
+    // status — so the result of the calibration is announced after it, or it is
+    // replaced by "click the transmitted beam" the instant it appears.
+    setCalibrating(false);
+    scheduleFit();
+    refreshPickReadouts();
+    frame.setStatus(announcement);
+  }
+
+  /** The card shown under the pattern while the calibration tool is on. */
+  function calibrationCard() {
+    const distance = calibrationLengthPx();
+    const lengthInput = el('input.calibrate__length', {
+      type: 'number',
+      step: 'any',
+      min: '0',
+      value: state.calibrate.length,
+      placeholder: 'known length',
+      'aria-label': 'Known length of the drawn line',
+      oninput: (event) => {
+        state.calibrate.length = event.target.value;
+      },
+    });
+    const unitSelect = el(
+      'select.calibrate__unit',
+      {
+        'aria-label': 'Unit of the known length',
+        onchange: (event) => {
+          state.calibrate.unit = event.target.value;
+        },
+      },
+      CALIBRATION_UNITS.map((entry) =>
+        el('option', {
+          value: entry.id,
+          text: entry.label,
+          selected: entry.id === state.calibrate.unit,
+        }),
+      ),
+    );
+    return el('div.calibrate', {}, [
+      el('span.calibrate__hint', {
+        text:
+          state.calibrate.points.length < 2
+            ? 'Click the two ends of something whose length you know — a scale bar, or a ' +
+              'reflection whose spacing you know.'
+            : `Measured ${formatNumber(distance, 1)} px. That length is:`,
+      }),
+      state.calibrate.points.length === 2 ? lengthInput : null,
+      state.calibrate.points.length === 2 ? unitSelect : null,
+      state.calibrate.points.length === 2
+        ? el('button.button.button--primary', {
+            type: 'button',
+            text: 'Use this scale',
+            onclick: () => applyCalibration(),
+          })
+        : null,
+      state.calibrate.points.length
+        ? el('button.button', {
+            type: 'button',
+            text: 'Redraw',
+            onclick: () => {
+              state.calibrate.points = [];
+              drawPattern();
+            },
+          })
+        : null,
+    ]);
+  }
+
+  /** The measured line itself, drawn over the pattern with its length. */
+  function drawCalibrationLine(root, width, height) {
+    const marker = Math.max(width, height) / 140;
+    const [first, second] = state.calibrate.points;
+    const group = svg('g', { 'pointer-events': 'none' });
+    for (const point of state.calibrate.points) {
+      group.append(
+        svg('circle', {
+          cx: point.x, cy: point.y, r: marker,
+          fill: 'none',
+          stroke: REFINED_COLOUR,
+          'stroke-width': marker / 3,
+        }),
+      );
+    }
+    if (first && second) {
+      group.append(
+        svg('line', {
+          x1: first.x, y1: first.y, x2: second.x, y2: second.y,
+          stroke: HALO_COLOUR,
+          'stroke-width': marker,
+          'stroke-opacity': 0.6,
+        }),
+        svg('line', {
+          x1: first.x, y1: first.y, x2: second.x, y2: second.y,
+          stroke: REFINED_COLOUR,
+          'stroke-width': marker / 3,
+        }),
+        svg('text', {
+          x: (first.x + second.x) / 2 + marker,
+          y: (first.y + second.y) / 2 - marker,
+          'font-size': marker * 2.4,
+          fill: REFINED_COLOUR,
+          'paint-order': 'stroke',
+          stroke: HALO_COLOUR,
+          'stroke-width': marker / 2,
+          text: `${formatNumber(calibrationLengthPx(), 1)} px`,
+        }),
+      );
+    }
+    root.append(group);
   }
 
   /* ---------------------------------------------------------- stereogram */

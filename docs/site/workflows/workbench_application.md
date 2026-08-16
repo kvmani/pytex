@@ -387,6 +387,41 @@ rotation about the beam, which one indexed pattern does not determine — the an
 not depend on it at all.
 ```
 
+```{seealso}
+{mod}`pytex.plotting.tilt_stereogram` draws the *publication* form of this figure: a two-panel
+matplotlib stereogram in the **crystal** frame, with the trajectory as spaced dots, the reachable
+region as exact circular arcs, and every symmetry-equivalent target marked reachable or not. The two
+are complementary rather than duplicates — that one is the figure for a paper or a logbook, drawn
+from a complete `TiltPlanReport`; this one is the interactive map beside the pattern, drawn in the
+holder frame so that position *is* tilt, and drawn whether or not a target has been chosen yet. Both
+take their geometry from the same `pytex.tem.stage` forward model.
+```
+
+### Calibrating from the image
+
+The camera equation uses one number: how much reciprocal space one pixel spans. An image that
+arrives without its recorded camera length — a printed plate, a figure from a colleague — usually
+still carries something whose length is known, and **Calibrate** measures against it.
+
+Press it, click the two ends of a length you know, and say what that length is. Two kinds of answer
+are accepted, and they calibrate different things:
+
+- **A reciprocal length** (Å⁻¹ or nm⁻¹) — a scale bar, or a reflection whose spacing you already
+  know. This fixes the scale directly: the coordinate units switch to *pixels with a measured
+  scale*, and the **Scale** field holds the result as `1 px = … Å⁻¹`. Type into that field instead
+  if the value is already known.
+- **A real length on the plate** (cm or mm). This fixes the **pixel size**, and the camera constant
+  goes on doing its usual job.
+
+Either way the answer lands in the fields the indexing already reads, so nothing downstream learns a
+new concept, and the cursor readout, the fitted lattice and every d-spacing change together.
+
+```{note}
+A measured scale is not an approximation of the camera-constant route: the ratio it states is the
+only quantity the camera equation ever uses, so indexing through it gives the same answer.
+`tests/unit/test_app_tem_calibration.py` runs one practice plate both ways and compares them.
+```
+
 ## The CBED Workspace
 
 Three views of one technique, chosen with the **View** picker.

@@ -637,6 +637,57 @@ test('a click on an uploaded micrograph snaps to the spot centroid', async ({ pa
 });
 
 /*
+ * Calibrating from the image itself.
+ *
+ * An image that arrives by email has a scale bar and no recorded camera length.
+ * Drawing a line across a length that *is* known measures the one number the
+ * camera equation uses. The test does the whole loop on a practice plate whose
+ * answer is known: measure beam-to-(200), say what that reflection's |g| is,
+ * index, and require the zone axis back. Anything less than the full loop would
+ * check that a number reached a field, not that the number is right.
+ */
+test('a line of known length calibrates the pattern well enough to index it', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const toScreen = await openPlate(page);
+
+  await patternButton(page, 'Calibrate').click();
+  // The beam and the (200) reflection of the aluminium plate. Aluminium's
+  // a = 4.0495 A, so d(200) = 2.02475 A and |g| = 0.493886 1/A — a number from
+  // the lattice parameter, not from this program.
+  for (const [x, y] of [
+    [512, 512],
+    [452.48, 709.3],
+  ]) {
+    const point = await toScreen(x, y);
+    await page.mouse.click(point.x, point.y);
+  }
+  const strip = page.locator('.calibrate');
+  await expect(strip).toContainText('px');
+  await strip.locator('input').fill(String(1 / 2.02475));
+  await strip.locator('select').selectOption('inv_angstrom');
+  await strip.getByRole('button', { name: 'Use this scale', exact: true }).click();
+
+  // The measured scale, in the units the form now works in.
+  await expect(page.locator('#stage .plot__status').first()).toContainText('1 px =');
+  const units = page.locator('#rail-body select').filter({ hasText: 'measured scale' });
+  await expect(units).toHaveValue('px_scale');
+  const scale = Number(
+    await page.locator('[id^="ctl-reciprocal_per_px_angstrom-"]').inputValue(),
+  );
+  // The plate was built at 0.024 mm per pixel and a camera constant of
+  // 10.0317 mm.A, so the true scale is 0.0023924 1/A per pixel. Measuring one
+  // reflection recovers it to better than a percent.
+  expect(Math.abs(scale - 0.0023924) / 0.0023924).toBeLessThan(0.01);
+
+  // And it is a calibration, not a display setting: the pattern indexes on it.
+  await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
+  await page.getByRole('button', { name: 'Index the pattern', exact: true }).click();
+  await expect(page.locator('#stage')).toContainText('[001]', { timeout: 30_000 });
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * The stereogram beside the pattern.
  *
  * Two things are worth pinning. That it is *beside* the pattern rather than

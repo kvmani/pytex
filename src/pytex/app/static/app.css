@@ -1818,6 +1818,42 @@ button:focus-visible {
   }
 }
 
+/* The calibration strip, inside the pattern figure while the tool is on. It
+ * lives in the frame's own control strip rather than in the rail, because it is
+ * read against the line being drawn. */
+.calibrate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.calibrate__hint {
+  color: var(--ink-muted);
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.calibrate__length {
+  width: 7rem;
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.calibrate__unit {
+  font: inherit;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+}
+
 /*
  * The TEM stage: the pattern and the stereogram, side by side.
  *

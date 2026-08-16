@@ -21,6 +21,14 @@ downstream analyses depend on them.
   ringed as re-indexing waypoints. Hovering anywhere reports the α and β that would bring that point
   onto the beam, together with the pole under the cursor. The panel now lays the pattern and the
   stereogram side by side, which is where the previously empty right-hand half of the stage went.
+- **Calibration from the image itself, in the TEM workspace.** The camera equation uses one number —
+  how much reciprocal space a pixel spans — and an image that arrives without its recorded camera
+  length usually still carries something whose length is known. **Calibrate** measures a line across
+  it: a reciprocal length (Å⁻¹ or nm⁻¹, from a scale bar or a known reflection) sets that scale
+  directly through the new *pixels with a measured scale* coordinate mode, and a real length on the
+  plate (cm or mm) sets the pixel size instead. The scale can also simply be typed. Indexing through
+  a measured scale gives the same answer as indexing through a camera constant with that quotient,
+  which is checked on a practice plate both ways.
 - **An About panel** (`pytex.app.about`): version, description, author and licence, served on the
   application manifest so the version shown is the version that answered the request. The licence it
   displays is checked against `pyproject.toml` and `LICENSE` by test.

@@ -70,6 +70,16 @@ _UNIT_OPTIONS = (
     ),
     ("mm", "Millimetres", "Coordinates measured on the detector or on a printed plate."),
     (
+        "px_scale",
+        "Pixels with a measured scale",
+        (
+            "Coordinates in pixels with the reciprocal scale given directly, as 1 px = "
+            "0.05 Å⁻¹. Use this for an image whose detector pitch and camera length are not "
+            "known but which carries a scale bar, or which has been calibrated against a "
+            "standard."
+        ),
+    ),
+    (
         "reciprocal_angstrom",
         "Å⁻¹ (already calibrated)",
         "Coordinates already converted to reciprocal space; no camera constant is used.",
@@ -141,6 +151,42 @@ def measured_pattern_from_picks(
     camera_constant = request.get("camera_constant_mm_angstrom")
     pixel_size = request.get("pixel_size_mm")
 
+    if units == "px_scale":
+        # A directly measured scale states the *ratio* the camera equation
+        # exists to supply, and states it exactly. Rather than inventing a
+        # camera constant and a pixel size whose quotient happens to be right —
+        # two fictional numbers that would then be reported as if measured —
+        # the coordinates are converted here and handed to the library already
+        # calibrated. The picks themselves are returned unchanged, because the
+        # overlay geometry is drawn in the pixels the user clicked.
+        scale = float(request.get("reciprocal_per_px_angstrom") or 0.0)
+        if scale <= 0.0:
+            raise InvalidInputError(
+                "A pixel scale is needed to turn pixel distance into 1/d.",
+                field="reciprocal_per_px_angstrom",
+                hint=(
+                    "Draw a line of known length on the image with Calibrate, or type the scale "
+                    "if you already know it — for example 0.05 Å⁻¹ per pixel."
+                ),
+            )
+        calibration = PatternCalibration(units="reciprocal_angstrom", centre=(0.0, 0.0))
+        pattern = MeasuredSAEDPattern(
+            name=str(request.get("pattern_name") or "picked pattern"),
+            spots=tuple(
+                MeasuredSpot(
+                    position=(
+                        (spot["x"] - centre[0]) * scale,
+                        (spot["y"] - centre[1]) * scale,
+                    ),
+                    intensity=spot["intensity"],
+                    label=spot["label"],
+                )
+                for spot in spots
+            ),
+            calibration=calibration,
+        )
+        return pattern, centre, spots
+
     if units == "px" and not pixel_size:
         raise InvalidInputError(
             "Pixel coordinates need a pixel size to become millimetres.",
@@ -210,6 +256,24 @@ _CALIBRATION_PARAMETERS = (
         help_text="Detector pixel pitch, needed only when the coordinates are in pixels.",
         units="mm",
         default=0.05,
+        minimum=0.0,
+        required=False,
+        group="Calibration",
+    ),
+    NumberParameter(
+        name="reciprocal_per_px_angstrom",
+        label="Scale",
+        help_text=(
+            "How much reciprocal space one pixel spans, for coordinates in *pixels with a "
+            "measured scale*: 1 px = this many Å⁻¹. It replaces the camera constant and the "
+            "pixel size rather than joining them — it is their quotient, and the quotient is "
+            "the only thing the camera equation ever uses.\n\n"
+            "Set it by drawing a line of known length on the image with **Calibrate**, which is "
+            "how an image with a scale bar and no recorded camera length is measured, or type "
+            "it if the value is already known."
+        ),
+        units="Å⁻¹/px",
+        default=0.005,
         minimum=0.0,
         required=False,
         group="Calibration",
@@ -2306,6 +2370,9 @@ def _picking_scale(request: Mapping[str, Any]) -> float:
     units = str(request["units"])
     if units == "reciprocal_angstrom":
         return 1.0
+    if units == "px_scale":
+        scale = float(request.get("reciprocal_per_px_angstrom") or 0.0)
+        return 1.0 / scale if scale > 0.0 else 0.0
     camera_constant = float(request.get("camera_constant_mm_angstrom") or 0.0)
     if camera_constant <= 0.0:
         return 0.0

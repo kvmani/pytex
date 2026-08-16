@@ -34,7 +34,7 @@ half its width:
 | T1 | TEM overlay clipped to the image bounds | done | `4ff435e` |
 | T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | done | (pending) |
 | T3a | Serialize `/api/call` — the crash the second figure made routine | done | (pending) |
-| T2 | TEM calibration: direct scale and interactive line measurement | todo | |
+| T2 | TEM calibration: direct scale and interactive line measurement | done | (pending) |
 | X1 | Texture: `.xrdml` (and text) import service | todo | |
 | X2 | Texture: tabbed pole-figure / ODF stage with shared, user-set contour levels | todo | |
 | E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | todo | |
@@ -132,8 +132,45 @@ open — and it was confirmed to fail with the lock removed, which is the only w
 concurrency test is testing anything. The full browser suite now runs 18/18 with the server alive
 at the end.
 
+### Verified (T2)
+
+The camera equation uses one number, the ratio `pixel size / camera constant`. The new *pixels with
+a measured scale* mode takes that ratio directly rather than inventing two numbers with the right
+quotient and then reporting them as if measured — the coordinates are converted in the service and
+handed to the library already calibrated.
+
+- **Taking the ratio directly changes nothing.** One practice plate indexed both ways gives the same
+  zone axis, the same score and the same measured spacings, agreeing to ~1e-8 relative. Not
+  bit-for-bit: `(r·pixel)/camera` and `r·(pixel/camera)` are the same number evaluated in a
+  different order.
+- **The end-to-end loop is tested in the browser, not just the plumbing.** Draw a line from the beam
+  to the (200) reflection of the aluminium plate, state its |g| as 1/2.02475 Å⁻¹ — a number from
+  aluminium's lattice parameter, not from this program — and the recovered scale is within 1% of the
+  0.0023924 Å⁻¹/px the plate was built at, and the pattern then indexes to [001]. Checking that a
+  number reached a field would have proved nothing about the number.
+- The plate-length branch was driven in Chromium too: 401 px across 2 cm gives 0.04988 mm/px.
+
+One thing the tool got wrong first time: it announced the result *before* leaving the tool, and
+leaving redraws, so "Calibrated: …" was replaced by "click the transmitted beam" the instant it
+appeared.
+
+### Related work found late, and not duplicated further
+
+`pytex.plotting.tilt_stereogram` already draws a publication-grade tilt stereogram — two matplotlib
+panels in the **crystal** frame, trajectory as spaced dots, reachable region as exact circular arcs,
+every symmetry-equivalent target marked. It was found after the panel stereogram was built. They are
+not the same product: that one renders a complete `TiltPlanReport` for a paper, this one is an
+interactive holder-frame map that must draw before any target is chosen and answer a moving cursor.
+Both take their geometry from the same `pytex.tem.stage` forward model, so the only real duplication
+is the five-line stereographic projection, which exists privately in each. The workflow page now
+cross-references the two. **Open item:** promote one projection helper to a shared public home.
+
 ### Decisions worth not re-litigating
 
+- **Calibration writes into the fields the indexing already reads.** A reciprocal length sets the
+  scale, a plate length sets the pixel size; nothing downstream learns a new concept.
+- **The calibrate tool is modal.** Clicking two ruler ends and clicking two spots are the same
+  gesture, and a modifier key nobody is told about is not a discoverable alternative.
 - **The stereogram is drawn in holder coordinates, not crystal coordinates.** Centred on the
   crystal it would be a picture of the lattice; centred on the holder it is a map of the stage, and
   every pole's position is the move that reaches it.
