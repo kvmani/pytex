@@ -13,6 +13,18 @@ downstream analyses depend on them.
 
 ### Added
 
+- **A stereogram beside the TEM pattern.** `tem.stereogram` projects every zone axis of the phase
+  onto the upper hemisphere in *holder* coordinates, so a pole's position on the drawing is the tilt
+  that reaches it. It carries the holder envelope as the region of poles the stage can actually
+  reach, marks the axis on the beam where the stage puts it, and — when a target is named — draws
+  the geodesic to it, which is the connecting Kikuchi band, with the low-index zones along the way
+  ringed as re-indexing waypoints. Hovering anywhere reports the α and β that would bring that point
+  onto the beam, together with the pole under the cursor. The panel now lays the pattern and the
+  stereogram side by side, which is where the previously empty right-hand half of the stage went.
+- **An About panel** (`pytex.app.about`): version, description, author and licence, served on the
+  application manifest so the version shown is the version that answered the request. The licence it
+  displays is checked against `pyproject.toml` and `LICENSE` by test.
+
 - **An EBSD workspace in the workbench.** `ebsd.map` draws one orientation map from four
   independent choices — what the colour means, whether a scalar channel modulates it, whether the
   grain boundaries are superimposed, and what counts as a grain — so combinations nobody would
@@ -58,6 +70,18 @@ downstream analyses depend on them.
 
 ### Fixed
 
+- **The server could die mid-session under two concurrent operations.** `ThreadingHTTPServer` ran
+  every request on its own thread, including the calculations, over a scientific stack that is not
+  thread-safe — pyplot's state is global by construction. Two operations arriving together produced
+  a native access violation that took the process down with no Python traceback, which became
+  routine the moment a panel drew two figures on mount. Operations and exports now run one at a
+  time; static files, the manifest and the log poll still answer concurrently, which is what the
+  threading was for.
+- **The fitted lattice was drawn outside the pattern.** A viewBox is a coordinate system, not a
+  boundary: the grid is generated outwards until it certainly covers the image diagonal, and the
+  overshoot was painted across the blank margins beside the picture, asserting lattice where there
+  is no image. Every overlay is now clipped to the image rectangle, and a click in the margin is
+  refused instead of placing a spot on no pixels.
 - **A number field holding non-numeric text was reported as empty.** An `<input type="number">`
   whose content is not a number exposes an empty `value`, so text the user could see on screen
   reached the server as a missing parameter and came back as "this required field is required".

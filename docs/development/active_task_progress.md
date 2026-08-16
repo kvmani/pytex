@@ -29,11 +29,12 @@ half its width:
 
 | # | Increment | Status | Commit |
 | --- | --- | --- | --- |
-| S1 | Vectorized fundamental-sector reduction, with a parity test against an independent orbit search | done | (pending) |
-| A1 | `pytex.app.about` + manifest `about` + masthead About drawer | done | (pending) |
-| T1 | TEM overlay clipped to the image bounds | done | (pending) |
+| S1 | Vectorized fundamental-sector reduction, with a parity test against an independent orbit search | done | `157f09c` |
+| A1 | `pytex.app.about` + manifest `about` + masthead About drawer | done | `4ff435e` |
+| T1 | TEM overlay clipped to the image bounds | done | `4ff435e` |
+| T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | done | (pending) |
+| T3a | Serialize `/api/call` — the crash the second figure made routine | done | (pending) |
 | T2 | TEM calibration: direct scale and interactive line measurement | todo | |
-| T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | todo | |
 | X1 | Texture: `.xrdml` (and text) import service | todo | |
 | X2 | Texture: tabbed pole-figure / ODF stage with shared, user-set contour levels | todo | |
 | E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | todo | |
@@ -96,8 +97,51 @@ the case cannot pass by the overshoot quietly disappearing and leaving the clip 
 One thing the ledger should record because it cost a test run: the **Lattice** button is on by
 default, so a test that presses it turns the grid *off*.
 
+### Verified (T3, T3a)
+
+`tem.stereogram` draws the hemisphere in **holder coordinates**, so a pole's position on the
+drawing *is* the tilt that reaches it. Every number it returns is checked against something outside
+itself:
+
+- the stage reading beside each pole equals the principal branch of
+  `pytex.tem.navigation.solve_tilts_for_direction` over 400 random directions plus the two gimbal
+  cases (the panel inlines that closed form so the cursor can answer while the pointer moves);
+- feeding those readings back through `beam_direction_holder` recovers the pole itself;
+- the projection satisfies `r = tan(rho/2)`, the defining property of a stereographic net;
+- cubic interzonal angles come out at the textbook values — [011] at 45°, [111] at 54.7356°, [012]
+  at atan(1/2), [112] at atan(√2/2) — and zirconium's basal poles sit 60° apart on the drawing,
+  so it is not a cubic special case;
+- a 90° roll moves every pole and changes no angle, which is exactly the thing one indexed pattern
+  does not determine.
+
+In Chromium at 1600x900: the two figures are side by side and level, 49 poles are drawn for
+aluminium with 3 of them inside a ±30/±20 holder, the route to [011] runs through [012], and
+hovering the [011] pole reads `α 45.0° · β 0.0° · 45.0° from the holder axis · near [011]` — which
+the browser test now checks against the server's own numbers at four poles, because an inlined
+formula that drifts from its source stays plausible while being wrong.
+
+**The crash the second figure made routine.** With two figures on the TEM stage the panel issues two
+operations on mount, and the server began dying mid-suite with a Windows access violation and no
+Python traceback — nine tests failing on `ERR_CONNECTION_REFUSED` rather than on anything they
+asserted. It is not a new defect: a stashed working tree reproduced it on `main`. The cause is that
+`ThreadingHTTPServer` ran operations on concurrent handler threads over a scientific stack that is
+not thread-safe (pyplot's state is global by construction). Operations and exports now take one
+lock; static files, the manifest and the log poll still answer concurrently, which is what the
+threading was for. The test asserts non-overlap *and* that a page still loads while a call is held
+open — and it was confirmed to fail with the lock removed, which is the only way to know a
+concurrency test is testing anything. The full browser suite now runs 18/18 with the server alive
+at the end.
+
 ### Decisions worth not re-litigating
 
+- **The stereogram is drawn in holder coordinates, not crystal coordinates.** Centred on the
+  crystal it would be a picture of the lattice; centred on the holder it is a map of the stage, and
+  every pole's position is the move that reaches it.
+- **The panel inlines the stage closed form rather than asking the server per pointer move.** A
+  readout that arrives after a round trip is not a readout. The duplication is paid for by a test
+  that compares the two at every plotted pole.
+- **The stereogram follows the tilt form rather than adding controls of its own.** The inputs it
+  needs are already there; a second copy would be a second thing to keep in step.
 - **About is served on the manifest, not by a new endpoint.** The frontend already fetches the
   manifest at startup, and the version shown must be the version that answered that request.
 - **About reuses the help drawer's chrome.** It is the same gesture; a second visual language for it

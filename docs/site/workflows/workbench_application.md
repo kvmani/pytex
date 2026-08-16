@@ -351,6 +351,42 @@ zone at 35°. Choosing a row sets it as the tilt target below, so no indices are
 envelope, and the tilt map showing at a glance which candidates sit comfortably inside the holder's
 range and which are pressed against a stop.
 
+### The stereogram beside the pattern
+
+The stage carries two figures. The pattern says what is on the beam; the **stereogram** to its right
+says what else is within reach and in which direction it lies. It follows the tilt step's inputs
+directly — change the axis, the target, the stage reading or the holder limits and it redraws — so
+it is a view of that form rather than a second set of controls.
+
+It is drawn in **holder coordinates**, not crystal coordinates: the centre is the holder's zero-tilt
+axis, α increases upwards and β to the left, so a pole's position on the drawing *is* the tilt that
+reaches it. Four things are on it.
+
+- **Every zone axis of the phase** up to the index limit, projected onto the upper hemisphere.
+  Poles within the labelling limit are drawn large and named; the rest are small ticks. A pole
+  filled with the accent colour can be brought onto the beam within the holder's range; a faint one
+  cannot.
+- **The holder envelope**, drawn as the region of poles the stage can actually reach — the image of
+  the α/β range itself, not a circle approximating it.
+- **The axis on the beam**, marked with a crosshair where the stage puts it, which is the centre
+  only at zero tilt. After *Accept this solution* that is the indexed axis, so the drawing shows the
+  solved orientation rather than an assumed one.
+- **The route to the target**, as a dotted geodesic — the same great circle as the connecting
+  Kikuchi band — with the low-index zones lying along it ringed as waypoints. Re-indexing at each
+  waypoint is what keeps a long tilt from accumulating rotation error, so the intermediate zones are
+  part of the plan rather than scenery.
+
+Hovering anywhere on the drawing reports the stage reading that would bring **that point** onto the
+beam: α, β, the angle from the holder axis, and the name of the pole if the cursor is on one.
+Hovering a pole itself gives its full row, including Δα and Δβ from where the stage is now.
+
+```{note}
+The stage reading beside a pole is the *principal branch*: three other branches reach the same pole
+and a real holder usually cannot set them. And where a pole sits on the drawing depends on the
+rotation about the beam, which one indexed pattern does not determine — the angles between poles do
+not depend on it at all.
+```
+
 ## The CBED Workspace
 
 Three views of one technique, chosen with the **View** picker.

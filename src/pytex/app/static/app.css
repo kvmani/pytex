@@ -1818,6 +1818,46 @@ button:focus-visible {
   }
 }
 
+/*
+ * The TEM stage: the pattern and the stereogram, side by side.
+ *
+ * A diffraction pattern is square and the stage is wide, so the pattern alone
+ * left the right-hand half of a laptop window empty while the question it
+ * raises — where do I go next — was answered only by a table below the fold.
+ * The two figures share the width equally, and each keeps its own zoom.
+ *
+ * `minmax(0, 1fr)` rather than `1fr`: a grid track's default minimum is its
+ * content, and an SVG's intrinsic width would then push the row wider than the
+ * stage instead of the figures shrinking to fit.
+ */
+.tem-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  flex: none;
+  min-height: 0;
+  height: calc(100% - 1.5rem);
+}
+
+.tem-stage > .plot {
+  height: 100%;
+}
+
+/* Below this the two figures side by side are each too narrow to pick on, so
+ * they stack and the page scrolls — the same trade the narrow layout already
+ * makes for a single figure. */
+@media (max-width: 72rem) {
+  .tem-stage {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .tem-stage > .plot {
+    height: auto;
+    min-height: min(56vh, 30rem);
+  }
+}
+
 /* A panel that hides its legend — the spectrum view has nothing to toggle —
  * must not leave a bordered empty strip behind where the legend used to be. */
 .plot__controls:not(:has(> :not([hidden]))) {

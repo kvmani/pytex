@@ -81,6 +81,7 @@ export function mount(context) {
   const solveOperation = operations.find((entry) => entry.id === 'tem.solve_pattern');
   const atlasOperation = operations.find((entry) => entry.id === 'tem.zone_axis_atlas');
   const tiltOperation = operations.find((entry) => entry.id === 'tem.plan_tilt');
+  const stereogramOperation = operations.find((entry) => entry.id === 'tem.stereogram');
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
   // The gallery is declared once, in Python, as the options of the operation's
@@ -115,6 +116,13 @@ export function mount(context) {
     pixels: null,
     showLattice: true,
     showCalculated: true,
+    // The stereogram beside the pattern: its last result, the request that
+    // produced it, and the two things it can be asked to stop drawing.
+    stereo: null,
+    stereoRequest: null,
+    stereoPending: null,
+    showEnvelope: true,
+    showPoleLabels: true,
     solutions: [],
     selected: 0,
     accepted: null,
@@ -212,8 +220,48 @@ export function mount(context) {
     ],
   });
 
+  /*
+   * The stereogram, beside the pattern rather than under it.
+   *
+   * A diffraction pattern is square and the stage is wide, so the pattern alone
+   * left half the workspace blank while the question it raises — *where do I go
+   * next, and can the holder get there* — was answered only by a table further
+   * down the page. The two belong side by side: the pattern says what is on the
+   * beam, the stereogram says what else is within reach and in which direction.
+   */
+  const stereoFrame = plotFrame({
+    title: 'Stereogram',
+    toolbar: [
+      el('button.button', {
+        type: 'button',
+        text: 'Envelope',
+        'aria-pressed': 'true',
+        title: 'Outline the poles the holder can bring onto the beam',
+        onclick: (event) => {
+          state.showEnvelope = !state.showEnvelope;
+          event.currentTarget.setAttribute('aria-pressed', String(state.showEnvelope));
+          drawStereogram();
+        },
+      }),
+      el('button.button', {
+        type: 'button',
+        text: 'Labels',
+        'aria-pressed': 'true',
+        title: 'Name the low-index poles',
+        onclick: (event) => {
+          state.showPoleLabels = !state.showPoleLabels;
+          event.currentTarget.setAttribute('aria-pressed', String(state.showPoleLabels));
+          drawStereogram();
+        },
+      }),
+    ],
+  });
+
   const details = el('div');
-  context.stage.append(frame.element, details);
+  context.stage.append(
+    el('div.tem-stage', {}, [frame.element, stereoFrame.element]),
+    details,
+  );
 
   /* ------------------------------------------------------------ controls */
 
@@ -374,8 +422,14 @@ export function mount(context) {
       atlasHost.replaceChildren(state.atlasForm.element);
     }
 
-    state.tiltForm = buildForm(tiltOperation, { initial: tilt });
+    // The stereogram is a view of this form, so it follows every edit to it
+    // rather than waiting for the plan to be pressed.
+    state.tiltForm = buildForm(tiltOperation, {
+      initial: tilt,
+      onChange: () => scheduleStereogram(),
+    });
     tiltHost.replaceChildren(state.tiltForm.element);
+    scheduleStereogram();
   }
 
   /**
@@ -1885,6 +1939,290 @@ export function mount(context) {
     drawBasisVectors(root, width, height);
   }
 
+  /* ---------------------------------------------------------- stereogram */
+
+  /**
+   * Ask Python for the stereogram of whatever the tilt form currently says.
+   *
+   * The tilt step already holds every input this needs — the phase, the axis on
+   * the beam, the target, the stage reading and the holder limits — so the
+   * stereogram is a view of that form rather than a second set of controls to
+   * keep in step with it. Debounced, because it redraws on every keystroke in
+   * those fields.
+   */
+  function scheduleStereogram() {
+    clearTimeout(state.stereoPending);
+    state.stereoPending = setTimeout(() => refreshStereogram(), 180);
+  }
+
+  async function refreshStereogram() {
+    if (!stereogramOperation || !state.tiltForm) return;
+    const values = state.tiltForm.values();
+    const request = {
+      phase: values.phase,
+      zone_axis: values.current_zone_axis,
+      target_zone_axis: values.target_zone_axis,
+      alpha_deg: values.alpha_deg,
+      beta_deg: values.beta_deg,
+      alpha_limit_deg: values.alpha_limit_deg,
+      beta_limit_deg: values.beta_limit_deg,
+      beam_rotation_deg: values.beam_rotation_deg,
+    };
+    const key = JSON.stringify(request);
+    if (key === state.stereoRequest && state.stereo) return;
+    try {
+      const result = await call('tem.stereogram', request);
+      state.stereoRequest = key;
+      state.stereo = result;
+      drawStereogram();
+    } catch (error) {
+      // A stereogram that cannot be drawn must not block picking or indexing,
+      // which is what the user is actually doing. It says so and stays empty.
+      state.stereo = null;
+      stereoFrame.setContent(
+        el('div.stage__placeholder', { text: 'No stereogram for these inputs yet.' }),
+      );
+      stereoFrame.setStatus(error?.message ?? String(error));
+    }
+  }
+
+  /** Inverse stereographic projection: a point on the drawing to a holder direction. */
+  function holderDirectionAt(x, y) {
+    const squared = x * x + y * y;
+    const scale = 1.0 / (1.0 + squared);
+    return [2 * x * scale, 2 * y * scale, (1 - squared) * scale];
+  }
+
+  /**
+   * The stage reading that brings a holder direction onto the beam.
+   *
+   * The principal branch of `pytex.tem.navigation.solve_tilts_for_direction`,
+   * written out here so the cursor readout answers while the pointer moves
+   * rather than a request later. The browser test compares it against the
+   * server's own value at every plotted pole, so the two cannot drift.
+   */
+  function stageAnglesFor([x, y, z]) {
+    const rho = Math.hypot(x, z);
+    if (rho < 1e-9) return { alpha: y > 0 ? 90 : -90, beta: 0 };
+    return {
+      alpha: (Math.atan2(y, rho) * 180) / Math.PI,
+      beta: (Math.atan2(-x, z) * 180) / Math.PI,
+    };
+  }
+
+  /** The plotted pole nearest a point on the drawing, and how far away it is. */
+  function poleNear(x, y) {
+    const axes = state.stereo?.data.axes ?? [];
+    let best = null;
+    let bestDistance = Infinity;
+    for (const entry of axes) {
+      const distance = Math.hypot(entry.x - x, entry.y - y);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = entry;
+      }
+    }
+    return best ? { entry: best, distance: bestDistance } : null;
+  }
+
+  function drawStereogram() {
+    const result = state.stereo;
+    if (!result) {
+      stereoFrame.setContent(
+        el('div.stage__placeholder', {
+          text: 'Index a pattern, or set a zone axis below, to draw the stereogram.',
+        }),
+      );
+      stereoFrame.setStatus('');
+      return;
+    }
+    const data = result.data;
+    // A little past the unit circle, so a label on a pole at the rim is not cut
+    // in half by the edge of the drawing.
+    const root = svg('svg', {
+      viewBox: '-1.28 -1.28 2.56 2.56',
+      preserveAspectRatio: 'xMidYMid meet',
+      'aria-label': 'Stereogram',
+    });
+    const point = (x, y) => `${x},${-y}`;
+
+    root.append(
+      svg('circle', {
+        cx: 0, cy: 0, r: 1,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-opacity': 0.45,
+        'stroke-width': 0.006,
+      }),
+      svg('line', {
+        x1: -1, y1: 0, x2: 1, y2: 0,
+        stroke: 'currentColor', 'stroke-opacity': 0.15, 'stroke-width': 0.004,
+      }),
+      svg('line', {
+        x1: 0, y1: -1, x2: 0, y2: 1,
+        stroke: 'currentColor', 'stroke-opacity': 0.15, 'stroke-width': 0.004,
+      }),
+      // The two holder axes, named where they point. Without them the drawing is
+      // a circle of poles with no way to tell which way the stage moves.
+      svg('text', {
+        x: 0, y: -1.12, 'font-size': 0.075, fill: 'currentColor', 'fill-opacity': 0.65,
+        'text-anchor': 'middle', text: '+α',
+      }),
+      svg('text', {
+        x: -1.1, y: 0.03, 'font-size': 0.075, fill: 'currentColor', 'fill-opacity': 0.65,
+        'text-anchor': 'middle', text: '+β',
+      }),
+    );
+
+    if (state.showEnvelope) {
+      const boundary = data.envelope.boundary.map(([x, y]) => point(x, y)).join(' ');
+      root.append(
+        svg('polygon', {
+          points: boundary,
+          fill: 'var(--accent)',
+          'fill-opacity': 0.08,
+          stroke: 'var(--accent)',
+          'stroke-opacity': 0.55,
+          'stroke-width': 0.006,
+          'stroke-dasharray': '0.02 0.014',
+        }),
+      );
+    }
+
+    // The route, before the poles, so a waypoint marker sits on top of its path.
+    if (data.path) {
+      root.append(
+        svg('polyline', {
+          points: data.path.points.map(([x, y]) => point(x, y)).join(' '),
+          fill: 'none',
+          stroke: BASIS_COLOUR,
+          'stroke-width': 0.012,
+          'stroke-dasharray': '0.03 0.024',
+          'stroke-linecap': 'round',
+        }),
+      );
+      for (const waypoint of data.path.waypoints) {
+        const node = svg('circle', {
+          cx: waypoint.x, cy: -waypoint.y, r: 0.028,
+          fill: 'none',
+          stroke: BASIS_COLOUR,
+          'stroke-width': 0.01,
+        });
+        root.append(node);
+        root.append(
+          svg('text', {
+            x: waypoint.x + 0.04, y: -waypoint.y + 0.062,
+            'font-size': 0.058,
+            fill: BASIS_COLOUR,
+            'paint-order': 'stroke',
+            stroke: 'var(--bg-raised)',
+            'stroke-width': 0.022,
+            'stroke-linejoin': 'round',
+            text: waypoint.label,
+          }),
+        );
+        stereoFrame.hoverable(node, {
+          'Stop at': waypoint.label,
+          'α / °': waypoint.alpha_deg,
+          'β / °': waypoint.beta_deg,
+          Reachable: waypoint.reachable,
+        });
+      }
+    }
+
+    for (const entry of data.axes) {
+      const radius = entry.labelled ? 0.019 : 0.009;
+      const node = svg('circle', {
+        cx: entry.x, cy: -entry.y, r: radius,
+        fill: entry.reachable ? 'var(--accent)' : 'currentColor',
+        'fill-opacity': entry.reachable ? 0.95 : 0.35,
+      });
+      root.append(node);
+      if (state.showPoleLabels && entry.labelled) {
+        root.append(
+          svg('text', {
+            x: entry.x + 0.026, y: -entry.y - 0.022,
+            'font-size': 0.052,
+            fill: 'currentColor',
+            // Poles crowd towards the rim, where labels overlap each other and
+            // the ticks. The halo is what keeps a name readable where it does.
+            'paint-order': 'stroke',
+            stroke: 'var(--bg-raised)',
+            'stroke-width': 0.02,
+            'stroke-linejoin': 'round',
+            text: entry.label,
+          }),
+        );
+      }
+      stereoFrame.hoverable(node, {
+        Pole: entry.label,
+        'From beam / °': entry.angle_from_beam_deg,
+        'α / °': entry.alpha_deg,
+        'β / °': entry.beta_deg,
+        'Δα / °': entry.delta_alpha_deg,
+        'Δβ / °': entry.delta_beta_deg,
+        Reachable: entry.reachable,
+      });
+    }
+
+    if (data.target) {
+      root.append(
+        svg('circle', {
+          cx: data.target.x, cy: -data.target.y, r: 0.045,
+          fill: 'none',
+          stroke: data.target.reachable ? 'var(--ok, #2f9e63)' : 'var(--danger, #d1495b)',
+          'stroke-width': 0.014,
+        }),
+      );
+    }
+
+    // The beam last, so nothing is drawn over where you are.
+    root.append(
+      svg('circle', {
+        cx: data.beam.x, cy: -data.beam.y, r: 0.034,
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': 0.012,
+      }),
+      svg('line', {
+        x1: data.beam.x - 0.06, y1: -data.beam.y, x2: data.beam.x + 0.06, y2: -data.beam.y,
+        stroke: 'currentColor', 'stroke-width': 0.006,
+      }),
+      svg('line', {
+        x1: data.beam.x, y1: -data.beam.y - 0.06, x2: data.beam.x, y2: -data.beam.y + 0.06,
+        stroke: 'currentColor', 'stroke-width': 0.006,
+      }),
+    );
+
+    stereoFrame.configure({
+      // The drawing's y runs up while the SVG's runs down, so the mapping is
+      // where that sign is undone — once, here, rather than at every readout.
+      toData: (x, y) => ({ x, y: -y }),
+      formatCursor: (position) => {
+        const radius = Math.hypot(position.x, position.y);
+        if (radius > 1.02) return 'outside the hemisphere';
+        const direction = holderDirectionAt(position.x, position.y);
+        const { alpha, beta } = stageAnglesFor(direction);
+        const rho = (2 * Math.atan(radius) * 180) / Math.PI;
+        const near = poleNear(position.x, position.y);
+        const pole =
+          near && near.distance < 0.045 ? ` · near ${near.entry.label}` : '';
+        return (
+          `α ${formatNumber(alpha, 1)}° · β ${formatNumber(beta, 1)}° · ` +
+          `${formatNumber(rho, 1)}° from the holder axis${pole}`
+        );
+      },
+    });
+
+    stereoFrame.setContent(root, { preserveViewport: true });
+    const reachable = data.axes.filter((entry) => entry.reachable).length;
+    stereoFrame.setStatus(
+      `${data.zone_axis_label} on the beam · ${data.axes.length} poles, ${reachable} reachable` +
+        (data.target ? ` · route to ${data.target.label}` : '') +
+        ' · hover for the tilt that reaches a point',
+    );
+  }
+
   /**
    * The two basis vectors, as labelled arrows from the beam to the spots that
    * generate them.
@@ -2240,6 +2578,10 @@ export function mount(context) {
     const axis = entry.zone_axis_indices ?? result.data.zone_axis;
     state.atlasForm?.setValues({ phase, current_zone_axis: axis });
     state.tiltForm.setValues({ phase, current_zone_axis: axis });
+    // `setValues` is a programmatic write and fires no change event, so the
+    // stereogram is told explicitly. Without this the solved axis appeared in
+    // the form while the drawing beside it still showed the previous one.
+    scheduleStereogram();
     frame.setStatus(
       `Accepted ${entry.phase} down ${entry.zone_axis} (score ` +
         `${formatNumber(entry.score, 3)}). It is now the starting orientation for the zone-axis ` +
@@ -2322,6 +2664,7 @@ export function mount(context) {
   function chooseTarget(indices, label) {
     if (!indices) return;
     state.tiltForm.setValues({ target_zone_axis: indices });
+    scheduleStereogram();
     frame.setStatus(`Target set to ${label ?? indices.join(' ')} — plan the tilt below.`);
     openStep(stepFour);
     tiltButton.focus();
@@ -2349,6 +2692,7 @@ export function mount(context) {
   renderForms();
   renderPickTool();
   drawPattern();
+  drawStereogram();
   if (galleryEntries.length) loadGallery(galleryEntries[0].value);
 
   return {

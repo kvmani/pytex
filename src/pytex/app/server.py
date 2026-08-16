@@ -108,6 +108,23 @@ _CONTENT_TYPES = {
 #: the reason it is measured in megabytes rather than kilobytes.
 MAX_REQUEST_BYTES = 64 * 1024 * 1024
 
+#: One operation at a time. The transport stays threaded; the science does not.
+#:
+#: The scientific stack underneath the services is not thread-safe. Matplotlib's
+#: pyplot state machine is global by construction, and the figure an export
+#: renders is built from that global state; several C extensions in the stack
+#: make the same assumption. Two operations arriving together — which is now
+#: routine, since a panel may draw two figures on mount — were executing on two
+#: handler threads at once, and the result was not a wrong number but a Windows
+#: access violation that took the whole server down mid-session, with no Python
+#: traceback to explain it.
+#:
+#: Serializing here rather than dropping :class:`ThreadingHTTPServer` keeps what
+#: threading was actually for: static files, manifest fetches and console polls
+#: still answer while a long calculation runs, so a colleague can load the page
+#: during someone else's simulation. Only the calculation itself queues.
+_COMPUTATION_LOCK = threading.Lock()
+
 
 class PortInUseError(RuntimeError):
     """The requested port is already taken.
@@ -284,7 +301,8 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         try:
-            envelope, status = execute(operation, params, registry=self.registry)
+            with _COMPUTATION_LOCK:
+                envelope, status = execute(operation, params, registry=self.registry)
         except Exception:
             # Anything reaching here is a PyTex defect rather than user error:
             # deliberate failures are ServiceErrors and were handled inside
@@ -358,7 +376,8 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         try:
-            data, mime, filename = export_result(result, fmt=fmt)
+            with _COMPUTATION_LOCK:
+                data, mime, filename = export_result(result, fmt=fmt)
         except ServiceError as error:
             self._send_json(error.status, {"ok": False, "error": error.to_json()})
             return
@@ -448,6 +467,11 @@ class AppServer(ThreadingHTTPServer):
     colleague loading the page. Requests are otherwise independent — the
     application holds no per-user server-side state, which is what makes this
     safe without a session layer.
+
+    Independent of one another does not mean independent of the libraries they
+    call. Operations and exports therefore run one at a time behind
+    :data:`_COMPUTATION_LOCK`; everything else — static files, the manifest, the
+    log poll — still answers concurrently.
     """
 
     daemon_threads = True

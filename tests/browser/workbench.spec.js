@@ -12,6 +12,24 @@ const WORKSPACES = [
   'Calculator',
 ];
 
+/*
+ * The TEM stage carries two figures — the pattern and the stereogram beside it —
+ * so a bare `.plot` selector now matches both. Every TEM assertion names the
+ * pattern by the label its own SVG carries.
+ */
+const PATTERN_SVG = '#stage svg[aria-label="Diffraction pattern"]';
+const PATTERN_PLOT = '#stage .plot:has(svg[aria-label="Diffraction pattern"])';
+
+/** The pattern figure's own copy of a frame control (zoom, cursor, overlay). */
+function patternControl(page, selector) {
+  return page.locator(PATTERN_PLOT).locator(selector);
+}
+
+/** A toolbar button of the pattern figure. Zoom, pan and Fit exist on both. */
+function patternButton(page, name) {
+  return page.locator(PATTERN_PLOT).getByRole('button', { name, exact: true });
+}
+
 async function openWorkbench(page) {
   const browserErrors = [];
   page.on('pageerror', (error) => browserErrors.push(`page: ${error.message}`));
@@ -251,7 +269,7 @@ test('zooms below 100% and pans with the pan tool', async ({ page }) => {
 test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
-  const overlay = page.locator('.plot__overlay');
+  const overlay = patternControl(page, '.plot__overlay');
   // Nothing picked yet, so there is nothing to report.
   await expect(overlay).toBeHidden();
 
@@ -299,12 +317,12 @@ test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
 /** Open a practice plate and return a screen<->image coordinate converter. */
 async function openPlate(page) {
   await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
-  const surface = page.locator('#stage .plot svg');
+  const surface = page.locator(PATTERN_SVG);
   await expect(surface).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('.plot__zoom')).toHaveText('100%');
+  await expect(patternControl(page, '.plot__zoom')).toHaveText('100%');
   return async (x, y) => {
     const geometry = await page.evaluate(() => {
-      const svg = document.querySelector('#stage .plot svg');
+      const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
       const box = svg.viewBox.baseVal;
       const rect = svg.getBoundingClientRect();
       const scale = Math.min(rect.width / box.width, rect.height / box.height);
@@ -339,11 +357,11 @@ test('a pick lands where the pointer is, after zooming and panning', async ({ pa
 
   // Move the camera first, then pick. At the fitted view every conversion
   // agrees; the offset is what separates a correct one from a plausible one.
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  const pan = page.getByRole('button', { name: 'Pan tool', exact: true });
+  await patternButton(page, 'Zoom in').click();
+  await patternButton(page, 'Zoom in').click();
+  const pan = patternButton(page, 'Pan tool');
   await pan.click();
-  const rect = await page.locator('#stage .plot svg').boundingBox();
+  const rect = await page.locator(PATTERN_SVG).boundingBox();
   await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2);
   await page.mouse.down();
   await page.mouse.move(rect.x + rect.width / 2 - 70, rect.y + rect.height / 2 + 40, { steps: 6 });
@@ -366,8 +384,8 @@ test('a pick lands where the pointer is, after zooming and panning', async ({ pa
 test('the view stays where it was put while picking', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   const toScreen = await openPlate(page);
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-  const zoomed = await page.locator('.plot__zoom').textContent();
+  await patternButton(page, 'Zoom in').click();
+  const zoomed = await patternControl(page, '.plot__zoom').textContent();
   expect(Number(zoomed.replace('%', ''))).toBeGreaterThan(100);
 
   const point = await toScreen(512, 512);
@@ -375,7 +393,7 @@ test('the view stays where it was put while picking', async ({ page }) => {
   await expect(page.locator('.picks__row')).toHaveCount(1);
   // The redraw that follows a pick used to snap the camera back to Fit, which
   // made zooming in to place a spot precisely impossible.
-  await expect(page.locator('.plot__zoom')).toHaveText(zoomed);
+  await expect(patternControl(page, '.plot__zoom')).toHaveText(zoomed);
 
   expect(browserErrors).toEqual([]);
 });
@@ -438,11 +456,11 @@ test('the lattice overlay is clipped to the image', async ({ page }) => {
   // The fit is a round trip, so it arrives after the picks. A handful of lines
   // is the beam crosshair alone; the grid is dozens.
   await expect
-    .poll(() => page.locator('#stage .plot svg line').count(), { timeout: 20_000 })
+    .poll(() => page.locator(`${PATTERN_SVG} line`).count(), { timeout: 20_000 })
     .toBeGreaterThan(20);
 
   const geometry = await page.evaluate(() => {
-    const svg = document.querySelector('#stage .plot svg');
+    const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
     const box = svg.viewBox.baseVal;
     const clip = svg.querySelector('clipPath rect');
     let widest = 0;
@@ -587,12 +605,12 @@ test('a click on an uploaded micrograph snaps to the spot centroid', async ({ pa
     input.dispatchEvent(new Event('change', { bubbles: true }));
     return { centre, spot: [centre[0] + basis[0][0], centre[1] + basis[0][1]] };
   });
-  await expect(page.locator('#stage .plot svg image')).toBeVisible();
+  await expect(page.locator(`${PATTERN_SVG} image`)).toBeVisible();
 
   const toScreen = async (x, y) =>
     page.evaluate(
       ([px, py]) => {
-        const svg = document.querySelector('#stage .plot svg');
+        const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
         const box = svg.viewBox.baseVal;
         const rect = svg.getBoundingClientRect();
         const scale = Math.min(rect.width / box.width, rect.height / box.height);
@@ -614,6 +632,90 @@ test('a click on an uploaded micrograph snaps to the spot centroid', async ({ pa
   // centred on the click rather than on the spot; the iteration is what makes
   // this assertion pass.
   expect(Math.hypot(beam[0] - truth.spot[0], beam[1] - truth.spot[1])).toBeLessThan(1.5);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The stereogram beside the pattern.
+ *
+ * Two things are worth pinning. That it is *beside* the pattern rather than
+ * under it — the geometry that recovered half a laptop window. And that the
+ * cursor readout is right: the panel inlines the stage closed form so it can
+ * answer while the pointer moves, and an inlined formula that drifts from the
+ * server's is exactly the kind of defect nobody notices, because it stays
+ * plausible. So the readout is compared against the server's own numbers at the
+ * poles the server placed.
+ */
+test('the stereogram sits beside the pattern and reads out the tilt under the cursor', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  const browserErrors = await openWorkbench(page);
+  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+
+  const stereogram = page.locator('#stage svg[aria-label="Stereogram"]');
+  await expect(stereogram).toBeVisible({ timeout: 20_000 });
+
+  // Side by side, each taking about half the stage, not stacked.
+  const geometry = await page.evaluate(() => {
+    const figures = [...document.querySelectorAll('.tem-stage > .plot')];
+    return figures.map((figure) => {
+      const rect = figure.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width };
+    });
+  });
+  expect(geometry).toHaveLength(2);
+  expect(geometry[1].x).toBeGreaterThan(geometry[0].x + geometry[0].width - 2);
+  expect(Math.abs(geometry[0].y - geometry[1].y)).toBeLessThan(2);
+
+  // The poles the server placed, straight from the service.
+  const axes = await page.evaluate(async () => {
+    const response = await fetch('/api/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        operation: 'tem.stereogram',
+        params: { phase: { builtin: 'al_fcc' }, zone_axis: [0, 0, 1] },
+      }),
+    });
+    const body = await response.json();
+    return body.result.data.axes;
+  });
+  const wanted = ['[001]', '[011]', '[111]', '[112]'];
+  const poles = wanted.map((label) => {
+    const found = axes.find((entry) => entry.label === label);
+    expect(found, `the service placed no pole ${label}`).toBeTruthy();
+    return found;
+  });
+
+  for (const pole of poles) {
+    const readout = await page.evaluate((entry) => {
+      const svg = document.querySelector('#stage svg[aria-label="Stereogram"]');
+      const box = svg.viewBox.baseVal;
+      const rect = svg.getBoundingClientRect();
+      const scale = Math.min(rect.width / box.width, rect.height / box.height);
+      const offsetX = (rect.width - box.width * scale) / 2;
+      const offsetY = (rect.height - box.height * scale) / 2;
+      svg.dispatchEvent(
+        new PointerEvent('pointermove', {
+          bubbles: true,
+          clientX: rect.left + offsetX + (entry.x - box.x) * scale,
+          // The drawing's y runs up; the SVG's runs down.
+          clientY: rect.top + offsetY + (-entry.y - box.y) * scale,
+        }),
+      );
+      return svg.closest('.plot').querySelector('.plot__cursor').textContent;
+    }, pole);
+
+    const numbers = [...readout.matchAll(/-?\d+\.\d+/g)].map(Number);
+    expect(numbers.length, `readout without numbers: ${readout}`).toBeGreaterThanOrEqual(3);
+    // Within a tenth of a degree, which is what the readout prints.
+    expect(Math.abs(numbers[0] - pole.alpha_deg)).toBeLessThan(0.11);
+    expect(Math.abs(numbers[1] - pole.beta_deg)).toBeLessThan(0.11);
+    expect(Math.abs(numbers[2] - pole.angle_from_beam_deg)).toBeLessThan(0.11);
+    expect(readout).toContain(pole.label);
+  }
 
   expect(browserErrors).toEqual([]);
 });

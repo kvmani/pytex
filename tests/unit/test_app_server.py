@@ -10,11 +10,13 @@ miss — status codes, content types, header behaviour, and the traversal defenc
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler
 from typing import Any
+from unittest import mock
 from unittest.mock import Mock
 
 import pytest
@@ -159,6 +161,79 @@ class TestApiRoutes:
         handler.handle()
 
         base_handle.assert_called_once_with()
+
+
+class TestConcurrency:
+    """One operation runs at a time; everything else still answers.
+
+    The defect behind this: the scientific stack under the services is not
+    thread-safe — pyplot's state is global by construction — and two operations
+    arriving together were executing on two handler threads. The failure was not
+    a wrong number but a Windows access violation that killed the server
+    mid-session, with no Python traceback. It became routine the moment a panel
+    started drawing two figures on mount.
+    """
+
+    def test_operations_do_not_overlap(self, server: AppServer) -> None:
+        import threading
+
+        from pytex.app import registry as registry_module
+
+        overlapping = False
+        active = 0
+        guard = threading.Lock()
+        original = registry_module.REGISTRY.call
+
+        def observed(operation: str, request: Any = None) -> Any:
+            nonlocal overlapping, active
+            with guard:
+                active += 1
+                overlapping = overlapping or active > 1
+            try:
+                time.sleep(0.05)
+                return original(operation, request)
+            finally:
+                with guard:
+                    active -= 1
+
+        body = {"operation": "calc.plane_angles", "params": {"phase": {"builtin": "ni_fcc"}}}
+        with mock.patch.object(registry_module.REGISTRY, "call", observed):
+            threads = [
+                threading.Thread(target=lambda: post(server, "/api/call", body)) for _ in range(6)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=60)
+
+        assert not overlapping, "two operations executed at the same time"
+
+    def test_a_page_still_loads_while_an_operation_runs(self, server: AppServer) -> None:
+        """The lock must not have quietly turned the server single-threaded."""
+
+        import threading
+
+        from pytex.app import registry as registry_module
+
+        release = threading.Event()
+        original = registry_module.REGISTRY.call
+
+        def blocking(operation: str, request: Any = None) -> Any:
+            release.wait(timeout=30)
+            return original(operation, request)
+
+        body = {"operation": "calc.plane_angles", "params": {"phase": {"builtin": "ni_fcc"}}}
+        with mock.patch.object(registry_module.REGISTRY, "call", blocking):
+            worker = threading.Thread(target=lambda: post(server, "/api/call", body))
+            worker.start()
+            try:
+                # The calculation is held open; the page must still be served.
+                status, _, page = get(server, "/")
+                assert status == 200
+                assert b"PyTex Workbench" in page
+            finally:
+                release.set()
+                worker.join(timeout=60)
 
 
 class TestStaticFiles:

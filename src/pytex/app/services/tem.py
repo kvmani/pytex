@@ -1800,6 +1800,472 @@ def _zone_axis_atlas(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+def _primitive_directions(max_index: int) -> np.ndarray:
+    """Every ``[uvw]`` up to ``max_index``, reduced and deduplicated by sense.
+
+    A stereogram plots directions, not integer triples: ``[112]`` and ``[224]``
+    are the same pole, and ``[uvw]`` and ``[u v w]`` reversed project to the
+    same point once the hemisphere is folded. Reducing by the greatest common
+    divisor and keeping one of each antipodal pair leaves exactly one entry per
+    plotted pole, each carrying the lowest indices that name it.
+    """
+
+    values = np.arange(-max_index, max_index + 1, dtype=np.int64)
+    grid = np.stack(np.meshgrid(values, values, values, indexing="ij"), axis=-1)
+    uvw = grid.reshape(-1, 3)
+    uvw = uvw[np.any(uvw != 0, axis=1)]
+    divisor = np.gcd(np.gcd(np.abs(uvw[:, 0]), np.abs(uvw[:, 1])), np.abs(uvw[:, 2]))
+    uvw = uvw // divisor[:, None]
+    # One of each antipodal pair: keep the member whose first non-zero index is
+    # positive, which is the form a stereogram is conventionally labelled with.
+    leading = uvw[np.arange(uvw.shape[0]), np.argmax(uvw != 0, axis=1)]
+    uvw = np.where(leading[:, None] < 0, -uvw, uvw)
+    return np.unique(uvw, axis=0)
+
+
+def _stereographic(holder: np.ndarray) -> np.ndarray:
+    """Project holder-frame unit vectors onto the equatorial plane.
+
+    The upper-hemisphere stereographic projection from the south pole,
+    ``(x, y) = (w_x, w_y) / (1 + w_z)``, after folding every direction onto the
+    upper hemisphere — a zone axis and its reverse are the same axis. The unit
+    circle is then the 90-degree cone about the holder ``z`` axis.
+    """
+
+    folded = np.where(holder[:, 2:3] < 0.0, -holder, holder)
+    denominator = 1.0 + folded[:, 2:3]
+    return np.asarray(folded[:, :2] / denominator, dtype=np.float64)
+
+
+def _stage_angles_for_holder(holder: np.ndarray) -> tuple[float, float]:
+    """The stage reading that brings a holder-frame direction onto the beam.
+
+    The principal branch of :func:`pytex.tem.navigation.solve_tilts_for_direction`,
+    inlined for a single direction so the stereogram can label thousands of poles
+    without constructing a solution object for each. Pinned against that function
+    in ``tests/unit/test_app_tem_stereogram.py``.
+    """
+
+    x, y, z = (float(value) for value in holder)
+    rho = math.hypot(x, z)
+    if rho < 1e-9:
+        return (90.0 if y > 0.0 else -90.0, 0.0)
+    return (math.degrees(math.atan2(y, rho)), math.degrees(math.atan2(-x, z)))
+
+
+def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
+    """Great-circle interpolation between two unit vectors, endpoints included."""
+
+    dot = float(np.clip(np.dot(start, end), -1.0, 1.0))
+    omega = math.acos(dot)
+    fractions = np.linspace(0.0, 1.0, count)
+    if omega < 1e-9:
+        return np.tile(start, (count, 1))
+    sin_omega = math.sin(omega)
+    first = np.sin((1.0 - fractions) * omega) / sin_omega
+    second = np.sin(fractions * omega) / sin_omega
+    return np.asarray(first[:, None] * start[None, :] + second[:, None] * end[None, :])
+
+
+@REGISTRY.operation(
+    "tem.stereogram",
+    title="Draw the stereogram for this orientation",
+    summary="Zone axes on the hemisphere, the axis on the beam, and the route to the next one.",
+    help_text=(
+        "The map the pattern is read against. A spot pattern says what is on the beam *now*; "
+        "the stereogram says what else is within reach and in which direction it lies, which is "
+        "the question asked immediately afterwards.\n\n"
+        "It is drawn in **holder coordinates**, not crystal coordinates: the centre is the "
+        "holder's zero-tilt axis, alpha increases upwards and beta to the left, so a pole's "
+        "position on the drawing *is* the tilt needed to reach it. Every pole therefore carries "
+        "the stage reading that brings it onto the beam — the principal branch of the closed form "
+        "in `pytex.tem.navigation.solve_tilts_for_direction` — and the holder envelope is drawn "
+        "as the region those readings can actually be set to.\n\n"
+        "The axis currently on the beam is marked where the stage puts it, which is the centre "
+        "only at zero tilt. Naming a target adds the geodesic to it — the same great circle as "
+        "the connecting Kikuchi band — with the low-index zones lying along the way marked as "
+        "waypoints, because re-indexing at each of those is what keeps a long tilt from "
+        "accumulating rotation error.\n\n"
+        "Angles between poles are fixed by the lattice. Where the poles sit on the drawing "
+        "depends on the orientation, and therefore on the roll about the beam, which one "
+        "indexed pattern does not determine."
+    ),
+    parameters=(
+        phase_parameter(help_text="The phase whose zone axes to plot."),
+        IndicesParameter(
+            name="zone_axis",
+            label="Zone axis on the beam [uvw]",
+            help_text="The axis the indexed pattern was taken down. It fixes the orientation.",
+            default=(0, 0, 1),
+        ),
+        IndicesParameter(
+            name="target_zone_axis",
+            label="Target zone axis [uvw]",
+            help_text=(
+                "Where to go next. Leave at 0 0 0 to draw the stereogram alone, with no route "
+                "on it."
+            ),
+            default=(0, 0, 0),
+            allow_zero=True,
+        ),
+        NumberParameter(
+            name="alpha_deg",
+            label="Current alpha",
+            help_text="The holder's primary tilt, as the stage reads now.",
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beta_deg",
+            label="Current beta",
+            help_text="The holder's secondary tilt, as the stage reads now.",
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="alpha_limit_deg",
+            label="Alpha limit",
+            help_text="The holder's alpha range, plus and minus. Drawn as the envelope.",
+            units="°",
+            default=30.0,
+            minimum=1.0,
+            maximum=90.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beta_limit_deg",
+            label="Beta limit",
+            help_text="The holder's beta range. Usually what puts a pole out of reach.",
+            units="°",
+            default=20.0,
+            minimum=1.0,
+            maximum=90.0,
+            group="Stage",
+        ),
+        NumberParameter(
+            name="beam_rotation_deg",
+            label="Rotation about the beam",
+            help_text=(
+                "How the crystal is rolled about the beam. It rotates the whole stereogram and "
+                "so decides how a move divides between alpha and beta."
+            ),
+            units="°",
+            default=0.0,
+            group="Stage",
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Index limit",
+            help_text=(
+                "Largest |u|, |v| or |w| plotted. 2 draws the poles a session navigates by — "
+                "⟨100⟩, ⟨110⟩, ⟨111⟩, ⟨210⟩, ⟨211⟩, ⟨221⟩ for a cubic phase. Raising it to 3 "
+                "trebles the count and crowds the drawing with axes nobody tilts to."
+            ),
+            default=2,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="label_index",
+            label="Label poles up to",
+            help_text=(
+                "Poles with every index at or below this are labelled and drawn large; the rest "
+                "are drawn as small ticks. 2 labels the axes a printed stereogram labels."
+            ),
+            default=2,
+            minimum=1,
+            maximum=4,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per plotted pole with its stage reading and reachability; the projected "
+        "geometry, the envelope outline and the route under `data`."
+    ),
+    panel="tem",
+    citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON, _CITATION_HIRSCH),
+    tags=("TEM", "stereogram", "zone axis", "tilt", "stage", "navigation", "projection"),
+)
+def _stereogram(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.lattice import ZoneAxis
+    from pytex.tem.path import suggest_waypoints
+    from pytex.tem.stage import RectangularEnvelope, StagePosition
+
+    spec, phase = phase_from_request(request["phase"])
+    zone_indices = tuple(int(value) for value in request["zone_axis"])
+    target_indices = tuple(int(value) for value in request["target_zone_axis"])
+    max_index = int(request["max_index"])
+    label_index = min(int(request["label_index"]), max_index)
+    alpha_limit = float(request["alpha_limit_deg"])
+    beta_limit = float(request["beta_limit_deg"])
+    position = StagePosition(
+        alpha_deg=float(request["alpha_deg"]), beta_deg=float(request["beta_deg"])
+    )
+    envelope = RectangularEnvelope(
+        alpha_min_deg=-alpha_limit,
+        alpha_max_deg=alpha_limit,
+        beta_min_deg=-beta_limit,
+        beta_max_deg=beta_limit,
+    )
+
+    axis = ZoneAxis(indices=np.asarray(zone_indices, dtype=int), phase=phase)
+    orientation = _orientation_with_axis_on_beam(
+        phase, axis, position, roll_deg=float(request["beam_rotation_deg"])
+    )
+    crystal_to_holder = np.asarray(orientation.as_matrix(), dtype=np.float64)
+
+    direct = phase.lattice.direct_basis().matrix
+    uvw = _primitive_directions(max_index)
+    crystal = uvw.astype(np.float64) @ direct.T
+    crystal = crystal / np.linalg.norm(crystal, axis=1)[:, None]
+    holder = crystal @ crystal_to_holder.T
+    # A pole and its reverse are the same axis, so the labelled triple is the one
+    # whose holder direction points into the drawn hemisphere.
+    flip = holder[:, 2] < 0.0
+    holder = np.where(flip[:, None], -holder, holder)
+    uvw = np.where(flip[:, None], -uvw, uvw)
+    projected = _stereographic(holder)
+
+    beam_holder = np.asarray(
+        _beam_direction(position.alpha_deg, position.beta_deg), dtype=np.float64
+    )
+    beam_projected = _stereographic(beam_holder[None, :])[0]
+    beam_crystal = crystal_to_holder.T @ beam_holder
+
+    rows: list[dict[str, Any]] = []
+    entries: list[dict[str, Any]] = []
+    for index in range(uvw.shape[0]):
+        indices = [int(value) for value in uvw[index]]
+        magnitude = int(np.max(np.abs(uvw[index])))
+        alpha_deg, beta_deg = _stage_angles_for_holder(holder[index])
+        reachable = envelope.contains(alpha_deg, beta_deg)
+        angle_deg = math.degrees(
+            math.acos(float(np.clip(abs(np.dot(holder[index], beam_holder)), -1.0, 1.0)))
+        )
+        entry = {
+            "indices": indices,
+            "label": direction_label(indices, spec=spec),
+            "x": float(projected[index, 0]),
+            "y": float(projected[index, 1]),
+            "alpha_deg": alpha_deg,
+            "beta_deg": beta_deg,
+            "delta_alpha_deg": alpha_deg - position.alpha_deg,
+            "delta_beta_deg": beta_deg - position.beta_deg,
+            "angle_from_beam_deg": angle_deg,
+            "index_magnitude": magnitude,
+            "labelled": magnitude <= label_index,
+            "reachable": bool(reachable),
+            "margin_deg": float(envelope.margin_deg(alpha_deg, beta_deg)),
+        }
+        entries.append(entry)
+        if entry["labelled"]:
+            rows.append(
+                {
+                    "label": entry["label"],
+                    "angle_from_beam_deg": angle_deg,
+                    "alpha_deg": alpha_deg,
+                    "beta_deg": beta_deg,
+                    "delta_alpha_deg": entry["delta_alpha_deg"],
+                    "delta_beta_deg": entry["delta_beta_deg"],
+                    "verdict": "reachable" if reachable else "out of range",
+                    "margin_deg": entry["margin_deg"],
+                }
+            )
+
+    rows.sort(key=lambda row: row["angle_from_beam_deg"])
+
+    # The holder envelope, as the poles it can bring onto the beam. Traced as
+    # the image of the envelope's own boundary, so the drawn region is the
+    # reachable set itself rather than a circle approximating it.
+    samples = np.linspace(0.0, 1.0, 60)
+    boundary_alpha = np.concatenate(
+        [
+            np.full_like(samples, -alpha_limit),
+            -alpha_limit + 2.0 * alpha_limit * samples,
+            np.full_like(samples, alpha_limit),
+            alpha_limit - 2.0 * alpha_limit * samples,
+        ]
+    )
+    boundary_beta = np.concatenate(
+        [
+            -beta_limit + 2.0 * beta_limit * samples,
+            np.full_like(samples, beta_limit),
+            beta_limit - 2.0 * beta_limit * samples,
+            np.full_like(samples, -beta_limit),
+        ]
+    )
+    boundary_holder = np.asarray(_beam_direction(boundary_alpha, boundary_beta))
+    boundary = _stereographic(boundary_holder)
+
+    target: dict[str, Any] | None = None
+    path: dict[str, Any] | None = None
+    if any(target_indices):
+        target_crystal = np.asarray(target_indices, dtype=np.float64) @ direct.T
+        target_crystal = target_crystal / (np.linalg.norm(target_crystal) or 1.0)
+        target_holder = crystal_to_holder @ target_crystal
+        if float(target_holder[2]) < 0.0:
+            target_holder = -target_holder
+            target_crystal = -target_crystal
+        target_alpha, target_beta = _stage_angles_for_holder(target_holder)
+        span_deg = math.degrees(
+            math.acos(float(np.clip(np.dot(target_holder, beam_holder), -1.0, 1.0)))
+        )
+        target = {
+            "indices": [int(value) for value in target_indices],
+            "label": direction_label(target_indices, spec=spec),
+            "x": float(_stereographic(target_holder[None, :])[0, 0]),
+            "y": float(_stereographic(target_holder[None, :])[0, 1]),
+            "alpha_deg": target_alpha,
+            "beta_deg": target_beta,
+            "delta_alpha_deg": target_alpha - position.alpha_deg,
+            "delta_beta_deg": target_beta - position.beta_deg,
+            "angle_from_beam_deg": span_deg,
+            "reachable": bool(envelope.contains(target_alpha, target_beta)),
+            "margin_deg": float(envelope.margin_deg(target_alpha, target_beta)),
+        }
+        route = _slerp_points(beam_holder, target_holder, 49)
+        waypoints = [
+            {
+                "indices": [int(value) for value in np.round(direction.coordinates)],
+                "label": direction_label(
+                    [int(value) for value in np.round(direction.coordinates)], spec=spec
+                ),
+                **_waypoint_geometry(direction, direct, crystal_to_holder, envelope, position),
+            }
+            for direction in suggest_waypoints(phase, beam_crystal, target_crystal)
+        ]
+        path = {
+            "points": _stereographic(route).tolist(),
+            "waypoints": waypoints,
+            "span_deg": span_deg,
+        }
+
+    reachable_count = sum(1 for entry in entries if entry["reachable"])
+    beam_label = direction_label(zone_indices, spec=spec)
+    summary = (
+        f"{len(entries)} zone axes of {spec.name} up to index {max_index}, projected in holder "
+        f"coordinates with {beam_label} on the beam at alpha {position.alpha_deg:g}°, beta "
+        f"{position.beta_deg:g}°. {reachable_count} of them can be brought onto the beam inside "
+        f"±{alpha_limit:g}° alpha and ±{beta_limit:g}° beta."
+    )
+    if target is not None:
+        summary += (
+            f" {target['label']} lies {target['angle_from_beam_deg']:.2f}° away, at alpha "
+            f"{target['alpha_deg']:.2f}°, beta {target['beta_deg']:.2f}° — "
+            + ("inside the envelope." if target["reachable"] else "outside the envelope.")
+        )
+        if path is not None and path["waypoints"]:
+            names = ", ".join(str(waypoint["label"]) for waypoint in path["waypoints"])
+            summary += f" Low-index zones on the way: {names}."
+
+    result = AppResult(
+        title=f"Stereogram of {spec.name} down {beam_label}",
+        summary=summary,
+        table=ResultTable(
+            columns=(
+                Column("label", "Pole"),
+                Column("angle_from_beam_deg", "From beam", units="°", numeric=True, digits=2),
+                Column(
+                    "alpha_deg",
+                    "α to reach",
+                    units="°",
+                    numeric=True,
+                    digits=2,
+                    help_text="The stage reading that puts this pole on the beam.",
+                ),
+                Column("beta_deg", "β to reach", units="°", numeric=True, digits=2),
+                Column("delta_alpha_deg", "Δα", units="°", numeric=True, digits=2),
+                Column("delta_beta_deg", "Δβ", units="°", numeric=True, digits=2),
+                Column("verdict", "Envelope"),
+                Column("margin_deg", "Margin", units="°", numeric=True, digits=2),
+            ),
+            rows=tuple(rows),
+            caption=(f"Poles of {spec.name} labelled on the stereogram, nearest the beam first."),
+        ),
+        data={
+            "projection": "stereographic",
+            "hemisphere": "upper",
+            "frame": "holder",
+            "zone_axis": list(zone_indices),
+            "zone_axis_label": beam_label,
+            "beam": {
+                "x": float(beam_projected[0]),
+                "y": float(beam_projected[1]),
+                "alpha_deg": position.alpha_deg,
+                "beta_deg": position.beta_deg,
+                "label": beam_label,
+            },
+            "axes": entries,
+            "envelope": {
+                "boundary": boundary.tolist(),
+                "alpha_limit_deg": alpha_limit,
+                "beta_limit_deg": beta_limit,
+            },
+            "target": target,
+            "path": path,
+            "crystal_to_holder": crystal_to_holder.tolist(),
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "zone_axis": list(zone_indices),
+            "target_zone_axis": list(target_indices),
+            "alpha_deg": position.alpha_deg,
+            "beta_deg": position.beta_deg,
+            "alpha_limit_deg": alpha_limit,
+            "beta_limit_deg": beta_limit,
+            "beam_rotation_deg": float(request["beam_rotation_deg"]),
+            "max_index": max_index,
+            "label_index": label_index,
+        },
+        notes=(
+            "The stage reading beside each pole is the principal branch: three other branches "
+            "reach the same pole, and a real holder usually cannot set them.",
+            "Where a pole sits on the drawing depends on the rotation about the beam, which one "
+            "indexed pattern does not determine. The angles between poles do not.",
+        ),
+        citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
+    )
+    return result.to_json()
+
+
+def _beam_direction(alpha_deg: Any, beta_deg: Any) -> np.ndarray:
+    """The ideal-stage beam direction in holder coordinates."""
+
+    from pytex.tem.stage import beam_direction_holder
+
+    return np.asarray(beam_direction_holder(alpha_deg, beta_deg), dtype=np.float64)
+
+
+def _waypoint_geometry(
+    direction: Any,
+    direct: np.ndarray,
+    crystal_to_holder: np.ndarray,
+    envelope: Any,
+    position: Any,
+) -> dict[str, Any]:
+    """Projected position and stage reading for one routing waypoint."""
+
+    cartesian = np.asarray(direction.coordinates, dtype=np.float64) @ direct.T
+    cartesian = cartesian / (np.linalg.norm(cartesian) or 1.0)
+    holder = crystal_to_holder @ cartesian
+    if float(holder[2]) < 0.0:
+        holder = -holder
+    projected = _stereographic(holder[None, :])[0]
+    alpha_deg, beta_deg = _stage_angles_for_holder(holder)
+    return {
+        "x": float(projected[0]),
+        "y": float(projected[1]),
+        "alpha_deg": alpha_deg,
+        "beta_deg": beta_deg,
+        "delta_alpha_deg": alpha_deg - position.alpha_deg,
+        "delta_beta_deg": beta_deg - position.beta_deg,
+        "reachable": bool(envelope.contains(alpha_deg, beta_deg)),
+    }
+
+
 def _member_label(solution: Any, requested: Sequence[int], spec: Any) -> tuple[str, list[int]]:
     """How to name the orbit member a tilt solution places on the beam.
 
