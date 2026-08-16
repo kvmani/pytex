@@ -469,30 +469,41 @@ class TestFrontendIsSelfContained:
             "hiding a scrollbar hides the only sign that content is off-screen"
         )
 
-    def test_every_service_call_reports_progress_to_the_shared_activity_log(self) -> None:
-        """Long calculations need one persistent status surface in both shells."""
+    def test_the_shell_reserves_one_centralized_message_console(self) -> None:
+        """Every surface reports to one log, and the page reserves its strip.
+
+        The console's markup is built by ``js/core/logbook.js`` rather than
+        written in the page, so what the static HTML must carry is the mount
+        point and nothing else. Two definitions of an entry — one in markup, one
+        in script — is exactly the drift this application avoids elsewhere.
+        """
 
         html = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
+        console = (STATIC_ROOT / "js" / "core" / "logbook.js").read_text(encoding="utf-8")
         api = (STATIC_ROOT / "js" / "core" / "api.js").read_text(encoding="utf-8")
         shell = (STATIC_ROOT / "js" / "main.js").read_text(encoding="utf-8")
         stylesheet = (STATIC_ROOT / "app.css").read_text(encoding="utf-8")
-        for element_id in (
-            "activity-toggle",
-            "activity-summary",
-            "activity-count",
-            "activity-panel",
-            "activity-log",
-            "activity-clear",
-        ):
-            assert f'id="{element_id}"' in html
-        assert "pytex:operation-start" in api
-        assert "pytex:operation-finish" in api
-        assert "durationMs" in api
-        assert "ACTIVITY_SEQUENCE" in api, "parallel calls must keep independent progress entries"
-        assert "function wireActivity()" in shell
-        assert "history.slice(0, 40)" in shell, "the persistent log must remain bounded"
-        assert ".activity__indicator--busy" in stylesheet
-        assert "@keyframes activity-spin" in stylesheet
+
+        assert 'id="console"' in html
+        assert "log.mountConsole(dom.console)" in shell
+
+        # The console grades severity with the same vocabulary Python emits;
+        # a level defined on one side only cannot be filtered or coloured.
+        for level in ("progress", "debug", "info", "notice", "success", "warning", "error"):
+            assert f"{level}:" in console, f"the console must define the {level} level"
+        assert "critical:" in console
+
+        for element_id in ("console-toggle", "console-panel", "console-stream", "console-clear"):
+            assert element_id in console
+
+        # Records ride back on every envelope, so no panel has to remember to
+        # report what it ran, and the poll catches what belongs to no call.
+        assert "log.ingest(payload.log)" in api
+        assert "/api/log?since=" in console
+        assert "CAPACITY = 1000" in console, "a day-long session must stay bounded"
+
+        assert ".console__indicator--busy" in stylesheet
+        assert "@keyframes console-spin" in stylesheet
 
     def test_the_figure_toolbar_wraps_instead_of_spilling(self) -> None:
         """The plot header has visible overflow, so an unwrapped toolbar escapes.

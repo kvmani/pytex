@@ -56,32 +56,12 @@
       </aside>
     </main>
 
-    <section class="activity" id="activity" aria-label="Calculation activity">
-      <button
-        type="button"
-        class="activity__toggle"
-        id="activity-toggle"
-        aria-label="Open calculation activity"
-        aria-expanded="false"
-        aria-controls="activity-panel"
-      >
-        <span class="activity__indicator" id="activity-indicator" aria-hidden="true"></span>
-        <span class="activity__summary" id="activity-summary" role="status" aria-live="polite">Ready</span>
-        <span class="activity__count" id="activity-count">No calculations yet</span>
-        <span aria-hidden="true">⌃</span>
-      </button>
-      <div class="activity__panel" id="activity-panel" hidden>
-        <header class="activity__header">
-          <div>
-            <strong>Calculation activity</strong>
-            <span>Recent service calls, duration and outcome</span>
-          </div>
-          <button type="button" class="button" id="activity-clear">Clear</button>
-        </header>
-        <ol class="activity__log" id="activity-log"></ol>
-        <p class="activity__empty" id="activity-empty">Run a calculation to see its progress here.</p>
-      </div>
-    </section>
+    <!-- The centralized message log. Built entirely by js/core/logbook.js: the
+         page reserves the strip, and everything inside it — the summary bar, the
+         filters, the stream — is constructed there, so there is one definition
+         of what a log entry looks like rather than a markup half and a script
+         half that can disagree. -->
+    <section class="console" id="console" aria-label="Message log"></section>
 
     <div class="palette" id="palette" hidden role="dialog" aria-modal="true" aria-label="Find a feature">
       <div class="palette__panel">

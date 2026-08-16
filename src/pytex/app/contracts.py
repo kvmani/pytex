@@ -9,26 +9,34 @@ The envelope
 ------------
 Success::
 
-    {"ok": true, "operation": "calc.plane_angles", "result": {...}}
+    {"ok": true, "operation": "calc.plane_angles", "result": {...}, "log": [...]}
 
 Failure::
 
-    {"ok": false, "operation": "calc.plane_angles",
+    {"ok": false, "operation": "calc.plane_angles", "log": [...],
      "error": {"code": "input.invalid", "message": "...", "hint": "..."}}
 
 ``ok`` is always present and is the only field a client must check. The result
 object is whatever the operation documents in its manifest entry.
+
+``log`` is the narration this call produced, in
+:mod:`pytex.app.logbook` wire form — always present, often empty. It travels
+with the envelope rather than being polled separately so that a message about a
+calculation can never arrive before the calculation's own result, or after the
+user has moved on to the next one.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+import time
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
 
 from pytex.app.errors import ServiceError
+from pytex.app.logbook import APP_LOG, LogRecord, collecting
 from pytex.app.registry import REGISTRY, ServiceRegistry
 
 __all__ = [
@@ -94,16 +102,36 @@ def dumps(value: Any, *, indent: int | None = None) -> str:
     return json.dumps(to_jsonable(value), indent=indent, allow_nan=False)
 
 
-def success_envelope(operation: str, result: Any) -> dict[str, Any]:
+def _log_payload(records: Sequence[LogRecord] | None) -> list[dict[str, Any]]:
+    """Render captured records for the wire, oldest first."""
+
+    return [record.to_json() for record in (records or ())]
+
+
+def success_envelope(
+    operation: str, result: Any, *, log: Sequence[LogRecord] | None = None
+) -> dict[str, Any]:
     """Wrap a result in the success envelope."""
 
-    return {"ok": True, "operation": operation, "result": to_jsonable(result)}
+    return {
+        "ok": True,
+        "operation": operation,
+        "result": to_jsonable(result),
+        "log": _log_payload(log),
+    }
 
 
-def error_envelope(operation: str, error: ServiceError) -> dict[str, Any]:
+def error_envelope(
+    operation: str, error: ServiceError, *, log: Sequence[LogRecord] | None = None
+) -> dict[str, Any]:
     """Wrap a deliberate failure in the error envelope."""
 
-    return {"ok": False, "operation": operation, "error": error.to_json()}
+    return {
+        "ok": False,
+        "operation": operation,
+        "error": error.to_json(),
+        "log": _log_payload(log),
+    }
 
 
 def execute(
@@ -134,11 +162,47 @@ def execute(
     -------
     tuple of (dict, int)
         The envelope and the status code to send with it.
+
+    Notes
+    -----
+    Every call narrates itself into :data:`~pytex.app.logbook.APP_LOG`: one
+    record when it starts, one when it finishes or fails. That happens here
+    rather than in each shell so the console tells the same story whether the
+    call arrived over HTTP, through the desktop bridge, or from a test — and
+    rather than in each service, so no operation can be added without appearing
+    in the log.
     """
 
     active = registry if registry is not None else REGISTRY
+    started = time.monotonic()
+    # The registered title, not the dotted id: the console is read by the person
+    # who pressed the button, and they pressed "Powder XRD pattern" rather than
+    # "xrd.powder_pattern". An unknown id has no title, and saying so plainly is
+    # better than inventing one.
     try:
-        result = active.call(operation, request)
-    except ServiceError as error:
-        return error_envelope(operation, error), error.status
-    return success_envelope(operation, result), 200
+        title = active.get(operation).title
+    except ServiceError:
+        title = operation
+    with collecting() as records:
+        APP_LOG.info(f"{title} started.", source=operation)
+        try:
+            result = active.call(operation, request)
+        except ServiceError as error:
+            # A ServiceError is a message already written for the user, so the
+            # log repeats it verbatim rather than paraphrasing: the console and
+            # the toast beside the control must not describe the same rejection
+            # in two different sentences.
+            detail: dict[str, Any] = {"code": error.code}
+            if error.hint is not None:
+                detail["hint"] = error.hint
+            if "field" in error.details:
+                detail["field"] = error.details["field"]
+            APP_LOG.error(error.message, source=operation, detail=detail)
+            return error_envelope(operation, error, log=records), error.status
+        elapsed_ms = (time.monotonic() - started) * 1000.0
+        APP_LOG.success(
+            f"{title} completed in {elapsed_ms:.0f} ms.",
+            source=operation,
+            detail={"duration_ms": round(elapsed_ms, 1)},
+        )
+        return success_envelope(operation, result, log=records), 200

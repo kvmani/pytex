@@ -10,7 +10,16 @@
  * the user, and usually a hint. `ServiceCallError` carries all three, so the
  * caller can put the message beside the control that caused it rather than
  * showing a stack trace nobody can act on.
+ *
+ * Every envelope also carries the log records that call produced, and they are
+ * handed to the console here. That is why no panel has to remember to report
+ * what it just ran: reporting is a property of the one path calls take, not a
+ * courtesy each caller extends. What this module logs *itself* is only what the
+ * server cannot know it should — a request that never arrived, and a reply that
+ * was not the agreed envelope.
  */
+
+import * as log from './logbook.js';
 
 /** An error the server reported deliberately, with a message meant for a person. */
 export class ServiceCallError extends Error {
@@ -64,7 +73,7 @@ export async function fetchShell() {
 }
 
 let SHELL = { shell: 'web', can_write_local_files: false, can_read_local_paths: false };
-let ACTIVITY_SEQUENCE = 0;
+let CALL_SEQUENCE = 0;
 
 /** What the running shell can do, as last reported by {@link fetchShell}. */
 export function shell() {
@@ -80,33 +89,30 @@ export function shell() {
  * @throws {ServiceCallError} On any deliberate failure.
  */
 export async function call(operation, params = {}) {
-  const started = performance.now();
-  const activityId = ++ACTIVITY_SEQUENCE;
-  document.dispatchEvent(
-    new CustomEvent('pytex:operation-start', { detail: { id: activityId, operation } }),
-  );
-  let outcome = 'failed';
-  let failure = null;
+  const callId = ++CALL_SEQUENCE;
+  log.beginCall(callId, OPERATION_TITLES.get(operation) ?? operation);
   try {
-    const result = await invoke(operation, params);
-    outcome = 'completed';
-    return result;
-  } catch (error) {
-    failure = error;
-    throw error;
+    return await invoke(operation, params);
   } finally {
-    document.dispatchEvent(
-      new CustomEvent('pytex:operation-finish', {
-        detail: {
-          operation,
-          id: activityId,
-          outcome,
-          durationMs: performance.now() - started,
-          message: failure?.message ?? null,
-        },
-      }),
-    );
+    log.endCall(callId);
   }
+}
+
+/** Operation id to human title, so an in-flight call can be named on the bar. */
+const OPERATION_TITLES = new Map();
+
+/**
+ * Teach this module the titles from the manifest.
+ *
+ * Called once at start-up. Without it a call in flight is announced by its
+ * dotted id, which is the name the code uses rather than the name on the button
+ * the user pressed.
+ *
+ * @param {object[]} operations - Manifest operation entries.
+ */
+export function setOperationTitles(operations) {
+  OPERATION_TITLES.clear();
+  for (const operation of operations ?? []) OPERATION_TITLES.set(operation.id, operation.title);
 }
 
 async function invoke(operation, params) {
@@ -118,6 +124,13 @@ async function invoke(operation, params) {
       body: JSON.stringify({ operation, params }),
     });
   } catch (cause) {
+    // The one failure with no server-side record, because nothing reached the
+    // server. If the console stayed silent here it would show a call starting
+    // and then nothing at all, which reads as a hang rather than a disconnect.
+    log.critical('The PyTex server could not be reached.', {
+      source: operation,
+      detail: { cause: String(cause) },
+    });
     throw new ServiceCallError({
       code: 'network.unreachable',
       message: 'The PyTex server could not be reached.',
@@ -130,11 +143,18 @@ async function invoke(operation, params) {
   try {
     payload = await response.json();
   } catch {
+    log.critical(`The server returned a response that is not JSON (HTTP ${response.status}).`, {
+      source: operation,
+    });
     throw new ServiceCallError({
       code: 'response.malformed',
       message: `The server returned a response that is not JSON (HTTP ${response.status}).`,
     });
   }
+
+  // Both envelopes carry the call's narration, so a failed call reports what it
+  // managed to do before it failed rather than only that it failed.
+  log.ingest(payload.log);
 
   if (!payload.ok) throw new ServiceCallError(payload.error ?? {});
   return payload.result;

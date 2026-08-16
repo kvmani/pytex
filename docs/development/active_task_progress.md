@@ -5,6 +5,74 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Workbench Modules: CBED, EBSD Plotter, And One Centralized Log — IN PROGRESS (2026-08-16)
+
+**Objective.** Add three things to the shared web/desktop workbench:
+
+1. a **CBED simulator** panel over `pytex.diffraction.cbed`;
+2. an **EBSD plotter** panel offering IPF-coloured maps, grain-boundary maps, boundaries
+   superimposed on any map, greyscale modulation of any coloured map by a scalar channel (CI, fit,
+   IQ), GROD and KAM;
+3. a **centralized log console** pinned to the bottom of the application, into which *every*
+   module — the new ones and all seven that already existed — continuously emits graded messages:
+   critical, error, warning, important, success, info and progress-with-ETA.
+
+There is one frontend, and the desktop shell is that frontend in a native window
+(`pytex/app/desktop.py`), so each of these lands in both shells by construction. No feature may be
+added to one alone.
+
+### Step ledger
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| L1 | `pytex.app.logbook`: levels, records, bounded thread-safe book, `collecting()`, `ProgressReporter`, stdlib bridge | done | pending push |
+| L2 | Envelope carries each call's narration; `GET /api/log?since=`; every operation narrates itself in `execute` | done | pending push |
+| L3 | Console frontend (`js/core/logbook.js`), replacing the old activity strip; filters, progress bars, copy | done | pending push |
+| L4 | Existing surfaces wired: panel switches, exports, bad numeric input, TEM spot coordinates | done | pending push |
+| C1 | CBED service operations over `pytex.diffraction.cbed` | pending | |
+| C2 | CBED panel: disc pattern, hover detail, regime and symmetry readout | pending | |
+| E1 | EBSD service operations: map loading, IPF, boundaries, GROD, KAM, scalar modulation | pending | |
+| E2 | EBSD panel: map canvas, colouring picker, boundary overlay, greyscale-by-channel | pending | |
+| D1 | Documentation, worked examples, changelog | pending | |
+
+### Current worktree state
+
+`main`, clean at the console commit; the CBED module (C1, C2) is the next increment.
+
+### Verified so far (L1–L4)
+
+Driven in a real Chromium at 1280x720 against a live server:
+
+- The console mounts, and the session narrates itself end to end: the shell announcing 25
+  operations across 7 workspaces, `calc.catalog` starting and completing in 97 ms, the Crystal
+  Viewer workspace opening, `crystal.scene` completing in 316 ms — each with its severity, its
+  source and its structured detail.
+- Records delivered on a call envelope and by the `/api/log` poll are merged by sequence number:
+  no completion message appears twice.
+- Typing `2e` into an integer control shows `Invalid format of the input: only integers are
+  allowed!` both beside the control and in the console, tagged `field=repeat_a`. This is a real
+  gap that was closed, not only a log line: a `type="number"` input holding non-numeric text
+  reports an *empty* value, so the server previously answered "this required field is missing"
+  about a field the user could see they had filled in.
+- Severity filtering: at "Errors only" the info-level narration disappears and the stream empties.
+
+45 new unit cases in `tests/unit/test_app_logbook.py`; `ruff`, `mypy` and the doctests are clean.
+
+One defect was found by writing those tests: `ProgressReporter` seeded its throttle clock with
+`0.0` while comparing against `time.monotonic()`, whose epoch is arbitrary and large — so the first
+step of every task always emitted a tick regardless of the configured interval.
+
+### Decisions worth not re-litigating
+
+- **The console supersedes the old activity strip rather than sitting beside it.** Two bottom bars,
+  one counting calls and one narrating them, is the fragmentation this task exists to remove.
+- **Per-call records ride the envelope; everything else is polled.** A message about a calculation
+  must not be able to arrive before that calculation's own result, which a pure poll cannot
+  guarantee.
+- **The HTTP access log is excluded from the bridge.** Every stylesheet fetch is an `INFO` record;
+  routing those to a user-facing console would bury the science under a transcript of the
+  transport.
+
 ## TEM Spot Picking: Trustworthy Fit And Exact Coordinates — COMPLETE (2026-08-15)
 
 **Objective.** Make the TEM solver's picking surface trustworthy and exact. A user picking the

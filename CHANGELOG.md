@@ -11,7 +11,29 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **One centralized message log, in both shells.** The workbench now carries a severity-graded
+  console pinned to the bottom of the window, and every module reports into it continuously —
+  critical, error, warning, important, success, info, and progress ticks that carry a percentage
+  and an ETA (`50% progress. ETA: 2 min 30 sec`). `pytex.app.logbook` defines the record, the
+  severity vocabulary and a bounded thread-safe buffer; `pytex.app.contracts.execute` narrates
+  every operation of every service without any service opting in; each call's records ride back on
+  its own envelope, and the events that belong to no call are polled from `GET /api/log?since=`.
+  Standard-library logging is bridged into the same stream, so what a desktop user could previously
+  only have read in a terminal they do not have is now on screen. The console filters by severity
+  and by text, groups a long task's ticks onto one line that counts up, and copies the whole
+  session as plain text. It replaces the former activity strip, which counted calculations rather
+  than describing them.
+
 ### Fixed
+
+- **A number field holding non-numeric text was reported as empty.** An `<input type="number">`
+  whose content is not a number exposes an empty `value`, so text the user could see on screen
+  reached the server as a missing parameter and came back as "this required field is required".
+  The control now detects the browser's own `badInput` state and answers with what actually
+  happened — `Invalid format of the input: only integers are allowed!` — beside the control and in
+  the message log.
 
 - **A lattice fitted to two or three picks was silently wrong.** `fit_planar_lattice` refined the
   beam centre whenever it was asked to, including where the picks cannot support it: the model has

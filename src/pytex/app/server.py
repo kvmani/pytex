@@ -27,6 +27,10 @@ Routes
 ``GET /api/shell``
     What this shell can do that the other cannot — currently, whether a result
     can be written to a chosen path instead of downloaded.
+``GET /api/log?since=<sequence>``
+    Records the centralized logbook holds beyond ``sequence`` — the events that
+    happen outside any single call, which therefore have no envelope to ride
+    back on. The console polls it while it is open.
 ``POST /api/call``
     ``{"operation": "...", "params": {...}}`` in, the call envelope out.
 ``POST /api/export``
@@ -47,10 +51,11 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from pytex.app.contracts import dumps, execute
 from pytex.app.errors import ServiceError
+from pytex.app.logbook import APP_LOG, install_logging_bridge
 from pytex.app.registry import REGISTRY, ServiceRegistry
 
 __all__ = [
@@ -77,6 +82,12 @@ DEFAULT_PORT = 8765
 STATIC_ROOT = Path(__file__).resolve().parent / "static"
 
 _LOGGER = logging.getLogger("pytex.app.server")
+
+#: The HTTP access log, kept under its own name so the logbook bridge can drop
+#: it. Every stylesheet and icon fetch is one INFO record here; an operator
+#: reading a terminal wants them, and a researcher reading the in-app console
+#: emphatically does not.
+_REQUEST_LOGGER = logging.getLogger("pytex.app.server.requests")
 
 #: Content types served from the static tree. Anything not listed is refused
 #: rather than sent as ``application/octet-stream``: the tree holds a known set
@@ -203,14 +214,17 @@ class _Handler(BaseHTTPRequestHandler):
                 shell_capabilities(desktop=bool(getattr(self.server, "desktop", False))),
             )
             return
+        if path == "/api/log":
+            self._send_log(urlparse(self.path).query)
+            return
         if path.startswith("/api/"):
             self._send_error_json(
                 HTTPStatus.NOT_FOUND,
                 "route.unknown",
                 f"No API route {path!r}.",
                 hint=(
-                    "The API routes are /api/health, /api/manifest, /api/shell, /api/call and "
-                    "/api/export."
+                    "The API routes are /api/health, /api/manifest, /api/shell, /api/log, "
+                    "/api/call and /api/export."
                 ),
             )
             return
@@ -285,6 +299,42 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(status, envelope)
+
+    def _send_log(self, query: str) -> None:
+        """Answer a console poll with everything it has not already seen.
+
+        The client sends the highest sequence number it holds; the reply carries
+        only later records plus the book's current head. Exchanging sequence
+        numbers rather than timestamps is what makes the console exact: no
+        record is shown twice because two of them share a millisecond, and none
+        is skipped because the clock moved.
+        """
+
+        parameters = parse_qs(query)
+        raw_since = (parameters.get("since") or ["0"])[0]
+        try:
+            since = int(raw_since)
+        except ValueError:
+            self._send_error_json(
+                HTTPStatus.BAD_REQUEST,
+                "request.malformed",
+                f"The 'since' parameter must be a whole number; got {raw_since!r}.",
+                hint="Send the highest sequence number you already hold, or omit it for all.",
+            )
+            return
+        records = APP_LOG.records(since=max(since, 0))
+        self._send_json(
+            HTTPStatus.OK,
+            {
+                "ok": True,
+                "records": [record.to_json() for record in records],
+                "latest": APP_LOG.latest_sequence(),
+                # The console compares this with what it holds: if the buffer
+                # has wrapped past the client's position, records were lost and
+                # saying so is better than a silent gap in the narrative.
+                "capacity": APP_LOG.capacity,
+            },
+        )
 
     def _export(self, payload: Mapping[str, Any]) -> None:
         """Turn a result the client already has into a downloadable file.
@@ -388,7 +438,7 @@ class _Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args: Any) -> None:
         """Route request logging through :mod:`logging` rather than stderr."""
 
-        _LOGGER.info("%s %s", self.address_string(), format % args)
+        _REQUEST_LOGGER.info("%s %s", self.address_string(), format % args)
 
 
 class AppServer(ThreadingHTTPServer):
@@ -493,6 +543,10 @@ def create_server(
             f"The frontend is missing from {STATIC_ROOT}. This is a packaging fault: "
             "pytex.app.static must ship with the package."
         )
+    # Everything PyTex logs through the standard library now also reaches the
+    # in-app console. Installed here rather than at import time so that using
+    # the service layer as a library does not silently grow a log handler.
+    install_logging_bridge(exclude=(_REQUEST_LOGGER.name,))
     try:
         return AppServer((host, port), registry=registry, desktop=desktop)
     except OSError as error:

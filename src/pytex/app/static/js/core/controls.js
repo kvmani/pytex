@@ -13,6 +13,7 @@
  */
 
 import { append, clear, el, markdown } from './dom.js';
+import * as log from './logbook.js';
 import { phaseControl } from './phasecontrol.js';
 
 /**
@@ -120,7 +121,7 @@ function buildField(parameter, { value, onChange }) {
 
   const element = el('div.field', {}, [label, body, helpNode, errorNode]);
 
-  return {
+  const field = {
     element,
     read: input.read,
     write: input.write,
@@ -129,6 +130,26 @@ function buildField(parameter, { value, onChange }) {
       errorNode.textContent = message ?? '';
     },
   };
+
+  if (input.problem) {
+    // Reported on the transition into the bad state only. Logging every
+    // keystroke of a mistyped field would push the rest of the session out of a
+    // console the user opened to find out what went wrong.
+    let reported = false;
+    input.element.addEventListener('input', () => {
+      const problem = input.problem();
+      field.setError(problem);
+      if (problem && !reported) {
+        log.warning(problem, {
+          source: 'controls',
+          detail: { field: parameter.name, label: parameter.label },
+        });
+      }
+      reported = Boolean(problem);
+    });
+  }
+
+  return field;
 }
 
 let idCounter = 0;
@@ -174,6 +195,25 @@ function numberInput(parameter, value, onChange, id) {
     read: () => (node.value === '' ? null : Number(node.value)),
     write: (next) => {
       node.value = next ?? '';
+    },
+    /**
+     * Why this cannot be left to the server.
+     *
+     * A `type="number"` input whose content is not a number reports an *empty*
+     * value: the characters are on screen, and `node.value` is `''`. Sent as-is
+     * that becomes "this required field is missing", which is a confusing
+     * answer to a field the user can see they filled in. The browser does say
+     * what happened, through `validity.badInput`, so the check happens here and
+     * the message names the real problem.
+     *
+     * Everything else stays server-side, where the same declaration that
+     * generated this control does the validating.
+     */
+    problem: () => {
+      if (!node.validity.badInput) return null;
+      return parameter.kind === 'integer'
+        ? 'Invalid format of the input: only integers are allowed!'
+        : 'Invalid format of the input: only numbers are allowed!';
     },
   };
 }

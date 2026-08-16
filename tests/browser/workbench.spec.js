@@ -24,12 +24,20 @@ async function openWorkbench(page) {
   return browserErrors;
 }
 
+/** Open the message console, which is collapsed on load. */
+async function openConsole(page) {
+  const toggle = page.locator('#console-toggle');
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(page.locator('#console-panel')).toBeVisible();
+}
+
 async function expectNewCompletedCalculation(page, action) {
-  const completed = page.locator('.activity__entry--completed');
+  await openConsole(page);
+  const completed = page.locator('.console__entry--success');
   const before = await completed.count();
   await action();
   await expect.poll(() => completed.count(), { timeout: 20_000 }).toBeGreaterThan(before);
-  await expect(page.locator('.activity__entry--failed')).toHaveCount(0);
+  await expect(page.locator('.console__entry--error')).toHaveCount(0);
 }
 
 test('loads every scientific workspace without browser errors', async ({ page }) => {
@@ -80,7 +88,7 @@ test('completes the critical default calculations across panels', async ({ page 
   expect(browserErrors).toEqual([]);
 });
 
-test('surfaces a service failure to both the activity log and the user', async ({ page }) => {
+test('surfaces a service failure to both the message log and the user', async ({ page }) => {
   await openWorkbench(page);
   await page.route('**/api/call', async (route) => {
     const request = route.request().postDataJSON();
@@ -95,6 +103,17 @@ test('surfaces a service failure to both the activity log and the user', async (
             message: 'Synthetic browser-test failure.',
             hint: 'This response is injected by the Playwright error-path test.',
           },
+          // The envelope's own narration is what the console renders, so the
+          // injected failure must carry one exactly as the server would.
+          log: [
+            {
+              sequence: 90001,
+              time: Date.now() / 1000,
+              level: 'error',
+              message: 'Synthetic browser-test failure.',
+              source: request.operation,
+            },
+          ],
         }),
       });
       return;
@@ -104,10 +123,45 @@ test('surfaces a service failure to both the activity log and the user', async (
 
   await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
   await expect(page.locator('.toast')).toContainText('Synthetic browser-test failure.');
-  await expect(page.locator('.activity__entry--failed')).toHaveCount(1);
-  await expect(page.locator('.activity__entry--failed')).toContainText(
+  await openConsole(page);
+  await expect(page.locator('.console__entry--error')).toHaveCount(1);
+  await expect(page.locator('.console__entry--error')).toContainText(
     'Synthetic browser-test failure.',
   );
+});
+
+test('the console narrates a session and filters it by severity', async ({ page }) => {
+  await openWorkbench(page);
+
+  // Collapsed, the bar still reports: a user who never opens the console must
+  // still see that something happened and whether it went wrong.
+  await expect(page.locator('#console-toggle')).toContainText('ready in the web shell');
+
+  await openConsole(page);
+  const stream = page.locator('#console-stream');
+  await expect(stream.locator('.console__entry')).not.toHaveCount(0);
+
+  // Every entry carries a time, a severity mark and the surface that reported
+  // it, so a message can be traced back without guessing.
+  const first = stream.locator('.console__entry').first();
+  await expect(first.locator('.console__time')).not.toBeEmpty();
+  await expect(first.locator('.console__source')).not.toBeEmpty();
+
+  await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
+  await expect(stream).toContainText('Opened the Calculator workspace.');
+
+  // Errors only: the panel-switch note is info, so it must disappear.
+  await page.locator('#console-threshold').selectOption('40');
+  await expect(stream).not.toContainText('Opened the Calculator workspace.');
+  await page.locator('#console-threshold').selectOption('0');
+  await expect(stream).toContainText('Opened the Calculator workspace.');
+
+  // The text filter is what makes a long session searchable.
+  await page.locator('#console-search').fill('workspace');
+  await expect(stream.locator('.console__entry')).not.toHaveCount(0);
+  await page.locator('#console-search').fill('no message says this');
+  await expect(stream.locator('.console__entry')).toHaveCount(0);
+  await expect(page.locator('.console__empty')).toContainText('No message matches this filter.');
 });
 
 /*

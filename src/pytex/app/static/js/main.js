@@ -12,8 +12,15 @@
  * remembering to add it to a menu.
  */
 
-import { call, fetchManifest, ServiceCallError, fetchShell } from './core/api.js';
+import {
+  call,
+  fetchManifest,
+  fetchShell,
+  ServiceCallError,
+  setOperationTitles,
+} from './core/api.js';
 import { clear, el, markdown } from './core/dom.js';
+import * as log from './core/logbook.js';
 import { renderHelp, setExportFormats } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
@@ -52,15 +59,7 @@ const dom = {
   themeButton: document.getElementById('cycle-theme'),
   themeIcon: document.getElementById('theme-icon'),
   themeLabel: document.getElementById('theme-label'),
-  activity: document.getElementById('activity'),
-  activityToggle: document.getElementById('activity-toggle'),
-  activityPanel: document.getElementById('activity-panel'),
-  activityIndicator: document.getElementById('activity-indicator'),
-  activitySummary: document.getElementById('activity-summary'),
-  activityCount: document.getElementById('activity-count'),
-  activityLog: document.getElementById('activity-log'),
-  activityEmpty: document.getElementById('activity-empty'),
-  activityClear: document.getElementById('activity-clear'),
+  console: document.getElementById('console'),
 };
 
 const app = {
@@ -69,82 +68,11 @@ const app = {
   active: null,
   mounted: null,
   index: [],
-  activity: { active: new Map(), history: [] },
+  logConsole: null,
 };
 
-wireActivity();
+app.logConsole = log.mountConsole(dom.console);
 start();
-
-function operationTitle(operation) {
-  return app.manifest?.operations.find((entry) => entry.id === operation)?.title ?? operation;
-}
-
-function durationLabel(durationMs) {
-  return durationMs < 1000 ? `${Math.round(durationMs)} ms` : `${(durationMs / 1000).toFixed(1)} s`;
-}
-
-function renderActivity() {
-  const running = app.activity.active.size;
-  dom.activity.classList.toggle('activity--busy', running > 0);
-  dom.activityIndicator.classList.toggle('activity__indicator--busy', running > 0);
-  dom.activitySummary.textContent = running
-    ? `Running ${[...app.activity.active.values()].at(-1)}…`
-    : app.activity.history[0]
-      ? `${app.activity.history[0].title} ${app.activity.history[0].outcome}`
-      : 'Ready';
-  const completed = app.activity.history.length;
-  dom.activityCount.textContent = running
-    ? `${running} active · ${completed} recent`
-    : completed
-      ? `${completed} recent calculation${completed === 1 ? '' : 's'}`
-      : 'No calculations yet';
-  dom.activityEmpty.hidden = completed > 0;
-  clear(dom.activityLog);
-  for (const entry of app.activity.history) {
-    dom.activityLog.append(
-      el(`li.activity__entry.activity__entry--${entry.outcome}`, {}, [
-        el('span.activity__entry-mark', { text: entry.outcome === 'completed' ? '✓' : '!' }),
-        el('span', {}, [
-          el('strong', { text: entry.title }),
-          entry.message ? el('small', { text: entry.message }) : null,
-        ]),
-        el('time', { text: durationLabel(entry.durationMs) }),
-      ]),
-    );
-  }
-}
-
-function wireActivity() {
-  document.addEventListener('pytex:operation-start', (event) => {
-    app.activity.active.set(event.detail.id, operationTitle(event.detail.operation));
-    renderActivity();
-  });
-  document.addEventListener('pytex:operation-finish', (event) => {
-    app.activity.active.delete(event.detail.id);
-    app.activity.history.unshift({
-      title: operationTitle(event.detail.operation),
-      outcome: event.detail.outcome,
-      durationMs: event.detail.durationMs,
-      message: event.detail.message,
-    });
-    app.activity.history = app.activity.history.slice(0, 40);
-    renderActivity();
-  });
-  dom.activityToggle.addEventListener('click', () => {
-    const open = dom.activityPanel.hidden;
-    dom.activityPanel.hidden = !open;
-    dom.activityToggle.setAttribute('aria-expanded', String(open));
-    dom.activityToggle.setAttribute(
-      'aria-label',
-      `${open ? 'Close' : 'Open'} calculation activity`,
-    );
-  });
-  dom.activityClear.addEventListener('click', () => {
-    app.activity.history = [];
-    renderActivity();
-  });
-  renderActivity();
-}
 
 function savedTheme() {
   try {
@@ -192,6 +120,12 @@ async function start() {
   // changes how it writes files says so in one place.
   app.shell = await fetchShell();
   setExportFormats(app.manifest.export_formats);
+  setOperationTitles(app.manifest.operations);
+  log.notice(
+    `PyTex ${app.manifest.version ?? ''} ready in the ${app.shell.shell} shell: ` +
+      `${app.manifest.operations.length} operations across ${PANELS.length} workspaces.`,
+    { source: 'app', detail: { shell: app.shell.shell } },
+  );
 
   // The phase picker needs the catalogue before any control renders, so it is
   // fetched once here rather than lazily by each panel that shows a phase.
@@ -236,6 +170,7 @@ function activate(panelId) {
     tab.setAttribute('aria-selected', String(tab.dataset.panel === panelId));
   }
   dom.tagline.textContent = module.panel.tagline;
+  log.info(`Opened the ${module.panel.title} workspace.`, { source: panelId });
   clear(dom.stage);
   clear(dom.rail);
   app.mounted = module.mount({
@@ -364,11 +299,22 @@ function closeHelp() {
  *
  * `quiet` is for errors the panel has already placed beside the offending
  * control: repeating them as a toast would say the same thing twice, which
- * trains people to ignore both.
+ * trains people to ignore both. It does *not* suppress the log entry — the
+ * console is the record of the session, and an error the user saw and dismissed
+ * is exactly the kind of thing they later need to find again.
  */
 function showError(error, { quiet = false } = {}) {
-  if (quiet) return;
   const isService = error instanceof ServiceCallError;
+  // A ServiceCallError already produced a Python-side record on the way here;
+  // logging it again would double every rejected input. Anything else is a
+  // frontend fault that nothing else has reported.
+  if (!isService) {
+    log.error(String(error?.message ?? error), {
+      source: app.active?.panel.id ?? 'app',
+      detail: { kind: error?.name ?? 'Error' },
+    });
+  }
+  if (quiet) return;
   const toast = el('div.toast', {}, [
     el('strong', { text: isService ? error.message : 'Something went wrong.' }),
     isService && error.hint ? el('span', { text: error.hint }) : null,
@@ -387,6 +333,7 @@ function showNotice(text) {
 }
 
 function showFatal(error) {
+  log.critical(`PyTex could not start: ${error.message}`, { source: 'app' });
   clear(dom.stage);
   dom.stage.append(
     el('section.card', {}, [
@@ -433,7 +380,10 @@ function wireGlobals() {
   // visible from inside the page, so the one thing that must never happen is
   // pressing an export button and being told nothing at all.
   document.addEventListener('pytex:saved', (event) => {
-    showNotice(event.detail?.message ?? 'Saved.');
+    const message = event.detail?.message ?? 'Saved.';
+    showNotice(message);
+    // A toast lasts six seconds; where a file went is worth longer than that.
+    log.notice(message, { source: app.active?.panel.id ?? 'app', detail: event.detail ?? {} });
   });
 
   document.addEventListener('keydown', (event) => {

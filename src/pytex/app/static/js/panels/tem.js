@@ -30,6 +30,7 @@ import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
+import * as log from '../core/logbook.js';
 
 export const panel = {
   id: 'tem',
@@ -1372,14 +1373,32 @@ export function mount(context) {
       const point = frame.pointerToData(event);
       if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
       const snapped = snapToSpot(point);
+      let picked;
       if (!state.picks.centre) {
         state.picks.centre = [snapped.x, snapped.y];
         state.pickedCentre = null;
         state.selectedPick = 'centre';
+        picked = 'Direct beam';
       } else {
         state.picks.spots.push({ x: snapped.x, y: snapped.y });
         state.selectedPick = state.picks.spots.length - 1;
+        picked = `Spot ${state.picks.spots.length}`;
       }
+      // The console keeps every coordinate the session produced. A pick is
+      // otherwise recoverable only by reading it back off the rail before the
+      // next one replaces the reader's attention.
+      log.info(
+        `${picked} is selected: coordinates are (${formatNumber(snapped.x, 2)}, ` +
+          `${formatNumber(snapped.y, 2)}) px.`,
+        {
+          source: 'tem',
+          detail: {
+            x: Number(snapped.x.toFixed(2)),
+            y: Number(snapped.y.toFixed(2)),
+            snapped_px: Number(snapped.moved.toFixed(2)),
+          },
+        },
+      );
       if (snapped.moved > 0.05) {
         frame.setStatus(
           `Picked at ${formatNumber(point.x, 1)}, ${formatNumber(point.y, 1)} and moved ` +
