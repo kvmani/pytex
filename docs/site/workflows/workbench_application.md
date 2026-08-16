@@ -542,6 +542,53 @@ and every export, and a space group from another crystal system would apply cent
 delete reflection families the edited cell actually has.
 ```
 
+## Using Your Own Data Files
+
+Three workspaces read measurements as well as models. In every case the file goes through the same
+library importer a script would call — {func}`pytex.adapters.read_ang`,
+{func}`pytex.adapters.read_ctf`, {func}`pytex.adapters.read_xrdml_pole_figure` — so phases,
+symmetry, grid topology and quality channels come from the file's own header rather than from
+anything the application assumes. The text travels as an ordinary request parameter and is written
+to a temporary path only for as long as the reader has it open; nothing is retained between
+requests. See {mod}`pytex.app.uploads`.
+
+**EBSD — `.ang` and `.ctf`.** *Open a scan* in the EBSD rail takes an EDAX/TSL `.ang` or Oxford/HKL
+`.ctf` file. While one is open it replaces the practice dataset, and every control means exactly
+what it means for a practice map: the colouring, the scalar modulation, the boundary overlay and the
+grain threshold all act on the imported map. Hexagonal scans — which EDAX writes by default — have
+no rectangular shape, so they are drawn on a half-step raster: every measurement lands on its own
+cell, the cells between them are drawn empty rather than filled in, and nothing is interpolated.
+
+```{warning}
+An imported map has **no known answer**, and the panel says so where a practice dataset states one.
+The practice datasets are checkable because they were constructed; a measurement is only as good as
+the scan behind it. Read the confidence-index or fit channel beside the orientation map before
+believing a feature in it.
+```
+
+**Texture — `.xrdml` pole figures.** The **Measured pole figures** view opens one or more Panalytical
+XRDML files, one per measured reflection, and draws them in **tabs** — full size, one at a time,
+rather than shrunk into a row. Give the plane of each file in the order the files were opened: XRDML
+records the diffraction angle, not the reflection, so the assignment cannot be read from the file.
+
+Two controls decide whether the set can be read as a set:
+
+- **One scale for every figure** puts them all on the same intensity range. Two pole figures of one
+  specimen drawn on separate scales cannot be compared, and comparing them is the reason to measure
+  more than one. Turn it off only to inspect a weak figure alone.
+- **Contour levels** are a reading decision, not a property of the data. Type them — `1, 2, 4, 7, 10`
+  is the sequence most of the texture literature uses — or leave the field empty for evenly spaced
+  ones. Whatever is chosen applies to every figure in the set.
+
+Normalisation decides what the numbers mean at all. A measured figure arrives in detector counts,
+which depend on the counting time and the instrument; **m.r.d.** rescales it so a texture-free
+specimen reads 1 everywhere, which is the only form in which two instruments' figures mean the same
+thing. Defocusing and absorption corrections are *not* applied, so the outer rim of an uncorrected
+figure is the part to distrust.
+
+**TEM — any image.** Covered above: the micrograph never leaves the browser, and **Calibrate**
+measures its scale from a length you know.
+
 ## Scripting The Same Operations
 
 The service layer is JSON-in, JSON-out and knows nothing about HTTP, so every operation the interface

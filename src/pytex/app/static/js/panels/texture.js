@@ -32,7 +32,11 @@ const VIEWS = [
   'texture.pole_figure',
   'texture.inverse_pole_figure',
   'texture.odf_sections',
+  'texture.measured_pole_figures',
 ];
+
+/** The view that draws a user's own files rather than a model texture. */
+const MEASURED = 'texture.measured_pole_figures';
 
 const VIEW = 100;
 
@@ -291,6 +295,9 @@ export function mount(context) {
     contour: defaultContourStyle(),
     contourGrid: null,
     plotNode: null,
+    // The measured view: the opened files, and which figure's tab is showing.
+    files: [],
+    figureIndex: 0,
   };
 
   const frame = plotFrame({
@@ -309,9 +316,11 @@ export function mount(context) {
     ],
   });
   const legend = el('div.legend');
+  const tabs = el('div.figure-tabs', { role: 'tablist', hidden: true });
   const details = el('div');
   const formHost = el('div');
   const appearanceHost = el('div');
+  const fileHost = el('div.group__body', { hidden: true });
 
   const viewSelect = el(
     'select',
@@ -323,7 +332,19 @@ export function mount(context) {
         state.contourGrid = null;
         renderControls(carryOver());
         renderAppearanceControls();
-        run();
+        renderFileControls();
+        // The measured view has nothing to draw until a file is opened, and
+        // calling for one would only produce an error the user did not ask for.
+        if (state.operation.id !== MEASURED || state.files.length) run();
+        else {
+          frame.setContent(
+            el('div.stage__placeholder', {
+              text: 'Open one or more XRDML pole-figure files to draw them.',
+            }),
+          );
+          frame.setStatus('');
+          tabs.hidden = true;
+        }
       },
     },
     operations.map((entry) =>
@@ -344,6 +365,10 @@ export function mount(context) {
       el('p.field__help', {
         text: 'The same texture seen three ways: where a plane points, which direction is along a specimen axis, and the orientation density itself.',
       }),
+    ]),
+    el('details.group', { open: true, id: 'texture-files' }, [
+      el('summary', { text: 'Open pole figures' }),
+      fileHost,
     ]),
     formHost,
     runButton,
@@ -388,6 +413,12 @@ export function mount(context) {
   function renderControls(initial = {}) {
     state.form = buildForm(state.operation, { initial });
     formHost.replaceChildren(state.form.element);
+    // The opened files travel beside the form — they are megabytes of XML, and
+    // the file picker above is the control for them — so the generated field is
+    // hidden rather than shown as an empty JSON box.
+    for (const field of state.form.element.querySelectorAll('.field')) {
+      if (field.querySelector('[id^="ctl-files-"]')) field.hidden = true;
+    }
   }
 
   function renderAppearanceControls() {
@@ -419,12 +450,144 @@ export function mount(context) {
     run();
   }
 
+  /**
+   * The control that opens XRDML files, shown only for the measured view.
+   *
+   * Several files at once, because a texture is read from a *set* of pole
+   * figures — {111}, {200}, {220} — and opening them one at a time would make
+   * the shared intensity scale, the whole point of the view, impossible.
+   */
+  function renderFileControls() {
+    const measuring = state.operation.id === MEASURED;
+    fileHost.parentElement.hidden = !measuring;
+    fileHost.hidden = !measuring;
+    if (!measuring) return;
+
+    const input = el('input', {
+      type: 'file',
+      accept: '.xrdml',
+      multiple: true,
+      'aria-label': 'Open XRDML pole-figure files',
+      onchange: (event) => openFiles([...(event.target.files ?? [])]),
+    });
+    const summary = el('p.field__help', {
+      text: state.files.length
+        ? `${state.files.length} file(s) open: ${state.files.map((file) => file.name).join(', ')}`
+        : 'No file open yet. Choose one or more .xrdml pole-figure files.',
+    });
+    fileHost.replaceChildren(
+      el('p.field__help', {
+        text:
+          'Panalytical XRDML pole-figure files, one per measured reflection. Give the plane of ' +
+          'each below, in the order they are listed here: the file records the diffraction ' +
+          'angle, not the reflection.',
+      }),
+      input,
+      summary,
+      state.files.length
+        ? el('button.button', {
+            type: 'button',
+            text: 'Close them',
+            onclick: () => {
+              state.files = [];
+              state.figureIndex = 0;
+              renderFileControls();
+            },
+          })
+        : null,
+    );
+  }
+
+  async function openFiles(files) {
+    if (!files.length) return;
+    try {
+      state.files = await Promise.all(
+        files.map(async (file) => ({ name: file.name, text: await file.text() })),
+      );
+      state.figureIndex = 0;
+      renderFileControls();
+      await run();
+    } catch (error) {
+      context.showError(error);
+    }
+  }
+
+  /**
+   * One tab per opened figure.
+   *
+   * Tabs rather than a column of small figures: a pole figure read at a third
+   * of the stage is a picture of a texture rather than a measurement of one,
+   * and the contour levels — which are shared across all of them — are what
+   * makes flipping between full-size figures a comparison.
+   */
+  function renderFigureTabs() {
+    const figures = state.result?.data?.figures ?? [];
+    tabs.hidden = state.operation.id !== MEASURED || figures.length < 2;
+    if (tabs.hidden) {
+      tabs.replaceChildren();
+      return;
+    }
+    tabs.replaceChildren(
+      ...figures.map((figure, index) =>
+        el('button.figure-tab', {
+          type: 'button',
+          role: 'tab',
+          text: figure.label,
+          title: figure.file,
+          'aria-selected': String(index === state.figureIndex),
+          onclick: () => {
+            state.figureIndex = index;
+            state.contourGrid = null;
+            draw(true);
+          },
+        }),
+      ),
+    );
+  }
+
+  /** Draw the figure whose tab is selected, on the scale the service set. */
+  function drawMeasured(preserveViewport) {
+    const data = state.result.data;
+    const figures = data.figures ?? [];
+    if (!figures.length) return;
+    const figure = figures[Math.min(state.figureIndex, figures.length - 1)];
+    // The service decided the levels and the scale, because both are shared
+    // across the set; the renderer is told them rather than inventing its own.
+    const style = {
+      ...state.contour,
+      customLevels: data.levels.join(' '),
+      scaleMax: figure.scale.maximum,
+    };
+    const view = {
+      points: figure.points,
+      projection: data.projection,
+      max_mrd: figure.scale.maximum,
+      min_mrd: figure.scale.minimum,
+      pole_label: figure.label,
+      specimen_axes: data.specimen_axes,
+      columns: data.columns,
+    };
+    state.contourGrid ??= interpolatePoleFigure(figure.points, state.contour.gridSize);
+    state.plotNode = renderDensity(view, frame, style, state.contourGrid);
+    frame.setContent(state.plotNode, { preserveViewport });
+    renderRampLegend(figure.scale.maximum, style);
+    renderFigureTabs();
+    frame.setStatus(
+      `${figure.label} from ${figure.file} · ${figure.count} measured points · ` +
+        `${formatNumber(figure.minimum, 2)} to ${formatNumber(figure.maximum, 2)} ${data.unit}` +
+        (data.shared_scale ? ' · one scale across every figure' : ' · its own scale') +
+        ` · contours at ${data.levels.map((level) => formatNumber(level, 2)).join(', ')}`,
+    );
+  }
+
   async function run() {
     runButton.disabled = true;
     runButton.textContent = 'Building…';
     state.form.clearErrors();
     try {
-      const result = await call(state.operation.id, state.form.values());
+      const request = { ...state.form.values() };
+      if (state.operation.id === MEASURED) request.files = { items: state.files };
+      const result = await call(state.operation.id, request);
       state.result = result;
       state.contourGrid = null;
       draw();
@@ -443,6 +606,27 @@ export function mount(context) {
     const kind = state.operation.id;
     frame.element.hidden = false;
     legend.hidden = false;
+
+    if (kind === MEASURED) {
+      frame.configure({
+        toData: (x, y) => ({ x: x / VIEW, y: -y / VIEW }),
+        formatCursor: (point) => {
+          const radius = Math.hypot(point.x, point.y);
+          if (radius > 1.0001) return 'outside the projection';
+          const polar =
+            data.projection === 'equal_area'
+              ? 2 * Math.asin(Math.min(radius / Math.SQRT2, 1))
+              : 2 * Math.atan(radius);
+          const azimuth = ((Math.atan2(point.y, point.x) * 180) / Math.PI + 360) % 360;
+          return (
+            `${formatNumber((polar * 180) / Math.PI, 1)}° from ND · ` +
+            `${formatNumber(azimuth, 1)}° azimuth`
+          );
+        },
+      });
+      drawMeasured(preserveViewport);
+      return;
+    }
 
     if (kind === 'texture.odf_sections') {
       frame.configure({ toData: null, formatCursor: null });
@@ -517,9 +701,10 @@ export function mount(context) {
 
   renderControls();
   renderAppearanceControls();
+  renderFileControls();
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
-  frame.setControls(legend);
+  frame.setControls(tabs, legend);
   context.stage.append(frame.element, details);
   if (examples.length) loadExample(examples[0]);
 

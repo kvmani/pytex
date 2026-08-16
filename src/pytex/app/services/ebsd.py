@@ -49,6 +49,7 @@ from pytex.app.registry import (
     ExampleScenario,
     IntegerParameter,
     NumberParameter,
+    ObjectParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 
@@ -58,8 +59,7 @@ _CITATION_RANDLE_ENGLER = (
     "Randle & Engler, Introduction to Texture Analysis, 2nd ed., CRC Press 2010, Chs. 6-7."
 )
 _CITATION_WRIGHT_KAM = (
-    "Wright, Nowell & Field, Microsc. Microanal. 17 (2011) 316, "
-    "doi:10.1017/S1431927611000055."
+    "Wright, Nowell & Field, Microsc. Microanal. 17 (2011) 316, doi:10.1017/S1431927611000055."
 )
 _CITATION_NOLZE_IPF = (
     "Nolze & Hielscher, J. Appl. Crystallogr. 49 (2016) 1786, doi:10.1107/S1600576716012942."
@@ -153,8 +153,106 @@ def _colouring_parameter() -> ChoiceParameter:
     )
 
 
+#: Scan formats the panel reads, and the library reader for each.
+SCAN_FILE_SUFFIXES = (".ang", ".ctf")
+
+
+def _imported_map(payload: Any) -> tuple[Any, Any]:
+    """Read a user's own scan file into the same objects the gallery produces.
+
+    The file goes through the library's own importer — `read_ang` or `read_ctf`,
+    the same call a script would make — so phases, symmetry, grid topology and
+    the quality channels all come from the file's header rather than from
+    anything assumed here. What comes back is a `CrystalMap` and an entry
+    describing it, which is exactly the pair a practice dataset produces, so
+    every calculation below this point cannot tell the two apart.
+
+    The "known answer" of an imported map is the honest one: there isn't one.
+    Saying so is the point — the practice datasets are checkable because they
+    were constructed, and a measurement is not, so a result built from a file
+    must not be presented as if it carried a construction's guarantee.
+    """
+
+    from pytex.adapters.scan_files import read_ang, read_ctf
+    from pytex.app.ebsd_gallery import GalleryEntry
+    from pytex.app.uploads import uploaded_file
+
+    with uploaded_file(payload, field="scan_file", suffixes=SCAN_FILE_SUFFIXES) as (path, name):
+        reader = read_ang if path.suffix.lower() == ".ang" else read_ctf
+        APP_LOG.info(
+            f"Reading the scan file {name}.",
+            source="ebsd.map",
+            detail={"file": name, "reader": reader.__name__},
+        )
+        try:
+            scan = reader(path)
+        except (ValueError, KeyError, IndexError) as error:
+            raise InvalidInputError(
+                f"{name} could not be read as a {path.suffix.lower()} scan: {error}",
+                details={"field": "scan_file"},
+                hint=(
+                    "The header is what fails first: a phase without a symmetry declaration, or "
+                    "a column layout the format does not describe. Open the file in a text "
+                    "editor and check its header block."
+                ),
+            ) from error
+
+    crystal_map = scan.dataset.crystal_map
+    channels = ", ".join(sorted(crystal_map.property_names)) or "none"
+    phases = ", ".join(sorted(_phase_names(crystal_map))) or "unnamed"
+    entry = GalleryEntry(
+        id=f"file:{name}",
+        title=name,
+        summary=(
+            f"{len(crystal_map.orientations)} measurements read from {name}; "
+            f"phases: {phases}; scalar channels: {channels}."
+        ),
+        teaches=(
+            "This is your own measurement, so nothing here is guaranteed in advance. Read the "
+            "confidence-index or fit channel alongside the orientation map before believing a "
+            "feature in it: a low-confidence region is where the indexing, not the "
+            "microstructure, is producing the pattern you are looking at."
+        ),
+        known_answer=(
+            "None — this is a measurement, not a construction. The practice datasets carry an "
+            "answer fixed before the calculation ran; a file cannot, and a number from one is "
+            "only as good as the scan behind it."
+        ),
+    )
+    APP_LOG.success(
+        f"Read {len(crystal_map.orientations)} measurements from {name}.",
+        source="ebsd.map",
+        detail={"file": name, "points": len(crystal_map.orientations), "channels": channels},
+    )
+    return crystal_map, entry
+
+
+def _phase_names(crystal_map: Any) -> list[str]:
+    """Names of the phases a crystal map declares, for the import summary."""
+
+    candidates = list(getattr(crystal_map, "phases", None) or ())
+    single = getattr(crystal_map, "phase", None)
+    if single is not None:
+        candidates.append(single)
+    names: list[str] = []
+    for phase in candidates:
+        name = getattr(phase, "name", None)
+        if name and str(name) not in names:
+            names.append(str(name))
+    return names
+
+
 def _request_map(request: dict[str, Any]) -> tuple[Any, Any]:
-    """Return the crystal map named by the request, and its gallery entry."""
+    """Return the crystal map named by the request, and its gallery entry.
+
+    A user's own scan file, when one is open, in preference to the practice
+    dataset: someone who has opened their data is looking at their data, and
+    silently analysing the example beside it would be the worst possible answer.
+    """
+
+    scan_file = request.get("scan_file")
+    if scan_file:
+        return _imported_map(scan_file)
 
     entry_id = str(request["dataset"])
     try:
@@ -308,13 +406,90 @@ def _boundary_lines(network: Any, crystal_map: Any) -> list[dict[str, Any]]:
     return lines
 
 
-def _encode_rgb(rgb: np.ndarray, rows: int, cols: int) -> dict[str, Any]:
+#: Colour of a raster cell no measurement lands in. Only a staggered scan
+#: produces any: the raster is on a square pitch and a hexagonal scan does not
+#: fill it. Mid grey rather than black or white, so it is legible as "no
+#: measurement here" against both a dark IPF colour and a pale one.
+_EMPTY_CELL = np.array([44, 48, 56], dtype=np.uint8)
+
+
+class _Raster:
+    """Where each measurement point lands in the image the panel draws.
+
+    A square scan is already a raster: the points are in row-major order and the
+    grid shape says so. A **hexagonal** scan — the EDAX default, and therefore
+    most of the ``.ang`` files anyone opens — is not. Its rows are offset by half
+    a step and hold alternating counts, so it has no rectangular shape at all and
+    the reader reports none.
+
+    Rather than refuse those files, the points are placed into a square raster of
+    half-step pitch, which is the pitch the stagger actually lives on: every
+    measurement lands on its own cell, alternate cells between them stay empty,
+    and the drawn map has the offset rows a hexagonal scan really has. Nothing is
+    interpolated and no measurement moves — the empty cells are drawn as empty,
+    because inventing a value there would be inventing data.
+
+    Attributes
+    ----------
+    rows, cols : int
+        Raster size.
+    placement : np.ndarray or None
+        For each measurement point, its flat index in the raster. ``None`` when
+        the points already fill the raster in row-major order.
+    step_x, step_y : float
+        Physical size of one raster cell, which is the scan step for a square
+        grid and half of it across a staggered one.
+    """
+
+    def __init__(self, crystal_map: Any) -> None:
+        steps = crystal_map.step_sizes or (1.0, 1.0)
+        shape = crystal_map.grid_shape
+        if shape:
+            self.rows, self.cols = (int(shape[0]), int(shape[1]))
+            self.placement: np.ndarray | None = None
+            self.step_x = float(steps[0])
+            self.step_y = float(steps[-1])
+            return
+
+        coordinates = np.asarray(crystal_map.coordinates, dtype=float)[:, :2]
+        if coordinates.size == 0:
+            raise InvalidInputError(
+                "This scan holds no measurement points.",
+                details={"field": "scan_file"},
+                hint="Check that the file is a complete scan and not only a header.",
+            )
+        self.step_x = float(steps[0]) / 2.0
+        self.step_y = float(steps[-1])
+        origin = coordinates.min(axis=0)
+        columns = np.rint((coordinates[:, 0] - origin[0]) / self.step_x).astype(np.int64)
+        row_index = np.rint((coordinates[:, 1] - origin[1]) / self.step_y).astype(np.int64)
+        self.cols = int(columns.max()) + 1
+        self.rows = int(row_index.max()) + 1
+        self.placement = row_index * self.cols + columns
+
+    @property
+    def size(self) -> int:
+        return self.rows * self.cols
+
+    def extent_um(self) -> list[float]:
+        """The map's physical extent, as ``[x0, y0, x1, y1]``."""
+
+        return [0.0, 0.0, (self.cols - 1) * self.step_x, (self.rows - 1) * self.step_y]
+
+
+def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
     """Base64 the RGB raster, row-major from the top."""
 
-    grid = rgb.reshape(rows, cols, 3).astype(np.uint8)
+    values = rgb.astype(np.uint8)
+    if raster.placement is None:
+        grid = values.reshape(raster.rows, raster.cols, 3)
+    else:
+        grid = np.repeat(_EMPTY_CELL[None, :], raster.size, axis=0)
+        grid[raster.placement] = values
+        grid = grid.reshape(raster.rows, raster.cols, 3)
     return {
-        "width": cols,
-        "height": rows,
+        "width": raster.cols,
+        "height": raster.rows,
         "encoding": "base64-rgb8",
         "data": base64.b64encode(np.ascontiguousarray(grid).tobytes()).decode("ascii"),
     }
@@ -358,10 +533,26 @@ def _encode_rgb(rgb: np.ndarray, rows: int, cols: int) -> dict[str, Any]:
             label="Dataset",
             help_text=(
                 "Which practice map to analyse. Each is a construction with a known answer, so "
-                "the numbers on screen can be checked rather than trusted."
+                "the numbers on screen can be checked rather than trusted. Ignored when a scan "
+                "file of your own is open."
             ),
             options=tuple((entry.id, entry.title, entry.summary) for entry in GALLERY),
             default=GALLERY[0].id,
+        ),
+        ObjectParameter(
+            name="scan_file",
+            label="Your own scan",
+            help_text=(
+                "An EDAX/TSL `.ang` or Oxford/HKL `.ctf` file, opened with **Open a scan** "
+                "above. When one is open it replaces the practice dataset, and every choice "
+                "below — the colouring, the modulation, the boundaries, the grain threshold — "
+                "means exactly what it means for a practice map.\n\n"
+                "The file is read by the same library importer a script would call, so the "
+                "phases, the symmetry and the scalar channels come from the file's own header "
+                "rather than from anything assumed here."
+            ),
+            required=False,
+            group="Data",
         ),
         _colouring_parameter(),
         ChoiceParameter(
@@ -527,13 +718,14 @@ def _map(request: dict[str, Any]) -> dict[str, Any]:
     from pytex.plotting.ipf import ipf_colors
 
     crystal_map, entry = _request_map(request)
-    rows, cols = crystal_map.grid_shape
+    raster = _Raster(crystal_map)
+    points = len(crystal_map.orientations)
     threshold = float(request["grain_threshold_deg"])
     high_angle = float(request["high_angle_threshold_deg"])
     colouring = str(request["colouring"])
 
     APP_LOG.info(
-        f"Segmenting {rows * cols} points at a {threshold:g}° grain threshold.",
+        f"Segmenting {points} points at a {threshold:g}° grain threshold.",
         source="ebsd.map",
     )
     segmentation = crystal_map.segment_grains(max_misorientation_deg=threshold)
@@ -549,8 +741,8 @@ def _map(request: dict[str, Any]) -> dict[str, Any]:
             order=int(request["kam_order"]),
         ),
         dtype=float,
-    ).reshape(rows * cols)
-    grod = np.asarray(segmentation.grod_map_deg(), dtype=float).reshape(rows * cols)
+    ).reshape(points)
+    grod = np.asarray(segmentation.grod_map_deg(), dtype=float).reshape(points)
 
     rgb, scale = _colour_field(request, crystal_map, segmentation, kam, grod, ipf_colors)
     rgb = _modulate(request, crystal_map, rgb)
@@ -577,10 +769,10 @@ def _map(request: dict[str, Any]) -> dict[str, Any]:
             caption=f"Grains at a {threshold:g}° threshold, largest first.",
         ),
         data={
-            "image": _encode_rgb(rgb, rows, cols),
-            "extent_um": [0.0, 0.0, (cols - 1) * step, (rows - 1) * step],
+            "image": _encode_rgb(rgb, raster),
+            "extent_um": raster.extent_um(),
             "step_um": step,
-            "grid_shape": [rows, cols],
+            "grid_shape": [raster.rows, raster.cols],
             "colouring": colouring,
             "colour_scale": scale,
             "boundaries": lines,
@@ -785,12 +977,18 @@ def _summary(
     kam: np.ndarray,
     grod: np.ndarray,
 ) -> str:
-    rows, cols = crystal_map.grid_shape
+    raster = _Raster(crystal_map)
     step = float((crystal_map.step_sizes or (1.0, 1.0))[0])
     threshold = float(request["grain_threshold_deg"])
+    extent = raster.extent_um()
+    shape = (
+        f"{raster.rows}×{raster.cols} points"
+        if raster.placement is None
+        else f"{len(crystal_map.orientations)} points on a staggered scan"
+    )
     parts = [
-        f"{rows}×{cols} points at a {step:g} µm step, covering "
-        f"{(cols - 1) * step:g} × {(rows - 1) * step:g} µm. "
+        f"{shape} at a {step:g} µm step, covering "
+        f"{extent[2]:g} × {extent[3]:g} µm. "
         f"{len(segmentation.grains)} grains at a {threshold:g}° threshold, with "
         f"{network.count} boundary segments whose mean misorientation is "
         f"{network.mean_misorientation_deg:.2f}°."

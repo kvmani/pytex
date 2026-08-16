@@ -1818,6 +1818,40 @@ button:focus-visible {
   }
 }
 
+/*
+ * Tabs over a set of figures, inside the frame's control strip.
+ *
+ * A measured texture is a *set* of pole figures, and the reason to measure more
+ * than one is to compare them. Stacking them down the stage would show each at a
+ * third of its size, which turns a measurement into a picture; tabs keep every
+ * figure full size on a shared intensity scale, so flipping between them is the
+ * comparison.
+ */
+.figure-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.4rem 0.75rem 0;
+}
+
+.figure-tab {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  color: var(--ink-muted);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.25rem 0.7rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.figure-tab[aria-selected='true'] {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--accent);
+}
+
 /* The calibration strip, inside the pattern figure while the tool is on. It
  * lives in the frame's own control strip rather than in the rail, because it is
  * read against the line being drawn. */

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { expect, test } from '@playwright/test';
 
 const WORKSPACES = [
@@ -632,6 +634,108 @@ test('a click on an uploaded micrograph snaps to the spot centroid', async ({ pa
   // centred on the click rather than on the spot; the iteration is what makes
   // this assertion pass.
   expect(Math.hypot(beam[0] - truth.spot[0], beam[1] - truth.spot[1])).toBeLessThan(1.5);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * Measured pole figures, in tabs, on one scale.
+ *
+ * The reason to measure more than one pole figure is to compare them, and two
+ * figures on two scales cannot be compared. So the assertions are that both
+ * files arrive, that each gets a tab, that the tab switches the drawing, and
+ * that the contour levels typed into the form are the ones the figure reports.
+ */
+test('XRDML pole figures open into tabs on one shared scale', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await page.getByRole('tab', { name: 'Texture', exact: true }).click();
+
+  const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
+  await page.locator('#rail-body select[aria-label="View"]').selectOption({
+    label: 'Measured pole figures',
+  });
+  await expect(page.locator('#stage')).toContainText('Open one or more XRDML');
+
+  await page.setInputFiles('#texture-files input[type="file"]', [
+    { name: 'ni-111.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    { name: 'ni-200.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+  ]);
+  await expect(page.locator('#rail-body')).toContainText('2 file(s) open');
+
+  // Two planes, one per file, then redraw.
+  const poles = page.locator('[id^="ctl-poles-"]').first();
+  await poles.fill('1 1 1\n2 0 0');
+  await page.locator('[id^="ctl-contour_levels-"]').fill('0.8, 1, 1.2, 1.4');
+  await page.getByRole('button', { name: 'Build texture', exact: true }).click();
+
+  const tabs = page.locator('.figure-tab');
+  await expect(tabs).toHaveCount(2, { timeout: 30_000 });
+  await expect(tabs.nth(0)).toHaveText('{111}');
+  await expect(tabs.nth(1)).toHaveText('{200}');
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+
+  const status = page.locator('#stage .plot__status').first();
+  await expect(status).toContainText('{111} from ni-111.xrdml');
+  await expect(status).toContainText('one scale across every figure');
+  await expect(status).toContainText('contours at 0.80, 1.00, 1.20, 1.40');
+
+  await tabs.nth(1).click();
+  await expect(status).toContainText('{200} from ni-200.xrdml');
+  // The shared scale is the point: the second figure reports the same range.
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * Opening a real EBSD scan.
+ *
+ * The panel's practice datasets are constructions with known answers, which is
+ * what makes them checkable; the point of this path is that a *file* reaches
+ * exactly the same analysis. The scan below is four points, three of one
+ * orientation and one 60 degrees away, so the answer — two grains — is worked
+ * out by hand rather than read off the program.
+ */
+test('an EBSD scan file is opened and analysed like a practice map', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await page.getByRole('tab', { name: 'EBSD', exact: true }).click();
+  await expect(page.locator('#stage svg')).toBeVisible({ timeout: 30_000 });
+
+  const scan = [
+    '# Phase 1',
+    '# MaterialName  \tNickel',
+    '# Symmetry              43',
+    '# LatticeConstants      3.520 3.520 3.520  90.000  90.000  90.000',
+    '# GRID: SqrGrid',
+    '# XSTEP: 1.000000',
+    '# YSTEP: 1.000000',
+    '# NCOLS_ODD: 2',
+    '# NCOLS_EVEN: 2',
+    '# NROWS: 2',
+    '#',
+    '   0.00000   0.00000   0.00000      0.00000      0.00000  60.0  0.950  0  1  0.500',
+    '   0.00000   0.00000   0.00000      1.00000      0.00000  55.0  0.900  0  1  0.600',
+    '   0.00000   0.00000   0.00000      0.00000      1.00000  50.0  0.850  0  1  0.700',
+    '   1.04720   0.00000   0.00000      1.00000      1.00000  45.0  0.800  0  1  0.800',
+    '',
+  ].join('\n');
+
+  await page.setInputFiles('#rail-body input[type="file"]', {
+    name: 'bicrystal.ang',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(scan, 'utf-8'),
+  });
+
+  await expect(page.locator('#rail-body')).toContainText('bicrystal.ang');
+  // The figure is of the file, and the analysis is the real one.
+  await expect(page.locator('#stage')).toContainText('bicrystal.ang', { timeout: 30_000 });
+  await expect(page.locator('#stage')).toContainText('2 grains');
+  // And it refuses to claim the guarantee a constructed dataset carries.
+  await expect(page.locator('#stage')).toContainText('measurement, not a construction');
+
+  // Closing it goes back to the practice dataset rather than to an empty stage.
+  await page.getByRole('button', { name: 'Close the scan', exact: true }).click();
+  await expect(page.locator('#stage')).not.toContainText('bicrystal.ang', { timeout: 30_000 });
 
   expect(browserErrors).toEqual([]);
 });

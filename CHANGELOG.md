@@ -21,6 +21,21 @@ downstream analyses depend on them.
   ringed as re-indexing waypoints. Hovering anywhere reports the α and β that would bring that point
   onto the beam, together with the pole under the cursor. The panel now lays the pattern and the
   stereogram side by side, which is where the previously empty right-hand half of the stage went.
+- **The workbench reads user data files.** `pytex.app.uploads` is the one place the browser-to-reader
+  gap is crossed: a file's text travels as an ordinary request parameter and is materialised as a
+  temporary path for the library's own importer, so no format gains a second implementation.
+  - **EBSD `.ang` and `.ctf` scans.** *Open a scan* replaces the practice dataset, and every control
+    — colouring, scalar modulation, boundaries, grain threshold — acts on the imported map exactly as
+    it does on a constructed one. Hexagonal scans, which EDAX writes by default, are drawn on a
+    half-step raster: each measurement gets its own cell, the cells between them are drawn empty
+    rather than interpolated. An imported map reports **no known answer**, where a practice dataset
+    states one.
+  - **Texture `.xrdml` pole figures.** `texture.measured_pole_figures` opens a set of Panalytical
+    files and draws them in tabs, full size, on **one shared intensity scale** — two figures on two
+    scales cannot be compared, and comparing them is the reason to measure more than one. Contour
+    levels are set explicitly (`1, 2, 4, 7, 10`) or spaced automatically, and apply to every figure
+    in the set. m.r.d., peak-normalised and as-recorded intensities are all available; only m.r.d.
+    makes two instruments comparable.
 - **Calibration from the image itself, in the TEM workspace.** The camera equation uses one number —
   how much reciprocal space a pixel spans — and an image that arrives without its recorded camera
   length usually still carries something whose length is known. **Calibrate** measures a line across

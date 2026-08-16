@@ -37,14 +37,23 @@ from pytex.app.errors import InvalidInputError
 from pytex.app.phases import PhaseSpec, phase_from_request
 from pytex.app.registry import (
     REGISTRY,
+    BooleanParameter,
     ChoiceParameter,
     ExampleScenario,
+    IndicesListParameter,
     IndicesParameter,
     IntegerParameter,
     NumberParameter,
+    ObjectParameter,
+    TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
-from pytex.app.services.calculator import direction_label, phase_parameter, plane_label
+from pytex.app.services.calculator import (
+    direction_label,
+    family_label,
+    phase_parameter,
+    plane_label,
+)
 
 __all__: tuple[str, ...] = ()
 
@@ -836,6 +845,344 @@ def _odf_sections(request: dict[str, Any]) -> dict[str, Any]:
             "a coordinate artefact as often as it is texture.",
         ),
         citations=(_CITATION_BUNGE, _CITATION_RANDLE, _CITATION_HIRSCH),
+    )
+    return result.to_json()
+
+
+#: File kinds the measured pole-figure reader accepts.
+POLE_FIGURE_SUFFIXES = (".xrdml",)
+
+
+def _contour_levels(
+    text: str,
+    *,
+    count: int,
+    minimum: float,
+    maximum: float,
+) -> list[float]:
+    """The contour levels to draw, from what the user asked for.
+
+    Purpose
+    -------
+    Contour levels are a reading decision, not a property of the data. The
+    conventional set for texture is a chosen sequence — 1, 2, 4, 7, 10 m.r.d. is
+    the one most papers use — and picking those is often the difference between
+    a figure that shows the texture and one that shows a smooth blob. So an
+    explicit list is accepted, and the automatic fallback is only a fallback.
+
+    Parameters
+    ----------
+    text : str
+        Levels as a comma- or space-separated list, in m.r.d. Empty for
+        automatic levels.
+    count : int
+        How many automatic levels to place, when none are given.
+    minimum, maximum : float
+        The range the automatic levels span.
+
+    Returns
+    -------
+    list of float
+        Ascending, deduplicated, and never empty.
+
+    Raises
+    ------
+    InvalidInputError
+        If the text contains something that is not a number, or every level is
+        negative. Silently dropping an unparsable level would draw a figure with
+        fewer contours than the user asked for and no indication why.
+    """
+
+    cleaned = text.replace(",", " ").split()
+    if cleaned:
+        levels: list[float] = []
+        for token in cleaned:
+            try:
+                value = float(token)
+            except ValueError as error:
+                raise InvalidInputError(
+                    f"{token!r} is not a number, so it cannot be a contour level.",
+                    field="contour_levels",
+                    hint="Give levels in m.r.d., separated by commas: 1, 2, 4, 7, 10.",
+                ) from error
+            if value >= 0.0:
+                levels.append(value)
+        if not levels:
+            raise InvalidInputError(
+                "Contour levels must be non-negative intensities in m.r.d.",
+                field="contour_levels",
+                hint="For example: 1, 2, 4, 7, 10.",
+            )
+        return sorted(set(levels))
+
+    if not math.isfinite(minimum) or not math.isfinite(maximum) or maximum <= minimum:
+        return [max(minimum, 0.0)]
+    step = (maximum - minimum) / (count + 1)
+    return [minimum + step * (index + 1) for index in range(count)]
+
+
+@REGISTRY.operation(
+    "texture.measured_pole_figures",
+    title="Measured pole figures",
+    summary="Open XRDML pole-figure files and draw them on one shared intensity scale.",
+    help_text=(
+        "Reads Panalytical **XRDML** pole-figure files — one file per measured reflection — and "
+        "draws every one of them, in tabs, so a set of {111}, {200} and {220} figures is one "
+        "result rather than three.\n\n"
+        "**Say which reflection each file is.** The file records the diffraction angle, not the "
+        "plane, so the poles are given here in the order the files were opened. Getting the "
+        "order wrong is the mistake this makes easiest, and it is visible: the figures will not "
+        "be consistent with any single texture.\n\n"
+        "**One scale across all of them, by default.** Two pole figures of the same specimen "
+        "drawn on separate scales cannot be compared, and comparing them is the entire reason "
+        "for measuring more than one. Turn the shared scale off only to look at a weak figure "
+        "in isolation.\n\n"
+        "**Contour levels are a reading decision.** Give them explicitly — `1, 2, 4, 7, 10` is "
+        "the sequence most of the texture literature uses — or leave the field empty for evenly "
+        "spaced ones. The levels apply to every figure, which is what makes the set "
+        "comparable.\n\n"
+        "**Normalisation decides what the numbers mean.** A measured figure arrives in detector "
+        "counts, which are a property of the instrument and the counting time. *m.r.d.* rescales "
+        "it so that a texture-free specimen would read 1 everywhere, which is the only form in "
+        "which two instruments' figures mean the same thing."
+    ),
+    parameters=(
+        ObjectParameter(
+            name="files",
+            label="XRDML files",
+            help_text=(
+                'The opened files, as `{"items": [{"name": ..., "text": ...}]}`. Supplied '
+                "by the **Open pole figures** control rather than typed."
+            ),
+            required=True,
+        ),
+        phase_parameter(help_text="The phase the measured reflections belong to."),
+        IndicesListParameter(
+            name="poles",
+            label="Plane of each file {hkl}",
+            help_text=(
+                "One plane per file, in the order the files were opened — 1 1 1 on one line, "
+                "2 0 0 on the next. With fewer lines than files, the last plane is reused."
+            ),
+            default=((1, 1, 1),),
+        ),
+        ChoiceParameter(
+            name="intensity_normalization",
+            label="Normalisation",
+            help_text=(
+                "What the intensities are rescaled to. m.r.d. is the only one that makes two "
+                "instruments comparable; the others are for inspecting a file as recorded."
+            ),
+            options=(
+                (
+                    "mrd",
+                    "m.r.d.",
+                    "Multiples of a random distribution: 1 everywhere for a texture-free specimen.",
+                ),
+                ("max", "Peak = 1", "Scaled so the strongest point is 1."),
+                ("none", "As recorded", "Raw detector counts, exactly as the file holds them."),
+            ),
+            default="mrd",
+        ),
+        _PROJECTION_PARAMETER,
+        TextParameter(
+            name="contour_levels",
+            label="Contour levels",
+            help_text=(
+                "Levels to draw, in the normalised intensity unit, separated by commas — "
+                "`1, 2, 4, 7, 10` is the conventional texture sequence. Leave empty for evenly "
+                "spaced levels."
+            ),
+            required=False,
+            placeholder="1, 2, 4, 7, 10",
+        ),
+        IntegerParameter(
+            name="contour_count",
+            label="Automatic levels",
+            help_text="How many evenly spaced levels to place when none are given.",
+            default=6,
+            minimum=1,
+            maximum=20,
+        ),
+        BooleanParameter(
+            name="shared_scale",
+            label="One scale for every figure",
+            help_text=(
+                "Put every figure on the same intensity range, so they can be compared. Off "
+                "gives each its own range, which makes a weak figure legible and makes it "
+                "impossible to read against the others."
+            ),
+            default=True,
+        ),
+    ),
+    returns=(
+        "One row per measured point of every figure; the figures, the shared scale and the "
+        "contour levels under `data`."
+    ),
+    panel="texture",
+    citations=(_CITATION_BUNGE, _CITATION_RANDLE),
+    tags=("texture", "pole figure", "XRDML", "measurement", "import", "contour", "m.r.d."),
+)
+def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.adapters.xrdml import read_xrdml_pole_figure
+    from pytex.app.uploads import uploaded_file
+
+    spec, phase = phase_from_request(request["phase"])
+    payload = request["files"]
+    items = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(items, list) or not items:
+        raise InvalidInputError(
+            "No pole-figure file has been opened.",
+            field="files",
+            hint="Open one or more .xrdml files with the control above.",
+        )
+    poles = list(request["poles"]) or [(1, 1, 1)]
+    normalization = str(request["intensity_normalization"])
+    method = str(request["projection"])
+    specimen = _specimen_frame()
+
+    figures: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    for index, item in enumerate(items):
+        indices = tuple(int(value) for value in poles[min(index, len(poles) - 1)])
+        with uploaded_file(item, field="files", suffixes=POLE_FIGURE_SUFFIXES) as (path, name):
+            try:
+                measurement = read_xrdml_pole_figure(path)
+            # Broad on purpose: the XML reader raises ParseError, ValueError,
+            # KeyError and TypeError depending on which part of the document
+            # is wrong, and every one of them means the same thing to a user.
+            except Exception as error:
+                raise InvalidInputError(
+                    f"{name} could not be read as an XRDML pole figure: {error}",
+                    field="files",
+                    hint=(
+                        "The file must be a pole-figure measurement rather than a line scan: "
+                        "it needs both a Phi and a Psi (or Chi) axis."
+                    ),
+                ) from error
+        pole_figure = measurement.to_pole_figure(
+            _crystal_plane(phase, indices),
+            specimen_frame=specimen,
+            intensity_normalization=normalization,
+        )
+        directions = np.asarray(pole_figure.sample_directions, dtype=float)
+        # A pole figure is antipodal, so a point measured below the equator is
+        # the same pole as its reflection above it. Folding here rather than
+        # discarding keeps every measured count in the figure.
+        directions = np.where(directions[:, 2:3] < 0.0, -directions, directions)
+        values = np.asarray(pole_figure.intensities, dtype=float).reshape(-1)
+        projected = _project(directions, method)
+        # A measured pole figure collects the whole symmetry family: the
+        # specimen is rotated through every orientation that puts any member of
+        # {hkl} into the diffraction condition. So it is written {hkl}, not
+        # (hkl) — the notation registry treats that distinction as meaning, not
+        # as style.
+        label = family_label(indices, spec=spec, family="plane")
+        points = [
+            {
+                "mrd": float(values[point]),
+                "x": float(projected[point, 0]),
+                "y": float(projected[point, 1]),
+                "polar_deg": float(
+                    math.degrees(math.acos(min(1.0, max(-1.0, float(directions[point, 2])))))
+                ),
+                "azimuth_deg": float(
+                    math.degrees(math.atan2(directions[point, 1], directions[point, 0])) % 360.0
+                ),
+            }
+            for point in range(directions.shape[0])
+        ]
+        rows.extend({**point, "figure": label, "file": name} for point in points)
+        figures.append(
+            {
+                "file": name,
+                "label": label,
+                "indices": list(indices),
+                "points": points,
+                "minimum": float(values.min()),
+                "maximum": float(values.max()),
+                "mean": float(values.mean()),
+                "count": int(values.size),
+                "two_theta_deg": (
+                    float(np.mean(measurement.two_theta_deg))
+                    if measurement.two_theta_deg is not None
+                    else None
+                ),
+                "sample_name": measurement.sample_name,
+            }
+        )
+
+    overall_min = min(figure["minimum"] for figure in figures)
+    overall_max = max(figure["maximum"] for figure in figures)
+    shared = bool(request["shared_scale"])
+    levels = _contour_levels(
+        str(request["contour_levels"] or ""),
+        count=int(request["contour_count"]),
+        minimum=overall_min,
+        maximum=overall_max,
+    )
+    for figure in figures:
+        figure["scale"] = (
+            {"minimum": overall_min, "maximum": overall_max}
+            if shared
+            else {"minimum": figure["minimum"], "maximum": figure["maximum"]}
+        )
+
+    unit = {"mrd": "m.r.d.", "max": "peak = 1", "none": "counts"}[normalization]
+    names = ", ".join(figure["label"] for figure in figures)
+    result = AppResult(
+        title=f"Measured pole figures of {spec.name}: {names}",
+        summary=(
+            f"{len(figures)} pole figure(s) read from XRDML, {sum(f['count'] for f in figures)} "
+            f"measured points in total, in {unit}. "
+            + (
+                f"All of them are drawn on one scale, {overall_min:.3g} to {overall_max:.3g}, "
+                "so they can be compared."
+                if shared
+                else "Each is drawn on its own scale, so they cannot be compared with each other."
+            )
+            + f" Contours at {', '.join(f'{level:g}' for level in levels)}."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("figure", "Figure"),
+                *_DENSITY_COLUMNS,
+                Column("file", "Source file"),
+            ),
+            rows=tuple(rows),
+            caption=f"Every measured point of every opened figure, in {unit}.",
+        ),
+        data={
+            "figures": figures,
+            "levels": levels,
+            "shared_scale": shared,
+            "scale": {"minimum": overall_min, "maximum": overall_max},
+            "projection": method,
+            "unit": unit,
+            "specimen_axes": list(_SPECIMEN_AXES),
+            "columns": [column.to_json() for column in _DENSITY_COLUMNS],
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "poles": [list(pole) for pole in poles],
+            "intensity_normalization": normalization,
+            "projection": method,
+            "contour_levels": str(request["contour_levels"] or ""),
+            "contour_count": int(request["contour_count"]),
+            "shared_scale": shared,
+            "files": [str(item.get("name", "")) for item in items if isinstance(item, dict)],
+        },
+        notes=(
+            "These are measurements, so no answer is known in advance. A figure whose intensities "
+            "are not normalised to m.r.d. means nothing outside its own file: detector counts "
+            "depend on the counting time and the instrument.",
+            "Defocusing and absorption corrections are not applied here. A reflection measured to "
+            "high tilt falls off for instrumental reasons as well as textural ones, and the "
+            "outer rim of an uncorrected figure is the part to distrust.",
+            "The plane assigned to each file comes from the order the files were opened, not from "
+            "the file: XRDML records the diffraction angle rather than the reflection.",
+        ),
+        citations=(_CITATION_BUNGE, _CITATION_RANDLE),
     )
     return result.to_json()
 

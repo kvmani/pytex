@@ -35,9 +35,9 @@ half its width:
 | T3 | TEM stereogram beside the pattern: zone axes, solution, tilt path, hover readout | done | (pending) |
 | T3a | Serialize `/api/call` — the crash the second figure made routine | done | (pending) |
 | T2 | TEM calibration: direct scale and interactive line measurement | done | (pending) |
-| X1 | Texture: `.xrdml` (and text) import service | todo | |
-| X2 | Texture: tabbed pole-figure / ODF stage with shared, user-set contour levels | todo | |
-| E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | todo | |
+| U1 | `pytex.app.uploads`: the one browser-to-reader crossing | done | (pending) |
+| E1 | EBSD: `.ang` / `.ctf` import and analysis of the loaded map | done | (pending) |
+| X1 | Texture: `.xrdml` import, tabs, shared and user-set contour levels | done | (pending) |
 | D1 | Documentation and changelog for all of the above | todo | |
 
 ### Current worktree state
@@ -165,8 +165,57 @@ Both take their geometry from the same `pytex.tem.stage` forward model, so the o
 is the five-line stereographic projection, which exists privately in each. The workflow page now
 cross-references the two. **Open item:** promote one projection helper to a shared public home.
 
+### Verified (U1, E1, X1)
+
+One mechanism serves both imports. `pytex.app.uploads` takes the file's text as an ordinary request
+parameter and materialises it as a temporary path for the library's own reader, so no format gains a
+second implementation and nothing is left on disk — asserted by a test that lists the temporary
+directory before and after.
+
+**EBSD.** A four-point `.ang` and the equivalent `.ctf` — three points of one orientation, one 60°
+away — both segment to exactly two grains of 3 and 1 points, and the boundary between them reports
+**30°**, which is the disorientation of a 60° rotation about a four-fold axis rather than the 60°
+written in the file. That single number is the evidence that an imported map goes through the same
+symmetry-aware machinery as a constructed one.
+
+The hexagonal case was the one worth doing properly. EDAX writes hex scans by default, so refusing
+them would refuse most `.ang` files, and a hex scan has no rectangular shape at all — the reader
+returns `grid_shape = None`, and the panel used to unpack that and crash. Points are now placed on a
+half-step raster, which is the pitch the stagger actually lives on. The repository's hex fixture
+renders as a 3x5 image holding its 8 measurements in the alternating pattern
+`[x _ x _ x] / [_ x _ x _]`, with the cells between drawn empty rather than interpolated.
+
+**Texture.** The `synthetic_random_standard.xrdml` fixture is a *random* standard, which is the one
+thing a measurement can be checked against: normalised to m.r.d. its mean comes back at 1.0 within
+0.25, so the normalisation is doing what it claims. Two files land on one scale by default and each
+gets a tab; explicit contour levels come through untouched (`1, 2, 4, 7, 10`), an unparsable level is
+refused rather than silently dropped, and the automatic levels never sit on the data's own ends —
+a contour at the maximum draws a dot and one at the minimum draws the rim.
+
+Driven in Chromium: two XRDML files open into `{111}` and `{200}` tabs, the status line reads
+`{111} from ni-111.xrdml · 12 measured points · 0.82 to 1.51 m.r.d. · one scale across every figure
+· contours at 0.80, 1.00, 1.20, 1.40`, and clicking the second tab switches the drawing. The full
+browser suite is 21/21.
+
+Two mistakes worth recording. A scripted patch that failed halfway left the panel referring to a
+rail entry it had never added and to a `setControls(tabs, …)` call that was never made — the tabs
+were built and never mounted, and the figure drew correctly the whole time, which is exactly the
+shape of bug a screenshot does not catch. And the first version of the texture view called the
+service on arrival, producing an error about a file the user had not yet chosen; it now shows what
+to do instead.
+
 ### Decisions worth not re-litigating
 
+- **A file's text travels in the request, not over a second transport.** An operation is a JSON
+  request; a binary upload path would mean two validation stories and two places for an error to
+  come back from, for files that are text.
+- **The readers take paths, so the service writes a temporary file.** A text-taking twin of each
+  reader would be a second implementation of the same format to keep in step.
+- **An imported EBSD map reports no known answer.** The practice datasets are checkable because they
+  were constructed; presenting a measurement as if it carried the same guarantee would be the most
+  misleading thing the panel could do.
+- **Measured figures are tabbed, not tiled.** A pole figure at a third of the stage is a picture of a
+  texture rather than a measurement of one; full size on a shared scale makes flipping a comparison.
 - **Calibration writes into the fields the indexing already reads.** A reciprocal length sets the
   scale, a plate length sets the pixel size; nothing downstream learns a new concept.
 - **The calibrate tool is modal.** Clicking two ruler ends and clicking two spots are the same

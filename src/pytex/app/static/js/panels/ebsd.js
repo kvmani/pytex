@@ -47,7 +47,12 @@ export function mount(context) {
   const operation = context.manifest.operations.find((entry) => entry.id === 'ebsd.map');
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
-  const state = { result: null, form: null, teaches: null };
+  // `scan` holds the user's own file once one is opened: {name, text}. It is
+  // kept beside the form rather than in it, because a scan is a megabyte of
+  // text and a form field is not where a megabyte of text belongs — the
+  // generated control for it is hidden and the value supplied at call time,
+  // the same arrangement the TEM panel uses for its picks.
+  const state = { result: null, form: null, teaches: null, scan: null };
 
   const frame = plotFrame({ title: 'Orientation map', units: 'µm', digits: 2 });
   const legend = el('div.legend');
@@ -60,7 +65,47 @@ export function mount(context) {
     onclick: () => run(),
   });
 
+  const scanStatus = el('p.field__help', {
+    text: 'No scan open — the practice dataset chosen below is being analysed.',
+  });
+
+  const scanInput = el('input', {
+    type: 'file',
+    accept: '.ang,.ctf',
+    'aria-label': 'Open an EBSD scan file',
+    onchange: (event) => openScan(event.target.files?.[0]),
+  });
+
+  const closeScanButton = el('button.button', {
+    type: 'button',
+    text: 'Close the scan',
+    hidden: true,
+    onclick: () => {
+      state.scan = null;
+      scanInput.value = '';
+      closeScanButton.hidden = true;
+      scanStatus.textContent =
+        'No scan open — the practice dataset chosen below is being analysed.';
+      run();
+    },
+  });
+
   context.rail.append(
+    el('details.group', { open: true }, [
+      el('summary', { text: 'Open a scan' }),
+      el('div.group__body', {}, [
+        el('p.field__help', {
+          text:
+            'An EDAX/TSL .ang or Oxford/HKL .ctf file. It is read by the same importer a script ' +
+            'would call, so the phases, the symmetry and the quality channels come from its own ' +
+            'header. While one is open it replaces the practice dataset, and every control below ' +
+            'means exactly what it means for a practice map.',
+        }),
+        scanInput,
+        scanStatus,
+        closeScanButton,
+      ]),
+    ]),
     formHost,
     runButton,
     el('details.group', { open: true }, [
@@ -97,6 +142,34 @@ export function mount(context) {
   function renderControls(initial = {}) {
     state.form = buildForm(operation, { initial });
     formHost.replaceChildren(state.form.element);
+    // The scan travels beside the form, so its generated control is not shown.
+    for (const field of state.form.element.querySelectorAll('.field')) {
+      if (field.querySelector('[id^="ctl-scan_file-"]')) field.hidden = true;
+    }
+  }
+
+  /**
+   * Read a scan file in the browser and analyse it.
+   *
+   * The text is sent with the next call rather than uploaded to a store: there
+   * is no store, the server keeps nothing between requests, and a scan that
+   * failed to parse should leave nothing behind to clean up.
+   */
+  async function openScan(file) {
+    if (!file) return;
+    scanStatus.textContent = `Reading ${file.name}…`;
+    try {
+      const text = await file.text();
+      state.scan = { name: file.name, text };
+      closeScanButton.hidden = false;
+      scanStatus.textContent = `${file.name} — ${formatNumber(text.length / 1024, 0)} kB open.`;
+      await run();
+    } catch (error) {
+      state.scan = null;
+      closeScanButton.hidden = true;
+      scanStatus.textContent = `${file.name} could not be read in the browser.`;
+      context.showError(error);
+    }
   }
 
   function loadExample(example) {
@@ -110,7 +183,9 @@ export function mount(context) {
     runButton.textContent = 'Drawing…';
     state.form.clearErrors();
     try {
-      state.result = await call(operation.id, state.form.values());
+      const request = { ...state.form.values() };
+      if (state.scan) request.scan_file = state.scan;
+      state.result = await call(operation.id, request);
       draw();
       renderResult(details, state.result, { teaches: state.teaches });
     } catch (error) {
