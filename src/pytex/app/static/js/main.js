@@ -25,6 +25,7 @@ import { renderHelp, setExportFormats } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as tem from './panels/tem.js';
+import * as cbed from './panels/cbed.js';
 import * as diffraction from './panels/diffraction.js';
 import * as xrd from './panels/xrd.js';
 import * as variants from './panels/variants.js';
@@ -37,7 +38,10 @@ import * as calculator from './panels/calculator.js';
 // composite pattern is what variants look like on a plate, the pole figure is
 // where they point — and texture follows variants because it is the same
 // pole-figure reading applied to a whole polycrystal rather than one grain.
-const PANELS = [crystal, tem, diffraction, xrd, variants, texture, calculator];
+// CBED sits beside the TEM solver because it is the same specimen under a
+// converged probe: the solver indexes a pattern of spots, and a CBED disc is
+// what one of those spots becomes when the beam stops being parallel.
+const PANELS = [crystal, tem, cbed, diffraction, xrd, variants, texture, calculator];
 
 const THEMES = {
   auto: { label: 'Auto', icon: '◐', description: 'follow the system' },

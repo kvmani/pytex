@@ -120,12 +120,26 @@ class UnknownOperationError(ServiceError):
 
 
 class UnsupportedRequestError(ServiceError):
-    """The request is well formed but asks for something this build cannot do."""
+    """The request is well formed but asks for something this build cannot do.
+
+    ``details`` carries the same structured context as any other service error,
+    and naming a ``field`` in it is worth doing whenever one control is
+    responsible: an unsupported *combination* — a symmetry determination asked
+    for alongside a method that cannot support one — is corrected at a
+    particular switch, and the message belongs beside that switch rather than
+    only in a toast.
+    """
 
     status = 409
 
-    def __init__(self, message: str, *, hint: str | None = None) -> None:
-        super().__init__(message, code="request.unsupported", hint=hint)
+    def __init__(
+        self,
+        message: str,
+        *,
+        hint: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message, code="request.unsupported", hint=hint, details=details)
 
 
 class DependencyMissingError(ServiceError):

@@ -10,6 +10,7 @@ behind an HTTP request.
 from __future__ import annotations
 
 from pytex.app.services import calculator as calculator
+from pytex.app.services import cbed as cbed
 from pytex.app.services import crystal as crystal
 from pytex.app.services import diffraction as diffraction
 from pytex.app.services import tem as tem
@@ -17,4 +18,13 @@ from pytex.app.services import texture as texture
 from pytex.app.services import variants as variants
 from pytex.app.services import xrd as xrd
 
-__all__ = ["calculator", "crystal", "diffraction", "tem", "texture", "variants", "xrd"]
+__all__ = [
+    "calculator",
+    "cbed",
+    "crystal",
+    "diffraction",
+    "tem",
+    "texture",
+    "variants",
+    "xrd",
+]

@@ -13,6 +13,21 @@ downstream analyses depend on them.
 
 ### Added
 
+- **A CBED workspace in the workbench.** `cbed.pattern` simulates a zone-axis convergent-beam
+  pattern over `pytex.diffraction.cbed` by either the two-beam closed form or the coupled
+  Bloch-wave solution, and reports the overlap regime explicitly — the discs being separated is
+  what makes each one an independent rocking curve, and therefore what decides whether a thickness
+  can be measured at all. The discs arrive as one rasterised intensity image with a stated extent
+  in millimetres, drawn under a vector overlay of outlines, labels and HOLZ rings, so the fringes
+  survive while the geometry stays measurable under the cursor and hoverable per disc.
+  `cbed.thickness_from_fringes` inverts the two-beam fringe minima for a foil thickness *and* an
+  extinction distance, plotted as the straight line it is so a misassigned fringe order shows as a
+  point off the line. `cbed.holz_rings` reports the higher-order Laue-zone radii and the
+  reciprocal-lattice repeat along the beam — the one dimension a zone-axis pattern is blind to.
+  Symmetry determination is offered only on a Bloch-wave pattern and refused on a two-beam one,
+  because a two-beam pattern is symmetric in the excitation error by construction and its symmetry
+  is the method's rather than the crystal's.
+
 - **One centralized message log, in both shells.** The workbench now carries a severity-graded
   console pinned to the bottom of the window, and every module reports into it continuously —
   critical, error, warning, important, success, info, and progress ticks that carry a percentage

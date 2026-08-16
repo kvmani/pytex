@@ -99,6 +99,12 @@ _PANEL_DOCUMENTATION = {
     ),
     "xrd": DocumentationLink("Powder XRD generation", "workflows/xrd_generation"),
     "tem": DocumentationLink("TEM specimen tilt navigation", "theory/tem_specimen_tilt_navigation"),
+    "cbed": DocumentationLink(
+        "Convergent-beam electron diffraction", "theory/convergent_beam_electron_diffraction"
+    ),
+    "ebsd": DocumentationLink(
+        "EBSD grain segmentation and GROD", "theory/ebsd_grain_segmentation_and_grod"
+    ),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
     "variants": DocumentationLink(
         "Orientation relationships", "concepts/orientation_relationships"
