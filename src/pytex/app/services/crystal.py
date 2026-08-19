@@ -395,6 +395,17 @@ _VIEWER_SPECIMEN_AXES: tuple[tuple[str, str, tuple[float, float, float], str], .
 #: the whole boundary is a few hundred numbers on the wire.
 _SECTOR_ARC_SAMPLES = 48
 
+#: Index bound for the direction *labels* in the orientation readout.
+#:
+#: Three, not the eight :func:`~pytex.core.miller.nearest_low_index_direction`
+#: defaults to. A general orientation puts no specimen axis on a low-index
+#: direction, so the search's job here is to name the nearest signpost, not to
+#: match the direction: on a hexagonal phase a bound of eight buys three degrees
+#: of accuracy and pays for it with ``[11 -1 -10 12]``, which nobody can read
+#: and nobody wanted. The label comes with its angular residual attached, so the
+#: approximation is stated rather than implied.
+_READOUT_INDEX_BOUND = 3
+
 #: Named ideal orientations offered as one-press presets, by crystal system.
 #:
 #: Only cubic, because the catalogue in :mod:`pytex.texture.components` is the
@@ -1316,7 +1327,9 @@ def _crystal_orientation(request: dict[str, Any]) -> dict[str, Any]:
             phase.symmetry.reduce_vectors_to_fundamental_sector(crystal[None, :], antipodal=True),
             dtype=float,
         ).reshape(3)
-        axis_indices, residual_deg = nearest_low_index_direction(reduced, phase=phase)
+        axis_indices, residual_deg = nearest_low_index_direction(
+            reduced, phase=phase, max_index=_READOUT_INDEX_BOUND
+        )
         projected = np.asarray(
             project_directions(reduced[None, :], method=method), dtype=float
         ).reshape(2)

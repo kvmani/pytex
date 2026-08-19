@@ -4,7 +4,7 @@
 
 # Crystal geometry: angles, spacings, and multiplicities
 
-Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
+Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases, and the naming of a direction or a plane that arrived as a Cartesian vector. Each result is checked against an analytic identity for the relevant crystal system.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -34,6 +34,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -97,6 +99,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -160,6 +164,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -223,6 +229,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -283,6 +291,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -346,6 +356,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -409,6 +421,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -445,5 +459,133 @@ result = float(np.degrees(angle_plane_plane_rad(
 **Why this value**: First-order prismatic normals are separated by 60 degrees in the hexagonal basal plane.
 
 **Citation**: Partridge, The crystallography and deformation modes of HCP metals, Metall. Rev. 12 (1967).
+
+**See also**: {doc}`Hexagonal and trigonal conventions <../../standards/hexagonal_and_trigonal_conventions>`, {doc}`angle_plane_plane_rad / angle_dir_dir_rad <../../api/index>`
+
+## Naming a direction that arrived as geometry recovers its own indices
+
+An inverse pole figure, a stereogram readout and an interactive viewer all face the same problem: the direction is known as a vector and the reader wants a label. The naming is a search over low-index triples, so the first thing to establish is that it is exact where it should be — a direction built from [3 2 1] must be named [3 2 1], with an angular residual of zero rather than of the search's step size.
+
+**Symbols**
+
+- $\angle(\mathbf{d}_1, \mathbf{d}_2)$ &mdash; Angle between two lattice directions.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerDirection,
+    MillerPlane,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    angle_dir_dir_rad,
+    angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+cubic = Phase(
+    "cubic-demo",
+    lattice=Lattice(4.0, 4.0, 4.0, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+vector = MillerDirection.from_uvw([3, 2, 1], phase=cubic).unit_vector_cartesian
+indices, residual_deg = nearest_low_index_direction(vector, phase=cubic)
+result = float(residual_deg)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `cubic-nearest-low-index-round-trip` | 0.0000 | 0.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+
+**Why this value**: The vector is the Cartesian image of [3 2 1] under the direct basis, and gcd(3, 2, 1) = 1 so the triple is already primitive. The nearest primitive triple to a direction that is one is therefore itself, at zero angle.
+
+**Citation**: International Tables for Crystallography, Volume A, section 1.3 (direct and reciprocal bases and their index conventions).
+
+**See also**: {doc}`Miller planes and directions <../../concepts/miller_planes_directions>`, {doc}`angle_plane_plane_rad / angle_dir_dir_rad <../../api/index>`
+
+## In a hexagonal phase a plane normal and the like-indexed direction are not parallel
+
+Miller indices are reciprocal-basis components and direction indices are direct-basis components, so naming a vector as a plane and naming it as a direction are different questions with different answers in every non-cubic phase. The pyramidal normal is the standard demonstration: name the (10-11) normal as a plane and it comes back exactly, name it as a direction and the angle to [10-11] is the metric difference itself.
+
+**Symbols**
+
+- $\angle(\mathbf{n}_1, \mathbf{n}_2)$ &mdash; Angle between two plane normals.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerDirection,
+    MillerPlane,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    angle_dir_dir_rad,
+    angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+hexagonal = Phase(
+    "hcp-demo",
+    lattice=Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+normal = MillerPlane.from_hkl([1, 0, 1], phase=hexagonal).normal_cartesian
+indices, residual_deg = nearest_low_index_plane(normal, phase=hexagonal)
+result = [int(value) for value in indices]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hex-nearest-low-index-plane-vs-direction` | [1, 0, 1] | [1, 0, 1] | &mdash; | exact | exact | ✅ pass |
+
+**Why this value**: The vector is the unit normal of (10-11) by construction, and the plane search runs against the reciprocal basis, so it must return the indices the normal was built from. The direction search, which runs against the direct basis, returns a different triple for the same vector because c/a is not 1.
+
+**Citation**: International Tables for Crystallography, Volume A, section 1.3; Partridge, The crystallography and deformation modes of HCP metals, Metall. Rev. 12 (1967).
 
 **See also**: {doc}`Hexagonal and trigonal conventions <../../standards/hexagonal_and_trigonal_conventions>`, {doc}`angle_plane_plane_rad / angle_dir_dir_rad <../../api/index>`

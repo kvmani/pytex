@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Crystal Viewer Orientation Workspace — IN PROGRESS (started 2026-08-19)
+## Crystal Viewer Orientation Workspace — COMPLETE (2026-08-19)
 
 **Objective.** Give the crystal viewer a live orientation workspace: a pole figure and an inverse
 pole figure that update as the structure is turned, a fly-by trail through the IPF, and a way to
@@ -47,8 +47,14 @@ The Euler readout and the numeric table are not derived in JavaScript — a debo
    inverse pole figure with a fly-by trail, and the Euler card in the rail. **[done]**
 5. CSS for the dock, including the two-arrangement layout. **[done]**
 6. Browser tests for the live figures, the Euler round trip and the layout. **[done]**
-7. Docs: theory note or workflow page, the worked example, `docs/README.md`, the symbol registry
-   check, and the parity matrix if it is affected. **[next]**
+7. Docs and worked examples. **[done]** — a "The Crystal Viewer's Orientation Dock" section in
+   `docs/site/workflows/workbench_application.md`, a cross-link back from
+   `docs/site/workflows/crystal_visualization.md`, the two new functions in
+   `docs/site/api/index.md`, and four worked examples: the Goss ND angle and the Euler round trip
+   in the workbench group, the index round trip and the hexagonal plane-versus-direction case in
+   the crystal-geometry group. `docs/README.md` needed no change (no new page), and the symbol
+   registry already carries `(phi1, Phi, phi2)` and `RD, TD, ND`. The MTEX parity matrix is not
+   affected: nothing here is a new numerical method, only a new surface onto existing ones.
 
 ### Decisions taken
 
@@ -66,13 +72,23 @@ The Euler readout and the numeric table are not derived in JavaScript — a debo
 
 ### Verification
 
-`ruff check src tests`, `mypy src`, and `pytest tests/unit` are green. The five new Playwright
-tests in `tests/browser/workbench.spec.js` pass against a live server, including the one that
-actually drags the crystal and asserts the poles moved.
+`ruff check src tests worked_examples`, `mypy src worked_examples`, and `pytest tests/unit` are all
+green. The full Playwright suite passes against a live server -- 27 tests, including the five new
+ones: the one that actually drags the crystal and asserts the poles moved and the fly-by trail
+grew, the Euler round trip through Goss, the brass preset, the wide two-column layout, and the
+phone layout.
+
+### A judgement worth recording
+
+The direction *labels* in the readout search only to index 3, while
+`nearest_low_index_direction` defaults to 8. A general orientation puts no specimen axis on a
+low-index direction, so on a hexagonal phase the higher bound bought about three degrees and paid
+`[11 -1 -10 12]` for it. Three degrees of accuracy in a label nobody can read is not accuracy; the
+angular residual is printed beside the label instead, so the approximation is stated.
 
 ### Current worktree state
 
-Started clean at `8d6857d`.
+Started clean at `8d6857d`; landed in two commits. Task complete.
 
 ## EBSD Map Rendering Performance — COMPLETE (2026-08-19)
 

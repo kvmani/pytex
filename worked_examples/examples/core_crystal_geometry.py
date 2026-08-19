@@ -30,6 +30,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -59,6 +61,8 @@ from pytex import (
     SymmetrySpec,
     angle_dir_dir_rad,
     angle_plane_plane_rad,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
 )
 
 crystal = ReferenceFrame(
@@ -272,13 +276,89 @@ HEX_PRISM_PRISM = WorkedExample(
 )
 
 
+
+CUBIC_NAME_A_DIRECTION = WorkedExample(
+    id="cubic-nearest-low-index-round-trip",
+    title="Naming a direction that arrived as geometry recovers its own indices",
+    domain="core",
+    scenario=(
+        "An inverse pole figure, a stereogram readout and an interactive viewer all face the same "
+        "problem: the direction is known as a vector and the reader wants a label. The naming is "
+        "a search over low-index triples, so the first thing to establish is that it is exact "
+        "where it should be — a direction built from [3 2 1] must be named [3 2 1], with an "
+        "angular residual of zero rather than of the search's step size."
+    ),
+    setup=CUBIC_SETUP,
+    code=(
+        "vector = MillerDirection.from_uvw([3, 2, 1], phase=cubic).unit_vector_cartesian\n"
+        "indices, residual_deg = nearest_low_index_direction(vector, phase=cubic)\n"
+        "result = float(residual_deg)"
+    ),
+    expected=0.0,
+    unit="deg",
+    tolerance=1e-9,
+    reference=(
+        "The vector is the Cartesian image of [3 2 1] under the direct basis, and gcd(3, 2, 1) = 1 "
+        "so the triple is already primitive. The nearest primitive triple to a direction that is "
+        "one is therefore itself, at zero angle."
+    ),
+    citation=(
+        "International Tables for Crystallography, Volume A, section 1.3 "
+        "(direct and reciprocal bases and their index conventions)."
+    ),
+    symbols=(_DIR_ANGLE,),
+    see_also=(_MILLER_CONCEPT, _MILLER_API),
+)
+
+HEX_NAME_A_PLANE_NORMAL = WorkedExample(
+    id="hex-nearest-low-index-plane-vs-direction",
+    title="In a hexagonal phase a plane normal and the like-indexed direction are not parallel",
+    domain="core",
+    scenario=(
+        "Miller indices are reciprocal-basis components and direction indices are direct-basis "
+        "components, so naming a vector as a plane and naming it as a direction are different "
+        "questions with different answers in every non-cubic phase. The pyramidal normal is the "
+        "standard demonstration: name the (10-11) normal as a plane and it comes back exactly, "
+        "name it as a direction and the angle to [10-11] is the metric difference itself."
+    ),
+    setup=HEX_SETUP,
+    code=(
+        "normal = MillerPlane.from_hkl([1, 0, 1], phase=hexagonal).normal_cartesian\n"
+        "indices, residual_deg = nearest_low_index_plane(normal, phase=hexagonal)\n"
+        "result = [int(value) for value in indices]"
+    ),
+    expected=[1, 0, 1],
+    unit="",
+    tolerance=0.0,
+    reference=(
+        "The vector is the unit normal of (10-11) by construction, and the plane search runs "
+        "against the reciprocal basis, so it must return the indices the normal was built from. "
+        "The direction search, which runs against the direct basis, returns a different triple "
+        "for the same vector because c/a is not 1."
+    ),
+    citation=(
+        "International Tables for Crystallography, Volume A, section 1.3; Partridge, "
+        "The crystallography and deformation modes of HCP metals, Metall. Rev. 12 (1967)."
+    ),
+    symbols=(_PLANE_ANGLE,),
+    see_also=(
+        SeeAlso(
+            "Hexagonal and trigonal conventions",
+            "../../standards/hexagonal_and_trigonal_conventions",
+        ),
+        _MILLER_API,
+    ),
+    result_format="{:.0f}",
+)
+
 GROUP = ExampleGroup(
     slug="crystal_geometry",
     title="Crystal geometry: angles, spacings, and multiplicities",
     summary=(
         "Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities "
-        "for cubic and hexagonal phases. Each result is checked against an analytic identity for "
-        "the relevant crystal system."
+        "for cubic and hexagonal phases, and the naming of a direction or a plane that arrived "
+        "as a Cartesian vector. Each result is checked against an analytic identity for the "
+        "relevant crystal system."
     ),
     examples=(
         CUBIC_PLANE_100_110,
@@ -288,6 +368,8 @@ GROUP = ExampleGroup(
         CUBIC_MULTIPLICITY,
         HEX_BASAL_PRISM,
         HEX_PRISM_PRISM,
+        CUBIC_NAME_A_DIRECTION,
+        HEX_NAME_A_PLANE_NORMAL,
     ),
 )
 

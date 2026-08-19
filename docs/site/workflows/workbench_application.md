@@ -304,6 +304,98 @@ the setting most often left unreported in the literature, which is why the appli
 control rail rather than burying it in a default.
 ```
 
+## The Crystal Viewer's Orientation Dock
+
+Turning a structure by hand answers *what does it look like from here*. It used to leave *where is
+here* unanswered, which is the question a texture or a slip analysis actually needs. The dock beside
+the structure answers it three ways at once, and all three describe the view you are looking at
+rather than a view you have to set up separately.
+
+**The frame, stated first, because everything below depends on it.** The screen is the specimen
+frame: `RD` points right, `TD` points up, and `ND` points out of the screen towards you. That is a
+right-handed triad, and it is
+`pytex.core.frame_catalog.SAMPLE_RD_TD_ND_FRAME` with its default identity axes, so the
+camera the viewer accumulates from your drag *is* an orientation matrix $g$ in PyTex's
+crystal-to-specimen convention, $\mathbf{v}_{\text{specimen}} = g\,\mathbf{v}_{\text{crystal}}$.
+Nothing new is defined for the viewer.
+
+```{note}
+Pole figures in the literature are usually drawn with RD at the *top*. This one has RD to the
+right, which is the same ninety-degree difference the texture panel already carries, and it is
+deliberate: the pole figure here is the same view of the same crystal as the structure beside it,
+and rotating the projection would break exactly the correspondence the figure exists to show.
+```
+
+**The pole figure** plots one pole family — `{100}`, `{110}`, `{111}` on a cubic phase, the basal,
+prismatic and pyramidal sets on a hexagonal one — expanded over the point group and projected
+stereographically onto the upper hemisphere. Press a chip to add or remove a family; the chip
+carries the colour its poles are drawn in, so the legend is the control. Any planes you superimposed
+on the structure appear as labelled diamonds, because the figure should show the features the
+picture shows.
+
+**The inverse pole figure** asks the opposite question: which crystal direction currently lies along
+a specimen axis. The chips choose the axis — ND by default, RD and TD available — and the point is
+folded into the fundamental sector of the phase's point group, which is what makes the standard
+triangle standard. Its corners are labelled with the low-index direction each is, computed rather
+than assumed, so a hexagonal phase gets `[0001]`, `[2-1-10]` and `[10-10]` without anyone hard-coding
+the cubic triangle.
+
+**The fly-by** is the trail of dots behind that point. Turn the crystal and the trail draws the path
+the specimen axis takes through the triangle, which is the fastest way to *see* that the standard
+triangle is a fundamental region: the path jumps when the direction crosses a symmetry boundary,
+because the two sides of that boundary are the same direction. The trail is drawn as dots rather
+than a line for the same reason — a line would draw a chord across the triangle the crystal never
+took. It clears on a reset, on an axis button, and whenever an orientation is set outright.
+
+**Setting an orientation.** The **Orientation** group in the control rail holds the angle triple,
+in Bunge $(\phi_1, \Phi, \phi_2)$ or Matthies $(\alpha, \beta, \gamma)$. Type three angles and press
+**Set view** and the structure turns to them. Drag the structure and the same three fields report
+where you have got to, along with the rotation as an axis and angle and the crystal direction along
+each specimen axis. The named ideal orientations below — cube, Goss, brass, copper, S and the two
+rotated variants — are one press each; they are offered only for cubic phases, because that
+catalogue is the rolling-texture catalogue of cubic metals and "Goss" on a hexagonal phase would
+name a relationship it does not describe.
+
+**Why the pictures are live and the numbers are not, quite.** The figures redraw at drag rate,
+because the whole crystallographic content of both — the symmetry operators, the expanded families,
+the fundamental sector with its bounding-plane normals — travels with the scene in the Cartesian
+crystal frame, and the browser only multiplies by the camera and projects. Euler angles are a
+different matter: they depend on a convention, and a convention implemented twice will eventually
+disagree with itself. So the readout is a `crystal.orientation` call that fires about a fifth of a
+second after the drag settles. The pictures never lag; the numbers arrive a moment later, and they
+are the only Euler angles in the application.
+
+**The layout.** On a wide window the dock is a column beside the structure, so the crystal and both
+its figures are on screen together — that simultaneity is the point, and a figure that has to be
+scrolled to cannot be watched. On a narrower window it becomes a strip beneath the structure and the
+structure gives up part of its height to it. On a phone it starts folded away. It is a disclosure
+group everywhere, so a reader who came to look at bonds can put it away entirely.
+
+`crystal.orientation` is a service operation like any other, so the same numbers are available
+without the interface:
+
+```python
+from pytex.app import REGISTRY
+
+result = REGISTRY.call(
+    "crystal.orientation",
+    {
+        "phase": {"builtin": "cu_fcc"},
+        "euler_convention": "bunge",
+        "angle1": 0.0,
+        "angle2": 45.0,
+        "angle3": 0.0,
+    },
+)
+result["data"]["camera_matrix"]  # nine numbers, row-major, crystal to specimen
+result["table"]["rows"]  # the crystal direction along RD, TD and ND
+```
+
+Passing `camera_matrix` instead of the angles runs the conversion the other way, which is what the
+readout does. See {doc}`../examples/generated/workbench-service-layer` for the checked worked
+examples: that Goss puts ND forty-five degrees from `[001]`, and that the two conversions are exact
+inverses.
+
 ## The TEM Solver, Step By Step
 
 This panel is laid out as the microscope session is, and its four numbered sections are the four

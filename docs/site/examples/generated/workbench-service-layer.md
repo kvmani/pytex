@@ -4,7 +4,7 @@
 
 # Workbench service layer
 
-The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, and the assertion a Miller component label makes about where its poles land.
+The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -202,5 +202,79 @@ result = max(rows, key=lambda row: row['mrd'])['polar_deg']
 **Why this value**: The Goss component {011}<100> places {011} in the sheet plane, so its (011) pole lies along ND at a polar angle of zero. The tolerance is the grid spacing, not a fitted margin.
 
 **Citation**: Randle and Engler, Introduction to Texture Analysis, 2nd ed., chapter 5 (ideal orientations and their Miller descriptions).
+
+**See also**: {doc}`Texture foundation <../../concepts/texture_foundation>`, {doc}`The PyTex Workbench <../../workflows/workbench_application>`
+
+## The crystal viewer's camera is an orientation: Goss puts ND 45 degrees from [001]
+
+The crystal viewer turns a structure by accumulating a rotation from the drag, and the orientation dock claims that rotation *is* an orientation in the crystal-to-specimen convention — so that entering Euler angles and turning the crystal by hand are the same act. The claim is testable from notation alone. Goss is {011}<100>, so its sheet normal is a <011>, and the angle between <011> and <001> is arccos(1/sqrt(2)). Were the camera a transpose away from an orientation, or the Euler convention the other handedness, this number would not be 45 degrees.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+from pytex.app import REGISTRY
+```
+
+:::
+
+**Compute**
+
+```python
+rows = REGISTRY.call(
+    'crystal.orientation',
+    {
+        'phase': {'builtin': 'cu_fcc'}, 'euler_convention': 'bunge',
+        'angle1': 0.0, 'angle2': 45.0, 'angle3': 0.0,
+    },
+)['table']['rows']
+result = next(row['polar_deg'] for row in rows if row['axis'] == 'ND')
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | 4.97e-14 | 1e-09 | ✅ pass |
+
+**Why this value**: Goss is {011}<100>: the sheet normal is a <011> direction, and the angle between <011> and the crystal c axis <001> is arccos(1/sqrt(2)) = 45 degrees exactly, whatever the lattice parameter. The tolerance is machine precision, not a margin.
+
+**Citation**: Randle and Engler, Introduction to Texture Analysis, 2nd ed., chapter 5 (ideal orientations and their Miller descriptions); Bunge, Texture Analysis in Materials Science (1982), for the Euler convention.
+
+**See also**: {doc}`Texture foundation <../../concepts/texture_foundation>`, {doc}`The PyTex Workbench <../../workflows/workbench_application>`
+
+## The camera and the angle triple are the same orientation, both ways
+
+The dock reads Euler angles off the camera while you drag and writes them back when you type a triple, so the two conversions must be exact inverses: a triple that survives the trip through nine matrix entries and back is what makes 'set the view to brass' and 'what view is this?' answers to the same question. Brass, {011}<211>, supplies the triple, because its first angle is the irrational arctan(1/sqrt(2)) rather than a round number — a decomposition that quietly snapped to a grid would show.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex.app.services.crystal import (
+    camera_matrix_from_euler,
+    euler_from_camera_matrix,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+brass = (35.26438968275465, 45.0, 0.0)
+camera = camera_matrix_from_euler(*brass)
+recovered = np.asarray(euler_from_camera_matrix(camera))
+result = float(np.max(np.abs(recovered - np.asarray(brass))))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `workbench-crystal-viewer-euler-round-trip` | 2.45e-10 | 0.00e+00 | deg | 2.45e-10 | 1e-06 | ✅ pass |
+
+**Why this value**: A rotation matrix and its Euler decomposition name the same element of SO(3), so the round trip is the identity up to floating-point error. Brass is (arctan(1/sqrt(2)), 45, 0) degrees in Bunge angles. The tolerance is a micro-degree rather than machine epsilon because the reader deliberately rounds to a picodegree before wrapping into [0, 360), so that an angle landing a hair below zero is reported as zero rather than as a full turn.
+
+**Citation**: Bunge, Texture Analysis in Materials Science, Butterworths (1982), chapter 2 (the ZXZ Euler convention and its matrix).
 
 **See also**: {doc}`Texture foundation <../../concepts/texture_foundation>`, {doc}`The PyTex Workbench <../../workflows/workbench_application>`

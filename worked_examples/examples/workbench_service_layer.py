@@ -233,6 +233,95 @@ GOSS_POLE_AT_CENTRE = WorkedExample(
 )
 
 
+
+CRYSTAL_VIEWER_GOSS_ND = WorkedExample(
+    id="workbench-crystal-viewer-goss-nd",
+    title="The crystal viewer's camera is an orientation: Goss puts ND 45 degrees from [001]",
+    domain="application",
+    scenario=(
+        "The crystal viewer turns a structure by accumulating a rotation from the drag, and the "
+        "orientation dock claims that rotation *is* an orientation in the crystal-to-specimen "
+        "convention — so that entering Euler angles and turning the crystal by hand are the same "
+        "act. The claim is testable from notation alone. Goss is {011}<100>, so its sheet normal "
+        "is a <011>, and the angle between <011> and <001> is arccos(1/sqrt(2)). Were the camera "
+        "a transpose away from an orientation, or the Euler convention the other handedness, "
+        "this number would not be 45 degrees."
+    ),
+    setup=REGISTRY_SETUP,
+    code=(
+        "rows = REGISTRY.call(\n"
+        "    'crystal.orientation',\n"
+        "    {\n"
+        "        'phase': {'builtin': 'cu_fcc'}, 'euler_convention': 'bunge',\n"
+        "        'angle1': 0.0, 'angle2': 45.0, 'angle3': 0.0,\n"
+        "    },\n"
+        ")['table']['rows']\n"
+        "result = next(row['polar_deg'] for row in rows if row['axis'] == 'ND')"
+    ),
+    expected=45.0,
+    unit="deg",
+    tolerance=1e-9,
+    reference=(
+        "Goss is {011}<100>: the sheet normal is a <011> direction, and the angle between <011> "
+        "and the crystal c axis <001> is arccos(1/sqrt(2)) = 45 degrees exactly, whatever the "
+        "lattice parameter. The tolerance is machine precision, not a margin."
+    ),
+    citation=(
+        "Randle and Engler, Introduction to Texture Analysis, 2nd ed., chapter 5 "
+        "(ideal orientations and their Miller descriptions); Bunge, Texture Analysis in "
+        "Materials Science (1982), for the Euler convention."
+    ),
+    symbols=(),
+    see_also=(_TEXTURE_CONCEPT, _GUIDE),
+    result_format="{:.4f}",
+)
+
+
+CRYSTAL_VIEWER_EULER_ROUND_TRIP = WorkedExample(
+    id="workbench-crystal-viewer-euler-round-trip",
+    title="The camera and the angle triple are the same orientation, both ways",
+    domain="application",
+    scenario=(
+        "The dock reads Euler angles off the camera while you drag and writes them back when you "
+        "type a triple, so the two conversions must be exact inverses: a triple that survives the "
+        "trip through nine matrix entries and back is what makes 'set the view to brass' and "
+        "'what view is this?' answers to the same question. Brass, {011}<211>, supplies the "
+        "triple, because its first angle is the irrational arctan(1/sqrt(2)) rather than a round "
+        "number — a decomposition that quietly snapped to a grid would show."
+    ),
+    setup=(
+        "import numpy as np\n"
+        "from pytex.app.services.crystal import (\n"
+        "    camera_matrix_from_euler,\n"
+        "    euler_from_camera_matrix,\n"
+        ")\n"
+    ),
+    code=(
+        "brass = (35.26438968275465, 45.0, 0.0)\n"
+        "camera = camera_matrix_from_euler(*brass)\n"
+        "recovered = np.asarray(euler_from_camera_matrix(camera))\n"
+        "result = float(np.max(np.abs(recovered - np.asarray(brass))))"
+    ),
+    expected=0.0,
+    unit="deg",
+    tolerance=1e-6,
+    reference=(
+        "A rotation matrix and its Euler decomposition name the same element of SO(3), so the "
+        "round trip is the identity up to floating-point error. Brass is "
+        "(arctan(1/sqrt(2)), 45, 0) degrees in Bunge angles. The tolerance is a micro-degree "
+        "rather than machine epsilon because the reader deliberately rounds to a picodegree "
+        "before wrapping into [0, 360), so that an angle landing a hair below zero is reported "
+        "as zero rather than as a full turn."
+    ),
+    citation=(
+        "Bunge, Texture Analysis in Materials Science, Butterworths (1982), chapter 2 "
+        "(the ZXZ Euler convention and its matrix)."
+    ),
+    symbols=(),
+    see_also=(_TEXTURE_CONCEPT, _GUIDE),
+    result_format="{:.2e}",
+)
+
 GROUP = ExampleGroup(
     slug="workbench-service-layer",
     title="Workbench service layer",
@@ -240,13 +329,16 @@ GROUP = ExampleGroup(
         "The three quantitative claims the workbench user guide makes, each checked against a "
         "value fixed independently of this code: the Kurdjumov-Sachs packet structure and "
         "intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact "
-        "identity, and the assertion a Miller component label makes about where its poles land."
+        "identity, the assertion a Miller component label makes about where its poles land, and the "
+        "crystal viewer's claim that its camera is an orientation."
     ),
     examples=(
         KS_PACKET_COUNT,
         KS_DISORIENTATION_SPECTRUM,
         MRD_MEAN_IS_ONE,
         GOSS_POLE_AT_CENTRE,
+        CRYSTAL_VIEWER_GOSS_ND,
+        CRYSTAL_VIEWER_EULER_ROUND_TRIP,
     ),
 )
 

@@ -175,6 +175,8 @@ crystallographic semantics remain the direct-basis unit cell stored in `Lattice`
 
 ## Related Material
 
+- {doc}`workbench_application` — the interactive viewer built on this renderer, and the orientation
+  dock that reports which orientation the camera currently holds
 - {doc}`../concepts/technical_glossary_and_symbols`
 - {doc}`style_customization`
 - {doc}`combined_structure_diffraction_visualization`

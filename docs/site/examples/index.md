@@ -29,6 +29,8 @@ The complete set of computed-versus-expected values at a glance:
 | `cubic-plane-multiplicity` | [3, 6, 4, 24] | [3, 6, 4, 24] | &mdash; | ✅ |
 | `hex-angle-basal-prism` | 90.0000 | 90.0000 | deg | ✅ |
 | `hex-angle-prism-prism` | 60.0000 | 60.0000 | deg | ✅ |
+| `cubic-nearest-low-index-round-trip` | 0.0000 | 0.0000 | deg | ✅ |
+| `hex-nearest-low-index-plane-vs-direction` | [1, 0, 1] | [1, 0, 1] | &mdash; | ✅ |
 | `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | ✅ |
 | `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | ✅ |
 | `core-orientation-equal-volume-charts-agree-on-the-so3-volume` | [1.000000000000, 1.000000000000, 1.000000000000] | [1.000000000000, 1.000000000000, 1.000000000000] | &mdash; | ✅ |
@@ -119,11 +121,13 @@ The complete set of computed-versus-expected values at a glance:
 | `workbench-ks-intervariant-spectrum` | [10.53, 14.88, 20.61, 21.06, 47.11, 49.47, 50.51, 51.73, 57.21, 60.00] | [10.53, 14.88, 20.61, 21.06, 47.11, 49.47, 50.51, 51.73, 57.21, 60.00] | deg | ✅ |
 | `workbench-mrd-mean-is-one` | [1.000, 1.000, 1.000] | [1.000, 1.000, 1.000] | m.r.d. | ✅ |
 | `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | ✅ |
+| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | ✅ |
+| `workbench-crystal-viewer-euler-round-trip` | 2.45e-10 | 0.00e+00 | deg | ✅ |
 
 ## Example groups
 
 - {doc}`Reference Frames And Frame Transforms <generated/reference_frames>` &mdash; Creating standard frames, declaring frame relationships in words, and letting the frame graph compose multi-step chains — with the rotation angles, components, and invariants checked against exact analytic values. The last two examples pin the IUCr notation convention: the reciprocal star marks the basis, never the indices.
-- {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases. Each result is checked against an analytic identity for the relevant crystal system.
+- {doc}`Crystal geometry: angles, spacings, and multiplicities <generated/crystal_geometry>` &mdash; Interplanar and interdirection angles, interplanar spacings, and symmetry multiplicities for cubic and hexagonal phases, and the naming of a direction or a plane that arrived as a Cartesian vector. Each result is checked against an analytic identity for the relevant crystal system.
 - {doc}`Orientations and disorientation angles <generated/orientation>` &mdash; Round-trip consistency of orientation representations and symmetry-reduced disorientation angles, checked against exact identities and the Sigma 3 twin reference.
 - {doc}`Orientation representations <generated/orientation-representations>` &mdash; The constants and identities behind the equal-volume charts of SO(3), and the inversion that names an orientation as a (hkl)[uvw] texture component.
 - {doc}`Diffraction geometry <generated/diffraction>` &mdash; Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, zone-axis routing on a stereographic Kikuchi map, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
@@ -145,7 +149,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
-- {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, and the assertion a Miller component label makes about where its poles land.
+- {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation.
 
 ```{toctree}
 :maxdepth: 1

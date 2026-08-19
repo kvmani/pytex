@@ -86,6 +86,8 @@ See {doc}`../architecture/reference_frame_foundation` and
 - `angle_plane_plane_rad(...)`
 - `angle_dir_dir_rad(...)`
 - `project_directions_onto_planes(...)`
+- `nearest_low_index_direction(...)`
+- `nearest_low_index_plane(...)`
 - `ReciprocalLatticeVector`
 - `ZoneAxis`
 - `EulerSet`

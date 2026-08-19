@@ -438,8 +438,11 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     if (!data) return;
     if (!state.editing) setAngles(data.euler.angles_deg);
     const axis = data.axis_angle.axis.map((value) => formatNumber(value, 3)).join(' ');
+    // The residual travels with the label. A general orientation puts no axis on
+    // a low-index direction, so "ND ∥ [10-11]" alone would read as an exact
+    // statement about a direction that is four degrees away from it.
     const directions = data.ipf_points
-      .map((point) => `${point.label} ∥ ${point.direction}`)
+      .map((point) => `${point.label} ∥ ${point.direction} ±${formatNumber(point.residual_deg, 1)}°`)
       .join(' · ');
     readout.replaceChildren(
       el('span', { text: `${formatNumber(data.axis_angle.angle_deg, 2)}° about [${axis}]` }),
