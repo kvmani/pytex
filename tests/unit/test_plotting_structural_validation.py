@@ -138,3 +138,45 @@ def test_ebsd_runtime_plotting_surfaces_have_expected_structure() -> None:
 
     plt.close(ipf)
     plt.close(kam)
+
+
+def test_boundary_overlay_is_one_collection_carrying_every_face() -> None:
+    """The overlay draws the whole network as one artist, and draws it the same.
+
+    A real scan carries tens of thousands of boundary faces. One `Line2D` each
+    costs the construction and every redraw the figure afterwards does, so the
+    faces are a single `LineCollection` — with the cap style a line would have
+    used, because a butt cap shortens every face by a pixel at each end.
+    """
+
+    from matplotlib.collections import LineCollection
+
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    specimen = ReferenceFrame("specimen", FrameDomain.SPECIMEN, ("x", "y", "z"), Handedness.RIGHT)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    orientations = OrientationSet.from_euler_angles(
+        np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [40.0, 0.0, 0.0], [40.0, 0.0, 0.0]]),
+        crystal_frame=crystal,
+        specimen_frame=specimen,
+        symmetry=symmetry,
+    )
+    crystal_map = CrystalMap(
+        coordinates=np.array([[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]),
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(2, 2),
+        step_sizes=(1.0, 1.0),
+    )
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=5.0, connectivity=4)
+    network = segmentation.boundary_network()
+
+    figure = plot_ipf_map(crystal_map, boundary_overlay=network)
+    axes = figure.axes[0]
+    collections = [artist for artist in axes.collections if isinstance(artist, LineCollection)]
+
+    assert len(axes.lines) == 0
+    assert len(collections) == 1
+    assert len(collections[0].get_segments()) == network.count
+    assert collections[0].get_capstyle() == matplotlib.rcParams["lines.solid_capstyle"]
+
+    plt.close(figure)

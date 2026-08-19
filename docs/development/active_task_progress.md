@@ -47,6 +47,22 @@ Per stage, at 200 points a side (40 000 measurements):
 colour checksum, the grain and boundary-segment counts and every grain's
 `reference_orientation_index` are identical to the pre-change run, compared value for value.
 
+### In the workbench itself, end to end
+
+Measured in the running application, not in a script: the EBSD panel with the
+`equiaxed_polycrystal` dataset at 200 points a side, boundaries on, timed from the click on
+**Draw the map** to the button coming back.
+
+| | before | after |
+| --- | --- | --- |
+| `POST /api/call` round trip | ~39.8 s | **1.97 s** |
+| browser draw of the returned map | 0.043 s | 0.043 s |
+| **click to redrawn panel** | **~39.8 s** | **2.01 s** |
+
+The browser side was measured rather than assumed, and it is not the bottleneck: 1 333 boundary
+segments become 1 333 SVG `line` elements in 43 ms. It would become one at map sizes nobody
+reaches from the practice gallery, so the panel's drawing code is left alone.
+
 ### What was slow, and what replaced it
 
 | # | Increment | Status | Commit |
@@ -57,6 +73,7 @@ colour checksum, the grain and boundary-segment counts and every grain's
 | M3 | Symmetry-orbit reduction as one dense product, without renormalizing the orbit | done | (this commit) |
 | M4 | `grid_points` help text corrected — it still quoted the old timings | done | (this commit) |
 | M5 | Theory note, CHANGELOG, and the roadmap line that still called the segmentation a union-find | done | (this commit) |
+| M6 | Boundary overlay in the Matplotlib maps as one `LineCollection` | done | (this commit) |
 
 **M1 — the grain reference orientation, 95% of the wall time.**
 `_disorientation_medoid_index` compared every pair of members of every grain through all `k = 24`
@@ -109,6 +126,27 @@ deliberate: `test_workflow_grade_ebsd_to_texture_pipeline_and_contracts` round-t
 through a JSON contract and compares them exactly, so a norm off by an ulp is visible downstream.
 `tests/unit/test_symmetry.py` pins the batch result against the scalar rule, member for member,
 for five point groups and both antipodal settings, and pins independence from the block size.
+
+### M6 — the boundary overlay in the Matplotlib maps
+
+`pytex.plotting.ebsd._overlay_boundaries` drew one `ax.plot` call per boundary face. A face is a
+pixel edge, so a real scan carries tens of thousands of them, and a `Line2D` apiece costs both the
+construction and every redraw the figure afterwards does. The whole network is now a single
+`LineCollection`.
+
+Measured on `bicrystal_gradient` at 200 points a side segmented at 0.02 deg, which yields 101
+grains and 20 000 boundary faces:
+
+| | before | after |
+| --- | --- | --- |
+| `plot_ipf_map(..., boundary_overlay=network)` | 7.057 s | **0.379 s** |
+| one subsequent `canvas.draw()` | 1.730 s | **0.166 s** |
+
+The drawing is unchanged to the pixel: `plot_ipf_map` and `plot_kam_map` with boundaries and a
+scale bar were rendered to PNG before and after on two datasets and compared, and the maximum
+per-channel difference is zero. That needed one deliberate detail — a `LineCollection` defaults to
+butt caps while a line takes `rcParams["lines.solid_capstyle"]`, which is `projecting`, so the
+collection is given the line's cap style. Without it every face is drawn a pixel short at each end.
 
 ### What is still quadratic, and why that is the right place to stop
 

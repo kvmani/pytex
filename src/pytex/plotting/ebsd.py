@@ -69,9 +69,32 @@ def _overlay_boundaries(
     network = _boundary_network_for_overlay(crystal_map, boundary_overlay)
     if network is None:
         return
-    for segment in network.segments:
-        pair = crystal_map.coordinates[[segment.left_index, segment.right_index], :2]
-        ax.plot(pair[:, 0], pair[:, 1], color=color, linewidth=linewidth, alpha=0.9)
+    if not network.segments:
+        return
+    import matplotlib
+    from matplotlib.collections import LineCollection
+
+    # One artist for the whole network, not one per segment. A real scan
+    # carries tens of thousands of boundary faces, and a Line2D apiece costs
+    # both the construction and every redraw the figure ever does.
+    endpoints = np.array(
+        [[segment.left_index, segment.right_index] for segment in network.segments],
+        dtype=np.int64,
+    )
+    coordinates = np.asarray(crystal_map.coordinates, dtype=np.float64)[:, :2]
+    ax.add_collection(
+        LineCollection(
+            list(coordinates[endpoints]),
+            colors=color,
+            linewidths=linewidth,
+            alpha=0.9,
+            # A collection defaults to butt caps and a line to whatever
+            # `lines.solid_capstyle` says, which is `projecting`. Taking the
+            # line's default keeps the drawn boundary the length it has always
+            # been — the difference is a whole pixel at each end of a face.
+            capstyle=matplotlib.rcParams["lines.solid_capstyle"],
+        )
+    )
 
 
 def plot_ipf_map(
