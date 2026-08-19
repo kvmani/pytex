@@ -5,6 +5,75 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Crystal Viewer Orientation Workspace — IN PROGRESS (started 2026-08-19)
+
+**Objective.** Give the crystal viewer a live orientation workspace: a pole figure and an inverse
+pole figure that update as the structure is turned, a fly-by trail through the IPF, and a way to
+set the view to a required orientation by Euler angles. Lay the viewports out so the structure
+stays the hero and nothing is crowded, on both shells (there is one shell: `desktop.py` runs the
+same server in a window, so a web feature is a desktop feature by construction).
+
+### Conventions fixed for this work
+
+- The **screen frame is the specimen frame**: `RD = screen right (+x)`, `TD = screen up (+y)`,
+  `ND = out of the screen towards the viewer (+z)`. Right-handed, and identical to
+  `pytex.core.frame_catalog.SAMPLE_RD_TD_ND_FRAME` with its default identity triad. The texture
+  panel already draws pole figures with RD to the right and TD up, so the two panels agree.
+- The camera matrix the viewer already keeps is therefore *exactly* an orientation matrix in the
+  PyTex crystal-to-specimen convention: `v_specimen = C v_crystal`, matching
+  `Orientation.as_matrix()`. Nothing new is invented; the conversion to Euler angles goes through
+  `pytex.core.orientation.Rotation` alone.
+- Pole figures use the upper hemisphere and are stereographic by default, matching
+  `pytex.texture.projections.project_directions`.
+
+### Division of labour
+
+Python decides *what* the picture is of, the browser only projects it — the existing Decision 4
+contract for this panel. Concretely: `crystal.scene` gains an `orientation` block carrying the
+symmetry operators, the expanded pole families, and the fundamental sector (vertices and inward
+edge normals) in the Cartesian crystal frame; the browser multiplies by the camera and projects.
+The Euler readout and the numeric table are not derived in JavaScript — a debounced
+`crystal.orientation` call answers them, so there is one derivation of the convention.
+
+### Plan
+
+1. `pytex.core.miller`: `nearest_low_index_direction` / `nearest_low_index_plane`, so a direction
+   recovered as geometry can be named. **[done]**
+2. `crystal.py`: pole-family expansion, sector payload, `orientation_overlay`, and the
+   `camera_matrix` <-> Euler conversions, with tests. **[done]**
+3. New `crystal.orientation` operation: Euler angles or a camera matrix in, a described orientation
+   out (poles in the specimen frame, the crystal direction along each specimen axis). **[done]**
+4. `panels/crystal.js` and `panels/crystalorientation.js`: the orientation dock — pole figure,
+   inverse pole figure with a fly-by trail, and the Euler card in the rail. **[done]**
+5. CSS for the dock, including the two-arrangement layout. **[done]**
+6. Browser tests for the live figures, the Euler round trip and the layout. **[done]**
+7. Docs: theory note or workflow page, the worked example, `docs/README.md`, the symbol registry
+   check, and the parity matrix if it is affected. **[next]**
+
+### Decisions taken
+
+- The reusable index-naming surface went to `pytex.core.miller` rather than being written twice in
+  the app. `pytex.core.transformation` keeps its own private rationalizer: its bound (17) and its
+  residual semantics are bound up with OR-variant reporting, and merging the two is a separate
+  change with its own regression surface. Recorded here as a known duplication, not an oversight.
+- The Euler readout is a debounced `crystal.orientation` call rather than a decomposition in
+  JavaScript. The figures stay live at drag rate; the numbers settle about a fifth of a second
+  after the drag stops. One convention, defined once.
+- Layout: on stages wider than 78rem the dock is a column beside the structure, so both figures and
+  the crystal are on screen together; below that it is a strip under the structure and the
+  structure gives up part of its height. On a phone the dock starts closed. The Euler entry lives
+  in the rail with the other controls, not in the stage.
+
+### Verification
+
+`ruff check src tests`, `mypy src`, and `pytest tests/unit` are green. The five new Playwright
+tests in `tests/browser/workbench.spec.js` pass against a live server, including the one that
+actually drags the crystal and asserts the poles moved.
+
+### Current worktree state
+
+Started clean at `8d6857d`.
+
 ## EBSD Map Rendering Performance — COMPLETE (2026-08-19)
 
 **Objective.** The EBSD panel's orientation maps took far too long to appear: the `ebsd.map`

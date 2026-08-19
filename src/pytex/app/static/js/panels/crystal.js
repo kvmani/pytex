@@ -17,6 +17,17 @@
 
 import { el, formatNumber, svg } from '../core/dom.js';
 import { buildForm } from '../core/controls.js';
+import {
+  applyMatrix,
+  applyTranspose,
+  identity,
+  lookAlong,
+  multiply,
+  normalise,
+  rotationX,
+  rotationY,
+} from '../core/rotation3.js';
+import { orientationDock } from './crystalorientation.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult, download, saveBlob } from '../core/result.js';
 import { call } from '../core/api.js';
@@ -403,8 +414,32 @@ export function mount(context) {
     ],
   });
 
+  /*
+   * The orientation dock sits under the structure rather than beside it. The
+   * structure is the hero and wants the width; the two figures beside it are
+   * square and small, and a strip of three cards that reflows to one column on
+   * a narrow window uses the space a wide desktop actually has without
+   * squeezing the picture that earns it. It collapses, because a reader who
+   * came to look at bonds should be able to put it away.
+   */
+  const dock = orientationDock({
+    camera: () => camera.rotation,
+    setCamera: (matrix) => {
+      camera.rotation = matrix.slice();
+      draw();
+    },
+    request: () => ({
+      phase: state.result?.inputs?.phase,
+      poles: state.result?.inputs?.planes ?? [],
+    }),
+    showError: (error) => context.showError(error),
+  });
+
   const details = el('div');
-  context.stage.append(frame.element, details);
+  context.stage.append(
+    el('div.crystal-workspace', {}, [frame.element, dock.element]),
+    details,
+  );
 
   /* ------------------------------------------------------------ controls */
 
@@ -419,6 +454,7 @@ export function mount(context) {
   context.rail.append(
     formHost,
     drawButton,
+    dock.controls,
     appearanceHost,
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
@@ -475,6 +511,7 @@ export function mount(context) {
       state.scene = result.data.scene;
       seedSpeciesColors(state.appearance, state.scene);
       renderAppearanceControls();
+      dock.setScene(state.scene);
       resetCamera();
       renderResult(details, result, { teaches: state.teaches });
     } catch (error) {
@@ -528,6 +565,7 @@ export function mount(context) {
         const vectors = state.scene?.axes;
         if (!vectors) return;
         camera.rotation = lookAlong(vectors[axis.indexOf(1)].vector);
+        dock.resetTrail();
         draw();
       },
     });
@@ -535,6 +573,7 @@ export function mount(context) {
 
   function resetCamera() {
     camera.rotation = multiply(rotationX(-1.2), rotationY(0.6));
+    dock.resetTrail();
     camera.zoom = 1;
     camera.pan = { x: 0, y: 0 };
     zoomReadout.textContent = '100%';
@@ -552,6 +591,7 @@ export function mount(context) {
     const node = renderScene(state.scene, camera, frame, state.appearance);
     frame.setContent(node);
     attachPointer(node);
+    dock.draw();
     const scene = state.scene;
     frame.setStatus(
       `${scene.atoms.length} atoms · ${scene.bonds.length} bonds · ` +
@@ -1042,74 +1082,6 @@ function cameraToCrystal(camera, x, y) {
     y: model[1] + camera.centre[1],
     z: model[2] + camera.centre[2],
   };
-}
-
-/** A camera looking down a crystal direction. */
-function lookAlong(vector) {
-  const forward = normalise(vector);
-  const reference = Math.abs(forward[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0];
-  const right = normalise(cross(reference, forward));
-  const up = cross(forward, right);
-  return [right[0], right[1], right[2], up[0], up[1], up[2], forward[0], forward[1], forward[2]];
-}
-
-/* Row-major 3x3 helpers. Small enough to read, and the only maths in the panel. */
-
-function identity() {
-  return [1, 0, 0, 0, 1, 0, 0, 0, 1];
-}
-
-function multiply(a, b) {
-  const out = new Array(9).fill(0);
-  for (let row = 0; row < 3; row += 1) {
-    for (let column = 0; column < 3; column += 1) {
-      let sum = 0;
-      for (let k = 0; k < 3; k += 1) sum += a[row * 3 + k] * b[k * 3 + column];
-      out[row * 3 + column] = sum;
-    }
-  }
-  return out;
-}
-
-function rotationX(angle) {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return [1, 0, 0, 0, c, -s, 0, s, c];
-}
-
-function rotationY(angle) {
-  const c = Math.cos(angle);
-  const s = Math.sin(angle);
-  return [c, 0, s, 0, 1, 0, -s, 0, c];
-}
-
-function applyMatrix(m, v) {
-  return [
-    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
-    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
-    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
-  ];
-}
-
-function applyTranspose(m, v) {
-  return [
-    m[0] * v[0] + m[3] * v[1] + m[6] * v[2],
-    m[1] * v[0] + m[4] * v[1] + m[7] * v[2],
-    m[2] * v[0] + m[5] * v[1] + m[8] * v[2],
-  ];
-}
-
-function cross(a, b) {
-  return [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-}
-
-function normalise(v) {
-  const length = Math.hypot(v[0], v[1], v[2]) || 1;
-  return [v[0] / length, v[1] / length, v[2] / length];
 }
 
 /**

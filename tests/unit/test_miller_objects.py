@@ -26,6 +26,8 @@ from pytex.core import (
     canonicalize_sign,
     direction_uvtw_to_uvw_array,
     direction_uvw_to_uvtw_array,
+    nearest_low_index_direction,
+    nearest_low_index_plane,
     plane_hkil_to_hkl_array,
     plane_hkl_to_hkil_array,
     project_directions_onto_planes,
@@ -235,3 +237,73 @@ def test_batch_symmetry_indices_and_unique_inverse_mapping() -> None:
     assert expanded_indices.shape[:2] == mask.shape
     assert expanded_indices.shape[0] == 3
     assert np.all(np.sum(mask, axis=1) == 3)
+
+
+def test_nearest_low_index_direction_is_exact_for_a_low_index_vector() -> None:
+    phase = _make_cubic_phase()
+
+    for expected in ([0, 0, 1], [1, 1, 0], [1, 1, 1], [1, 2, 3], [-1, 0, 2]):
+        cartesian = MillerDirection.from_uvw(expected, phase=phase).unit_vector_cartesian
+        indices, residual_deg = nearest_low_index_direction(cartesian, phase=phase)
+        assert_array_equal(indices, np.asarray(expected, dtype=np.int64))
+        assert residual_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_nearest_low_index_direction_reports_the_angle_it_had_to_travel() -> None:
+    phase = _make_cubic_phase()
+    # Halfway between [001] and [101] in angle: 22.5 degrees from each. The
+    # search may land on either, or on a closer high-index triple, but the
+    # residual must be an honest angle and no worse than 22.5 degrees.
+    direction = np.array([np.sin(np.pi / 8.0), 0.0, np.cos(np.pi / 8.0)])
+    indices, residual_deg = nearest_low_index_direction(direction, phase=phase)
+
+    recovered = MillerDirection.from_uvw(indices, phase=phase).unit_vector_cartesian
+    assert residual_deg <= 22.5 + 1e-9
+    assert residual_deg == pytest.approx(
+        np.degrees(np.arccos(np.clip(float(np.dot(recovered, direction)), -1.0, 1.0))), abs=1e-9
+    )
+
+
+def test_nearest_low_index_direction_is_sign_sensitive() -> None:
+    phase = _make_cubic_phase()
+
+    positive, _ = nearest_low_index_direction([0.0, 0.0, 1.0], phase=phase)
+    negative, _ = nearest_low_index_direction([0.0, 0.0, -1.0], phase=phase)
+
+    assert_array_equal(positive, np.array([0, 0, 1], dtype=np.int64))
+    assert_array_equal(negative, np.array([0, 0, -1], dtype=np.int64))
+
+
+def test_nearest_low_index_returns_primitive_indices() -> None:
+    phase = _make_cubic_phase()
+
+    indices, _ = nearest_low_index_direction([2.0, 2.0, 0.0], phase=phase)
+
+    assert_array_equal(indices, np.array([1, 1, 0], dtype=np.int64))
+
+
+def test_planes_and_directions_differ_in_a_hexagonal_phase() -> None:
+    phase = _make_hex_phase()
+    # The (10-11) pyramidal plane normal is not parallel to the [10-11]
+    # direction in a hexagonal lattice, which is exactly why the two spellings
+    # exist. Naming the plane normal as a direction must therefore not give the
+    # plane's own indices back.
+    normal = CrystalPlane(
+        miller=MillerIndex(indices=np.array([1, 0, 1]), phase=phase), phase=phase
+    ).normal
+
+    plane_indices, plane_residual = nearest_low_index_plane(normal, phase=phase)
+    direction_indices, _ = nearest_low_index_direction(normal, phase=phase)
+
+    assert_array_equal(plane_indices, np.array([1, 0, 1], dtype=np.int64))
+    assert plane_residual == pytest.approx(0.0, abs=1e-9)
+    assert not np.array_equal(direction_indices, plane_indices)
+
+
+def test_nearest_low_index_refuses_a_degenerate_vector() -> None:
+    phase = _make_cubic_phase()
+
+    with pytest.raises(ValueError, match="nonzero"):
+        nearest_low_index_direction([0.0, 0.0, 0.0], phase=phase)
+    with pytest.raises(ValueError, match="nonzero"):
+        nearest_low_index_plane([np.nan, 0.0, 1.0], phase=phase)

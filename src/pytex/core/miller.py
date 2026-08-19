@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any, cast
 
 import numpy as np
@@ -1745,7 +1746,201 @@ def project_directions_onto_planes(
     return _projection_vectors(direction_units, plane_normals)
 
 
+#: Default bound of the integer search behind :func:`nearest_low_index_direction`
+#: and :func:`nearest_low_index_plane`. Eight covers every index a structure
+#: viewer, a stereogram or a standard-triangle label is read against, and keeps
+#: the candidate set (roughly 2600 primitive triples) small enough to search in
+#: microseconds.
+DEFAULT_LOW_INDEX_BOUND = 8
+
+
+@lru_cache(maxsize=8)
+def _primitive_triples(max_index: int) -> IntArray:
+    """Every primitive signed integer triple with entries in ``[-n, n]``.
+
+    Primitive means ``gcd(|h|, |k|, |l|) == 1``: ``(2, 2, 0)`` names the same
+    direction as ``(1, 1, 0)``, so testing it would only produce a label a
+    crystallographer would immediately reduce.
+    """
+
+    if max_index < 1:
+        raise ValueError("max_index must be at least 1.")
+    axis = np.arange(-max_index, max_index + 1, dtype=np.int64)
+    grid = np.stack(np.meshgrid(axis, axis, axis, indexing="ij"), axis=-1).reshape(-1, 3)
+    nonzero = grid[np.any(grid != 0, axis=1)]
+    primitive = np.ascontiguousarray(nonzero[np.gcd.reduce(np.abs(nonzero), axis=1) == 1])
+    primitive.setflags(write=False)
+    return as_int_array(primitive, shape=(None, 3))
+
+
+def _nearest_low_index(
+    vector: Any,
+    *,
+    basis_matrix: FloatArray,
+    max_index: int,
+    name: str,
+) -> tuple[IntArray, float]:
+    """Shared search behind the direction and plane spellings."""
+
+    cartesian = as_float_array(vector, shape=(3,))
+    magnitude = float(np.linalg.norm(cartesian))
+    if not np.isfinite(magnitude) or magnitude <= 0.0:
+        raise ValueError(f"{name} requires a finite, nonzero Cartesian vector.")
+    target = cartesian / magnitude
+    candidates = _primitive_triples(int(max_index))
+    images = candidates.astype(np.float64) @ basis_matrix.T
+    units = images / np.linalg.norm(images, axis=1)[:, None]
+    cosines = units @ target
+    best = int(np.argmax(cosines))
+    # atan2 against the cross-product magnitude keeps full precision near zero,
+    # where arccos of a cosine that has been rounded to 1.0 returns exactly 0
+    # and hides a residual the caller is entitled to see.
+    sine = float(np.linalg.norm(np.cross(units[best], target)))
+    residual_deg = float(np.degrees(np.arctan2(sine, float(cosines[best]))))
+    indices = as_int_array(np.ascontiguousarray(candidates[best]), shape=(3,))
+    return indices, residual_deg
+
+
+def nearest_low_index_direction(
+    vector: Any,
+    *,
+    phase: Phase,
+    max_index: int = DEFAULT_LOW_INDEX_BOUND,
+) -> tuple[IntArray, float]:
+    """The low-index direction ``[uvw]`` closest in angle to a Cartesian vector.
+
+    Purpose
+    -------
+    Put a name on a direction that arrived as geometry rather than as indices —
+    the crystal direction lying along a specimen axis in an inverse pole figure,
+    a corner of the standard triangle, a zone axis recovered from a camera. The
+    answer a crystallographer wants is a low-index label plus an honest
+    statement of how far the true direction is from it, not an exact triple of
+    large integers.
+
+    When and where to use it
+    ------------------------
+    Labelling inverse-pole-figure readouts, stereogram poles, and interactive
+    viewer readouts. Do **not** use it to recover indices that are already known
+    exactly; construct the :class:`~pytex.core.lattice.CrystalDirection` from its
+    indices instead, so no search and no tolerance enters the result.
+
+    Parameters
+    ----------
+    vector : array-like
+        A nonzero 3-vector in the Cartesian crystal frame of ``phase``. Its
+        length is ignored; only its direction is matched, sign included.
+    phase : Phase
+        The phase whose direct basis gives the indices their meaning.
+    max_index : int
+        Largest absolute index searched, default
+        :data:`DEFAULT_LOW_INDEX_BOUND`. Raising it returns closer but less
+        readable labels.
+
+    Returns
+    -------
+    tuple of (IntArray, float)
+        The primitive triple ``[uvw]``, and the angle in degrees between the
+        supplied vector and that direction. A residual of zero means the label
+        is exact; a residual of several degrees means the direction is genuinely
+        between named directions and the label is the nearest signpost.
+
+    Examples
+    --------
+    >>> from pytex.core.frame_catalog import crystal_frame
+    >>> from pytex.core.lattice import Lattice, Phase
+    >>> from pytex.core.symmetry import SymmetrySpec
+    >>> frame = crystal_frame()
+    >>> phase = Phase(
+    ...     "demo",
+    ...     lattice=Lattice(4.0, 4.0, 4.0, 90.0, 90.0, 90.0, crystal_frame=frame),
+    ...     symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=frame),
+    ...     crystal_frame=frame,
+    ... )
+    >>> indices, residual = nearest_low_index_direction([1.0, 1.0, 1.0], phase=phase)
+    >>> tuple(int(value) for value in indices), round(residual, 9)
+    ((1, 1, 1), 0.0)
+
+    See Also
+    --------
+    nearest_low_index_plane : The plane-normal spelling.
+    pytex.core.lattice.CrystalDirection.from_cartesian :
+        The exact, unrounded inverse when no label is wanted.
+    """
+
+    return _nearest_low_index(
+        vector,
+        basis_matrix=_direct_basis_matrix(phase),
+        max_index=max_index,
+        name="nearest_low_index_direction",
+    )
+
+
+def nearest_low_index_plane(
+    vector: Any,
+    *,
+    phase: Phase,
+    max_index: int = DEFAULT_LOW_INDEX_BOUND,
+) -> tuple[IntArray, float]:
+    """The low-index plane ``(hkl)`` whose normal is closest to a Cartesian vector.
+
+    Purpose
+    -------
+    The plane-normal counterpart of :func:`nearest_low_index_direction`: name the
+    plane whose normal a measured or constructed direction most nearly is. Miller
+    indices are reciprocal-basis components, so the search runs against the
+    reciprocal basis and the two spellings disagree for every non-cubic phase —
+    which is exactly why they are separate functions rather than one with a flag
+    the caller might leave at its default.
+
+    Parameters
+    ----------
+    vector : array-like
+        A nonzero 3-vector in the Cartesian crystal frame of ``phase``, taken as
+        a plane *normal*.
+    phase : Phase
+        The phase whose reciprocal basis gives the indices their meaning.
+    max_index : int
+        Largest absolute index searched, default
+        :data:`DEFAULT_LOW_INDEX_BOUND`.
+
+    Returns
+    -------
+    tuple of (IntArray, float)
+        The primitive triple ``(hkl)``, and the angle in degrees between the
+        supplied vector and that plane normal.
+
+    Examples
+    --------
+    >>> from pytex.core.frame_catalog import crystal_frame
+    >>> from pytex.core.lattice import Lattice, Phase
+    >>> from pytex.core.symmetry import SymmetrySpec
+    >>> frame = crystal_frame()
+    >>> phase = Phase(
+    ...     "hcp",
+    ...     lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=frame),
+    ...     symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=frame),
+    ...     crystal_frame=frame,
+    ... )
+    >>> indices, residual = nearest_low_index_plane([0.0, 0.0, 2.5], phase=phase)
+    >>> tuple(int(value) for value in indices), round(residual, 9)
+    ((0, 0, 1), 0.0)
+
+    See Also
+    --------
+    nearest_low_index_direction : The direction spelling.
+    """
+
+    return _nearest_low_index(
+        vector,
+        basis_matrix=_reciprocal_basis_matrix(phase),
+        max_index=max_index,
+        name="nearest_low_index_plane",
+    )
+
+
 __all__ = [
+    "DEFAULT_LOW_INDEX_BOUND",
     "MillerBravaisDirection",
     "MillerBravaisPlane",
     "MillerDirection",
@@ -1761,6 +1956,8 @@ __all__ = [
     "canonicalize_sign",
     "direction_uvtw_to_uvw_array",
     "direction_uvw_to_uvtw_array",
+    "nearest_low_index_direction",
+    "nearest_low_index_plane",
     "plane_hkil_to_hkl_array",
     "plane_hkl_to_hkil_array",
     "project_directions_onto_planes",

@@ -1081,3 +1081,147 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
   await expect(page.getByRole('button', { name: 'Calculate', exact: true })).toBeVisible();
   expect(browserErrors).toEqual([]);
 });
+
+/*
+ * The crystal viewer's orientation dock.
+ *
+ * The claim under test is the one the dock exists to make: that the pole figure
+ * beside the structure is a figure of *that* structure as it is *now*. It is
+ * checked the only way it can be — by turning the crystal and watching the poles
+ * move — because a screenshot of a correct-looking pole figure is exactly what a
+ * dock that never updated would also produce.
+ */
+
+/** Marker positions in one of the dock's two figures, as a comparable string. */
+async function figureMarkers(page, index) {
+  return page.evaluate((which) => {
+    const canvas = document.querySelectorAll('.orient__canvas')[which];
+    return [...canvas.querySelectorAll('circle, polygon')]
+      .map((node) => node.getAttribute('cx') ?? node.getAttribute('points'))
+      .join('|');
+  }, index);
+}
+
+/** Drag across the structure, in the small steps a hand would make. */
+async function turnTheStructure(page) {
+  const surface = page.locator('#stage .plot svg').first();
+  const box = await surface.boundingBox();
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  for (let step = 1; step <= 10; step += 1) {
+    await page.mouse.move(startX + step * 9, startY + step * 4);
+  }
+  await page.mouse.up();
+}
+
+test('turns the pole figure with the crystal', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const dock = page.locator('.orient');
+  await expect(dock).toBeVisible();
+  await expect(page.locator('.orient__canvas svg')).toHaveCount(2);
+
+  const before = await figureMarkers(page, 0);
+  expect(before.length).toBeGreaterThan(0);
+  await turnTheStructure(page);
+  const after = await figureMarkers(page, 0);
+
+  expect(after).not.toEqual(before);
+  // The fly-by leaves a trail through the standard triangle, so the inverse
+  // pole figure gains markers rather than merely moving one.
+  const trail = await page.evaluate(
+    () => document.querySelectorAll('.orient__canvas')[1].querySelectorAll('circle').length,
+  );
+  expect(trail).toBeGreaterThan(4);
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('sets the view from Euler angles and reads them back', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const angles = page.locator('.orient__angles input');
+  await expect(angles).toHaveCount(3);
+
+  // Goss, {011}<100>: the sheet normal is a <011> and the rolling direction a
+  // <100>. Entering its angles must put exactly that in the readout, which is
+  // the whole round trip -- angles to camera in Python, camera to figures in the
+  // browser, camera back to a named direction in Python.
+  await angles.nth(0).fill('0');
+  await angles.nth(1).fill('45');
+  await angles.nth(2).fill('0');
+  await page.getByRole('button', { name: 'Set view', exact: true }).click();
+
+  const readout = page.locator('.orient__readout');
+  await expect(readout).toContainText('ND ∥ [101]');
+  await expect(readout).toContainText('RD ∥ [001]');
+
+  await turnTheStructure(page);
+  // The angles follow the drag once it settles, so they no longer read as Goss.
+  await expect.poll(() => angles.nth(1).inputValue(), { timeout: 10_000 }).not.toEqual('45.00');
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('offers named ideal orientations and applies one', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await page.getByRole('button', { name: 'brass', exact: true }).click();
+
+  const angles = page.locator('.orient__angles input');
+  await expect.poll(() => angles.nth(1).inputValue(), { timeout: 10_000 }).toEqual('45.00');
+  await expect(angles.nth(0)).toHaveValue('35.26');
+  // Brass is {011}<211>.
+  await expect(page.locator('.orient__readout')).toContainText('ND ∥ [101]');
+  await expect(page.locator('.orient__readout')).toContainText('RD ∥ [112]');
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('keeps the structure and both orientation figures on screen together', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const browserErrors = await openWorkbench(page);
+
+  // The dock is a column beside the structure at this width, and both figures
+  // fit in it: the point of the layout is that nothing has to be scrolled to to
+  // be watched.
+  const geometry = await page.evaluate(() => {
+    const dock = document.querySelector('.orient');
+    const dockBox = dock.getBoundingClientRect();
+    const cells = [...dock.querySelectorAll('.orient__cell')].map((cell) =>
+      cell.getBoundingClientRect(),
+    );
+    return {
+      plotWidth: document.querySelector('#stage .plot').getBoundingClientRect().width,
+      dockLeft: dockBox.left,
+      dockRight: dockBox.right,
+      dockBottom: dockBox.bottom,
+      cellBottoms: cells.map((cell) => cell.bottom),
+      overflows: dock.scrollHeight > dock.clientHeight + 1,
+      bodyScrollWidth: document.body.scrollWidth,
+      innerWidth: window.innerWidth,
+    };
+  });
+
+  expect(geometry.dockLeft).toBeGreaterThan(geometry.plotWidth);
+  expect(geometry.overflows).toBe(false);
+  for (const bottom of geometry.cellBottoms) expect(bottom).toBeLessThanOrEqual(geometry.dockBottom);
+  expect(geometry.bodyScrollWidth).toBeLessThanOrEqual(geometry.innerWidth);
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('folds the dock away on a phone without overflowing it', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const browserErrors = await openWorkbench(page);
+
+  const dock = page.locator('.orient');
+  await expect(dock).toHaveJSProperty('open', false);
+  await dock.locator('summary').click();
+  await expect(dock).toHaveJSProperty('open', true);
+  await expect(page.locator('.orient__canvas svg')).toHaveCount(2);
+
+  const overflow = await page.evaluate(() => document.body.scrollWidth - window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+
+  expect(browserErrors).toEqual([]);
+});

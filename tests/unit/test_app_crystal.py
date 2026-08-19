@@ -16,7 +16,14 @@ import pytest
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import builtin_phase
-from pytex.app.services.crystal import _appearance, _appearance_style, camera_angles_from_matrix
+from pytex.app.services.crystal import (
+    _appearance,
+    _appearance_style,
+    camera_angles_from_matrix,
+    camera_matrix_from_euler,
+    euler_from_camera_matrix,
+    orientation_overlay,
+)
 
 pytest.importorskip("matplotlib", reason="the crystal scene is built by the plotting layer")
 
@@ -323,3 +330,217 @@ class TestRender:
             "crystal.render", {"phase": {"builtin": "fe_bcc"}, "format": "png", "dpi": 72}
         )
         assert len(plt.get_fignums()) == before
+
+
+class TestOrientationOverlay:
+    """What the browser is handed so it can draw a live pole figure.
+
+    The assertions are the invariants a pole figure depends on and a renderer
+    cannot repair: the poles are unit vectors, each family is closed under the
+    point group, the standard triangle's corners are exact low-index directions,
+    and its outline lies on the sector rather than inside it.
+    """
+
+    def test_every_pole_is_a_unit_vector(self) -> None:
+        overlay = orientation_overlay(builtin_phase("cu_fcc"))
+        for family in overlay["pole_families"]:
+            vectors = np.asarray(family["vectors"], dtype=float)
+            assert np.allclose(np.linalg.norm(vectors, axis=1), 1.0)
+
+    def test_the_cubic_families_have_their_textbook_multiplicities(self) -> None:
+        overlay = orientation_overlay(builtin_phase("cu_fcc"))
+        counts = {family["label"]: len(family["vectors"]) for family in overlay["pole_families"]}
+        # Signed poles, so twice the usual family size: {100} is six faces,
+        # {110} twelve, {111} eight.
+        assert counts == {"{100}": 6, "{110}": 12, "{111}": 8}
+
+    def test_each_family_is_closed_under_the_point_group(self) -> None:
+        overlay = orientation_overlay(builtin_phase("ti_hcp"))
+        operators = np.asarray(overlay["operators"], dtype=float).reshape(-1, 3, 3)
+        for family in overlay["pole_families"]:
+            vectors = np.asarray(family["vectors"], dtype=float)
+            images = np.einsum("nij,mj->nmi", operators, vectors).reshape(-1, 3)
+            for image in images:
+                distances = np.linalg.norm(vectors - image, axis=1)
+                assert float(distances.min()) < 1e-9
+
+    def test_the_standard_triangle_corners_are_exact_low_index_directions(self) -> None:
+        for key, expected in (
+            ("cu_fcc", {"[001]", "[101]", "[111]"}),
+            ("ti_hcp", {"[0001]", "[2 -1 -1 0]", "[1 0 -1 0]"}),
+        ):
+            corners = orientation_overlay(builtin_phase(key))["sector"]["corners"]
+            assert {corner["label"] for corner in corners} == expected
+            assert all(corner["residual_deg"] < 1e-6 for corner in corners)
+
+    def test_the_sector_outline_lies_on_the_sector_boundary(self) -> None:
+        overlay = orientation_overlay(builtin_phase("cu_fcc"))
+        normals = np.asarray(overlay["sector"]["edge_normals"], dtype=float)
+        outline = np.asarray(overlay["sector"]["outline"], dtype=float)
+        assert outline.shape[0] > 3
+        # Invert the stereographic projection and check that every sampled point
+        # is inside the sector and on one of its bounding planes. A straight line
+        # between projected corners would fail the second half.
+        radius_squared = np.sum(outline**2, axis=1)
+        z = (1.0 - radius_squared) / (1.0 + radius_squared)
+        scale = 1.0 + z
+        directions = np.column_stack([outline[:, 0] * scale, outline[:, 1] * scale, z])
+        products = directions @ normals.T
+        assert np.all(products > -1e-9)
+        assert np.all(np.min(np.abs(products), axis=1) < 1e-9)
+
+    def test_the_overlays_of_the_scene_travel_with_it(self) -> None:
+        overlay = orientation_overlay(
+            builtin_phase("cu_fcc"), plane_rows=((1, 1, 1),), direction_rows=((1, -1, 0),)
+        )
+        assert [entry["label"] for entry in overlay["overlay_poles"]] == ["(111)"]
+        assert [entry["label"] for entry in overlay["overlay_directions"]] == ["[1 -1 0]"]
+        pole = np.asarray(overlay["overlay_poles"][0]["vector"], dtype=float)
+        direction = np.asarray(overlay["overlay_directions"][0]["vector"], dtype=float)
+        # The Burgers direction lies in its slip plane, which is why the viewer
+        # draws them together; the pole figure must say the same thing.
+        assert float(np.dot(pole, direction)) == pytest.approx(0.0, abs=1e-12)
+
+    def test_the_specimen_frame_is_the_screen(self) -> None:
+        overlay = orientation_overlay(builtin_phase("fe_bcc"))
+        axes = {entry["label"]: entry["vector"] for entry in overlay["specimen_axes"]}
+        assert axes == {"RD": [1.0, 0.0, 0.0], "TD": [0.0, 1.0, 0.0], "ND": [0.0, 0.0, 1.0]}
+
+    def test_the_scene_carries_the_overlay(self) -> None:
+        payload = scene(phase={"builtin": "cu_fcc"}, planes=[[1, 1, 1]])
+        assert payload["orientation"]["point_group"] == "m-3m"
+        assert [entry["label"] for entry in payload["orientation"]["overlay_poles"]] == ["(111)"]
+
+
+class TestEulerAngles:
+    """The camera and an orientation are the same object, so this is a bijection."""
+
+    def test_the_identity_camera_is_the_identity_orientation(self) -> None:
+        assert euler_from_camera_matrix([1, 0, 0, 0, 1, 0, 0, 0, 1]) == pytest.approx(
+            (0.0, 0.0, 0.0)
+        )
+        assert camera_matrix_from_euler(0.0, 0.0, 0.0) == pytest.approx(
+            [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        )
+
+    def test_the_camera_matrix_is_the_crystal_to_specimen_orientation(self) -> None:
+        from pytex.core.orientation import Rotation
+
+        camera = np.asarray(camera_matrix_from_euler(30.0, 45.0, 60.0), dtype=float).reshape(3, 3)
+        expected = Rotation.from_bunge_euler(30.0, 45.0, 60.0).as_matrix()
+        assert np.allclose(camera, expected)
+
+    @pytest.mark.parametrize(
+        "angles",
+        [(0.0, 45.0, 0.0), (30.0, 45.0, 60.0), (359.0, 179.0, 1.0), (12.5, 0.0, 0.0)],
+    )
+    def test_angles_survive_the_round_trip(self, angles: tuple[float, float, float]) -> None:
+        camera = camera_matrix_from_euler(*angles)
+        recovered = euler_from_camera_matrix(camera)
+        assert np.allclose(camera_matrix_from_euler(*recovered), camera, atol=1e-12)
+
+    def test_both_conventions_name_the_same_rotation(self) -> None:
+        camera = camera_matrix_from_euler(30.0, 45.0, 60.0, convention="bunge")
+        matthies = euler_from_camera_matrix(camera, convention="matthies")
+        assert np.allclose(
+            camera_matrix_from_euler(*matthies, convention="matthies"), camera, atol=1e-12
+        )
+
+    def test_a_drifted_camera_is_repaired_rather_than_refused(self) -> None:
+        camera = np.asarray(camera_matrix_from_euler(30.0, 45.0, 60.0), dtype=float)
+        drifted = camera + 1e-9
+        assert euler_from_camera_matrix(drifted) == pytest.approx((30.0, 45.0, 60.0), abs=1e-5)
+
+    def test_a_matrix_that_is_not_a_rotation_is_refused(self) -> None:
+        with pytest.raises(InvalidInputError):
+            euler_from_camera_matrix([1, 0, 0, 0, 1, 0, 0, 0, 2])
+        with pytest.raises(InvalidInputError):
+            euler_from_camera_matrix([1, 0, 0, 0, 1, 0, 0, 0, -1])
+        with pytest.raises(InvalidInputError):
+            euler_from_camera_matrix([1, 0, 0])
+
+    def test_an_unknown_convention_is_refused(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            camera_matrix_from_euler(0.0, 0.0, 0.0, convention="kocks")
+        assert excinfo.value.details["field"] == "euler_convention"
+
+    def test_a_non_finite_angle_is_refused(self) -> None:
+        with pytest.raises(InvalidInputError):
+            camera_matrix_from_euler(float("nan"), 0.0, 0.0)
+
+
+class TestOrientationOperation:
+    """The numbers the dock reports, and the conventions they hold under."""
+
+    def orientation(self, **request: object) -> dict:
+        return REGISTRY.call("crystal.orientation", {"phase": {"builtin": "cu_fcc"}, **request})
+
+    def test_the_identity_view_looks_down_the_c_axis(self) -> None:
+        result = self.orientation()
+        rows = {row["axis"]: row for row in result["table"]["rows"]}
+        # With the identity camera the screen axes are the crystal axes, so ND
+        # -- out of the screen -- is [001], and RD and TD are equivalent to it
+        # under cubic symmetry.
+        assert rows["ND"]["direction"] == "[001]"
+        assert rows["ND"]["polar_deg"] == pytest.approx(0.0, abs=1e-9)
+
+    def test_a_camera_matrix_overrides_the_angles(self) -> None:
+        result = self.orientation(
+            angle1=10.0, angle2=20.0, angle3=30.0, camera_matrix="1 0 0 0 1 0 0 0 1"
+        )
+        assert result["data"]["euler"]["angles_deg"] == pytest.approx([0.0, 0.0, 0.0])
+
+    def test_the_reported_matrix_is_the_orientation_the_angles_name(self) -> None:
+        result = self.orientation(angle1=30.0, angle2=45.0, angle3=60.0)
+        assert result["data"]["camera_matrix"] == pytest.approx(
+            camera_matrix_from_euler(30.0, 45.0, 60.0)
+        )
+
+    def test_the_poles_are_in_the_upper_hemisphere_and_on_the_disc(self) -> None:
+        result = self.orientation(angle1=17.0, angle2=41.0, angle3=63.0)
+        for family in result["data"]["poles"]:
+            for point in family["points"]:
+                assert point["specimen"][2] >= -1e-9
+                assert float(np.hypot(point["x"], point["y"])) <= 1.0 + 1e-9
+
+    def test_the_specimen_axes_land_inside_the_fundamental_sector(self) -> None:
+        overlay = orientation_overlay(builtin_phase("cu_fcc"))
+        normals = np.asarray(overlay["sector"]["edge_normals"], dtype=float)
+        result = self.orientation(angle1=17.0, angle2=41.0, angle3=63.0)
+        for point in result["data"]["ipf_points"]:
+            crystal = np.asarray(point["crystal"], dtype=float)
+            assert np.all(crystal @ normals.T > -1e-9)
+
+    def test_the_specimen_axis_is_recovered_from_its_crystal_direction(self) -> None:
+        result = self.orientation(angle1=17.0, angle2=41.0, angle3=63.0)
+        camera = np.asarray(result["data"]["camera_matrix"], dtype=float).reshape(3, 3)
+        overlay = orientation_overlay(builtin_phase("cu_fcc"))
+        operators = np.asarray(overlay["operators"], dtype=float).reshape(-1, 3, 3)
+        axes = {"rd": [1.0, 0.0, 0.0], "td": [0.0, 1.0, 0.0], "nd": [0.0, 0.0, 1.0]}
+        for point in result["data"]["ipf_points"]:
+            crystal = np.asarray(point["crystal"], dtype=float)
+            # Some symmetry image of the reported direction maps back onto the
+            # specimen axis it was measured along; that is the whole content of
+            # "folded into the fundamental sector".
+            images = camera @ np.einsum("nij,j->ni", operators, crystal).T
+            target = np.asarray(axes[point["key"]], dtype=float)
+            best = float(np.max(np.abs(images.T @ target)))
+            assert best == pytest.approx(1.0, abs=1e-9)
+
+    def test_a_hexagonal_phase_is_labelled_with_four_indices(self) -> None:
+        result = REGISTRY.call(
+            "crystal.orientation", {"phase": {"builtin": "ti_hcp"}, "angle2": 30.0}
+        )
+        assert all(row["direction"].count(" ") == 3 for row in result["table"]["rows"])
+
+    def test_a_malformed_camera_matrix_is_refused(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            self.orientation(camera_matrix="1 0 0 0 1")
+        assert excinfo.value.details["field"] == "camera_matrix"
+        with pytest.raises(InvalidInputError):
+            self.orientation(camera_matrix="one two three four five six seven eight nine")
+
+    def test_the_result_explains_its_conventions(self) -> None:
+        result = self.orientation(angle2=45.0)
+        assert "v_specimen = C v_crystal" in result["summary"]
+        assert any("RD is screen right" in note for note in result["notes"])

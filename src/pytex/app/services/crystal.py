@@ -45,10 +45,22 @@ from pytex.app.registry import (
     TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
-from pytex.app.services.calculator import direction_label, phase_parameter, plane_label
+from pytex.app.services.calculator import (
+    direction_label,
+    family_label,
+    phase_parameter,
+    plane_label,
+)
 from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex, Phase
+from pytex.core.sphere import project_directions
 
-__all__ = ["camera_angles_from_matrix", "scene_payload"]
+__all__ = [
+    "camera_angles_from_matrix",
+    "camera_matrix_from_euler",
+    "euler_from_camera_matrix",
+    "orientation_overlay",
+    "scene_payload",
+]
 
 _CITATION_VESTA = (
     "Momma & Izumi, VESTA 3, J. Appl. Crystallogr. 44 (2011) 1272 (visual conventions)."
@@ -339,12 +351,450 @@ def camera_angles_from_matrix(matrix: Any) -> tuple[float, float]:
     return elevation, azimuth
 
 
+
+# ---------------------------------------------------------------- orientation
+
+#: The pole families a viewer offers, by crystal system.
+#:
+#: Three-index ``(hkl)`` throughout, because that is what
+#: :class:`~pytex.core.lattice.CrystalPlane` takes; the labels the user sees are
+#: produced by :func:`~pytex.app.services.calculator.family_label`, which writes
+#: four-index Miller-Bravais for hexagonal and trigonal phases. The lists are
+#: the families a stereographic projection of that system is conventionally read
+#: against, not an exhaustive catalogue: a pole figure of six families is
+#: unreadable, and any plane the user actually cares about can be added as a
+#: scene overlay, which appears in the figure in its own right.
+_POLE_FAMILIES: dict[str, tuple[tuple[int, int, int], ...]] = {
+    "cubic": ((1, 0, 0), (1, 1, 0), (1, 1, 1)),
+    "hexagonal": ((0, 0, 1), (1, 0, 0), (1, 0, 1), (1, 1, 0)),
+    "trigonal": ((0, 0, 1), (1, 0, 0), (1, 0, 1)),
+    "tetragonal": ((0, 0, 1), (1, 0, 0), (1, 1, 0)),
+    "orthorhombic": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    "monoclinic": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+    "triclinic": ((1, 0, 0), (0, 1, 0), (0, 0, 1)),
+}
+_DEFAULT_POLE_FAMILIES: tuple[tuple[int, int, int], ...] = ((1, 0, 0), (0, 1, 0), (0, 0, 1))
+
+#: The specimen frame the viewer works in: the screen itself.
+#:
+#: ``RD`` is screen right, ``TD`` is screen up, ``ND`` points out of the screen
+#: towards the viewer. That is a right-handed triad, and it is
+#: :data:`~pytex.core.frame_catalog.SAMPLE_RD_TD_ND_FRAME` with its default
+#: identity axis vectors, so no new frame is invented here. It also matches how
+#: the texture panel already draws a pole figure -- RD to the right, TD up --
+#: which is what lets a reader move between the two panels without relearning
+#: the picture.
+_VIEWER_SPECIMEN_AXES: tuple[tuple[str, str, tuple[float, float, float], str], ...] = (
+    ("rd", "RD", (1.0, 0.0, 0.0), "Screen right."),
+    ("td", "TD", (0.0, 1.0, 0.0), "Screen up."),
+    ("nd", "ND", (0.0, 0.0, 1.0), "Out of the screen, towards you."),
+)
+
+#: Points per sector edge in the projected standard-triangle outline. Enough
+#: that the arc stays smooth at any size the dock reaches, and small enough that
+#: the whole boundary is a few hundred numbers on the wire.
+_SECTOR_ARC_SAMPLES = 48
+
+#: Named ideal orientations offered as one-press presets, by crystal system.
+#:
+#: Only cubic, because the catalogue in :mod:`pytex.texture.components` is the
+#: rolling-texture catalogue of cubic metals: "Goss" names a specific
+#: relationship between ``{011}``, ``<100>`` and the rolling geometry, and
+#: pressing it on a hexagonal phase would set an orientation the name does not
+#: describe. Systems without a catalogue get none, rather than a plausible-
+#: looking wrong one.
+_PRESET_SYSTEMS = frozenset({"cubic"})
+
+
+def _preset_components(crystal_system: str) -> list[dict[str, Any]]:
+    """Named ideal orientations for one crystal system, as Bunge angle triples."""
+
+    if crystal_system.lower() not in _PRESET_SYSTEMS:
+        return []
+    from pytex.texture.components import (
+        BRASS,
+        COPPER,
+        CUBE,
+        GOSS,
+        ROTATED_CUBE,
+        ROTATED_GOSS,
+        S_COMPONENT,
+    )
+
+    return [
+        {
+            "name": component.name.replace("_", " "),
+            "label": component.miller_label,
+            "angles_deg": [float(value) for value in component.bunge_euler_deg],
+        }
+        for component in (CUBE, ROTATED_CUBE, GOSS, ROTATED_GOSS, BRASS, COPPER, S_COMPONENT)
+    ]
+
+_EULER_CONVENTIONS = (
+    (
+        "bunge",
+        "Bunge (phi1, Phi, phi2)",
+        "The ZXZ convention of Bunge, used by essentially all texture software and EBSD "
+        "vendors. Choose this unless you have a specific reason not to.",
+    ),
+    (
+        "matthies",
+        "Matthies (alpha, beta, gamma)",
+        "The ZYZ convention of Matthies. The same rotation, a different angle triple.",
+    ),
+)
+
+_CITATION_BUNGE = (
+    "Bunge, Texture Analysis in Materials Science, Butterworths (1982) "
+    "(Euler-angle convention and pole-figure definitions)."
+)
+_CITATION_RANDLE = (
+    "Randle & Engler, Introduction to Texture Analysis, 2nd ed., CRC Press (2009) "
+    "(stereographic projection and the standard triangle)."
+)
+
+
+def _symmetry_orbit(operators: np.ndarray, vector: np.ndarray) -> np.ndarray:
+    """Every symmetry image of one crystal direction, with its antipodes.
+
+    Both signs are kept because a pole figure is antipodal: the browser draws
+    whichever member of each pair currently points out of the screen, so no
+    hemisphere folding has to happen while the mouse is down.
+    """
+
+    orbit = np.einsum("nij,j->ni", np.asarray(operators, dtype=float), vector)
+    orbit = np.vstack([orbit, -orbit])
+    norms = np.linalg.norm(orbit, axis=1)
+    keep = norms > 1e-12
+    orbit = orbit[keep] / norms[keep][:, None]
+    _, unique = np.unique(np.round(orbit, 6), axis=0, return_index=True)
+    return np.ascontiguousarray(orbit[np.sort(unique)])
+
+
+def _sector_outline(vertices: np.ndarray, *, method: str) -> list[list[float]]:
+    """The standard triangle's boundary, projected, as one closed polyline.
+
+    Each edge of the fundamental sector is a great-circle arc between adjacent
+    corner directions, so the boundary is walked on the sphere and the samples
+    projected -- not drawn by joining the projected corners with straight lines,
+    which cuts visibly inside the true boundary of a cubic triangle.
+    """
+
+    corners = np.asarray(vertices, dtype=float)
+    if corners.shape[0] < 3:
+        return []
+    fractions = np.linspace(0.0, 1.0, _SECTOR_ARC_SAMPLES, endpoint=False)
+    samples: list[np.ndarray] = []
+    for index in range(corners.shape[0]):
+        start = corners[index]
+        end = corners[(index + 1) % corners.shape[0]]
+        angle = float(np.arccos(np.clip(float(np.dot(start, end)), -1.0, 1.0)))
+        if angle < 1e-9:
+            continue
+        arc = (
+            np.sin((1.0 - fractions)[:, None] * angle) * start
+            + np.sin(fractions[:, None] * angle) * end
+        ) / np.sin(angle)
+        samples.append(arc)
+    if not samples:
+        return []
+    points = np.vstack(samples)
+    points = points / np.linalg.norm(points, axis=1)[:, None]
+    projected = np.asarray(project_directions(points, method=method), dtype=float)
+    return [[float(x), float(y)] for x, y in projected]
+
+
+def orientation_overlay(
+    spec: PhaseSpec,
+    *,
+    plane_rows: Sequence[Sequence[int]] = (),
+    direction_rows: Sequence[Sequence[int]] = (),
+    method: str = "stereographic",
+) -> dict[str, Any]:
+    """Everything the browser needs to draw orientation figures while dragging.
+
+    Purpose
+    -------
+    A pole figure that only updates when the mouse is released is not a pole
+    figure of the view; it is a pole figure of the last view. To keep it live,
+    the browser must be able to redraw without asking Python anything -- and
+    without deciding any crystallography either. This function is that split
+    made concrete: it sends the *crystallographic content* of the figures once,
+    in the Cartesian crystal frame, and the browser thereafter only multiplies
+    by the camera and projects, exactly as it already does for atoms.
+
+    When and where to use it
+    ------------------------
+    Called by the ``crystal.scene`` operation, whose payload it joins under
+    ``orientation``. It is not itself a user-facing calculation: every number a
+    user reads comes from the ``crystal.orientation`` operation, which computes
+    it in Python for the camera the browser reports.
+
+    Parameters
+    ----------
+    spec : PhaseSpec
+        The phase being viewed; supplies the lattice and the point group.
+    plane_rows, direction_rows : sequence of index sequences
+        The overlays already drawn in the 3-D scene. Their poles and directions
+        are carried through so the figures show the same features as the
+        structure, labelled the same way.
+    method : str
+        ``"stereographic"`` (the default, and what the dock draws) or
+        ``"equal_area"``; passed to
+        :func:`~pytex.core.sphere.project_directions` for the sector outline.
+
+    Returns
+    -------
+    dict
+        ``point_group``, ``crystal_system``, the proper-rotation ``operators``
+        as flat row-major triples, the ``pole_families`` with their full
+        symmetry orbits, the ``overlay_poles`` and ``overlay_directions``, the
+        fundamental ``sector`` (corner directions, inward edge normals, labelled
+        corners, and the projected outline), the ``specimen_axes``, the offered
+        ``euler_conventions``, and the named ``components`` that can be set with
+        one press.
+
+    See Also
+    --------
+    camera_matrix_from_euler, euler_from_camera_matrix :
+        The conversions between the browser's camera and an orientation.
+    """
+
+    from pytex.core.miller import nearest_low_index_direction
+
+    phase = spec.to_phase()
+    operators = np.asarray(phase.symmetry.operators, dtype=float)
+    families = _POLE_FAMILIES.get(spec.crystal_system.lower(), _DEFAULT_POLE_FAMILIES)
+
+    pole_families: list[dict[str, Any]] = []
+    for indices in families:
+        normal = np.asarray(_plane_overlay(tuple(indices), phase).normal, dtype=float)
+        orbit = _symmetry_orbit(operators, normal)
+        pole_families.append(
+            {
+                "key": ",".join(str(value) for value in indices),
+                "label": family_label(indices, spec=spec, family="plane"),
+                "indices": [int(value) for value in indices],
+                "vectors": [[float(value) for value in row] for row in orbit],
+            }
+        )
+
+    overlay_poles = [
+        {
+            "label": plane_label(row, spec=spec),
+            "vector": [float(value) for value in _plane_overlay(tuple(row), phase).normal],
+        }
+        for row in plane_rows
+    ]
+    overlay_directions = [
+        {
+            "label": direction_label(row, spec=spec),
+            "vector": [
+                float(value) for value in _direction_overlay(tuple(row), phase).unit_vector
+            ],
+        }
+        for row in direction_rows
+    ]
+
+    sector = phase.symmetry.fundamental_sector(antipodal=True)
+    sector_vertices = np.asarray(sector.vertices, dtype=float)
+    corners = []
+    for vertex in sector_vertices:
+        corner_indices, residual_deg = nearest_low_index_direction(vertex, phase=phase)
+        corners.append(
+            {
+                "label": direction_label(
+                    tuple(int(value) for value in corner_indices), spec=spec
+                ),
+                "vector": [float(value) for value in vertex],
+                "residual_deg": float(residual_deg),
+            }
+        )
+
+    return {
+        "point_group": spec.point_group,
+        "crystal_system": spec.crystal_system,
+        "projection": method,
+        "operators": [[float(value) for value in row.reshape(-1)] for row in operators],
+        "pole_families": pole_families,
+        "overlay_poles": overlay_poles,
+        "overlay_directions": overlay_directions,
+        "sector": {
+            "vertices": [[float(value) for value in row] for row in sector_vertices],
+            "edge_normals": [
+                [float(value) for value in row]
+                for row in np.asarray(sector.edge_normals, dtype=float)
+            ],
+            "corners": corners,
+            "outline": _sector_outline(sector_vertices, method=method),
+        },
+        "specimen_axes": [
+            {"key": key, "label": label, "vector": list(vector), "help_text": help_text}
+            for key, label, vector, help_text in _VIEWER_SPECIMEN_AXES
+        ],
+        "euler_conventions": [
+            {"key": key, "label": label, "help_text": help_text}
+            for key, label, help_text in _EULER_CONVENTIONS
+        ],
+        "components": _preset_components(spec.crystal_system),
+    }
+
+
+def _euler_convention(value: Any) -> str:
+    """Validate a convention name against the two the viewer offers."""
+
+    name = str(value).strip().lower()
+    known = {key for key, _label, _help in _EULER_CONVENTIONS}
+    if name not in known:
+        raise InvalidInputError(
+            f"Unknown Euler-angle convention {value!r}.",
+            field="euler_convention",
+            hint="Available: " + ", ".join(sorted(known)) + ".",
+        )
+    return name
+
+
+def camera_matrix_from_euler(
+    angle1: float,
+    angle2: float,
+    angle3: float,
+    *,
+    convention: str = "bunge",
+) -> list[float]:
+    """Build the viewer's camera matrix from a triple of Euler angles.
+
+    Purpose
+    -------
+    "Set the view to the cube component" is an orientation statement, and the
+    viewer's camera *is* an orientation: with the screen taken as the specimen
+    frame -- RD right, TD up, ND out of the screen -- the camera matrix ``C``
+    satisfies ``v_specimen = C v_crystal``, which is exactly PyTex's
+    crystal-to-specimen convention for
+    :meth:`~pytex.core.orientation.Orientation.as_matrix`. So this is not a new
+    derivation; it is :class:`~pytex.core.orientation.Rotation` written out in
+    the nine numbers the browser holds.
+
+    When and where to use it
+    ------------------------
+    Behind the crystal viewer's Euler-angle entry. Use
+    :func:`euler_from_camera_matrix` for the return trip, and derive neither in
+    JavaScript: one convention, defined once, is what keeps the on-screen view,
+    the reported angles, and the exported figure describing the same
+    orientation.
+
+    Parameters
+    ----------
+    angle1, angle2, angle3 : float
+        The angle triple in degrees, in the order the convention names them --
+        ``(phi1, Phi, phi2)`` for Bunge.
+    convention : str
+        ``"bunge"`` (ZXZ, the default) or ``"matthies"`` (ZYZ).
+
+    Returns
+    -------
+    list of float
+        Nine numbers in row-major order, ready to be assigned to the camera.
+
+    Raises
+    ------
+    InvalidInputError
+        If an angle is not finite, or the convention is not one of the two
+        offered.
+    """
+
+    from pytex.core.orientation import Rotation
+
+    angles = np.asarray([angle1, angle2, angle3], dtype=float)
+    if not np.all(np.isfinite(angles)):
+        raise InvalidInputError(
+            "Euler angles must be finite numbers in degrees.",
+            field="phi1",
+            hint="Enter three angles in degrees.",
+        )
+    rotation = Rotation.from_euler(
+        float(angles[0]),
+        float(angles[1]),
+        float(angles[2]),
+        convention=_euler_convention(convention),
+        degrees=True,
+    )
+    return [float(value) for value in np.asarray(rotation.as_matrix(), dtype=float).reshape(-1)]
+
+
+def euler_from_camera_matrix(
+    matrix: Any,
+    *,
+    convention: str = "bunge",
+) -> tuple[float, float, float]:
+    """Read the Euler angles of the viewer's camera.
+
+    Purpose
+    -------
+    The inverse of :func:`camera_matrix_from_euler`, and the only place the
+    viewer's rotation becomes an angle triple.
+
+    Method
+    ------
+    The matrix is orthonormalized before it is read. A camera accumulated from
+    thousands of drag increments drifts from orthogonality by a part in
+    ``1e-12`` or so -- harmless on screen, and enough to put a spurious final
+    digit on a reported angle. The nearest rotation in the Frobenius sense is
+    the polar factor, obtained here from the singular-value decomposition.
+
+    Parameters
+    ----------
+    matrix : array-like
+        Nine finite numbers in row-major order, or a ``(3, 3)`` array.
+    convention : str
+        ``"bunge"`` (ZXZ, the default) or ``"matthies"`` (ZYZ).
+
+    Returns
+    -------
+    tuple of (float, float, float)
+        The angle triple in degrees, each wrapped into ``[0, 360)``.
+
+    Raises
+    ------
+    InvalidInputError
+        If the matrix is not nine finite numbers, or is too far from a rotation
+        to be a drifted camera.
+    """
+
+    from pytex.core.orientation import Rotation
+
+    values = np.asarray(matrix, dtype=float).reshape(-1)
+    if values.size != 9 or not np.all(np.isfinite(values)):
+        raise InvalidInputError(
+            "The camera matrix must be nine finite numbers in row-major order.",
+            field="camera_matrix",
+            hint="Reset the view and try again.",
+        )
+    name = _euler_convention(convention)
+    square = values.reshape(3, 3)
+    left, _singular_values, right = np.linalg.svd(square)
+    nearest = left @ right
+    if float(np.linalg.det(nearest)) < 0.0 or float(np.max(np.abs(nearest - square))) > 1e-3:
+        raise InvalidInputError(
+            "The camera matrix is not a rotation.",
+            field="camera_matrix",
+            hint="Reset the view and try again.",
+        )
+    angles = Rotation.from_matrix(nearest).to_euler(convention=name, degrees=True)
+    # A wrap into [0, 360) turns a decomposition that lands a hair below zero
+    # into 359.999999999, which the viewer then shows as "360.00 deg" -- an angle
+    # that is not in the half-open range it claims to be in, next to two angles
+    # that are exact. Round to a picodegree first, so a tiny negative becomes a
+    # clean zero rather than a full turn.
+    return tuple(float(np.round(value, 9) % 360.0) for value in angles)  # type: ignore[return-value]
+
 def scene_payload(
     scene: Any,
     *,
     spec: PhaseSpec,
     plane_labels: Sequence[str] | None = None,
     direction_labels: Sequence[str] | None = None,
+    plane_rows: Sequence[Sequence[int]] = (),
+    direction_rows: Sequence[Sequence[int]] = (),
 ) -> dict[str, Any]:
     """Convert a :class:`CrystalScene` into the JSON the browser draws.
 
@@ -428,6 +878,9 @@ def scene_payload(
         "bounds": [[float(value) for value in row] for row in bounds],
         "phase": spec.to_json(),
         "axes": _axis_arrows(spec),
+        "orientation": orientation_overlay(
+            spec, plane_rows=plane_rows, direction_rows=direction_rows
+        ),
     }
 
 
@@ -602,7 +1055,12 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
     plane_texts = tuple(plane_label(row, spec=spec) for row in plane_rows)
     direction_texts = tuple(direction_label(row, spec=spec) for row in direction_rows)
     payload = scene_payload(
-        scene, spec=spec, plane_labels=plane_texts, direction_labels=direction_texts
+        scene,
+        spec=spec,
+        plane_labels=plane_texts,
+        direction_labels=direction_texts,
+        plane_rows=plane_rows,
+        direction_rows=direction_rows,
     )
 
     rows = tuple(
@@ -664,6 +1122,370 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
     )
     return result.to_json()
 
+
+
+@REGISTRY.operation(
+    "crystal.orientation",
+    title="Orientation of the view",
+    summary="Euler angles, poles, and the crystal direction along each specimen axis.",
+    help_text=(
+        "The crystal viewer's camera is an orientation. Turning the structure by hand and "
+        "setting it by Euler angles are the same act, and this operation is the conversion "
+        "between them — in both directions, in one place, so the picture and the numbers "
+        "cannot describe different orientations.\n\n"
+        "**The frame.** The screen is the specimen frame: RD points right, TD points up, and "
+        "ND points out of the screen towards you. That is a right-handed triad, and the "
+        "returned camera matrix `C` satisfies `v_specimen = C v_crystal`, PyTex's "
+        "crystal-to-specimen convention throughout.\n\n"
+        "**A deviation, stated.** Pole figures are conventionally drawn with RD at the top. "
+        "Here RD is to the right, because the pole figure beside the structure is the *same "
+        "view* of the *same crystal* — turning the structure turns the pole figure with it — "
+        "and rotating the projection by ninety degrees would break exactly the correspondence "
+        "the figure exists to show. The texture panel draws its pole figures the same way.\n\n"
+        "**What comes back.** The angle triple in both offered conventions, the misorientation "
+        "from the identity as an axis and angle, where each requested pole family sits in the "
+        "specimen frame, and — the table — which crystal direction lies along RD, TD and ND. "
+        "That last is the inverse pole figure written out: the direction is folded into the "
+        "fundamental sector and labelled with the nearest low-index direction, with the "
+        "angular residual of that label stated rather than hidden."
+    ),
+    parameters=(
+        phase_parameter(),
+        ChoiceParameter(
+            name="euler_convention",
+            label="Euler convention",
+            help_text="Which axis sequence the three angles name.",
+            options=_EULER_CONVENTIONS,
+            default="bunge",
+        ),
+        NumberParameter(
+            name="angle1",
+            label="phi1 / alpha",
+            help_text="First Euler angle, in degrees.",
+            units="deg",
+            default=0.0,
+            minimum=-360.0,
+            maximum=720.0,
+        ),
+        NumberParameter(
+            name="angle2",
+            label="Phi / beta",
+            help_text="Second Euler angle, in degrees.",
+            units="deg",
+            default=0.0,
+            minimum=-360.0,
+            maximum=720.0,
+        ),
+        NumberParameter(
+            name="angle3",
+            label="phi2 / gamma",
+            help_text="Third Euler angle, in degrees.",
+            units="deg",
+            default=0.0,
+            minimum=-360.0,
+            maximum=720.0,
+        ),
+        TextParameter(
+            name="camera_matrix",
+            label="Camera matrix",
+            help_text=(
+                "Nine numbers, row-major, for the rotation the viewer currently holds. Sent by "
+                "the viewer as you turn the structure; when it is given it wins, and the three "
+                "angles are outputs rather than inputs. Leave empty to build the orientation "
+                "from the angles."
+            ),
+            required=False,
+            default="",
+            advanced=True,
+        ),
+        IndicesListParameter(
+            name="poles",
+            label="Poles to locate (hkl)",
+            help_text=(
+                "One plane per row. Each is expanded over the point group and reported in the "
+                "specimen frame. Leave empty to use the conventional families for the crystal "
+                "system."
+            ),
+            required=False,
+            group="Poles",
+        ),
+        ChoiceParameter(
+            name="projection",
+            label="Projection",
+            help_text="How the sphere is flattened onto the page.",
+            options=(
+                (
+                    "stereographic",
+                    "Stereographic (Wulff)",
+                    "Conformal: angles and circles are preserved. What the viewer draws.",
+                ),
+                (
+                    "equal_area",
+                    "Equal area (Schmidt)",
+                    "Area is proportional to solid angle. The right choice for densities.",
+                ),
+            ),
+            default="stereographic",
+        ),
+    ),
+    returns=(
+        "The crystal direction along each specimen axis as the table; the camera matrix, both "
+        "angle triples, and the projected poles under `data`."
+    ),
+    panel="crystal",
+    citations=(_CITATION_BUNGE, _CITATION_RANDLE),
+    tags=(
+        "crystal",
+        "orientation",
+        "Euler angles",
+        "Bunge",
+        "pole figure",
+        "inverse pole figure",
+        "stereographic",
+    ),
+)
+def _crystal_orientation(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.miller import nearest_low_index_direction
+
+    spec, phase = phase_from_request(request["phase"])
+    convention = _euler_convention(request["euler_convention"])
+    method = str(request["projection"])
+    matrix_text = str(request.get("camera_matrix") or "").strip()
+
+    if matrix_text:
+        values = _camera_matrix_values(matrix_text)
+        angles = euler_from_camera_matrix(values, convention=convention)
+        camera = [float(value) for value in np.asarray(values, dtype=float).reshape(-1)]
+        # Round-trip through the conversion just applied, so the reported matrix
+        # is the rotation the reported angles name rather than the drifted one
+        # the drag accumulated. The two differ by parts in 1e-12; reporting both
+        # would invite a reader to wonder which is authoritative.
+        camera = camera_matrix_from_euler(*angles, convention=convention)
+        source = "the camera"
+    else:
+        angles = (
+            float(request["angle1"]),
+            float(request["angle2"]),
+            float(request["angle3"]),
+        )
+        camera = camera_matrix_from_euler(*angles, convention=convention)
+        angles = euler_from_camera_matrix(camera, convention=convention)
+        source = "the angles entered"
+
+    rotation_matrix = np.asarray(camera, dtype=float).reshape(3, 3)
+    operators = np.asarray(phase.symmetry.operators, dtype=float)
+    sector = phase.symmetry.fundamental_sector(antipodal=True)
+
+    pole_rows = tuple(request.get("poles") or ()) or _POLE_FAMILIES.get(
+        spec.crystal_system.lower(), _DEFAULT_POLE_FAMILIES
+    )
+    pole_points: list[dict[str, Any]] = []
+    for indices in pole_rows:
+        normal = np.asarray(_plane_overlay(tuple(indices), phase).normal, dtype=float)
+        orbit = _symmetry_orbit(operators, normal)
+        specimen = orbit @ rotation_matrix.T
+        upper = specimen[specimen[:, 2] >= -1e-12]
+        projected = (
+            np.asarray(project_directions(upper, method=method), dtype=float)
+            if upper.shape[0]
+            else np.zeros((0, 2))
+        )
+        pole_points.append(
+            {
+                "label": family_label(indices, spec=spec, family="plane"),
+                "indices": [int(value) for value in indices],
+                "points": [
+                    {
+                        "x": float(projected[index, 0]),
+                        "y": float(projected[index, 1]),
+                        "specimen": [float(value) for value in upper[index]],
+                    }
+                    for index in range(upper.shape[0])
+                ],
+            }
+        )
+
+    rows: list[dict[str, Any]] = []
+    ipf_points: list[dict[str, Any]] = []
+    for key, label, vector, _help_text in _VIEWER_SPECIMEN_AXES:
+        axis = np.asarray(vector, dtype=float)
+        # The specimen axis in crystal coordinates: C maps crystal to specimen,
+        # so its transpose brings the specimen axis home to the crystal.
+        crystal = rotation_matrix.T @ axis
+        reduced = np.asarray(
+            phase.symmetry.reduce_vectors_to_fundamental_sector(crystal[None, :], antipodal=True),
+            dtype=float,
+        ).reshape(3)
+        axis_indices, residual_deg = nearest_low_index_direction(reduced, phase=phase)
+        projected = np.asarray(
+            project_directions(reduced[None, :], method=method), dtype=float
+        ).reshape(2)
+        polar_deg = float(np.degrees(np.arccos(np.clip(reduced[2], -1.0, 1.0))))
+        # On the pole itself the azimuth is undefined, and arctan2 of two
+        # rounding errors reports it with a straight face. Say zero instead.
+        azimuth_deg = (
+            0.0
+            if min(polar_deg, 180.0 - polar_deg) < 1e-6
+            else float(np.degrees(np.arctan2(reduced[1], reduced[0]))) % 360.0
+        )
+        rows.append(
+            {
+                "axis": label,
+                "direction": direction_label(
+                    tuple(int(value) for value in axis_indices), spec=spec
+                ),
+                "residual_deg": float(residual_deg),
+                "u": float(reduced[0]),
+                "v": float(reduced[1]),
+                "w": float(reduced[2]),
+                "polar_deg": polar_deg,
+                "azimuth_deg": azimuth_deg,
+            }
+        )
+        ipf_points.append(
+            {
+                "key": key,
+                "label": label,
+                "direction": rows[-1]["direction"],
+                "residual_deg": float(residual_deg),
+                "crystal": [float(value) for value in reduced],
+                "x": float(projected[0]),
+                "y": float(projected[1]),
+            }
+        )
+
+    from pytex.core.orientation import Rotation
+
+    rotation = Rotation.from_matrix(rotation_matrix)
+    axis_vector = rotation.axis
+    angle_deg = rotation.angle_deg
+    other = "matthies" if convention == "bunge" else "bunge"
+    other_angles = euler_from_camera_matrix(camera, convention=other)
+    angle_names = (
+        ("phi1", "Phi", "phi2") if convention == "bunge" else ("alpha", "beta", "gamma")
+    )
+    angle_text = ", ".join(
+        f"{name} = {value:.2f} deg" for name, value in zip(angle_names, angles, strict=True)
+    )
+
+    columns: tuple[Column, ...] = (
+        Column("axis", "Specimen axis"),
+        Column(
+            "direction",
+            "Crystal direction",
+            help_text="Nearest low-index direction to the specimen axis, in the standard triangle.",
+        ),
+        Column(
+            "residual_deg",
+            "Label residual",
+            units="deg",
+            numeric=True,
+            digits=2,
+            help_text=(
+                "Angle between the true direction and the label; zero means the label is exact."
+            ),
+        ),
+        Column("u", "u", numeric=True, digits=5),
+        Column("v", "v", numeric=True, digits=5),
+        Column("w", "w", numeric=True, digits=5),
+        Column(
+            "polar_deg",
+            "From c",
+            units="deg",
+            numeric=True,
+            digits=2,
+            help_text="Angle between the specimen axis and the crystal c axis.",
+        ),
+        Column("azimuth_deg", "Azimuth", units="deg", numeric=True, digits=2),
+    )
+
+    result = AppResult(
+        title=f"{spec.name}: orientation of the view",
+        summary=(
+            f"From {source}: {angle_text} in the "
+            f"{'Bunge' if convention == 'bunge' else 'Matthies'} convention, equivalently a "
+            f"rotation of {angle_deg:.2f} deg about "
+            f"[{axis_vector[0]:.3f} {axis_vector[1]:.3f} {axis_vector[2]:.3f}] in the specimen "
+            "frame. The screen is the specimen frame — RD right, TD up, ND out of the screen — "
+            f"so the camera matrix C satisfies v_specimen = C v_crystal. The table gives the "
+            f"crystal direction along each specimen axis, folded into the {spec.point_group} "
+            "fundamental sector; that is the inverse pole figure, one point per axis."
+        ),
+        table=ResultTable(
+            columns=columns,
+            rows=tuple(rows),
+            caption=f"Crystal direction along each specimen axis for this view of {spec.name}.",
+        ),
+        data={
+            "camera_matrix": camera,
+            "euler": {
+                "convention": convention,
+                "angles_deg": [float(value) for value in angles],
+                "names": list(angle_names),
+            },
+            "euler_other": {
+                "convention": other,
+                "angles_deg": [float(value) for value in other_angles],
+            },
+            "axis_angle": {
+                "axis": [float(value) for value in axis_vector],
+                "angle_deg": float(angle_deg),
+            },
+            "poles": pole_points,
+            "ipf_points": ipf_points,
+            "projection": method,
+            "sector_outline": _sector_outline(
+                np.asarray(sector.vertices, dtype=float), method=method
+            ),
+            "columns": [column.to_json() for column in columns],
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "euler_convention": convention,
+            "angle1": float(angles[0]),
+            "angle2": float(angles[1]),
+            "angle3": float(angles[2]),
+            "camera_matrix": " ".join(f"{value!r}" for value in camera),
+            "poles": [list(row) for row in pole_rows],
+            "projection": method,
+        },
+        notes=(
+            "RD is screen right and TD is screen up, so the pole figure is the same view as the "
+            "structure beside it. Pole figures elsewhere in the literature are usually drawn "
+            "with RD at the top; the ninety-degree difference is deliberate and is stated here "
+            "rather than left for the reader to discover.",
+            "The crystal direction along each axis is folded into the fundamental sector, so it "
+            "is one of a symmetry-equivalent set rather than a unique answer. The label is the "
+            "nearest low-index direction and its angular residual is given beside it.",
+        ),
+        citations=(_CITATION_BUNGE, _CITATION_RANDLE),
+    )
+    return result.to_json()
+
+
+def _camera_matrix_values(text: str) -> list[float]:
+    """Parse the nine numbers of a camera matrix out of one text field.
+
+    Accepts whitespace, commas, or both, because the viewer sends
+    space-separated numbers and a person typing a matrix by hand will not.
+    """
+
+    parts = [part for part in re.split(r"[,\s]+", text.strip()) if part]
+    try:
+        values = [float(part) for part in parts]
+    except ValueError as error:
+        raise InvalidInputError(
+            "The camera matrix must be nine numbers separated by spaces or commas.",
+            field="camera_matrix",
+            hint="Leave it empty to use the Euler angles instead.",
+        ) from error
+    if len(values) != 9:
+        raise InvalidInputError(
+            f"The camera matrix needs nine numbers; got {len(values)}.",
+            field="camera_matrix",
+            hint="Leave it empty to use the Euler angles instead.",
+        )
+    return values
 
 @REGISTRY.operation(
     "crystal.render",

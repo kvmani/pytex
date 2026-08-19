@@ -2286,3 +2286,281 @@ dl.detail dd {
   display: block;
   color: var(--ink-muted);
 }
+
+/* ------------------------------------------------- crystal orientation dock */
+
+/*
+ * The crystal panel's stage: the structure, and the orientation figures that
+ * describe it.
+ *
+ * Two arrangements, because two things are true at different widths. On a wide
+ * desktop the stage has spare *width* and no spare height, so the dock becomes a
+ * narrow right-hand column and the structure keeps the full height beside it:
+ * both figures are on screen at once, next to the crystal they are figures of,
+ * which is the entire point of watching them move together. On anything
+ * narrower there is no width to spare, so the dock drops below the structure as
+ * a strip of cards -- and the structure gives up part of its height, because a
+ * figure that is always one scroll below the fold may as well not exist.
+ */
+
+.crystal-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  /* Sized from the stage, never from what is left of it. As a growing flex item
+   * the workspace lost its whole height to the result tables below and
+   * collapsed to nothing; the plot card it replaced took its height from the
+   * stage for the same reason. */
+  flex: none;
+  min-height: 0;
+}
+
+.crystal-workspace > .plot {
+  height: clamp(18rem, 56vh, 46rem);
+}
+
+@media (min-width: 78rem) {
+  .crystal-workspace {
+    grid-template-columns: minmax(0, 1fr) clamp(17rem, 23vw, 22rem);
+    grid-template-rows: minmax(0, 1fr);
+    height: calc(100% - 1.5rem);
+  }
+
+  .crystal-workspace > .plot {
+    height: 100%;
+  }
+
+  /*
+   * The column is one figure wide, so the two figures stack and share its
+   * height rather than each insisting on being square. A square that will not
+   * shrink is what made the second figure hang below the fold: the disc is
+   * drawn with `preserveAspectRatio`, so letting the box be short costs a band
+   * of empty space and nothing else, while forcing it to be square costs the
+   * figure its place on the screen.
+   */
+  .crystal-workspace > .orient {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .crystal-workspace .orient__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /*
+   * Height from the viewport rather than from the column's width. Two squares
+   * as wide as this column do not fit above each other in the stage's height,
+   * and the disc is drawn with `preserveAspectRatio`, so a box that is wider
+   * than it is tall costs a band of empty space at each side and nothing else.
+   */
+  .crystal-workspace .orient__canvas {
+    aspect-ratio: auto;
+    height: clamp(9rem, 26vh, 15rem);
+  }
+}
+
+
+/*
+ * Three cards under the structure: the pole figure, the inverse pole figure,
+ * and the orientation itself.
+ *
+ * `auto-fit` with a floor rather than a fixed three-column grid, because the
+ * dock has to survive the same widths the rest of the workspace does. Above
+ * about 54rem of stage the three cards sit side by side and the strip is one
+ * figure tall; below it they fold to two and then to one, each card keeping a
+ * legible size instead of all three shrinking together into a row of stamps.
+ * The structure above keeps its own height throughout — the dock is what gives
+ * way, because the structure is what the panel is for.
+ */
+
+.orient {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  box-shadow: var(--shadow);
+}
+
+.orient > summary {
+  padding: 0.55rem 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.orient__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.75rem;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.orient__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.orient__caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
+.orient__title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/*
+ * The figure box is square and shrinks with the card. `min-height: 0` matters:
+ * without it a flex item refuses to go below its content's intrinsic size and
+ * the square silently stops being square on a short window.
+ */
+.orient__canvas {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 0;
+  color: var(--ink-faint);
+}
+
+/* Out of flow, for the reason `.plot__canvas` gives at length: an SVG carrying
+ * a viewBox and `height: 100%` of an indefinite parent falls back to its
+ * intrinsic size and drives the box from the inside, which is exactly how the
+ * second figure kept insisting on being square in a column that had no room for
+ * two squares. Absolute means the box decides and the drawing letterboxes. */
+.orient__canvas > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.orient__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.orient__chip {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 0.28rem 0.5rem;
+  cursor: pointer;
+}
+
+.orient__chip:hover,
+.orient__chip:focus-visible {
+  border-color: var(--chip-color, var(--accent));
+  color: var(--ink);
+}
+
+/* The chip carries its series colour so the legend is the control: a reader
+ * never has to match a swatch in one place to a marker in another. */
+.orient__chip[aria-pressed='true'] {
+  border-color: var(--chip-color, var(--accent));
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 16%, transparent);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.orient__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+}
+
+/* The three angle boxes sit in one row: they are one quantity in three parts,
+ * and stacking them makes a triple that is read together look like three
+ * unrelated settings. */
+.orient__angles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.orient__angle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.orient__angle input {
+  min-width: 0;
+  width: 100%;
+  padding: 0.3rem 0.35rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.orient__unit {
+  color: var(--ink-faint);
+}
+
+.orient__actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.orient__actions .button {
+  flex: 1;
+}
+
+.orient__readout {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.orient__directions {
+  color: var(--ink-faint);
+}
+
+.orient__hint {
+  font-size: 0.7rem;
+  color: var(--ink-faint);
+}
+
+/*
+ * On a phone the dock is below the structure and below the fold, and stacked
+ * square figures are a long scroll to nothing. It stays available and starts
+ * closed instead; the summary is one tap.
+ */
+@media (max-width: 48rem) {
+  .orient__grid {
+    padding: 0 0.5rem 0.5rem;
+  }
+
+  .orient__cell {
+    padding: 0.45rem;
+  }
+}
