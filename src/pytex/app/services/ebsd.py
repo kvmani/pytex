@@ -682,11 +682,13 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
             name="grid_points",
             label="Map size",
             help_text=(
-                "Side of the square practice map, in measurement points. Every derived quantity "
-                "costs at least linearly in the point count, and IPF colouring dominates: 56 "
-                "points a side draws in about two seconds, 80 in about six. The known answers "
-                "hold at every size — only the GROD magnitude scales with the map, since it is a "
-                "deviation accumulated across it."
+                "Side of the square practice map, in measurement points. Most derived "
+                "quantities cost linearly in the point count; the grain reference orientations "
+                "cost the square of each grain's size, so a map of a few large grains is the "
+                "slow case rather than a map of many small ones. 200 points a side draws in "
+                "well under a second on the practice datasets. The known answers hold at every "
+                "size — only the GROD magnitude scales with the map, since it is a deviation "
+                "accumulated across it."
             ),
             units="points",
             default=56,
@@ -831,10 +833,10 @@ def _colour_field(
 
     if colouring == "ipf":
         count = len(crystal_map.orientations)
-        # Narrated because it dominates the wait, and a wait nobody explained
-        # reads as a hang. The cost is the symmetry reduction: every direction
-        # is folded into the fundamental sector, which currently visits each one
-        # separately in pytex.core.symmetry.
+        # Narrated because a wait nobody explained reads as a hang. The cost is
+        # the symmetry reduction: every direction is folded into the
+        # fundamental sector, which pytex.core.symmetry does for the whole map
+        # in one blocked pass over the symmetry orbit.
         APP_LOG.info(
             f"Folding {count} orientations into the fundamental sector for IPF-"
             f"{request['ipf_direction']} colouring.",

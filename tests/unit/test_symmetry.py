@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from numpy.testing import assert_allclose
 
 from pytex.core import FrameDomain, Handedness, ReferenceFrame, Rotation, SymmetrySpec, VectorSet
@@ -73,3 +74,53 @@ def test_symmetry_spec_equality_is_well_defined_for_distinct_instances() -> None
     assert hash(left) == hash(right)
     assert left != SymmetrySpec.from_point_group("6/mmm", reference_frame=frame)
     assert {left: "cubic"}[right] == "cubic"
+
+
+@pytest.mark.parametrize("point_group", ["m-3m", "6/mmm", "4/mmm", "2/m", "-1"])
+@pytest.mark.parametrize("antipodal", [True, False])
+def test_batch_sector_reduction_agrees_with_the_scalar_rule(
+    point_group: str, antipodal: bool
+) -> None:
+    """The vectorized reduction is an optimization, so it may not answer differently.
+
+    It skips renormalizing the orbit, which the operators being rotations makes
+    redundant; the check is that the representatives still come back unit and
+    identical to the one-vector-at-a-time rule, member for member.
+    """
+
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    symmetry = SymmetrySpec.from_point_group(point_group, reference_frame=crystal)
+    rng = np.random.default_rng(4)
+    directions = rng.normal(size=(400, 3))
+    directions /= np.linalg.norm(directions, axis=1, keepdims=True)
+
+    reduced = np.asarray(
+        symmetry.reduce_vectors_to_fundamental_sector(directions, antipodal=antipodal)
+    )
+
+    assert_allclose(np.linalg.norm(reduced, axis=1), 1.0, atol=1e-12)
+    for index, direction in enumerate(directions):
+        expected = symmetry.reduce_vector_to_fundamental_sector(direction, antipodal=antipodal)
+        assert_allclose(reduced[index], np.asarray(expected), atol=1e-10)
+
+
+def test_batch_sector_reduction_is_independent_of_the_chunk_size() -> None:
+    """Blocking is bookkeeping; it may not reach the edge of the answer."""
+
+    from pytex.core import symmetry as symmetry_module
+
+    crystal = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    symmetry = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal)
+    rng = np.random.default_rng(5)
+    directions = rng.normal(size=(300, 3))
+    directions /= np.linalg.norm(directions, axis=1, keepdims=True)
+
+    whole = np.asarray(symmetry.reduce_vectors_to_fundamental_sector(directions))
+    original = symmetry_module._SECTOR_REDUCTION_CHUNK
+    try:
+        symmetry_module._SECTOR_REDUCTION_CHUNK = 7
+        chunked = np.asarray(symmetry.reduce_vectors_to_fundamental_sector(directions))
+    finally:
+        symmetry_module._SECTOR_REDUCTION_CHUNK = original
+
+    assert_allclose(whole, chunked, atol=0.0)

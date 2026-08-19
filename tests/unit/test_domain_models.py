@@ -2218,3 +2218,51 @@ def test_exact_fundamental_region_projection_selects_minimum_angle_representativ
     ]
     assert projected.rotation.angle_rad == pytest.approx(min(equivalent_angles))
     assert projected.is_in_fundamental_region()
+
+
+def test_grain_ids_run_in_order_of_each_grain_s_lowest_member() -> None:
+    """Label order is a contract, not an artefact of how the flood fill walked.
+
+    The segmentation runs on SciPy's connected components rather than a Python
+    union-find, and a traversal order is nobody's promise. What downstream code
+    and every pinned expectation actually read is that grain 0 contains point
+    0, grain 1 the lowest-numbered point outside it, and so on.
+    """
+
+    crystal, specimen, symmetry = make_foundation()
+    # Three stripes of a 3 x 3 map, interleaved so that a naive traversal and
+    # the lowest-member rule would disagree if the rule were not enforced.
+    angles = [0.0, 40.0, 80.0, 0.0, 40.0, 80.0, 0.0, 40.0, 80.0]
+    orientations = OrientationSet.from_orientations(
+        [
+            Orientation(
+                Rotation.from_bunge_euler(angle, 0.0, 0.0),
+                crystal_frame=crystal,
+                specimen_frame=specimen,
+                symmetry=symmetry,
+            )
+            for angle in angles
+        ]
+    )
+    coordinates = np.array(
+        [[float(col), float(row)] for row in range(3) for col in range(3)],
+        dtype=np.float64,
+    )
+    crystal_map = CrystalMap(
+        coordinates=coordinates,
+        orientations=orientations,
+        map_frame=specimen,
+        grid_shape=(3, 3),
+        step_sizes=(1.0, 1.0),
+    )
+
+    segmentation = crystal_map.segment_grains(
+        max_misorientation_deg=5.0, symmetry_aware=False, connectivity=4
+    )
+    labels = np.asarray(segmentation.labels).reshape(-1)
+
+    assert len(segmentation.grains) == 3
+    assert list(labels) == [0, 1, 2, 0, 1, 2, 0, 1, 2]
+    lowest = [int(np.asarray(grain.member_indices).min()) for grain in segmentation.grains]
+    assert lowest == sorted(lowest)
+    assert lowest == [0, 1, 2]

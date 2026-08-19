@@ -5,6 +5,122 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## EBSD Map Rendering Performance — COMPLETE (2026-08-19)
+
+**Objective.** The EBSD panel's orientation maps took far too long to appear: the `ebsd.map`
+operation's own help text admitted "56 points a side draws in about two seconds, 80 in about six".
+Make the whole path fast enough to feel interactive by vectorizing the hot numerical kernels, not
+by cutting work the science needs, and report the before/after as measured numbers.
+
+### Result
+
+Every timing below is the `ebsd.map` service end to end — build, segmentation, KAM, GROD,
+colouring, boundary extraction and encoding — on this development box, `.venv` CPython 3.11, best
+of one run per cell, IPF-Z colouring with boundaries on at a 5 deg grain threshold. All three
+practice datasets, because they stress different parts: `sigma3_twin` is five large grains of one
+orientation each, `equiaxed_polycrystal` twelve grains with real spread, `bicrystal_gradient` two
+very large grains carrying a continuous orientation gradient — the worst case, since the
+representative-orientation cost is quadratic in grain size.
+
+| dataset | grid | points | before | after | speedup |
+| --- | --- | --- | --- | --- | --- |
+| `sigma3_twin` | 56 | 3 136 | 0.413 s | **0.053 s** | 7.8x |
+| `sigma3_twin` | 120 | 14 400 | 8.842 s | **0.242 s** | 36.5x |
+| `sigma3_twin` | 200 | 40 000 | 66.887 s | **0.630 s** | 106x |
+| `equiaxed_polycrystal` | 56 | 3 136 | 0.203 s | **0.070 s** | 2.9x |
+| `equiaxed_polycrystal` | 120 | 14 400 | 4.645 s | **0.370 s** | 12.6x |
+| `equiaxed_polycrystal` | 200 | 40 000 | 39.679 s | **1.982 s** | 20.0x |
+| `bicrystal_gradient` | 56 | 3 136 | 0.911 s | **0.082 s** | 11.1x |
+| `bicrystal_gradient` | 120 | 14 400 | 25.230 s | **0.793 s** | 31.8x |
+| `bicrystal_gradient` | 200 | 40 000 | 143.128 s | **3.507 s** | 40.8x |
+
+Per stage, at 200 points a side (40 000 measurements):
+
+| stage | dataset | before | after |
+| --- | --- | --- | --- |
+| `segment_grains` | `sigma3_twin` | 69.652 s | 0.183 s |
+| `segment_grains` | `equiaxed_polycrystal` | 33.216 s | 1.495 s |
+| `segment_grains` | `bicrystal_gradient` | 173.538 s | 2.734 s |
+| `ipf_colors` | `bicrystal_gradient` | 0.625 s | 0.332 s |
+
+**Nothing about the answer moved.** At every dataset and every size the base64 RGB image, the IPF
+colour checksum, the grain and boundary-segment counts and every grain's
+`reference_orientation_index` are identical to the pre-change run, compared value for value.
+
+### What was slow, and what replaced it
+
+| # | Increment | Status | Commit |
+| --- | --- | --- | --- |
+| B0 | Baseline measured, across all three datasets and three sizes | done | (this commit) |
+| M1 | Certified single-branch medoid, upper triangle only, degenerate cluster answered by definition | done | (this commit) |
+| M2 | Grain flood fill on SciPy connected components; grain member lists split by one sort | done | (this commit) |
+| M3 | Symmetry-orbit reduction as one dense product, without renormalizing the orbit | done | (this commit) |
+| M4 | `grid_points` help text corrected — it still quoted the old timings | done | (this commit) |
+| M5 | Theory note, CHANGELOG, and the roadmap line that still called the segmentation a union-find | done | (this commit) |
+
+**M1 — the grain reference orientation, 95% of the wall time.**
+`_disorientation_medoid_index` compared every pair of members of every grain through all `k = 24`
+symmetry functionals of the cubic group, after a quaternion product per pair. The disorientation
+is `min over S_l, S_r in G of angle(S_l M S_r)`, and the rotation angle is a bi-invariant metric,
+so for any `S_l, S_r`
+
+    angle(S_l M S_r) >= angle(S_l S_r) - angle(M).
+
+`S_l S_r` ranges over `G`. Where it is the identity the conjugate has exactly `angle(M)`, so those
+branches never beat the one already held; where it is not, the bound gives
+`angle >= theta_min - angle(M)` with `theta_min` the smallest non-identity rotation angle in the
+group — 90 deg cubic, 60 deg hexagonal, 180 deg orthorhombic. Hence
+
+> an angle taken on a single branch and found below `theta_min / 2` **is** the disorientation, and
+> the remaining `k - 1` functionals cannot lower it.
+
+Bringing every member onto the branch nearest the set's mean makes the pair angle simply
+`2 arccos |q_i . q_j|` — one dense `Q @ Q.T` product for a whole grain instead of `k` functionals
+and a quaternion product per pair — and makes the certificate an O(n) test rather than an O(n^2)
+one: if every member lies within `theta_min / 4` of that mean, the triangle inequality puts every
+pair under the threshold. The matrix is symmetric, so only its upper triangle is evaluated and
+each pair is credited to both of its members. A grain that fails the certificate falls back to the
+existing full-group search, so no answer changes and no tolerance enters the science.
+
+One behaviour change came with it, and it is a fix. A grain whose members are all *one* orientation
+has every total zero in exact arithmetic, so `tie_rtol` had nothing to be relative to and the
+representative was decided by floating-point residue — `arccos` loses half its significant digits
+at its endpoint, so a near-zero pair angle carries about `2e-8` rad of noise by any route. Such a
+cluster is now recognised up front, below `_INDISTINGUISHABLE_ANGLE_RAD` (1e-6 rad, a
+ten-thousandth of a degree), and answered with the lowest index by definition. The tie band itself
+stays purely relative, so a grain with real spread resolves exactly as it did before — checked
+against the baseline on all twelve grains of `equiaxed_polycrystal`, where the true minima are
+separated by 4e-6 to 3e-4 rad and every one of them still wins.
+
+**M2 — the flood fill and the grain member lists.** `segment_grains` ran a Python union-find over
+the neighbour graph: a `find` per point and per edge, 276 000 Python-level calls on a 40 000-point
+map. It is now `scipy.sparse.csgraph.connected_components` over the same edge set, with the grain
+ids renumbered explicitly by each component's lowest member so the label contract does not depend
+on SciPy's traversal order. `_segmentation_from_labels` then scanned the whole label array once
+per grain — points times grains, which on a real scan of thousands of grains is the map over
+again — and now splits the members with one `argsort` and a `bincount`.
+
+**M3 — the IPF colour key.** `_reduce_normalized_vectors_to_sector` renormalized the entire
+symmetry orbit — `2 * order = 48` rows per input direction — when only the one row per direction
+that survives the selection is ever returned. The orbit is now formed by one dense product against
+the operators stacked into a `(3 * order, 3)` matrix, and the normalization moved to the chosen
+representatives, 48 times fewer rows for the same guarantee. Moving it rather than dropping it is
+deliberate: `test_workflow_grade_ebsd_to_texture_pipeline_and_contracts` round-trips these vectors
+through a JSON contract and compares them exactly, so a norm off by an ulp is visible downstream.
+`tests/unit/test_symmetry.py` pins the batch result against the scalar rule, member for member,
+for five point groups and both antipodal settings, and pins independence from the block size.
+
+### What is still quadratic, and why that is the right place to stop
+
+The medoid is still O(n^2) in each grain's size: `bicrystal_gradient` at 200 points a side spends
+2.7 of its 3.5 seconds on two grains of 20 000 members, and the cost is now dominated by `arccos`
+over the pair matrix itself. Summing a non-linear function of every pairwise angle has no exact
+factorization, and the definition of the representative — the member of least total disorientation
+to the others — is a scientific choice, not an implementation detail. Approximating it (a
+sub-sampled medoid, or the nearest member to the mean orientation) would change what the grain
+reference orientation *is*, and with it GROD and every grain-average statistic downstream. That is
+a decision to take deliberately and document, not to smuggle in as an optimization.
+
 ## Shared Stereographic Projection, Then Kikuchi Bands On The Solved TEM Pattern — COMPLETE (2026-08-16)
 
 **Objective.** Two increments, landed separately:

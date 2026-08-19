@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, Literal, cast
 import numpy as np
 from numpy.typing import ArrayLike
 from scipy.sparse import csr_matrix, triu
+from scipy.sparse.csgraph import connected_components
 
 from pytex.core._arrays import normalize_vector
 from pytex.core.acquisition import AcquisitionGeometry, CalibrationRecord, MeasurementQuality
@@ -293,9 +294,7 @@ def _vectorized_hexagonal_grid_pairs(
         nearest_from_upper = x_delta <= np.min(x_delta, axis=1, keepdims=True) + tolerance
         nearest_from_lower = x_delta <= np.min(x_delta, axis=0, keepdims=True) + tolerance
         upper_positions, lower_positions = np.nonzero(nearest_from_upper | nearest_from_lower)
-        cross_row_pairs = np.column_stack(
-            [upper[upper_positions], lower[lower_positions]]
-        )
+        cross_row_pairs = np.column_stack([upper[upper_positions], lower[lower_positions]])
         expected_cross_pairs = (
             2 * min(upper.size, lower.size)
             if upper.size != lower.size
@@ -3302,11 +3301,20 @@ class CrystalMap:
         labels_array = np.asarray(labels, dtype=np.int64)
         if labels_array.shape != (len(self.orientations),):
             raise ValueError("labels must contain one entry per orientation.")
-        unique_labels = sorted(int(label) for label in np.unique(labels_array))
+        unique_labels, inverse = np.unique(labels_array, return_inverse=True)
+        # One sort splits the map into per-grain member lists. Scanning the
+        # whole label array once per grain instead would cost points x grains,
+        # which on a real scan of thousands of grains is the whole map many
+        # times over.
+        order = np.argsort(inverse, kind="stable")
+        boundaries = np.cumsum(np.bincount(inverse, minlength=unique_labels.size))
+        starts = np.concatenate(([0], boundaries[:-1]))
         relabeled = np.empty_like(labels_array)
         grains: list[Grain] = []
-        for grain_id, old_label in enumerate(unique_labels):
-            member_indices = np.flatnonzero(labels_array == old_label).astype(np.int64)
+        for grain_id in range(unique_labels.size):
+            member_indices = np.ascontiguousarray(
+                order[starts[grain_id] : boundaries[grain_id]], dtype=np.int64
+            )
             relabeled[member_indices] = grain_id
             reference_index = self._representative_orientation_index(
                 member_indices,
@@ -3375,46 +3383,46 @@ class CrystalMap:
 
         if max_misorientation_deg < 0.0:
             raise ValueError("max_misorientation_deg must be non-negative.")
+        count = len(self.orientations)
         graph = self.neighbor_graph(connectivity=connectivity, order=1)
         neighbor_pairs = graph.pairs
         same_phase = self._same_phase_pair_mask(neighbor_pairs)
         neighbor_pairs = neighbor_pairs[same_phase]
-        parent = np.arange(len(self.orientations), dtype=np.int64)
 
-        def find(index: int) -> int:
-            root = index
-            while parent[root] != root:
-                root = int(parent[root])
-            while parent[index] != index:
-                next_index = int(parent[index])
-                parent[index] = root
-                index = next_index
-            return root
-
-        def union(left: int, right: int) -> None:
-            left_root = find(left)
-            right_root = find(right)
-            if left_root != right_root:
-                parent[right_root] = left_root
-
+        joined = np.empty((0, 2), dtype=np.int64)
         if neighbor_pairs.size:
             angles_deg = np.rad2deg(
                 self._pair_misorientation_rad(neighbor_pairs, symmetry_aware=symmetry_aware)
             )
-            valid_pairs = neighbor_pairs[
+            joined = neighbor_pairs[
                 np.isfinite(angles_deg) & (angles_deg <= max_misorientation_deg)
             ]
-            for left_index, right_index in valid_pairs:
-                union(int(left_index), int(right_index))
 
-        component_map: dict[int, list[int]] = {}
-        for index in range(len(self.orientations)):
-            component_map.setdefault(find(index), []).append(index)
+        # The flood fill is the connected components of the graph whose edges
+        # are the neighbour pairs that passed the threshold. SciPy walks that
+        # in compiled code; a Python union-find over the same edges costs a
+        # dictionary lookup per point and dominates a full-size map.
+        adjacency = csr_matrix(
+            (
+                np.ones(joined.shape[0], dtype=np.int8),
+                (joined[:, 0].astype(np.int64), joined[:, 1].astype(np.int64)),
+            ),
+            shape=(count, count),
+        )
+        component_count, raw_labels = connected_components(
+            adjacency, directed=False, return_labels=True
+        )
 
-        labels = np.empty(len(self.orientations), dtype=np.int64)
-        for grain_id, member_list in enumerate(sorted(component_map.values(), key=lambda x: x[0])):
-            member_indices = np.asarray(member_list, dtype=np.int64)
-            labels[member_indices] = grain_id
+        # Grain ids run in order of each component's lowest member, which is
+        # what the labels have always meant and what every pinned expectation
+        # downstream reads. Recovered explicitly rather than inherited from
+        # SciPy's traversal order.
+        first_member = np.full(component_count, count, dtype=np.int64)
+        np.minimum.at(first_member, raw_labels, np.arange(count, dtype=np.int64))
+        ranking = np.argsort(first_member, kind="stable")
+        renumber = np.empty(component_count, dtype=np.int64)
+        renumber[ranking] = np.arange(component_count, dtype=np.int64)
+        labels = renumber[raw_labels]
 
         return self._segmentation_from_labels(
             labels,

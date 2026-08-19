@@ -130,18 +130,14 @@ def _matrices_to_repeated_axis_euler(
     third = np.zeros(matrices.shape[0], dtype=np.float64)
     if normalized == "bunge":
         regular = ~near_zero & ~near_pi
-        first[near_zero] = np.arctan2(
-            matrices[near_zero, 1, 0], matrices[near_zero, 0, 0]
-        )
+        first[near_zero] = np.arctan2(matrices[near_zero, 1, 0], matrices[near_zero, 0, 0])
         first[near_pi] = np.arctan2(matrices[near_pi, 0, 1], matrices[near_pi, 0, 0])
         first[regular] = np.arctan2(matrices[regular, 0, 2], -matrices[regular, 1, 2])
         third[regular] = np.arctan2(matrices[regular, 2, 0], matrices[regular, 2, 1])
     else:
         degenerate = near_zero | near_pi
         regular = ~degenerate
-        first[degenerate] = np.arctan2(
-            matrices[degenerate, 1, 0], matrices[degenerate, 0, 0]
-        )
+        first[degenerate] = np.arctan2(matrices[degenerate, 1, 0], matrices[degenerate, 0, 0])
         first[regular] = np.arctan2(matrices[regular, 1, 2], matrices[regular, 0, 2])
         third[regular] = np.arctan2(matrices[regular, 2, 1], -matrices[regular, 2, 0])
     return np.column_stack([first, phi, third])
@@ -390,12 +386,15 @@ def matrices_to_quaternions(matrices: ArrayLike) -> np.ndarray:
         dominant_z = non_positive.copy()
         dominant_z[non_positive] = dominant == 2
         if np.any(dominant_x):
-            s = np.sqrt(
-                1.0
-                + matrix_array[dominant_x, 0, 0]
-                - matrix_array[dominant_x, 1, 1]
-                - matrix_array[dominant_x, 2, 2]
-            ) * 2.0
+            s = (
+                np.sqrt(
+                    1.0
+                    + matrix_array[dominant_x, 0, 0]
+                    - matrix_array[dominant_x, 1, 1]
+                    - matrix_array[dominant_x, 2, 2]
+                )
+                * 2.0
+            )
             quaternions[dominant_x, 0] = (
                 matrix_array[dominant_x, 2, 1] - matrix_array[dominant_x, 1, 2]
             ) / s
@@ -407,12 +406,15 @@ def matrices_to_quaternions(matrices: ArrayLike) -> np.ndarray:
                 matrix_array[dominant_x, 0, 2] + matrix_array[dominant_x, 2, 0]
             ) / s
         if np.any(dominant_y):
-            s = np.sqrt(
-                1.0
-                + matrix_array[dominant_y, 1, 1]
-                - matrix_array[dominant_y, 0, 0]
-                - matrix_array[dominant_y, 2, 2]
-            ) * 2.0
+            s = (
+                np.sqrt(
+                    1.0
+                    + matrix_array[dominant_y, 1, 1]
+                    - matrix_array[dominant_y, 0, 0]
+                    - matrix_array[dominant_y, 2, 2]
+                )
+                * 2.0
+            )
             quaternions[dominant_y, 0] = (
                 matrix_array[dominant_y, 0, 2] - matrix_array[dominant_y, 2, 0]
             ) / s
@@ -424,12 +426,15 @@ def matrices_to_quaternions(matrices: ArrayLike) -> np.ndarray:
                 matrix_array[dominant_y, 1, 2] + matrix_array[dominant_y, 2, 1]
             ) / s
         if np.any(dominant_z):
-            s = np.sqrt(
-                1.0
-                + matrix_array[dominant_z, 2, 2]
-                - matrix_array[dominant_z, 0, 0]
-                - matrix_array[dominant_z, 1, 1]
-            ) * 2.0
+            s = (
+                np.sqrt(
+                    1.0
+                    + matrix_array[dominant_z, 2, 2]
+                    - matrix_array[dominant_z, 0, 0]
+                    - matrix_array[dominant_z, 1, 1]
+                )
+                * 2.0
+            )
             quaternions[dominant_z, 0] = (
                 matrix_array[dominant_z, 1, 0] - matrix_array[dominant_z, 0, 1]
             ) / s
@@ -766,6 +771,200 @@ def _reduced_pair_disorientation_angles(
     )
 
 
+#: Below this angle two orientations are the same measurement, in radians.
+#: A pair angle recovered from a quaternion dot product resolves to about
+#: ``2e-8`` rad — ``arccos`` loses half its significant digits at the endpoint
+#: — so anything under a microradian, a ten-thousandth of a degree, is
+#: floating-point residue and not a separation. Used only to recognise a
+#: degenerate cluster, never to compare physical angles.
+_INDISTINGUISHABLE_ANGLE_RAD = 1e-6
+
+
+@lru_cache(maxsize=32)
+def _group_minimum_nonidentity_angle_cached(operators_key: bytes, count: int) -> float:
+    """Smallest rotation angle among the group's non-identity operators, in radians.
+
+    Purpose
+    -------
+    The certificate constant behind the single-branch medoid in
+    :func:`_disorientation_medoid_index`. For the proper cubic group this is
+    the 90-degree four-fold rotation; for hexagonal, the 60-degree six-fold;
+    for a group with no non-identity operator there is nothing to beat the
+    identity branch, so the answer is infinite.
+
+    Returns
+    -------
+    float
+        The angle in radians, or ``inf`` for the trivial group.
+    """
+
+    operators = np.frombuffer(operators_key, dtype=np.float64).reshape(count, 3, 3)
+    traces = np.einsum("nii->n", operators)
+    angles = _safe_arccos(0.5 * (traces - 1.0))
+    non_identity = angles[angles > 1e-9]
+    return float(non_identity.min()) if non_identity.size else float("inf")
+
+
+def _group_minimum_nonidentity_angle(operators: np.ndarray) -> float:
+    array = np.ascontiguousarray(np.asarray(operators, dtype=np.float64))
+    return _group_minimum_nonidentity_angle_cached(array.tobytes(), array.shape[0])
+
+
+def _align_quaternions_to_common_branch(
+    quaternions: np.ndarray,
+    symmetry_quaternions: np.ndarray,
+) -> np.ndarray:
+    """Re-express each orientation on the symmetry branch nearest the first one.
+
+    Every ``q * s`` for ``s`` in the crystal group names the same orientation.
+    Which of them is stored is an accident of how the measurement was reported,
+    and it is that accident — not the crystallography — that forces a pairwise
+    disorientation to search the group. Choosing, once per member, the branch
+    closest to the set's first member removes the accident, after which the
+    plain quaternion dot product carries the pair angle.
+    """
+
+    variants = quaternions_multiply(
+        quaternions[:, None, :],
+        symmetry_quaternions[None, :, :],
+    )
+    scores = np.abs(variants @ quaternions[0])
+    best = np.argmax(scores, axis=1)
+    aligned = variants[np.arange(variants.shape[0]), best]
+    signs = np.where(aligned @ quaternions[0] < 0.0, -1.0, 1.0)
+    return np.ascontiguousarray(aligned * signs[:, None])
+
+
+def _single_branch_pair_angle_row_sums(
+    aligned: np.ndarray,
+    *,
+    max_pairs_per_block: int,
+) -> np.ndarray:
+    """Row sums of the pairwise angle matrix for quaternions on a common branch.
+
+    With the branch fixed the pair angle is ``2 * arccos |q_i . q_j|``, so a
+    whole block of rows is one dense matrix product rather than a
+    symmetry-reduced evaluation per pair. The matrix is symmetric, so only its
+    upper triangle is evaluated and each pair is credited to both of its
+    members; the blocking keeps an ``(n, n)`` array from ever existing.
+    """
+
+    count = aligned.shape[0]
+    rows_per_block = max(1, int(max_pairs_per_block // count))
+    totals = np.zeros(count, dtype=np.float64)
+    for start in range(0, count, rows_per_block):
+        stop = min(start + rows_per_block, count)
+        block = aligned[start:stop] @ aligned[start:].T
+        np.abs(block, out=block)
+        np.minimum(block, 1.0, out=block)
+        np.arccos(block, out=block)
+        width = stop - start
+        # The leading square is this block against itself: symmetric, and
+        # already complete, so its row sums stand as they are.
+        totals[start:stop] += block[:, :width].sum(axis=1)
+        trailing = block[:, width:]
+        if trailing.size:
+            totals[start:stop] += trailing.sum(axis=1)
+            totals[stop:] += trailing.sum(axis=0)
+    totals *= 2.0
+    return totals
+
+
+def _common_branch_and_spread(
+    quaternions: np.ndarray,
+    operators: np.ndarray,
+) -> tuple[np.ndarray, float, float]:
+    """Members on one symmetry branch, how far they spread, and the exactness bound.
+
+    Returns the aligned quaternions, the largest angle from any member to the
+    set's mean orientation in radians, and half the group's smallest
+    non-identity rotation — the threshold under which a single branch already
+    carries the true disorientation.
+    """
+
+    certificate_rad = 0.5 * _group_minimum_nonidentity_angle(operators)
+    aligned = _align_quaternions_to_common_branch(
+        quaternions,
+        matrices_to_quaternions(operators),
+    )
+    mean = aligned.sum(axis=0)
+    norm = float(np.linalg.norm(mean))
+    if norm <= 0.0:
+        return aligned, float("inf"), certificate_rad
+    deviations = 2.0 * _safe_arccos(np.abs(aligned @ (mean / norm)))
+    return aligned, float(deviations.max()), certificate_rad
+
+
+def _certified_single_branch_row_sums(
+    quaternions: np.ndarray,
+    operators: np.ndarray,
+    *,
+    max_pairs_per_block: int,
+) -> np.ndarray | None:
+    r"""Row sums of the disorientation matrix without searching the group.
+
+    Purpose
+    -------
+    The fast path behind :func:`_disorientation_medoid_index`, and the reason a
+    grain reference orientation is affordable on a full-size map. The
+    disorientation is ``min over S_l, S_r in G of angle(S_l M S_r)``, and the
+    rotation angle is a bi-invariant metric, so for every pair of operators
+
+    .. math:: \angle(S_l M S_r) \ge \angle(S_l S_r) - \angle(M).
+
+    ``S_l S_r`` runs over the group. Where it is the identity the conjugate has
+    exactly ``angle(M)``, so those branches never improve on the one already
+    held; where it is not, the angle is at least ``theta_min - angle(M)`` with
+    ``theta_min`` the smallest non-identity rotation in the group — 90 degrees
+    for cubic, 60 for hexagonal. An angle already below ``theta_min / 2``
+    therefore *is* the disorientation, and the remaining functionals cannot
+    lower it.
+
+    The members are first brought onto the branch nearest their mean, which
+    makes the certificate a single ``O(n)`` test: if every member lies within
+    ``theta_min / 4`` of that mean, the triangle inequality puts every pair
+    below the threshold.
+
+    Returns
+    -------
+    np.ndarray or None
+        The row sums, or ``None`` when the certificate does not hold and the
+        caller must search the full group.
+    """
+
+    aligned, spread_rad, certificate_rad = _common_branch_and_spread(quaternions, operators)
+    if 2.0 * spread_rad >= certificate_rad:
+        return None
+    return _single_branch_pair_angle_row_sums(
+        aligned,
+        max_pairs_per_block=max_pairs_per_block,
+    )
+
+
+def _exact_pair_angle_row_sums(
+    quaternions: np.ndarray,
+    operators: np.ndarray,
+    *,
+    max_pairs_per_block: int,
+) -> np.ndarray:
+    """Row sums of the pairwise disorientation matrix, searching the full group."""
+
+    count = quaternions.shape[0]
+    conjugates = quaternions * np.array([1.0, -1.0, -1.0, -1.0])
+    rows_per_block = max(1, int(max_pairs_per_block // count))
+    totals = np.zeros(count, dtype=np.float64)
+    for start in range(0, count, rows_per_block):
+        stop = min(start + rows_per_block, count)
+        relative = quaternions_multiply(
+            conjugates[start:stop, None, :], quaternions[None, :, :]
+        ).reshape(-1, 4)
+        angles = _reduced_pair_disorientation_angles_from_quaternions(
+            relative, operators, operators
+        ).reshape(stop - start, count)
+        totals[start:stop] = angles.sum(axis=1)
+    return totals
+
+
 def _disorientation_medoid_index(
     orientations: OrientationSet,
     *,
@@ -786,6 +985,12 @@ def _disorientation_medoid_index(
     ``tie_rtol`` of the minimum are therefore treated as tied and the lowest
     index wins, which is reproducible everywhere. The tolerance sits many
     orders of magnitude below any physically meaningful separation.
+
+    A cluster whose members are all one orientation is the limiting case: every
+    total is zero, ``tie_rtol`` has nothing to be relative to, and the answer
+    would be decided by arithmetic residue alone. Such a set is recognised up
+    front and answered with the lowest index, by definition rather than by
+    accident.
     """
 
     count = len(orientations)
@@ -794,24 +999,31 @@ def _disorientation_medoid_index(
     if count <= 2:
         return 0
     quaternions = np.asarray(orientations.quaternions, dtype=np.float64)
-    conjugates = quaternions * np.array([1.0, -1.0, -1.0, -1.0])
     identity = np.eye(3, dtype=np.float64)[None, :, :]
     operators = (
         orientations.symmetry.operators
         if symmetry_aware and orientations.symmetry is not None
         else identity
     )
-    rows_per_block = max(1, int(max_pairs_per_block // count))
-    totals = np.zeros(count, dtype=np.float64)
-    for start in range(0, count, rows_per_block):
-        stop = min(start + rows_per_block, count)
-        relative = quaternions_multiply(
-            conjugates[start:stop, None, :], quaternions[None, :, :]
-        ).reshape(-1, 4)
-        angles = _reduced_pair_disorientation_angles_from_quaternions(
-            relative, operators, operators
-        ).reshape(stop - start, count)
-        totals[start:stop] = angles.sum(axis=1)
+    aligned, spread_rad, certificate_rad = _common_branch_and_spread(quaternions, operators)
+    if spread_rad <= _INDISTINGUISHABLE_ANGLE_RAD:
+        # Every member is the same orientation to the last bit the arithmetic
+        # holds, so every total is zero and no member is more central than
+        # another. Answering from the floating-point residue would make the
+        # grain reference orientation a property of the machine; the lowest
+        # index is the reproducible choice, and it is as correct as any.
+        return 0
+    if 2.0 * spread_rad < certificate_rad:
+        totals = _single_branch_pair_angle_row_sums(
+            aligned,
+            max_pairs_per_block=max_pairs_per_block,
+        )
+    else:
+        totals = _exact_pair_angle_row_sums(
+            quaternions,
+            operators,
+            max_pairs_per_block=max_pairs_per_block,
+        )
     minimum = float(totals.min())
     tied = totals <= minimum + tie_rtol * max(abs(minimum), 1.0)
     return int(np.flatnonzero(tied)[0])
@@ -1027,9 +1239,7 @@ def _coerce_plane_direction_vectors(
         )
     if isinstance(plane, MillerPlaneSet):
         if not isinstance(direction, MillerDirectionSet):
-            raise ValueError(
-                "A MillerPlaneSet input requires a matching MillerDirectionSet."
-            )
+            raise ValueError("A MillerPlaneSet input requires a matching MillerDirectionSet.")
         if plane.indices.shape[0] != direction.indices.shape[0]:
             raise ValueError("MillerPlaneSet and MillerDirectionSet must have matching lengths.")
         resolved_phase = _phase_from_miller_objects((plane,), (direction,), phase=phase)
@@ -2272,8 +2482,7 @@ class Misorientation:
     provenance: ProvenanceRecord | None = None
 
     def as_matrix(self) -> np.ndarray:
-        """The 3x3 matrix of the misorientation, in the crystal frame.
-        """
+        """The 3x3 matrix of the misorientation, in the crystal frame."""
 
         return self.rotation.as_matrix()
 
@@ -2290,8 +2499,7 @@ class Misorientation:
 
     @property
     def angle_deg(self) -> float:
-        """Misorientation angle in degrees. See :attr:`angle_rad`.
-        """
+        """Misorientation angle in degrees. See :attr:`angle_rad`."""
 
         return self.rotation.angle_deg
 
@@ -3099,8 +3307,7 @@ class OrientationSet:
         return orientations
 
     def as_matrices(self) -> np.ndarray:
-        """``(n, 3, 3)`` stack of crystal-to-specimen orientation matrices, read-only.
-        """
+        """``(n, 3, 3)`` stack of crystal-to-specimen orientation matrices, read-only."""
 
         matrices = np.ascontiguousarray(quaternions_to_matrices(self.quaternions))
         matrices.setflags(write=False)

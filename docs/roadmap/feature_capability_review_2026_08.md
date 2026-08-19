@@ -246,7 +246,7 @@ export.
 
 **Implemented.** `ebsd/models.py::CrystalMap` covers multiphase maps, arbitrary
 property channels, phase masks and selection, point selection, and manifest
-export. `GrainSegmentation` provides union-find segmentation, GOS/GAM/GROD maps,
+export. `GrainSegmentation` provides connected-component segmentation, GOS/GAM/GROD maps,
 fitted ellipses, aspect ratios, shape orientation, perimeter, area, shape factor
 and bounding boxes; `GrainBoundaryNetwork` and `GrainGraph` give the boundary
 topology. Analytics: KAM at arbitrary neighbour order, CSL classification with

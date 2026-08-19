@@ -13,12 +13,40 @@ downstream analyses depend on them.
 
 ### Changed
 
+- **EBSD maps draw at interactive speed.** The `ebsd.map` panel operation is 8x to 106x faster
+  with an identical result — the base64 image, the IPF colour checksum, the grain and
+  boundary-segment counts and every grain's reference-orientation index match the previous
+  implementation value for value on all three practice datasets. On a 200-point-a-side map
+  (40 000 measurements): `sigma3_twin` 66.9 s → 0.63 s, `equiaxed_polycrystal` 39.7 s → 1.98 s,
+  `bicrystal_gradient` 143.1 s → 3.51 s. Three kernels changed. The grain reference orientation,
+  which was 95% of the wall time, no longer searches the symmetry group on every pair: the
+  rotation angle is a bi-invariant metric, so an angle taken on a single branch and found below
+  half the group's smallest non-identity rotation *is* the disorientation, and a grain whose
+  members all lie within a quarter of that angle of their mean therefore reduces to one dense Gram
+  matrix — with a fallback to the full group search whenever that certificate does not hold.
+  `segment_grains` now floods the neighbour graph with `scipy.sparse.csgraph.connected_components`
+  instead of a per-point Python union-find, and splits grain members with one sort rather than one
+  full scan per grain. The symmetry-orbit reduction behind IPF colouring forms the orbit as a
+  single dense product and no longer renormalizes it member by member. Derived in
+  [EBSD Grain Segmentation And GROD Foundations](docs/site/theory/ebsd_grain_segmentation_and_grod.md).
+
 - **A figure's own readout no longer covers the figure.** The panel readout pinned to the top-left
   of a plot — the TEM measured-picks table above all — is now painted *under* the drawing, so the
   opaque part of the picture masks it and the data behind that corner is visible again. Bringing
   the pointer onto its rectangle raises it in full; leaving restores the clear view. Clicking is
   unchanged: the card has always been `pointer-events: none` and a click in that corner has always
   reached the figure.
+
+### Fixed
+
+- **A uniform grain's reference orientation no longer depends on the machine.** When every member
+  of a grain carries the same orientation, every candidate has the same total disorientation to
+  the others — zero — and the previous relative tie tolerance had nothing to be relative to, so
+  the representative was decided by floating-point residue (`arccos` loses half its significant
+  digits at its endpoint, leaving about 2e-8 rad of noise per pair angle by any route). Such a
+  cluster is now recognised before the sum is taken, below a millionth of a radian, and answered
+  with the lowest member index by definition. Grains with real orientation spread are unaffected:
+  the tie band remains purely relative and resolves exactly as before.
 
 ### Added
 

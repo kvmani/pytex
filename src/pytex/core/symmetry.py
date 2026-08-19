@@ -262,11 +262,16 @@ def _reduce_normalized_vectors_to_sector(
     reduced = np.empty((count, 3), dtype=np.float64)
     for start in range(0, count, _SECTOR_REDUCTION_CHUNK):
         block = normalized[start : start + _SECTOR_REDUCTION_CHUNK]
-        # (rows, members, 3): every operator applied to every direction.
-        orbit = np.einsum("oij,nj->noi", operators, block, optimize=True)
+        # (rows, members, 3): every operator applied to every direction, as one
+        # dense product against the operators stacked into a (3 * order, 3)
+        # matrix. The inputs are already unit and the operators are rotations,
+        # so the orbit is unit too and needs no renormalization — doing it here
+        # would run a square root over `order` times more rows than the caller
+        # already normalized, to recover the last bit of a value that is
+        # correct to within it.
+        orbit = (block @ operators.reshape(-1, 3).T).reshape(block.shape[0], -1, 3)
         if antipodal:
             orbit = np.concatenate([orbit, -orbit], axis=1)
-        orbit = normalize_vectors(orbit.reshape(-1, 3)).reshape(orbit.shape)
 
         rows, members = orbit.shape[0], orbit.shape[1]
         inside = np.all(orbit @ edge_normals.T >= -_SECTOR_TOLERANCE, axis=-1)
@@ -298,7 +303,12 @@ def _reduce_normalized_vectors_to_sector(
             chosen[ambiguous] = order.reshape(ambiguous.size, members)[:, -1] % members
 
         reduced[start : start + rows] = orbit[np.arange(rows), chosen]
-    return reduced
+    # The representatives are unit already, to within the rounding of one
+    # rotation. They are renormalized here anyway, because callers and JSON
+    # contracts round-trip them and a norm off by an ulp survives that trip
+    # visibly — but on the n chosen rows, not on the 2 * order * n rows of the
+    # orbit they were chosen from.
+    return normalize_vectors(reduced)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
