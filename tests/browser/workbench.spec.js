@@ -20,6 +20,7 @@ const WORKSPACES = [
  * difference; `openPanel` walks it.
  */
 const PANEL_PATH = {
+  'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
   'Composite SAED': ['TEM Analysis', 'Composite SAED'],
@@ -28,6 +29,7 @@ const PANEL_PATH = {
 /** Panels that draw a figure, in tab order. Calculator draws none. */
 const FIGURE_PANELS = [
   'Crystal Viewer',
+  'SAED Simulator',
   'TEM Solver',
   'CBED',
   'Composite SAED',
@@ -800,6 +802,74 @@ test('an opened micrograph is fitted rather than inheriting the last view', asyn
   await page.locator(PATTERN_SVG).click();
   await expect(page.locator('.picks__row')).toHaveCount(1);
   await expect(patternControl(page, '.plot__zoom')).toHaveText(zoomed);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The simulator: the forward pattern, its stated orientation, and its bands.
+ *
+ * Three claims, each of which would be invisible in a screenshot. The plate is
+ * drawn with the shared drawing, so it looks like the solver's practice plates.
+ * The orientation is *stated* beside it rather than implied — and when the
+ * orientation asked for is not a zone axis, the deviation is on screen, because
+ * a pattern drawn five degrees off [011] is a picture of [011]. And the Kikuchi
+ * bands come from the same orientation the spots did, so the band for a plane
+ * is as wide as its own spot is far from the beam, which is the relation the
+ * overlay exists to teach.
+ */
+test('the SAED simulator states the orientation it drew and can band it', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'SAED Simulator');
+
+  const drawing = page.locator('#stage svg[aria-label="Simulated diffraction pattern"]');
+  await expect(drawing).toBeVisible({ timeout: 20_000 });
+
+  // The first example: zirconium down the basal axis, exactly on the zone.
+  const readout = page.locator('#stage .plot__readout');
+  await expect(readout).toContainText('Orientation on the beam');
+  await expect(readout).toContainText('[0001]');
+  await expect(readout).not.toContainText('Off that axis by');
+  await expect(page.locator('#stage .plot__status')).toContainText('Zirconium');
+
+  // Bands on request, fetched for the orientation the pattern was drawn from.
+  const spotsBefore = await drawing.locator('circle').count();
+  await page.locator('#stage').getByRole('button', { name: 'Kikuchi', exact: true }).click();
+  await expect(page.locator('#stage .plot__status')).toContainText('Kikuchi band(s)', {
+    timeout: 30_000,
+  });
+  expect(await drawing.locator('polyline').count()).toBeGreaterThan(0);
+  // The bands are an addition to the pattern, not a replacement for it.
+  expect(await drawing.locator('circle').count()).toBe(spotsBefore);
+
+  // An orientation that is not a zone axis says how far off it is.
+  await page.locator('#rail-body summary').filter({ hasText: 'Try an example' }).click();
+  await page
+    .locator('#rail-body .example')
+    .filter({ hasText: 'A measured orientation' })
+    .click();
+  await expect(readout).toContainText('Off that axis by', { timeout: 30_000 });
+  await expect(readout).toContainText('[011]');
+  const deviation = await readout.locator('tr', { hasText: 'Off that axis by' }).locator('td').innerText();
+  // Thirty, fifty, zero in Bunge is five degrees from [011]: an angle from the
+  // Euler convention, not from this program.
+  expect(Number(deviation.replace('°', ''))).toBeCloseTo(5.0, 1);
+
+  // And the cursor reports the radius from 000 and the |g| it corresponds to.
+  const cursorText = await page.evaluate(() => {
+    const svg = document.querySelector('svg[aria-label="Simulated diffraction pattern"]');
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: box.left + box.width * 0.72,
+        clientY: box.top + box.height * 0.5,
+      }),
+    );
+    return svg.closest('.plot').querySelector('.plot__cursor').textContent;
+  });
+  expect(cursorText).toContain('px from 000');
+  expect(cursorText).toContain('|g|');
 
   expect(browserErrors).toEqual([]);
 });

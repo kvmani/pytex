@@ -3875,17 +3875,18 @@ REGISTRY.add_examples(
                 "a zone axis: the two are the same information only when the orientation "
                 "happens to put a rational direction on the beam. Given (phi1, Phi, phi2) this "
                 "reports which low-index axis is nearest, how many degrees away the orientation "
-                "actually is, and the roll about the beam it implies — then draws that exact "
-                "zone. Reading the stated deviation is the whole point: at a fraction of a "
-                "degree the drawn pattern is what the microscope would show, and at several "
-                "degrees it is a neighbouring zone rather than the orientation asked for."
+                "actually is, and the roll about the beam it implies - then draws that exact "
+                "zone. This orientation is five degrees off [011], and the panel says so: at a "
+                "fraction of a degree the drawn pattern is what the microscope would show, and "
+                "at several degrees it is a neighbouring zone rather than the orientation asked "
+                "for, which is a difference nobody should have to infer."
             ),
             operation="tem.simulate_saed",
             request={
                 "phase": {"builtin": "fe_bcc"},
                 "orientation_source": "bunge",
                 "phi1_deg": 30.0,
-                "Phi_deg": 45.0,
+                "Phi_deg": 50.0,
                 "phi2_deg": 0.0,
                 "camera_length_mm": 400.0,
             },

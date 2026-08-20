@@ -3825,9 +3825,10 @@ One goal, four strands, requested together:
 - [x] I1 — the opened pattern is drawn (viewport reset on a new pattern)
 - [x] I2 — grouped tabs: TEM Analysis with sub-tabs
 - [x] I3 — solver layout: picks and cursor readouts clear of the plate
-- [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
+- [x] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
   - [x] I4a — the operation, the orientation it reports, and its tests
   - [x] I4b — a tracked hcp plate on disk, opened and indexed in the browser
+  - [x] I4c — the SAED Simulator panel, and one drawing shared with the solver
 - [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
 
@@ -3954,3 +3955,27 @@ three seed spots, sets zirconium and this exposure's calibration, and requires
 Worth recording: before the phase was set, indexing that plate against the gallery's aluminium
 returned *no solution at all* rather than a wrong one. That is the honest failure mode, and it is
 what the panel's warning about a carried-over calibration is for.
+
+### I4c — the SAED Simulator panel, and one plate drawing for two panels
+
+The panel is the first sub-tab of TEM Analysis. It builds its form from the operation's manifest,
+draws the pattern, and puts the orientation in the readout bar beside it: zone axis, the same
+orientation in Bunge angles, the roll about the beam, and the deviation when the orientation asked
+for was not a zone axis. The deviation row appears only when there is one, and carries a sentence
+saying the pattern drawn is the exact zone — the one thing that must never be left for the reader
+to infer.
+
+**Kikuchi** requests `tem.kikuchi_overlay` with the matrix the simulation reports. No band geometry
+is computed in this panel, so the simulator and the solver cannot come to disagree about where a
+band falls; a failure there turns the toggle back off and leaves the spots alone, because the
+spots are the result and the overlay is an addition to it.
+
+Extracted with it: `core/saedplot.js`, holding the plate drawing — spots, beam, scale bar, bands —
+that both panels now call. The solver's copies are gone rather than duplicated. They are the same
+calculation, and a reader who learns one plate has learned the other, so they must not drift.
+
+Verified in the browser and pinned by a new case: the pattern drawn, the orientation stated, the
+bands added without replacing the spots, the deviation reported as 5.0° for (30, 50, 0) in Bunge —
+an angle from the Euler convention rather than from this program — and the cursor reporting the
+radius from 000 with the |g| it corresponds to. 31 browser tests green; unit suite, ruff and mypy
+green.

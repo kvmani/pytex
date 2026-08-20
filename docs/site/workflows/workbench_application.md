@@ -45,25 +45,26 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Seven workspaces holding nine panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding ten panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
 | Workspace | What it answers |
 | --- | --- |
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
-| **TEM Analysis** | Everything transmission-electron, in sub-tabs (below). |
+| **TEM Analysis** | Everything transmission-electron, in four sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
 | **EBSD** | What does this orientation map show — orientation, grains, local or grain-referenced misorientation — and where should it be believed? |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
 
-The **TEM Analysis** workspace carries sub-tabs, because they are views of one technique rather
-than separate subjects:
+The **TEM Analysis** workspace carries four sub-tabs, because they are four views of one technique
+rather than four subjects:
 
 | Sub-tab | What it answers |
 | --- | --- |
+| **SAED Simulator** | What pattern would this crystal give down this axis, and where do its Kikuchi bands fall? |
 | **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
 | **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
@@ -572,6 +573,30 @@ A measured scale is not an approximation of the camera-constant route: the ratio
 only quantity the camera equation ever uses, so indexing through it gives the same answer.
 `tests/unit/test_app_tem_calibration.py` runs one practice plate both ways and compares them.
 ```
+
+## The SAED Simulator
+
+The forward problem, where the solver does the inverse one. Choose a phase and point the crystal —
+either by **zone axis** with a roll about it, which is how one thinks at the column, or by **Bunge
+Euler angles**, which is how a measured orientation arrives from EBSD or from an indexed pattern —
+and the panel draws the pattern that would land on the plate at your camera length and detector
+pitch.
+
+Beside the drawing it *states* the orientation rather than implying it: the zone axis on the beam,
+the same orientation in Bunge angles, the roll about the beam, and — in orientation mode — how many
+degrees the orientation asked for is from the zone actually drawn. That last number is never
+silent, because a spot pattern exists only on a zone axis: an orientation five degrees off [011]
+has no pattern of its own, and what is drawn is [011].
+
+**Kikuchi** superimposes the bands the same orientation predicts, fetched through the same overlay
+operation the solver uses. The relation to check by eye is that the band belonging to (hkl) runs
+perpendicular to the line from the transmitted beam to its own spot and is exactly as wide as that
+spot is far out — both consequences of the band and the spot being pole and polar of one reciprocal
+vector. Seeing it hold on a pattern whose answer is known is how one learns to check it on a plate
+whose answer is not.
+
+The plate is painted by the same drawing that paints the solver's practice patterns, so the two
+look identical; they are the same calculation.
 
 ## The CBED Panel
 

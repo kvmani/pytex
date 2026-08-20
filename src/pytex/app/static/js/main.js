@@ -24,6 +24,7 @@ import * as log from './core/logbook.js';
 import { renderHelp, setExportFormats } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
+import * as saedsim from './panels/saedsim.js';
 import * as tem from './panels/tem.js';
 import * as cbed from './panels/cbed.js';
 import * as diffraction from './panels/diffraction.js';
@@ -54,7 +55,7 @@ const TEM_ANALYSIS = {
   id: 'tem-analysis',
   title: 'TEM Analysis',
   tagline: 'Simulate, index, and interpret transmission-electron diffraction.',
-  panels: [tem, cbed, diffraction],
+  panels: [saedsim, tem, cbed, diffraction],
 };
 
 const WORKSPACES = [
