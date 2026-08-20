@@ -265,6 +265,50 @@ body {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/*
+ * The sub-tab strip of a grouped workspace.
+ *
+ * Visually subordinate to the tab bar on purpose: same shape, one step quieter,
+ * and attached to the top of the workspace rather than to the masthead, so the
+ * reading is "inside this workspace" rather than "another row of workspaces".
+ * It sits outside the stage because the stage's height is what every figure is
+ * a percentage of.
+ */
+.subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  flex: none;
+  padding: 0.3rem 1.5rem;
+  background: color-mix(in srgb, var(--bg-raised) 70%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+.subtab {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.subtab:hover {
+  background: color-mix(in srgb, var(--accent-soft) 50%, transparent);
+  color: var(--ink);
+}
+
+.subtab[aria-selected="true"] {
+  background: color-mix(in srgb, var(--accent-soft) 80%, transparent);
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 0 var(--accent);
+}
+
 /* -------------------------------------------------------------- workspace */
 
 .workspace {
@@ -601,6 +645,10 @@ body {
   .stage {
     padding: 0.75rem 0.75rem 1.5rem;
   }
+
+  .subtabs {
+    padding-inline: 0.75rem;
+  }
 }
 
 @media (max-width: 32rem) {
@@ -629,6 +677,7 @@ body {
  */
 @media (pointer: coarse) {
   .tab,
+  .subtab,
   .button,
   .field__help-button,
   .plot__toolbar > * {

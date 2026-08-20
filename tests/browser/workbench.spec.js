@@ -4,15 +4,54 @@ import { expect, test } from '@playwright/test';
 
 const WORKSPACES = [
   'Crystal Viewer',
-  'TEM Solver',
-  'CBED',
-  'Diffraction',
+  'TEM Analysis',
   'XRD',
   'EBSD',
   'Variants',
   'Texture',
   'Calculator',
 ];
+
+/*
+ * Every panel, and the tab path that reaches it.
+ *
+ * The four transmission-electron panels live under one workspace tab, so naming
+ * a panel is no longer the same as naming a tab. One table states the
+ * difference; `openPanel` walks it.
+ */
+const PANEL_PATH = {
+  'TEM Solver': ['TEM Analysis', 'TEM Solver'],
+  CBED: ['TEM Analysis', 'CBED'],
+  'Composite SAED': ['TEM Analysis', 'Composite SAED'],
+};
+
+/** Panels that draw a figure, in tab order. Calculator draws none. */
+const FIGURE_PANELS = [
+  'Crystal Viewer',
+  'TEM Solver',
+  'CBED',
+  'Composite SAED',
+  'XRD',
+  'EBSD',
+  'Variants',
+  'Texture',
+];
+
+/** The top-level tab bar, which sub-tabs also live in the `tab` role of. */
+function workspaceTabs(page) {
+  return page.locator('#tabs').getByRole('tab');
+}
+
+function workspaceTab(page, name) {
+  return page.locator('#tabs').getByRole('tab', { name, exact: true });
+}
+
+/** Open a panel by name, through its workspace tab and any sub-tab. */
+async function openPanel(page, name) {
+  const [workspace, sub] = PANEL_PATH[name] ?? [name, null];
+  await workspaceTab(page, workspace).click();
+  if (sub) await page.locator('#subtabs').getByRole('tab', { name: sub, exact: true }).click();
+}
 
 /*
  * The TEM stage carries two figures — the pattern and the stereogram beside it —
@@ -41,8 +80,10 @@ async function openWorkbench(page) {
 
   await page.goto('/');
   await expect(page).toHaveTitle('PyTex Workbench');
-  await expect(page.getByRole('tab')).toHaveCount(WORKSPACES.length);
-  await expect(page.getByRole('tab', { selected: true })).toHaveText('Crystal Viewer');
+  await expect(workspaceTabs(page)).toHaveCount(WORKSPACES.length);
+  await expect(page.locator('#tabs').getByRole('tab', { selected: true })).toHaveText(
+    'Crystal Viewer',
+  );
   return browserErrors;
 }
 
@@ -64,16 +105,23 @@ async function expectNewCompletedCalculation(page, action) {
 
 test('loads every scientific workspace without browser errors', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await expect(page.getByRole('tab')).toHaveText(WORKSPACES);
+  await expect(workspaceTabs(page)).toHaveText(WORKSPACES);
 
   for (const workspace of WORKSPACES) {
-    await page.getByRole('tab', { name: workspace, exact: true }).click();
-    await expect(page.getByRole('tab', { name: workspace, exact: true })).toHaveAttribute(
+    await workspaceTab(page, workspace).click();
+    await expect(workspaceTab(page, workspace)).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#stage')).not.toBeEmpty();
+    await expect(page.locator('#rail-body')).not.toBeEmpty();
+  }
+
+  // And every panel of the grouped workspace, which the tab bar no longer names.
+  for (const panel of Object.keys(PANEL_PATH)) {
+    await openPanel(page, panel);
+    await expect(page.locator('#subtabs').getByRole('tab', { name: panel, exact: true })).toHaveAttribute(
       'aria-selected',
       'true',
     );
     await expect(page.locator('#stage')).not.toBeEmpty();
-    await expect(page.locator('#rail-body')).not.toBeEmpty();
   }
 
   expect(browserErrors).toEqual([]);
@@ -83,26 +131,26 @@ test('completes the critical default calculations across panels', async ({ page 
   const browserErrors = await openWorkbench(page);
   const journeys = [
     ['Crystal Viewer', 'Build structure'],
-    ['Diffraction', 'Simulate pattern'],
+    ['Composite SAED', 'Simulate pattern'],
     ['XRD', 'Simulate XRD pattern'],
     ['Variants', 'Show variants'],
     ['Texture', 'Build texture'],
   ];
 
   for (const [workspace, action] of journeys) {
-    await page.getByRole('tab', { name: workspace, exact: true }).click();
+    await openPanel(page, workspace);
     await expectNewCompletedCalculation(page, () =>
       page.getByRole('button', { name: action, exact: true }).click(),
     );
   }
 
-  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+  await openPanel(page, 'TEM Solver');
   await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
   await expectNewCompletedCalculation(page, () =>
     page.getByRole('button', { name: 'Index the pattern', exact: true }).click(),
   );
 
-  await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
+  await workspaceTab(page, 'Calculator').click();
   await expectNewCompletedCalculation(page, () =>
     page.getByRole('button', { name: 'Calculate', exact: true }).click(),
   );
@@ -143,7 +191,7 @@ test('surfaces a service failure to both the message log and the user', async ({
     await route.continue();
   });
 
-  await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
+  await workspaceTab(page, 'Calculator').click();
   await expect(page.locator('.toast')).toContainText('Synthetic browser-test failure.');
   await openConsole(page);
   await expect(page.locator('.console__entry--error')).toHaveCount(1);
@@ -174,7 +222,7 @@ test('the console narrates a session and filters it by severity', async ({ page 
   await expect(first.locator('.console__time')).not.toBeEmpty();
   await expect(first.locator('.console__source')).not.toBeEmpty();
 
-  await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
+  await workspaceTab(page, 'Calculator').click();
   await expect(stream).toContainText('Opened the Calculator workspace.');
 
   // Errors only: the panel-switch note is info, so it must disappear.
@@ -203,8 +251,8 @@ test('shows every figure and its controls without scrolling the stage', async ({
   await page.setViewportSize({ width: 1280, height: 720 });
   const browserErrors = await openWorkbench(page);
 
-  for (const workspace of WORKSPACES.filter((name) => name !== 'Calculator')) {
-    await page.getByRole('tab', { name: workspace, exact: true }).click();
+  for (const workspace of FIGURE_PANELS) {
+    await openPanel(page, workspace);
     const plot = page.locator('#stage .plot').first();
     await expect(plot).toBeVisible();
     // Every panel runs its first example on mount; the card is only worth
@@ -234,7 +282,7 @@ test('shows every figure and its controls without scrolling the stage', async ({
 
 test('zooms below 100% and pans with the pan tool', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await page.getByRole('tab', { name: 'Variants', exact: true }).click();
+  await workspaceTab(page, 'Variants').click();
   await expect(page.locator('#stage .plot svg').first()).toBeVisible({ timeout: 20_000 });
   const zoom = page.locator('.plot__zoom');
   await expect(zoom).toHaveText('100%');
@@ -270,7 +318,7 @@ test('zooms below 100% and pans with the pan tool', async ({ page }) => {
 
 test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+  await openPanel(page, 'TEM Solver');
   const overlay = patternControl(page, '.plot__overlay');
   // Nothing picked yet, so there is nothing to report.
   await expect(overlay).toBeHidden();
@@ -352,7 +400,7 @@ test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
 
 /** Open a practice plate and return a screen<->image coordinate converter. */
 async function openPlate(page) {
-  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+  await openPanel(page, 'TEM Solver');
   const surface = page.locator(PATTERN_SVG);
   await expect(surface).toBeVisible({ timeout: 20_000 });
   await expect(patternControl(page, '.plot__zoom')).toHaveText('100%');
@@ -742,7 +790,7 @@ test('an opened micrograph is fitted rather than inheriting the last view', asyn
  */
 test('XRDML pole figures open into tabs on one shared scale', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await page.getByRole('tab', { name: 'Texture', exact: true }).click();
+  await workspaceTab(page, 'Texture').click();
 
   const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
   await page.locator('#rail-body select[aria-label="View"]').selectOption({
@@ -803,7 +851,7 @@ test('XRDML pole figures open into tabs on one shared scale', async ({ page }) =
  */
 test('an EBSD scan file is opened and analysed like a practice map', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
-  await page.getByRole('tab', { name: 'EBSD', exact: true }).click();
+  await workspaceTab(page, 'EBSD').click();
   await expect(page.locator('#stage svg')).toBeVisible({ timeout: 30_000 });
 
   const scan = [
@@ -861,7 +909,7 @@ test('an EBSD scan file is opened and analysed like a practice map', async ({ pa
  */
 test('an HDF5 scan travels as bytes and is read as one', async ({ page }) => {
   await openWorkbench(page);
-  await page.getByRole('tab', { name: 'EBSD', exact: true }).click();
+  await workspaceTab(page, 'EBSD').click();
   await expect(page.locator('#stage svg')).toBeVisible({ timeout: 30_000 });
 
   await page.setInputFiles('#rail-body input[type="file"]', {
@@ -943,7 +991,7 @@ test('the stereogram sits beside the pattern and reads out the tilt under the cu
 }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   const browserErrors = await openWorkbench(page);
-  await page.getByRole('tab', { name: 'TEM Solver', exact: true }).click();
+  await openPanel(page, 'TEM Solver');
 
   const stereogram = page.locator('#stage svg[aria-label="Stereogram"]');
   await expect(stereogram).toBeVisible({ timeout: 20_000 });
@@ -1159,7 +1207,7 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
   const browserErrors = await openWorkbench(page);
 
   for (const workspace of WORKSPACES) {
-    await expect(page.getByRole('tab', { name: workspace, exact: true })).toBeVisible();
+    await expect(workspaceTab(page, workspace)).toBeVisible();
   }
   await expect(page.locator('.masthead__action-label').first()).toBeHidden();
   const overflow = await page.evaluate(() => ({
@@ -1168,7 +1216,7 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
   }));
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
 
-  await page.getByRole('tab', { name: 'Calculator', exact: true }).click();
+  await workspaceTab(page, 'Calculator').click();
   await expect(page.getByRole('button', { name: 'Calculate', exact: true })).toBeVisible();
   expect(browserErrors).toEqual([]);
 });

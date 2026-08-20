@@ -48,6 +48,12 @@
       </div>
     </header>
 
+    <!-- The sub-tab strip of a grouped workspace. Deliberately outside the
+         stage: the stage's height is what every figure's height is a percentage
+         of, and a navigation strip inside it would come out of the figure's
+         budget on every panel, grouped or not. -->
+    <nav class="subtabs" id="subtabs" aria-label="Sub-workspaces" hidden></nav>
+
     <main id="workspace" class="workspace">
       <section class="stage" id="stage" aria-live="polite">
         <div class="stage__placeholder" id="stage-placeholder">

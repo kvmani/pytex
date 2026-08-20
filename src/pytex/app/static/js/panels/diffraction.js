@@ -29,7 +29,7 @@ import {
 
 export const panel = {
   id: 'diffraction',
-  title: 'Diffraction',
+  title: 'Composite SAED',
   tagline: 'Composite SAED of a parent phase and its product variants.',
 };
 

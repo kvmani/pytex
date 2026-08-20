@@ -3823,7 +3823,7 @@ One goal, four strands, requested together:
 ### Increments (each lands on `main` green)
 
 - [x] I1 — the opened pattern is drawn (viewport reset on a new pattern)
-- [ ] I2 — grouped tabs: TEM Analysis with four sub-tabs
+- [x] I2 — grouped tabs: TEM Analysis with sub-tabs
 - [ ] I3 — solver layout: picks and cursor readouts clear of the plate
 - [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
 - [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
@@ -3839,3 +3839,25 @@ display did not update at all".
 
 Fixed by keying the viewport to the pattern rather than to the frame: each load stamps
 `state.patternKey`, and `drawPattern` preserves the camera only while that key is unchanged.
+
+### I2 — one workspace tab for the transmission-electron panels
+
+A *workspace* is now a top-level tab and holds one or more panels. Six of the seven are one panel
+each and read exactly as the flat tab bar did; `TEM Analysis` holds the solver, CBED and Composite
+SAED, with the SAED simulator to follow in I4.
+
+The sub-tab strip is deliberately **outside** `#stage`. Every figure's height is
+`calc(100% - 1.5rem)` of the stage, so a navigation strip inside it would come out of the figure's
+budget on every panel, grouped or not — the exact defect the viewport work of 2026-08-15 fixed.
+It sits between the masthead and the workspace grid, as a `flex: none` row of the body column.
+
+`activate()` accepts either a workspace id or a panel id, because the command palette routes by the
+`panel` field of an operation and that may now name a sub-panel. Verified in the browser: searching
+"HOLZ" and running it opens *TEM Analysis → CBED*.
+
+Renamed with it: the `diffraction` panel's title is **Composite SAED**, which is what it draws.
+Ids are untouched, so no manifest, operation or citation moved.
+
+Browser tests gained `openPanel()`, which walks the tab path of a named panel, and
+`workspaceTab()`, which scopes the top-level bar — sub-tabs carry `role="tab"` too, so an unscoped
+`getByRole('tab')` would count both. 29 browser tests, 6512 unit tests, ruff and mypy green.

@@ -45,20 +45,28 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Nine workspaces. Every one of them ships with runnable examples, so a user with no data of their own
-can still exercise every feature — the manifest test executes each example, so an example cannot rot.
+Seven workspaces holding nine panels. Every one of them ships with runnable examples, so a user with
+no data of their own can still exercise every feature — the manifest test executes each example, so
+an example cannot rot.
 
 | Workspace | What it answers |
 | --- | --- |
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
-| **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
-| **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
-| **Diffraction** | What does a two-phase SAED pattern contain, and which variant is that spot? |
+| **TEM Analysis** | Everything transmission-electron, in sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
 | **EBSD** | What does this orientation map show — orientation, grains, local or grain-referenced misorientation — and where should it be believed? |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
+
+The **TEM Analysis** workspace carries sub-tabs, because they are views of one technique rather
+than separate subjects:
+
+| Sub-tab | What it answers |
+| --- | --- |
+| **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
+| **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
+| **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
 
 Every panel is generated from a **self-describing operation manifest**. A capability registered in
 Python appears in the interface — with its controls, its units, its help text, and its citations —
@@ -86,10 +94,11 @@ both files.
 The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
 system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
 browser and desktop window. On a narrow screen the masthead actions collapse to icons while
-retaining their full titles and accessible names, and the nine workspace tabs wrap rather than
-disappearing into an unmarked horizontal scroller.
+retaining their full titles and accessible names, and the workspace tabs wrap rather than
+disappearing into an unmarked horizontal scroller. A grouped workspace's sub-tabs wrap the same
+way, in their own strip below the masthead.
 
-The Diffraction workspace adds an **Appearance** group below **Simulate pattern**. Filled or
+The Composite SAED panel adds an **Appearance** group below **Simulate pattern**. Filled or
 unfilled circle, square, triangle, diamond, star and cross symbols, overall spot-size scale,
 intensity-to-size mapping, parent colour and variant palette redraw the current result immediately.
 Variant encoding can use shape, size, colour or any combination of those channels. The default
@@ -564,7 +573,7 @@ only quantity the camera equation ever uses, so indexing through it gives the sa
 `tests/unit/test_app_tem_calibration.py` runs one practice plate both ways and compares them.
 ```
 
-## The CBED Workspace
+## The CBED Panel
 
 Three views of one technique, chosen with the **View** picker.
 
@@ -671,7 +680,7 @@ in the library, but the
 application never requires it: the catalogue is defined by literal parameters in Python, so the
 starting materials cannot be broken by an optional dependency being absent.
 
-For the Burgers orientation relationship, choose the built-in example in Calculator, Diffraction
+For the Burgers orientation relationship, choose the built-in example in Calculator, Composite SAED
 or Variants. All three use the same explicit `Zirconium (bcc, beta at 863 °C)` parent and
 `Zirconium (hcp, alpha)` child. The beta phase uses `Im-3m`, `a = 3.6090 Å`, and a two-Zr-atom
 conventional basis; the examples therefore exercise zirconium scattering, spacings and provenance,
@@ -788,7 +797,7 @@ bundler, no CDN. Two things are optional and degrade gracefully:
 ## See Also
 
 - {doc}`../architecture/application_platform` — the design record and the six decisions
-- {doc}`composite_or_diffraction` — the composite two-phase pattern the Diffraction panel simulates
+- {doc}`composite_or_diffraction` — the composite two-phase pattern the Composite SAED panel simulates
 - {doc}`tem_pattern_indexing` — the full TEM Solver workflow, from a plate to the next zone axis
 - {doc}`saed_pattern_solving` — the indexing the TEM Solver performs
 - {doc}`crystal_visualization` — the renderer behind the Crystal Viewer's figures

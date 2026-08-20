@@ -102,9 +102,9 @@ def test_shared_frontend_exposes_xrd_plot_and_live_appearance_controls() -> None
     # of the whole list: pinning the neighbours makes inserting an unrelated
     # workspace fail an XRD test, which is what happened when EBSD was added
     # between XRD and Variants.
-    panels = re.search(r"const PANELS = \[([^\]]*)\]", main)
-    assert panels is not None, "main.js must declare a PANELS list"
-    assert "xrd" in [name.strip() for name in panels.group(1).split(",")]
+    workspaces = re.search(r"const WORKSPACES = \[([^\]]*)\]", main)
+    assert workspaces is not None, "main.js must declare a WORKSPACES list"
+    assert "solo(xrd)" in [entry.strip() for entry in workspaces.group(1).split(",")]
     assert "xrd.powder_pattern" in panel
     assert "frame.hoverable(hit, reflection, data.columns)" in panel
     assert "Display controls redraw the existing profile" in panel

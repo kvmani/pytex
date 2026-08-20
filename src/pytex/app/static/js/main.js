@@ -39,13 +39,55 @@ import * as calculator from './panels/calculator.js';
 // composite pattern is what variants look like on a plate, the pole figure is
 // where they point — and texture follows variants because it is the same
 // pole-figure reading applied to a whole polycrystal rather than one grain.
-// CBED sits beside the TEM solver because it is the same specimen under a
-// converged probe: the solver indexes a pattern of spots, and a CBED disc is
-// what one of those spots becomes when the beam stops being parallel.
 // EBSD follows XRD because it is the other way a texture is measured rather
 // than modelled, and texture follows both because it is what those measurements
 // are read as.
-const PANELS = [crystal, tem, cbed, diffraction, xrd, ebsd, variants, texture, calculator];
+//
+// A *workspace* is a top-level tab. Most are one panel, and read exactly as
+// they did when the tab bar was a flat list of panels. One is a group: every
+// transmission-electron surface is one technique seen four ways — a pattern
+// simulated, a pattern indexed, a disc under a converged probe, and the
+// composite a set of variants makes — and four top-level tabs said they were
+// four subjects. Grouped, the tab bar names the subject and the sub-tab bar
+// names the view, which is what they are.
+const TEM_ANALYSIS = {
+  id: 'tem-analysis',
+  title: 'TEM Analysis',
+  tagline: 'Simulate, index, and interpret transmission-electron diffraction.',
+  panels: [tem, cbed, diffraction],
+};
+
+const WORKSPACES = [
+  solo(crystal),
+  TEM_ANALYSIS,
+  solo(xrd),
+  solo(ebsd),
+  solo(variants),
+  solo(texture),
+  solo(calculator),
+];
+
+/** A workspace that is one panel: the tab is the panel, as it always was. */
+function solo(module) {
+  return {
+    id: module.panel.id,
+    title: module.panel.title,
+    tagline: module.panel.tagline,
+    panels: [module],
+  };
+}
+
+/** Every panel, in tab order, for the counts the log and the About panel state. */
+const PANELS = WORKSPACES.flatMap((workspace) => workspace.panels);
+
+/** The workspace a panel id belongs to, and the panel itself. */
+function locate(panelId) {
+  for (const workspace of WORKSPACES) {
+    const module = workspace.panels.find((entry) => entry.panel.id === panelId);
+    if (module) return { workspace, module };
+  }
+  return null;
+}
 
 const THEMES = {
   auto: { label: 'Auto', icon: '◐', description: 'follow the system' },
@@ -55,6 +97,7 @@ const THEMES = {
 
 const dom = {
   tabs: document.getElementById('tabs'),
+  subtabs: document.getElementById('subtabs'),
   stage: document.getElementById('stage'),
   rail: document.getElementById('rail-body'),
   tagline: document.getElementById('masthead-tagline'),
@@ -75,7 +118,8 @@ const dom = {
 const app = {
   manifest: null,
   shell: null,
-  active: null,
+  active: null, // the open workspace
+  activePanel: null, // the open panel inside it
   mounted: null,
   index: [],
   logConsole: null,
@@ -133,7 +177,8 @@ async function start() {
   setOperationTitles(app.manifest.operations);
   log.notice(
     `PyTex ${app.manifest.version ?? ''} ready in the ${app.shell.shell} shell: ` +
-      `${app.manifest.operations.length} operations across ${PANELS.length} workspaces.`,
+      `${app.manifest.operations.length} operations across ${PANELS.length} panels ` +
+      `in ${WORKSPACES.length} workspaces.`,
     { source: 'app', detail: { shell: app.shell.shell } },
   );
 
@@ -152,35 +197,82 @@ async function start() {
   buildIndex();
   buildTabs();
   wireGlobals();
-  activate(PANELS[0].panel.id);
+  activate(WORKSPACES[0].id);
 }
 
 function buildTabs() {
   clear(dom.tabs);
-  for (const module of PANELS) {
-    const { id, title } = module.panel;
+  for (const workspace of WORKSPACES) {
     dom.tabs.append(
       el('button.tab', {
         type: 'button',
         role: 'tab',
-        text: title,
+        text: workspace.title,
         'aria-selected': 'false',
-        dataset: { panel: id },
-        onclick: () => activate(id),
+        dataset: { workspace: workspace.id },
+        onclick: () => activate(workspace.id),
       }),
     );
   }
 }
 
-function activate(panelId) {
-  const module = PANELS.find((entry) => entry.panel.id === panelId);
-  if (!module) return;
-  app.active = module;
-  for (const tab of dom.tabs.children) {
-    tab.setAttribute('aria-selected', String(tab.dataset.panel === panelId));
+/**
+ * Draw the sub-tab strip for the open workspace.
+ *
+ * Hidden entirely when the workspace is one panel, rather than shown with a
+ * single tab in it: a navigation control offering one destination is furniture,
+ * and it would cost every ungrouped workspace a strip of screen to say nothing.
+ */
+function buildSubtabs(workspace) {
+  clear(dom.subtabs);
+  if (workspace.panels.length < 2) {
+    dom.subtabs.hidden = true;
+    return;
   }
+  dom.subtabs.hidden = false;
+  for (const module of workspace.panels) {
+    const { id, title, tagline } = module.panel;
+    dom.subtabs.append(
+      el('button.subtab', {
+        type: 'button',
+        role: 'tab',
+        text: title,
+        title: tagline,
+        'aria-selected': String(app.activePanel?.panel.id === id),
+        dataset: { panel: id },
+        onclick: () => activate(workspace.id, id),
+      }),
+    );
+  }
+}
+
+/**
+ * Open a workspace, and one panel inside it.
+ *
+ * `target` names the workspace or, for a grouped one, the panel to land on;
+ * omitting it keeps the panel already open in that workspace if there is one,
+ * and otherwise takes the first. The palette calls this with an operation's
+ * panel id, which may be a sub-panel — so both are accepted, and the workspace
+ * is looked up from whichever was given.
+ */
+function activate(target, panelId = null) {
+  const workspace =
+    WORKSPACES.find((entry) => entry.id === target) ?? locate(target)?.workspace ?? null;
+  if (!workspace) return;
+  const wanted = panelId ?? (workspace.id === target ? null : target);
+  const module =
+    workspace.panels.find((entry) => entry.panel.id === wanted) ??
+    (workspace.panels.includes(app.activePanel) ? app.activePanel : null) ??
+    workspace.panels[0];
+
+  app.active = workspace;
+  app.activePanel = module;
+  for (const tab of dom.tabs.children) {
+    tab.setAttribute('aria-selected', String(tab.dataset.workspace === workspace.id));
+  }
+  buildSubtabs(workspace);
   dom.tagline.textContent = module.panel.tagline;
-  log.info(`Opened the ${module.panel.title} workspace.`, { source: panelId });
+  log.info(`Opened the ${module.panel.title} workspace.`, { source: module.panel.id });
   clear(dom.stage);
   clear(dom.rail);
   app.mounted = module.mount({
@@ -361,7 +453,8 @@ function renderAbout(body, about) {
     el('p.field__help', {
       text:
         `${app.manifest?.operations?.length ?? 0} operations across ${PANELS.length} ` +
-        `workspaces, running in the ${app.shell?.shell ?? 'unknown'} shell.`,
+        `panels in ${WORKSPACES.length} workspaces, running in the ` +
+        `${app.shell?.shell ?? 'unknown'} shell.`,
     }),
   );
 }
@@ -398,7 +491,7 @@ function showError(error, { quiet = false } = {}) {
   // frontend fault that nothing else has reported.
   if (!isService) {
     log.error(String(error?.message ?? error), {
-      source: app.active?.panel.id ?? 'app',
+      source: app.activePanel?.panel.id ?? 'app',
       detail: { kind: error?.name ?? 'Error' },
     });
   }
@@ -476,7 +569,7 @@ function wireGlobals() {
     const message = event.detail?.message ?? 'Saved.';
     showNotice(message);
     // A toast lasts six seconds; where a file went is worth longer than that.
-    log.notice(message, { source: app.active?.panel.id ?? 'app', detail: event.detail ?? {} });
+    log.notice(message, { source: app.activePanel?.panel.id ?? 'app', detail: event.detail ?? {} });
   });
 
   document.addEventListener('keydown', (event) => {
