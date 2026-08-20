@@ -137,9 +137,10 @@ answer they validate.
 
 ### 2.5 EBSD and scale
 
-- Hex-grid `CrystalMap` (offset rows, six-neighbour topology) is implemented for `.ang` import,
-  KAM, segmentation, contracts, and graph-backed grain workflows. Hex curvature/GND stencils and
-  h5ebsd-family readers (EDAX/Oxford/Bruker H5) behind one HDF5 core remain.
+- Hex-grid `CrystalMap` (offset rows, six-neighbour topology) is implemented for `.ang` and
+  `.oh5`/`.h5` import, KAM, segmentation, contracts, and graph-backed grain workflows. Hex
+  curvature/GND stencils remain, as do the Oxford H5OINA and Bruker H5 readers; the EDAX OIM one
+  is done, so what remains is a shared HDF5 core rather than the first reader for it.
 - Denoising suite as `CrystalMapFilter` policy objects (spline and
   half-quadratic smoothing, Kuwahara, non-indexed in-fill).
 - GND density from orientation gradients (curvature-tensor route).

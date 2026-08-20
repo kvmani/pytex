@@ -31,11 +31,14 @@ EBSD is where PyTex must combine scientific semantics with measurement topology.
 
 - `CrystalMap` exists as the canonical map container
 - direct `.ang` import preserves square or EDAX/TSL `HexGrid` topology; `.ctf` import preserves
-  rectangular topology when indexed rows are complete
+  rectangular topology when indexed rows are complete; EDAX OIM HDF5 `.oh5`/`.h5` import (one
+  container under two extensions) preserves both, and carries every per-point scalar channel the
+  file holds rather than only those a text row has room for
 - KAM, segmentation, GROD, boundary extraction, cleanup, and grain graphs are implemented on the
   shared topology graph
 - stable import manifests exist
-- hex curvature/GND stencils, HDF5-family readers, and richer detector/pattern metadata remain ahead
+- hex curvature/GND stencils, the remaining HDF5-family readers (Oxford H5OINA, Bruker), and
+  richer detector/pattern metadata remain ahead
 
 ## Related Material
 

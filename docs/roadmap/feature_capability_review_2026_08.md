@@ -24,7 +24,7 @@ governance increment.
 | 5 | ODF from XRDML / LaboTex / EBSD | 8 | Full stack minus ghost correction and a defocus model |
 | 6 | Pole-figure arithmetic | 2 → **8** | Was the clearest hole; addressed in full, see below |
 | 7 | XRD pattern computation | 7 | Excellent forward model, zero analysis of measured data |
-| 8 | EBSD | 8.5 | Broad and deep; square plus `.ang` hex-grid topology, but no HDF5 readers |
+| 8 | EBSD | 8.5 | Broad and deep; square plus `.ang` hex-grid topology, and EDAX OIM HDF5 (`.oh5`/`.h5`) import |
 | 9 | OR from two grains' Euler angles | 9 | Exactly the asked-for entry point, with honest ambiguity reporting |
 | 10 | Visualization | 8 | Superb architecture, static-matplotlib ceiling |
 
@@ -262,9 +262,9 @@ rotations, fundamental regions and EBSD behaviour.
 
 **Lacking.** `.ang` `HexGrid` import, six-neighbour KAM, segmentation, explainable metadata, and
 portable contracts are now implemented with a labelled analytic fixture. Hexagonal curvature/GND
-finite differences and pixel-cell perimeters remain deliberately unsupported. No HDF5 readers
-(`.h5oina`, `.oh5`, Bruker H5), which is how modern systems
-actually export. Native pattern indexing does not exist: Hough and dictionary
+finite differences and pixel-cell perimeters remain deliberately unsupported. The EDAX OIM HDF5
+reader (`.oh5`/`.h5`) now exists, which is how modern EDAX systems actually export; Oxford
+`.h5oina` and Bruker H5 do not. Native pattern indexing does not exist: Hough and dictionary
 indexing are delegated to optional adapters, so the pure-Python-first claim does
 not hold for indexing. No in-fill of non-indexed points and no pluggable filter
 policy layer. Everything is in-RAM NumPy — no chunked or memory-mapped backing,

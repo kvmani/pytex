@@ -113,9 +113,39 @@ where they were, with this task's section on top, and the archive file is delete
 documentation-policy tests, not only the tests for the code being changed, before committing a
 change to this file.
 
+### Increment 3: documentation currency
+
+`AGENTS.md` treats a stale foundational claim as a defect, and six documents asserted that PyTex
+had no HDF5 EBSD reader. Corrected in `docs/testing/mtex_parity_matrix.md`,
+`docs/site/concepts/ebsd_foundation.md`, `docs/roadmap/critical_review_and_development_guide.md`,
+`docs/roadmap/feature_capability_review_2026_08.md`,
+`docs/roadmap/mtex_parity_and_ebsd_feature_roadmap.md`, and
+`docs/roadmap/world_class_feature_roadmap.md`. What remains open is now named precisely — Oxford
+H5OINA and Bruker H5, plus chunked backing, since `read_oh5` loads a scan whole — rather than
+"HDF5 readers" as a category.
+
+The plan sections of the roadmaps were left alone: they record what was planned in a horizon, not
+what is true now.
+
+The Sphinx warning ratchet was checked rather than assumed: this branch builds with 611 warnings,
+and so does `bed1b74`, the commit this task started from, built in a detached worktree on the same
+machine. The change therefore adds no warnings. The 611-versus-602 gap is this machine (Windows,
+Python 3.13) against CI's ubuntu/3.11 package set, and pre-dates this task, so the baseline in
+`.github/workflows/ci.yml` was left alone.
+
+### Decisions deliberately not taken
+
+- **No executable worked example for the reader.** `read_ang` and `read_ctf` have none either;
+  the worked-example rule targets numerical surfaces, and a reader's claim ("the same scan imports
+  identically from either EDAX format") is checked where it belongs, in the unit tests and against
+  the real OIM file recorded above. Worth revisiting if a redistributable `.oh5` fixture ever
+  exists — the format-equivalence claim would make a good worked example.
+- **No `.h5oina` or Bruker H5 reader.** Different vendors, different layouts; out of this task's
+  scope, and now named as such in the roadmaps.
+
 ### Worktree state
 
-Both increments committed and pushed. Clean at `bed1b74` when this task started.
+All three increments committed and pushed. Clean at `bed1b74` when this task started.
 
 ## Crystal Viewer Orientation Workspace — COMPLETE (2026-08-19)
 

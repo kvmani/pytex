@@ -51,8 +51,9 @@ capabilities PyTex does not yet have:
    `fibreODF`, `volume` along fibres) and central to rolling-texture analysis.
 5. **No named texture-component vocabulary.** Cube, Goss, Brass, Copper, S, and named fibres are
    the daily language of texture analysis and are absent.
-6. **Vendor-reader breadth remains limited.** Direct square/hex `.ang` and `.ctf` readers now
-   exist; `.cpr/.crc`, `.osc`, and h5ebsd-family formats still require adapters or remain absent.
+6. **Vendor-reader breadth remains limited.** Direct square/hex `.ang` and `.ctf` readers and an
+   EDAX OIM HDF5 `.oh5`/`.h5` reader now exist; `.cpr/.crc`, `.osc`, and the other h5ebsd-family
+   formats (Oxford H5OINA, Bruker) still require adapters or remain absent.
 7. **Grain geometry remains segment-based.** Rectangular and hexagonal graph topology, shape
    descriptors, CSL/twin classification, and MDF now exist, but boundaries are still discrete
    measurement-center segments rather than reconstructed physical polylines; hex cell perimeters
@@ -321,7 +322,7 @@ Consolidated EBSD-specific list across horizons (I = immediate, M = medium, L = 
 | GND density maps | M | gradients + slip systems |
 | Grain-resolved ODF and intragranular analysis | M | `SO3Fun` algebra |
 | Schmid-factor maps | M | `SlipSystem` |
-| h5ebsd-family readers | M | HDF5 reader core |
+| h5ebsd-family readers (EDAX OIM `.oh5`/`.h5` done; Oxford H5OINA and Bruker open) | M | HDF5 reader core |
 | Parent-grain reconstruction (stable) | M | variant graph method |
 | 3D EBSD maps and grains | L | `CrystalMap3d` |
 | Kikuchi band geometry and pattern-space overlays | L | gnomonic layer |
