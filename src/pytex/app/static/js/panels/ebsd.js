@@ -29,6 +29,26 @@ export const panel = {
 /** Side of the SVG the map is drawn into, in user units. */
 const SIZE = 700;
 
+/** Scan extensions that hold HDF5 rather than text, and so travel base64. */
+const HDF5_SUFFIXES = ['.oh5', '.h5'];
+
+/**
+ * A file's bytes as base64, for the JSON field that carries it to the server.
+ *
+ * Encoded in chunks rather than by spreading the whole array into
+ * `String.fromCharCode`: a scan is megabytes, and one argument per byte
+ * overflows the call stack somewhere in the low hundreds of thousands.
+ */
+async function readAsBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const chunk = 0x8000;
+  const pieces = [];
+  for (let start = 0; start < bytes.length; start += chunk) {
+    pieces.push(String.fromCharCode.apply(null, bytes.subarray(start, start + chunk)));
+  }
+  return btoa(pieces.join(''));
+}
+
 /**
  * How boundary character is drawn: high-angle black and heavier, low-angle red
  * and finer, as the literature draws them.
@@ -47,11 +67,12 @@ export function mount(context) {
   const operation = context.manifest.operations.find((entry) => entry.id === 'ebsd.map');
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
 
-  // `scan` holds the user's own file once one is opened: {name, text}. It is
-  // kept beside the form rather than in it, because a scan is a megabyte of
-  // text and a form field is not where a megabyte of text belongs — the
-  // generated control for it is hidden and the value supplied at call time,
-  // the same arrangement the TEM panel uses for its picks.
+  // `scan` holds the user's own file once one is opened: {name, text} for a
+  // text format, {name, data_base64} for an HDF5 one. It is kept beside the
+  // form rather than in it, because a scan is a megabyte of text and a form
+  // field is not where a megabyte of text belongs — the generated control for
+  // it is hidden and the value supplied at call time, the same arrangement the
+  // TEM panel uses for its picks.
   const state = { result: null, form: null, teaches: null, scan: null };
 
   const frame = plotFrame({ title: 'Orientation map', units: 'µm', digits: 2 });
@@ -71,7 +92,7 @@ export function mount(context) {
 
   const scanInput = el('input', {
     type: 'file',
-    accept: '.ang,.ctf',
+    accept: '.ang,.ctf,.oh5,.h5',
     'aria-label': 'Open an EBSD scan file',
     onchange: (event) => openScan(event.target.files?.[0]),
   });
@@ -96,10 +117,17 @@ export function mount(context) {
       el('div.group__body', {}, [
         el('p.field__help', {
           text:
-            'An EDAX/TSL .ang or Oxford/HKL .ctf file. It is read by the same importer a script ' +
-            'would call, so the phases, the symmetry and the quality channels come from its own ' +
-            'header. While one is open it replaces the practice dataset, and every control below ' +
-            'means exactly what it means for a practice map.',
+            'An EDAX/TSL .ang, an Oxford/HKL .ctf, or an EDAX OIM .oh5 or .h5 — the last two ' +
+            'being one HDF5 format under two extensions. It is read by the same importer a ' +
+            'script would call, so the phases, the symmetry and the quality channels come from ' +
+            'its own header. While one is open it replaces the practice dataset, and every ' +
+            'control below means exactly what it means for a practice map.',
+        }),
+        el('p.field__help', {
+          text:
+            'An HDF5 scan saved with its diffraction patterns is far larger than a request can ' +
+            'carry — export it without the patterns, or read it with pytex.adapters.read_scan ' +
+            'in a script.',
         }),
         scanInput,
         scanStatus,
@@ -151,18 +179,23 @@ export function mount(context) {
   /**
    * Read a scan file in the browser and analyse it.
    *
-   * The text is sent with the next call rather than uploaded to a store: there
-   * is no store, the server keeps nothing between requests, and a scan that
-   * failed to parse should leave nothing behind to clean up.
+   * The contents are sent with the next call rather than uploaded to a store:
+   * there is no store, the server keeps nothing between requests, and a scan
+   * that failed to parse should leave nothing behind to clean up.
+   *
+   * A .ang or .ctf is text and travels as text. An .oh5 or .h5 is HDF5, so it
+   * travels base64-encoded in the same field — one request path for both, at
+   * the cost of the 4/3 inflation base64 carries.
    */
   async function openScan(file) {
     if (!file) return;
     scanStatus.textContent = `Reading ${file.name}…`;
     try {
-      const text = await file.text();
-      state.scan = { name: file.name, text };
+      state.scan = HDF5_SUFFIXES.some((suffix) => file.name.toLowerCase().endsWith(suffix))
+        ? { name: file.name, data_base64: await readAsBase64(file) }
+        : { name: file.name, text: await file.text() };
       closeScanButton.hidden = false;
-      scanStatus.textContent = `${file.name} — ${formatNumber(text.length / 1024, 0)} kB open.`;
+      scanStatus.textContent = `${file.name} — ${formatNumber(file.size / 1024, 0)} kB open.`;
       await run();
     } catch (error) {
       state.scan = null;
@@ -189,8 +222,19 @@ export function mount(context) {
       draw();
       renderResult(details, state.result, { teaches: state.teaches });
     } catch (error) {
-      if (!state.form.showError(error)) context.showError(error);
-      else context.showError(error, { quiet: true });
+      // The scan's own control is hidden — the file travels beside the form —
+      // so an error naming it has nowhere on the form to land. It belongs on
+      // the line under the file button, where the file's name is, and it is
+      // worth a toast too: a file that could not be read is the one failure
+      // where the panel goes on drawing something else.
+      if (error?.field === 'scan_file') {
+        scanStatus.textContent = error.message;
+        context.showError(error);
+      } else if (!state.form.showError(error)) {
+        context.showError(error);
+      } else {
+        context.showError(error, { quiet: true });
+      }
     } finally {
       runButton.disabled = false;
       runButton.textContent = 'Draw the map';

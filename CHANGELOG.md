@@ -29,6 +29,15 @@ downstream analyses depend on them.
   `read_ang`'s names (`image_quality`, `confidence_index`, `detector_signal`,
   `fit`). `h5py` is an optional dependency (extra `hdf5`), imported lazily.
 
+- **The workbench opens HDF5 scans too.** *Open a scan* in the EBSD panel now
+  accepts `.oh5` and `.h5` beside `.ang` and `.ctf`, and dispatches through
+  `read_scan`, so a format the readers gain is a format the panel accepts.
+  Binary files ride the same JSON request as text ones, base64-encoded in the
+  same field (`pytex.app.uploads.uploaded_bytes`), rather than through a second
+  transport. A scan file that cannot be read now says so under the file button
+  and in a toast: its control is hidden, so the error had nowhere to land and
+  the panel failed silently while going on drawing the practice dataset.
+
 - **`pytex.adapters.read_scan` picks the reader from the path.** Extension
   dispatch across `.ang`, `.ctf`, `.oh5` and `.h5` is written once, with
   `SCAN_FILE_SUFFIXES` naming what is accepted and `scan_reader_for` exposing

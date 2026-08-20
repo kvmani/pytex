@@ -410,7 +410,10 @@ class _Handler(BaseHTTPRequestHandler):
                 HTTPStatus.REQUEST_ENTITY_TOO_LARGE,
                 "request.too_large",
                 f"The request body is {length} bytes; the limit is {MAX_REQUEST_BYTES}.",
-                hint="Downsample the image before uploading it.",
+                hint=(
+                    "Downsample the image, or — for an HDF5 EBSD scan — export it without its "
+                    "diffraction patterns, which are almost always what makes it this large."
+                ),
             )
             return None
         return self.rfile.read(length)

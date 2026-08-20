@@ -687,19 +687,30 @@ delete reflection families the edited cell actually has.
 ## Using Your Own Data Files
 
 Three workspaces read measurements as well as models. In every case the file goes through the same
-library importer a script would call — {func}`pytex.adapters.read_ang`,
-{func}`pytex.adapters.read_ctf`, {func}`pytex.adapters.read_xrdml_pole_figure` — so phases,
+library importer a script would call — {func}`pytex.adapters.read_scan`, which dispatches to
+{func}`pytex.adapters.read_ang`, {func}`pytex.adapters.read_ctf` or
+{func}`pytex.adapters.read_oh5`, and {func}`pytex.adapters.read_xrdml_pole_figure` — so phases,
 symmetry, grid topology and quality channels come from the file's own header rather than from
-anything the application assumes. The text travels as an ordinary request parameter and is written
-to a temporary path only for as long as the reader has it open; nothing is retained between
-requests. See {mod}`pytex.app.uploads`.
+anything the application assumes. The contents travel as an ordinary request parameter — as text
+for a text format, base64-encoded for an HDF5 one — and are written to a temporary path only for as
+long as the reader has it open; nothing is retained between requests. See {mod}`pytex.app.uploads`.
 
-**EBSD — `.ang` and `.ctf`.** *Open a scan* in the EBSD rail takes an EDAX/TSL `.ang` or Oxford/HKL
-`.ctf` file. While one is open it replaces the practice dataset, and every control means exactly
-what it means for a practice map: the colouring, the scalar modulation, the boundary overlay and the
-grain threshold all act on the imported map. Hexagonal scans — which EDAX writes by default — have
-no rectangular shape, so they are drawn on a half-step raster: every measurement lands on its own
-cell, the cells between them are drawn empty rather than filled in, and nothing is interpolated.
+**EBSD — `.ang`, `.ctf`, `.oh5` and `.h5`.** *Open a scan* in the EBSD rail takes an EDAX/TSL
+`.ang`, an Oxford/HKL `.ctf`, or an EDAX OIM HDF5 scan under either of its two extensions, `.oh5`
+and `.h5` (one format, two names). While one is open it replaces the practice dataset, and every
+control means exactly what it means for a practice map: the colouring, the scalar modulation, the
+boundary overlay and the grain threshold all act on the imported map. Hexagonal scans — which EDAX
+writes by default — have no rectangular shape, so they are drawn on a half-step raster: every
+measurement lands on its own cell, the cells between them are drawn empty rather than filled in, and
+nothing is interpolated.
+
+The HDF5 formats carry more than their text export does: every per-point scalar channel in the file
+is read, not only the columns an `.ang` row has room for, so a channel a processing tool wrote back
+into the scan is available to colour or modulate the map. Two practical notes. Reading them needs
+`h5py`, which is optional — install PyTex with the `hdf5` extra — and the panel says so rather than
+failing obscurely if it is missing. And a scan saved *with its diffraction patterns* is far larger
+than a request can carry, which is a property of the file and not of the transport: export it
+without the patterns, or read it with {func}`pytex.adapters.read_scan` in a script.
 
 ```{warning}
 An imported map has **no known answer**, and the panel says so where a practice dataset states one.

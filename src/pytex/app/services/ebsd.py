@@ -39,6 +39,7 @@ from typing import Any
 
 import numpy as np
 
+from pytex.adapters.scan_files import SCAN_FILE_SUFFIXES
 from pytex.app.ebsd_gallery import GALLERY, build_map, entry_ids, get_entry
 from pytex.app.errors import InvalidInputError, UnsupportedRequestError
 from pytex.app.logbook import APP_LOG
@@ -153,19 +154,16 @@ def _colouring_parameter() -> ChoiceParameter:
     )
 
 
-#: Scan formats the panel reads, and the library reader for each.
-SCAN_FILE_SUFFIXES = (".ang", ".ctf")
-
-
 def _imported_map(payload: Any) -> tuple[Any, Any]:
     """Read a user's own scan file into the same objects the gallery produces.
 
-    The file goes through the library's own importer — `read_ang` or `read_ctf`,
-    the same call a script would make — so phases, symmetry, grid topology and
-    the quality channels all come from the file's header rather than from
-    anything assumed here. What comes back is a `CrystalMap` and an entry
-    describing it, which is exactly the pair a practice dataset produces, so
-    every calculation below this point cannot tell the two apart.
+    The file goes through the library's own importer — `read_scan`, the same
+    call a script would make, dispatching to `read_ang`, `read_ctf` or
+    `read_oh5` on the extension — so phases, symmetry, grid topology and the
+    quality channels all come from the file's header rather than from anything
+    assumed here. What comes back is a `CrystalMap` and an entry describing it,
+    which is exactly the pair a practice dataset produces, so every calculation
+    below this point cannot tell the two apart.
 
     The "known answer" of an imported map is the honest one: there isn't one.
     Saying so is the point — the practice datasets are checkable because they
@@ -173,12 +171,12 @@ def _imported_map(payload: Any) -> tuple[Any, Any]:
     must not be presented as if it carried a construction's guarantee.
     """
 
-    from pytex.adapters.scan_files import read_ang, read_ctf
+    from pytex.adapters.scan_files import scan_reader_for
     from pytex.app.ebsd_gallery import GalleryEntry
     from pytex.app.uploads import uploaded_file
 
     with uploaded_file(payload, field="scan_file", suffixes=SCAN_FILE_SUFFIXES) as (path, name):
-        reader = read_ang if path.suffix.lower() == ".ang" else read_ctf
+        reader = scan_reader_for(path)
         APP_LOG.info(
             f"Reading the scan file {name}.",
             source="ebsd.map",
@@ -186,14 +184,24 @@ def _imported_map(payload: Any) -> tuple[Any, Any]:
         )
         try:
             scan = reader(path)
-        except (ValueError, KeyError, IndexError) as error:
+        except ImportError as error:
+            raise InvalidInputError(
+                f"{name} is an HDF5 scan, and this PyTex was installed without the library that "
+                "reads HDF5.",
+                details={"field": "scan_file"},
+                hint=(
+                    "Install PyTex with the 'hdf5' extra (`pip install pytex[hdf5]`), or open "
+                    "the `.ang` export of the same scan instead."
+                ),
+            ) from error
+        except (ValueError, KeyError, IndexError, OSError) as error:
             raise InvalidInputError(
                 f"{name} could not be read as a {path.suffix.lower()} scan: {error}",
                 details={"field": "scan_file"},
                 hint=(
-                    "The header is what fails first: a phase without a symmetry declaration, or "
-                    "a column layout the format does not describe. Open the file in a text "
-                    "editor and check its header block."
+                    "The header is what fails first: a phase without a symmetry declaration, a "
+                    "column layout the format does not describe, or — for an HDF5 scan — a file "
+                    "holding patterns but no indexed orientations."
                 ),
             ) from error
 
@@ -543,8 +551,9 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
             name="scan_file",
             label="Your own scan",
             help_text=(
-                "An EDAX/TSL `.ang` or Oxford/HKL `.ctf` file, opened with **Open a scan** "
-                "above. When one is open it replaces the practice dataset, and every choice "
+                "An EDAX/TSL `.ang`, Oxford/HKL `.ctf`, or EDAX OIM HDF5 `.oh5`/`.h5` file, "
+                "opened with **Open a scan** above. When one is open it replaces the practice "
+                "dataset, and every choice "
                 "below — the colouring, the modulation, the boundaries, the grain threshold — "
                 "means exactly what it means for a practice map.\n\n"
                 "The file is read by the same library importer a script would call, so the "

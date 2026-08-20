@@ -786,6 +786,37 @@ test('an EBSD scan file is opened and analysed like a practice map', async ({ pa
 });
 
 /*
+ * Opening an HDF5 scan.
+ *
+ * An EDAX OIM scan is `.oh5` or `.h5` — one HDF5 container under two
+ * extensions — so it cannot ride the request as text the way a `.ang` does; the
+ * browser base64-encodes it into the same field instead. Building a real HDF5
+ * file here would mean committing a binary blob nobody can review, so what is
+ * checked is the part that is this file's to check: that the bytes survive the
+ * trip. A file that is *not* HDF5, sent under an `.oh5` name, must come back
+ * with the reader's own complaint about its contents — which it can only do if
+ * the bytes were encoded, decoded, written to a temporary file and handed to
+ * `read_oh5`. Silence, or a complaint about the extension, would mean the
+ * transport broke before the reader ever saw it.
+ */
+test('an HDF5 scan travels as bytes and is read as one', async ({ page }) => {
+  await openWorkbench(page);
+  await page.getByRole('tab', { name: 'EBSD', exact: true }).click();
+  await expect(page.locator('#stage svg')).toBeVisible({ timeout: 30_000 });
+
+  await page.setInputFiles('#rail-body input[type="file"]', {
+    name: 'not-really.oh5',
+    mimeType: 'application/x-hdf5',
+    buffer: Buffer.from([0x00, 0x01, 0x02, 0xff, 0xfe, 0x89, 0x48, 0x44]),
+  });
+
+  await expect(page.locator('#rail-body')).toContainText('not-really.oh5', { timeout: 30_000 });
+  await expect(page.locator('#rail-body')).toContainText('could not be read as a .oh5 scan', {
+    timeout: 30_000,
+  });
+});
+
+/*
  * Calibrating from the image itself.
  *
  * An image that arrives by email has a scale bar and no recorded camera length.
