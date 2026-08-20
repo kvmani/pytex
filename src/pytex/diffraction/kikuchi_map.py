@@ -110,6 +110,7 @@ __all__ = [
     "StereographicKikuchiMap",
     "compute_kikuchi_map",
     "plan_kikuchi_route",
+    "projected_trace_runs",
 ]
 
 #: Largest tilt accepted for a single leg of a route, in degrees.
@@ -304,6 +305,83 @@ class KikuchiMapBand:
             _project_trace(
                 _small_circle_about(self.normal_map, 90.0 + self.bragg_angle_deg, samples),
                 method=method,
+            ),
+        )
+
+    def centre_directions(self, *, samples: int = 361) -> FloatArray:
+        """Unit directions along the band's centre line, before any projection.
+
+        Purpose
+        -------
+        The great circle perpendicular to the plane normal, sampled on the
+        sphere. Use this rather than :meth:`centre_trace` whenever the curve is
+        to be *drawn*: a one-hemisphere projection folds the far half onto the
+        near one, and a polyline through the folded points carries a chord
+        across the map. Pair it with
+        :func:`pytex.diffraction.projected_trace_runs`, which splits at the
+        crossings and projects each run.
+
+        Parameters
+        ----------
+        samples : int
+            Points around the full circle.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(samples, 3)`` unit directions in the map frame.
+        """
+
+        return freeze_array(
+            np.asarray(
+                sample_great_circle(self.normal_map, samples=samples, half_circle=False),
+                dtype=np.float64,
+            )
+        )
+
+    def edge_directions(
+        self, *, samples: int = 361, width_scale: float = 1.0
+    ) -> tuple[FloatArray, FloatArray]:
+        r"""Unit directions along the two band edges, before any projection.
+
+        Purpose
+        -------
+        The Kossel cones at :math:`90^\circ \mp 	heta_B` from the plane normal,
+        sampled on the sphere. The unprojected counterpart of
+        :meth:`edge_traces`, and what a renderer should use for the reason given
+        in :meth:`centre_directions`.
+
+        Parameters
+        ----------
+        samples : int
+            Points around each circle.
+        width_scale : float
+            Multiplies the Bragg angle, for figures that exaggerate band width to
+            make a map legible. Clamped so an exaggerated edge cannot be pushed
+            past the pole. A value other than 1 makes the drawing illustrative
+            rather than metric, and should be stated wherever it is used.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Two ``(samples, 3)`` arrays, the narrow-side edge first.
+        """
+
+        if not np.isfinite(width_scale) or width_scale <= 0.0:
+            raise ValueError("width_scale must be finite and strictly positive.")
+        half_width = min(float(self.bragg_angle_deg) * float(width_scale), 89.0)
+        return (
+            freeze_array(
+                np.asarray(
+                    _small_circle_about(self.normal_map, 90.0 - half_width, samples),
+                    dtype=np.float64,
+                )
+            ),
+            freeze_array(
+                np.asarray(
+                    _small_circle_about(self.normal_map, 90.0 + half_width, samples),
+                    dtype=np.float64,
+                )
             ),
         )
 
@@ -766,6 +844,71 @@ class StereographicKikuchiMap:
                 for axis in self.zone_axes
             ],
         }
+
+
+def projected_trace_runs(
+    directions: ArrayLike, *, method: str = "stereographic"
+) -> list[FloatArray]:
+    """Project a sampled curve into the map plane, split where it leaves the hemisphere.
+
+    Purpose
+    -------
+    Turn a sequence of directions on the sphere — a band's centre line, one of
+    its edges, a tilt route — into the polylines a renderer can stroke.
+
+    When and where to use it
+    ------------------------
+    Whenever a *curve* rather than a *point* is projected onto a one-hemisphere
+    figure. A one-hemisphere projection folds every lower-hemisphere direction
+    onto its antipode, which is right for a point and wrong for a curve: a small
+    circle straddling the equator would be drawn with a spurious chord joining
+    the last point before the crossing to the first point after it, running
+    across the middle of the map. Splitting at the sign change of ``z`` and
+    stroking each run separately is what removes it.
+
+    Parameters
+    ----------
+    directions : ArrayLike
+        ``(n, 3)`` unit directions in the map frame, in order along the curve.
+    method : str
+        Projection, as :func:`pytex.core.sphere.project_directions` names it.
+
+    Returns
+    -------
+    list of numpy.ndarray
+        One ``(m, 2)`` array per run, each with at least two points. A curve
+        that never crosses the equator gives a single run; one that crosses
+        twice gives three.
+
+    Examples
+    --------
+    A great circle through the poles crosses the equator twice, so it comes back
+    as more than one polyline rather than as one curve with a chord across it.
+
+    >>> import numpy as np
+    >>> angles = np.linspace(0.0, 2.0 * np.pi, 181)
+    >>> circle = np.column_stack(
+    ...     [np.cos(angles), np.zeros_like(angles), np.sin(angles)]
+    ... )
+    >>> runs = projected_trace_runs(circle)
+    >>> len(runs) > 1
+    True
+    >>> all(run.shape[1] == 2 for run in runs)
+    True
+    """
+
+    points = np.asarray(directions, dtype=np.float64)
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("projected_trace_runs takes an (n, 3) array of directions.")
+    if points.shape[0] < 2:
+        return []
+    above = points[:, 2] >= 0.0
+    breaks = np.nonzero(np.diff(above.astype(np.int8)) != 0)[0] + 1
+    runs = [run for run in np.split(points, breaks) if run.shape[0] >= 2]
+    return [
+        np.asarray(project_directions(run, method=method, antipodal=True), dtype=np.float64)
+        for run in runs
+    ]
 
 
 def _project_trace(directions: ArrayLike, *, method: str) -> FloatArray:

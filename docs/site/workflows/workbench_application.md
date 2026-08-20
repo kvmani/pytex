@@ -319,7 +319,9 @@ control rail rather than burying it in a default.
 Turning a structure by hand answers *what does it look like from here*. It used to leave *where is
 here* unanswered, which is the question a texture or a slip analysis actually needs. The dock beside
 the structure answers it three ways at once, and all three describe the view you are looking at
-rather than a view you have to set up separately.
+rather than a view you have to set up separately. A fourth figure sits with them and deliberately
+does *not* move with the view: the Kikuchi map, which is the atlas the other three are read
+against.
 
 **The frame, stated first, because everything below depends on it.** The screen is the specimen
 frame: `RD` points right, `TD` points up, and `ND` points out of the screen towards you. That is a
@@ -350,18 +352,45 @@ triangle standard. Its corners are labelled with the low-index direction each is
 than assumed, so a hexagonal phase gets `[0001]`, `[2-1-10]` and `[10-10]` without anyone hard-coding
 the cubic triangle.
 
-**The fly-by** is the trail of dots behind that point. Turn the crystal and the trail draws the path
+**The fly-by** is the trail of dots behind the moving points, on *both* figures. In the inverse
+pole figure it is the path one specimen axis takes; in the pole figure it is the path of a whole
+family, drawn as a fading cloud rather than a single track, since a family turns rigidly and every
+member of it is going somewhere at once. On the pole figure it is the plainest demonstration that
+poles move on circles about the rotation axis; on the inverse figure it is the fastest way to see
+that the standard triangle is a fundamental region.
+
+The inverse figure's trail Turn the crystal and the trail draws the path
 the specimen axis takes through the triangle, which is the fastest way to *see* that the standard
 triangle is a fundamental region: the path jumps when the direction crosses a symmetry boundary,
-because the two sides of that boundary are the same direction. The trail is drawn as dots rather
-than a line for the same reason — a line would draw a chord across the triangle the crystal never
-took. It clears on a reset, on an axis button, and whenever an orientation is set outright.
+because the two sides of that boundary are the same direction. Both trails are dots rather than
+lines for the same reason — a line would draw a chord the crystal never took, across the triangle
+in one figure and between two different poles in the other. They clear on a reset, on an axis
+button, and whenever an orientation is set outright.
+
+**The Kikuchi map** is the crystal's whole band network, projected stereographically about a zone
+axis you choose — `[001]` to begin with, and editable in the figure's own caption. Each band is
+drawn as its two edges, which are what a plate records, with the plane's trace dashed between them,
+which is a construction rather than something visible; a band's angular width is twice its Bragg
+angle, so the widest bands belong to the *finest*-spaced planes. Where bands cross, a zone axis is
+marked and labelled, sized by how many bands meet there — the count that is the n-fold symmetry of
+the pattern you will see on arriving.
+
+Unlike the two figures above it, this one does not turn with the camera, and that is the point. The
+pole figure and the inverse pole figure are the same view of the same crystal as the structure. The
+map is the atlas: fixed to the crystal, centred where you put it, with a cross marking which
+direction the current view has on the beam. Turning the crystal moves the cross across a stationary
+map, which is how a map is read. It comes from `crystal.kikuchi_map`, once per phase and centre
+rather than per frame, because the crystal's band network does not depend on where you happen to be
+looking from.
 
 **Setting an orientation.** The **Orientation** group in the control rail holds the angle triple,
 in Bunge $(\phi_1, \Phi, \phi_2)$ or Matthies $(\alpha, \beta, \gamma)$. Type three angles and press
 **Set view** and the structure turns to them. Drag the structure and the same three fields report
 where you have got to, along with the rotation as an axis and angle and the crystal direction along
-each specimen axis. The named ideal orientations below — cube, Goss, brass, copper, S and the two
+each specimen axis. The Bunge triple $(\phi_1, \Phi, \phi_2)$ heads the readout **whichever
+convention the picker holds**, because it is the convention every EBSD file, every ODF section and
+every published orientation is written in, and a reader working in Matthies still needs it in front
+of them to compare with anything outside this program. The named ideal orientations below — cube, Goss, brass, copper, S and the two
 rotated variants — are one press each; they are offered only for cubic phases, because that
 catalogue is the rolling-texture catalogue of cubic metals and "Goss" on a hexagonal phase would
 name a relationship it does not describe.

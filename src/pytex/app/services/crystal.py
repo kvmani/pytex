@@ -39,6 +39,7 @@ from pytex.app.registry import (
     ChoiceParameter,
     ExampleScenario,
     IndicesListParameter,
+    IndicesParameter,
     IntegerParameter,
     NumberParameter,
     ObjectParameter,
@@ -1440,6 +1441,22 @@ def _crystal_orientation(request: dict[str, Any]) -> dict[str, Any]:
                 "convention": other,
                 "angles_deg": [float(value) for value in other_angles],
             },
+            # Bunge is stated unconditionally, whichever convention was asked
+            # for. It is the convention every EBSD file, every ODF section and
+            # every published orientation is written in, so a reader who has
+            # switched the picker to Matthies still needs it in front of them —
+            # and having it only in whichever of the two slots above happens to
+            # hold it makes every consumer decode the pair to find it.
+            "euler_bunge": {
+                "convention": "bunge",
+                "angles_deg": [
+                    float(value)
+                    for value in (
+                        angles if convention == "bunge" else other_angles
+                    )
+                ],
+                "names": ["phi1", "Phi", "phi2"],
+            },
             "axis_angle": {
                 "axis": [float(value) for value in axis_vector],
                 "angle_deg": float(angle_deg),
@@ -1499,6 +1516,335 @@ def _camera_matrix_values(text: str) -> list[float]:
             hint="Leave it empty to use the Euler angles instead.",
         )
     return values
+
+_CITATION_KIKUCHI_MAP = (
+    "Kikuchi, Japanese Journal of Physics 5 (1928) 83; Williams & Carter, Transmission "
+    "Electron Microscopy, 2nd ed., chapter 19, on Kikuchi maps and their use in tilting."
+)
+
+#: Points sampled along each band trace before it is sent to the browser.
+#:
+#: A deliberate compromise. A band edge is a small circle of angular radius near
+#: ninety degrees, so its projection is a long curve; the plotting layer uses 721
+#: points for a publication figure, which here would be most of a megabyte of
+#: JSON for a picture two hundred pixels across. At 181 the arcs are smooth at
+#: that size, and the whole map is tens of kilobytes.
+_MAP_TRACE_SAMPLES = 181
+
+
+def _trace_runs(directions: Any) -> list[list[list[float]]]:
+    """Projected polylines of a sampled curve, rounded for transport.
+
+    Four decimals on a coordinate that spans [-1, 1] is a ten-thousandth of the
+    map: far below a pixel on any figure this will be drawn at, and it halves
+    the size of the payload.
+    """
+
+    from pytex.diffraction.kikuchi_map import projected_trace_runs
+
+    return [
+        [[round(float(point[0]), 4), round(float(point[1]), 4)] for point in run]
+        for run in projected_trace_runs(directions)
+    ]
+
+
+@REGISTRY.operation(
+    "crystal.kikuchi_map",
+    title="Kikuchi map about a zone axis",
+    summary="The band network of this phase, on a stereogram centred on a chosen axis.",
+    help_text=(
+        "The operator's road atlas. Where a simulated pattern shows one orientation on one "
+        "detector, this shows the *whole* band network of the crystal on the sphere, projected "
+        "stereographically about a chosen zone axis - which is the map a microscopist tilts "
+        "by.\n\n"
+        "**What is drawn.** Each visible lattice plane contributes a band: a centre line, which "
+        "is the great-circle trace of the plane, between two edges, which are the Kossel cones "
+        "at the Bragg angle either side of it. A band's angular width is twice its Bragg angle, "
+        "so it grows as the spacing falls - the widest bands on a map are its finest-spaced "
+        "planes. Where bands cross, a zone axis sits; those are the destinations, and the "
+        "number of bands meeting at one is the n-fold symmetry the pattern shows on "
+        "arrival.\n\n"
+        "**What the centre means.** The projection is centred on the direction given, so that "
+        "direction is the one on the beam. Changing it re-centres the same crystal, exactly as "
+        "turning to a different standard projection in a textbook does; nothing about the "
+        "crystal changes, only which part of its atlas is in view.\n\n"
+        "**Limits.** The geometry is exact and the contrast is not modelled at all: excess and "
+        "deficient sides, relative darkness and HOLZ lines are dynamical. Band ordering uses "
+        "kinematic structure factors, so a phase carrying only a lattice still gives the "
+        "correct traces, widths and zone axes - only the ranking is lost, and the result says "
+        "so."
+    ),
+    parameters=(
+        phase_parameter(help_text="The phase whose band network to map."),
+        IndicesParameter(
+            name="centre_direction",
+            label="Centre on [uvw]",
+            help_text=(
+                "The zone axis at the middle of the map - the direction on the beam. The "
+                "classical standard projection of a cubic crystal is centred on [001]."
+            ),
+            default=(0, 0, 1),
+        ),
+        IndicesParameter(
+            name="horizontal_direction",
+            label="Along +x",
+            help_text=(
+                "The direction drawn to the right. Orthogonalized against the centre, so it "
+                "need not be exactly perpendicular to it."
+            ),
+            default=(1, 0, 0),
+            advanced=True,
+        ),
+        NumberParameter(
+            name="beam_energy_kev",
+            label="Accelerating voltage",
+            help_text=(
+                "Enters only through the wavelength, so it scales every band width and changes "
+                "nothing about which bands or zone axes exist."
+            ),
+            units="kV",
+            default=200.0,
+            minimum=1.0,
+            maximum=1000.0,
+        ),
+        NumberParameter(
+            name="max_polar_angle_deg",
+            label="Map radius",
+            help_text=(
+                "How far from the centre the map extends. Sixty degrees covers the useful tilt "
+                "range of most holders; ninety is the full hemisphere."
+            ),
+            units="deg",
+            default=60.0,
+            minimum=5.0,
+            maximum=90.0,
+        ),
+        IntegerParameter(
+            name="max_bands",
+            label="Bands drawn",
+            help_text=(
+                "The strongest this many bands. A map of every band of a crystal is black, and "
+                "the point of a map is that it can be navigated."
+            ),
+            default=14,
+            minimum=1,
+            maximum=60,
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Index limit",
+            help_text="Largest |h|, |k| or |l| enumerated for bands.",
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="zone_axis_max_index",
+            label="Zone-axis index limit",
+            help_text="Largest |u|, |v| or |w| a labelled crossing may carry.",
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="min_zone_axis_order",
+            label="Bands to count as a crossing",
+            help_text=(
+                "How many bands must meet before a crossing is labelled a zone axis. Two is "
+                "every intersection; three or more keeps the ones worth tilting to."
+            ),
+            default=3,
+            minimum=2,
+            maximum=8,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per band with its plane, spacing, width and prominence; the traces, the zone "
+        "axes and the map's frame under `data`."
+    ),
+    panel="crystal",
+    citations=(_CITATION_KIKUCHI_MAP,),
+    tags=("Kikuchi", "map", "stereogram", "zone axis", "TEM", "navigation", "crystal"),
+)
+def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.diffraction.kikuchi_map import compute_kikuchi_map
+
+    spec, phase = phase_from_request(request["phase"])
+    centre = tuple(int(value) for value in request["centre_direction"])
+    horizontal = tuple(int(value) for value in request["horizontal_direction"])
+    max_polar = float(request["max_polar_angle_deg"])
+    try:
+        kikuchi_map = compute_kikuchi_map(
+            phase,
+            beam_energy_kev=float(request["beam_energy_kev"]),
+            centre_direction=centre,
+            horizontal_direction=horizontal,
+            max_index=int(request["max_index"]),
+            max_bands=int(request["max_bands"]),
+            zone_axis_max_index=int(request["zone_axis_max_index"]),
+            min_zone_axis_order=int(request["min_zone_axis_order"]),
+            max_polar_angle_deg=max_polar,
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            str(error),
+            field="centre_direction",
+            hint=(
+                "The centre and the +x direction must both be non-zero and must not be "
+                "parallel: the map frame is built from the two of them."
+            ),
+        ) from error
+
+    if not kikuchi_map.bands:
+        raise InvalidInputError(
+            "No band of this phase survives the cut-offs, so there is no map to draw.",
+            field="max_index",
+            hint="Raise the index limit, or lower the number of bands required at a crossing.",
+        )
+
+    # The traces are sampled and split here rather than in the browser: the same
+    # projection, the same equator splitting and the same folding as every other
+    # figure in the application, done once in the place that owns them.
+    bands = []
+    for band in kikuchi_map.bands:
+        indices = tuple(int(value) for value in band.indices)
+        narrow, far = band.edge_directions(samples=_MAP_TRACE_SAMPLES)
+        bands.append(
+            {
+                "hkl": list(indices),
+                "label": plane_label(indices, spec=spec),
+                "d_angstrom": float(band.d_spacing_angstrom),
+                "width_deg": float(band.angular_width_deg),
+                "bragg_angle_deg": float(band.bragg_angle_deg),
+                "intensity": float(band.relative_intensity),
+                "multiplicity": int(band.family_multiplicity),
+                "centre": _trace_runs(band.centre_directions(samples=_MAP_TRACE_SAMPLES)),
+                "edges": [_trace_runs(narrow), _trace_runs(far)],
+            }
+        )
+
+    axes = []
+    for axis in kikuchi_map.zone_axes:
+        indices = tuple(int(value) for value in axis.indices)
+        point = project_directions(
+            np.asarray(axis.direction_map, dtype=float).reshape(1, 3),
+            method="stereographic",
+            antipodal=True,
+        )[0]
+        axes.append(
+            {
+                "uvw": list(indices),
+                "label": direction_label(indices, spec=spec),
+                "x": round(float(point[0]), 5),
+                "y": round(float(point[1]), 5),
+                "order": int(axis.order),
+                "polar_angle_deg": float(axis.polar_angle_deg),
+            }
+        )
+
+    centre_text = direction_label(centre, spec=spec)
+    rows = [
+        {
+            "plane": band["label"],
+            "d": band["d_angstrom"],
+            "width": band["width_deg"],
+            "intensity": band["intensity"],
+            "multiplicity": band["multiplicity"],
+        }
+        for band in bands
+    ]
+    result = AppResult(
+        title=f"{spec.name}: Kikuchi map about {centre_text}",
+        summary=(
+            f"{len(bands)} band(s) and {len(axes)} labelled zone axis / axes within "
+            f"{max_polar:g} deg of {centre_text}, at "
+            f"{float(request['beam_energy_kev']):g} kV. A band's angular width is twice its "
+            "Bragg angle, so the widest bands belong to the finest-spaced planes; where bands "
+            "cross, a zone axis sits, and the number meeting there is the symmetry of the "
+            "pattern seen on arriving."
+            + (
+                ""
+                if kikuchi_map.has_intensity_model
+                else " This phase carries no atomic basis, so the geometry is exact but the "
+                "band ordering is not: every reflection is treated as equally strong."
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("plane", "Band"),
+                Column("d", "d", units="A", numeric=True, digits=4),
+                Column(
+                    "width",
+                    "Angular width",
+                    units="deg",
+                    numeric=True,
+                    digits=3,
+                    help_text="Twice the Bragg angle. It grows as the spacing falls.",
+                ),
+                Column(
+                    "intensity",
+                    "Prominence",
+                    numeric=True,
+                    digits=3,
+                    help_text=(
+                        "Kinematic, relative to the strongest band. Indicative only: band "
+                        "contrast is dynamical and is not modelled."
+                    ),
+                ),
+                Column("multiplicity", "Family size", numeric=True),
+            ),
+            rows=tuple(rows),
+            caption=f"Kikuchi bands of {spec.name} in the region mapped about {centre_text}.",
+        ),
+        data={
+            "bands": bands,
+            "zone_axes": axes,
+            "centre": list(centre),
+            "centre_label": centre_text,
+            "horizontal": list(horizontal),
+            "beam_energy_kev": float(request["beam_energy_kev"]),
+            "wavelength_angstrom": float(kikuchi_map.wavelength_angstrom),
+            "max_polar_angle_deg": max_polar,
+            # Where the map's rim falls in projected coordinates, so the browser
+            # can draw the boundary without repeating the projection: the
+            # stereographic radius of a direction at the polar angle is
+            # tan(rho / 2).
+            "boundary_radius": round(float(np.tan(np.radians(max_polar) / 2.0)), 6),
+            "has_intensity_model": bool(kikuchi_map.has_intensity_model),
+            # Crystal Cartesian to map frame, row-major. With it a caller can put
+            # any crystal direction on this map -- in particular the direction a
+            # viewer currently has on the beam, which is what makes the map
+            # something to navigate by rather than a static atlas.
+            "view_matrix": [
+                float(value)
+                for value in np.asarray(kikuchi_map.view_matrix, dtype=float).reshape(-1)
+            ],
+            "projection": "stereographic",
+            "describe": kikuchi_map.describe(),
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "centre_direction": list(centre),
+            "horizontal_direction": list(horizontal),
+            "beam_energy_kev": float(request["beam_energy_kev"]),
+            "max_polar_angle_deg": max_polar,
+            "max_bands": int(request["max_bands"]),
+            "max_index": int(request["max_index"]),
+        },
+        notes=(
+            "Geometry only: band positions and widths are exact, and contrast - excess and "
+            "deficient sides, relative darkness, HOLZ lines - is dynamical and not modelled.",
+            "The map is of the crystal rather than of a specimen: it says where the bands lie "
+            "relative to each other, and a measured pattern is matched to it by finding the "
+            "orientation that brings the two into register.",
+        ),
+        citations=(_CITATION_KIKUCHI_MAP,),
+    )
+    return result.to_json()
+
 
 @REGISTRY.operation(
     "crystal.render",

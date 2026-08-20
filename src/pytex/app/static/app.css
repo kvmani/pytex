@@ -2460,14 +2460,21 @@ dl.detail dd {
   }
 
   /*
-   * Height from the viewport rather than from the column's width. Two squares
+   * Height from the viewport rather than from the column's width. Three squares
    * as wide as this column do not fit above each other in the stage's height,
    * and the disc is drawn with `preserveAspectRatio`, so a box that is wider
    * than it is tall costs a band of empty space at each side and nothing else.
+   *
+   * The share fell from 26vh to 13.5vh when the Kikuchi map joined the pole
+   * figure and the inverse pole figure: three cells, their captions and the
+   * map's status line have to live inside one column that does not scroll,
+   * since a figure reached only by scrolling is a figure nobody watches move.
+   * Measured at 1440x900, where the three cells now come to exactly the column's
+   * own height.
    */
   .crystal-workspace .orient__canvas {
     aspect-ratio: auto;
-    height: clamp(9rem, 26vh, 15rem);
+    height: clamp(6rem, 13.5vh, 9.5rem);
   }
 }
 
@@ -2537,6 +2544,35 @@ dl.detail dd {
  * without it a flex item refuses to go below its content's intrinsic size and
  * the square silently stops being square on a short window.
  */
+/* The Kikuchi map's centre field, in the cell's caption beside its title. */
+.orient__axis-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+}
+
+.orient__axis {
+  width: 4.5rem;
+  font: inherit;
+  font-family: var(--font-mono);
+  padding: 0.1rem 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--ink);
+}
+
+/* The Bunge triple leads the readout: it is the one line a reader copies. */
+.orient__bunge {
+  display: block;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .orient__canvas {
   position: relative;
   aspect-ratio: 1;

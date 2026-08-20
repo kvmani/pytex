@@ -816,15 +816,26 @@ class TestFrontendIsSelfContained:
         assert "angleToReference" in source
 
     def test_the_simulated_plate_is_legible_as_a_diffraction_pattern(self) -> None:
-        """A dark ground, an unmistakable direct beam, and a reciprocal scale bar."""
+        """A dark ground, an unmistakable direct beam, and a reciprocal scale bar.
 
-        source = (STATIC_ROOT / "js" / "panels" / "tem.js").read_text(encoding="utf-8")
+        Asserted against the shared drawing rather than against the solver panel:
+        the solver and the SAED simulator paint the same plate, because it is the
+        same calculation, and one drawing is what keeps them from drifting apart.
+        """
+
+        source = (STATIC_ROOT / "js" / "core" / "saedplot.js").read_text(encoding="utf-8")
         assert "#05070d" in source
         # The beam is sized against the nearest reflection so a dense zone does
         # not have its innermost spots swallowed.
         assert "Math.min(0.5 * nearest" in source
         assert "drawScaleBar" in source
         assert "Å⁻¹" in source
+        # And both panels draw through it rather than carrying a copy.
+        for panel in ("tem.js", "saedsim.js"):
+            panel_source = (STATIC_ROOT / "js" / "panels" / panel).read_text(encoding="utf-8")
+            assert "drawSimulatedPattern" in panel_source
+            assert "from '../core/saedplot.js'" in panel_source
+            assert "function drawSimulatedPattern" not in panel_source
 
     def test_an_error_on_a_hidden_field_is_still_visible(self) -> None:
         """The likeliest failure in the TEM panel has no on-screen field to land on."""

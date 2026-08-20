@@ -44,12 +44,11 @@ from pytex.diffraction.kikuchi_map import (
     KikuchiMapBand,
     KikuchiRoute,
     StereographicKikuchiMap,
-    _small_circle_about,
+    projected_trace_runs,
 )
 from pytex.diffraction.stereonets import (
     generate_stereonet_grid,
     projection_boundary_radius,
-    sample_great_circle,
 )
 from pytex.plotting.styles import resolve_style
 from pytex.texture.projections import project_directions
@@ -74,33 +73,15 @@ def _require_matplotlib() -> Any:
     return plt
 
 
-def _hemisphere_runs(directions: np.ndarray) -> list[np.ndarray]:
-    """Split a direction sequence into runs that stay in one hemisphere.
+def _project_runs(directions: np.ndarray, *, method: str) -> list[np.ndarray]:
+    """Projected polylines of a direction sequence, split at equator crossings.
 
-    A one-hemisphere projection folds every lower-hemisphere direction onto its
-    antipode. That is correct for a *point* and wrong for a *curve*: a small
-    circle that straddles the equator would be drawn with a spurious chord
-    joining the last point before the crossing to the first point after it. So the
-    sequence is cut wherever the sign of ``z`` changes, and each run is projected
-    and drawn on its own.
+    The splitting itself lives in :func:`pytex.diffraction.projected_trace_runs`,
+    because the workbench draws the same map in the browser and must break the
+    same curves in the same places.
     """
 
-    if directions.shape[0] < 2:
-        return [directions] if directions.shape[0] else []
-    above = directions[:, 2] >= 0.0
-    breaks = np.nonzero(np.diff(above.astype(np.int8)) != 0)[0] + 1
-    runs = np.split(directions, breaks)
-    return [run for run in runs if run.shape[0] >= 2]
-
-
-def _project_runs(directions: np.ndarray, *, method: str) -> list[np.ndarray]:
-    """Projected polylines of a direction sequence, split at equator crossings."""
-
-    projected: list[np.ndarray] = []
-    for run in _hemisphere_runs(np.asarray(directions, dtype=np.float64)):
-        points = np.asarray(project_directions(run, method=method, antipodal=True))
-        projected.append(points)
-    return projected
+    return list(projected_trace_runs(directions, method=method))
 
 
 def _great_circle_arc(start: np.ndarray, end: np.ndarray, samples: int) -> np.ndarray:
@@ -391,10 +372,7 @@ def plot_kikuchi_map(
 def _band_centre_directions(band: KikuchiMapBand, samples: int) -> np.ndarray:
     """Unit directions along a band's centre line, before projection."""
 
-    return np.asarray(
-        sample_great_circle(band.normal_map, samples=samples, half_circle=False),
-        dtype=np.float64,
-    )
+    return np.asarray(band.centre_directions(samples=samples), dtype=np.float64)
 
 
 def _band_edge_directions(
@@ -402,17 +380,12 @@ def _band_edge_directions(
 ) -> np.ndarray:
     """Unit directions along one band edge, before projection.
 
-    The edge is the small circle at ``90 - offset * theta_B`` from the plane
-    normal. ``width_scale`` multiplies the Bragg angle for drawing only, and the
-    result is clamped below 90 degrees so an exaggeration cannot push an edge past
-    the pole.
+    ``offset`` selects the edge: ``-1`` the narrow side, ``+1`` the far one.
+    ``width_scale`` exaggerates the Bragg angle for drawing only.
     """
 
-    half_width = min(float(band.bragg_angle_deg) * float(width_scale), 89.0)
-    return np.asarray(
-        _small_circle_about(band.normal_map, 90.0 + offset * half_width, samples),
-        dtype=np.float64,
-    )
+    narrow, far = band.edge_directions(samples=samples, width_scale=width_scale)
+    return np.asarray(narrow if offset < 0.0 else far, dtype=np.float64)
 
 
 def _draw_route(

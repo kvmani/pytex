@@ -1350,6 +1350,101 @@ test('the indexed solution draws its Kikuchi bands inside the clip', async ({ pa
  * bug needs the build number. The assertion is therefore on the content, not
  * merely on the drawer opening.
  */
+/*
+ * The third figure in the dock: the crystal's own Kikuchi map.
+ *
+ * Unlike the two beside it, this one does *not* turn with the camera, and that
+ * is the claim being tested. The pole figure and the inverse pole figure are the
+ * same view of the same crystal as the structure; the map is the atlas — fixed
+ * to the crystal, centred where the user says — and what moves across it is the
+ * marker showing which direction the current view has on the beam. Both halves
+ * of that are asserted, because a map that quietly rotated with the camera would
+ * look plausible and mean something else entirely.
+ */
+test('the crystal viewer maps the Kikuchi bands about an axis the user chooses', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  const map = page.locator('svg[aria-label="Kikuchi map of the crystal"]');
+  await expect(map).toBeVisible({ timeout: 30_000 });
+  // Bands are drawn as their two edges with the plane trace between them.
+  await expect.poll(() => map.locator('polyline').count()).toBeGreaterThan(10);
+
+  const status = page.locator('.orient__cell').filter({ hasText: 'Kikuchi map' }).locator('.field__hint');
+  await expect(status).toContainText('zone axes within 60° of [001]');
+  // Nickel down [001]: the axes a standard cubic projection carries.
+  await expect(map).toContainText('[001]');
+  await expect(map).toContainText('[011]');
+
+  // Re-centring is the user's, and it re-computes rather than re-drawing.
+  await page.locator('input.orient__axis').fill('1 1 1');
+  await page.locator('input.orient__axis').press('Enter');
+  await expect(status).toContainText('of [111]', { timeout: 30_000 });
+  await expect(map).toContainText('[111]');
+
+  // Something that is not a direction is refused in place, without a toast and
+  // without taking the map away.
+  await page.locator('input.orient__axis').fill('oops');
+  await page.locator('input.orient__axis').press('Enter');
+  await expect(status).toContainText('Three whole numbers');
+  await expect(map.locator('polyline').first()).toBeVisible();
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The pole figure's fly-by, and the Bunge angles of whatever is on screen.
+ *
+ * The inverse pole figure has had a trail since the dock was built; the pole
+ * figure had none, so the one figure that shows *where the poles go* showed no
+ * history of them going anywhere. And the angle fields follow the convention
+ * picker, which means a reader who switched to Matthies had no Bunge triple in
+ * front of them — the convention every EBSD file and every published orientation
+ * is written in.
+ */
+test('the pole figure leaves a fly-by trail and the view states its Bunge angles', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  const poleFigure = page.locator('svg[aria-label="Pole figure of the current view"]');
+  await expect(poleFigure).toBeVisible({ timeout: 30_000 });
+
+  // One moment is recorded as soon as the figure is drawn — the trail starts
+  // where the crystal is — so what a fly-by adds is measured against that.
+  const trailDots = poleFigure.locator('circle[r="1.5"]');
+  const atRest = await trailDots.count();
+
+  // Turn the crystal by dragging the structure, which is what a fly-by is.
+  const scene = page.locator('#stage svg').first();
+  const box = await scene.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  for (let step = 1; step <= 12; step += 1) {
+    await page.mouse.move(
+      box.x + box.width / 2 + step * 8,
+      box.y + box.height / 2 + step * 4,
+      { steps: 2 },
+    );
+  }
+  await page.mouse.up();
+
+  // The poles left a trail behind them.
+  await expect.poll(() => trailDots.count()).toBeGreaterThan(atRest);
+
+  // And the readout states Bunge angles, whichever convention the picker holds.
+  const readout = page.locator('.orient__bunge');
+  await expect(readout).toContainText('Bunge (φ₁, Φ, φ₂)', { timeout: 30_000 });
+  const inBunge = await readout.textContent();
+
+  await page.locator('#rail-body select[aria-label="Euler-angle convention"]').selectOption('matthies');
+  await expect(readout).toContainText('Bunge (φ₁, Φ, φ₂)');
+  // The same orientation, so the same Bunge triple: switching how the angles are
+  // *entered* must not change what the view is.
+  await expect.poll(async () => readout.textContent()).toBe(inBunge);
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('the About panel states the build, the author and the licence', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
 
@@ -1405,7 +1500,7 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
  * dock that never updated would also produce.
  */
 
-/** Marker positions in one of the dock's two figures, as a comparable string. */
+/** Marker positions in one of the dock's three figures, as a comparable string. */
 async function figureMarkers(page, index) {
   return page.evaluate((which) => {
     const canvas = document.querySelectorAll('.orient__canvas')[which];
@@ -1433,7 +1528,9 @@ test('turns the pole figure with the crystal', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   const dock = page.locator('.orient');
   await expect(dock).toBeVisible();
-  await expect(page.locator('.orient__canvas svg')).toHaveCount(2);
+  // Three figures: the pole figure, the inverse pole figure, and the Kikuchi
+  // map, which arrives a moment later because it is computed rather than drawn.
+  await expect(page.locator('.orient__canvas svg')).toHaveCount(3, { timeout: 30_000 });
 
   const before = await figureMarkers(page, 0);
   expect(before.length).toBeGreaterThan(0);
@@ -1531,7 +1628,7 @@ test('folds the dock away on a phone without overflowing it', async ({ page }) =
   await expect(dock).toHaveJSProperty('open', false);
   await dock.locator('summary').click();
   await expect(dock).toHaveJSProperty('open', true);
-  await expect(page.locator('.orient__canvas svg')).toHaveCount(2);
+  await expect(page.locator('.orient__canvas svg')).toHaveCount(3, { timeout: 30_000 });
 
   const overflow = await page.evaluate(() => document.body.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);

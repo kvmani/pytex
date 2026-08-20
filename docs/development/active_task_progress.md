@@ -3829,7 +3829,7 @@ One goal, four strands, requested together:
   - [x] I4a — the operation, the orientation it reports, and its tests
   - [x] I4b — a tracked hcp plate on disk, opened and indexed in the browser
   - [x] I4c — the SAED Simulator panel, and one drawing shared with the solver
-- [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
+- [x] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
 
 ### I1 — a pattern opened from disk was drawn at the previous pattern's zoom
@@ -3978,4 +3978,50 @@ Verified in the browser and pinned by a new case: the pattern drawn, the orienta
 bands added without replacing the spots, the deviation reported as 5.0° for (30, 50, 0) in Bunge —
 an angle from the Euler convention rather than from this program — and the cursor reporting the
 radius from 000 with the |g| it corresponds to. 31 browser tests green; unit suite, ruff and mypy
+green.
+
+### I5 — a third figure in the dock, a second fly-by, and Bunge stated always
+
+**The Kikuchi map.** `crystal.kikuchi_map` serves the crystal's whole band network about a chosen
+zone axis, over the existing `pytex.diffraction.kikuchi_map` machinery. It is the atlas, and it
+deliberately does *not* turn with the camera the way the pole figure and the IPF do: those are the
+same view of the same crystal as the structure, while a map is fixed to the crystal and what moves
+on it is the cross marking the direction the current view has on the beam. The centre is editable
+in the figure's own caption and defaults to `[001]`; a value that is not three whole numbers is
+refused in place rather than as a toast, and the map already drawn stays.
+
+Two library consolidations were needed rather than optional, because the browser had to break the
+same curves in the same places as the plotting layer:
+
+- `projected_trace_runs` is now public in `pytex.diffraction.kikuchi_map`. A one-hemisphere
+  projection folds the far half onto the near one, which is right for a point and wrong for a
+  curve: a band edge straddling the equator gains a chord straight across the map. The plotting
+  layer had this privately; it now delegates.
+- `KikuchiMapBand.centre_directions` / `.edge_directions` give the *unprojected* samples, which is
+  what a renderer needs. `centre_trace` / `edge_traces` return already-folded points and are for
+  reading a coordinate, not for stroking a line. The plotting helpers delegate to these too.
+
+Transport is 181 samples per trace, rounded to four decimals — about 150 kB for a fourteen-band
+map, against a megabyte at the plotting layer's 721 samples, and smooth at the size the dock draws.
+
+**The pole-figure fly-by.** The IPF has had a trail since the dock was built; the pole figure — the
+one figure that shows *where the poles go* — had none. A moment now stores the whole family's
+projected positions and is drawn as a fading cloud. Dots, not a line, for the same reason as the
+IPF: a line would join one pole's last position to a different pole's first.
+
+**Bunge, unconditionally.** `crystal.orientation` now returns `euler_bunge` whatever convention was
+asked for, and the readout leads with it. It is the convention every EBSD file, every ODF section
+and every published orientation is written in; a reader who switched the picker to Matthies had
+nothing to compare against anything outside this program.
+
+**A layout consequence, measured rather than guessed.** A third cell overflowed the dock column at
+1440x900. The per-figure height went from 26vh to 13.5vh, at which the three cells come to exactly
+the column's height — a figure reached only by scrolling is a figure nobody watches move. The
+existing browser case that asserts no overflow caught this, and now covers three figures.
+
+Verified in the browser and pinned by two new cases plus twelve unit tests whose expectations are
+crystallography rather than stored output: the cubic zone axes at 0, 45 and 54.7356 degrees from
+[001], band width equal to twice its own Bragg angle, the map rim at tan(rho/2), a centre line
+perpendicular to its own plane normal, an edge at exactly sin(theta_B) from it, and an
+equator-crossing curve split rather than chorded. 33 browser tests, the unit suite, ruff and mypy
 green.
