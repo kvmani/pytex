@@ -45,7 +45,7 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Seven workspaces holding ten panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding fifteen panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
@@ -54,7 +54,7 @@ an example cannot rot.
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Analysis** | Everything transmission-electron, in four sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
-| **EBSD** | What does this orientation map show — orientation, grains, local or grain-referenced misorientation — and where should it be believed? |
+| **EBSD** | What is in this scan, what does its map show, and where should it be believed? Six sub-tabs (below). |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
@@ -68,6 +68,26 @@ rather than four subjects:
 | **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
 | **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
+
+The **EBSD** workspace carries six sub-tabs over one scan. A scan opened in any of them is open in
+all of them, because it belongs to the session rather than to a panel — analysing the practice
+dataset in one view while a user's own file is loaded in another would be the worst answer
+available.
+
+| Sub-tab | What it answers |
+| --- | --- |
+| **IPF map** | Which crystal direction lies along a specimen axis at each point, with grains, boundaries and any scalar modulation? |
+| **GROD** | How far has each point turned from its own grain's reference orientation — the intragranular gradient? |
+| **KAM** | How far has each point turned from its neighbours — the local deformation? |
+| **Scan summary** | What *is* this scan: points, grid, step, phases, indexing quality, microstructure? |
+| **Distributions** | How is grain size, boundary misorientation, KAM, GROD or a measured channel distributed? |
+| **Pole figures** | Where do the measured orientations point, as the scatter rather than as a contour of it? |
+
+The three map tabs are one panel opened on three colourings, not three panels: every control is
+present in each of them, so a reader who arrived at GROD can switch to KAM or to a
+confidence-index map without changing tabs. They exist as tabs because "show me the local
+misorientation" is something a user comes to the workspace to do, and a sub-tab is where they will
+look for it.
 
 Every panel is generated from a **self-describing operation manifest**. A capability registered in
 Python appears in the interface — with its controls, its units, its help text, and its citations —
@@ -693,6 +713,42 @@ that, modulating by fit would darken exactly the pixels indexed best.
 high-angle. They are drawn as line geometry rather than as pixels, so they stay sharp under zoom;
 each segment is one pixel face, reconstructed onto the face itself rather than smoothed through the
 midpoints, which would round off the corners where three grains meet.
+
+### The scan summary
+
+Four sections, in the order the questions are asked. **Acquisition** is the geometry of the
+measurement — points, grid, step, area, frame — and a step much larger than the microstructure
+means the grains are undersampled whatever the map looks like. **Indexing quality** gives each
+channel its mean, median, spread and 5th and 95th percentiles, because the mean alone hides the
+shape that matters: a scan uniformly at CI 0.6 and one half at 0.9 and half at 0.3 have the same
+mean and are not the same scan. The indexed fraction is computed at a threshold you can see and
+change. **Phases** are the counts, fractions and point groups the file declares. **Microstructure**
+is the grain count, the mean and median equivalent diameter, the mean grain orientation spread and
+the boundary length with its high-angle fraction — each quoted with the grain threshold that
+produced it, because a grain count without its threshold is not a measurement of anything.
+
+### Distributions
+
+One quantity at a time, histogrammed, with its statistics under the figure. The grain quantities —
+equivalent diameter, area, aspect ratio — have one entry per grain, so they are *number-weighted*:
+a microstructure of a few large grains and many small ones looks small-grained here and
+large-grained in a micrograph, and neither is wrong. The **misorientation-angle** distribution is
+per boundary segment and weighted by segment length, which makes it a distribution of boundary
+rather than of pixels; a peak at 60° in a cubic material is annealing twins. Drawn over it is the
+same measurement on randomly paired points **of the same scan** — the reference a departure is
+judged against, computed from this material rather than from the texture-free formula, because a
+textured material has a random-pair distribution of its own and comparing against the formula would
+report its texture as a boundary preference.
+
+### Discrete pole figures
+
+The scatter a contoured figure is an estimate of: every point is one measured orientation's pole,
+projected stereographically, with no kernel and therefore no width that somebody had to choose. It
+is the right figure when the count is small — a few hundred grains rather than a million pixels —
+and when looking for structure rather than intensity: variant clusters, a fibre that is a line of
+points rather than a smear, the handful of outliers a contour smooths away entirely. Markers are
+small and semi-transparent on purpose, so overlap shows density without anyone estimating it. The
+subset drawn is random over measurement points, seeded, and its size is stated.
 
 **Grain threshold** is what counts as one grain, and it changes the grain table, GROD and the
 boundary network together. The KAM threshold is separate and does a different job: it excludes

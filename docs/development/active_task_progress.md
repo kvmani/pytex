@@ -3830,8 +3830,9 @@ One goal, four strands, requested together:
   - [x] I4b — a tracked hcp plate on disk, opened and indexed in the browser
   - [x] I4c — the SAED Simulator panel, and one drawing shared with the solver
 - [x] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
-- [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
+- [x] I6 — EBSD: scan summary and the distribution/map sub-tabs
   - [x] I6a — the three analytics operations and their tests
+  - [x] I6b — the EBSD workspace: six sub-tabs over one shared scan
 
 ### I1 — a pattern opened from disk was drawn at the previous pattern's zoom
 
@@ -4059,3 +4060,59 @@ bit, which is a span of 1e-14, enough to pass `span > 0` and then produce duplic
 Twenty unit tests, with expectations from the datasets' own construction (the bicrystal's two
 grains, the sigma-3 twin's 60 degrees, a cubic random-pair mean near 45 degrees) and from histogram
 arithmetic that is true of every histogram.
+
+### I6b — six views of one scan, and the scan that belongs to the session
+
+EBSD is now a grouped workspace: **IPF map, GROD, KAM, Scan summary, Distributions, Pole figures**.
+
+The three map tabs are **one panel opened on three colourings**, not three panels. Building them
+as copies would give the workspace three places to fix the same bug; leaving GROD and KAM behind a
+select on a form would leave them where nobody looks. `mapPanel({id, title, colouring})` returns
+the `{panel, mount}` pair the shell wants, and every control is still present inside each tab, so
+a reader who arrived at GROD can switch to KAM without changing tabs.
+
+**The scan belongs to the session, not to a panel.** `core/ebsdscan.js` holds the open file and
+builds the "Open a scan" group that every EBSD panel puts in its rail; `withScan(request)` is the
+one place that knows a request may carry a file. Without this, opening a scan on the summary and
+then going to the map would have silently analysed the practice dataset beside a user's own data —
+which is why the browser test asserts exactly that journey, and that closing the scan anywhere
+closes it everywhere.
+
+Examples are filtered by **operation** rather than by panel now: the manifest declares one `ebsd`
+panel because its operations are one subject, while these six are views of it.
+
+Two panels needed their own drawing. The distribution histogram draws the reference series over
+the bars as a *step* line — it is a histogram of the same bins, and a smooth curve would suggest a
+density estimate nobody made. The discrete figure draws small semi-transparent markers whose
+radius falls with the count, so overlap shows density without anyone estimating it, and the cursor
+reports the polar angle a projected radius stands for, ρ = 2·arctan(r).
+
+All three new panels open on their first example rather than on the bare defaults: the dataset a
+control defaults to is the bicrystal, which is the right first *map* and a poor first
+*distribution* — two grains make one bar.
+
+35 browser tests, 6621 unit tests, ruff and mypy green.
+
+## Goal complete (2026-08-21)
+
+All six increments are on `main`. The workbench went from nine flat tabs to seven workspaces
+holding fifteen panels: TEM Analysis (SAED Simulator, TEM Solver, CBED, Composite SAED) and EBSD
+(IPF map, GROD, KAM, Scan summary, Distributions, Pole figures) are grouped, and the other five
+are unchanged single panels.
+
+### Deliberately not done
+
+- **No separate sub-tabs for a grain map or a confidence-index map.** They are the same panel with
+  the colouring control set differently, and the three that did get tabs — IPF, GROD, KAM — are
+  the three a user comes to the workspace intending to look at. A tab per colouring would be a
+  tab bar as long as a select.
+- **No contoured pole figure in the EBSD workspace.** The Texture workspace already contours pole
+  figures, and duplicating it here would create two places where a kernel width is chosen.
+- **The simulator does not weight excitation error.** An orientation off a zone axis is resolved
+  to the nearest one and the deviation is stated, rather than the near-zone reflections being
+  faded. Fading them correctly is a dynamical calculation, and pretending otherwise would put a
+  plausible wrong intensity on screen.
+
+### Next task
+
+None claimed. This goal is complete.

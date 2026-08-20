@@ -17,37 +17,49 @@
 import { call } from '../core/api.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
+import { scanControls, withScan } from '../core/ebsdscan.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
 
 export const panel = {
-  id: 'ebsd',
-  title: 'EBSD',
-  tagline: 'Orientation maps: IPF, grains, GROD, KAM, greyed by any channel, boundaries on top.',
+  id: 'ebsd_map',
+  title: 'IPF map',
+  tagline: 'The orientation map: IPF colour, greyed by any channel, boundaries on top.',
 };
+
+/*
+ * The same panel, opened on a different colouring.
+ *
+ * GROD and KAM are not other panels — they are this one with one control set
+ * differently, and building them as copies would give the workspace three
+ * places to fix the same bug. But they are also not *findable* behind a select
+ * on a form: "show me the local misorientation" is a thing a user comes to the
+ * workspace to do, and a sub-tab is where they will look for it. One
+ * implementation, three doors into it, and every control still present inside.
+ */
+export function mapPanel({ id, title, tagline, colouring }) {
+  return {
+    panel: { id, title, tagline },
+    mount: (context) => mount(context, { colouring }),
+  };
+}
+
+export const grodPanel = mapPanel({
+  id: 'ebsd_grod',
+  title: 'GROD',
+  tagline: 'How far each point has turned from its own grain: intragranular gradient.',
+  colouring: 'grod',
+});
+
+export const kamPanel = mapPanel({
+  id: 'ebsd_kam',
+  title: 'KAM',
+  tagline: 'How far each point has turned from its neighbours: local deformation.',
+  colouring: 'kam',
+});
 
 /** Side of the SVG the map is drawn into, in user units. */
 const SIZE = 700;
-
-/** Scan extensions that hold HDF5 rather than text, and so travel base64. */
-const HDF5_SUFFIXES = ['.oh5', '.h5'];
-
-/**
- * A file's bytes as base64, for the JSON field that carries it to the server.
- *
- * Encoded in chunks rather than by spreading the whole array into
- * `String.fromCharCode`: a scan is megabytes, and one argument per byte
- * overflows the call stack somewhere in the low hundreds of thousands.
- */
-async function readAsBase64(file) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const chunk = 0x8000;
-  const pieces = [];
-  for (let start = 0; start < bytes.length; start += chunk) {
-    pieces.push(String.fromCharCode.apply(null, bytes.subarray(start, start + chunk)));
-  }
-  return btoa(pieces.join(''));
-}
 
 /**
  * How boundary character is drawn: high-angle black and heavier, low-angle red
@@ -63,9 +75,14 @@ const BOUNDARY_STYLE = {
   low: { stroke: '#e03131', width: 0.9 },
 };
 
-export function mount(context) {
+export function mount(context, { colouring = 'ipf' } = {}) {
   const operation = context.manifest.operations.find((entry) => entry.id === 'ebsd.map');
-  const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
+  // By operation rather than by panel: the whole workspace declares `panel:
+  // "ebsd"` in Python, because its operations belong to one subject, and the
+  // sub-panels here are views of it rather than separate panels in the manifest.
+  const examples = context.manifest.examples.filter(
+    (entry) => entry.operation === operation.id,
+  );
 
   // `scan` holds the user's own file once one is opened: {name, text} for a
   // text format, {name, data_base64} for an HDF5 one. It is kept beside the
@@ -73,7 +90,7 @@ export function mount(context) {
   // field is not where a megabyte of text belongs — the generated control for
   // it is hidden and the value supplied at call time, the same arrangement the
   // TEM panel uses for its picks.
-  const state = { result: null, form: null, teaches: null, scan: null };
+  const state = { result: null, form: null, teaches: null };
 
   const frame = plotFrame({ title: 'Orientation map', units: 'µm', digits: 2 });
   const legend = el('div.legend');
@@ -86,54 +103,10 @@ export function mount(context) {
     onclick: () => run(),
   });
 
-  const scanStatus = el('p.field__help', {
-    text: 'No scan open — the practice dataset chosen below is being analysed.',
-  });
-
-  const scanInput = el('input', {
-    type: 'file',
-    accept: '.ang,.ctf,.oh5,.h5',
-    'aria-label': 'Open an EBSD scan file',
-    onchange: (event) => openScan(event.target.files?.[0]),
-  });
-
-  const closeScanButton = el('button.button', {
-    type: 'button',
-    text: 'Close the scan',
-    hidden: true,
-    onclick: () => {
-      state.scan = null;
-      scanInput.value = '';
-      closeScanButton.hidden = true;
-      scanStatus.textContent =
-        'No scan open — the practice dataset chosen below is being analysed.';
-      run();
-    },
-  });
+  const scan = scanControls({ onChange: () => run(), showError: context.showError });
 
   context.rail.append(
-    el('details.group', { open: true }, [
-      el('summary', { text: 'Open a scan' }),
-      el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'An EDAX/TSL .ang, an Oxford/HKL .ctf, or an EDAX OIM .oh5 or .h5 — the last two ' +
-            'being one HDF5 format under two extensions. It is read by the same importer a ' +
-            'script would call, so the phases, the symmetry and the quality channels come from ' +
-            'its own header. While one is open it replaces the practice dataset, and every ' +
-            'control below means exactly what it means for a practice map.',
-        }),
-        el('p.field__help', {
-          text:
-            'An HDF5 scan saved with its diffraction patterns is far larger than a request can ' +
-            'carry — export it without the patterns, or read it with pytex.adapters.read_scan ' +
-            'in a script.',
-        }),
-        scanInput,
-        scanStatus,
-        closeScanButton,
-      ]),
-    ]),
+    scan.element,
     formHost,
     runButton,
     el('details.group', { open: true }, [
@@ -161,7 +134,9 @@ export function mount(context) {
   frame.setControls(legend);
   context.stage.append(frame.element, details);
 
-  renderControls();
+  // The sub-tab decides what the map opens on; the control is still there, so a
+  // reader who arrived at GROD can switch to KAM without changing tabs.
+  renderControls({ colouring });
   // Draw immediately, as every other panel does. A workspace that opens empty
   // and waits to be pressed teaches nothing and looks broken; the first map is
   // also the fastest way to see what the four controls above it do.
@@ -176,35 +151,6 @@ export function mount(context) {
     }
   }
 
-  /**
-   * Read a scan file in the browser and analyse it.
-   *
-   * The contents are sent with the next call rather than uploaded to a store:
-   * there is no store, the server keeps nothing between requests, and a scan
-   * that failed to parse should leave nothing behind to clean up.
-   *
-   * A .ang or .ctf is text and travels as text. An .oh5 or .h5 is HDF5, so it
-   * travels base64-encoded in the same field — one request path for both, at
-   * the cost of the 4/3 inflation base64 carries.
-   */
-  async function openScan(file) {
-    if (!file) return;
-    scanStatus.textContent = `Reading ${file.name}…`;
-    try {
-      state.scan = HDF5_SUFFIXES.some((suffix) => file.name.toLowerCase().endsWith(suffix))
-        ? { name: file.name, data_base64: await readAsBase64(file) }
-        : { name: file.name, text: await file.text() };
-      closeScanButton.hidden = false;
-      scanStatus.textContent = `${file.name} — ${formatNumber(file.size / 1024, 0)} kB open.`;
-      await run();
-    } catch (error) {
-      state.scan = null;
-      closeScanButton.hidden = true;
-      scanStatus.textContent = `${file.name} could not be read in the browser.`;
-      context.showError(error);
-    }
-  }
-
   function loadExample(example) {
     state.teaches = example.teaches;
     renderControls(example.request);
@@ -216,9 +162,7 @@ export function mount(context) {
     runButton.textContent = 'Drawing…';
     state.form.clearErrors();
     try {
-      const request = { ...state.form.values() };
-      if (state.scan) request.scan_file = state.scan;
-      state.result = await call(operation.id, request);
+      state.result = await call(operation.id, withScan(state.form.values()));
       draw();
       renderResult(details, state.result, { teaches: state.teaches });
     } catch (error) {
@@ -228,7 +172,7 @@ export function mount(context) {
       // worth a toast too: a file that could not be read is the one failure
       // where the panel goes on drawing something else.
       if (error?.field === 'scan_file') {
-        scanStatus.textContent = error.message;
+        scan.setStatus(error.message);
         context.showError(error);
       } else if (!state.form.showError(error)) {
         context.showError(error);

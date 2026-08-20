@@ -20,6 +20,12 @@ const WORKSPACES = [
  * difference; `openPanel` walks it.
  */
 const PANEL_PATH = {
+  'IPF map': ['EBSD', 'IPF map'],
+  GROD: ['EBSD', 'GROD'],
+  KAM: ['EBSD', 'KAM'],
+  'Scan summary': ['EBSD', 'Scan summary'],
+  Distributions: ['EBSD', 'Distributions'],
+  'Pole figures': ['EBSD', 'Pole figures'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
@@ -34,7 +40,7 @@ const FIGURE_PANELS = [
   'CBED',
   'Composite SAED',
   'XRD',
-  'EBSD',
+  'IPF map',
   'Variants',
   'Texture',
 ];
@@ -1441,6 +1447,99 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
   // The same orientation, so the same Bunge triple: switching how the angles are
   // *entered* must not change what the view is.
   await expect.poll(async () => readout.textContent()).toBe(inBunge);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The EBSD workspace: six views, one scan.
+ *
+ * The sub-tabs are not six panels with six copies of the same logic — the three
+ * map tabs are one panel opened on three colourings — and they are not six
+ * independent sessions either. The scan a user opens belongs to the workspace,
+ * so opening a file on the summary and then going to the map must analyse *that
+ * file*. Silently reverting to the practice dataset next to somebody's own data
+ * is the worst answer available, and it is the one this asserts against.
+ */
+test('the EBSD workspace shows six views of one scan', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await workspaceTab(page, 'EBSD').click();
+
+  const subtabs = page.locator('#subtabs').getByRole('tab');
+  await expect(subtabs).toHaveText([
+    'IPF map',
+    'GROD',
+    'KAM',
+    'Scan summary',
+    'Distributions',
+    'Pole figures',
+  ]);
+
+  // The three map tabs are the same panel opened on different colourings, and
+  // each says which map it drew.
+  for (const [name, title] of [
+    ['GROD', 'GROD map'],
+    ['KAM', 'KAM map'],
+    ['IPF map', 'IPF-Z map'],
+  ]) {
+    await openPanel(page, name);
+    await expect(page.locator('#stage')).toContainText(title, { timeout: 30_000 });
+  }
+
+  // The summary is a page of numbers, sectioned, with its headline figures out
+  // in front and each of them stating what it depends on.
+  await openPanel(page, 'Scan summary');
+  await expect(page.locator('.summary-figure').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('.summary-section .card__title')).toHaveText([
+    'Acquisition',
+    'Indexing quality',
+    'Phases',
+    'Microstructure',
+  ]);
+  await expect(page.locator('.summary-headline')).toContainText('threshold');
+
+  // The distribution is a histogram with its statistics under it.
+  await openPanel(page, 'Distributions');
+  const bars = page.locator('#stage svg rect');
+  await expect.poll(() => bars.count(), { timeout: 30_000 }).toBeGreaterThan(5);
+  await expect(page.locator('#stage .plot__status')).toContainText('median');
+
+  // The discrete figure is the measurement rather than a contour of it, and
+  // says so along with how much of the scan it drew.
+  await openPanel(page, 'Pole figures');
+  await expect(page.locator('#stage .plot__status')).toContainText('not a density estimate', {
+    timeout: 30_000,
+  });
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('a scan opened in one EBSD view is the scan every view analyses', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Scan summary');
+  await expect(page.locator('.summary-figure').first()).toBeVisible({ timeout: 30_000 });
+
+  // Opened on the summary, not on the map.
+  await page.setInputFiles('#rail-body input[type="file"]', 'fixtures/ebsd/synthetic_hex_grid.ang');
+  await expect(page.locator('#rail-body')).toContainText('synthetic_hex_grid.ang', {
+    timeout: 30_000,
+  });
+  // The scan is hexagonal and tiny, unlike every practice dataset.
+  await expect(page.locator('.summary-cards')).toContainText('hexagonal', { timeout: 30_000 });
+
+  // And the map, reached afterwards, is a map of that scan rather than of the
+  // practice dataset its own control still names.
+  await openPanel(page, 'IPF map');
+  await expect(page.locator('#rail-body')).toContainText('synthetic_hex_grid.ang');
+  await expect(page.locator('#stage')).toContainText('synthetic_hex_grid.ang', {
+    timeout: 30_000,
+  });
+
+  // Closing it anywhere closes it everywhere.
+  await page.getByRole('button', { name: 'Close the scan', exact: true }).click();
+  await expect(page.locator('#rail-body')).toContainText('No scan open', { timeout: 30_000 });
+  await openPanel(page, 'Distributions');
+  await expect(page.locator('#rail-body')).toContainText('No scan open');
 
   expect(browserErrors).toEqual([]);
 });
