@@ -3801,3 +3801,41 @@ pass.
 ### Next task
 
 None claimed. This goal is complete.
+
+## TEM Analysis workspace, Crystal Kikuchi map, EBSD scan analytics (2026-08-20)
+
+### Objective
+
+One goal, four strands, requested together:
+
+1. **Group every TEM surface under one tab.** Rename the `tem` workspace to *TEM Analysis* and
+   give it four sub-tabs: SAED simulator (new), TEM solver (today's panel), CBED (today's `cbed`
+   panel) and Composite SAED (today's `diffraction` panel). Nine top-level tabs become six.
+2. **TEM solver defects.** A pattern opened from disk does not appear; the measurement overlay and
+   the picks table are covered by the pattern.
+3. **Crystal viewer.** A Kikuchi-map panel beside the pole figure and IPF, centred on an editable
+   zone axis (default `[001]`); a fly-by on the pole figure as the IPF already has; and the current
+   view's Bunge Euler angles on screen.
+4. **EBSD scan analytics.** On load, a scan summary (points, mean CI, mean fit, and the rest of the
+   OIM-style metrics) plus sub-tabs for grain-size and misorientation-angle distributions, discrete
+   pole and inverse pole figures, and GROD and KAM maps.
+
+### Increments (each lands on `main` green)
+
+- [x] I1 — the opened pattern is drawn (viewport reset on a new pattern)
+- [ ] I2 — grouped tabs: TEM Analysis with four sub-tabs
+- [ ] I3 — solver layout: picks and cursor readouts clear of the plate
+- [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
+- [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
+- [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
+
+### I1 — a pattern opened from disk was drawn at the previous pattern's zoom
+
+`drawPattern` passed `preserveViewport: true` unconditionally, which is right for a redraw during
+picking — the view must not jump when a pick is added — and wrong for a *new* pattern. Reproduced
+in the browser: open a practice plate, zoom to 448%, then open a 400 px micrograph, and the frame
+holds an 89 px crop of it. Nothing errors; the pattern is simply off-camera, which reads as "the
+display did not update at all".
+
+Fixed by keying the viewport to the pattern rather than to the frame: each load stamps
+`state.patternKey`, and `drawPattern` preserves the camera only while that key is unchanged.

@@ -673,6 +673,66 @@ test('a click on an uploaded micrograph snaps to the spot centroid', async ({ pa
 });
 
 /*
+ * A pattern opened from disk is shown, whatever the frame was doing before.
+ *
+ * The camera is preserved across a redraw so that picking while zoomed in is
+ * possible at all. Preserving it across an *open* is a different thing, and it
+ * hid the file: at 448% on a 1024 px plate, a freshly opened 400 px micrograph
+ * arrived as an 89 px crop of itself. The assertion is that opening refits.
+ */
+test('an opened micrograph is fitted rather than inheriting the last view', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+
+  await patternButton(page, 'Zoom in').click();
+  await patternButton(page, 'Zoom in').click();
+  await expect(patternControl(page, '.plot__zoom')).not.toHaveText('100%');
+
+  const size = await page.evaluate(async () => {
+    const side = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = side;
+    canvas.height = side;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#0a0a0a';
+    context.fillRect(0, 0, side, side);
+    context.fillStyle = '#ffffff';
+    context.beginPath();
+    context.arc(side / 2, side / 2, 12, 0, 2 * Math.PI);
+    context.fill();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    const transfer = new DataTransfer();
+    transfer.items.add(new File([blob], 'opened-plate.png', { type: 'image/png' }));
+    const input = document.querySelector('input[type=file]');
+    input.files = transfer.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return side;
+  });
+
+  await expect(page.locator(`${PATTERN_SVG} image`)).toBeVisible();
+  await expect(patternControl(page, '.plot__zoom')).toHaveText('100%');
+  // The whole micrograph, not a crop of it: the viewBox is the image itself.
+  await expect
+    .poll(async () =>
+      page.locator(PATTERN_SVG).evaluate((node) => {
+        const box = node.viewBox.baseVal;
+        return [box.x, box.y, box.width, box.height].join(' ');
+      }),
+    )
+    .toBe(`0 0 ${size} ${size}`);
+
+  // And a redraw of that same pattern still keeps whatever view it is given,
+  // because picking a spot precisely means picking it zoomed in.
+  await patternButton(page, 'Zoom in').click();
+  const zoomed = await patternControl(page, '.plot__zoom').textContent();
+  await page.locator(PATTERN_SVG).click({ position: { x: 40, y: 40 } });
+  await expect(page.locator('.picks__row')).toHaveCount(1);
+  await expect(patternControl(page, '.plot__zoom')).toHaveText(zoomed);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * Measured pole figures, in tabs, on one scale.
  *
  * The reason to measure more than one pole figure is to compare them, and two

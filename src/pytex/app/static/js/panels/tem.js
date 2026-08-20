@@ -82,6 +82,19 @@ const REFINED_COLOUR = '#7ce4a8';
 /** The pick under the pointer or selected in the coordinate table. */
 const SELECTED_COLOUR = '#ff7ad9';
 
+/**
+ * A serial number for the pattern now on the plate.
+ *
+ * Opening the same file twice is a deliberate act — the file may have been
+ * re-exported — so identity by name alone would treat the second open as a
+ * redraw and keep the first one's camera. The serial makes every open distinct.
+ */
+let patternSerial = 0;
+function nextPatternSerial() {
+  patternSerial += 1;
+  return patternSerial;
+}
+
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
   const galleryOperation = operations.find((entry) => entry.id === 'tem.gallery_pattern');
@@ -121,6 +134,11 @@ export function mount(context) {
     nudgeLabel: null,
     // The uploaded micrograph's pixels, for snapping a click to a spot centroid.
     pixels: null,
+    // Which pattern is on the plate, and which one the frame was last drawn
+    // for. Equal means a redraw of the same picture, which keeps its camera;
+    // different means a pattern was just opened, which gets a fresh Fit.
+    patternKey: null,
+    drawnKey: null,
     showLattice: true,
     showCalculated: true,
     // The Kikuchi bands the accepted solution predicts. There is nothing to
@@ -556,6 +574,7 @@ export function mount(context) {
       const result = await call('tem.gallery_pattern', request);
       state.gallery = result;
       state.source = { kind: 'gallery' };
+      state.patternKey = `gallery:${entryId}:${nextPatternSerial()}`;
       state.mode = 'pick';
       state.picks = { centre: null, spots: [] };
       state.pickedCentre = null;
@@ -656,6 +675,7 @@ export function mount(context) {
       image.onload = () => {
         const hadGallery = state.gallery !== null;
         state.image = { source: reader.result, width: image.width, height: image.height };
+        state.patternKey = `image:${file.name}:${nextPatternSerial()}`;
         state.pixels = readLuminance(image);
         state.source = { kind: 'image' };
         state.gallery = null;
@@ -1598,11 +1618,25 @@ export function mount(context) {
         );
       },
     });
-    // The camera survives the redraw. Every pick, nudge and typed coordinate
-    // rebuilds this SVG, and without this the view snapped back to Fit each
-    // time — so zooming in to place a spot precisely was impossible, which is
-    // the one situation where zooming in is the point.
-    frame.setContent(outer, { preserveViewport: true });
+    /*
+     * The camera survives a redraw of the *same* pattern, and only that.
+     *
+     * Every pick, nudge and typed coordinate rebuilds this SVG, and without the
+     * preserved view it snapped back to Fit each time — so zooming in to place
+     * a spot precisely was impossible, which is the one situation where zooming
+     * in is the point.
+     *
+     * But a *newly opened* pattern is a different picture, and inheriting the
+     * previous one's zoom and pan put it off camera: open a practice plate,
+     * zoom to 400%, then open a micrograph of your own, and the frame holds a
+     * ninety-pixel crop of an image it has never shown whole. Nothing errors,
+     * so it reads as the panel simply refusing to display the file. Keying the
+     * camera to the pattern rather than to the frame is what makes "opened" and
+     * "redrawn" different events.
+     */
+    const samePattern = state.patternKey !== null && state.patternKey === state.drawnKey;
+    state.drawnKey = state.patternKey;
+    frame.setContent(outer, { preserveViewport: samePattern });
     frame.setOverlay(measurementCard());
     frame.setControls(state.calibrate.active ? calibrationCard() : null);
     if (state.calibrate.active) {
