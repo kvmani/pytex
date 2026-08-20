@@ -1558,6 +1558,404 @@ def _gallery_pattern(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+_SIMULATION_LIMITS = (
+    "Spot positions are exact for this lattice, zone axis and camera constant; relative "
+    "intensities are kinematic and therefore indicative.",
+    "Double diffraction is not modelled, so a forbidden reflection that a real plate shows "
+    "through multiple scattering is absent here.",
+    "The pattern is the exact zone-axis section: excitation error is not weighted, so a "
+    "reflection is either in the zone or not drawn, where a real plate tilted off axis shows "
+    "the near-zone reflections fading rather than vanishing.",
+)
+
+
+def _nearest_zone_axis(
+    beam_crystal: np.ndarray, direct: np.ndarray, *, max_index: int
+) -> tuple[tuple[int, ...], float]:
+    """The low-index zone axis closest to a beam direction, and how far off it is.
+
+    A pattern of spots exists only when a rational zone axis is on the beam, so
+    an orientation given as three Euler angles has to be resolved to one before
+    a pattern can be drawn. Returning the deviation with it is what keeps that
+    honest: the caller states the angle rather than silently presenting the
+    nearest zone as the orientation that was asked for.
+    """
+
+    candidates = _primitive_directions(max_index)
+    cartesian = np.asarray(candidates, dtype=float) @ direct.T
+    norms = np.linalg.norm(cartesian, axis=1)
+    keep = norms > 0.0
+    cartesian = cartesian[keep] / norms[keep, None]
+    candidates = candidates[keep]
+    beam = np.asarray(beam_crystal, dtype=float)
+    beam = beam / float(np.linalg.norm(beam))
+    # Both senses of an axis give the same pattern, so the comparison folds them.
+    cosines = np.abs(cartesian @ beam)
+    best = int(np.argmax(cosines))
+    deviation = float(math.degrees(math.acos(float(np.clip(cosines[best], -1.0, 1.0)))))
+    indices = tuple(int(value) for value in candidates[best])
+    # Keep the sense that is being looked down, rather than its opposite.
+    if float(cartesian[best] @ beam) < 0.0:
+        indices = tuple(-value for value in indices)
+    return indices, deviation
+
+
+@REGISTRY.operation(
+    "tem.simulate_saed",
+    title="Simulate a SAED pattern",
+    summary="The zone-axis pattern this phase would give, with its Kikuchi bands if wanted.",
+    help_text=(
+        "The forward problem, where the solver beside it does the inverse one: given a crystal "
+        "and a direction to look down it, what lands on the plate.\n\n"
+        "**Two ways to say where the crystal is pointing.** By *zone axis* - the direction "
+        "[uvw] on the beam, plus the roll about it - which is how a microscopist thinks at the "
+        "column. Or by *orientation*, as Bunge Euler angles, which is how a measured "
+        "orientation arrives from EBSD or from an indexed pattern. The two are the same "
+        "statement: an orientation puts some crystal direction on the beam and fixes the roll, "
+        "and this operation reports which zone axis that is and how far the orientation sits "
+        "from it. If that deviation is large, the pattern drawn is the nearest exact zone "
+        "rather than the orientation asked for, and the summary says so.\n\n"
+        "**Why a simulated pattern is worth having.** It is the reference a real plate is read "
+        "against - spacings, ratios and angles for a phase under consideration, at your own "
+        "camera length - and it is the only pattern whose answer is known, which makes it the "
+        "way to check that a workflow, a calibration or a person is indexing correctly.\n\n"
+        "**The Kikuchi overlay** is drawn from the same orientation as the spots, so the two "
+        "agree by construction: the band for (hkl) is perpendicular to its own spot and exactly "
+        "as wide as that spot is far from the beam. That relation is the one to check by eye on "
+        "a real plate, and seeing it on a pattern whose answer is known is how one learns to."
+    ),
+    parameters=(
+        phase_parameter(help_text="The phase to simulate."),
+        ChoiceParameter(
+            name="orientation_source",
+            label="Point the crystal by",
+            help_text=(
+                "Whether the beam direction is stated as a zone axis with a roll about it, or "
+                "as a full orientation in Bunge Euler angles."
+            ),
+            options=(
+                (
+                    "uvw",
+                    "Zone axis [uvw]",
+                    "The direction on the beam, plus the roll about it. What one dials at the "
+                    "column.",
+                ),
+                (
+                    "bunge",
+                    "Bunge Euler angles",
+                    "A measured orientation. The nearest zone axis to it is reported with the "
+                    "pattern.",
+                ),
+            ),
+            default="uvw",
+        ),
+        IndicesParameter(
+            name="zone_axis",
+            label="Zone axis [uvw]",
+            help_text="The crystal direction along the beam.",
+            default=(0, 0, 1),
+        ),
+        NumberParameter(
+            name="in_plane_rotation_deg",
+            label="Roll about the beam",
+            help_text=(
+                "How far the pattern is turned on the plate. It changes nothing "
+                "crystallographic - one pattern cannot fix the roll - but a workflow tested "
+                "only at zero has not been tested."
+            ),
+            units="deg",
+            default=0.0,
+        ),
+        NumberParameter(
+            name="phi1_deg",
+            label="phi1",
+            help_text="First Bunge angle, about the specimen Z axis. Used in orientation mode.",
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
+        ),
+        NumberParameter(
+            name="Phi_deg",
+            label="Phi",
+            help_text="Second Bunge angle, about the new X axis.",
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
+        ),
+        NumberParameter(
+            name="phi2_deg",
+            label="phi2",
+            help_text="Third Bunge angle, about the new Z axis.",
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
+        ),
+        NumberParameter(
+            name="camera_length_mm",
+            label="Camera length",
+            help_text=(
+                "Sets the scale of the pattern: with the wavelength it makes the camera "
+                "constant, and a long camera length spreads a few reflections across the plate "
+                "while a short one brings many onto it."
+            ),
+            units="mm",
+            default=400.0,
+            minimum=20.0,
+            maximum=4000.0,
+            group="Instrument",
+        ),
+        NumberParameter(
+            name="beam_energy_kev",
+            label="Accelerating voltage",
+            help_text="Sets the electron wavelength, and with it the camera constant.",
+            units="kV",
+            default=200.0,
+            minimum=20.0,
+            maximum=1000.0,
+            group="Instrument",
+        ),
+        IntegerParameter(
+            name="detector_px",
+            label="Detector size",
+            help_text="Square raster side, in pixels. The field of view, in effect.",
+            units="px",
+            default=1024,
+            minimum=128,
+            maximum=4096,
+            group="Instrument",
+        ),
+        NumberParameter(
+            name="pixel_size_mm",
+            label="Pixel size",
+            help_text="Detector pixel pitch. With the camera constant it fixes the pixel scale.",
+            units="mm",
+            default=0.024,
+            minimum=0.0001,
+            maximum=1.0,
+            group="Instrument",
+        ),
+        BooleanParameter(
+            name="show_kikuchi",
+            label="Include Kikuchi bands",
+            help_text=(
+                "Return the band geometry as well as the spots, so the overlay is drawn from "
+                "the same orientation the spots came from."
+            ),
+            default=False,
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Index limit",
+            help_text="Largest |h|, |k| or |l| enumerated when generating reflections.",
+            default=6,
+            minimum=1,
+            maximum=12,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="max_zone_index",
+            label="Zone-axis search limit",
+            help_text=(
+                "Largest |u|, |v| or |w| considered when resolving an orientation to the "
+                "nearest zone axis. Raising it admits nearer but sparser zones."
+            ),
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per simulated reflection; the pattern, its orientation and its calibration "
+        "under `data`."
+    ),
+    panel="tem_simulator",
+    citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH, _CITATION_EDINGTON),
+    tags=("TEM", "SAED", "simulation", "zone axis", "Kikuchi", "orientation", "teaching"),
+)
+def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.lattice import ZoneAxis
+    from pytex.core.orientation import Rotation
+    from pytex.diffraction.kinematic import electron_wavelength_angstrom, zone_basis_from_axis
+    from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+    spec, phase = phase_from_request(request["phase"])
+    camera_length = float(request["camera_length_mm"])
+    beam_energy = float(request["beam_energy_kev"])
+    wavelength = float(electron_wavelength_angstrom(beam_energy))
+    camera_constant = float(camera_length * wavelength)
+    detector_px = int(request["detector_px"])
+    pixel_size = float(request["pixel_size_mm"])
+
+    source = str(request["orientation_source"])
+    direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+    deviation_deg: float | None = None
+    if source == "bunge":
+        requested_euler = (
+            float(request["phi1_deg"]),
+            float(request["Phi_deg"]),
+            float(request["phi2_deg"]),
+        )
+        rotation = Rotation.from_bunge_euler(*requested_euler, degrees=True)
+        # The repository convention: an orientation matrix maps crystal to
+        # specimen, and the specimen frame of a recorded pattern *is* the
+        # pattern frame, so this is already the crystal-to-pattern rotation.
+        matrix = np.asarray(rotation.as_matrix(), dtype=float).reshape(3, 3)
+        # The beam is pattern +z, and the orientation maps crystal to specimen,
+        # so the crystal direction being looked down is read back from it.
+        beam_crystal = matrix.T @ np.array([0.0, 0.0, 1.0])
+        indices, deviation_deg = _nearest_zone_axis(
+            beam_crystal, direct, max_index=int(request["max_zone_index"])
+        )
+        axis = ZoneAxis(indices=np.asarray(indices, dtype=int), phase=phase)
+        # The roll the orientation implies about that axis: the residual
+        # rotation about the beam between the orientation and the zone-axis
+        # frame the simulation projects onto.
+        basis = np.asarray(zone_basis_from_axis(axis.unit_vector), dtype=float)
+        residual = matrix @ basis
+        roll_deg = float(math.degrees(math.atan2(float(residual[1, 0]), float(residual[0, 0]))))
+    else:
+        indices = tuple(int(value) for value in request["zone_axis"])
+        axis = ZoneAxis(indices=np.asarray(indices, dtype=int), phase=phase)
+        roll_deg = float(request["in_plane_rotation_deg"])
+
+    image = synthesize_saed_image(
+        phase,
+        axis,
+        camera_constant_mm_angstrom=camera_constant,
+        raster=DetectorRaster(
+            width_px=detector_px,
+            height_px=detector_px,
+            pixel_size_mm=pixel_size,
+        ),
+        in_plane_rotation_deg=roll_deg,
+        max_index=int(request["max_index"]),
+    )
+    if not image.spots:
+        raise InvalidInputError(
+            "No reflection of this zone lands on the detector at that camera length.",
+            field="camera_length_mm",
+            hint=(
+                f"At {camera_length:g} mm the innermost reflection of "
+                f"{direction_label(indices, spec=spec)} is already off the plate. Shorten the "
+                "camera length, or enlarge the detector, until the pattern fits."
+            ),
+        )
+
+    matrix_out = image.crystal_to_pattern()
+    euler_deg = tuple(
+        float(value) for value in Rotation.from_matrix(matrix_out).to_bunge_euler(degrees=True)
+    )
+
+    zone_text = direction_label(indices, spec=spec)
+    rows = [
+        {
+            "spot": index + 1,
+            "hkl": plane_label(tuple(int(value) for value in spot.miller_indices), spec=spec),
+            "d": float(spot.d_spacing_angstrom),
+            "g": float(spot.g_inv_angstrom),
+            "intensity": float(spot.relative_intensity),
+            "x": float(spot.position_px[0]),
+            "y": float(spot.position_px[1]),
+        }
+        for index, spot in enumerate(image.spots)
+    ]
+
+    payload = image.to_json()
+    # The browser draws from the same numbers the table shows, and labels a
+    # hexagonal reflection in four indices as the literature does.
+    for spot_payload, row in zip(payload["spots"], rows, strict=True):
+        spot_payload["label"] = row["hkl"]
+
+    scale_px = camera_constant / pixel_size
+    deviation_note = (
+        None
+        if deviation_deg is None
+        else (
+            f"The orientation given looks {deviation_deg:.2f} degrees away from {zone_text}, "
+            "which is the nearest zone axis inside the search limit; the pattern drawn is that "
+            "exact zone. A spot pattern exists only on a zone axis, so an orientation between "
+            "two of them has no pattern of its own to draw."
+        )
+    )
+
+    summary = (
+        f"A simulated {spec.name} pattern with the beam along {zone_text}, at {beam_energy:g} kV "
+        f"and a {camera_length:g} mm camera length - a camera constant of "
+        f"{camera_constant:.4f} mm.A, or {scale_px:.2f} px per inverse angstrom. {len(rows)} "
+        f"reflections fall on the {detector_px}x{detector_px} detector, rolled "
+        f"{roll_deg:.1f} degrees about the beam."
+    )
+    if deviation_note:
+        summary = f"{summary} {deviation_note}"
+
+    result = AppResult(
+        title=f"Simulated SAED of {spec.name} down {zone_text}",
+        summary=summary,
+        table=ResultTable(
+            columns=(
+                Column("spot", "Spot", numeric=True),
+                Column("hkl", "Index"),
+                Column("d", "d", units="A", numeric=True, digits=4),
+                Column("g", "|g|", units="1/A", numeric=True, digits=4),
+                Column(
+                    "intensity",
+                    "Relative intensity",
+                    numeric=True,
+                    digits=3,
+                    help_text=(
+                        "Kinematic, normalized to the strongest spot. Indicative rather than "
+                        "quantitative - a real plate redistributes intensity dynamically."
+                    ),
+                ),
+                Column("x", "x", units="px", numeric=True, digits=1),
+                Column("y", "y", units="px", numeric=True, digits=1),
+            ),
+            rows=tuple(rows),
+            caption=f"Simulated reflections of {spec.name} down {zone_text}.",
+        ),
+        data={
+            "pattern": payload,
+            "zone_axis": [int(value) for value in indices],
+            "zone_axis_label": zone_text,
+            "phase_name": spec.name,
+            "orientation": {
+                "crystal_to_pattern": [float(value) for value in matrix_out.reshape(-1)],
+                "euler_bunge_deg": [float(value) for value in euler_deg],
+                "in_plane_rotation_deg": roll_deg,
+                "deviation_deg": deviation_deg,
+                "source": source,
+            },
+            # Everything the solver and the Kikuchi overlay need, so a simulated
+            # plate can be carried to either without a number being retyped.
+            "calibration": {
+                "units": "px",
+                "camera_constant_mm_angstrom": camera_constant,
+                "pixel_size_mm": pixel_size,
+                "reciprocal_per_px_angstrom": 1.0 / scale_px,
+                "scale_px_per_inv_angstrom": scale_px,
+                "phase": request["phase"],
+            },
+            "show_kikuchi": bool(request["show_kikuchi"]),
+            "describe": image.describe(),
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "orientation_source": source,
+            "zone_axis": [int(value) for value in indices],
+            "in_plane_rotation_deg": roll_deg,
+            "camera_length_mm": camera_length,
+            "beam_energy_kev": beam_energy,
+            "detector_px": detector_px,
+            "pixel_size_mm": pixel_size,
+            "max_index": int(request["max_index"]),
+        },
+        notes=(*_SIMULATION_LIMITS, *([deviation_note] if deviation_note else ())),
+        citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
+    )
+    return result.to_json()
+
+
 @REGISTRY.operation(
     "tem.zone_axis_atlas",
     title="Find the zone axes worth going to",
@@ -3416,6 +3814,80 @@ REGISTRY.add_examples(
                 "alpha_limit_deg": 60.0,
                 "beta_limit_deg": 60.0,
                 "beam_rotation_deg": 45.0,
+            },
+        ),
+        ExampleScenario(
+            id="tem.example.simulate_hcp_basal",
+            title="Basal zirconium, the pattern to recognise",
+            panel="tem_simulator",
+            summary="Zirconium down [0001]: the six-fold plate every hcp session starts from.",
+            teaches=(
+                "The basal pattern of an hcp metal is the one a microscopist recognises on "
+                "sight, and it is worth knowing why it looks the way it does. Every reflection "
+                "in the zone of [0001] has l = 0, so the pattern is the reciprocal net of the "
+                "basal plane alone: a six-fold arrangement whose innermost ring is the six "
+                "{10-10} prism reflections and whose next is the six {11-20}. Their radii are "
+                "in the ratio sqrt(3), which is a statement about the hexagonal net rather than "
+                "about zirconium, and it is the first thing to check on a real plate. Nothing "
+                "here depends on c/a: the c axis is along the beam and does not appear."
+            ),
+            operation="tem.simulate_saed",
+            request={
+                "phase": {"builtin": "zr_hcp"},
+                "orientation_source": "uvw",
+                "zone_axis": [0, 0, 1],
+                "camera_length_mm": 400.0,
+                "beam_energy_kev": 200.0,
+            },
+        ),
+        ExampleScenario(
+            id="tem.example.simulate_fcc_110_kikuchi",
+            title="Austenite down [110], with its bands",
+            panel="tem_simulator",
+            summary="A rectangular fcc net, and the Kikuchi bands that cross it.",
+            teaches=(
+                "The [110] pattern of an fcc phase is rectangular rather than square, and the "
+                "ratio of its two axes is the check that it is [110] and not [100]. Drawing the "
+                "bands on the same orientation shows the relation the overlay exists for: the "
+                "band belonging to (hkl) runs perpendicular to the line from the transmitted "
+                "beam to its own spot, and is as wide as that spot is far out. Both are "
+                "consequences of the band and the spot being pole and polar of one reciprocal "
+                "vector, so a plate on which they disagree has a calibration error rather than "
+                "an indexing one."
+            ),
+            operation="tem.simulate_saed",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "orientation_source": "uvw",
+                "zone_axis": [1, 1, 0],
+                "in_plane_rotation_deg": 15.0,
+                "camera_length_mm": 500.0,
+                "show_kikuchi": True,
+            },
+        ),
+        ExampleScenario(
+            id="tem.example.simulate_from_orientation",
+            title="A measured orientation, resolved to its zone axis",
+            panel="tem_simulator",
+            summary="Bunge angles in, the nearest zone axis and its deviation out.",
+            teaches=(
+                "An orientation measured by EBSD is three angles, and a diffraction pattern is "
+                "a zone axis: the two are the same information only when the orientation "
+                "happens to put a rational direction on the beam. Given (phi1, Phi, phi2) this "
+                "reports which low-index axis is nearest, how many degrees away the orientation "
+                "actually is, and the roll about the beam it implies — then draws that exact "
+                "zone. Reading the stated deviation is the whole point: at a fraction of a "
+                "degree the drawn pattern is what the microscope would show, and at several "
+                "degrees it is a neighbouring zone rather than the orientation asked for."
+            ),
+            operation="tem.simulate_saed",
+            request={
+                "phase": {"builtin": "fe_bcc"},
+                "orientation_source": "bunge",
+                "phi1_deg": 30.0,
+                "Phi_deg": 45.0,
+                "phi2_deg": 0.0,
+                "camera_length_mm": 400.0,
             },
         ),
         ExampleScenario(

@@ -102,6 +102,7 @@ The complete set of computed-versus-expected values at a glance:
 | `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | ✅ |
 | `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | ✅ |
 | `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | ✅ |
+| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | ✅ |
 | `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | ✅ |
 | `saed-practice-atlas-basal-to-prism` | 90.000000 | 90.000000 | deg | ✅ |
 | `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | ✅ |

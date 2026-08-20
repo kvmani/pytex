@@ -96,6 +96,100 @@ result = radius_px * image.raster.pixel_size_mm
 
 **See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`
 
+## What rolling the crystal about the beam does to the pattern
+
+A simulated plate states the orientation it was built from, as the rotation taking crystal vectors into the pattern frame. Anything else drawn on that pattern - Kikuchi bands, a calculated overlay, a stereogram - is placed with that matrix, so it has to mean exactly what the spots mean or every overlay is silently turned. The identity that tests it needs no reference table: rolling the crystal about the beam by an angle rotates the azimuth of every reflection on the plate by that same angle, because the roll is a rotation about the projection axis and the projection commutes with it. Here the 200 reflection of aluminium is projected through the matrix at two rolls thirty degrees apart, and the angle between the two positions is measured.
+
+**Symbols**
+
+- $g$ &mdash; Reciprocal-lattice vector of a reflection; |g| = 1/d.
+- $[uvw]$ &mdash; Lattice direction brought parallel to the beam.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Aluminium, a = 4.0495 A (Wyckoff, Crystal Structures Vol. 1).
+aluminium = Phase(
+    "aluminium-fcc",
+    lattice=Lattice(4.0495, 4.0495, 4.0495, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# Alpha zirconium, a = 3.232 A, c = 5.147 A, so c/a = 1.5925.
+zirconium = Phase(
+    "zirconium-hcp",
+    lattice=Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
+RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+```
+
+:::
+
+**Compute**
+
+```python
+def projected(roll_deg):
+    image = synthesize_saed_image(
+        aluminium,
+        ZoneAxis([0, 0, 1], phase=aluminium),
+        camera_constant_mm_angstrom=CAMERA_CONSTANT,
+        raster=RASTER,
+        in_plane_rotation_deg=roll_deg,
+    )
+    reciprocal = aluminium.lattice.reciprocal_basis().matrix
+    g_200 = reciprocal @ np.array([2.0, 0.0, 0.0])
+    return image.crystal_to_pattern() @ g_200
+
+
+start = projected(0.0)
+rolled = projected(30.0)
+result = float(
+    np.degrees(
+        np.arctan2(
+            start[0] * rolled[1] - start[1] * rolled[0],
+            start[0] * rolled[0] + start[1] * rolled[1],
+        )
+    )
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | 3.55e-15 | 1e-09 | ✅ pass |
+
+**Why this value**: Exact by construction rather than by measurement: the roll is a rotation about the beam, which is the projection axis, so it acts on the detector plane as a plane rotation through the same angle. Thirty degrees of roll must move every spot's azimuth by thirty degrees, whatever the lattice, the camera constant or the reflection.
+
+**Citation**: Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., Springer, DOI: 10.1007/978-0-387-76501-3, chapter 18 - the pattern rotates rigidly with the specimen about the beam, which is why one pattern cannot fix that rotation.
+
+**See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`
+
 ## Reading c/a off one hcp prism-zone pattern
 
 The hcp [2-1-10] pattern is a rectangle whose two shortest vectors are 0002 along c* and 01-10 perpendicular to it. Their lengths are 2/c and 2/(sqrt(3) a), so their ratio is sqrt(3) a / c and depends on nothing else — not on the camera constant, not on the accelerating voltage, not on the exposure. That makes this one pattern a calibration-free measurement of the axial ratio, and the standard way to tell zirconium (1.0876) from titanium (1.0908) or magnesium (1.0668) on the microscope. Here the ratio is measured off the simulated plate exactly as it would be measured off a real one.

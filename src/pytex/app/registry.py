@@ -99,6 +99,7 @@ _PANEL_DOCUMENTATION = {
     ),
     "xrd": DocumentationLink("Powder XRD generation", "workflows/xrd_generation"),
     "tem": DocumentationLink("TEM specimen tilt navigation", "theory/tem_specimen_tilt_navigation"),
+    "tem_simulator": DocumentationLink("SAED pattern generation", "workflows/saed_generation"),
     "cbed": DocumentationLink(
         "Convergent-beam electron diffraction", "theory/convergent_beam_electron_diffraction"
     ),

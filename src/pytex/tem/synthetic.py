@@ -295,6 +295,70 @@ class SyntheticSAEDImage:
             chosen.append(spot)
         return tuple(chosen)
 
+    def crystal_to_pattern(self) -> np.ndarray:
+        """The rotation taking crystal Cartesian vectors into the pattern frame.
+
+        Purpose
+        -------
+        State the orientation this pattern *was built from*, in the same form
+        the indexer reports and the Kikuchi overlay consumes: a rotation matrix
+        whose third row is the beam direction, so that ``R @ g`` has the
+        detector coordinates of the reflection ``g`` in its first two components
+        and its excitation error in the third.
+
+        When and where to use it
+        ------------------------
+        Whenever something other than the spots has to be drawn on the same
+        pattern — Kikuchi bands, a calculated overlay, a stereogram — and must
+        agree with it. Without this the orientation would have to be recovered
+        by indexing a pattern whose answer is already known, and any convention
+        mismatch would show up as a silently rotated overlay.
+
+        Returns
+        -------
+        numpy.ndarray
+            A ``(3, 3)`` proper rotation. Multiply a reciprocal-lattice vector
+            in crystal Cartesian coordinates by it to obtain
+            ``(x, y, excitation)`` in the pattern frame, in the same units;
+            multiply the first two components by
+            ``camera_constant_mm_angstrom / pixel_size_mm`` and add
+            :attr:`centre_px` to land on the drawn spot.
+
+        Notes
+        -----
+        The construction mirrors :func:`synthesize_saed_image` exactly: the
+        deterministic zone basis of :func:`~pytex.diffraction.kinematic.zone_basis_from_axis`
+        for the beam direction, then the roll about the beam that the projection
+        applied to the detector coordinates.
+
+        Examples
+        --------
+        >>> from pytex.app.phases import builtin_phase
+        >>> from pytex.core.lattice import ZoneAxis
+        >>> phase = builtin_phase("ni_fcc").to_phase()
+        >>> axis = ZoneAxis(indices=(0, 0, 1), phase=phase)
+        >>> image = synthesize_saed_image(phase, axis, in_plane_rotation_deg=17.0)
+        >>> matrix = image.crystal_to_pattern()
+        >>> bool(abs(float(np.linalg.det(matrix)) - 1.0) < 1e-12)
+        True
+
+        The third row is the beam: the zone axis maps onto pattern ``+z``.
+
+        >>> beam = matrix @ axis.unit_vector
+        >>> bool(abs(beam[2] - 1.0) < 1e-12)
+        True
+        """
+
+        from pytex.diffraction.kinematic import zone_basis_from_axis
+
+        basis = np.asarray(zone_basis_from_axis(self.zone_axis.unit_vector), dtype=float)
+        angle = math.radians(float(self.in_plane_rotation_deg))
+        cosine, sine = math.cos(angle), math.sin(angle)
+        roll = np.array(
+            [[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]], dtype=float
+        )
+        return np.ascontiguousarray(roll @ basis.T)
+
     def describe(self) -> str:
         """A convention-explicit prose account of what this pattern is.
 
@@ -340,6 +404,9 @@ class SyntheticSAEDImage:
             "height_px": int(self.raster.height_px),
             "pixel_size_mm": float(self.raster.pixel_size_mm),
             "centre_px": [float(value) for value in self.centre_px],
+            "crystal_to_pattern": [
+                float(value) for value in self.crystal_to_pattern().reshape(-1)
+            ],
             "spots": [
                 {
                     "hkl": [int(value) for value in spot.miller_indices],

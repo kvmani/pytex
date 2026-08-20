@@ -3826,6 +3826,7 @@ One goal, four strands, requested together:
 - [x] I2 — grouped tabs: TEM Analysis with sub-tabs
 - [x] I3 — solver layout: picks and cursor readouts clear of the plate
 - [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
+  - [x] I4a — the operation, the orientation it reports, and its tests
 - [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
 
@@ -3890,3 +3891,37 @@ Verified in the browser at 1280x720 and 1500x900, and pinned by the rewritten "r
 spots off the TEM pattern itself" case: the bar below the drawing, inside the stage, the drawing
 still over 150 px, |g|·d = 1 across the two columns, and the cursor reporting both the radius from
 the beam and |g| on hover. 29 browser tests green.
+
+### I4a — `tem.simulate_saed`, and the orientation a simulated plate now states
+
+The forward operation to sit beside the solver: a phase and a direction in, the pattern that
+would land on the plate out. The crystal is pointed either by **zone axis plus roll** — how one
+thinks at the column — or by **Bunge Euler angles**, which is how a measured orientation arrives
+from EBSD or from an indexed pattern. In the Euler mode the operation resolves the orientation to
+the nearest low-index zone axis, reports the **deviation in degrees**, and says in the summary and
+the notes that the pattern drawn is that exact zone. This is the honest form: a spot pattern
+exists only on a zone axis, so an orientation between two of them has no pattern of its own.
+
+Supporting it, `SyntheticSAEDImage.crystal_to_pattern()` — the rotation the pattern was built
+from, in the same convention the indexer reports and the Kikuchi overlay consumes. It is what
+lets the simulator's Kikuchi bands be requested from the existing `tem.kikuchi_overlay` operation
+rather than a second copy of that geometry, and the unit test proves it by *using* it: every
+drawn spot is reproduced by multiplying its reciprocal vector by the matrix, and the excitation
+error comes out zero because the reflection is in the zone.
+
+Two conventions worth recording, both checked rather than assumed:
+
+- The repository's orientation matrix maps **crystal to specimen**, and the specimen frame of a
+  recorded pattern *is* the pattern frame, so Bunge angles go straight in with no transpose.
+- One pattern cannot distinguish the members of a zone-axis family. The indexing round-trip test
+  therefore compares families, not triples: a plate built down `[1 1 -2 0]` comes back as
+  `[-1 2 -1 0]`, and both are ⟨1 1 -2 0⟩.
+
+Also here: three canonical examples for the new panel (basal zirconium, austenite `[110]` with
+bands, an orientation resolved to its zone axis), the panel's Sphinx documentation link, and a
+worked example pinning that rolling the crystal 30° about the beam rotates every spot's azimuth
+by exactly 30° — an identity of the projection, with no reference table behind it.
+
+The choice values are `uvw` and `bunge` rather than `zone_axis` and `euler`: the manifest test
+forbids a machine identifier appearing in any result's prose, and `zone_axis` would have made the
+ordinary English "zone-axis" in a neighbouring example's summary a failure.

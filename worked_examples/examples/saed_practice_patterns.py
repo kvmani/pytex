@@ -309,6 +309,68 @@ CALIBRATION_BIAS = WorkedExample(
 )
 
 
+ROLL_ABOUT_THE_BEAM = WorkedExample(
+    id="saed-practice-roll-about-the-beam",
+    title="What rolling the crystal about the beam does to the pattern",
+    domain="tem",
+    scenario=(
+        "A simulated plate states the orientation it was built from, as the rotation taking "
+        "crystal vectors into the pattern frame. Anything else drawn on that pattern - Kikuchi "
+        "bands, a calculated overlay, a stereogram - is placed with that matrix, so it has to "
+        "mean exactly what the spots mean or every overlay is silently turned. The identity "
+        "that tests it needs no reference table: rolling the crystal about the beam by an angle "
+        "rotates the azimuth of every reflection on the plate by that same angle, because the "
+        "roll is a rotation about the projection axis and the projection commutes with it. Here "
+        "the 200 reflection of aluminium is projected through the matrix at two rolls thirty "
+        "degrees apart, and the angle between the two positions is measured."
+    ),
+    setup=PATTERN_SETUP,
+    code=(
+        "def projected(roll_deg):\n"
+        "    image = synthesize_saed_image(\n"
+        "        aluminium,\n"
+        "        ZoneAxis([0, 0, 1], phase=aluminium),\n"
+        "        camera_constant_mm_angstrom=CAMERA_CONSTANT,\n"
+        "        raster=RASTER,\n"
+        "        in_plane_rotation_deg=roll_deg,\n"
+        "    )\n"
+        "    reciprocal = aluminium.lattice.reciprocal_basis().matrix\n"
+        "    g_200 = reciprocal @ np.array([2.0, 0.0, 0.0])\n"
+        "    return image.crystal_to_pattern() @ g_200\n"
+        "\n"
+        "\n"
+        "start = projected(0.0)\n"
+        "rolled = projected(30.0)\n"
+        "result = float(\n"
+        "    np.degrees(\n"
+        "        np.arctan2(\n"
+        "            start[0] * rolled[1] - start[1] * rolled[0],\n"
+        "            start[0] * rolled[0] + start[1] * rolled[1],\n"
+        "        )\n"
+        "    )\n"
+        ")"
+    ),
+    expected=30.0,
+    unit="deg",
+    tolerance=1e-9,
+    reference=(
+        "Exact by construction rather than by measurement: the roll is a rotation about the "
+        "beam, which is the projection axis, so it acts on the detector plane as a plane "
+        "rotation through the same angle. Thirty degrees of roll must move every spot's "
+        "azimuth by thirty degrees, whatever the lattice, the camera constant or the "
+        "reflection."
+    ),
+    citation=(
+        "Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., "
+        "Springer, DOI: 10.1007/978-0-387-76501-3, chapter 18 - the pattern rotates rigidly "
+        "with the specimen about the beam, which is why one pattern cannot fix that rotation."
+    ),
+    symbols=(_G, _ZONE),
+    see_also=(_WORKFLOW, _INDEXING),
+    result_format="{:.6f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="saed_practice_patterns",
     title="Simulated SAED plates and the zone-axis atlas",
@@ -322,6 +384,7 @@ GROUP = ExampleGroup(
     ),
     examples=(
         CALIBRATION_IDENTITY,
+        ROLL_ABOUT_THE_BEAM,
         PRISM_ZONE_AXIAL_RATIO,
         BASAL_TO_PRISM_ANGLE,
         CENTRE_REFINEMENT,
