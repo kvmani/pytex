@@ -3827,6 +3827,7 @@ One goal, four strands, requested together:
 - [x] I3 — solver layout: picks and cursor readouts clear of the plate
 - [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
   - [x] I4a — the operation, the orientation it reports, and its tests
+  - [x] I4b — a tracked hcp plate on disk, opened and indexed in the browser
 - [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
 
@@ -3925,3 +3926,31 @@ by exactly 30° — an identity of the projection, with no reference table behin
 The choice values are `uvw` and `bunge` rather than `zone_axis` and `euler`: the manifest test
 forbids a machine identifier appearing in any result's prose, and `zone_axis` would have made the
 ordinary English "zone-axis" in a neighbouring example's summary a failure.
+
+### I4b — a pattern file in the repository, opened the way a user opens one
+
+Every existing browser test starts from the gallery, where a plate arrives as coordinates and is
+drawn as vectors. That path never touches the one a user takes with their own data: choose a file,
+see it appear, set *this* exposure's calibration, click spots on pixels, index. The bug fixed in I1
+lived precisely there, and nothing would have caught it.
+
+So `fixtures/tem/zr_hcp_basal_saed.png` is now tracked: a 17 kB, 512 px, 8-bit greyscale simulated
+plate of alpha zirconium down [0001], with a JSON sidecar carrying the answer — phase, zone axis,
+calibration, orientation, every reflection's position, and three independent seed picks.
+`scripts/generate_tem_test_pattern.py` writes both, with a pure-standard-library PNG encoder
+(colour type 0, filter 0) rather than a new Pillow dependency for a twelve-kilobyte file.
+
+Deliberately not a clean plot: a fog gradient, a saturated beam, and Gaussian spots whose width is
+set by the illumination rather than by their strength. A fixture cleaner than any real exposure
+would let a centroiding bug pass.
+
+`tests/unit/test_tem_test_pattern_fixture.py` regenerates and compares byte for byte — the
+simulation has no jitter, so a difference is a real change — checks the sidecar against the image,
+and confirms the brightest pixel near each stated reflection is at that reflection. The browser
+test opens the PNG through the file input, asserts it is drawn at 100 %, clicks the beam and the
+three seed spots, sets zirconium and this exposure's calibration, and requires
+"Zirconium (hcp, alpha) down [0001]" with 3 of 3 spots indexed.
+
+Worth recording: before the phase was set, indexing that plate against the gallery's aluminium
+returned *no solution at all* rather than a wrong one. That is the honest failure mode, and it is
+what the panel's warning about a carried-over calibration is for.

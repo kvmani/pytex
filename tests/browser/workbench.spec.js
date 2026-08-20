@@ -805,6 +805,86 @@ test('an opened micrograph is fitted rather than inheriting the last view', asyn
 });
 
 /*
+ * The whole from-disk path, on a pattern whose answer is known.
+ *
+ * Everything else in this file starts from the gallery, where the plate arrives
+ * as coordinates and is drawn as vectors. That never exercises what a user
+ * actually does with their own data: choose a file, see it appear, set the
+ * calibration for that exposure, click spots on pixels, and index. The tracked
+ * fixture makes that testable — it is a simulated zirconium [0001] plate written
+ * as a PNG, with a JSON sidecar carrying the answer, so the test can click where
+ * the reflections are and require the zone axis back.
+ */
+test('a pattern file opened from disk is displayed, picked on, and indexed', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPlate(page);
+
+  const truth = JSON.parse(readFileSync('fixtures/tem/zr_hcp_basal_saed.json', 'utf-8'));
+  await page.setInputFiles('#rail-body input[type="file"]', 'fixtures/tem/zr_hcp_basal_saed.png');
+
+  // It is on screen, whole, and it is the file that was opened.
+  const drawn = page.locator(`${PATTERN_SVG} image`);
+  await expect(drawn).toBeVisible();
+  await expect(drawn).toHaveAttribute('width', String(truth.width_px));
+  await expect(patternControl(page, '.plot__zoom')).toHaveText('100%');
+
+  const toScreen = async (x, y) =>
+    page.evaluate(
+      ([px, py]) => {
+        const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+        const box = svg.viewBox.baseVal;
+        const rect = svg.getBoundingClientRect();
+        const scale = Math.min(rect.width / box.width, rect.height / box.height);
+        return {
+          x: rect.left + (rect.width - box.width * scale) / 2 + (px - box.x) * scale,
+          y: rect.top + (rect.height - box.height * scale) / 2 + (py - box.y) * scale,
+        };
+      },
+      [x, y],
+    );
+
+  // The transmitted beam first, then three independent reflections — the picks
+  // the sidecar names, which are the ones a user would choose for the same
+  // reason: strong, and not collinear through the beam.
+  const clicks = [truth.centre_px, ...truth.seed_spots.map((spot) => [spot.x, spot.y])];
+  for (const [x, y] of clicks) {
+    const point = await toScreen(x, y);
+    await page.mouse.click(point.x, point.y);
+  }
+  await expect(page.locator('.picks__row')).toHaveCount(clicks.length);
+
+  // The measurements are readable beside the picture rather than under it, and
+  // the ratio of the two inner rings is the sqrt(3) of the hexagonal net.
+  const readout = patternControl(page, '.plot__readout');
+  await expect(readout).toContainText('Measured picks');
+
+  // This exposure's phase and calibration, neither of which the practice plate's
+  // are: the fields still hold the gallery's aluminium and its camera constant,
+  // and indexing on those returns no solution at all — which is the honest
+  // failure, and the reason the panel warns when a file is opened over a plate.
+  // Three forms carry a phase picker — index, atlas, tilt — so this names the
+  // one belonging to the step that indexes.
+  const indexStep = page.locator('#rail-body details.step').filter({
+    has: page.getByRole('button', { name: 'Index the pattern', exact: true }),
+  });
+  await indexStep.locator('[id^="ctl-phase-"]').selectOption('zr_hcp');
+  await page
+    .locator('[id^="ctl-camera_constant_mm_angstrom-"]')
+    .fill(String(truth.camera_constant_mm_angstrom));
+  await page.locator('[id^="ctl-pixel_size_mm-"]').fill(String(truth.pixel_size_mm));
+
+  await page.getByRole('button', { name: 'Index the pattern', exact: true }).click();
+  // Zirconium down [0001], which is what the file was built from — the answer
+  // the sidecar states, reached by opening a picture and clicking on it.
+  await expect(page.locator('#stage')).toContainText('Zirconium (hcp, alpha) down [0001]', {
+    timeout: 30_000,
+  });
+  await expect(page.locator('#stage')).toContainText('3 of 3 picked spots were indexed');
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * Measured pole figures, in tabs, on one scale.
  *
  * The reason to measure more than one pole figure is to compare them, and two
