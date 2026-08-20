@@ -319,67 +319,89 @@ test('zooms below 100% and pans with the pan tool', async ({ page }) => {
 test('reads the picked spots off the TEM pattern itself', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'TEM Solver');
-  const overlay = patternControl(page, '.plot__overlay');
-  // Nothing picked yet, so there is nothing to report.
-  await expect(overlay).toBeHidden();
+
+  /*
+   * The numbers are read *while* the plate is worked on, so they are under the
+   * drawing rather than over it.
+   *
+   * They used to be a card pinned to the top-left corner of the figure, painted
+   * beneath it so the pattern masked it and a hover raised it. That is right for
+   * a picture that is looked at and wrong for one that is picked on: the corner
+   * it covered is a corner of the data, and the measurement was hidden behind
+   * the very spots it measures. The readout bar can never overlap the drawing,
+   * which is the property this asserts.
+   */
+  const readout = patternControl(page, '.plot__readout');
+  await expect(readout).toBeVisible();
+  await expect(readout).toContainText('Measured picks');
+  // The live cursor lives there too, resting on a dash until the pointer moves.
+  await expect(patternControl(page, '.plot__cursor')).toHaveText('—');
 
   await page.getByRole('button', { name: 'Auto-pick', exact: true }).click();
-  await expect(overlay).toBeVisible();
-  await expect(overlay.locator('tbody tr').first()).toBeVisible();
-  const rows = await overlay.locator('tbody tr').count();
+  await expect(readout.locator('tbody tr').first()).toBeVisible();
+  const rows = await readout.locator('tbody tr').count();
   expect(rows).toBeGreaterThan(1);
 
-  const first = overlay.locator('tbody tr').first();
-  // The reference spot: its ratio to itself is 1 and it has no angle to itself.
-  await expect(first.locator('td').nth(3)).toHaveText('1.000');
-  await expect(first.locator('td').nth(4)).toHaveText('—');
+  // #, R/px, |g|, d, ratio, angle — the three numbers a plate is identified by,
+  // plus the two radii they come from.
+  await expect(readout.locator('thead th')).toHaveText(['#', 'R / px', '|g| / Å⁻¹', 'd / Å', 'd1/d', '∠ / °']);
 
-  const second = overlay.locator('tbody tr').nth(1);
-  const d = Number(await second.locator('td').nth(2).innerText());
-  const ratio = Number(await second.locator('td').nth(3).innerText());
-  const angle = Number(await second.locator('td').nth(4).innerText());
-  expect(d).toBeGreaterThan(0);
+  const first = readout.locator('tbody tr').first();
+  // The reference spot: its ratio to itself is 1 and it has no angle to itself.
+  await expect(first.locator('td').nth(4)).toHaveText('1.000');
+  await expect(first.locator('td').nth(5)).toHaveText('—');
+
+  const second = readout.locator('tbody tr').nth(1);
+  const g = Number(await second.locator('td').nth(2).innerText());
+  const d = Number(await second.locator('td').nth(3).innerText());
+  const ratio = Number(await second.locator('td').nth(4).innerText());
+  const angle = Number(await second.locator('td').nth(5).innerText());
+  expect(g).toBeGreaterThan(0);
+  // |g| and d are the same measurement stated two ways, and must agree.
+  expect(Math.abs(g * d - 1)).toBeLessThan(0.01);
   expect(ratio).toBeGreaterThan(0);
   expect(angle).toBeGreaterThanOrEqual(0);
   expect(angle).toBeLessThanOrEqual(180);
 
-  /*
-   * The picture is not blocked by the card that reports on it.
-   *
-   * The readout is pinned to the top-left corner of the drawing, which on a
-   * diffraction pattern is a corner of the data. It is painted *under* the
-   * figure, so the opaque part of the pattern masks it; bringing the pointer
-   * onto its rectangle raises it in full, and leaving restores the clear view.
-   */
-  const stacking = await page.evaluate(() => {
-    const card = document.querySelector('.plot__overlay');
-    const canvas = document.querySelector('.plot__canvas');
+  // Nothing in the bar overlaps the drawing, at any pick count.
+  const clear = await page.evaluate(() => {
+    const plot = document
+      .querySelector('svg[aria-label="Diffraction pattern"]')
+      .closest('.plot');
+    const drawing = plot.querySelector('.plot__stage').getBoundingClientRect();
+    const bar = plot.querySelector('.plot__readout').getBoundingClientRect();
+    const stage = document.getElementById('stage').getBoundingClientRect();
     return {
-      card: getComputedStyle(card).zIndex,
-      canvas: getComputedStyle(canvas).zIndex,
-      raised: card.classList.contains('plot__overlay--raised'),
+      below: bar.top >= drawing.bottom - 1,
+      drawingHeight: drawing.height,
+      insideStage: bar.bottom <= stage.bottom + 1,
     };
   });
-  expect(Number(stacking.card)).toBeLessThan(Number(stacking.canvas));
-  expect(stacking.raised).toBe(false);
+  expect(clear.below).toBe(true);
+  expect(clear.insideStage).toBe(true);
+  // The figure still has room to be a figure.
+  expect(clear.drawingHeight).toBeGreaterThan(150);
 
-  const hovered = await page.evaluate(() => {
-    const card = document.querySelector('.plot__overlay');
+  // The cursor reports the radius from the beam and the |g| it corresponds to,
+  // which is the reading taken while hovering rather than after clicking.
+  const cursorText = await page.evaluate(() => {
     const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
-    const box = card.getBoundingClientRect();
-    const move = (clientX, clientY) =>
-      svg.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX, clientY }));
-    move(box.left + box.width / 2, box.top + box.height / 2);
-    const onCard = card.classList.contains('plot__overlay--raised');
-    move(box.right + 200, box.bottom + 200);
-    return { onCard, afterLeaving: card.classList.contains('plot__overlay--raised') };
+    const box = svg.getBoundingClientRect();
+    svg.dispatchEvent(
+      new PointerEvent('pointermove', {
+        bubbles: true,
+        clientX: box.left + box.width * 0.7,
+        clientY: box.top + box.height * 0.5,
+      }),
+    );
+    return svg.closest('.plot').querySelector('.plot__cursor').textContent;
   });
-  expect(hovered.onCard).toBe(true);
-  expect(hovered.afterLeaving).toBe(false);
+  expect(cursorText).toContain('px from beam');
+  expect(cursorText).toContain('|g|');
 
-  // It reports the picks, so clearing them takes it away again.
+  // It reports the picks, so clearing them returns it to its waiting state.
   await page.getByRole('button', { name: 'Clear picks', exact: true }).click();
-  await expect(overlay).toBeHidden();
+  await expect(readout).toContainText('Click the transmitted beam');
 
   expect(browserErrors).toEqual([]);
 });
@@ -773,7 +795,9 @@ test('an opened micrograph is fitted rather than inheriting the last view', asyn
   // because picking a spot precisely means picking it zoomed in.
   await patternButton(page, 'Zoom in').click();
   const zoomed = await patternControl(page, '.plot__zoom').textContent();
-  await page.locator(PATTERN_SVG).click({ position: { x: 40, y: 40 } });
+  // The element's centre, which is inside the image at any letterboxing: a
+  // click in the margin beside a non-square drawing is refused as outside it.
+  await page.locator(PATTERN_SVG).click();
   await expect(page.locator('.picks__row')).toHaveCount(1);
   await expect(patternControl(page, '.plot__zoom')).toHaveText(zoomed);
 

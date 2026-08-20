@@ -3824,7 +3824,7 @@ One goal, four strands, requested together:
 
 - [x] I1 — the opened pattern is drawn (viewport reset on a new pattern)
 - [x] I2 — grouped tabs: TEM Analysis with sub-tabs
-- [ ] I3 — solver layout: picks and cursor readouts clear of the plate
+- [x] I3 — solver layout: picks and cursor readouts clear of the plate
 - [ ] I4 — SAED simulator panel and `tem.simulate_saed`, with a tracked HCP test pattern
 - [ ] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
@@ -3861,3 +3861,32 @@ Ids are untouched, so no manifest, operation or citation moved.
 Browser tests gained `openPanel()`, which walks the tab path of a named panel, and
 `workspaceTab()`, which scopes the top-level bar — sub-tabs carry `role="tab"` too, so an unscoped
 `getByRole('tab')` would count both. 29 browser tests, 6512 unit tests, ruff and mypy green.
+
+### I3 — the measurements moved out from under the pattern
+
+The measured-pick card and the live cursor readout were both drawn inside the drawing area: the
+card pinned to the top-left corner and painted *beneath* the figure (raised on hover), the cursor
+pinned to the bottom-right corner. On a figure that is looked at, that is right. On a figure that
+is *picked on* it is not: the corner the card hid is a corner of the data, and the numbers being
+read are the numbers about the spots underneath them.
+
+`plotFrame` gained a **readout bar** — `readout: true` at construction, `setReadout(node)` to fill
+it — a strip under the drawing holding the panel's numbers on the left and the live cursor on the
+right. It is capped at `min(9.5rem, 26%)` of the card and scrolls internally, so a thirty-pick
+measurement cannot starve the figure it measures, and the cursor rests on a dash rather than on
+nothing so an idle pointer does not read as a broken readout.
+
+The measured table gained a **|g| column** beside R and d, since the reciprocal radius is what the
+cursor reports and the two should be readable against each other. It also has a waiting state
+naming what will fill it, because the bar now exists before the first pick.
+
+Found while measuring it: at 1280 px the pattern and the stereogram shared the stage, giving the
+plate a 430 px column in which its eight tools wrapped to four rows — a 172 px header over a
+169 px drawing, on the one panel whose entire purpose is clicking accurately. The stacking
+breakpoint moved from 72 rem to 86 rem, and the stacked plate's floor from 56vh to
+`min(72vh, 40rem)`. At 1280 the header is now 87 px and the drawing is more than twice as tall.
+
+Verified in the browser at 1280x720 and 1500x900, and pinned by the rewritten "reads the picked
+spots off the TEM pattern itself" case: the bar below the drawing, inside the stage, the drawing
+still over 150 px, |g|·d = 1 across the two columns, and the cursor reporting both the radius from
+the beam and |g| on hover. 29 browser tests green.

@@ -263,6 +263,9 @@ export function mount(context) {
 
   const frame = plotFrame({
     title: 'Pattern',
+    // The plate is measured with the pointer, so its numbers go under it rather
+    // than over it: see `readout` in plotFrame.
+    readout: true,
     toolbar: [
       autoPickButton,
       calibrateButton,
@@ -1637,7 +1640,7 @@ export function mount(context) {
     const samePattern = state.patternKey !== null && state.patternKey === state.drawnKey;
     state.drawnKey = state.patternKey;
     frame.setContent(outer, { preserveViewport: samePattern });
-    frame.setOverlay(measurementCard());
+    frame.setReadout(measurementCard());
     frame.setControls(state.calibrate.active ? calibrationCard() : null);
     if (state.calibrate.active) {
       frame.setStatus(
@@ -1843,13 +1846,31 @@ export function mount(context) {
    */
   function measurementCard() {
     const spots = state.picks.spots;
-    if (!state.picks.centre || !spots.length) return null;
+    if (!state.picks.centre || !spots.length) {
+      // The bar exists before the first pick, so it says what will fill it
+      // rather than appearing from nowhere once a spot is clicked.
+      return el('div.measure', {}, [
+        el('div.measure__title', { text: 'Measured picks' }),
+        el('p.measure__note', {
+          text: state.picks.centre
+            ? 'Click a reflection: its radius, |g|, d, ratio and angle are reported here.'
+            : 'Click the transmitted beam, then the reflections you want measured.',
+        }),
+      ]);
+    }
     const [cx, cy] = state.picks.centre;
     const rows = spots.map((spot, index) => {
       const dx = spot.x - cx;
       const dy = spot.y - cy;
       const g = reciprocalRadius(dx, dy);
-      return { index: index + 1, dx, dy, r: Math.hypot(dx, dy), d: g > 0 ? 1 / g : null };
+      return {
+        index: index + 1,
+        dx,
+        dy,
+        r: Math.hypot(dx, dy),
+        g: g > 0 ? g : null,
+        d: g > 0 ? 1 / g : null,
+      };
     });
     const reference = rows[0];
 
@@ -1865,7 +1886,8 @@ export function mount(context) {
         el('thead', {}, [
           el('tr', {}, [
             el('th', { text: '#' }),
-            el('th', { text: 'R / px' }),
+            el('th', { text: 'R / px', title: 'Radial distance from the transmitted beam' }),
+            el('th', { text: '|g| / Å⁻¹', title: 'Reciprocal-space radius, from the calibration' }),
             el('th', { text: 'd / Å' }),
             el('th', { text: `d${reference.index}/d`, title: 'Ratio to the first picked spot' }),
             el('th', { text: '∠ / °', title: 'Angle at the beam from the first picked spot' }),
@@ -1880,6 +1902,7 @@ export function mount(context) {
             return el('tr', {}, [
               cell(String(row.index)),
               cell(formatNumber(row.r, 1), 'measure__num'),
+              cell(row.g ? formatNumber(row.g, 4) : '—', 'measure__num'),
               cell(row.d ? formatNumber(row.d, 4) : '—', 'measure__num'),
               cell(ratio ? formatNumber(ratio, 3) : '—', 'measure__num'),
               cell(row.index === reference.index ? '—' : formatNumber(angle, 2), 'measure__num'),

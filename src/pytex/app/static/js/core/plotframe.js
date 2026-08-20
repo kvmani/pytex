@@ -44,6 +44,11 @@ import { clear, el, formatNumber } from './dom.js';
  * @param {Node[]} [options.toolbar] - Buttons shown in the frame header.
  * @param {boolean} [options.viewport] - Shared 2-D zoom/pan controls. Disable
  *   for a panel such as the crystal viewer that owns a 3-D camera.
+ * @param {boolean} [options.readout] - Give the frame a readout bar under the
+ *   drawing, and move the cursor readout into it. For a panel whose numbers are
+ *   read *while* the picture is read — the TEM plate is measured with the
+ *   pointer — where a card floating over the drawing covers the data it is
+ *   reporting on.
  * @returns {{element: HTMLElement, setContent: Function, setStatus: Function, hoverable: Function}}
  */
 export function plotFrame({
@@ -54,6 +59,7 @@ export function plotFrame({
   formatCursor = null,
   toolbar = [],
   viewport = true,
+  readout = false,
 } = {}) {
   // Held in one object so `configure` can replace them after construction: a
   // panel often cannot describe its coordinates until it has a result — the
@@ -117,12 +123,40 @@ export function plotFrame({
       ]
     : [];
 
+  /*
+   * The readout bar: the panel's numbers and the live cursor, under the drawing.
+   *
+   * A card over the figure is right when it annotates a picture that is looked
+   * at, and wrong when it annotates a picture that is *worked on*. On the TEM
+   * plate the measurements are of the spots the user is clicking, so the card
+   * covered exactly the region being measured, and the corner it hid was a
+   * corner of the data. Below the drawing it is never in the way, it is always
+   * legible without a hover, and it costs the figure only its own height.
+   */
+  const readoutSlot = el('div.plot__readout-panel');
+  const readoutBar = el('div.plot__readout', { hidden: !readout }, [
+    readoutSlot,
+    readout
+      ? el('div.plot__readout-cursor', {}, [
+          el('div.measure__title', { text: 'Under the pointer' }),
+          cursor,
+        ])
+      : null,
+  ]);
+  if (readout) {
+    cursor.classList.add('plot__cursor--bar');
+    // In the bar the readout has a permanent home, so an empty one reads as
+    // broken rather than as "the pointer is elsewhere". It rests on a dash.
+    cursor.textContent = '—';
+  }
+
   const element = el('figure.plot', {}, [
     el('figcaption.plot__header', {}, [
       el('h2.plot__title', { text: title }),
       el('div.plot__toolbar', {}, [...viewportToolbar, ...toolbar]),
     ]),
-    el('div.plot__stage', {}, [canvas, overlay, detail, cursor]),
+    el('div.plot__stage', {}, [canvas, overlay, detail, readout ? null : cursor]),
+    readoutBar,
     controls,
     status,
   ]);
@@ -262,7 +296,7 @@ export function plotFrame({
       if (!point) return;
       const data = mapping.toData(point.x, point.y);
       if (!data) {
-        cursor.textContent = '';
+        cursor.textContent = readout ? '—' : '';
         return;
       }
       cursor.textContent = mapping.formatCursor
@@ -272,7 +306,7 @@ export function plotFrame({
           }`.trim();
     });
     svgNode.addEventListener('pointerleave', () => {
-      cursor.textContent = '';
+      cursor.textContent = readout ? '—' : '';
     });
   }
 
@@ -430,6 +464,21 @@ export function plotFrame({
       else overlay.replaceChildren();
       overlay.hidden = overlay.childElementCount === 0;
       return overlay;
+    },
+
+    /**
+     * Put the panel's own numbers in the readout bar, under the drawing.
+     *
+     * Only frames built with `readout: true` have one. Unlike `setOverlay`,
+     * nothing here is ever covered by the figure, so it is where a measurement
+     * that is read *while* picking belongs.
+     *
+     * @param {Node|null} node - Pass null to clear it.
+     */
+    setReadout(node) {
+      if (node) readoutSlot.replaceChildren(node);
+      else readoutSlot.replaceChildren();
+      return readoutSlot;
     },
 
     /**

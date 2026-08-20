@@ -1962,10 +1962,19 @@ button:focus-visible {
   height: 100%;
 }
 
-/* Below this the two figures side by side are each too narrow to pick on, so
+/*
+ * Below this the two figures side by side are each too narrow to pick on, so
  * they stack and the page scrolls — the same trade the narrow layout already
- * makes for a single figure. */
-@media (max-width: 72rem) {
+ * makes for a single figure.
+ *
+ * The threshold is set by the *pattern's* toolbar rather than by the stereogram.
+ * On a 1280 px window the split gave the plate a 430 px column, in which its
+ * eight tools wrapped to four rows: a 172 px header over a 169 px drawing, on a
+ * panel whose entire purpose is clicking accurately on that drawing. Stacked at
+ * the same width the header is one row and the plate is more than twice as
+ * tall, which is worth a scroll to reach the stereogram.
+ */
+@media (max-width: 86rem) {
   .tem-stage {
     grid-template-columns: 1fr;
     height: auto;
@@ -1973,7 +1982,11 @@ button:focus-visible {
 
   .tem-stage > .plot {
     height: auto;
-    min-height: min(56vh, 30rem);
+    /* Stacked, the plate is the figure on screen and the stereogram is a scroll
+     * away, so the plate takes the window rather than half of it. At 56vh the
+     * card was 403 px, of which the header and the readout bar took 191 — the
+     * drawing that is clicked on got less than half of its own card. */
+    min-height: min(72vh, 40rem);
   }
 }
 
@@ -2051,11 +2064,59 @@ button:focus-visible {
   z-index: 1;
 }
 
+/*
+ * The readout bar: a panel's own numbers and the live cursor, under the drawing.
+ *
+ * Laid out as one row with the numbers first and the cursor pinned to the end,
+ * so the value that changes with every pointer move is always in the same place
+ * whatever the table beside it is doing. Capped and scrolled internally: a
+ * measurement of thirty picks must not be allowed to push the figure it
+ * measures off the screen.
+ */
+.plot__readout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex: none;
+  /* Never more than a quarter of the card. A long pick list must not be able to
+   * starve the figure it measures: past the cap the bar scrolls instead. */
+  max-height: min(9.5rem, 26%);
+  overflow: auto;
+  padding: 0.3rem 0.5rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-raised) 80%, var(--accent-soft));
+}
+
+.plot__readout-panel {
+  min-width: 0;
+}
+
+.plot__readout-cursor {
+  flex: none;
+  text-align: right;
+}
+
+/* In the bar the readout is in flow, and sticks to the end of it so the digits
+ * stay put while the pointer moves. */
+.plot__cursor--bar {
+  position: sticky;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  flex: none;
+  align-self: flex-start;
+}
+
 /* The TEM measurement card. Monospaced numerals and tabular figures, because
  * the column is read down as a set of ratios and jittering digit widths make
  * that comparison harder than it needs to be. */
 .measure {
   padding: 0.4rem 0.5rem;
+}
+
+.plot__readout .measure {
+  padding: 0;
 }
 
 .measure__title {
