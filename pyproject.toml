@@ -42,6 +42,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "h5py>=3.10",
   "hypothesis>=6.100",
   "matplotlib>=3.8",
   "mypy>=1.10",
@@ -61,6 +62,12 @@ docs = [
 ]
 plotting = [
   "matplotlib>=3.8",
+]
+# h5py backs the EDAX OIM HDF5 scan reader (`read_oh5`, for .oh5 and .h5
+# files). Optional on purpose: the .ang and .ctf readers are pure NumPy, and
+# `read_oh5` imports h5py lazily so the library stays importable without it.
+hdf5 = [
+  "h5py>=3.10",
 ]
 # The desktop window. Optional on purpose: `python -m pytex.app desktop` opens
 # the default browser instead when this is absent, so the application has no
@@ -167,4 +174,12 @@ ignore_missing_imports = true
 # so the type checker must not require it to be installed.
 [[tool.mypy.overrides]]
 module = ["webview", "webview.*"]
+ignore_missing_imports = true
+
+# h5py backs the optional EDAX OIM HDF5 scan reader (.oh5/.h5) and ships no
+# type stubs. It is an optional extra by design - `read_oh5` imports it lazily
+# and raises an install hint without it - so the type checker must neither
+# require it to be installed nor fail on its untyped surface.
+[[tool.mypy.overrides]]
+module = ["h5py", "h5py.*"]
 ignore_missing_imports = true

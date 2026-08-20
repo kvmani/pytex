@@ -11,6 +11,29 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **EBSD scans read from EDAX OIM HDF5 files (`.oh5` and `.h5`).**
+  `pytex.adapters.read_oh5` reads an OIM Analysis HDF5 scan into the same
+  `CrystalMap` and `EBSDImportManifest` that `read_ang` and `read_ctf` produce.
+  `.oh5` and `.h5` are one container under two extensions, and one reader
+  serves both. Checked against a real OIM 8.6 scan and the `.ang` OIM exported
+  from it: the orientation matrices agree to 8e-6, the coordinates to 4e-7, and
+  the confidence-index and fit channels to 5e-4 — the residual being the five
+  decimal places the text export rounds to. Both EDAX formats resolve symmetry
+  through the same TSL code table (`LGsymID` in HDF5, `# Symmetry` in text),
+  carry Bunge angles in radians, and keep or drop the same points, so a scan
+  imports identically whichever way it was saved. The HDF5 export carries more:
+  every per-point scalar channel in the file is read, not only the columns an
+  `.ang` row has room for, with the four channels `.ang` shares keeping
+  `read_ang`'s names (`image_quality`, `confidence_index`, `detector_signal`,
+  `fit`). `h5py` is an optional dependency (extra `hdf5`), imported lazily.
+
+- **`pytex.adapters.read_scan` picks the reader from the path.** Extension
+  dispatch across `.ang`, `.ctf`, `.oh5` and `.h5` is written once, with
+  `SCAN_FILE_SUFFIXES` naming what is accepted and `scan_reader_for` exposing
+  the choice on its own.
+
 ### Changed
 
 - **EBSD maps draw at interactive speed.** The `ebsd.map` panel operation is 8x to 106x faster

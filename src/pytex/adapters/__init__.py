@@ -78,10 +78,14 @@ from pytex.adapters.orix_miller import (
     to_orix_phase,
 )
 from pytex.adapters.scan_files import (
+    SCAN_FILE_SUFFIXES,
     EBSDScanFileResult,
     default_ebsd_frames,
     read_ang,
     read_ctf,
+    read_oh5,
+    read_scan,
+    scan_reader_for,
 )
 from pytex.adapters.xrdml import (
     XRDML_NAMESPACE,
@@ -98,6 +102,7 @@ __all__ = [
     "EBSD_IMPORT_MANIFEST_SCHEMA_VERSION",
     "EXPERIMENT_MANIFEST_SCHEMA_ID",
     "EXPERIMENT_MANIFEST_SCHEMA_VERSION",
+    "SCAN_FILE_SUFFIXES",
     "TRANSFORMATION_MANIFEST_SCHEMA_ID",
     "TRANSFORMATION_MANIFEST_SCHEMA_VERSION",
     "VALIDATION_MANIFEST_SCHEMA_ID",
@@ -145,11 +150,14 @@ __all__ = [
     "read_ebsd_import_manifest",
     "read_experiment_manifest",
     "read_labotex_pole_figures",
+    "read_oh5",
+    "read_scan",
     "read_transformation_manifest",
     "read_validation_manifest",
     "read_workflow_result_manifest",
     "read_xrdml_pole_figure",
     "refine_orientations",
+    "scan_reader_for",
     "to_orix_direction",
     "to_orix_miller_direction",
     "to_orix_miller_phase",
