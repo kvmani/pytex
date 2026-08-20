@@ -13,6 +13,77 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The workbench is organised into workspaces, and every transmission-electron
+  and EBSD surface is grouped under one.** Nine flat tabs became seven
+  workspaces holding fifteen panels. *TEM Analysis* carries **SAED Simulator**,
+  **TEM Solver**, **CBED** and **Composite SAED**; *EBSD* carries **IPF map**,
+  **GROD**, **KAM**, **Scan summary**, **Distributions** and **Pole figures**.
+  A sub-tab strip below the masthead names the view; the tab bar names the
+  subject. The five other workspaces are single panels and are unchanged. An
+  EBSD scan opened in any of that workspace's views is the scan every view
+  analyses, because it belongs to the session rather than to a panel.
+
+- **`tem.simulate_saed` — the forward diffraction problem.** A phase and a
+  direction in, the reflections that land on the detector out, with the
+  calibration attached so a simulated plate can be carried to the solver without
+  a number being retyped. The crystal is pointed either by zone axis and roll or
+  by Bunge Euler angles; in the second mode the operation resolves the
+  orientation to the nearest low-index zone axis and **states the deviation**,
+  because a spot pattern exists only on a zone axis and an orientation between
+  two of them has no pattern of its own to draw. Its Kikuchi overlay is
+  requested from the existing `tem.kikuchi_overlay` with the matrix the
+  simulation reports, so the bands and the spots cannot disagree.
+
+- **`SyntheticSAEDImage.crystal_to_pattern()`** states the orientation a
+  simulated plate was built from, in the same convention the indexer reports and
+  the Kikuchi overlay consumes: `R @ g` gives a reflection's detector
+  coordinates and its excitation error in the pattern frame.
+
+- **`crystal.kikuchi_map` — the crystal's band network about a chosen zone
+  axis**, drawn as a third figure in the Crystal Viewer's orientation dock. It
+  does not turn with the camera: the pole figure and the inverse pole figure are
+  the same view of the same crystal as the structure, while a map is fixed to
+  the crystal and what moves on it is the marker showing which direction the
+  current view has on the beam. The centre defaults to `[001]` and is editable.
+
+- **`pytex.diffraction.projected_trace_runs`**, and
+  **`KikuchiMapBand.centre_directions` / `.edge_directions`.** A one-hemisphere
+  projection folds the far half onto the near one, which is right for a point
+  and wrong for a curve: a band edge straddling the equator gains a spurious
+  chord across the map. The splitting and the unprojected trace samples a
+  renderer needs were private to the plotting layer; they are public now,
+  because the browser draws the same map and must break the same curves in the
+  same places. The plotting layer delegates to both.
+
+- **A pole-figure fly-by** in the crystal viewer, beside the inverse pole
+  figure's, drawn as a fading cloud because a pole family turns rigidly and
+  every member of it moves at once.
+
+- **`crystal.orientation` reports Bunge angles unconditionally** (`euler_bunge`),
+  whichever convention was requested, and the dock's readout leads with them. It
+  is the convention every EBSD file, every ODF section and every published
+  orientation is written in.
+
+- **`ebsd.scan_summary`, `ebsd.distribution` and `ebsd.discrete_figure`.** A
+  scan summary in four sections — acquisition, indexing quality, phases,
+  microstructure — with every microstructural number quoted against the grain
+  threshold that produced it and every quality channel given its median and 5th
+  and 95th percentiles rather than a mean that hides whether a scan is uniformly
+  fair or half excellent and half unindexed. A histogram of grain size, area,
+  aspect ratio, boundary misorientation angle, KAM, GROD or a measured channel;
+  the misorientation distribution carries a random reference computed from
+  randomly paired points **of the same scan**, so a textured material is not
+  accused of a boundary preference it does not have. And the discrete pole and
+  inverse pole figures — the scatter a contour is an estimate of — with the
+  subsampling stated and seeded.
+
+- **`fixtures/tem/zr_hcp_basal_saed.png`**, a 17 kB simulated zirconium `[0001]`
+  plate with a JSON sidecar carrying its answer, written by
+  `scripts/generate_tem_test_pattern.py`. It exists so that opening a pattern
+  from disk can be tested the way a user does it; the browser test opens it,
+  picks the three seed reflections and requires zirconium down `[0001]` with
+  every spot indexed.
+
 - **EBSD scans read from EDAX OIM HDF5 files (`.oh5` and `.h5`).**
   `pytex.adapters.read_oh5` reads an OIM Analysis HDF5 scan into the same
   `CrystalMap` and `EBSDImportManifest` that `read_ang` and `read_ctf` produce.
@@ -45,6 +116,20 @@ downstream analyses depend on them.
 
 ### Changed
 
+- **The TEM solver's measurements moved out from under the pattern.** The
+  measured-pick table and the live cursor readout were drawn inside the drawing
+  area, which hid the measurement behind the very spots it measures on the one
+  panel where the figure is worked on rather than looked at. `plotFrame` gained
+  a **readout bar** under the drawing — capped at a quarter of the card and
+  scrolled internally, so a long pick list cannot starve the figure — and the
+  measured table gained a **|g| column** beside R and d. The pattern and the
+  stereogram now stack below 86 rem rather than 72 rem, because at 1280 px the
+  split wrapped the plate's eight tools into a 172 px header over a 169 px
+  drawing.
+
+- **The `diffraction` panel is titled *Composite SAED***, which is what it
+  draws. Operation ids are unchanged.
+
 - **EBSD maps draw at interactive speed.** The `ebsd.map` panel operation is 8x to 106x faster
   with an identical result — the base64 image, the IPF colour checksum, the grain and
   boundary-segment counts and every grain's reference-orientation index match the previous
@@ -76,6 +161,21 @@ downstream analyses depend on them.
   reached the figure.
 
 ### Fixed
+
+- **A diffraction pattern opened from disk was drawn at the previous pattern's
+  zoom.** The TEM solver preserved the camera across every redraw, which is
+  right while picking and wrong on an open: at 448 % on a 1024 px practice
+  plate, a freshly opened 400 px micrograph arrived as an 89 px crop of itself.
+  Nothing errored, so it read as the panel refusing to display the file. The
+  camera is now keyed to the pattern rather than to the frame.
+
+- **A distribution of a quantity with no spread crashed the binning.** A
+  coherent twin's boundaries are every one of them at 60 degrees, which is a
+  distribution — and a very informative one — but numpy refuses a zero-width
+  range. It comes back as a single bin holding the whole population. The
+  degeneracy test is relative: sixty degrees computed two ways differ in the
+  last bit, which is enough to pass a test against zero and then produce
+  duplicate bin edges.
 
 - **A uniform grain's reference orientation no longer depends on the machine.** When every member
   of a grain carries the same orientation, every candidate has the same total disorientation to
