@@ -48,9 +48,11 @@ from pytex.app.registry import (
     BooleanParameter,
     ChoiceParameter,
     ExampleScenario,
+    IndicesParameter,
     IntegerParameter,
     NumberParameter,
     ObjectParameter,
+    Parameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 
@@ -503,6 +505,63 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
     }
 
 
+def _source_parameters() -> tuple[Parameter, ...]:
+    """Which scan an operation works on: a practice dataset, or the user's file.
+
+    Declared once and shared by every EBSD operation. They are the same question
+    for all of them — *which map* — and a second copy of the wording would let
+    the map and the summary beside it describe their inputs differently while
+    analysing the same scan.
+    """
+
+    return (
+        ChoiceParameter(
+            name="dataset",
+            label="Dataset",
+            help_text=(
+                "Which practice map to analyse. Each is a construction with a known answer, so "
+                "the numbers on screen can be checked rather than trusted. Ignored when a scan "
+                "file of your own is open."
+            ),
+            options=tuple((entry.id, entry.title, entry.summary) for entry in GALLERY),
+            default=GALLERY[0].id,
+        ),
+        ObjectParameter(
+            name="scan_file",
+            label="Your own scan",
+            help_text=(
+                "An EDAX/TSL `.ang`, Oxford/HKL `.ctf`, or EDAX OIM HDF5 `.oh5`/`.h5` file, "
+                "opened with **Open a scan** above. When one is open it replaces the practice "
+                "dataset, and every choice "
+                "below — the colouring, the modulation, the boundaries, the grain threshold — "
+                "means exactly what it means for a practice map.\n\n"
+                "The file is read by the same library importer a script would call, so the "
+                "phases, the symmetry and the scalar channels come from the file's own header "
+                "rather than from anything assumed here."
+            ),
+            required=False,
+        ),
+        IntegerParameter(
+            name="grid_points",
+            label="Map size",
+            help_text=(
+                "Side of the square practice map, in measurement points. Most derived "
+                "quantities cost linearly in the point count; the grain reference orientations "
+                "cost the square of each grain's size, so a map of a few large grains is the "
+                "slow case rather than a map of many small ones. 200 points a side draws in "
+                "well under a second on the practice datasets. The known answers hold at every "
+                "size — only the GROD magnitude scales with the map, since it is a deviation "
+                "accumulated across it."
+            ),
+            units="points",
+            default=56,
+            minimum=16,
+            maximum=200,
+            advanced=True,
+        ),
+    )
+
+
 @REGISTRY.operation(
     "ebsd.map",
     title="EBSD orientation map",
@@ -536,32 +595,7 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
         "instead of the local gradient."
     ),
     parameters=(
-        ChoiceParameter(
-            name="dataset",
-            label="Dataset",
-            help_text=(
-                "Which practice map to analyse. Each is a construction with a known answer, so "
-                "the numbers on screen can be checked rather than trusted. Ignored when a scan "
-                "file of your own is open."
-            ),
-            options=tuple((entry.id, entry.title, entry.summary) for entry in GALLERY),
-            default=GALLERY[0].id,
-        ),
-        ObjectParameter(
-            name="scan_file",
-            label="Your own scan",
-            help_text=(
-                "An EDAX/TSL `.ang`, Oxford/HKL `.ctf`, or EDAX OIM HDF5 `.oh5`/`.h5` file, "
-                "opened with **Open a scan** above. When one is open it replaces the practice "
-                "dataset, and every choice "
-                "below — the colouring, the modulation, the boundaries, the grain threshold — "
-                "means exactly what it means for a practice map.\n\n"
-                "The file is read by the same library importer a script would call, so the "
-                "phases, the symmetry and the scalar channels come from the file's own header "
-                "rather than from anything assumed here."
-            ),
-            required=False,
-        ),
+        *_source_parameters(),
         _colouring_parameter(),
         ChoiceParameter(
             name="ipf_direction",
@@ -687,24 +721,6 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
             group="Misorientation",
             advanced=True,
         ),
-        IntegerParameter(
-            name="grid_points",
-            label="Map size",
-            help_text=(
-                "Side of the square practice map, in measurement points. Most derived "
-                "quantities cost linearly in the point count; the grain reference orientations "
-                "cost the square of each grain's size, so a map of a few large grains is the "
-                "slow case rather than a map of many small ones. 200 points a side draws in "
-                "well under a second on the practice datasets. The known answers hold at every "
-                "size — only the GROD magnitude scales with the map, since it is a deviation "
-                "accumulated across it."
-            ),
-            units="points",
-            default=56,
-            minimum=16,
-            maximum=200,
-            advanced=True,
-        ),
     ),
     returns=(
         "The map under `data.image` as base64 RGB at native resolution, the boundary network as "
@@ -810,6 +826,858 @@ def _map(request: dict[str, Any]) -> dict[str, Any]:
         },
         notes=_notes(request, entry),
         citations=(_CITATION_RANDLE_ENGLER, _CITATION_NOLZE_IPF, _CITATION_WRIGHT_KAM),
+    )
+    return result.to_json()
+
+
+_SUMMARY_COLUMNS = (
+    Column("group", "Section"),
+    Column("metric", "Quantity"),
+    Column("value", "Value"),
+    Column("note", "What it says"),
+)
+
+
+def _channel_statistics(values: np.ndarray) -> dict[str, float] | None:
+    """Mean, spread and extremes of one measured channel, ignoring absent points."""
+
+    finite = np.asarray(values, dtype=float).reshape(-1)
+    finite = finite[np.isfinite(finite)]
+    if finite.size == 0:
+        return None
+    return {
+        "count": int(finite.size),
+        "mean": float(np.mean(finite)),
+        "median": float(np.median(finite)),
+        "std": float(np.std(finite)),
+        "minimum": float(np.min(finite)),
+        "maximum": float(np.max(finite)),
+        "p05": float(np.percentile(finite, 5.0)),
+        "p95": float(np.percentile(finite, 95.0)),
+    }
+
+
+@REGISTRY.operation(
+    "ebsd.scan_summary",
+    title="Scan summary",
+    summary="What this scan is: points, grid, phases, indexing quality, microstructure.",
+    help_text=(
+        "The first thing to look at after a scan is opened, and the last thing anyone builds by "
+        "hand. Four sections, in the order the questions are asked.\n\n"
+        "**Acquisition** is the geometry of the measurement: how many points, on what grid, at "
+        "what step, over what area. A step much larger than the microstructure means the grains "
+        "are undersampled whatever else the map shows.\n\n"
+        "**Indexing quality** is the confidence index, the fit and the image quality, each with "
+        "its mean, median, spread and 5th and 95th percentiles. The mean alone hides the shape "
+        "that matters: a scan with CI 0.6 everywhere and one with half its points at 0.9 and "
+        "half at 0.3 have the same mean and are not the same scan. The *indexed fraction* above "
+        "a stated confidence threshold is the number most often quoted, so it is computed here "
+        "with the threshold visible rather than assumed.\n\n"
+        "**Phases** are the point counts and area fractions of each phase the file declares, "
+        "with its point group — the check that the file was read as the material it is.\n\n"
+        "**Microstructure** is what segmentation makes of it: how many grains, how large they "
+        "are, how much orientation spread they carry, and how much of the boundary length is "
+        "high-angle. Each depends on the grain threshold, which is stated with them, because a "
+        "grain count without the threshold that produced it is not a measurement.\n\n"
+        "Nothing here is a substitute for looking at the map. It is the page of numbers that "
+        "says whether the map is worth trusting."
+    ),
+    parameters=(
+        *_source_parameters(),
+        NumberParameter(
+            name="confidence_threshold",
+            label="Counts as indexed above",
+            help_text=(
+                "The confidence index above which a point is counted as indexed. 0.1 is the "
+                "conventional cut-off for EDAX/TSL data; the number is stated with the answer "
+                "because the answer changes with it."
+            ),
+            default=0.1,
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        NumberParameter(
+            name="grain_threshold_deg",
+            label="Grain threshold",
+            help_text=(
+                "Neighbouring points join the same grain below this misorientation. Every "
+                "microstructural number below it moves when this moves."
+            ),
+            units="deg",
+            default=5.0,
+            minimum=0.1,
+            maximum=62.8,
+        ),
+        NumberParameter(
+            name="high_angle_threshold_deg",
+            label="High-angle threshold",
+            help_text="Boundaries at or above this misorientation are counted as high-angle.",
+            units="deg",
+            default=15.0,
+            minimum=0.1,
+            maximum=62.8,
+        ),
+    ),
+    returns="One row per reported quantity; the whole summary, sectioned, under `data`.",
+    panel="ebsd",
+    citations=(_CITATION_RANDLE_ENGLER,),
+    tags=("EBSD", "summary", "metadata", "statistics", "quality", "OIM"),
+)
+def _scan_summary(request: dict[str, Any]) -> dict[str, Any]:
+    crystal_map, entry = _request_map(request)
+    points = len(crystal_map.orientations)
+    summary = crystal_map.summary()
+    threshold = float(request["grain_threshold_deg"])
+    high_angle = float(request["high_angle_threshold_deg"])
+    confidence_threshold = float(request["confidence_threshold"])
+
+    rows: list[dict[str, Any]] = []
+
+    def add(group: str, metric: str, value: Any, note: str) -> None:
+        rows.append({"group": group, "metric": metric, "value": value, "note": note})
+
+    step = summary.get("step_sizes")
+    grid_shape = summary.get("grid_shape")
+    add("Acquisition", "Measurement points", f"{points:,}", "How many orientations were recorded.")
+    add(
+        "Acquisition",
+        "Grid",
+        (
+            f"{summary['grid_kind']} {grid_shape[0]} x {grid_shape[1]}"
+            if grid_shape
+            else str(summary["grid_kind"])
+        ),
+        "The sampling topology. A hexagonal grid has six first neighbours, a square four.",
+    )
+    if step:
+        add(
+            "Acquisition",
+            "Step size",
+            " x ".join(f"{float(value):.4g}" for value in step) + " um",
+            "The distance between measurements: the finest microstructure that can be resolved.",
+        )
+        if grid_shape and len(grid_shape) == 2 and len(step) >= 2:
+            width = float(step[0]) * float(grid_shape[1])
+            height = float(step[1]) * float(grid_shape[0])
+            add(
+                "Acquisition",
+                "Scanned area",
+                f"{width:.4g} x {height:.4g} um ({width * height:.4g} um2)",
+                "How much material the statistics below are drawn from.",
+            )
+    add(
+        "Acquisition",
+        "Specimen frame",
+        str(summary["specimen_frame"]),
+        "The frame every orientation and every specimen direction is expressed in.",
+    )
+
+    channels: dict[str, dict[str, Any]] = {}
+    for key, (channel, label, units) in _SCALAR_CHANNELS.items():
+        if channel not in crystal_map.property_names:
+            continue
+        statistics = _channel_statistics(crystal_map.get_property(channel))
+        if statistics is None:
+            continue
+        channels[key] = {"label": label, "units": units, **statistics}
+        unit_text = f" {units}" if units else ""
+        add(
+            "Indexing quality",
+            f"{label}, mean",
+            f"{statistics['mean']:.4g}{unit_text}",
+            f"Median {statistics['median']:.4g}, 5th to 95th percentile "
+            f"{statistics['p05']:.4g} to {statistics['p95']:.4g}.",
+        )
+
+    indexed_fraction: float | None = None
+    if "confidence_index" in crystal_map.property_names:
+        confidence = np.asarray(crystal_map.get_property("confidence_index"), dtype=float)
+        finite = confidence[np.isfinite(confidence)]
+        if finite.size:
+            indexed_fraction = float(np.mean(finite >= confidence_threshold))
+            add(
+                "Indexing quality",
+                f"Indexed above CI {confidence_threshold:g}",
+                f"{100.0 * indexed_fraction:.2f} %",
+                "The fraction of points a conventional cut-off would keep.",
+            )
+
+    phases = []
+    for name, count in crystal_map.phase_summary().items():
+        fraction = float(count) / float(points) if points else 0.0
+        phases.append({"name": name, "points": int(count), "fraction": fraction})
+        add(
+            "Phases",
+            name,
+            f"{count:,} points ({100.0 * fraction:.2f} %)",
+            "Point count and area fraction, as the file declares the phase.",
+        )
+    for phase_entry in crystal_map.resolved_phase_entries:
+        add(
+            "Phases",
+            f"{phase_entry.name}, point group",
+            str(phase_entry.point_group),
+            "The symmetry every misorientation and every IPF colour is reduced by.",
+        )
+
+    segmentation = crystal_map.segment_grains(max_misorientation_deg=threshold)
+    diameters = np.asarray(list(segmentation.grain_equivalent_diameters().values()), dtype=float)
+    gos = np.asarray(segmentation.gos_map_deg(), dtype=float).reshape(-1)
+    network = segmentation.boundary_network(high_angle_threshold_deg=high_angle)
+    lengths = np.asarray([segment.length for segment in network.segments], dtype=float)
+    misorientations = np.asarray(
+        [segment.misorientation_deg for segment in network.segments], dtype=float
+    )
+    high_angle_length = float(lengths[misorientations >= high_angle].sum()) if lengths.size else 0.0
+    total_length = float(lengths.sum()) if lengths.size else 0.0
+
+    add(
+        "Microstructure",
+        "Grains",
+        f"{len(segmentation.grains):,}",
+        f"At a {threshold:g} deg grain threshold. Lower it and subgrains become grains.",
+    )
+    if diameters.size:
+        add(
+            "Microstructure",
+            "Equivalent diameter, mean",
+            f"{float(np.mean(diameters)):.4g} um",
+            f"Median {float(np.median(diameters)):.4g} um, largest "
+            f"{float(np.max(diameters)):.4g} um. The circle of equal area.",
+        )
+    finite_gos = gos[np.isfinite(gos)]
+    if finite_gos.size:
+        add(
+            "Microstructure",
+            "Grain orientation spread, mean",
+            f"{float(np.mean(finite_gos)):.4g} deg",
+            "Mean deviation of a grain's points from its own reference orientation: how "
+            "deformed the grains are.",
+        )
+    if total_length > 0.0:
+        add(
+            "Microstructure",
+            "Boundary length",
+            f"{total_length:.4g} um",
+            f"{100.0 * high_angle_length / total_length:.2f} % of it at or above "
+            f"{high_angle:g} deg.",
+        )
+
+    result = AppResult(
+        title=f"Scan summary: {entry.title}",
+        summary=(
+            f"{points:,} points on a {summary['grid_kind']} grid"
+            + (f" of {grid_shape[0]} x {grid_shape[1]}" if grid_shape else "")
+            + f", {len(crystal_map.phase_summary())} phase(s), "
+            f"{len(segmentation.grains):,} grains at a {threshold:g} deg threshold"
+            + (
+                f", {100.0 * indexed_fraction:.1f} % indexed above CI {confidence_threshold:g}."
+                if indexed_fraction is not None
+                else "."
+            )
+        ),
+        table=ResultTable(
+            columns=_SUMMARY_COLUMNS,
+            rows=tuple(rows),
+            caption=f"Summary of {entry.title}, at a {threshold:g} deg grain threshold.",
+        ),
+        data={
+            "acquisition": {
+                "point_count": points,
+                "grid_kind": summary["grid_kind"],
+                # Lists rather than the tuples the library reports: this payload
+                # is a JSON contract, and a caller comparing it with parsed JSON
+                # must get the same answer either side of the wire.
+                "grid_shape": None if grid_shape is None else [int(v) for v in grid_shape],
+                "step_sizes_um": None if step is None else [float(v) for v in step],
+                "map_frame": summary["map_frame"],
+                "specimen_frame": summary["specimen_frame"],
+                "is_multiphase": bool(summary["is_multiphase"]),
+            },
+            "channels": channels,
+            "indexed_fraction": indexed_fraction,
+            "confidence_threshold": confidence_threshold,
+            "phases": phases,
+            "microstructure": {
+                "grain_count": len(segmentation.grains),
+                "grain_threshold_deg": threshold,
+                "high_angle_threshold_deg": high_angle,
+                "mean_equivalent_diameter_um": (
+                    float(np.mean(diameters)) if diameters.size else None
+                ),
+                "median_equivalent_diameter_um": (
+                    float(np.median(diameters)) if diameters.size else None
+                ),
+                "mean_gos_deg": float(np.mean(finite_gos)) if finite_gos.size else None,
+                "boundary_length_um": total_length,
+                "high_angle_length_fraction": (
+                    high_angle_length / total_length if total_length > 0.0 else None
+                ),
+            },
+            "dataset": entry.describe(),
+            "describe": crystal_map.describe(),
+        },
+        inputs={
+            "dataset": entry.id,
+            "grain_threshold_deg": threshold,
+            "high_angle_threshold_deg": high_angle,
+            "confidence_threshold": confidence_threshold,
+            "grid_points": int(request["grid_points"]),
+        },
+        notes=(
+            "Every microstructural number depends on the grain threshold, which is reported "
+            "with them; a grain count without its threshold is not a measurement.",
+            "The mean of a quality channel hides its shape, so the median and the 5th and 95th "
+            "percentiles are given beside it.",
+        ),
+        citations=(_CITATION_RANDLE_ENGLER,),
+    )
+    return result.to_json()
+
+
+def _histogram(
+    values: np.ndarray, *, bins: int, weights: np.ndarray | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bin values, tolerating a quantity that has no spread at all.
+
+    A coherent twin's boundaries are every one of them at 60 degrees, and a
+    two-orientation map's random pairs likewise. That is a distribution — a very
+    informative one — but numpy refuses a zero-width range. Widening it about the
+    single value keeps the answer readable and honest: the bins are visible on
+    the axis, and the whole population sits in the middle one.
+    """
+
+    lowest = float(np.min(values))
+    highest = float(np.max(values))
+    span = highest - lowest
+    # The test is relative, not against zero. Sixty degrees computed two ways
+    # differ in the last bit, which is a span of 1e-14 — not a distribution with
+    # structure in it, but enough to get past `span > 0` and then produce
+    # duplicate bin edges inside numpy.
+    scale = max(abs(lowest), abs(highest), 1.0)
+    if span > scale * 1e-9:
+        return np.histogram(values, bins=bins, weights=weights)
+    # One bin, not `bins` of them. Splitting a single value across the middle
+    # two bins of a padded range would report half the boundary length at 59.998
+    # degrees and half at 60.002, which is an artefact of the padding rather than
+    # anything measured. One bin says what is true: all of it, at one value.
+    centre = 0.5 * (lowest + highest)
+    pad = max(abs(centre) * 1e-3, 1e-6)
+    return np.histogram(values, bins=1, weights=weights, range=(centre - pad, centre + pad))
+
+
+_DISTRIBUTION_QUANTITIES = {
+    "grain_diameter": (
+        "Grain equivalent diameter",
+        "um",
+        "The diameter of the circle with each grain's area. One entry per grain, so it is a "
+        "number-weighted distribution: the many small grains dominate it, which is what makes "
+        "it different from the area-weighted one a micrograph suggests.",
+    ),
+    "grain_area": (
+        "Grain area",
+        "um2",
+        "One entry per grain. Its long tail is the usual reason a grain-size distribution is "
+        "plotted against the logarithm of size rather than against size.",
+    ),
+    "grain_aspect_ratio": (
+        "Grain aspect ratio",
+        "",
+        "Major over minor axis of the best-fit ellipse, one per grain: how elongated the "
+        "microstructure is, which a diameter alone cannot say.",
+    ),
+    "misorientation_angle": (
+        "Boundary misorientation angle",
+        "deg",
+        "One entry per boundary segment, weighted by its length, which is what makes it a "
+        "distribution of *boundary* rather than of *pixels*. A peak near 60 degrees in a cubic "
+        "material is the signature of annealing twins.",
+    ),
+    "kam": (
+        "Kernel average misorientation",
+        "deg",
+        "Per point: the mean misorientation to its neighbours, excluding pairs above the KAM "
+        "threshold so grain boundaries do not enter it. Local plastic gradient.",
+    ),
+    "grod": (
+        "Grain reference orientation deviation",
+        "deg",
+        "Per point: the deviation from its own grain's reference orientation. Intragranular "
+        "gradient, and therefore stored deformation, at a scale KAM cannot see.",
+    ),
+    "confidence_index": (
+        "Confidence index",
+        "",
+        "Per point, as measured. Its shape says whether a scan is uniformly good or two "
+        "populations averaged together.",
+    ),
+    "fit": (
+        "Fit",
+        "deg",
+        "Per point, as measured: how well the indexed solution matched the pattern.",
+    ),
+    "image_quality": (
+        "Image quality",
+        "",
+        "Per point, as measured. It falls with deformation and with surface damage alike, so it "
+        "is read beside the orientation data rather than alone.",
+    ),
+}
+
+
+@REGISTRY.operation(
+    "ebsd.distribution",
+    title="Distribution of a scan quantity",
+    summary="Histogram of grain size, misorientation angle, KAM, GROD or a measured channel.",
+    help_text=(
+        "A map answers *where*; a distribution answers *how much of what*, and the two are read "
+        "together. This histograms one quantity of the open scan and reports the statistics of "
+        "it beside the bins.\n\n"
+        "**Grain quantities** — equivalent diameter, area, aspect ratio — have one entry per "
+        "grain, so they are *number-weighted*: a microstructure of a few large grains and many "
+        "small ones looks small-grained here and large-grained in a micrograph, and neither is "
+        "wrong. The grain threshold decides what a grain is and therefore what is being "
+        "counted.\n\n"
+        "**The misorientation-angle distribution** is per boundary segment, weighted by segment "
+        "length. Its shape is diagnostic: a peak at 60 degrees in a cubic material is annealing "
+        "twins, a concentration below the high-angle threshold is substructure, and a "
+        "featureless spread matching the random distribution is a texture-free material. The "
+        "random reference is computed too, from randomly paired points of this scan rather than "
+        "from a formula, so it carries this material's own symmetry.\n\n"
+        "**Point quantities** — KAM, GROD, and the measured channels — have one entry per "
+        "measurement point, and are the same numbers the corresponding map is coloured by. "
+        "Reading the map and this histogram together is how a colour scale is judged: a map "
+        "whose range is set by a handful of outlying pixels shows a nearly uniform field, and "
+        "the histogram says so at a glance."
+    ),
+    parameters=(
+        *_source_parameters(),
+        ChoiceParameter(
+            name="quantity",
+            label="Distribution of",
+            help_text="Which quantity to histogram.",
+            options=tuple(
+                (key, label if not units else f"{label} ({units})", note)
+                for key, (label, units, note) in _DISTRIBUTION_QUANTITIES.items()
+            ),
+            default="grain_diameter",
+        ),
+        IntegerParameter(
+            name="bins",
+            label="Bins",
+            help_text=(
+                "How many bins the range is divided into. Too few hides structure; too many "
+                "turns a distribution into its own noise."
+            ),
+            default=24,
+            minimum=4,
+            maximum=120,
+        ),
+        NumberParameter(
+            name="grain_threshold_deg",
+            label="Grain threshold",
+            help_text="What counts as one grain, for the grain and GROD quantities.",
+            units="deg",
+            default=5.0,
+            minimum=0.1,
+            maximum=62.8,
+        ),
+        NumberParameter(
+            name="kam_threshold_deg",
+            label="KAM threshold",
+            help_text=(
+                "Neighbour pairs above this are excluded from KAM, which is how grain "
+                "boundaries are kept out of an intragranular measurement."
+            ),
+            units="deg",
+            default=5.0,
+            minimum=0.1,
+            maximum=62.8,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="kam_order",
+            label="KAM neighbour order",
+            help_text="How many shells of neighbours enter the kernel average.",
+            default=1,
+            minimum=1,
+            maximum=4,
+            advanced=True,
+        ),
+    ),
+    returns="One row per bin; the values' statistics and any reference series under `data`.",
+    panel="ebsd",
+    citations=(_CITATION_RANDLE_ENGLER, _CITATION_WRIGHT_KAM),
+    tags=("EBSD", "distribution", "histogram", "grain size", "misorientation", "KAM", "GROD"),
+)
+def _distribution(request: dict[str, Any]) -> dict[str, Any]:
+    crystal_map, entry = _request_map(request)
+    quantity = str(request["quantity"])
+    label, units, note = _DISTRIBUTION_QUANTITIES[quantity]
+    threshold = float(request["grain_threshold_deg"])
+    bins = int(request["bins"])
+
+    weights: np.ndarray | None = None
+    reference: dict[str, Any] | None = None
+
+    if quantity in {"grain_diameter", "grain_area", "grain_aspect_ratio"}:
+        segmentation = crystal_map.segment_grains(max_misorientation_deg=threshold)
+        source = {
+            "grain_diameter": segmentation.grain_equivalent_diameters,
+            "grain_area": segmentation.grain_areas,
+            "grain_aspect_ratio": segmentation.grain_aspect_ratios,
+        }[quantity]()
+        values = np.asarray(list(source.values()), dtype=float)
+        population = "grains"
+    elif quantity == "misorientation_angle":
+        segmentation = crystal_map.segment_grains(max_misorientation_deg=threshold)
+        network = segmentation.boundary_network()
+        values = np.asarray(
+            [segment.misorientation_deg for segment in network.segments], dtype=float
+        )
+        weights = np.asarray([segment.length for segment in network.segments], dtype=float)
+        population = "boundary segments"
+        reference = _random_pair_reference(crystal_map, bins=bins)
+    elif quantity == "kam":
+        values = np.asarray(
+            crystal_map.kernel_average_misorientation_deg(
+                threshold_deg=float(request["kam_threshold_deg"]),
+                order=int(request["kam_order"]),
+            ),
+            dtype=float,
+        ).reshape(-1)
+        population = "points"
+    elif quantity == "grod":
+        segmentation = crystal_map.segment_grains(max_misorientation_deg=threshold)
+        values = np.asarray(segmentation.grod_map_deg(), dtype=float).reshape(-1)
+        population = "points"
+    else:
+        channel = _SCALAR_CHANNELS[quantity][0]
+        if channel not in crystal_map.property_names:
+            raise InvalidInputError(
+                f"This scan carries no {label.lower()} channel.",
+                details={"field": "quantity"},
+                hint=(
+                    "The channels a scan has come from its own file. Choose a quantity the "
+                    "scan actually measured, or a computed one such as KAM or GROD."
+                ),
+            )
+        values = np.asarray(crystal_map.get_property(channel), dtype=float).reshape(-1)
+        population = "points"
+
+    finite = np.isfinite(values)
+    values = values[finite]
+    if weights is not None:
+        weights = weights[finite]
+    if values.size == 0:
+        raise InvalidInputError(
+            f"No {label.lower()} values to histogram in this scan.",
+            details={"field": "quantity"},
+            hint="A segmentation that finds one grain leaves nothing to distribute.",
+        )
+
+    counts, edges = _histogram(values, bins=bins, weights=weights)
+    total = float(counts.sum())
+    centres = 0.5 * (edges[:-1] + edges[1:])
+    cumulative = np.cumsum(counts)
+    rows = [
+        {
+            "centre": float(centre),
+            "lower": float(edges[index]),
+            "upper": float(edges[index + 1]),
+            "count": float(counts[index]),
+            "fraction": float(counts[index] / total) if total > 0.0 else 0.0,
+            "cumulative": float(cumulative[index] / total) if total > 0.0 else 0.0,
+        }
+        for index, centre in enumerate(centres)
+    ]
+
+    statistics = {
+        "count": int(values.size),
+        "mean": float(np.average(values, weights=weights)),
+        "median": float(np.median(values)),
+        "std": float(np.std(values)),
+        "minimum": float(np.min(values)),
+        "maximum": float(np.max(values)),
+        "p10": float(np.percentile(values, 10.0)),
+        "p90": float(np.percentile(values, 90.0)),
+    }
+
+    unit_text = f" {units}" if units else ""
+    result = AppResult(
+        title=f"{label} distribution: {entry.title}",
+        summary=(
+            f"{statistics['count']:,} {population}, mean {statistics['mean']:.4g}{unit_text}, "
+            f"median {statistics['median']:.4g}{unit_text}, spanning "
+            f"{statistics['minimum']:.4g} to {statistics['maximum']:.4g}{unit_text} in "
+            f"{bins} bins."
+            + (
+                " The random reference is the same measurement on randomly paired points of "
+                "this scan, so it carries this material's own symmetry rather than a formula's."
+                if reference
+                else ""
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("centre", "Bin centre", units=units, numeric=True, digits=4),
+                Column("lower", "From", units=units, numeric=True, digits=4),
+                Column("upper", "To", units=units, numeric=True, digits=4),
+                Column(
+                    "count",
+                    "Length" if weights is not None else "Count",
+                    units="um" if weights is not None else "",
+                    numeric=True,
+                    digits=3,
+                ),
+                Column("fraction", "Fraction", numeric=True, digits=4),
+                Column("cumulative", "Cumulative", numeric=True, digits=4),
+            ),
+            rows=tuple(rows),
+            caption=f"{label} over {statistics['count']:,} {population} of {entry.title}.",
+        ),
+        data={
+            "quantity": quantity,
+            "label": label,
+            "units": units,
+            "population": population,
+            "weighted_by_length": weights is not None,
+            "edges": [float(value) for value in edges],
+            "counts": [float(value) for value in counts],
+            "statistics": statistics,
+            "reference": reference,
+            "grain_threshold_deg": threshold,
+            "dataset": entry.describe(),
+        },
+        inputs={
+            "dataset": entry.id,
+            "quantity": quantity,
+            "bins": bins,
+            "grain_threshold_deg": threshold,
+            "grid_points": int(request["grid_points"]),
+        },
+        notes=(note,),
+        citations=(_CITATION_RANDLE_ENGLER, _CITATION_WRIGHT_KAM),
+    )
+    return result.to_json()
+
+
+def _random_pair_reference(crystal_map: Any, *, bins: int, sample: int = 160) -> dict[str, Any]:
+    """The misorientation distribution of randomly paired points of this scan.
+
+    The reference a measured misorientation distribution is read against. Taken
+    from the scan's own orientations rather than from an analytic random
+    distribution, so it carries this material's symmetry and its texture: a
+    strongly textured scan has a random-*pair* distribution unlike the
+    texture-free one, and comparing against the texture-free curve would call
+    the texture a boundary preference.
+    """
+
+    count = len(crystal_map.orientations)
+    if count < 4:
+        return {}
+    generator = np.random.default_rng(0)
+    size = min(sample, count // 2)
+    if size < 2:
+        return {}
+    # Two disjoint random subsets, taken through the map's own point selection so
+    # the phase and symmetry travel with them.
+    chosen = generator.choice(count, size=2 * size, replace=False)
+    left_mask = np.zeros(count, dtype=bool)
+    right_mask = np.zeros(count, dtype=bool)
+    left_mask[chosen[:size]] = True
+    right_mask[chosen[size:]] = True
+    left = crystal_map.select_points(left_mask).orientations
+    right = crystal_map.select_points(right_mask).orientations
+    angles = np.degrees(np.asarray(left.misorientation_angles_to(right), dtype=float)).reshape(-1)
+    angles = angles[np.isfinite(angles) & (angles > 1e-9)]
+    if angles.size == 0:
+        return {}
+    counts, edges = _histogram(angles, bins=bins)
+    total = float(counts.sum())
+    return {
+        "label": "Randomly paired points",
+        "edges": [float(value) for value in edges],
+        "fractions": [float(value / total) if total else 0.0 for value in counts],
+        "pair_count": int(angles.size),
+        "mean": float(np.mean(angles)),
+    }
+
+
+@REGISTRY.operation(
+    "ebsd.discrete_figure",
+    title="Discrete pole and inverse pole figure",
+    summary="Every measured orientation as a point, rather than as a contoured density.",
+    help_text=(
+        "The scatter a contoured pole figure is made from. A density map is an estimate with a "
+        "kernel width in it; the discrete figure is the measurement, and the two answer "
+        "different questions.\n\n"
+        "**Where a discrete figure is the right one.** When the count is small — a few hundred "
+        "grains rather than a million pixels — a contour is mostly kernel and the scatter is "
+        "the honest picture. When looking for *structure* rather than intensity: variant "
+        "clusters, a fibre that is a line of points rather than a smear, a handful of outliers "
+        "a contour would smooth away entirely.\n\n"
+        "**Pole figure** plots where a chosen crystal plane normal points in the specimen "
+        "frame, one point per symmetry-related pole per measurement. **Inverse pole figure** "
+        "plots which crystal direction lies along a chosen specimen axis, folded into the "
+        "fundamental sector.\n\n"
+        "**Subsampling is stated, not hidden.** A scan of a hundred thousand points cannot be "
+        "drawn as a hundred thousand markers, so a random subset is taken with a fixed seed and "
+        "its size is reported. It is a random subset of the *points*, so it is unbiased with "
+        "respect to orientation; it is not unbiased with respect to grain size, because a large "
+        "grain contributes more points, exactly as it does in the map."
+    ),
+    parameters=(
+        *_source_parameters(),
+        ChoiceParameter(
+            name="kind",
+            label="Figure",
+            help_text="Which of the two projections to draw.",
+            options=(
+                (
+                    "pole",
+                    "Pole figure",
+                    "Where a crystal plane normal points in the specimen frame.",
+                ),
+                (
+                    "inverse",
+                    "Inverse pole figure",
+                    "Which crystal direction lies along a specimen axis.",
+                ),
+            ),
+            default="pole",
+        ),
+        IndicesParameter(
+            name="pole",
+            label="Plane (hkl)",
+            help_text=(
+                "The plane whose normals are plotted, for a pole figure. Its whole symmetry "
+                "family is drawn, as a measured pole figure inevitably contains."
+            ),
+            default=(1, 1, 1),
+        ),
+        ChoiceParameter(
+            name="sample_direction",
+            label="Specimen direction",
+            help_text="Which specimen axis the inverse pole figure refers to.",
+            options=(
+                ("x", "X", "The first specimen axis."),
+                ("y", "Y", "The second specimen axis."),
+                ("z", "Z", "The map normal; the usual default."),
+            ),
+            default="z",
+        ),
+        IntegerParameter(
+            name="max_points",
+            label="Points drawn",
+            help_text=(
+                "How many measurement points to draw, at most. Beyond a few thousand markers a "
+                "figure is a solid disc and says less than a contour would."
+            ),
+            default=1000,
+            minimum=50,
+            maximum=20000,
+        ),
+    ),
+    returns="One row per drawn point; the projected coordinates and the figure's frame under "
+    "`data`.",
+    panel="ebsd",
+    citations=(_CITATION_RANDLE_ENGLER, _CITATION_NOLZE_IPF),
+    tags=("EBSD", "pole figure", "inverse pole figure", "discrete", "scatter", "texture"),
+)
+def _discrete_figure(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.sphere import project_directions
+
+    crystal_map, entry = _request_map(request)
+    kind = str(request["kind"])
+    limit = int(request["max_points"])
+    count = len(crystal_map.orientations)
+
+    # A fixed seed, so the same scan gives the same figure twice: a scatter that
+    # reshuffles on every redraw cannot be compared with the one beside it.
+    generator = np.random.default_rng(0)
+    if count > limit:
+        mask = np.zeros(count, dtype=bool)
+        mask[generator.choice(count, size=limit, replace=False)] = True
+        view = crystal_map.select_points(mask)
+        drawn_from = limit
+    else:
+        view = crystal_map
+        drawn_from = count
+
+    if kind == "pole":
+        indices = tuple(int(value) for value in request["pole"])
+        figure = view.pole_figure(indices)
+        directions = np.asarray(figure.sample_directions, dtype=float)
+        label = f"{{{' '.join(str(value) for value in indices)}}} pole figure"
+        frame_text = "specimen frame: X right, Y up"
+    else:
+        direction = str(request["sample_direction"])
+        figure = view.inverse_pole_figure(direction)
+        directions = np.asarray(figure.crystal_directions, dtype=float)
+        label = f"Inverse pole figure of specimen {direction.upper()}"
+        frame_text = "crystal frame, folded into the fundamental sector"
+
+    projected = np.asarray(
+        project_directions(directions, method="stereographic", antipodal=True), dtype=float
+    )
+    points = [
+        {"x": round(float(point[0]), 4), "y": round(float(point[1]), 4)} for point in projected
+    ]
+
+    rows = [
+        {"point": index + 1, "x": entry_point["x"], "y": entry_point["y"]}
+        for index, entry_point in enumerate(points[:200])
+    ]
+    result = AppResult(
+        title=f"{label}: {entry.title}",
+        summary=(
+            f"{len(points):,} projected points from {drawn_from:,} measurement point(s)"
+            + (f", subsampled from {count:,}" if count > limit else "")
+            + f". Stereographic, upper hemisphere, {frame_text}."
+            + (
+                " Every symmetry-related member of the family is plotted, which is why there "
+                "are more points than measurements."
+                if kind == "pole"
+                else ""
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("point", "Point", numeric=True),
+                Column("x", "x", numeric=True, digits=4),
+                Column("y", "y", numeric=True, digits=4),
+            ),
+            rows=tuple(rows),
+            caption=f"The first {len(rows):,} projected points of the {label.lower()}.",
+        ),
+        data={
+            "kind": kind,
+            "label": label,
+            "points": points,
+            "drawn_points": len(points),
+            "measurement_points": int(drawn_from),
+            "scan_points": count,
+            "subsampled": bool(count > limit),
+            "projection": "stereographic",
+            "dataset": entry.describe(),
+        },
+        inputs={
+            "dataset": entry.id,
+            "kind": kind,
+            "pole": [int(value) for value in request["pole"]],
+            "sample_direction": str(request["sample_direction"]),
+            "max_points": limit,
+            "grid_points": int(request["grid_points"]),
+        },
+        notes=(
+            "A discrete figure is the measurement; a contoured one is an estimate of a density "
+            "from it, with a kernel width that must be stated. Neither replaces the other.",
+            "The subset is random over measurement points and therefore unbiased in "
+            "orientation, but not in grain size: a large grain contributes more points, as it "
+            "does in the map.",
+        ),
+        citations=(_CITATION_RANDLE_ENGLER, _CITATION_NOLZE_IPF),
     )
     return result.to_json()
 
@@ -1058,6 +1926,91 @@ def _notes(request: dict[str, Any], entry: Any) -> tuple[str, ...]:
 
 REGISTRY.add_examples(
     (
+        ExampleScenario(
+            id="ebsd.example.scan_summary",
+            title="What is in this scan",
+            panel="ebsd",
+            summary="Points, grid, phases, indexing quality and microstructure, in one page.",
+            teaches=(
+                "The page of numbers that decides whether a map is worth reading, and the "
+                "habit of looking at it first. Three questions are answered together and are "
+                "usually asked apart. Is the *step* small enough for the microstructure - a "
+                "scan whose grains are three pixels across cannot support a grain-size "
+                "distribution whatever the map looks like. Is the *indexing* good, and good "
+                "uniformly - the mean confidence index hides the difference between a scan "
+                "that is uniformly fair and one that is half excellent and half unindexed, "
+                "which is why the median and the percentiles are beside it. And is the "
+                "*segmentation* sensible - the grain count is quoted with the threshold that "
+                "produced it, because without that it is not a measurement of anything."
+            ),
+            operation="ebsd.scan_summary",
+            request={"dataset": "equiaxed_polycrystal", "grain_threshold_deg": 5.0},
+        ),
+        ExampleScenario(
+            id="ebsd.example.grain_size_distribution",
+            title="Grain-size distribution",
+            panel="ebsd",
+            summary="Equivalent circular diameter over every segmented grain.",
+            teaches=(
+                "That a grain-size distribution is a statement about a *segmentation*, not "
+                "only about a material. Every grain here is one entry, so the distribution is "
+                "number-weighted: many small grains dominate it, while a micrograph - where "
+                "each grain occupies its own area - reads as though the large ones do. Neither "
+                "weighting is wrong and they answer different questions, which is why the "
+                "weighting is named on the axis. Change the grain threshold and the whole "
+                "distribution moves, because subgrains become grains."
+            ),
+            operation="ebsd.distribution",
+            request={
+                "dataset": "equiaxed_polycrystal",
+                "quantity": "grain_diameter",
+                "bins": 20,
+            },
+        ),
+        ExampleScenario(
+            id="ebsd.example.misorientation_distribution",
+            title="Misorientation angles, against random pairs",
+            panel="ebsd",
+            summary="The boundary misorientation distribution, with its random reference.",
+            teaches=(
+                "How a misorientation distribution is read, which is never on its own. The "
+                "measured curve is per boundary segment and weighted by length, so it is a "
+                "distribution of boundary rather than of pixels. Beside it is the same "
+                "measurement made on randomly paired points of this same scan - the reference "
+                "a departure is judged against, and deliberately computed from this material "
+                "rather than from the texture-free formula, because a textured material has a "
+                "random-pair distribution of its own and comparing against the formula would "
+                "report its texture as a boundary preference."
+            ),
+            operation="ebsd.distribution",
+            request={
+                "dataset": "equiaxed_polycrystal",
+                "quantity": "misorientation_angle",
+                "bins": 24,
+            },
+        ),
+        ExampleScenario(
+            id="ebsd.example.discrete_pole_figure",
+            title="Discrete pole figure of the scan",
+            panel="ebsd",
+            summary="Every measured orientation as a point, rather than as a contour.",
+            teaches=(
+                "The difference between a measurement and an estimate of its density. A "
+                "contoured pole figure has a kernel width in it, chosen by whoever drew it; "
+                "the scatter has none, and shows the structure a kernel smooths away - variant "
+                "clusters, a fibre that is a line of points rather than a smear, and the "
+                "handful of outliers that a contour removes entirely. The subset drawn is "
+                "random over measurement points and its size is stated, because a figure that "
+                "silently drew a tenth of the data would be a different figure."
+            ),
+            operation="ebsd.discrete_figure",
+            request={
+                "dataset": "equiaxed_polycrystal",
+                "kind": "pole",
+                "pole": [1, 1, 1],
+                "max_points": 600,
+            },
+        ),
         ExampleScenario(
             id="ebsd.example.ipf_with_boundaries",
             title="IPF map with grain boundaries",

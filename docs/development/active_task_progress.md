@@ -3831,6 +3831,7 @@ One goal, four strands, requested together:
   - [x] I4c — the SAED Simulator panel, and one drawing shared with the solver
 - [x] I5 — crystal viewer: Kikuchi map, pole-figure fly-by, Bunge angles
 - [ ] I6 — EBSD: scan summary and the distribution/map sub-tabs
+  - [x] I6a — the three analytics operations and their tests
 
 ### I1 — a pattern opened from disk was drawn at the previous pattern's zoom
 
@@ -4025,3 +4026,36 @@ crystallography rather than stored output: the cubic zone axes at 0, 45 and 54.7
 perpendicular to its own plane normal, an edge at exactly sin(theta_B) from it, and an
 equator-crossing curve split rather than chorded. 33 browser tests, the unit suite, ruff and mypy
 green.
+
+### I6a — three EBSD operations: what the scan is, how it is distributed, where it points
+
+- **`ebsd.scan_summary`** — the page a scan is judged by, in four sections: acquisition (points,
+  grid, step, area, frame), indexing quality (each channel's mean, median, spread and 5th/95th
+  percentiles, plus the indexed fraction at a *stated* confidence threshold), phases (counts,
+  fractions, point groups), microstructure (grain count, mean and median equivalent diameter, mean
+  GOS, boundary length and its high-angle fraction). Every microstructural number is quoted with
+  the grain threshold that produced it, because without it a grain count is not a measurement.
+  The mean of a quality channel is never given alone: a scan uniformly at CI 0.6 and one half at
+  0.9 and half at 0.3 have the same mean and are not the same scan.
+- **`ebsd.distribution`** — a histogram of grain diameter, area or aspect ratio (one entry per
+  grain, so number-weighted, which is why it disagrees with the impression a micrograph gives),
+  boundary misorientation angle (per segment, weighted by length), KAM, GROD, or a measured
+  channel. The misorientation distribution carries a **random reference** computed from randomly
+  paired points *of the same scan*, so it carries this material's own texture and symmetry;
+  comparing a textured material against the texture-free formula would report its texture as a
+  boundary preference.
+- **`ebsd.discrete_figure`** — the scatter a contoured pole figure is made from, as a pole figure
+  or an inverse pole figure. Subsampling is stated rather than silent, and seeded, because a
+  scatter that reshuffles on redraw cannot be compared with the one beside it.
+
+The three share `_source_parameters()` with `ebsd.map`, extracted so that the map and the summary
+beside it cannot describe their inputs differently while analysing the same scan.
+
+A real defect the tests found: a quantity with no spread — a coherent twin's boundaries are every
+one of them at 60 degrees — crashed numpy's binning. It now comes back as one bin holding the whole
+population. The zero test had to be *relative*: sixty degrees computed two ways differ in the last
+bit, which is a span of 1e-14, enough to pass `span > 0` and then produce duplicate bin edges.
+
+Twenty unit tests, with expectations from the datasets' own construction (the bicrystal's two
+grains, the sigma-3 twin's 60 degrees, a cubic random-pair mean near 45 degrees) and from histogram
+arithmetic that is true of every histogram.
