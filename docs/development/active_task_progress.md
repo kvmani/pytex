@@ -4213,3 +4213,20 @@ CHANGELOG updated. Verified in the running app: bands, edges, dashed traces, zon
 
 **Next.** Stale tests, then the version bump and release notes, then tutorial trivia, then the
 documentation pass.
+
+### I4 — a "good to know" note in every tutorial (done)
+
+One markdown note per tutorial: 31 notebooks plus the two Markdown tutorials (quickstart,
+installation and build). Placed second-to-last in a notebook, so each still ends on its own
+summary or its statement of limits.
+
+Every note is fact-based and specific to its own tutorial — Hessel's 1830 enumeration being
+ignored for thirty-seven years (03), Hamilton carving the quaternion identity into Broome Bridge
+(02), the "selected area" being selected in the image plane and therefore not the area that
+diffracted below half a micrometre (12), YAML's Norway problem (14), KAM being meaningless without
+its step size (07), the Burgers relationship having been measured on zirconium in 1934, which is
+the same metal the notebook uses (22).
+
+The insertion script matched each file's own serialisation — some notebooks are stored with
+escaped non-ASCII and some with the characters themselves, and CRLF throughout — so the diff is
+581 added lines and no deleted ones across 31 files rather than a whole-file re-encoding.

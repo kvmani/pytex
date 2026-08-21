@@ -153,6 +153,20 @@ To run the checked-in notebooks locally:
 python -m jupyter lab docs/site/tutorials/notebooks
 ```
 
+## Good To Know
+
+- The notebooks in this repository are committed with **every output cleared**, and that is a
+  deliberate trade. Outputs are the record of one run on one machine; they make review impossible,
+  because a one-line change arrives as a wall of changed base64. The Sphinx build executes the
+  notebooks instead, so a notebook that no longer runs fails the build - a stronger guarantee than
+  a stored result.
+- A Sphinx build that succeeds is not the same as a build with no warnings. This project keeps a
+  warning **ratchet**: the count may fall but must not rise, which is how a documentation set of
+  this size stays from silently accumulating broken cross-references.
+- LaTeX is the reason the PDF lane is heavier than the HTML one. `sphinx -b latexpdf` shells out to
+  a real TeX installation, so the PDF build's failures are usually TeX's failures, and the
+  troubleshooting below is mostly about that boundary.
+
 ## Troubleshooting
 
 ### `ImportError` from broader optional adapters

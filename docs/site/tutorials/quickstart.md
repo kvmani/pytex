@@ -52,6 +52,20 @@ Before building larger workflows, verify these points explicitly:
 If you cannot answer those questions directly, start with the concept pages before loading a full
 dataset. PyTex is designed to force that ambiguity into the open early.
 
+## Good To Know
+
+- The three Bunge angles are three turns about axes that move with the crystal, and the convention
+  is not universal: Bunge, Roe, Kocks and Matthies all publish a triple of Euler angles, and they
+  disagree with each other. A file of Euler angles without a named convention is three columns of
+  numbers, not an orientation.
+- "Orientation" and "rotation" are not synonyms here. A rotation acts on vectors; an orientation
+  additionally says *which frame goes to which*. That distinction is the reason PyTex refuses a
+  bare matrix at the API boundary, and it is the single most common source of transposed results
+  in texture code.
+- The identity orientation is not a neutral choice of specimen either: it means the crystal axes
+  are aligned with the specimen axes, which for a rolled sheet is the cube component - one of the
+  strongest textures in metallurgy rather than a blank starting point.
+
 ## Current Limits
 
 - This quickstart uses a minimal orientation-only path. It does not yet introduce provenance,
