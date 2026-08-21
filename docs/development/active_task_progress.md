@@ -4551,3 +4551,41 @@ first real send.
 ### Next task
 
 None claimed. This goal is complete.
+
+## Goal: the index boxes must all be reachable (2026-08-21)
+
+### The defect
+
+Reported from the desktop shell with a screenshot: the zone-axis control showed one very wide box
+where three narrow ones were intended, and the other two sat past the right edge of the window,
+invisible and unreachable. The user could state `u` and nothing else.
+
+### Why it happened
+
+`app.css` gives every text input `width: 100%` through
+`input[type="text"], input[type="number"], ...`. That selector scores one class-equivalent
+(the attribute) plus one element, which outweighs the bare class `.indices__box` that set
+`width: 3.25rem`. The narrow width lost every time — `flex: none` from the same block did apply,
+which is what made the failure look like a layout bug rather than a specificity one. Confirmed in
+the running workbench: the computed width of a box was 297px, the full width of the rail.
+
+### The fix
+
+`.indices__box` is now written as `.indices__box, .indices__box[type="text"]`, so the width carries
+the same specificity as the rule it competes with, and the width is `2.75rem` — four monospaced
+characters, three digits and a sign, which is every index anyone types. Measured in the browser:
+three boxes of 44px sit inside a 298px rail, and `-100` fits a box without scrolling.
+
+### Verification
+
+- New browser test `all three index boxes fit inside the rail` measures each box against
+  `#rail-body` and checks that four characters do not overflow. It fails on the previous
+  stylesheet and passes on this one.
+- The whole browser suite, 47 tests, green against a server started from this working tree.
+  (A stale workbench left running on port 8765 by another session fails an unrelated placeholder
+  assertion, because its manifest predates the `symbols` field; a fresh server passes it. Point
+  the suite with `PYTEX_BASE_URL` at a server you started, as the config's own comment says.)
+
+### Next task
+
+None claimed. This goal is complete.

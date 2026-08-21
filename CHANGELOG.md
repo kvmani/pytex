@@ -45,6 +45,18 @@ downstream analyses depend on them.
   length, naming the separated form of what was typed. **API note:** a caller that was passing
   `"111"` to the service layer must pass `"1 1 1"` or `[1, 1, 1]`.
 
+### Fixed
+
+- **Only the first index box of a row was reachable.** The boxes were styled by class, and the
+  stylesheet's base rule for a text input is `width: 100%` on an attribute selector, which
+  outweighs a bare class: every box stretched to the full width of the control rail, so the first
+  one filled the panel and the second and third were pushed off the edge of the screen with no way
+  to reach or see them. A zone axis could therefore only be given its `u`. The width now carries
+  the same attribute selector and holds four monospaced characters — three digits and a sign,
+  which covers every index anyone types — so all three boxes sit inside the column the fields
+  above and below them occupy. A browser test measures the boxes against the rail so the rule
+  cannot be outweighed again unnoticed.
+
 ## [0.1.1] - 2026-08-21
 
 The first cut release. `0.1.0.dev0` was a development snapshot with no tag; this section is

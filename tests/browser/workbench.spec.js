@@ -311,6 +311,30 @@ test('a direction parameter names its boxes u, v and w', async ({ page }) => {
   await expect(row.locator('.indices__box').nth(2)).toHaveAttribute('placeholder', 'w');
 });
 
+test('all three index boxes fit inside the rail', async ({ page }) => {
+  await openWorkbench(page);
+  const directions = page.locator('#rail-body .indices[aria-label*="[uvw]"]').first();
+  const row = directions.locator('.indices__row').first();
+  const boxes = row.locator('.indices__box');
+  await expect(boxes).toHaveCount(3);
+
+  // The base rule for a text input is `width: 100%`, and an attribute selector
+  // outweighs a bare class: when that rule wins, the first box fills the rail
+  // and the other two are pushed off the edge of the screen, unreachable. Each
+  // box is therefore narrow, and the third one ends inside the rail.
+  const rail = await page.locator('#rail-body').boundingBox();
+  for (let index = 0; index < 3; index += 1) {
+    const box = await boxes.nth(index).boundingBox();
+    expect(box.width).toBeLessThan(72);
+    expect(box.x + box.width).toBeLessThanOrEqual(rail.x + rail.width);
+  }
+
+  // Four characters - three digits and a sign - fit without scrolling.
+  await boxes.nth(0).fill('-100');
+  const overflow = await boxes.nth(0).evaluate((node) => node.scrollWidth - node.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
 test('loads every scientific workspace without browser errors', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await expect(workspaceTabs(page)).toHaveText(WORKSPACES);

@@ -1003,8 +1003,15 @@ button:focus-visible {
   gap: 0.25rem;
 }
 
-.indices__box {
-  width: 3.25rem;
+/* The type selector is carried here on purpose: the base `input[type="text"]`
+   rule sets `width: 100%`, and an attribute selector outweighs a bare class, so
+   a plain `.indices__box` width loses to it and every box stretches to the
+   panel, pushing its neighbours off the edge of the screen. The box holds four
+   monospaced characters - three digits and a sign, which is every index anyone
+   types - so a row of three sits inside the same column as the fields above. */
+.indices__box,
+.indices__box[type="text"] {
+  width: 2.75rem;
   min-width: 0;
   flex: none;
   font-family: var(--font-mono);
