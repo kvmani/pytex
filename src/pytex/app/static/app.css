@@ -2888,3 +2888,177 @@ dl.detail dd {
     padding: 0.45rem;
   }
 }
+/* ------------------------------------------------------------- feedback */
+
+/* The form reuses the drawer chrome, so only its own internals are styled
+   here. The grid collapses to one column on a narrow drawer rather than
+   squeezing three fields into a strip nobody can type in. */
+.feedback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.feedback h2 {
+  margin: 0;
+}
+
+.feedback__privacy {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--bg-sunken);
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius);
+}
+
+.feedback__counter {
+  font-size: 0.6875rem;
+  color: var(--ink-faint);
+  text-align: right;
+  min-height: 1em;
+}
+
+.feedback__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+}
+
+.feedback__about-you {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.feedback__about-you > summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--ink-muted);
+}
+
+.feedback__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.field__help--inline {
+  background: transparent;
+  padding: 0;
+  font-size: 0.6875rem;
+}
+
+.feedback__receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ----------------------------------------------------------------- tour */
+
+/* The welcome sits over the whole page with the element it is describing left
+   visible and ringed, so the tour teaches the page rather than a picture of
+   it. The backdrop is deliberately light: dimming the application to near
+   black would hide the very thing each step points at. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  backdrop-filter: blur(1.5px);
+}
+
+.tour[hidden],
+.tour__card[hidden] {
+  display: none;
+}
+
+/* Backdrop 60, highlighted element 61, card 62 — three layers of one stacking
+   context, which is why the card is a sibling of the backdrop rather than a
+   child of it. See the comment in js/core/tour.js. */
+.tour__card {
+  position: fixed;
+  z-index: 62;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  width: min(34rem, calc(100vw - 3rem));
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: calc(var(--radius) * 2);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tour__progress {
+  margin: 0;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.tour__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.tour__body {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+.tour__note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--bg-sunken);
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius);
+}
+
+.tour__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.tour__spacer {
+  flex: 1 1 auto;
+}
+
+/* Skip is a full button, not a grey link: somebody who came to do a
+   calculation must be able to leave in one obvious click. It is first in the
+   source order for the keyboard and last in the visual order for the eye. */
+.tour__skip {
+  order: 3;
+}
+
+.tour__spacer {
+  order: 2;
+}
+
+/* The element the current step is about. Ringed rather than cut out of the
+   backdrop: a real cut-out needs the element's box in page coordinates, which
+   is wrong the moment anything reflows. */
+.tour-target {
+  position: relative;
+  z-index: 61;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 6px var(--accent-glow);
+}

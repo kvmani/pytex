@@ -41,6 +41,15 @@
           <span aria-hidden="true">?</span>
           <span class="masthead__action-label">Help</span>
         </button>
+        <button
+          type="button"
+          class="button"
+          id="open-feedback"
+          title="Tell us what would make PyTex better"
+        >
+          <span aria-hidden="true">✉</span>
+          <span class="masthead__action-label">Feedback</span>
+        </button>
         <button type="button" class="button" id="open-about" title="Version, authorship, and licence">
           <span aria-hidden="true">ⓘ</span>
           <span class="masthead__action-label">About</span>
@@ -102,6 +111,27 @@
       <div class="drawer__panel">
         <button type="button" class="drawer__close" id="about-close" aria-label="Close about">×</button>
         <div class="drawer__body" id="about-body"></div>
+      </div>
+    </div>
+
+    <!-- Feedback reuses the drawer chrome for the same reason About does: it is
+         the same gesture, a panel slid in over the workspace. Everything inside
+         it is built by js/core/feedback.js from the invitation the server
+         publishes, so a deployment can change what the form says without
+         touching the page. -->
+    <div
+      class="drawer"
+      id="feedback-drawer"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-label="Send feedback"
+    >
+      <div class="drawer__panel">
+        <button type="button" class="drawer__close" id="feedback-close" aria-label="Close feedback">
+          ×
+        </button>
+        <div class="drawer__body" id="feedback-body"></div>
       </div>
     </div>
 

@@ -14,13 +14,16 @@
 
 import {
   call,
+  fetchExperience,
   fetchManifest,
   fetchShell,
   ServiceCallError,
   setOperationTitles,
 } from './core/api.js';
 import { clear, el, markdown } from './core/dom.js';
+import { mountFeedback } from './core/feedback.js';
 import * as log from './core/logbook.js';
+import { createTour } from './core/tour.js';
 import { renderHelp, setExportFormats } from './core/result.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
@@ -136,6 +139,9 @@ const dom = {
   helpBody: document.getElementById('help-body'),
   aboutDrawer: document.getElementById('about-drawer'),
   aboutBody: document.getElementById('about-body'),
+  feedbackDrawer: document.getElementById('feedback-drawer'),
+  feedbackBody: document.getElementById('feedback-body'),
+  feedbackButton: document.getElementById('open-feedback'),
   themeButton: document.getElementById('cycle-theme'),
   themeIcon: document.getElementById('theme-icon'),
   themeLabel: document.getElementById('theme-label'),
@@ -145,11 +151,14 @@ const dom = {
 const app = {
   manifest: null,
   shell: null,
+  experience: null, // what this deployment decided about greeting and feedback
   active: null, // the open workspace
   activePanel: null, // the open panel inside it
   mounted: null,
   index: [],
   logConsole: null,
+  feedback: null,
+  tour: null,
 };
 
 app.logConsole = log.mountConsole(dom.console);
@@ -200,6 +209,9 @@ async function start() {
   // from Python rather than from sniffing the window, so that a shell which
   // changes how it writes files says so in one place.
   app.shell = await fetchShell();
+  // Fetched before anything is drawn so that the Feedback button is either
+  // there from the start or never appears, rather than arriving late.
+  app.experience = await fetchExperience();
   setExportFormats(app.manifest.export_formats);
   setOperationTitles(app.manifest.operations);
   log.notice(
@@ -225,6 +237,131 @@ async function start() {
   buildTabs();
   wireGlobals();
   activate(WORKSPACES[0].id);
+
+  // After the first panel is mounted, not before: the tour points at the tab
+  // bar, the control rail and the console, and a welcome that arrives while
+  // the page is still empty is talking about furniture that is not there yet.
+  wireExperience();
+}
+
+/**
+ * Turn on the two things the deployment decides: the feedback form and the
+ * welcome tour.
+ *
+ * Both are optional, and a server that does not publish `/api/experience` at
+ * all — an older build, or a proxy that drops the route — leaves both off.
+ * That is the safe failure: an unexplained modal on startup is worse than no
+ * tour, and a feedback button that posts into the void is worse than none.
+ */
+function wireExperience() {
+  const feedback = app.experience?.feedback ?? { enabled: false };
+  if (feedback.enabled) {
+    app.feedback = mountFeedback({
+      drawer: dom.feedbackDrawer,
+      body: dom.feedbackBody,
+      config: feedback,
+      // Gathered at submit time rather than at open time: people open the form,
+      // go back to look at the thing they are describing, and come back.
+      context: () => ({
+        workspace: app.active?.title ?? null,
+        panel: app.activePanel?.panel.id ?? null,
+        shell: app.shell?.shell ?? null,
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        user_agent: navigator.userAgent,
+      }),
+    });
+    dom.feedbackButton.addEventListener('click', () => app.feedback.open());
+    document.getElementById('feedback-close').addEventListener('click', () => app.feedback.close());
+    dom.feedbackDrawer.addEventListener('click', (event) => {
+      if (event.target === dom.feedbackDrawer) app.feedback.close();
+    });
+  } else {
+    dom.feedbackButton.hidden = true;
+  }
+
+  app.tour = createTour({
+    config: app.experience?.tour ?? { enabled: false },
+    steps: tourSteps(),
+    version: app.manifest?.version ?? 'unknown',
+  });
+  if (app.tour.shouldGreet()) app.tour.start();
+}
+
+/**
+ * What the tour says, in order.
+ *
+ * Every step points at something on the page, and a step whose target is not
+ * present is dropped rather than shown pointing at nothing — which is what
+ * makes it safe to name the feedback button here even in a deployment that
+ * turned the form off.
+ */
+function tourSteps() {
+  const names = WORKSPACES.map((workspace) => workspace.title);
+  return [
+    {
+      title: 'Welcome to the PyTex Workbench',
+      body: [
+        'This is the PyTex library with a face on it — the same code a script would call, ' +
+          'so anything you work out here you can reproduce in a few lines of Python.',
+        'Two minutes now will save you hunting later. You can leave at any point.',
+      ],
+      note: 'Every result states the convention it was computed under. Nothing here is a black box.',
+    },
+    {
+      title: 'Seven workspaces, one data model',
+      target: '#tabs',
+      body: [
+        `Along the top: ${names.join(', ')}. Crystal structures, electron and X-ray ` +
+          'diffraction, EBSD maps, variant and orientation-relationship analysis, and texture.',
+        'They share one description of frames, symmetry and orientations, so a phase you set up ' +
+          'in one is the same phase in all of them.',
+      ],
+    },
+    {
+      title: 'The controls come from the code',
+      target: '#rail',
+      body: [
+        'Every control on the right is generated from the same declaration Python validates ' +
+          'against, down to its help text — press the ? beside any field.',
+        'Miller indices get one box per index, so 1 1 0 can never be read as something else.',
+      ],
+    },
+    {
+      title: 'Results you can take away',
+      target: '#stage',
+      body: [
+        'Figures are drawn here, and every result can be exported as CSV, XLSX or JSON — the ' +
+          'numbers you are looking at, not a second calculation of them.',
+      ],
+    },
+    {
+      title: 'Find anything by name',
+      target: '#open-palette',
+      body: [
+        'Press Ctrl+K, or use this button, to search every operation and every worked example ' +
+          'the build carries. It is generated from the manifest, so it is never out of date.',
+      ],
+      note: 'Start with an example if you are not sure what a panel does — they all run.',
+    },
+    {
+      title: 'The session keeps a record',
+      target: '#console',
+      body: [
+        'This strip is the message log: what ran, what it was given, and what it warned about. ' +
+          'It is the place to look when a number is not what you expected.',
+      ],
+    },
+    {
+      title: 'Tell us what is missing',
+      target: '#open-feedback',
+      body: [
+        'PyTex grows from what its users say they need. This button opens a short form — a ' +
+          'feature you want, something that reads wrongly, or a paper you wish were implemented.',
+        'Nothing is too small, and you need not leave your name.',
+      ],
+      note: 'That is the tour. Choose a workspace and have a look around.',
+    },
+  ];
 }
 
 function buildTabs() {
@@ -414,6 +551,22 @@ function openHelp(operation) {
   clear(dom.helpBody);
   if (target) renderHelp(dom.helpBody, target);
   else dom.helpBody.append(...markdown('Choose a calculation to see what it does.'));
+  // The tour is remembered as seen, which would make it unrepeatable; offering
+  // it from the help panel is what makes remembering safe rather than final.
+  if (app.tour) {
+    dom.helpBody.append(
+      el('p.field__help', {}, [
+        el('button.button', {
+          type: 'button',
+          text: 'Show the welcome tour again',
+          onclick: () => {
+            closeHelp();
+            app.tour.start();
+          },
+        }),
+      ]),
+    );
+  }
   dom.helpDrawer.hidden = false;
 }
 
@@ -607,6 +760,7 @@ function wireGlobals() {
       closePalette();
       closeHelp();
       closeAbout();
+      app.feedback?.close();
     }
   });
 }

@@ -174,7 +174,7 @@ class TestSubmission:
         submission = normalise_submission(
             {"message": "A note.", "email": "someone@example.invalid"},
             config=FeedbackConfig(),
-            environment={"pytex_version": "0.1.1", "shell": "web"},
+            environment={"pytex_version": "0.0.0-under-test", "shell": "web"},
         )
         prose = submission.describe()
         assert "(not given)" in prose
@@ -318,7 +318,7 @@ class TestRecordFeedback:
         _submission, receipt = record_feedback(
             {"message": "hello", "context": {"panel": "texture"}},
             config=config,
-            environment={"pytex_version": "0.1.1", "shell": "desktop"},
+            environment={"pytex_version": "0.0.0-under-test", "shell": "desktop"},
         )
         assert receipt.stored is True
         record = read_store(config.feedback.store_path)[0]

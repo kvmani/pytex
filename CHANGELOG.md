@@ -11,6 +11,26 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **A feedback and feature-request form, in both shells.** The masthead carries a **Feedback**
+  button that opens a short form: what this is about, the note itself, and — all optional — who
+  sent it. The page attaches which workspace and panel were open. Every submission is appended to
+  a JSON file *before* anything is sent, so a relay outage costs a notification rather than a
+  note, and the receipt on screen distinguishes "filed here" from "filed and e-mailed". A
+  deployment that configures an internal SMTP relay also mails it to the maintainer. New modules
+  `pytex.app.feedback` and routes `GET /api/experience`, `POST /api/feedback`.
+- **A deployment configuration file.** `pytex.app.config` reads three sections — `feedback`,
+  `relay` and `tour` — from `PYTEX_APP_CONFIG`, `./pytex_app.yml` or `~/.pytex/pytex_app.yml`, and
+  works with no file at all. `config/pytex_app.example.yml` is the annotated template, loaded by a
+  test through the same loader so a renamed key cannot stay documented under its old name. Nothing
+  in it changes a number PyTex computes; an unknown key is an error at startup; a relay password
+  is named as an environment variable rather than written in the file.
+- **A welcome message and a skippable tour**, on by default and switchable from the same file. Seven
+  steps over the workspaces, the generated controls, the feature search, the message log and the
+  feedback form, each highlighting the element it is about. Skip is on every step, skipping is
+  remembered per browser and per version, and the tour reopens from the Help panel.
+
 ### Changed
 
 - **Miller indices are entered one index per box, and a run of digits is now refused.**

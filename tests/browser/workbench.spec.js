@@ -81,6 +81,27 @@ function patternButton(page, name) {
   return page.locator(PATTERN_PLOT).getByRole('button', { name, exact: true });
 }
 
+/**
+ * Fill a Miller-index control, which is a grid of boxes rather than a text field.
+ *
+ * `rows` is a list of index rows: `[[1, 1, 1], [2, 0, 0]]`. Rows are added with
+ * the control's own button when the parameter starts with fewer than are
+ * wanted, so the helper drives the control the way a user does rather than
+ * reaching past it.
+ */
+async function fillIndices(control, rows) {
+  const existing = await control.locator('.indices__row').count();
+  for (let extra = existing; extra < rows.length; extra += 1) {
+    await control.getByRole('button', { name: '+ Add row' }).click();
+  }
+  for (const [rowIndex, indices] of rows.entries()) {
+    const boxes = control.locator('.indices__row').nth(rowIndex).locator('.indices__box');
+    for (const [boxIndex, value] of indices.entries()) {
+      await boxes.nth(boxIndex).fill(String(value));
+    }
+  }
+}
+
 async function openWorkbench(page) {
   const browserErrors = [];
   page.on('pageerror', (error) => browserErrors.push(`page: ${error.message}`));
@@ -94,7 +115,25 @@ async function openWorkbench(page) {
   await expect(page.locator('#tabs').getByRole('tab', { selected: true })).toHaveText(
     'Crystal Viewer',
   );
+  await dismissTour(page);
   return browserErrors;
+}
+
+/*
+ * Get past the welcome, which every test meets because Playwright gives each one
+ * a fresh profile and the tour is remembered per browser.
+ *
+ * Skipping it here rather than disabling it in the fixture is deliberate: it
+ * means every test in this file re-proves the property that actually matters
+ * about a greeting — that one click removes it and the application underneath is
+ * immediately usable. A tour that ever failed to get out of the way would fail
+ * the whole suite rather than one test nobody runs.
+ */
+async function dismissTour(page) {
+  const tour = page.locator('.tour');
+  if (!(await tour.isVisible().catch(() => false))) return;
+  await page.locator('.tour__skip').click();
+  await expect(tour).toBeHidden();
 }
 
 /** Open the message console, which is collapsed on load. */
@@ -112,6 +151,165 @@ async function expectNewCompletedCalculation(page, action) {
   await expect.poll(() => completed.count(), { timeout: 20_000 }).toBeGreaterThan(before);
   await expect(page.locator('.console__entry--error')).toHaveCount(0);
 }
+
+test('greets a first-time visitor and gets out of the way in one click', async ({ page }) => {
+  const browserErrors = [];
+  page.on('pageerror', (error) => browserErrors.push(`page: ${error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') browserErrors.push(`console: ${message.text()}`);
+  });
+
+  await page.goto('/');
+  const tour = page.locator('.tour');
+  await expect(tour).toBeVisible();
+  await expect(page.locator('.tour__title')).toHaveText('Welcome to the PyTex Workbench');
+  await expect(page.locator('.tour__progress')).toHaveText('Step 1 of 7');
+
+  // Each step points at something that is really on the page. A step whose
+  // target had gone missing would be a tour explaining furniture that is not
+  // there, which is worse than no tour.
+  const targets = [];
+  for (let step = 2; step <= 7; step += 1) {
+    await page.locator('.tour__actions .button--primary').click();
+    await expect(page.locator('.tour__progress')).toHaveText(`Step ${step} of 7`);
+    await expect(page.locator('.tour-target')).toHaveCount(1);
+    targets.push(await page.locator('.tour-target').getAttribute('id'));
+  }
+  expect(targets).toEqual(['tabs', 'rail', 'stage', 'open-palette', 'console', 'open-feedback']);
+
+  await page.locator('.tour__actions .button--primary').click();
+  await expect(tour).toBeHidden();
+
+  // Seen once, not on every load: the greeting is a first-visit event.
+  await page.reload();
+  await expect(workspaceTabs(page)).toHaveCount(WORKSPACES.length);
+  await expect(tour).toBeHidden();
+
+  // And still reachable on purpose, from the help panel, which is what makes
+  // remembering it safe rather than final.
+  await page.getByRole('button', { name: 'Help' }).click();
+  await page.getByRole('button', { name: 'Show the welcome tour again' }).click();
+  await expect(tour).toBeVisible();
+  await page.locator('.tour__skip').click();
+  await expect(tour).toBeHidden();
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('the tour can be skipped from the first step and never returns', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.tour')).toBeVisible();
+  await page.locator('.tour__skip').click();
+  await expect(page.locator('.tour')).toBeHidden();
+
+  // The application underneath must be immediately usable, not merely visible.
+  await workspaceTab(page, 'Calculator').click();
+  await expect(workspaceTab(page, 'Calculator')).toHaveAttribute('aria-selected', 'true');
+
+  await page.reload();
+  await expect(workspaceTabs(page)).toHaveCount(WORKSPACES.length);
+  await expect(page.locator('.tour')).toBeHidden();
+});
+
+test('sends a feature request and says what became of it', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+
+  await page.getByRole('button', { name: 'Feedback' }).click();
+  const drawer = page.locator('#feedback-drawer');
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole('heading', { level: 2 })).toHaveText(
+    'Tell us what would make PyTex better',
+  );
+
+  // An empty note is refused here rather than sent for the server to refuse,
+  // and the refusal is an encouragement rather than a validation error.
+  await drawer.getByRole('button', { name: 'Send it' }).click();
+  await expect(drawer.locator('.field__error')).toContainText('even one line is useful');
+
+  await drawer.locator('#feedback-category').selectOption('feature');
+  await drawer
+    .locator('#feedback-message')
+    .fill('An inverse pole figure of the sample normal would save me an afternoon.');
+  await drawer.locator('#feedback-name').fill('A Researcher');
+  await drawer.locator('#feedback-email').fill('someone@example.invalid');
+  await drawer.locator('#feedback-rating').selectOption('4');
+  await drawer.getByRole('button', { name: 'Send it' }).click();
+
+  await expect(drawer.getByRole('heading', { level: 2 })).toHaveText(
+    'Thank you — it is on its way',
+  );
+  // The receipt distinguishes "filed here" from "filed and e-mailed" rather
+  // than showing one cheerful message for both.
+  await expect(drawer.locator('.field__help')).toContainText('filed locally');
+  await expect(drawer.getByRole('button', { name: 'Send another' })).toBeVisible();
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('a half-written note survives closing the form', async ({ page }) => {
+  await openWorkbench(page);
+  const drawer = page.locator('#feedback-drawer');
+
+  await page.getByRole('button', { name: 'Feedback' }).click();
+  await drawer.locator('#feedback-message').fill('The legend on the pole figure is');
+  await drawer.getByRole('button', { name: 'Not now' }).click();
+  await expect(drawer).toBeHidden();
+
+  // People start a note, go back to look at the thing they are describing, and
+  // come back. Losing the text at that point loses the report: nobody types it
+  // twice.
+  await page.getByRole('button', { name: 'Feedback' }).click();
+  await expect(drawer.locator('#feedback-message')).toHaveValue(
+    'The legend on the pole figure is',
+  );
+});
+
+test('Miller indices are typed one index to a box', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+
+  const planes = page.locator('#rail-body .indices--multi').first();
+  await expect(planes).toHaveAttribute('aria-label', 'Planes to superimpose (hkl)');
+
+  // Three boxes, each named for the index it holds. Three unlabelled fields
+  // would be the same ambiguity in another form.
+  const firstRow = planes.locator('.indices__row').first();
+  await expect(firstRow.locator('.indices__box')).toHaveCount(3);
+  await expect(firstRow.locator('.indices__box').nth(0)).toHaveAttribute('placeholder', 'h');
+  await expect(firstRow.locator('.indices__box').nth(1)).toHaveAttribute('placeholder', 'k');
+  await expect(firstRow.locator('.indices__box').nth(2)).toHaveAttribute('placeholder', 'l');
+
+  // There is nowhere on the page to put a run of digits: a box takes one index.
+  const rowsBefore = await planes.locator('.indices__row').count();
+  await planes.getByRole('button', { name: '+ Add row' }).click();
+  await expect(planes.locator('.indices__row')).toHaveCount(rowsBefore + 1);
+
+  const added = planes.locator('.indices__row').nth(rowsBefore);
+  await added.locator('.indices__box').nth(0).fill('2');
+  // A row started and not finished is named for the indices still missing,
+  // which the server cannot phrase as well: by then it is one list with a hole.
+  await expect(planes.locator('xpath=ancestor::div[@class="field"]').locator('.field__error'))
+    .toContainText('k, l are still empty');
+
+  await added.locator('.indices__box').nth(1).fill('0');
+  await added.locator('.indices__box').nth(2).fill('0');
+  await expect(planes.locator('xpath=ancestor::div[@class="field"]').locator('.field__error'))
+    .toBeHidden();
+
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('#rail-body').getByRole('button', { name: 'Build structure' }).click(),
+  );
+
+  expect(browserErrors).toEqual([]);
+});
+
+test('a direction parameter names its boxes u, v and w', async ({ page }) => {
+  await openWorkbench(page);
+  const directions = page.locator('#rail-body .indices[aria-label*="[uvw]"]').first();
+  const row = directions.locator('.indices__row').first();
+  await expect(row.locator('.indices__box').nth(0)).toHaveAttribute('placeholder', 'u');
+  await expect(row.locator('.indices__box').nth(1)).toHaveAttribute('placeholder', 'v');
+  await expect(row.locator('.indices__box').nth(2)).toHaveAttribute('placeholder', 'w');
+});
 
 test('loads every scientific workspace without browser errors', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
@@ -1059,9 +1257,12 @@ test('XRDML pole figures open into tabs on one shared scale', async ({ page }) =
   ]);
   await expect(page.locator('#rail-body')).toContainText('2 file(s) open');
 
-  // Two planes, one per file, then redraw.
-  const poles = page.locator('[id^="ctl-poles-"]').first();
-  await poles.fill('1 1 1\n2 0 0');
+  // Two planes, one per file, then redraw. Each index goes in its own box.
+  const poles = page.locator('.indices--multi').filter({ has: page.locator('[id^="ctl-poles-"]') });
+  await fillIndices(poles, [
+    [1, 1, 1],
+    [2, 0, 0],
+  ]);
   await page.locator('[id^="ctl-contour_levels-"]').fill('0.8, 1, 1.2, 1.4');
   await page.getByRole('button', { name: 'Build texture', exact: true }).click();
 

@@ -275,6 +275,80 @@ service attached to the entity.
 This is why services attach the full row to each drawn entity rather than only its coordinates: the
 extra bytes are the difference between a figure and a tool.
 
+## Decision 9 — An Ambiguous Input Is Refused, Not Guessed
+
+Users type `110` where they mean `1 1 0`, and for a long time the service layer read it — a
+single digit per index, so the split is unambiguous. That reading is the defect, not the
+convenience.
+
+It only holds while every index is one digit. `10 10 0` typed the same way is `10100`, which is
+`(10, 10, 0)`, `(1, 0, 100)` and `(101, 0, 0)` with nothing in the string to choose between them,
+and a hexagonal four-index row makes it worse. The failure mode is the one this repository takes
+most seriously: not an error, but a plausible number computed for indices nobody entered.
+
+So the rule is stated once and applies to both halves of the application:
+
+- **The workbench does not offer a control that can express the ambiguity.** Every `indices`
+  parameter renders as one narrow box per index, and every `indices-list` parameter as a stack of
+  those rows with add and remove buttons. There is no text field to run digits together in.
+- **Each box is named**, because three identical fields in a row is the same ambiguity wearing a
+  different hat. The letters come from the parameter's own label where the label states them —
+  "Current zone axis [uvw]" names its boxes `u`, `v`, `w` — and otherwise from the width: `hkl`
+  for three, the Bravais-Miller `hkil` for four. `pytex.app.registry._index_symbols` decides this
+  in Python and publishes it as `symbols` in the manifest, so the browser never parses a label.
+- **The service layer refuses the run outright**, including the cases it used to read correctly.
+  Accepting the easy case is what teaches the habit that produces the ambiguous one. The message
+  shows the separated form of what was typed.
+
+The one check that stayed in the browser is the half-filled row. An empty box arrives at the
+server as `''`, and "`''` is not a whole number" names a box the user cannot see a name for; by
+the time the request is built, three boxes are one list with a hole in it.
+
+## Decision 10 — What The Deployment Decides Lives In One YAML File, And Never Touches A Number
+
+Three things are genuinely a site decision rather than a code decision: whether the feedback form
+is offered, whether feedback is forwarded through an internal SMTP relay, and whether a first-time
+visitor is greeted with the tour. `pytex.app.config` reads them from
+`PYTEX_APP_CONFIG`, `./pytex_app.yml` or `~/.pytex/pytex_app.yml`, in that order, and works with
+no file at all. `config/pytex_app.example.yml` is the annotated template, and a unit test loads it
+through the same loader so a renamed key cannot stay documented under its old name.
+
+The boundary is stated in the module's own docstring and is the test for whether anything may be
+added to it: **nothing in this file changes a number PyTex computes.** A scientific result must
+not depend on a file somebody edited.
+
+Two consequences that are easy to get wrong:
+
+- **An unknown key is an error, not a warning.** The usual way to get one is a misspelling, and a
+  misspelled `smtp_host` is a relay that silently never delivers.
+- **A configuration file that cannot be read does not take the workbench down.** It is logged and
+  the defaults apply. The science does not depend on this file, so refusing to draw a pole figure
+  because a relay host is mistyped would be a poor trade.
+
+## Decision 11 — Feedback Is Stored Before It Is Sent
+
+`POST /api/feedback` appends the submission to a JSON store — atomically, through a temporary file
+and a rename — and only then attempts the relay. The ordering is the design. The alternative,
+mailing it and storing it only if the mail failed, loses submissions exactly when the site is
+having a bad day, which is when people have the most to say.
+
+Three further properties follow from the same reasoning:
+
+- **The store is not optional.** A deployment with no relay configured is not a deployment where
+  feedback is lost; it is one where the person who runs the server reads a file.
+- **The clock is the server's**, and so is which shell answered. A workstation with a wrong clock
+  cannot file a note under next year, and a submission cannot claim to have come from a shell it
+  did not. What the page reports — the open workspace and panel — is recorded as *claimed*
+  context, separately from what the server knows.
+- **`GET /api/experience` publishes whether a note will be mailed, never where or as whom.** The
+  workbench has no authentication, so everything that route returns is readable by anyone who can
+  reach the port; a relay host and an envelope sender are the administrator's business. A unit
+  test asserts the exact key set for that reason.
+
+The welcome tour is governed by the same route and the same file. It is skippable from every step,
+the skip is remembered per browser and per version, and it is reachable again from the Help panel
+— which is what makes remembering it safe rather than final.
+
 ## Frontend Architecture
 
 No framework, but not ad hoc either. The frontend is four layers:
@@ -283,7 +357,11 @@ No framework, but not ad hoc either. The frontend is four layers:
 - `core/api.js` — one `call(operation, params)` function over the JSON envelope, with error
   surfacing that shows the server's user-facing message and hint rather than a stack trace, and
   start/finish activity events consumed by the shared progress/history bar.
-- `core/controls.js` — the manifest-driven control renderer (Decision 2).
+- `core/controls.js` — the manifest-driven control renderer (Decision 2), including the
+  one-box-per-index Miller control of Decision 9.
+- `core/feedback.js` — the feedback and feature-request drawer, built from the invitation the
+  server publishes rather than from text in the page (Decision 11).
+- `core/tour.js` — the welcome and the skippable tour (Decision 11).
 - `panels/*.js` — one module per tab.
 
 Layout follows the "visualisation gets the room" rule: a persistent tab bar, a single large canvas
@@ -325,6 +403,12 @@ downstream of.
   workspaces, the critical default calculation path in every panel, deliberate service-error
   surfacing, browser console/page errors, and the 390 × 844 responsive layout. Playwright is a
   test-only development dependency: no third-party JavaScript is shipped to the browser.
+- The welcome tour is dismissed by the browser lane's own `openWorkbench` helper rather than
+  disabled in the fixture, so every test in that lane re-proves the property that matters about a
+  greeting: one click removes it and the application underneath is immediately usable.
+- The feedback path is tested at both ends — the store, the relay and the route in the base lane
+  against a fake SMTP server, and the form itself in the browser lane, including that a
+  half-written note survives closing the drawer.
 
 ## See Also
 

@@ -72,6 +72,70 @@ export async function fetchShell() {
   return SHELL;
 }
 
+/**
+ * Ask the server how this deployment wants to greet its users.
+ *
+ * Two things the *operator* decides, not the code: whether the feedback form is
+ * offered and what it says, and whether a first-time visitor is shown the tour.
+ * A deployment that cannot answer — an older server, a route behind a proxy
+ * that drops it — gets a page with neither, which is the safe failure: an
+ * unexplained modal on startup is worse than no tour.
+ *
+ * @returns {Promise<object>} `{feedback: {...}, tour: {...}}`.
+ */
+export async function fetchExperience() {
+  try {
+    const response = await fetch('/api/experience', { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error(String(response.status));
+    return await response.json();
+  } catch {
+    return { feedback: { enabled: false }, tour: { enabled: false } };
+  }
+}
+
+/**
+ * Send one feedback or feature-request submission.
+ *
+ * Not routed through `call()`, because this is not an operation: it computes
+ * nothing, it is not in the manifest, and it must keep working in a build where
+ * the registry failed to load — which is exactly the build somebody most wants
+ * to complain about.
+ *
+ * @param {object} submission - message, category, and the optional fields.
+ * @returns {Promise<object>} `{receipt, acknowledgement}`.
+ * @throws {ServiceCallError} The server refused it, with a message for a person.
+ */
+export async function sendFeedback(submission) {
+  let response;
+  try {
+    response = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(submission),
+    });
+  } catch (error) {
+    throw new ServiceCallError({
+      code: 'feedback.unreachable',
+      message: 'PyTex could not reach the server to send that note.',
+      hint: 'Check that the server is still running, then try again.',
+      details: { cause: String(error) },
+    });
+  }
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new ServiceCallError({
+      code: 'feedback.malformed',
+      message: `The server answered HTTP ${response.status} without a usable body.`,
+    });
+  }
+  if (!response.ok || payload.ok === false) {
+    throw new ServiceCallError(payload.error ?? { message: 'The note was not recorded.' });
+  }
+  return payload;
+}
+
 let SHELL = { shell: 'web', can_write_local_files: false, can_read_local_paths: false };
 let CALL_SEQUENCE = 0;
 

@@ -43,6 +43,28 @@ without a browser:
 $ python -m pytex.app operations
 ```
 
+### Configuring a deployment
+
+Almost nothing about the workbench is configurable, and that is deliberate: a scientific result
+must not depend on a file somebody edited. Three things are genuinely a site decision, and they
+live in one optional YAML file — whether the feedback form is offered and where its record is
+written, whether feedback is also forwarded through an internal SMTP relay, and whether a
+first-time visitor is greeted with the tour.
+
+`config/pytex_app.example.yml` in the repository is the annotated template. Copy it to whichever
+of these the deployment prefers; the first that exists wins, and the startup log line
+`Workbench configuration read from ...` names the file that actually took effect.
+
+1. the path in the `PYTEX_APP_CONFIG` environment variable
+2. `./pytex_app.yml`, in the directory the server is started from
+3. `~/.pytex/pytex_app.yml`
+
+With no file at all the application still works: feedback is collected to `~/.pytex/feedback.json`,
+no e-mail is sent, and the tour is offered. An unknown key is an error at startup rather than a
+warning, because the usual way to get one is a misspelling and a misspelled relay host is a relay
+that silently never delivers. A relay password is never written in the file — the file names an
+environment variable and the loader reads it. See {mod}`pytex.app.config`.
+
 ## What Is In It
 
 Seven workspaces holding sixteen panels. Every one of them ships with runnable examples, so a user with
@@ -120,6 +142,24 @@ version that answered the request rather than a number typed into a page — and
 the one `pyproject.toml` and `LICENSE` declare, which `tests/unit/test_app_about.py` checks against
 both files.
 
+The **Feedback** button opens a short form for a feature request, something that reads wrongly, a
+scientific correction, or general feedback. Only the message is required: a note worth reading is
+worth reading anonymously, and asking for a name suppresses exactly the frank criticism that is
+most useful. The page attaches which workspace and panel were open, because "the legend is
+unreadable" is a different report depending on which figure it was about.
+
+Every submission is appended to a JSON file on the server *before* anything is sent, so a relay
+that is down costs a notification rather than a note; the receipt on screen says which of the two
+happened. A deployment that has configured an internal relay also e-mails it to the maintainer.
+Both the invitation text and the relay are deployment settings — see
+[Configuring a deployment](#configuring-a-deployment) — and a half-written note survives closing
+the drawer, because people go back to look at the thing they are describing and come back.
+
+A first visit opens with a short **tour**: the seven workspaces, where the controls come from, the
+feature search, the message log, and the feedback form. Every step has a Skip button, skipping is
+remembered per browser, and the tour can be reopened at any time from the Help panel. A deployment
+can switch it off, or ask for it on every visit, in the same file.
+
 The colour-theme control cycles through **Auto**, **Light**, and **Dark**. Auto follows the operating
 system; an explicit choice is remembered by the shared frontend, so it behaves identically in the
 browser and desktop window. On a narrow screen the masthead actions collapse to icons while
@@ -157,6 +197,21 @@ Profile and reflection-stick colours, line width, area fill, labels and linear, 
 log-like display scaling update immediately without recomputing or altering the scientific result.
 Four built-in standards demonstrate fcc indexing and Cu doublet splitting, silicon extinctions,
 the wavelength shift under Mo radiation and the hcp zirconium metric.
+
+### Entering Miller indices
+
+Every plane and direction is entered one index to a box, labelled with the letter it holds: `h`,
+`k`, `l` for a plane, `u`, `v`, `w` for a direction, and `h`, `k`, `i`, `l` for a four-index
+hexagonal row. A parameter that takes any number of rows — the planes superimposed on a structure,
+the poles of a set of pole figures — is a stack of those rows with **+ Add row** beneath and a **×**
+beside each.
+
+There is no text field to type `110` into, and the service layer refuses that form if it is sent
+directly. This is not pedantry about notation. A run of digits only has one reading while every
+index is a single digit: `10 10 0` written as `10100` is equally `(1, 0, 100)` and `(101, 0, 0)`,
+and the wrong reading does not fail — it returns a plausible number for indices nobody entered.
+Negative indices take an ordinary minus sign; PyTex writes them back with overbars, through
+{mod}`pytex.core.notation`.
 
 ## Reading A Result
 

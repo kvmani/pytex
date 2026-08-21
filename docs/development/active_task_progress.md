@@ -4467,3 +4467,41 @@ cannot claim to have come from somewhere it did not.
 
 Verified: `tests/unit/test_app_feedback.py` (27 tests) and six new route tests in
 `tests/unit/test_app_server.py`, ruff and mypy clean.
+
+### I4, I5, I6 — the form, the welcome, and what they cost the existing suite (done)
+
+`js/core/feedback.js` builds the drawer from what `/api/experience` publishes, so a deployment can
+change the invitation without touching the page. Two details that are not decoration:
+
+- **The textarea is deliberately not `required`.** A `required` field makes the browser show its
+  own bubble and swallow the submit event, so the form's own sentence never appeared. "Please fill
+  out this field" is a poor thing to say to somebody about to give you their time.
+- **The draft is kept in local storage.** People start a note, go back to look at the thing they
+  are describing, and come back; losing the text at that moment loses the report, because nobody
+  types it twice.
+
+`js/core/tour.js` is seven steps, each highlighting the element it is about. One layering bug had
+to be found by running it rather than by reading it: the card was a child of the backdrop, the
+backdrop has a `z-index` and therefore its own stacking context, and the highlighted element has
+to sit above the backdrop to stay bright — so the card could never be above the highlight,
+whatever number it was given. The symptom was a Next button that could not be clicked on exactly
+the two steps that point at the stage and the rail, which are the largest things on screen. Card
+and backdrop are now siblings: 60, 61, 62 in one context.
+
+**What this cost the existing browser lane.** Playwright gives every test a fresh profile, so
+every test now meets the welcome. Rather than disabling the tour in the fixture, `openWorkbench`
+skips it — which means all 46 tests continuously re-prove the property that actually matters about
+a greeting: one click removes it and the application underneath is usable. One existing test did
+break honestly: the XRDML pole-figure test filled `poles` by typing two lines into what used to be
+a textarea, and both figures came back labelled `{111}`. It now drives the row editor through a
+`fillIndices` helper, which is how a user reaches it.
+
+Verified: 46 browser tests green against a loopback server; a note submitted through the real form
+end to end, with the stored JSON carrying the workspace, panel, viewport and user agent the page
+claimed and the version, host and account the server stamped; `python -m pytest tests/unit` green;
+ruff, mypy and `scripts/check_repo_integrity.py` clean.
+
+Documentation: three new decisions in `docs/architecture/application_platform.md` (why an ambiguous
+index is refused rather than guessed, what may live in the deployment file, and why feedback is
+stored before it is sent), a **Configuring a deployment** section and an **Entering Miller
+indices** section in `docs/site/workflows/workbench_application.md`, and `CHANGELOG.md`.
