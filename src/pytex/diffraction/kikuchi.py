@@ -911,11 +911,19 @@ def _zone_axes_for_bands(
     A direction is a zone axis of a band when it lies in the band's plane, i.e.
     when the zone law ``hu + kv + lw = 0`` holds. Only axes shared by at least
     two bands are reported, since a single band does not define a hub.
+
+    Axes are reduced to coprime indices. A zone axis is a *direction*: ``[002]``
+    is the same axis as ``[001]``, satisfies the same zone law, and projects to
+    the same point, so reporting both would list one hub twice and make the
+    count of axes on a pattern meaningless.
     """
 
     if max_index == 0 or not bands:
         return ()
     axes = _antipodal_reduced_triples(max_index)
+    axes = axes[np.gcd.reduce(np.abs(axes), axis=1) == 1]
+    if axes.shape[0] == 0:
+        return ()
     plane_indices = np.stack([band.plane.indices for band in bands], axis=0).astype(np.int64)
     zone_values = plane_indices @ axes.T
     band_counts = np.count_nonzero(zone_values == 0, axis=0)

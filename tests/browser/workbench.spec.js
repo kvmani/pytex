@@ -26,6 +26,7 @@ const PANEL_PATH = {
   'Scan summary': ['EBSD', 'Scan summary'],
   Distributions: ['EBSD', 'Distributions'],
   'Pole figures': ['EBSD', 'Pole figures'],
+  'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
@@ -35,6 +36,7 @@ const PANEL_PATH = {
 /** Panels that draw a figure, in tab order. Calculator draws none. */
 const FIGURE_PANELS = [
   'Crystal Viewer',
+  'Kikuchi simulator',
   'SAED Simulator',
   'TEM Solver',
   'CBED',
@@ -284,6 +286,79 @@ test('shows every figure and its controls without scrolling the stage', async ({
     // A card that fits because the drawing collapsed is not a pass.
     expect(fits.drawing).toBeGreaterThan(150);
   }
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The EBSD workspace's forward problem: the pattern behind every indexed point.
+ *
+ * Three things are worth pinning in a browser. The panel must draw a pattern
+ * without a scan, because it is the one view here that needs none. Every band's
+ * name must sit *on the screen* — the traces arrive clipped to a generous
+ * margin so that a Kossel conic keeps its shape, and a name placed by a
+ * fraction along the whole trace would be eaten by the clip without a trace of
+ * its own. And the names must run along their bands, the convention every
+ * Kikuchi figure in the application shares.
+ */
+test('the EBSD workspace simulates a Kikuchi pattern and names its bands along them', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Kikuchi simulator');
+
+  const pattern = page.locator('svg[aria-label="Simulated EBSD Kikuchi pattern"]');
+  await expect(pattern).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => pattern.locator('polyline').count()).toBeGreaterThan(10);
+
+  const status = page.locator('#stage .plot__status');
+  await expect(status).toContainText('band(s)');
+  await expect(status).toContainText('intensities kinematic');
+
+  const labels = await page.evaluate(() => {
+    const svg = document.querySelector('svg[aria-label="Simulated EBSD Kikuchi pattern"]');
+    const box = svg.viewBox.baseVal;
+    return [...svg.querySelectorAll('text')]
+      .filter((node) => /^\(/.test(node.textContent ?? ''))
+      .map((node) => ({
+        x: Number(node.getAttribute('x')),
+        y: Number(node.getAttribute('y')),
+        angle: Number(/rotate\(([-\d.]+)/.exec(node.getAttribute('transform') ?? '')?.[1]),
+        width: box.width,
+        height: box.height,
+      }));
+  });
+
+  expect(labels.length).toBeGreaterThan(3);
+  for (const label of labels) {
+    expect(label.x).toBeGreaterThan(0);
+    expect(label.x).toBeLessThan(label.width);
+    expect(label.y).toBeGreaterThan(0);
+    expect(label.y).toBeLessThan(label.height);
+    expect(Number.isFinite(label.angle)).toBe(true);
+  }
+  // A cube-oriented crystal on a tilted stage gives bands at several slopes, so
+  // labels that were all upright would mean the rotation was not applied.
+  expect(labels.some((label) => Math.abs(label.angle) > 5)).toBe(true);
+
+  // The geometry is stated beside the picture, including the one number that
+  // checks the whole convention.
+  const readout = page.locator('#stage .plot__readout-panel');
+  await expect(readout).toContainText('Specimen normal at');
+  await expect(readout).toContainText('0.364');
+
+  // Turning the names off takes them away rather than leaving them stale.
+  await page.locator('#stage').getByRole('button', { name: 'Indices', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const svg = document.querySelector('svg[aria-label="Simulated EBSD Kikuchi pattern"]');
+        return [...svg.querySelectorAll('text')].filter((node) =>
+          /^\(/.test(node.textContent ?? ''),
+        ).length;
+      }),
+    )
+    .toBe(0);
 
   expect(browserErrors).toEqual([]);
 });
@@ -1554,7 +1629,7 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
 });
 
 /*
- * The EBSD workspace: six views, one scan.
+ * The EBSD workspace: six views of one scan, and the pattern behind it.
  *
  * The sub-tabs are not six panels with six copies of the same logic — the three
  * map tabs are one panel opened on three colourings — and they are not six
@@ -1562,6 +1637,9 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
  * so opening a file on the summary and then going to the map must analyse *that
  * file*. Silently reverting to the practice dataset next to somebody's own data
  * is the worst answer available, and it is the one this asserts against.
+ *
+ * The seventh tab is the odd one out by design: the Kikuchi simulator takes no
+ * scan at all, because it is the forward problem the six live downstream of.
  */
 test('the EBSD workspace shows six views of one scan', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
@@ -1575,6 +1653,7 @@ test('the EBSD workspace shows six views of one scan', async ({ page }) => {
     'Scan summary',
     'Distributions',
     'Pole figures',
+    'Kikuchi simulator',
   ]);
 
   // The three map tabs are the same panel opened on different colourings, and

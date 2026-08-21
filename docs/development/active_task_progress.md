@@ -4165,3 +4165,51 @@ of named bands rises with magnification, because room is what a name costs.
 
 **State.** Unit lane green (6621 passed, exit 0) before these changes; both touched browser tests
 pass. Next: the version bump and release notes, then the EBSD Kikuchi simulator.
+
+### I3 — a Kikuchi simulator in the EBSD workspace (done)
+
+`ebsd.simulate_kikuchi_pattern` + `panels/ebsdkikuchi.js`, as a seventh EBSD sub-tab. It takes no
+scan: it is the forward problem the other six views live downstream of, and its geometry is the
+EBSD geometry and nowhere else's.
+
+**The convention had to be owned somewhere, so it is owned in the model.**
+`DiffractionGeometry.for_ebsd(...)` is the one place that turns stage tilt, camera elevation and
+azimuth, pattern centre and camera distance into the canonical geometry. Frame: beam is
+`+z_lab`, stage tilt axis is `x_lab`, camera on `-y_lab`; an untilted specimen faces the beam and
+the stage tips its normal towards the camera, so `specimen_to_lab = Rx(180° - tilt)`, and the
+camera axis is laid onto its port by `tilt_degrees = (90° - elevation, 0, azimuth)`.
+
+Two identities fall out of that frame and are what the tests assert, since neither comes from the
+code under test:
+
+- the specimen normal projects at gnomonic radius `tan(90° - σ + ε)` — 0.364 at the standard 70°,
+  which is why it lands on a real screen — and at `σ = ε = 0` it lies *in* the screen plane, which
+  is the geometric reason a scan is run tilted;
+- the beam makes `90° - ε` with the camera axis, so at zero elevation it has no gnomonic image at
+  all: an EBSD camera never sees the incident beam.
+
+Also fixed at the library level: **zone axes are now reduced to coprime indices**. `[002]` is the
+same axis as `[001]`, satisfies the same zone law and projects to the same point, so the old
+output listed one hub several times and the count of axes on a pattern meant nothing.
+
+Two things the panel does that are drawing decisions, not physics:
+
+- a band is drawn as the *gap between its edges* — filled faintly, and only when both edges
+  survived the clip as one run each, because otherwise the polygon closes across screen the band
+  never covered;
+- a band's name is placed from the samples that are actually **on** the screen. The traces arrive
+  clipped to a generous margin so a Kossel conic keeps its shape, and a fraction taken along the
+  whole run put half the names outside the picture, where the clip ate them silently. The fraction
+  is stepped by band index so that (022) and (044), which share one centre line, do not print on
+  top of each other.
+
+Docs: the EBSD camera convention is written up in `docs/site/workflows/kikuchi_geometry.md`, the
+new sub-tab in `docs/site/workflows/workbench_application.md`, and the worked example
+`diffraction-ebsd-specimen-normal-radius` computes the 0.364 live.
+
+20 unit tests in `tests/unit/test_ebsd_kikuchi_pattern.py`, one browser test, gallery regenerated,
+CHANGELOG updated. Verified in the running app: bands, edges, dashed traces, zone axes at [001],
+[011] and [112], the pattern centre marked, and every band named along itself.
+
+**Next.** Stale tests, then the version bump and release notes, then tutorial trivia, then the
+documentation pass.

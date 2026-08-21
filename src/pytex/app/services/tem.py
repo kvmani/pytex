@@ -50,6 +50,7 @@ from pytex.app.services.calculator import (
     phase_parameter,
     plane_label,
 )
+from pytex.app.services.traces import clipped_runs
 from pytex.app.tem_gallery import GALLERY, gallery_entry, gallery_options
 from pytex.core.sphere import project_directions
 
@@ -3140,48 +3141,6 @@ def _line_through_frame(
     return unique[:2]
 
 
-def _clipped_runs(points: np.ndarray, width: float, height: float) -> list[list[list[float]]]:
-    """Split a sampled trace into the runs that are near the picture.
-
-    A Kossel-cone edge is a conic whose far branch can run to the horizon; drawn
-    as one polyline it would be closed by a chord straight across the pattern —
-    a line the crystal never produced. Points far outside the frame are dropped
-    and the remainder is broken wherever the trace jumped, so only genuine
-    stretches are drawn.
-    """
-
-    if points.size == 0:
-        return []
-    margin = max(width, height)
-    inside = (
-        (points[:, 0] > -margin)
-        & (points[:, 0] < width + margin)
-        & (points[:, 1] > -margin)
-        & (points[:, 1] < height + margin)
-    )
-    runs: list[list[list[float]]] = []
-    current: list[list[float]] = []
-    limit = 0.5 * math.hypot(width, height)
-    previous: np.ndarray | None = None
-    for index, keep in enumerate(inside):
-        point = points[index]
-        if not keep:
-            if len(current) > 1:
-                runs.append(current)
-            current = []
-            previous = None
-            continue
-        if previous is not None and float(np.linalg.norm(point - previous)) > limit:
-            if len(current) > 1:
-                runs.append(current)
-            current = []
-        current.append([float(point[0]), float(point[1])])
-        previous = point
-    if len(current) > 1:
-        runs.append(current)
-    return runs
-
-
 @REGISTRY.operation(
     "tem.kikuchi_overlay",
     title="Superimpose the Kikuchi bands of the accepted solution",
@@ -3443,7 +3402,7 @@ def _kikuchi_overlay(request: dict[str, Any]) -> dict[str, Any]:
         centre_trace = np.asarray(band.center_trace(projection), dtype=float)
         origin = np.asarray(centre, dtype=float)
         edges = [
-            _clipped_runs(np.asarray(edge, dtype=float) * distance_px + origin, width, height)
+            clipped_runs(np.asarray(edge, dtype=float) * distance_px + origin, width, height)
             # Sampled finely: only the stretch near the plate survives the clip,
             # and a coarse polyline would show its vertices on a band edge that
             # is very nearly straight over a SAED field.
@@ -3500,7 +3459,7 @@ def _kikuchi_overlay(request: dict[str, Any]) -> dict[str, Any]:
             "line_px": [a, b, c],
             "g_direction_px": [float(normal[0]) / in_plane, float(normal[1]) / in_plane],
             "centre": [[float(point[0]), float(point[1])] for point in endpoints],
-            "centre_samples": _clipped_runs(
+            "centre_samples": clipped_runs(
                 centre_trace * distance_px + np.asarray(centre), width, height
             ),
             "edges": edges,

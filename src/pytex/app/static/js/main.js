@@ -33,6 +33,7 @@ import * as ebsd from './panels/ebsd.js';
 import * as ebsdDistribution from './panels/ebsddistribution.js';
 import * as ebsdFigures from './panels/ebsdfigures.js';
 import * as ebsdSummary from './panels/ebsdsummary.js';
+import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
 import * as calculator from './panels/calculator.js';
@@ -61,7 +62,10 @@ const TEM_ANALYSIS = {
   panels: [saedsim, tem, cbed, diffraction],
 };
 
-// EBSD is grouped for the same reason: one scan, seen six ways. The scan itself
+// EBSD is grouped for the same reason: one scan, seen six ways — and, last, the
+// pattern behind every point of it. The simulator takes no scan: it is the
+// forward problem the other six views live downstream of, and it belongs here
+// because its geometry is the EBSD geometry and nowhere else's. The scan itself
 // is shared between them (see `core/ebsdscan.js`), because a file opened in the
 // summary is open for the map — anything else would silently analyse the
 // practice dataset next to a user's own data.
@@ -69,7 +73,15 @@ const EBSD_ANALYSIS = {
   id: 'ebsd',
   title: 'EBSD',
   tagline: 'One orientation scan: its map, its statistics, and where it points.',
-  panels: [ebsd, ebsd.grodPanel, ebsd.kamPanel, ebsdSummary, ebsdDistribution, ebsdFigures],
+  panels: [
+    ebsd,
+    ebsd.grodPanel,
+    ebsd.kamPanel,
+    ebsdSummary,
+    ebsdDistribution,
+    ebsdFigures,
+    ebsdKikuchi,
+  ],
 };
 
 const WORKSPACES = [

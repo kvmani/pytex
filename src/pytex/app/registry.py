@@ -106,6 +106,7 @@ _PANEL_DOCUMENTATION = {
     "ebsd": DocumentationLink(
         "EBSD grain segmentation and GROD", "theory/ebsd_grain_segmentation_and_grod"
     ),
+    "ebsd_kikuchi": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
     "variants": DocumentationLink(
         "Orientation relationships", "concepts/orientation_relationships"

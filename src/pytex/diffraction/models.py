@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, TypedDict
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from pytex.core._arrays import (
     as_float_array,
@@ -334,6 +335,155 @@ class DiffractionGeometry:
                     "DiffractionGeometry.beam_energy_kev must match the scattering setup "
                     "beam energy when both are provided."
                 )
+
+    @classmethod
+    def for_ebsd(
+        cls,
+        *,
+        beam_energy_kev: float = 20.0,
+        sample_tilt_deg: float = 70.0,
+        detector_elevation_deg: float = 0.0,
+        detector_azimuth_deg: float = 0.0,
+        pattern_center: ArrayLike = (0.5, 0.5, 0.65),
+        detector_shape: tuple[int, int] = (480, 640),
+        detector_pixel_size_um: tuple[float, float] = (50.0, 50.0),
+        detector_frame: ReferenceFrame | None = None,
+        specimen_frame: ReferenceFrame | None = None,
+        laboratory_frame: ReferenceFrame | None = None,
+        provenance: ProvenanceRecord | None = None,
+    ) -> DiffractionGeometry:
+        r"""Build the geometry of a backscatter-diffraction (EBSD) camera.
+
+        Purpose
+        -------
+        State an EBSD setup in the terms it is actually configured in — how far
+        the stage is tilted, where the camera sits, and where the pattern centre
+        falls — and get back the same
+        :class:`DiffractionGeometry` every other diffraction surface consumes.
+        Without this the caller has to compose the stage rotation and the camera
+        placement by hand, which is precisely the kind of private frame model
+        this class exists to prevent.
+
+        Convention
+        ----------
+        The laboratory frame is fixed by the column and the stage, not by the
+        camera:
+
+        - :math:`\hat{\mathbf{z}}_{\text{lab}}` is the **beam**, travelling
+          from the gun to the specimen.
+        - :math:`\hat{\mathbf{x}}_{\text{lab}}` is the **stage tilt axis**.
+        - :math:`\hat{\mathbf{y}}_{\text{lab}}` completes the right-handed
+          triad and points **away from the camera**, so the camera is on
+          :math:`-\hat{\mathbf{y}}_{\text{lab}}`.
+
+        An untilted specimen has its normal along
+        :math:`-\hat{\mathbf{z}}_{\text{lab}}`, facing into the beam.
+        ``sample_tilt_deg`` rotates the specimen about the tilt axis so that its
+        normal tips *towards* the camera — the 70 degrees of a standard EBSD
+        stage. ``detector_elevation_deg`` raises the camera's own axis above the
+        plane perpendicular to the beam, and ``detector_azimuth_deg`` swings it
+        about the beam, so a camera port that is not on the nominal side is
+        described rather than approximated.
+
+        Two consequences are worth stating because they are what the geometry is
+        checked against:
+
+        - the specimen normal makes an angle of
+          :math:`90^\circ - (\sigma - \epsilon)` with the camera axis, so it
+          projects at gnomonic radius
+          :math:`	an(90^\circ - \sigma + \epsilon)` — about 0.364 at the
+          standard 70 degrees, which is why the specimen normal falls on a real
+          screen at all;
+        - the beam makes :math:`90^\circ - \epsilon` with the camera axis, so
+          at zero elevation it is parallel to the screen and has no gnomonic
+          image, which is correct: an EBSD screen never sees the beam.
+
+        Parameters
+        ----------
+        beam_energy_kev : float
+            Accelerating voltage. 20 kV is the usual EBSD working point, an
+            order of magnitude below TEM, and it is what sets the band widths.
+        sample_tilt_deg : float
+            Stage tilt, in degrees, about the tilt axis. Must lie in
+            ``[0, 90)``: at 90 degrees the specimen surface contains the beam.
+        detector_elevation_deg : float
+            Elevation of the camera axis above the plane perpendicular to the
+            beam, in degrees. Must lie in ``(-90, 90)``.
+        detector_azimuth_deg : float
+            Rotation of the camera about the beam, in degrees, from the nominal
+            port.
+        pattern_center : ArrayLike
+            ``(x*, y*, z*)``. The in-plane pair are fractions of the detector
+            extent, as elsewhere in this class; ``z*`` is the camera distance as
+            a fraction of the detector **width**, which is the quantity every
+            EBSD calibration reports. Vendors differ over the origin and the
+            axis the fractions are taken along, so a value copied from a vendor
+            file may need converting; PyTex takes them in its own stated frame
+            rather than guessing which vendor wrote them.
+        detector_shape : tuple of int
+            ``(height, width)`` in pixels.
+        detector_pixel_size_um : tuple of float
+            Per-axis pixel pitch.
+        detector_frame, specimen_frame, laboratory_frame : ReferenceFrame, optional
+            Default to the catalogue frames.
+        provenance : ProvenanceRecord, optional
+
+        Returns
+        -------
+        DiffractionGeometry
+            Ready for :func:`pytex.diffraction.kikuchi.simulate_kikuchi_pattern`.
+
+        Raises
+        ------
+        ValueError
+            For a tilt or elevation outside its range, or a non-positive
+            camera distance.
+
+        See Also
+        --------
+        pytex.diffraction.kikuchi.simulate_kikuchi_pattern : What consumes it.
+        """
+
+        from pytex.core.frame_catalog import (
+            DETECTOR_FRAME,
+            LABORATORY_FRAME,
+            SPECIMEN_FRAME,
+        )
+
+        tilt = float(sample_tilt_deg)
+        elevation = float(detector_elevation_deg)
+        azimuth = float(detector_azimuth_deg)
+        if not 0.0 <= tilt < 90.0:
+            raise ValueError("sample_tilt_deg must lie in [0, 90).")
+        if not -90.0 < elevation < 90.0:
+            raise ValueError("detector_elevation_deg must lie in (-90, 90).")
+        centre = as_float_array(pattern_center, shape=(3,))
+        shape = (int(detector_shape[0]), int(detector_shape[1]))
+        width_mm = shape[1] * float(detector_pixel_size_um[1]) / 1000.0
+        distance_mm = float(centre[2]) * width_mm
+        if distance_mm <= 0.0:
+            raise ValueError("pattern_center z component must be strictly positive.")
+        return cls(
+            detector_frame=detector_frame or DETECTOR_FRAME,
+            specimen_frame=specimen_frame or SPECIMEN_FRAME,
+            laboratory_frame=laboratory_frame or LABORATORY_FRAME,
+            beam_energy_kev=float(beam_energy_kev),
+            camera_length_mm=distance_mm,
+            pattern_center=centre,
+            detector_pixel_size_um=(
+                float(detector_pixel_size_um[0]),
+                float(detector_pixel_size_um[1]),
+            ),
+            detector_shape=shape,
+            # The specimen normal faces the beam and tips towards the camera:
+            # an untilted specimen is the half-turn about the tilt axis, and the
+            # stage tilt takes it back from there.
+            specimen_to_lab_matrix=_rotation_matrix_x(float(np.deg2rad(180.0 - tilt))),
+            # The camera axis starts along the beam and is laid down onto the
+            # port: 90 degrees less the elevation, then swung about the beam.
+            tilt_degrees=(90.0 - elevation, 0.0, azimuth),
+            provenance=provenance,
+        )
 
     def to_experiment_manifest(
         self,

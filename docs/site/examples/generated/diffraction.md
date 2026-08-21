@@ -4,7 +4,7 @@
 
 # Diffraction geometry
 
-Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, zone-axis routing on a stereographic Kikuchi map, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
+Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band and zone-axis geometry in the gnomonic projection, zone-axis routing on a stereographic Kikuchi map, the EBSD camera geometry, and preferred-orientation corrections to powder intensities — each checked against a standard reference value or a closed-form identity.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -286,6 +286,114 @@ result = float(np.hypot(*axis.coordinates))
 **Why this value**: The gnomonic projection maps a direction at angle psi from the detector normal to radius tan(psi). In a cubic crystal [011] makes an angle of 45 degrees with [001]; at the cube orientation with an untilted detector [001] is the detector normal, so the radius is tan(45 deg) = 1 exactly. The identity is exact, so the tolerance is numerical only.
 
 **Citation**: Snyder, Map Projections: A Working Manual, USGS Professional Paper 1395 (gnomonic projection); Randle and Engler, Introduction to Texture Analysis, 2nd ed.
+
+**See also**: {doc}`EBSD foundation <../../concepts/ebsd_foundation>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
+
+## Where the specimen normal falls on a 70-degree EBSD screen
+
+An EBSD geometry is stated in the terms the microscope is configured in - stage tilt, camera elevation, pattern centre - and a sign error in any of them produces a pattern that still looks like a plausible band network. One number checks the whole convention. With the beam as the laboratory z axis, the stage tilting the specimen normal towards the camera by sigma, and the camera axis raised by epsilon above the plane perpendicular to the beam, the specimen normal makes an angle of 90 - (sigma - epsilon) with the camera axis. The gnomonic projection therefore places it at radius tan(90 - sigma + epsilon) from the pattern centre: at the standard 70 degrees with the camera unelevated, tan(20 deg). That the value is well under one is the reason the specimen normal falls on a real screen at all.
+
+**Symbols**
+
+- $r_g$ &mdash; Gnomonic radius, in units of the detector distance.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerPlane,
+    Phase,
+    RadiationSpec,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Nickel (FCC), lattice parameter from the pinned PyTex fixture corpus.
+nickel = Phase(
+    "nickel-fcc",
+    lattice=Lattice(3.52387, 3.52387, 3.52387, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+cu_ka1 = RadiationSpec.cu_ka().wavelength_angstrom
+
+from pytex import (
+    DiffractionGeometry,
+    GnomonicProjection,
+    Orientation,
+    simulate_kikuchi_pattern,
+)
+
+specimen = ReferenceFrame(
+    name="specimen",
+    domain=FrameDomain.SPECIMEN,
+    axes=("RD", "TD", "ND"),
+    handedness=Handedness.RIGHT,
+)
+detector = ReferenceFrame(
+    name="detector",
+    domain=FrameDomain.DETECTOR,
+    axes=("u", "v", "n"),
+    handedness=Handedness.RIGHT,
+)
+laboratory = ReferenceFrame(
+    name="laboratory",
+    domain=FrameDomain.LABORATORY,
+    axes=("x", "y", "z"),
+    handedness=Handedness.RIGHT,
+)
+# A conventional 20 kV EBSD detector.
+ebsd_geometry = DiffractionGeometry(
+    detector_frame=detector,
+    specimen_frame=specimen,
+    laboratory_frame=laboratory,
+    beam_energy_kev=20.0,
+    camera_length_mm=15.0,
+    pattern_center=np.array([0.5, 0.5, 0.6]),
+    detector_pixel_size_um=(50.0, 50.0),
+    detector_shape=(480, 640),
+)
+cube_orientation = Orientation.from_euler(
+    0.0, 0.0, 0.0, specimen_frame=specimen, phase=nickel
+)
+```
+
+:::
+
+**Compute**
+
+```python
+geometry = DiffractionGeometry.for_ebsd(
+    sample_tilt_deg=70.0, detector_elevation_deg=0.0
+)
+projection = GnomonicProjection(geometry=geometry)
+normal_lab = geometry.specimen_vectors_to_lab(
+    np.array([[0.0, 0.0, 1.0]])
+)
+coordinates, _ = projection.project_directions(normal_lab)
+result = float(np.hypot(*coordinates[0]))
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `diffraction-ebsd-specimen-normal-radius` | 0.363970234266 | 0.363970234266 | &mdash; | 5.55e-17 | 1e-12 | ✅ pass |
+
+**Why this value**: tan(90 deg - 70 deg + 0 deg) = tan(20 deg) = 0.36397023426620234, from the stated laboratory frame alone. The identity is exact, so the tolerance is numerical only.
+
+**Citation**: Schwartz, Kumar, Adams and Field (eds.), Electron Backscatter Diffraction in Materials Science, 2nd ed.; Britton et al., Materials Characterization 117 (2016) 113, doi:10.1016/j.matchar.2016.04.008 (EBSD frame conventions).
 
 **See also**: {doc}`EBSD foundation <../../concepts/ebsd_foundation>`, {doc}`Diffraction foundation <../../concepts/diffraction_foundation>`
 

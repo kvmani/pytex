@@ -11,6 +11,8 @@ given detector, and *how wide* they are.
 - band angular width from Bragg's law, and the distinct *apparent* width in the projection
 - zone axes as the points where the bands sharing them intersect
 - plotting in either gnomonic or detector coordinates
+- the EBSD camera stated in the terms it is configured in — stage tilt, camera elevation and
+  azimuth, pattern centre — through `DiffractionGeometry.for_ebsd`
 
 ## Why Gnomonic Coordinates
 
@@ -139,6 +141,49 @@ The `[011]` axis of a cubic crystal at the cube orientation lies exactly 45 degr
 untilted detector normal, and so must project to gnomonic radius $\tan(45^\circ) = 1$ exactly. The
 worked example `diffraction-gnomonic-zone-axis-radius` checks this, which pins the whole
 crystal → specimen → laboratory → detector chain in closed form.
+
+## The EBSD Camera
+
+An EBSD setup is not configured in camera lengths and detector tilts. It is configured in stage
+tilt, camera elevation and azimuth, and a pattern centre — so
+`DiffractionGeometry.for_ebsd(...)` takes those, and is the single place where they become the
+`DiffractionGeometry` that everything else consumes. The workbench's **Kikuchi simulator** panel
+(EBSD workspace) is a thin form over it.
+
+The frame is fixed by the column and the stage, not by the camera:
+
+- $\hat{\mathbf{z}}_\text{lab}$ is the **beam**, travelling from the gun to the specimen;
+- $\hat{\mathbf{x}}_\text{lab}$ is the **stage tilt axis**;
+- $\hat{\mathbf{y}}_\text{lab}$ completes the right-handed triad and points **away from the
+  camera**, so the camera is on $-\hat{\mathbf{y}}_\text{lab}$.
+
+An untilted specimen has its normal along $-\hat{\mathbf{z}}_\text{lab}$, facing into the beam.
+The stage tilt $\sigma$ rotates it about the tilt axis so that the normal tips *towards* the
+camera; the camera elevation $\epsilon$ raises the camera axis above the plane perpendicular to
+the beam, and the azimuth swings it about the beam.
+
+Two consequences make the convention checkable rather than merely stated:
+
+$$
+\hat{\mathbf{n}}_\text{ND} \cdot \hat{\mathbf{n}}_d = \sin(\sigma - \epsilon)
+\quad\Longrightarrow\quad
+r_\text{ND} = \tan\!\left(90^\circ - \sigma + \epsilon\right)
+$$
+
+so the **specimen normal projects at gnomonic radius $\tan(90^\circ - \sigma + \epsilon)$** — about
+$0.364$ at the standard $\sigma = 70^\circ$, which is why it falls on a real screen at all. And the
+beam makes $90^\circ - \epsilon$ with the camera axis, so at zero elevation it is parallel to the
+screen and has **no gnomonic image**: an EBSD camera never sees the incident beam. Both are
+asserted in `tests/unit/test_ebsd_kikuchi_pattern.py`, together with the limiting case
+$\sigma = \epsilon = 0$, where the specimen normal lies in the screen plane — the geometric reason
+a scan is run tilted at all.
+
+The pattern centre is given as $(x^*, y^*, z^*)$: the in-plane pair as fractions of the detector
+extent from its top-left corner, and $z^*$ as the camera distance in units of the detector
+**width**, which is the quantity a pattern-centre calibration reports. Vendors differ over the
+origin and the axis these fractions are taken along; PyTex takes them in the frame stated here
+rather than guessing which vendor wrote a given file, so a value copied from a vendor file may
+need converting first.
 
 ## Current Limits
 

@@ -13,6 +13,26 @@ downstream analyses depend on them.
 
 ### Added
 
+- **`ebsd.simulate_kikuchi_pattern`, and a *Kikuchi simulator* in the EBSD
+  workspace.** The forward problem behind every indexed point of a scan:
+  a phase, an orientation and a camera in, the pattern that camera would record
+  out. It is configured the way the microscope is — stage tilt, camera elevation
+  and azimuth, pattern centre, camera distance as the fraction of the screen
+  width a calibration reports — and it takes no scan, because it is the problem
+  the other six views of that workspace live downstream of. Bands are drawn as
+  the gap between their two Kossel-cone edges with the plane trace dashed
+  between them, named along themselves, with the zone axes and the pattern
+  centre marked.
+
+- **`DiffractionGeometry.for_ebsd(...)`** turns those EBSD terms into the one
+  canonical diffraction geometry, and owns the frame convention so that no
+  caller composes the stage rotation and the camera placement by hand. The beam
+  is the laboratory z axis, the stage tilt axis is x, and the camera sits on -y;
+  the specimen normal then projects at gnomonic radius
+  `tan(90° - tilt + elevation)`, which is the arithmetic that checks the whole
+  convention and is what the new worked example
+  `diffraction-ebsd-specimen-normal-radius` computes.
+
 - **The workbench is organised into workspaces, and every transmission-electron
   and EBSD surface is grouped under one.** Nine flat tabs became seven
   workspaces holding fifteen panels. *TEM Analysis* carries **SAED Simulator**,
@@ -115,6 +135,26 @@ downstream analyses depend on them.
   the choice on its own.
 
 ### Changed
+
+- **A Kikuchi band's indices are written along the band, wherever bands are
+  drawn.** A band is identified by which line it is, so a horizontal caption
+  beside a steeply running band belongs — visually — to whichever line is
+  nearest the text; on a zone-axis plate a dozen bands cross within a few tens
+  of pixels. The convention now lives in one place and is shared by the
+  simulated-plate overlay, the crystal's stereographic map, and the new EBSD
+  simulator.
+
+- **The Crystal Viewer's Kikuchi map is magnified with the wheel**, moved with a
+  drag and fitted again with a double-click, and it names its bands. At the size
+  a dock figure occupies, a band that is a fraction of a degree wide on a map
+  spanning sixty is a picture of a network rather than something to read indices
+  off; magnification is what turns it back into an atlas, and the number of
+  named bands rises with it.
+
+- **Zone axes reported by `simulate_kikuchi_pattern` are reduced to coprime
+  indices.** A zone axis is a *direction*: `[002]` is the same axis as `[001]`,
+  satisfies the same zone law and projects to the same point, so listing both
+  counted one hub twice and made the number of axes on a pattern meaningless.
 
 - **The TEM solver's measurements moved out from under the pattern.** The
   measured-pick table and the live cursor readout were drawn inside the drawing

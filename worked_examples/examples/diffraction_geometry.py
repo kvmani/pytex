@@ -215,6 +215,52 @@ CUBE_ZONE_AXIS_GNOMONIC_RADIUS = WorkedExample(
 )
 
 
+EBSD_SPECIMEN_NORMAL_RADIUS = WorkedExample(
+    id="diffraction-ebsd-specimen-normal-radius",
+    title="Where the specimen normal falls on a 70-degree EBSD screen",
+    domain="diffraction",
+    scenario=(
+        "An EBSD geometry is stated in the terms the microscope is configured in - stage tilt, "
+        "camera elevation, pattern centre - and a sign error in any of them produces a pattern "
+        "that still looks like a plausible band network. One number checks the whole convention. "
+        "With the beam as the laboratory z axis, the stage tilting the specimen normal towards "
+        "the camera by sigma, and the camera axis raised by epsilon above the plane "
+        "perpendicular to the beam, the specimen normal makes an angle of 90 - (sigma - epsilon) "
+        "with the camera axis. The gnomonic projection therefore places it at radius "
+        "tan(90 - sigma + epsilon) from the pattern centre: at the standard 70 degrees with the "
+        "camera unelevated, tan(20 deg). That the value is well under one is the reason the "
+        "specimen normal falls on a real screen at all."
+    ),
+    setup=KIKUCHI_SETUP,
+    code=(
+        "geometry = DiffractionGeometry.for_ebsd(\n"
+        "    sample_tilt_deg=70.0, detector_elevation_deg=0.0\n"
+        ")\n"
+        "projection = GnomonicProjection(geometry=geometry)\n"
+        "normal_lab = geometry.specimen_vectors_to_lab(\n"
+        "    np.array([[0.0, 0.0, 1.0]])\n"
+        ")\n"
+        "coordinates, _ = projection.project_directions(normal_lab)\n"
+        "result = float(np.hypot(*coordinates[0]))"
+    ),
+    expected=0.36397023426620234,
+    unit="",
+    tolerance=1e-12,
+    reference=(
+        "tan(90 deg - 70 deg + 0 deg) = tan(20 deg) = 0.36397023426620234, from the stated "
+        "laboratory frame alone. The identity is exact, so the tolerance is numerical only."
+    ),
+    citation=(
+        "Schwartz, Kumar, Adams and Field (eds.), Electron Backscatter Diffraction in Materials "
+        "Science, 2nd ed.; Britton et al., Materials Characterization 117 (2016) 113, "
+        "doi:10.1016/j.matchar.2016.04.008 (EBSD frame conventions)."
+    ),
+    symbols=(_GNOMONIC,),
+    see_also=(_EBSD_CONCEPT, _DIFF_CONCEPT),
+    result_format="{:.12f}",
+)
+
+
 PREFERRED_ORIENTATION_SETUP = (
     NICKEL_SETUP
     + """
@@ -527,7 +573,8 @@ GROUP = ExampleGroup(
     summary=(
         "Powder scattering angles from PyTex interplanar spacings via Bragg's law, Kikuchi band "
         "and zone-axis geometry in the gnomonic projection, zone-axis routing on a "
-        "stereographic Kikuchi map, and preferred-orientation corrections to powder "
+        "stereographic Kikuchi map, the EBSD camera geometry, and preferred-orientation "
+        "corrections to powder "
         "intensities — each checked against a standard reference value or a closed-form "
         "identity."
     ),
@@ -535,6 +582,7 @@ GROUP = ExampleGroup(
         NI_111_TWO_THETA,
         NI_111_KIKUCHI_BAND_WIDTH,
         CUBE_ZONE_AXIS_GNOMONIC_RADIUS,
+        EBSD_SPECIMEN_NORMAL_RADIUS,
         MARCH_DOLLASE_FAMILY_FACTOR,
         MARCH_DOLLASE_NORMALIZATION,
         ODF_WEIGHTED_RANDOM_TEXTURE,

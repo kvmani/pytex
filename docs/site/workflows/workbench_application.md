@@ -69,7 +69,8 @@ rather than four subjects:
 | **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
 
-The **EBSD** workspace carries six sub-tabs over one scan. A scan opened in any of them is open in
+The **EBSD** workspace carries seven sub-tabs: six over one scan, and one that needs no scan at
+all. A scan opened in any of them is open in
 all of them, because it belongs to the session rather than to a panel — analysing the practice
 dataset in one view while a user's own file is loaded in another would be the worst answer
 available.
@@ -82,12 +83,19 @@ available.
 | **Scan summary** | What *is* this scan: points, grid, step, phases, indexing quality, microstructure? |
 | **Distributions** | How is grain size, boundary misorientation, KAM, GROD or a measured channel distributed? |
 | **Pole figures** | Where do the measured orientations point, as the scatter rather than as a contour of it? |
+| **Kikuchi simulator** | What pattern would this phase at this orientation throw onto this camera — and does my geometry look right? |
 
 The three map tabs are one panel opened on three colourings, not three panels: every control is
 present in each of them, so a reader who arrived at GROD can switch to KAM or to a
 confidence-index map without changing tabs. They exist as tabs because "show me the local
 misorientation" is something a user comes to the workspace to do, and a sub-tab is where they will
 look for it.
+
+The **Kikuchi simulator** is the odd one out and deliberately so: it takes no scan, because it is
+the *forward* problem the other six live downstream of. It is configured the way the microscope is
+— stage tilt, camera elevation and azimuth, pattern centre and camera distance — and it states the
+frame it does that in rather than implying one. See
+[Kikuchi band geometry](kikuchi_geometry.md) for the convention and the arithmetic that checks it.
 
 Every panel is generated from a **self-describing operation manifest**. A capability registered in
 Python appears in the interface — with its controls, its units, its help text, and its citations —
