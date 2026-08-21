@@ -4427,3 +4427,43 @@ result as `symbols` in the manifest, so the browser never parses a label.
 Verified: `tests/unit/test_app_manifest.py` (the acceptance test for compact rows became a
 refusal test, plus the symbol-publishing tests), whole `-k app` unit lane green, ruff and mypy
 clean.
+
+### I2, I3 — the configuration surface and the feedback store (done)
+
+`pytex.app.config` is the first thing in the application an operator is meant to edit, so the
+rule for what may live in it is written at the top of the module: nothing here touches a number
+PyTex computes. Three sections — `feedback`, `relay`, `tour` — read from
+`PYTEX_APP_CONFIG`, `./pytex_app.yml` or `~/.pytex/pytex_app.yml`, in that order, and defaulting
+to a working application when there is no file at all.
+
+Two decisions worth stating:
+
+- **An unknown key is an error, not a warning.** The common way to get one is a misspelling, and a
+  misspelled `smtp_host` is a relay that silently never connects. `config/pytex_app.example.yml`
+  is the annotated template, and a test loads it through the same loader, so a key that is renamed
+  in the code cannot stay documented under its old name.
+- **A password is never in the file.** The YAML names an environment variable
+  (`username_env_var`, `password_env_var`) and the loader reads it — the same split the sibling
+  `project_management_software` deployment uses, because the configuration file gets copied,
+  reviewed and backed up.
+
+`pytex.app.feedback` stores first and mails second, and that ordering is the design. A submission
+that reached the server is appended to the JSON store — atomically, through a temporary file and a
+rename — before anything is attempted over the network, so a relay outage costs a notification
+rather than a note. The store is a JSON array rather than a line-delimited file because whoever
+maintains the deployment is going to open it in something, and a JSON array is what everything
+opens; at a note at a time, the rewrite costs nothing.
+
+Two routes carry it: `GET /api/experience` publishes what the page needs to greet a user, and
+`POST /api/feedback` records one submission. `/api/experience` deliberately publishes *whether* a
+note is mailed and never where or as whom — the workbench is served without authentication, so
+everything that route returns is readable by anyone who can reach the port. A test asserts the
+exact key set for that reason. A configuration file that cannot be read is logged and replaced by
+the defaults rather than taking the workbench down: a misspelled relay host must not stop anyone
+drawing a pole figure.
+
+Which shell answered is stamped by the server rather than taken from the page, so a submission
+cannot claim to have come from somewhere it did not.
+
+Verified: `tests/unit/test_app_feedback.py` (27 tests) and six new route tests in
+`tests/unit/test_app_server.py`, ruff and mypy clean.

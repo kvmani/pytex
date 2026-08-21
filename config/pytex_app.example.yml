@@ -1,0 +1,150 @@
+# PyTex workbench — deployment configuration (annotated example)
+# =============================================================================
+#
+# WHAT THIS FILE IS
+# -----------------
+# The handful of decisions that belong to the site rather than to the code:
+# whether the feedback form is offered, where its record is written, whether
+# feedback is also e-mailed through your internal relay, and whether new users
+# are greeted with the tour. Nothing here changes a number PyTex computes.
+#
+# HOW TO USE IT
+# -------------
+#   1. Copy this file to one of the places PyTex looks, in this order:
+#        a) the path in the PYTEX_APP_CONFIG environment variable
+#        b) ./pytex_app.yml            (the directory you start the server in)
+#        c) ~/.pytex/pytex_app.yml     (per user)
+#   2. Fill in the values marked FILL IN below.
+#   3. Restart the server. The configuration is read once, at start, and the
+#      log line "Workbench configuration read from ..." names the file that
+#      actually took effect — check it if a change seems not to have applied.
+#
+# With no file at all PyTex still works: feedback is collected to
+# ~/.pytex/feedback.json, no e-mail is sent, and the tour is offered.
+#
+# EVERY KEY BELOW IS OPTIONAL. Delete any you are happy to leave at its
+# default; an unknown key is an error, so a typo is reported at startup rather
+# than being silently ignored.
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# feedback — the form itself
+# -----------------------------------------------------------------------------
+feedback:
+  # Offer the "Feedback" button in the masthead. Set to false on a locked-down
+  # instrument PC where the form would only ever be filled in by accident.
+  enabled: true
+
+  # The JSON file every submission is appended to. This is written first and
+  # always, before any e-mail is attempted, so a relay outage cannot lose a
+  # note. The directory is created if it does not exist.
+  #
+  # FILL IN for a shared server: choose a path on a backed-up volume that the
+  # account running PyTex can write to, e.g.
+  #   Linux:   /srv/pytex/feedback.json
+  #   Windows: D:\pytex\feedback.json
+  store_path: ~/.pytex/feedback.json
+
+  # The warm sentence at the top of the form. Change it to name your own
+  # maintainer if you are running a group copy.
+  invitation: >-
+    PyTex is built by researchers, for researchers — and it gets better every
+    time one of you tells us what is missing, what is confusing, or what would
+    save you an afternoon. Nothing is too small to send. We read every note.
+
+  # What the user is told after a successful submission.
+  acknowledgement: >-
+    Thank you — your note has been recorded, and it genuinely helps. If you
+    left an e-mail address we may write back with a question or when it is
+    done.
+
+  # Length limit on the message body, so the store cannot be filled with a
+  # pasted log file.
+  max_message_characters: 8000
+
+
+# -----------------------------------------------------------------------------
+# relay — the internal SMTP server feedback is forwarded through
+# -----------------------------------------------------------------------------
+#
+# Feedback is stored whether or not this section is configured. Turning it on
+# adds delivery; it does not enable the feature.
+#
+# The values below are EXAMPLES, not working settings. Replace the ones marked
+# FILL IN with what your site actually uses. If you do not know them, your mail
+# administrator does: you need the relay host name, the port, whether it wants
+# STARTTLS, whether it wants a login, and which envelope sender address it is
+# willing to originate mail for.
+relay:
+  # Master switch. Leave false until the four FILL IN values below are real,
+  # then set it to true and restart.
+  enabled: false
+
+  # Prepare the message and write it to the log without connecting to anything.
+  # Useful for confirming the recipient list and the body on a machine that has
+  # no relay reachable. Ignored when `enabled` is false.
+  dry_run: false
+
+  # FILL IN — the internal relay's host name or IP address.
+  # Example values seen in practice:
+  #   smtp-relay.internal.example
+  #   10.35.6.10
+  host: smtp-relay.example.invalid
+
+  # FILL IN — the port. 25 is the usual unauthenticated internal relay; 587 is
+  # the usual submission port when a login is required.
+  port: 25
+
+  # Issue STARTTLS after connecting. Internal relays on port 25 usually do not;
+  # a submission service on 587 usually does.
+  use_tls: false
+
+  # Credentials. LEAVE THESE null IN A REAL DEPLOYMENT and use the environment
+  # variables below instead: this file gets copied, reviewed and backed up, and
+  # a password written here is a password in all three places.
+  username: null
+  password: null
+
+  # The environment variables the username and password are read from, if the
+  # relay needs a login at all. Set them in the service unit, the scheduled
+  # task, or the shell that starts PyTex — for example:
+  #   Linux:    export PYTEX_SMTP_PASSWORD='...'
+  #   Windows:  setx PYTEX_SMTP_PASSWORD "..."
+  # Set either to null if the relay is unauthenticated.
+  username_env_var: PYTEX_SMTP_USERNAME
+  password_env_var: PYTEX_SMTP_PASSWORD
+
+  # FILL IN — the envelope sender. Most internal relays refuse to originate
+  # mail for an address outside their own domain, so this usually has to be a
+  # real local address, e.g. pytex-noreply@barc.gov.in
+  from_address: pytex-noreply@example.invalid
+
+  # Who receives the feedback. Defaults to the PyTex author; add your own
+  # maintainer here if you run a group copy. A single address may be written on
+  # one line; several go one per line as below.
+  recipients:
+    - kvmani@barc.gov.in
+
+  # Prefix on the subject line, so a mailbox rule can file these.
+  subject_prefix: "[PyTex feedback]"
+
+  # How long to wait on the relay before giving up. Short on purpose: the note
+  # is already stored, and nobody should watch a spinner because a relay is
+  # down.
+  timeout_seconds: 10
+
+
+# -----------------------------------------------------------------------------
+# tour — the welcome message and the guided walk-through
+# -----------------------------------------------------------------------------
+tour:
+  # Greet a first-time visitor and offer the tour of the workspaces. Every step
+  # has a Skip button, and skipping is remembered, so this costs a returning
+  # user nothing.
+  enabled: true
+
+  # Show the welcome on every visit rather than only the first. Off by default;
+  # turn it on for a demonstration or training machine where each session has a
+  # different person in front of it.
+  show_every_visit: false

@@ -56,6 +56,125 @@ def post(server: AppServer, path: str, body: Any) -> tuple[int, dict[str, Any]]:
         return error.code, json.loads(error.read())
 
 
+class TestExperienceAndFeedbackRoutes:
+    """The two routes that read the deployment's configuration.
+
+    They are the only routes whose answer a site can change without a build, so
+    what they publish — and what they refuse to publish — is a contract.
+    """
+
+    def test_experience_publishes_what_the_page_needs_to_greet_a_user(
+        self, server: AppServer
+    ) -> None:
+        status, _, body = get(server, "/api/experience")
+        assert status == 200
+        document = json.loads(body)
+        assert document["ok"] is True
+        assert document["feedback"]["enabled"] is True
+        assert document["tour"]["enabled"] is True
+        assert document["feedback"]["invitation"].strip()
+        values = {entry["value"] for entry in document["feedback"]["categories"]}
+        assert {"feedback", "feature"} <= values
+
+    def test_experience_never_publishes_the_relay(self, server: AppServer) -> None:
+        """The page is told *whether* a note is mailed, never where or as whom.
+
+        The workbench is served without authentication on an internal network,
+        so anything this route returns is readable by everyone who can reach
+        the port. A relay host and an envelope sender are the administrator's
+        business, and the page has no use for either.
+        """
+
+        status, _, body = get(server, "/api/experience")
+        assert status == 200
+        document = json.loads(body)
+        assert set(document["feedback"]) == {
+            "enabled",
+            "invitation",
+            "acknowledgement",
+            "max_message_characters",
+            "categories",
+            "relayed",
+        }
+        serialised = body.decode("utf-8")
+        for forbidden in ("smtp", "host", "password", "username", "from_address", "store_path"):
+            assert forbidden not in serialised
+
+    def test_a_submission_is_stored_and_acknowledged(
+        self, server: AppServer, tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from pytex.app.config import AppConfig, FeedbackConfig
+        from pytex.app.feedback import read_store
+
+        store = tmp_path / "feedback.json"
+        config = AppConfig(feedback=FeedbackConfig(store_path=store))
+        monkeypatch.setattr(_Handler, "_app_config", lambda self: config)
+
+        status, document = post(
+            server,
+            "/api/feedback",
+            {
+                "message": "A Kearns factor panel would save me an afternoon.",
+                "category": "feature",
+                "name": "A Researcher",
+                "email": "someone@example.invalid",
+                "rating": 5,
+                "contact_consent": True,
+                "context": {"panel": "texture"},
+            },
+        )
+        assert status == 200
+        assert document["ok"] is True
+        assert document["acknowledgement"].strip()
+        assert document["receipt"]["stored"] is True
+        assert document["receipt"]["delivered"] is False
+
+        stored = read_store(store)
+        assert len(stored) == 1
+        assert stored[0]["category"] == "feature"
+        assert stored[0]["rating"] == 5
+        assert stored[0]["context"] == {"panel": "texture"}
+        # Stamped by the server, not by the page: a submission cannot claim to
+        # have come from a shell it did not.
+        assert stored[0]["environment"]["shell"] == "web"
+        assert stored[0]["environment"]["pytex_version"]
+
+    def test_an_empty_note_is_rejected_with_the_ordinary_error_envelope(
+        self, server: AppServer
+    ) -> None:
+        status, document = post(server, "/api/feedback", {"message": "  "})
+        assert status == 400
+        assert document["ok"] is False
+        assert document["error"]["code"] == "input.invalid"
+        assert document["error"]["details"]["field"] == "message"
+
+    def test_a_deployment_that_turned_the_form_off_says_so(
+        self, server: AppServer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from pytex.app.config import AppConfig, FeedbackConfig
+
+        config = AppConfig(feedback=FeedbackConfig(enabled=False))
+        monkeypatch.setattr(_Handler, "_app_config", lambda self: config)
+        status, document = post(server, "/api/feedback", {"message": "hello"})
+        assert status == 403
+        assert document["error"]["code"] == "feedback.disabled"
+
+    def test_an_unusable_configuration_file_does_not_take_the_workbench_down(
+        self, server: AppServer, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A misspelled relay host must not stop anyone drawing a pole figure."""
+
+        from pytex.app.config import ConfigError
+
+        def _broken() -> None:
+            raise ConfigError("relay.smtp_host is not a key")
+
+        monkeypatch.setattr("pytex.app.config.load_app_config", _broken)
+        status, _, body = get(server, "/api/experience")
+        assert status == 200
+        assert json.loads(body)["feedback"]["enabled"] is True
+
+
 class TestApiRoutes:
     def test_health_reports_the_version(self, server: AppServer) -> None:
         from pytex import __version__

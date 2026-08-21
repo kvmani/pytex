@@ -83,6 +83,14 @@ references/*.pdf
 # asset. Cite the papers by DOI in references/reference_index.md instead.
 kearns_parameter_data_references/
 
+# The workbench's live deployment configuration and its feedback store. The
+# annotated template `config/pytex_app.example.yml` is tracked and is the file
+# to read; the filled-in copy names an internal relay and may carry a local
+# path, and the store is user-submitted content that belongs to the deployment
+# rather than to the repository.
+pytex_app.yml
+feedback.json
+
 # Everything above serves one cardinal rule, stated in AGENTS.md under
 # "Repository content: sources and canonical assets only": if a command in this
 # repository can regenerate a file, it is committed only when documentation, a

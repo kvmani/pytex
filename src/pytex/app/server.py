@@ -27,6 +27,14 @@ Routes
 ``GET /api/shell``
     What this shell can do that the other cannot — currently, whether a result
     can be written to a chosen path instead of downloaded.
+``GET /api/experience``
+    The two things the *operator* decides about how the application greets a
+    user: whether the feedback form is offered and what it says, and whether a
+    first-time visitor is shown the tour. Read from the deployment's YAML
+    configuration, so a site can turn either off without a build.
+``POST /api/feedback``
+    One feedback or feature-request submission. Appended to the JSON store,
+    then relayed by e-mail if the deployment configured a relay.
 ``GET /api/log?since=<sequence>``
     Records the centralized logbook holds beyond ``sequence`` — the events that
     happen outside any single call, which therefore have no envelope to ride
@@ -231,6 +239,9 @@ class _Handler(BaseHTTPRequestHandler):
                 shell_capabilities(desktop=bool(getattr(self.server, "desktop", False))),
             )
             return
+        if path == "/api/experience":
+            self._send_json(HTTPStatus.OK, self._experience_document())
+            return
         if path == "/api/log":
             self._send_log(urlparse(self.path).query)
             return
@@ -240,8 +251,8 @@ class _Handler(BaseHTTPRequestHandler):
                 "route.unknown",
                 f"No API route {path!r}.",
                 hint=(
-                    "The API routes are /api/health, /api/manifest, /api/shell, /api/log, "
-                    "/api/call and /api/export."
+                    "The API routes are /api/health, /api/manifest, /api/shell, "
+                    "/api/experience, /api/log, /api/call, /api/export and /api/feedback."
                 ),
             )
             return
@@ -252,12 +263,15 @@ class _Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
-        if path not in {"/api/call", "/api/export"}:
+        if path not in {"/api/call", "/api/export", "/api/feedback"}:
             self._send_error_json(
                 HTTPStatus.NOT_FOUND,
                 "route.unknown",
                 f"No POST route {path!r}.",
-                hint="Operations are invoked by POST to /api/call; files by POST to /api/export.",
+                hint=(
+                    "Operations are invoked by POST to /api/call, files by POST to /api/export, "
+                    "and feedback by POST to /api/feedback."
+                ),
             )
             return
         body = self._read_body()
@@ -282,6 +296,9 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/export":
             self._export(payload)
+            return
+        if path == "/api/feedback":
+            self._feedback(payload)
             return
         operation = payload.get("operation")
         if not isinstance(operation, str):
@@ -317,6 +334,104 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         self._send_json(status, envelope)
+
+    # -- the operator's decisions -----------------------------------------
+
+    def _app_config(self) -> Any:
+        """The deployment configuration, or the defaults if it cannot be read.
+
+        A broken configuration file must not take the workbench down: the
+        science in it does not depend on this file, and refusing to serve a
+        pole figure because a relay host is misspelled would be a poor trade.
+        The failure is logged loudly and the defaults apply, which means
+        feedback is still collected locally.
+        """
+
+        from pytex.app.config import AppConfig, ConfigError, load_app_config
+
+        try:
+            return load_app_config()
+        except ConfigError as error:
+            _LOGGER.error(
+                "Workbench configuration is unusable, falling back to defaults: %s", error
+            )
+            return AppConfig()
+
+    def _experience_document(self) -> dict[str, Any]:
+        """What the page needs to know about the welcome and the feedback form."""
+
+        from pytex.app.feedback import CATEGORIES
+
+        config = self._app_config()
+        return {
+            "ok": True,
+            "feedback": {
+                "enabled": config.feedback.enabled,
+                "invitation": config.feedback.invitation,
+                "acknowledgement": config.feedback.acknowledgement,
+                "max_message_characters": config.feedback.max_message_characters,
+                "categories": [{"value": value, "label": label} for value, label in CATEGORIES],
+                # Whether the note will also be e-mailed. Said on the form so
+                # that a user in a deployment with no relay is not left
+                # wondering whether anyone will ever see it — they are told it
+                # is filed for the local maintainer, which is the truth.
+                "relayed": bool(config.relay.enabled and config.relay.recipients),
+            },
+            "tour": {
+                "enabled": config.tour.enabled,
+                "show_every_visit": config.tour.show_every_visit,
+            },
+        }
+
+    def _feedback(self, payload: Mapping[str, Any]) -> None:
+        """Record one submission and answer with its receipt."""
+
+        from pytex.app.feedback import record_feedback, server_environment
+
+        config = self._app_config()
+        if not config.feedback.enabled:
+            self._send_error_json(
+                HTTPStatus.FORBIDDEN,
+                "feedback.disabled",
+                "This deployment has turned the feedback form off.",
+                hint="Ask whoever runs this server to set feedback.enabled in pytex_app.yml.",
+            )
+            return
+        # Which shell answered is a property of the request, not of the
+        # process: one process serves the desktop window, or an intranet full
+        # of browsers, and a report reads very differently depending on which.
+        # It is stamped here rather than taken from the page, so a submission
+        # cannot claim to have come from somewhere it did not.
+        environment = server_environment()
+        environment["shell"] = "desktop" if getattr(self.server, "desktop", False) else "web"
+        try:
+            submission, receipt = record_feedback(payload, config=config, environment=environment)
+        except ServiceError as error:
+            self._send_json(error.status, {"ok": False, "error": error.to_json()})
+            return
+        except Exception:
+            _LOGGER.exception("Unhandled error while recording feedback")
+            self._send_error_json(
+                HTTPStatus.INTERNAL_SERVER_ERROR,
+                "internal.error",
+                "PyTex could not record that note. This is a defect in PyTex.",
+                hint="The server log holds the traceback; please report it.",
+            )
+            return
+        _LOGGER.info(
+            "Feedback recorded: category=%s stored=%s delivered=%s",
+            submission.category,
+            receipt.stored,
+            receipt.delivered,
+        )
+        self._send_json(
+            HTTPStatus.OK if receipt.stored else HTTPStatus.INTERNAL_SERVER_ERROR,
+            {
+                "ok": receipt.stored,
+                "receipt": receipt.to_json(),
+                "acknowledgement": config.feedback.acknowledgement,
+            },
+        )
 
     def _send_log(self, query: str) -> None:
         """Answer a console poll with everything it has not already seen.
