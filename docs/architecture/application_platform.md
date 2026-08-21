@@ -292,19 +292,25 @@ when its history is requested. At tablet width the control rail becomes a vertic
 below the figure. Mid-size mastheads progressively omit duplicated tagline/action text before any
 workspace navigation wraps, preserving vertical plot space.
 
-## Tab Inventory
+## Workspace Inventory
 
-| Tab | Status | Services |
+Seven workspaces hold sixteen panels. A workspace is a *subject*; a panel inside it is a *view* of
+that subject, which is why the two grouped workspaces have sub-tabs and the five single ones read
+exactly as flat tabs did.
+
+| Workspace | Panels | Services |
 | --- | --- | --- |
-| Crystal Viewer | 3D structure, arbitrary superimposed planes/directions/annotations | `crystal.*` |
-| TEM Pattern Solver | upload, calibrate, pick spots, index, plan the tilt to the next zone axis | `tem.*` |
+| Crystal Viewer | the structure with superimposed planes, directions and annotations, and an orientation dock carrying a pole figure, an inverse pole figure and the crystal's Kikuchi map | `crystal.*` |
+| TEM Analysis | SAED Simulator, TEM Solver, CBED, Composite SAED | `tem.*`, `cbed.*`, `diffraction.*` |
+| XRD | powder peaks, broadened profiles, radiation and profile choices, indexed inspection | `xrd.*` |
+| EBSD | IPF map, GROD, KAM, Scan summary, Distributions, Pole figures, Kikuchi simulator | `ebsd.*` |
+| Variants | variant pole figures, packets, and the intervariant misorientation spectrum | `variants.*` |
+| Texture | pole figures, inverse pole figures, ODF sections | `texture.*` |
 | Calculator | interplanar angles, d-spacings, symmetry families, zone axes, cross-phase angles | `calc.*` |
-| Diffraction | composite SAED with per-variant visibility and runtime spot styling | `diffraction.*` |
-| XRD | powder peaks, broadened profiles, radiation/profile choices, indexed inspection | `xrd.*` |
-| Texture | pole figures, IPF, ODF | `texture.*` |
 
-The first three are the starting scope; the last two follow, and both are already backed by
-library code.
+Six of the seven EBSD panels read one scan that belongs to the session rather than to a panel; the
+seventh, the Kikuchi simulator, reads none, because it is the forward problem the other six live
+downstream of.
 
 ## Testing Obligations
 

@@ -175,6 +175,23 @@ def test_citation_metadata_matches_the_package_version() -> None:
     )
 
 
+def test_the_documentation_build_reads_the_version_rather_than_restating_it() -> None:
+    """A hard-coded ``release`` in ``conf.py`` prints the wrong number on every page.
+
+    It is the same defect the source-tree check above exists for, one directory
+    outside its reach: ``docs/site/conf.py`` carried its own literal, so the
+    built site kept claiming the previous version indefinitely — nothing failed,
+    and every page said so.
+    """
+
+    conf = (REPO_ROOT / "docs" / "site" / "conf.py").read_text(encoding="utf-8")
+    assert f'"{pytex.__version__}"' not in conf, (
+        "docs/site/conf.py must not restate the version literal."
+    )
+    assert "from pytex._version import __version__" in conf
+    assert "release = __version__" in conf
+
+
 def test_manifest_writers_stamp_the_package_version() -> None:
     """Manifests record the version that produced them, not a stale copy."""
 

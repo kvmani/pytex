@@ -4256,3 +4256,55 @@ what the source does *not* contain: nothing reaches the network, only one module
 browser does no crystallography, the gallery is not hard-coded, the plate drawing exists once. The
 policy is written down in `docs/testing/strategy.md` and in the class docstring, so the next
 frontend invariant lands in the right lane.
+
+### I6 — one pass through the documentation (done)
+
+Findings, in the order they were worth fixing:
+
+- **`docs/site/conf.py` carried its own version literal.** The source-tree check that forbids a
+  second literal only scans `src/`, so the built site had been free to claim any version at all.
+  `conf.py` now reads `pytex._version.__version__`, and a new test in
+  `tests/unit/test_release_metadata.py` covers the directory the old one could not reach.
+- **MyST heading anchors were never switched on**, so a link to a *section* of another page
+  resolved to the page and warned about the fragment. There was exactly one such link in the tree
+  — the TEM indexing page pointing at the workbench guide's Kikuchi section — and it had been
+  quietly broken. `myst_heading_anchors = 3`; the clean build's warning count went from 611 to 610.
+- **The application-platform architecture note still listed six tabs** and closed with "the first
+  three are the starting scope; the last two follow". Replaced with the seven workspaces and
+  sixteen panels that exist, and the reason the two grouped ones are grouped.
+- **The workbench guide said fifteen panels and six EBSD sub-tabs.** Sixteen and seven.
+- **The repository front page described a scaffold.** Its status section predated harmonic
+  inversion, Kikuchi, CBED, the Kearns parameter, the EBSD readers and the entire application, and
+  listed some of those as deliberately staged future work. Rewritten to what is actually there.
+- **`docs/README.md` omitted twelve repository-level documents** — two development notes, the
+  capability review, and eight completed phase ledgers — while implying it indexed everything. All
+  are listed now, and the page states plainly that the `site/` tree is indexed by its own toctrees
+  rather than duplicated here.
+- **New symbols were used before being registered.** σ (stage tilt) and ε (camera elevation), plus
+  the terms *EBSD camera geometry*, *pattern centre* and *stage tilt*, are in the registry, with ε
+  noted as distinct from ɛ for strain.
+- **The governing review's disposition table still said release engineering was open** at
+  `0.1.0.dev0` with no policy. Updated; the finding text itself is left alone, because section 2
+  of that document is explicitly a retained historical record.
+
+Clean Sphinx build: **610 warnings**, one fewer than before this work and well under the local
+baseline. (Local counts run about nine above CI's 602 for environment reasons that predate this
+task; the ratchet number in CI is untouched.)
+
+### I7 — the version, and the release notes (done)
+
+`0.1.0.dev0` → **`0.1.1`**, in the one literal that exists for it, with `CITATION.cff` and the
+docs build following automatically. `CHANGELOG.md`'s accumulated `Unreleased` section is cut into
+`## [0.1.1] - 2026-08-21` under a **Release Notes** preamble that says what the release is, what
+was added scientifically, the one output whose shape changed (coprime zone axes), and where to
+start reading. `Unreleased` is empty again.
+
+**A judgement call, stated.** The request was to bump by the smallest step, which is what a patch
+version is. The release is additive apart from that one corrected output — no API was removed or
+changed in shape — so a patch number is defensible, but a stricter reading of the repository's own
+pre-1.0 policy would have made it `0.2.0`, since the release adds public surfaces. The correction
+is called out explicitly in the release notes so that a reader upgrading cannot miss it.
+
+**Not done: the tag.** The release policy also asks for a `v0.1.1` git tag on a green commit.
+Pushing a tag is an outward-facing, hard-to-undo action, so it is left for a human to run:
+`git tag -a v0.1.1 -m "PyTex 0.1.1" && git push origin v0.1.1`.

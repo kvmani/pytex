@@ -64,7 +64,7 @@ it is **not** a current missing-feature list. Current disposition:
 | 14–15: TEM geometry and dynamical diffraction | Substantially advanced: Kikuchi, double diffraction, HOLZ, CBED, dynamical foundations, and the plane-parallel finite-thickness kinematic shape factor exist; ring SAED, specimen-thickness distributions/bending, and full dynamical/Rietveld breadth remain open. |
 | 16: explainable results | Broadly adopted, but several stable texture/indexing reports and JSON contracts still need closure. |
 | 17–20: coverage, warnings, CI, property tests | Coverage, runtime warning hygiene, OS/Python matrix (except Windows), and property suites implemented. Documentation warnings require the new ratchet. |
-| 21–22: performance and release engineering | Performance has a runnable quick benchmark but no CI regression lane; release remains `0.1.0.dev0` with no tags. |
+| 21–22: performance and release engineering | Performance has a runnable quick benchmark but no CI regression lane. Release engineering is closed: `CHANGELOG.md`, the stability and release policy in `docs/standards/api_stability_and_deprecation.md`, and the first cut version `0.1.1`. |
 | 23–25: documentation index, stale foundations, OR theory | Original gaps closed; continuing roadmap/ledger drift and Sphinx reference warnings are the active documentation defects. |
 
 ## 2. Critical Findings

@@ -60,44 +60,47 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-The repository is now best described as a validated foundation build rather than a pure scaffold:
+**Version 0.1.1**, the first cut release. See [CHANGELOG.md](CHANGELOG.md) for the release notes
+and for every scientific behaviour change, stated explicitly.
 
-- modern Python packaging and CI skeleton
-- canonical core data structures under `src/pytex/`
-- semantic batch primitives for high-volume vectorized operations without dropping frame or
-  convention meaning
-- multimodal acquisition primitives for shared geometry, calibration, quality, and scattering
-  semantics
-- stable manifest families for import, experiment, benchmark, validation, and workflow-result
-  interchange
-- transformation primitives for orientation relationships, variants, and phase-transformation
-  records
-- documentation governance and hybrid scientific doc scaffold
-- validation strategy and explicit ledgers for texture, EBSD, and diffraction posture
-- baseline tests for the foundational data model
-- symmetry-aware orientation and disorientation foundations
-- PF/IPF containers, class-specific IPF sector reduction, discrete kernel-based ODF foundations,
-  and classical contour or section plotting surfaces
-- rectangular and staggered-hexagonal EBSD neighborhoods, KAM, grain segmentation, GROD,
-  grain-boundary, cleanup, direct `.ang`/`.ctf` import, and import-manifest workflow foundations
-- diffraction geometry, reciprocal-space primitives, powder XRD generation, measured-profile
-  import/export and whole-profile comparison, SAED spot generation, reflection-family grouping,
-  and local indexing candidate scaffolding
-- runtime scientific plotting for texture, diffraction, and structure, including YAML-driven styles
-  and VESTA-like 3D crystal viewing
-- publication-grade stereographic plotting for Wulff nets, crystal directions, crystal planes, and
-  rotational symmetry elements with mathtext Miller-style annotation support
-- a hash-pinned phase-fixture corpus with manifest-backed structure-import audit coverage
-- first open-source external-baseline cases for powder XRD and SAED using pinned in-repo artifacts
-- XRDML pole-figure import with pinned open-source fixture coverage, random-standard defocusing
-  calibration, and dictionary-based ODF reconstruction from imported measurements
-- structural runtime plotting validation for XRD, SAED, crystal scenes, IPF plotting, and the new stereographic surfaces without tracking SVG byte baselines
-- smoke-executed priority notebooks for the immediate fixture-to-visualization-to-diffraction
-  teaching path
+PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
+application. What exists today:
 
-Exact orientation-space polyhedra, harmonic ODF inversion, richer external validation, broader
-multimodal workflow depth, and transformation algorithms are intentionally staged after the current
-build so they do not invent conflicting conventions.
+**The canonical model.** Frames, symmetry, lattices and phases, orientations and their
+representations — including the equal-volume homochoric and cubochoric maps — with semantic batch
+primitives so a million orientations keep their frame and convention meaning.
+
+**Texture.** Pole figures, inverse pole figures and the discrete kernel ODF; harmonic ODF
+reconstruction and the ghost problem it runs into; pole-figure arithmetic on the m.r.d. scale;
+XRDML import with random-standard defocusing calibration; named components, fibres, and the Kearns
+parameter.
+
+**EBSD.** Square and staggered-hexagonal grids, KAM, grain segmentation, GROD, boundaries and
+cleanup, GND density, multiphase topology graphs, and readers for `.ang`, `.ctf` and OIM HDF5
+(`.oh5`/`.h5`).
+
+**Diffraction.** Powder XRD with profiles, preferred orientation and measured-profile comparison;
+SAED simulation and ratio/angle indexing of a measured pattern; Kikuchi bands and the gnomonic
+projection, stereographic Kikuchi maps with zone-axis routing, and the EBSD camera geometry;
+convergent-beam diffraction, including the dynamical many-beam treatment and diffraction-group
+point-group determination.
+
+**Transformation crystallography.** Orientation relationships with variants, packets and
+intervariant spectra; lattice correspondence and transformation strain; OR identification from
+measured orientations and parent-grain reconstruction, which remains experimental at map scale.
+
+**The workbench.** One codebase behind a desktop shell and an intranet server: seven workspaces
+holding sixteen panels, every one generated from a self-describing operation manifest and shipping
+runnable examples the test suite executes. See
+[the user guide](docs/site/workflows/workbench_application.md).
+
+**The documentation.** A Sphinx site carrying concepts, workflows, theory notes with their
+mathematics rendered, thirty-one executable tutorial notebooks, and a gallery of worked examples
+whose numbers are computed at build time and checked against cited reference values.
+
+Habit-plane and phenomenological-theory work, broader external validation against MTEX, and
+out-of-core map handling are deliberately staged rather than started, so they do not invent
+conflicting conventions before the surfaces they would rest on are settled.
 
 ## Quick Start
 

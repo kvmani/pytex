@@ -11,7 +11,12 @@ sys.path.insert(0, str(REPO_ROOT))
 
 project = "PyTex"
 author = "PyTex contributors"
-release = "0.1.0.dev0"
+# Read, not restated. A hard-coded release here is a second version literal
+# that nothing checks, so it drifts silently the first time the package is
+# bumped and every built page then carries the wrong number.
+from pytex._version import __version__  # noqa: E402
+
+release = __version__
 
 extensions = [
     "myst_nb",
@@ -53,6 +58,13 @@ myst_enable_extensions = [
     "deflist",
     "dollarmath",
 ]
+
+# Headings down to the third level get anchors, so a page can link to a *section*
+# of another page. Without this every `other_page.md#some-section` link resolves
+# to the page and warns about the fragment, which is how the TEM indexing page
+# came to point at a section of the workbench guide that the build could not
+# find even though the heading was right there.
+myst_heading_anchors = 3
 
 # Notebooks are committed *without* outputs, so the site must produce them at
 # build time rather than render stored ones. "cache" executes each notebook once

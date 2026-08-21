@@ -11,6 +11,39 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.1] - 2026-08-21
+
+The first cut release. `0.1.0.dev0` was a development snapshot with no tag; this section is
+everything that has landed since, cut into a version so that a result can name the code that
+produced it.
+
+### Release Notes
+
+**What this release is.** PyTex became an application as well as a library. The workbench went
+from nine flat tabs to seven workspaces holding sixteen panels, and the transmission-electron and
+EBSD surfaces are each one subject seen several ways rather than several subjects. Every panel
+ships runnable examples that the test suite executes, so nothing on offer can rot quietly.
+
+**The scientific additions.** Kikuchi geometry is now a first-class surface in both settings it
+occurs in: the crystal's whole band network on a stereographic map, the bands of a solved TEM
+plate superimposed on the plate itself, and — new here — the pattern an EBSD camera would record,
+configured in the terms a microscope is configured in. Alongside them, SAED simulation, dynamical
+CBED with diffraction-group determination, the Kearns parameter, pole-figure arithmetic on the
+m.r.d. scale, EBSD scan readers for `.ang`, `.ctf` and OIM HDF5, and the orientation-relationship
+programme's variant, correspondence and reconstruction machinery.
+
+**What to check if you are upgrading.** One output changed shape rather than value: zone axes
+reported by `simulate_kikuchi_pattern` are now reduced to coprime indices, because a zone axis is a
+direction and `[002]` is `[001]`. Code that counted the axes of a pattern will get a smaller and
+more meaningful number; code that looked one up by a multiple of its indices will not find it.
+Everything else in this release is additive.
+
+**Where to start.** `docs/site/tutorials/` — thirty-one executable notebooks, each of which now
+carries a short "Good to know" note — and `docs/site/workflows/workbench_application.md` for the
+application.
+
 ### Added
 
 - **`ebsd.simulate_kikuchi_pattern`, and a *Kikuchi simulator* in the EBSD
@@ -137,7 +170,8 @@ downstream analyses depend on them.
 ### Changed
 
 - **A Kikuchi band's indices are written along the band, wherever bands are
-  drawn.** A band is identified by which line it is, so a horizontal caption
+  drawn**, including `plot_kikuchi_pattern(..., label_bands=True)` in the
+  plotting layer, which could not name its bands at all before. A band is identified by which line it is, so a horizontal caption
   beside a steeply running band belongs — visually — to whichever line is
   nearest the text; on a zone-axis plate a dozen bands cross within a few tens
   of pixels. The convention now lives in one place and is shared by the

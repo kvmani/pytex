@@ -1,5 +1,12 @@
 # Documentation Index
 
+This page indexes the **repository** documentation: architecture, standards, testing, roadmap and
+development ledgers. The browsable **site** under `site/` is not listed page by page here — it is
+indexed by its own toctrees, starting at [the site index](site/index.md), and duplicating that
+list would be a second index to keep in step. What is named here from `site/` is the material a
+reader of the repository needs to find without building the site: the scientific notes, the
+generated figures, and the site's own README.
+
 ## Core Documents
 
 - [Mission](../mission.md)
@@ -59,6 +66,8 @@
 
 - [Local Development](development/local_development.md)
 - [Active Task Progress](development/active_task_progress.md) — the durable handoff record for the current task
+- [Notebook Improvement Progress](development/notebook_improvement_progress.md) — the tutorial-notebook overhaul ledger
+- [Next Major Feature Plan](development/NEXT_MAJOR_FEATURE_PLAN.md) — reconstruction stabilization, identified and scoped
 - [Sphinx Site README](site/README.md)
 
 ## Roadmap
@@ -68,7 +77,21 @@
 - [World-Class Feature And Foundation Roadmap](roadmap/world_class_feature_roadmap.md)
 - [MTEX Parity And EBSD Feature Roadmap](roadmap/mtex_parity_and_ebsd_feature_roadmap.md)
 - [Working Notes: Transformation Crystallography And Diffraction Program](roadmap/working_notes_transformation_diffraction_program.md) — the TX phase ledger
+- [Feature Capability Review (2026-08)](roadmap/feature_capability_review_2026_08.md) — a workflow-oriented audit of the tree against the target capabilities
 - [Working Notes: Algorithm Documentation Program](roadmap/working_notes_algorithm_documentation_program.md) — the active TD phase ledger
+
+Completed and superseded phase ledgers, kept because they record why the architecture is the way
+it is:
+
+- [Working Notes: EBSD Immediate-Horizon Sprint](roadmap/working_notes_current_sprint.md)
+- [Working Notes: Composite OR Diffraction Pattern Program](roadmap/working_notes_composite_saed_program.md)
+- [Working Notes: Crystallographic Convention Harmonization](roadmap/working_notes_convention_harmonization.md)
+- [Working Notes: Figure Layout Repair And Burgers OR Notebook Program](roadmap/working_notes_figure_and_or_program.md)
+- [Working Notes: OR Scientific Documentation Program](roadmap/working_notes_or_documentation_program.md)
+- [Working Notes: Publication Plotting Foundation](roadmap/working_notes_plotting_foundation.md)
+- [Working Notes: Reference Frame Foundation Program](roadmap/working_notes_reference_frame_foundation.md)
+- [Working Notes: Repo-Wide Vectorization Audit](roadmap/working_notes_vectorization_audit.md)
+- [Archive: Reconstruction Stabilization (2026-07)](development/archive/reconstruction_stabilization_2026_07.md)
 
 ## Scientific Notes
 

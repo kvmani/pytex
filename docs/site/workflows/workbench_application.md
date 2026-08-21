@@ -45,7 +45,7 @@ $ python -m pytex.app operations
 
 ## What Is In It
 
-Seven workspaces holding fifteen panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding sixteen panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
@@ -54,7 +54,7 @@ an example cannot rot.
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Analysis** | Everything transmission-electron, in four sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
-| **EBSD** | What is in this scan, what does its map show, and where should it be believed? Six sub-tabs (below). |
+| **EBSD** | What is in this scan, what does its map show, where should it be believed — and what pattern was behind it? Seven sub-tabs (below). |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
