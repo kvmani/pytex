@@ -10,7 +10,7 @@ given detector, and *how wide* they are.
 - Kikuchi bands as pairs of Kossel-cone traces, with exact conic edges
 - band angular width from Bragg's law, and the distinct *apparent* width in the projection
 - zone axes as the points where the bands sharing them intersect
-- plotting in either gnomonic or detector coordinates
+- plotting in either gnomonic or detector coordinates, with each band optionally named *along* itself (`label_bands`)
 - the EBSD camera stated in the terms it is configured in — stage tilt, camera elevation and
   azimuth, pattern centre — through `DiffractionGeometry.for_ebsd`
 

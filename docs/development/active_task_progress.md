@@ -4308,3 +4308,48 @@ is called out explicitly in the release notes so that a reader upgrading cannot 
 **Not done: the tag.** The release policy also asks for a `v0.1.1` git tag on a green commit.
 Pushing a tag is an outward-facing, hard-to-undo action, so it is left for a human to run:
 `git tag -a v0.1.1 -m "PyTex 0.1.1" && git push origin v0.1.1`.
+
+### I8 — the same band naming in the plotting layer (done)
+
+`plot_kikuchi_pattern(..., label_bands=True)`. The browser named its bands and the library could
+not name its own, which made "along the band" a property of one renderer rather than of PyTex.
+
+Three things this had to get right, each of which failed first:
+
+- **The name goes where the band is visible.** A centre trace is sampled across the whole
+  hemisphere, so a fraction taken along the whole trace put labels 1900 px outside a 640 px
+  detector, where the clip ate them silently. The labels are therefore written *after* the limits
+  are set, from the samples inside them.
+- **Within one contiguous stretch.** A trace can leave the picture and come back; a baseline
+  measured across that gap is a chord between two different parts of the band, not a direction.
+- **Clipped to the axes.** An unclipped text artist counts towards the figure's tight bounding
+  box, so a band named near the edge made matplotlib report that it could not fit the decorations
+  — as a warning, which this suite turns into a failure.
+
+The test compares each label's *rendered* rotation with the local tangent of the trace it sits on,
+after `canvas.draw()`. That last part is the subtlety: with `transform_rotates_text`,
+`Text.get_rotation()` reports the angle in display space, and the axes transform is not final
+until the figure is laid out, so querying earlier compares against a transform nobody renders
+with.
+
+## Goal complete (2026-08-21)
+
+All eight increments are on `main`, each with its tests, its documentation and its changelog
+entry. Unit lane green, 40 browser tests green, ruff and mypy clean, Sphinx 610 warnings.
+
+### Deliberately not done
+
+- **No git tag.** The release policy asks for `v0.1.1` on a green commit; pushing a tag is
+  outward-facing and hard to undo, so it is left to a human:
+  `git tag -a v0.1.1 -m "PyTex 0.1.1" && git push origin v0.1.1`.
+- **No band naming on the stereographic Kikuchi *map* in matplotlib.** The map already labels zone
+  axes, and its bands are dense arcs across a disc; naming them would need the same
+  visible-stretch logic and a collision policy, and the browser's map is where a reader actually
+  reads indices off. Left until someone wants it.
+- **The remaining frontend source-string tests were not converted wholesale.** Seven went; the
+  rest assert what the source does *not* contain, which no running page can demonstrate. The
+  policy that decides which lane a new frontend invariant belongs in is written down.
+
+### Next task
+
+None claimed. This goal is complete.

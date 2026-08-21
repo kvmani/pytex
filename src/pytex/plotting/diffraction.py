@@ -5,7 +5,11 @@ from typing import Any
 
 import numpy as np
 
-from pytex.core.notation import format_direction_indices, format_plane_family_indices
+from pytex.core.notation import (
+    format_direction_indices,
+    format_plane_family_indices,
+    format_plane_indices,
+)
 from pytex.diffraction.kikuchi import GnomonicProjection, KikuchiPattern
 from pytex.diffraction.saed import SAEDPattern
 from pytex.diffraction.xrd import PowderPattern
@@ -269,6 +273,89 @@ def plot_saed_pattern(
     return fig
 
 
+def _label_along_band(
+    axes: Any,
+    trace: np.ndarray,
+    label: str,
+    *,
+    bounds: tuple[float, float, float, float],
+    color: str,
+    fontsize: float,
+) -> None:
+    """Write a band's name along the band, a fifth of the way in from one end.
+
+    Only the samples inside ``bounds`` are candidates. A centre trace is sampled
+    across the whole hemisphere of directions, and most of it is nowhere near
+    the detector, so a fraction taken along the whole trace puts the name off
+    the picture — where the reader never sees it and nothing reports that it is
+    missing.
+
+    Within the visible stretch, the middle is where the bands of a zone cross,
+    so a name placed there lands on the hub the pattern is read by, and the very
+    end is under the frame. A fifth of the way in is clear of both.
+
+    The angle is folded into the readable half-turn, because a line has no
+    direction and text upside down is not a label. ``rotation_mode="anchor"``
+    with ``transform_rotates_text`` keeps the text on the band when the axes are
+    rescaled, rather than at an angle that was right for one figure size.
+    """
+
+    left, right, bottom, top = bounds
+    inside = (
+        (trace[:, 0] >= left)
+        & (trace[:, 0] <= right)
+        & (trace[:, 1] >= bottom)
+        & (trace[:, 1] <= top)
+    )
+    # The *longest contiguous* visible stretch, not every visible sample. A
+    # trace can leave the picture and come back, and a baseline measured across
+    # that gap is not a direction: it is a chord between two different parts of
+    # the band, and the name would be written at an angle the band never takes.
+    longest: np.ndarray | None = None
+    start: int | None = None
+    for position, visible in enumerate([*inside, False]):
+        if visible and start is None:
+            start = position
+        elif not visible and start is not None:
+            run = trace[start:position]
+            if longest is None or run.shape[0] > longest.shape[0]:
+                longest = run
+            start = None
+    if longest is None or longest.shape[0] < 2:
+        return
+    trace = longest
+    index = max(1, round(trace.shape[0] * 0.2))
+    span = max(1, trace.shape[0] // 20)
+    start = trace[max(0, index - span)]
+    point = trace[index]
+    delta = point - start
+    if not np.any(np.abs(delta) > 0.0):
+        return
+    angle = float(np.degrees(np.arctan2(delta[1], delta[0])))
+    if angle > 90.0:
+        angle -= 180.0
+    elif angle <= -90.0:
+        angle += 180.0
+    axes.text(
+        float(point[0]),
+        float(point[1]),
+        label,
+        rotation=angle,
+        rotation_mode="anchor",
+        transform_rotates_text=True,
+        ha="center",
+        va="bottom",
+        fontsize=fontsize,
+        color=color,
+        zorder=6,
+        # Clipped to the axes, and not merely for tidiness: an unclipped text
+        # artist counts towards the figure's tight bounding box, so a band named
+        # near the edge would push the layout out until matplotlib reported that
+        # it could not fit the decorations.
+        clip_on=True,
+    )
+
+
 def plot_kikuchi_pattern(
     pattern: KikuchiPattern,
     *,
@@ -277,6 +364,7 @@ def plot_kikuchi_pattern(
     show_zone_axes: bool = True,
     max_bands: int | None = None,
     label_zone_axes: bool = True,
+    label_bands: bool = False,
     samples: int = 361,
     theme: str = "journal",
     style_path: str | None = None,
@@ -310,6 +398,13 @@ def plot_kikuchi_pattern(
         Draw only the strongest ``max_bands`` bands, for legibility.
     label_zone_axes : bool
         Annotate zone axes with their ``[uvw]`` indices.
+    label_bands : bool
+        Write each band's ``(hkl)`` **along** the band rather than beside it. A
+        band is identified by which line it is, so a horizontal caption belongs
+        — visually — to whichever line happens to be nearest the text, and on a
+        zone-axis pattern several bands cross within a few pixels. Off by
+        default, because a pattern carrying tens of bands becomes a page of
+        text; lower ``max_bands`` before turning it on.
     samples : int
         Points sampled along each trace.
     theme, style_path, style_overrides :
@@ -354,6 +449,9 @@ def plot_kikuchi_pattern(
         return np.asarray(projection.to_detector_px(points)) if in_detector else points
 
     bands = pattern.bands if max_bands is None else pattern.bands[:max_bands]
+    # Names are written after the limits are set, because where a name belongs
+    # depends on which stretch of the band is on the picture.
+    named: list[tuple[np.ndarray, str]] = []
     for band in bands:
         centre = _place(band.center_trace(projection, samples=samples))
         if centre.shape[0] > 1:
@@ -364,6 +462,15 @@ def plot_kikuchi_pattern(
                 linewidth=1.1,
                 alpha=0.9,
             )
+            if label_bands:
+                named.append(
+                    (
+                        centre,
+                        format_plane_indices(
+                            tuple(int(value) for value in band.plane.indices), style="mathtext"
+                        ),
+                    )
+                )
         if not show_edges:
             continue
         for edge in band.edge_traces(projection, samples=samples):
@@ -414,6 +521,18 @@ def plot_kikuchi_pattern(
         axes.set_xlabel("gnomonic x (detector distances)")
         axes.set_ylabel("gnomonic y (detector distances)")
     axes.set_aspect("equal", adjustable="box")
+    if named:
+        left, right = sorted(axes.get_xlim())
+        bottom, top = sorted(axes.get_ylim())
+        for trace, label in named:
+            _label_along_band(
+                axes,
+                trace,
+                label,
+                bounds=(left, right, bottom, top),
+                color=saed_style["label_color"],
+                fontsize=float(common["font"]["size"]) - 1.5,
+            )
     if bool(saed_style.get("show_title", True)):
         axes.set_title(f"Kikuchi pattern ({pattern.phase.name}, {coordinates} coordinates)")
     axes.grid(alpha=float(common["figure"]["grid_alpha"]))
