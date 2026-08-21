@@ -4505,3 +4505,49 @@ Documentation: three new decisions in `docs/architecture/application_platform.md
 index is refused rather than guessed, what may live in the deployment file, and why feedback is
 stored before it is sent), a **Configuring a deployment** section and an **Entering Miller
 indices** section in `docs/site/workflows/workbench_application.md`, and `CHANGELOG.md`.
+
+## Goal complete (2026-08-21)
+
+Three commits on `main`, each green on the base lane:
+
+- `7161306` — one box per Miller index, and a refusal for the run of digits.
+- `d7479f9` — the configuration surface and the feedback store.
+- `b06ee5b` — the form, the welcome tour, and the browser lane.
+
+Final verification: `python -m pytest tests/unit` green, 46 Playwright tests green against a
+loopback server, `ruff`, `mypy` and `scripts/check_repo_integrity.py` clean, and Sphinx at **610
+warnings — the same count as a build of the parent commit in a clean worktree**, so the
+documentation added none.
+
+### What the office deployment still has to do
+
+The relay is off in the shipped defaults and cannot be turned on from here, because the four
+values it needs are facts about a network this machine cannot see. Copy
+`config/pytex_app.example.yml` to `./pytex_app.yml` (or `~/.pytex/pytex_app.yml`, or a path in
+`PYTEX_APP_CONFIG`) and fill in the four keys marked FILL IN — `relay.host`, `relay.port`,
+`relay.use_tls`, `relay.from_address` — then set `relay.enabled: true`. `relay.recipients` already
+reads `kvmani@barc.gov.in`. If the relay wants a login, export `PYTEX_SMTP_USERNAME` and
+`PYTEX_SMTP_PASSWORD` rather than writing them in the file. `relay.dry_run: true` prepares and logs
+the message without connecting, which is the way to confirm the recipients and the body before the
+first real send.
+
+### Deliberately not done
+
+- **No `describe()` on the feedback objects.** The explainable-results doctrine governs *scientific*
+  report objects — things that carry a convention a reader must be told about. A feedback receipt
+  carries none. `FeedbackSubmission.describe()` exists, but as the e-mail body rather than as a
+  claim to that doctrine.
+- **No worked example.** The executable-examples standard covers stable public *numerical*
+  surfaces. Nothing added here computes anything.
+- **No `pytex.app` modules in the API reference.** They were absent before this change and adding
+  them is a separate decision about what the published API surface is; the two new modules are
+  documented in their own docstrings and in
+  `docs/architecture/application_platform.md` Decisions 10 and 11.
+- **The relay was tested against a fake SMTP server, never a real one.** No relay is reachable from
+  this machine. The transport is the same `smtplib` sequence the sibling
+  `project_management_software` deployment uses in production, and `relay.dry_run` exists so the
+  first real attempt can be made without sending.
+
+### Next task
+
+None claimed. This goal is complete.
