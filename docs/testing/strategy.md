@@ -27,9 +27,23 @@ not an accepted quality target: warning reductions lower it, and any increase fa
 zero-warning state replaces the ratchet with `sphinx -W -n`.
 
 The browser lane runs `npm ci`, installs Chromium, and executes `npm run test:browser`. Its compact
-suite covers all seven workspaces, successful default calculations, TEM indexing, injected service
-failure surfacing, browser/page errors, and the narrow responsive layout. Playwright reports,
-screenshots, traces, and `node_modules/` are ignored regenerable output.
+suite covers all seven workspaces, successful default calculations, TEM indexing, EBSD pattern
+simulation, injected service failure surfacing, browser/page errors, and the narrow responsive
+layout. Playwright reports, screenshots, traces, and `node_modules/` are ignored regenerable
+output.
+
+**Frontend behaviour is asserted in the browser lane, not by reading the source.** Before that lane
+existed, several invariants of the shared workbench were pinned in Python by matching strings in
+the JavaScript and CSS. Those tests pass while saying nothing about what the page does, and they
+break on a rename that changed nothing, so any claim that can be observed at runtime — a table
+that caps its rows, a legend that keeps focus, a theme that survives a reload, a layout that does
+not overflow — belongs in `tests/browser/workbench.spec.js`.
+
+What stays in Python is the class of claim no running page can demonstrate, because each is about
+what the source does **not** contain: that nothing in the frontend reaches the network, that only
+one module writes a file, that the browser performs no crystallography, that a gallery is read
+from the manifest instead of hard-coded, and that a shared drawing exists once rather than in two
+copies. Those live in `tests/unit/test_app_server.py::TestFrontendIsSelfContained`.
 
 The base lane is the default contributor environment. The full scientific lane is the controlling
 environment for claims that depend on optional scientific packages such as `pymatgen`, ORIX,

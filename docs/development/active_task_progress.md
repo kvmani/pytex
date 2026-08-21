@@ -4230,3 +4230,29 @@ the same metal the notebook uses (22).
 The insertion script matched each file's own serialisation — some notebooks are stored with
 escaped non-ASCII and some with the characters themselves, and CRLF throughout — so the diff is
 581 added lines and no deleted ones across 31 files rather than a whole-file re-encoding.
+
+### I5 — the stale tests were the ones reading JavaScript as text (done)
+
+Every lane was green, so nothing was *failing*; what was stale was a family of tests in
+`tests/unit/test_app_server.py` that asserted **strings in the frontend source**. Their own
+rationale said it: "asserted against the source because there is no JavaScript test runner in this
+repository". There is one now — 40 Playwright tests — so the justification had expired even though
+the assertions still passed.
+
+Seven were removed. Four were already covered behaviourally (the crystal drag surviving its own
+redraw; the tabs and the figure toolbar not overflowing at 390 px; the shared plot frame's viewport
+contract), and three were replaced by browser tests that assert the actual defect rather than the
+line of code that avoids it:
+
+- **the table cap and its export** — the card must say it is showing a subset, and the CSV is now
+  *downloaded and counted*: 200 rows on screen, 863 lines for an 862-row figure;
+- **legend focus** — press a legend entry with the keyboard and `document.activeElement` must still
+  be that entry, which is the defect a rebuilt legend causes;
+- **the colour theme** — cycle it, check `data-theme` matches what was stored, and confirm it
+  survives a reload, with `auto` a real third state.
+
+What stays in Python is the class of claim no running page can demonstrate, because each is about
+what the source does *not* contain: nothing reaches the network, only one module saves a file, the
+browser does no crystallography, the gallery is not hard-coded, the plate drawing exists once. The
+policy is written down in `docs/testing/strategy.md` and in the class docstring, so the next
+frontend invariant lands in the right lane.

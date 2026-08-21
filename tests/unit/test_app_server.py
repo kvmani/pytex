@@ -363,6 +363,26 @@ class TestFrontendIsSelfContained:
 
     An intranet host may be air-gapped, and a CDN reference that works on a
     developer's laptop is an application that shows a blank page in the lab.
+
+    What belongs in this class, now that a browser suite exists
+    ----------------------------------------------------------
+    These tests read the frontend as *text*, and that is a blunt instrument:
+    it pins how the code is written rather than what it does, and it breaks on
+    a rename that changed nothing. It was once the only instrument available.
+    It is not any more — `tests/browser/workbench.spec.js` drives the real page
+    in a real browser — so a behaviour that can be observed at runtime is
+    asserted there and not here. Several tests that used to live in this class
+    moved: the table cap and its export, the legend keeping focus, the theme
+    surviving a reload, the tabs and toolbars that must not overflow, and the
+    viewport contract of the shared plot frame.
+
+    What remains is what no runtime observation can make: statements about the
+    *shape* of the source. That nothing reaches the network; that only one
+    module saves a file; that the browser does no crystallography; that a
+    gallery is read from the manifest rather than hard-coded; that a drawing
+    exists once rather than in two copies. A passing page cannot demonstrate
+    any of those, because each is a claim about what the code does *not*
+    contain.
     """
 
     def test_no_external_urls_in_the_static_tree(self) -> None:
@@ -405,94 +425,6 @@ class TestFrontendIsSelfContained:
         body = rule.group(1).replace(" ", "")
         assert "display:none!important" in body
 
-    def test_the_crystal_drag_is_not_bound_to_the_drawing_it_replaces(self) -> None:
-        """Turning the crystal must survive the redraw that turning causes.
-
-        Each step of a drag rebuilds the SVG and discards the old one. A
-        `pointermove` handler owned by that SVG therefore fires once and then
-        belongs to a detached element, and the pointer capture goes with it: the
-        crystal nudges once however far the user pulls, silently. The handler
-        has to live on the frame, which is built once per mount.
-
-        This is asserted against the source because there is no JavaScript test
-        runner in this repository, and the alternative to a blunt check is no
-        check at all for a defect that a passing Python suite cannot see.
-        """
-
-        import re
-
-        source = (STATIC_ROOT / "js" / "panels" / "crystal.js").read_text(encoding="utf-8")
-        attach = re.search(r"function attachPointer\(node\) \{(.*?)\n  \}", source, flags=re.S)
-        assert attach is not None, "attachPointer has been renamed; revisit this invariant"
-        assert "pointermove" not in attach.group(1)
-        assert "pointerdown" not in attach.group(1)
-        assert "frame.element.addEventListener('pointermove'" in source
-
-    def test_the_table_preview_is_capped_but_the_export_is_not(self) -> None:
-        """The on-screen table is a preview; the export is the data.
-
-        A texture ODF is 1083 rows and a composite pattern several hundred. Past
-        a couple of hundred the scroll box stops being something anyone reads —
-        no search, no sort, no way to reach row 900 except dragging — while the
-        export buttons directly above it carry every row at full precision.
-
-        Two halves, and both matter. The cap must exist, and the *export* must
-        not be built from the capped list: `exportResult` sends the whole
-        `result` to the server, so it must keep taking `result` and never the
-        truncated rows. Measured in a browser: 200 rows on screen, 863 lines in
-        the CSV of an 862-row figure.
-        """
-
-        import re
-
-        source = (STATIC_ROOT / "js" / "core" / "result.js").read_text(encoding="utf-8")
-        assert "TABLE_PREVIEW_ROWS" in source, "the on-screen table must be capped"
-        card = re.search(r"function tableCard\(result\) \{(.*?)\n\}", source, flags=re.S)
-        assert card is not None, "tableCard has been renamed; revisit this invariant"
-        body = card.group(1)
-        assert "rows.slice(0, TABLE_PREVIEW_ROWS)" in body
-        assert "buildTable(columns, shown)" in body, "the rendered table must use the capped list"
-        # The caption has to say so: a table that quietly shows a subset is
-        # worse than one that is too long, because a reader counting rows would
-        # get the wrong answer and never know.
-        assert "Showing the first" in body
-        assert "exportButton(result," in body, (
-            "exports must be built from the whole result, never from the capped rows"
-        )
-
-    def test_no_legend_is_rebuilt_by_its_own_button(self) -> None:
-        """A legend that replaces itself on click throws away the focused button.
-
-        Both plotting panels have a legend whose buttons toggle what is drawn,
-        and both redrew the whole legend as part of the redraw the click causes.
-        The button the user just pressed is then removed from the document, and
-        the browser moves focus to `body` — so a keyboard user who tabs to a
-        packet and presses Enter loses their place and has to tab back through
-        the entire page to reach the next one. Measured in a browser: focus went
-        from "Packet 2 (6 variants)" to BODY on a single click.
-
-        The fix is that the legend is built once per result and updated in
-        place, so the pinned invariant is that neither panel calls a builder
-        from `draw()` unconditionally.
-        """
-
-        import re
-
-        for name in ("variants.js", "diffraction.js"):
-            source = (STATIC_ROOT / "js" / "panels" / name).read_text(encoding="utf-8")
-            assert "function updateLegend()" in source, (
-                f"{name} must be able to update its legend without replacing it"
-            )
-            draw = re.search(r"\n  function draw\(\) \{(.*?)\n  \}\n", source, flags=re.S)
-            assert draw is not None, f"{name}: draw() has been renamed; revisit this invariant"
-            body = draw.group(1)
-            assert "buildLegend(" in body and "updateLegend()" in body, (
-                f"{name}: draw() must choose between building and updating the legend"
-            )
-            assert "legend.replaceChildren" not in body, (
-                f"{name}: draw() must not replace the legend, or it discards the focused button"
-            )
-
     def test_only_one_place_in_the_frontend_saves_a_file(self) -> None:
         """Every file leaves through `saveBlob`, or the desktop shell loses it.
 
@@ -510,39 +442,6 @@ class TestFrontendIsSelfContained:
             if "createObjectURL" in text and path.name != "result.js":
                 offenders.append(path.name)
         assert not offenders, f"these files save a file without going through saveBlob: {offenders}"
-
-    def test_the_workspace_tabs_wrap_rather_than_scroll(self) -> None:
-        """Navigation must never be hidden, and a hidden scrollbar hides it.
-
-        `.tabs` was a horizontal scroll container with `scrollbar-width: none`.
-        On a 390 px screen that showed one of four workspaces: the other three
-        were in the DOM, focusable, reachable by a scroll gesture, and entirely
-        invisible — no cut-off edge, no scrollbar, no hint they existed. This is
-        the failure mode a wrapping bar cannot have, so the wrap is pinned and
-        the scroll container is forbidden.
-
-        Measured directly in a browser at 390, 768 and 1440 px: all four tabs
-        on screen at every width, no horizontal overflow anywhere.
-        """
-
-        import re
-
-        css = re.sub(
-            r"/\*.*?\*/",
-            "",
-            (STATIC_ROOT / "app.css").read_text(encoding="utf-8"),
-            flags=re.S,
-        )
-        rule = re.search(r"\n\.tabs\s*\{([^}]*)\}", css)
-        assert rule is not None, "app.css must style .tabs"
-        body = rule.group(1).replace(" ", "")
-        assert "flex-wrap:wrap" in body, ".tabs must wrap so every workspace stays visible"
-        assert "overflow-x:auto" not in body, (
-            ".tabs must not scroll: an off-screen tab has no affordance to reveal it"
-        )
-        assert "scrollbar-width:none" not in css, (
-            "hiding a scrollbar hides the only sign that content is off-screen"
-        )
 
     def test_the_shell_reserves_one_centralized_message_console(self) -> None:
         """Every surface reports to one log, and the page reserves its strip.
@@ -579,82 +478,6 @@ class TestFrontendIsSelfContained:
 
         assert ".console__indicator--busy" in stylesheet
         assert "@keyframes console-spin" in stylesheet
-
-    def test_the_figure_toolbar_wraps_instead_of_spilling(self) -> None:
-        """The plot header has visible overflow, so an unwrapped toolbar escapes.
-
-        `.plot__header` does not clip, by design — the cursor readout and the
-        detail popover sit outside the flow. The cost is that a toolbar wider
-        than the card does not get a scrollbar or a cut-off edge: it renders
-        past the card's rounded corner and off the side of the window, which is
-        what it did at 390 px with a preset row, a format select and an export
-        button on one line.
-        """
-
-        import re
-
-        css = re.sub(
-            r"/\*.*?\*/",
-            "",
-            (STATIC_ROOT / "app.css").read_text(encoding="utf-8"),
-            flags=re.S,
-        )
-        for selector in (r"\.plot__header", r"\.plot__toolbar"):
-            rule = re.search(rf"\n{selector}\s*\{{([^}}]*)\}}", css)
-            assert rule is not None, f"app.css must style {selector}"
-            assert "flex-wrap: wrap" in rule.group(1), (
-                f"{selector} must wrap, or it leaves the card at narrow widths"
-            )
-
-        select_rule = re.search(r"\.plot__toolbar\s+select\s*\{([^}]*)\}", css)
-        assert select_rule is not None, "toolbar selects need a local width rule"
-        assert "width: auto" in select_rule.group(1), (
-            "the global full-width select rule must not turn a plot toolbar into a vertical stack"
-        )
-
-    def test_every_2d_plot_gets_one_cursor_correct_viewport(self) -> None:
-        """Zoom and pan belong to the plot frame, not whichever panel remembered them.
-
-        A CSS transform would make the drawing larger while leaving the cursor conversion in the
-        old coordinate system. The shared implementation must therefore move the SVG viewBox,
-        zoom about the pointer, provide a keyboard-visible reset, and reserve the bespoke crystal
-        camera as the one explicit opt-out.
-        """
-
-        source = (STATIC_ROOT / "js" / "core" / "plotframe.js").read_text(encoding="utf-8")
-        crystal = (STATIC_ROOT / "js" / "panels" / "crystal.js").read_text(encoding="utf-8")
-        for contract in (
-            "'wheel'",
-            "event.shiftKey",
-            "event.button === 1",
-            "setAttribute(\n      'viewBox'",
-            "pointerToViewBox(event, svgNode)",
-            "text: 'Fit'",
-            "preserveViewport",
-        ):
-            assert contract in source
-        assert "viewport = true" in source
-        assert "viewport: false" in crystal
-
-    def test_the_colour_theme_is_explicit_persistent_and_system_aware(self) -> None:
-        """A theme switch must work identically in the browser and desktop shell.
-
-        The shared page owns presentation, so the control belongs in that page rather than in
-        either launcher. ``auto`` remains a real third state: forcing light/dark with a class and
-        offering only a binary switch would prevent a user from returning to the OS preference.
-        """
-
-        html = (STATIC_ROOT / "index.html").read_text(encoding="utf-8")
-        source = (STATIC_ROOT / "js" / "main.js").read_text(encoding="utf-8")
-        stylesheet = (STATIC_ROOT / "app.css").read_text(encoding="utf-8")
-        assert 'id="cycle-theme"' in html
-        assert "const THEMES" in source
-        for theme in ("auto", "light", "dark"):
-            assert f"{theme}:" in source
-        assert "localStorage.setItem('pytex-theme'" in source
-        assert 'data-theme="dark"' in stylesheet
-        assert 'data-theme="light"' in stylesheet
-        assert 'data-theme="auto"' in stylesheet
 
     def test_diffraction_marker_style_is_a_presentation_only_shared_control(self) -> None:
         """Spot styling redraws computed rows; it must not become fake science input."""

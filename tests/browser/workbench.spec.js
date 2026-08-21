@@ -1771,6 +1771,108 @@ test('keeps all workspaces reachable in the narrow responsive layout', async ({ 
 });
 
 /*
+ * A long table is a preview; the export is the data.
+ *
+ * Both halves matter and neither is visible from the other. The card must say
+ * that it is showing a subset — a table that quietly truncates is worse than one
+ * that is too long, because a reader counting rows gets the wrong answer and
+ * never knows — and the export must be built from the whole result rather than
+ * from the rows on screen. The second half is checked the only way that settles
+ * it: by taking the download and counting its lines.
+ */
+test('the table on screen is capped and the export carries every row', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await workspaceTab(page, 'Texture').click();
+
+  const subtitle = page.locator('.card__subtitle');
+  await expect(subtitle).toContainText('Showing the first 200 of', { timeout: 30_000 });
+  const caption = await subtitle.textContent();
+  const total = Number(/first 200 of (\d+) rows/.exec(caption)[1]);
+  expect(total).toBeGreaterThan(200);
+  await expect(page.locator('.table-wrap tbody tr')).toHaveCount(200);
+
+  const download = page.waitForEvent('download');
+  await page.locator('.card__header').getByRole('button', { name: 'CSV', exact: true }).click();
+  const file = await download;
+  const text = readFileSync(await file.path(), 'utf-8');
+  const lines = text.trim().split(/\r?\n/);
+  // One header line, then every row of the result — not the two hundred drawn.
+  expect(lines.length).toBe(total + 1);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * A legend button must survive being pressed.
+ *
+ * Both plotting panels have a legend whose buttons toggle what is drawn, and
+ * both once rebuilt the whole legend as part of the redraw the click causes.
+ * The button the user just pressed is then removed from the document and the
+ * browser moves focus to `body`, so a keyboard user who tabs to a packet and
+ * presses Enter loses their place and has to tab through the entire page to
+ * reach the next one. Focus is the observable, so focus is what is asserted.
+ */
+test('toggling a legend entry keeps the focus on the entry', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await workspaceTab(page, 'Variants').click();
+
+  const entry = page.locator('.legend__item').first();
+  await expect(entry).toBeVisible({ timeout: 30_000 });
+  const label = await entry.textContent();
+  await entry.focus();
+  await page.keyboard.press('Enter');
+
+  const focused = await page.evaluate(() => ({
+    tag: document.activeElement.tagName,
+    text: document.activeElement.textContent,
+    inLegend: Boolean(document.activeElement.closest('.legend')),
+  }));
+  expect(focused.tag).toBe('BUTTON');
+  expect(focused.inLegend).toBe(true);
+  expect(focused.text).toBe(label);
+  // And the press did something, so the case cannot pass on a dead button.
+  await expect(entry).toHaveAttribute('aria-pressed', 'false');
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The colour theme is the page's, not the launcher's.
+ *
+ * The same page runs in a browser tab and in the desktop shell's web view, so a
+ * theme control in either launcher would exist in one and not the other. What
+ * has to hold is that the choice is explicit, that it survives a reload, and
+ * that `auto` is a real third state — a binary switch would leave a user who
+ * follows their operating system with no way back to it.
+ */
+test('the colour theme is chosen in the page and survives a reload', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const button = page.locator('#cycle-theme');
+  const theme = () => page.evaluate(() => ({
+    attribute: document.documentElement.getAttribute('data-theme'),
+    stored: localStorage.getItem('pytex-theme'),
+  }));
+
+  const seen = [];
+  for (let press = 0; press < 3; press += 1) {
+    await button.click();
+    const state = await theme();
+    expect(state.attribute).toBe(state.stored);
+    seen.push(state.attribute);
+  }
+  // Three states, cycled: light, dark, and back to following the system.
+  expect(new Set(seen)).toEqual(new Set(['light', 'dark', 'auto']));
+
+  await button.click();
+  const before = await theme();
+  await page.reload();
+  await expect(page.locator('#tabs')).toBeVisible();
+  expect(await theme()).toEqual(before);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * The crystal viewer's orientation dock.
  *
  * The claim under test is the one the dock exists to make: that the pole figure
