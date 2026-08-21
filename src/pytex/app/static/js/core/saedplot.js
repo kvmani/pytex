@@ -15,6 +15,7 @@
  */
 
 import { svg } from './dom.js';
+import { bandLabelNode, labelAngleDeg } from './kikuchilabel.js';
 
 /** Colour of a simulated reflection. A plate is monochrome; so is this. */
 export const SPOT_COLOUR = '#eaf2ff';
@@ -243,19 +244,20 @@ export function drawKikuchiBands(root, data, { width, height }) {
     }
     const [labelX, labelY] = band.label_at;
     const text = band.connecting && data.connecting ? data.connecting.text : band.label;
+    // Along the band, not across it. The label is placed beside its own band by
+    // the service; the slope is what ties it to that band rather than to the
+    // three others crossing nearby.
     group.append(
-      svg('text', {
+      bandLabelNode({
         x: labelX,
         y: labelY,
-        'font-size': band.connecting ? font * 1.1 : font,
-        'font-weight': band.connecting ? '600' : '400',
-        fill: colour,
-        stroke: HALO_COLOUR,
-        'stroke-width': font / 6,
-        'paint-order': 'stroke',
-        'text-anchor': 'middle',
-        'dominant-baseline': 'middle',
+        angleDeg: labelAngleDeg([x1, y1], [x2, y2]),
         text,
+        fontSize: band.connecting ? font * 1.1 : font,
+        weight: band.connecting ? '600' : '400',
+        colour,
+        haloColour: HALO_COLOUR,
+        haloWidth: font / 6,
       }),
     );
   }

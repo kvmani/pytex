@@ -4116,3 +4116,52 @@ are unchanged single panels.
 ### Next task
 
 None claimed. This goal is complete.
+
+## Kikuchi Annotation, A Zoomable Map, An EBSD Simulator, And A Documentation Pass (2026-08-21)
+
+**Objective.** Seven strands, requested together:
+
+1. Annotate Kikuchi lines *along* the band wherever bands are drawn, not horizontally beside them.
+2. Bump the version by one patch step and write the release notes.
+3. Make the Crystal Viewer's Kikuchi map magnifiable with the wheel, so the bands can be read.
+4. Add a **Kikuchi simulator** to the EBSD workspace, configured in EBSD terms — sample tilt,
+   detector elevation and azimuth, working distance, pattern centre.
+5. Remove or update stale tests that no longer match the API they were written against.
+6. Give every tutorial notebook a fact-based "good to know" note relevant to its own subject.
+7. One comprehensive pass through the documentation, fixing what it turns up.
+
+### I1 — a band's name runs along the band (done)
+
+`core/kikuchilabel.js` is the one place that decides how a band is named: `labelAngleDeg` folds a
+run's direction into `(-90, 90]` — a line has no direction, and no label may be upside down — and
+`bandLabelNode` writes the haloed text rotated about its anchor. Both figures that name bands use
+it: the simulated-plate overlay in `core/saedplot.js`, and the crystal's stereographic map, which
+had no band names at all before.
+
+The reason is not decoration. On a zone-axis plate a dozen bands cross within a few tens of
+pixels, and a horizontal caption belongs — visually — to whichever line is nearest the text rather
+than to the one it was drawn for.
+
+Placement on the map is taken from the current view: names sit part of the way out from whatever
+the reader has in the middle, so magnifying a corner brings the names into it instead of leaving
+them at the rim of a picture nobody is looking at.
+
+The browser tests pair labels with bands **by drawing order**, not by proximity, so they assert
+the band the label was drawn for: `the indexed solution draws its Kikuchi bands inside the clip`
+now checks every label's `rotate()` against its own centre line's slope to within 0.6°, and
+requires the plate to carry sloping bands so the case cannot pass by everything being horizontal.
+
+### I2 — the map is examined, not merely displayed (done)
+
+The Crystal Viewer's Kikuchi map takes a `mapView = {zoom, x, y}`: the wheel magnifies about the
+pointer (the band under the cursor is the one being examined, so it is the one that must hold
+still), a drag moves it, double-click fits it again, and a new map fits itself. Zoom is applied
+through the `viewBox`, so every drawn coordinate stays in the map's own units and nothing
+downstream needs to know the figure is magnified; text, markers and line weights are divided by
+the zoom so annotation keeps its size on the screen while the geometry grows under it. The number
+of named bands rises with magnification, because room is what a name costs.
+
+`the crystal viewer magnifies its Kikuchi map and names the bands along them` covers it.
+
+**State.** Unit lane green (6621 passed, exit 0) before these changes; both touched browser tests
+pass. Next: the version bump and release notes, then the EBSD Kikuchi simulator.

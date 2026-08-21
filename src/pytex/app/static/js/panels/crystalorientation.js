@@ -30,11 +30,21 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { bandLabelNode, labelAngleDeg } from '../core/kikuchilabel.js';
 import { applyMatrix, applyTranspose } from '../core/rotation3.js';
 import { call } from '../core/api.js';
 
 /** Half-width of each figure's drawing area, in viewBox units. */
 const VIEW = 100;
+
+/** Half-width of a figure's viewBox, drawing area plus its label margin. */
+const HALF = VIEW + 22;
+
+/** How far the Kikuchi map may be magnified. */
+const MAP_ZOOM_LIMITS = { min: 1, max: 16 };
+
+/** Multiplier per wheel notch. A tenth is a step the eye can follow. */
+const MAP_ZOOM_STEP = 1.1;
 
 /** How long the drag must be still before the numbers are asked for, in ms. */
 const READOUT_DELAY = 220;
@@ -79,6 +89,13 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     kikuchiRequest: null,
     kikuchiCentre: '0 0 1',
     kikuchiPending: false,
+    // What part of the map is on screen: a magnification and the point of the
+    // map the figure is centred on, in drawing units. A band is a fraction of a
+    // degree wide and its neighbours are degrees apart, so a whole-hemisphere
+    // map is a picture of the network rather than something to read indices
+    // off; magnifying it is what turns it back into an atlas.
+    mapView: { zoom: 1, x: 0, y: 0 },
+    mapPan: null,
     showOverlays: true,
     convention: 'bunge',
     fit: null,
@@ -89,8 +106,76 @@ export function orientationDock({ camera, setCamera, request, showError }) {
 
   const poleFigure = el('div.orient__canvas');
   const inverseFigure = el('div.orient__canvas');
-  const kikuchiFigure = el('div.orient__canvas');
+  const kikuchiFigure = el('div.orient__canvas.orient__canvas--zoomable', {
+    title: 'Scroll to magnify the map, drag to move it, double-click to fit it again',
+  });
   const kikuchiStatus = el('p.field__hint', { text: 'Centre the map on a zone axis.' });
+
+  /*
+   * Wheel to magnify, drag to move, double-click to fit.
+   *
+   * The listener is not passive, because zooming a figure and scrolling the
+   * page past it are different intentions and the page must not do both. It is
+   * attached to the container rather than to the SVG, which is replaced on
+   * every frame of a drag of the structure.
+   *
+   * Magnifying about the pointer rather than about the middle is what makes it
+   * usable at high zoom: the band under the cursor is the one being examined,
+   * so it is the one that must stay still.
+   */
+  kikuchiFigure.addEventListener(
+    'wheel',
+    (event) => {
+      if (!state.kikuchi) return;
+      event.preventDefault();
+      const before = mapPointAt(event);
+      const factor = MAP_ZOOM_STEP ** (-Math.sign(event.deltaY));
+      const zoom = clamp(
+        state.mapView.zoom * factor,
+        MAP_ZOOM_LIMITS.min,
+        MAP_ZOOM_LIMITS.max,
+      );
+      if (zoom === state.mapView.zoom) return;
+      state.mapView.zoom = zoom;
+      const after = mapPointAt(event);
+      state.mapView.x += before[0] - after[0];
+      state.mapView.y += before[1] - after[1];
+      clampMapView();
+      drawKikuchi();
+    },
+    { passive: false },
+  );
+
+  kikuchiFigure.addEventListener('pointerdown', (event) => {
+    if (!state.kikuchi || state.mapView.zoom <= 1) return;
+    state.mapPan = { at: mapPointAt(event), id: event.pointerId };
+    kikuchiFigure.setPointerCapture(event.pointerId);
+  });
+
+  kikuchiFigure.addEventListener('pointermove', (event) => {
+    if (!state.mapPan || state.mapPan.id !== event.pointerId) return;
+    const now = mapPointAt(event);
+    state.mapView.x += state.mapPan.at[0] - now[0];
+    state.mapView.y += state.mapPan.at[1] - now[1];
+    clampMapView();
+    drawKikuchi();
+  });
+
+  for (const name of ['pointerup', 'pointercancel', 'pointerleave']) {
+    kikuchiFigure.addEventListener(name, (event) => {
+      if (state.mapPan?.id !== event.pointerId) return;
+      state.mapPan = null;
+      if (kikuchiFigure.hasPointerCapture?.(event.pointerId)) {
+        kikuchiFigure.releasePointerCapture(event.pointerId);
+      }
+    });
+  }
+
+  kikuchiFigure.addEventListener('dblclick', () => {
+    state.mapView = { zoom: 1, x: 0, y: 0 };
+    drawKikuchi();
+  });
+
   const kikuchiInput = el('input.orient__axis', {
     type: 'text',
     value: '0 0 1',
@@ -273,6 +358,32 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     void refreshKikuchi();
   }
 
+  /* --------------------------------------------------- the map's own view */
+
+  /** Where a pointer event falls in the map's drawing units. */
+  function mapPointAt(event) {
+    const root = kikuchiFigure.firstElementChild;
+    const matrix = root?.getScreenCTM?.();
+    if (!matrix) return [state.mapView.x, state.mapView.y];
+    // The SVG letterboxes inside its box, so the screen transform is the only
+    // honest conversion; deriving one from the bounding rectangle would be
+    // wrong by the letterbox margin at every aspect ratio but one.
+    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+    return [point.x, point.y];
+  }
+
+  /** Keep the magnified window over the map rather than off its edge. */
+  function clampMapView() {
+    const span = HALF - HALF / state.mapView.zoom;
+    state.mapView.x = clamp(state.mapView.x, -span, span);
+    state.mapView.y = clamp(state.mapView.y, -span, span);
+  }
+
+  function drawKikuchi() {
+    const rotation = camera();
+    kikuchiFigure.replaceChildren(renderKikuchiMap(state, rotation));
+  }
+
   function resetTrail() {
     state.trails = { rd: [], td: [], nd: [] };
     state.poleTrails = {};
@@ -284,7 +395,7 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     recordTrail(rotation);
     poleFigure.replaceChildren(renderPoleFigure(state, rotation));
     inverseFigure.replaceChildren(renderInverseFigure(state, rotation));
-    kikuchiFigure.replaceChildren(renderKikuchiMap(state, rotation));
+    drawKikuchi();
     // The pictures are live; the numbers settle. Scheduling from here means
     // every route that moves the camera -- drag, zoom, an axis button, a
     // preset -- updates the readout without each having to remember to.
@@ -589,11 +700,14 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     try {
       state.kikuchi = await call('crystal.kikuchi_map', payload);
       state.kikuchiRequest = key;
+      // A new map is a new picture; a window into the old one means nothing on
+      // it, so the view is fitted again rather than carried over.
+      state.mapView = { zoom: 1, x: 0, y: 0 };
       const data = state.kikuchi.data;
       kikuchiStatus.textContent =
         `${data.bands.length} bands, ${data.zone_axes.length} zone axes within ` +
         `${data.max_polar_angle_deg}° of ${data.centre_label}. The cross is the ` +
-        'direction now on the beam.';
+        'direction now on the beam. Scroll to magnify, drag to move, double-click to fit.';
       draw();
     } catch (error) {
       // A map is an atlas beside the figures, not one of them: if it cannot be
@@ -682,9 +796,25 @@ function reduceToSector(orientation, vector) {
 
 /* ---------------------------------------------------------------- figures */
 
-function figureRoot(label) {
+function clamp(value, low, high) {
+  return Math.min(Math.max(value, low), high);
+}
+
+/**
+ * A figure's drawing surface.
+ *
+ * `view` magnifies: the window is `HALF / zoom` about `(x, y)` in drawing
+ * units, which is the whole box at zoom one. Zooming through the viewBox rather
+ * than through a transform means every drawn coordinate stays in the map's own
+ * units, so nothing downstream has to know whether the figure is magnified.
+ */
+function figureRoot(label, view = null) {
+  const zoom = Math.max(view?.zoom ?? 1, 1);
+  const half = HALF / zoom;
+  const x = view?.x ?? 0;
+  const y = view?.y ?? 0;
   return svg('svg', {
-    viewBox: `${-VIEW - 22} ${-VIEW - 22} ${2 * (VIEW + 22)} ${2 * (VIEW + 22)}`,
+    viewBox: `${x - half} ${y - half} ${2 * half} ${2 * half}`,
     preserveAspectRatio: 'xMidYMid meet',
     role: 'img',
     'aria-label': label,
@@ -840,11 +970,64 @@ function renderPoleFigure(state, rotation) {
  * map's own frame by the matrix the service sent. Turning the crystal moves the
  * cross across a stationary map, which is how a map is read.
  */
+/**
+ * A band's indices, written along the band and beside it.
+ *
+ * Where the name goes is not a free choice. Bands crowd towards the middle of a
+ * stereogram — at the centre every band of the zone crosses at once — and they
+ * leave the drawing at its rim, so a name is placed part of the way out from
+ * whatever the reader currently has in the middle. That "whatever" is the point
+ * of taking the view: magnify a corner of the map and the names follow the
+ * bands into it instead of staying behind at the rim of a picture nobody is
+ * looking at any more.
+ *
+ * @returns {SVGElement|null} Null when no sampled point of the band falls in a
+ *   readable place, which is the honest outcome for a band that barely clips
+ *   the visible window.
+ */
+function bandName(band, { at, inside, view, shrink }) {
+  const target = 0.55 * HALF * shrink;
+  let best = null;
+  for (const run of band.centre) {
+    const points = run.filter(inside).map(at);
+    for (let index = 1; index < points.length; index += 1) {
+      const [x, y] = points[index];
+      const miss = Math.abs(Math.hypot(x - view.x, y - view.y) - target);
+      if (!best || miss < best.miss) best = { miss, point: points[index], before: points[index - 1] };
+    }
+  }
+  if (!best || best.miss > target) return null;
+  const [x, y] = best.point;
+  const dx = x - best.before[0];
+  const dy = y - best.before[1];
+  const length = Math.hypot(dx, dy);
+  if (!(length > 0)) return null;
+  // Beside the band, along its normal, by about the height of the text: on the
+  // line the glyphs would sit on top of the very thing being named.
+  const clearance = 5 * shrink;
+  return bandLabelNode({
+    x: x - (dy / length) * clearance,
+    y: y + (dx / length) * clearance,
+    angleDeg: labelAngleDeg(best.before, best.point),
+    text: band.label,
+    fontSize: 7.5 * shrink,
+    colour: 'var(--accent)',
+    haloColour: 'var(--bg-raised)',
+    haloWidth: 1.8 * shrink,
+  });
+}
+
 function renderKikuchiMap(state, rotation) {
   const data = state.kikuchi?.data;
-  const root = figureRoot('Kikuchi map of the crystal');
+  const mapView = state.mapView ?? { zoom: 1, x: 0, y: 0 };
+  const root = figureRoot('Kikuchi map of the crystal', mapView);
   if (!data) return root;
 
+  // Text and markers are annotation, not geometry: they keep their size on the
+  // screen while the map grows under them. Line weights follow the same rule,
+  // so a magnified band does not turn into a stripe.
+  const zoom = Math.max(mapView.zoom, 1);
+  const shrink = 1 / zoom;
   const radius = Math.max(data.boundary_radius ?? 1, 1e-6);
   const scale = VIEW / radius;
   const at = (point) => [point[0] * scale, -point[1] * scale];
@@ -875,10 +1058,14 @@ function renderKikuchiMap(state, rotation) {
     });
   };
 
-  for (const band of data.bands) {
+  // How many bands are named. The bands arrive strongest first, so this keeps
+  // the ones a reader identifies the map by; magnification buys room, so it
+  // buys names — which is the point of being able to magnify at all.
+  const named = Math.min(data.bands.length, Math.round(6 * zoom ** 0.9));
+  data.bands.forEach((band, index) => {
     // Width carries prominence, so the strong bands read first — the same
     // ordering a real map is legible by.
-    const weight = 0.5 + 1.1 * Math.min(1, Number(band.intensity) || 0);
+    const weight = (0.5 + 1.1 * Math.min(1, Number(band.intensity) || 0)) * shrink;
     for (const edge of band.edges) {
       for (const run of edge) {
         root.append(
@@ -897,11 +1084,13 @@ function renderKikuchiMap(state, rotation) {
           stroke: 'var(--accent)',
           'stroke-opacity': 0.4,
           'stroke-width': weight * 0.6,
-          'stroke-dasharray': '3 3',
+          'stroke-dasharray': `${3 * shrink} ${3 * shrink}`,
         }),
       );
     }
-  }
+    const name = index < named ? bandName(band, { at, inside, view: mapView, shrink }) : null;
+    if (name) root.append(name);
+  });
 
   for (const axis of data.zone_axes) {
     if (!inside([axis.x, axis.y])) continue;

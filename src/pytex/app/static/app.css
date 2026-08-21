@@ -2666,6 +2666,21 @@ dl.detail dd {
   color: var(--ink-faint);
 }
 
+/*
+ * The Kikuchi map is examined rather than merely looked at: the wheel magnifies
+ * it and a drag moves it. `touch-action: none` because on a touch screen the
+ * same gesture would otherwise scroll the page out from under the figure, and
+ * the grab cursor because a figure that can be moved should say so.
+ */
+.orient__canvas--zoomable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.orient__canvas--zoomable:active {
+  cursor: grabbing;
+}
+
 /* Out of flow, for the reason `.plot__canvas` gives at length: an SVG carrying
  * a viewBox and `height: 100%` of an indefinite parent falls back to its
  * intrinsic size and drives the box from the inside, which is exactly how the

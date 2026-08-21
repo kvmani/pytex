@@ -1315,6 +1315,45 @@ test('the indexed solution draws its Kikuchi bands inside the clip', async ({ pa
   expect(geometry.labels.some((label) => /^\(\d/.test(label ?? ''))).toBe(true);
   expect(geometry.labels.some((label) => /^follow \(.*\) toward \[/.test(label ?? ''))).toBe(true);
 
+  /*
+   * Every band's name runs along that band.
+   *
+   * On a zone-axis plate a dozen bands cross within a few tens of pixels, and a
+   * horizontal caption beside a steeply running band belongs to whichever line
+   * happens to be nearest the text. The pairing here is by drawing order rather
+   * than by proximity — each band appends its centre line, then its edges, then
+   * its name — so the assertion is about the band the label was drawn for, not
+   * about the band that ended up closest to it.
+   */
+  const slopes = await page.evaluate(() => {
+    const svg = document.querySelector('svg[aria-label="Diffraction pattern"]');
+    const fold = (angle) => (angle > 90 ? angle - 180 : angle <= -90 ? angle + 180 : angle);
+    const pairs = [];
+    let line = null;
+    for (const node of svg.querySelectorAll('line, text')) {
+      if (node.tagName === 'line') {
+        line = node;
+        continue;
+      }
+      const transform = node.getAttribute('transform') ?? '';
+      const match = /rotate\(([-\d.]+)/.exec(transform);
+      if (!match || !line) continue;
+      const dx = Number(line.getAttribute('x2')) - Number(line.getAttribute('x1'));
+      const dy = Number(line.getAttribute('y2')) - Number(line.getAttribute('y1'));
+      pairs.push({
+        label: Number(match[1]),
+        band: fold((Math.atan2(dy, dx) * 180) / Math.PI),
+      });
+    }
+    return pairs;
+  });
+
+  expect(slopes.length).toBeGreaterThan(0);
+  for (const { label, band } of slopes) expect(Math.abs(label - band)).toBeLessThan(0.6);
+  // And the plate really does carry sloping bands, so the case cannot pass by
+  // every band happening to be horizontal.
+  expect(slopes.some(({ band }) => Math.abs(band) > 5)).toBe(true);
+
   // The status line says what the overlay is and what it is not.
   const status = await patternControl(page, '.plot__status').textContent();
   expect(status).toContain('000');
@@ -1394,6 +1433,69 @@ test('the crystal viewer maps the Kikuchi bands about an axis the user chooses',
   await page.locator('input.orient__axis').press('Enter');
   await expect(status).toContainText('Three whole numbers');
   await expect(map.locator('polyline').first()).toBeVisible();
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The map is examined, not merely displayed.
+ *
+ * A Kikuchi band at 200 kV is a fraction of a degree wide on a map spanning
+ * sixty, so a whole-hemisphere drawing shows the *network* and not the indices:
+ * the names of the bands are unreadable at the size the figure occupies in a
+ * dock. Magnifying it is therefore not a convenience, it is what makes the
+ * figure an atlas — and the names have to be written along their own bands, for
+ * the same reason they are on the plate.
+ */
+test('the crystal viewer magnifies its Kikuchi map and names the bands along them', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  const map = page.locator('svg[aria-label="Kikuchi map of the crystal"]');
+  await expect(map).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => map.locator('polyline').count()).toBeGreaterThan(10);
+
+  // A plane is named as a plane, and its name is turned to the slope of the
+  // band it belongs to. Nickel down [001] has bands at every slope, so a
+  // network whose labels were all upright would fail this.
+  const bandAngles = () =>
+    page.evaluate(() => {
+      const svg = document.querySelector('svg[aria-label="Kikuchi map of the crystal"]');
+      return [...svg.querySelectorAll('text')]
+        .filter((node) => /^\(/.test(node.textContent ?? ''))
+        .map((node) =>
+          Number(/rotate\(([-\d.]+)/.exec(node.getAttribute('transform') ?? '')?.[1]),
+        );
+    });
+  await expect.poll(async () => (await bandAngles()).length).toBeGreaterThan(0);
+  const named = await bandAngles();
+  expect(named.every((angle) => Number.isFinite(angle))).toBe(true);
+  expect(named.some((angle) => Math.abs(angle) > 5)).toBe(true);
+
+  const viewWindow = () =>
+    map.evaluate((node) => {
+      const box = node.viewBox.baseVal;
+      return { width: box.width, x: box.x, y: box.y };
+    });
+  const fitted = await viewWindow();
+
+  // The wheel magnifies about the pointer: the window narrows, and it does not
+  // stay centred on the middle of the map when the pointer is not there.
+  const figure = page.locator('.orient__canvas--zoomable');
+  const box = await figure.boundingBox();
+  await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.35);
+  for (let notch = 0; notch < 8; notch += 1) await page.mouse.wheel(0, -120);
+  await expect.poll(async () => (await viewWindow()).width).toBeLessThan(fitted.width * 0.9);
+  const zoomed = await viewWindow();
+  expect(Math.hypot(zoomed.x - fitted.x, zoomed.y - fitted.y)).toBeGreaterThan(0);
+
+  // Magnification buys room, and room buys names: no band loses its name for
+  // being looked at more closely.
+  expect((await bandAngles()).length).toBeGreaterThanOrEqual(named.length);
+
+  // Double-click fits the whole map again, whatever state the view was left in.
+  await figure.dblclick();
+  await expect.poll(async () => (await viewWindow()).width).toBeCloseTo(fitted.width, 3);
 
   expect(browserErrors).toEqual([]);
 });
