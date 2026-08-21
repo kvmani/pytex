@@ -135,15 +135,30 @@ def test_importing_pytex_needs_only_declared_dependencies() -> None:
 def test_the_version_has_exactly_one_literal_in_the_source_tree() -> None:
     """``src/pytex/_version.py`` must be the only place the version is written.
 
-    A second literal drifts silently: the manifest writers previously carried
-    their own copy, so a release bump would have stamped every exported manifest
-    with the previous version.
+    Source *and* tests. A second literal drifts silently: the manifest writers
+    previously carried their own copy, so a release bump would have stamped every
+    exported manifest with the previous version. A literal in a test fails
+    differently and just as uselessly — cutting 0.1.1 broke the `python -m pytex
+    info` case, which had transcribed `0.1.0.dev0` and therefore tested the
+    release number rather than the command.
     """
 
     version = pytex.__version__
+    # The tests are scanned too. A version literal in a *test* is the same defect
+    # wearing a different hat: it does not break the package, it breaks the suite
+    # on the release commit, and it says nothing about the behaviour it covers.
+    # `python -m pytex info` carried one and failed exactly that way.
+    scanned = [
+        *_SOURCE_FILES,
+        *(
+            path
+            for path in (REPO_ROOT / "tests").rglob("*.py")
+            if "__pycache__" not in str(path)
+        ),
+    ]
     carriers = [
         path
-        for path in _SOURCE_FILES
+        for path in scanned
         if f'"{version}"' in path.read_text(encoding="utf-8")
         or f"'{version}'" in path.read_text(encoding="utf-8")
     ]

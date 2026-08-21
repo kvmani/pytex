@@ -24,6 +24,7 @@ from pytex import (
     to_orix_miller_plane,
     to_orix_rotation,
 )
+from pytex._version import __version__
 
 NACL_CIF = """
 data_NaCl
@@ -72,7 +73,9 @@ def test_python_m_pytex_info_runs() -> None:
         env=_subprocess_env(),
         text=True,
     )
-    assert "PyTex 0.1.0.dev0" in result.stdout
+    # Derived, not transcribed: a literal here turns every release bump into a
+    # failing test that says nothing about the CLI it is supposed to cover.
+    assert f"PyTex {__version__}" in result.stdout
     assert "Canonical convention: pytex_canonical" in result.stdout
 
 

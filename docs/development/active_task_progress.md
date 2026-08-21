@@ -4093,6 +4093,15 @@ control defaults to is the bicrystal, which is the right first *map* and a poor 
 
 35 browser tests, 6621 unit tests, ruff and mypy green.
 
+### I9 — the release found one more stale test (done)
+
+Cutting `0.1.1` broke `test_python_m_pytex_info_runs`, which asserted the literal string
+`PyTex 0.1.0.dev0`. It had been testing the release number rather than the command, and it is the
+same defect the source-tree literal check exists to prevent, one directory outside its reach. The
+assertion is derived from `pytex.__version__` now, and
+`test_the_version_has_exactly_one_literal_in_the_source_tree` scans `tests/` as well as `src/`, so
+the next bump cannot be the thing that discovers the next transcription.
+
 ## Goal complete (2026-08-21)
 
 All six increments are on `main`. The workbench went from nine flat tabs to seven workspaces
@@ -4334,7 +4343,7 @@ with.
 
 ## Goal complete (2026-08-21)
 
-All eight increments are on `main`, each with its tests, its documentation and its changelog
+All nine increments are on `main`, each with its tests, its documentation and its changelog
 entry. Unit lane green, 40 browser tests green, ruff and mypy clean, Sphinx 610 warnings.
 
 ### Deliberately not done
