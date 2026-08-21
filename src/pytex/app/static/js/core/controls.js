@@ -267,38 +267,203 @@ function choiceInput(parameter, value, onChange, id) {
 }
 
 /**
- * Miller indices, typed the way people type them.
+ * Miller indices: one box per index, never a free-text row.
  *
- * One row for a single set, a textarea for a list — a repeatable row editor was
- * tried and is worse: superimposing a dozen planes is faster as twelve typed
- * lines than as twelve clicks on an "add row" button. Parsing is left to the
- * server, so `1 1 1`, `1,1,1` and `(1 -1 0)` all work and the error message
- * comes from the same validator the API uses.
+ * Why the free-text row went
+ * --------------------------
+ * A single box invites `110` for what the user means as `1 1 0`, and it was
+ * being typed. The server used to guess that one correctly, which is the worst
+ * possible outcome: it taught the habit, and the habit fails silently the
+ * moment an index reaches two digits, because `10 10 0` typed as `10100` is
+ * `(10, 10, 0)`, `(1, 0, 100)` and `(101, 0, 0)` with nothing to choose
+ * between them. A calculation then returns a plausible number for indices
+ * nobody entered.
+ *
+ * So the control no longer has a place to put a run of digits. Each index gets
+ * a box of its own, named `h`, `k`, `l` — or `u`, `v`, `w`, or whatever the
+ * parameter's label says its indices are called, which Python decides and
+ * publishes as `symbols`. A list parameter is a stack of the same rows with an
+ * add and a remove button.
+ *
+ * What is still the server's job
+ * ------------------------------
+ * Everything numerical. The boxes send what was typed, index by index, and the
+ * same validator the API uses decides whether `1 1 0` is a legal row for this
+ * parameter. The only judgement made here is "a row you have started must be
+ * finished", which the server cannot phrase as well because by then the
+ * separate boxes are one list with a hole in it.
  */
 function indicesInput(parameter, value, onChange, id, { multi }) {
-  const placeholder = multi
-    ? Array.from({ length: 2 }, () => Array(parameter.width ?? 3).fill('1').join(' ')).join('\n')
-    : Array(parameter.width ?? 3).fill('1').join(' ');
-  const node = multi
-    ? el('textarea', { id, placeholder, rows: 3, oninput: onChange, spellcheck: 'false' })
-    : el('input', { id, type: 'text', placeholder, oninput: onChange, spellcheck: 'false' });
-  node.value = formatIndices(value, multi);
+  const width = parameter.width ?? 3;
+  const symbols = normaliseSymbols(parameter.symbols, width);
+  const rows = [];
+  const rowsNode = el('div.indices__rows');
+
+  const container = el(multi ? 'div.indices.indices--multi' : 'div.indices', {
+    role: 'group',
+    'aria-label': parameter.label,
+  });
+
+  /** One row of `width` boxes, optionally removable. */
+  function addRow(rowValue, { focus = false } = {}) {
+    const boxes = symbols.map((symbol, position) =>
+      el('input.indices__box', {
+        // The label points at the first box of the first row, so that clicking
+        // the parameter's label lands somewhere sensible.
+        id: position === 0 && rows.length === 0 ? id : undefined,
+        type: 'text',
+        inputmode: 'numeric',
+        autocomplete: 'off',
+        spellcheck: 'false',
+        size: 3,
+        placeholder: symbol,
+        title: `${parameter.label}: ${symbol}`,
+        'aria-label': `${parameter.label}: ${symbol}`,
+        oninput: onChange,
+      }),
+    );
+    const cells = splitRow(rowValue, width);
+    boxes.forEach((box, position) => {
+      box.value = cells[position] ?? '';
+    });
+
+    const row = {
+      boxes,
+      read: () => boxes.map((box) => box.value.trim()),
+      isEmpty: () => boxes.every((box) => box.value.trim() === ''),
+    };
+    const remove = multi
+      ? el('button.indices__remove', {
+          type: 'button',
+          text: '×',
+          title: 'Remove this row',
+          'aria-label': 'Remove this row',
+          onclick: () => {
+            const index = rows.indexOf(row);
+            if (index >= 0) rows.splice(index, 1);
+            row.element.remove();
+            if (!rows.length) addRow(null);
+            renumber();
+            onChange();
+          },
+        })
+      : null;
+
+    row.element = el('div.indices__row', {}, [
+      multi ? el('span.indices__ordinal', { text: String(rows.length + 1) }) : null,
+      ...interleave(boxes),
+      remove,
+    ]);
+    rows.push(row);
+    rowsNode.append(row.element);
+    renumber();
+    if (focus) boxes[0].focus();
+    return row;
+  }
+
+  function renumber() {
+    if (!multi) return;
+    rows.forEach((row, index) => {
+      const ordinal = row.element.querySelector('.indices__ordinal');
+      if (ordinal) ordinal.textContent = String(index + 1);
+    });
+  }
+
+  function setRows(next) {
+    rows.length = 0;
+    clear(rowsNode);
+    const incoming = splitRows(next, width, multi);
+    if (!incoming.length) incoming.push(null);
+    for (const row of incoming) addRow(row);
+  }
+
+  setRows(value);
+  container.append(rowsNode);
+  if (multi) {
+    container.append(
+      el('button.indices__add', {
+        type: 'button',
+        text: '+ Add row',
+        onclick: () => {
+          if (parameter.maxRows && rows.length >= parameter.maxRows) return;
+          addRow(null, { focus: true });
+        },
+      }),
+    );
+  }
+
   return {
     id,
-    element: node,
-    read: () => (node.value.trim() === '' ? null : node.value),
-    write: (next) => {
-      node.value = formatIndices(next, multi);
+    element: container,
+    read: () => {
+      const filled = rows.filter((row) => !row.isEmpty()).map((row) => row.read());
+      if (!filled.length) return null;
+      return multi ? filled : filled[0];
+    },
+    write: (next) => setRows(next),
+    /**
+     * The one check that belongs here: a half-filled row.
+     *
+     * Sent as it stands, an empty box arrives as an empty string and the server
+     * answers "'' is not a whole number", which names a box the user cannot see
+     * a name for. Said here, it names the index that is missing.
+     */
+    problem: () => {
+      const partial = rows.find((row) => !row.isEmpty() && row.read().some((cell) => cell === ''));
+      if (!partial) return null;
+      const missing = symbols.filter((_, position) => partial.read()[position] === '');
+      return `Every index needs a value: ${missing.join(', ')} ${
+        missing.length === 1 ? 'is' : 'are'
+      } still empty.`;
     },
   };
 }
 
-function formatIndices(value, multi) {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'string') return value;
-  if (!multi) return Array.isArray(value) ? value.join(' ') : String(value);
-  if (!Array.isArray(value)) return String(value);
-  return value.map((row) => (Array.isArray(row) ? row.join(' ') : String(row))).join('\n');
+/** Put the separators between the boxes, so a row reads `h k l` on screen. */
+function interleave(boxes) {
+  return boxes.flatMap((box, position) =>
+    position === 0 ? [box] : [el('span.indices__gap', { 'aria-hidden': 'true' }), box],
+  );
+}
+
+/** `symbols` comes from the manifest; fall back if a build predates it. */
+function normaliseSymbols(symbols, width) {
+  if (Array.isArray(symbols) && symbols.length === width) return symbols.map(String);
+  const defaults = { 3: ['h', 'k', 'l'], 4: ['h', 'k', 'i', 'l'] }[width];
+  return defaults ?? Array.from({ length: width }, (_, index) => `i${index + 1}`);
+}
+
+/**
+ * One row's cells, from whatever a default or an example supplies.
+ *
+ * A stored value may be `[1, 1, 0]`, or the text `"1 1 0"` an older example
+ * carries. Text is split on separators; a run of digits is *not* split, because
+ * splitting it here would reintroduce exactly the guess the server now refuses.
+ * It lands in the first box instead, where its owner can see it and fix it.
+ */
+function splitRow(value, width) {
+  if (value === null || value === undefined) return [];
+  if (Array.isArray(value)) return value.slice(0, width).map((cell) => String(cell));
+  return String(value)
+    .trim()
+    .replace(/^[([{<]|[)\]}>]$/g, '')
+    .split(/[\s,]+/)
+    .filter((cell) => cell !== '')
+    .slice(0, width);
+}
+
+/** The rows of a value: one for a single set, any number for a list. */
+function splitRows(value, width, multi) {
+  if (value === null || value === undefined) return [];
+  if (!multi) return [value];
+  if (typeof value === 'string') {
+    return value
+      .replace(/;/g, '\n')
+      .split('\n')
+      .filter((line) => line.trim() !== '');
+  }
+  if (!Array.isArray(value)) return [value];
+  return value;
 }
 
 function objectInput(parameter, value, onChange, id) {

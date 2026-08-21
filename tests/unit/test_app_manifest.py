@@ -227,8 +227,8 @@ class TestParameterValidation:
             ("1 1 1", (1, 1, 1)),
             ("1,1,0", (1, 1, 0)),
             ("(1 -1 0)", (1, -1, 0)),
-            ("[112]", (1, 1, 2)),
-            ("111", (1, 1, 1)),
+            ("[1 1 2]", (1, 1, 2)),
+            (["1", "-1", "0"], (1, -1, 0)),
         ],
     )
     def test_indices_accept_the_ways_people_type_them(
@@ -236,6 +236,45 @@ class TestParameterValidation:
     ) -> None:
         parameter = IndicesParameter("hkl", label="Plane", help_text="Three Miller indices.")
         assert parameter.coerce(text) == expected
+
+    @pytest.mark.parametrize("text", ["111", "110", "(112)", "10100", "1120"])
+    def test_indices_refuse_a_run_of_digits(self, text: str) -> None:
+        """A row with no separators is refused, including the ones once guessed.
+
+        ``"111"`` has one reading and used to get it. ``"10100"`` has several —
+        ``(10, 10, 0)``, ``(1, 0, 100)``, ``(101, 0, 0)`` — and a parser that
+        accepts the first teaches the habit that produces the second, where the
+        wrong answer arrives silently. Both are refused, and the message shows
+        the separated form of what was typed.
+        """
+
+        parameter = IndicesParameter("hkl", label="Plane", help_text="Three Miller indices.")
+        with pytest.raises(InvalidInputError) as excinfo:
+            parameter.coerce(text)
+        assert "runs the indices together" in str(excinfo.value)
+        assert excinfo.value.hint is not None
+
+    def test_indices_refusal_shows_the_separated_form(self) -> None:
+        parameter = IndicesParameter("hkl", label="Plane", help_text="Three Miller indices.")
+        with pytest.raises(InvalidInputError) as excinfo:
+            parameter.coerce("110")
+        assert "1 1 0" in (excinfo.value.hint or "")
+
+    def test_indices_publish_a_name_for_every_box(self) -> None:
+        """The control gives each index a box, and each box the label's own letter."""
+
+        plane = IndicesParameter("hkl", label="Planes (hkl)", help_text="Three Miller indices.")
+        axis = IndicesParameter("uvw", label="Zone axis [uvw]", help_text="A direction.")
+        unnamed = IndicesParameter("pole", label="Child plane to plot", help_text="A plane.")
+        assert plane.describe()["symbols"] == ["h", "k", "l"]
+        assert axis.describe()["symbols"] == ["u", "v", "w"]
+        assert unnamed.describe()["symbols"] == ["h", "k", "l"]
+
+    def test_indices_list_publishes_the_same_names(self) -> None:
+        parameter = IndicesListParameter(
+            "planes", label="Planes (hkl)", help_text="Any number of rows."
+        )
+        assert parameter.describe()["symbols"] == ["h", "k", "l"]
 
     def test_indices_reject_the_zero_row(self) -> None:
         parameter = IndicesParameter("hkl", label="Plane", help_text="Three Miller indices.")

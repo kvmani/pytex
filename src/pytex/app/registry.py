@@ -36,6 +36,7 @@ Example
 from __future__ import annotations
 
 import math
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -361,6 +362,11 @@ class IndicesParameter(Parameter):
     ``[1, 1, 1]``. Overbars are not accepted on input — a minus sign is what a
     keyboard has — but output is formatted through :mod:`pytex.core.notation`,
     which does use overbars.
+
+    A run of digits with no separator, such as ``"110"``, is **refused**: see
+    :func:`_separator_hint`. The workbench renders this parameter as one box per
+    index, so the refusal is a backstop for the API rather than something a user
+    of the page can reach.
     """
 
     width: int = 3
@@ -369,7 +375,11 @@ class IndicesParameter(Parameter):
     kind: str = field(default="indices", init=False)
 
     def _describe_extra(self) -> dict[str, Any]:
-        return {"width": self.width, "allowZero": self.allow_zero}
+        return {
+            "width": self.width,
+            "allowZero": self.allow_zero,
+            "symbols": list(_index_symbols(self.label, self.width)),
+        }
 
     def coerce(self, value: Any) -> tuple[int, ...]:
         return _coerce_index_row(value, parameter=self)
@@ -390,7 +400,11 @@ class IndicesListParameter(Parameter):
     kind: str = field(default="indices-list", init=False)
 
     def _describe_extra(self) -> dict[str, Any]:
-        extra: dict[str, Any] = {"width": self.width, "allowZero": self.allow_zero}
+        extra: dict[str, Any] = {
+            "width": self.width,
+            "allowZero": self.allow_zero,
+            "symbols": list(_index_symbols(self.label, self.width)),
+        }
         if self.max_rows is not None:
             extra["maxRows"] = self.max_rows
         return extra
@@ -432,6 +446,65 @@ class ObjectParameter(Parameter):
         return dict(value)
 
 
+#: The letters a bracketed index group in a label may be written with, e.g. the
+#: ``hkl`` of "Planes (hkl)" or the ``uvw`` of "Current zone axis [uvw]".
+_INDEX_GROUP = re.compile(r"[(\[{<]\s*([A-Za-z]{2,4})\s*[)\]}>]")
+
+#: What to call each index when the label does not say. Three is ``hkl``; four
+#: is the Bravais-Miller ``hkil`` of a hexagonal plane, which is the only
+#: four-index form the application declares.
+_DEFAULT_SYMBOLS: dict[int, tuple[str, ...]] = {
+    1: ("h",),
+    2: ("h", "k"),
+    3: ("h", "k", "l"),
+    4: ("h", "k", "i", "l"),
+}
+
+
+def _index_symbols(label: str, width: int) -> tuple[str, ...]:
+    """Name each index of a row, for the one-box-per-index control.
+
+    Purpose
+    -------
+    The workbench gives every index its own box, and a box needs a name: an
+    unlabelled row of three identical fields is exactly the ambiguity this
+    change exists to remove. The name comes from the parameter's own label
+    wherever the label already states it — "Current zone axis [uvw]" names its
+    indices ``u``, ``v``, ``w`` — and otherwise from the width.
+
+    Parameters
+    ----------
+    label : str
+        The parameter's label, as shown above the control.
+    width : int
+        How many indices the row carries.
+
+    Returns
+    -------
+    tuple of str
+        Exactly ``width`` single-letter names.
+
+    Examples
+    --------
+    >>> _index_symbols("Current zone axis [uvw]", 3)
+    ('u', 'v', 'w')
+    >>> _index_symbols("Planes (hkl)", 3)
+    ('h', 'k', 'l')
+    >>> _index_symbols("Child plane to plot", 3)
+    ('h', 'k', 'l')
+    >>> _index_symbols("Direction", 4)
+    ('h', 'k', 'i', 'l')
+    """
+
+    match = _INDEX_GROUP.search(label)
+    if match is not None and len(match.group(1)) == width:
+        return tuple(match.group(1).lower())
+    default = _DEFAULT_SYMBOLS.get(width)
+    if default is not None:
+        return default
+    return tuple(f"i{position + 1}" for position in range(width))
+
+
 def _coerce_index_row(value: Any, *, parameter: Parameter) -> tuple[int, ...]:
     """Parse one row of Miller indices from text or a sequence."""
 
@@ -442,8 +515,12 @@ def _coerce_index_row(value: Any, *, parameter: Parameter) -> tuple[int, ...]:
         cleaned = value.strip().strip("()[]{}<>")
         cleaned = cleaned.replace(",", " ")
         items = cleaned.split()
-        if len(items) == 1 and len(items[0]) == width and _is_compact_row(items[0]):
-            items = list(items[0])
+        if len(items) == 1 and _is_compact_row(items[0]):
+            raise parameter._invalid(
+                f"{items[0]!r} runs the indices together, so it does not say which digits "
+                "belong to which index.",
+                hint=_separator_hint(items[0], width),
+            )
     elif isinstance(value, Sequence) and not isinstance(value, bytes | bytearray):
         items = list(value)
     else:
@@ -471,9 +548,43 @@ def _coerce_index_row(value: Any, *, parameter: Parameter) -> tuple[int, ...]:
 
 
 def _is_compact_row(text: str) -> bool:
-    """True for compact forms such as ``"111"`` that carry no sign."""
+    """True for a run of digits such as ``"110"`` offered as a whole index row.
 
-    return text.isdigit()
+    A single digit is not one of these: ``"1"`` for a width-3 row is a row with
+    two indices missing, and saying so is more useful than saying it is run
+    together. Anything longer is refused, including the cases that used to be
+    guessed correctly — see :func:`_separator_hint` for why guessing was wrong.
+    """
+
+    return len(text) > 1 and text.isdigit()
+
+
+def _separator_hint(text: str, width: int) -> str:
+    """Explain why a run of digits cannot be read, using the user's own input.
+
+    Why this is a refusal rather than a reading
+    -------------------------------------------
+    ``"110"`` for a width-3 row has exactly one reading, and for years it got
+    it. ``"10100"`` does not: it is ``(10, 10, 0)``, ``(1, 0, 100)``,
+    ``(101, 0, 0)`` and several more, and no rule distinguishes them. A parser
+    that accepts the easy case teaches the habit that produces the ambiguous
+    one, and the ambiguous one fails *silently* — an index nobody typed, in a
+    calculation that returns a plausible number. So the run is refused whatever
+    its length, and the workbench does not offer a control that can produce one.
+    """
+
+    example = " ".join(["1"] * width)
+    if len(text) == width:
+        spaced = " ".join(text)
+        return (
+            f"Separate them with spaces: {spaced}. Every index is a whole number of its own, "
+            f"and a two-digit index such as 10 makes a run like {text} ambiguous, so PyTex asks "
+            "rather than guesses."
+        )
+    return (
+        f"Enter {width} whole numbers separated by spaces, for example {example}. "
+        "Negative indices take a minus sign, as in 1 -1 0."
+    )
 
 
 @dataclass(frozen=True)

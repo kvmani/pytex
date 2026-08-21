@@ -4362,3 +4362,68 @@ entry. Unit lane green, 40 browser tests green, ruff and mypy clean, Sphinx 610 
 ### Next task
 
 None claimed. This goal is complete.
+
+
+# Goal — feedback, welcome tour, and foolproof Miller-index entry (2026-08-21)
+
+## Objective
+
+Four things, one goal:
+
+1. A **feedback / feature-request form** reachable from the workbench masthead in both shells,
+   with a warm invitation rather than a bug-report box.
+2. Feedback **always appended to a JSON file** with the submitter's metadata, and — when the
+   deployment configures an internal relay — **also mailed** to `kvmani@barc.gov.in`. Relay
+   settings live in a commented YAML file with example values, modelled on the SMTP block of the
+   `project_management_software` repository (`config/project_config.template.yml` `email:` and
+   `backend/app/services/email_utils.py`).
+3. A **welcome message and a skippable tour** of the main workspaces, on by default and switchable
+   from the same config file.
+4. **Foolproof Miller-index entry.** Users type `110` meaning `1 1 0`. Today the server silently
+   accepts a compact digit run, which is right for `110` and wrong the moment an index reaches two
+   digits: `10 10 0` typed compactly is `10100`, and there is no reading of that string the server
+   can defend. The fix is one box per index in the UI, and an explicit refusal on the server.
+
+## Plan
+
+- [ ] I1 — one box per index for `indices`, a row of boxes per row for `indices-list`, and a
+      server that refuses compact runs by name.
+- [ ] I2 — `pytex.app.config`: the YAML configuration surface (feedback, relay, tour), with the
+      commented example file.
+- [ ] I3 — `pytex.app.feedback`: the JSON append store and the SMTP relay send.
+- [ ] I4 — server routes and the frontend feedback drawer.
+- [ ] I5 — welcome message and skippable tour.
+- [ ] I6 — documentation, changelog, browser tests.
+
+## Progress
+
+Nothing landed yet; the ledger is written first so an interruption before the first commit still
+leaves the intent on disk.
+
+### I1 — one box per Miller index, and a refusal for the run of digits (done)
+
+The report was that people type `110` for `1 1 0`. The uncomfortable part is that it *worked*:
+`_coerce_index_row` accepted a digit run whose length equalled the parameter's width and split it
+into characters. That is a correct reading of `110` and an arbitrary one of anything else, and the
+failure is silent — `10100` is `(10, 10, 0)`, `(1, 0, 100)` and `(101, 0, 0)`, and whichever the
+parser picked, the calculation would return a plausible number for indices nobody entered.
+
+So the fix is in two halves and neither is a better error message alone:
+
+- **The control no longer has a place to put one.** `indicesInput` in `js/core/controls.js`
+  renders `width` narrow boxes instead of a text field, and `indices-list` renders a stack of
+  those rows with an ordinal, a remove button and an add button. The one check that stayed on the
+  client is the half-filled row: an empty box arrives at the server as `''`, and
+  "'' is not a whole number" names a box the user cannot see a name for.
+- **The server refuses the run outright**, including `111`, which it used to get right. Accepting
+  the easy case is what teaches the habit that produces the ambiguous one.
+
+Each box is named, because three identical fields in a row are the same ambiguity in another
+form. The name comes from the parameter's own label where the label already states it — "Current
+zone axis [uvw]" names its boxes `u`, `v`, `w` — and otherwise from the width, `hkl` for three and
+the Bravais-Miller `hkil` for four. `_index_symbols` does this once in Python and publishes the
+result as `symbols` in the manifest, so the browser never parses a label.
+
+Verified: `tests/unit/test_app_manifest.py` (the acceptance test for compact rows became a
+refusal test, plus the symbol-publishing tests), whole `-k app` unit lane green, ruff and mypy
+clean.

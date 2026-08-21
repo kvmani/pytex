@@ -11,7 +11,19 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
-Nothing yet.
+### Changed
+
+- **Miller indices are entered one index per box, and a run of digits is now refused.**
+  Users were typing `110` for what they meant as `1 1 0`, and the service layer guessed it
+  correctly — which was the problem. The guess only works while every index is a single digit:
+  `10 10 0` typed as `10100` is `(10, 10, 0)`, `(1, 0, 100)` and `(101, 0, 0)` with nothing to
+  choose between them, and the wrong reading returns a plausible number rather than an error. The
+  workbench now renders every `indices` and `indices-list` parameter as one small box per index,
+  named `h`, `k`, `l` — or `u`, `v`, `w` where the parameter's label says so — so there is no
+  place to put a run of digits; a list parameter is a stack of those rows with add and remove
+  buttons. `IndicesParameter` and `IndicesListParameter` reject an unseparated run whatever its
+  length, naming the separated form of what was typed. **API note:** a caller that was passing
+  `"111"` to the service layer must pass `"1 1 1"` or `[1, 1, 1]`.
 
 ## [0.1.1] - 2026-08-21
 
