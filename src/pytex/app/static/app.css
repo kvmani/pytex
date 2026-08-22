@@ -3069,3 +3069,5 @@ dl.detail dd {
   border-radius: var(--radius);
   box-shadow: 0 0 0 6px var(--accent-glow);
 }
+.intranet-notice { margin: 0 0 1rem; padding: .75rem 1rem; border: 1px solid #9bcfc0; border-radius: 10px; background: #effaf6; color: #234d46; font-size: .9rem; }
+.intranet-notice strong { margin-right: .35rem; }
