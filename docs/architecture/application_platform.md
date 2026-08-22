@@ -34,6 +34,13 @@ desktop shell and the web shell differ only in how a window appears and where fi
 The service layer is the product. The shells are plumbing. A capability that exists only inside a
 shell is a defect, because it is a capability the other shell does not have.
 
+## Decision 0 — Standalone first, portal integration second
+
+The PyTex desktop and intranet web workbench are complete standalone deployment modes. Integration
+with `ml_server` is optional and must use a stable service boundary; it must not require the portal
+or any unrelated companion repository to be installed. A colleague who needs only PyTex must be
+able to install, test, run, and update PyTex independently.
+
 ## Decision 1 — The Shared Layer Is A Service Layer, Not A Widget Library
 
 The obvious way to share code between a desktop and a web app is to share *widgets*, through a

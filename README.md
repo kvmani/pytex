@@ -3,6 +3,12 @@
 PyTex is a GPL-compatible, pure-Python-first library for crystallographic texture and diffraction
 with a deliberate focus on materials-science research and teaching.
 
+## Standalone and portal integration
+
+PyTex remains independently deployable as its own desktop and intranet web workbench. The Office
+Scientific Tools portal is an optional gateway integration for shared discovery; it must not be a
+dependency of PyTex development, testing, standalone web deployment, or desktop use.
+
 The repository is being built around four non-negotiable foundations:
 
 - a canonical crystallographic data model for frames, symmetry, orientations, maps, structure, and
