@@ -1165,18 +1165,36 @@ class KinematicSimulation:
 
         Parameters
         ----------
-        geometry, phase, miller_indices : see :meth:`simulate_spots`.
+        geometry : DiffractionGeometry
+            Beam, specimen, and detector geometry used for every simulation.
+        phase : Phase
+            Crystal structure and symmetry used to construct reciprocal vectors.
+        miller_indices : np.ndarray
+            Candidate reflection indices passed to :meth:`simulate_spots`.
         pattern : DiffractionPattern
             The observation to match against.
         candidate_orientations : list of Orientation or OrientationSet
             The search space. Its resolution bounds the achievable angular
             accuracy; refine the winner with
             :meth:`refine_orientation_candidate`.
-        zone_axis, max_excitation_error_inv_angstrom, intensity_model,
-        excitation_sigma_inv_angstrom, foil_thickness_angstrom,
-        acceptance_mask : see :meth:`simulate_spots`.
-        max_distance_px, cluster_radius_px, use_only_accepted : see
-            :meth:`associate_to_pattern`.
+        zone_axis : ZoneAxis or None
+            Optional zone-axis constraint passed to :meth:`simulate_spots`.
+        max_excitation_error_inv_angstrom : float
+            Maximum excitation error retained by :meth:`simulate_spots`.
+        intensity_model : str
+            Reflection intensity model used by :meth:`simulate_spots`.
+        excitation_sigma_inv_angstrom : float
+            Excitation-error width used by the kinematic intensity proxy.
+        foil_thickness_angstrom : float or None
+            Optional finite-thickness shape-factor input.
+        acceptance_mask : DetectorAcceptanceMask or None
+            Optional detector region in which simulated spots are observable.
+        max_distance_px : float
+            Largest observed-to-simulated spot separation accepted as a match.
+        cluster_radius_px : float
+            Radius used to cluster nearby observed spots before association.
+        use_only_accepted : bool
+            If true, compare only observations accepted by the detector mask.
 
         Returns
         -------

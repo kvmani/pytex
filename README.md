@@ -66,8 +66,9 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-**Version 0.1.1**, the first cut release. See [CHANGELOG.md](CHANGELOG.md) for the release notes
-and for every scientific behaviour change, stated explicitly.
+**Version 0.2.0**, the production workbench release. See [CHANGELOG.md](CHANGELOG.md) for the
+release notes, the Miller-index input compatibility action, and every scientific behaviour
+change stated explicitly.
 
 PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
 application. What exists today:

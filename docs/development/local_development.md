@@ -10,7 +10,7 @@ python scripts/check_repo_integrity.py
 python -m ruff check .
 python -m mypy src
 python -m pytest -q
-python scripts/check_sphinx_warnings.py --max-warnings 602
+python scripts/check_sphinx_warnings.py --max-warnings 0
 ```
 
 This is the base lane. It is the default contributor environment for integrity checks, docs builds,

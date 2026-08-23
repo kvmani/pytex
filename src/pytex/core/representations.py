@@ -17,20 +17,20 @@ returns *all* of them together in standard notation.
 The representations
 -------------------
 
-============== ================= ==========================================
-name           shape             what it is good for
-============== ================= ==========================================
-matrix         ``(3, 3)``        applying the rotation to vectors
-quaternion     ``(4,)``          composing rotations; numerically stable
-axis-angle     ``(3,)`` + scalar reading the physics off directly
-Rodrigues      ``(3,)``          fundamental zones are convex polyhedra
-Rodrigues-Frank ``(4,)``         the same, still invertible at ``omega = pi``
-Euler (Bunge)  ``(3,)``          the texture community's lingua franca
-Euler (ZYZ)    ``(3,)``          Matthies/Roe school, and ``abg`` imports
-homochoric     ``(3,)``          equal-volume; a ball of radius ``(3 pi/4)^(1/3)``
-cubochoric     ``(3,)``          equal-volume **and** a cube: uniform grids
-``(hkl)[uvw]`` two index triples  naming a texture component
-============== ================= ==========================================
+================ ================= ==========================================
+name             shape             what it is good for
+================ ================= ==========================================
+matrix           ``(3, 3)``        applying the rotation to vectors
+quaternion       ``(4,)``          composing rotations; numerically stable
+axis-angle       ``(3,)`` + scalar reading the physics off directly
+Rodrigues        ``(3,)``          fundamental zones are convex polyhedra
+Rodrigues-Frank  ``(4,)``          the same, still invertible at ``omega = pi``
+Euler (Bunge)    ``(3,)``          the texture community's lingua franca
+Euler (ZYZ)      ``(3,)``          Matthies/Roe school, and ``abg`` imports
+homochoric       ``(3,)``          equal-volume; a ball of radius ``(3 pi/4)^(1/3)``
+cubochoric       ``(3,)``          equal-volume **and** a cube: uniform grids
+``(hkl)[uvw]``   two index triples  naming a texture component
+================ ================= ==========================================
 
 The mathematics
 ---------------

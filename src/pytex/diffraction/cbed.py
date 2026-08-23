@@ -99,6 +99,7 @@ See Also
 --------
 `pytex.diffraction.kinematic` : the parallel-beam zone-axis engine this shares
     its conventions with.
+
 `docs/site/theory/convergent_beam_electron_diffraction.md` : the derivations.
 """
 

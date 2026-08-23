@@ -11,6 +11,19 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-23
+
+This production release adds the configurable feedback and onboarding experience and makes
+Miller-index input unambiguous throughout the workbench. It changes no crystallographic
+convention or numerical algorithm. The compatibility action for service callers is to replace
+an unseparated value such as `"111"` with `"1 1 1"` or `[1, 1, 1]`.
+
+Release packaging now uses the SPDX license expression supported by current setuptools, removing
+the deprecated license table/classifier metadata without changing PyTex's GPL-3.0-or-later terms.
+
+The exhaustive autodoc reference remains fully rendered without duplicating the curated API
+guide's object-index entries, restoring a useful Sphinx warning signal for release builds.
+
 ### Added
 
 - **A feedback and feature-request form, in both shells.** The masthead carries a **Feedback**

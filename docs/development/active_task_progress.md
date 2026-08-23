@@ -5,6 +5,49 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Production Release 0.2.0 — COMPLETE (2026-08-23)
+
+**Objective.** Cut the current application and API work as a coherent production release,
+regenerate the canonical class-model figures, and verify the complete scientific and packaging
+gates without weakening the repository's documented baselines.
+
+### Plan and status
+
+1. Regenerate the canonical class-model EBSD SVG from its checked-in generator and verify exact
+   provenance. — **DONE**
+2. Promote the existing Unreleased feedback, tour, and explicit Miller-index input work to
+   version `0.2.0`, because it contains a documented pre-1.0 API break. — **DONE**
+3. Run repository integrity, unit/integration, docs, build, and installed-wheel smoke checks;
+   record the release outcome and rollback procedure. — **DONE**
+
+### Release boundary
+
+This increment changes no crystallographic convention or numerical algorithm. Its only API
+behavior change is the already documented rejection of unseparated Miller-index digit strings;
+callers must use separated text or integer sequences. The canonical SVG regeneration repairs
+generated-document drift and is not a scientific result change.
+
+### Release verification
+
+- The full 6,762-case pytest collection completed with exit code 0; four expected skips were
+  observed in the optional-scientific cases.
+- All 47 Chromium workbench journeys passed against the current tree on an isolated server port.
+- Repository integrity, Ruff lint, and strict mypy over 150 source files are green.
+- The complete 204-page Sphinx site builds with **zero warnings**. The exhaustive autodoc page
+  still renders the full surface but no longer re-registers the curated API guide's index entries;
+  four genuine docstring defects were then repaired, and CI now enforces `--max-warnings 0`.
+- Canonical figure generation and class-model tests are green, including the regenerated
+  `class_model_ebsd.svg`.
+- Both `pytex-0.2.0.tar.gz` and `pytex-0.2.0-py3-none-any.whl` build in isolation. A clean-target
+  wheel smoke verified package metadata, runtime `__version__`, and the generated About document.
+
+### Rollback
+
+There is no database, serialized-result, or configuration migration in this release. Roll back by
+reinstalling the previously approved wheel or reverting this release commit, then restart the
+Workbench process. Service callers that adopted separated Miller indices remain compatible with
+the earlier parser; callers should not reintroduce ambiguous unseparated digit strings.
+
 ## EDAX OIM HDF5 (`.oh5` / `.h5`) EBSD Scan Reader — COMPLETE (2026-08-20)
 
 **Objective.** Read EDAX OIM HDF5 scans (`.oh5` and `.h5` — the same container, two extensions)

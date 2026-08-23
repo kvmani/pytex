@@ -22,9 +22,8 @@ PyTex now treats the test and quality surface as two explicit lanes:
 
 The base CI matrix covers Ubuntu and macOS on Python 3.11–3.13 plus Windows on Python 3.11.
 The Ubuntu/Python 3.11 job owns the executable Sphinx build and runs
-`python scripts/check_sphinx_warnings.py --max-warnings 602`. The number is a no-growth ratchet,
-not an accepted quality target: warning reductions lower it, and any increase fails CI. A future
-zero-warning state replaces the ratchet with `sphinx -W -n`.
+`python scripts/check_sphinx_warnings.py --max-warnings 0`. The release build admits no warnings;
+any warning fails CI.
 
 The browser lane runs `npm ci`, installs Chromium, and executes `npm run test:browser`. Its compact
 suite covers all seven workspaces, successful default calculations, TEM indexing, EBSD pattern

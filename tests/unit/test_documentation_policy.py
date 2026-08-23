@@ -147,8 +147,8 @@ def test_ci_covers_windows_and_ratchets_sphinx_warnings() -> None:
     workflow = _read(".github/workflows/ci.yml")
     strategy = _read("docs/testing/strategy.md")
     assert "windows-latest" in workflow
-    assert "scripts/check_sphinx_warnings.py --max-warnings 602" in workflow
-    assert "scripts/check_sphinx_warnings.py --max-warnings 602" in strategy
+    assert "scripts/check_sphinx_warnings.py --max-warnings 0" in workflow
+    assert "scripts/check_sphinx_warnings.py --max-warnings 0" in strategy
 
 
 def test_ci_and_strategy_define_the_critical_browser_lane() -> None:

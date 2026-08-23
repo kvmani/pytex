@@ -36,6 +36,10 @@ autodoc_default_options = {
     "special-members": "__len__, __getitem__",
     "show-inheritance": True,
     "member-order": "bysource",
+    # The exhaustive reference is the only autodoc consumer. It renders the
+    # complete surface, while the curated API guide owns searchable index
+    # entries; registering both produced hundreds of duplicate-object warnings.
+    "no-index": True,
 }
 autodoc_class_signature = "separated"
 autodoc_member_order = "bysource"

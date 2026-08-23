@@ -44,7 +44,7 @@ def test_about_licence_matches_the_packaging_metadata() -> None:
     """
 
     pyproject = tomllib.loads((REPOSITORY_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
-    assert pyproject["project"]["license"]["text"] == LICENSE_SPDX
+    assert pyproject["project"]["license"] == LICENSE_SPDX
 
     licence_text = (REPOSITORY_ROOT / "LICENSE").read_text(encoding="utf-8")
     assert f"SPDX-License-Identifier: {LICENSE_SPDX}" in licence_text
