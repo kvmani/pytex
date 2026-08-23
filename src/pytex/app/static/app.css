@@ -333,6 +333,20 @@ body {
   color: var(--ink-faint);
 }
 
+/* Two plots side by side (the ECCI workflow's EBSD and on-axis views), wrapping
+ * to a stack on a narrow viewport rather than crushing either plot. */
+.stage__split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.stage__split > * {
+  flex: 1 1 320px;
+  min-width: 280px;
+}
+
 .rail {
   border-left: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-raised) 94%, var(--accent-soft));

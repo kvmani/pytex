@@ -15,6 +15,7 @@ from pytex.app.services import crystal as crystal
 from pytex.app.services import diffraction as diffraction
 from pytex.app.services import ebsd as ebsd
 from pytex.app.services import ebsd_pattern as ebsd_pattern
+from pytex.app.services import ecci as ecci
 from pytex.app.services import tem as tem
 from pytex.app.services import texture as texture
 from pytex.app.services import variants as variants
@@ -26,6 +27,7 @@ __all__ = [
     "crystal",
     "diffraction",
     "ebsd",
+    "ecci",
     "tem",
     "texture",
     "variants",

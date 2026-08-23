@@ -57,6 +57,7 @@ notebooks/28_convergent_beam_diffraction
 notebooks/29_dynamical_cbed_and_point_groups
 notebooks/30_kikuchi_maps_and_zone_axis_routing
 notebooks/31_kearns_parameter
+notebooks/32_ecci_workflow_from_ebsd
 ```
 
 ## Orientation-Relationship Teaching Track

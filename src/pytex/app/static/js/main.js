@@ -37,6 +37,7 @@ import * as ebsdDistribution from './panels/ebsddistribution.js';
 import * as ebsdFigures from './panels/ebsdfigures.js';
 import * as ebsdSummary from './panels/ebsdsummary.js';
 import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
+import * as ecciWorkflow from './panels/ecciWorkflow.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
 import * as calculator from './panels/calculator.js';
@@ -84,6 +85,7 @@ const EBSD_ANALYSIS = {
     ebsdDistribution,
     ebsdFigures,
     ebsdKikuchi,
+    ecciWorkflow,
   ],
 };
 
