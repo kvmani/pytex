@@ -270,3 +270,60 @@ def test_workbench_guide_quotes_numbers_the_code_actually_produces() -> None:
     )
     assert abs(texture["data"]["mean_mrd"] - 1.0) < 0.01
     assert "1.000" in guide, "the guide quotes the random baseline mean as 1.000"
+
+
+def test_site_mathematics_renders_without_internet_access() -> None:
+    """PyTex is read on a closed office intranet.
+
+    The default MathJax CDN URL is unreachable there, which silently degraded
+    every equation on the site to raw TeX. The bundle is vendored under
+    _static/mathjax instead, and the config must keep pointing at it.
+    """
+    conf = _read("docs/site/conf.py")
+
+    assert 'mathjax_path = "mathjax/tex-chtml-full.js"' in conf
+    assert "cdn.jsdelivr.net" not in conf
+
+    vendored = REPO_ROOT / "docs" / "site" / "_static" / "mathjax"
+    bundle = vendored / "tex-chtml-full.js"
+    assert bundle.is_file(), "the offline MathJax bundle is missing"
+    # "tex-chtml-full" embeds every TeX extension, so nothing is fetched lazily.
+    assert bundle.stat().st_size > 500_000
+    assert (vendored / "LICENSE").is_file()
+
+    fonts = sorted((vendored / "output" / "chtml" / "fonts" / "woff-v2").glob("*.woff"))
+    assert len(fonts) >= 15, "MathJax web fonts are missing"
+
+
+def test_vendored_site_assets_are_tracked_by_git() -> None:
+    """Assets present only on a developer's disk would not reach a deployment."""
+    import subprocess
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "docs/site/_static/mathjax"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+
+    assert any(name.endswith("tex-chtml-full.js") for name in tracked)
+    assert sum(1 for name in tracked if name.endswith(".woff")) >= 15
+
+
+def test_site_does_not_register_the_unused_mermaid_extension() -> None:
+    """Mermaid is already forbidden on canonical visual pages in favour of SVG.
+
+    Registering the extension anyway injected Mermaid and D3 script tags from
+    jsdelivr onto every generated page, which simply fail on the intranet while
+    the site contains no Mermaid diagram at all.
+    """
+    conf = _read("docs/site/conf.py")
+    assert '"sphinxcontrib.mermaid"' not in conf
+
+    sources = list((REPO_ROOT / "docs").rglob("*.md"))
+    assert sources, "no documentation sources found"
+    for path in sources:
+        content = path.read_text(encoding="utf-8", errors="ignore")
+        assert "```{mermaid}" not in content, path
+        assert "```mermaid" not in content, path

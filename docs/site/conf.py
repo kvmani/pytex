@@ -18,6 +18,12 @@ from pytex._version import __version__  # noqa: E402
 
 release = __version__
 
+# sphinxcontrib.mermaid is deliberately absent. The visualization style guide
+# and scripts/check_repo_integrity.py already forbid Mermaid on canonical visual
+# pages in favour of hand-authored SVGs, and the site contains no Mermaid
+# diagram at all. Registering it anyway injected Mermaid and D3 <script> tags
+# from jsdelivr onto 61 generated pages, which simply fail on the office
+# intranet. Re-adding it means vendoring both bundles the way MathJax is below.
 extensions = [
     "myst_nb",
     "sphinx.ext.autodoc",
@@ -26,7 +32,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx_design",
-    "sphinxcontrib.mermaid",
 ]
 
 autosummary_generate = True
@@ -55,6 +60,16 @@ html_theme = "furo"
 html_title = "PyTex"
 html_static_path = ["_static"]
 html_css_files = ["architecture.css"]
+
+# PyTex is read on a closed office intranet, where the default MathJax CDN URL
+# is unreachable and every equation on all 200+ pages degrades to raw TeX. The
+# bundle is therefore vendored under _static/mathjax. "tex-chtml-full" embeds
+# every TeX extension, so nothing is fetched lazily at render time either, and
+# MathJax resolves its own web fonts relative to this path.
+#
+# mathjax_path is relative to the _static directory of the build.
+mathjax_path = "mathjax/tex-chtml-full.js"
+
 
 myst_enable_extensions = [
     "amsmath",
