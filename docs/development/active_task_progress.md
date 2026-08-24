@@ -5,6 +5,52 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## GUI-wide CIF phase loading — ACTIVE (2026-08-24)
+
+**Objective.** Let a user choose a `.cif` file beside every shared phase-catalogue dropdown in
+the Workbench, so the same imported canonical crystal structure can drive the Crystal Viewer,
+XRD, EBSD forward simulators, TEM, texture, variants, and calculator operations wherever a phase
+definition is requested.
+
+### Decisions and scope
+
+- The existing manifest editor `editor="phase"` remains the single GUI integration point. No
+  panel gets its own CIF parser or selector.
+- CIF text will travel through the existing JSON request transport and be normalized by the
+  canonical `Phase.from_cif_string(...)` path. Downstream services continue to receive the same
+  `PhaseSpec` and `Phase` pair as built-in and manually entered structures.
+- The imported file must preserve its atomic basis, lattice, point group, space group, user-facing
+  filename, and CIF provenance. Optional-parser absence and malformed CIF content must become
+  actionable application errors rather than internal tracebacks.
+- EBSD scan imports remain scan-owned: their phase definitions come from the scan header. The CIF
+  option applies to EBSD tools that already ask for a standalone phase, such as the Kikuchi
+  forward simulator.
+
+### Plan and current status
+
+1. Read governing architecture and map every phase selector. — **DONE**. All standalone phase
+   choices use `static/js/core/phasecontrol.js` via `ObjectParameter(editor="phase")`; no
+   panel-specific crystal-structure dropdown was found.
+2. Add canonical application conversion from uploaded CIF text to `PhaseSpec`, and extend the
+   shared phase control with an accessible `.cif` file choice. — **IN PROGRESS**.
+3. Add service, manifest, frontend/browser, and regression tests. — **PENDING**.
+4. Update application/CIF workflow documentation and changelog; run base and browser lanes. —
+   **PENDING**.
+5. Commit and push each green substantial increment to `main`. — **PENDING**.
+
+### Starting worktree
+
+`main` and `origin/main` both at `856c4c1`. The pre-existing untracked
+`tests/test_data/Al-001.png` is unrelated user material and must remain untouched and unstaged.
+
+### Prerequisite base-lane repair
+
+The starting commit's newly added ECCI service failed repository-wide Ruff and strict mypy checks.
+Before landing the CIF feature, its existing code was mechanically formatted, two NumPy expressions
+were made explicitly array-valued, one fixed-width index tuple was made type-explicit, and two
+private helper return types were annotated. The ECCI scientific calculations and public contract
+are unchanged. `tests/unit/test_ecci_workflow.py` remains green.
+
 ## Production Release 0.2.0 — COMPLETE (2026-08-23)
 
 **Objective.** Cut the current application and API work as a coherent production release,

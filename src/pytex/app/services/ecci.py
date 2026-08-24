@@ -79,7 +79,9 @@ _CITATION_ECCI = (
     "of atomic scale defects', in Springer Handbook of Microscopy (2019), and Crimp, "
     "Microsc. Microanal. 12 (2006) 102, doi:10.1017/S1431927606060438."
 )
-_CITATION_WILLIAMS = "Williams & Carter, Transmission Electron Microscopy, 2nd ed., chapters 12, 16."
+_CITATION_WILLIAMS = (
+    "Williams & Carter, Transmission Electron Microscopy, 2nd ed., chapters 12, 16."
+)
 _CITATION_SCHWARTZ = (
     "Schwartz, Kumar, Adams & Field (eds.), Electron Backscatter Diffraction in Materials "
     "Science, 2nd ed., Springer 2009, Chs. 1-5."
@@ -96,16 +98,12 @@ _MAX_TILT_DEG = 89.9
 
 def _rotation_matrix_x(angle_rad: float) -> np.ndarray:
     cosine, sine = math.cos(angle_rad), math.sin(angle_rad)
-    return np.array(
-        [[1.0, 0.0, 0.0], [0.0, cosine, -sine], [0.0, sine, cosine]], dtype=np.float64
-    )
+    return np.array([[1.0, 0.0, 0.0], [0.0, cosine, -sine], [0.0, sine, cosine]], dtype=np.float64)
 
 
 def _rotation_matrix_z(angle_rad: float) -> np.ndarray:
     cosine, sine = math.cos(angle_rad), math.sin(angle_rad)
-    return np.array(
-        [[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64
-    )
+    return np.array([[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]], dtype=np.float64)
 
 
 def _wrap180(angle_deg: float) -> float:
@@ -126,8 +124,10 @@ def _stage_to_lab_matrix(tilt_deg: float, rotation_deg: float) -> np.ndarray:
     EBSD-measured orientation and geometry pass through unchanged.
     """
 
-    return _rotation_matrix_x(math.radians(180.0 - tilt_deg)) @ _rotation_matrix_z(
-        math.radians(rotation_deg)
+    return np.asarray(
+        _rotation_matrix_x(math.radians(180.0 - tilt_deg))
+        @ _rotation_matrix_z(math.radians(rotation_deg)),
+        dtype=np.float64,
     )
 
 
@@ -143,7 +143,7 @@ def _beam_direction_crystal(orientation: Any, tilt_deg: float, rotation_deg: flo
 
     beam_specimen = _beam_direction_specimen(tilt_deg, rotation_deg)
     crystal_to_specimen = np.asarray(orientation.rotation.as_matrix(), dtype=np.float64)
-    return crystal_to_specimen.T @ beam_specimen
+    return np.asarray(crystal_to_specimen.T @ beam_specimen, dtype=np.float64)
 
 
 def _stage_branches(direction_specimen: np.ndarray) -> list[tuple[float, float]]:
@@ -298,9 +298,9 @@ def _nearest_zone_axis(
     cosines = np.clip(np.abs(cartesian @ beam), -1.0, 1.0)
     best = int(np.argmax(cosines))
     deviation_deg = float(math.degrees(math.acos(cosines[best])))
-    indices = tuple(int(value) for value in grid[best])
+    indices = (int(grid[best, 0]), int(grid[best, 1]), int(grid[best, 2]))
     if float(cartesian[best] @ beam) < 0.0:
-        indices = tuple(-value for value in indices)
+        indices = (-indices[0], -indices[1], -indices[2])
     return indices, deviation_deg
 
 
@@ -344,7 +344,9 @@ def _on_axis_pattern(
         phase,
         axis,
         camera_constant_mm_angstrom=camera_constant,
-        raster=DetectorRaster(width_px=detector_px, height_px=detector_px, pixel_size_mm=pixel_size_mm),
+        raster=DetectorRaster(
+            width_px=detector_px, height_px=detector_px, pixel_size_mm=pixel_size_mm
+        ),
         in_plane_rotation_deg=0.0,
         max_index=max_index,
     )
@@ -395,7 +397,11 @@ def _kikuchi_payload(
     pixel_size_mm = geometry.detector_pixel_size_um[0] / 1000.0
     try:
         pattern = simulate_kikuchi_pattern(
-            geometry, phase, orientation, max_index=max_index, max_bands=max_bands,
+            geometry,
+            phase,
+            orientation,
+            max_index=max_index,
+            max_bands=max_bands,
             zone_axis_max_index=zone_axis_max_index,
         )
     except ValueError as error:
@@ -412,7 +418,8 @@ def _kikuchi_payload(
         indices = tuple(int(value) for value in band.plane.indices)
         centre = clipped_runs(
             np.asarray(to_px(band.center_trace(projection, samples=_TRACE_SAMPLES)), dtype=float),
-            width_px, height_px,
+            width_px,
+            height_px,
         )
         edges = [
             clipped_runs(np.asarray(to_px(edge), dtype=float), width_px, height_px)
@@ -462,7 +469,10 @@ def _kikuchi_payload(
     return {
         "width_px": width_px,
         "height_px": height_px,
-        "pattern_centre_px": [float(geometry.pattern_center_px[0]), float(geometry.pattern_center_px[1])],
+        "pattern_centre_px": [
+            float(geometry.pattern_center_px[0]),
+            float(geometry.pattern_center_px[1]),
+        ],
         "camera_length_mm": float(geometry.camera_length_mm),
         "pixel_size_mm": pixel_size_mm,
         "wavelength_angstrom": float(pattern.wavelength_angstrom),
@@ -471,7 +481,7 @@ def _kikuchi_payload(
     }
 
 
-def _build_geometry(request: dict[str, Any], *, tilt_deg: float, rotation_deg: float):
+def _build_geometry(request: dict[str, Any], *, tilt_deg: float, rotation_deg: float) -> Any:
     """The EBSD ``DiffractionGeometry`` at a given stage tilt and rotation."""
 
     from pytex.diffraction.models import DiffractionGeometry
@@ -494,13 +504,17 @@ def _build_geometry(request: dict[str, Any], *, tilt_deg: float, rotation_deg: f
     )
 
 
-def _build_orientation(request: dict[str, Any], phase: Any):
+def _build_orientation(request: dict[str, Any], phase: Any) -> Any:
     from pytex.core.frame_catalog import SPECIMEN_FRAME
     from pytex.core.orientation import Orientation
 
     return Orientation.from_euler(
-        float(request["phi1_deg"]), float(request["Phi_deg"]), float(request["phi2_deg"]),
-        degrees=True, specimen_frame=SPECIMEN_FRAME, phase=phase,
+        float(request["phi1_deg"]),
+        float(request["Phi_deg"]),
+        float(request["phi2_deg"]),
+        degrees=True,
+        specimen_frame=SPECIMEN_FRAME,
+        phase=phase,
     )
 
 
@@ -516,124 +530,245 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
     return (
         phase_parameter(help_text="The phase whose bands and reflections are simulated."),
         NumberParameter(
-            name="phi1_deg", label="phi1",
-            help_text="First Bunge angle of the EBSD-measured orientation, about the specimen z axis.",
-            units="deg", default=0.0, group="Orientation (Bunge)",
+            name="phi1_deg",
+            label="phi1",
+            help_text=(
+                "First Bunge angle of the EBSD-measured orientation, about the specimen z axis."
+            ),
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
         ),
         NumberParameter(
-            name="Phi_deg", label="Phi",
+            name="Phi_deg",
+            label="Phi",
             help_text="Second Bunge angle of the EBSD-measured orientation, about the new x axis.",
-            units="deg", default=0.0, group="Orientation (Bunge)",
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
         ),
         NumberParameter(
-            name="phi2_deg", label="phi2",
+            name="phi2_deg",
+            label="phi2",
             help_text="Third Bunge angle of the EBSD-measured orientation, about the new z axis.",
-            units="deg", default=0.0, group="Orientation (Bunge)",
+            units="deg",
+            default=0.0,
+            group="Orientation (Bunge)",
         ),
         NumberParameter(
-            name="stage_tilt_deg", label="Stage tilt",
-            help_text="Current stage tilt about the tilt axis — 70 deg for an as-measured EBSD point.",
-            units="deg", default=tilt_default, minimum=0.0, maximum=89.0, group="Stage (current)",
+            name="stage_tilt_deg",
+            label="Stage tilt",
+            help_text=(
+                "Current stage tilt about the tilt axis — 70 deg for an as-measured EBSD point."
+            ),
+            units="deg",
+            default=tilt_default,
+            minimum=0.0,
+            maximum=89.0,
+            group="Stage (current)",
         ),
         NumberParameter(
-            name="stage_rotation_deg", label="Stage rotation",
+            name="stage_rotation_deg",
+            label="Stage rotation",
             help_text=(
                 "Current stage rotation about the specimen normal, applied before the tilt. Most "
                 "EBSD acquisitions are taken at the stage's zero-rotation reading."
             ),
-            units="deg", default=rotation_default, minimum=-180.0, maximum=180.0, group="Stage (current)",
+            units="deg",
+            default=rotation_default,
+            minimum=-180.0,
+            maximum=180.0,
+            group="Stage (current)",
         ),
         NumberParameter(
-            name="detector_elevation_deg", label="EBSD camera elevation",
-            help_text="How far the EBSD camera axis is raised above the plane perpendicular to the beam.",
-            units="deg", default=0.0, minimum=-40.0, maximum=40.0, group="EBSD camera",
+            name="detector_elevation_deg",
+            label="EBSD camera elevation",
+            help_text=(
+                "How far the EBSD camera axis is raised above the plane perpendicular to the beam."
+            ),
+            units="deg",
+            default=0.0,
+            minimum=-40.0,
+            maximum=40.0,
+            group="EBSD camera",
         ),
         NumberParameter(
-            name="detector_azimuth_deg", label="EBSD camera azimuth",
+            name="detector_azimuth_deg",
+            label="EBSD camera azimuth",
             help_text="Rotation of the EBSD camera about the beam, from the nominal port.",
-            units="deg", default=0.0, minimum=-180.0, maximum=180.0, group="EBSD camera",
+            units="deg",
+            default=0.0,
+            minimum=-180.0,
+            maximum=180.0,
+            group="EBSD camera",
         ),
         NumberParameter(
-            name="pattern_centre_x", label="Pattern centre x*",
-            help_text="Where the EBSD camera axis meets the screen, as a fraction of the screen width.",
-            default=0.5, minimum=0.0, maximum=1.0, group="EBSD camera",
+            name="pattern_centre_x",
+            label="Pattern centre x*",
+            help_text=(
+                "Where the EBSD camera axis meets the screen, as a fraction of the screen width."
+            ),
+            default=0.5,
+            minimum=0.0,
+            maximum=1.0,
+            group="EBSD camera",
         ),
         NumberParameter(
-            name="pattern_centre_y", label="Pattern centre y*",
-            help_text="Where the EBSD camera axis meets the screen, as a fraction of the screen height.",
-            default=0.5, minimum=0.0, maximum=1.0, group="EBSD camera",
+            name="pattern_centre_y",
+            label="Pattern centre y*",
+            help_text=(
+                "Where the EBSD camera axis meets the screen, as a fraction of the screen height."
+            ),
+            default=0.5,
+            minimum=0.0,
+            maximum=1.0,
+            group="EBSD camera",
         ),
         NumberParameter(
-            name="detector_distance", label="EBSD camera distance z*",
+            name="detector_distance",
+            label="EBSD camera distance z*",
             help_text="EBSD specimen-to-screen distance, as a fraction of the screen width.",
-            default=0.65, minimum=0.1, maximum=3.0, group="EBSD camera",
+            default=0.65,
+            minimum=0.1,
+            maximum=3.0,
+            group="EBSD camera",
         ),
         NumberParameter(
-            name="beam_energy_kev", label="Accelerating voltage",
-            help_text="Sets the electron wavelength for both the EBSD pattern and the on-axis pattern.",
-            units="kV", default=20.0, minimum=5.0, maximum=40.0, group="EBSD camera",
+            name="beam_energy_kev",
+            label="Accelerating voltage",
+            help_text=(
+                "Sets the electron wavelength for both the EBSD pattern and the on-axis pattern."
+            ),
+            units="kV",
+            default=20.0,
+            minimum=5.0,
+            maximum=40.0,
+            group="EBSD camera",
         ),
         IntegerParameter(
-            name="detector_width_px", label="EBSD screen width", units="px", default=640,
-            minimum=64, maximum=2048, group="EBSD camera", advanced=True,
+            name="detector_width_px",
+            label="EBSD screen width",
+            units="px",
+            default=640,
+            minimum=64,
+            maximum=2048,
+            group="EBSD camera",
+            advanced=True,
             help_text="EBSD camera width in pixels.",
         ),
         IntegerParameter(
-            name="detector_height_px", label="EBSD screen height", units="px", default=480,
-            minimum=64, maximum=2048, group="EBSD camera", advanced=True,
+            name="detector_height_px",
+            label="EBSD screen height",
+            units="px",
+            default=480,
+            minimum=64,
+            maximum=2048,
+            group="EBSD camera",
+            advanced=True,
             help_text="EBSD camera height in pixels.",
         ),
         NumberParameter(
-            name="pixel_size_um", label="EBSD pixel size", units="um", default=50.0,
-            minimum=1.0, maximum=500.0, group="EBSD camera", advanced=True,
+            name="pixel_size_um",
+            label="EBSD pixel size",
+            units="um",
+            default=50.0,
+            minimum=1.0,
+            maximum=500.0,
+            group="EBSD camera",
+            advanced=True,
             help_text="EBSD screen pixel pitch.",
         ),
         IntegerParameter(
-            name="max_bands", label="EBSD bands drawn", default=24, minimum=1, maximum=120,
-            help_text="Keep the strongest this many EBSD bands.", group="EBSD camera",
+            name="max_bands",
+            label="EBSD bands drawn",
+            default=24,
+            minimum=1,
+            maximum=120,
+            help_text="Keep the strongest this many EBSD bands.",
+            group="EBSD camera",
         ),
         IntegerParameter(
-            name="max_index", label="EBSD index limit", default=4, minimum=1, maximum=8,
-            advanced=True, group="EBSD camera",
+            name="max_index",
+            label="EBSD index limit",
+            default=4,
+            minimum=1,
+            maximum=8,
+            advanced=True,
+            group="EBSD camera",
             help_text="Largest |h|, |k| or |l| enumerated for the EBSD pattern.",
         ),
         IntegerParameter(
-            name="zone_axis_max_index", label="EBSD zone-axis limit", default=3, minimum=1, maximum=6,
-            advanced=True, group="EBSD camera",
+            name="zone_axis_max_index",
+            label="EBSD zone-axis limit",
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+            group="EBSD camera",
             help_text="Largest |u|, |v| or |w| enumerated for the EBSD pattern's zone axes.",
         ),
         NumberParameter(
-            name="on_axis_camera_length_mm", label="On-axis camera length",
+            name="on_axis_camera_length_mm",
+            label="On-axis camera length",
             help_text=(
                 "Effective specimen-to-detector distance for the on-axis BSE/SAED-mode view. Sets "
                 "the display scale only — it does not change which reflections are near the beam."
             ),
-            units="mm", default=100.0, minimum=1.0, maximum=2000.0, group="On-axis detector",
+            units="mm",
+            default=100.0,
+            minimum=1.0,
+            maximum=2000.0,
+            group="On-axis detector",
         ),
         IntegerParameter(
-            name="on_axis_detector_px", label="On-axis detector size", units="px", default=512,
-            minimum=64, maximum=2048, group="On-axis detector", advanced=True,
+            name="on_axis_detector_px",
+            label="On-axis detector size",
+            units="px",
+            default=512,
+            minimum=64,
+            maximum=2048,
+            group="On-axis detector",
+            advanced=True,
             help_text="On-axis detector raster size, in pixels, square.",
         ),
         NumberParameter(
-            name="on_axis_pixel_size_mm", label="On-axis pixel size", units="mm", default=0.05,
-            minimum=0.001, maximum=1.0, group="On-axis detector", advanced=True,
+            name="on_axis_pixel_size_mm",
+            label="On-axis pixel size",
+            units="mm",
+            default=0.05,
+            minimum=0.001,
+            maximum=1.0,
+            group="On-axis detector",
+            advanced=True,
             help_text="On-axis detector pixel pitch.",
         ),
         IntegerParameter(
-            name="on_axis_max_index", label="On-axis reflection limit", default=6, minimum=1, maximum=10,
-            advanced=True, group="On-axis detector",
+            name="on_axis_max_index",
+            label="On-axis reflection limit",
+            default=6,
+            minimum=1,
+            maximum=10,
+            advanced=True,
+            group="On-axis detector",
             help_text="Largest |h|, |k| or |l| enumerated for the on-axis pattern.",
         ),
         IntegerParameter(
-            name="zone_search_max_index", label="Zone search limit", default=4, minimum=1, maximum=8,
-            advanced=True, group="On-axis detector",
+            name="zone_search_max_index",
+            label="Zone search limit",
+            default=4,
+            minimum=1,
+            maximum=8,
+            advanced=True,
+            group="On-axis detector",
             help_text=(
                 "How far to search for the low-index zone axis nearest the actual beam direction."
             ),
         ),
         IndicesParameter(
-            name="target_zone_axis", label="Target direction [uvw]", width=3, default=(0, 0, 1),
+            name="target_zone_axis",
+            label="Target direction [uvw]",
+            width=3,
+            default=(0, 0, 1),
             help_text=(
                 "The crystallographic direction to bring onto the beam for the two-beam condition. "
                 "Its proximity to the current beam direction is always reported."
@@ -645,7 +780,9 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
 @REGISTRY.operation(
     "ecci.solve_workflow",
     title="Solve the ECCI two-beam tilt",
-    summary="From an EBSD orientation: the EBSD pattern, the on-axis view, and the tilt to a target.",
+    summary=(
+        "From an EBSD orientation: the EBSD pattern, the on-axis view, and the tilt to a target."
+    ),
     help_text=(
         "Starts from an orientation an EBSD system has already indexed and answers the question "
         "an ECCI operator actually asks: *what stage move brings this direction onto the beam?*\n\n"
@@ -661,19 +798,27 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
         "**Forward-validated.** Every candidate move is checked by re-deriving the direction it "
         "actually places on the beam, so the residual reported is never the solver trusting its "
         "own algebra.\n\n"
-        "**What it is not.** Kinematic and geometric, like every pattern in this workspace: two-beam "
+        "**What it is not.** Kinematic and geometric, like every pattern in this workspace: "
+        "two-beam "
         "*contrast* — which reflection dominates, how strong the channelling signal is — is not "
         "modelled, only the geometric condition that makes a two-beam setup possible."
     ),
-    parameters=_shared_parameters()
-    + (
+    parameters=(
+        *_shared_parameters(),
         BooleanParameter(
-            name="allow_reverse", label="Allow the opposite sense",
-            help_text="Treat [uvw] and [-u-v-w] as the same target; usually halves the stage travel.",
-            default=True, advanced=True,
+            name="allow_reverse",
+            label="Allow the opposite sense",
+            help_text=(
+                "Treat [uvw] and [-u-v-w] as the same target; usually halves the stage travel."
+            ),
+            default=True,
+            advanced=True,
         ),
     ),
-    returns="One row per candidate stage move; the EBSD and on-axis patterns at the current state under `data`.",
+    returns=(
+        "One row per candidate stage move; the EBSD and on-axis patterns at the current state "
+        "under `data`."
+    ),
     panel="ecci",
     citations=(_CITATION_ECCI, _CITATION_WILLIAMS, _CITATION_SCHWARTZ),
     tags=("EBSD", "ECCI", "channelling", "two-beam", "tilt", "on-axis", "zone axis", "dislocation"),
@@ -686,14 +831,19 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
 
     geometry = _build_geometry(request, tilt_deg=tilt_deg, rotation_deg=rotation_deg)
     kikuchi = _kikuchi_payload(
-        phase, spec, orientation, geometry,
-        max_bands=int(request["max_bands"]), max_index=int(request["max_index"]),
+        phase,
+        spec,
+        orientation,
+        geometry,
+        max_bands=int(request["max_bands"]),
+        max_index=int(request["max_index"]),
         zone_axis_max_index=int(request["zone_axis_max_index"]),
     )
 
     beam_crystal = _beam_direction_crystal(orientation, tilt_deg, rotation_deg)
     on_axis = _on_axis_pattern(
-        phase, beam_crystal,
+        phase,
+        beam_crystal,
         zone_search_max_index=int(request["zone_search_max_index"]),
         camera_length_mm=float(request["on_axis_camera_length_mm"]),
         beam_energy_kev=float(request["beam_energy_kev"]),
@@ -707,7 +857,10 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
     target_label = direction_label(target_indices, spec=spec)
 
     solutions = _solve_stage_for_direction(
-        orientation, target_direction, current_tilt_deg=tilt_deg, current_rotation_deg=rotation_deg,
+        orientation,
+        target_direction,
+        current_tilt_deg=tilt_deg,
+        current_rotation_deg=rotation_deg,
         allow_reverse=bool(request["allow_reverse"]),
     )
     if not solutions:
@@ -742,13 +895,15 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
         title=f"ECCI tilt to {target_label} from {spec.name} at Bunge "
         f"({request['phi1_deg']:.1f}, {request['Phi_deg']:.1f}, {request['phi2_deg']:.1f}) deg",
         summary=(
-            f"At the current stage state (tilt {tilt_deg:.1f} deg, rotation {rotation_deg:.1f} deg) "
+            f"At the current stage state (tilt {tilt_deg:.1f} deg, rotation "
+            f"{rotation_deg:.1f} deg) "
             f"the beam sits {proximity_deviation:.2f} deg from {proximity_label}, the nearest "
             f"low-index direction. Bringing {target_label} onto the beam for a two-beam condition "
             f"needs a stage tilt of {best['tilt_deg']:.2f} deg and a rotation of "
             f"{best['rotation_deg']:.2f} deg — a move of {best['delta_tilt_deg']:+.2f} deg in tilt "
             f"and {best['delta_rotation_deg']:+.2f} deg in rotation, forward-validated to "
-            f"{best['residual_deg']:.4f} deg off the beam. {len(rows)} reachable stage move(s) were "
+            f"{best['residual_deg']:.4f} deg off the beam. {len(rows)} reachable stage "
+            "move(s) were "
             "found within the [0, 90) deg tilt range."
         ),
         table=ResultTable(
@@ -761,8 +916,15 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
                 Column("delta_rotation_deg", "Delta rotation", units="deg", numeric=True, digits=2),
                 Column("travel_deg", "Total travel", units="deg", numeric=True, digits=2),
                 Column(
-                    "residual_deg", "Off axis after move", units="deg", numeric=True, digits=4,
-                    help_text="Forward-validated angle between the target direction and the beam after the move.",
+                    "residual_deg",
+                    "Off axis after move",
+                    units="deg",
+                    numeric=True,
+                    digits=4,
+                    help_text=(
+                        "Forward-validated angle between the target direction and the beam after "
+                        "the move."
+                    ),
                 ),
             ),
             rows=tuple(rows),
@@ -782,7 +944,11 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
         },
         inputs={
             "phase": spec.name,
-            "euler_deg": [float(request["phi1_deg"]), float(request["Phi_deg"]), float(request["phi2_deg"])],
+            "euler_deg": [
+                float(request["phi1_deg"]),
+                float(request["Phi_deg"]),
+                float(request["phi2_deg"]),
+            ],
             "stage_tilt_deg": tilt_deg,
             "stage_rotation_deg": rotation_deg,
             "target_zone_axis": list(target_indices),
@@ -829,14 +995,19 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
 
     geometry = _build_geometry(request, tilt_deg=tilt_deg, rotation_deg=rotation_deg)
     kikuchi = _kikuchi_payload(
-        phase, spec, orientation, geometry,
-        max_bands=int(request["max_bands"]), max_index=int(request["max_index"]),
+        phase,
+        spec,
+        orientation,
+        geometry,
+        max_bands=int(request["max_bands"]),
+        max_index=int(request["max_index"]),
         zone_axis_max_index=int(request["zone_axis_max_index"]),
     )
 
     beam_crystal = _beam_direction_crystal(orientation, tilt_deg, rotation_deg)
     on_axis = _on_axis_pattern(
-        phase, beam_crystal,
+        phase,
+        beam_crystal,
         zone_search_max_index=int(request["zone_search_max_index"]),
         camera_length_mm=float(request["on_axis_camera_length_mm"]),
         beam_energy_kev=float(request["beam_energy_kev"]),
@@ -856,15 +1027,22 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
         math.degrees(
             math.acos(
                 np.clip(
-                    abs(float(np.dot(target_direction, beam_crystal)) / float(np.linalg.norm(beam_crystal))),
-                    -1.0, 1.0,
+                    abs(
+                        float(np.dot(target_direction, beam_crystal))
+                        / float(np.linalg.norm(beam_crystal))
+                    ),
+                    -1.0,
+                    1.0,
                 )
             )
         )
     )
 
     result = AppResult(
-        title=f"ECCI patterns of {spec.name} at tilt {tilt_deg:.2f} deg, rotation {rotation_deg:.2f} deg",
+        title=(
+            f"ECCI patterns of {spec.name} at tilt {tilt_deg:.2f} deg, rotation "
+            f"{rotation_deg:.2f} deg"
+        ),
         summary=(
             f"At tilt {tilt_deg:.2f} deg and rotation {rotation_deg:.2f} deg the beam sits "
             f"{proximity_deviation:.2f} deg from {proximity_label} and {target_angle_deg:.2f} deg "
@@ -876,7 +1054,8 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
             "kikuchi": kikuchi,
             "on_axis": on_axis,
             "proximity": {
-                "indices": list(proximity_indices), "label": proximity_label,
+                "indices": list(proximity_indices),
+                "label": proximity_label,
                 "deviation_deg": proximity_deviation,
             },
             "target": {
@@ -888,7 +1067,11 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
         },
         inputs={
             "phase": spec.name,
-            "euler_deg": [float(request["phi1_deg"]), float(request["Phi_deg"]), float(request["phi2_deg"])],
+            "euler_deg": [
+                float(request["phi1_deg"]),
+                float(request["Phi_deg"]),
+                float(request["phi2_deg"]),
+            ],
             "stage_tilt_deg": tilt_deg,
             "stage_rotation_deg": rotation_deg,
         },
@@ -907,7 +1090,10 @@ REGISTRY.add_examples(
             id="ecci.example.nickel_cube_to_111",
             title="Nickel: cube orientation, tilt to [111]",
             panel="ecci",
-            summary="A cube-oriented fcc grain, EBSD-measured at 70 deg, tilted to a <111> two-beam condition.",
+            summary=(
+                "A cube-oriented fcc grain, EBSD-measured at 70 deg, tilted to a <111> "
+                "two-beam condition."
+            ),
             teaches=(
                 "The stage move needed is not the crystal misorientation from [001] to [111] "
                 "(54.7 deg): with the specimen already tilted 70 deg for EBSD, the stage tilt that "
@@ -917,8 +1103,11 @@ REGISTRY.add_examples(
             operation="ecci.solve_workflow",
             request={
                 "phase": {"builtin": "ni_fcc"},
-                "phi1_deg": 0.0, "Phi_deg": 0.0, "phi2_deg": 0.0,
-                "stage_tilt_deg": 70.0, "stage_rotation_deg": 0.0,
+                "phi1_deg": 0.0,
+                "Phi_deg": 0.0,
+                "phi2_deg": 0.0,
+                "stage_tilt_deg": 70.0,
+                "stage_rotation_deg": 0.0,
                 "target_zone_axis": [1, 1, 1],
             },
         ),
@@ -928,15 +1117,19 @@ REGISTRY.add_examples(
             panel="ecci",
             summary="A bcc grain close to cube, brought exactly onto its own [001] for ECCI.",
             teaches=(
-                "The nearest-zone-axis readout catches a grain that is already close to a low-index "
+                "The nearest-zone-axis readout catches a grain that is already close to a "
+                "low-index "
                 "pole: the on-axis pattern shows the [001] zone from the first response, and the "
                 "solved tilt is a small correction rather than a large excursion."
             ),
             operation="ecci.solve_workflow",
             request={
                 "phase": {"builtin": "fe_bcc"},
-                "phi1_deg": 5.0, "Phi_deg": 3.0, "phi2_deg": 2.0,
-                "stage_tilt_deg": 70.0, "stage_rotation_deg": 0.0,
+                "phi1_deg": 5.0,
+                "Phi_deg": 3.0,
+                "phi2_deg": 2.0,
+                "stage_tilt_deg": 70.0,
+                "stage_rotation_deg": 0.0,
                 "target_zone_axis": [0, 0, 1],
             },
         ),
@@ -953,8 +1146,11 @@ REGISTRY.add_examples(
             operation="ecci.solve_workflow",
             request={
                 "phase": {"builtin": "zr_hcp"},
-                "phi1_deg": 0.0, "Phi_deg": 10.0, "phi2_deg": 0.0,
-                "stage_tilt_deg": 70.0, "stage_rotation_deg": 0.0,
+                "phi1_deg": 0.0,
+                "Phi_deg": 10.0,
+                "phi2_deg": 0.0,
+                "stage_tilt_deg": 70.0,
+                "stage_rotation_deg": 0.0,
                 "target_zone_axis": [0, 0, 1],
             },
         ),

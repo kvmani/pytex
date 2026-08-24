@@ -19,6 +19,7 @@ from numpy.testing import assert_allclose
 
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
+from pytex.app.phases import builtin_phase
 from pytex.app.services.ecci import (
     _beam_direction_crystal,
     _beam_direction_specimen,
@@ -27,7 +28,6 @@ from pytex.app.services.ecci import (
     _stage_branches,
     _stage_to_lab_matrix,
 )
-from pytex.app.phases import builtin_phase
 from pytex.core.frame_catalog import SPECIMEN_FRAME
 from pytex.core.orientation import Orientation
 
@@ -64,7 +64,9 @@ def test_stage_matrix_matches_for_ebsd_at_zero_rotation() -> None:
 
     for tilt in (0.0, 20.0, 54.7, 70.0, 89.0):
         geometry = DiffractionGeometry.for_ebsd(sample_tilt_deg=tilt)
-        assert_allclose(_stage_to_lab_matrix(tilt, 0.0), geometry.specimen_to_lab_matrix, atol=1e-12)
+        assert_allclose(
+            _stage_to_lab_matrix(tilt, 0.0), geometry.specimen_to_lab_matrix, atol=1e-12
+        )
 
 
 def test_stage_matrix_is_a_proper_rotation() -> None:
@@ -205,7 +207,9 @@ def test_resimulate_reports_the_target_direction_it_was_asked_for() -> None:
     target = np.array([1.0, 1.0, 1.0]) / math.sqrt(3.0)
     expected_angle = math.degrees(math.acos(min(1.0, abs(float(np.dot(beam_crystal, target))))))
 
-    assert result["data"]["target"]["angle_from_beam_deg"] == pytest.approx(expected_angle, abs=1e-6)
+    assert result["data"]["target"]["angle_from_beam_deg"] == pytest.approx(
+        expected_angle, abs=1e-6
+    )
 
 
 def test_solve_workflow_kikuchi_pattern_matches_ebsd_pattern_operation() -> None:
