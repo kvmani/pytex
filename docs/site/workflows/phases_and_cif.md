@@ -137,6 +137,21 @@ phase = Phase.from_cif(
 )
 ```
 
+## Loading A CIF In The Workbench
+
+Every standalone phase picker in the desktop and intranet Workbench includes **Load a CIF crystal
+structure** beside the built-in catalogue. The file is read in the browser as text and sent in the
+same JSON request as the rest of the operation. On the Python side it goes through
+`Phase.from_cif_string(...)`, is converted to the application `PhaseSpec` wire contract, and then
+drives the same Crystal Viewer, diffraction, EBSD forward-simulation, texture, variants and
+calculator services as a built-in phase.
+
+The boundary is deliberate: the browser does not interpret lattice parameters, symmetry or atom
+sites. It only carries `{name, text}`; the canonical PyTex model owns crystallographic meaning.
+The imported filename is retained as provenance in the operation inputs and exports. See
+{doc}`workbench_application` for the complete workspace inventory and the distinction between a
+standalone phase and phases embedded in an imported EBSD scan.
+
 ## Example: From An Existing `pymatgen` Structure
 
 ```python

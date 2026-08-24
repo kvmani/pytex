@@ -9,12 +9,13 @@ basis — and :meth:`PhaseSpec.to_phase` is the one place it becomes a real phas
 
 Two properties are deliberate.
 
-**No optional dependency is required.** A user can describe any phase of any
-space group by typing numbers, and the built-in catalogue below is literal
-parameters in Python rather than parsed CIF files. CIF import remains available
-through :meth:`Phase.from_cif` where pymatgen is installed, but the application
-is fully usable without it — which matters because the deployment target is an
-intranet host that may never have seen PyPI.
+**No optional dependency is required for the catalogue or manual path.** A user
+can describe any phase of any space group by typing numbers, and the built-in
+catalogue below is literal parameters in Python rather than parsed CIF files.
+The shared GUI phase control also accepts CIF text through
+:func:`phase_from_request` where pymatgen is installed; without it the rest of
+the application remains fully usable — which matters because the deployment
+target is an intranet host that may never have seen PyPI.
 
 **Cell parameters are checked against the crystal system.** Asking for a cubic
 point group with ``a != b`` is a mistake, and catching it at construction with a
@@ -24,18 +25,22 @@ non-cubic "cubic" phase propagating into an indexing result.
 
 from __future__ import annotations
 
+import logging
 import math
+import warnings
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
 import numpy as np
 
-from pytex.app.errors import InvalidInputError
+from pytex.app.errors import DependencyMissingError, InvalidInputError
+from pytex.app.uploads import uploaded_name_and_text
 from pytex.core.conventions import FrameDomain, Handedness
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import AtomicSite, Lattice, Phase, SpaceGroupSpec, UnitCell
 from pytex.core.point_groups import PointGroup, all_point_group_symbols
+from pytex.core.provenance import ProvenanceRecord
 from pytex.core.symmetry import SymmetrySpec
 
 __all__ = [
@@ -63,6 +68,7 @@ APP_CRYSTAL_FRAME = ReferenceFrame(
 
 _ANGLE_TOLERANCE_DEG = 1e-6
 _LENGTH_TOLERANCE = 1e-9
+_LOGGER = logging.getLogger("pytex.app.phases")
 
 
 @dataclass(frozen=True)
@@ -403,6 +409,63 @@ class PhaseSpec:
         if self.source is not None:
             payload["source"] = self.source
         return payload
+
+    @classmethod
+    def from_phase(cls, phase: Phase, *, source: str | None = None) -> PhaseSpec:
+        """Build the application wire form from a canonical phase.
+
+        Purpose
+        -------
+        Keep imported structures on the same service contract as catalogue and
+        manually entered phases. This is the application boundary from a fully
+        semantic :class:`~pytex.core.lattice.Phase` to its JSON-ready form; it
+        does not expose a parser-specific structure object.
+
+        Parameters
+        ----------
+        phase : Phase
+            A canonical phase carrying lattice, symmetry, and optionally an
+            atomic unit cell and space group.
+        source : str, optional
+            User-facing provenance text to retain in results and exports.
+
+        Returns
+        -------
+        PhaseSpec
+            A validated phase specification preserving the imported structure.
+        """
+
+        lattice = phase.lattice
+        sites = (
+            tuple(
+                SiteSpec(
+                    species=site.species,
+                    x=float(site.fractional_coordinates[0]),
+                    y=float(site.fractional_coordinates[1]),
+                    z=float(site.fractional_coordinates[2]),
+                    occupancy=float(site.occupancy),
+                    label=site.label,
+                    b_iso=site.b_iso,
+                )
+                for site in phase.unit_cell.sites
+            )
+            if phase.unit_cell is not None
+            else ()
+        )
+        return cls(
+            name=phase.name,
+            a=lattice.a,
+            b=lattice.b,
+            c=lattice.c,
+            alpha=lattice.alpha_deg,
+            beta=lattice.beta_deg,
+            gamma=lattice.gamma_deg,
+            point_group=phase.symmetry.point_group,
+            space_group_symbol=phase.space_group_symbol,
+            space_group_number=phase.space_group_number,
+            sites=sites,
+            source=source,
+        )
 
     @classmethod
     def from_json(cls, payload: Mapping[str, Any]) -> PhaseSpec:
@@ -903,7 +966,53 @@ def phase_from_request(payload: Mapping[str, Any] | None) -> tuple[PhaseSpec, Ph
         raise InvalidInputError(
             "This operation needs a phase.",
             field="phase",
-            hint="Choose a built-in phase or enter cell parameters and a point group.",
+            hint=(
+                "Choose a built-in phase, load a .cif file, or enter cell parameters and a "
+                "point group."
+            ),
         )
+    cif_payload = payload.get("cif")
+    if cif_payload is not None:
+        if set(payload) != {"cif"}:
+            unexpected = ", ".join(sorted(str(key) for key in payload if key != "cif"))
+            raise InvalidInputError(
+                f"A CIF phase cannot also override phase field(s): {unexpected}.",
+                field="phase",
+                hint="Load the CIF by itself, then edit the imported cell as a custom phase.",
+            )
+        name, text = uploaded_name_and_text(cif_payload, field="phase", suffixes=(".cif",))
+        provenance = ProvenanceRecord(
+            source_system="cif",
+            source_identifier=name,
+            metadata={"reader": "pymatgen.Structure.from_str", "format": "cif"},
+        )
+        try:
+            with warnings.catch_warnings(record=True) as parser_notes:
+                warnings.simplefilter("always")
+                phase = Phase.from_cif_string(
+                    text,
+                    crystal_frame=APP_CRYSTAL_FRAME,
+                    provenance=provenance,
+                )
+        except ImportError as error:
+            raise DependencyMissingError(
+                "pymatgen", purpose="Loading CIF structures in the Workbench", extra="adapters"
+            ) from error
+        except (IndexError, KeyError, RuntimeError, TypeError, ValueError) as error:
+            raise InvalidInputError(
+                f"PyTex could not read {name} as a crystallographic structure: {error}",
+                field="phase",
+                hint=(
+                    "Open a valid text CIF containing cell parameters and atomic sites. "
+                    "If another crystallography program also rejects it, repair or export it again."
+                ),
+            ) from error
+        for note in dict.fromkeys(str(item.message) for item in parser_notes):
+            _LOGGER.warning("CIF parser note for %s: %s", name, note)
+        spec = PhaseSpec.from_phase(
+            phase,
+            source=f"CIF file {name}; parsed by pymatgen into canonical PyTex phase semantics.",
+        )
+        return spec, phase
     spec = PhaseSpec.from_json(payload)
     return spec, spec.to_phase()

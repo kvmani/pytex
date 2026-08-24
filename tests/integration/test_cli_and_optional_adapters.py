@@ -25,6 +25,8 @@ from pytex import (
     to_orix_rotation,
 )
 from pytex._version import __version__
+from pytex.app import REGISTRY
+from pytex.app.phases import phase_from_request
 
 NACL_CIF = """
 data_NaCl
@@ -92,6 +94,32 @@ def test_phase_from_cif_string_optional_adapter_integration() -> None:
     assert phase.name == "nacl"
     assert phase.space_group_number == 225
     assert phase.unit_cell is not None
+
+
+def test_uploaded_cif_drives_a_workbench_xrd_operation() -> None:
+    pytest = __import__("pytest")
+    pytest.importorskip("pymatgen.core")
+    uploaded = {"cif": {"name": "halite.cif", "text": NACL_CIF}}
+
+    spec, phase = phase_from_request(uploaded)
+    assert spec.name == "NaCl"
+    assert spec.space_group_number == 225
+    assert len(spec.sites) == 8
+    assert phase.provenance is not None
+    assert phase.provenance.source_identifier == "halite.cif"
+
+    operation = REGISTRY.get("xrd.powder_pattern")
+    request = {
+        parameter.name: parameter.default
+        for parameter in operation.parameters
+        if parameter.default is not None
+    }
+    request["phase"] = uploaded
+    result = REGISTRY.call(operation.id, request)
+
+    assert result["inputs"]["phase"]["name"] == "NaCl"
+    assert "halite.cif" in result["inputs"]["phase"]["source"]
+    assert result["data"]["phase_name"] == "NaCl"
 
 
 def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:

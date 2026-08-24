@@ -67,7 +67,7 @@ environment variable and the loader reads it. See {mod}`pytex.app.config`.
 
 ## What Is In It
 
-Seven workspaces holding sixteen panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding seventeen panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
@@ -76,7 +76,7 @@ an example cannot rot.
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Analysis** | Everything transmission-electron, in four sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
-| **EBSD** | What is in this scan, what does its map show, where should it be believed — and what pattern was behind it? Seven sub-tabs (below). |
+| **EBSD** | What is in this scan, what does its map show, where should it be believed — and how should the indexed grain be examined next? Eight sub-tabs (below). |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal? |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
@@ -91,9 +91,9 @@ rather than four subjects:
 | **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
 
-The **EBSD** workspace carries seven sub-tabs: six over one scan, and one that needs no scan at
-all. A scan opened in any of them is open in
-all of them, because it belongs to the session rather than to a panel — analysing the practice
+The **EBSD** workspace carries eight sub-tabs: six over one scan, followed by two forward and
+experiment-planning tools that need no scan. A scan opened in any of the first six is open in
+all six, because it belongs to the session rather than to a panel — analysing the practice
 dataset in one view while a user's own file is loaded in another would be the worst answer
 available.
 
@@ -106,6 +106,7 @@ available.
 | **Distributions** | How is grain size, boundary misorientation, KAM, GROD or a measured channel distributed? |
 | **Pole figures** | Where do the measured orientations point, as the scatter rather than as a contour of it? |
 | **Kikuchi simulator** | What pattern would this phase at this orientation throw onto this camera — and does my geometry look right? |
+| **ECCI workflow** | From an EBSD-indexed orientation, which stage tilt and rotation place a target direction on axis for a two-beam ECCI condition? |
 
 The three map tabs are one panel opened on three colourings, not three panels: every control is
 present in each of them, so a reader who arrived at GROD can switch to KAM or to a
@@ -113,8 +114,9 @@ confidence-index map without changing tabs. They exist as tabs because "show me 
 misorientation" is something a user comes to the workspace to do, and a sub-tab is where they will
 look for it.
 
-The **Kikuchi simulator** is the odd one out and deliberately so: it takes no scan, because it is
-the *forward* problem the other six live downstream of. It is configured the way the microscope is
+The **Kikuchi simulator** and **ECCI workflow** are the odd ones out and deliberately so: they take
+no scan, because they are forward and experiment-planning problems downstream of an indexed
+orientation. The simulator is configured the way the microscope is
 — stage tilt, camera elevation and azimuth, pattern centre and camera distance — and it states the
 frame it does that in rather than implying one. See
 [Kikuchi band geometry](kikuchi_geometry.md) for the convention and the arithmetic that checks it.
@@ -848,10 +850,31 @@ beyond the stated spread.
 
 Every phase control offers the built-in catalogue — NaCl, austenite, ferrite, beta-bcc and
 alpha-hcp zirconium, nickel and the rest, all with cited parameters and full atomic bases — or six
-cell parameters and a point group typed in directly. A CIF can be loaded through `Phase.from_cif`
-in the library, but the
-application never requires it: the catalogue is defined by literal parameters in Python, so the
-starting materials cannot be broken by an optional dependency being absent.
+cell parameters and a point group typed in directly. It also offers **Load a CIF crystal
+structure** beside the catalogue. Choose a `.cif`, then run the operation normally: the Workbench
+imports the file's lattice, point group, space group and atomic sites through
+{meth}`pytex.core.lattice.Phase.from_cif_string` and sends the resulting canonical phase into the
+active calculation. The filename and CIF origin travel into the result's phase input, so an export
+records which structure was analysed rather than only its reduced formula.
+
+This is one shared control, not a feature implemented separately in each panel. It is therefore
+available wherever the Workbench asks for a standalone phase: the Crystal Viewer; the TEM, CBED
+and composite-diffraction tools; XRD; the EBSD Kikuchi and ECCI tools; Variants; Texture; and the
+Calculator. The six scan-based EBSD views are the exception for a scientific reason: their
+phase definitions belong to the scan header and are imported with the scan, so replacing them with
+an unrelated standalone CIF would discard measurement semantics.
+
+CIF parsing uses the optional `pymatgen` adapter stack. Install a Workbench that needs user CIF
+files with:
+
+```{code-block} console
+$ python -m pip install 'pytex[adapters]'
+```
+
+Without that extra the built-in catalogue and manual phase editor remain fully usable, and a CIF
+choice returns an actionable installation message rather than an import traceback. Parser
+diagnostics are recorded in the Workbench message log; an unreadable file is refused against the
+phase control.
 
 For the Burgers orientation relationship, choose the built-in example in Calculator, Composite SAED
 or Variants. All three use the same explicit `Zirconium (bcc, beta at 863 °C)` parent and

@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## GUI-wide CIF phase loading — ACTIVE (2026-08-24)
+## GUI-wide CIF phase loading — COMPLETE (2026-08-25)
 
 **Objective.** Let a user choose a `.cif` file beside every shared phase-catalogue dropdown in
 the Workbench, so the same imported canonical crystal structure can drive the Crystal Viewer,
@@ -32,11 +32,12 @@ definition is requested.
    choices use `static/js/core/phasecontrol.js` via `ObjectParameter(editor="phase")`; no
    panel-specific crystal-structure dropdown was found.
 2. Add canonical application conversion from uploaded CIF text to `PhaseSpec`, and extend the
-   shared phase control with an accessible `.cif` file choice. — **IN PROGRESS**.
-3. Add service, manifest, frontend/browser, and regression tests. — **PENDING**.
+   shared phase control with an accessible `.cif` file choice. — **DONE**.
+3. Add service, manifest, frontend/browser, and regression tests. — **DONE**.
 4. Update application/CIF workflow documentation and changelog; run base and browser lanes. —
-   **PENDING**.
-5. Commit and push each green substantial increment to `main`. — **PENDING**.
+   **DONE**.
+5. Commit and push each green substantial increment to `main`. — **DONE**. The prerequisite and
+   completed CIF increments are recorded in the adjacent `main` history.
 
 ### Starting worktree
 
@@ -50,6 +51,39 @@ Before landing the CIF feature, its existing code was mechanically formatted, tw
 were made explicitly array-valued, one fixed-width index tuple was made type-explicit, and two
 private helper return types were annotated. The ECCI scientific calculations and public contract
 are unchanged. `tests/unit/test_ecci_workflow.py` remains green.
+
+### Delivered behavior
+
+- Every standalone structure chooser now offers a native `.cif` file input beside the built-in
+  catalogue, including Crystal Viewer, diffraction/TEM, XRD, EBSD Kikuchi, ECCI, variants,
+  texture, and calculator tools. Scan-owned EBSD phases remain sourced from scan headers.
+- The browser sends CIF text and filename through the existing JSON phase contract. The server
+  validates the upload, delegates interpretation to `Phase.from_cif_string(...)`, retains the
+  canonical `Phase` provenance and atomic sites, and derives the existing `PhaseSpec` wire form.
+- Wrong extensions, empty/malformed files, unavailable optional parsing support, and attempts to
+  mix CIF and manual overrides produce field-specific application errors.
+- The shared selector makes catalogue and CIF choices mutually exclusive and lets the user remove
+  the file without refreshing the tool.
+
+### Verification
+
+- The entire `python -m pytest -q` collection exits 0; the four optional-science skips are expected.
+- All 48 Chromium Workbench journeys pass, including coverage of the shared CIF control in every
+  structure-aware panel and server rejection of a non-CIF filename.
+- A real NaCl CIF is parsed through pymatgen and drives the XRD powder-pattern service in the
+  integration lane; unit tests cover conversion, sites, provenance, invalid input, and missing
+  optional dependencies.
+- Repository-wide Ruff and strict mypy over 151 source files pass. JavaScript syntax checks and
+  `scripts/check_repo_integrity.py` pass.
+- Sphinx HTML builds with warnings treated as errors and exits 0. The canonical EBSD class-model
+  SVG was regenerated because the starting tree had drifted from its checked-in generator; all
+  27 class-model atlas tests pass.
+
+### Final worktree boundary
+
+The pre-existing untracked `tests/test_data/Al-001.png` remains untouched and unstaged. Build and
+browser-test outputs are ignored. No scientific algorithm, crystallographic notation convention,
+or EBSD scan phase ownership changed in this task.
 
 ## Production Release 0.2.0 — COMPLETE (2026-08-23)
 

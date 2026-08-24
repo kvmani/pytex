@@ -11,6 +11,17 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **GUI-wide CIF crystal-structure loading.** Every shared phase picker now offers a `.cif` file
+  beside the built-in catalogue and manual cell editor, so one imported canonical structure can
+  drive the Crystal Viewer, TEM/CBED and composite diffraction, XRD, the EBSD Kikuchi and ECCI
+  tools, Variants, Texture and Calculator operations. Files are normalized through
+  `Phase.from_cif_string`, retaining lattice, point group, space group, atomic basis, filename and
+  CIF provenance in the ordinary phase/result contract. Scan-based EBSD views continue to use the
+  phases in their scan header. CIF parsing requires the existing optional `adapters` extra; an
+  absent parser, bad extension or malformed CIF now produces an actionable phase-control error.
+
 ## [0.2.0] - 2026-08-23
 
 This production release adds the configurable feedback and onboarding experience and makes

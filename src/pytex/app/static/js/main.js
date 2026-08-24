@@ -66,13 +66,14 @@ const TEM_ANALYSIS = {
   panels: [saedsim, tem, cbed, diffraction],
 };
 
-// EBSD is grouped for the same reason: one scan, seen six ways — and, last, the
-// pattern behind every point of it. The simulator takes no scan: it is the
-// forward problem the other six views live downstream of, and it belongs here
-// because its geometry is the EBSD geometry and nowhere else's. The scan itself
-// is shared between them (see `core/ebsdscan.js`), because a file opened in the
-// summary is open for the map — anything else would silently analyse the
-// practice dataset next to a user's own data.
+// EBSD is grouped for the same reason: one scan, seen six ways — followed by
+// two forward/experiment-planning tools. The Kikuchi simulator and ECCI
+// workflow take no scan; both start from a standalone phase and orientation,
+// and belong here because their geometry is the EBSD geometry and nowhere
+// else's. The scan itself is shared between the first six (see
+// `core/ebsdscan.js`), because a file opened in the summary is open for the map
+// — anything else would silently analyse the practice dataset next to a user's
+// own data.
 const EBSD_ANALYSIS = {
   id: 'ebsd',
   title: 'EBSD',

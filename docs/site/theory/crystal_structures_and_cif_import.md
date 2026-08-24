@@ -23,6 +23,11 @@ The present implementation uses `pymatgen` as an optional crystallographic parse
 - `Phase.from_cif(...)`,
 - `Phase.from_cif_string(...)`.
 
+The Workbench's shared phase selector uses this same `Phase.from_cif_string(...)` boundary for
+user-loaded `.cif` files. It converts the resulting canonical `Phase` to the application's
+JSON-ready phase specification, so Crystal Viewer, XRD, TEM, EBSD forward simulation, texture and
+orientation-relationship tools do not acquire parser-specific semantics.
+
 The imported structure is normalized into PyTex objects, including:
 
 - lattice parameters,

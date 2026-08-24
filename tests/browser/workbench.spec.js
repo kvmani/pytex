@@ -27,6 +27,7 @@ const PANEL_PATH = {
   Distributions: ['EBSD', 'Distributions'],
   'Pole figures': ['EBSD', 'Pole figures'],
   'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
+  'ECCI workflow': ['EBSD', 'ECCI workflow'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
@@ -357,6 +358,40 @@ test('loads every scientific workspace without browser errors', async ({ page })
   }
 
   expect(browserErrors).toEqual([]);
+});
+
+test('offers the shared CIF phase loader in every structure-aware workspace', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  const structurePanels = [
+    'Crystal Viewer',
+    'SAED Simulator',
+    'XRD',
+    'Kikuchi simulator',
+    'ECCI workflow',
+    'Variants',
+    'Texture',
+    'Calculator',
+  ];
+
+  for (const panel of structurePanels) {
+    await openPanel(page, panel);
+    await expect(page.getByLabel('Load a CIF crystal structure').first()).toBeVisible();
+  }
+  expect(browserErrors).toEqual([]);
+
+  // The browser carries the file as phase input; Python owns extension checks
+  // and CIF parsing. This deliberately bypasses the file dialog's accept hint
+  // to prove that server-side validation still guards every shared picker.
+  await openPanel(page, 'XRD');
+  await page.getByLabel('Load a CIF crystal structure').setInputFiles({
+    name: 'not-a-structure.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('this is not CIF'),
+  });
+  await expect(page.locator('.phase-cif')).toContainText('not-a-structure.txt loaded');
+  await page.getByRole('button', { name: 'Simulate XRD pattern', exact: true }).click();
+  await expect(page.locator('#rail-body .field__error:visible')).toContainText('extension is .txt');
+
 });
 
 test('completes the critical default calculations across panels', async ({ page }) => {
@@ -1854,7 +1889,7 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
 });
 
 /*
- * The EBSD workspace: six views of one scan, and the pattern behind it.
+ * The EBSD workspace: six views of one scan, then two forward tools.
  *
  * The sub-tabs are not six panels with six copies of the same logic — the three
  * map tabs are one panel opened on three colourings — and they are not six
@@ -1863,10 +1898,11 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
  * file*. Silently reverting to the practice dataset next to somebody's own data
  * is the worst answer available, and it is the one this asserts against.
  *
- * The seventh tab is the odd one out by design: the Kikuchi simulator takes no
- * scan at all, because it is the forward problem the six live downstream of.
+ * The seventh and eighth tabs are the odd ones out by design: the Kikuchi
+ * simulator and ECCI workflow take no scan, because they start from a phase and
+ * a stated orientation rather than from a measured map.
  */
-test('the EBSD workspace shows six views of one scan', async ({ page }) => {
+test('the EBSD workspace shows six scan views and two forward tools', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await workspaceTab(page, 'EBSD').click();
 
@@ -1879,6 +1915,7 @@ test('the EBSD workspace shows six views of one scan', async ({ page }) => {
     'Distributions',
     'Pole figures',
     'Kikuchi simulator',
+    'ECCI workflow',
   ]);
 
   // The three map tabs are the same panel opened on different colourings, and

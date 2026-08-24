@@ -2,17 +2,18 @@
  * The phase picker, which is the one control every panel shares.
  *
  * A phase is chosen far more often than anything else in this application, so
- * it gets a purpose-built control rather than a JSON box: a catalogue dropdown
- * for the built-in materials, and six cell parameters plus a point group for
- * everything else. Picking a catalogue entry fills the parameter fields in, so
- * "start from zirconium and stretch c" is two clicks and one edit rather than a
- * retyped structure.
+ * it gets a purpose-built control rather than a JSON box: a catalogue dropdown,
+ * a CIF-file choice, and six cell parameters plus a point group for everything
+ * else. Picking a catalogue entry fills the parameter fields in, so "start from
+ * zirconium and stretch c" is two clicks and one edit rather than a retyped
+ * structure. A CIF remains file-backed until Python normalizes it into the same
+ * canonical phase contract; no crystallography is reimplemented in JavaScript.
  *
  * The control emits exactly what `PhaseSpec.from_json` accepts: `{builtin: id}`
- * when nothing was edited, and a full description once anything was. That
- * asymmetry is deliberate — an unedited catalogue choice should stay a
- * *reference*, so a later correction to a published lattice parameter reaches
- * saved analyses.
+ * when nothing was edited, `{cif: {name, text}}` for a file, and a full
+ * description once anything was. That asymmetry is deliberate — an unedited
+ * catalogue choice should stay a *reference*, so a later correction to a
+ * published lattice parameter reaches saved analyses.
  */
 
 import { el } from './dom.js';
@@ -26,7 +27,33 @@ export function setPhaseCatalogue({ phases, pointGroups }) {
 }
 
 export function phaseControl(parameter, value, onChange, id) {
-  const state = { spec: normalise(value), edited: false };
+  const state = { spec: normalise(value), edited: false, cif: cifOf(value) };
+
+  const cifStatus = el('p.field__help', {
+    text: state.cif ? `${state.cif.name} loaded; it replaces the catalogue phase.` : '',
+    hidden: !state.cif,
+  });
+  const cifInput = el('input', {
+    type: 'file',
+    accept: '.cif,chemical/x-cif',
+    'aria-label': 'Load a CIF crystal structure',
+    onchange: (event) => loadCif(event.target.files?.[0]),
+  });
+  const removeCif = el('button.button', {
+    type: 'button',
+    text: 'Remove CIF',
+    hidden: !state.cif,
+    onclick: () => {
+      state.cif = null;
+      cifInput.value = '';
+      cifStatus.hidden = true;
+      removeCif.hidden = true;
+      catalogue.disabled = false;
+      details.hidden = false;
+      writeFields(state.spec);
+      onChange();
+    },
+  });
 
   const catalogue = el(
     'select',
@@ -35,6 +62,7 @@ export function phaseControl(parameter, value, onChange, id) {
       onchange: () => {
         const chosen = CATALOGUE.phases.find((entry) => entry.id === catalogue.value);
         if (!chosen) return;
+        clearCif();
         state.spec = { ...chosen };
         state.edited = false;
         writeFields(state.spec);
@@ -135,7 +163,47 @@ export function phaseControl(parameter, value, onChange, id) {
     ]),
   ]);
 
-  const element = el('div.phase-control', {}, [catalogue, details]);
+  const cifGroup = el('div.phase-cif', {}, [
+    el('span.field__help', {
+      text: 'Or load a .cif file with its lattice, symmetry, space group and atomic sites:',
+    }),
+    cifInput,
+    cifStatus,
+    removeCif,
+  ]);
+  const element = el('div.phase-control', {}, [catalogue, cifGroup, details]);
+
+  async function loadCif(file) {
+    if (!file) return;
+    state.cif = { name: file.name, text: '' };
+    cifStatus.hidden = false;
+    cifStatus.textContent = `Reading ${file.name}…`;
+    removeCif.hidden = true;
+    try {
+      state.cif.text = await file.text();
+      catalogue.value = '';
+      catalogue.disabled = true;
+      details.hidden = true;
+      cifStatus.textContent =
+        `${file.name} loaded. Run the analysis to validate and normalize its crystal structure.`;
+      removeCif.hidden = false;
+      onChange();
+    } catch {
+      state.cif = null;
+      cifInput.value = '';
+      cifStatus.textContent = `${file.name} could not be read in the browser.`;
+      removeCif.hidden = true;
+    }
+  }
+
+  function clearCif() {
+    state.cif = null;
+    cifInput.value = '';
+    cifStatus.hidden = true;
+    removeCif.hidden = true;
+    catalogue.disabled = false;
+    details.hidden = false;
+  }
 
   function writeFields(spec) {
     if (!spec) return;
@@ -149,11 +217,17 @@ export function phaseControl(parameter, value, onChange, id) {
   }
 
   writeFields(state.spec);
+  if (state.cif) {
+    catalogue.value = '';
+    catalogue.disabled = true;
+    details.hidden = true;
+  }
 
   return {
     id,
     element,
     read() {
+      if (state.cif) return { cif: state.cif };
       const chosen = catalogue.value;
       if (chosen && !state.edited) return { builtin: chosen };
       const spec = {
@@ -181,8 +255,18 @@ export function phaseControl(parameter, value, onChange, id) {
       return spec;
     },
     write(next) {
+      state.cif = cifOf(next);
       state.spec = normalise(next);
-      state.edited = Boolean(next && !next.builtin && !next.id);
+      state.edited = Boolean(next && !next.builtin && !next.id && !next.cif);
+      if (state.cif) {
+        cifStatus.textContent = `${state.cif.name} loaded; it replaces the catalogue phase.`;
+        cifStatus.hidden = false;
+        removeCif.hidden = false;
+        catalogue.disabled = true;
+        details.hidden = true;
+      } else {
+        clearCif();
+      }
       writeFields(state.spec);
     },
   };
@@ -206,5 +290,12 @@ function normalise(value) {
   if (value.builtin) {
     return CATALOGUE.phases.find((entry) => entry.id === value.builtin) ?? null;
   }
+  if (value.cif) return null;
   return value;
+}
+
+function cifOf(value) {
+  const cif = value && typeof value === 'object' ? value.cif : null;
+  if (!cif || typeof cif !== 'object') return null;
+  return { name: String(cif.name ?? ''), text: String(cif.text ?? '') };
 }

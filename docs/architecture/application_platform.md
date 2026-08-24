@@ -356,6 +356,28 @@ The welcome tour is governed by the same route and the same file. It is skippabl
 the skip is remembered per browser and per version, and it is reachable again from the Help panel
 — which is what makes remembering it safe rather than final.
 
+## Decision 12 — A CIF Enters Through The Shared Phase Contract
+
+Every operation that needs a standalone crystal structure already declares an
+`ObjectParameter(editor="phase")`. Its one frontend renderer therefore owns three equivalent ways
+to provide the structure: select a cited built-in phase, enter a custom cell and symmetry, or load
+a `.cif` file. Adding CIF controls panel by panel would guarantee drift — XRD would eventually
+accept a structure that the Crystal Viewer could not, or one panel would discard sites another
+kept — so a panel-specific CIF input is prohibited.
+
+The browser reads the CIF as text and sends `{cif: {name, text}}` as the phase payload. It does not
+parse cell tags or infer symmetry. `pytex.app.phases.phase_from_request` passes that text to the
+canonical `Phase.from_cif_string` constructor, retains the resulting `Phase` for computation, and
+derives the same `PhaseSpec` wire form that built-ins and manual input use for results and exports.
+Thus lattice, point group, space group, atomic basis, filename and CIF provenance cross the tool
+boundary together, and downstream services remain parser-independent.
+
+`pymatgen` remains in the optional `adapters` extra per Decision 3. A build without it keeps every
+built-in and manual workflow; selecting CIF returns a named dependency error with the install
+command. A malformed or wrongly suffixed file is an input error attached to the phase control.
+Parser warnings are captured and written to the application log instead of becoming unowned
+runtime warnings.
+
 ## Frontend Architecture
 
 No framework, but not ad hoc either. The frontend is four layers:
@@ -365,7 +387,8 @@ No framework, but not ad hoc either. The frontend is four layers:
   surfacing that shows the server's user-facing message and hint rather than a stack trace, and
   start/finish activity events consumed by the shared progress/history bar.
 - `core/controls.js` — the manifest-driven control renderer (Decision 2), including the
-  one-box-per-index Miller control of Decision 9.
+  one-box-per-index Miller control of Decision 9 and the shared CIF-backed phase control of
+  Decision 12.
 - `core/feedback.js` — the feedback and feature-request drawer, built from the invitation the
   server publishes rather than from text in the page (Decision 11).
 - `core/tour.js` — the welcome and the skippable tour (Decision 11).
@@ -379,7 +402,7 @@ workspace navigation wraps, preserving vertical plot space.
 
 ## Workspace Inventory
 
-Seven workspaces hold sixteen panels. A workspace is a *subject*; a panel inside it is a *view* of
+Seven workspaces hold seventeen panels. A workspace is a *subject*; a panel inside it is a *view* of
 that subject, which is why the two grouped workspaces have sub-tabs and the five single ones read
 exactly as flat tabs did.
 
@@ -388,14 +411,14 @@ exactly as flat tabs did.
 | Crystal Viewer | the structure with superimposed planes, directions and annotations, and an orientation dock carrying a pole figure, an inverse pole figure and the crystal's Kikuchi map | `crystal.*` |
 | TEM Analysis | SAED Simulator, TEM Solver, CBED, Composite SAED | `tem.*`, `cbed.*`, `diffraction.*` |
 | XRD | powder peaks, broadened profiles, radiation and profile choices, indexed inspection | `xrd.*` |
-| EBSD | IPF map, GROD, KAM, Scan summary, Distributions, Pole figures, Kikuchi simulator | `ebsd.*` |
+| EBSD | IPF map, GROD, KAM, Scan summary, Distributions, Pole figures, Kikuchi simulator, ECCI workflow | `ebsd.*`, `ecci.*` |
 | Variants | variant pole figures, packets, and the intervariant misorientation spectrum | `variants.*` |
 | Texture | pole figures, inverse pole figures, ODF sections | `texture.*` |
 | Calculator | interplanar angles, d-spacings, symmetry families, zone axes, cross-phase angles | `calc.*` |
 
-Six of the seven EBSD panels read one scan that belongs to the session rather than to a panel; the
-seventh, the Kikuchi simulator, reads none, because it is the forward problem the other six live
-downstream of.
+Six of the eight EBSD panels read one scan that belongs to the session rather than to a panel; the
+Kikuchi simulator and ECCI workflow read none, because they are the forward and
+experiment-planning problems downstream of the indexed orientations.
 
 ## Testing Obligations
 

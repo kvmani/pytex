@@ -86,15 +86,19 @@ def phase_parameter(
     then refuses the very first press of its own button.
     """
 
+    phase_help = help_text or (
+        "Choose a built-in phase or enter six cell parameters and a point group. "
+        "The point group sets the symmetry; the space-group symbol, if given, sets "
+        "which reflections are systematically absent."
+    )
+    phase_help += (
+        " You may instead load a .cif file; PyTex imports its lattice, symmetry, space group "
+        "and atomic sites through the canonical CIF phase constructor."
+    )
     return ObjectParameter(
         name=name,
         label=label,
-        help_text=help_text
-        or (
-            "Choose a built-in phase or enter six cell parameters and a point group. "
-            "The point group sets the symmetry; the space-group symbol, if given, sets "
-            "which reflections are systematically absent."
-        ),
+        help_text=phase_help,
         editor="phase",
         default=None if builtin is None else {"builtin": builtin},
     )
