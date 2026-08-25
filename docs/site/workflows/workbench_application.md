@@ -215,6 +215,12 @@ and the wrong reading does not fail — it returns a plausible number for indice
 Negative indices take an ordinary minus sign; PyTex writes them back with overbars, through
 {mod}`pytex.core.notation`.
 
+The SAED Simulator's zone-axis boxes always take the three-index direction `[uvw]`, including for
+a hexagonal phase. Hexagonal and trigonal results use the literature-standard four-index
+Miller-Bravais form `[uvtw]`, so the result shows both forms and states their equivalence. For
+example, entering `[2 -1 0]` for alpha zirconium is reported as `[5 -4 -1 0]`; these are two exact
+index representations of the same physical direction, not two different zone axes.
+
 ## Reading A Result
 
 Every result carries four things, and the fourth is the one that makes the application usable as an
@@ -701,6 +707,11 @@ the same orientation in Bunge angles, the roll about the beam, and — in orient
 degrees the orientation asked for is from the zone actually drawn. That last number is never
 silent, because a spot pattern exists only on a zone axis: an orientation five degrees off [011]
 has no pattern of its own, and what is drawn is [011].
+
+For a hexagonal or trigonal phase, the primary result uses four-index Miller-Bravais `[uvtw]`
+notation and places the entered three-index `[uvw]` form directly below it. Thus a zirconium input
+of `[2 -1 0]` appears as `[5 -4 -1 0]` with an explicit statement that both name the same crystal
+direction.
 
 **Kikuchi** superimposes the bands the same orientation predicts, fetched through the same overlay
 operation the solver uses. The relation to check by eye is that the band belonging to (hkl) runs

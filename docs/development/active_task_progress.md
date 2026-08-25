@@ -4712,3 +4712,41 @@ three boxes of 44px sit inside a 298px rail, and `-100` fits a box without scrol
 ### Next task
 
 None claimed. This goal is complete.
+
+## Goal: make hexagonal SAED zone-axis notation explicit — COMPLETE (2026-08-25)
+
+### Objective and diagnosis
+
+Remove the apparent zone-axis change in the TEM Analysis / SAED Simulator. A user entering the
+three-index hexagonal direction `[2 -1 0]` saw `[5 -4 -1 0]` in the result with no explanation
+that this is the exact Miller-Bravais representation of the same direction. The numerical
+conversion was correct: `U = 2u - v`, `V = 2v - u`, `T = -(u + v)`, and `W = 3w` before
+common-factor reduction. The defect was the silent notation change at the application boundary.
+
+### Delivered
+
+- The manifest now labels the SAED input as three-index `[uvw]` and explains that hexagonal and
+  trigonal results also use four-index Miller-Bravais `[uvtw]`.
+- The service returns the natural phase notation, the exact three-index equivalent, the notation
+  label, and a plain-language equivalence statement. The orientation card shows both forms for a
+  hexagonal/trigonal zone-axis input; summaries carry the same explanation.
+- A focused service regression pins alpha-Zr `[2 -1 0]` as the unchanged internal direction and
+  `[5 -4 -1 0]` as its exact four-index display. The real browser regression enters those values
+  into the three boxes and requires both forms plus the equivalence sentence on screen.
+- The workbench guide and changelog now document the input/output convention explicitly.
+
+### Verification
+
+- `python -m ruff check .` — green.
+- `python -m mypy src` — green, 151 source files.
+- `python -m pytest tests/unit -q` — green.
+- `npx playwright test` against a fresh loopback server on port 8766 — 48 passed.
+- `git diff --check` — green apart from the repository's ordinary Windows line-ending notices.
+
+The change introduces no scientific algorithm or convention: it exposes the existing exact basis
+conversion instead of leaving it implicit. The unrelated untracked `tests/test_data/` directory
+remains untouched and must not be staged.
+
+### Next task
+
+None claimed. This goal is complete.

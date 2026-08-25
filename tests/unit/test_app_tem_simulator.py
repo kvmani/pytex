@@ -119,6 +119,22 @@ def test_the_beam_direction_is_the_zone_axis_that_was_asked_for() -> None:
     assert np.allclose(matrix @ axis_cartesian, [0.0, 0.0, 1.0], atol=1e-12)
 
 
+def test_hexagonal_three_index_input_is_reported_as_an_explicit_equivalence() -> None:
+    """A notation conversion must never look like a changed physical direction."""
+
+    result = simulate(zone_axis=[2, -1, 0])
+
+    assert result["data"]["zone_axis"] == [2, -1, 0]
+    assert result["data"]["zone_axis_three_index_label"] == "[2 -1 0]"
+    assert result["data"]["zone_axis_label"] == "[5 -4 -1 0]"
+    assert result["data"]["zone_axis_notation_label"] == "Zone axis [uvtw] (Miller-Bravais)"
+    assert result["data"]["zone_axis_conversion_note"] == (
+        "[2 -1 0] in the three-index hexagonal basis and [5 -4 -1 0] in four-index "
+        "Miller-Bravais notation are the same crystal direction."
+    )
+    assert result["data"]["zone_axis_conversion_note"] in result["summary"]
+
+
 def test_an_orientation_round_trips_through_its_own_euler_angles() -> None:
     """The two ways of pointing the crystal are one statement, so they agree."""
 

@@ -1170,6 +1170,20 @@ test('the SAED simulator states the orientation it drew and can band it', async 
   await expect(readout).not.toContainText('Off that axis by');
   await expect(page.locator('#stage .plot__status')).toContainText('Zirconium');
 
+  // Hexagonal input uses three boxes, while literature-facing output uses four-index
+  // Miller-Bravais notation. The panel must state that conversion rather than making the
+  // equivalent indices look like a different zone axis.
+  const zoneBoxes = page.locator('#rail-body .indices[aria-label*="Zone axis [uvw]"] input');
+  await zoneBoxes.nth(0).fill('2');
+  await zoneBoxes.nth(1).fill('-1');
+  await zoneBoxes.nth(2).fill('0');
+  await page.getByRole('button', { name: 'Simulate the pattern' }).click();
+  await expect(readout).toContainText('Zone axis [uvtw] (Miller-Bravais)');
+  await expect(readout).toContainText('[5 -4 -1 0]');
+  await expect(readout).toContainText('Entered [uvw]');
+  await expect(readout).toContainText('[2 -1 0]');
+  await expect(readout).toContainText('same crystal direction');
+
   // Bands on request, fetched for the orientation the pattern was drawn from.
   const spotsBefore = await drawing.locator('circle').count();
   await page.locator('#stage').getByRole('button', { name: 'Kikuchi', exact: true }).click();

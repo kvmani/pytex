@@ -52,6 +52,7 @@ from pytex.app.services.calculator import (
 )
 from pytex.app.services.traces import clipped_runs
 from pytex.app.tem_gallery import GALLERY, gallery_entry, gallery_options
+from pytex.core.notation import format_direction_indices
 from pytex.core.sphere import project_directions
 
 __all__ = ["measured_pattern_from_picks"]
@@ -1637,9 +1638,10 @@ def _nearest_zone_axis(
             options=(
                 (
                     "uvw",
-                    "Zone axis [uvw]",
-                    "The direction on the beam, plus the roll about it. What one dials at the "
-                    "column.",
+                    "Zone axis [uvw] (three-index)",
+                    "The three-index direction on the beam, plus the roll about it. For a "
+                    "hexagonal phase the result also gives the equivalent four-index "
+                    "Miller-Bravais [uvtw] direction.",
                 ),
                 (
                     "bunge",
@@ -1652,8 +1654,12 @@ def _nearest_zone_axis(
         ),
         IndicesParameter(
             name="zone_axis",
-            label="Zone axis [uvw]",
-            help_text="The crystal direction along the beam.",
+            label="Zone axis [uvw] (three-index)",
+            help_text=(
+                "The crystal direction along the beam, entered in the three-index [uvw] "
+                "basis. For hexagonal and trigonal phases PyTex reports the same direction "
+                "in the conventional four-index Miller-Bravais [uvtw] notation as well."
+            ),
             default=(0, 0, 1),
         ),
         NumberParameter(
@@ -1849,6 +1855,19 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
     )
 
     zone_text = direction_label(indices, spec=spec)
+    zone_three_index_text = format_direction_indices(indices, style="plain")
+    uses_miller_bravais = spec.uses_miller_bravais
+    zone_notation_label = (
+        "Zone axis [uvtw] (Miller-Bravais)" if uses_miller_bravais else "Zone axis [uvw]"
+    )
+    zone_conversion_note = (
+        (
+            f"{zone_three_index_text} in the three-index hexagonal basis and {zone_text} in "
+            "four-index Miller-Bravais notation are the same crystal direction."
+        )
+        if uses_miller_bravais and source == "uvw"
+        else None
+    )
     rows = [
         {
             "spot": index + 1,
@@ -1887,6 +1906,8 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
         f"reflections fall on the {detector_px}x{detector_px} detector, rolled "
         f"{roll_deg:.1f} degrees about the beam."
     )
+    if zone_conversion_note:
+        summary = f"{summary} {zone_conversion_note}"
     if deviation_note:
         summary = f"{summary} {deviation_note}"
 
@@ -1919,6 +1940,9 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             "pattern": payload,
             "zone_axis": [int(value) for value in indices],
             "zone_axis_label": zone_text,
+            "zone_axis_notation_label": zone_notation_label,
+            "zone_axis_three_index_label": zone_three_index_text,
+            "zone_axis_conversion_note": zone_conversion_note,
             "phase_name": spec.name,
             "orientation": {
                 "crystal_to_pattern": [float(value) for value in matrix_out.reshape(-1)],

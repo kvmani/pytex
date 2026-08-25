@@ -286,7 +286,18 @@ export function mount(context) {
       el('div.measure__title', { text: 'Orientation on the beam' }),
       el('table.measure__table', {}, [
         el('tbody', {}, [
-          row('Zone axis', data.zone_axis_label, 'The crystal direction along the beam'),
+          row(
+            data.zone_axis_notation_label ?? 'Zone axis',
+            data.zone_axis_label,
+            'The crystal direction along the beam',
+          ),
+          data.zone_axis_conversion_note
+            ? row(
+                'Entered [uvw]',
+                data.zone_axis_three_index_label,
+                'The same hexagonal direction in the three-index basis used by the input boxes',
+              )
+            : null,
           row(
             'Bunge (φ₁, Φ, φ₂)',
             `${formatNumber(phi1, 2)}, ${formatNumber(phi, 2)}, ${formatNumber(phi2, 2)}°`,
@@ -306,6 +317,9 @@ export function mount(context) {
               ),
         ]),
       ]),
+      data.zone_axis_conversion_note
+        ? el('p.measure__note', { text: data.zone_axis_conversion_note })
+        : null,
       orientation.deviation_deg > 0.05
         ? el('p.measure__note', {
             text:

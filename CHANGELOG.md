@@ -22,6 +22,15 @@ downstream analyses depend on them.
   phases in their scan header. CIF parsing requires the existing optional `adapters` extra; an
   absent parser, bad extension or malformed CIF now produces an actionable phase-control error.
 
+### Fixed
+
+- **Hexagonal SAED zone-axis input no longer appears to change the requested direction.** The
+  simulator accepts a three-index `[uvw]` direction but conventionally reports hexagonal results
+  in four-index Miller-Bravais `[uvtw]` notation. It now labels the input convention explicitly
+  and shows both exact representations with an equivalence note; for alpha zirconium, entering
+  `[2 -1 0]` is therefore reported as the same direction `[5 -4 -1 0]`, not as an unexplained
+  replacement.
+
 ## [0.2.0] - 2026-08-23
 
 This production release adds the configurable feedback and onboarding experience and makes
