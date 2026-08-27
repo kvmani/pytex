@@ -244,7 +244,16 @@ def test_json_round_trips_the_answer_with_the_picture() -> None:
         "d_angstrom",
         "intensity",
         "radius_px",
+        "double_diffraction",
+        "double_diffraction_origin",
+        "double_diffraction_parents",
     }
+    # A purely kinematic pattern says so on every spot rather than by omitting
+    # the field: a renderer that has to distinguish "not double diffraction"
+    # from "this service is too old to say" cannot be written safely.
+    assert all(spot["double_diffraction"] is False for spot in payload["spots"])
+    assert all(spot["double_diffraction_origin"] == "" for spot in payload["spots"])
+    assert all(spot["double_diffraction_parents"] is None for spot in payload["spots"])
 
 
 @pytest.mark.parametrize(

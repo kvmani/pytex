@@ -34,8 +34,11 @@ reciprocal-space geometry and
 Limits
 ------
 Kinematic, inherited from :func:`generate_saed_pattern`: relative intensities are
-indicative rather than quantitative, no dynamical redistribution occurs, and
-double diffraction is not added. Apparent spot radius is a *display* model, not a
+indicative rather than quantitative and no dynamical redistribution occurs.
+Double diffraction is off by default and added on request through
+``include_double_diffraction``; the reflections it puts on the plate are marked,
+and their brightness is an observability estimate rather than an intensity.
+Apparent spot radius is a *display* model, not a
 measurement of the disc size an aperture would produce. What is exact is the
 geometry — every spot sits where the lattice, the zone axis, and the camera
 constant put it — and geometry is what indexing uses.
@@ -163,11 +166,25 @@ class SyntheticSpot:
         ``1 / g_inv_angstrom``.
     relative_intensity : float
         Kinematic intensity, normalized so the strongest spot in the pattern is
-        ``1.0``.
+        ``1.0`` — unless :attr:`is_double_diffraction` is set, in which case it
+        is an indicative observability estimate and not a kinematic intensity.
     apparent_radius_px : float
         Display radius. A presentation quantity — see the module limits.
     label : str
         The rendered ``(hkl)`` label.
+    is_double_diffraction : bool
+        Whether this reflection is kinematically forbidden and present only
+        because double diffraction was requested.
+    double_diffraction_origin : str
+        ``"(g1) + (g2)"``, the two-step path that puts a marked reflection on
+        the plate, in the phase's three-index basis. Empty for an ordinary
+        kinematic reflection. A caller that renders indices in another
+        convention — four-index Miller-Bravais for a hexagonal phase, say —
+        should format :attr:`double_diffraction_parents` itself rather than
+        reuse this string, so one row does not mix two notations.
+    double_diffraction_parents : np.ndarray, optional
+        ``(2, 3)`` integer pair summing to :attr:`miller_indices`, present
+        exactly for a marked reflection.
     """
 
     miller_indices: np.ndarray
@@ -177,6 +194,9 @@ class SyntheticSpot:
     relative_intensity: float
     apparent_radius_px: float
     label: str
+    is_double_diffraction: bool = False
+    double_diffraction_origin: str = ""
+    double_diffraction_parents: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "miller_indices", as_int_array(self.miller_indices, shape=(3,)))
@@ -187,6 +207,19 @@ class SyntheticSpot:
             raise ValueError("SyntheticSpot.g_inv_angstrom must be finite and strictly positive.")
         if not math.isfinite(self.apparent_radius_px) or self.apparent_radius_px <= 0.0:
             raise ValueError("SyntheticSpot.apparent_radius_px must be finite and positive.")
+        if bool(self.double_diffraction_origin) and not self.is_double_diffraction:
+            raise ValueError(
+                "SyntheticSpot.double_diffraction_origin is set on a spot that is not marked "
+                "as double diffraction."
+            )
+        if self.double_diffraction_parents is not None:
+            parents = as_int_array(self.double_diffraction_parents, shape=(2, 3))
+            if not np.array_equal(parents.sum(axis=0), self.miller_indices):
+                raise ValueError(
+                    "SyntheticSpot.double_diffraction_parents must sum to the reflection they "
+                    "produce."
+                )
+            object.__setattr__(self, "double_diffraction_parents", parents)
 
 
 @dataclass(frozen=True, slots=True)
@@ -354,9 +387,7 @@ class SyntheticSAEDImage:
         basis = np.asarray(zone_basis_from_axis(self.zone_axis.unit_vector), dtype=float)
         angle = math.radians(float(self.in_plane_rotation_deg))
         cosine, sine = math.cos(angle), math.sin(angle)
-        roll = np.array(
-            [[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]], dtype=float
-        )
+        roll = np.array([[cosine, -sine, 0.0], [sine, cosine, 0.0], [0.0, 0.0, 1.0]], dtype=float)
         return np.ascontiguousarray(roll @ basis.T)
 
     def describe(self) -> str:
@@ -389,7 +420,30 @@ class SyntheticSAEDImage:
             f"{strongest.label} at d = {strongest.d_spacing_angstrom:.4f} Å and the farthest "
             f"{widest.label} at d = {widest.d_spacing_angstrom:.4f} Å. "
             "Spot positions are exact for this lattice and zone axis; relative intensities are "
-            "kinematic and therefore indicative, and double diffraction is not modelled."
+            "kinematic and therefore indicative. " + self._double_diffraction_sentence()
+        )
+
+    def _double_diffraction_sentence(self) -> str:
+        """The honest one-line statement of what double diffraction contributed.
+
+        Two patterns of the same phase and axis differ visibly depending on
+        whether the option was on, so the description has to say which one this
+        is rather than leaving the reader to infer it from the spot count.
+        """
+
+        marked = [spot for spot in self.spots if spot.is_double_diffraction]
+        if not marked:
+            return (
+                "Double diffraction is not included, so a forbidden reflection that a real "
+                "plate shows through multiple scattering is absent here."
+            )
+        labels = ", ".join(spot.label for spot in marked[:3])
+        more = "" if len(marked) <= 3 else f", and {len(marked) - 3} more"
+        return (
+            f"Double diffraction is included: {len(marked)} kinematically forbidden "
+            f"reflections ({labels}{more}) are drawn because two excited reflections sum to "
+            "them. Their brightness is an observability estimate scaled by a coupling "
+            "constant, not a kinematic intensity."
         )
 
     def to_json(self) -> dict[str, Any]:
@@ -404,9 +458,7 @@ class SyntheticSAEDImage:
             "height_px": int(self.raster.height_px),
             "pixel_size_mm": float(self.raster.pixel_size_mm),
             "centre_px": [float(value) for value in self.centre_px],
-            "crystal_to_pattern": [
-                float(value) for value in self.crystal_to_pattern().reshape(-1)
-            ],
+            "crystal_to_pattern": [float(value) for value in self.crystal_to_pattern().reshape(-1)],
             "spots": [
                 {
                     "hkl": [int(value) for value in spot.miller_indices],
@@ -417,6 +469,16 @@ class SyntheticSAEDImage:
                     "d_angstrom": float(spot.d_spacing_angstrom),
                     "intensity": float(spot.relative_intensity),
                     "radius_px": float(spot.apparent_radius_px),
+                    "double_diffraction": bool(spot.is_double_diffraction),
+                    "double_diffraction_origin": spot.double_diffraction_origin,
+                    "double_diffraction_parents": (
+                        None
+                        if spot.double_diffraction_parents is None
+                        else [
+                            [int(value) for value in parent]
+                            for parent in spot.double_diffraction_parents
+                        ]
+                    ),
                 }
                 for spot in self.spots
             ],
@@ -424,9 +486,7 @@ class SyntheticSAEDImage:
         }
 
 
-def _apparent_radius_px(
-    relative_intensity: float, *, base_radius_px: float, bloom: float
-) -> float:
+def _apparent_radius_px(relative_intensity: float, *, base_radius_px: float, bloom: float) -> float:
     """Display radius of a spot of the given relative intensity.
 
     A recorded spot's size is set by the illumination and the aperture, not by
@@ -449,6 +509,8 @@ def synthesize_saed_image(
     in_plane_rotation_deg: float = 0.0,
     max_index: int = 6,
     intensity_floor: float = DEFAULT_INTENSITY_FLOOR,
+    include_double_diffraction: bool = False,
+    double_diffraction_coupling: float = 0.05,
     max_spots: int = 400,
     base_radius_px: float = 5.0,
     bloom: float = 1.4,
@@ -496,6 +558,17 @@ def synthesize_saed_image(
     intensity_floor : float
         Relative-intensity threshold below which a reflection is dropped as
         invisible. See :data:`DEFAULT_INTENSITY_FLOOR`.
+    include_double_diffraction : bool
+        Whether to show the kinematically forbidden reflections that a real
+        plate displays because a diffracted beam re-diffracts. Default
+        ``False``, which leaves the pattern purely kinematic. The reflections it
+        adds are marked by ``SyntheticSpot.is_double_diffraction`` and carry the
+        two-step path in ``double_diffraction_origin``; treat their brightness
+        as an observability estimate, not an intensity. See
+        :func:`pytex.diffraction.saed.generate_saed_pattern`.
+    double_diffraction_coupling : float
+        Scale applied to the two-step weight, in ``(0, 1]``. Ignored when
+        ``include_double_diffraction`` is ``False``.
     max_spots : int
         Hard cap on returned spots, applied after sorting by intensity. Guards
         the renderer against a large-cell phase producing thousands of spots.
@@ -575,6 +648,8 @@ def synthesize_saed_image(
         # keeps that decision in one place.
         max_g_inv_angstrom=half_extent_mm / camera_constant_mm_angstrom,
         label_limit=max_spots,
+        include_double_diffraction=bool(include_double_diffraction),
+        double_diffraction_coupling=float(double_diffraction_coupling),
     )
     if not pattern.spots:
         return SyntheticSAEDImage(
@@ -637,6 +712,9 @@ def synthesize_saed_image(
                     float(relative[index]), base_radius_px=base_radius_px, bloom=bloom
                 ),
                 label=format_plane_indices(indices, style="plain"),
+                is_double_diffraction=source.is_double_diffraction,
+                double_diffraction_origin=source.double_diffraction_origin_label(),
+                double_diffraction_parents=source.double_diffraction_parents,
             )
         )
 

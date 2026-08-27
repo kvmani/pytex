@@ -1570,6 +1570,29 @@ _SIMULATION_LIMITS = (
     "the near-zone reflections fading rather than vanishing.",
 )
 
+#: The second limit above, restated for a pattern that *does* include double
+#: diffraction. Stating "double diffraction is not modelled" on such a pattern
+#: would be false, and a stale limit is worse than no limit: a reader who checks
+#: one claim and finds it wrong stops trusting the others.
+_DOUBLE_DIFFRACTION_INCLUDED_LIMIT = (
+    "Double diffraction is included. Which forbidden reflections appear follows from the "
+    "geometric rule that two excited reflections put a spot at their sum, and is reliable; how "
+    "bright they are depends on beam coupling and foil thickness, which kinematic theory cannot "
+    "supply, so their intensity is an observability estimate scaled by a chosen coupling "
+    "constant."
+)
+
+
+def _simulation_limits(*, include_double_diffraction: bool) -> tuple[str, ...]:
+    """The standing limits of a simulated pattern, told truthfully for this one."""
+
+    if not include_double_diffraction:
+        return _SIMULATION_LIMITS
+    return tuple(
+        _DOUBLE_DIFFRACTION_INCLUDED_LIMIT if "not modelled" in limit else limit
+        for limit in _SIMULATION_LIMITS
+    )
+
 
 def _nearest_zone_axis(
     beam_crystal: np.ndarray, direct: np.ndarray, *, max_index: int
@@ -1600,6 +1623,25 @@ def _nearest_zone_axis(
     if float(cartesian[best] @ beam) < 0.0:
         indices = tuple(-value for value in indices)
     return indices, deviation
+
+
+def _origin_label(spot: Any, *, spec: Any) -> str:
+    """Where a simulated reflection came from, in the phase's own notation.
+
+    ``"Kinematic"`` for an ordinary lattice reflection, and otherwise the pair of
+    reflections whose sum puts the spot on the plate. The parent indices are
+    formatted through the same ``plane_label`` the Index column uses, so a
+    hexagonal row does not name its reflection in four-index Miller-Bravais and
+    its parents in three.
+    """
+
+    if not spot.is_double_diffraction or spot.double_diffraction_parents is None:
+        return "Kinematic"
+    first, second = spot.double_diffraction_parents
+    return (
+        f"{plane_label(tuple(int(value) for value in first), spec=spec)} + "
+        f"{plane_label(tuple(int(value) for value in second), spec=spec)}"
+    )
 
 
 @REGISTRY.operation(
@@ -1750,6 +1792,48 @@ def _nearest_zone_axis(
             ),
             default=False,
         ),
+        BooleanParameter(
+            name="include_double_diffraction",
+            label="Include double diffraction",
+            help_text=(
+                "Show the reflections a real plate has that a kinematic simulation does not.\n\n"
+                "A beam diffracted by one set of planes is itself an incident beam inside the "
+                "crystal, so it can diffract again: two reflections *g1* and *g2* put a spot at "
+                "*g1 + g2*. When that sum lands on a reflection whose structure factor is zero, "
+                "a spot appears where the kinematic theory says there is none. This is why the "
+                "(0001) spot is on a real hcp pattern down [11-20], and why {200} is on a real "
+                "silicon pattern down [011], even though both are forbidden.\n\n"
+                "Turning it on adds exactly those reflections and marks them. It moves no spot "
+                "and changes no allowed reflection, so switching it on and off is a direct way "
+                "to see which spots on a plate are not lattice reflections at all - which "
+                "matters, because indexing one of them as if it were gives the wrong answer.\n\n"
+                "**What it cannot do.** A centring absence is never revived: a centred "
+                "reciprocal lattice is a sublattice, a sublattice is closed under addition, and "
+                "so no sum of two reflections can land on one. A bcc or fcc pattern therefore "
+                "gains nothing here, correctly. Only a basis absence - from a glide plane, a "
+                "screw axis, or the motif - can be revived.\n\n"
+                "**Read the brightness as observability, not intensity.** The strength of a "
+                "doubly diffracted spot depends on beam coupling and foil thickness, which are "
+                "dynamical quantities outside kinematic theory. What is trustworthy is *which* "
+                "reflections appear; how bright they are is an estimate."
+            ),
+            default=False,
+        ),
+        NumberParameter(
+            name="double_diffraction_coupling",
+            label="Double-diffraction coupling",
+            help_text=(
+                "How strongly a doubly diffracted spot is drawn, relative to the product of "
+                "its two parent intensities. It stands in for the beam coupling and foil "
+                "thickness that kinematic theory cannot supply, so it sets how prominent these "
+                "reflections look, not whether they are there. Ignored unless double "
+                "diffraction is on."
+            ),
+            default=0.05,
+            minimum=0.001,
+            maximum=1.0,
+            advanced=True,
+        ),
         IntegerParameter(
             name="max_index",
             label="Index limit",
@@ -1793,6 +1877,7 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
     camera_constant = float(camera_length * wavelength)
     detector_px = int(request["detector_px"])
     pixel_size = float(request["pixel_size_mm"])
+    include_double_diffraction = bool(request["include_double_diffraction"])
 
     source = str(request["orientation_source"])
     direct = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
@@ -1837,6 +1922,8 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
         ),
         in_plane_rotation_deg=roll_deg,
         max_index=int(request["max_index"]),
+        include_double_diffraction=include_double_diffraction,
+        double_diffraction_coupling=float(request["double_diffraction_coupling"]),
     )
     if not image.spots:
         raise InvalidInputError(
@@ -1875,11 +1962,13 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             "d": float(spot.d_spacing_angstrom),
             "g": float(spot.g_inv_angstrom),
             "intensity": float(spot.relative_intensity),
+            "origin": _origin_label(spot, spec=spec),
             "x": float(spot.position_px[0]),
             "y": float(spot.position_px[1]),
         }
         for index, spot in enumerate(image.spots)
     ]
+    double_diffraction_count = sum(1 for spot in image.spots if spot.is_double_diffraction)
 
     payload = image.to_json()
     # The browser draws from the same numbers the table shows, and labels a
@@ -1906,8 +1995,29 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
         f"reflections fall on the {detector_px}x{detector_px} detector, rolled "
         f"{roll_deg:.1f} degrees about the beam."
     )
+    double_diffraction_note = (
+        None
+        if not include_double_diffraction
+        else (
+            (
+                f"Double diffraction is on: {double_diffraction_count} of these reflections are "
+                "kinematically forbidden and appear only because two excited reflections sum to "
+                "them. The Origin column names the pair for each. Their brightness is an "
+                "observability estimate, not an intensity."
+            )
+            if double_diffraction_count
+            else (
+                "Double diffraction is on but adds nothing to this pattern, which is the "
+                "correct result when every absence here is a centring absence: a centred "
+                "reciprocal lattice is closed under addition, so no sum of two reflections can "
+                "land on one."
+            )
+        )
+    )
     if zone_conversion_note:
         summary = f"{summary} {zone_conversion_note}"
+    if double_diffraction_note:
+        summary = f"{summary} {double_diffraction_note}"
     if deviation_note:
         summary = f"{summary} {deviation_note}"
 
@@ -1927,7 +2037,18 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
                     digits=3,
                     help_text=(
                         "Kinematic, normalized to the strongest spot. Indicative rather than "
-                        "quantitative - a real plate redistributes intensity dynamically."
+                        "quantitative - a real plate redistributes intensity dynamically. For a "
+                        "double-diffraction row it is an observability estimate instead."
+                    ),
+                ),
+                Column(
+                    "origin",
+                    "Origin",
+                    help_text=(
+                        "'Kinematic' for an ordinary lattice reflection. Otherwise the two "
+                        "reflections whose sum puts this spot on the plate: the reflection is "
+                        "forbidden and appears only through double diffraction, so indexing it "
+                        "as a lattice reflection gives the wrong answer."
                     ),
                 ),
                 Column("x", "x", units="px", numeric=True, digits=1),
@@ -1962,6 +2083,8 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
                 "phase": request["phase"],
             },
             "show_kikuchi": bool(request["show_kikuchi"]),
+            "include_double_diffraction": include_double_diffraction,
+            "double_diffraction_count": int(double_diffraction_count),
             "describe": image.describe(),
         },
         inputs={
@@ -1974,8 +2097,13 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             "detector_px": detector_px,
             "pixel_size_mm": pixel_size,
             "max_index": int(request["max_index"]),
+            "include_double_diffraction": include_double_diffraction,
+            "double_diffraction_coupling": float(request["double_diffraction_coupling"]),
         },
-        notes=(*_SIMULATION_LIMITS, *([deviation_note] if deviation_note else ())),
+        notes=(
+            *_simulation_limits(include_double_diffraction=include_double_diffraction),
+            *([deviation_note] if deviation_note else ()),
+        ),
         citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH),
     )
     return result.to_json()

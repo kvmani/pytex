@@ -251,3 +251,110 @@ def test_the_simulated_pattern_indexes_back_to_the_zone_it_was_built_from() -> N
     # Every spot indexed to the spacing it was drawn at.
     for row in solved["table"]["rows"]:
         assert abs(float(row["d_deviation_percent"])) < 1e-6
+
+
+def test_double_diffraction_is_off_unless_asked_for() -> None:
+    """The default pattern is purely kinematic, and its limits say so.
+
+    Default-off is what makes the option safe to add: no existing pattern,
+    gallery entry or pinned test changes meaning because the capability exists.
+    """
+
+    result = simulate()
+    assert result["data"]["include_double_diffraction"] is False
+    assert result["data"]["double_diffraction_count"] == 0
+    assert all(row["origin"] == "Kinematic" for row in result["table"]["rows"])
+    assert any("not modelled" in note for note in result["notes"])
+
+
+def test_the_toggle_adds_the_forbidden_reflections_and_names_their_origin() -> None:
+    """Silicon down [011] gains {200}, the textbook double-diffraction case."""
+
+    result = simulate(
+        phase={"builtin": "si_diamond"},
+        zone_axis=[0, 1, -1],
+        include_double_diffraction=True,
+    )
+    assert result["data"]["include_double_diffraction"] is True
+    forbidden = [row for row in result["table"]["rows"] if row["origin"] != "Kinematic"]
+    assert result["data"]["double_diffraction_count"] == len(forbidden)
+    assert forbidden
+    indices = {row["hkl"] for row in forbidden}
+    assert "(200)" in indices
+    origin = next(row["origin"] for row in forbidden if row["hkl"] == "(200)")
+    assert origin == "(1 -1 -1) + (111)"
+
+
+def test_a_pattern_that_includes_double_diffraction_does_not_claim_otherwise() -> None:
+    """A stale limit is worse than no limit, so the note must be replaced.
+
+    A reader who checks one stated limit and finds it false has no reason to
+    trust the others, so the standing "double diffraction is not modelled" line
+    must not survive onto a pattern that models it.
+    """
+
+    result = simulate(
+        phase={"builtin": "si_diamond"},
+        zone_axis=[0, 1, -1],
+        include_double_diffraction=True,
+    )
+    assert not any("not modelled" in note for note in result["notes"])
+    assert any("Double diffraction is included" in note for note in result["notes"])
+    assert "Double diffraction is on" in result["summary"]
+
+
+def test_a_hexagonal_row_names_its_parents_in_the_same_notation_as_itself() -> None:
+    """One row must not mix four-index and three-index Miller notation.
+
+    The repository's notation standard is not a formatting preference: a reader
+    who sees (0001) explained by three-index parents has to work out which
+    convention each half is in before the row means anything.
+    """
+
+    result = simulate(
+        phase={"builtin": "ti_hcp"},
+        zone_axis=[1, 1, 0],
+        include_double_diffraction=True,
+    )
+    forbidden = [row for row in result["table"]["rows"] if row["origin"] != "Kinematic"]
+    assert forbidden
+    row = next(row for row in forbidden if row["hkl"] == "(0001)")
+    # Four indices on both sides of the sum, as the phase is hexagonal.
+    assert row["origin"] == "(-1 1 0 1) + (1 -1 0 0)"
+    for other in forbidden:
+        assert other["origin"].count(" + ") == 1
+
+
+def test_a_centred_lattice_gains_nothing_and_the_summary_explains_why() -> None:
+    """Turning it on for ferrite must not silently look like a broken feature."""
+
+    result = simulate(
+        phase={"builtin": "fe_bcc"},
+        zone_axis=[0, 0, 1],
+        include_double_diffraction=True,
+    )
+    assert result["data"]["double_diffraction_count"] == 0
+    assert "adds nothing to this pattern" in result["summary"]
+    assert "closed under addition" in result["summary"]
+
+
+def test_the_marked_spots_reach_the_browser_with_their_origin() -> None:
+    """The plate is drawn from this payload, so the marking has to be in it."""
+
+    result = simulate(
+        phase={"builtin": "si_diamond"},
+        zone_axis=[0, 1, -1],
+        include_double_diffraction=True,
+    )
+    spots = result["data"]["pattern"]["spots"]
+    forbidden = [spot for spot in spots if spot["double_diffraction"]]
+    assert forbidden
+    for spot in forbidden:
+        assert spot["double_diffraction_origin"]
+        parents = spot["double_diffraction_parents"]
+        assert parents is not None
+        assert [sum(pair) for pair in zip(*parents, strict=True)] == spot["hkl"]
+    for spot in spots:
+        if not spot["double_diffraction"]:
+            assert spot["double_diffraction_origin"] == ""
+            assert spot["double_diffraction_parents"] is None

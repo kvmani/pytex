@@ -41,6 +41,18 @@ export const HALO_COLOUR = '#05070d';
 /** Index labels drawn beside a simulated spot. */
 export const LABEL_COLOUR = '#9fd2ff';
 
+/*
+ * Reflections present only through double diffraction.
+ *
+ * These are not lattice reflections, and indexing one as though it were gives
+ * the wrong answer — so they must not be merely dimmer versions of the real
+ * spots, which is what a reader skims past. Warm amber against a plate whose
+ * every other mark is blue-white separates them at a glance and stays clear of
+ * the cyan Kikuchi overlay, and each one also carries a dashed ring so the
+ * distinction survives a greyscale print and colour-blind vision alike.
+ */
+export const DOUBLE_DIFFRACTION_COLOUR = '#ffc46b';
+
 /**
  * Draw a simulated pattern: dark ground, glowing spots, optional indices.
  *
@@ -76,6 +88,17 @@ export function drawSimulatedPattern(root, pattern, options = {}) {
         svg('stop', { offset: '45%', 'stop-color': SPOT_COLOUR, 'stop-opacity': '0.28' }),
         svg('stop', { offset: '100%', 'stop-color': SPOT_COLOUR, 'stop-opacity': '0' }),
       ]),
+      svg('radialGradient', { id: `${gradientId}-dd` }, [
+        svg('stop', {
+          offset: '0%', 'stop-color': DOUBLE_DIFFRACTION_COLOUR, 'stop-opacity': '0.95',
+        }),
+        svg('stop', {
+          offset: '45%', 'stop-color': DOUBLE_DIFFRACTION_COLOUR, 'stop-opacity': '0.28',
+        }),
+        svg('stop', {
+          offset: '100%', 'stop-color': DOUBLE_DIFFRACTION_COLOUR, 'stop-opacity': '0',
+        }),
+      ]),
     ]),
     svg('rect', {
       x: 0,
@@ -107,11 +130,13 @@ export function drawSimulatedPattern(root, pattern, options = {}) {
 
   const marker = Math.max(pattern.width_px, pattern.height_px) / 140;
   for (const spot of pattern.spots) {
+    const forbidden = spot.double_diffraction === true;
+    const tint = forbidden ? DOUBLE_DIFFRACTION_COLOUR : SPOT_COLOUR;
     const glow = svg('circle', {
       cx: spot.x,
       cy: spot.y,
       r: spot.radius_px * 3.0,
-      fill: `url(#${gradientId})`,
+      fill: `url(#${forbidden ? `${gradientId}-dd` : gradientId})`,
       // Opacity carries the intensity, because apparent radius alone barely
       // separates reflections whose kinematic intensities differ by tens of
       // percent — which within one zone is the usual case.
@@ -121,16 +146,34 @@ export function drawSimulatedPattern(root, pattern, options = {}) {
       cx: spot.x,
       cy: spot.y,
       r: spot.radius_px * 0.62,
-      fill: SPOT_COLOUR,
+      fill: tint,
       opacity: 0.45 + 0.55 * spot.intensity,
     });
     root.append(glow, core);
+    if (forbidden) {
+      // The ring, not the colour, is what makes this readable in greyscale.
+      root.append(
+        svg('circle', {
+          cx: spot.x,
+          cy: spot.y,
+          r: spot.radius_px * 1.5,
+          fill: 'none',
+          stroke: DOUBLE_DIFFRACTION_COLOUR,
+          'stroke-width': Math.max(0.6, spot.radius_px * 0.16),
+          'stroke-dasharray': `${spot.radius_px * 0.7} ${spot.radius_px * 0.5}`,
+          opacity: 0.85,
+        }),
+      );
+    }
     if (hoverable) {
       hoverable(core, {
         Index: spot.label,
         'd / Å': spot.d_angstrom,
         '|g| / Å⁻¹': spot.g_inv_angstrom,
         'Relative intensity': spot.intensity,
+        Origin: forbidden
+          ? `double diffraction, ${spot.double_diffraction_origin}`
+          : 'kinematic',
         x: spot.x,
         y: spot.y,
       });
@@ -141,15 +184,54 @@ export function drawSimulatedPattern(root, pattern, options = {}) {
           x: spot.x + spot.radius_px * 1.6,
           y: spot.y - spot.radius_px * 1.2,
           'font-size': marker * 2.1,
-          fill: LABEL_COLOUR,
+          fill: forbidden ? DOUBLE_DIFFRACTION_COLOUR : LABEL_COLOUR,
           text: spot.label,
         }),
       );
     }
   }
+  if (pattern.spots.some((spot) => spot.double_diffraction === true)) {
+    drawDoubleDiffractionKey(root, pattern, marker);
+  }
 
   if (scaleBar) drawScaleBar(root, pattern, marker);
 }
+
+/**
+ * A key for the ringed spots, drawn only on a plate that has some.
+ *
+ * A distinct marker that nothing explains is worse than no marker: the reader
+ * sees that some spots differ and invents a reason. The plate is where the
+ * reader is looking, so the explanation belongs on it rather than only in the
+ * table below, and it says the one thing that matters operationally — these are
+ * not lattice reflections, so do not index them.
+ */
+export function drawDoubleDiffractionKey(root, pattern, marker) {
+  const x = pattern.width_px * 0.06;
+  const y = pattern.height_px * 0.075;
+  const radius = marker * 1.15;
+  root.append(
+    svg('circle', { cx: x + radius, cy: y, r: radius * 0.62, fill: DOUBLE_DIFFRACTION_COLOUR }),
+    svg('circle', {
+      cx: x + radius,
+      cy: y,
+      r: radius * 1.5,
+      fill: 'none',
+      stroke: DOUBLE_DIFFRACTION_COLOUR,
+      'stroke-width': Math.max(0.6, radius * 0.16),
+      'stroke-dasharray': `${radius * 0.7} ${radius * 0.5}`,
+      opacity: 0.85,
+    }),
+    svg('text', {
+      x: x + radius * 3.4,
+      y: y + marker * 0.75,
+      'font-size': marker * 2.0,
+      fill: DOUBLE_DIFFRACTION_COLOUR,
+      text: 'double diffraction — forbidden, do not index',
+    }),
+  );
+}
+
 
 /**
  * A reciprocal-space scale bar, in inverse angstroms.

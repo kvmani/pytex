@@ -92,6 +92,14 @@ $$
 
 where the product follows from the two-step amplitude scaling as $F(\mathbf{g}_1) F(\mathbf{g}_2)$, the sum runs over unordered pairs of excited reflections, and the coupling constant $c$ absorbs everything a kinematic treatment cannot supply — beam coupling strength and specimen thickness. Path phases are unknown at this level of theory, which is why contributions are summed in intensity rather than in amplitude. The result is an observability estimate. Every such reflection is flagged in the spot table, named with the path that produced it, and rendered distinctly.
 
+### Where the rule is applied
+
+The selection rule lives once, in {func}`pytex.diffraction.kinematic.double_diffraction_sums`, and both simulation engines call it rather than restating it. They differ only in how each expresses the result, because they select reflections differently in the first place.
+
+{func}`pytex.diffraction.kinematic.simulate_zone_axis_spots` retains a reflection when its excitation error falls inside a window, so a forbidden reflection is not in its table at all and double diffraction **appends rows** to it. {func}`pytex.diffraction.saed.generate_saed_pattern` — the engine behind the Workbench SAED simulator — takes the exact zone-law section, which already enumerates every reflection of the zone including the forbidden ones at (near) zero intensity, so double diffraction **re-weights and marks rows already present**. No spot moves in either case, and the set of reflections the rule reaches is the same.
+
+Both are off by default. A pattern is kinematic unless it says otherwise, and each engine's reported limits state which of the two it is, because a stale limit misleads more than a missing one.
+
 ## Detector-Space Indexing Association
 
 Observed detector coordinates can be clustered in detector space and then associated with simulated spots. Let $\mathbf{p}_i$ denote a detector-space observation cluster center and let $\mathbf{s}_j$ denote a simulated detector coordinate. PyTex currently evaluates the detector residual

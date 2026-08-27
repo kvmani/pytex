@@ -11,7 +11,57 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-27
+
+A feature release for the Workbench. It adds crystal-structure import from `.cif` everywhere a
+phase is chosen, an ECCI two-beam tilt solver for the SEM stage, and an explicit double-diffraction
+control on the SAED simulator; it makes the documentation site readable on a closed intranet.
+
+**Scientific behavior.** No convention changes and no existing number changes. One capability is
+added that alters what a simulated SAED pattern contains, and it is **off by default**: with
+*Include double diffraction* enabled, reflections that are kinematically forbidden but observable
+through multiple scattering are drawn and marked. Every pattern simulated without that option is
+identical to the one 0.2.0 produced. The hexagonal zone-axis fix changes labels and explanation
+only, never the direction simulated.
+
 ### Added
+
+- **A double-diffraction toggle on the TEM SAED simulator.** *Include double diffraction* shows
+  the reflections a real plate has that a kinematic simulation does not: a beam diffracted by
+  `g1` re-diffracts by `g2` and puts a spot at `g1 + g2`, so a reflection whose structure factor
+  vanishes appears anyway. Silicon down `[011]` gains the forbidden `{200}` from `(1-1-1) + (111)`;
+  alpha titanium, zirconium and magnesium down `[11-20]` gain `(0001)` from `(-1101) + (1-100)`.
+  A **centring** absence is never revived — a centred reciprocal lattice is a sublattice and a
+  sublattice is closed under addition — so a bcc or fcc pattern correctly gains nothing, and the
+  summary says so rather than looking broken. Added reflections are ringed on the plate under
+  their own key, and a new **Origin** column names the pair behind each one, in the phase's own
+  index notation. The option moves no spot and re-weights no allowed reflection, so switching it
+  on and off is a fair comparison.
+
+  Read the brightness as **observability, not intensity**: which reflections appear is a geometric
+  selection rule and is reliable; how bright they are depends on beam coupling and foil thickness,
+  which kinematic theory cannot supply. The advanced `double_diffraction_coupling` sets that scale.
+  A pattern that includes double diffraction no longer carries the standing "double diffraction is
+  not modelled" limit — a stale limit misleads more than a missing one.
+
+  New library surface: `pytex.diffraction.saed.generate_saed_pattern(...,
+  include_double_diffraction=, double_diffraction_coupling=)`, `SAEDSpot.is_double_diffraction` /
+  `.double_diffraction_parents` / `.double_diffraction_origin_label()`, and the matching fields on
+  `pytex.tem.synthetic.SyntheticSpot` and its JSON. The selection rule itself is the existing
+  `pytex.diffraction.kinematic.double_diffraction_sums`, reused rather than restated, so the two
+  simulation engines cannot drift apart.
+
+- **An ECCI two-beam tilt and rotation solver, as an EBSD sub-tab.** From an EBSD-measured
+  orientation it simulates the EBSD Kikuchi pattern and the on-axis TEM-style SAED view side by
+  side, and solves for the SEM stage tilt and rotation that bring a target direction onto the beam
+  for a two-beam ECCI condition. The eucentric SEM stage — one tilt about a fixed lab axis, one
+  rotation about the specimen normal applied before it — is kinematically different from the TEM
+  double-tilt holder, so this is a separately derived closed form, forward-validated through an
+  independently re-derived path rather than through the algebra that produced it. New operations
+  `ecci.solve_workflow` and `ecci.resimulate`, the latter driving live tilt/rotation scrubbing. A
+  tutorial notebook demonstrates that a solved tilt actually reaches the condition: re-simulating
+  at the solved stage state collapses the target reflection's excitation error to numerical zero,
+  cross-checked three independent ways.
 
 - **GUI-wide CIF crystal-structure loading.** Every shared phase picker now offers a `.cif` file
   beside the built-in catalogue and manual cell editor, so one imported canonical structure can
@@ -30,6 +80,19 @@ downstream analyses depend on them.
   and shows both exact representations with an equivalence note; for alpha zirconium, entering
   `[2 -1 0]` is therefore reported as the same direction `[5 -4 -1 0]`, not as an unexplained
   replacement.
+
+- **The documentation site's mathematics renders without internet access.** PyTex is read on a
+  closed office intranet, where the default MathJax CDN is unreachable: every equation across the
+  200-page site silently degraded to raw TeX, and the build reported no warning. MathJax 3.2.2 is
+  now vendored under `docs/site/_static/mathjax` with the `tex-chtml-full` component, so nothing
+  is fetched lazily at render time either. The unused `sphinxcontrib.mermaid` extension is
+  dropped: the site contains no Mermaid diagram, yet registering the extension injected Mermaid
+  and D3 script tags from a CDN onto 61 generated pages, which fail the same way. A clean build
+  is 265 pages with zero warnings and zero external script, style or font references of any kind,
+  and three tests guard it — including one asserting the vendored assets are tracked by git rather
+  than merely present on a developer's disk.
+
+- **The ECCI panel's base quality gates.**
 
 ## [0.2.0] - 2026-08-23
 

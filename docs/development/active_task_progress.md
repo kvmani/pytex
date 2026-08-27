@@ -5,6 +5,86 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Double-Diffraction Toggle In The TEM SAED Simulator — COMPLETE (2026-08-27)
+
+**Objective.** Give the Workbench TEM tab's SAED simulation an explicit on/off control for double
+diffraction, so a user can see which spots on a real plate are not lattice reflections at all —
+and prepare a PyTex release covering this and the preceding week's work.
+
+### Reconciliation with the 2026-08-11 capability entry
+
+The earlier entry *Double Diffraction In The Kinematic SAED Engine* decided that "the legacy
+loop-based `saed.generate_saed_pattern` is not extended; its docstring is corrected to point at
+the engine that models this." **That decision is revised here, deliberately and narrowly.** It
+was taken when nothing on the `saed.py` path needed the capability, and it rested on a
+maintenance argument, not a scientific one. Two facts changed it:
+
+1. The TEM panel's simulator is on that path (`app.services.tem._simulate_saed` ->
+   `tem.synthetic.synthesize_saed_image` -> `saed.generate_saed_pattern`), and that is the
+   surface the capability is now wanted on.
+2. Moving the panel to `simulate_zone_axis_spots` instead would change the *reflection set of
+   every existing simulated pattern* — the two engines select reflections differently, one by the
+   exact zone law and the other by an excitation-error window. That is a silent scientific change
+   to the practice gallery, the pinned solver round-trips, and every teaching pattern, in service
+   of a tidiness preference. Extending is additive and default-off; switching is not.
+
+No physics is duplicated: the selection rule is still the single shared
+`kinematic.double_diffraction_sums`, imported by `saed.py` rather than restated. What differs is
+only how each engine expresses the result, and the difference is documented in both places.
+
+### Decisions and scope
+
+- Because `generate_saed_pattern` already enumerates the whole `hkl` cube of the zone and keeps
+  forbidden reflections at (near) zero intensity, enabling the option **re-weights and marks
+  reflections that are already present** rather than appending rows as the vectorized engine does.
+  No spot moves; only intensity and the marking change.
+- Default is **off**, so no existing pattern, gallery entry, or pinned test changes.
+- A centring absence is never revived — the reciprocal sublattice is closed under addition — which
+  falls out of the shared rule and is pinned by a test rather than assumed.
+- Parent reflections are rendered through the panel's own `plane_label`, so a hexagonal row does
+  not name its reflection in four-index Miller-Bravais and its parents in three.
+- The standing "double diffraction is not modelled" limit is *replaced*, not kept, on a pattern
+  that includes it. A stale limit is worse than no limit.
+
+### Step ledger
+
+| # | Step | Status |
+| --- | --- | --- |
+| 0 | Survey the surfaces; open this entry; reconcile the 2026-08-11 decision | done |
+| 1 | `saed.py`: `SAEDSpot` marking, `include_double_diffraction`, shared-rule reuse | done |
+| 2 | `tem/synthetic.py`: thread marking, parents, JSON contract, `describe()` | done |
+| 3 | `app/services/tem.py`: toggle, coupling, Origin column, honest notes/summary | done |
+| 4 | Frontend: render marked spots distinctly, with a key on the plate | done |
+| 5 | Tests: physics, service contract, browser lane | done |
+| 6 | Docs, worked example, CHANGELOG, version bump to 0.3.0 | done |
+
+### Verification
+
+Base lane green: `ruff`, `mypy` (155 files) and `pytest` all pass. The browser lane's new
+double-diffraction test passes.
+
+Physics checked against both canonical textbook cases rather than against stored numbers:
+silicon [011] revives {200} through `(1-1-1) + (111)`, and hcp [11-20] revives (0001) through
+`(-1101) + (1-100)`; bcc [001] and fcc [01-1] correctly gain nothing, which is the closure
+property rather than an implementation detail. Confirmed in the running Workbench: the toggle
+renders, 21 reflections are ringed on a silicon [011] plate under their own key, the Origin
+column names each pair, and the console is clean.
+
+Two contract updates were needed and are in the same commit: the synthetic-pattern JSON key-set
+test now lists the three new spot fields, and `fixtures/tem/zr_hcp_basal_saed.json` was
+regenerated because `describe()` now states which kind of pattern it is. The tracked PNG is
+unchanged, which is the evidence that no spot moved.
+
+### Release
+
+Version bumped to 0.3.0 in `src/pytex/_version.py` and `CITATION.cff`. The changelog entry covers
+this work plus the gaps left by the week's other commits, which had landed without entries: the
+ECCI two-beam tilt solver and the offline-MathJax documentation fix.
+
+### Next actions
+
+None. The task is complete.
+
 ## GUI-wide CIF phase loading — COMPLETE (2026-08-25)
 
 **Objective.** Let a user choose a `.cif` file beside every shared phase-catalogue dropdown in

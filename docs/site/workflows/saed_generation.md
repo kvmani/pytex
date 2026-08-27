@@ -153,7 +153,35 @@ sublattice is closed under addition, so the sum of two centring-allowed reflecti
 centring-allowed. Only **basis** absences — from a glide plane, a screw axis, or the motif — can
 be revived, which is exactly what is observed.
 
-The option is off by default; the legacy `generate_saed_pattern` does not implement it.
+The option is off by default in both engines.
+
+`generate_saed_pattern` — the exact zone-law engine behind the Workbench SAED simulator — takes
+the same two arguments and calls the same `double_diffraction_sums` rule:
+
+```python
+from pytex.diffraction.saed import generate_saed_pattern
+
+pattern = generate_saed_pattern(
+    silicon,
+    ZoneAxis(indices=np.array([0, 1, -1]), phase=silicon),
+    include_double_diffraction=True,
+)
+revived = [spot for spot in pattern.spots if spot.is_double_diffraction]
+print(revived[0].double_diffraction_origin_label())
+```
+
+It expresses the result differently, because it starts from a different reflection set. The zone-law
+section already enumerates every reflection of the zone, forbidden ones included, at (near) zero
+intensity, so the option **re-weights and marks reflections already present** rather than appending
+rows as the vectorized engine does. No spot moves, and the reflections the rule reaches are the
+same. `SAEDSpot.is_double_diffraction`, `.double_diffraction_parents` and
+`.double_diffraction_origin_label()` are the marking, and they survive into
+`pytex.tem.synthetic.synthesize_saed_image` and its JSON so the Workbench can draw them distinctly.
+
+In the Workbench, this is the **Include double diffraction** control on the SAED simulator, with
+the coupling constant beside it under the advanced settings. Switching it on adds an Origin column
+naming the pair behind each added reflection, rings those spots on the plate, and replaces the
+"double diffraction is not modelled" limit rather than leaving it standing.
 
 ## Current Limits
 

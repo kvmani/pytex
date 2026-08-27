@@ -14,6 +14,18 @@ from pytex.core.lattice import MillerIndex, Phase, ReciprocalLatticeVector, Zone
 from pytex.core.notation import format_plane_indices
 from pytex.core.provenance import ProvenanceRecord
 
+#: Relative intensity at or below which a zone reflection counts as
+#: kinematically forbidden.
+#:
+#: A forbidden reflection's structure factor is exactly zero in theory and a few
+#: parts in :math:`10^{16}` of the strongest reflection in floating point. One
+#: part in :math:`10^{4}` is the same threshold
+#: :class:`~pytex.diffraction.kinematic.KinematicSimulationConfig` uses for
+#: ``min_relative_intensity``, so the two engines agree on which reflections are
+#: absent. The gap between a genuinely weak reflection and a forbidden one spans
+#: many orders of magnitude, so the exact value is not delicate.
+FORBIDDEN_RELATIVE_INTENSITY = 1e-4
+
 
 def _choose_zone_basis(zone_axis: np.ndarray) -> np.ndarray:
     trial = np.array([1.0, 0.0, 0.0], dtype=np.float64)
@@ -74,7 +86,14 @@ class SAEDSpot:
     g_magnitude_inv_angstrom : float
     d_spacing_angstrom : float
     intensity : float
-        Kinematic and relative.
+        Kinematic and relative, unless the spot is marked as double diffraction,
+        in which case it is an indicative observability estimate instead. See
+        :attr:`double_diffraction_parents`.
+    double_diffraction_parents : np.ndarray, optional
+        ``(2, 3)`` integer pair ``(g1, g2)`` summing to :attr:`miller_indices`,
+        present exactly for a reflection that is kinematically forbidden and
+        appears only because ``include_double_diffraction`` was requested.
+        ``None`` for an ordinary kinematic reflection.
     label : str
         Rendered index label, empty when the spot is beyond the label limit.
     """
@@ -86,6 +105,7 @@ class SAEDSpot:
     intensity: float
     excitation_error_inv_angstrom: float
     label: str | None = None
+    double_diffraction_parents: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "miller_indices", as_int_array(self.miller_indices, shape=(3,)))
@@ -108,6 +128,39 @@ class SAEDSpot:
             raise ValueError("SAEDSpot.intensity must be finite and non-negative.")
         if not np.isfinite(self.excitation_error_inv_angstrom):
             raise ValueError("SAEDSpot.excitation_error_inv_angstrom must be finite.")
+        if self.double_diffraction_parents is not None:
+            parents = as_int_array(self.double_diffraction_parents, shape=(2, 3))
+            if not np.array_equal(parents.sum(axis=0), self.miller_indices):
+                raise ValueError(
+                    "SAEDSpot.double_diffraction_parents must sum to the reflection they produce."
+                )
+            object.__setattr__(self, "double_diffraction_parents", parents)
+
+    @property
+    def is_double_diffraction(self) -> bool:
+        """Whether this reflection is present only through double diffraction.
+
+        ``True`` marks a reflection whose structure factor is (near) zero and
+        which is drawn because two excited reflections sum to it. Read it as an
+        observability statement, never as a kinematic intensity.
+        """
+
+        return self.double_diffraction_parents is not None
+
+    def double_diffraction_origin_label(self) -> str:
+        """``"(g1) + (g2)"`` for a marked reflection, or the empty string.
+
+        The path that puts the spot on the plate, written in the repository's
+        plane notation so it reads the way the literature writes it.
+        """
+
+        if self.double_diffraction_parents is None:
+            return ""
+        first, second = np.asarray(self.double_diffraction_parents, dtype=int)
+        return (
+            f"{format_plane_indices(tuple(int(v) for v in first), style='plain')} + "
+            f"{format_plane_indices(tuple(int(v) for v in second), style='plain')}"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +228,76 @@ class SAEDPattern:
         return max(radii) * 1.15
 
 
+def _apply_double_diffraction(spots: list[SAEDSpot], *, coupling: float) -> list[SAEDSpot]:
+    """Give the reachable forbidden reflections of a zone an indicative intensity.
+
+    A beam diffracted by ``g1`` is itself an incident beam inside the crystal, so
+    diffracting it again by ``g2`` sends it out along ``g1 + g2``. The reachable
+    set is therefore the pairwise algebraic sums of the excited reflections —
+    the shared rule in :func:`pytex.diffraction.kinematic.double_diffraction_sums`,
+    reused here rather than restated.
+
+    Every reflection of the zone is already enumerated by the caller, forbidden
+    ones included, at (near) zero intensity. So this replaces the forbidden spots
+    that the rule can reach with copies carrying an observability intensity and
+    the parent pair that produced them, and leaves every other spot untouched. No
+    position changes, and an allowed reflection is never re-labelled as double
+    diffraction even though the rule also reaches it — its own structure factor
+    already explains it.
+    """
+
+    from pytex.diffraction.kinematic import double_diffraction_sums
+
+    if not spots:
+        return spots
+    intensities = np.asarray([spot.intensity for spot in spots], dtype=np.float64)
+    peak = float(intensities.max())
+    if peak <= 0.0:
+        return spots
+    relative = intensities / peak
+
+    excited = relative > FORBIDDEN_RELATIVE_INTENSITY
+    forbidden = ~excited
+    if not bool(excited.any()) or not bool(forbidden.any()):
+        return spots
+
+    indices = np.asarray([spot.miller_indices for spot in spots], dtype=np.int64)
+    sums, weight, parents = double_diffraction_sums(indices[excited], relative[excited])
+    if sums.shape[0] == 0:
+        return spots
+
+    # The two-step amplitude scales as F(g1) F(g2), so the intensity scales as
+    # the product of the parent intensities; paths are summed because their
+    # relative phases are outside what a kinematic treatment can supply. Clipping
+    # at the strongest kinematic spot keeps the pattern's intensity scale intact.
+    reachable = {
+        tuple(int(value) for value in row): (float(total), pair)
+        for row, total, pair in zip(sums, weight, parents, strict=True)
+    }
+
+    updated = list(spots)
+    for row in np.flatnonzero(forbidden):
+        spot = spots[int(row)]
+        match = reachable.get(tuple(int(value) for value in spot.miller_indices))
+        if match is None:
+            continue
+        total, pair = match
+        boosted = min(1.0, coupling * total) * peak
+        if boosted <= spot.intensity:
+            continue
+        updated[int(row)] = SAEDSpot(
+            miller_indices=spot.miller_indices,
+            reciprocal_vector_crystal=spot.reciprocal_vector_crystal,
+            reciprocal_vector_detector=spot.reciprocal_vector_detector,
+            detector_coordinates=spot.detector_coordinates,
+            intensity=boosted,
+            excitation_error_inv_angstrom=spot.excitation_error_inv_angstrom,
+            label=spot.label,
+            double_diffraction_parents=pair,
+        )
+    return updated
+
+
 def generate_saed_pattern(
     phase: Phase,
     zone_axis: ZoneAxis,
@@ -185,6 +308,8 @@ def generate_saed_pattern(
     zone_tolerance_inv_angstrom: float = 1e-6,
     intensity_model: Literal["electron_atomic_number", "unit"] = "electron_atomic_number",
     label_limit: int = 20,
+    include_double_diffraction: bool = False,
+    double_diffraction_coupling: float = 0.05,
     provenance: ProvenanceRecord | None = None,
 ) -> SAEDPattern:
     """Simulate a selected-area electron diffraction pattern down a zone axis.
@@ -201,10 +326,26 @@ def generate_saed_pattern(
     the camera constant ``L*lambda``, so radial position is proportional to
     ``|g|``. Intensities come from electron structure factors with no
     dynamical scattering, so relative intensities within a zone are
-    indicative rather than quantitative, and double diffraction — which can
-    make a formally forbidden reflection appear — is not modelled here.
-    :func:`pytex.diffraction.kinematic.simulate_zone_axis_spots` models it
-    behind ``KinematicSimulationConfig(include_double_diffraction=True)``.
+    indicative rather than quantitative.
+
+    Double diffraction — a diffracted beam re-diffracting inside the crystal,
+    which puts a spot at ``g1 + g2`` and can therefore make a formally forbidden
+    reflection appear — is off by default and enabled with
+    ``include_double_diffraction``. The selection rule is the shared one,
+    :func:`pytex.diffraction.kinematic.double_diffraction_sums`. Because this
+    function already enumerates the whole ``hkl`` cube of the zone and keeps
+    forbidden reflections at (near) zero intensity, enabling the option
+    **re-weights and marks reflections that are already present** rather than
+    appending rows, which is how the vectorized engine
+    :func:`pytex.diffraction.kinematic.simulate_zone_axis_spots` expresses the
+    same physics. No spot moves: only intensity and the marking change.
+
+    A centring absence is never revived. Lattice centring conditions define a
+    *sublattice* of reciprocal space, a sublattice is closed under addition, and
+    so no sum of two excited reflections can land on one. Only a basis absence —
+    from a glide plane, a screw axis, or the motif — can be revived, which is
+    the physically correct outcome and the reason the hcp ``(0001)`` reflection
+    appears on a real plate.
 
     Parameters
     ----------
@@ -227,6 +368,16 @@ def generate_saed_pattern(
         ``"electron_atomic_number"`` (default) or ``"unit"``.
     label_limit : int
         Maximum number of spots to label, so a dense pattern stays legible.
+    include_double_diffraction : bool
+        Whether to give kinematically forbidden reflections reachable as
+        ``g1 + g2`` an indicative intensity and mark them. Default ``False``,
+        which leaves the pattern purely kinematic.
+    double_diffraction_coupling : float
+        Scale applied to the two-step weight, in ``(0, 1]``. It carries
+        everything kinematic theory cannot supply — beam coupling strength and
+        specimen thickness — so a marked reflection's intensity is an
+        observability estimate, not a measurement. Ignored when
+        ``include_double_diffraction`` is ``False``.
     provenance : ProvenanceRecord, optional
 
     Returns
@@ -245,6 +396,8 @@ def generate_saed_pattern(
         raise ValueError("max_g_inv_angstrom must be strictly positive when provided.")
     if zone_tolerance_inv_angstrom < 0.0:
         raise ValueError("zone_tolerance_inv_angstrom must be non-negative.")
+    if not np.isfinite(double_diffraction_coupling) or not 0.0 < double_diffraction_coupling <= 1.0:
+        raise ValueError("double_diffraction_coupling must lie in the interval (0, 1].")
 
     zone_vector = zone_axis.unit_vector
     zone_basis = _choose_zone_basis(zone_vector)
@@ -293,11 +446,11 @@ def generate_saed_pattern(
                 # (hkl) with overbarred negatives. The old space-joined digits
                 # were both off-standard and wide enough that adjacent spot
                 # labels ran together in a dense zone.
-                label=format_plane_indices(
-                    tuple(int(value) for value in hkl), style="mathtext"
-                ),
+                label=format_plane_indices(tuple(int(value) for value in hkl), style="mathtext"),
             )
         )
+    if include_double_diffraction:
+        spots = _apply_double_diffraction(spots, coupling=float(double_diffraction_coupling))
     spots.sort(
         key=lambda spot: (
             -spot.intensity,
@@ -316,6 +469,7 @@ def generate_saed_pattern(
                     intensity=spot.intensity,
                     excitation_error_inv_angstrom=spot.excitation_error_inv_angstrom,
                     label=None,
+                    double_diffraction_parents=spot.double_diffraction_parents,
                 )
             )
         else:

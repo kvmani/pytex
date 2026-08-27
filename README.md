@@ -66,9 +66,11 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-**Version 0.2.0**, the production workbench release. See [CHANGELOG.md](CHANGELOG.md) for the
-release notes, the Miller-index input compatibility action, and every scientific behaviour
-change stated explicitly.
+**Version 0.3.0**, a Workbench feature release: crystal-structure import from `.cif` wherever a
+phase is chosen, an ECCI two-beam tilt solver for the SEM stage, and an explicit
+double-diffraction control on the SAED simulator. See [CHANGELOG.md](CHANGELOG.md) for the
+release notes and every scientific behaviour change stated explicitly — including the one
+capability that changes what a simulated pattern contains, which is off by default.
 
 PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
 application. What exists today:

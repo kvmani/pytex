@@ -4,7 +4,7 @@
 
 # Simulated SAED plates and the zone-axis atlas
 
-The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put.
+The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -34,6 +34,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -61,6 +62,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -119,6 +151,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -146,6 +179,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -214,6 +278,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -241,6 +306,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -294,6 +390,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -321,6 +418,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -373,6 +501,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -400,6 +529,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -453,6 +613,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -480,6 +641,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 ```
 
 :::
@@ -520,5 +712,128 @@ result = float(score.rms_relative_length_deviation)
 **Why this value**: d = 1/|g|, so measured g larger by a factor 1.05 makes every measured d smaller by 1/1.05. The relative deviation is 1/1.05 - 1 = -0.0476190476 on every spot, and the r.m.s. of a constant is that constant. Identical on every spot is the signature that distinguishes a calibration error from an indexing error.
 
 **Citation**: Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., DOI: 10.1007/978-0-387-76501-3, chapter 18 (R d = L lambda).
+
+**See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`
+
+## A forbidden silicon 200 sits exactly where the lattice puts it
+
+Silicon 200 is forbidden by the diamond glide, and a real [011] plate shows it anyway, produced by (1-1-1) + (111). The operationally important fact is not that the spot is there but *where* it is: at the same radius the camera equation gives for d = a/2, indistinguishable by position or by spacing from a genuine reflection. Nothing about the measurement reveals it, which is exactly why indexing a pattern on it silently yields the wrong cell — and why PyTex marks the reflection rather than leaving a reader to notice. Here the doubly diffracted spot is asked where it landed, and the answer must be the one the camera equation gives for a reflection that kinematic theory says is not there at all.
+
+**Symbols**
+
+- $d$ &mdash; Interplanar spacing of a reflecting plane.
+- $g$ &mdash; Reciprocal-lattice vector of a reflection; |g| = 1/d.
+- $\lambda$ &mdash; Electron wavelength at the accelerating voltage.
+- $[uvw]$ &mdash; Lattice direction brought parallel to the beam.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    ZoneAxis,
+)
+from pytex.core.lattice import AtomicSite, UnitCell
+from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
+
+crystal = ReferenceFrame(
+    name="crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+# Aluminium, a = 4.0495 A (Wyckoff, Crystal Structures Vol. 1).
+aluminium = Phase(
+    "aluminium-fcc",
+    lattice=Lattice(4.0495, 4.0495, 4.0495, 90.0, 90.0, 90.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# Alpha zirconium, a = 3.232 A, c = 5.147 A, so c/a = 1.5925.
+zirconium = Phase(
+    "zirconium-hcp",
+    lattice=Lattice(3.232, 3.232, 5.147, 90.0, 90.0, 120.0, crystal_frame=crystal),
+    symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal),
+    crystal_frame=crystal,
+)
+# A 400 mm camera length at 200 kV, where lambda = 0.0250793 A: L*lambda rounded
+# to 10.0317 mm.A. The camera constant is an input here, not the quantity under
+# test, so it is written out rather than recomputed.
+CAMERA_CONSTANT = 10.0317
+RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
+```
+
+:::
+
+**Compute**
+
+```python
+image = synthesize_saed_image(
+    silicon,
+    ZoneAxis([0, 1, -1], phase=silicon),
+    camera_constant_mm_angstrom=CAMERA_CONSTANT,
+    raster=RASTER,
+    include_double_diffraction=True,
+)
+spot = next(
+    entry
+    for entry in image.spots
+    if tuple(int(value) for value in entry.miller_indices) == (2, 0, 0)
+)
+# It is present only because the option was asked for, and it says so.
+assert spot.is_double_diffraction
+assert spot.double_diffraction_origin == '(1 -1 -1) + (111)'
+centre = np.asarray(image.centre_px)
+radius_px = float(np.linalg.norm(np.asarray(spot.position_px) - centre))
+result = radius_px * image.raster.pixel_size_mm
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `saed-practice-double-diffraction-forbidden-200` | 3.69422 | 3.69422 | mm | 0.00e+00 | 1e-09 | ✅ pass |
+
+**Why this value**: r = (L*lambda) / d with d_200 = a/2 = 2.71551 A for a = 5.43102 A, giving r = 10.0317 / 2.71551 = 3.69420 mm. The same camera equation that places a genuine reflection, applied to a forbidden one: double diffraction changes which reflections are visible, never where they are. Analytic from the lattice parameter; no program output enters it.
+
+**Citation**: Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., Springer, DOI: 10.1007/978-0-387-76501-3, chapter 16 (double diffraction; silicon 200 along [110] is the worked case) and chapter 18 (the camera equation R d = L lambda). CODATA lattice parameter of silicon.
 
 **See also**: {doc}`TEM pattern indexing workflow <../../workflows/tem_pattern_indexing>`, {doc}`Ratio and angle indexing <../../theory/saed_ratio_angle_indexing>`

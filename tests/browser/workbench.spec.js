@@ -1227,6 +1227,65 @@ test('the SAED simulator states the orientation it drew and can band it', async 
 });
 
 /*
+ * Double diffraction, switched on in the panel a user switches it on in.
+ *
+ * The unit tests already pin the crystallography — which reflections the rule
+ * reaches, and that a centring absence is never among them. What they cannot
+ * check is the thing the toggle exists for: that a user who turns it on can
+ * *see* which spots are not lattice reflections. So this asserts the visual
+ * distinction and the explanation beside it, on silicon down [011], where the
+ * forbidden {200} is the textbook case.
+ */
+test('the SAED simulator can show double diffraction and marks what it added', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'SAED Simulator');
+
+  const drawing = page.locator('#stage svg[aria-label="Simulated diffraction pattern"]');
+  await expect(drawing).toBeVisible({ timeout: 20_000 });
+
+  await page.locator('#rail-body select').first().selectOption('si_diamond');
+  const zoneBoxes = page.locator('#rail-body .indices[aria-label*="Zone axis [uvw]"] input');
+  await zoneBoxes.nth(0).fill('0');
+  await zoneBoxes.nth(1).fill('1');
+  await zoneBoxes.nth(2).fill('-1');
+  await page.getByRole('button', { name: 'Simulate the pattern' }).click();
+
+  // Off by default: nothing is ringed, and the plate carries no key.
+  await expect(drawing.locator('circle[stroke-dasharray]')).toHaveCount(0);
+  const kinematicSpots = await drawing.locator('circle').count();
+
+  await page.locator('#rail-body .checkbox').filter({ hasText: 'Include double diffraction' })
+    .locator('input[type="checkbox"]')
+    .check();
+  await page.getByRole('button', { name: 'Simulate the pattern' }).click();
+
+  // On: the added reflections are ringed, and the plate says what the ring means
+  // so a reader is never left to invent a reason for the difference.
+  await expect(drawing.locator('circle[stroke-dasharray]').first()).toBeVisible({
+    timeout: 20_000,
+  });
+  expect(await drawing.locator('circle').count()).toBeGreaterThan(kinematicSpots);
+  await expect(drawing.locator('text', { hasText: 'do not index' })).toHaveCount(1);
+
+  // And the table names the two reflections that produced each one, so the spot
+  // on the plate and the row under it tell the same story.
+  const origins = await page.evaluate(() => {
+    const head = Array.from(document.querySelectorAll('#stage table thead th'))
+      .map((cell) => cell.textContent.trim());
+    const column = head.indexOf('Origin');
+    return Array.from(document.querySelectorAll('#stage table tbody tr'))
+      .map((row) => row.children[column]?.textContent.trim())
+      .filter((value) => value && value !== 'Kinematic');
+  });
+  expect(origins.length).toBeGreaterThan(0);
+  expect(origins).toContain('(1 -1 -1) + (111)');
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * The whole from-disk path, on a pattern whose answer is known.
  *
  * Everything else in this file starts from the gallery, where the plate arrives

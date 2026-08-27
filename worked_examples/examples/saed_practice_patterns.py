@@ -28,6 +28,7 @@ from pytex import (
     SymmetrySpec,
     ZoneAxis,
 )
+from pytex.core.lattice import AtomicSite, UnitCell
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
 crystal = ReferenceFrame(
@@ -55,6 +56,37 @@ zirconium = Phase(
 # test, so it is written out rather than recomputed.
 CAMERA_CONSTANT = 10.0317
 RASTER = DetectorRaster(width_px=1024, height_px=1024, pixel_size_mm=0.024)
+
+# Silicon, a = 5.43102 A (CODATA), with the full diamond-cubic basis. The motif
+# is required here and not for the two phases above: a forbidden reflection is
+# forbidden by its structure factor, and a phase carrying no atomic sites has no
+# structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+_silicon_lattice = Lattice(
+    5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal
+)
+silicon = Phase(
+    "silicon",
+    lattice=_silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=_silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
 """
 
 _D = SymbolUse("d", "Interplanar spacing of a reflecting plane.")
@@ -371,6 +403,64 @@ ROLL_ABOUT_THE_BEAM = WorkedExample(
 )
 
 
+DOUBLE_DIFFRACTION_RADIUS = WorkedExample(
+    id="saed-practice-double-diffraction-forbidden-200",
+    title="A forbidden silicon 200 sits exactly where the lattice puts it",
+    domain="tem",
+    scenario=(
+        "Silicon 200 is forbidden by the diamond glide, and a real [011] plate shows it anyway, "
+        "produced by (1-1-1) + (111). The operationally important fact is not that the spot is "
+        "there but *where* it is: at the same radius the camera equation gives for d = a/2, "
+        "indistinguishable by position or by spacing from a genuine reflection. Nothing about "
+        "the measurement reveals it, which is exactly why indexing a pattern on it silently "
+        "yields the wrong cell — and why PyTex marks the reflection rather than leaving a reader "
+        "to notice. Here the doubly diffracted spot is asked where it landed, and the answer must "
+        "be the one the camera equation gives for a reflection that kinematic theory says is not "
+        "there at all."
+    ),
+    setup=PATTERN_SETUP,
+    code=(
+        "image = synthesize_saed_image(\n"
+        "    silicon,\n"
+        "    ZoneAxis([0, 1, -1], phase=silicon),\n"
+        "    camera_constant_mm_angstrom=CAMERA_CONSTANT,\n"
+        "    raster=RASTER,\n"
+        "    include_double_diffraction=True,\n"
+        ")\n"
+        "spot = next(\n"
+        "    entry\n"
+        "    for entry in image.spots\n"
+        "    if tuple(int(value) for value in entry.miller_indices) == (2, 0, 0)\n"
+        ")\n"
+        "# It is present only because the option was asked for, and it says so.\n"
+        "assert spot.is_double_diffraction\n"
+        "assert spot.double_diffraction_origin == '(1 -1 -1) + (111)'\n"
+        "centre = np.asarray(image.centre_px)\n"
+        "radius_px = float(np.linalg.norm(np.asarray(spot.position_px) - centre))\n"
+        "result = radius_px * image.raster.pixel_size_mm"
+    ),
+    expected=10.0317 / (5.43102 / 2.0),
+    unit="mm",
+    tolerance=1e-9,
+    reference=(
+        "r = (L*lambda) / d with d_200 = a/2 = 2.71551 A for a = 5.43102 A, giving "
+        "r = 10.0317 / 2.71551 = 3.69420 mm. The same camera equation that places a genuine "
+        "reflection, applied to a forbidden one: double diffraction changes which reflections "
+        "are visible, never where they are. Analytic from the lattice parameter; no program "
+        "output enters it."
+    ),
+    citation=(
+        "Williams, D. B. and Carter, C. B., Transmission Electron Microscopy, 2nd ed., "
+        "Springer, DOI: 10.1007/978-0-387-76501-3, chapter 16 (double diffraction; silicon "
+        "200 along [110] is the worked case) and chapter 18 (the camera equation R d = "
+        "L lambda). CODATA lattice parameter of silicon."
+    ),
+    symbols=(_D, _G, _LAMBDA, _ZONE),
+    see_also=(_WORKFLOW, _INDEXING),
+    result_format="{:.5f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="saed_practice_patterns",
     title="Simulated SAED plates and the zone-axis atlas",
@@ -380,7 +470,8 @@ GROUP = ExampleGroup(
         "aspect ratio that measures c/a without any calibration at all, and the basal-to-prism "
         "angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice "
         "fit recovers from the spots, and the length bias a mis-set camera constant leaves "
-        "in the scoring while the angles stay put."
+        "in the scoring while the angles stay put, and the forbidden reflection that double "
+        "diffraction puts on a real plate at exactly the radius a genuine one would occupy."
     ),
     examples=(
         CALIBRATION_IDENTITY,
@@ -389,6 +480,7 @@ GROUP = ExampleGroup(
         BASAL_TO_PRISM_ANGLE,
         CENTRE_REFINEMENT,
         CALIBRATION_BIAS,
+        DOUBLE_DIFFRACTION_RADIUS,
     ),
 )
 
