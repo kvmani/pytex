@@ -11,6 +11,47 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **A stage console on the ECCI workflow.** The two views used to sit at their minimum height with
+  most of a tall window empty below them, and the tilt and rotation boxes were in the rail, on the
+  far side of the screen from the pictures they change. The views now fill the stage, and under
+  them is a console: a schematic of the stage with the beam fixed and the specimen swinging by the
+  tilt angle; a **target tracker** with the beam at the centre of fifteen-degree rings, on which
+  reaching the two-beam condition is walking a point into the bullseye; and the tilt and rotation
+  controls as sliders that re-simulate both views as they move, with nudge buttons for a repeatable
+  step and an exact box for a solved value no drag can reach.
+
+  The tracker carries an arrow per control showing which way that control moves the target **at the
+  current stage state**, which is the thing a deviation angle cannot tell you. They are finite
+  differences of the same geometry the panel simulates with, and a test compares each against the
+  target's position after genuinely re-simulating at the moved state. New `stage_view` block on
+  `ecci.resimulate` and `ecci.solve_workflow`.
+
+  The stage state now has one home: the console owns it, the rail's generated boxes for it are
+  hidden, and *Solve* computes the move from wherever the console currently is.
+
+- `buildForm(...).field(name)` returns one parameter's control, for a panel that presents a
+  parameter somewhere of its own and must hide the generated one so the two cannot disagree.
+
+### Fixed
+
+- **The ECCI panel's live re-simulation never worked.** Moving the tilt or rotation control built
+  its request by copying the solve form wholesale, including `allow_reverse`, which re-simulating
+  does not accept — so every move returned an unknown-parameter error, and the error was raised
+  quietly, so the controls simply appeared to do nothing. The request is now filtered against the
+  live operation's own declared parameters, which cannot drift as either operation changes, and a
+  failure is reported in the readout the user is already watching instead of vanishing.
+
+- **The ECCI panel opened empty every time.** Its frontend id was `ecci_workflow` while its
+  operations and examples are registered under `ecci`, so its own examples never matched their
+  filter and nothing was drawn until *Solve* was pressed; feature search could not resolve an ECCI
+  operation back to the panel that runs it either. Every other panel's id already matched its
+  service.
+
+- `ecci.solve_workflow` now reports the target's deviation from the beam, as `ecci.resimulate`
+  already did, so the console is populated by the first solve rather than staying blank.
+
 ## [0.3.0] - 2026-08-27
 
 A feature release for the Workbench. It adds crystal-structure import from `.cif` everywhere a

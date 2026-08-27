@@ -3097,3 +3097,184 @@ dl.detail dd {
   border-radius: var(--radius);
   box-shadow: 0 0 0 6px var(--accent-glow);
 }
+
+/*
+ * The ECCI workflow: two views that fill the stage, and a console under them.
+ *
+ * The two pictures used to sit in `.stage__split`, whose items do not stretch,
+ * so each plot's `height: 100%` had no definite parent to resolve against and
+ * fell back to the card's `min-height` — 20 rem — leaving most of a tall window
+ * empty below them. Here the views row is a flex child that grows, its items
+ * stretch, and the plots take the height they are given.
+ */
+.ecci {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.ecci__views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: stretch;
+  flex: 1 1 auto;
+  /* A floor so the pictures stay usable when the console and a wrapped row have
+   * taken their share, and so a short window scrolls rather than crushing them. */
+  min-height: 22rem;
+}
+
+.ecci__views > * {
+  flex: 1 1 22rem;
+  min-width: 17rem;
+  min-height: 0;
+}
+
+.ecci__views .plot {
+  height: 100%;
+}
+
+/* The console is sized by its contents: it is controls and two small diagrams,
+ * and giving it a share of the growth would take height from the pictures the
+ * controls exist to change. */
+.ecci-console {
+  flex: none;
+  height: auto;
+  min-height: 0;
+}
+
+.ecci-console__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem 1.5rem;
+  padding: 0.875rem 1rem 1rem;
+}
+
+.ecci-console__figure {
+  margin: 0;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ecci-console__figure figcaption {
+  font-size: 0.6875rem;
+  color: var(--ink-faint);
+  max-width: 15rem;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.ecci-console__svg {
+  display: block;
+  width: 100%;
+  max-width: 13.75rem;
+  height: auto;
+  background: #05070d;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+.ecci-console__controls {
+  flex: 1 1 18rem;
+  min-width: 15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.ecci-console__deviation {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.ecci-console__deviation.is-on-axis {
+  color: var(--ok, #15803d);
+}
+
+.ecci-console__bar {
+  height: 0.375rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink-faint) 25%, transparent);
+  overflow: hidden;
+}
+
+.ecci-console__bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.12s linear;
+}
+
+.ecci-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ecci-control__head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+}
+
+.ecci-control__label {
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.ecci-control__box {
+  width: 6rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.8125rem;
+  text-align: right;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm, 0.3rem);
+  background: var(--bg-raised);
+  color: inherit;
+}
+
+.ecci-control__units {
+  color: var(--ink-faint);
+  width: 0.75rem;
+}
+
+.ecci-control__slider {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: ew-resize;
+}
+
+.ecci-control__nudges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.ecci-control__nudge {
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.ecci-control__nudge:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ecci-console__deviation.is-error {
+  color: var(--danger, #b91c1c);
+}

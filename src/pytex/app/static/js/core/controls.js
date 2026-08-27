@@ -62,6 +62,18 @@ export function buildForm(operation, { initial = {}, onChange = () => {} } = {})
       for (const [name, field] of fields) result[name] = field.read();
       return result;
     },
+    /**
+     * One parameter's control, by name, or `undefined`.
+     *
+     * For a panel that presents a parameter somewhere of its own — a slider
+     * under the picture it changes rather than a box in the rail — and needs to
+     * hide the generated control so the two cannot disagree about the value.
+     *
+     * @param {string} name - The parameter name, as the manifest declares it.
+     */
+    field(name) {
+      return fields.get(name);
+    },
     /** Load a set of values, e.g. when an example is chosen. */
     setValues(values) {
       for (const [name, field] of fields) {

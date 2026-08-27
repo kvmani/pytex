@@ -121,6 +121,33 @@ orientation. The simulator is configured the way the microscope is
 frame it does that in rather than implying one. See
 [Kikuchi band geometry](kikuchi_geometry.md) for the convention and the arithmetic that checks it.
 
+### The ECCI stage console
+
+The ECCI panel puts the Kikuchi pattern and the on-axis view side by side and a **stage console**
+under them, because the question the panel exists to answer is not "how far off the beam is the
+target" but "which way do I move to fix it". A deviation angle answers the first and not the
+second, and watching one number while nudging a control is a slow way to learn the difference.
+
+The console holds three things. A schematic of the stage — the beam fixed, the specimen swinging by
+the tilt angle, and the rotation drawn as a plan view down the specimen normal — so the numbers in
+the controls have a physical picture attached. A **target tracker**: the beam at the centre of rings
+drawn every fifteen degrees, the target as a point whose distance from the middle is exactly the
+deviation reported in words beside it, and reaching the two-beam condition is the act of walking
+that point into the bullseye. And the tilt and rotation controls themselves, as sliders that
+re-simulate both views on every move.
+
+The two arrows on the tracker are what make the controls legible. Each is the displacement the
+target actually undergoes for a positive move of that control **at the current stage state**,
+magnified so a degree is visible. Their lengths are not equal and their directions are not fixed:
+near the pole a degree of rotation moves the target almost nowhere and its arrow shrinks to show
+it, which is the single most useful thing to know when the rotation control appears to be doing
+nothing. They are finite differences of the same geometry the panel simulates with, not a second
+closed form, so they cannot drift away from what the stage does — a test compares each arrow with
+the target's position after genuinely re-simulating at the moved state.
+
+The stage state has exactly one home. The console owns it, the rail's generated boxes for it are
+hidden, and *Solve* computes the move from wherever the console currently is.
+
 Every panel is generated from a **self-describing operation manifest**. A capability registered in
 Python appears in the interface — with its controls, its units, its help text, and its citations —
 without anyone editing a menu, which is what keeps the documentation from drifting away from the

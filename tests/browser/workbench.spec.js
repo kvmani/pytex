@@ -1227,6 +1227,82 @@ test('the SAED simulator states the orientation it drew and can band it', async 
 });
 
 /*
+ * The ECCI stage console: the controls have to actually drive the pictures.
+ *
+ * The unit tests pin the geometry the console draws. What they cannot see is
+ * whether the panel is wired to it, and that is exactly where this panel was
+ * broken: the live re-simulation forwarded a parameter the operation rejects,
+ * so every control move returned 400 and was swallowed, and the panel's own
+ * examples never loaded because its id did not match the one its operations are
+ * registered under. Both failures are invisible to a screenshot and to Python.
+ *
+ * So this asserts the wiring end to end — the panel populates itself, a control
+ * move changes what is drawn, and the solved move reaches the two-beam
+ * condition — plus the layout complaint that prompted the console: the two
+ * views must fill the stage rather than sitting at their minimum height with
+ * the rest of a tall window empty below them.
+ */
+test('the ECCI console drives both views and fills the stage', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'ECCI workflow');
+
+  // It populates itself from its own example, without anyone pressing Solve.
+  const deviation = page.locator('.ecci-console__deviation');
+  await expect(deviation).toContainText('off the beam', { timeout: 30_000 });
+  // Attached rather than visible: they live in a collapsed disclosure, and what
+  // matters is that the panel found its own examples at all — it did not, while
+  // its id disagreed with the one they are registered under.
+  await expect(page.locator('#rail-body .example').first()).toBeAttached();
+
+  // The stage is not mostly empty: the two views take the height that is there.
+  const filled = await page.evaluate(() => {
+    const stage = document.getElementById('stage');
+    const views = stage.querySelector('.ecci__views');
+    return views.getBoundingClientRect().height / stage.getBoundingClientRect().height;
+  });
+  expect(filled).toBeGreaterThan(0.35);
+
+  // Both diagrams are drawn, and the tracker carries a guide arrow per control.
+  const tracker = page.locator('.ecci-console__svg').nth(1);
+  await expect(tracker.locator('polygon')).toHaveCount(2);
+  // Counted rather than checked for visibility: Playwright's visibility test
+  // does not apply cleanly to individual SVG shapes, and what is being asserted
+  // is that the schematic was drawn at all.
+  expect(
+    await page.locator('.ecci-console__svg').first().locator('line').count(),
+  ).toBeGreaterThan(3);
+
+  // Moving a control re-simulates: the deviation changes, and so does the
+  // on-axis view's own reading of where the beam is.
+  const before = await deviation.textContent();
+  const onAxisStatus = page.locator('.ecci__views .plot__status').nth(1);
+  const statusBefore = await onAxisStatus.textContent();
+  await page.locator('.ecci-control__box').first().fill('30');
+  await expect(deviation).not.toHaveText(before, { timeout: 30_000 });
+  await expect(onAxisStatus).not.toHaveText(statusBefore);
+  // A silent failure is the bug this panel had; the readout must never be one.
+  await expect(deviation).not.toContainText('Could not re-simulate');
+
+  // And the solved move reaches the condition it was solved for.
+  await page.getByRole('button', { name: 'Solve the ECCI tilt' }).click();
+  await page.getByRole('button', { name: 'Go to solved tilt/rotation' }).click();
+  await expect(deviation).toContainText('on the beam', { timeout: 30_000 });
+  await expect(tracker.locator('text', { hasText: 'on axis' })).toHaveCount(1);
+  await expect(page.locator('.ecci-console__bar-fill')).toHaveAttribute('style', /width:\s*0%/);
+
+  // The stage state has one home. The rail must not also offer boxes for it.
+  const stageGroupHidden = await page.evaluate(() => {
+    const group = Array.from(document.querySelectorAll('#rail-body details')).find(
+      (node) => node.querySelector('summary')?.textContent.trim() === 'Stage (current)',
+    );
+    return group ? group.hidden : null;
+  });
+  expect(stageGroupHidden).toBe(true);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * Double diffraction, switched on in the panel a user switches it on in.
  *
  * The unit tests already pin the crystallography — which reflections the rule

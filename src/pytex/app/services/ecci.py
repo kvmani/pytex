@@ -146,6 +146,117 @@ def _beam_direction_crystal(orientation: Any, tilt_deg: float, rotation_deg: flo
     return np.asarray(crystal_to_specimen.T @ beam_specimen, dtype=np.float64)
 
 
+#: Step used to report which way a stage control moves the target, in degrees.
+#:
+#: Small enough that the reported displacement is the local derivative for any
+#: practical purpose, large enough to stay well clear of floating-point noise.
+_STAGE_PROBE_DEG = 1.0
+
+
+def _target_in_lab(
+    crystal_to_specimen: np.ndarray,
+    target_crystal: np.ndarray,
+    tilt_deg: float,
+    rotation_deg: float,
+) -> np.ndarray:
+    """The target direction in the laboratory frame, where the beam is ``+z``.
+
+    This is the frame the operator actually reasons in: the beam comes down
+    ``+z``, so the target's ``(x, y)`` say how far off the beam it is and in
+    which direction, and its ``z`` says whether it is pointing towards the gun
+    or away from it.
+    """
+
+    stage = _stage_to_lab_matrix(tilt_deg, rotation_deg)
+    direction = np.asarray(stage @ crystal_to_specimen @ target_crystal, dtype=np.float64)
+    norm = float(np.linalg.norm(direction))
+    return direction / norm if norm > 0.0 else direction
+
+
+def _angle_from_beam_deg(target_crystal: np.ndarray, beam_crystal: np.ndarray) -> float:
+    """How far the target direction lies from the beam, in degrees.
+
+    Folded over the sense of both directions, because a zone axis and its
+    opposite are the same axis: a target reached by tilting the crystal through
+    the beam is on axis, not 180 degrees away from it.
+    """
+
+    beam_norm = float(np.linalg.norm(beam_crystal))
+    if beam_norm <= 0.0:
+        return 0.0
+    cosine = abs(float(np.dot(target_crystal, beam_crystal)) / beam_norm)
+    return float(math.degrees(math.acos(float(np.clip(cosine, -1.0, 1.0)))))
+
+
+def _stage_view_payload(
+    orientation: Any,
+    target_crystal: np.ndarray,
+    tilt_deg: float,
+    rotation_deg: float,
+) -> dict[str, Any]:
+    """Where the target sits relative to the beam, and which way each control moves it.
+
+    Purpose
+    -------
+    Turn "the target is 12 degrees off the beam" into something an operator can
+    act on. The angle alone says how far there is to go but not which way, so a
+    user moves a control, watches the number, and moves it back — which is the
+    slow way to find a two-beam condition and the reason a solver exists at all.
+
+    What it adds is the direction. The target's position is reported in the
+    laboratory frame, where the beam is ``+z`` and the origin of the ``(x, y)``
+    plane is the beam itself, so the browser can draw the target as a point that
+    has to be walked to the centre. Alongside it are the displacements that one
+    degree of tilt and one degree of rotation produce, which is what makes the
+    two controls legible: they say, at this stage state, which way each knob
+    pushes the target and how far.
+
+    The displacements are finite differences over
+    :data:`_STAGE_PROBE_DEG` rather than an analytic derivative. The stage
+    geometry is a product of two rotations and differentiating it in closed form
+    would be a second derivation to keep in step with the first; a difference of
+    the same function the rest of the panel uses cannot drift away from it.
+    """
+
+    crystal_to_specimen = np.asarray(orientation.rotation.as_matrix(), dtype=np.float64)
+    here = _target_in_lab(crystal_to_specimen, target_crystal, tilt_deg, rotation_deg)
+    # A zone axis and its opposite are the same axis, and the deviation reported
+    # everywhere else folds them. So does this: the target is always drawn in the
+    # hemisphere facing the gun, or the marker would jump to the far side of the
+    # plot the moment the direction passed through the beam, for no physical
+    # reason at all. The probes are folded against the same base sense, so an
+    # arrow can never be reversed by a fold that happened to it and not to it.
+    if float(here[2]) < 0.0:
+        here = -here
+    probes = []
+    for probe_tilt, probe_rotation in (
+        (tilt_deg + _STAGE_PROBE_DEG, rotation_deg),
+        (tilt_deg, rotation_deg + _STAGE_PROBE_DEG),
+    ):
+        probe = _target_in_lab(crystal_to_specimen, target_crystal, probe_tilt, probe_rotation)
+        if float(np.dot(probe, here)) < 0.0:
+            probe = -probe
+        probes.append(probe)
+    tilted, rotated = probes
+    # The specimen normal is specimen +z carried into the laboratory frame. It
+    # is what the schematic draws the holder around.
+    normal = np.asarray(
+        _stage_to_lab_matrix(tilt_deg, rotation_deg) @ np.array([0.0, 0.0, 1.0]),
+        dtype=np.float64,
+    )
+    azimuth_deg = float(math.degrees(math.atan2(float(here[1]), float(here[0]))))
+    return {
+        "probe_step_deg": _STAGE_PROBE_DEG,
+        "target_lab": [float(value) for value in here],
+        "target_azimuth_deg": azimuth_deg,
+        "specimen_normal_lab": [float(value) for value in normal],
+        # The tilt axis is laboratory x by construction of the stage matrix.
+        "tilt_axis_lab": [1.0, 0.0, 0.0],
+        "per_tilt_degree": [float(tilted[0] - here[0]), float(tilted[1] - here[1])],
+        "per_rotation_degree": [float(rotated[0] - here[0]), float(rotated[1] - here[1])],
+    }
+
+
 def _stage_branches(direction_specimen: np.ndarray) -> list[tuple[float, float]]:
     """Every ``(tilt_deg, rotation_deg)`` bringing a specimen direction onto the beam.
 
@@ -938,9 +1049,19 @@ def _solve_workflow(request: dict[str, Any]) -> dict[str, Any]:
                 "label": proximity_label,
                 "deviation_deg": proximity_deviation,
             },
-            "target": {"indices": list(target_indices), "label": target_label},
+            "target": {
+                "indices": list(target_indices),
+                "label": target_label,
+                # The same deviation the live operation reports, so the stage
+                # console is populated by the first solve rather than staying
+                # blank until something is moved.
+                "angle_from_beam_deg": _angle_from_beam_deg(target_direction, beam_crystal),
+            },
             "solution": rows[0],
             "current": {"tilt_deg": tilt_deg, "rotation_deg": rotation_deg},
+            "stage_view": _stage_view_payload(
+                orientation, target_direction, tilt_deg, rotation_deg
+            ),
         },
         inputs={
             "phase": spec.name,
@@ -1023,20 +1144,7 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
 
     target_indices = tuple(int(value) for value in request["target_zone_axis"])
     target_direction = _target_direction_crystal(request, phase)
-    target_angle_deg = float(
-        math.degrees(
-            math.acos(
-                np.clip(
-                    abs(
-                        float(np.dot(target_direction, beam_crystal))
-                        / float(np.linalg.norm(beam_crystal))
-                    ),
-                    -1.0,
-                    1.0,
-                )
-            )
-        )
-    )
+    target_angle_deg = _angle_from_beam_deg(target_direction, beam_crystal)
 
     result = AppResult(
         title=(
@@ -1064,6 +1172,9 @@ def _resimulate(request: dict[str, Any]) -> dict[str, Any]:
                 "angle_from_beam_deg": target_angle_deg,
             },
             "state": {"tilt_deg": tilt_deg, "rotation_deg": rotation_deg},
+            "stage_view": _stage_view_payload(
+                orientation, target_direction, tilt_deg, rotation_deg
+            ),
         },
         inputs={
             "phase": spec.name,

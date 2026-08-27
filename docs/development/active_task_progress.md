@@ -5,6 +5,49 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## ECCI Stage Console — COMPLETE (2026-08-27)
+
+**Objective.** The ECCI panel's two views occupied only the top half of the stage, and its tilt and
+rotation controls sat in the rail. Fill the stage, move the controls under the pictures they
+change, and add a live view of the stage position that guides the tilt and rotation actually
+needed rather than only reporting how far off the target is.
+
+### What was actually wrong
+
+Three defects, two of them pre-existing and invisible:
+
+1. **Layout.** The views sat in `.stage__split`, whose items do not stretch, so each plot's
+   `height: 100%` had no definite parent and fell back to the card's 20 rem `min-height`. Measured
+   at 1680x950: 320 px of views in an 809 px stage, 489 px empty.
+2. **Live re-simulation had never worked.** `currentLiveRequest()` copied the solve form's values
+   wholesale, including `allow_reverse`, which `ecci.resimulate` rejects. Every control move
+   returned a 400, and `showError(..., {quiet: true})` swallowed it, so the controls appeared inert.
+3. **The panel opened empty.** Its `panel.id` was `ecci_workflow`; its operations and examples are
+   registered under `ecci`. Its own example filter therefore never matched, and feature search
+   could not resolve an ECCI operation to its panel. Every other panel's id already matched.
+
+### Decisions
+
+- The console owns the stage state; the rail's generated boxes for it are hidden and its now-empty
+  group with them. Two editable copies of one value with no indication of which `Solve` would use
+  is worse than the layout problem being fixed.
+- The live request is filtered against the live operation's *declared* parameters rather than by
+  deleting the one known offender, so a parameter added to either operation is handled by
+  construction. A test pins the other direction, which filtering cannot rescue.
+- The guide arrows are finite differences of the same geometry the panel simulates with, not a
+  second closed form. A test compares each arrow with the target's position after genuinely
+  re-simulating at the moved state, so the arrows cannot point where the stage does not go.
+- Directions are folded into the hemisphere facing the gun, as the deviation everywhere else
+  already is, so a target passing through the beam does not appear to jump 180 degrees.
+
+### Verification
+
+Base lane green: `ruff`, `mypy` (155 files), `pytest` including six new ECCI tests. New browser
+test passes. Confirmed in the running Workbench at 1680x950: views 397 px and console 344 px in an
+809 px stage with no empty band; moving a slider re-simulates both views; *Go to solved
+tilt/rotation* reaches "on the beam", bar at 0%, nearest zone axis 0.00 degrees off; no console
+errors; no horizontal scroll at tablet width.
+
 ## Double-Diffraction Toggle In The TEM SAED Simulator — COMPLETE (2026-08-27)
 
 **Objective.** Give the Workbench TEM tab's SAED simulation an explicit on/off control for double

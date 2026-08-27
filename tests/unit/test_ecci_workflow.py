@@ -305,3 +305,130 @@ def test_resimulate_matches_solve_workflow_current_state() -> None:
         solved["data"]["kikuchi"]["wavelength_angstrom"]
         == direct["data"]["kikuchi"]["wavelength_angstrom"]
     )
+
+
+# --------------------------------------------------------------------------
+# The stage console: where the target sits relative to the beam, and which way
+# each control moves it. Checked against the stage geometry it is derived from,
+# never against a captured run.
+# --------------------------------------------------------------------------
+
+
+def test_the_target_is_reported_in_the_hemisphere_facing_the_gun() -> None:
+    """A zone axis and its opposite are one axis, so the report folds the sense.
+
+    Without folding, a target that passes through the beam reappears on the far
+    side of the tracker and looks like it jumped 180 degrees, which is a fact
+    about the arithmetic rather than about the specimen.
+    """
+
+    for tilt in (0.0, 20.0, 55.0, 70.0, 89.0):
+        for rotation in (-170.0, -60.0, 0.0, 95.0):
+            payload = REGISTRY.call(
+                "ecci.resimulate",
+                _base_request(stage_tilt_deg=tilt, stage_rotation_deg=rotation),
+            )
+            target = np.asarray(payload["data"]["stage_view"]["target_lab"], dtype=float)
+            assert_allclose(np.linalg.norm(target), 1.0, atol=1e-12)
+            assert target[2] >= -1e-12, (tilt, rotation)
+
+
+def test_the_target_radius_is_the_deviation_the_panel_reports_in_words() -> None:
+    """The tracker's geometry and the sentence beside it must be one fact.
+
+    The dot's distance from the centre is ``sin(angle)`` by construction of the
+    projection, so if the two ever disagreed the picture would be contradicting
+    the caption.
+    """
+
+    for tilt, rotation in ((10.0, 0.0), (40.0, 35.0), (70.0, -135.0)):
+        data = REGISTRY.call(
+            "ecci.resimulate",
+            _base_request(stage_tilt_deg=tilt, stage_rotation_deg=rotation),
+        )["data"]
+        target = np.asarray(data["stage_view"]["target_lab"], dtype=float)
+        radius = float(math.hypot(target[0], target[1]))
+        expected = math.sin(math.radians(data["target"]["angle_from_beam_deg"]))
+        assert_allclose(radius, expected, atol=1e-9)
+
+
+def test_the_guide_arrows_are_where_the_target_actually_goes() -> None:
+    """The whole value of an arrow is that moving the control obeys it.
+
+    So the reported displacement is compared with the target's position after
+    genuinely re-simulating at the moved stage state, through the same operation
+    the panel calls. If the two ever parted, the panel would be pointing users
+    in a direction the stage does not go.
+    """
+
+    request = _base_request(stage_tilt_deg=42.0, stage_rotation_deg=17.0)
+    here = REGISTRY.call("ecci.resimulate", request)["data"]["stage_view"]
+    step = float(here["probe_step_deg"])
+
+    for key, moved_request in (
+        ("per_tilt_degree", _base_request(stage_tilt_deg=42.0 + step, stage_rotation_deg=17.0)),
+        ("per_rotation_degree", _base_request(stage_tilt_deg=42.0, stage_rotation_deg=17.0 + step)),
+    ):
+        moved = REGISTRY.call("ecci.resimulate", moved_request)["data"]["stage_view"]
+        start = np.asarray(here["target_lab"], dtype=float)
+        end = np.asarray(moved["target_lab"], dtype=float)
+        # Both reports fold the sense independently; compare in the sense the
+        # arrow was computed in.
+        if float(np.dot(start, end)) < 0.0:
+            end = -end
+        assert_allclose(np.asarray(here[key], dtype=float), (end - start)[:2], atol=1e-9)
+
+
+def test_on_axis_one_degree_of_tilt_moves_the_target_one_degree_of_arc() -> None:
+    """A closed-form check on the arrow's scale, not just its direction.
+
+    At the pole the tilt displacement is a pure rotation of a unit vector, so
+    its in-plane length is exactly ``sin(1 degree)``. Nothing in the code under
+    test supplies that number.
+    """
+
+    solution = REGISTRY.call("ecci.solve_workflow", _base_request())["data"]["solution"]
+    at_solution = REGISTRY.call(
+        "ecci.resimulate",
+        _base_request(
+            stage_tilt_deg=solution["tilt_deg"], stage_rotation_deg=solution["rotation_deg"]
+        ),
+    )["data"]["stage_view"]
+
+    assert_allclose(np.asarray(at_solution["target_lab"], dtype=float), [0.0, 0.0, 1.0], atol=1e-9)
+    step = float(at_solution["probe_step_deg"])
+    displacement = np.asarray(at_solution["per_tilt_degree"], dtype=float)
+    assert_allclose(float(np.linalg.norm(displacement)), math.sin(math.radians(step)), atol=1e-9)
+
+
+def test_solving_reports_the_deviation_its_console_needs() -> None:
+    """The console must be populated by the first solve, not left blank."""
+
+    data = REGISTRY.call("ecci.solve_workflow", _base_request())["data"]
+    assert "stage_view" in data
+    assert isinstance(data["target"]["angle_from_beam_deg"], float)
+    # The two operations agree about the state they were both given.
+    live = REGISTRY.call("ecci.resimulate", _base_request())["data"]
+    assert_allclose(
+        data["target"]["angle_from_beam_deg"],
+        live["target"]["angle_from_beam_deg"],
+        atol=1e-12,
+    )
+
+
+def test_every_live_parameter_is_one_the_solve_form_also_offers() -> None:
+    """The panel builds a live request by filtering the solve form's values.
+
+    That only produces a complete request while the live operation asks for
+    nothing the solve form does not have. It once asked for less, not more —
+    the panel forwarded ``allow_reverse``, which re-simulating rejects, so every
+    live re-simulation failed with an unknown-parameter error and the controls
+    appeared to do nothing at all. The filter fixed that direction; this pins the
+    other one, which no amount of filtering could rescue.
+    """
+
+    manifest = REGISTRY.manifest()
+    operations = {entry["id"]: entry for entry in manifest["operations"]}
+    live = {entry["name"] for entry in operations["ecci.resimulate"]["parameters"]}
+    solve = {entry["name"] for entry in operations["ecci.solve_workflow"]["parameters"]}
+    assert live <= solve, sorted(live - solve)
