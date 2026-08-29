@@ -233,6 +233,64 @@ SCENE_BOND_LENGTH_MEASUREMENT = WorkedExample(
     see_also=(_VIZ_CONCEPT, _API),
 )
 
+_OR_STEREOGRAM_CODE = """
+from pytex.plotting.spherical import build_or_stereogram_figure_spec
+
+worst_pole_gap = 0.0
+worst_circle_gap = 0.0
+for index in range(1, 25):
+    spec = build_or_stereogram_figure_spec(
+        ks, variant=index, include_wulff_net=False, show_tie_lines=False
+    )
+    parent_markers, child_markers = spec.marker_layers
+    worst_pole_gap = max(
+        worst_pole_gap,
+        float(np.max(np.linalg.norm(parent_markers.points - child_markers.points, axis=1))),
+    )
+    parent_circle, child_circle = spec.line_layers[0].points, spec.line_layers[1].points
+    worst_circle_gap = max(
+        worst_circle_gap,
+        float(np.max(np.linalg.norm(parent_circle - child_circle, axis=1))),
+    )
+result = [worst_pole_gap, worst_circle_gap]
+""".strip()
+
+
+OR_STEREOGRAM_COINCIDENCE = WorkedExample(
+    id="viz-or-stereogram-parallelism-coincides",
+    title="The OR stereogram plots a parallelism as one point and one circle",
+    domain="visualization",
+    scenario=(
+        "The orientation-relationship stereogram makes two visual claims: the "
+        "parent pole and the child pole of a parallel pair land on the same point "
+        "of the net, and the great circles of two parallel planes lie on top of "
+        "each other. Both are checked here for all 24 Kurdjumov-Sachs variants, "
+        "not only the one the relationship was written with, by measuring the "
+        "worst separation in projection-plane units. A separation that is not "
+        "zero would mean the figure draws two objects where the crystallography "
+        "has one -- which is exactly what happened before the pair was folded onto "
+        "the upper hemisphere as a pair: variants 7 and 9 have a defining "
+        "direction in the equatorial plane, and their two ends landed on opposite "
+        "rims, a full disc diameter apart."
+    ),
+    setup=RELATIONSHIP_SETUP,
+    code=_OR_STEREOGRAM_CODE,
+    expected=[0.0, 0.0],
+    unit="projection-plane units",
+    tolerance=1e-9,
+    reference=(
+        "An identity, not a measurement. Each transformation variant maps its own "
+        "parent normal exactly onto its own child normal, so once the child pole "
+        "is carried back into the parent frame the two are the same unit vector "
+        "and every projection of them coincides. The 1e-9 tolerance is a "
+        "floating-point floor, not a physical margin; the measured worst gap is "
+        "of order 1e-15."
+    ),
+    citation="Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.",
+    symbols=(_TRANSFORM,),
+    see_also=(_VIZ_CONCEPT, _API),
+)
+
 
 GROUP = ExampleGroup(
     slug="visualization",
@@ -240,13 +298,15 @@ GROUP = ExampleGroup(
     summary=(
         "Geometric guarantees of the visualization layer: a placement transform that reproduces "
         "the crystal-to-sample map, the orientation-relationship placement that makes parallel "
-        "directions coincide in one world frame, and a scene bond-length measurement checked "
-        "against the exact NaCl-type a/2 distance."
+        "directions coincide in one world frame, a scene bond-length measurement checked "
+        "against the exact NaCl-type a/2 distance, and the OR stereogram plotting a "
+        "parallelism as one point and one circle for every variant."
     ),
     examples=(
         TRANSFORM_CRYSTAL_TO_SAMPLE,
         OR_PARALLEL_DIRECTION_ALIGNMENT,
         SCENE_BOND_LENGTH_MEASUREMENT,
+        OR_STEREOGRAM_COINCIDENCE,
     ),
 )
 

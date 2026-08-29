@@ -95,6 +95,44 @@ The rotational-order symbol mapping is intentionally semantic:
 
 Annotations use the same Miller-style mathtext path as the crystal-scene overlays, so negative-index bars render consistently across 2D and 3D plotting surfaces.
 
+## The Orientation-Relationship Stereogram
+
+`plot_or_stereogram(relationship, variant=k)` draws the figure by which orientation relationships
+are read in the literature: one net, in the **parent crystal frame**, carrying
+
+- the parent pole of each parallel pair as an **open** symbol and the child pole — carried back
+  into the parent frame by the variant rotation — as a **filled** one, so a parallelism reads as
+  two symbols on top of each other;
+- a **tie-line** joining each pair along its great circle, labelled with the deviation in degrees;
+- for plane pairs, the **great circles** of both planes (parent dashed, child solid), so a plane
+  parallelism reads as two coincident circles rather than two coincident points.
+
+`variant` takes a `TransformationVariant` or a one-based index; `None` means variant 1, which is
+the relationship as stated. Each variant carries its *own* parallel pair, so the labels move with
+the variant instead of repeating variant 1's indices — see
+{doc}`../concepts/visualization_primitives`.
+
+`or_stereogram_pairs(...)` returns the same pairs as data (`ORStereogramPair`: both vectors in the
+parent frame, the label, the deviation) for callers that want the numbers rather than the figure.
+
+**Read the deviation label precisely.** Nominating extra parent families through `parent_planes` /
+`parent_directions` routes them through `find_parallel_planes` / `find_parallel_directions`, and
+the number those report — the number this figure draws and labels — is the **rationalization
+residual**: the *exact* child image of any parent plane is parallel to it by construction, so what
+is being measured is the angle by which the nearest low-index child index misses that exact image.
+A small tolerance therefore keeps the pairs for which a low-index child object really is parallel
+and drops the parent members for which none is. The drawn tie-line is exactly that gap, so the
+figure and its label agree.
+
+One numerical detail is load-bearing rather than cosmetic. A stereogram folds antipodal directions
+onto one point, and the fold rule must break ties for poles lying on the equator. The two ends of a
+tie-line are therefore folded **together**, from the parent pole's decision: Kurdjumov-Sachs
+variants 7 and 9 have a defining direction in the equatorial plane, and the variant rotation
+returns the child copy at `z = -8e-16`. Folded independently, the two ends of a zero-deviation
+tie-line land on opposite rims — a diameter drawn across a figure whose entire claim is that the
+two poles coincide. The worked example
+{doc}`../examples/generated/visualization` pins the coincidence over all 24 variants.
+
 ## Interpretation Notes
 
 - Wulff nets are currently generated from explicit projected great circles and small circles rather than from image backdrops.

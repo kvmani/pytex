@@ -19,7 +19,7 @@ document may claim MTEX parity in the meantime — deferring the campaign does n
 | Milestone | Content | State |
 | --- | --- | --- |
 | **M1** | Kearns parameter in the GUI (T1) | **Complete** (2026-08-29) |
-| **M2** | F15 variant-aware composite scenes, F18 OR stereogram | Not started |
+| **M2** | F15 variant-aware composite scenes, F18 OR stereogram | **Complete** (2026-08-29) |
 | **M3** | F19 composite crystal viewer in the workbench, F17 OR dossier | Not started |
 | **M4** | F21–F23 measured-pair OR workbench | Not started |
 | **M5** | T3 axial specimen symmetry, T2 ghost correction | Not started |
@@ -32,57 +32,113 @@ everything else in between. The vision document's M4 go/no-go on PTMC is therefo
 
 ---
 
-## 2. Current Milestone — M2: Variant-Aware Composite Scenes And The OR Stereogram
+## 2. Current Milestone — M3: The Composite Crystal Viewer And The OR Dossier
 
-**Goal.** Render the parent and product crystals of *any* variant of an orientation relationship,
-with that variant's own parallel planes and directions drawn on them, and put the OR's parallelism
-statement on a stereogram with tie-lines. Pure Python; the workbench viewer that consumes it is M3.
+**Goal.** Put M2's Python surfaces in front of a user (F19: a workbench viewer with a variant
+selector, a contact-sheet mode, and one camera driving both crystals), and assemble the numbers,
+tables and figures that already exist into one exportable `ORDossier` (F17).
 
-**Why now.** M1 is complete, so the texture half of the user's request is delivered. M2 is the
-first half of the OR-visualization request, and it carries no browser risk: it extends
-`plotting/scene3d.py`, which already builds the two-crystal composite for variant 1 and is covered
-by `tests/unit/test_scene3d_composition.py`.
+**Why now.** M2 is complete: `WorldScene3D.from_orientation_relationship(..., variant=k)`,
+`WorldScene3D.variant_scenes`, `render_variant_contact_sheet`, `plot_or_stereogram` and
+`or_stereogram_pairs` are all landed, tested and documented. They are the two things F19 renders and
+F17 embeds, so M3 no longer has a missing dependency.
+
+**The risk M3 carries that M2 did not.** It is the first GUI increment of this program, so it is
+browser work: Playwright, `crystal.js`, the panel registry, `app/services/`. Follow the vision
+document's Decision 4 split — *all crystallography stays in Python; the browser multiplies matrices
+only*. The child scene is pre-placed in the world frame by Python, so a shared camera cannot drift.
 
 ### Sub-milestones
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M2a** | `WorldScene3D.from_orientation_relationship(..., variant=...)`, `variant_scenes(...)`, and the contact-sheet renderer | **Complete** (2026-08-29) |
-| **M2b** | The OR stereogram (F18): tie-lines between OR-parallel pairs, great circles of the parallel planes, deviations annotated | Not started |
-
-### M1 in one paragraph, for context
-
-The Kearns parameter is now reachable by five routes in a Texture-workspace sub-tab. The design
-worth carrying forward: all self-contained defaults describe *one* synthetic specimen with a known
-answer, so the opening press demonstrates a route recovering a truth rather than producing a number;
-and the panel refuses to present the triad sum as a passed check where it closes by construction.
-Both decisions are recorded in the history below and enforced by tests.
+| **M3a** | `variants.composite_scene` and `variants.contact_sheet` service operations over `scene_payload`, with tests | Not started |
+| **M3b** | The workbench panel: variant selector, contact-sheet mode, appearance toggles, side-by-side and interpenetrating placement | Not started |
+| **M3c** | F17 `ORDossier`: `describe()`, `to_json()`, `export(directory)`, assembled from existing calls only | Not started |
 
 ### Next concrete step
 
-**M2b — F18, the OR stereogram.** M2a is complete (see the history entry below), so the variant
-half of M2 is delivered and M3's viewer has something to consume.
+**M3a — the service layer, before any JavaScript.** Add `variants.composite_scene` to
+`src/pytex/app/services/` returning both crystals' `scene_payload`s in a common world frame, the OR
+primitives, and the variant's rotation matrix; and `variants.contact_sheet` returning the same for
+every variant. Both are thin wrappers over `WorldScene3D.from_orientation_relationship` and
+`variant_scenes`, which is the point: the service must call them, never reimplement the placement.
 
-What is missing is the *pairing* on the net. `variant_pole_figure` and `plot_variant_pole_figure`
-already put child variant poles and optional parent poles on one stereogram. F18 adds:
+Two things to carry in from M2, because they are the traps this program keeps finding:
 
-- **tie-lines** joining each OR-parallel pair, labelled with the pair's deviation;
-- **great circles** of the parallel planes;
-- the deviations annotated rather than left implicit.
+1. The payload must label the parallelisms with **the variant's own** indices
+   (`TransformationVariant.parallel_planes` / `.parallel_directions`), never the relationship's
+   nominal pair. The scene builder already does this; a service that re-derives them would undo it.
+2. Any deviation the panel displays must name what it measures. The stereogram's nominated-pair
+   deviation is a *rationalization residual*, not a departure from parallelism; a panel that prints
+   it as "misfit" would be stating something false.
 
-`find_parallel_planes` / `find_parallel_directions` supply the pairs and the deviations, and
-`TransformationVariant.parallel_planes` / `.parallel_directions` (landed in M2a) supply the
-per-variant statement a tie-line must be drawn from — do not re-derive the nominal pair here, for
-the same reason M2a did not.
-
-Surfaces verified present and now also usable: `generate_variants`, `variant_close_packed_groups`,
-`find_parallel_planes`, `find_parallel_directions`, `variant_pole_figure`,
-`plot_variant_pole_figure`, `WorldScene3D.variant_scenes`, `render_variant_contact_sheet`,
-`TransformationVariant.parallel_planes` / `.parallel_directions`.
+**Known and deliberately untouched.** `generate_stereonet_grid` and `project_great_circle_trace`
+return polylines that jump the rim when a trace leaves the projected hemisphere, so matplotlib draws
+a chord across the net. `build_or_stereogram_figure_spec` splits its own traces
+(`_split_on_fold_jumps`), but the shared Wulff-net grid and the general vector stereogram were left
+alone: fixing them touches every stereographic figure in the repository and belongs in its own
+increment, not inside M2.
 
 ---
 
 ## 3. History
+
+### 2026-08-29 — M2b complete, and M2 with it: the OR stereogram (F18)
+
+**What shipped.** In `src/pytex/plotting/spherical.py`: `ORStereogramPair`,
+`or_stereogram_pairs(...)`, `build_or_stereogram_figure_spec(...)` and `plot_or_stereogram(...)`,
+exported from `pytex.plotting` and (the plot function) from `pytex`. 17 tests in the new
+`tests/unit/test_or_stereogram.py`, one worked example, a section in
+`docs/site/workflows/stereographic_projections.md`, and a changelog entry.
+
+The figure carries what F18 asked for: parent poles open and child poles filled, both in the parent
+crystal frame; a tie-line per pair labelled with its deviation; and, for plane pairs, the great
+circles of both planes, parent dashed and child solid, so a plane parallelism reads as two
+coincident circles rather than two coincident points.
+
+**Two findings worth keeping.**
+
+1. *The deviation label means something narrower than it looks.* `find_parallel_planes` maps a
+   parent plane to its **exact** child image — which is parallel by construction — and then
+   rationalizes it, so the angle it reports is the **rationalization residual**, not a departure
+   from parallelism. The figure draws the parent pole against the *rationalized* child pole, so the
+   gap on the net and the printed number are the same quantity and agree; but the docstrings and
+   the workflow page now say what that quantity is, because "0.33 deg" invites the wrong reading.
+   This is the same class of defect as M1's triad closure: a number that is true but not the number
+   the reader assumes.
+
+2. *An equatorial pole can split a zero-deviation tie-line across the whole net.* Kurdjumov-Sachs
+   variants 7 and 9 have a defining direction lying in the equatorial plane, and the variant
+   rotation returns the child copy at `z = -8e-16`. The antipodal fold breaks ties on the equator,
+   so the two ends folded to **opposite rims** and the figure drew a diameter where the
+   crystallography has a single point. The pair is now folded once, from the parent pole's
+   decision, with the child's sub-noise dip flattened onto it; a pair that genuinely straddles the
+   equator is left alone and its tie-line is split rather than drawn as a chord. A test walks all
+   24 variants and pins the worst pole gap and the worst great-circle gap below 1e-9, and the
+   worked example states the same identity.
+
+Separately, pair angles are computed as `2 atan2(|a-b|, |a+b|)` rather than `arccos(a·b)`: arccos
+loses half its significant digits exactly where these angles live, and reported 8.5e-7 deg for a
+parallelism exact to machine precision.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 152 files; `pytest tests/unit` green
+(full suite); worked-example, documentation-policy, repo-integrity and public-API-docstring suites
+green; the gallery regenerated with `python scripts/generate_worked_examples.py`.
+
+**Repository mechanics worth knowing before the next increment.** Adding one public dataclass
+(`ORStereogramPair`) broke three tests in `tests/unit/test_class_model_atlas.py`: the committed
+`docs/figures/class_hierarchy.svg` and `class_model_architecture.svg` are byte-compared against
+`python scripts/generate_class_model_figures.py`, and `docs/site/architecture/class_model_atlas.md`
+states the class and dataclass counts in prose, which a test parses. Any new public class therefore
+costs a figure regeneration and a two-number edit on that page (283/266 became 284/267). Nothing is
+wrong with that — it is the no-hand-transcribed-numbers rule doing its job — but it is not obvious
+from the failure message.
+
+**Not done, deliberately.** No theory note: the figure states an existing relationship rather than
+introducing new theory, and every number it prints is owned by a function that already has one. The
+shared Wulff-net grid's own rim jumps were left alone — see the note in §2. The Sphinx warning count
+was not re-checked against a clean-worktree build.
 
 ### 2026-08-29 — M2a complete: variant-aware composite scenes (F15)
 

@@ -13,6 +13,28 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The orientation-relationship stereogram.** `plot_or_stereogram(relationship, variant=k)`
+  draws the figure by which ORs are read in the literature: one net in the parent crystal
+  frame, the parent pole of each parallel pair as an open symbol and the child pole — carried
+  back into the parent frame — as a filled one, a labelled tie-line joining them, and, for
+  plane pairs, the great circles of both planes so a plane parallelism reads as two coincident
+  circles rather than two coincident points. `or_stereogram_pairs` returns the same pairs as
+  data (`ORStereogramPair`).
+
+  Nominating extra parent families adds tie-lines whose labels are not zero. Read that number
+  precisely, and the docs say so: the exact child image of a parent plane is parallel to it by
+  construction, so what `find_parallel_planes` reports — and what the figure draws — is the
+  *rationalization residual*, the angle by which the nearest low-index child index misses the
+  exact image. The tie-line drawn is exactly that gap, so the figure and its label agree.
+
+  One numerical detail is load-bearing. The two ends of a tie-line are folded onto the upper
+  hemisphere **together**, from the parent pole's decision. Kurdjumov-Sachs variants 7 and 9
+  have a defining direction in the equatorial plane and the variant rotation returns the child
+  copy at `z = -8e-16`; folded independently, the two ends of a zero-deviation tie-line landed
+  on opposite rims — a diameter across a figure whose entire claim is that the two poles
+  coincide. A test and a worked example pin the coincidence over all 24 variants. Angles are
+  computed by the half-angle tangent form rather than `arccos`, which reported 1e-6 deg for a
+  parallelism exact to machine precision.
 - **Composite 3D scenes are variant-aware, and each variant draws its own parallelism.**
   `WorldScene3D.from_orientation_relationship` took no `variant` argument, so it could only
   draw variant 1 of an orientation relationship. It now accepts `variant=` (a

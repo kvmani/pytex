@@ -4,7 +4,7 @@
 
 # Composable visualization primitives
 
-Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, and a scene bond-length measurement checked against the exact NaCl-type a/2 distance.
+Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -217,5 +217,83 @@ result = float(scene.bond_lengths_angstrom()[0])
 **Why this value**: NaCl-type geometry: the cation at (0, 0, 0) and anion at (1/2, 0, 0) are separated by a/2 along the cube edge; with a = 4 angstrom the bond length is exactly 2 angstrom.
 
 **Citation**: International Tables for Crystallography, Vol. A (rock-salt structure geometry); Momma and Izumi, J. Appl. Cryst. 44 (2011) 1272 (VESTA distance readout).
+
+**See also**: {doc}`Visualization primitives <../../concepts/visualization_primitives>`, {doc}`Plotting and visualization API <../../api/index>`
+
+## The OR stereogram plots a parallelism as one point and one circle
+
+The orientation-relationship stereogram makes two visual claims: the parent pole and the child pole of a parallel pair land on the same point of the net, and the great circles of two parallel planes lie on top of each other. Both are checked here for all 24 Kurdjumov-Sachs variants, not only the one the relationship was written with, by measuring the worst separation in projection-plane units. A separation that is not zero would mean the figure draws two objects where the crystallography has one -- which is exactly what happened before the pair was folded onto the upper hemisphere as a pair: variants 7 and 9 have a defining direction in the equatorial plane, and their two ends landed on opposite rims, a full disc diameter apart.
+
+**Symbols**
+
+- $\mathbf{T}$ &mdash; Rigid placement (rotation and translation) into the world frame.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    Transform3D,
+)
+from pytex.core.transformation import OrientationRelationship
+
+def cubic_phase(name, a):
+    frame = ReferenceFrame(name, FrameDomain.CRYSTAL, ("a", "b", "c"), Handedness.RIGHT)
+    return Phase(
+        name,
+        lattice=Lattice(a, a, a, 90.0, 90.0, 90.0, crystal_frame=frame),
+        symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=frame),
+        crystal_frame=frame,
+    )
+
+fcc = cubic_phase("austenite", 3.60)
+bcc = cubic_phase("ferrite", 2.87)
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=fcc, child_phase=bcc
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex.plotting.spherical import build_or_stereogram_figure_spec
+
+worst_pole_gap = 0.0
+worst_circle_gap = 0.0
+for index in range(1, 25):
+    spec = build_or_stereogram_figure_spec(
+        ks, variant=index, include_wulff_net=False, show_tie_lines=False
+    )
+    parent_markers, child_markers = spec.marker_layers
+    worst_pole_gap = max(
+        worst_pole_gap,
+        float(np.max(np.linalg.norm(parent_markers.points - child_markers.points, axis=1))),
+    )
+    parent_circle, child_circle = spec.line_layers[0].points, spec.line_layers[1].points
+    worst_circle_gap = max(
+        worst_circle_gap,
+        float(np.max(np.linalg.norm(parent_circle - child_circle, axis=1))),
+    )
+result = [worst_pole_gap, worst_circle_gap]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `viz-or-stereogram-parallelism-coincides` | [0.0000, 0.0000] | [0.0000, 0.0000] | projection-plane units | 2.07e-15 | 1e-09 | ✅ pass |
+
+**Why this value**: An identity, not a measurement. Each transformation variant maps its own parent normal exactly onto its own child normal, so once the child pole is carried back into the parent frame the two are the same unit vector and every projection of them coincides. The 1e-9 tolerance is a floating-point floor, not a physical margin; the measured worst gap is of order 1e-15.
+
+**Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Visualization primitives <../../concepts/visualization_primitives>`, {doc}`Plotting and visualization API <../../api/index>`

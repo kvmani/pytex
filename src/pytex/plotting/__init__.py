@@ -114,6 +114,12 @@ from pytex.plotting.scene3d import (
     render_world_scene_3d,
     resolve_transformation_variant,
 )
+from pytex.plotting.spherical import (
+    ORStereogramPair,
+    build_or_stereogram_figure_spec,
+    or_stereogram_pairs,
+    plot_or_stereogram,
+)
 from pytex.plotting.styles import (
     list_style_themes,
     load_style_theme,
@@ -145,6 +151,7 @@ __all__ = [
     "FrameTriad",
     "IPFColorKey",
     "Label3D",
+    "ORStereogramPair",
     "PanelGrid",
     "PlacedCrystal",
     "PlaneAnnotationStyle",
@@ -161,6 +168,7 @@ __all__ = [
     "add_frame_indicator",
     "add_scale_bar",
     "build_crystal_scene",
+    "build_or_stereogram_figure_spec",
     "categorical_colors",
     "crystal_plane_patch",
     "direction_arrow",
@@ -176,6 +184,7 @@ __all__ = [
     "lattice_point_cloud",
     "list_style_themes",
     "load_style_theme",
+    "or_stereogram_pairs",
     "plane_normal_arrow",
     "plot_crystal_directions",
     "plot_crystal_planes",
@@ -192,6 +201,7 @@ __all__ = [
     "plot_kikuchi_pattern",
     "plot_odf",
     "plot_odf_phi2_sections",
+    "plot_or_stereogram",
     "plot_orientations",
     "plot_phase_map",
     "plot_pole_figure",
