@@ -94,6 +94,32 @@ The correctness of this placement is checked by the worked example
 {doc}`../examples/generated/visualization`: after placement, the Kurdjumov-Sachs parallel directions
 have direction cosine 1.
 
+### One Scene Per Transformation Variant
+
+An orientation relationship is realized by a family of variants -- 24 for Kurdjumov-Sachs, 12 for
+Nishiyama-Wassermann and Burgers -- and `from_orientation_relationship(relationship, variant=k)`
+draws any one of them. `variant` takes either a `TransformationVariant` or a **one-based** index
+into `relationship.generate_variants()`.
+
+The part that is easy to get wrong, and that this surface exists to make impossible: a variant is
+generated as $\mathbf{V} = \mathbf{S}_c\,\mathbf{R}\,\mathbf{S}_p^{\mathsf{T}}$, so the pair of
+objects that are actually parallel under it is not the nominal pair the relationship was written
+with. It is that pair carried by the generating symmetry operators,
+$(\mathbf{S}_p\,\mathbf{n}_\text{parent}) \parallel (\mathbf{S}_c\,\mathbf{n}_\text{child})$.
+Drawing the nominal $(111)_\gamma$ on variant 17 produces a figure that looks right and is wrong.
+`TransformationVariant.parallel_planes` and `.parallel_directions` return the variant's own pair,
+and the scene builder uses them, labelling each arrow and patch with the indices it actually draws.
+
+`WorldScene3D.variant_scenes(relationship)` builds one scene per variant, and
+`render_variant_contact_sheet(scenes, variants=variants, columns=4)` lays them out as a grid of
+titled panels -- the figure that shows what "24 variants" means. Both are pure Python and carry no
+application dependency.
+
+The per-variant statement is checked by the worked example
+{doc}`../examples/generated/transformation`: over all 24 Kurdjumov-Sachs variants the worst
+deviation between a variant's own parent and child normals is zero, and the variants name four
+distinct parent $\{111\}_\gamma$ members -- the four Morito packet planes -- rather than one.
+
 ## VESTA-Class Single-Crystal Rendering
 
 The atomistic renderer targets — and is ledgered against — VESTA, the reference desktop application

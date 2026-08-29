@@ -2087,3 +2087,101 @@ def test_boundary_fingerprint_distance_validates_shapes() -> None:
         boundary_fingerprint_distances_deg(np.eye(3)[None, :, :], np.eye(3))
     with pytest.raises(ValueError, match="at least one rotation"):
         boundary_fingerprint_distances_deg(np.eye(3)[None, :, :], np.empty((0, 3, 3)))
+
+
+# --------------------------------------------------------------------------- #
+# Per-variant parallelisms
+# --------------------------------------------------------------------------- #
+
+
+def test_variant_parallelisms_map_exactly_for_every_variant() -> None:
+    # V = S_c R S_p^T maps THIS variant's parent objects onto its child objects;
+    # the relationship's nominal pair is only variant 1's.
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    for variant in ks.generate_variants():
+        rotation = variant.parent_to_child_rotation.as_matrix()
+        for parent_plane, child_plane in variant.parallel_planes:
+            assert_allclose(rotation @ parent_plane.normal, child_plane.normal, atol=1e-12)
+        for parent_direction, child_direction in variant.parallel_directions:
+            assert_allclose(
+                rotation @ parent_direction.unit_vector,
+                child_direction.unit_vector,
+                atol=1e-12,
+            )
+
+
+def test_variant_parallel_planes_stay_in_the_defining_family() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = ks.generate_variants()
+    parent_members = {
+        tuple(sorted(abs(int(value)) for value in variant.parallel_planes[0][0].miller.indices))
+        for variant in variants
+    }
+    child_members = {
+        tuple(sorted(abs(int(value)) for value in variant.parallel_planes[0][1].miller.indices))
+        for variant in variants
+    }
+    assert parent_members == {(1, 1, 1)}  # every variant carries a {111}_gamma
+    assert child_members == {(0, 1, 1)}  # onto a {011}_alpha
+    # and the parent members are not all the same specific plane
+    specific = {
+        tuple(int(value) for value in variant.parallel_planes[0][0].miller.indices)
+        for variant in variants
+    }
+    assert len(specific) > 1
+
+
+def test_variant_parallelisms_agree_with_close_packed_grouping() -> None:
+    # the packet a variant belongs to is exactly the parent family member its
+    # own parallelism names, so the two independent routes must agree
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = ks.generate_variants()
+    from pytex.core import variant_close_packed_groups
+
+    labels = variant_close_packed_groups(
+        ks, CrystalPlane(MillerIndex(np.array([1, 1, 1]), phase=parent), phase=parent)
+    )
+    grouped: dict[int, set[tuple[int, ...]]] = {}
+    for variant, label in zip(variants, labels, strict=True):
+        indices = np.asarray(variant.parallel_planes[0][0].miller.indices, dtype=np.int64)
+        canonical = tuple(int(value) for value in (indices if indices[0] >= 0 else -indices))
+        grouped.setdefault(int(label), set()).add(canonical)
+    assert len(grouped) == 4
+    assert all(len(members) == 1 for members in grouped.values())
+    assert sum(int(np.sum(labels == label)) for label in set(labels.tolist())) == 24
+
+
+def test_variant_parallelisms_hold_for_a_hexagonal_child() -> None:
+    _, _, parent, _ = make_phases()
+    hcp = make_hcp_child()
+    burgers = OrientationRelationship.from_burgers_correspondence(
+        parent_phase=parent, child_phase=hcp
+    )
+    variants = burgers.generate_variants()
+    assert len(variants) == 12
+    for variant in variants:
+        rotation = variant.parent_to_child_rotation.as_matrix()
+        for parent_plane, child_plane in variant.parallel_planes:
+            assert_allclose(rotation @ parent_plane.normal, child_plane.normal, atol=1e-12)
+
+
+def test_variant_symmetry_operators_reproduce_the_variant_rotation() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    base = ks.parent_to_child_rotation.as_matrix()
+    for variant in ks.generate_variants():
+        expected = (
+            variant.child_symmetry_operator @ base @ variant.parent_symmetry_operator.T
+        )
+        assert_allclose(variant.parent_to_child_rotation.as_matrix(), expected, atol=1e-12)

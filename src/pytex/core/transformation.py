@@ -1509,6 +1509,48 @@ class OrientationRelationship:
         return tuple(variants)
 
 
+def _symmetry_image_plane(plane: CrystalPlane, operator: np.ndarray) -> CrystalPlane:
+    """The image of ``plane`` under a crystal-frame symmetry operator.
+
+    The operator acts on Cartesian crystal-frame vectors, while a plane is
+    stored as reciprocal-basis Miller indices, so the image is obtained by
+    conjugating with the reciprocal basis: ``B*^-1 S B* (hkl)``. A point-group
+    operator maps the lattice onto itself, so the result is integral; it is
+    rounded, and a non-integral result means the operator did not belong to
+    the phase's symmetry and is rejected rather than silently rationalized.
+    """
+
+    basis = plane.phase.lattice.reciprocal_basis().matrix
+    indices = np.linalg.solve(basis, operator @ (basis @ plane.miller.indices.astype(np.float64)))
+    rounded = np.rint(indices)
+    if not np.allclose(indices, rounded, atol=1e-6):
+        raise ValueError(
+            "Symmetry operator does not map the lattice onto itself: "
+            f"({plane.miller.indices.tolist()}) maps to non-integral {indices.tolist()}."
+        )
+    return CrystalPlane(MillerIndex(rounded, phase=plane.phase), phase=plane.phase)
+
+
+def _symmetry_image_direction(
+    direction: CrystalDirection, operator: np.ndarray
+) -> CrystalDirection:
+    """The image of ``direction`` under a crystal-frame symmetry operator.
+
+    The direct-basis counterpart of :func:`_symmetry_image_plane`:
+    ``B^-1 S B [uvw]``. Directions may legitimately carry non-integral
+    coordinates, so an integral result is snapped to exact integers and a
+    non-integral one is returned as it stands.
+    """
+
+    basis = direction.phase.lattice.direct_basis().matrix
+    coordinates = np.asarray(direction.coordinates, dtype=np.float64)
+    image = np.linalg.solve(basis, operator @ (basis @ coordinates))
+    rounded = np.rint(image)
+    if np.allclose(image, rounded, atol=1e-8):
+        image = rounded
+    return CrystalDirection(image, phase=direction.phase)
+
+
 @dataclass(frozen=True, slots=True)
 class TransformationVariant:
     """One symmetry-equivalent realization of an orientation relationship.
@@ -1570,6 +1612,72 @@ class TransformationVariant:
                 )
             plane_pairs.append((parent_plane, child_plane))
         object.__setattr__(self, "habit_plane_pairs", tuple(plane_pairs))
+
+    @property
+    def parent_symmetry_operator(self) -> np.ndarray:
+        """The parent point-group operator ``S_p`` that generated this variant."""
+
+        operators = _parent_operators(self.orientation_relationship)
+        return np.asarray(operators[self.parent_operator_index], dtype=np.float64)
+
+    @property
+    def child_symmetry_operator(self) -> np.ndarray:
+        """The child point-group operator ``S_c`` that generated this variant."""
+
+        operators = _child_operators(self.orientation_relationship)
+        return np.asarray(operators[self.child_operator_index], dtype=np.float64)
+
+    @property
+    def parallel_planes(self) -> tuple[tuple[CrystalPlane, CrystalPlane], ...]:
+        """This variant's own plane parallelisms, not the relationship's.
+
+        Purpose
+        -------
+        A variant is generated as ``V = S_c R S_p^T``, so the parallelism it
+        actually realizes is not the nominal pair the relationship was defined
+        by: it is that pair carried by the generating symmetry operators,
+        ``(S_p n_parent) || (S_c n_child)``. Substituting the nominal pair
+        produces a figure or a report that looks right and is wrong for every
+        variant but the first, which is why this is a property of the variant
+        rather than something a caller re-derives.
+
+        Returns
+        -------
+        tuple of (CrystalPlane, CrystalPlane)
+            Parent- and child-phase planes, one pair per defining parallelism,
+            in the same order as ``OrientationRelationship.parallel_planes``.
+            ``V`` maps each parent normal exactly onto its child normal.
+
+        See Also
+        --------
+        parallel_directions : the direction-space counterpart.
+        """
+
+        parent_operator = self.parent_symmetry_operator
+        child_operator = self.child_symmetry_operator
+        return tuple(
+            (
+                _symmetry_image_plane(parent_plane, parent_operator),
+                _symmetry_image_plane(child_plane, child_operator),
+            )
+            for parent_plane, child_plane in self.orientation_relationship.parallel_planes
+        )
+
+    @property
+    def parallel_directions(self) -> tuple[tuple[CrystalDirection, CrystalDirection], ...]:
+        """This variant's own direction parallelisms; see :attr:`parallel_planes`."""
+
+        parent_operator = self.parent_symmetry_operator
+        child_operator = self.child_symmetry_operator
+        return tuple(
+            (
+                _symmetry_image_direction(parent_direction, parent_operator),
+                _symmetry_image_direction(child_direction, child_operator),
+            )
+            for parent_direction, child_direction in (
+                self.orientation_relationship.parallel_directions
+            )
+        )
 
     def map_parent_vector_to_child(self, vector: ArrayLike | VectorSet) -> np.ndarray | VectorSet:
         """Map a parent-crystal vector into this variant's child crystal frame.

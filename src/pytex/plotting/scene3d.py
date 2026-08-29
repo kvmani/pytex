@@ -14,20 +14,26 @@ renderer-independent primitives from `pytex.plotting.primitives`:
   depth-sorted `Poly3DCollection` (so atoms and bonds of different crystals
   occlude each other correctly) and overlays the primitives.
 
-The orientation-relationship constructor places the child crystal by
-``relationship.parent_to_child_rotation.inverse()`` in the parent frame, which
-makes the OR's parallel planes and directions coincide in world coordinates —
-the geometric statement of the relationship, shown directly.
+The orientation-relationship constructor places the child crystal by the
+inverse of the parent-to-child rotation in the parent frame, which makes the
+OR's parallel planes and directions coincide in world coordinates — the
+geometric statement of the relationship, shown directly. Passing ``variant=k``
+uses that variant's rotation *and* that variant's own parallel plane and
+direction (its symmetry images, not the nominal pair), and
+`WorldScene3D.variant_scenes` plus `render_variant_contact_sheet` put the whole
+variant family on one sheet.
 """
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
 
 from pytex.core.lattice import Phase
+from pytex.core.notation import format_miller_indices
 from pytex.plotting.crystal3d import (
     CrystalScene,
     _accumulate_crystal_mesh,
@@ -191,6 +197,7 @@ class WorldScene3D:
         cls,
         relationship: Any,
         *,
+        variant: int | Any | None = None,
         repeats: tuple[int, int, int] = (1, 1, 1),
         parent_transform: Transform3D | None = None,
         child_translation: Any = (0.0, 0.0, 0.0),
@@ -203,19 +210,39 @@ class WorldScene3D:
 
         The parent crystal is placed at ``parent_transform`` (default identity,
         i.e. the world frame *is* the parent crystal frame); the child is placed
-        by ``relationship.parent_to_child_rotation.inverse()`` plus
-        ``child_translation``, so the OR's parallel planes and directions
-        coincide in world coordinates. With the defaults the parallel directions
-        are drawn as arrows and the parallel planes as translucent patches, which
-        visually verify the alignment.
+        by the inverse of the parent-to-child rotation plus ``child_translation``,
+        so the OR's parallel planes and directions coincide in world coordinates.
+        With the defaults the parallel directions are drawn as arrows and the
+        parallel planes as translucent patches, which visually verify the
+        alignment.
+
+        Parameters
+        ----------
+        variant : int or TransformationVariant, optional
+            Which transformation variant to draw. ``None`` (the default) draws
+            the relationship as stated. An ``int`` is a **one-based** index into
+            ``relationship.generate_variants()``. The variant's own rotation
+            places the child, and — this is the part that is easy to get wrong —
+            the parallel planes and directions drawn are that variant's, taken
+            from ``TransformationVariant.parallel_planes`` /
+            ``.parallel_directions``, not the nominal pair the relationship was
+            defined by. Drawing the nominal pair on variant 17 yields a figure
+            that looks right and is wrong.
 
         Use it as the minimal-code entry point for OR schematics; pass
         ``child_translation`` to separate the two crystals side by side, or
         ``parent/child_build_kwargs`` to control repeats, bonds, or overlays.
+
+        See Also
+        --------
+        variant_scenes : one scene per variant, for a contact sheet.
+        render_variant_contact_sheet : draw such a tuple as a grid.
         """
 
+        resolved = resolve_transformation_variant(relationship, variant)
+        source = relationship if resolved is None else resolved
         parent_transform = parent_transform or Transform3D.identity()
-        child_rotation = relationship.parent_to_child_rotation.inverse().as_matrix()
+        child_rotation = source.parent_to_child_rotation.inverse().as_matrix()
         child_transform = parent_transform.compose(
             Transform3D.from_matrix(child_rotation, translation=child_translation)
         )
@@ -237,20 +264,81 @@ class WorldScene3D:
             )
         )
         primitives = _orientation_relationship_primitives(
-            relationship,
+            parallel_directions=source.parallel_directions if show_parallel_directions else (),
+            parallel_planes=source.parallel_planes if show_parallel_planes else (),
             parent_transform=parent_transform,
             length=_relationship_reference_length(relationship, repeats),
-            show_parallel_directions=show_parallel_directions,
-            show_parallel_planes=show_parallel_planes,
         )
         if not primitives.is_empty():
             world = world.add_primitives(primitives)
         return world
 
+    @classmethod
+    def variant_scenes(
+        cls,
+        relationship: Any,
+        *,
+        variants: Sequence[Any] | None = None,
+        **scene_kwargs: Any,
+    ) -> tuple[WorldScene3D, ...]:
+        """One composite scene per transformation variant, in variant order.
+
+        Purpose
+        -------
+        The figure that shows what "24 variants" actually means: the same parent
+        crystal with 24 differently oriented children, each carrying its *own*
+        parallel plane and direction.
+
+        Parameters
+        ----------
+        relationship : OrientationRelationship
+        variants : sequence of TransformationVariant, optional
+            Defaults to ``relationship.generate_variants()``.
+        **scene_kwargs
+            Forwarded to :meth:`from_orientation_relationship`; ``variant`` is
+            supplied per scene and must not appear here.
+
+        Returns
+        -------
+        tuple of WorldScene3D
+            Parallel to ``variants``, so ``scenes[i]`` is the scene of
+            ``variants[i]``. Feed it to :func:`render_variant_contact_sheet`.
+        """
+
+        if "variant" in scene_kwargs:
+            raise ValueError("variant_scenes supplies 'variant' itself; pass 'variants' instead.")
+        resolved = (
+            relationship.generate_variants() if variants is None else tuple(variants)
+        )
+        return tuple(
+            cls.from_orientation_relationship(relationship, variant=item, **scene_kwargs)
+            for item in resolved
+        )
+
     def render(self, **kwargs: Any) -> Any:
         """Render this world scene; forwards to `render_world_scene_3d`."""
 
         return render_world_scene_3d(self, **kwargs)
+
+
+def resolve_transformation_variant(relationship: Any, variant: int | Any | None) -> Any | None:
+    """Coerce a ``variant`` argument to a `TransformationVariant` (or ``None``).
+
+    ``None`` passes through, meaning "the relationship as stated". An ``int`` is
+    a **one-based** index into ``relationship.generate_variants()``, matching the
+    ``variant_index`` the variants carry; anything else is returned unchanged and
+    is expected to be a `TransformationVariant`.
+    """
+
+    if variant is None or not isinstance(variant, int):
+        return variant
+    variants = relationship.generate_variants()
+    if not 1 <= variant <= len(variants):
+        raise ValueError(
+            f"variant must be a one-based index in 1..{len(variants)} for "
+            f"'{relationship.name}'; got {variant}."
+        )
+    return variants[variant - 1]
 
 
 def _relationship_reference_length(relationship: Any, repeats: tuple[int, int, int]) -> float:
@@ -259,41 +347,75 @@ def _relationship_reference_length(relationship: Any, repeats: tuple[int, int, i
     return edge * float(max(repeats)) * 1.05
 
 
+def _integer_indices(values: Any) -> list[int] | None:
+    """``values`` rounded to integers, or ``None`` if they are not integral."""
+
+    array = np.asarray(values, dtype=np.float64)
+    rounded = np.rint(array)
+    if not np.allclose(array, rounded, atol=1e-8):
+        return None
+    return [int(value) for value in rounded]
+
+
+def _parallelism_label(parent_indices: Any, child_indices: Any, *, family: str) -> str:
+    """``(111) ∥ (011)``-style label for a parallel pair, or a generic fallback."""
+
+    parent = _integer_indices(parent_indices)
+    child = _integer_indices(child_indices)
+    kind = "plane" if family == "plane" else "direction"
+    if parent is None or child is None:
+        return f"∥ {kind}"
+    return (
+        f"{format_miller_indices(parent, family=family, style='plain')}"
+        f" ∥ {format_miller_indices(child, family=family, style='plain')}"
+    )
+
+
 def _orientation_relationship_primitives(
-    relationship: Any,
     *,
+    parallel_directions: Any,
+    parallel_planes: Any,
     parent_transform: Transform3D,
     length: float,
-    show_parallel_directions: bool,
-    show_parallel_planes: bool,
 ) -> PrimitiveScene3D:
-    """Arrows for parallel directions and patches for parallel planes (world frame)."""
+    """Arrows for parallel directions and patches for parallel planes (world frame).
+
+    The pairs are passed in rather than read off the relationship, because under
+    a transformation variant the objects that are actually parallel are that
+    variant's symmetry images, not the relationship's nominal pair.
+    """
 
     arrows: list[Arrow3D] = []
     patches: list[PlanePatch3D] = []
-    if show_parallel_directions:
-        for parent_direction, _child_direction in relationship.parallel_directions:
-            world_direction = parent_transform.apply_vector(parent_direction.unit_vector)
-            world_direction = world_direction / np.linalg.norm(world_direction)
-            arrows.append(
-                Arrow3D(
-                    tail=parent_transform.translation,
-                    head=parent_transform.translation + length * world_direction,
-                    color="#f59e0b",
-                    label="∥ direction",
-                )
+    for parent_direction, child_direction in parallel_directions:
+        world_direction = parent_transform.apply_vector(parent_direction.unit_vector)
+        world_direction = world_direction / np.linalg.norm(world_direction)
+        arrows.append(
+            Arrow3D(
+                tail=parent_transform.translation,
+                head=parent_transform.translation + length * world_direction,
+                color="#f59e0b",
+                label=_parallelism_label(
+                    parent_direction.coordinates,
+                    child_direction.coordinates,
+                    family="direction",
+                ),
             )
-    if show_parallel_planes:
-        for parent_plane, _child_plane in relationship.parallel_planes:
-            patch = crystal_plane_patch(
-                parent_plane,
-                center=(0.0, 0.0, 0.0),
-                extent=0.6 * length,
-                color="#7c3aed",
-                alpha=0.16,
-                label="∥ plane",
-            ).transformed(parent_transform)
-            patches.append(patch)
+        )
+    for parent_plane, child_plane in parallel_planes:
+        patch = crystal_plane_patch(
+            parent_plane,
+            center=(0.0, 0.0, 0.0),
+            extent=0.6 * length,
+            color="#7c3aed",
+            alpha=0.16,
+            label=_parallelism_label(
+                parent_plane.miller.indices,
+                child_plane.miller.indices,
+                family="plane",
+            ),
+        ).transformed(parent_transform)
+        patches.append(patch)
     return PrimitiveScene3D(arrows=tuple(arrows), patches=tuple(patches))
 
 
@@ -429,8 +551,85 @@ def _draw_species_legend(axes: Any, placed_scenes: tuple[CrystalScene, ...]) -> 
     axes.legend(handles=handles, loc="upper right", framealpha=0.85)
 
 
+def render_variant_contact_sheet(
+    scenes: Sequence[WorldScene3D],
+    *,
+    variants: Sequence[Any] | None = None,
+    titles: Sequence[str] | None = None,
+    columns: int = 4,
+    panel_size_inches: float = 2.4,
+    suptitle: str | None = None,
+    **render_kwargs: Any,
+) -> Any:
+    """Draw one composite scene per panel of a grid — the variant contact sheet.
+
+    Purpose
+    -------
+    Twenty-four separate figures do not show variant selection; one sheet does.
+    Each panel is a full `render_world_scene_3d` of the corresponding scene, so
+    every panel carries its own parallel plane and direction.
+
+    Parameters
+    ----------
+    scenes : sequence of WorldScene3D
+        Typically :meth:`WorldScene3D.variant_scenes` output.
+    variants : sequence of TransformationVariant, optional
+        Used only to title the panels ``V1``, ``V2``, ... by
+        ``variant_index``; must be the same length as ``scenes``.
+    titles : sequence of str, optional
+        Explicit panel titles, overriding ``variants``.
+    columns : int
+        Panels per row; the row count follows. Must be strictly positive.
+    panel_size_inches : float
+        Edge length of one square panel; the figure size follows from the grid.
+    suptitle : str, optional
+    **render_kwargs
+        Forwarded to `render_world_scene_3d` for every panel (``ax`` and
+        ``title`` are supplied here and must not appear).
+
+    Returns
+    -------
+    matplotlib.figure.Figure
+
+    Raises
+    ------
+    ValueError
+        If ``scenes`` is empty, ``columns`` is not positive, a label sequence
+        has the wrong length, or ``ax``/``title`` is passed through.
+    """
+
+    plt, _ = _require_matplotlib()
+    panels = tuple(scenes)
+    if not panels:
+        raise ValueError("render_variant_contact_sheet requires at least one scene.")
+    if columns <= 0:
+        raise ValueError("columns must be strictly positive.")
+    for reserved in ("ax", "title"):
+        if reserved in render_kwargs:
+            raise ValueError(f"render_variant_contact_sheet controls '{reserved}' itself.")
+    if titles is not None:
+        panel_titles: tuple[str | None, ...] = tuple(titles)
+    elif variants is not None:
+        panel_titles = tuple(f"V{variant.variant_index}" for variant in variants)
+    else:
+        panel_titles = tuple(f"V{index + 1}" for index in range(len(panels)))
+    if len(panel_titles) != len(panels):
+        raise ValueError("titles/variants must have the same length as scenes.")
+    rows = -(-len(panels) // columns)
+    figure = plt.figure(figsize=(columns * panel_size_inches, rows * panel_size_inches))
+    for index, (scene, panel_title) in enumerate(zip(panels, panel_titles, strict=True)):
+        axes = figure.add_subplot(rows, columns, index + 1, projection="3d")
+        render_world_scene_3d(scene, ax=axes, title=panel_title, **render_kwargs)
+    if suptitle is not None:
+        figure.suptitle(suptitle)
+    figure.tight_layout()
+    return figure
+
+
 __all__ = [
     "PlacedCrystal",
     "WorldScene3D",
+    "render_variant_contact_sheet",
     "render_world_scene_3d",
+    "resolve_transformation_variant",
 ]

@@ -749,3 +749,90 @@ result = [
 **Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Every Kurdjumov-Sachs variant carries its own {111}-{011} pair, not variant 1's
+
+A variant is generated as ``V = S_c R S_p^T``, so the parallelism it realizes is the defining pair carried by those operators, ``(S_p n_parent) || (S_c n_child)`` -- not the nominal pair the relationship was written with. ``TransformationVariant.parallel_planes`` returns that per-variant pair. Two numbers check it. First, the worst angle over all 24 variants between the variant rotation applied to its own parent normal and its own child normal must be zero, which is an identity. Second, the number of distinct parent {111} members named across the variants must be 4 -- the four close-packed planes of the fcc parent, one per Morito packet. Substituting the nominal pair instead would name a single member and open a non-zero angle, which is exactly the figure that looks right and is wrong.
+
+**Symbols**
+
+- $\mathbf{S}_{p}$ &mdash; Parent point-group operator generating a transformation variant.
+- $(hkl)$ &mdash; Miller plane indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+worst_deviation_deg = 0.0
+parent_members = set()
+for variant in ks.generate_variants():
+    rotation = variant.parent_to_child_rotation.as_matrix()
+    for parent_plane, child_plane in variant.parallel_planes:
+        cosine = float(rotation @ parent_plane.normal @ child_plane.normal)
+        deviation = np.rad2deg(np.arccos(np.clip(cosine, -1.0, 1.0)))
+        worst_deviation_deg = max(worst_deviation_deg, float(deviation))
+    indices = np.asarray(variant.parallel_planes[0][0].miller.indices)
+    canonical = indices if indices[0] >= 0 else -indices
+    parent_members.add(tuple(int(value) for value in canonical))
+result = [worst_deviation_deg, float(len(parent_members))]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | 8.54e-07 | 1e-06 | ✅ pass |
+
+**Why this value**: Both values are identities. ``V = S_c R S_p^T`` maps ``S_p n_parent`` onto ``S_c n_child`` by construction, so the deviation is exactly zero up to floating-point noise. The fcc {111} family has four members and the 24 Kurdjumov-Sachs variants distribute over them six apiece, which is the packet structure of lath martensite reported by Morito et al.
+
+**Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

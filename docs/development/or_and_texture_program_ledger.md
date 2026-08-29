@@ -47,7 +47,7 @@ by `tests/unit/test_scene3d_composition.py`.
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M2a** | `WorldScene3D.from_orientation_relationship(..., variant=...)`, `variant_scenes(...)`, and the contact-sheet renderer | Not started |
+| **M2a** | `WorldScene3D.from_orientation_relationship(..., variant=...)`, `variant_scenes(...)`, and the contact-sheet renderer | **Complete** (2026-08-29) |
 | **M2b** | The OR stereogram (F18): tie-lines between OR-parallel pairs, great circles of the parallel planes, deviations annotated | Not started |
 
 ### M1 in one paragraph, for context
@@ -60,38 +60,65 @@ Both decisions are recorded in the history below and enforced by tests.
 
 ### Next concrete step
 
-**M2 — F15 variant-aware composite scenes, and F18 the OR stereogram.** Pure Python, no GUI, so it
-carries no browser risk and unblocks M3.
+**M2b — F18, the OR stereogram.** M2a is complete (see the history entry below), so the variant
+half of M2 is delivered and M3's viewer has something to consume.
 
-F15, in `src/pytex/plotting/scene3d.py`:
+What is missing is the *pairing* on the net. `variant_pole_figure` and `plot_variant_pole_figure`
+already put child variant poles and optional parent poles on one stereogram. F18 adds:
 
-- `WorldScene3D.from_orientation_relationship` currently places the child by
-  `relationship.parent_to_child_rotation.inverse()` and has no `variant` parameter — variant 1 only.
-  Add `variant: int | TransformationVariant | None = None`, placing the child by
-  `variant.parent_to_child_rotation.inverse()`, consistent with the regression-pinned composition
-  `g_child = g_parent ∘ Vᵀ`.
-- **The trap:** `_orientation_relationship_primitives` draws `relationship.parallel_directions` and
-  `parallel_planes` — the *nominal* pair. Under variant k the parent-side objects are the symmetry
-  images under that variant's operator, so drawing the nominal pair on variant 17 produces a figure
-  that looks right and is wrong. Re-derive them per variant.
-- Add `WorldScene3D.variant_scenes(...)` and a contact-sheet renderer.
-- Validation: for every variant, the world-frame images of the defining parallel plane normals of
-  parent and child must coincide to 1e-12; the child orientations across scenes must equal
-  `generate_variants()` as a set under child symmetry.
+- **tie-lines** joining each OR-parallel pair, labelled with the pair's deviation;
+- **great circles** of the parallel planes;
+- the deviations annotated rather than left implicit.
 
-F18, the OR stereogram: `variant_pole_figure` and `plot_variant_pole_figure` already put child
-variant poles and optional parent poles on one net. What is missing is the *pairing* — tie-lines
-joining OR-parallel pairs labelled with their deviation, and the great circles of the parallel
-planes. `find_parallel_planes` / `find_parallel_directions` supply the pairs and the deviations.
+`find_parallel_planes` / `find_parallel_directions` supply the pairs and the deviations, and
+`TransformationVariant.parallel_planes` / `.parallel_directions` (landed in M2a) supply the
+per-variant statement a tie-line must be drawn from — do not re-derive the nominal pair here, for
+the same reason M2a did not.
 
-Existing surfaces to build on, all verified present: `generate_variants`,
-`variant_close_packed_groups`, `find_parallel_planes`, `find_parallel_directions`,
-`variant_pole_figure`, `plot_variant_pole_figure`, `plotting/primitives.py` (`crystal_plane_patch`,
-`Arrow3D`, `PlanePatch3D`), `tests/unit/test_scene3d_composition.py`.
+Surfaces verified present and now also usable: `generate_variants`, `variant_close_packed_groups`,
+`find_parallel_planes`, `find_parallel_directions`, `variant_pole_figure`,
+`plot_variant_pole_figure`, `WorldScene3D.variant_scenes`, `render_variant_contact_sheet`,
+`TransformationVariant.parallel_planes` / `.parallel_directions`.
 
 ---
 
 ## 3. History
+
+### 2026-08-29 — M2a complete: variant-aware composite scenes (F15)
+
+**What shipped.** `WorldScene3D.from_orientation_relationship(..., variant=...)` accepting a
+`TransformationVariant` or a one-based index; `WorldScene3D.variant_scenes(...)`;
+`plotting.scene3d.render_variant_contact_sheet(...)`; and, in `core/transformation.py`, the
+properties `TransformationVariant.parallel_planes`, `.parallel_directions`,
+`.parent_symmetry_operator`, `.child_symmetry_operator`. Exported from `pytex.plotting` and, for
+the renderer, from `pytex`. 13 new tests across `tests/unit/test_scene3d_composition.py` and
+`tests/unit/test_transformation.py`, one worked example, and prose in
+`docs/site/concepts/visualization_primitives.md`.
+
+**The trap, and where it is now closed.** A variant is `V = S_c R S_p^T`, so the objects actually
+parallel under it are the defining pair carried by those operators —
+`(S_p n_parent) || (S_c n_child)` — not the nominal pair the relationship was written with. The
+fix deliberately lives on `TransformationVariant`, not in the scene builder: any future consumer
+(the M3 viewer, the F17 dossier, the F18 stereogram) that asks a variant for its parallelism gets
+the right pair without knowing the derivation. Concretely, over the 24 Kurdjumov-Sachs variants
+the property names **four** distinct parent {111} members — the Morito packet planes — where the
+nominal pair would name one; a test asserts that, and another asserts that the nominal pair opens
+a visible angle on variant 17 while the variant's own pair closes to 1e-12.
+
+The arrows and patches are now labelled with the indices they draw, e.g. `(1 -1 1) ∥ (0 1 1)`,
+through `pytex.core.notation.format_miller_indices` rather than a generic "∥ plane". A figure that
+states which plane it is drawing cannot quietly be the wrong one.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 152 files; `pytest tests/unit` green
+(exit 0, full suite, before the docs and example additions; the worked-example, documentation-policy
+and repo-integrity suites re-run green after). The worked-example gallery was regenerated with
+`python scripts/generate_worked_examples.py`.
+
+**Not done, deliberately.** No theory-note change: the derivation `V (S_p n) = S_c n'` is one line
+and sits in the property's docstring and the worked example's reference, and
+`docs/site/theory/phase_transformation_relationship_construction.md` already carries the variant
+algebra. The Sphinx warning count was not re-checked against a clean-worktree build; the prose
+added is one section in an existing concepts page.
 
 ### 2026-08-29 — M1b complete, and a defect in M1a corrected
 

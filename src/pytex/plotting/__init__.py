@@ -110,7 +110,9 @@ from pytex.plotting.saed_picker import SAEDSpotPicker, SpotPickerState
 from pytex.plotting.scene3d import (
     PlacedCrystal,
     WorldScene3D,
+    render_variant_contact_sheet,
     render_world_scene_3d,
+    resolve_transformation_variant,
 )
 from pytex.plotting.styles import (
     list_style_themes,
@@ -216,8 +218,10 @@ __all__ = [
     "register_pytex_colormaps",
     "render_composite_saed",
     "render_primitive_scene_3d",
+    "render_variant_contact_sheet",
     "render_world_scene_3d",
     "resolve_style",
+    "resolve_transformation_variant",
     "save_documentation_figure_svg",
     "srgb_to_lightness",
     "unit_cell_polylines",

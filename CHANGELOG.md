@@ -13,6 +13,23 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Composite 3D scenes are variant-aware, and each variant draws its own parallelism.**
+  `WorldScene3D.from_orientation_relationship` took no `variant` argument, so it could only
+  draw variant 1 of an orientation relationship. It now accepts `variant=` (a
+  `TransformationVariant` or a one-based index), `WorldScene3D.variant_scenes` builds one
+  scene per variant, and `render_variant_contact_sheet` lays the family out as a titled grid.
+
+  The correctness point is the second half. A variant is `V = S_c R S_p^T`, so the objects
+  that are actually parallel under it are the defining pair carried by those operators, not
+  the nominal pair the relationship was written with. Drawing the nominal `(111)` on variant
+  17 gives a figure that looks right and is wrong. New properties
+  `TransformationVariant.parallel_planes` and `.parallel_directions` return the variant's own
+  pair — for Kurdjumov-Sachs the 24 variants name four distinct parent {111} members, the
+  Morito packet planes, where the nominal pair would name one — and the scene builder uses
+  them, labelling every arrow and patch with the indices it actually draws. Tests pin the
+  parallelism to 1e-12 for every variant of Kurdjumov-Sachs and Burgers, and a worked example
+  states the identity.
+
 - **The Kearns parameter is reachable from the workbench.** `pytex.texture.kearns` has
   implemented and validated the parameter by four routes since it landed, and not one of them was
   reachable from the application. A new **Kearns parameter** sub-tab in the Texture workspace
