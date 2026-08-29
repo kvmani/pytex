@@ -59,6 +59,7 @@ from pytex.app.services.calculator import (
     relationship_name,
 )
 from pytex.app.services.crystal import scene_payload
+from pytex.core.miller import canonicalize_sign
 
 __all__: tuple[str, ...] = ()
 
@@ -1030,6 +1031,19 @@ _PLACEMENTS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+def _canonical_plane(values: Any) -> tuple[int, int, int]:
+    """A plane's index triple under the repository's one sign rule.
+
+    A plane has no sign, and which of ``(1 1 -1)`` and ``(-1 -1 1)`` a symmetry
+    image comes back as is an artefact. ``canonicalize_sign`` is that rule, and
+    it is deliberately *not* applied to directions, where the two spellings are
+    opposite directions.
+    """
+
+    canonical = canonicalize_sign(_index_triple(values))[0]
+    return (int(canonical[0]), int(canonical[1]), int(canonical[2]))
+
+
 def _index_triple(values: Any) -> tuple[int, int, int]:
     """An index triple as three plain ints, rounded from float coordinates."""
 
@@ -1145,8 +1159,8 @@ def _parallelism_rows(
         # unsigned, the 24 Kurdjumov-Sachs variants appear to name eight parent
         # planes where they name four, and the packet column stops agreeing
         # with the plane column beside it.
-        parent_indices = _canonical_sign(_index_triple(parent_plane.miller.indices))
-        child_indices = _canonical_sign(_index_triple(child_plane.miller.indices))
+        parent_indices = _canonical_plane(parent_plane.miller.indices)
+        child_indices = _canonical_plane(child_plane.miller.indices)
         rows.append(
             {
                 "kind": "plane",

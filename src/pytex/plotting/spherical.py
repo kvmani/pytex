@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 
 from pytex.core.lattice import CrystalDirection, CrystalPlane
+from pytex.core.miller import canonicalize_sign
 from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.core.orientation import Rotation
 from pytex.core.symmetry import SymmetrySpec
@@ -838,29 +839,16 @@ def _acute_pair(
     return parent_unit, child_unit, float(np.rad2deg(angle))
 
 
-def _canonical_index_sign(indices: tuple[int, ...]) -> tuple[int, ...]:
-    """Flip an index triple so its first non-zero component is positive.
-
-    A plane has no sign — ``(111)`` and ``(-1-1-1)`` name the same plane, and a
-    stereogram folds them onto one point. Without this, the 24 Kurdjumov-Sachs
-    variants appear to name eight distinct parent planes where they name four.
-    """
-
-    for value in indices:
-        if value > 0:
-            return indices
-        if value < 0:
-            return tuple(-value for value in indices)
-    return indices
-
-
 def _or_pair_label(parent_indices: Any, child_indices: Any, *, kind: str) -> str:
     formatter = format_plane_indices if kind == "plane" else format_direction_indices
     parent = tuple(round(float(value)) for value in np.asarray(parent_indices).reshape(-1))
     child = tuple(round(float(value)) for value in np.asarray(child_indices).reshape(-1))
     if kind == "plane":
-        parent = _canonical_index_sign(parent)
-        child = _canonical_index_sign(child)
+        # A plane has no sign, and a stereogram folds antipodes onto one
+        # point; without this the 24 Kurdjumov-Sachs variants appear to name
+        # eight parent planes where they name four.
+        parent = tuple(int(value) for value in canonicalize_sign(parent)[0])
+        child = tuple(int(value) for value in canonicalize_sign(child)[0])
     return f"{formatter(parent, style='plain')} ∥ {formatter(child, style='plain')}"
 
 

@@ -25,6 +25,13 @@ import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult, saveBlob } from '../core/result.js';
 import { call } from '../core/api.js';
+import { identity, multiply, rotationX, rotationY } from '../core/rotation3.js';
+import {
+  compositeScene,
+  contactSheetScene,
+  screenAlignment,
+} from '../core/compositescene.js';
+import { defaultAppearance, renderScene } from './crystal.js';
 
 export const panel = {
   id: 'variants',
@@ -55,6 +62,20 @@ const PACKET_COLORS = [
 
 /** The parent's own poles: achromatic, because they are the reference. */
 const PARENT_COLOR = 'var(--ink)';
+
+/**
+ * Phase colours for the composite views.
+ *
+ * In these views colour carries the **phase**, not the element. It has to: the
+ * two phases of an orientation relationship are usually the same element —
+ * austenite and ferrite are both iron — so colouring by species would paint
+ * both crystals one colour and leave a single blob in which no parallelism can
+ * be read. The legend states the change rather than leaving it to be inferred.
+ */
+const PHASE_COLORS = Object.freeze({
+  parent: '#5b7fa6',
+  child: '#d97706',
+});
 
 function packetColor(packet) {
   return PACKET_COLORS[(packet - 1) % PACKET_COLORS.length];
@@ -94,7 +115,20 @@ function polarFromRadius(radius, projection) {
  * and a new operation added to the panel is then a deliberate addition here
  * rather than a surprise entry in a dropdown.
  */
-const VIEWS = ['variants.pole_figure', 'variants.intervariant_misorientations'];
+const VIEWS = [
+  'variants.pole_figure',
+  'variants.intervariant_misorientations',
+  'variants.composite_scene',
+  'variants.contact_sheet',
+];
+
+/** Which kind of drawing each view needs. `table` has no picture, by design. */
+const VIEW_MODES = {
+  'variants.pole_figure': 'pole',
+  'variants.intervariant_misorientations': 'table',
+  'variants.composite_scene': 'composite',
+  'variants.contact_sheet': 'sheet',
+};
 
 export function mount(context) {
   const operations = VIEWS.map((id) =>
@@ -110,6 +144,22 @@ export function mount(context) {
     // Which result the legend was built for, so a redraw that only changes
     // which packets are shown updates the buttons instead of replacing them.
     legendFor: null,
+    appearance: defaultAppearance(),
+    // Which result the camera was framed for. Reframing on every redraw would
+    // make turning the crystal also rescale it.
+    framedFor: null,
+  };
+
+  // One camera drives every crystal on screen -- both crystals of a composite,
+  // and all twenty-four panels of a contact sheet. That is the point of having
+  // the service place the child in Python: the lock is free and cannot drift,
+  // because there is only ever one rotation.
+  const camera = {
+    rotation: multiply(rotationX(-1.2), rotationY(0.6)),
+    zoom: 1,
+    scale: 1,
+    centre: [0, 0, 0],
+    pan: { x: 0, y: 0 },
   };
 
   // SVG first, and so the default: a pole figure is line art and a few dozen
@@ -137,6 +187,13 @@ export function mount(context) {
     title: 'Pole figure',
     toolbar: [formatSelect, publishButton],
   });
+
+  /** The frame's heading, which has to follow the view rather than the panel. */
+  const FRAME_TITLES = {
+    pole: 'Pole figure',
+    composite: 'Composite scene',
+    sheet: 'Variant contact sheet',
+  };
 
   const legend = el('div.legend');
   const details = el('div');
@@ -169,7 +226,7 @@ export function mount(context) {
       el('label.field__label', { text: 'View' }),
       operationSelect,
       el('p.field__help', {
-        text: 'The pole figure shows where the variants point; the spectrum shows how they differ from each other.',
+        text: 'The pole figure shows where the variants point, the spectrum how they differ from each other, and the two composite views what a single variant and the whole family look like as crystals.',
       }),
     ]),
     formHost,
@@ -178,7 +235,7 @@ export function mount(context) {
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
         el('p.field__help', {
-          text: 'Run the first two in order: 24 variants in 4 packets, then the same figure with half as many.',
+          text: 'Run the first two in order: 24 variants in 4 packets, then the same figure with half as many. The composite examples show the same variants as crystals.',
         }),
         el(
           'div.examples',
@@ -198,6 +255,10 @@ export function mount(context) {
     return state.operation.id === 'variants.pole_figure';
   }
 
+  function viewMode() {
+    return VIEW_MODES[state.operation.id] ?? 'table';
+  }
+
   function renderControls(initial = {}) {
     state.form = buildForm(state.operation, { initial });
     formHost.replaceChildren(state.form.element);
@@ -211,34 +272,88 @@ export function mount(context) {
     run();
   }
 
+  /**
+   * Which run is the current one.
+   *
+   * The panel's views answer different questions and return differently shaped
+   * results, and switching view starts a new request while the previous one is
+   * still in flight. Without a token the slower response wins: the pole figure
+   * that was already running lands *after* the composite scene, overwrites it,
+   * and the drawing code for the new view is handed the old view's data. That
+   * threw where the shapes disagree and, worse, silently drew stale numbers
+   * where they happened to agree.
+   */
+  let runToken = 0;
+
   async function run() {
+    const token = (runToken += 1);
     runButton.disabled = true;
     runButton.textContent = 'Computing…';
     state.form.clearErrors();
     try {
       const result = await call(state.operation.id, state.form.values());
+      if (token !== runToken) return;
       state.result = result;
       state.hiddenPackets = new Set();
+      frameCamera(result);
       draw();
       renderResult(details, result, { teaches: state.teaches });
     } catch (error) {
+      if (token !== runToken) return;
       if (!state.form.showError(error)) context.showError(error);
       else context.showError(error, { quiet: true });
     } finally {
-      runButton.disabled = false;
-      runButton.textContent = 'Show variants';
+      // Only the latest run owns the button; a superseded one must not
+      // re-enable it while its successor is still computing.
+      if (token === runToken) {
+        runButton.disabled = false;
+        runButton.textContent = 'Show variants';
+      }
     }
+  }
+
+  /**
+   * Point the camera at a new result, once.
+   *
+   * The centre and radius come from the service's world extent, which for a
+   * contact sheet is taken over *every* variant's placement. Framing each panel
+   * to its own contents would rescale them against each other, and a reader
+   * comparing orientations across the grid would read that as a difference in
+   * the crystallography.
+   */
+  function frameCamera(result) {
+    const world = result?.data?.world;
+    if (!world || state.framedFor === result) return;
+    state.framedFor = result;
+    camera.centre = world.centre;
+    camera.scale = (VIEW * 0.8) / (world.radius || 1);
+    camera.zoom = 1;
+    camera.pan = { x: 0, y: 0 };
+    camera.rotation = multiply(rotationX(-1.2), rotationY(0.6));
+    // Deliberately *not* seeded with species colours: the renderer prefers
+    // `appearance.speciesColors[species]` over the atom's own colour, so a
+    // seeded entry for "Fe" would repaint both phases one colour and undo the
+    // tint that tells them apart.
+    state.appearance.speciesColors = {};
   }
 
   function draw() {
     // The spectrum is a table. Hiding the frame rather than drawing an empty
     // one keeps the stage from carrying a picture of nothing, which reads as a
     // failed render rather than as a view that has no picture.
-    const showFigure = isPoleFigure();
-    frame.element.hidden = !showFigure;
-    legend.hidden = !showFigure;
-    if (!showFigure) return;
+    const mode = viewMode();
+    frame.element.hidden = mode === 'table';
+    legend.hidden = mode === 'table';
+    frame.setTitle(FRAME_TITLES[mode] ?? 'Pole figure');
+    publishButton.disabled = mode !== 'pole';
+    formatSelect.disabled = mode !== 'pole';
+    if (mode === 'table') return;
+    if (mode === 'composite') return drawComposite();
+    if (mode === 'sheet') return drawContactSheet();
+    drawPoleFigure();
+  }
 
+  function drawPoleFigure() {
     const data = state.result.data;
     frame.configure({
       // Screen to data: the disc is drawn at radius VIEW and the y axis points
@@ -274,6 +389,127 @@ export function mount(context) {
           data.projection === 'equal_area' ? 'equal-area' : 'stereographic'
         } projection · hover a pole for its variant, packet and indices`,
     );
+  }
+
+  /** One variant, both crystals, one depth-sorted drawing. */
+  function drawComposite() {
+    const data = state.result.data;
+    frame.configure({ formatCursor: () => 'drag to turn · scroll to zoom' });
+    frame.setContent(
+      renderScene(
+        compositeScene(data, { parentColor: PHASE_COLORS.parent, childColor: PHASE_COLORS.child }),
+        camera,
+        frame,
+        compositeAppearance(state.appearance),
+      ),
+    );
+    buildPhaseLegend(data);
+    const notes = screenAlignment(camera.rotation, data.primitives);
+    frame.setStatus(
+      `Variant ${data.variant.index} of ${data.variant.count} · ` +
+        `${data.parent.label} and ${data.child.label} in the parent frame · ` +
+        alignmentStatus(notes),
+    );
+  }
+
+  /**
+   * Every variant at one camera.
+   *
+   * The two structures were fetched once; each panel applies its own placement
+   * matrix here. Fetching a scene per variant would be the same picture for
+   * twenty-four times the traffic, and is exactly what the payload shape exists
+   * to avoid.
+   */
+  function drawContactSheet() {
+    const data = state.result.data;
+    const appearance = compositeAppearance(state.appearance, { compact: true });
+    const sheet = el(
+      'div.sheet',
+      {},
+      data.variants.map((entry) => {
+        const plane = entry.parallelisms.find((row) => row.kind === 'plane');
+        return el(
+          'button.sheet__cell',
+          {
+            type: 'button',
+            dataset: { variant: String(entry.index), packet: String(entry.packet) },
+            title: `Open variant ${entry.index} in the composite view`,
+            onclick: () => {
+              if (dragMoved) return;
+              openVariant(entry.index);
+            },
+          },
+          [
+            renderScene(
+              contactSheetScene(data, entry, {
+                parentColor: PHASE_COLORS.parent,
+                childColor: PHASE_COLORS.child,
+              }),
+              camera,
+              SILENT_FRAME,
+              appearance,
+            ),
+            el('span.sheet__caption', {}, [
+              el('strong', { text: `V${entry.index}` }),
+              el('span.sheet__packet', {}, [
+                el('span.sheet__swatch', {
+                  style: `background:${packetColor(entry.packet)}`,
+                }),
+                el('span', { text: `packet ${entry.packet}` }),
+              ]),
+            ]),
+            plane
+              ? el('span.sheet__pair', { text: `${plane.parent} \u2225 ${plane.child}` })
+              : null,
+          ],
+        );
+      }),
+    );
+    buildPhaseLegend(data);
+    frame.setContent(sheet);
+    frame.setStatus(
+      `${data.variant_count} variants in ${data.packet_count} packets at one camera · ` +
+        'drag to turn all of them together · click a panel to open it',
+    );
+  }
+
+  /**
+   * The legend of a composite view: which colour is which phase.
+   *
+   * Not the packet legend, and not a filter — the two crystals are the figure,
+   * so there is nothing to switch off. It exists because colour means something
+   * different here than in the pole figure, and an unexplained change of
+   * meaning is worse than either meaning alone.
+   */
+  function buildPhaseLegend(data) {
+    if (state.legendFor === data) return;
+    state.legendFor = data;
+    legend.hidden = false;
+    legend.replaceChildren(
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${PHASE_COLORS.parent}` }),
+        el('span', { text: `${data.parent.label} (parent)` }),
+      ]),
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${PHASE_COLORS.child}` }),
+        el('span', { text: `${data.child.label} (child)` }),
+      ]),
+      el('span.legend__guide', {
+        text: 'Colour is the phase, not the element: both phases are usually the same element.',
+      }),
+    );
+  }
+
+  /** Switch to the composite view already showing the variant that was clicked. */
+  function openVariant(index) {
+    const target = operations.find((entry) => entry.id === 'variants.composite_scene');
+    if (!target) return;
+    const request = { ...state.form.values(), variant: index };
+    delete request.packet_plane;
+    state.operation = target;
+    operationSelect.value = target.id;
+    renderControls(request);
+    run();
   }
 
   /** Build the legend for a new result. Called once per result, not per redraw. */
@@ -364,6 +600,77 @@ export function mount(context) {
     }
   }
 
+  /*
+   * Turning the crystals.
+   *
+   * Watched on the frame rather than on the drawing, because a redraw replaces
+   * the drawing: handlers owned by the SVG see the first movement of a drag and
+   * nothing after it, and the symptom is a crystal that nudges once however far
+   * you pull. This is the same reason, and the same fix, as in the crystal
+   * viewer.
+   */
+  let dragging = null;
+  // A contact-sheet panel is a button *and* a drag surface. Capturing the
+  // pointer or preventing the default on pointerdown kills the click that opens
+  // the variant, so the drag only takes over once the pointer has actually
+  // moved -- and the click that follows a real drag is then ignored, which is
+  // what stops "turn the sheet" from also meaning "open whichever panel you
+  // happened to start on".
+  const DRAG_THRESHOLD_PX = 3;
+  let dragMoved = false;
+
+  frame.element.addEventListener('pointerdown', (event) => {
+    // Cleared for *every* press, including one that starts outside a drawing:
+    // a press on a panel's caption must not inherit the "this was a drag" flag
+    // from the last turn of the crystals and be swallowed by it.
+    dragMoved = false;
+    if (!state.result || !is3D()) return;
+    if (!event.target.closest('svg')) return;
+    dragging = { x: event.clientX, y: event.clientY, id: event.pointerId };
+  });
+  frame.element.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const moveX = event.clientX - dragging.x;
+    const moveY = event.clientY - dragging.y;
+    if (!dragMoved) {
+      if (Math.hypot(moveX, moveY) < DRAG_THRESHOLD_PX) return;
+      dragMoved = true;
+      frame.element.setPointerCapture(event.pointerId);
+    }
+    event.preventDefault();
+    dragging = { ...dragging, x: event.clientX, y: event.clientY };
+    // Pre-multiplying rotates about the *screen* axes, so "drag right turns
+    // right" stays true however the crystals are already oriented.
+    camera.rotation = multiply(
+      multiply(rotationY(moveX * 0.01), rotationX(moveY * 0.01)),
+      camera.rotation,
+    );
+    draw();
+  });
+  for (const ending of ['pointerup', 'pointercancel']) {
+    frame.element.addEventListener(ending, (event) => {
+      dragging = null;
+      if (frame.element.hasPointerCapture?.(event.pointerId)) {
+        frame.element.releasePointerCapture(event.pointerId);
+      }
+    });
+  }
+  frame.element.addEventListener(
+    'wheel',
+    (event) => {
+      if (!state.result || !is3D()) return;
+      event.preventDefault();
+      camera.zoom = Math.min(Math.max(camera.zoom * (event.deltaY < 0 ? 1.12 : 0.89), 0.2), 12);
+      draw();
+    },
+    { passive: false },
+  );
+
+  function is3D() {
+    const mode = viewMode();
+    return mode === 'composite' || mode === 'sheet';
+  }
+
   renderControls();
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
@@ -372,6 +679,49 @@ export function mount(context) {
   if (examples.length) loadExample(examples[0]);
 
   return { help: () => state.operation };
+}
+
+/**
+ * Draw one variant's two crystals, or the whole family at one camera.
+ *
+ * Both come from the crystal viewer's renderer, not from a second one: the
+ * composition happens in `core/compositescene.js`, which concatenates payloads
+ * into the shape that renderer already takes. That matters for more than reuse
+ * — a single renderer means a single depth sort, so parent and child atoms
+ * occlude each other correctly instead of one crystal being drawn wholly in
+ * front of the other.
+ */
+function compositeAppearance(base, { compact = false } = {}) {
+  return {
+    ...base,
+    showBonds: compact ? false : base.showBonds,
+    showLabels: compact ? false : base.showLabels,
+    showGizmo: compact ? false : base.showGizmo,
+    showCells: base.showCells,
+    surfaceFinish: compact ? 'flat' : base.surfaceFinish,
+    atomScale: compact ? base.atomScale * 0.9 : base.atomScale,
+    annotationScale: base.annotationScale,
+  };
+}
+
+/** A frame that accepts hover registrations and drops them, for the small panels. */
+const SILENT_FRAME = { hoverable() {} };
+
+/**
+ * The status line of the composite view: where the parallelism is, right now.
+ *
+ * A picture cannot answer "am I looking down it yet?" — a plane a couple of
+ * degrees off edge-on looks edge-on. The numbers can, so they are on the status
+ * line and they update as the crystal turns.
+ */
+function alignmentStatus(notes) {
+  if (!notes.length) return 'no parallel plane or direction is being drawn';
+  return notes
+    .map(
+      (note) =>
+        `${note.label} ${formatNumber(note.angleDeg, 1)}° from ${note.aligned}`,
+    )
+    .join(' · ');
 }
 
 /**

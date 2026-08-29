@@ -13,6 +13,20 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The composite crystal viewer.** The Variants panel gained two views. *Both crystals of one
+  variant* draws the parent and the product in one frame with the parallel plane and direction
+  drawn across both, turned by one camera, with a status line reading out how far each plane is
+  from edge-on and each direction from end-on — a plane two degrees off edge-on looks edge-on,
+  and no picture can say otherwise. *Every variant at once* is the contact sheet: one panel per
+  variant at the same camera, each captioned with its packet and its own parallel plane, and
+  clicking one opens it in the composite view.
+
+  There is no second renderer. The panels compose scene payloads into the shape the crystal
+  viewer's renderer already takes (`core/compositescene.js`), which also buys a single global
+  depth sort, so parent and child atoms occlude each other correctly. Colour carries the
+  **phase** rather than the element, and the legend says so: both phases of an orientation
+  relationship are usually the same element, so colouring by species leaves one blob.
+
 - **The composite-scene service layer.** Two new workbench operations put M2's variant
   surfaces behind the API, ahead of the panel that will draw them.
   `variants.composite_scene` returns both crystals of one transformation variant already
@@ -123,6 +137,13 @@ downstream analyses depend on them.
   parameter somewhere of its own and must hide the generated one so the two cannot disagree.
 
 ### Fixed
+
+- **The variants panel no longer draws a stale result over a new one.** Switching view started a
+  request without cancelling the previous one, so a slower response won: the pole figure already
+  running could land after the composite scene, overwrite it, and hand the new view's drawing
+  code the old view's data. Where the shapes disagreed that threw; where they happened to agree
+  it would have drawn stale numbers silently, which is worse. Each run now carries a token and a
+  superseded response is discarded.
 
 - **The Kearns panel presented a vacuous check as a passed one.** `f_RD + f_TD + f_ND = 1` was
   reported as a green "closure check passes", implying the measurement carried no systematic error

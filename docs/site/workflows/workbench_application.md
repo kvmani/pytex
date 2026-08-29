@@ -387,35 +387,46 @@ This is the panel's whole argument: a measured misorientation histogram from pri
 should show peaks at those angles and nowhere else, and a peak elsewhere is a boundary between two
 *different* parent grains.
 
-### The composite-scene service, ahead of its panel
+### The composite views of the variants panel
 
-Two operations of the Variants workspace have **no user interface yet**: `variants.composite_scene`
-and `variants.contact_sheet`. They are reachable through the operation registry and the HTTP API,
-they ship with runnable examples like every other operation, and the viewer that will draw them is
-the next increment. This section says what they return so that nothing about them has to be
-inferred from the code.
+The Variants panel offers four views. Two are figures of where the variants *point* — the pole
+figure and the misorientation spectrum, both described above. The other two show what the variants
+*are*, as crystals.
 
-`variants.composite_scene` returns both crystals of **one** transformation variant, already placed
-in a single world frame — which is the parent crystal frame — under `data.parent.scene` and
-`data.child.scene`, in the same payload shape the crystal viewer already consumes. Beside them,
-`data.primitives` carries the parallel planes as polygons and the parallel directions as arrows, in
-world coordinates, and `data.variant` carries the placement matrix. Nothing crossing the wire needs
-crystallography to draw: a viewer applies a camera rotation and nothing else, which is also why one
-camera cannot drift between the two crystals.
+**Both crystals of one variant** draws the parent and the product in one frame with the planes and
+directions the relationship holds parallel drawn across both. It is the picture behind the
+parallelism statement: instead of reading that (111) of austenite is parallel to (011) of ferrite,
+you see one plane through two lattices, with the shared direction as an arrow lying in it. Drag to
+turn both crystals together; the status line reads out how far each parallel plane is from
+**edge-on** and each parallel direction from **end-on**, because a plane two degrees off edge-on
+looks edge-on and no picture can tell you otherwise.
 
-`variants.contact_sheet` returns the same two structures **once each, in their own crystal frames**,
-plus one entry per variant carrying a 3×3 placement matrix, that variant's overlays, and its packet.
-Sending 24 fully placed copies of both crystals would be tens of megabytes for information a matrix
-multiply reproduces exactly; applying one of those matrices is the same arithmetic the camera
-already does, so no crystallography moves into the browser. The two operations agree: the matrix the
-sheet gives for variant *k* is the matrix `variants.composite_scene` places variant *k* by, and a
-test asserts it, because a grid and a detail view that disagree would be worse than either alone.
+**Every variant at once** is the contact sheet: one panel per variant, all at the same camera, with
+the packet and the parallel plane under each. Turning one turns all of them. Click any panel to open
+that variant in the composite view.
 
-**Both label the overlay with the variant's own indices.** Each variant holds a *different* member
-of the parent family parallel, so the table's parallel-plane column takes four distinct values down
-the 24 Kurdjumov-Sachs rows — the four packet planes — and not one. Quoting the relationship's
-nominal pair on every variant would produce a picture that looks right and is wrong; see
-[Visualization primitives](../concepts/visualization_primitives.md).
+Three things about these views are worth stating rather than leaving to be noticed.
+
+**The overlay carries the variant's own indices.** Each variant holds a *different* member of the
+parent family parallel, so the plane named under each panel changes down the sheet — four values
+over the 24 Kurdjumov-Sachs panels, one per packet, and the packet swatch beside it agrees. Quoting
+the relationship's nominal pair on every panel would give twenty-four pictures that look right and
+are wrong for twenty-three of them.
+
+**Colour is the phase, not the element.** The two phases of an orientation relationship are usually
+the same element — austenite and ferrite are both iron — so colouring by species would paint both
+crystals one colour and leave a blob in which no parallelism can be read. The legend says so, in
+those words, because a viewer that quietly changed what a colour meant would be worse than one that
+could not tell the crystals apart.
+
+**All the crystallography is still in Python.** The composite view arrives with both structures
+already placed in the parent frame, so one camera drives them and cannot drift between them. The
+contact sheet arrives as the two structures *once*, in their own crystal frames, plus one 3×3
+placement matrix per variant: sending 24 placed copies of both crystals would be tens of megabytes
+to say what a matrix multiply says exactly, and applying one of those matrices is the same
+arithmetic the camera already does. The two agree by test — the matrix the sheet uses for variant
+*k* is the one the composite view places variant *k* by — because a grid and a detail view that
+disagreed would be worse than either alone.
 
 ### The texture panel, against the m.r.d. scale
 

@@ -776,3 +776,43 @@ class TestContactSheet:
         with pytest.raises(InvalidInputError) as error:
             contact_sheet(packet_plane=[0, 0, 0])
         assert error.value.details["field"] in {"packet_plane", "pole"}
+
+
+class TestPlaneSpelling:
+    """One plane, one spelling, wherever it appears.
+
+    A plane has no sign, and the sign a symmetry image comes back with is an
+    artefact of the arithmetic. Before this was fixed, the variant table named
+    variant 10's parent plane `(1 1 -1)` while the 3-D overlay drawn beside it
+    named the same plane `(-1 -1 1)`, and a reader was left to work out that
+    they were the same plane.
+    """
+
+    def test_the_overlay_and_the_table_agree_for_every_variant(self) -> None:
+        for index in range(1, 25):
+            data = composite(variant=index)["data"]
+            plane_row = next(row for row in data["parallelisms"] if row["kind"] == "plane")
+            patch_label = data["primitives"]["patches"][0]["label"]
+            assert plane_row["parent"] in patch_label, index
+            assert plane_row["child"] in patch_label, index
+
+    def test_the_sheet_and_its_overlays_agree_too(self) -> None:
+        for entry in contact_sheet()["data"]["variants"]:
+            plane_row = next(row for row in entry["parallelisms"] if row["kind"] == "plane")
+            assert plane_row["parent"] in entry["primitives"]["patches"][0]["label"]
+
+    def test_directions_keep_their_sign(self) -> None:
+        """The same rule must not be applied to directions.
+
+        `[111]` and `[-1-1-1]` are opposite directions, so collapsing them would
+        state something false. Over the 24 variants the direction labels must
+        therefore include at least one with a leading negative index.
+        """
+
+        leading_negative = 0
+        for index in range(1, 25):
+            rows = composite(variant=index)["data"]["parallelisms"]
+            direction = next(row for row in rows if row["kind"] == "direction")
+            if direction["parent_indices"][0] < 0:
+                leading_negative += 1
+        assert leading_negative > 0

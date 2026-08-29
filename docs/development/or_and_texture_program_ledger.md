@@ -53,42 +53,34 @@ only*. The child scene is pre-placed in the world frame by Python, so a shared c
 | Step | Content | State |
 | --- | --- | --- |
 | **M3a** | `variants.composite_scene` and `variants.contact_sheet` service operations over `scene_payload`, with tests | **Complete** (2026-08-29) |
-| **M3b** | The workbench panel: variant selector, contact-sheet mode, appearance toggles, side-by-side and interpenetrating placement | Not started |
+| **M3b** | The workbench panel: variant selector, contact-sheet mode, appearance toggles, side-by-side and interpenetrating placement | **Complete** (2026-08-29) |
 | **M3c** | F17 `ORDossier`: `describe()`, `to_json()`, `export(directory)`, assembled from existing calls only | Not started |
 
 ### Next concrete step
 
-**M3b — the workbench panel.** M3a is complete: `variants.composite_scene` and
-`variants.contact_sheet` are registered, tested (24 tests in `tests/unit/test_app_variants.py`),
-exampled and documented. The panel is the remaining half of F19, and it is browser work.
+**M3c — the F17 `ORDossier`.** M3a and M3b are complete, so the figures and the numbers the dossier
+bundles all exist and are reachable. What remains is the assembly.
 
-What exists to build on: `js/panels/crystal.js` already draws a `scene_payload` with a painter's
-depth sort and appearance controls, `rotation3.js` supplies the camera, and `js/panels/variants.js`
-already owns the workspace. The new JavaScript is a composition layer, not a renderer.
+`ORDossier` with `describe()`, `to_json()` against a schema under `schemas/`, and
+`export(directory)` writing figures as SVG, tables as CSV and Markdown, and numbers as JSON. Its
+contents, all from calls that already exist:
 
-What the panel has to do:
+- the relationship and its `describe()`, the variant list and the packet grouping;
+- the intervariant misorientation spectrum and the same-parent boundary fingerprint;
+- the composite scene per variant (M2a/M3a) and the OR stereogram (M2b);
+- the variant pole figure, and the per-variant SAED patterns from the existing diffraction stack.
 
-- a **variant selector** driving `variants.composite_scene`, with the parallel-plane and
-  parallel-direction toggles and the two placement modes the operation already exposes;
-- a **contact-sheet mode** from `variants.contact_sheet`: the two scenes are fetched once and each
-  panel applies its variant's `child_matrix` — this is the shape the payload was designed for, so
-  the panel must not fetch a scene per variant;
-- **one camera for both crystals**, which is free: the composite payload arrives pre-placed in the
-  parent frame, so the camera is a single rotation applied to both;
-- a **live readout** of what is currently parallel to the screen normal;
-- a Playwright test, since this is the first browser increment of this program.
+*The rule the vision document sets, and the one to hold to:* the dossier must **call** those
+functions, never reimplement them. A dossier number that disagrees with the function it came from is
+the exact class of defect this repository exists to prevent.
 
-Two things to carry in, because they are the traps this program keeps finding:
+Two traps to carry in, unchanged from M2 and M3:
 
-1. Label overlays from `data.parallelisms` / each contact-sheet entry's `parallelisms`, which are
-   already the variant's own indices. Do not re-derive them, and do not fall back to the
-   relationship's nominal pair.
-2. Any deviation the panel displays must name what it measures. The stereogram's nominated-pair
-   deviation is a *rationalization residual*, not a departure from parallelism; a panel that
-   printed it as "misfit" would be stating something false.
-
-After M3b comes **M3c**, the F17 `ORDossier` — `describe()`, `to_json()`, `export(directory)` —
-assembled strictly from existing calls.
+1. Name parallelisms from the **variant's own** `parallel_planes` / `parallel_directions`, never the
+   relationship's nominal pair, and spell planes through `canonicalize_sign` so one plane has one
+   spelling across every table and figure in the bundle.
+2. Any deviation the dossier prints must say what it measures. The stereogram's nominated-pair
+   deviation is a *rationalization residual*, not a departure from parallelism.
 
 **Known and deliberately untouched.** `generate_stereonet_grid` and `project_great_circle_trace`
 return polylines that jump the rim when a trace leaves the projected hemisphere, so matplotlib draws
@@ -100,6 +92,50 @@ increment, not inside M2.
 ---
 
 ## 3. History
+
+### 2026-08-29 — M3b complete: the composite crystal viewer (F19)
+
+**What shipped.** Two new views in the Variants panel — *Both crystals of one variant* and *Every
+variant at once* — built on a new `core/compositescene.js`, a `setTitle` on the shared plot frame,
+contact-sheet styles in `app.css`, and three `export` keywords on `panels/crystal.js`. One Playwright
+test (the browser suite is 53 green), and rewritten prose in
+`docs/site/workflows/workbench_application.md`, which previously said these operations had no user
+interface.
+
+**No second renderer.** The panels compose scene payloads into the shape the crystal viewer's
+renderer already takes, which was the whole design of M3a's payloads. That buys more than reuse: one
+renderer means one global depth sort, so parent and child atoms occlude each other correctly instead
+of one crystal being drawn wholly in front of the other.
+
+**Three findings.**
+
+1. *Colour had to stop meaning the element.* Both phases of an orientation relationship are usually
+   the same element — austenite and ferrite are both iron — so the first working composite was a
+   single orange blob in which no parallelism could be read. Colour now carries the **phase**, and
+   the legend says so in those words, because a viewer that quietly changed what a colour meant
+   would be worse than one that could not tell the crystals apart.
+
+2. *A stale response could overwrite a new one.* Switching view started a request without cancelling
+   the previous one, and the pole figure already running could land after the composite scene,
+   overwrite `state.result`, and hand the new view's drawing code the old view's data. It threw here
+   because the shapes disagree; where two views' shapes happen to agree it would have drawn stale
+   numbers silently, which is worse. Runs now carry a token. This was a pre-existing defect in the
+   panel that the new views exposed.
+
+3. *One plane, two spellings.* The variant table named variant 10's parent plane `(1 1 -1)` while
+   the 3-D overlay beside it named the same plane `(-1 -1 1)`. A plane has no sign, and the sign a
+   symmetry image comes back with is an artefact. Every producer of a plane label in this path now
+   goes through `pytex.core.miller.canonicalize_sign` — the rule that already existed — rather than
+   through a private copy: the first fix added a fourth implementation to `core.notation` and was
+   replaced by the existing one. Directions deliberately keep their sign, and a test asserts it.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 152 files; `pytest tests/unit` green;
+53 Playwright tests green against a loopback server, the new one run three times in a row after the
+race was fixed; both views driven by hand in the browser with an empty console.
+
+**Not done.** No publication renderer for the composite views: the *Figure* button and its format
+picker are disabled outside the pole figure rather than silently producing the wrong figure. A
+`variants.composite_render` belongs with the dossier's figure bundle in M3c.
 
 ### 2026-08-29 — M3a complete: the composite-scene service layer
 

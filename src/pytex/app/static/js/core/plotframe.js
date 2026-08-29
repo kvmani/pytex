@@ -93,6 +93,7 @@ export function plotFrame({
   const detail = el('div.plot__detail', { hidden: true });
   const status = el('p.plot__status', { text: '' });
   const controls = el('div.plot__controls', { hidden: true });
+  const titleNode = el('h2.plot__title', { text: title });
   const zoomReadout = el('output.plot__zoom', { text: '100%', title: 'Current plot zoom' });
 
   const panButton = el('button.button.button--icon', {
@@ -152,7 +153,7 @@ export function plotFrame({
 
   const element = el('figure.plot', {}, [
     el('figcaption.plot__header', {}, [
-      el('h2.plot__title', { text: title }),
+      titleNode,
       el('div.plot__toolbar', {}, [...viewportToolbar, ...toolbar]),
     ]),
     el('div.plot__stage', {}, [canvas, overlay, detail, readout ? null : cursor]),
@@ -499,6 +500,19 @@ export function plotFrame({
     },
 
     /** One line under the plot: counts, scale, what is being shown. */
+    /**
+     * Rename the frame, for a panel whose views are different figures.
+     *
+     * A heading fixed at construction is right for a panel with one figure and
+     * wrong for one that switches between a pole figure and a crystal scene:
+     * the frame would keep announcing the view the reader just left.
+     *
+     * @param {string} text
+     */
+    setTitle(text) {
+      titleNode.textContent = text;
+    },
+
     setStatus(text) {
       status.textContent = text ?? '';
     },

@@ -33,6 +33,7 @@ from typing import Any
 import numpy as np
 
 from pytex.core.lattice import Phase
+from pytex.core.miller import canonicalize_sign
 from pytex.core.notation import format_miller_indices
 from pytex.plotting.crystal3d import (
     CrystalScene,
@@ -365,6 +366,12 @@ def _parallelism_label(parent_indices: Any, child_indices: Any, *, family: str) 
     kind = "plane" if family == "plane" else "direction"
     if parent is None or child is None:
         return f"∥ {kind}"
+    if family == "plane":
+        # A plane has no sign, and the sign a symmetry image comes back with is
+        # an artefact. Spelling it one way here and another in a table beside it
+        # leaves the reader to work out that they are the same plane.
+        parent = [int(value) for value in canonicalize_sign(parent)[0]]
+        child = [int(value) for value in canonicalize_sign(child)[0]]
     return (
         f"{format_miller_indices(parent, family=family, style='plain')}"
         f" ∥ {format_miller_indices(child, family=family, style='plain')}"

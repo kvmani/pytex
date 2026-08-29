@@ -79,11 +79,11 @@ const DEFAULT_APPEARANCE = Object.freeze({
   annotationScale: 1,
 });
 
-function defaultAppearance() {
+export function defaultAppearance() {
   return { ...DEFAULT_APPEARANCE, speciesColors: {} };
 }
 
-function seedSpeciesColors(appearance, scene) {
+export function seedSpeciesColors(appearance, scene) {
   for (const atom of scene?.atoms ?? []) {
     if (!appearance.speciesColors[atom.species]) {
       appearance.speciesColors[atom.species] = atom.color;
@@ -806,7 +806,7 @@ function bondGlyph(a, b, color, width, opacity, appearance) {
   ]);
 }
 
-function renderScene(scene, camera, frame, appearance) {
+export function renderScene(scene, camera, frame, appearance) {
   const root = svg('svg', {
     viewBox: `${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`,
     preserveAspectRatio: 'xMidYMid meet',

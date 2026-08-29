@@ -2524,3 +2524,81 @@ test('the Kearns panel refuses to call a closed triad a passed check', async ({ 
 
   expect(browserErrors).toEqual([]);
 });
+
+
+test('draws both crystals of a variant, and every variant at one camera', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Variants');
+
+  const view = page.locator('#rail-body').getByLabel('View');
+
+  /*
+   * The composite view.
+   *
+   * The claim under test is not "an SVG appeared". It is that the overlay is
+   * labelled with *this* variant's indices and that turning the crystals
+   * changes the readout that says where the parallelism is pointing — the two
+   * things a picture alone cannot demonstrate.
+   */
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('variants.composite_scene'),
+  );
+  const plot = page.locator('#stage .plot');
+  await expect(plot.locator('.plot__title')).toHaveText('Composite scene');
+  await expect(plot.locator('svg')).toBeVisible();
+  const status = plot.locator('.plot__status');
+  await expect(status).toContainText('Variant 1 of 24');
+  await expect(status).toContainText('from edge-on');
+
+  // Colour carries the phase here, not the element -- both phases are iron --
+  // and the legend has to say so, or the change of meaning is silent.
+  await expect(plot).toContainText('Austenite (fcc Fe) (parent)');
+  await expect(plot).toContainText('Ferrite (bcc Fe) (child)');
+  await expect(plot).toContainText('Colour is the phase, not the element');
+
+  const before = await status.textContent();
+  const surface = plot.locator('svg').first();
+  const box = await surface.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 90, box.y + box.height / 2 + 40, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(() => status.textContent()).not.toBe(before);
+
+  /*
+   * The contact sheet.
+   *
+   * Twenty-four panels from two scenes and twenty-four matrices, and the packet
+   * column agreeing with the plane column: four packets, four planes, six
+   * variants each. That agreement is the whole scientific content of the grid.
+   */
+  await expectNewCompletedCalculation(page, () => view.selectOption('variants.contact_sheet'));
+  await expect(plot.locator('.plot__title')).toHaveText('Variant contact sheet');
+  const cells = plot.locator('.sheet__cell');
+  await expect(cells).toHaveCount(24);
+  await expect(plot.locator('.plot__status')).toContainText('24 variants in 4 packets');
+
+  const grouped = await cells.evaluateAll((nodes) => {
+    const byPacket = {};
+    for (const node of nodes) {
+      const pair = node.querySelector('.sheet__pair').textContent;
+      (byPacket[node.dataset.packet] ??= new Set()).add(pair);
+    }
+    return Object.fromEntries(
+      Object.entries(byPacket).map(([packet, pairs]) => [packet, [...pairs]]),
+    );
+  });
+  expect(Object.keys(grouped)).toHaveLength(4);
+  for (const pairs of Object.values(grouped)) expect(pairs).toHaveLength(1);
+  expect(new Set(Object.values(grouped).map((pairs) => pairs[0])).size).toBe(4);
+
+  // Clicking a panel opens that variant, so the grid and the detail view are
+  // one instrument rather than two.
+  await expectNewCompletedCalculation(page, () =>
+    cells.nth(16).getByText('V17', { exact: true }).click(),
+  );
+  await expect(plot.locator('.plot__title')).toHaveText('Composite scene');
+  await expect(plot.locator('.plot__status')).toContainText('Variant 17 of 24');
+
+  expect(browserErrors).toEqual([]);
+});
