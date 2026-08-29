@@ -48,33 +48,75 @@ plumbing and presentation milestone, mostly in `app/`.
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M4a** | F21: a panel taking two orientations (Euler, matrix, or axis/angle) and reporting the relationship — catalog deviations, the fitted rotation, the integer parallelism statement | Not started |
-| **M4b** | F22: the OR stereogram beside the 3-D view, sharing the camera | Not started |
-| **M4c** | F23: pick two grains on an EBSD map and flow their mean orientations into M4a with no retyping | Not started |
+| **M4a** | F21 part 1: `as_rational_relationship`, the integer statement with the cost of the idealization | **Complete** (2026-08-29) |
+| **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | Not started |
+| **M4c** | F22: the locked composite viewer for measured grains, with the stereogram sharing its camera | Not started |
+| **M4d** | F23: pick two grains on an EBSD map and flow their mean orientations in with no retyping | Not started |
 
 ### Next concrete step
 
-**M4a — the measured-pair panel.** Add a service operation taking two parent/child orientations and
-returning: the deviation from every catalog relationship (`characterize_orientation_relationship`),
-the fitted relationship and its residuals (`fit_orientation_relationship`), and the integer
-parallelism statement of the fit (`describe_orientation_relationship`, plus the F4 search). Then a
-panel over it.
+**M4b — the `variants.or_from_grains` operation and its panel.** M4a landed the piece F21 called
+missing that no existing function covered: the rational reduction that produces an *object* with its
+cost. What remains of F21 is the application surface.
 
-The output of that operation is the natural input to everything M2/M3 landed: hand its fitted
-relationship to `or_dossier`, `plot_or_stereogram` or `variants.composite_scene` and the whole
-answer half already works. Build the operation so that handing over is one call, not a re-derivation.
+The operation takes two Euler triples with an explicit convention selector (Bunge by default; the
+convention machinery is in `core/conventions.py` and `app/services/crystal.py`), two phases, and an
+optional tolerance. It returns, from calls that already exist:
 
-Two traps to carry in, unchanged since M2:
+- the fit and its residuals, and the catalog ranking with the conclusiveness verdict
+  (`characterize_orientation_relationship`);
+- the integer statement and **its cost** (`ORCharacterizationReport.as_rational_relationship`);
+- enough to hand straight to `or_dossier`, `plot_or_stereogram` or `variants.composite_scene`, so
+  the answer half M2/M3 built needs no re-derivation.
 
-1. Name parallelisms from the **variant's own** `parallel_planes` / `parallel_directions`, and spell
-   planes through `pytex.core.miller.canonicalize_sign`, so one plane has one spelling everywhere.
-2. Say what each deviation measures. A fit residual, a catalog separation and a rationalization
-   residual are three different quantities, and a panel that labelled them all "deviation" would be
-   stating something false about two of them.
+Then a panel over it, in the Variants workspace beside the four views already there.
 
-**Known and deliberately untouched.**---
+**The presentation trap this milestone carries.** Four different angles will appear on one screen:
+the fit residual (scatter of the data), the catalog deviation (distance to a named relationship),
+the rationalization cost (distance to the integer statement), and a clause deviation
+(rationalization residual of one index pair). They are four different quantities and a panel that
+labelled them all "deviation" would be stating something false about three of them. Name each one
+where it is shown.
+
+**Known and deliberately untouched.****Known and deliberately untouched.**---
 
 ## 3. History
+
+### 2026-08-29 — M4a complete: the integer statement, and what it costs (F21 part 1)
+
+**What shipped.** `ORCharacterizationReport.as_rational_relationship(...)` and
+`RationalizedORResult` in `src/pytex/core/transformation.py`, exported from `pytex` and
+`pytex.core`; 11 tests in `tests/unit/test_transformation.py`; a worked example; a new theory
+section, *From A Statement To An Object, And What That Costs*, in
+`docs/site/theory/orientation_relationship_determination.md`.
+
+**The number the feature exists to report.** Six exact Greninger-Troiano pairs, held to
+`max_index=2`, rationalize to the **Kurdjumov-Sachs** statement — GT has no low-index direction pair
+— and the cost is **2.404 deg**, the published KS-GT separation. Allowing index 3 finds
+`[321] || [223]` at 0.44 deg and index 4 a statement at 0.02 deg. Tidier integers cost more, the
+caller chooses, and the trade is visible instead of implied. Returned without that number the result
+would read as a measurement of Kurdjumov-Sachs, which is the whole failure mode F21 named.
+
+**A correctness constraint, not a nicety.** The direction clause is chosen from those satisfying the
+zone law against the chosen plane. `from_parallel_plane_direction` removes the direction's
+normal component, so a plane and a direction not lying in it build a relationship the two printed
+labels do not describe — an object and its own statement disagreeing. The result also carries the
+measured angular departure, so the integer test has a geometric consequence a reader can check, and
+the two refusal paths ("no plane clause" and "no clause in that plane") carry different messages
+because they ask for different responses.
+
+**Two smaller decisions.** The search is re-run at the bounds passed in rather than reusing the
+report's clause list, so `max_index` means something; the report's own first clauses are passed as
+*preferences*, so widening the bound cannot quietly swap a canonical statement for an equally exact
+alternative with larger indices. And the idealization is named with a `_rationalized` suffix, so it
+cannot be mistaken for the measurement three reports later.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 153 files; `pytest tests/unit` green;
+gallery and class-model atlas regenerated (one new public dataclass: 290/273 to 291/274).
+
+**Not done.** No application surface — that is M4b. Multi-pair aggregation (F21 part 2) is already
+covered by `fit_orientation_relationship` and its residual statistics, so no new API was added for
+it; if the panel wants outlier flags, that is where they belong.
 
 ### 2026-08-29 — M3c complete, and M3 with it: the OR dossier (F17)
 

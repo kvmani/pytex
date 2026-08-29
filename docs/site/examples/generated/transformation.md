@@ -927,3 +927,110 @@ result = [
 **Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (intervariant table and packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Writing Greninger-Troiano in low indices costs the 2.40 deg to Kurdjumov-Sachs
+
+Six exact Greninger-Troiano children of one austenite grain are characterized, then the fitted relationship is restated in integers with the index bound held at two. Greninger-Troiano has no low-index direction pair, so the tidiest statement available at that bound is the Kurdjumov-Sachs one -- {111} parallel to {110} with <110> parallel to <111> -- and writing it is not free. Four numbers are computed: the fit residual, which is zero because the data are exact; whether the rationalized plane family is {111} and the direction family <110>; and the price of the idealization. That price must be the published Kurdjumov-Sachs to Greninger-Troiano separation. An idealization returned without it would read as a measurement of Kurdjumov-Sachs.
+
+**Symbols**
+
+- $\Delta\omega$ &mdash; Symmetry-reduced angle between a measured relationship and the integer statement it is idealized to.
+- $(hkl)$ &mdash; Miller plane indices.
+- $[uvw]$ &mdash; Miller direction indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import (
+    OrientationSet,
+    Rotation,
+    characterize_orientation_relationship,
+    specimen_frame,
+)
+
+gt = OrientationRelationship.from_greninger_troiano_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+variants = gt.generate_variants()
+parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+picks = (0, 4, 8, 13, 17, 22)
+# Canonical crystal->specimen convention: C = P V^T.
+children = np.stack(
+    [parent_matrix @ variants[k].parent_to_child_rotation.as_matrix().T for k in picks]
+)
+frame = specimen_frame()
+report = characterize_orientation_relationship(
+    OrientationSet.from_matrices(
+        np.stack([parent_matrix] * len(picks)), specimen_frame=frame, phase=austenite
+    ),
+    OrientationSet.from_matrices(children, specimen_frame=frame, phase=ferrite),
+)
+
+rationalized = report.as_rational_relationship(max_index=2)
+plane = sorted(abs(int(v)) for v in rationalized.plane_statement.parent_indices)
+direction = sorted(abs(int(v)) for v in rationalized.direction_statement.parent_indices)
+result = [
+    report.mean_residual_deg,
+    float(plane == [1, 1, 1]),
+    float(direction == [0, 1, 1]),
+    rationalized.residual_rotation_deg,
+]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-rationalization-costs-the-ks-gt-separation` | [0.0000, 1.0000, 1.0000, 2.4037] | [0.0000, 1.0000, 1.0000, 2.4037] | deg, booleans, deg | 1.70e-05 | 5e-03 | ✅ pass |
+
+**Why this value**: The zero residual is an analytic identity: the pairs were generated from the relationship being fitted. The 2.40 deg is the documented separation between the Greninger-Troiano and Kurdjumov-Sachs representatives, which is exactly what it costs to write the former with the latter's indices.
+
+**Citation**: Greninger and Troiano, Trans. AIME 185 (1949) 590; Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

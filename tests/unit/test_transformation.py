@@ -11,11 +11,13 @@ from pytex.core import (
     Handedness,
     Lattice,
     MillerIndex,
+    ORCharacterizationReport,
     Orientation,
     OrientationRelationship,
     OrientationSet,
     Phase,
     PhaseTransformationRecord,
+    RationalizedORResult,
     ReferenceFrame,
     Rotation,
     SymmetrySpec,
@@ -2185,3 +2187,254 @@ def test_variant_symmetry_operators_reproduce_the_variant_rotation() -> None:
             variant.child_symmetry_operator @ base @ variant.parent_symmetry_operator.T
         )
         assert_allclose(variant.parent_to_child_rotation.as_matrix(), expected, atol=1e-12)
+
+
+# --------------------------------------------------------------------------- #
+# Rationalizing a measured relationship, and pricing the idealization
+# --------------------------------------------------------------------------- #
+
+
+def _measured_report(relationship, picks=(0, 4, 8, 13, 17, 22)):  # type: ignore[no-untyped-def]
+    """Characterize exact children of one parent under `relationship`.
+
+    Exact rather than noisy on purpose: with zero scatter the fit residual is
+    zero, so every number the rationalizer reports is the cost of the
+    idealization alone and nothing else.
+    """
+
+    from pytex.core import characterize_orientation_relationship, specimen_frame
+
+    variants = relationship.generate_variants()
+    chosen = [index for index in picks if index < len(variants)]
+    parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+    # Canonical crystal->specimen convention: C = P V^T.
+    children = np.stack(
+        [parent_matrix @ variants[index].parent_to_child_rotation.as_matrix().T
+         for index in chosen]
+    )
+    frame = specimen_frame()
+    parents = OrientationSet.from_matrices(
+        np.stack([parent_matrix] * len(chosen)),
+        specimen_frame=frame,
+        phase=relationship.parent_phase,
+    )
+    return characterize_orientation_relationship(
+        parents,
+        OrientationSet.from_matrices(
+            children, specimen_frame=frame, phase=relationship.child_phase
+        ),
+    )
+
+
+def test_rationalizing_exact_ks_costs_nothing_and_recovers_its_statement() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    result = _measured_report(ks).as_rational_relationship()
+    assert result.residual_rotation_deg == pytest.approx(0.0, abs=1e-6)
+    assert result.plane_statement.deviation_deg == pytest.approx(0.0, abs=1e-6)
+    assert result.direction_statement.deviation_deg == pytest.approx(0.0, abs=1e-6)
+    plane = tuple(sorted(abs(int(v)) for v in result.plane_statement.parent_indices))
+    child_plane = tuple(sorted(abs(int(v)) for v in result.plane_statement.child_indices))
+    direction = tuple(sorted(abs(int(v)) for v in result.direction_statement.parent_indices))
+    child_direction = tuple(
+        sorted(abs(int(v)) for v in result.direction_statement.child_indices)
+    )
+    assert plane == (1, 1, 1)  # {111}_gamma
+    assert child_plane == (0, 1, 1)  # {011}_alpha
+    assert direction == (0, 1, 1)  # <110>_gamma
+    assert child_direction == (1, 1, 1)  # <111>_alpha
+
+
+def test_rationalizing_greninger_troiano_to_low_indices_costs_the_ks_separation() -> None:
+    """The number this whole surface exists to report.
+
+    Greninger-Troiano has no low-index direction pair. Held to |index| <= 2 the
+    tidiest integer statement available *is* the Kurdjumov-Sachs one, and the
+    price of writing it is the published KS-GT separation of 2.40 deg — not
+    zero, and not hidden. An idealization returned without that number would
+    look like a measurement of Kurdjumov-Sachs.
+    """
+
+    _, _, parent, child = make_phases()
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = _measured_report(gt)
+    assert report.mean_residual_deg == pytest.approx(0.0, abs=1e-6)
+    result = report.as_rational_relationship(max_index=2)
+    plane = tuple(sorted(abs(int(v)) for v in result.plane_statement.parent_indices))
+    direction = tuple(sorted(abs(int(v)) for v in result.direction_statement.parent_indices))
+    assert plane == (1, 1, 1)
+    assert direction == (0, 1, 1)
+    assert result.residual_rotation_deg == pytest.approx(2.404, abs=0.01)
+
+
+def test_the_cost_of_the_idealization_falls_as_the_indices_are_allowed_to_grow() -> None:
+    """Tidier integers cost more; the trade is the user's to make, so it has to
+    be visible."""
+
+    _, _, parent, child = make_phases()
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = _measured_report(gt)
+    residuals = [
+        report.as_rational_relationship(max_index=bound).residual_rotation_deg
+        for bound in (2, 3, 4)
+    ]
+    assert residuals == sorted(residuals, reverse=True)
+    assert residuals[0] > residuals[-1] + 1.0
+
+
+def test_the_reported_direction_lies_in_the_reported_plane() -> None:
+    """Without the zone-law filter the constructed relationship is not the one
+    the two printed labels describe: `from_parallel_plane_direction` drops the
+    direction's normal component."""
+
+    _, _, parent, child = make_phases()
+    for constructor in (
+        OrientationRelationship.from_kurdjumov_sachs_correspondence,
+        OrientationRelationship.from_nishiyama_wassermann_correspondence,
+        OrientationRelationship.from_greninger_troiano_correspondence,
+        OrientationRelationship.from_pitsch_correspondence,
+    ):
+        relationship = constructor(parent_phase=parent, child_phase=child)
+        result = _measured_report(relationship).as_rational_relationship()
+        plane = np.asarray(result.plane_statement.parent_indices, dtype=np.int64)
+        direction = np.asarray(result.direction_statement.parent_indices, dtype=np.int64)
+        assert int(np.dot(plane, direction)) == 0, relationship.name
+        assert result.zone_law_deviation_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_the_idealized_relationship_realizes_its_own_statement_exactly() -> None:
+    """The result is a genuine relationship, so its own parallelisms are exact.
+    The deviations it carries are distances from the *measurement*, not from
+    being a relationship."""
+
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    idealized = _measured_report(ks).as_rational_relationship().relationship
+    rotation = idealized.parent_to_child_rotation.as_matrix()
+    for parent_plane, child_plane in idealized.parallel_planes:
+        assert_allclose(rotation @ parent_plane.normal, child_plane.normal, atol=1e-12)
+    for parent_direction, child_direction in idealized.parallel_directions:
+        assert_allclose(
+            rotation @ parent_direction.unit_vector, child_direction.unit_vector, atol=1e-12
+        )
+
+
+def test_the_idealization_is_named_so_it_cannot_be_mistaken_for_the_measurement() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = _measured_report(ks)
+    result = report.as_rational_relationship()
+    assert result.relationship.name.endswith("_rationalized")
+    assert result.source_relationship_name == report.relationship.name
+    assert report.as_rational_relationship(name="ks_ideal").relationship.name == "ks_ideal"
+
+
+def test_describe_says_it_is_an_idealization_and_what_it_cost() -> None:
+    _, _, parent, child = make_phases()
+    gt = OrientationRelationship.from_greninger_troiano_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    text = _measured_report(gt).as_rational_relationship(max_index=2).describe()
+    assert "idealization" in text
+    assert "2.404" in text
+    assert "|index| <= 2" in text
+    assert "Compare the residual against the scatter" in text
+
+
+def test_the_rationalizer_refuses_rather_than_inventing_a_statement() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = _measured_report(ks)
+    with pytest.raises(ValueError, match="max_index must be at least 1"):
+        report.as_rational_relationship(max_index=0)
+    # A plane clause exists at |index| <= 1 -- {111} is index 1 -- but nothing
+    # in that plane completes it, so this is the second refusal, and it says so
+    # rather than reporting the plane alone as though it were the statement.
+    with pytest.raises(ValueError, match="No direction clause lies in"):
+        report.as_rational_relationship(tolerance_deg=0.0, max_index=1)
+
+
+def test_a_rotation_with_no_low_index_plane_is_refused_outright() -> None:
+    """The first refusal: nothing to rationalize at all, which asks for a wider
+    search rather than for a different completion."""
+
+    from pytex.core import characterize_orientation_relationship, specimen_frame
+
+    _, _, parent, child = make_phases()
+    parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+    awkward = Rotation.from_axis_angle([3.0, 5.0, 7.0], 0.37).as_matrix()
+    frame = specimen_frame()
+    parents = OrientationSet.from_matrices(
+        parent_matrix[None, :, :], specimen_frame=frame, phase=parent
+    )
+    children = OrientationSet.from_matrices(
+        (parent_matrix @ awkward.T)[None, :, :], specimen_frame=frame, phase=child
+    )
+    report = characterize_orientation_relationship(parents, children)
+    with pytest.raises(ValueError, match="nothing to rationalize"):
+        report.as_rational_relationship(max_index=2, tolerance_deg=0.05)
+
+
+def test_the_search_is_rerun_rather_than_reusing_the_reports_clause_list() -> None:
+    """`max_index` has to mean something. A report carrying no direction clauses
+    at all still rationalizes, because the bounds passed here drive a fresh
+    search; the report's own clauses only steer which family is preferred."""
+
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    report = _measured_report(ks)
+    statements = report.plane_statements
+    stripped = ORCharacterizationReport(
+        relationship=report.relationship,
+        pair_count=report.pair_count,
+        residuals_deg=report.residuals_deg,
+        iterations=report.iterations,
+        converged=report.converged,
+        catalog_names=report.catalog_names,
+        catalog_deviations_deg=report.catalog_deviations_deg,
+        best_catalog_name=report.best_catalog_name,
+        best_catalog_deviation_deg=report.best_catalog_deviation_deg,
+        margin_deg=report.margin_deg,
+        catalog_tolerance_deg=report.catalog_tolerance_deg,
+        plane_statements=statements,
+        direction_statements=(),
+        provenance=report.provenance,
+    )
+    # The search is re-run, so an empty statement list does not by itself starve
+    # it; the tolerance is what has to be closed down.
+    assert stripped.as_rational_relationship().residual_rotation_deg == pytest.approx(
+        0.0, abs=1e-6
+    )
+
+
+def test_the_result_rejects_a_swapped_clause_pair() -> None:
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    result = _measured_report(ks).as_rational_relationship()
+    with pytest.raises(ValueError, match="plane_statement must be a plane clause"):
+        RationalizedORResult(
+            relationship=result.relationship,
+            source_relationship_name=result.source_relationship_name,
+            plane_statement=result.direction_statement,
+            direction_statement=result.direction_statement,
+            residual_rotation_deg=0.0,
+            zone_law_deviation_deg=0.0,
+            max_index=4,
+            tolerance_deg=3.0,
+        )

@@ -151,6 +151,43 @@ atomic positions. The search therefore accepts a preference: the relationship's 
 defining families, or those of the matched catalog member. Fit quality outranks preference in the
 ordering, so a nominated family cannot promote a visibly worse clause above an exact one.
 
+## From A Statement To An Object, And What That Costs
+
+A recovered statement is prose. `ORCharacterizationReport.as_rational_relationship` turns it into a
+genuine `OrientationRelationship`, built from the integer plane pair and the integer direction pair
+by `from_parallel_plane_direction` — the same constructor a catalog relationship is built with, so
+the result behaves like one in every downstream call.
+
+That construction is an **idealization**, and the returned `RationalizedORResult` prices it. The
+integer statement names a nearby *exact* relationship $\mathbf{R}_{\mathrm{ideal}}$; the measurement
+is $\mathbf{R}_{\mathrm{fit}}$; and the cost is the symmetry-reduced angle between them,
+
+$$
+\Delta\omega \;=\; \min_{S_c \in G_c,\ S_p \in G_p}
+\angle\!\left( S_c\, \mathbf{R}_{\mathrm{ideal}}\, S_p,\ \mathbf{R}_{\mathrm{fit}} \right),
+$$
+
+reported beside the per-clause deviations. **A rational OR handed back without that number reads as
+a measurement of the relationship it was rounded to.** The number is meaningful against one
+reference: the scatter of the data it came from. An idealization costing less than the scatter is
+one the measurement cannot distinguish; one costing several times the scatter is a claim the
+measurement contradicts, however tidy the integers look.
+
+The trade is real and visible. Six exact Greninger–Troiano pairs, held to $|index| \le 2$,
+rationalize to the *Kurdjumov–Sachs* statement — $\{111\}\parallel\{110\}$ with
+$\langle 110 \rangle \parallel \langle 111 \rangle$ — at a cost of $2.404^{\circ}$, which is exactly
+the catalog spacing between the two. Allowing index 3 finds $[321]\parallel[223]$ at $0.44^{\circ}$,
+and index 4 finds a statement at $0.02^{\circ}$. Tidier integers cost more, and the caller chooses.
+
+**The zone law is a constraint, not a refinement.** `from_parallel_plane_direction` removes the
+component of the direction along the plane normal, so a plane and a direction that is not in it
+would build a relationship the two printed labels do not describe. The direction clause is
+therefore selected from those satisfying $\mathbf{h}\cdot\mathbf{u} = 0$ against the chosen plane,
+and the result carries the resulting angular departure so a reader can check it is zero. When no
+clause in the chosen plane exists within the bounds, the method refuses with a message
+distinguishing that case from having found no plane clause at all: the two ask for different
+responses.
+
 ## Conclusiveness
 
 An identification is reported as conclusive only when the winning candidate both fits within the
@@ -170,6 +207,7 @@ becomes inconclusive at $5^{\circ}$, which is comparable to the $2.404^{\circ}$ 
 - Pairs must be row-matched and share a specimen frame; grain-mean orientations are assumed, and the method does not itself perform grain segmentation.
 - The cubic-to-cubic catalog assumes an fcc-to-bcc transformation, because point-group symmetry cannot distinguish an fcc phase from a bcc one. An explicit catalog must be supplied when that assumption fails.
 - The parallelism search is bounded; a relationship defined by higher-index parallelisms reports no statement rather than an invented one.
+- A rationalized relationship is an idealization and is always returned with its cost; it is named with a `_rationalized` suffix so that a later report cannot mistake it for the measurement.
 - Validation is synthetic. Measured-EBSD fixtures and a MTEX `calcParent2Child` parity comparison remain outstanding, and no PyTex document claims that parity.
 
 ## Normative references

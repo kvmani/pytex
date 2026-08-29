@@ -13,6 +13,22 @@ downstream analyses depend on them.
 
 ### Added
 
+- **A measured relationship can be restated in integers, with the price attached.**
+  `ORCharacterizationReport.as_rational_relationship(max_index=..., tolerance_deg=...)`
+  returns a `RationalizedORResult`: a genuine `OrientationRelationship` built from the integer
+  plane and direction pair, together with the symmetry-reduced angle between it and the
+  measurement, the per-clause deviations, and the search bounds.
+
+  The cost is the point. Six exact Greninger-Troiano pairs held to `max_index=2` rationalize to
+  the *Kurdjumov-Sachs* statement — {111}∥{110} with ⟨110⟩∥⟨111⟩ — at a cost of **2.404°**,
+  which is the published separation between the two. Returned without that number the result
+  would read as a measurement of Kurdjumov-Sachs. The idealization is also named with a
+  `_rationalized` suffix so a later report cannot confuse it with the fit.
+
+  The direction clause is selected from those satisfying the **zone law** against the chosen
+  plane. That is a constraint rather than a refinement: `from_parallel_plane_direction` drops
+  the direction's normal component, so an inconsistent pair would build a relationship the two
+  printed labels do not describe.
 - **The orientation-relationship dossier.** `pytex.or_dossier(relationship, variant=...)`
   turns a relationship declaration into one typed object carrying every number it implies:
   both lattices with their cells, volumes, structure matrices and metric tensors; the rotation,

@@ -3082,6 +3082,124 @@ def describe_orientation_relationship(
     )
 
 
+#: How many candidate clauses of each kind the rationalizer considers.
+#:
+#: The best plane clause is taken outright, but the direction must also lie
+#: in it, so the search needs a bench of direction candidates to pick a
+#: zone-consistent one from. Sixteen is far past the point where a further
+#: candidate could win: they are ranked by deviation first.
+_RATIONALIZATION_CANDIDATES = 16
+
+
+@dataclass(frozen=True, slots=True)
+class RationalizedORResult:
+    """A measured orientation relationship restated in integers, **with its cost**.
+
+    Purpose
+    -------
+    A fitted rotation is a measurement; ``(111)_gamma || (011)_alpha`` with
+    ``[-101]_gamma || [-1-11]_alpha`` is a crystallographic statement. Turning
+    the first into the second is an *idealization*: the integer statement is a
+    nearby exact relationship, not the one measured, and the difference is a
+    real angle. This type carries both, because a rational OR handed back
+    without its cost is exactly the kind of silent boundary error the library
+    exists to prevent.
+
+    Attributes
+    ----------
+    relationship : OrientationRelationship
+        The idealized relationship, built from the integer plane and direction
+        pair by ``from_parallel_plane_direction``. It is exact by construction —
+        the deviations below say how far it sits from the measurement, not how
+        far it is from being a relationship.
+    plane_statement, direction_statement : ORParallelismStatement
+        The clauses it was built from. Their ``deviation_deg`` is the angle
+        between the exact image of the parent object under the *measured*
+        rotation and the integer child indices reported — the per-clause cost.
+    residual_rotation_deg : float
+        The symmetry-reduced angle between the measured rotation and the
+        idealized one. This is the number to quote: it is the whole cost of the
+        idealization, in the same units as the fit residual it should be
+        compared against.
+    zone_law_deviation_deg : float
+        How far the chosen parent direction departs from lying in the chosen
+        parent plane. ``from_parallel_plane_direction`` removes the normal
+        component of the direction, so a pair that failed the zone law would
+        build a relationship the two labels do not describe. Zero for an
+        exact-zone pair, and clauses are selected to keep it so.
+    max_index, tolerance_deg : int, float
+        The search bounds the statement was found under, carried so a reader can
+        tell "no better statement exists" from "none was looked for".
+
+    Notes
+    -----
+    Compare ``residual_rotation_deg`` against the measurement's own scatter. An
+    idealization costing less than the scatter is free — the data cannot tell
+    the two relationships apart. One costing several times the scatter is a
+    claim the data contradicts, however tidy the integers look.
+    """
+
+    relationship: OrientationRelationship
+    source_relationship_name: str
+    plane_statement: ORParallelismStatement
+    direction_statement: ORParallelismStatement
+    residual_rotation_deg: float
+    zone_law_deviation_deg: float
+    max_index: int
+    tolerance_deg: float
+    provenance: ProvenanceRecord | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("residual_rotation_deg", "zone_law_deviation_deg"):
+            value = float(getattr(self, name))
+            if not np.isfinite(value) or value < 0.0:
+                raise ValueError(f"{name} must be finite and non-negative.")
+        if self.plane_statement.kind != "plane":
+            raise ValueError("plane_statement must be a plane clause.")
+        if self.direction_statement.kind != "direction":
+            raise ValueError("direction_statement must be a direction clause.")
+
+    @property
+    def statement(self) -> str:
+        """The relationship as a paper would write it."""
+
+        return (
+            f"{self.plane_statement.as_text()} with {self.direction_statement.as_text()}"
+        )
+
+    def describe(self) -> str:
+        """Prose: the integer statement, and what idealizing to it cost.
+
+        The cost is stated in the same sentence as the statement, and never in a
+        later one, because the two are only meaningful together.
+        """
+
+        zone_text = (
+            ""
+            if self.zone_law_deviation_deg <= 1e-9
+            else (
+                f" The chosen direction departs from the chosen plane by "
+                f"{self.zone_law_deviation_deg:.4f} deg, so the constructed relationship uses "
+                "its in-plane component."
+            )
+        )
+        return (
+            f"Rationalized orientation relationship from '{self.source_relationship_name}': "
+            f"{self.statement}. This is an **idealization**, not the measurement: the integer "
+            f"statement is a nearby exact relationship sitting "
+            f"{self.residual_rotation_deg:.3f} deg (symmetry-reduced) from the rotation it was "
+            f"derived from. Per clause, the plane pair deviates by "
+            f"{self.plane_statement.deviation_deg:.4f} deg and the direction pair by "
+            f"{self.direction_statement.deviation_deg:.4f} deg, both measured as the angle "
+            "between the exact image of the parent object and the integer child indices "
+            f"reported. Indices were searched to |index| <= {self.max_index} within "
+            f"{self.tolerance_deg:.3f} deg.{zone_text} Compare the residual against the "
+            "scatter of the measurement it came from: an idealization costing less than the "
+            "scatter is one the data cannot distinguish, and one costing several times the "
+            "scatter is a claim the data contradicts."
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class ORCharacterizationReport:
     """What orientation relationship a set of measured parent/child pairs shows.
@@ -3158,6 +3276,167 @@ class ORCharacterizationReport:
         """
 
         return float(np.max(self.residuals_deg))
+
+    def as_rational_relationship(
+        self,
+        *,
+        max_index: int = 4,
+        tolerance_deg: float = 3.0,
+        name: str | None = None,
+    ) -> RationalizedORResult:
+        """Restate the fitted relationship in integers, and price the idealization.
+
+        Purpose
+        -------
+        Turns the measurement into the object a paper states: a genuine
+        `OrientationRelationship` built from an integer plane pair and an
+        integer direction pair. The result carries the cost of doing so, which
+        is the point — an idealization reported without its cost cannot be
+        judged against the scatter of the data it came from.
+
+        Parameters
+        ----------
+        max_index : int
+            Largest absolute index considered on either side. Four covers every
+            statement the martensite literature is written with. The search is
+            re-run at these bounds rather than reusing the report's own clauses,
+            so widening it here really does widen it.
+        tolerance_deg : float
+            How far a clause may deviate and still be considered.
+        name : str, optional
+            Name for the idealized relationship; defaults to the fitted
+            relationship's name with a ``_rationalized`` suffix, so an
+            idealization is never later mistaken for the measurement.
+
+        Returns
+        -------
+        RationalizedORResult
+
+        Raises
+        ------
+        ValueError
+            If no plane clause, or no direction clause lying in the chosen
+            plane, was found within the bounds. The two messages differ, because
+            "no statement" and "no *consistent* statement" call for different
+            responses.
+
+        Notes
+        -----
+        Two selection rules do the work.
+
+        The **families the characterization already chose** are preferred, so
+        widening the index bound cannot quietly swap a canonical statement for
+        an equally exact alternative with larger indices.
+
+        The direction is then chosen from the clauses satisfying the **zone
+        law** against the chosen plane. This is not a refinement:
+        ``from_parallel_plane_direction`` removes the normal component of the
+        direction, so a plane and a direction that is not in it would build a
+        relationship the two printed labels do not describe. Selecting a
+        zone-consistent pair keeps the object and its statement the same thing.
+        """
+
+        if max_index < 1:
+            raise ValueError("max_index must be at least 1.")
+        rotation = self.relationship.parent_to_child_rotation.as_matrix()
+        preferred_planes = tuple(
+            np.asarray(statement.parent_indices, dtype=np.int64)
+            for statement in self.plane_statements[:1]
+        )
+        preferred_directions = tuple(
+            np.asarray(statement.parent_indices, dtype=np.int64)
+            for statement in self.direction_statements[:1]
+        )
+        planes = _parallelism_statements(
+            self.relationship,
+            kind="plane",
+            rotation=rotation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            max_statements=_RATIONALIZATION_CANDIDATES,
+            preferred_parent_indices=preferred_planes,
+        )
+        directions = _parallelism_statements(
+            self.relationship,
+            kind="direction",
+            rotation=rotation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            max_statements=_RATIONALIZATION_CANDIDATES,
+            preferred_parent_indices=preferred_directions,
+        )
+        if not planes:
+            raise ValueError(
+                f"No plane parallelism within {tolerance_deg:.3f} deg and |index| <= "
+                f"{max_index}, so there is nothing to rationalize. Widen the bounds, or "
+                "report the rotation instead of a statement."
+            )
+        plane_statement = planes[0]
+        plane_indices = np.asarray(plane_statement.parent_indices, dtype=np.int64)
+        zone_consistent = [
+            statement
+            for statement in directions
+            if int(np.dot(plane_indices, np.asarray(statement.parent_indices, dtype=np.int64)))
+            == 0
+        ]
+        if not zone_consistent:
+            raise ValueError(
+                f"No direction clause lies in {plane_statement.parent_label} within "
+                f"{tolerance_deg:.3f} deg and |index| <= {max_index}, so no integer "
+                "plane-and-direction statement describes this relationship. Widen "
+                "`max_index`, or state the plane parallelism alone."
+            )
+        direction_statement = zone_consistent[0]
+
+        parent_phase = self.relationship.parent_phase
+        child_phase = self.relationship.child_phase
+        parent_plane = CrystalPlane(
+            MillerIndex(plane_indices, phase=parent_phase), phase=parent_phase
+        )
+        child_plane = CrystalPlane(
+            MillerIndex(
+                np.asarray(plane_statement.child_indices, dtype=np.int64), phase=child_phase
+            ),
+            phase=child_phase,
+        )
+        parent_direction = CrystalDirection(
+            np.asarray(direction_statement.parent_indices, dtype=np.float64), phase=parent_phase
+        )
+        child_direction = CrystalDirection(
+            np.asarray(direction_statement.child_indices, dtype=np.float64), phase=child_phase
+        )
+        idealized = OrientationRelationship.from_parallel_plane_direction(
+            name=name or f"{self.relationship.name}_rationalized",
+            parent_plane=parent_plane,
+            child_plane=child_plane,
+            parent_direction=parent_direction,
+            child_direction=child_direction,
+            provenance=self.provenance,
+        )
+
+        parent_operators, child_operators = _symmetry_operator_pair(self.relationship)
+        residual = _symmetry_reduced_angle_between_deg(
+            idealized.parent_to_child_rotation.as_matrix(),
+            rotation,
+            child_operators=child_operators,
+            parent_operators=parent_operators,
+        )
+        # Zero for a zone-consistent pair, but measured rather than asserted:
+        # the selection above is an integer test, and this is the geometric
+        # consequence a reader can check.
+        cosine = abs(float(np.dot(parent_plane.normal, parent_direction.unit_vector)))
+        zone_deviation = abs(90.0 - float(np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0)))))
+        return RationalizedORResult(
+            relationship=idealized,
+            source_relationship_name=self.relationship.name,
+            plane_statement=plane_statement,
+            direction_statement=direction_statement,
+            residual_rotation_deg=float(residual),
+            zone_law_deviation_deg=float(zone_deviation),
+            max_index=int(max_index),
+            tolerance_deg=float(tolerance_deg),
+            provenance=self.provenance,
+        )
 
     @property
     def matches_catalog(self) -> bool:
