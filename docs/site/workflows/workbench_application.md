@@ -419,6 +419,32 @@ relationships. Reported without that number it would read as a measurement of Ku
 the index bound and the cost falls as the indices get untidier; the trade is the user's to make, so
 it is shown rather than decided. See {doc}`../theory/orientation_relationship_determination`.
 
+### Seeing the measured pair, and what the idealization costs
+
+The sixth view, **Both measured grains, in the specimen frame**, is the picture of the answer the
+previous one gives in numbers. Three things about it are the measurement's doing rather than
+presentation choices.
+
+**The world frame is the specimen frame.** Both crystals are placed by their measured orientations,
+so the triad in the corner reads RD, TD, ND — not a, b, c as in the catalogue views, where the world
+frame is the parent crystal frame. Read in the wrong frame, every placement in this picture would be
+wrong. One camera turns both, and for a stronger reason than in the catalogue views: the relative
+placement came from the data, so there is nothing to lock.
+
+**Each parallelism is drawn twice.** A catalogue relationship holds its plane and direction parallel
+exactly, so one patch says everything. A measured pair does not: the parent-side object and the
+child-side object sit a clause deviation apart. Both are drawn, in the two phase colours, so the
+visible gap between them *is* the deviation — and the legend says so, in those words, because a
+doubled patch should read as the point rather than as a rendering fault. Drawing one side would show
+a parallelism the measurement does not have.
+
+**The idealization is a third crystal, not a substitute.** With *Also place the idealized child* on,
+the child is drawn a second time in grey, where the integer statement would put it. Run the *What
+2.4 degrees looks like* example: the pair is exact Greninger-Troiano, and the grey child stands
+2.40° from the orange one — the cost of writing the relationship with Kurdjumov-Sachs indices, as a
+rotation of a crystal rather than a number in a table. The status line reports the same angle, and a
+test asserts the two agree, since they are one quantity reached by two routes.
+
 ### The composite views of the variants panel
 
 The Variants panel offers four views. Two are figures of where the variants *point* — the pole

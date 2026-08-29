@@ -1025,3 +1025,174 @@ class TestORFromGrains:
         with pytest.raises(InvalidInputError) as error:
             grains(euler_convention="kocks")
         assert error.value.details["field"] == "euler_convention"
+
+
+def measured(**overrides: object) -> dict:
+    request: dict[str, object] = {
+        "phase": AUSTENITE,
+        "child_phase": FERRITE,
+        "euler_convention": "bunge",
+        "parent_angle1": 30.0,
+        "parent_angle2": 40.0,
+        "parent_angle3": 10.0,
+        "child_angle1": 45.2774,
+        "child_angle2": 34.9979,
+        "child_angle3": 316.2482,
+        "catalog_tolerance_deg": 3.0,
+        "max_index": 3,
+        "repeats": 1,
+        "placement": "interpenetrating",
+        "show_idealized": True,
+        "show_bonds": True,
+        "show_unit_cells": True,
+    }
+    request.update(overrides)
+    return call("variants.measured_composite", **request)
+
+
+def _measured_for(name: str, **overrides: object) -> dict:
+    relationship = _relationship_between(name, AUSTENITE, FERRITE)
+    parent_angles, child_angles = _euler_of(relationship)
+    return measured(
+        parent_angle1=parent_angles[0],
+        parent_angle2=parent_angles[1],
+        parent_angle3=parent_angles[2],
+        child_angle1=child_angles[0],
+        child_angle2=child_angles[1],
+        child_angle3=child_angles[2],
+        **overrides,
+    )
+
+
+class TestMeasuredComposite:
+    """The picture of the measured pair, in the frame the data arrived in."""
+
+    def test_the_world_frame_is_the_specimen_frame_and_says_so(self) -> None:
+        """A triad still labelled a, b, c would invite the picture to be read in
+        the parent crystal frame the catalogue views use."""
+
+        data = measured()["data"]
+        assert data["frame"] == "specimen"
+        assert [axis["label"] for axis in data["world_axes"]] == ["RD", "TD", "ND"]
+
+    def test_each_crystal_is_placed_by_its_own_measured_orientation(self) -> None:
+        """The placement is the measurement and nothing else: no relationship
+        enters it, so each matrix must be that grain's own orientation."""
+
+        from pytex.app.phases import phase_from_request
+        from pytex.core.frame_catalog import specimen_frame
+        from pytex.core.orientation import Orientation
+
+        data = measured()["data"]
+        frame = specimen_frame()
+        for side, spec, angles in (
+            ("parent", AUSTENITE, (30.0, 40.0, 10.0)),
+            ("child", FERRITE, (45.2774, 34.9979, 316.2482)),
+        ):
+            _, phase = phase_from_request(spec)
+            expected = Orientation.from_euler(
+                *angles,
+                specimen_frame=frame,
+                symmetry=phase.symmetry,
+                phase=phase,
+                convention="bunge",
+                degrees=True,
+            ).as_matrix()
+            np.testing.assert_allclose(
+                np.asarray(data[side]["matrix"], dtype=float), expected, atol=1e-12
+            )
+
+    def test_the_scenes_are_sent_once_with_a_matrix_each(self) -> None:
+        data = measured()["data"]
+        assert data["frames"] == "own_crystal_frame"
+        assert data["parent"]["scene"]["atoms"]
+        assert data["child"]["scene"]["atoms"]
+        assert "matrix" in data["parent"] and "matrix" in data["child"]
+
+    def test_every_parallelism_is_drawn_on_both_sides(self) -> None:
+        """Drawing one side would show a parallelism the measurement does not
+        have; the gap between the two is the clause deviation."""
+
+        data = measured()["data"]
+        planes = [row for row in data["parallelisms"] if row["kind"] == "plane"]
+        directions = [row for row in data["parallelisms"] if row["kind"] == "direction"]
+        assert len(data["primitives"]["patches"]) == 2 * len(planes)
+        assert len(data["primitives"]["arrows"]) == 2 * len(directions)
+        colours = {patch["color"] for patch in data["primitives"]["patches"]}
+        assert len(colours) == 2  # one per side, or the gap is invisible
+
+    def test_the_overlay_labels_are_the_measured_clauses(self) -> None:
+        data = measured()["data"]
+        labels = {patch["label"] for patch in data["primitives"]["patches"]}
+        for row in data["parallelisms"]:
+            if row["kind"] == "plane":
+                assert row["parent"] in labels
+                assert row["child"] in labels
+
+    def test_the_idealized_child_sits_where_the_statement_costs_say(self) -> None:
+        """The geometric turn and the algebraic cost are the same quantity by two
+        routes, so they have to agree: an exact Kurdjumov-Sachs pair needs no
+        turn, and a Greninger-Troiano pair written at index two needs 2.40 deg.
+        """
+
+        exact = _measured_for("kurdjumov_sachs")["data"]["idealized"]
+        assert exact["turn_deg"] == pytest.approx(exact["cost_deg"], abs=1e-6)
+        assert exact["turn_deg"] < 0.01
+
+        idealized = _measured_for("greninger_troiano", max_index=2)["data"]["idealized"]
+        assert idealized["turn_deg"] == pytest.approx(idealized["cost_deg"], abs=1e-6)
+        assert idealized["turn_deg"] == pytest.approx(2.404, abs=0.01)
+
+    def test_the_idealized_child_is_the_nearest_symmetry_image(self) -> None:
+        """A child orientation is only defined up to its point group. Searching
+        variants alone once put the idealized child 21 deg from a measured child
+        it actually coincides with, and reported that as the cost."""
+
+        idealized = _measured_for("kurdjumov_sachs")["data"]["idealized"]
+        assert idealized["turn_deg"] < 0.01
+
+    def test_the_idealization_can_be_switched_off(self) -> None:
+        assert measured(show_idealized=False)["data"]["idealized"] is None
+
+    def test_the_world_extent_contains_all_three_placements(self) -> None:
+        data = measured()["data"]
+        lower, upper = (np.asarray(row, dtype=float) for row in data["world"]["bounds"])
+        for side, matrix_key in (("parent", "matrix"), ("child", "matrix")):
+            positions = np.asarray(
+                [atom["position"] for atom in data[side]["scene"]["atoms"]], dtype=float
+            )
+            placed = positions @ np.asarray(data[side][matrix_key], dtype=float).T + np.asarray(
+                data[side]["translation"], dtype=float
+            )
+            assert np.all(placed >= lower - 1e-6)
+            assert np.all(placed <= upper + 1e-6)
+        child_positions = np.asarray(
+            [atom["position"] for atom in data["child"]["scene"]["atoms"]], dtype=float
+        )
+        placed = child_positions @ np.asarray(
+            data["idealized"]["child_matrix"], dtype=float
+        ).T + np.asarray(data["idealized"]["translation"], dtype=float)
+        assert np.all(placed >= lower - 1e-6)
+        assert np.all(placed <= upper + 1e-6)
+
+    def test_the_clause_column_is_named_for_what_it_measures(self) -> None:
+        result = measured()
+        column = next(
+            entry for entry in result["table"]["columns"] if entry["key"] == "deviation_deg"
+        )
+        assert "rationalization residual" in column["help"]
+
+    def test_a_phase_without_atoms_is_refused(self) -> None:
+        lattice_only = {
+            "name": "lattice-only",
+            "a": 3.6,
+            "b": 3.6,
+            "c": 3.6,
+            "alpha": 90.0,
+            "beta": 90.0,
+            "gamma": 90.0,
+            "point_group": "m-3m",
+        }
+        with pytest.raises(InvalidInputError) as error:
+            measured(phase=lattice_only)
+        assert "atomic basis" in str(error.value)

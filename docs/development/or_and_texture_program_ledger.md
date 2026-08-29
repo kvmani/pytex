@@ -50,39 +50,77 @@ plumbing and presentation milestone, mostly in `app/`.
 | --- | --- | --- |
 | **M4a** | F21 part 1: `as_rational_relationship`, the integer statement with the cost of the idealization | **Complete** (2026-08-29) |
 | **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | **Complete** (2026-08-29) |
-| **M4c** | F22: the locked composite viewer for measured grains, with the stereogram sharing its camera | Not started |
+| **M4c** | F22: the composite viewer for measured grains, with the idealization drawn beside them | **Complete** (2026-08-29) |
 | **M4d** | F23: pick two grains on an EBSD map and flow their mean orientations in with no retyping | Not started |
 
 ### Next concrete step
 
-**M4c — F22, the locked composite viewer for measured grains.** M4b landed the measured-pair
-answer; F22 is the picture of it. The viewer already exists (M3b); what changes is where the two
-crystals are placed and what the overlays mean.
+**M4d — F23, closing the loop from the map.** The measured-pair path now runs end to end from two
+Euler triples: a named relationship, an integer statement with its price, and a picture of both
+grains in the specimen frame. What it still needs is a way in that does not involve typing six
+angles off another screen.
 
-- Place both crystals by their **measured** orientations, so the view is the specimen frame the EBSD
-  data arrived in, rather than the parent crystal frame the catalogue views use. One camera still
-  drives both, and now for a stronger reason: the relative placement is fixed by the measurement.
-- Draw the **measured** parallel planes and directions — found at the fitted rotation by
-  `find_parallel_planes` / `find_parallel_directions` — labelled with their actual deviations. A
-  guide that is honest about being approximate.
-- Offer a toggle between the measured relationship and its rationalized idealization, so the user
-  sees what the idealization costs *geometrically* and not only as a number. M4a's
-  `as_rational_relationship` supplies both.
-- Put the OR stereogram beside the 3-D view, sharing the camera.
+The `ebsd.map` panel already loads and segments scans and computes grain mean orientations. Add:
 
-The service work is mostly a variant of `variants.composite_scene` that takes two orientations
-instead of a relationship name; the placement arithmetic is `Orientation.as_matrix()` and nothing
-new.
+- a way to pick **two grains** on the map — one of each phase — and carry their mean orientations
+  into `variants.or_from_grains` and `variants.measured_composite` with no retyping;
+- the phase of each picked grain carried across too, since the scan knows it and the user should not
+  restate it.
 
-**Two things to carry in.** The overlay deviations here are *not* the same quantity as the
-catalogue distance or the rationalization cost, and the panel already has a vocabulary for keeping
-those apart (`angle_meanings`) — extend it rather than inventing a second set of words. And the
-specimen frame is now the world frame, so the axis gizmo must say RD/TD/ND rather than a, b, c, or
-the picture will be read in the wrong frame.
+That makes the whole path — scan, grains, OR, integer statement, composite figure — a workbench
+workflow rather than a scripting exercise, which is what F23 asks for.
 
-**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
+**The trap this one carries.** A grain mean orientation is an average over a scattered population,
+and the measured-pair view's residual column is identically zero for one pair. Feeding two *means*
+in makes it look as though the relationship were measured exactly, when the real uncertainty lives
+in the scatter of the two grains. Carry the grains' orientation spreads across and say what they
+are, or the panel will present an average as a measurement.
+
+**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
 
 ## 3. History
+
+### 2026-08-29 — M4c complete: the measured pair as a picture (F22)
+
+**What shipped.** `variants.measured_composite` in `src/pytex/app/services/variants.py`,
+`measuredCompositeScene` in `js/core/compositescene.js`, a sixth view in the Variants panel with its
+own legend, one example scenario, 11 tests in `tests/unit/test_app_variants.py`, one Playwright test
+(the browser suite is 55 green), and a section in `docs/site/workflows/workbench_application.md`.
+
+**Three decisions the measurement forced.**
+
+1. *The world frame is the specimen frame.* Both crystals are placed by their own measured
+   orientations, so the triad had to become RD/TD/ND. A triad still labelled a, b, c — correct in
+   the catalogue views, where the world frame is the parent crystal frame — would have invited every
+   placement in this picture to be read wrongly. The axes come from the service for that reason.
+
+2. *Every parallelism is drawn twice.* A catalogue relationship holds its objects parallel exactly;
+   a measured pair holds them a clause deviation apart. Drawing one side would show a parallelism
+   the measurement does not have, so both sides are drawn in the two phase colours and the legend
+   states that the gap between them is the deviation — otherwise a doubled patch reads as a
+   rendering fault.
+
+3. *The idealization is a third crystal.* The child is drawn again in grey where the integer
+   statement would put it. For an exact Greninger-Troiano pair the two stand 2.40 deg apart: M4a's
+   number, now a rotation you can look at.
+
+**The bug worth recording.** Choosing that grey placement by searching variants alone put it 21 deg
+from a measured child it actually coincides with, and reported that as the cost. A child orientation
+is only defined up to its own point group, so the search has to run over variants **and** child
+symmetry operators. The test pins the fix by asserting that the geometric turn equals the algebraic
+rationalization cost — one quantity by two routes, which is the strongest form of the check.
+
+**A payload note.** Both structures go once in their own crystal frames with one placement matrix
+each, following the contact sheet's shape from M3a. That is what makes the idealized child cost a
+matrix rather than a third copy of the crystal.
+
+**Verification.** `ruff check .` clean; `mypy src` clean; `pytest tests/unit` green; 55 Playwright
+tests green; both examples driven by hand in the browser.
+
+**Not done.** The OR stereogram does not yet sit beside the 3-D view sharing its camera — F22 asks
+for it, and the stereogram is a 2-D figure the plot frame would have to hold alongside a 3-D one.
+Deferred rather than forgotten: it is a layout problem, not a crystallographic one, and it belongs
+with whichever milestone next touches the panel's chrome.
 
 ### 2026-08-29 — M4b complete: the measured-pair panel (F21 part 3)
 

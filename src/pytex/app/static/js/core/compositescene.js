@@ -175,6 +175,51 @@ export function contactSheetScene(data, entry, { parentColor, childColor }) {
   );
 }
 
+/**
+ * The composite of two *measured* grains, drawn in the specimen frame.
+ *
+ * Three differences from a catalogue composite, all of them the measurement's
+ * doing rather than presentation choices.
+ *
+ * The world frame is the **specimen** frame the data arrived in, so the triad
+ * is RD/TD/ND and comes from the service rather than from either crystal's
+ * axes: a triad still labelled a, b, c would invite the picture to be read in
+ * the wrong frame.
+ *
+ * Both structures arrive in their own crystal frames with one placement matrix
+ * each, so the idealized child costs a matrix rather than a second copy of the
+ * crystal.
+ *
+ * The overlays are already in the specimen frame and are drawn on **both**
+ * sides, so the visible gap between a parent object and its child partner is
+ * the clause deviation.
+ */
+export function measuredCompositeScene(data, { parentColor, childColor, idealColor } = {}) {
+  const parts = [
+    tintScene(
+      placeScene(data.parent?.scene, data.parent?.matrix, data.parent?.translation),
+      parentColor,
+    ),
+    tintScene(
+      placeScene(data.child?.scene, data.child?.matrix, data.child?.translation),
+      childColor,
+    ),
+  ];
+  if (data.idealized) {
+    parts.push(
+      tintScene(
+        placeScene(data.child?.scene, data.idealized.child_matrix, data.idealized.translation),
+        idealColor,
+      ),
+    );
+  }
+  return mergeScenes(parts, {
+    overlays: primitiveOverlays(data.primitives),
+    extent: data.world,
+    axes: data.world_axes ?? [],
+  });
+}
+
 /** Degrees between two unit-ish vectors, taking the acute value. */
 function acuteAngleDeg(left, right) {
   const dot =

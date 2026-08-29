@@ -29,6 +29,7 @@ import { identity, multiply, rotationX, rotationY } from '../core/rotation3.js';
 import {
   compositeScene,
   contactSheetScene,
+  measuredCompositeScene,
   screenAlignment,
 } from '../core/compositescene.js';
 import { defaultAppearance, renderScene } from './crystal.js';
@@ -75,6 +76,9 @@ const PARENT_COLOR = 'var(--ink)';
 const PHASE_COLORS = Object.freeze({
   parent: '#5b7fa6',
   child: '#d97706',
+  // The idealized child, when it is shown beside the measured one. Muted,
+  // because it is the comparison and not the measurement.
+  ideal: '#9ca3af',
 });
 
 function packetColor(packet) {
@@ -121,6 +125,7 @@ const VIEWS = [
   'variants.composite_scene',
   'variants.contact_sheet',
   'variants.or_from_grains',
+  'variants.measured_composite',
 ];
 
 /** Which kind of drawing each view needs. `table` has no picture, by design. */
@@ -130,6 +135,7 @@ const VIEW_MODES = {
   'variants.composite_scene': 'composite',
   'variants.contact_sheet': 'sheet',
   'variants.or_from_grains': 'table',
+  'variants.measured_composite': 'measured',
 };
 
 export function mount(context) {
@@ -195,6 +201,7 @@ export function mount(context) {
     pole: 'Pole figure',
     composite: 'Composite scene',
     sheet: 'Variant contact sheet',
+    measured: 'The measured pair, in the specimen frame',
   };
 
   const legend = el('div.legend');
@@ -356,6 +363,7 @@ export function mount(context) {
     formatSelect.disabled = mode !== 'pole';
     if (mode === 'table') return;
     if (mode === 'composite') return drawComposite();
+    if (mode === 'measured') return drawMeasuredComposite();
     if (mode === 'sheet') return drawContactSheet();
     drawPoleFigure();
   }
@@ -416,6 +424,82 @@ export function mount(context) {
       `Variant ${data.variant.index} of ${data.variant.count} · ` +
         `${data.parent.label} and ${data.child.label} in the parent frame · ` +
         alignmentStatus(notes),
+    );
+  }
+
+  /**
+   * Two measured grains, where the measurement puts them.
+   *
+   * The camera needs no locking here: the relative placement came from the data,
+   * so turning the view turns one rigid arrangement. The status line carries the
+   * clause deviations, because they are what the visible gap between each pair
+   * of overlays measures, and a reader should not have to estimate an angle off
+   * the screen.
+   */
+  function drawMeasuredComposite() {
+    const data = state.result.data;
+    frame.configure({ formatCursor: () => 'drag to turn · scroll to zoom' });
+    frame.setContent(
+      renderScene(
+        measuredCompositeScene(data, {
+          parentColor: PHASE_COLORS.parent,
+          childColor: PHASE_COLORS.child,
+          idealColor: PHASE_COLORS.ideal,
+        }),
+        camera,
+        frame,
+        compositeAppearance(state.appearance),
+      ),
+    );
+    buildMeasuredLegend(data);
+    const clauses = (data.parallelisms ?? [])
+      .map((row) => `${row.parent} ∥ ${row.child} ±${formatNumber(row.deviation_deg, 2)}°`)
+      .join(' · ');
+    const ideal = data.idealized
+      ? ` · idealized child ${formatNumber(data.idealized.turn_deg, 2)}° away`
+      : '';
+    frame.setStatus(
+      `Specimen frame (RD, TD, ND) · ${data.naming.best_label ?? 'no named relationship'} at ` +
+        `${formatNumber(data.naming.best_deviation_deg, 2)}° · ${clauses}${ideal}`,
+    );
+  }
+
+  /**
+   * The measured composite's legend.
+   *
+   * It has one job the catalogue legend does not: saying that each overlay is
+   * drawn on both sides, so a reader knows the doubled patch is the point
+   * rather than a rendering fault.
+   */
+  function buildMeasuredLegend(data) {
+    if (state.legendFor === data) return;
+    state.legendFor = data;
+    legend.hidden = false;
+    const items = [
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${PHASE_COLORS.parent}` }),
+        el('span', { text: `${data.parent.label} (measured)` }),
+      ]),
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${PHASE_COLORS.child}` }),
+        el('span', { text: `${data.child.label} (measured)` }),
+      ]),
+    ];
+    if (data.idealized) {
+      items.push(
+        el('span.legend__item', {}, [
+          el('span.legend__swatch', { style: `background:${PHASE_COLORS.ideal}` }),
+          el('span', { text: 'Child as the integer statement would place it' }),
+        ]),
+      );
+    }
+    legend.replaceChildren(
+      ...items,
+      el('span.legend__guide', {
+        text:
+          'Each parallelism is drawn on both sides, in the two phase colours: the gap between ' +
+          'them is the clause deviation, not a rendering fault.',
+      }),
     );
   }
 
@@ -741,7 +825,7 @@ export function mount(context) {
 
   function is3D() {
     const mode = viewMode();
-    return mode === 'composite' || mode === 'sheet';
+    return mode === 'composite' || mode === 'sheet' || mode === 'measured';
   }
 
   renderControls();

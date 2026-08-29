@@ -13,6 +13,23 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The measured pair, drawn where the measurement puts it.**
+  `variants.measured_composite` and a sixth view in the Variants panel place both indexed
+  grains by their own orientations, so the world frame is the **specimen** frame the data
+  arrived in and the triad reads RD/TD/ND rather than a/b/c.
+
+  Each parallelism is drawn on **both** sides in the two phase colours, so the visible gap
+  between a parent object and its child partner is the clause deviation; the legend says so,
+  because a doubled patch should read as the point rather than as a rendering fault. Drawing
+  one side would show a parallelism the measurement does not have.
+
+  With the idealization toggled on, the child is drawn a second time in grey where the integer
+  statement would place it: for an exact Greninger-Troiano pair the two stand **2.40°** apart,
+  which is the cost of writing the relationship with Kurdjumov-Sachs indices seen as a rotation
+  of a crystal rather than read as a number. The geometric turn and the algebraic cost are one
+  quantity by two routes, and a test asserts they agree — including the child point group,
+  without which the idealized child was placed 21° from a measured child it actually coincides
+  with.
 - **Two measured grains in, a named relationship out.** `variants.or_from_grains` and a fifth
   view in the Variants panel take two orientations as Euler angles (Bunge or Matthies) with
   their phases, and return the fitted rotation, its distance from every catalogued

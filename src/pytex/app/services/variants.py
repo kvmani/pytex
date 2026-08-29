@@ -1696,6 +1696,99 @@ def _orientation_from_euler(
     )
 
 
+#: The parameters of every measured-pair operation.
+#:
+#: Two operations read the same two grains -- one answers in numbers, the
+#: other draws them -- and a user switching between them must not meet two
+#: different forms for the same input. One definition also means the six
+#: angle defaults, which are an exact Kurdjumov-Sachs pair, cannot drift
+#: apart between the views that demonstrate them.
+_MEASURED_PAIR_PARAMETERS: tuple[Any, ...] = (
+    phase_parameter(
+        label="Parent phase",
+        help_text="The phase of the first grain — the one that transformed.",
+        builtin="austenite_fcc",
+    ),
+    phase_parameter(
+        name="child_phase",
+        label="Child phase",
+        help_text="The phase of the second grain — the product.",
+        builtin="fe_bcc",
+    ),
+    ChoiceParameter(
+        name="euler_convention",
+        label="Euler convention",
+        help_text=(
+            "Which axis sequence the six angles below name. Both grains are read in the "
+            "same convention, because they came from one indexing run."
+        ),
+        options=_EULER_CONVENTIONS,
+        default="bunge",
+    ),
+    *(
+        NumberParameter(
+            name=f"parent_angle{index}",
+            label=f"Parent {label}",
+            help_text=f"{ordinal} Euler angle of the parent grain, in degrees.",
+            units="deg",
+            default=default,
+            minimum=-360.0,
+            maximum=720.0,
+            group="Parent grain",
+        )
+        for index, label, ordinal, default in (
+            (1, "phi1 / alpha", "First", 30.0),
+            (2, "Phi / beta", "Second", 40.0),
+            (3, "phi2 / gamma", "Third", 10.0),
+        )
+    ),
+    *(
+        NumberParameter(
+            name=f"child_angle{index}",
+            label=f"Child {label}",
+            help_text=f"{ordinal} Euler angle of the child grain, in degrees.",
+            units="deg",
+            default=default,
+            minimum=-360.0,
+            maximum=720.0,
+            group="Child grain",
+        )
+        for index, label, ordinal, default in (
+            (1, "phi1 / alpha", "First", 45.2774),
+            (2, "Phi / beta", "Second", 34.9979),
+            (3, "phi2 / gamma", "Third", 316.2482),
+        )
+    ),
+    NumberParameter(
+        name="catalog_tolerance_deg",
+        label="Naming tolerance",
+        help_text=(
+            "How close the fit must sit to a catalogued relationship before it is named. "
+            "Three degrees is the working figure: above the orientation noise of a "
+            "well-calibrated map, below the 5.26 degrees separating Kurdjumov-Sachs from "
+            "Nishiyama-Wassermann."
+        ),
+        units="deg",
+        default=3.0,
+        minimum=0.1,
+        maximum=15.0,
+        advanced=True,
+    ),
+    IntegerParameter(
+        name="max_index",
+        label="Largest index in the statement",
+        help_text=(
+            "Bound on the integers the statement may use. Two gives the tidiest statement "
+            "and the largest cost; raising it buys a closer one with untidier indices."
+        ),
+        default=3,
+        minimum=1,
+        maximum=6,
+        advanced=True,
+    ),
+)
+
+
 @REGISTRY.operation(
     "variants.or_from_grains",
     title="Relationship between two measured grains",
@@ -1721,90 +1814,7 @@ def _orientation_from_euler(
         "number it would read as a measurement of Kurdjumov-Sachs. Raise the index bound to buy "
         "a closer statement with untidier indices, and watch the cost fall."
     ),
-    parameters=(
-        phase_parameter(
-            label="Parent phase",
-            help_text="The phase of the first grain — the one that transformed.",
-            builtin="austenite_fcc",
-        ),
-        phase_parameter(
-            name="child_phase",
-            label="Child phase",
-            help_text="The phase of the second grain — the product.",
-            builtin="fe_bcc",
-        ),
-        ChoiceParameter(
-            name="euler_convention",
-            label="Euler convention",
-            help_text=(
-                "Which axis sequence the six angles below name. Both grains are read in the "
-                "same convention, because they came from one indexing run."
-            ),
-            options=_EULER_CONVENTIONS,
-            default="bunge",
-        ),
-        *(
-            NumberParameter(
-                name=f"parent_angle{index}",
-                label=f"Parent {label}",
-                help_text=f"{ordinal} Euler angle of the parent grain, in degrees.",
-                units="deg",
-                default=default,
-                minimum=-360.0,
-                maximum=720.0,
-                group="Parent grain",
-            )
-            for index, label, ordinal, default in (
-                (1, "phi1 / alpha", "First", 30.0),
-                (2, "Phi / beta", "Second", 40.0),
-                (3, "phi2 / gamma", "Third", 10.0),
-            )
-        ),
-        *(
-            NumberParameter(
-                name=f"child_angle{index}",
-                label=f"Child {label}",
-                help_text=f"{ordinal} Euler angle of the child grain, in degrees.",
-                units="deg",
-                default=default,
-                minimum=-360.0,
-                maximum=720.0,
-                group="Child grain",
-            )
-            for index, label, ordinal, default in (
-                (1, "phi1 / alpha", "First", 45.2774),
-                (2, "Phi / beta", "Second", 34.9979),
-                (3, "phi2 / gamma", "Third", 316.2482),
-            )
-        ),
-        NumberParameter(
-            name="catalog_tolerance_deg",
-            label="Naming tolerance",
-            help_text=(
-                "How close the fit must sit to a catalogued relationship before it is named. "
-                "Three degrees is the working figure: above the orientation noise of a "
-                "well-calibrated map, below the 5.26 degrees separating Kurdjumov-Sachs from "
-                "Nishiyama-Wassermann."
-            ),
-            units="deg",
-            default=3.0,
-            minimum=0.1,
-            maximum=15.0,
-            advanced=True,
-        ),
-        IntegerParameter(
-            name="max_index",
-            label="Largest index in the statement",
-            help_text=(
-                "Bound on the integers the statement may use. Two gives the tidiest statement "
-                "and the largest cost; raising it buys a closer one with untidier indices."
-            ),
-            default=3,
-            minimum=1,
-            maximum=6,
-            advanced=True,
-        ),
-    ),
+    parameters=_MEASURED_PAIR_PARAMETERS,
     returns=(
         "The catalogue ranking as the table; the fit, the verdict and the integer statement "
         "with its cost under `data`."
@@ -1992,6 +2002,487 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+#: The specimen axes, as the world triad of a measured composite.
+#:
+#: The catalogue views draw the world frame as the *parent crystal* frame and
+#: label its triad a, b, c. Here the world frame is the specimen frame the EBSD
+#: data arrived in, and a triad still labelled a, b, c would invite the picture
+#: to be read in the wrong frame entirely.
+_SPECIMEN_AXES: tuple[dict[str, Any], ...] = (
+    {"label": "RD", "vector": [1.0, 0.0, 0.0]},
+    {"label": "TD", "vector": [0.0, 1.0, 0.0]},
+    {"label": "ND", "vector": [0.0, 0.0, 1.0]},
+)
+
+
+def _catalog_label(name: str | None) -> str:
+    """The display name of the winning relationship, or an honest absence.
+
+    A characterization run against an empty catalogue names nothing, and
+    "None" printed into a sentence would read as a relationship called None.
+    """
+
+    return "no catalogued relationship" if name is None else relationship_name(name)
+
+
+def _measured_overlays(
+    report: Any,
+    *,
+    parent_matrix: np.ndarray,
+    child_matrix: np.ndarray,
+    parent_phase: Any,
+    child_phase: Any,
+    length: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Both sides of every measured parallelism, drawn separately.
+
+    A catalogue relationship holds its objects parallel exactly, so one patch
+    says everything. A *measured* pair does not: the parent-side object and the
+    child-side object are a clause deviation apart, and drawing one of them
+    would show a parallelism the measurement does not have. Both are drawn, in
+    the specimen frame, so the gap between them **is** the deviation — a guide
+    that is honest about being approximate.
+    """
+
+    from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex
+    from pytex.plotting.primitives import Arrow3D, PlanePatch3D, crystal_plane_patch
+
+    arrows: list[dict[str, Any]] = []
+    patches: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+
+    def _emit_patch(patch: PlanePatch3D, matrix: np.ndarray, color: str, label: str) -> None:
+        vertices = np.asarray(patch.vertices, dtype=float) @ matrix.T
+        normal = matrix @ np.asarray(patch.normal, dtype=float)
+        patches.append(
+            {
+                "vertices": [[float(v) for v in vertex] for vertex in vertices],
+                "normal": [float(v) for v in normal],
+                "color": color,
+                "alpha": 0.16,
+                "label": label,
+            }
+        )
+
+    for statement in report.plane_statements[:1]:
+        parent_plane = CrystalPlane(
+            MillerIndex(np.asarray(statement.parent_indices, dtype=np.int64), phase=parent_phase),
+            phase=parent_phase,
+        )
+        child_plane = CrystalPlane(
+            MillerIndex(np.asarray(statement.child_indices, dtype=np.int64), phase=child_phase),
+            phase=child_phase,
+        )
+        base = crystal_plane_patch(
+            parent_plane, center=(0.0, 0.0, 0.0), extent=0.6 * length, color=_PARENT_OVERLAY
+        )
+        _emit_patch(base, parent_matrix, _PARENT_OVERLAY, statement.parent_label)
+        _emit_patch(
+            crystal_plane_patch(
+                child_plane, center=(0.0, 0.0, 0.0), extent=0.6 * length, color=_CHILD_OVERLAY
+            ),
+            child_matrix,
+            _CHILD_OVERLAY,
+            statement.child_label,
+        )
+        rows.append(
+            {
+                "kind": "plane",
+                "parent": statement.parent_label,
+                "child": statement.child_label,
+                "deviation_deg": float(statement.deviation_deg),
+            }
+        )
+
+    for statement in report.direction_statements[:1]:
+        parent_direction = CrystalDirection(
+            np.asarray(statement.parent_indices, dtype=np.float64), phase=parent_phase
+        )
+        child_direction = CrystalDirection(
+            np.asarray(statement.child_indices, dtype=np.float64), phase=child_phase
+        )
+        for direction, matrix, color, label in (
+            (parent_direction, parent_matrix, _PARENT_OVERLAY, statement.parent_label),
+            (child_direction, child_matrix, _CHILD_OVERLAY, statement.child_label),
+        ):
+            head = matrix @ (length * np.asarray(direction.unit_vector, dtype=float))
+            arrow = Arrow3D(
+                tail=np.zeros(3, dtype=float), head=head, color=color, label=label
+            )
+            arrows.append(
+                {
+                    "tail": [float(v) for v in arrow.tail],
+                    "head": [float(v) for v in arrow.head],
+                    "color": color,
+                    "label": label,
+                }
+            )
+        rows.append(
+            {
+                "kind": "direction",
+                "parent": statement.parent_label,
+                "child": statement.child_label,
+                "deviation_deg": float(statement.deviation_deg),
+            }
+        )
+    return {"arrows": arrows, "patches": patches}, rows
+
+
+#: Overlay colours: the parent side and the child side of a measured pair.
+#:
+#: They must differ, because the whole content of the figure is the *gap*
+#: between them. One colour would show a parallelism the measurement does not
+#: have.
+_PARENT_OVERLAY = "#5b7fa6"
+_CHILD_OVERLAY = "#d97706"
+
+
+@REGISTRY.operation(
+    "variants.measured_composite",
+    title="Both measured grains, in the specimen frame",
+    summary=(
+        "Two indexed grains drawn where the measurement puts them, with what they hold parallel."
+    ),
+    help_text=(
+        "The picture of the answer the measured-pair view gives in numbers. Both crystals are "
+        "placed by their **measured** orientations, so the world frame here is the specimen "
+        "frame the EBSD data arrived in — RD right, TD up, ND out of the screen — and not the "
+        "parent crystal frame the catalogue views use. One camera turns both, and for a stronger "
+        "reason than in those views: the relative placement is fixed by the measurement, so there "
+        "is nothing to lock.\n\n"
+        "**The overlays are drawn twice on purpose.** A catalogue relationship holds its plane "
+        "and direction parallel exactly, so one patch says everything. A measured pair does not: "
+        "the parent-side object and the child-side object sit a clause deviation apart. Both are "
+        "drawn, in their own colours, so the visible gap between them *is* the deviation. Drawing "
+        "one would show a parallelism the measurement does not have.\n\n"
+        "**The idealization is a toggle, not a substitute.** `show_idealized` adds the child as "
+        "the integer statement would place it, so the cost of writing the relationship in tidy "
+        "indices is visible as a rotation of the crystal rather than only as a number in a table."
+    ),
+    parameters=(
+        *_MEASURED_PAIR_PARAMETERS,
+        IntegerParameter(
+            name="repeats",
+            label="Cells along each axis",
+            help_text="How many unit cells of each crystal to build, in every direction.",
+            default=1,
+            minimum=1,
+            maximum=3,
+            group="Extent",
+        ),
+        ChoiceParameter(
+            name="placement",
+            label="Placement",
+            help_text="Whether the two crystals share an origin or stand apart.",
+            options=_PLACEMENTS,
+            default="interpenetrating",
+            group="Extent",
+        ),
+        BooleanParameter(
+            name="show_idealized",
+            label="Also place the idealized child",
+            help_text=(
+                "Adds the child where the integer statement would put it. The angle between it "
+                "and the measured child is the cost of the idealization, seen rather than read."
+            ),
+            default=True,
+            group="Overlays",
+        ),
+        BooleanParameter(
+            name="show_bonds",
+            label="Draw bonds",
+            help_text=(
+                "Bonds are inferred from covalent radii plus a tolerance, so they aid reading "
+                "rather than assert chemistry."
+            ),
+            default=True,
+            advanced=True,
+            group="Overlays",
+        ),
+        BooleanParameter(
+            name="show_unit_cells",
+            label="Outline every cell",
+            help_text="Draw the edges of each repeated cell, not only the outer box.",
+            default=True,
+            advanced=True,
+            group="Overlays",
+        ),
+    ),
+    returns=(
+        "Both placed scenes under `data.parent.scene` and `data.child.scene` in the specimen "
+        "frame, the measured overlays under `data.primitives`, and the idealized child's "
+        "placement under `data.idealized`; the parallelisms and their deviations as the table."
+    ),
+    panel="variants",
+    citations=(_CITATION_MORITO, _CITATION_BUNGE),
+    tags=(
+        "orientation relationship",
+        "OR",
+        "EBSD",
+        "measured",
+        "composite",
+        "3D",
+        "specimen frame",
+        "variant",
+    ),
+)
+def _measured_composite(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.frame_catalog import specimen_frame
+    from pytex.core.orientation import OrientationSet
+    from pytex.core.transformation import characterize_orientation_relationship
+    from pytex.plotting.crystal3d import build_crystal_scene
+
+    parent_spec, parent_phase = phase_from_request(request["phase"])
+    child_spec, child_phase = phase_from_request(request["child_phase"])
+    for spec in (parent_spec, child_spec):
+        if not spec.has_structure:
+            raise InvalidInputError(
+                f"{spec.name} carries no atomic basis, so there is nothing to draw.",
+                field="phase" if spec is parent_spec else "child_phase",
+                hint="Choose a built-in phase, or add atomic sites to the phase description.",
+            )
+    convention = _euler_convention(request["euler_convention"])
+    frame = specimen_frame()
+    parent_angles = _euler_angles(request, "parent")
+    child_angles = _euler_angles(request, "child")
+    parent_orientation = _orientation_from_euler(
+        parent_angles, phase=parent_phase, convention=convention, frame=frame
+    )
+    child_orientation = _orientation_from_euler(
+        child_angles, phase=child_phase, convention=convention, frame=frame
+    )
+    tolerance = float(request["catalog_tolerance_deg"])
+    try:
+        report = characterize_orientation_relationship(
+            OrientationSet.from_orientations([parent_orientation]),
+            OrientationSet.from_orientations([child_orientation]),
+            catalog_tolerance_deg=tolerance,
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            f"These two grains cannot be characterized: {error}",
+            field="phase",
+            hint="Choose a parent and a child that are not the same phase.",
+        ) from error
+
+    repeats = int(request["repeats"])
+    build_kwargs: dict[str, Any] = {
+        "show_bonds": bool(request["show_bonds"]),
+        "show_unit_cells": bool(request["show_unit_cells"]),
+    }
+    parent_scene = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
+    child_scene = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
+    translation = _child_translation(str(request["placement"]), parent_scene, child_scene)
+
+    # Crystal-to-specimen, straight from the measurement: this is the whole of
+    # the placement, and there is no relationship in it.
+    parent_matrix = np.asarray(parent_orientation.as_matrix(), dtype=float)
+    child_matrix = np.asarray(child_orientation.as_matrix(), dtype=float)
+    reference_length = float(
+        np.max(np.linalg.norm(parent_phase.lattice.direct_basis().matrix, axis=0))
+    ) * repeats * 1.05
+    primitives, rows = _measured_overlays(
+        report,
+        parent_matrix=parent_matrix,
+        child_matrix=child_matrix,
+        parent_phase=parent_phase,
+        child_phase=child_phase,
+        length=reference_length,
+    )
+
+    idealized: dict[str, Any] | None = None
+    max_index = int(request["max_index"])
+    if bool(request["show_idealized"]):
+        idealized = _idealized_placement(
+            report,
+            parent_matrix=parent_matrix,
+            child_matrix=child_matrix,
+            translation=translation,
+            max_index=max_index,
+            tolerance_deg=tolerance,
+        )
+
+    # Both structures go once, in their own crystal frames, with one placement
+    # matrix each -- the shape the contact sheet established, and the reason the
+    # idealized child costs a matrix rather than a second copy of the crystal.
+    def _corners(scene: Any) -> np.ndarray:
+        bounds = np.asarray(scene.bounds(), dtype=float)
+        return np.array(
+            [
+                [bounds[i, 0], bounds[j, 1], bounds[k, 2]]
+                for i in (0, 1)
+                for j in (0, 1)
+                for k in (0, 1)
+            ],
+            dtype=float,
+        )
+
+    parent_corners = _corners(parent_scene)
+    child_corners = _corners(child_scene)
+    offset = np.asarray(translation, dtype=float)
+    cloud = [
+        parent_corners @ parent_matrix.T,
+        (child_corners @ child_matrix.T) + offset,
+    ]
+    if idealized is not None:
+        cloud.append(
+            (child_corners @ np.asarray(idealized["child_matrix"], dtype=float).T) + offset
+        )
+    extent = _world_extent(np.vstack(cloud))
+
+    deviation_text = ", ".join(
+        f"{row['parent']} to {row['child']} by {row['deviation_deg']:.2f} deg" for row in rows
+    )
+    result = AppResult(
+        title=f"{parent_spec.name} and {child_spec.name}: the measured pair",
+        summary=(
+            f"Both grains placed by their measured orientations in the specimen frame (RD, TD, "
+            f"ND). The nearest catalogued relationship is "
+            f"{_catalog_label(report.best_catalog_name)} at "
+            f"{report.best_catalog_deviation_deg:.2f} deg. The overlays are drawn on both sides, "
+            "so the visible gap between a parent object and its child partner is the clause "
+            f"deviation: {deviation_text or 'no clause was found'}."
+            + (
+                f" The idealized child is placed too, {idealized['cost_deg']:.2f} deg from the "
+                "measured one — the cost of the integer statement, seen rather than read."
+                if idealized is not None
+                else ""
+            )
+        ),
+        table=ResultTable(
+            columns=(
+                Column("kind", "Kind"),
+                Column("parent", f"{parent_spec.name}"),
+                Column("child", f"{child_spec.name}"),
+                Column(
+                    "deviation_deg",
+                    "Clause deviation",
+                    units="°",
+                    numeric=True,
+                    digits=4,
+                    help_text=_ANGLE_MEANINGS["clause"],
+                ),
+            ),
+            rows=tuple(rows),
+            caption=(
+                "What the two measured grains hold parallel, and how nearly. These are the "
+                "measurement's own clauses, not a catalogue relationship's."
+            ),
+        ),
+        data={
+            "world": extent,
+            "frame": "specimen",
+            "world_axes": [dict(axis) for axis in _SPECIMEN_AXES],
+            "frames": "own_crystal_frame",
+            "parent": {
+                "label": parent_spec.name,
+                "scene": scene_payload(parent_scene, spec=parent_spec),
+                "matrix": [[float(v) for v in row] for row in parent_matrix],
+                "translation": [0.0, 0.0, 0.0],
+            },
+            "child": {
+                "label": child_spec.name,
+                "scene": scene_payload(child_scene, spec=child_spec),
+                "matrix": [[float(v) for v in row] for row in child_matrix],
+                "translation": [float(value) for value in translation],
+            },
+            "primitives": primitives,
+            "parallelisms": rows,
+            "idealized": idealized,
+            "naming": {
+                "best": report.best_catalog_name,
+                "best_label": (
+                    None
+                    if report.best_catalog_name is None
+                    else relationship_name(report.best_catalog_name)
+                ),
+                "best_deviation_deg": float(report.best_catalog_deviation_deg),
+                "is_conclusive": bool(report.is_conclusive),
+            },
+            "angle_meanings": dict(_ANGLE_MEANINGS),
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "euler_convention": convention,
+            "parent_angle1": parent_angles[0],
+            "parent_angle2": parent_angles[1],
+            "parent_angle3": parent_angles[2],
+            "child_angle1": child_angles[0],
+            "child_angle2": child_angles[1],
+            "child_angle3": child_angles[2],
+            "catalog_tolerance_deg": tolerance,
+            "max_index": max_index,
+            "repeats": repeats,
+            "placement": request["placement"],
+            "show_idealized": bool(request["show_idealized"]),
+            "show_bonds": bool(request["show_bonds"]),
+            "show_unit_cells": bool(request["show_unit_cells"]),
+        },
+        citations=(_CITATION_MORITO, _CITATION_BUNGE),
+    )
+    return result.to_json()
+
+
+def _idealized_placement(
+    report: Any,
+    *,
+    parent_matrix: np.ndarray,
+    child_matrix: np.ndarray,
+    translation: list[float],
+    max_index: int,
+    tolerance_deg: float,
+) -> dict[str, Any] | None:
+    """Where the integer statement would put the child, and what that costs.
+
+    The idealized relationship generates a family of variants; the one drawn is
+    whichever sits closest to the *measured* child, because the question the
+    toggle answers is "how far would this crystal have to turn for the tidy
+    statement to be true", and any other variant answers a different question.
+    """
+
+    try:
+        rationalized = report.as_rational_relationship(
+            max_index=max_index, tolerance_deg=tolerance_deg
+        )
+    except ValueError:
+        return None
+    # A child orientation is only defined up to the child point group: C and C S
+    # place the same atoms. Searching variants alone would pick a placement 21
+    # degrees from a child it actually coincides with, and report that as the
+    # cost of the idealization. The symmetry operators are part of the search.
+    child_symmetry = rationalized.relationship.child_phase.symmetry
+    child_operators = (
+        np.asarray(child_symmetry.operators, dtype=float)
+        if child_symmetry is not None
+        else np.eye(3, dtype=float)[None, :, :]
+    )
+    best_matrix: np.ndarray | None = None
+    best_angle = float("inf")
+    for variant in rationalized.relationship.generate_variants():
+        base = parent_matrix @ np.asarray(
+            variant.parent_to_child_rotation.as_matrix(), dtype=float
+        ).T
+        for operator in child_operators:
+            candidate = base @ operator
+            relative = candidate.T @ child_matrix
+            angle = float(
+                np.degrees(np.arccos(np.clip((np.trace(relative) - 1.0) / 2.0, -1.0, 1.0)))
+            )
+            if angle < best_angle:
+                best_angle = angle
+                best_matrix = candidate
+    if best_matrix is None:  # pragma: no cover - a relationship always has variants
+        return None
+    return {
+        "child_matrix": [[float(value) for value in row] for row in best_matrix],
+        "translation": [float(value) for value in translation],
+        "cost_deg": float(rationalized.residual_rotation_deg),
+        "statement": rationalized.statement,
+        "turn_deg": best_angle,
+    }
+
+
 REGISTRY.add_examples(
     (
         ExampleScenario(
@@ -2135,6 +2626,39 @@ REGISTRY.add_examples(
                 "child_angle2": 73.6774,
                 "child_angle3": 352.9432,
                 "max_index": 2,
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.measured_composite_gt",
+            title="What 2.4 degrees looks like",
+            panel="variants",
+            summary=(
+                "An exact Greninger-Troiano pair, with the child the tidy statement would "
+                "have drawn beside it."
+            ),
+            teaches=(
+                "Run this after the tidy-statement example, which reports the cost of the "
+                "idealization as 2.40 degrees. Here that number is a crystal: the grey child "
+                "is where the integer statement would put it, and the orange one is where "
+                "the measurement does. Turn the view and the two stay 2.40 degrees apart. "
+                "The overlays are drawn on both sides for the same reason — the gap between "
+                "a parent object and its child partner is the clause deviation, so the "
+                "picture is honest about being approximate rather than showing a "
+                "parallelism the measurement does not have."
+            ),
+            operation="variants.measured_composite",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "euler_convention": "bunge",
+                "parent_angle1": 30.0,
+                "parent_angle2": 40.0,
+                "parent_angle3": 10.0,
+                "child_angle1": 126.5536,
+                "child_angle2": 73.6774,
+                "child_angle3": 352.9432,
+                "max_index": 2,
+                "show_idealized": True,
             },
         ),
         ExampleScenario(

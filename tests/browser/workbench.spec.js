@@ -2659,3 +2659,61 @@ test('names the relationship between two measured grains and prices its statemen
 
   expect(browserErrors).toEqual([]);
 });
+
+
+test('draws two measured grains in the specimen frame, with what 2.4 degrees looks like', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Variants');
+
+  const view = page.locator('#rail-body').getByLabel('View');
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('variants.measured_composite'),
+  );
+
+  const plot = page.locator('#stage .plot');
+  await expect(plot.locator('.plot__title')).toHaveText('The measured pair, in the specimen frame');
+  await expect(plot.locator('svg')).toBeVisible();
+
+  /*
+   * The frame is the specimen frame the data arrived in, and the status line has
+   * to say so: read in the parent crystal frame the catalogue views use, every
+   * placement in this picture would be wrong.
+   */
+  const status = plot.locator('.plot__status');
+  await expect(status).toContainText('Specimen frame (RD, TD, ND)');
+  await expect(status).toContainText('Kurdjumov-Sachs');
+
+  // The overlays are drawn on both sides, and the legend says why, so a doubled
+  // patch reads as the point rather than as a rendering fault.
+  await expect(plot).toContainText('(measured)');
+  await expect(plot).toContainText('Child as the integer statement would place it');
+  await expect(plot).toContainText('the gap between them is the clause deviation');
+
+  // Turning the pair turns one rigid arrangement: the readout follows the camera.
+  const before = await status.textContent();
+  const surface = plot.locator('svg').first();
+  const box = await surface.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2 + 30, { steps: 6 });
+  await page.mouse.up();
+  await expect(plot.locator('svg')).toBeVisible();
+  expect(await status.textContent()).toBe(before); // the numbers are of the pair, not the view
+
+  /*
+   * The example that makes the cost visible: an exact Greninger-Troiano pair
+   * whose idealized child stands 2.40 degrees from the measured one.
+   */
+  const verdictBefore = (await status.textContent()) ?? '';
+  await page.getByRole('button', { name: /What 2.4 degrees looks like/ }).click();
+  await expect.poll(async () => (await status.textContent()) ?? '', { timeout: 20_000 })
+    .not.toBe(verdictBefore);
+  const text = (await status.textContent()) ?? '';
+  const away = Number(/idealized child ([\d.]+)° away/.exec(text)?.[1]);
+  expect(away).toBeGreaterThan(2.3);
+  expect(away).toBeLessThan(2.5);
+
+  expect(browserErrors).toEqual([]);
+});
