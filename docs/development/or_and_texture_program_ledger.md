@@ -21,8 +21,8 @@ document may claim MTEX parity in the meantime — deferring the campaign does n
 | **M1** | Kearns parameter in the GUI (T1) | **Complete** (2026-08-29) |
 | **M2** | F15 variant-aware composite scenes, F18 OR stereogram | **Complete** (2026-08-29) |
 | **M3** | F19 composite crystal viewer in the workbench, F17 OR dossier | **Complete** (2026-08-29) |
-| **M4** | F21–F23 measured-pair OR workbench | Not started |
-| **M5** | T3 axial specimen symmetry, T2 ghost correction | Not started |
+| **M4** | F21–F23 measured-pair OR workbench | **Complete** (2026-08-29) |
+| **M5** | T3 axial specimen symmetry, T2 ghost correction | Not started — next |
 | **M6** | F16 interface crystallography, Program D contracts + CLI, T5 uncertainty | Not started |
 | **M7** | F20 PTMC / habit-plane prediction | Not started — user has committed to this as the long-horizon goal |
 
@@ -32,52 +32,113 @@ everything else in between. The vision document's M4 go/no-go on PTMC is therefo
 
 ---
 
-## 2. Current Milestone — M4: The Measured-Pair OR Workbench
+## 2. Current Milestone — M5: Texture Quantification Honesty (T3, T2)
 
-**Goal.** F21–F23: take two *measured* orientations — typed in, or picked off an EBSD map — and
-answer "what relationship is this, stated in integers, and what does it look like". Everything M2
-and M3 built is the answer half; M4 is the input half.
+**M4 closed on 2026-08-29.** Every sub-milestone landed: `as_rational_relationship` (M4a), the
+`variants.or_from_grains` panel (M4b), the measured composite viewer (M4c), grain mean orientations
+in the table (M4d), and the picking gesture with its cross-panel hand-off (M4e). A user can now
+open a scan, click two grains, and read the relationship between them with nothing retyped — which
+was F21–F23 in full.
 
-**Why now.** M3 is complete, so a relationship declared by name already produces a composite scene,
-a stereogram, a contact sheet and an exportable dossier. What no route yet does is start from a
-measurement. The existing `characterize_orientation_relationship` and
-`fit_orientation_relationship` are the numerical core and need no new crystallography — this is a
-plumbing and presentation milestone, mostly in `app/`.
+**Goal of M5.** T3 axial (fibre) specimen symmetry and T2 ghost correction, both in
+`pytex.texture`. These are the two places where the texture side of the program currently
+computes something narrower than what it appears to report:
+
+- `_SPECIMEN_SYMMETRY_POINT_GROUPS` offers no axial entry, so a drawn-tube or rolled-sheet fibre
+  texture cannot declare the symmetry it actually has, and every derived quantity is computed
+  under a symmetry the specimen does not possess.
+- `invert_pole_figures` documents its own lack of ghost correction. The docstring is honest, but
+  an ODF with ghosts is an ODF whose odd-order terms were never determined, and the Kearns
+  parameter M1 exposed is a second-rank quantity read off exactly such an ODF.
 
 ### Sub-milestones
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M4a** | F21 part 1: `as_rational_relationship`, the integer statement with the cost of the idealization | **Complete** (2026-08-29) |
-| **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | **Complete** (2026-08-29) |
-| **M4c** | F22: the composite viewer for measured grains, with the idealization drawn beside them | **Complete** (2026-08-29) |
-| **M4d** | F23 part 1: grain mean orientations and phases in the grain table | **Complete** (2026-08-29) |
-| **M4e** | F23 part 2: pick two grains on the map and carry them across without copying rows | Not started |
+| **M5a** | T3: axial specimen symmetry as a declarable point group, through to the pole-figure and ODF surfaces | Not started |
+| **M5b** | T2: ghost correction in `invert_pole_figures`, with the correction's own cost reported | Not started |
 
 ### Next concrete step
 
-**M4e — carrying two picked grains across without copying rows.** M4d put the numbers where a user
-can reach them: every grain row now carries its mean orientation as Bunge angles and its phase. What
-remains of F23 is the gesture — picking two grains on the map and having them arrive in the Variants
-workspace with nothing retyped.
+**M5a — axial specimen symmetry.** Start by reading `_SPECIMEN_SYMMETRY_POINT_GROUPS` and every
+call site of it, then add the axial entry (∞/mmm, i.e. `Dinfh`, and ∞ for a one-sided fibre) as a
+declarable specimen symmetry rather than as a special case inside one function. The test to write
+first is the one that fails today: a basal fibre reduced under axial symmetry must give the same
+Kearns parameter as the same fibre reduced under no specimen symmetry, because the fibre already
+has that symmetry — and any difference is the reduction inventing or destroying intensity.
 
-What that needs, in order:
+**The trap, stated in advance.** Specimen symmetry is an *assumption about the specimen*, not a
+property of the data: imposing it averages measured intensity that a real specimen may not have
+had. Whatever is added must report that it was imposed, and the panel must not offer it as a
+default. This is the same class of defect as M1's triad closure and M4b's zero residual — a number
+that looks like a measurement and is partly a choice.
 
-1. A **selection** on the `ebsd.map` panel: click a grain, click a second, see which two are chosen.
-   The map already hovers a row per pixel, so the pixel-to-grain lookup exists.
-2. A **hand-off** across workspaces. This is the new thing: no panel in this application currently
-   seeds another. Whatever mechanism is chosen (a shared session slot, a request stashed on the
-   context) becomes the pattern for every future cross-panel action, so it is worth designing rather
-   than improvising — and it should carry the *phases* too, since the scan knows them.
+### Known and deliberately untouched
 
-**The trap, restated because it is the one this whole path can hide.** Two means fed into a
-relationship give a residual of exactly zero, for one pair, by construction. The grain orientation
-spreads are the only measure of what that conceals, and they must travel with the orientations and
-be shown where the answer is — not left behind in the table the user copied from.
-
-**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
+- **The OR stereogram does not sit beside the 3-D view sharing its camera.** F22 asks for it; it
+  is a layout problem (a 2-D figure in a frame holding a 3-D one), not a crystallographic one, and
+  it belongs with whichever milestone next touches the panel's chrome.
+- **No two-phase practice dataset.** Every gallery map is single-phase nickel, so the hand-off's
+  phase-resolving path — both names matching distinct built-ins, the answer computed on arrival —
+  is exercised only by a browser test that makes the offer directly. A duplex practice map would
+  make it demonstrable by hand; it is a dataset, not a mechanism, and M4e did not need it.
+- **Phase names are matched exactly (case- and punctuation-insensitively) and nothing cleverer.**
+  A vendor file naming a phase "Ferrite" will not resolve to "Ferrite (bcc Fe)". Deliberate: a
+  fuzzy match would confuse alpha and beta zirconium, which differ in symmetry and therefore in
+  every number computed from them.
 
 ## 3. History
+
+### 2026-08-29 — M4e complete, and M4 with it: two grains picked, carried, and answered
+
+**What shipped.** The picking gesture on the EBSD map and the first hand-off between panels this
+application has had.
+
+- `ebsd.map` now returns `grain_ids` — the segmentation's per-pixel labels, base64 int32 on the
+  same raster as the image — and `phase_builtins`, which says for each phase the scan names which
+  built-in phase it corresponds to, or `None`.
+- `js/core/handoff.js`: `offer` / `claim` / `peek` / `withdraw`. An offer under a key, claimed
+  exactly once.
+- The map panel picks grains by click, outlines them, and shows a card with each grain's mean
+  orientation, phase and spread, plus **Send the pair to Variants**, **Swap** and **Clear**.
+- The Variants panel claims the offer while mounting, seeds the six angles, and keeps them across
+  a change of view; a `received` card states the provenance and both spreads above the answer.
+- `context.openPanel(panelId)` in the shell, given to every panel.
+- 6 tests in `tests/unit/test_app_ebsd.py`, one Playwright test (the browser suite is 56), a
+  section in `docs/site/workflows/workbench_application.md`, and a changelog entry.
+
+**Three decisions worth keeping.**
+
+1. *A click resolves through the labels, never through colour.* Two grains of one orientation are
+   coloured identically — the sigma3 practice map is exactly that — so a colour-matching pick would
+   join them into one silently. The labels are the segmentation's own answer and cost 4 bytes a
+   pixel, which is a third of what the image already costs.
+
+2. *The phases are not guessed.* An orientation relationship is defined between two **distinct**
+   phases, and a scan names phases without describing them. Where both names resolve to distinct
+   built-ins the answer is computed on arrival; where they do not — which is every practice
+   dataset, all single-phase nickel — the angles are seeded and **nothing is run**, with the card
+   saying why. Running under the panel's austenite/ferrite defaults would have reported a
+   relationship between two phases the measurement never claimed, and it would have looked exactly
+   like an answer.
+
+3. *An offer is claimed once, not read repeatedly.* A hand-off is a gesture, not a setting.
+   Leaving it readable would make every later visit to the Variants workspace re-seed itself from
+   a pick made minutes ago — the same silent substitution as a map that quietly analyses the
+   practice dataset while a user's scan is open.
+
+**A measured defect.** The outlines were first drawn at the boundary network's own 1.6 units in a
+700-unit drawing. Measured in the browser, that is 0.6 device pixels at the size the map is
+actually shown, and the highlight was invisible: the DOM had four paths and the screen had none.
+Six units of halo under three of colour, checked on screen rather than reasoned about.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 153 files; `pytest tests/unit` green;
+the browser suite green; and the whole gesture driven by hand in the browser — both branches, the
+single-phase refusal and a resolved austenite/ferrite pair that recovers Kurdjumov-Sachs at 0.00°
+from the picked angles.
+
+**Not done.** No two-phase practice dataset (see §2), and no worked example: this is an
+application surface over `characterize_orientation_relationship`, which already carries one.
 
 ### 2026-08-29 — M4d complete: the grain table carries what the Variants workspace takes
 

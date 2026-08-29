@@ -3493,3 +3493,122 @@ dl.detail dd {
   line-height: 1.5;
   color: var(--ink-muted);
 }
+/* --------------------------------------------------------------------------
+ * Two grains picked off the map.
+ *
+ * Under the map rather than in the control rail: what is on the card is a
+ * reading *of the picture*, and it has to be next to the picture the outlines
+ * are drawn on. Each slot carries the colour its outline is drawn in, so the
+ * card and the map name the same grain without either repeating the other.
+ */
+.picks {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.picks__slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.6rem;
+}
+
+.picks__slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.picks__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: 0.2rem;
+  border-radius: 2px;
+  flex: none;
+}
+
+.picks__body {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.picks__angles,
+.picks__spread {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* The spread is the honesty of the pair, so it is marked as something to read
+ * rather than left in the same grey as the position it sits under. */
+.picks__spread {
+  border-bottom: 1px dotted var(--line-strong);
+  justify-self: start;
+  cursor: help;
+}
+
+.picks__release {
+  margin-left: auto;
+  padding: 0 0.4rem;
+  background: none;
+  border: 0;
+  color: var(--ink-muted);
+  font-size: 1rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.picks__release:hover {
+  color: var(--ink);
+}
+
+.picks__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* --------------------------------------------------------------------------
+ * The pair as it arrives in the Variants workspace.
+ *
+ * Styled apart from the verdict it sits above: this card is the *question*,
+ * carried in from another workspace, and the verdict is the answer. A reader
+ * who cannot tell which numbers were measured and which were computed cannot
+ * check either.
+ */
+.received {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--bg-raised);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.received h3 {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.received__grain {
+  font-size: 0.8125rem;
+}
+
+.received__note {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+
+.received__note--warning {
+  color: var(--warn);
+}

@@ -53,6 +53,11 @@ def decode_rgb(image: dict) -> np.ndarray:
     return raw.reshape((image["height"], image["width"], 3))
 
 
+def decode_grain_ids(payload: dict) -> np.ndarray:
+    raw = np.frombuffer(base64.b64decode(payload["data"]), dtype="<i4")
+    return raw.reshape((payload["height"], payload["width"]))
+
+
 class TestGalleryConstructions:
     """The datasets are built to have answers; these are the answers."""
 
@@ -338,6 +343,73 @@ class TestNarration:
         assert any("grains found at" in message for message in messages)
         assert any("boundary segments" in message for message in messages)
         assert any("fundamental sector" in message for message in messages)
+
+
+class TestPickingAGrainOffTheMap:
+    """What a click on the map needs: the labels beside the pixels, and a phase
+    the relationship views can accept."""
+
+    def test_the_label_raster_matches_the_image_cell_for_cell(self) -> None:
+        result = draw()
+        image = result["data"]["image"]
+        labels = decode_grain_ids(result["data"]["grain_ids"])
+        assert labels.shape == (image["height"], image["width"])
+
+    def test_every_drawn_label_is_a_grain_in_the_table(self) -> None:
+        """A pick resolves through this array into a table row, so a label with
+        no row would be a pick that lands on nothing."""
+
+        result = draw()
+        labels = decode_grain_ids(result["data"]["grain_ids"])
+        drawn = {int(value) for value in np.unique(labels)} - {-1}
+        listed = {int(row["grain_id"]) for row in result["table"]["rows"]}
+        assert drawn == listed
+
+    def test_the_largest_grain_covers_the_most_cells(self) -> None:
+        """The label raster and the `size` column count the same points; a
+        transposed or mis-placed raster would put the majority label elsewhere."""
+
+        result = draw()
+        labels = decode_grain_ids(result["data"]["grain_ids"])
+        values, counts = np.unique(labels[labels >= 0], return_counts=True)
+        largest = int(values[int(np.argmax(counts))])
+        assert largest == int(result["table"]["rows"][0]["grain_id"])
+        assert int(counts.max()) == int(result["table"]["rows"][0]["size"])
+
+    def test_the_twin_lamella_is_pickable_as_its_own_label(self) -> None:
+        """The construction's answer, asked of the raster: reading the label at
+        two points 60 degrees apart must give two different grains."""
+
+        result = draw(dataset="sigma3_twin")
+        labels = decode_grain_ids(result["data"]["grain_ids"])
+        rows = {int(row["grain_id"]): row for row in result["table"]["rows"]}
+        corner = int(labels[0, 0])
+        others = {
+            int(value)
+            for value in np.unique(labels)
+            if value >= 0 and rows[int(value)]["mean_phi1_deg"] != rows[corner]["mean_phi1_deg"]
+        }
+        assert others
+
+    def test_the_scan_phase_is_mapped_to_a_built_in_phase_by_name(self) -> None:
+        """The gallery maps are nickel, and `ni_fcc` is the built-in of that
+        name; a pick can therefore arrive at the relationship view with its
+        phase already set rather than guessed."""
+
+        assert draw()["data"]["phase_builtins"] == {"Nickel (fcc)": "ni_fcc"}
+
+    def test_an_unrecognised_phase_name_maps_to_nothing_rather_than_to_a_guess(self) -> None:
+        """A scan may name a phase this application does not carry. The answer
+        is `None`, so the surface that consumes it asks the user; inventing a
+        lattice for an unknown name would compute every later number under a
+        phase the measurement never claimed."""
+
+        from pytex.app.services.ebsd import _builtin_phase_ids
+
+        assert _builtin_phase_ids([{"phase_name": "Wolfsbane (P1)"}]) == {"Wolfsbane (P1)": None}
+        # Case and punctuation are not meaning: the same phase written the way a
+        # vendor writes it is the same phase.
+        assert _builtin_phase_ids([{"phase_name": "NICKEL FCC"}]) == {"NICKEL FCC": "ni_fcc"}
 
 
 class TestGrainOrientationsCloseTheLoop:

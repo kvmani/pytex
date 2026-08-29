@@ -1017,6 +1017,35 @@ for measuring deviation *within* the grain.
 two means reports a residual of zero however noisy the two grains are. The grain orientation spread
 is the only honest measure of what that zero conceals, and it sits in the same row for that reason.
 
+#### Picking the two grains on the map
+
+Copying rows is not necessary: **click a grain on the map to pick it, and a second for the other
+side of the relationship.** The click resolves through the segmentation's own per-pixel labels
+rather than through colour — two grains of one orientation are the same colour exactly, and matching
+by colour would join them silently — so what is outlined is the grain the segmentation found. The
+card under the map names both, with each grain's mean orientation, its phase as the scan names it,
+and its spread.
+
+**Send the pair to Variants** opens the Variants workspace with the six angles already in the form
+and the relationship computed. What arrives with them is stated at the top of the result: which map
+they came from, at which segmentation threshold, and both spreads — because the pair's own residual
+is zero by construction and the spread is the only measure of what that zero conceals. The card
+stays for as long as the pair is the input, including after changing the index bound or switching to
+the composite view, so the qualification cannot scroll away from the answer it qualifies.
+
+**The phases do not always travel, and the panel says so rather than guessing.** A scan names its
+phases; it does not describe them. Where a name matches a built-in phase — and where the two grains
+are of *different* phases — both are set and the answer is computed on arrival. Where it does not,
+which includes every single-phase practice dataset, the angles are seeded and nothing is run: an
+orientation relationship is defined between two distinct phases, and computing under the panel's
+own defaults would report a relationship between two phases the measurement never claimed. Choose
+the parent and child phases, then press **Show variants**.
+
+Parent and child are not interchangeable — the parent is the phase that transformed — so the card
+offers **Swap**. A third click on the map starts a new pair rather than replacing one of the two
+silently, and changing the segmentation threshold releases the picks, because the same grain number
+means a different region under a different threshold.
+
 ### GROD and KAM are not the same picture
 
 The `bicrystal_gradient` dataset exists to make this concrete. Its right-hand grain carries a linear

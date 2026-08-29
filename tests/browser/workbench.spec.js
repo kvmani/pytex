@@ -2661,6 +2661,96 @@ test('names the relationship between two measured grains and prices its statemen
 });
 
 
+/*
+ * The gesture M4e exists for: two grains picked on the map arrive in another
+ * workspace with nothing retyped.
+ *
+ * The whole path is under test — the label raster the click resolves through,
+ * the outlines, the offer, the navigation, and what the receiving panel does
+ * with a pair whose two grains are the same phase. That last part is the point
+ * of the test rather than an edge of it: every practice dataset is single-phase
+ * nickel, an orientation relationship is defined between two distinct phases,
+ * and a panel that filled in its own defaults and pressed on would report a
+ * relationship between two phases the measurement never named.
+ */
+test('carries two grains picked off the map into the Variants workspace', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'IPF map');
+
+  // The default dataset is the bicrystal, so opposite sides of the image are
+  // two different grains by construction — and one of them carries a real
+  // spread, since it holds the deformation gradient.
+  const picks = page.locator('#stage .picks');
+  await expect(picks).toContainText('Parent grain');
+  const image = page.locator('#stage .plot svg image');
+  const box = await image.boundingBox();
+  await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.5);
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.5);
+
+  await expect(picks).toContainText(/Parent grain: grain \d+/);
+  await expect(picks).toContainText(/Child grain: grain \d+/);
+  // Every pick carries the spread beside the mean, because the mean alone
+  // cannot say how much of a grain it stands for.
+  await expect(picks).toContainText(/GOS \d+\.\d+° over \d+ points/);
+  // Both grains outlined on the map itself: two picks, a halo and a line each.
+  await expect(page.locator('#stage svg [data-role="picks"] path')).toHaveCount(4);
+
+  const parentAngles = /Parent grain: grain \d+([\d.,\s-]+)°/.exec(
+    (await picks.textContent()) ?? '',
+  );
+  expect(parentAngles).not.toBeNull();
+
+  await page.getByRole('button', { name: 'Send the pair to Variants' }).click();
+
+  // It landed in the other workspace, on the view that answers the question.
+  await expect(page.locator('#tabs').getByRole('tab', { selected: true })).toHaveText('Variants');
+  await expect(page.locator('#rail-body').getByLabel('View')).toHaveValue(
+    'variants.or_from_grains',
+  );
+
+  const received = page.locator('#stage .received');
+  await expect(received).toContainText('Two grains picked off the map');
+  await expect(received).toContainText('Bicrystal with a deformation gradient');
+  await expect(received).toContainText('segmented at 5°');
+  // The trap this whole path can hide, said where the answer will be.
+  await expect(received).toContainText('residual is zero whatever the grains were');
+
+  /*
+   * Nothing was computed, and the card says why: both grains are nickel, and
+   * the phases shown are the panel's defaults rather than the scan's.
+   */
+  await expect(received).toContainText('The phases were not carried across');
+  await expect(received).toContainText('Nickel (fcc)');
+  await expect(page.locator('#stage .verdict')).toHaveCount(0);
+  // No picture either, rather than an empty pole figure that reads as a failure.
+  await expect(page.locator('#stage .plot')).toBeHidden();
+
+  /*
+   * The angles did arrive, which is the transcription this milestone removes:
+   * the first Euler angle on the form is the one the card reports.
+   */
+  const parentPhi1 = page.locator('#rail-body input#ctl-parent_angle1, #rail-body input[id^="ctl-parent_angle1"]').first();
+  const seeded = Number(await parentPhi1.inputValue());
+  expect(Number.isFinite(seeded)).toBe(true);
+  expect((await received.textContent()) ?? '').toContain(seeded.toFixed(2));
+
+  /*
+   * Choosing the two phases is all that is left to do, and then the picked
+   * orientations compute a real answer.
+   */
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Show variants' }).click(),
+  );
+  const verdict = page.locator('#stage .verdict');
+  await expect(verdict).toContainText('Relationship');
+  await expect(verdict).toContainText('Catalogue distance');
+  // The card stays above the answer: the measurement, then what was computed
+  // from it.
+  await expect(page.locator('#stage .received')).toBeVisible();
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('draws two measured grains in the specimen frame, with what 2.4 degrees looks like', async ({
   page,
 }) => {

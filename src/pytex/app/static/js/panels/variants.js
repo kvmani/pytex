@@ -25,6 +25,7 @@ import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult, saveBlob } from '../core/result.js';
 import { call } from '../core/api.js';
+import { claim } from '../core/handoff.js';
 import { identity, multiply, rotationX, rotationY } from '../core/rotation3.js';
 import {
   compositeScene,
@@ -156,6 +157,11 @@ export function mount(context) {
     // Which result the camera was framed for. Reframing on every redraw would
     // make turning the crystal also rescale it.
     framedFor: null,
+    // A pair of grains picked on the EBSD map, if the user arrived that way:
+    // the seeded control values and the card that says where they came from.
+    // Kept rather than applied once, because the two measured-pair views take
+    // the same six angles and switching between them rebuilds the form.
+    pair: null,
   };
 
   // One camera drives every crystal on screen -- both crystals of a composite,
@@ -269,8 +275,22 @@ export function mount(context) {
   }
 
   function renderControls(initial = {}) {
-    state.form = buildForm(state.operation, { initial });
+    // A measured pair survives a change of view, because the two measured-pair
+    // views are two questions about *one* pair: switching from the relationship
+    // to the picture must not silently answer the second question about the
+    // panel's default grains. Anything the caller supplies still wins, so
+    // loading an example over a seeded pair replaces it, as it reads.
+    const seed = state.pair && takesMeasuredPair() ? state.pair.values : {};
+    state.form = buildForm(state.operation, { initial: { ...seed, ...initial } });
     formHost.replaceChildren(state.form.element);
+  }
+
+  /** Whether the open view is one that takes two measured orientations. */
+  function takesMeasuredPair() {
+    return (
+      state.operation.id === 'variants.or_from_grains' ||
+      state.operation.id === 'variants.measured_composite'
+    );
   }
 
   function loadExample(example) {
@@ -311,6 +331,10 @@ export function mount(context) {
       // they are the answer and the table is the evidence for it.
       const verdict = verdictCard(result);
       if (verdict) details.prepend(verdict);
+      // Above the verdict, because it is the question the verdict answers: the
+      // measurement first, then what was computed from it.
+      const received = receivedCard();
+      if (received) details.prepend(received);
     } catch (error) {
       if (token !== runToken) return;
       if (!state.form.showError(error)) context.showError(error);
@@ -828,12 +852,136 @@ export function mount(context) {
     return mode === 'composite' || mode === 'sheet' || mode === 'measured';
   }
 
+  /**
+   * Take a pair of grains picked on the EBSD map, if one was offered.
+   *
+   * Claimed while mounting, once: the offer is a gesture the user just made —
+   * two grains and a button — and not a setting. Leaving it readable would make
+   * every later visit to this workspace re-seed itself from a pick made minutes
+   * ago, which is the same silent substitution as a map that quietly analyses
+   * the practice dataset instead of the open scan.
+   *
+   * **The phases are the reason this is not simply "fill the form and run".**
+   * An orientation relationship is defined between two *distinct* phases, and a
+   * scan names phases without describing them. Where both names resolve to
+   * built-in phases and the two differ, the pair is complete and the answer is
+   * computed immediately. Where they do not — a single-phase scan, or a name
+   * this application does not carry — the angles are seeded and the run is
+   * *not* started: the panel's default phases are austenite and ferrite, and
+   * computing under them would report a relationship between two phases the
+   * measurement never claimed.
+   */
+  function seedFromPickedPair() {
+    const offered = claim('measured-pair');
+    if (!offered?.grains || offered.grains.length !== 2) return false;
+    const [parent, child] = offered.grains;
+    const values = {
+      euler_convention: offered.euler_convention ?? 'bunge',
+      parent_angle1: parent.phi1_deg,
+      parent_angle2: parent.Phi_deg,
+      parent_angle3: parent.phi2_deg,
+      child_angle1: child.phi1_deg,
+      child_angle2: child.Phi_deg,
+      child_angle3: child.phi2_deg,
+    };
+    const distinct =
+      parent.phase_builtin && child.phase_builtin && parent.phase_builtin !== child.phase_builtin;
+    if (distinct) {
+      values.phase = { builtin: parent.phase_builtin };
+      values.child_phase = { builtin: child.phase_builtin };
+    }
+    state.pair = { ...offered, values, phasesResolved: Boolean(distinct) };
+    state.operation = operations.find((entry) => entry.id === 'variants.or_from_grains');
+    operationSelect.value = state.operation.id;
+    state.teaches = null;
+    renderControls();
+    if (distinct) {
+      run();
+    } else {
+      // Nothing computed, so nothing to put the card above: it goes on its own,
+      // where a result would have been. The frame still has to be told this
+      // view has no picture, or the stage carries an empty pole figure — which
+      // reads as a failed render rather than as a question waiting on a phase.
+      draw();
+      details.replaceChildren(receivedCard());
+    }
+    return true;
+  }
+
+  /**
+   * Where the two orientations came from, and what believing them costs.
+   *
+   * Shown for as long as the pair is the panel's input, not only on the run
+   * that arrived: a user who raises the index bound and runs again is still
+   * looking at an answer about two measured grains, and the spread that
+   * qualifies it must not scroll away with the first result.
+   *
+   * The grain orientation spread is on the card because a single pair's
+   * residual is zero *by construction* — two mean orientations always fit one
+   * rotation exactly — so the spread is the only measure of what that zero
+   * conceals. It is the same lesson as the Kearns triad that summed to one
+   * whatever the data were.
+   */
+  function receivedCard() {
+    if (!state.pair || !takesMeasuredPair()) return null;
+    const [parent, child] = state.pair.grains;
+    const spread = Math.max(
+      parent.grain_orientation_spread_deg ?? 0,
+      child.grain_orientation_spread_deg ?? 0,
+    );
+    const describe = (grain, role) =>
+      el('div.received__grain', {}, [
+        el('strong', { text: `${role}: grain ${grain.grain_id}` }),
+        el('span', {
+          text:
+            ` — ${formatNumber(grain.phi1_deg, 2)}, ${formatNumber(grain.Phi_deg, 2)}, ` +
+            `${formatNumber(grain.phi2_deg, 2)}° Bunge · ` +
+            `${grain.phase_name ?? 'phase not named'}` +
+            ` · GOS ${formatNumber(grain.grain_orientation_spread_deg, 3)}°`,
+        }),
+      ]);
+    return el('section.received', {}, [
+      el('h3', { text: 'Two grains picked off the map' }),
+      describe(parent, 'Parent'),
+      describe(child, 'Child'),
+      el('p.received__note', {
+        text:
+          `From ${state.pair.source?.map ?? 'the orientation map'}` +
+          (state.pair.source?.grain_threshold_deg
+            ? `, segmented at ${state.pair.source.grain_threshold_deg}°`
+            : '') +
+          '. Each orientation is the grain’s symmetry-aware mean over its own points.',
+      }),
+      el('p.received__note', {
+        text:
+          'A mean has no scatter, so this pair fits one rotation exactly and the residual is ' +
+          `zero whatever the grains were. The spread is what that zero conceals: up to ` +
+          `${formatNumber(spread, 3)}° within a grain. Read every angle below against it.`,
+      }),
+      state.pair.phasesResolved
+        ? null
+        : el('p.received__note.received__note--warning', {
+            text:
+              'The phases were not carried across: the scan names both grains ' +
+              `${parent.phase_name ?? 'the same phase'}` +
+              (child.phase_name && child.phase_name !== parent.phase_name
+                ? ` and ${child.phase_name}`
+                : '') +
+              ', and a relationship is defined between two distinct phases. Choose the parent ' +
+              'and child phases above — the ones shown are this panel’s defaults, not the ' +
+              'scan’s — and press Show variants.',
+          }),
+    ]);
+  }
+
   renderControls();
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
   frame.setControls(legend);
   context.stage.append(frame.element, details);
-  if (examples.length) loadExample(examples[0]);
+  // A pair handed over from the map is what the user asked for by pressing the
+  // button; the opening example is only what the panel does when nobody asked.
+  if (!seedFromPickedPair() && examples.length) loadExample(examples[0]);
 
   return { help: () => state.operation };
 }

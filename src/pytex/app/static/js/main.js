@@ -462,7 +462,31 @@ function activate(target, panelId = null) {
     manifest: app.manifest,
     showError,
     openHelp,
+    // How one panel sends the user to another. Given to every panel rather than
+    // to the two that use it today: a panel that can hand its answer on is a
+    // panel that can say where it goes, and the shell is the only thing that
+    // knows what a workspace is. What travels *with* the user is a `handoff`
+    // offer; this moves the user.
+    openPanel,
   });
+}
+
+/**
+ * Open the workspace a panel belongs to, and that panel inside it.
+ *
+ * The panel-facing half of `activate`: a panel knows the id of the panel it is
+ * handing work to and nothing about the tab bar, which is the right division —
+ * a grouped workspace can be regrouped without every panel that points into it
+ * learning about the change.
+ */
+function openPanel(panelId) {
+  const found = locate(panelId);
+  if (!found) {
+    log.warning(`No panel named ${panelId}; staying where we are.`, { source: 'app' });
+    return false;
+  }
+  activate(found.workspace.id, panelId);
+  return true;
 }
 
 /* ------------------------------------------------------------------ search */

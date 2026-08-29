@@ -527,6 +527,71 @@ def _encode_rgb(rgb: np.ndarray, raster: _Raster) -> dict[str, Any]:
     }
 
 
+def _encode_grain_ids(labels: np.ndarray, raster: _Raster) -> dict[str, Any]:
+    """Base64 the per-pixel grain labels onto the same raster as the image.
+
+    Purpose
+    -------
+    A click on the map has to answer *which grain is that*, and the only
+    honest answer is the label the segmentation gave that measurement point.
+    Sending the labels beside the pixels lets the browser answer it by lookup
+    rather than by guessing from colour — two grains of one orientation share a
+    colour exactly, and a colour-matching pick would join them silently.
+
+    The array is row-major from the top, one ``int32`` per raster cell, aligned
+    cell for cell with :func:`_encode_rgb`. Cells with no measurement — the gaps
+    a hexagonal scan leaves in a square raster — carry ``-1``, the same value
+    :attr:`GrainSegmentation.label_grid` uses for them, so an empty cell is
+    picked as nothing rather than as grain zero.
+    """
+
+    values = np.asarray(labels, dtype=np.int32).reshape(-1)
+    if raster.placement is None:
+        grid = values.copy()
+    else:
+        grid = np.full(raster.size, -1, dtype=np.int32)
+        grid[raster.placement] = values
+    return {
+        "width": raster.cols,
+        "height": raster.rows,
+        "encoding": "base64-int32",
+        "data": base64.b64encode(
+            np.ascontiguousarray(grid.reshape(raster.rows, raster.cols)).tobytes()
+        ).decode("ascii"),
+    }
+
+
+def _builtin_phase_ids(grain_rows: list[dict[str, Any]]) -> dict[str, str | None]:
+    """Which built-in phase, if any, each phase the scan names corresponds to.
+
+    Purpose
+    -------
+    A grain handed to a relationship calculation needs a *phase* — a lattice and
+    a point group — and a scan carries only a name. Where that name is one this
+    application already knows, the correspondence can be made once here and
+    checked by a test; where it is not, the answer is ``None`` and the surface
+    that uses it must ask the user rather than choose.
+
+    The names are taken from the grain rows rather than from the map header,
+    so what is offered is exactly what the pickable grains are labelled with.
+
+    Matching is by name, case- and punctuation-insensitively, against
+    :data:`~pytex.app.phases.BUILTIN_PHASES`. Deliberately nothing cleverer: a
+    lattice-parameter match would name a phase the scan never claimed, and a
+    fuzzy name match would confuse alpha and beta zirconium, which differ in
+    symmetry and therefore in every number computed from them.
+    """
+
+    from pytex.app.phases import BUILTIN_PHASES
+
+    def key(name: str) -> str:
+        return "".join(character for character in name.lower() if character.isalnum())
+
+    catalogue = {key(spec.name): identifier for identifier, spec in BUILTIN_PHASES.items()}
+    names = {str(row["phase_name"]) for row in grain_rows if row.get("phase_name")}
+    return {name: catalogue.get(key(name)) for name in sorted(names)}
+
+
 def _source_parameters() -> tuple[Parameter, ...]:
     """Which scan an operation works on: a practice dataset, or the user's file.
 
@@ -830,6 +895,10 @@ def _map(request: dict[str, Any]) -> dict[str, Any]:
             "grains": grain_rows,
             "columns": [column.to_json() for column in _GRAIN_COLUMNS],
             "grain_count": len(segmentation.grains),
+            # The labels beside the pixels, so a click on the map resolves to a
+            # grain by lookup rather than by colour. See `_encode_grain_ids`.
+            "grain_ids": _encode_grain_ids(segmentation.labels, raster),
+            "phase_builtins": _builtin_phase_ids(grain_rows),
             "dataset": entry.describe(),
             "ipf_direction": str(request["ipf_direction"]),
             "modulate_by": str(request["modulate_by"]),

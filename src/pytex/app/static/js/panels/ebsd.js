@@ -18,6 +18,7 @@ import { call } from '../core/api.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { scanControls, withScan } from '../core/ebsdscan.js';
+import { offer } from '../core/handoff.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
 
@@ -75,6 +76,23 @@ const BOUNDARY_STYLE = {
   low: { stroke: '#e03131', width: 0.9 },
 };
 
+/**
+ * The two picked grains, and how they are drawn on the map.
+ *
+ * Fixed colours for the same reason the boundaries have them: these outlines
+ * sit on top of IPF colours and a viridis ramp, so they need contrast against
+ * *the map*. Each is drawn over a white halo, which is what makes an outline
+ * legible on a pale grain and on a dark one without knowing which it landed on.
+ *
+ * Parent and child rather than first and second, because that is what the
+ * relationship they are being picked for calls them, and the two are not
+ * interchangeable: the parent is the phase that transformed.
+ */
+const PICK_SLOTS = [
+  { role: 'parent', label: 'Parent grain', colour: '#f08c00' },
+  { role: 'child', label: 'Child grain', colour: '#d6336c' },
+];
+
 export function mount(context, { colouring = 'ipf' } = {}) {
   const operation = context.manifest.operations.find((entry) => entry.id === 'ebsd.map');
   // By operation rather than by panel: the whole workspace declares `panel:
@@ -90,10 +108,23 @@ export function mount(context, { colouring = 'ipf' } = {}) {
   // field is not where a megabyte of text belongs — the generated control for
   // it is hidden and the value supplied at call time, the same arrangement the
   // TEM panel uses for its picks.
-  const state = { result: null, form: null, teaches: null };
+  //
+  // `picks` holds the grain ids chosen on the map, parent first, and `labels`
+  // the per-pixel grain array the click resolves through — decoded once per
+  // result rather than per click.
+  const state = {
+    result: null,
+    form: null,
+    teaches: null,
+    picks: [],
+    labels: null,
+    picksLayer: null,
+    geometry: null,
+  };
 
   const frame = plotFrame({ title: 'Orientation map', units: 'µm', digits: 2 });
   const legend = el('div.legend');
+  const picksHost = el('section.picks');
   const details = el('div');
   const formHost = el('div');
 
@@ -132,7 +163,18 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     ]),
   );
   frame.setControls(legend);
-  context.stage.append(frame.element, details);
+  context.stage.append(frame.element, picksHost, details);
+
+  // On the frame rather than on the drawing: every redraw replaces the SVG, and
+  // a handler owned by it would stop working the first time a control changed.
+  // The frame swallows the click that ends a pan before it reaches here, so
+  // dragging the map is not also picking whatever the drag finished on.
+  frame.element.addEventListener('click', (event) => {
+    if (!state.labels || !event.target.closest('svg')) return;
+    const point = frame.pointerToData(event);
+    if (!point || !(point.grain >= 0)) return;
+    pick(point.grain);
+  });
 
   // The sub-tab decides what the map opens on; the control is still there, so a
   // reader who arrived at GROD can switch to KAM without changing tabs.
@@ -155,6 +197,208 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     state.teaches = example.teaches;
     renderControls(example.request);
     run();
+  }
+
+  /* -------------------------------------------------------------- picking */
+
+  /**
+   * Choose a grain, or unchoose it.
+   *
+   * Two slots, filled parent then child. Clicking a grain that is already
+   * chosen releases it; clicking a third grain when both slots are full starts
+   * a *new* pair with that grain as the parent, rather than silently replacing
+   * one of the two and leaving the user to work out which. A pair is a gesture
+   * with a beginning, and starting over is what a third click means.
+   */
+  function pick(grainId) {
+    const existing = state.picks.indexOf(grainId);
+    if (existing >= 0) state.picks.splice(existing, 1);
+    else if (state.picks.length >= PICK_SLOTS.length) state.picks = [grainId];
+    else state.picks.push(grainId);
+    renderPicks();
+  }
+
+  function grainRow(grainId) {
+    return (state.result?.data?.grains ?? []).find((row) => row.grain_id === grainId) ?? null;
+  }
+
+  /** Redraw the outlines and rebuild the card under the map. */
+  function renderPicks() {
+    drawPickOutlines();
+    picksHost.replaceChildren(...pickCard());
+  }
+
+  /**
+   * The chosen grains outlined on the map itself.
+   *
+   * Outlined rather than tinted: a tint would change the colour the map is
+   * *for*, and on an IPF map the colour is the measurement. The outline follows
+   * the cells that carry the label, so what is highlighted is the grain the
+   * segmentation found rather than a circle around where the click landed.
+   */
+  function drawPickOutlines() {
+    if (!state.picksLayer || !state.labels || !state.geometry) return;
+    const nodes = [];
+    state.picks.forEach((grainId, index) => {
+      const slot = PICK_SLOTS[index] ?? PICK_SLOTS[PICK_SLOTS.length - 1];
+      const path = grainOutlinePath(state.labels, state.geometry, grainId);
+      if (!path) return;
+      nodes.push(
+        // Six units of halo under three of colour, in a drawing 700 units
+        // across: measured on screen rather than guessed, because at the
+        // boundaries' own 1.6 the outline of a small grain is a sub-pixel line
+        // and the highlight is invisible at the size the map is actually shown.
+        svg('path', {
+          d: path,
+          fill: 'none',
+          stroke: '#ffffff',
+          'stroke-width': 6,
+          'stroke-linecap': 'round',
+          'stroke-opacity': 0.85,
+        }),
+        svg('path', {
+          d: path,
+          fill: 'none',
+          stroke: slot.colour,
+          'stroke-width': 3,
+          'stroke-linecap': 'round',
+        }),
+      );
+    });
+    state.picksLayer.replaceChildren(...nodes);
+  }
+
+  /**
+   * What has been picked, and what it costs to believe the answer.
+   *
+   * The grain orientation spread is on the card beside the angles, not left
+   * behind in the table: two mean orientations fed into a relationship give a
+   * residual of exactly zero for one pair, by construction, and the spread is
+   * the only measure of what that zero conceals. It travels with the pair into
+   * the Variants workspace for the same reason.
+   */
+  function pickCard() {
+    if (!state.result) return [];
+    const slots = PICK_SLOTS.map((slot, index) => {
+      const grainId = state.picks[index];
+      const row = grainId === undefined ? null : grainRow(grainId);
+      return el('div.picks__slot', { dataset: { role: slot.role } }, [
+        el('span.picks__swatch', { style: `background:${slot.colour}` }),
+        el('div.picks__body', {}, [
+          el('strong', { text: row ? `${slot.label}: grain ${row.grain_id}` : slot.label }),
+          row
+            ? el('span.picks__angles', {
+                text:
+                  `${formatNumber(row.mean_phi1_deg, 2)}, ${formatNumber(row.mean_Phi_deg, 2)}, ` +
+                  `${formatNumber(row.mean_phi2_deg, 2)}° Bunge · ` +
+                  `${row.phase_name ?? 'phase not named'}`,
+              })
+            : el('span.picks__angles', { text: 'Click a grain on the map.' }),
+          row
+            ? el('span.picks__spread', {
+                title:
+                  'Grain orientation spread: how far the grain’s own points sit from its ' +
+                  'mean. The relationship is computed from the means, so this is the only ' +
+                  'measure of what its zero residual conceals.',
+                text:
+                  `GOS ${formatNumber(row.grain_orientation_spread_deg, 3)}° ` +
+                  `over ${row.size} points`,
+              })
+            : null,
+        ]),
+        row
+          ? el('button.picks__release', {
+              type: 'button',
+              title: 'Release this grain',
+              text: '×',
+              onclick: () => pick(row.grain_id),
+            })
+          : null,
+      ]);
+    });
+
+    const ready = state.picks.length === PICK_SLOTS.length;
+    return [
+      el('div.picks__slots', {}, slots),
+      el('div.picks__actions', {}, [
+        el('button.button.button--primary', {
+          type: 'button',
+          text: 'Send the pair to Variants',
+          disabled: !ready,
+          title: ready
+            ? 'Open the relationship view with these two grains already in it'
+            : 'Pick two grains on the map first',
+          onclick: () => send(),
+        }),
+        el('button.button', {
+          type: 'button',
+          text: 'Swap',
+          disabled: !ready,
+          title: 'Exchange parent and child: which is which changes the relationship',
+          onclick: () => {
+            state.picks.reverse();
+            renderPicks();
+          },
+        }),
+        el('button.button', {
+          type: 'button',
+          text: 'Clear',
+          disabled: !state.picks.length,
+          onclick: () => {
+            state.picks = [];
+            renderPicks();
+          },
+        }),
+      ]),
+      el('p.field__help', {
+        text:
+          'Click a grain to pick it, and a second for the other side of the relationship. What ' +
+          'travels across is each grain’s symmetry-aware mean orientation, its phase as ' +
+          'the scan names it, and its spread — nothing is retyped, and nothing ' +
+          'about the scatter is left behind.',
+      }),
+    ];
+  }
+
+  /**
+   * Hand the pair to the Variants workspace and follow it there.
+   *
+   * The offer carries the numbers *and* their provenance — which map, which
+   * dataset or file, at which segmentation threshold — because a pair of Euler
+   * triples with no history is exactly the unattributable number this
+   * repository refuses. The phases go as the scan names them, with the built-in
+   * each name resolves to when it resolves to one; where it does not, the
+   * receiving panel asks rather than assuming a lattice the measurement never
+   * claimed.
+   */
+  function send() {
+    const data = state.result?.data;
+    if (!data || state.picks.length !== PICK_SLOTS.length) return;
+    const builtins = data.phase_builtins ?? {};
+    const grains = state.picks.map((grainId, index) => {
+      const row = grainRow(grainId);
+      return {
+        role: PICK_SLOTS[index].role,
+        grain_id: row.grain_id,
+        phi1_deg: row.mean_phi1_deg,
+        Phi_deg: row.mean_Phi_deg,
+        phi2_deg: row.mean_phi2_deg,
+        phase_name: row.phase_name ?? null,
+        phase_builtin: builtins[row.phase_name] ?? null,
+        grain_orientation_spread_deg: row.grain_orientation_spread_deg,
+        size: row.size,
+      };
+    });
+    offer('measured-pair', {
+      euler_convention: 'bunge',
+      grains,
+      source: {
+        panel: panel.id,
+        map: data.dataset?.title ?? 'this map',
+        grain_threshold_deg: state.result.inputs?.grain_threshold_deg ?? null,
+      },
+    });
+    context.openPanel('variants');
   }
 
   async function run() {
@@ -187,6 +431,11 @@ export function mount(context, { colouring = 'ipf' } = {}) {
 
   function draw() {
     const data = state.result.data;
+    state.labels = decodeLabels(data.grain_ids);
+    // A pick names a grain, and a redraw at a different threshold is a
+    // different segmentation: the same number would then outline a different
+    // region. Dropping the picks is the only honest answer.
+    if (!state.labels) state.picks = [];
     const [, , width, height] = data.extent_um;
     // The image spans one step beyond the last point centre in each direction,
     // because a pixel is a measurement's area rather than its centre.
@@ -209,6 +458,11 @@ export function mount(context, { colouring = 'ipf' } = {}) {
         style: 'image-rendering: pixelated',
       }),
     ];
+
+    // Under the boundaries, so a boundary is never hidden by a highlight, and
+    // over the image, so the highlight is visible on the grain it names.
+    state.picksLayer = svg('g', { 'data-role': 'picks' });
+    nodes.push(state.picksLayer);
 
     for (const line of data.boundaries ?? []) {
       const character =
@@ -237,10 +491,26 @@ export function mount(context, { colouring = 'ipf' } = {}) {
         nodes,
       ),
     );
+    state.geometry = state.labels
+      ? {
+          cellWidth: drawWidth / state.labels.width,
+          cellHeight: drawHeight / state.labels.height,
+        }
+      : null;
     frame.configure({
-      toData: (x, y) => ({ x: x / scale - step / 2, y: y / scale - step / 2 }),
-      formatCursor: (point) => `${formatNumber(point.x, 2)}, ${formatNumber(point.y, 2)} µm`,
+      // The grain travels with the position, so one lookup serves both the
+      // readout and the click: the number under the cursor is the number a
+      // click would pick, and they cannot disagree.
+      toData: (x, y) => ({
+        x: x / scale - step / 2,
+        y: y / scale - step / 2,
+        grain: labelAt(state.labels, state.geometry, x, y),
+      }),
+      formatCursor: (point) =>
+        `${formatNumber(point.x, 2)}, ${formatNumber(point.y, 2)} µm` +
+        (point.grain >= 0 ? ` · grain ${point.grain}` : ''),
     });
+    renderPicks();
 
     const summary = data.boundary_summary ?? [];
     frame.setStatus(
@@ -300,6 +570,80 @@ export function mount(context, { colouring = 'ipf' } = {}) {
   }
 
   return { help: () => operation };
+}
+
+/* ------------------------------------------------------------------ picking */
+
+/**
+ * The per-pixel grain labels, decoded from the payload's base64 int32 array.
+ *
+ * A click has to resolve to the grain the *segmentation* found, and colour
+ * cannot answer that: two grains of one orientation carry exactly the same
+ * colour, and a colour-matching pick would join them into one silently. The
+ * labels are the segmentation's own answer, aligned cell for cell with the
+ * image.
+ */
+function decodeLabels(payload) {
+  if (!payload?.data) return null;
+  const binary = atob(payload.data);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return {
+    width: payload.width,
+    height: payload.height,
+    // Int32Array over the bytes, little-endian as NumPy wrote them. A DataView
+    // read per cell would be correct too and an order of magnitude slower on a
+    // map of a quarter of a million points.
+    values: new Int32Array(bytes.buffer),
+  };
+}
+
+/** The label at a point in the drawing's own units, or -1 where there is none. */
+function labelAt(labels, geometry, x, y) {
+  if (!labels || !geometry) return -1;
+  const column = Math.floor(x / geometry.cellWidth);
+  const row = Math.floor(y / geometry.cellHeight);
+  if (column < 0 || row < 0 || column >= labels.width || row >= labels.height) return -1;
+  return labels.values[row * labels.width + column];
+}
+
+/**
+ * The outline of one grain, as a single SVG path.
+ *
+ * An edge is drawn wherever a cell carrying the label meets one that does not,
+ * which gives the grain's true boundary including its holes — a twin lamella
+ * enclosed in a grain outlines as two rings, and drawing a bounding box instead
+ * would claim the lamella as part of it.
+ *
+ * One path rather than a segment element each: a grain in a fine map has
+ * thousands of edges, and thousands of nodes is where this stops being
+ * interactive.
+ */
+function grainOutlinePath(labels, geometry, grainId) {
+  if (!labels || !geometry) return null;
+  const { width, height, values } = labels;
+  const { cellWidth, cellHeight } = geometry;
+  const parts = [];
+  const edge = (x1, y1, x2, y2) => {
+    parts.push(`M${x1.toFixed(2)} ${y1.toFixed(2)}L${x2.toFixed(2)} ${y2.toFixed(2)}`);
+  };
+  for (let row = 0; row < height; row += 1) {
+    for (let column = 0; column < width; column += 1) {
+      if (values[row * width + column] !== grainId) continue;
+      const left = column * cellWidth;
+      const top = row * cellHeight;
+      const right = left + cellWidth;
+      const bottom = top + cellHeight;
+      if (column === 0 || values[row * width + column - 1] !== grainId)
+        edge(left, top, left, bottom);
+      if (column === width - 1 || values[row * width + column + 1] !== grainId)
+        edge(right, top, right, bottom);
+      if (row === 0 || values[(row - 1) * width + column] !== grainId) edge(left, top, right, top);
+      if (row === height - 1 || values[(row + 1) * width + column] !== grainId)
+        edge(left, bottom, right, bottom);
+    }
+  }
+  return parts.length ? parts.join('') : null;
 }
 
 /* ---------------------------------------------------------------- rendering */

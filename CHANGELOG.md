@@ -13,6 +13,27 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Two grains picked on the map, answered in another workspace.** Clicking a grain on the
+  EBSD map picks it, a second click picks the other side of the relationship, and **Send the
+  pair to Variants** opens the relationship view with both orientations already in it. The
+  click resolves through the segmentation's own per-pixel labels, which `ebsd.map` now returns
+  beside the image: colour cannot answer *which grain is that*, because two grains of one
+  orientation are coloured identically and matching by colour would join them silently.
+
+  What travels is each grain's symmetry-aware mean orientation, its phase as the scan names it,
+  and **its spread** — stated at the top of the answer, because a single pair fits one rotation
+  exactly and its zero residual is a property of the arithmetic rather than of the measurement.
+
+  **The phases travel only when the scan's names resolve to two distinct built-in phases.**
+  Otherwise — every single-phase practice dataset included — the angles are seeded and nothing
+  is computed until the user chooses the phases: an orientation relationship is defined between
+  two distinct phases, and running under the panel's defaults would report a relationship
+  between two phases the measurement never claimed.
+
+  This is the first hand-off between panels in the application, and the mechanism
+  (`js/core/handoff.js`) is deliberately small: an offer under a key, claimed exactly once by
+  the panel that receives it, so a gesture made minutes ago cannot silently re-seed a workspace
+  visited later.
 - **Grain rows carry their mean orientation and phase.** Every row of the EBSD grain table now
   reports the grain's symmetry-aware mean orientation as Bunge angles and the phase its points
   carry — exactly what the measured-pair views of the Variants workspace take, so a
