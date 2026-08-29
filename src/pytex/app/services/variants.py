@@ -58,6 +58,7 @@ from pytex.app.services.calculator import (
     plane_label,
     relationship_name,
 )
+from pytex.app.services.crystal import scene_payload
 
 __all__: tuple[str, ...] = ()
 
@@ -1012,6 +1013,614 @@ def _variant_render(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+#: Placement modes for the two crystals of a composite scene.
+_PLACEMENTS: tuple[tuple[str, str, str], ...] = (
+    (
+        "interpenetrating",
+        "Interpenetrating",
+        "Both crystals share one origin. This is the placement in which the parallelism is "
+        "visible, because the parallel plane and direction physically coincide.",
+    ),
+    (
+        "side_by_side",
+        "Side by side",
+        "The child is translated clear of the parent along the world x axis. Easier to read "
+        "each structure, at the cost of the coincidence being implied rather than seen.",
+    ),
+)
+
+
+def _index_triple(values: Any) -> tuple[int, int, int]:
+    """An index triple as three plain ints, rounded from float coordinates."""
+
+    rounded = [round(float(value)) for value in np.asarray(values).reshape(-1)]
+    if len(rounded) != 3:
+        raise InvalidInputError("Expected a three-index triple.", field="relationship")
+    return (rounded[0], rounded[1], rounded[2])
+
+
+def _composite_relationship(request: dict[str, Any]) -> tuple[Any, Any, Any, Any, Any]:
+    """Resolve both phases and the relationship, refusing phases with no atoms."""
+
+    parent_spec, parent_phase = phase_from_request(request["phase"])
+    child_spec, child_phase = phase_from_request(request["child_phase"])
+    for spec in (parent_spec, child_spec):
+        if not spec.has_structure:
+            raise InvalidInputError(
+                f"{spec.name} carries no atomic basis, so there is nothing to draw.",
+                field="phase" if spec is parent_spec else "child_phase",
+                hint=(
+                    "Choose a built-in phase, or add atomic sites to the phase description. "
+                    "Lattice geometry alone supports the calculator but not the viewer."
+                ),
+            )
+    relationship = _relationship(str(request["relationship"]), parent_phase, child_phase)
+    return parent_spec, parent_phase, child_spec, child_phase, relationship
+
+
+def _resolved_variants(relationship: Any) -> tuple[Any, ...]:
+    variants = relationship.generate_variants()
+    if not variants:  # pragma: no cover - a relationship always has at least one
+        raise InvalidInputError(
+            "This relationship generates no variants.", field="relationship"
+        )
+    return tuple(variants)
+
+
+def _variant_at(relationship: Any, index: int) -> Any:
+    """The one-based variant, or an error naming the field the user can fix."""
+
+    variants = _resolved_variants(relationship)
+    if not 1 <= index <= len(variants):
+        raise InvalidInputError(
+            f"This relationship has {len(variants)} variants, so variant {index} "
+            "does not exist.",
+            field="variant",
+            hint=(
+                f"Choose a variant between 1 and {len(variants)}. Kurdjumov-Sachs and "
+                "Greninger-Troiano have 24; Nishiyama-Wassermann, Pitsch and Burgers have 12; "
+                "Bain has 3."
+            ),
+        )
+    return variants[index - 1]
+
+
+def _child_translation(placement: str, parent_scene: Any, child_scene: Any) -> list[float]:
+    """Where the child sits relative to the parent, for the chosen placement."""
+
+    if placement != "side_by_side":
+        return [0.0, 0.0, 0.0]
+    parent_bounds = np.asarray(parent_scene.bounds(), dtype=float)
+    child_bounds = np.asarray(child_scene.bounds(), dtype=float)
+    span = float(parent_bounds[1][0] - parent_bounds[0][0])
+    span += float(child_bounds[1][0] - child_bounds[0][0])
+    return [0.65 * span, 0.0, 0.0]
+
+
+def _primitive_payload(primitives: Any) -> dict[str, Any]:
+    """The world-frame OR primitives as JSON the browser can draw directly.
+
+    Everything is in Cartesian angstrom in the world frame — which is the parent
+    crystal frame — so the browser applies the camera rotation and nothing else.
+    """
+
+    return {
+        "arrows": [
+            {
+                "tail": [float(value) for value in arrow.tail],
+                "head": [float(value) for value in arrow.head],
+                "color": str(arrow.color),
+                "label": arrow.label,
+            }
+            for arrow in primitives.arrows
+        ],
+        "patches": [
+            {
+                "vertices": [[float(value) for value in vertex] for vertex in patch.vertices],
+                "normal": [float(value) for value in patch.normal],
+                "color": str(patch.color),
+                "alpha": float(patch.alpha),
+                "label": patch.label,
+            }
+            for patch in primitives.patches
+        ],
+    }
+
+
+def _parallelism_rows(
+    variant: Any, *, parent_spec: PhaseSpec, child_spec: PhaseSpec
+) -> list[dict[str, Any]]:
+    """What *this* variant holds parallel, labelled with its own indices.
+
+    Read from ``TransformationVariant.parallel_planes`` / ``.parallel_directions``
+    rather than from the relationship: under variant k the parent-side objects
+    are the symmetry images under that variant's operator, so quoting the
+    relationship's nominal pair would label the figure with another variant's
+    indices.
+    """
+
+    rows: list[dict[str, Any]] = []
+    for parent_plane, child_plane in variant.parallel_planes:
+        # A plane has no sign: (111) and (-1-1-1) name the same plane. Left
+        # unsigned, the 24 Kurdjumov-Sachs variants appear to name eight parent
+        # planes where they name four, and the packet column stops agreeing
+        # with the plane column beside it.
+        parent_indices = _canonical_sign(_index_triple(parent_plane.miller.indices))
+        child_indices = _canonical_sign(_index_triple(child_plane.miller.indices))
+        rows.append(
+            {
+                "kind": "plane",
+                "parent": plane_label(parent_indices, spec=parent_spec),
+                "child": plane_label(child_indices, spec=child_spec),
+                "parent_indices": list(parent_indices),
+                "child_indices": list(child_indices),
+            }
+        )
+    for parent_direction, child_direction in variant.parallel_directions:
+        parent_indices = _index_triple(parent_direction.coordinates)
+        child_indices = _index_triple(child_direction.coordinates)
+        rows.append(
+            {
+                "kind": "direction",
+                "parent": direction_label(parent_indices, spec=parent_spec),
+                "child": direction_label(child_indices, spec=child_spec),
+                "parent_indices": list(parent_indices),
+                "child_indices": list(child_indices),
+            }
+        )
+    return rows
+
+
+def _world_extent(points: np.ndarray) -> dict[str, Any]:
+    """Centre and radius of a point cloud, for a camera that must frame both crystals."""
+
+    lower = np.min(points, axis=0)
+    upper = np.max(points, axis=0)
+    centre = 0.5 * (lower + upper)
+    radius = float(np.linalg.norm(upper - lower) / 2.0) or 1.0
+    return {
+        "centre": [float(value) for value in centre],
+        "radius": radius,
+        "bounds": [[float(v) for v in lower], [float(v) for v in upper]],
+    }
+
+
+_COMPOSITE_PARAMETERS = (
+    phase_parameter(
+        label="Parent phase",
+        help_text="The phase that transforms. The world frame is its crystal frame.",
+        builtin="austenite_fcc",
+    ),
+    phase_parameter(
+        name="child_phase",
+        label="Child phase",
+        help_text="The product phase, placed by the variant's rotation.",
+        builtin="fe_bcc",
+    ),
+    ChoiceParameter(
+        name="relationship",
+        label="Orientation relationship",
+        help_text="Which relationship the two crystals are held in.",
+        options=_RELATIONSHIPS,
+        default="kurdjumov_sachs",
+    ),
+    IntegerParameter(
+        name="repeats",
+        label="Cells along each axis",
+        help_text=(
+            "How many unit cells of each crystal to build, in every direction. Two crystals "
+            "are drawn at once, so this costs roughly twice what the single-crystal viewer does."
+        ),
+        default=1,
+        minimum=1,
+        maximum=3,
+        group="Extent",
+    ),
+    ChoiceParameter(
+        name="placement",
+        label="Placement",
+        help_text="Whether the two crystals share an origin or stand apart.",
+        options=_PLACEMENTS,
+        default="interpenetrating",
+        group="Extent",
+    ),
+    BooleanParameter(
+        name="show_parallel_planes",
+        label="Draw the parallel planes",
+        help_text=(
+            "The variant's own parallel planes, as translucent patches in the world frame. "
+            "Under the relationship they coincide exactly, which is the statement being made."
+        ),
+        default=True,
+        group="Overlays",
+    ),
+    BooleanParameter(
+        name="show_parallel_directions",
+        label="Draw the parallel directions",
+        help_text="The variant's own parallel directions, as arrows from the world origin.",
+        default=True,
+        group="Overlays",
+    ),
+    BooleanParameter(
+        name="show_bonds",
+        label="Draw bonds",
+        help_text=(
+            "Bonds are inferred from covalent radii plus a tolerance, not read from a file, "
+            "so they aid reading rather than assert chemistry."
+        ),
+        default=True,
+        advanced=True,
+        group="Overlays",
+    ),
+    BooleanParameter(
+        name="show_unit_cells",
+        label="Outline every cell",
+        help_text="Draw the edges of each repeated cell, not only the outer box.",
+        default=True,
+        advanced=True,
+        group="Overlays",
+    ),
+)
+
+
+@REGISTRY.operation(
+    "variants.composite_scene",
+    title="Both crystals of one variant",
+    summary="Parent and product structures in one world frame, with the parallelism drawn on them.",
+    help_text=(
+        "Builds the two-crystal scene of a single transformation variant: the parent crystal in "
+        "the world frame, the child placed by that variant's rotation, and the planes and "
+        "directions the relationship holds parallel drawn across both. It is the picture behind "
+        "the parallelism statement — instead of reading that (111) of austenite is parallel to "
+        "(011) of ferrite, you see one plane through two lattices.\n\n"
+        "**The variant matters, and so do its indices.** A relationship is realized by a family "
+        "of variants — 24 for Kurdjumov-Sachs, 12 for Nishiyama-Wassermann and Burgers — and "
+        "each one holds a *different* member of the parent family parallel. The overlay is "
+        "labelled with the chosen variant's own indices, not with variant 1's, because drawing "
+        "the nominal pair on variant 17 gives a picture that looks right and is wrong.\n\n"
+        "**Everything crossing the wire is already placed.** Both structures come back in "
+        "Cartesian angstrom in one world frame, so a viewer applies a camera rotation and "
+        "nothing else; no crystallography happens in the browser, and one camera cannot drift "
+        "between the two crystals."
+    ),
+    parameters=(
+        *_COMPOSITE_PARAMETERS[:3],
+        IntegerParameter(
+            name="variant",
+            label="Variant",
+            help_text=(
+                "Which variant to place, numbered as `generate_variants()` orders them. "
+                "Variant 1 is the relationship exactly as it is written."
+            ),
+            default=1,
+            minimum=1,
+            maximum=24,
+        ),
+        *_COMPOSITE_PARAMETERS[3:],
+    ),
+    returns=(
+        "Both placed scenes under `data.parent.scene` and `data.child.scene`, the world-frame "
+        "overlays under `data.primitives`, and the variant's rotation under `data.variant`; "
+        "the parallelisms it realizes as the table."
+    ),
+    panel="variants",
+    citations=(_CITATION_MORITO,),
+    tags=(
+        "variant",
+        "composite",
+        "3D",
+        "viewer",
+        "orientation relationship",
+        "OR",
+        "parallel plane",
+        "martensite",
+    ),
+)
+def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.plotting.primitives import Transform3D
+    from pytex.plotting.scene3d import WorldScene3D
+
+    parent_spec, parent_phase, child_spec, child_phase, relationship = _composite_relationship(
+        request
+    )
+    variants = _resolved_variants(relationship)
+    variant = _variant_at(relationship, int(request["variant"]))
+    repeats = int(request["repeats"])
+    build_kwargs: dict[str, Any] = {
+        "show_bonds": bool(request["show_bonds"]),
+        "show_unit_cells": bool(request["show_unit_cells"]),
+    }
+
+    # The translation is measured from the two unplaced scenes, so a
+    # side-by-side offset does not depend on which variant is showing and the
+    # crystals do not jump as the user steps through the family.
+    from pytex.plotting.crystal3d import build_crystal_scene
+
+    parent_reference = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
+    child_reference = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
+    translation = _child_translation(
+        str(request["placement"]), parent_reference, child_reference
+    )
+
+    world = WorldScene3D.from_orientation_relationship(
+        relationship,
+        variant=variant,
+        repeats=(repeats,) * 3,
+        child_translation=translation,
+        show_parallel_planes=bool(request["show_parallel_planes"]),
+        show_parallel_directions=bool(request["show_parallel_directions"]),
+        parent_build_kwargs=build_kwargs,
+        child_build_kwargs=build_kwargs,
+    )
+    parent_placed, child_placed = world.placed_scenes()
+    parent_payload = scene_payload(parent_placed, spec=parent_spec)
+    child_payload = scene_payload(child_placed, spec=child_spec)
+    bounds = np.asarray(world.bounds(), dtype=float)
+    extent = _world_extent(bounds)
+
+    rows = _parallelism_rows(variant, parent_spec=parent_spec, child_spec=child_spec)
+    child_transform: Transform3D = world.crystals[1].transform
+    misorientation = relationship.misorientation()
+
+    result = AppResult(
+        title=f"{parent_spec.name} and {child_spec.name}: variant {variant.variant_index}",
+        summary=(
+            f"Variant {variant.variant_index} of {len(variants)} under "
+            f"{relationship_name(str(request['relationship']))}: "
+            f"{len(parent_payload['atoms'])} parent atoms and "
+            f"{len(child_payload['atoms'])} child atoms in one world frame, with "
+            f"{len(rows)} parallelism(s) drawn across both. Both structures are already placed, "
+            "in Cartesian angstrom in the parent crystal frame, so one camera drives them both. "
+            "The overlay carries this variant's own indices, which are not variant 1's."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("kind", "Kind", help_text="Whether the pair is a plane or a direction."),
+                Column("parent", f"{parent_spec.name}"),
+                Column("child", f"{child_spec.name}"),
+            ),
+            rows=tuple(
+                {"kind": row["kind"], "parent": row["parent"], "child": row["child"]}
+                for row in rows
+            ),
+            caption=(
+                f"What variant {variant.variant_index} holds parallel. These are the variant's "
+                "own symmetry images of the defining pair, not the relationship's nominal pair."
+            ),
+        ),
+        data={
+            "world": extent,
+            "parent": {"label": parent_spec.name, "scene": parent_payload},
+            "child": {"label": child_spec.name, "scene": child_payload},
+            "primitives": _primitive_payload(world.primitives),
+            "parallelisms": rows,
+            "variant": {
+                "index": int(variant.variant_index),
+                "count": len(variants),
+                "child_matrix": [
+                    [float(value) for value in row] for row in child_transform.matrix
+                ],
+                "translation": [float(value) for value in translation],
+                "parent_to_child_matrix": [
+                    [float(value) for value in row]
+                    for row in variant.parent_to_child_rotation.as_matrix()
+                ],
+            },
+            "relationship": {
+                "name": relationship_name(str(request["relationship"])),
+                "angle_deg": float(misorientation.angle_deg),
+            },
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "relationship": request["relationship"],
+            "variant": int(variant.variant_index),
+            "repeats": repeats,
+            "placement": request["placement"],
+            "show_parallel_planes": bool(request["show_parallel_planes"]),
+            "show_parallel_directions": bool(request["show_parallel_directions"]),
+            "show_bonds": bool(request["show_bonds"]),
+            "show_unit_cells": bool(request["show_unit_cells"]),
+        },
+        citations=(_CITATION_MORITO,),
+    )
+    return result.to_json()
+
+
+@REGISTRY.operation(
+    "variants.contact_sheet",
+    title="Every variant at once",
+    summary="One placement matrix and one parallelism statement per variant, for an N-up grid.",
+    help_text=(
+        "The contact sheet behind the composite viewer: the same two structures, and the "
+        "placement of the child for every variant of the relationship. Seeing 24 panels of one "
+        "parent with 24 differently oriented children is what makes 'twenty-four variants' mean "
+        "something.\n\n"
+        "**Two scenes, N matrices.** The structures are sent once, each in its own crystal "
+        "frame, together with one 3x3 placement matrix per variant. Sending 24 fully placed "
+        "copies of both crystals would be tens of megabytes for information a matrix multiply "
+        "reproduces exactly. Every matrix is computed here in Python; applying one is the same "
+        "arithmetic the camera already does, so no crystallography moves into the browser.\n\n"
+        "**Each panel carries its own parallelism.** Every variant holds a different member of "
+        "the parent family parallel, and its row says which. Variants sharing that member form "
+        "a packet — 4 packets of 6 under Kurdjumov-Sachs, 6 of 2 under Burgers — which is the "
+        "structure a lath martensite micrograph shows as a block."
+    ),
+    parameters=(
+        *_COMPOSITE_PARAMETERS,
+        IndicesParameter(
+            name="packet_plane",
+            label="Parent plane defining packets",
+            help_text=(
+                "The parent family whose members the variants are grouped by. Use the family "
+                "the relationship is built on: (111) for the fcc-to-bcc relationships, (110) "
+                "for Burgers."
+            ),
+            default=(1, 1, 1),
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "The two structures under `data.parent.scene` and `data.child.scene`, each in its own "
+        "crystal frame, and one entry per variant under `data.variants` carrying its placement "
+        "matrix, its overlays and its packet; the same variants as the table."
+    ),
+    panel="variants",
+    citations=(_CITATION_MORITO,),
+    tags=(
+        "variant",
+        "contact sheet",
+        "composite",
+        "3D",
+        "orientation relationship",
+        "OR",
+        "packet",
+        "martensite",
+    ),
+)
+def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.plotting.crystal3d import build_crystal_scene
+    from pytex.plotting.scene3d import WorldScene3D
+
+    parent_spec, parent_phase, child_spec, child_phase, relationship = _composite_relationship(
+        request
+    )
+    variants = _resolved_variants(relationship)
+    repeats = int(request["repeats"])
+    build_kwargs: dict[str, Any] = {
+        "show_bonds": bool(request["show_bonds"]),
+        "show_unit_cells": bool(request["show_unit_cells"]),
+    }
+    parent_scene = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
+    child_scene = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
+    translation = _child_translation(str(request["placement"]), parent_scene, child_scene)
+    packets = _packet_labels(
+        relationship, parent_spec, tuple(int(v) for v in request["packet_plane"])
+    )
+
+    entries: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    cloud = [np.asarray(parent_scene.bounds(), dtype=float)]
+    # All eight corners of the child box, not the two of its bounds array: a
+    # rotated box is not bounded by the images of its min and max corners, so
+    # taking only those would frame the sheet too tightly and clip variants.
+    child_bounds = np.asarray(child_scene.bounds(), dtype=float)
+    child_corners = np.array(
+        [
+            [child_bounds[i, 0], child_bounds[j, 1], child_bounds[k, 2]]
+            for i in (0, 1)
+            for j in (0, 1)
+            for k in (0, 1)
+        ],
+        dtype=float,
+    )
+    for variant, packet in zip(variants, packets, strict=True):
+        world = WorldScene3D.from_orientation_relationship(
+            relationship,
+            variant=variant,
+            repeats=(repeats,) * 3,
+            child_translation=translation,
+            show_parallel_planes=bool(request["show_parallel_planes"]),
+            show_parallel_directions=bool(request["show_parallel_directions"]),
+            parent_build_kwargs=build_kwargs,
+            child_build_kwargs=build_kwargs,
+        )
+        matrix = np.asarray(world.crystals[1].transform.matrix, dtype=float)
+        parallelisms = _parallelism_rows(
+            variant, parent_spec=parent_spec, child_spec=child_spec
+        )
+        entries.append(
+            {
+                "index": int(variant.variant_index),
+                "packet": int(packet) + 1,
+                "child_matrix": [[float(value) for value in row] for row in matrix],
+                "translation": [float(value) for value in translation],
+                "primitives": _primitive_payload(world.primitives),
+                "parallelisms": parallelisms,
+            }
+        )
+        plane_pairs = [row for row in parallelisms if row["kind"] == "plane"]
+        direction_pairs = [row for row in parallelisms if row["kind"] == "direction"]
+        rows.append(
+            {
+                "variant": int(variant.variant_index),
+                "packet": int(packet) + 1,
+                "planes": " ; ".join(f"{row['parent']} || {row['child']}" for row in plane_pairs),
+                "directions": " ; ".join(
+                    f"{row['parent']} || {row['child']}" for row in direction_pairs
+                ),
+            }
+        )
+        cloud.append((matrix @ child_corners.T).T + np.asarray(translation, dtype=float))
+
+    extent = _world_extent(np.vstack(cloud))
+    packet_count = len({entry["packet"] for entry in entries})
+    result = AppResult(
+        title=(
+            f"{parent_spec.name} to {child_spec.name}: all "
+            f"{len(variants)} {relationship_name(str(request['relationship']))} variants"
+        ),
+        summary=(
+            f"{len(variants)} variants in {packet_count} packets. Both structures are sent once "
+            f"({len(parent_scene.atoms)} parent atoms, {len(child_scene.atoms)} child atoms) in "
+            "their own crystal frames, with one 3x3 placement matrix per variant; applying a "
+            "matrix is the same arithmetic the camera does, so no crystallography moves into "
+            "the viewer. Each variant carries its own parallel plane and direction, which are "
+            "not the same indices from panel to panel."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("variant", "Variant", numeric=True),
+                Column(
+                    "packet",
+                    "Packet",
+                    numeric=True,
+                    help_text=(
+                        "Variants sharing the parent plane they carry into exact parallelism."
+                    ),
+                ),
+                Column("planes", "Parallel planes"),
+                Column("directions", "Parallel directions"),
+            ),
+            rows=tuple(rows),
+            caption=(
+                "One row per variant. The indices are that variant's own symmetry images of the "
+                "defining pair, which is why they differ down the column."
+            ),
+        ),
+        data={
+            "world": extent,
+            "parent": {
+                "label": parent_spec.name,
+                "scene": scene_payload(parent_scene, spec=parent_spec),
+            },
+            "child": {
+                "label": child_spec.name,
+                "scene": scene_payload(child_scene, spec=child_spec),
+            },
+            "variants": entries,
+            "variant_count": len(variants),
+            "packet_count": packet_count,
+            "frames": "own_crystal_frame",
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "relationship": request["relationship"],
+            "repeats": repeats,
+            "placement": request["placement"],
+            "packet_plane": [int(v) for v in request["packet_plane"]],
+            "show_parallel_planes": bool(request["show_parallel_planes"]),
+            "show_parallel_directions": bool(request["show_parallel_directions"]),
+            "show_bonds": bool(request["show_bonds"]),
+            "show_unit_cells": bool(request["show_unit_cells"]),
+        },
+        citations=(_CITATION_MORITO,),
+    )
+    return result.to_json()
+
+
 REGISTRY.add_examples(
     (
         ExampleScenario(
@@ -1096,6 +1705,76 @@ REGISTRY.add_examples(
                 "relationship": "burgers",
                 "pole": [0, 0, 1],
                 "packet_plane": [1, 1, 0],
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.composite_variant_one",
+            title="One plane through two lattices",
+            panel="variants",
+            summary="Austenite and ferrite in the Kurdjumov-Sachs relationship, variant 1.",
+            teaches=(
+                "The parallelism statement stops being a line of notation here. The parent and "
+                "the product are drawn in one frame, and the plane the relationship holds "
+                "parallel is a single translucent sheet cutting through both lattices with the "
+                "shared direction as an arrow lying in it. Rotate it until you are looking down "
+                "that arrow: the two structures are edge-on to the same plane, which is what "
+                "(111) austenite parallel to (011) ferrite actually means."
+            ),
+            operation="variants.composite_scene",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "relationship": "kurdjumov_sachs",
+                "variant": 1,
+                "repeats": 1,
+                "placement": "interpenetrating",
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.composite_variant_seventeen",
+            title="The same relationship, a different variant",
+            panel="variants",
+            summary="Variant 17 of the same Kurdjumov-Sachs pair, for comparison with variant 1.",
+            teaches=(
+                "Run this straight after variant 1. The relationship has not changed and the "
+                "two crystals are the same, but the product sits somewhere else entirely -- and "
+                "the overlay is labelled with a different parent plane. That is the point: a "
+                "variant is not a redrawing of the same picture, it is a different member of "
+                "the parent family being carried into parallelism, and the label has to move "
+                "with it. Drawing variant 1's indices here would give a figure that looks right "
+                "and is wrong."
+            ),
+            operation="variants.composite_scene",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "relationship": "kurdjumov_sachs",
+                "variant": 17,
+                "repeats": 1,
+                "placement": "interpenetrating",
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.contact_sheet_ks",
+            title="All 24 variants, and the 4 packets in the table",
+            panel="variants",
+            summary="The Kurdjumov-Sachs contact sheet: one placement per variant.",
+            teaches=(
+                "Twenty-four rows, four values in the parallel-plane column, six rows each. "
+                "That is the packet structure of lath martensite as a table rather than as a "
+                "claim, and it comes out of the variants themselves: each carries exactly one "
+                "member of the parent {111} family into parallelism, and there are four "
+                "members. Compare the same run under Burgers, where the parent {110} family "
+                "has six members and the twelve variants fall into six packets of two."
+            ),
+            operation="variants.contact_sheet",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "relationship": "kurdjumov_sachs",
+                "repeats": 1,
+                "placement": "interpenetrating",
+                "packet_plane": [1, 1, 1],
             },
         ),
         ExampleScenario(

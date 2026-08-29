@@ -532,3 +532,247 @@ class TestResultContract:
             assert len(result["summary"]) > 60
             assert result["notes"]
             assert result["citations"]
+
+
+def composite(**overrides: object) -> dict:
+    request: dict[str, object] = {
+        "phase": AUSTENITE,
+        "child_phase": FERRITE,
+        "relationship": "kurdjumov_sachs",
+        "variant": 1,
+        "repeats": 1,
+        "placement": "interpenetrating",
+        "show_parallel_planes": True,
+        "show_parallel_directions": True,
+        "show_bonds": True,
+        "show_unit_cells": True,
+    }
+    request.update(overrides)
+    return call("variants.composite_scene", **request)
+
+
+def contact_sheet(**overrides: object) -> dict:
+    request: dict[str, object] = {
+        "phase": AUSTENITE,
+        "child_phase": FERRITE,
+        "relationship": "kurdjumov_sachs",
+        "repeats": 1,
+        "placement": "interpenetrating",
+        "packet_plane": [1, 1, 1],
+        "show_parallel_planes": True,
+        "show_parallel_directions": True,
+        "show_bonds": True,
+        "show_unit_cells": True,
+    }
+    request.update(overrides)
+    return call("variants.contact_sheet", **request)
+
+
+def _ks_relationship():  # type: ignore[no-untyped-def]
+    from pytex.app.phases import phase_from_request
+    from pytex.core.transformation import OrientationRelationship
+
+    _, parent_phase = phase_from_request(AUSTENITE)
+    _, child_phase = phase_from_request(FERRITE)
+    return OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent_phase, child_phase=child_phase
+    )
+
+
+class TestCompositeScene:
+    """Both crystals of one variant, already placed in one world frame."""
+
+    def test_the_placement_makes_the_parallel_plane_coincide(self) -> None:
+        """The geometric claim of the figure, checked rather than drawn.
+
+        The child is placed by the variant's rotation, so the world-frame image
+        of the child's parallel plane normal must be the parent's own -- the
+        parallelism the overlay asserts.
+        """
+
+        relationship = _ks_relationship()
+        variants = relationship.generate_variants()
+        for index in (1, 9, 17, 24):
+            data = composite(variant=index)["data"]
+            matrix = np.asarray(data["variant"]["child_matrix"], dtype=float)
+            parent_plane, child_plane = variants[index - 1].parallel_planes[0]
+            placed = matrix @ child_plane.normal
+            placed = placed / np.linalg.norm(placed)
+            assert float(parent_plane.normal @ placed) == pytest.approx(1.0, abs=1e-9)
+
+    def test_the_overlay_carries_this_variants_indices_not_variant_ones(self) -> None:
+        """The trap the whole variant surface exists to close.
+
+        Every variant holds a different member of the parent {111} family
+        parallel, so the labels must move with the variant. Over the 24
+        Kurdjumov-Sachs variants the parent plane takes four distinct values --
+        the four packet planes -- and not one.
+        """
+
+        labels = set()
+        for index in range(1, 25):
+            rows = composite(variant=index)["data"]["parallelisms"]
+            plane_rows = [row for row in rows if row["kind"] == "plane"]
+            assert len(plane_rows) == 1
+            indices = tuple(plane_rows[0]["parent_indices"])
+            canonical = indices if indices[0] >= 0 else tuple(-value for value in indices)
+            labels.add(canonical)
+        assert len(labels) == 4
+
+    def test_both_scenes_come_back_placed_in_one_world_frame(self) -> None:
+        data = composite()["data"]
+        assert data["parent"]["scene"]["atoms"]
+        assert data["child"]["scene"]["atoms"]
+        world = np.asarray(data["world"]["bounds"], dtype=float)
+        for side in ("parent", "child"):
+            positions = np.asarray(
+                [atom["position"] for atom in data[side]["scene"]["atoms"]], dtype=float
+            )
+            assert np.all(positions >= world[0] - 1e-6)
+            assert np.all(positions <= world[1] + 1e-6)
+
+    def test_side_by_side_moves_the_child_and_interpenetrating_does_not(self) -> None:
+        together = composite(placement="interpenetrating")["data"]
+        apart = composite(placement="side_by_side")["data"]
+        assert together["variant"]["translation"] == [0.0, 0.0, 0.0]
+        assert apart["variant"]["translation"][0] > 0.0
+        assert apart["world"]["radius"] > together["world"]["radius"]
+
+    def test_the_translation_does_not_move_between_variants(self) -> None:
+        """A side-by-side offset measured per variant would make the crystals
+        jump as the user steps through the family."""
+
+        offsets = {
+            tuple(
+                composite(variant=index, placement="side_by_side")["data"]["variant"][
+                    "translation"
+                ]
+            )
+            for index in (1, 5, 13, 22)
+        }
+        assert len(offsets) == 1
+
+    def test_overlays_can_be_switched_off(self) -> None:
+        bare = composite(show_parallel_planes=False, show_parallel_directions=False)["data"]
+        assert bare["primitives"]["arrows"] == []
+        assert bare["primitives"]["patches"] == []
+
+    def test_overlay_labels_name_the_pair_they_draw(self) -> None:
+        data = composite(variant=17)["data"]
+        patch_label = data["primitives"]["patches"][0]["label"]
+        plane_row = next(row for row in data["parallelisms"] if row["kind"] == "plane")
+        assert plane_row["parent"] in patch_label
+        assert plane_row["child"] in patch_label
+
+    def test_a_variant_beyond_the_family_is_rejected_by_name(self) -> None:
+        with pytest.raises(InvalidInputError) as error:
+            composite(relationship="bain", variant=8)
+        assert error.value.details["field"] == "variant"
+        assert "3 variants" in str(error.value)
+
+    def test_a_phase_without_atoms_is_refused_with_a_usable_message(self) -> None:
+        lattice_only = {
+            "name": "lattice-only",
+            "a": 3.6,
+            "b": 3.6,
+            "c": 3.6,
+            "alpha": 90.0,
+            "beta": 90.0,
+            "gamma": 90.0,
+            "point_group": "m-3m",
+        }
+        with pytest.raises(InvalidInputError) as error:
+            composite(phase=lattice_only)
+        assert "atomic basis" in str(error.value)
+
+
+class TestContactSheet:
+    """Every variant at once: two scenes and one matrix per variant."""
+
+    @pytest.mark.parametrize(
+        ("relationship", "parent", "child", "expected"),
+        [
+            ("kurdjumov_sachs", AUSTENITE, FERRITE, 24),
+            ("nishiyama_wassermann", AUSTENITE, FERRITE, 12),
+            ("bain", AUSTENITE, FERRITE, 3),
+        ],
+    )
+    def test_one_entry_per_variant(
+        self, relationship: str, parent: dict, child: dict, expected: int
+    ) -> None:
+        data = contact_sheet(relationship=relationship, phase=parent, child_phase=child)["data"]
+        assert data["variant_count"] == expected
+        assert len(data["variants"]) == expected
+        assert [entry["index"] for entry in data["variants"]] == list(range(1, expected + 1))
+
+    def test_the_packets_are_the_published_four_of_six(self) -> None:
+        data = contact_sheet()["data"]
+        assert data["packet_count"] == 4
+        counts = {
+            packet: sum(1 for entry in data["variants"] if entry["packet"] == packet)
+            for packet in {entry["packet"] for entry in data["variants"]}
+        }
+        assert set(counts.values()) == {6}
+
+    def test_the_matrices_reproduce_the_composite_scenes_placement(self) -> None:
+        """The sheet must place a variant exactly where the single-variant
+        operation places it, or the grid and the detail view disagree."""
+
+        entries = contact_sheet()["data"]["variants"]
+        for index in (1, 11, 24):
+            single = composite(variant=index)["data"]["variant"]
+            np.testing.assert_allclose(
+                np.asarray(entries[index - 1]["child_matrix"], dtype=float),
+                np.asarray(single["child_matrix"], dtype=float),
+                atol=1e-12,
+            )
+
+    def test_the_matrices_are_proper_rotations_and_all_distinct(self) -> None:
+        data = contact_sheet()["data"]
+        seen = []
+        for entry in data["variants"]:
+            matrix = np.asarray(entry["child_matrix"], dtype=float)
+            np.testing.assert_allclose(matrix @ matrix.T, np.eye(3), atol=1e-12)
+            assert float(np.linalg.det(matrix)) == pytest.approx(1.0, abs=1e-12)
+            seen.append(matrix)
+        for left in range(len(seen)):
+            for right in range(left + 1, len(seen)):
+                assert np.linalg.norm(seen[left] - seen[right]) > 1e-6
+
+    def test_the_scenes_are_sent_once_in_their_own_frames(self) -> None:
+        """Sending 24 placed copies of both crystals is what this payload shape
+        avoids, so the declared frame has to say which frame they are in."""
+
+        data = contact_sheet()["data"]
+        assert data["frames"] == "own_crystal_frame"
+        assert "scene" in data["parent"]
+        assert "scene" in data["child"]
+        assert all("scene" not in entry for entry in data["variants"])
+
+    def test_the_world_extent_contains_every_placed_variant(self) -> None:
+        data = contact_sheet()["data"]
+        lower, upper = (np.asarray(row, dtype=float) for row in data["world"]["bounds"])
+        child_positions = np.asarray(
+            [atom["position"] for atom in data["child"]["scene"]["atoms"]], dtype=float
+        )
+        for entry in data["variants"]:
+            matrix = np.asarray(entry["child_matrix"], dtype=float)
+            offset = np.asarray(entry["translation"], dtype=float)
+            placed = child_positions @ matrix.T + offset
+            assert np.all(placed >= lower - 1e-6)
+            assert np.all(placed <= upper + 1e-6)
+
+    def test_the_table_states_one_pair_per_packet(self) -> None:
+        rows = contact_sheet()["table"]["rows"]
+        assert len(rows) == 24
+        by_packet: dict[int, set[str]] = {}
+        for row in rows:
+            by_packet.setdefault(row["packet"], set()).add(row["planes"])
+        assert len(by_packet) == 4
+        assert all(len(values) == 1 for values in by_packet.values())
+        assert len({next(iter(values)) for values in by_packet.values()}) == 4
+
+    def test_a_packet_plane_that_cannot_group_names_its_own_field(self) -> None:
+        with pytest.raises(InvalidInputError) as error:
+            contact_sheet(packet_plane=[0, 0, 0])
+        assert error.value.details["field"] in {"packet_plane", "pole"}

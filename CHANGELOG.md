@@ -13,6 +13,22 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The composite-scene service layer.** Two new workbench operations put M2's variant
+  surfaces behind the API, ahead of the panel that will draw them.
+  `variants.composite_scene` returns both crystals of one transformation variant already
+  placed in a single world frame, with the variant's own parallel planes and directions as
+  world-frame polygons and arrows. `variants.contact_sheet` returns the two structures once
+  each in their own crystal frames plus one 3×3 placement matrix per variant — sending 24
+  placed copies of both crystals would be tens of megabytes for what a matrix multiply
+  reproduces exactly, and applying one is the same arithmetic the camera already does, so no
+  crystallography moves into the browser.
+
+  The two agree by test: the matrix the sheet gives for variant *k* is the matrix
+  `variants.composite_scene` places variant *k* by. Both label the overlay with the variant's
+  own indices, so the parallel-plane column takes four distinct values down the 24
+  Kurdjumov-Sachs rows — the four Morito packet planes — rather than repeating variant 1's.
+  Plane labels are sign-canonicalized, because a plane has no sign and (111) and (-1-1-1)
+  listed as different planes would put eight apparent packets in a four-packet table.
 - **The orientation-relationship stereogram.** `plot_or_stereogram(relationship, variant=k)`
   draws the figure by which ORs are read in the literature: one net in the parent crystal
   frame, the parent pole of each parallel pair as an open symbol and the child pole — carried

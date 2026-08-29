@@ -387,6 +387,36 @@ This is the panel's whole argument: a measured misorientation histogram from pri
 should show peaks at those angles and nowhere else, and a peak elsewhere is a boundary between two
 *different* parent grains.
 
+### The composite-scene service, ahead of its panel
+
+Two operations of the Variants workspace have **no user interface yet**: `variants.composite_scene`
+and `variants.contact_sheet`. They are reachable through the operation registry and the HTTP API,
+they ship with runnable examples like every other operation, and the viewer that will draw them is
+the next increment. This section says what they return so that nothing about them has to be
+inferred from the code.
+
+`variants.composite_scene` returns both crystals of **one** transformation variant, already placed
+in a single world frame — which is the parent crystal frame — under `data.parent.scene` and
+`data.child.scene`, in the same payload shape the crystal viewer already consumes. Beside them,
+`data.primitives` carries the parallel planes as polygons and the parallel directions as arrows, in
+world coordinates, and `data.variant` carries the placement matrix. Nothing crossing the wire needs
+crystallography to draw: a viewer applies a camera rotation and nothing else, which is also why one
+camera cannot drift between the two crystals.
+
+`variants.contact_sheet` returns the same two structures **once each, in their own crystal frames**,
+plus one entry per variant carrying a 3×3 placement matrix, that variant's overlays, and its packet.
+Sending 24 fully placed copies of both crystals would be tens of megabytes for information a matrix
+multiply reproduces exactly; applying one of those matrices is the same arithmetic the camera
+already does, so no crystallography moves into the browser. The two operations agree: the matrix the
+sheet gives for variant *k* is the matrix `variants.composite_scene` places variant *k* by, and a
+test asserts it, because a grid and a detail view that disagree would be worse than either alone.
+
+**Both label the overlay with the variant's own indices.** Each variant holds a *different* member
+of the parent family parallel, so the table's parallel-plane column takes four distinct values down
+the 24 Kurdjumov-Sachs rows — the four packet planes — and not one. Quoting the relationship's
+nominal pair on every variant would produce a picture that looks right and is wrong; see
+[Visualization primitives](../concepts/visualization_primitives.md).
+
 ### The texture panel, against the m.r.d. scale
 
 Open **Texture** and run the random baseline first. It reads **1 m.r.d. everywhere**, and the status

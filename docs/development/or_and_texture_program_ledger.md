@@ -52,26 +52,43 @@ only*. The child scene is pre-placed in the world frame by Python, so a shared c
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M3a** | `variants.composite_scene` and `variants.contact_sheet` service operations over `scene_payload`, with tests | Not started |
+| **M3a** | `variants.composite_scene` and `variants.contact_sheet` service operations over `scene_payload`, with tests | **Complete** (2026-08-29) |
 | **M3b** | The workbench panel: variant selector, contact-sheet mode, appearance toggles, side-by-side and interpenetrating placement | Not started |
 | **M3c** | F17 `ORDossier`: `describe()`, `to_json()`, `export(directory)`, assembled from existing calls only | Not started |
 
 ### Next concrete step
 
-**M3a — the service layer, before any JavaScript.** Add `variants.composite_scene` to
-`src/pytex/app/services/` returning both crystals' `scene_payload`s in a common world frame, the OR
-primitives, and the variant's rotation matrix; and `variants.contact_sheet` returning the same for
-every variant. Both are thin wrappers over `WorldScene3D.from_orientation_relationship` and
-`variant_scenes`, which is the point: the service must call them, never reimplement the placement.
+**M3b — the workbench panel.** M3a is complete: `variants.composite_scene` and
+`variants.contact_sheet` are registered, tested (24 tests in `tests/unit/test_app_variants.py`),
+exampled and documented. The panel is the remaining half of F19, and it is browser work.
 
-Two things to carry in from M2, because they are the traps this program keeps finding:
+What exists to build on: `js/panels/crystal.js` already draws a `scene_payload` with a painter's
+depth sort and appearance controls, `rotation3.js` supplies the camera, and `js/panels/variants.js`
+already owns the workspace. The new JavaScript is a composition layer, not a renderer.
 
-1. The payload must label the parallelisms with **the variant's own** indices
-   (`TransformationVariant.parallel_planes` / `.parallel_directions`), never the relationship's
-   nominal pair. The scene builder already does this; a service that re-derives them would undo it.
+What the panel has to do:
+
+- a **variant selector** driving `variants.composite_scene`, with the parallel-plane and
+  parallel-direction toggles and the two placement modes the operation already exposes;
+- a **contact-sheet mode** from `variants.contact_sheet`: the two scenes are fetched once and each
+  panel applies its variant's `child_matrix` — this is the shape the payload was designed for, so
+  the panel must not fetch a scene per variant;
+- **one camera for both crystals**, which is free: the composite payload arrives pre-placed in the
+  parent frame, so the camera is a single rotation applied to both;
+- a **live readout** of what is currently parallel to the screen normal;
+- a Playwright test, since this is the first browser increment of this program.
+
+Two things to carry in, because they are the traps this program keeps finding:
+
+1. Label overlays from `data.parallelisms` / each contact-sheet entry's `parallelisms`, which are
+   already the variant's own indices. Do not re-derive them, and do not fall back to the
+   relationship's nominal pair.
 2. Any deviation the panel displays must name what it measures. The stereogram's nominated-pair
-   deviation is a *rationalization residual*, not a departure from parallelism; a panel that prints
-   it as "misfit" would be stating something false.
+   deviation is a *rationalization residual*, not a departure from parallelism; a panel that
+   printed it as "misfit" would be stating something false.
+
+After M3b comes **M3c**, the F17 `ORDossier` — `describe()`, `to_json()`, `export(directory)` —
+assembled strictly from existing calls.
 
 **Known and deliberately untouched.** `generate_stereonet_grid` and `project_great_circle_trace`
 return polylines that jump the rim when a trace leaves the projected hemisphere, so matplotlib draws
@@ -83,6 +100,39 @@ increment, not inside M2.
 ---
 
 ## 3. History
+
+### 2026-08-29 — M3a complete: the composite-scene service layer
+
+**What shipped.** `variants.composite_scene` and `variants.contact_sheet` in
+`src/pytex/app/services/variants.py`, three example scenarios, 24 tests in
+`tests/unit/test_app_variants.py`, a section in `docs/site/workflows/workbench_application.md`
+saying plainly that these two operations have no panel yet, and a changelog entry.
+
+**The payload decision worth recording.** `composite_scene` returns both crystals **already placed
+in one world frame** (the parent crystal frame), because that is what makes a shared camera free
+and undriftable. `contact_sheet` deliberately does the opposite: the two structures go once, in
+their own crystal frames, with a 3x3 placement matrix per variant. Twenty-four placed copies of
+both crystals would be tens of megabytes to say what a matrix multiply says exactly, and applying
+one of those matrices is the same arithmetic the camera already does — so this still honours the
+vision document's Decision 4 (all crystallography in Python; the browser multiplies matrices only).
+The two shapes are different, so a test asserts they agree: the matrix the sheet gives for variant
+k is the matrix `composite_scene` places variant k by. A grid and a detail view that disagreed
+would be worse than either alone.
+
+**Two smaller findings.** The side-by-side offset is measured from the two *unplaced* scenes, so it
+does not change with the variant — measured per variant, the crystals would jump as a user stepped
+through the family, and a test pins that. And plane labels are sign-canonicalized: a plane has no
+sign, and leaving `(111)` and `(-1 -1 -1)` as separate entries made the 24 Kurdjumov-Sachs variants
+name eight parent planes in a table whose packet column says four.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 152 files; `pytest tests/unit` green
+(full suite); `test_app_variants.py`, `test_app_manifest.py` and `test_app_export.py` green, which
+covers the runs-from-defaults gate and the example executor.
+
+**Not done.** No panel and no JavaScript — that is M3b, and the documentation says so rather than
+describing a UI that does not exist. No worked example: the workbench service group covers this
+surface class already, and both operations return scenes rather than a numerical result with an
+independent reference value.
 
 ### 2026-08-29 — M2b complete, and M2 with it: the OR stereogram (F18)
 
