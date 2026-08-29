@@ -120,6 +120,7 @@ const VIEWS = [
   'variants.intervariant_misorientations',
   'variants.composite_scene',
   'variants.contact_sheet',
+  'variants.or_from_grains',
 ];
 
 /** Which kind of drawing each view needs. `table` has no picture, by design. */
@@ -128,6 +129,7 @@ const VIEW_MODES = {
   'variants.intervariant_misorientations': 'table',
   'variants.composite_scene': 'composite',
   'variants.contact_sheet': 'sheet',
+  'variants.or_from_grains': 'table',
 };
 
 export function mount(context) {
@@ -298,6 +300,10 @@ export function mount(context) {
       frameCamera(result);
       draw();
       renderResult(details, result, { teaches: state.teaches });
+      // The verdict and the statement go *above* the catalogue table, because
+      // they are the answer and the table is the evidence for it.
+      const verdict = verdictCard(result);
+      if (verdict) details.prepend(verdict);
     } catch (error) {
       if (token !== runToken) return;
       if (!state.form.showError(error)) context.showError(error);
@@ -338,9 +344,10 @@ export function mount(context) {
   }
 
   function draw() {
-    // The spectrum is a table. Hiding the frame rather than drawing an empty
-    // one keeps the stage from carrying a picture of nothing, which reads as a
-    // failed render rather than as a view that has no picture.
+    // The spectrum and the measured-pair answer are tables. Hiding the frame
+    // rather than drawing an empty one keeps the stage from carrying a picture
+    // of nothing, which reads as a failed render rather than as a view that has
+    // no picture.
     const mode = viewMode();
     frame.element.hidden = mode === 'table';
     legend.hidden = mode === 'table';
@@ -510,6 +517,72 @@ export function mount(context) {
     operationSelect.value = target.id;
     renderControls(request);
     run();
+  }
+
+  /**
+   * The measured-pair answer, stated before the evidence for it.
+   *
+   * Four different angles reach this panel, and the one thing the card must not
+   * do is let them blur together. Each is shown with the word for what it
+   * measures, taken from the service's own `angle_meanings` so the panel and the
+   * operation's help cannot drift apart.
+   */
+  function verdictCard(result) {
+    if (state.operation.id !== 'variants.or_from_grains') return null;
+    const data = result.data;
+    const meanings = data.angle_meanings ?? {};
+    const naming = data.naming;
+    const statement = data.statement;
+    const rows = [
+      el('div.verdict__row', {}, [
+        el('span.verdict__label', { text: 'Relationship' }),
+        el('strong', {
+          text: naming.is_conclusive
+            ? `${naming.best_label} (conclusive)`
+            : `${naming.best_label ?? 'none'} — not conclusive`,
+        }),
+      ]),
+      el('div.verdict__row', {}, [
+        el('span.verdict__label', {
+          text: 'Catalogue distance',
+          title: meanings.catalog,
+        }),
+        el('span', { text: `${formatNumber(naming.best_deviation_deg, 3)}°` }),
+      ]),
+      el('div.verdict__row', {}, [
+        el('span.verdict__label', {
+          text: 'Lead over runner-up',
+          title: 'The margin the verdict rests on: it must exceed both the scatter and the misfit.',
+        }),
+        el('span', { text: `${formatNumber(naming.margin_deg, 3)}°` }),
+      ]),
+    ];
+    if (statement) {
+      rows.push(
+        el('div.verdict__row', {}, [
+          el('span.verdict__label', { text: 'Integer statement' }),
+          el('strong', { text: statement.text }),
+        ]),
+        el('div.verdict__row', {}, [
+          el('span.verdict__label', {
+            text: 'Cost of writing it',
+            title: meanings.rationalization,
+          }),
+          el('span', { text: `${formatNumber(statement.rationalization_cost_deg, 3)}°` }),
+        ]),
+      );
+    }
+    return el('section.verdict', {}, [
+      el('h3', { text: 'The answer' }),
+      ...rows,
+      el('p.verdict__note', {
+        text: statement
+          ? `The statement is an idealization: it names a nearby exact relationship, not the ` +
+            `measurement. ${meanings.rationalization ?? ''}`
+          : data.statement_note ??
+            'No integer statement was found within the index bound; the rotation stands alone.',
+      }),
+    ]);
   }
 
   /** Build the legend for a new result. Called once per result, not per redraw. */

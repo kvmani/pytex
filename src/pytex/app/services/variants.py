@@ -48,6 +48,7 @@ from pytex.app.registry import (
     ExampleScenario,
     IndicesParameter,
     IntegerParameter,
+    NumberParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import (
@@ -58,7 +59,11 @@ from pytex.app.services.calculator import (
     plane_label,
     relationship_name,
 )
-from pytex.app.services.crystal import scene_payload
+from pytex.app.services.crystal import (
+    _EULER_CONVENTIONS,
+    _euler_convention,
+    scene_payload,
+)
 from pytex.core.miller import canonicalize_sign
 
 __all__: tuple[str, ...] = ()
@@ -1635,6 +1640,358 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
     return result.to_json()
 
 
+#: The four angles this panel puts on one screen, and what each one measures.
+#:
+#: They are four different quantities, and calling them all "deviation" would be
+#: stating something false about three of them. The table's help text and the
+#: summary both use these words.
+_ANGLE_MEANINGS: dict[str, str] = {
+    "residual": (
+        "Scatter of the measurement: how far each measured pair sits from the single rotation "
+        "fitted to all of them. Zero for one pair, by construction."
+    ),
+    "catalog": (
+        "Distance from the fitted rotation to a named relationship, symmetry-reduced. This is "
+        "what identifies the relationship."
+    ),
+    "rationalization": (
+        "Price of writing the fitted rotation with integer indices: the symmetry-reduced angle "
+        "between the integer statement and the fit. Compare it against the scatter."
+    ),
+    "clause": (
+        "Per-clause rationalization residual: how far the exact image of the parent object sits "
+        "from the integer child indices reported."
+    ),
+}
+
+
+def _euler_angles(request: dict[str, Any], prefix: str) -> tuple[float, float, float]:
+    values = [float(request[f"{prefix}_angle{index}"]) for index in (1, 2, 3)]
+    if not all(math.isfinite(value) for value in values):
+        raise InvalidInputError(
+            "Euler angles must be finite numbers in degrees.",
+            field=f"{prefix}_angle1",
+        )
+    return (values[0], values[1], values[2])
+
+
+def _orientation_from_euler(
+    angles: tuple[float, float, float],
+    *,
+    phase: Any,
+    convention: str,
+    frame: Any,
+) -> Any:
+    from pytex.core.orientation import Orientation
+
+    return Orientation.from_euler(
+        angles[0],
+        angles[1],
+        angles[2],
+        specimen_frame=frame,
+        symmetry=phase.symmetry,
+        phase=phase,
+        convention=convention,
+        degrees=True,
+    )
+
+
+@REGISTRY.operation(
+    "variants.or_from_grains",
+    title="Relationship between two measured grains",
+    summary="Two orientations in, a named relationship and its integer statement out.",
+    help_text=(
+        "The everyday EBSD question, answered end to end: two grains were indexed, one of each "
+        "phase, and what is wanted is the orientation relationship between them — named if it is "
+        "a known one, and written the way a paper writes it.\n\n"
+        "Enter the two orientations as Euler angles in the convention your software exports "
+        "(Bunge unless you know otherwise) and pick the two phases. What comes back is the "
+        "rotation fitted to the pair, its distance from every relationship in the catalogue, a "
+        "conclusive-or-not verdict, and the relationship restated in integers.\n\n"
+        "**Four different angles appear here, and they are not interchangeable.** The *scatter* "
+        "is how far the measured pairs sit from one fitted rotation — zero for a single pair, by "
+        "construction, which is why one pair can never be contradicted by its own residual. The "
+        "*catalogue distance* is how far the fit sits from a named relationship, and it is what "
+        "identifies it. The *rationalization cost* is what writing the fit in integers costs. "
+        "The *clause deviation* is how far one index pair sits from the exact image. Each is "
+        "labelled where it appears.\n\n"
+        "**The integer statement is an idealization, and its price is reported beside it.** "
+        "Greninger-Troiano held to low indices comes out as the Kurdjumov-Sachs statement at a "
+        "cost of 2.40 degrees, which is the separation between them; returned without that "
+        "number it would read as a measurement of Kurdjumov-Sachs. Raise the index bound to buy "
+        "a closer statement with untidier indices, and watch the cost fall."
+    ),
+    parameters=(
+        phase_parameter(
+            label="Parent phase",
+            help_text="The phase of the first grain — the one that transformed.",
+            builtin="austenite_fcc",
+        ),
+        phase_parameter(
+            name="child_phase",
+            label="Child phase",
+            help_text="The phase of the second grain — the product.",
+            builtin="fe_bcc",
+        ),
+        ChoiceParameter(
+            name="euler_convention",
+            label="Euler convention",
+            help_text=(
+                "Which axis sequence the six angles below name. Both grains are read in the "
+                "same convention, because they came from one indexing run."
+            ),
+            options=_EULER_CONVENTIONS,
+            default="bunge",
+        ),
+        *(
+            NumberParameter(
+                name=f"parent_angle{index}",
+                label=f"Parent {label}",
+                help_text=f"{ordinal} Euler angle of the parent grain, in degrees.",
+                units="deg",
+                default=default,
+                minimum=-360.0,
+                maximum=720.0,
+                group="Parent grain",
+            )
+            for index, label, ordinal, default in (
+                (1, "phi1 / alpha", "First", 30.0),
+                (2, "Phi / beta", "Second", 40.0),
+                (3, "phi2 / gamma", "Third", 10.0),
+            )
+        ),
+        *(
+            NumberParameter(
+                name=f"child_angle{index}",
+                label=f"Child {label}",
+                help_text=f"{ordinal} Euler angle of the child grain, in degrees.",
+                units="deg",
+                default=default,
+                minimum=-360.0,
+                maximum=720.0,
+                group="Child grain",
+            )
+            for index, label, ordinal, default in (
+                (1, "phi1 / alpha", "First", 45.2774),
+                (2, "Phi / beta", "Second", 34.9979),
+                (3, "phi2 / gamma", "Third", 316.2482),
+            )
+        ),
+        NumberParameter(
+            name="catalog_tolerance_deg",
+            label="Naming tolerance",
+            help_text=(
+                "How close the fit must sit to a catalogued relationship before it is named. "
+                "Three degrees is the working figure: above the orientation noise of a "
+                "well-calibrated map, below the 5.26 degrees separating Kurdjumov-Sachs from "
+                "Nishiyama-Wassermann."
+            ),
+            units="deg",
+            default=3.0,
+            minimum=0.1,
+            maximum=15.0,
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Largest index in the statement",
+            help_text=(
+                "Bound on the integers the statement may use. Two gives the tidiest statement "
+                "and the largest cost; raising it buys a closer one with untidier indices."
+            ),
+            default=3,
+            minimum=1,
+            maximum=6,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "The catalogue ranking as the table; the fit, the verdict and the integer statement "
+        "with its cost under `data`."
+    ),
+    panel="variants",
+    citations=(_CITATION_MORITO, _CITATION_BUNGE),
+    tags=(
+        "orientation relationship",
+        "OR",
+        "EBSD",
+        "measured",
+        "grain",
+        "Euler",
+        "rationalization",
+        "variant",
+    ),
+)
+def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.frame_catalog import specimen_frame
+    from pytex.core.orientation import OrientationSet
+    from pytex.core.transformation import characterize_orientation_relationship
+
+    parent_spec, parent_phase = phase_from_request(request["phase"])
+    child_spec, child_phase = phase_from_request(request["child_phase"])
+    convention = _euler_convention(request["euler_convention"])
+    frame = specimen_frame()
+    parent_angles = _euler_angles(request, "parent")
+    child_angles = _euler_angles(request, "child")
+    parent_orientation = _orientation_from_euler(
+        parent_angles, phase=parent_phase, convention=convention, frame=frame
+    )
+    child_orientation = _orientation_from_euler(
+        child_angles, phase=child_phase, convention=convention, frame=frame
+    )
+    tolerance = float(request["catalog_tolerance_deg"])
+    try:
+        report = characterize_orientation_relationship(
+            OrientationSet.from_orientations([parent_orientation]),
+            OrientationSet.from_orientations([child_orientation]),
+            catalog_tolerance_deg=tolerance,
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            f"These two grains cannot be characterized: {error}",
+            field="phase",
+            hint=(
+                "The relationship is defined between two distinct phases; choose a parent and a "
+                "child that are not the same phase."
+            ),
+        ) from error
+
+    order = np.argsort(np.asarray(report.catalog_deviations_deg, dtype=float))
+    rows = [
+        {
+            "relationship": relationship_name(report.catalog_names[int(index)]),
+            "deviation_deg": float(report.catalog_deviations_deg[int(index)]),
+            "within_tolerance": (
+                "yes" if report.catalog_deviations_deg[int(index)] <= tolerance else "no"
+            ),
+        }
+        for index in order
+    ]
+
+    max_index = int(request["max_index"])
+    statement: dict[str, Any] | None = None
+    statement_note: str | None = None
+    try:
+        rationalized = report.as_rational_relationship(
+            max_index=max_index, tolerance_deg=tolerance
+        )
+    except ValueError as error:
+        # Not an input error: a rotation with no low-index statement is a real
+        # answer, and the panel says so rather than failing the whole run.
+        statement_note = str(error)
+    else:
+        statement = {
+            "text": rationalized.statement,
+            "plane": {
+                "parent": rationalized.plane_statement.parent_label,
+                "child": rationalized.plane_statement.child_label,
+                "deviation_deg": float(rationalized.plane_statement.deviation_deg),
+            },
+            "direction": {
+                "parent": rationalized.direction_statement.parent_label,
+                "child": rationalized.direction_statement.child_label,
+                "deviation_deg": float(rationalized.direction_statement.deviation_deg),
+            },
+            "rationalization_cost_deg": float(rationalized.residual_rotation_deg),
+            "zone_law_deviation_deg": float(rationalized.zone_law_deviation_deg),
+            "max_index": rationalized.max_index,
+            "describe": rationalized.describe(),
+        }
+
+    misorientation = report.relationship.misorientation()
+    verdict = (
+        f"{relationship_name(report.best_catalog_name)} within "
+        f"{report.best_catalog_deviation_deg:.2f} deg"
+        if report.is_conclusive and report.best_catalog_name is not None
+        else "no conclusive match"
+    )
+    statement_text = (
+        f" The integer statement is {statement['text']}, which costs "
+        f"{statement['rationalization_cost_deg']:.2f} deg to write."
+        if statement is not None
+        else " No integer statement was found within the index bound; the rotation stands alone."
+    )
+    result = AppResult(
+        title=f"{parent_spec.name} to {child_spec.name}: relationship between two grains",
+        summary=(
+            f"One measured pair. The relationship is a {misorientation.angle_deg:.2f} deg "
+            "disorientation; the nearest catalogued relationship is "
+            f"{relationship_name(report.catalog_names[int(order[0])])} at "
+            f"{float(report.catalog_deviations_deg[int(order[0])]):.2f} deg, and the verdict is "
+            f"{verdict}." + statement_text + " A single pair has no scatter to contradict it, so "
+            "the residual column is identically zero and says nothing about the measurement."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("relationship", "Relationship"),
+                Column(
+                    "deviation_deg",
+                    "Catalogue distance",
+                    units="°",
+                    numeric=True,
+                    digits=3,
+                    help_text=_ANGLE_MEANINGS["catalog"],
+                ),
+                Column(
+                    "within_tolerance",
+                    "Within tolerance",
+                    help_text="Whether this relationship is close enough to be named.",
+                ),
+            ),
+            rows=tuple(rows),
+            caption=(
+                "Every catalogued relationship, ordered by how far the fitted rotation sits from "
+                "it. A conclusive naming needs the winner to lead the runner-up by more than the "
+                "scatter and its own misfit."
+            ),
+        ),
+        data={
+            "fit": {
+                "angle_deg": float(misorientation.angle_deg),
+                "axis": [float(value) for value in misorientation.rotation.axis],
+                "matrix": [
+                    [float(value) for value in row]
+                    for row in report.relationship.parent_to_child_rotation.as_matrix()
+                ],
+                "mean_residual_deg": float(report.mean_residual_deg),
+                "pair_count": int(report.pair_count),
+                "converged": bool(report.converged),
+            },
+            "naming": {
+                "best": report.best_catalog_name,
+                "best_label": (
+                    None
+                    if report.best_catalog_name is None
+                    else relationship_name(report.best_catalog_name)
+                ),
+                "best_deviation_deg": float(report.best_catalog_deviation_deg),
+                "margin_deg": float(report.margin_deg),
+                "is_conclusive": bool(report.is_conclusive),
+                "tolerance_deg": tolerance,
+            },
+            "statement": statement,
+            "statement_note": statement_note,
+            "angle_meanings": dict(_ANGLE_MEANINGS),
+            "euler_convention": convention,
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "euler_convention": convention,
+            "parent_angle1": parent_angles[0],
+            "parent_angle2": parent_angles[1],
+            "parent_angle3": parent_angles[2],
+            "child_angle1": child_angles[0],
+            "child_angle2": child_angles[1],
+            "child_angle3": child_angles[2],
+            "catalog_tolerance_deg": tolerance,
+            "max_index": max_index,
+        },
+        citations=(_CITATION_MORITO, _CITATION_BUNGE),
+    )
+    return result.to_json()
+
+
 REGISTRY.add_examples(
     (
         ExampleScenario(
@@ -1719,6 +2076,65 @@ REGISTRY.add_examples(
                 "relationship": "burgers",
                 "pole": [0, 0, 1],
                 "packet_plane": [1, 1, 0],
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.or_from_grains_ks",
+            title="Two grains in, Kurdjumov-Sachs out",
+            panel="variants",
+            summary="An austenite and a ferrite orientation, and the relationship between them.",
+            teaches=(
+                "This is the everyday EBSD question run end to end. The two Euler triples are an "
+                "exact Kurdjumov-Sachs pair, so pressing the button without touching anything "
+                "recovers a known answer rather than producing an unverifiable number: "
+                "Kurdjumov-Sachs at zero, Greninger-Troiano 2.40 degrees behind it and "
+                "Nishiyama-Wassermann 5.26 degrees behind that. Those spacings are the "
+                "literature's, and seeing the whole ladder is what makes the naming a judgement "
+                "rather than an assertion."
+            ),
+            operation="variants.or_from_grains",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "euler_convention": "bunge",
+                "parent_angle1": 30.0,
+                "parent_angle2": 40.0,
+                "parent_angle3": 10.0,
+                "child_angle1": 45.2774,
+                "child_angle2": 34.9979,
+                "child_angle3": 316.2482,
+                "max_index": 3,
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.or_from_grains_gt_cost",
+            title="What the tidy statement costs",
+            panel="variants",
+            summary=(
+                "A Greninger-Troiano pair written with low indices, and the price of doing so."
+            ),
+            teaches=(
+                "Run this after the Kurdjumov-Sachs example. The pair is exact "
+                "Greninger-Troiano and the panel names it correctly at zero — but the integer "
+                "statement, held to index two, comes out as the *Kurdjumov-Sachs* one, because "
+                "Greninger-Troiano has no low-index direction pair. The cost of writing it that "
+                "way is 2.40 degrees, exactly the separation between the two relationships, and "
+                "it is reported beside the statement. Raise the index bound and watch the cost "
+                "fall as the indices get untidier: that trade is the user's to make, so it is "
+                "shown rather than decided."
+            ),
+            operation="variants.or_from_grains",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "euler_convention": "bunge",
+                "parent_angle1": 30.0,
+                "parent_angle2": 40.0,
+                "parent_angle3": 10.0,
+                "child_angle1": 126.5536,
+                "child_angle2": 73.6774,
+                "child_angle3": 352.9432,
+                "max_index": 2,
             },
         ),
         ExampleScenario(

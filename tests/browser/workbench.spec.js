@@ -2602,3 +2602,60 @@ test('draws both crystals of a variant, and every variant at one camera', async 
 
   expect(browserErrors).toEqual([]);
 });
+
+
+test('names the relationship between two measured grains and prices its statement', async ({
+  page,
+}) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Variants');
+
+  const view = page.locator('#rail-body').getByLabel('View');
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('variants.or_from_grains'),
+  );
+
+  /*
+   * The defaults are an exact Kurdjumov-Sachs pair, so the opening press
+   * demonstrates a known answer rather than producing an unverifiable number.
+   */
+  const verdict = page.locator('#stage .verdict');
+  await expect(verdict).toContainText('Kurdjumov-Sachs (conclusive)');
+  await expect(verdict).toContainText('Integer statement');
+  await expect(verdict).toContainText('Cost of writing it');
+  await expect(verdict).toContainText('idealization');
+
+  // The catalogue ladder is the evidence, and its spacings are the literature's.
+  const table = page.locator('#stage table');
+  await expect(table).toContainText('Greninger-Troiano');
+  await expect(table).toContainText('2.404');
+  await expect(table).toContainText('5.264');
+
+  // No figure for this view: it is an answer and a table, and drawing an empty
+  // frame would read as a failed render.
+  await expect(page.locator('#stage .plot')).toBeHidden();
+
+  /*
+   * The second example is the one that matters: an exact Greninger-Troiano pair
+   * written with low indices comes out as the Kurdjumov-Sachs statement, and the
+   * panel says what that costs instead of letting it read as a measurement.
+   */
+  /*
+   * Waiting on the card's own text to *change*, not on a new success entry.
+   * The card already reads "Cost of writing it" from the run before, so polling
+   * for the words would pass on the previous answer's zero; and a success entry
+   * is not specific enough either, because the crystal viewer's deferred
+   * readout lands in the same log.
+   */
+  const before = (await verdict.textContent()) ?? '';
+  await page.getByRole('button', { name: /What the tidy statement costs/ }).click();
+  await expect
+    .poll(async () => (await verdict.textContent()) ?? '', { timeout: 20_000 })
+    .not.toBe(before);
+  const text = (await verdict.textContent()) ?? '';
+  const cost = Number(/Cost of writing it\s*([\d.]+)/.exec(text)?.[1]);
+  expect(cost).toBeGreaterThan(2.3);
+  expect(cost).toBeLessThan(2.5);
+
+  expect(browserErrors).toEqual([]);
+});

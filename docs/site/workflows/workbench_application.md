@@ -387,6 +387,38 @@ This is the panel's whole argument: a measured misorientation histogram from pri
 should show peaks at those angles and nowhere else, and a peak elsewhere is a boundary between two
 *different* parent grains.
 
+### Two measured grains, and the relationship between them
+
+The Variants panel's fifth view, **Relationship between two measured grains**, is the everyday EBSD
+question run end to end. Enter two orientations as Euler angles in the convention your software
+exports, pick the two phases, and it returns the rotation fitted to the pair, its distance from
+every catalogued relationship, a conclusive-or-not verdict, and the relationship restated in
+integers.
+
+The defaults are an exact Kurdjumov-Sachs pair, so the opening press demonstrates a known answer
+rather than producing an unverifiable number: Kurdjumov-Sachs at zero, Greninger-Troiano 2.40°
+behind it, Nishiyama-Wassermann 5.26° behind that. Those spacings are the literature's, and seeing
+the whole ladder is what makes the naming a judgement rather than an assertion.
+
+**Four different angles reach this one screen, and they are not interchangeable.** The panel labels
+each with the word for what it measures, and the same words come from the service so the two cannot
+drift apart:
+
+| Shown as | What it measures |
+| --- | --- |
+| Scatter (mean residual) | How far the measured pairs sit from one fitted rotation. **Zero for a single pair, by construction** — one pair cannot be contradicted by its own residual, and the summary says so rather than letting a zero read as a quality claim. |
+| Catalogue distance | How far the fit sits from a named relationship, symmetry-reduced. This is what identifies it. |
+| Cost of writing it | What restating the fit in integers costs: the symmetry-reduced angle between the integer statement and the fit. |
+| Clause deviation | How far one index pair sits from the exact image of its parent object. |
+
+**The integer statement is an idealization, and the card says its price beside it.** Run the second
+example: the pair is exact Greninger-Troiano, the panel names it correctly at zero — and the integer
+statement, held to index two, comes out as the *Kurdjumov-Sachs* one, because Greninger-Troiano has
+no low-index direction pair. Writing it that way costs 2.40°, exactly the separation between the two
+relationships. Reported without that number it would read as a measurement of Kurdjumov-Sachs. Raise
+the index bound and the cost falls as the indices get untidier; the trade is the user's to make, so
+it is shown rather than decided. See {doc}`../theory/orientation_relationship_determination`.
+
 ### The composite views of the variants panel
 
 The Variants panel offers four views. Two are figures of where the variants *point* — the pole

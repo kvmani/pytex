@@ -13,6 +13,22 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Two measured grains in, a named relationship out.** `variants.or_from_grains` and a fifth
+  view in the Variants panel take two orientations as Euler angles (Bunge or Matthies) with
+  their phases, and return the fitted rotation, its distance from every catalogued
+  relationship, a conclusive-or-not verdict, and the relationship restated in integers with the
+  cost of writing it that way.
+
+  The defaults are an exact Kurdjumov-Sachs pair, so the opening press recovers a known answer:
+  KS at zero, Greninger-Troiano 2.40° behind, Nishiyama-Wassermann 5.26° behind that — the
+  literature's spacings, shown as a ladder so the naming is a judgement rather than an
+  assertion.
+
+  Four different angles reach that one screen — the scatter, the catalogue distance, the
+  rationalization cost and a clause deviation — and each is labelled with the word for what it
+  measures, from a single source shared by the service and the panel. In particular a single
+  pair's residual is zero *by construction*, and the summary says so rather than letting a zero
+  read as a quality claim.
 - **A measured relationship can be restated in integers, with the price attached.**
   `ORCharacterizationReport.as_rational_relationship(max_index=..., tolerance_deg=...)`
   returns a `RationalizedORResult`: a genuine `OrientationRelationship` built from the integer

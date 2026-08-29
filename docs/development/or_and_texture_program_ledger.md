@@ -49,38 +49,72 @@ plumbing and presentation milestone, mostly in `app/`.
 | Step | Content | State |
 | --- | --- | --- |
 | **M4a** | F21 part 1: `as_rational_relationship`, the integer statement with the cost of the idealization | **Complete** (2026-08-29) |
-| **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | Not started |
+| **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | **Complete** (2026-08-29) |
 | **M4c** | F22: the locked composite viewer for measured grains, with the stereogram sharing its camera | Not started |
 | **M4d** | F23: pick two grains on an EBSD map and flow their mean orientations in with no retyping | Not started |
 
 ### Next concrete step
 
-**M4b — the `variants.or_from_grains` operation and its panel.** M4a landed the piece F21 called
-missing that no existing function covered: the rational reduction that produces an *object* with its
-cost. What remains of F21 is the application surface.
+**M4c — F22, the locked composite viewer for measured grains.** M4b landed the measured-pair
+answer; F22 is the picture of it. The viewer already exists (M3b); what changes is where the two
+crystals are placed and what the overlays mean.
 
-The operation takes two Euler triples with an explicit convention selector (Bunge by default; the
-convention machinery is in `core/conventions.py` and `app/services/crystal.py`), two phases, and an
-optional tolerance. It returns, from calls that already exist:
+- Place both crystals by their **measured** orientations, so the view is the specimen frame the EBSD
+  data arrived in, rather than the parent crystal frame the catalogue views use. One camera still
+  drives both, and now for a stronger reason: the relative placement is fixed by the measurement.
+- Draw the **measured** parallel planes and directions — found at the fitted rotation by
+  `find_parallel_planes` / `find_parallel_directions` — labelled with their actual deviations. A
+  guide that is honest about being approximate.
+- Offer a toggle between the measured relationship and its rationalized idealization, so the user
+  sees what the idealization costs *geometrically* and not only as a number. M4a's
+  `as_rational_relationship` supplies both.
+- Put the OR stereogram beside the 3-D view, sharing the camera.
 
-- the fit and its residuals, and the catalog ranking with the conclusiveness verdict
-  (`characterize_orientation_relationship`);
-- the integer statement and **its cost** (`ORCharacterizationReport.as_rational_relationship`);
-- enough to hand straight to `or_dossier`, `plot_or_stereogram` or `variants.composite_scene`, so
-  the answer half M2/M3 built needs no re-derivation.
+The service work is mostly a variant of `variants.composite_scene` that takes two orientations
+instead of a relationship name; the placement arithmetic is `Orientation.as_matrix()` and nothing
+new.
 
-Then a panel over it, in the Variants workspace beside the four views already there.
+**Two things to carry in.** The overlay deviations here are *not* the same quantity as the
+catalogue distance or the rationalization cost, and the panel already has a vocabulary for keeping
+those apart (`angle_meanings`) — extend it rather than inventing a second set of words. And the
+specimen frame is now the world frame, so the axis gizmo must say RD/TD/ND rather than a, b, c, or
+the picture will be read in the wrong frame.
 
-**The presentation trap this milestone carries.** Four different angles will appear on one screen:
-the fit residual (scatter of the data), the catalog deviation (distance to a named relationship),
-the rationalization cost (distance to the integer statement), and a clause deviation
-(rationalization residual of one index pair). They are four different quantities and a panel that
-labelled them all "deviation" would be stating something false about three of them. Name each one
-where it is shown.
-
-**Known and deliberately untouched.****Known and deliberately untouched.**---
+**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
 
 ## 3. History
+
+### 2026-08-29 — M4b complete: the measured-pair panel (F21 part 3)
+
+**What shipped.** `variants.or_from_grains` in `src/pytex/app/services/variants.py`, a fifth view in
+`js/panels/variants.js` with a verdict card and its styles, two example scenarios, 13 tests in
+`tests/unit/test_app_variants.py`, one Playwright test (the browser suite is 54 green), and a
+section in `docs/site/workflows/workbench_application.md`.
+
+**The design carried over from M1.** The defaults are an exact Kurdjumov-Sachs pair, so pressing the
+button without touching a control recovers a *known* answer rather than producing an unverifiable
+number, and the catalogue ladder beside it shows the published spacings — 2.404 to
+Greninger-Troiano, 5.264 to Nishiyama-Wassermann. A test asserts both, so the demonstration cannot
+rot into a false statement.
+
+**The trap this milestone was about.** Four different angles reach one screen: the scatter, the
+catalogue distance, the rationalization cost, and a clause deviation. Calling them all "deviation"
+would be false of three. The service owns one `angle_meanings` dictionary, the panel's verdict card
+takes its tooltips from it, and a test pins the four keys — so the panel and the operation's help
+cannot drift apart. Related: a single pair's residual is zero *by construction*, and the summary
+says that in words rather than letting a zero read as a quality claim. That is the same lesson as
+M1's triad closure.
+
+**A test-writing note worth keeping.** Asserting on "a new success entry appeared" is not specific
+enough in this application: the crystal viewer's deferred readout lands in the same log, so the
+count can rise before the operation under test has finished. The browser test polls the verdict
+card's own text for a *change* instead.
+
+**Verification.** `ruff check .` clean; `mypy src` clean; `pytest tests/unit` green; 54 Playwright
+tests green; the view driven by hand in the browser.
+
+**Not done.** No figure for this view — it is an answer and a table, and the frame is hidden rather
+than showing an empty picture. The composite view of a *measured* pair is F22, and is M4c.
 
 ### 2026-08-29 — M4a complete: the integer statement, and what it costs (F21 part 1)
 

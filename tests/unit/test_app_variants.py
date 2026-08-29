@@ -816,3 +816,212 @@ class TestPlaneSpelling:
             if direction["parent_indices"][0] < 0:
                 leading_negative += 1
         assert leading_negative > 0
+
+
+def _euler_of(relationship, variant_index: int = 0):  # type: ignore[no-untyped-def]
+    """Bunge angles of a parent grain and of an exact child of it.
+
+    The parent is a general orientation, so nothing in the answer can be an
+    artefact of a special position; the child is built through the canonical
+    crystal-to-specimen composition `C = P V^T`.
+    """
+
+    from pytex.core.frame_catalog import specimen_frame
+    from pytex.core.orientation import Orientation
+    from pytex.core.representations import quaternions_to_euler_angles
+
+    frame = specimen_frame()
+    parent_angles = (30.0, 40.0, 10.0)
+    parent = Orientation.from_euler(
+        *parent_angles,
+        specimen_frame=frame,
+        symmetry=relationship.parent_phase.symmetry,
+        phase=relationship.parent_phase,
+        convention="bunge",
+        degrees=True,
+    )
+    variant = relationship.generate_variants()[variant_index]
+    child = Orientation.from_matrix(
+        parent.as_matrix() @ variant.parent_to_child_rotation.as_matrix().T,
+        specimen_frame=frame,
+        symmetry=relationship.child_phase.symmetry,
+        phase=relationship.child_phase,
+    )
+    child_angles = quaternions_to_euler_angles(
+        child.rotation.quaternion[None, :], degrees=True
+    )[0]
+    return parent_angles, tuple(float(value) for value in child_angles)
+
+
+def _relationship_between(name: str, parent: dict, child: dict):  # type: ignore[no-untyped-def]
+    from pytex.app.phases import phase_from_request
+    from pytex.core.transformation import OrientationRelationship
+
+    _, parent_phase = phase_from_request(parent)
+    _, child_phase = phase_from_request(child)
+    constructor = {
+        "kurdjumov_sachs": OrientationRelationship.from_kurdjumov_sachs_correspondence,
+        "nishiyama_wassermann": (
+            OrientationRelationship.from_nishiyama_wassermann_correspondence
+        ),
+        "greninger_troiano": OrientationRelationship.from_greninger_troiano_correspondence,
+    }[name]
+    return constructor(parent_phase=parent_phase, child_phase=child_phase)
+
+
+def grains(**overrides: object) -> dict:
+    request: dict[str, object] = {
+        "phase": AUSTENITE,
+        "child_phase": FERRITE,
+        "euler_convention": "bunge",
+        "parent_angle1": 30.0,
+        "parent_angle2": 40.0,
+        "parent_angle3": 10.0,
+        "child_angle1": 45.2774,
+        "child_angle2": 34.9979,
+        "child_angle3": 316.2482,
+        "catalog_tolerance_deg": 3.0,
+        "max_index": 3,
+    }
+    request.update(overrides)
+    return call("variants.or_from_grains", **request)
+
+
+def _for_relationship(name: str, **overrides: object) -> dict:
+    relationship = _relationship_between(name, AUSTENITE, FERRITE)
+    parent_angles, child_angles = _euler_of(relationship)
+    return grains(
+        parent_angle1=parent_angles[0],
+        parent_angle2=parent_angles[1],
+        parent_angle3=parent_angles[2],
+        child_angle1=child_angles[0],
+        child_angle2=child_angles[1],
+        child_angle3=child_angles[2],
+        **overrides,
+    )
+
+
+class TestORFromGrains:
+    """Two measured orientations in; a named relationship and a statement out."""
+
+    def test_the_defaults_recover_kurdjumov_sachs(self) -> None:
+        """The panel's opening press must demonstrate a known answer, not just
+        produce a number: the built-in angles are an exact Kurdjumov-Sachs pair."""
+
+        data = grains()["data"]
+        assert data["naming"]["best"] == "kurdjumov_sachs"
+        assert data["naming"]["is_conclusive"] is True
+        assert data["naming"]["best_deviation_deg"] < 0.01
+
+    def test_the_catalogue_ladder_is_the_published_one(self) -> None:
+        """The table is the whole ranking, and its spacings are literature
+        values: Greninger-Troiano 2.40 deg from Kurdjumov-Sachs,
+        Nishiyama-Wassermann 5.26 deg."""
+
+        rows = {row["relationship"]: row["deviation_deg"] for row in grains()["table"]["rows"]}
+        assert rows["Kurdjumov-Sachs"] == pytest.approx(0.0, abs=0.01)
+        assert rows["Greninger-Troiano"] == pytest.approx(2.404, abs=0.01)
+        assert rows["Nishiyama-Wassermann"] == pytest.approx(5.264, abs=0.01)
+
+    @pytest.mark.parametrize(
+        "name", ["kurdjumov_sachs", "nishiyama_wassermann", "greninger_troiano"]
+    )
+    def test_each_planted_relationship_is_the_one_recovered(self, name: str) -> None:
+        data = _for_relationship(name)["data"]
+        assert data["naming"]["best"] == name
+        assert data["naming"]["best_deviation_deg"] < 0.01
+
+    def test_the_statement_of_an_exact_ks_pair_costs_nothing(self) -> None:
+        statement = _for_relationship("kurdjumov_sachs")["data"]["statement"]
+        assert statement is not None
+        assert statement["rationalization_cost_deg"] < 0.01
+        assert statement["zone_law_deviation_deg"] == pytest.approx(0.0, abs=1e-9)
+
+    def test_greninger_troiano_in_low_indices_costs_the_ks_separation(self) -> None:
+        """The number the surface exists to report, now on the panel's own path.
+
+        Greninger-Troiano has no low-index direction pair, so held to two the
+        tidiest statement available is the Kurdjumov-Sachs one -- and writing it
+        costs the published 2.40 deg between them. Reported without that number
+        it would read as a measurement of Kurdjumov-Sachs.
+        """
+
+        statement = _for_relationship("greninger_troiano", max_index=2)["data"]["statement"]
+        assert statement is not None
+        assert statement["rationalization_cost_deg"] == pytest.approx(2.404, abs=0.01)
+
+    def test_raising_the_index_bound_buys_a_closer_statement(self) -> None:
+        costs = [
+            _for_relationship("greninger_troiano", max_index=bound)["data"]["statement"][
+                "rationalization_cost_deg"
+            ]
+            for bound in (2, 3, 4)
+        ]
+        assert costs == sorted(costs, reverse=True)
+        assert costs[0] > costs[-1] + 1.0
+
+    def test_the_four_angles_are_named_rather_than_all_called_deviation(self) -> None:
+        """Scatter, catalogue distance, rationalization cost and clause
+        deviation are four different quantities on one screen."""
+
+        data = grains()["data"]
+        assert set(data["angle_meanings"]) == {
+            "residual",
+            "catalog",
+            "rationalization",
+            "clause",
+        }
+        assert "Zero for one pair" in data["angle_meanings"]["residual"]
+
+    def test_a_single_pair_reports_its_zero_residual_as_meaning_nothing(self) -> None:
+        result = grains()
+        assert result["data"]["fit"]["pair_count"] == 1
+        assert result["data"]["fit"]["mean_residual_deg"] == pytest.approx(0.0, abs=1e-9)
+        assert "no scatter to contradict it" in result["summary"]
+
+    def test_the_matthies_convention_names_the_same_orientation(self) -> None:
+        """The same two grains entered in the other convention must give the
+        same relationship, or one of the two readings is wrong."""
+
+        from pytex.core.orientation import Rotation
+        from pytex.core.representations import quaternions_to_euler_angles
+
+        bunge = grains()
+        angles = []
+        for prefix in ("parent", "child"):
+            rotation = Rotation.from_euler(
+                *(bunge["inputs"][f"{prefix}_angle{index}"] for index in (1, 2, 3)),
+                convention="bunge",
+                degrees=True,
+            )
+            angles.append(
+                tuple(
+                    float(value)
+                    for value in quaternions_to_euler_angles(
+                        rotation.quaternion[None, :], convention="matthies", degrees=True
+                    )[0]
+                )
+            )
+        matthies = grains(
+            euler_convention="matthies",
+            parent_angle1=angles[0][0],
+            parent_angle2=angles[0][1],
+            parent_angle3=angles[0][2],
+            child_angle1=angles[1][0],
+            child_angle2=angles[1][1],
+            child_angle3=angles[1][2],
+        )
+        assert matthies["data"]["naming"]["best"] == bunge["data"]["naming"]["best"]
+        assert matthies["data"]["fit"]["angle_deg"] == pytest.approx(
+            bunge["data"]["fit"]["angle_deg"], abs=1e-6
+        )
+
+    def test_one_phase_cannot_be_related_to_itself(self) -> None:
+        with pytest.raises(InvalidInputError) as error:
+            grains(child_phase=AUSTENITE)
+        assert error.value.details["field"] == "phase"
+
+    def test_an_unknown_convention_is_refused_by_its_own_field(self) -> None:
+        with pytest.raises(InvalidInputError) as error:
+            grains(euler_convention="kocks")
+        assert error.value.details["field"] == "euler_convention"
