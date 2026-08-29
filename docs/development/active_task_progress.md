@@ -4873,3 +4873,50 @@ remains untouched and must not be staged.
 ### Next task
 
 None claimed. This goal is complete.
+
+## Goal: a vision and plan for the next phase — OR visualization, interfaces, and texture quantification (2026-08-29)
+
+### Objective
+
+Produce the governing plan for the next development phase, driven by a repo-wide capability scan
+and by a stated research target: an integrated tool for phase-transformation crystallography, and a
+peer-reviewed methods paper describing it.
+
+### Delivered
+
+`docs/roadmap/vision_interface_crystallography_and_texture_quantification.md`, with a Sphinx
+include stub under `docs/site/roadmap/` and a toctree entry in `docs/site/index.md`. It continues
+the OR foundation's feature numbering at F15 and defines four programs:
+
+- **Program A (F15-F20)** — variant-aware composite two-crystal scenes, interface specification and
+  misfit quantification, the aggregate OR dossier, the OR stereogram, the workbench composite
+  viewer, and PTMC habit-plane prediction as a gated stretch.
+- **Program B (F21-F23)** — OR determination from two measured EBSD grains, rational reduction that
+  carries the cost of the idealization, the locked composite viewer, and the path from a loaded map.
+- **Program C (T1-T5)** — the Kearns tab in the texture workspace, ghost correction, axial (fibre)
+  specimen symmetry, assumption transparency, and bootstrap uncertainty.
+- **Program D** — JSON contracts, the dossier CLI that is the paper's reproducibility artifact,
+  vectorization, browser coverage, and parity rows.
+
+Plus a ranked list of high-impact opportunities found in the scan but outside the program, a
+validation program, a paper plan with its blocking gates, a six-milestone sequence, and an honest
+risks section.
+
+### Verified gaps the plan is built on
+
+Each checked against the tree, not inherited: `WorldScene3D.from_orientation_relationship` takes no
+variant; no `WorldScene` reference anywhere under `src/pytex/app`; `habit_plane_pairs` is
+descriptive only and nothing computes it; no aggregate OR report; no OR stereogram with tie-lines;
+no GUI path from two Euler triples to an OR; no `kearns` reference under `src/pytex/app`;
+`invert_pole_figures` documents its own lack of ghost correction; `_SPECIMEN_SYMMETRY_POINT_GROUPS`
+offers no axial entry.
+
+### Deliberately not done
+
+No code. This increment is the plan; implementation begins at milestone M1 (the Kearns tab), which
+is the highest impact-per-hour item because all four Kearns routes are already implemented and
+validated in `texture/kearns.py` and only the application surface is missing.
+
+### Next task
+
+M1 — expose the Kearns parameter in the texture workspace.

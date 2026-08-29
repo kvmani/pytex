@@ -93,6 +93,7 @@ api/index
 roadmap/critical_review_and_development_guide
 roadmap/implementation_roadmap
 roadmap/world_class_feature_roadmap
+roadmap/vision_interface_crystallography_and_texture_quantification
 reference/canonical_docs
 theory/index
 validation/index
