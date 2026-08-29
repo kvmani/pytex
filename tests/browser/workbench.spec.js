@@ -28,6 +28,7 @@ const PANEL_PATH = {
   'Pole figures': ['EBSD', 'Pole figures'],
   'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
   'ECCI workflow': ['EBSD', 'ECCI workflow'],
+  'Kearns parameter': ['Texture', 'Kearns parameter'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
   CBED: ['TEM Analysis', 'CBED'],
@@ -370,6 +371,7 @@ test('offers the shared CIF phase loader in every structure-aware workspace', as
     'ECCI workflow',
     'Variants',
     'Texture',
+    'Kearns parameter',
     'Calculator',
   ];
 
@@ -2425,6 +2427,62 @@ test('folds the dock away on a phone without overflowing it', async ({ page }) =
 
   const overflow = await page.evaluate(() => document.body.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The Kearns panel's whole claim, driven through the interface.
+ *
+ * The three routes are given inputs that describe *one* synthetic specimen, so
+ * a user who runs them in turn must see the same number three times. Asserting
+ * that here rather than only in the service tests is deliberate: the agreement
+ * is what the panel tells the user to look for, and a wiring mistake that sent
+ * one route the wrong defaults would leave every Python test green while making
+ * the panel's central lesson false on screen.
+ */
+test('the three Kearns routes agree on one specimen', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Kearns parameter');
+
+  /** The f value the triad card shows for a named specimen direction. */
+  async function shownValue(direction) {
+    const row = page.locator('.kearns__row', { hasText: `f_${direction}` });
+    await expect(row).toBeVisible();
+    return Number(await row.locator('.kearns__value').innerText());
+  }
+
+  async function runRoute(operationId) {
+    await page.locator('#rail-body select[aria-label="Route"]').selectOption(operationId);
+    await expectNewCompletedCalculation(page, () =>
+      page.getByRole('button', { name: 'Compute f', exact: true }).click(),
+    );
+  }
+
+  await runRoute('kearns.from_orientations');
+  const exact = await shownValue('ND');
+  // The exact route reports the whole triad, and it must close: the sum is
+  // identically 1 for every texture, so the panel says so in as many words.
+  await expect(page.locator('.notes--ok')).toContainText('Closure check passes');
+  await expect(page.locator('.kearns__row')).toHaveCount(3);
+
+  await runRoute('kearns.from_diffractogram');
+  const diffractogram = await shownValue('ND');
+  // One section gives one number, and the panel must not imply a triad exists.
+  await expect(page.locator('.kearns__row')).toHaveCount(1);
+  await expect(page.locator('.notes--ok, .notes--warn')).toHaveCount(0);
+  // The tilt profile it integrated is drawn, because f without it is unreadable.
+  await expect(page.locator('#stage svg[aria-label*="volume fraction"]')).toBeVisible();
+
+  await runRoute('kearns.from_tilt_profile');
+  const profile = await shownValue('ND');
+
+  for (const value of [exact, diffractogram, profile]) {
+    expect(value).toBeGreaterThan(0.6);
+    expect(value).toBeLessThan(0.7);
+  }
+  expect(Math.abs(diffractogram - exact)).toBeLessThan(0.01);
+  expect(Math.abs(profile - exact)).toBeLessThan(0.01);
 
   expect(browserErrors).toEqual([]);
 });

@@ -4920,3 +4920,63 @@ validated in `texture/kearns.py` and only the application surface is missing.
 ### Next task
 
 M1 — expose the Kearns parameter in the texture workspace.
+
+## Goal: expose the Kearns parameter in the workbench — M1a COMPLETE (2026-08-29)
+
+This is the first increment of the long-horizon program in
+[Vision And Plan: Interface Crystallography, Composite Visualization, And Texture Quantification](../roadmap/vision_interface_crystallography_and_texture_quantification.md).
+**The resumable state of that program lives in its own ledger,
+[docs/development/or_and_texture_program_ledger.md](or_and_texture_program_ledger.md)** — read that
+file to pick the work up, not this entry, which records only what landed here.
+
+### The gap
+
+`pytex.texture.kearns` has implemented and validated the Kearns parameter by four routes since it
+landed. A search of `src/pytex/app` for `kearns` returned nothing: not one route was reachable from
+the application. The science was finished and the surface was missing.
+
+### Delivered
+
+A **Kearns parameter** sub-tab in the Texture workspace, with three routes —
+`kearns.from_orientations` (exact, over discrete orientations or a model basal fibre),
+`kearns.from_diffractogram` (Kearns' 1965 theta-2theta route, with Harris coefficients and the
+interpolated tilt profile), and `kearns.from_tilt_profile` (his Eq. (5) quadrature, node by node).
+The Texture tab became a grouped workspace, the third after TEM Analysis and EBSD.
+
+All three defaults describe **one** synthetic specimen — a basal fibre of 30 deg spread about ND,
+true `f_ND` = 0.6423. Measured: exact 0.6412, diffractogram 0.6421, tilt profile 0.6416. The
+agreement is asserted by both the service suite and a browser test, because it is the claim the
+panel makes to the user rather than an incidental property.
+
+The panel reports what a bare `f` cannot: every value drawn against the untextured 1/3 rather than
+zero, and the closure check `f_RD + f_TD + f_ND = 1` stated as a verdict, since the sum is
+identically 1 for every texture and therefore tests the measurement and never the material.
+
+### Two defects found while building
+
+- The model fibre's help text claimed a wide spread "approaches random, where f goes to 1/3". It
+  does not — a Gaussian truncated to the quadrant still leans towards its axis, and at the 90 deg
+  maximum `f` is 0.374. Corrected, and the ceiling is pinned by a test so it does not read as a bug.
+- `_report_payload` overwrote `KearnsReport.to_json`'s documented `phase` key (a plain name) with
+  the application's `PhaseSpec` JSON, silently changing a published contract. The specification now
+  sits beside it as `phase_spec`, guarded by a test.
+
+### Verification
+
+`python -m ruff check .` green; `python -m mypy src` green over 152 files; `python -m pytest
+tests/unit` green (exit 0, full suite); `npx playwright test` 51 passed against a loopback server;
+the panel driven by hand in the browser with no console errors. The profile plot's viewBox was
+widened after measuring the drawing filling 40 percent of the frame canvas; it now fills 62 percent.
+
+### Deliberately not done
+
+- **No worked example and no theory-note change.** The executable-examples standard covers stable
+  public *numerical* surfaces. This increment adds an application surface over
+  `pytex.texture.kearns`, which already carries both.
+- **The pole-figure and ODF routes.** They need the upload plumbing and are M1b; the handoff notes
+  are in the program ledger.
+- **The untracked `tests/test_data/` directory remains untouched and must not be staged.**
+
+### Next task
+
+M1b — the two upload-based Kearns routes. See the program ledger.

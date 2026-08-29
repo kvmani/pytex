@@ -109,6 +109,10 @@ _PANEL_DOCUMENTATION = {
     ),
     "ebsd_kikuchi": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
     "ecci": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
+    "kearns": DocumentationLink(
+        "The Kearns parameter and basal-pole texture",
+        "theory/kearns_parameter_and_basal_pole_texture",
+    ),
     "texture": DocumentationLink("Orientation and texture", "concepts/orientation_texture"),
     "variants": DocumentationLink(
         "Orientation relationships", "concepts/orientation_relationships"

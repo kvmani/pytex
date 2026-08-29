@@ -13,6 +13,31 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The Kearns parameter is reachable from the workbench.** `pytex.texture.kearns` has
+  implemented and validated the parameter by four routes since it landed, and not one of them was
+  reachable from the application. A new **Kearns parameter** sub-tab in the Texture workspace
+  exposes three of them — `kearns.from_orientations` (the exact route, over discrete orientations
+  or a model basal fibre), `kearns.from_diffractogram` (Kearns' own 1965 theta-2theta route, with
+  the random-powder normalisation and Harris coefficients), and `kearns.from_tilt_profile` (his
+  Eq. (5) quadrature, node by node). The pole-figure and ODF routes follow with the upload
+  plumbing.
+
+  The panel is built around the two things a bare `f` cannot tell you. Every value is drawn against
+  the untextured **1/3** rather than against zero, because 0.34 and 0.64 look alike as numbers and
+  are a texture-free specimen and a strongly textured one. And where the directions form a triad,
+  the **closure check** is reported as a verdict: `f_RD + f_TD + f_ND` is identically 1 for every
+  texture, being the trace of a second-moment tensor of unit vectors, so a departure measures the
+  systematic error of the measurement and never a property of the material.
+
+  The defaults of all three routes describe **one** synthetic specimen — a basal fibre of 30 deg
+  spread about ND whose true `f_ND` is 0.642 — so pressing the button without touching a control
+  demonstrates each route recovering a known answer, and running the three in turn shows them
+  agreeing to better than 0.001. Both the service suite and a browser test assert that agreement,
+  because it is the claim the panel makes to the user.
+
+  The Texture tab is now a grouped workspace with `Texture` and `Kearns parameter` as sub-tabs, the
+  third such group after TEM Analysis and EBSD.
+
 - **A stage console on the ECCI workflow.** The two views used to sit at their minimum height with
   most of a tall window empty below them, and the tilt and rotation boxes were in the rail, on the
   far side of the screen from the pictures they change. The views now fill the stage, and under

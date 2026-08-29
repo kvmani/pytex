@@ -67,7 +67,7 @@ environment variable and the loader reads it. See {mod}`pytex.app.config`.
 
 ## What Is In It
 
-Seven workspaces holding seventeen panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding eighteen panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
@@ -78,7 +78,7 @@ an example cannot rot.
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
 | **EBSD** | What is in this scan, what does its map show, where should it be believed — and how should the indexed grain be examined next? Eight sub-tabs (below). |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
-| **Texture** | Where does a crystal plane point across a whole polycrystal? |
+| **Texture** | Where does a crystal plane point across a whole polycrystal, and what is the one number that summarises it? Two sub-tabs (below). |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
 
 The **TEM Analysis** workspace carries four sub-tabs, because they are four views of one technique
@@ -90,6 +90,15 @@ rather than four subjects:
 | **TEM Solver** | Which zone axis is this pattern, where should I go next, and can the holder get there? |
 | **CBED** | What would a convergent-beam exposure of this zone show, how thick is the foil, and what is the point group? |
 | **Composite SAED** | What does a two-phase SAED pattern contain, and which variant is that spot? |
+
+The **Texture** workspace carries two sub-tabs. They are one texture read at two levels of
+compression: the figures show where the poles are, and the Kearns parameter is the single
+second-rank number a designer quotes from exactly that distribution.
+
+| Sub-tab | What it answers |
+| --- | --- |
+| **Texture** | Where does a crystal plane point across the polycrystal — as a pole figure, an inverse pole figure, or ODF sections? |
+| **Kearns parameter** | What fraction of basal poles lies along each specimen direction, by whichever of the three routes the available data supports? |
 
 The **EBSD** workspace carries eight sub-tabs: six over one scan, followed by two forward and
 experiment-planning tools that need no scan. A scan opened in any of the first six is open in
@@ -358,7 +367,7 @@ passes in silence is the failure this path exists to prevent.
 
 ## Worked Reading: Two Panels With Known Answers
 
-Two of the panels can be checked against answers that are fixed before the calculation runs, which
+Three of the panels can be checked against answers that are fixed before the calculation runs, which
 makes them the right places to start.
 
 ### The variants panel, against Morito's table
@@ -390,6 +399,25 @@ Then choose the Goss component and plot (011). Goss is written {011}⟨100⟩ �
 the sheet plane — so its (011) pole must sit at the **centre** of the figure, which is ND. It does.
 The notation is a testable claim about where the poles go, and checking it needs no reference
 figure.
+
+### The Kearns panel, against itself three times over
+
+Open **Kearns parameter** and run the three examples in order. They are not three demonstrations of
+three features: they are three *independent* measurements of one synthetic specimen — a basal fibre
+of 30° spread about ND whose true f_ND is 0.642 — and they must agree.
+
+The exact route resolves the basal poles of the orientations directly and returns **0.641**. The
+diffractogram route sees only thirteen peak heights, knows nothing about orientations, and returns
+**0.642**. The tilt-profile route integrates nine numbers by Kearns' own 1965 quadrature and returns
+**0.642**. That agreement is the panel's whole argument, and it is checkable without a reference
+value because the defaults were generated from a texture whose answer was known first.
+
+The exact route also prints the **closure check**: f_RD + f_TD + f_ND sums to 1.0000. That is not a
+property of this texture. The three parameters are the diagonal of a second-moment tensor of unit
+vectors, so their sum is identically 1 for every texture there is — which makes the sum a test of
+the *measurement* and never of the material. A triad that does not close has an unmeasured tilt
+range, a wrong random standard, or an unbalanced background, and the panel says so in those words.
+The diffractogram route deliberately shows no closure check, because one section gives one number.
 
 ### Contour presentation
 

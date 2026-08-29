@@ -40,6 +40,7 @@ import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
 import * as ecciWorkflow from './panels/ecciWorkflow.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
+import * as kearns from './panels/kearns.js';
 import * as calculator from './panels/calculator.js';
 
 // Order is the tab order. The viewer leads because it is the panel a newcomer
@@ -90,13 +91,26 @@ const EBSD_ANALYSIS = {
   ],
 };
 
+// Texture is grouped for the same reason as the other two: a pole figure and a
+// Kearns parameter are not two subjects, they are one texture read at two
+// levels of compression. The figures show where the poles are; the Kearns
+// parameter is the single second-rank number a designer quotes from exactly
+// that distribution. Side by side, the sub-tab bar says which reading is on
+// screen and the tab bar keeps naming the subject.
+const TEXTURE_ANALYSIS = {
+  id: 'texture',
+  title: 'Texture',
+  tagline: 'One polycrystal: where its poles point, and the one number that summarises them.',
+  panels: [texture, kearns],
+};
+
 const WORKSPACES = [
   solo(crystal),
   TEM_ANALYSIS,
   solo(xrd),
   EBSD_ANALYSIS,
   solo(variants),
-  solo(texture),
+  TEXTURE_ANALYSIS,
   solo(calculator),
 ];
 
