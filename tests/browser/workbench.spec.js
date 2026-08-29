@@ -2461,9 +2461,11 @@ test('the three Kearns routes agree on one specimen', async ({ page }) => {
 
   await runRoute('kearns.from_orientations');
   const exact = await shownValue('ND');
-  // The exact route reports the whole triad, and it must close: the sum is
-  // identically 1 for every texture, so the panel says so in as many words.
-  await expect(page.locator('.notes--ok')).toContainText('Closure check passes');
+  // The exact route reports the whole triad. It closes -- and the panel says
+  // that this proves nothing, because these three values are the diagonal of
+  // one unit-trace tensor and would close whatever the data were.
+  await expect(page.locator('.notes--info')).toContainText('Closes by construction');
+  await expect(page.locator('.notes--ok')).toHaveCount(0);
   await expect(page.locator('.kearns__row')).toHaveCount(3);
 
   await runRoute('kearns.from_diffractogram');
@@ -2483,6 +2485,42 @@ test('the three Kearns routes agree on one specimen', async ({ page }) => {
   }
   expect(Math.abs(diffractogram - exact)).toBeLessThan(0.01);
   expect(Math.abs(profile - exact)).toBeLessThan(0.01);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
+ * The pole-figure route, and the lesson it exists to teach.
+ *
+ * The fixture is a random standard truncated at 60 degrees of tilt. Its true f
+ * is 1/3 in every direction; read over the measured cap alone it comes out near
+ * 0.52 — and the triad still sums to 1. The panel must therefore *not* show a
+ * green pass for the closure check, and must show the coverage warning instead.
+ * That distinction is the whole reason the verdict is written three ways, so it
+ * is asserted on screen rather than only in the service tests.
+ */
+test('the Kearns panel refuses to call a closed triad a passed check', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'Kearns parameter');
+
+  const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
+  await page.locator('#rail-body select[aria-label="Route"]').selectOption(
+    'kearns.from_pole_figure',
+  );
+  await expect(page.locator('#kearns-files')).toBeVisible();
+
+  await expectNewCompletedCalculation(page, () =>
+    page.setInputFiles('#kearns-files input[type="file"]', [
+      { name: 'zr-0002.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    ]),
+  );
+
+  // Closed, and reported as proving nothing.
+  await expect(page.locator('.notes--info')).toContainText('Closes by construction');
+  await expect(page.locator('.notes--ok')).toHaveCount(0);
+  // The diagnostic that does test this route.
+  await expect(page.locator('.notes--warn')).toContainText('The figure is incomplete');
+  await expect(page.locator('.notes--warn')).toContainText('50% of the hemisphere');
 
   expect(browserErrors).toEqual([]);
 });

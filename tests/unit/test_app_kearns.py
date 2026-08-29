@@ -83,13 +83,20 @@ class TestTheThreeRoutesAgree:
 
 
 class TestTheTriadAndItsClosure:
-    def test_the_exact_route_closes_the_triad(self) -> None:
-        """f_RD + f_TD + f_ND = 1 identically; the exact route closes by construction."""
+    def test_the_exact_route_closes_the_triad_but_says_it_proves_nothing(self) -> None:
+        """The sum is 1, and the summary must not present that as a passed check.
+
+        These three values are the diagonal of one pole orientation tensor whose
+        trace is identically 1, so they close whatever the data were. Claiming
+        the closure as evidence of a sound measurement is false reassurance, and
+        `TestTheUploadRoutes.test_closure_passes_while_the_answer_is_wrong`
+        shows a case where it is closed and wrong by more than half.
+        """
 
         result = run("kearns.from_orientations")
         assert result["data"]["triad_sum"] == pytest.approx(1.0, abs=1e-9)
         assert result["data"]["is_orthonormal_triad"] is True
-        assert "closes" in result["summary"]
+        assert "closure by construction, not evidence" in result["summary"]
 
     def test_a_fibre_texture_is_transversely_isotropic(self) -> None:
         """A fibre about ND must give equal f along RD and TD, by construction."""
@@ -272,3 +279,133 @@ class TestTheExamplesRunAsAdvertised:
             request.update(example.request)
             values.append(value_of(REGISTRY.call(example.operation, request), "ND"))
         assert max(values) - min(values) < ROUTE_TOLERANCE
+
+
+class TestTheUploadRoutes:
+    """The two routes that read a measurement, on the repository's XRDML fixture.
+
+    The fixture is a *random standard* truncated at 60 degrees of tilt, and that
+    truncation is what makes it valuable here. A uniform pole figure integrated
+    over the whole hemisphere gives exactly 1/3 in every direction; integrated
+    over the measured cap alone it does not, because the cap is biased towards
+    the pole. So the fixture is a ready-made demonstration of this route's real
+    systematic error, and of the fact that the triad sum cannot detect it.
+    """
+
+    FIXTURE = "fixtures/xrdml/synthetic_random_standard.xrdml"
+
+    def files(self, count: int = 1) -> dict[str, Any]:
+        from pathlib import Path
+
+        text = Path(self.FIXTURE).read_text(encoding="utf-8")
+        return {"items": [{"name": f"zr-{index}.xrdml", "text": text} for index in range(count)]}
+
+    def test_the_pole_figure_route_integrates_the_opened_figure(self) -> None:
+        result = run(
+            "kearns.from_pole_figure", files=self.files(), poles=((0, 0, 0, 2),)
+        )
+        assert result["data"]["diagnostics"]["sampled_point_count"] == 12.0
+        assert value_of(result, "RD") == pytest.approx(value_of(result, "TD"), abs=1e-9)
+
+    def test_closure_passes_while_the_answer_is_wrong(self) -> None:
+        """The reason the panel no longer presents closure as a passed check.
+
+        This figure is uniform, so the true f is 1/3 in every direction. Read
+        over the measured cap alone it comes out at 0.518 — wrong by more than
+        half the value — and the triad still sums to 1.0000, because the three
+        numbers are the diagonal of one unit-trace tensor and always will be.
+        """
+
+        result = run("kearns.from_pole_figure", files=self.files(), poles=((0, 0, 0, 2),))
+        assert result["data"]["triad_sum"] == pytest.approx(1.0, abs=1e-9)
+        assert value_of(result, "ND") == pytest.approx(0.518, abs=0.005)
+        assert value_of(result, "ND") != pytest.approx(1.0 / 3.0, abs=0.1)
+
+    def test_the_incomplete_figure_is_reported_as_such(self) -> None:
+        result = run("kearns.from_pole_figure", files=self.files(), poles=((0, 0, 0, 2),))
+        assert result["data"]["diagnostics"]["max_polar_deg"] == pytest.approx(60.0, abs=0.1)
+        assert result["data"]["diagnostics"]["measured_solid_angle_fraction"] == pytest.approx(
+            0.5, abs=0.01
+        )
+        assert "covers 50% of the hemisphere" in result["summary"]
+        assert "not detectable from the triad sum" in result["summary"]
+
+    def test_the_summary_says_closure_is_by_construction(self) -> None:
+        """Every single-tensor route must say so, or the check misleads."""
+
+        for operation in ("kearns.from_orientations",):
+            assert "closure by construction" in run(operation)["summary"]
+
+    def test_a_non_basal_pole_is_not_called_a_kearns_parameter(self) -> None:
+        result = run("kearns.from_pole_figure", files=self.files(), poles=((1, 0, -1, 1),))
+        assert any("not the Kearns parameter" in note for note in result["notes"])
+
+    def test_a_basal_pole_carries_no_such_warning(self) -> None:
+        result = run("kearns.from_pole_figure", files=self.files(), poles=((0, 0, 0, 2),))
+        assert not any("not the Kearns parameter" in note for note in result["notes"])
+
+    def test_the_pole_figure_route_refuses_more_than_one_figure(self) -> None:
+        """One figure is what it integrates; several is the ODF route's question."""
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            run("kearns.from_pole_figure", files=self.files(3), poles=((0, 0, 0, 2),))
+        assert "integrates one figure" in str(excinfo.value)
+
+    def test_no_opened_file_is_reported_as_such(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            run("kearns.from_pole_figure", files={"items": []}, poles=((0, 0, 0, 2),))
+        assert "No pole-figure file has been opened" in str(excinfo.value)
+
+    def test_an_unreadable_file_names_the_file(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            run(
+                "kearns.from_pole_figure",
+                files={"items": [{"name": "broken.xrdml", "text": "<not>xrdml</not>"}]},
+                poles=((0, 0, 0, 2),),
+            )
+        assert "broken.xrdml" in str(excinfo.value)
+
+    def test_miller_bravais_indices_must_close_on_the_upload_routes_too(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            run("kearns.from_pole_figure", files=self.files(), poles=((1, 1, -1, 1),))
+        assert "h + k + i = 0" in str(excinfo.value)
+
+    def test_the_odf_route_inverts_and_resolves(self) -> None:
+        result = run(
+            "kearns.from_odf",
+            files=self.files(3),
+            poles=((0, 0, 0, 2), (1, 0, -1, 1), (1, 0, -1, 2)),
+            dictionary_count=300,
+        )
+        assert result["data"]["pole_figure_count"] == 3
+        assert result["data"]["residual"] >= 0.0
+        assert result["data"]["triad_sum"] == pytest.approx(1.0, abs=1e-9)
+        assert "closes by construction" in result["summary"]
+
+    def test_the_support_tensor_is_more_anisotropic_than_the_density_tensor(self) -> None:
+        """The kernel shrinks anisotropy, so deconvolving it must increase the spread.
+
+        This is the whole content of the choice the operation exposes, and it is
+        a closed-form relation rather than a numerical accident: the two tensors
+        differ by A_density = I/3 + beta (A_support - I/3) with beta < 1.
+        """
+
+        common = {
+            "files": self.files(3),
+            "poles": ((0, 0, 0, 2), (1, 0, -1, 1), (1, 0, -1, 2)),
+            "dictionary_count": 300,
+        }
+        density = run("kearns.from_odf", tensor="density", **common)
+        support = run("kearns.from_odf", tensor="support", **common)
+        assert 0.0 < density["data"]["kernel_shrinkage"] < 1.0
+
+        def spread(result: dict[str, Any]) -> float:
+            values = [value_of(result, label) for label in ("RD", "TD", "ND")]
+            return max(values) - min(values)
+
+        assert spread(support) > spread(density)
+
+    def test_the_odf_route_refuses_a_cubic_phase(self) -> None:
+        with pytest.raises(InvalidInputError) as excinfo:
+            run("kearns.from_odf", files=self.files(3), phase={"builtin": "ni_fcc"})
+        assert "hexagonal" in str(excinfo.value)

@@ -98,7 +98,7 @@ second-rank number a designer quotes from exactly that distribution.
 | Sub-tab | What it answers |
 | --- | --- |
 | **Texture** | Where does a crystal plane point across the polycrystal — as a pole figure, an inverse pole figure, or ODF sections? |
-| **Kearns parameter** | What fraction of basal poles lies along each specimen direction, by whichever of the three routes the available data supports? |
+| **Kearns parameter** | What fraction of basal poles lies along each specimen direction, by whichever of the five routes the available data supports? |
 
 The **EBSD** workspace carries eight sub-tabs: six over one scan, followed by two forward and
 experiment-planning tools that need no scan. A scan opened in any of the first six is open in
@@ -412,12 +412,28 @@ diffractogram route sees only thirteen peak heights, knows nothing about orienta
 **0.642**. That agreement is the panel's whole argument, and it is checkable without a reference
 value because the defaults were generated from a texture whose answer was known first.
 
-The exact route also prints the **closure check**: f_RD + f_TD + f_ND sums to 1.0000. That is not a
-property of this texture. The three parameters are the diagonal of a second-moment tensor of unit
-vectors, so their sum is identically 1 for every texture there is — which makes the sum a test of
-the *measurement* and never of the material. A triad that does not close has an unmeasured tilt
-range, a wrong random standard, or an unbalanced background, and the panel says so in those words.
-The diffractogram route deliberately shows no closure check, because one section gives one number.
+### The closure check, and what it does not prove
+
+Every route that returns a triad prints its sum, and it is always 1.0000. That is worth
+understanding rather than admiring, because it is the diagnostic most easily misread.
+
+Where the three values come from **one pole orientation tensor** — the orientation, pole-figure and
+ODF routes — the sum is 1 *by construction*: the tensor averages **c cᵀ** over unit vectors, so its
+trace is 1 whatever the data were. The panel says "closes by construction" and refuses to colour it
+as a passed check, because it is not one.
+
+Open the pole-figure route on `fixtures/xrdml/synthetic_random_standard.xrdml` and declare it a
+`0 0 0 2` figure of α-Zr to see why that matters. The file is a *random* standard, so the true f is
+1/3 in every direction. The panel reports **f_ND = 0.518** — wrong by more than half — and the triad
+sums to **1.0000** while it does. The figure reaches only 60° of tilt, so the pseudo-norm
+renormalises over the measured cap alone, and because the `sin φ` weighting makes high tilt count
+most, that assumption is where the answer goes. The panel therefore shows the **coverage** warning
+beside the closure line: 50% of the hemisphere measured, the rest assumed.
+
+The sum becomes a real test only where the three values were measured **independently** — three
+principal sections by the diffractogram route. There no identity forces them to agree, and a
+departure means an unmeasured tilt range, a wrong random standard, or an unbalanced background. A
+single diffractogram section shows no closure check at all, because one section gives one number.
 
 ### Contour presentation
 

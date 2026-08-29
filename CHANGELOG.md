@@ -35,6 +35,14 @@ downstream analyses depend on them.
   agreeing to better than 0.001. Both the service suite and a browser test assert that agreement,
   because it is the claim the panel makes to the user.
 
+  The remaining two routes, `kearns.from_pole_figure` and `kearns.from_odf`, open Panalytical XRDML
+  files through the same machinery the texture panel already uses. The pole-figure route integrates
+  one figure by Baron *et al.* Eq. (5); the ODF route inverts several into an orientation
+  distribution first, which is what keeps it usable in a section where the `(0002)` peak is
+  negligible and the pole-figure normalisation would divide by noise. The ODF route asks which of
+  the two tensors an ODF determines — density or kernel-deconvolved support — rather than choosing
+  silently, because they differ by the kernel's closed-form shrinkage towards isotropy.
+
   The Texture tab is now a grouped workspace with `Texture` and `Kearns parameter` as sub-tabs, the
   third such group after TEM Analysis and EBSD.
 
@@ -60,6 +68,20 @@ downstream analyses depend on them.
   parameter somewhere of its own and must hide the generated one so the two cannot disagree.
 
 ### Fixed
+
+- **The Kearns panel presented a vacuous check as a passed one.** `f_RD + f_TD + f_ND = 1` was
+  reported as a green "closure check passes", implying the measurement carried no systematic error
+  of that kind. For every route that builds a single pole orientation tensor — orientations, pole
+  figure, ODF — the sum is 1 *by construction*: the tensor averages `c cᵀ` over unit vectors, so its
+  trace is 1 whatever the data were, and the check tests the arithmetic rather than the measurement.
+
+  The repository's own XRDML fixture shows what that concealed. It is a random standard truncated at
+  60° of tilt, so its true `f` is 1/3 in every direction; integrated over the measured cap alone it
+  reports **0.518**, and the triad sums to **1.0000** the whole time. The panel now says "closes by
+  construction", styles it as neither pass nor failure, and shows the **coverage** — the fraction of
+  the hemisphere actually measured — which is the diagnostic that does test these routes. The sum is
+  still reported as a genuine check where the values were measured independently, which is the case
+  the rule was written for.
 
 - **The ECCI panel's live re-simulation never worked.** Moving the tilt or rotation control built
   its request by copying the solve form wholesale, including `allow_reverse`, which re-simulating

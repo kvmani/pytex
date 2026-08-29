@@ -64,7 +64,15 @@ const CLOSURE_TOLERANCE = 5e-4;
 export function mount(context) {
   const operations = context.manifest.operations.filter((entry) => entry.panel === panel.id);
   const examples = context.manifest.examples.filter((entry) => entry.panel === panel.id);
-  const state = { operation: operations[0], form: null, teaches: null, plotNode: null };
+  const state = {
+    operation: operations[0],
+    form: null,
+    teaches: null,
+    plotNode: null,
+    // Opened pole-figure files, kept on the panel rather than in the form:
+    // switching route must not silently drop what the user has opened.
+    files: [],
+  };
 
   const chooser = el(
     'select',
@@ -82,6 +90,11 @@ export function mount(context) {
   );
 
   const routeHelp = el('p.field__help', { text: state.operation?.summary ?? '' });
+  const fileHost = el('div.group__body');
+  const fileGroup = el('details.group', { open: true, id: 'kearns-files' }, [
+    el('summary', { text: 'Open pole figures' }),
+    fileHost,
+  ]);
   const formHost = el('div');
   const runButton = el('button.button.button--primary.button--block', {
     type: 'button',
@@ -107,6 +120,7 @@ export function mount(context) {
       chooser,
       routeHelp,
     ]),
+    fileGroup,
     formHost,
     runButton,
     el('details.group', { open: examples.length > 0 }, [
@@ -122,11 +136,76 @@ export function mount(context) {
     ]),
   );
 
+  /** Whether the selected route reads its data from opened files. */
+  function needsFiles() {
+    return state.operation.parameters.some((parameter) => parameter.name === 'files');
+  }
+
   function renderControls(initial = {}) {
     chooser.value = state.operation.id;
     routeHelp.textContent = state.operation.summary ?? '';
     state.form = buildForm(state.operation, { initial });
     formHost.replaceChildren(state.form.element);
+    renderFileControls();
+  }
+
+  /*
+   * The file picker, shown only for the routes that read a measurement.
+   *
+   * Several files at once, because the ODF route needs a *set* — one pole
+   * figure cannot constrain the inversion at all. The pole-figure route refuses
+   * more than one and says why, rather than quietly integrating the first.
+   */
+  function renderFileControls() {
+    const wanted = needsFiles();
+    fileGroup.hidden = !wanted;
+    if (!wanted) {
+      fileHost.replaceChildren();
+      return;
+    }
+    const input = el('input', {
+      type: 'file',
+      accept: '.xrdml',
+      multiple: true,
+      'aria-label': 'Open XRDML pole-figure files',
+      onchange: (event) => openFiles([...(event.target.files ?? [])]),
+    });
+    fileHost.replaceChildren(
+      el('p.field__help', {
+        text:
+          'Panalytical XRDML pole-figure files. Give the plane of each below, in the order '
+          + 'they are listed here: the file records the diffraction angle, not the reflection.',
+      }),
+      input,
+      el('p.field__help', {
+        text: state.files.length
+          ? `${state.files.length} file(s) open: ${state.files.map((file) => file.name).join(', ')}`
+          : 'No file open yet. Choose one or more .xrdml pole-figure files.',
+      }),
+      state.files.length
+        ? el('button.button', {
+            type: 'button',
+            text: 'Close them',
+            onclick: () => {
+              state.files = [];
+              renderFileControls();
+            },
+          })
+        : null,
+    );
+  }
+
+  async function openFiles(files) {
+    if (!files.length) return;
+    try {
+      state.files = await Promise.all(
+        files.map(async (file) => ({ name: file.name, text: await file.text() })),
+      );
+      renderFileControls();
+      await run();
+    } catch (error) {
+      context.showError(error);
+    }
   }
 
   function loadExample(example) {
@@ -142,7 +221,17 @@ export function mount(context) {
     runButton.textContent = 'Computing…';
     state.form.clearErrors();
     try {
-      const result = await call(operation.id, state.form.values());
+      const request = state.form.values();
+      if (needsFiles()) {
+        if (!state.files.length) {
+          context.showError(
+            new Error('Open at least one XRDML pole-figure file before computing f.'),
+          );
+          return;
+        }
+        request.files = { items: state.files };
+      }
+      const result = await call(operation.id, request);
       renderResult(context.stage, result, {
         extra: views(result, state),
         teaches: state.teaches,
@@ -213,16 +302,24 @@ function triadCard(result) {
         text: 'The tick on each bar is 1/3, the value of an untextured aggregate.',
       }),
     ]),
-    el('div.card__body', {}, [el('div.kearns', {}, meters), closureNote(result)]),
+    el('div.card__body', {}, [el('div.kearns', {}, meters), closureNote(result), coverageNote(result)]),
   ]);
 }
 
 /**
- * The closure check, stated as a verdict rather than as a number to be interpreted.
+ * The closure check — and, more importantly, what it does *not* prove.
  *
- * This is deliberately prominent. The sum rule is exact for every texture, so a
- * departure is evidence about the measurement — and it is the one diagnostic
- * that a reader of a Kearns number can apply without access to the raw data.
+ * The sum rule has content only where the three values were measured
+ * independently. A route that builds one pole orientation tensor and reads the
+ * triad off its diagonal closes automatically: the tensor averages `c cᵀ` over
+ * unit vectors, so its trace is 1 whatever the data were. Reporting that as a
+ * passed check would be false reassurance of the exact kind this panel exists
+ * to prevent — a basal pole figure truncated at 60° closes to 1.0000 and can
+ * still be wrong by half, because the pseudo-norm renormalises over the
+ * measured cap alone and that cap is biased towards the pole.
+ *
+ * So the verdict is written three ways, and the by-construction case points at
+ * the coverage diagnostic that genuinely tests it.
  */
 function closureNote(result) {
   const sum = result.data?.triad_sum;
@@ -231,8 +328,19 @@ function closureNote(result) {
       text:
         'This route reports one direction per section, so there is no triad to close. '
         + 'Measure all three principal sections to obtain the full set — and then the sum '
-        + 'becomes the check on whether they are mutually consistent.',
+        + 'becomes a real check, because those three values are independent measurements.',
     });
+  }
+  if (result.data?.orientation_tensor) {
+    return el('p.notes--info', {}, [
+      el('strong', { text: 'Closes by construction. ' }),
+      document.createTextNode(
+        `The triad sums to ${formatNumber(sum, 4)}, but these three values are the diagonal `
+        + 'of one pole orientation tensor whose trace is identically 1. The sum therefore '
+        + 'tests the arithmetic, not the measurement, and a route can close perfectly while '
+        + 'being badly wrong. Read the coverage below instead.',
+      ),
+    ]);
   }
   const departure = Math.abs(Number(sum) - 1);
   const closes = departure <= CLOSURE_TOLERANCE;
@@ -240,12 +348,44 @@ function closureNote(result) {
     el('strong', { text: closes ? 'Closure check passes. ' : 'Closure check fails. ' }),
     document.createTextNode(
       closes
-        ? `The triad sums to ${formatNumber(sum, 4)}. It is identically 1 for any texture, `
-          + 'so nothing in the measurement is unaccounted for.'
+        ? `The triad sums to ${formatNumber(sum, 4)}. These sections were measured `
+          + 'independently, so the sum rule has content here and nothing is unaccounted for.'
         : `The triad sums to ${formatNumber(sum, 4)}, off by ${formatNumber(departure, 4)}. `
-          + 'The sum is identically 1 for every texture, so this measures a systematic error '
-          + 'in the measurement — an unmeasured tilt range, a wrong random standard, an '
-          + 'unbalanced background — and says nothing about the material.',
+          + 'These sections were measured independently and the sum is identically 1 for every '
+          + 'texture, so this measures a systematic error in the measurement — an unmeasured '
+          + 'tilt range, a wrong random standard, an unbalanced background — and says nothing '
+          + 'about the material.',
+    ),
+  ]);
+}
+
+/**
+ * How much of the hemisphere was actually integrated.
+ *
+ * For the pole-figure route this is the diagnostic that matters, and it is the
+ * one the closure check is mistaken for. A figure truncated at 60° covers half
+ * the hemisphere, and the missing half is the high-tilt half that the `sin φ`
+ * weighting makes count most.
+ */
+function coverageNote(result) {
+  const covered = result.data?.diagnostics?.measured_solid_angle_fraction;
+  const maxPolar = result.data?.diagnostics?.max_polar_deg;
+  if (covered === undefined || maxPolar === undefined) return null;
+  const complete = Number(maxPolar) >= 89;
+  return el(complete ? 'p.notes--ok' : 'p.notes--warn', {}, [
+    el('strong', {
+      text: complete ? 'Coverage is complete. ' : 'The figure is incomplete. ',
+    }),
+    document.createTextNode(
+      complete
+        ? `Measured to ${formatNumber(maxPolar, 1)}° of tilt, covering the whole hemisphere, `
+          + 'so no unmeasured region had to be assumed.'
+        : `Measured only to ${formatNumber(maxPolar, 1)}° of tilt, covering `
+          + `${formatNumber(Number(covered) * 100, 0)}% of the hemisphere. The result `
+          + 'renormalises over the measured cap alone (the Kern-Bergmann pseudo-norm) and so '
+          + 'assumes the unmeasured cap resembles it. Because the sin φ weighting makes high '
+          + 'tilt count most, that assumption is where this route goes wrong — and the triad '
+          + 'still sums to 1 while it does.',
     ),
   ]);
 }

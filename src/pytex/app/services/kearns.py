@@ -51,7 +51,10 @@ from pytex.app.registry import (
     BooleanParameter,
     ChoiceParameter,
     ExampleScenario,
+    IndicesListParameter,
+    IntegerParameter,
     NumberParameter,
+    ObjectParameter,
     TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
@@ -409,7 +412,21 @@ def _report_payload(report: Any, *, spec: PhaseSpec) -> dict[str, Any]:
 
 
 def _triad_sentence(report: Any) -> str:
-    """The closure check, stated the way it should be read."""
+    """The closure check, stated the way it should be read — which depends on the route.
+
+    The sum rule has content only when the three values were measured
+    *independently*. A route that builds one pole orientation tensor and reads
+    ``f_i = e_i^T A e_i`` off its diagonal closes **by construction**: the tensor
+    is a mean of ``c c^T`` over unit vectors, so its trace is 1 whatever the data
+    were, and the sum then verifies the arithmetic rather than the measurement.
+    Presenting that as evidence of a sound measurement is exactly the kind of
+    false reassurance this panel exists to prevent — a basal pole figure
+    truncated at 60 degrees closes to 1.0000 and can still be wrong by half,
+    because the pseudo-norm renormalises over the measured cap alone.
+
+    Where the triad was assembled from separate sections, no such identity
+    holds, and the departure is a real measurement diagnostic.
+    """
 
     total = report.triad_sum
     if total is None:
@@ -418,15 +435,24 @@ def _triad_sentence(report: Any) -> str:
             "closure check is available."
         )
     departure = abs(total - 1.0)
+    if report.orientation_tensor is not None:
+        return (
+            f"The triad sums to {total:.4f}. That is closure by construction, not evidence: "
+            "these three values are the diagonal of one pole orientation tensor whose trace is "
+            "identically 1, so the sum tests the arithmetic and not the measurement. The "
+            "diagnostics below are what test this route."
+        )
     if departure <= 5e-4:
         return (
-            f"The triad sums to {total:.4f}. It is identically 1 for any texture, so this closes "
-            "and the result carries no detectable systematic error of that kind."
+            f"The triad sums to {total:.4f}. These values were measured independently, so the "
+            "sum rule has content here, and it closes: no systematic error of that kind is "
+            "detectable."
         )
     return (
-        f"The triad sums to {total:.4f}, which departs from 1 by {departure:.4f}. That departure "
-        "measures the systematic error of the measurement — an unmeasured tilt range, a wrong "
-        "random standard, an unbalanced background — and nothing about the material."
+        f"The triad sums to {total:.4f}, which departs from 1 by {departure:.4f}. These values "
+        "were measured independently, so that departure measures the systematic error of the "
+        "measurement — an unmeasured tilt range, a wrong random standard, an unbalanced "
+        "background — and nothing about the material."
     )
 
 
@@ -1097,6 +1123,515 @@ def _from_tilt_profile(request: dict[str, Any]) -> dict[str, Any]:
             "orientations at zero tilt has no circumference.",
         ),
         citations=(_CITATION_KEARNS, _CITATION_BARON),
+    )
+    return result.to_json()
+
+
+# ---------------------------------------------------------------------------
+# Route 4: a measured pole figure
+# ---------------------------------------------------------------------------
+
+#: What the pole-figure routes will open. Kept beside the operations that use it
+#: rather than imported from the texture service, so a format added for one panel
+#: is a decision taken for that panel.
+_POLE_FIGURE_SUFFIXES = (".xrdml",)
+
+
+def _files_parameter(*, label: str, help_text: str) -> ObjectParameter:
+    """The opened-files control, declared required and with no default.
+
+    No default is the point: an operation that cannot have complete defaults
+    declares a required parameter without one, which is how
+    ``test_an_operation_runs_from_its_own_defaults`` knows to skip it. There is
+    no sensible pole figure to invent before the user has opened one.
+    """
+
+    return ObjectParameter(name="files", label=label, help_text=help_text, required=True)
+
+
+def _opened_items(request: dict[str, Any]) -> list[Any]:
+    payload = request["files"]
+    items = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(items, list) or not items:
+        raise InvalidInputError(
+            "No pole-figure file has been opened.",
+            field="files",
+            hint="Open one or more .xrdml files with the control above.",
+        )
+    return items
+
+
+def _read_pole_figures(
+    items: list[Any],
+    *,
+    phase: Any,
+    poles: Any,
+    normalization: str,
+) -> tuple[list[Any], list[str]]:
+    """Open each uploaded XRDML file as a `PoleFigure` of its declared plane.
+
+    The file records the diffraction angle, not the plane, so the plane is the
+    user's declaration and getting its order wrong is the mistake this makes
+    easiest. It is echoed back per file for that reason.
+    """
+
+    from pytex.adapters.xrdml import read_xrdml_pole_figure
+    from pytex.app.uploads import uploaded_file
+    from pytex.core.lattice import CrystalPlane
+
+    rows = [tuple(int(value) for value in row) for row in poles] or [(0, 0, 0, 2)]
+    figures: list[Any] = []
+    names: list[str] = []
+    specimen = _specimen_frame()
+    for index, item in enumerate(items):
+        indices = rows[min(index, len(rows) - 1)]
+        if len(indices) == 4 and indices[0] + indices[1] + indices[2] != 0:
+            raise InvalidInputError(
+                "Miller-Bravais indices must satisfy h + k + i = 0; "
+                f"{indices[0]} + {indices[1]} + {indices[2]} = "
+                f"{indices[0] + indices[1] + indices[2]}.",
+                field="poles",
+                hint="The third index is not free: i = -(h + k).",
+            )
+        with uploaded_file(item, field="files", suffixes=_POLE_FIGURE_SUFFIXES) as (path, name):
+            try:
+                measurement = read_xrdml_pole_figure(path)
+            # Broad on purpose: the XML reader raises ParseError, ValueError,
+            # KeyError and TypeError depending on which part of the document is
+            # wrong, and every one of them means the same thing to a user.
+            except Exception as error:
+                raise InvalidInputError(
+                    f"{name} could not be read as an XRDML pole figure: {error}",
+                    field="files",
+                    hint=(
+                        "The file must be a pole-figure measurement rather than a line scan: "
+                        "it needs both a Phi and a Psi (or Chi) axis."
+                    ),
+                ) from error
+        plane = (
+            CrystalPlane.from_miller_bravais(indices, phase=phase)
+            if len(indices) == 4
+            else CrystalPlane(miller=_miller(indices, phase), phase=phase)
+        )
+        figures.append(
+            measurement.to_pole_figure(
+                plane, specimen_frame=specimen, intensity_normalization=normalization
+            )
+        )
+        names.append(name)
+    return figures, names
+
+
+def _miller(indices: tuple[int, ...], phase: Any) -> Any:
+    """A three-index plane, built the way the texture service builds one."""
+
+    from pytex.core.lattice import MillerIndex
+
+    return MillerIndex(np.asarray(indices, dtype=int), phase=phase)
+
+
+def _is_basal(plane: Any) -> bool:
+    """Whether a plane is the basal pole, so the answer may be called a Kearns parameter."""
+
+    from pytex.core.hexagonal import is_hexagonal_phase
+
+    if not is_hexagonal_phase(plane.phase):
+        return False
+    h, k, ell = (int(value) for value in plane.miller.indices)
+    return h == 0 and k == 0 and ell != 0
+
+
+def _naming_note(plane: Any) -> tuple[str, ...]:
+    """Say so when the number computed is not the Kearns parameter proper.
+
+    The machinery answers for any pole, and the result is a perfectly good
+    orientation-tensor projection. It is simply not what "the Kearns parameter"
+    names, and a non-basal answer travelling under that name is how a number
+    ends up in a specification meaning something other than what the
+    specification requires.
+    """
+
+    if _is_basal(plane):
+        return ()
+    return (
+        "This figure is not a basal pole figure, so the values are the pole orientation "
+        "tensor resolved along the specimen axes for the pole given — a valid second-moment "
+        "measure, but not the Kearns parameter, which is defined on (0002) of a hexagonal "
+        "crystal. Do not quote it as f.",
+    )
+
+
+@REGISTRY.operation(
+    "kearns.from_pole_figure",
+    title="Kearns f from a measured pole figure",
+    summary="Integrate an opened basal pole figure — the standard industrial route.",
+    help_text=(
+        "The route most laboratories use: measure a `(0002)` pole figure on a texture "
+        "goniometer and integrate it. Opens Panalytical **XRDML** files and applies Baron "
+        "*et al.* (1990) Eq. (5), weighting each measured point by the solid angle of its tilt "
+        "ring.\n\n"
+        "**Say which reflection the file is.** The file records the diffraction angle, not the "
+        "plane. For the Kearns parameter proper that plane is `0 0 0 2`; any other pole gives a "
+        "valid orientation-tensor projection that must not be quoted as f, and the result says "
+        "so rather than letting it travel under the wrong name.\n\n"
+        "**Coverage is the diagnostic that matters here, not the triad sum.** These three values "
+        "are the diagonal of one tensor whose trace is identically 1, so they *always* sum to 1 "
+        "however bad the data are. What actually limits this route is how far in tilt the figure "
+        "reaches: an incomplete figure is renormalised over the measured cap alone (the "
+        "Kern-Bergmann pseudo-norm), which assumes the unmeasured cap resembles it. Since the "
+        "`sin phi` weighting makes high tilt count most, that assumption is where the answer goes "
+        "wrong — and the sum stays at 1.0000 throughout. The result reports the covered fraction "
+        "for exactly this reason.\n\n"
+        "**It is not usable in a section with no basal intensity.** In the ND-TD section of "
+        "strongly basal-textured zirconium the `(0002)` peak is negligible and the normalisation "
+        "divides by noise; Mani Krishna *et al.* (2011) traced inconsistent f_RD values in the "
+        "literature to exactly that. Use the ODF route there instead."
+    ),
+    parameters=(
+        _files_parameter(
+            label="XRDML pole-figure file",
+            help_text=(
+                'The opened file, as `{"items": [{"name": ..., "text": ...}]}`. Supplied by the '
+                "file control rather than typed."
+            ),
+        ),
+        phase_parameter(
+            label="Phase",
+            help_text="The phase the measured reflection belongs to.",
+            builtin="zr_hcp",
+        ),
+        IndicesListParameter(
+            name="poles",
+            label="Plane of the file (hkil)",
+            help_text=(
+                "The measured plane, as four Miller-Bravais indices. `0 0 0 2` is the basal pole "
+                "the Kearns parameter is defined on."
+            ),
+            width=4,
+            default=((0, 0, 0, 2),),
+        ),
+        ChoiceParameter(
+            name="intensity_normalization",
+            label="Normalisation",
+            help_text=(
+                "What the recorded counts are rescaled to before integration. Only ratios enter "
+                "f, so this does not change the answer — it changes what the reported "
+                "intensities mean."
+            ),
+            options=(
+                (
+                    "mrd",
+                    "m.r.d.",
+                    "Multiples of a random distribution: 1 everywhere for a texture-free specimen.",
+                ),
+                ("none", "As recorded", "Raw detector counts, exactly as the file holds them."),
+            ),
+            default="mrd",
+        ),
+    ),
+    returns=(
+        "One row per specimen direction with f; the orientation tensor, the measured "
+        "solid-angle fraction, and the maximum tilt reached under `data`."
+    ),
+    panel="kearns",
+    citations=(_CITATION_BARON, _CITATION_KEARNS, _CITATION_MANI),
+    tags=("kearns", "pole figure", "XRDML", "measurement", "import", "texture", "zirconium"),
+)
+def _from_pole_figure(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.texture.kearns import kearns_from_pole_figure
+
+    spec, phase = phase_from_request(request["phase"])
+    items = _opened_items(request)
+    if len(items) > 1:
+        raise InvalidInputError(
+            f"{len(items)} files were opened, and this route integrates one figure.",
+            field="files",
+            hint=(
+                "The Kearns parameter comes from a single pole figure. To use several together, "
+                "run the ODF route instead."
+            ),
+        )
+    normalization = str(request["intensity_normalization"])
+    figures, names = _read_pole_figures(
+        items, phase=phase, poles=request["poles"], normalization=normalization
+    )
+    figure = figures[0]
+
+    try:
+        report = kearns_from_pole_figure(figure)
+    except ValueError as error:
+        raise InvalidInputError(
+            f"This figure cannot be integrated: {error}",
+            field="files",
+            hint=(
+                "A section where the measured pole has negligible intensity divides by noise. "
+                "Use the ODF route, which takes the basal information from other reflections."
+            ),
+        ) from error
+
+    columns, rows = _triad_rows(report)
+    covered = float(report.diagnostics["measured_solid_angle_fraction"])
+    max_polar = float(report.diagnostics["max_polar_deg"])
+    strongest = max(rows, key=lambda row: row["f"])
+    payload = _report_payload(report, spec=spec)
+    payload["file"] = names[0]
+    payload["sampling"] = str(figure.sampling)
+
+    result = AppResult(
+        title=f"Kearns parameters of {spec.name} from {names[0]}",
+        summary=(
+            f"f_RD = {rows[0]['f']:.4f}, f_TD = {rows[1]['f']:.4f}, f_ND = {rows[2]['f']:.4f}, "
+            f"integrated over {int(report.diagnostics['sampled_point_count'])} measured points "
+            f"of the {_plane_label_of(figure.pole)} figure. The largest is "
+            f"f_{strongest['direction']} = {strongest['f']:.4f}, "
+            f"{strongest['vs_random']:.2f} times the untextured value of 1/3. The figure reaches "
+            f"{max_polar:.1f}° of tilt and so covers {covered * 100:.0f}% of the hemisphere"
+            + (
+                ", the whole of it, so nothing had to be assumed about an unmeasured cap."
+                if max_polar >= 89.0
+                else "; the rest is assumed to resemble what was measured, which is this "
+                "route's main systematic error and is not detectable from the triad sum."
+            )
+        ),
+        table=ResultTable(
+            columns=columns,
+            rows=tuple(rows),
+            caption="The Kearns parameter along each specimen direction.",
+        ),
+        data=payload,
+        inputs={
+            "phase": spec.to_json(),
+            "file": names[0],
+            "intensity_normalization": normalization,
+            "pole": [int(value) for value in next(iter(request["poles"]))],
+        },
+        notes=(*report.notes, *_naming_note(figure.pole)),
+        citations=(_CITATION_BARON, _CITATION_KEARNS, _CITATION_MANI),
+    )
+    return result.to_json()
+
+
+def _plane_label_of(plane: Any) -> str:
+    """A plane in the notation its phase's literature uses, for prose."""
+
+    from pytex.core.hexagonal import is_hexagonal_phase, plane_hkl_to_hkil
+    from pytex.core.notation import format_miller_indices
+
+    indices = tuple(int(value) for value in plane.miller.indices)
+    if is_hexagonal_phase(plane.phase):
+        indices = tuple(int(value) for value in plane_hkl_to_hkil(indices))
+    return format_miller_indices(indices, family="plane", style="plain", scope="specific")
+
+
+# ---------------------------------------------------------------------------
+# Route 5: a reconstructed ODF
+# ---------------------------------------------------------------------------
+
+
+@REGISTRY.operation(
+    "kearns.from_odf",
+    title="Kearns f from a reconstructed ODF",
+    summary="Invert several pole figures into an ODF, then resolve its basal poles.",
+    help_text=(
+        "Opens several XRDML pole figures, inverts them into an orientation distribution, and "
+        "resolves the basal poles of that distribution onto the specimen axes.\n\n"
+        "**Why bother, when the pole-figure route is simpler.** Because this one does not need a "
+        "strong `(0002)` peak in the measured section. Alternative reflections plus the "
+        "inversion supply the basal information, which is why it stays usable in the ND-TD "
+        "section of strongly basal-textured zirconium where `(0002)` intensity is negligible and "
+        "the pole-figure route divides by noise. Mani Krishna *et al.* (2011) recommend it for "
+        "exactly that case.\n\n"
+        "**The inversion is ill-posed, and the answer depends on its settings.** Pole figures "
+        "lose the odd-order information, so the dictionary, the kernel halfwidth and the "
+        "regularisation all influence the result. One pole figure cannot constrain it at all; "
+        "three from different planes is the usual minimum.\n\n"
+        "**Support tensor or density tensor — a real choice, not a default to ignore.** A "
+        "discrete ODF holds two distinguishable objects. The *density* tensor describes the "
+        "smooth distribution the ODF object is, whose kernel has shrunk every departure from "
+        "isotropy by a known factor. The *support* tensor describes the underlying orientation "
+        "weights with that shrinkage divided out. Which to report depends on where the ODF came "
+        "from, so it is asked rather than assumed.\n\n"
+        "**The triad closes here by construction too.** As with the pole-figure route, these "
+        "three values are the diagonal of one tensor of unit trace, so their sum is 1 whatever "
+        "the inversion did. Judge this route by the reconstruction residual, not by the sum."
+    ),
+    parameters=(
+        _files_parameter(
+            label="XRDML pole-figure files",
+            help_text=(
+                'The opened files, as `{"items": [{"name": ..., "text": ...}]}`. Three or more '
+                "from different planes; one cannot constrain the inversion."
+            ),
+        ),
+        phase_parameter(
+            label="Phase",
+            help_text="The phase the measured reflections belong to.",
+            builtin="zr_hcp",
+        ),
+        IndicesListParameter(
+            name="poles",
+            label="Plane of each file (hkil)",
+            help_text=(
+                "One plane per file, in the order the files were opened, as four Miller-Bravais "
+                "indices — `0 0 0 2` on one line, `1 0 -1 1` on the next. With fewer lines than "
+                "files, the last plane is reused."
+            ),
+            width=4,
+            default=((0, 0, 0, 2),),
+        ),
+        ChoiceParameter(
+            name="tensor",
+            label="Report",
+            help_text=(
+                "Which of the two tensors an ODF determines to resolve. They differ by the "
+                "kernel's closed-form shrinkage towards isotropy, so the support tensor is "
+                "always the more anisotropic of the two."
+            ),
+            options=(
+                (
+                    "density",
+                    "Density tensor (the ODF as it is)",
+                    "The f of the smooth distribution the ODF represents, kernel included.",
+                ),
+                (
+                    "support",
+                    "Support tensor (kernel shrinkage removed)",
+                    "The f of the underlying orientation weights, with the kernel deconvolved.",
+                ),
+            ),
+            default="density",
+        ),
+        IntegerParameter(
+            name="dictionary_count",
+            label="Dictionary orientations",
+            help_text=(
+                "How many orientations the inversion solves over. More resolves a sharper "
+                "texture and costs time roughly linearly."
+            ),
+            default=800,
+            minimum=100,
+            maximum=5000,
+            advanced=True,
+        ),
+        NumberParameter(
+            name="halfwidth_deg",
+            label="ODF kernel halfwidth",
+            help_text=(
+                "Width of the bell on each dictionary orientation. This is both a smoothing "
+                "choice and the regularisation: too small and the inversion fits noise."
+            ),
+            units="°",
+            default=10.0,
+            minimum=2.0,
+            maximum=30.0,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per specimen direction with f; the orientation tensor, the reconstruction "
+        "residual, and the kernel shrinkage factor under `data`."
+    ),
+    panel="kearns",
+    citations=(_CITATION_MANI, _CITATION_BARON, _CITATION_KEARNS),
+    tags=("kearns", "ODF", "inversion", "XRDML", "texture", "zirconium", "basal"),
+)
+def _from_odf(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.orientation import OrientationSet
+    from pytex.texture.kearns import kearns_from_odf, kernel_axis_shrinkage
+    from pytex.texture.models import ODF, KernelSpec
+
+    spec, phase = phase_from_request(request["phase"])
+    pole = _basal_pole(phase)
+    items = _opened_items(request)
+    figures, names = _read_pole_figures(
+        items, phase=phase, poles=request["poles"], normalization="mrd"
+    )
+    dictionary_count = int(request["dictionary_count"])
+    halfwidth = float(request["halfwidth_deg"])
+    deconvolve = str(request["tensor"]) == "support"
+
+    # Sampled uniformly on SO(3) — Phi through its sine measure, because uniform
+    # Euler angles crowd the poles and would weight the reconstruction towards
+    # them before any data was seen. The same construction the texture panel's
+    # inversion uses, for the same reason.
+    generator = np.random.default_rng(12345)
+    phi1 = generator.uniform(0.0, 360.0, size=dictionary_count)
+    big_phi = np.degrees(np.arccos(generator.uniform(-1.0, 1.0, size=dictionary_count)))
+    phi2 = generator.uniform(0.0, 360.0, size=dictionary_count)
+    dictionary = OrientationSet.from_euler_angles(
+        np.column_stack([phi1, big_phi, phi2]),
+        specimen_frame=_specimen_frame(),
+        crystal_frame=phase.crystal_frame,
+        symmetry=phase.symmetry,
+        phase=phase,
+    )
+    kernel = KernelSpec(halfwidth_deg=halfwidth)
+    try:
+        reconstruction = ODF.invert_pole_figures(
+            figures, orientation_dictionary=dictionary, kernel=kernel
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            f"The pole figures could not be inverted: {error}",
+            field="files",
+            hint=(
+                "Three figures from different planes is the usual minimum, and every file must "
+                "share one specimen frame."
+            ),
+        ) from error
+
+    report = kearns_from_odf(reconstruction.odf, pole=pole, deconvolve_kernel=deconvolve)
+    columns, rows = _triad_rows(report)
+    strongest = max(rows, key=lambda row: row["f"])
+    shrinkage = float(kernel_axis_shrinkage(kernel))
+    payload = _report_payload(report, spec=spec)
+    payload["files"] = names
+    payload["residual"] = float(reconstruction.residual_norm)
+    payload["dictionary_count"] = dictionary_count
+    payload["halfwidth_deg"] = halfwidth
+    payload["kernel_shrinkage"] = shrinkage
+    payload["pole_figure_count"] = len(figures)
+
+    result = AppResult(
+        title=f"Kearns parameters of {spec.name} from an ODF of {len(figures)} pole figures",
+        summary=(
+            f"f_RD = {rows[0]['f']:.4f}, f_TD = {rows[1]['f']:.4f}, f_ND = {rows[2]['f']:.4f}, "
+            f"resolved from the {'support' if deconvolve else 'density'} tensor of an ODF "
+            f"inverted from {len(figures)} pole figure(s) over {dictionary_count} dictionary "
+            f"orientations with a {halfwidth:g}° kernel. The largest is "
+            f"f_{strongest['direction']} = {strongest['f']:.4f}, "
+            f"{strongest['vs_random']:.2f} times the untextured value of 1/3. The reconstruction "
+            f"residual is {reconstruction.residual_norm:.4g} — judge this route by that and by "
+            "the number of independent figures, not by the triad sum, which closes by "
+            f"construction. The kernel shrinks anisotropy by a factor of {shrinkage:.4f}, "
+            + (
+                "which has been divided out here."
+                if deconvolve
+                else "which is retained here; choose the support tensor to remove it."
+            )
+        ),
+        table=ResultTable(
+            columns=columns,
+            rows=tuple(rows),
+            caption="The Kearns parameter along each specimen direction.",
+        ),
+        data=payload,
+        inputs={
+            "phase": spec.to_json(),
+            "files": names,
+            "tensor": str(request["tensor"]),
+            "dictionary_count": dictionary_count,
+            "halfwidth_deg": halfwidth,
+        },
+        notes=(
+            *report.notes,
+            "Pole-figure inversion is ill-posed: pole figures determine only the even-order "
+            "part of the ODF, and the dictionary, kernel and regularisation all shape the "
+            "answer. Ghost correction is not applied.",
+            "One pole figure cannot constrain the inversion at all. Three from different "
+            "planes is the usual minimum, and the residual is the number to watch.",
+        ),
+        citations=(_CITATION_MANI, _CITATION_BARON, _CITATION_KEARNS),
     )
     return result.to_json()
 

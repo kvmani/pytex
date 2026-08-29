@@ -3345,7 +3345,8 @@ dl.detail dd {
 /* The closure verdict. A pass and a failure must not look alike, because the
  * failure is the one that changes what the number may be used for. */
 .notes--ok,
-.notes--warn {
+.notes--warn,
+.notes--info {
   margin: 0.75rem 0 0;
   padding: 0.5rem 0.7rem;
   border-radius: var(--radius);
@@ -3363,4 +3364,12 @@ dl.detail dd {
   background: var(--warn-soft);
   color: var(--warn);
   border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+/* Neither pass nor failure: a check that ran and proved less than it appears
+ * to. It must not wear the green of a passed test. */
+.notes--info {
+  background: var(--accent-soft);
+  color: var(--ink-muted);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }

@@ -4980,3 +4980,54 @@ widened after measuring the drawing filling 40 percent of the frame canvas; it n
 ### Next task
 
 M1b — the two upload-based Kearns routes. See the program ledger.
+
+## Goal: the Kearns parameter in the workbench — M1 COMPLETE (2026-08-29)
+
+Second and final increment of milestone M1. The resumable state of the wider program is in
+[docs/development/or_and_texture_program_ledger.md](or_and_texture_program_ledger.md), which now
+points at M2.
+
+### Delivered
+
+`kearns.from_pole_figure` and `kearns.from_odf`, completing all five routes in the panel. Both open
+Panalytical XRDML files through the same `uploaded_file` / `read_xrdml_pole_figure` machinery the
+texture panel uses, and both declare a required `files` parameter with no default, which is how an
+operation that cannot have complete defaults is exempted from the runs-from-defaults gate. The ODF
+route exposes the density-versus-support tensor choice as a parameter rather than choosing silently,
+because the two differ by the kernel's closed-form shrinkage towards isotropy.
+
+### A defect in M1a, found and corrected
+
+The panel presented `f_RD + f_TD + f_ND = 1` as a green **passed** closure check. For any route that
+builds a single pole orientation tensor — orientations, pole figure, ODF, so three of the five — the
+sum is 1 *by construction*: the tensor averages `c cᵀ` over unit vectors, so its trace is 1 whatever
+the data were. The check tested the arithmetic and was presented as testing the measurement.
+
+`fixtures/xrdml/synthetic_random_standard.xrdml` demonstrates the cost and is now the regression. It
+is a random standard truncated at 60° of tilt, so its true `f` is 1/3 in every direction; integrated
+over the measured cap alone the panel reports **0.518** — wrong by more than half — while the triad
+sums to **1.0000** throughout. The verdict is now written three ways: "closes by construction",
+styled as neither pass nor failure, for the single-tensor routes; a real pass or failure where the
+values were measured independently; and nothing at all for a single-section route. Beside it sits
+the coverage note — the fraction of the hemisphere actually measured — which is the diagnostic that
+does test these routes.
+
+The general lesson, worth keeping: a quantity that is identically true is not evidence, and
+presenting one as a passed test is worse than printing nothing.
+
+### Verification
+
+`python -m ruff check .` green; `python -m mypy src` green over 152 files; `python -m pytest
+tests/unit` green; `npx playwright test` 52 passed, including a new test asserting the panel shows
+no green pass on the truncated fixture. `tests/unit/test_app_kearns.py` holds 45 tests.
+
+### Deliberately not done
+
+- **No worked example and no theory-note change (M1c, deferred).** The executable-examples standard
+  covers stable public *numerical* surfaces; this milestone added an application surface over
+  `pytex.texture.kearns`, which already carries a theory note and its own tests.
+- **The untracked `tests/test_data/` directory remains untouched and must not be staged.**
+
+### Next task
+
+M2 — variant-aware composite scenes (F15) and the OR stereogram (F18). See the program ledger.
