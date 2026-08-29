@@ -100,6 +100,28 @@ _GRAIN_COLUMNS = (
         ),
     ),
     Column("mean_kam_deg", "Mean KAM", units="°", numeric=True, digits=4),
+    Column(
+        "mean_phi1_deg",
+        "phi1",
+        units="°",
+        numeric=True,
+        digits=3,
+        help_text=(
+            "Bunge phi1 of the grain's symmetry-aware mean orientation — the average over its "
+            "points, not the single reference point GROD is measured against. Together with Phi "
+            "and phi2 this is what the measured-pair views of the Variants workspace take, so a "
+            "relationship between two grains needs no retyping. Read the GOS column beside it: a "
+            "mean has no scatter of its own, and a relationship computed from two means reports a "
+            "zero residual however noisy the grains are."
+        ),
+    ),
+    Column("mean_Phi_deg", "Phi", units="°", numeric=True, digits=3),
+    Column("mean_phi2_deg", "phi2", units="°", numeric=True, digits=3),
+    Column(
+        "phase_name",
+        "Phase",
+        help_text="Which declared phase the grain's points carry; blank if the map declares none.",
+    ),
 )
 
 _BOUNDARY_COLUMNS = (
@@ -1788,10 +1810,69 @@ def _modulate(request: dict[str, Any], crystal_map: Any, rgb: np.ndarray) -> np.
     return np.clip(np.rint(rgb.astype(float) * weight[:, None]), 0, 255).astype(np.uint8)
 
 
+def _grain_orientation_rows(crystal_map: Any, segmentation: Any) -> dict[int, dict[str, Any]]:
+    """Each grain's mean orientation as Bunge angles, and the phase it belongs to.
+
+    Purpose
+    -------
+    Closing the loop from the map. The measured-pair operations take two
+    orientations as Euler angles and two phases; without this a user reads six
+    numbers off one screen and types them into another, which is exactly the
+    kind of hand transcription this repository refuses everywhere else.
+
+    What the numbers are, precisely
+    -------------------------------
+    The mean is the symmetry-aware average over the grain's member points
+    (`GrainSegmentation.grain_mean_orientation`), **not** the reference point
+    GROD is measured against — that one is a single measured orientation chosen
+    as representative, and averaging is the right operation for handing a grain
+    to a relationship calculation. The angles are Bunge (ZXZ), which is what
+    every EBSD vendor exports and what the measured-pair operations default to.
+
+    The grain-orientation spread travels with them in the same table row. That
+    is deliberate: a mean has no scatter of its own, so a relationship computed
+    from two means would report a residual of zero however noisy the two grains
+    are, and the spread is the only honest measure of what that zero conceals.
+    """
+
+    from pytex.core.representations import quaternions_to_euler_angles
+
+    entries = tuple(crystal_map.phase_entries or ())
+    phase_ids = crystal_map.phase_ids
+    rows: dict[int, dict[str, Any]] = {}
+    for grain in segmentation.grains:
+        mean = segmentation.grain_mean_orientation(grain)
+        angles = quaternions_to_euler_angles(
+            np.asarray(mean.rotation.quaternion, dtype=float)[None, :], degrees=True
+        )[0]
+        name: str | None = None
+        if phase_ids is not None and entries:
+            # A multiphase map carries a phase per point; a grain does not cross
+            # a phase boundary, so its first member names the whole grain.
+            members = np.asarray(grain.member_indices, dtype=np.int64)
+            identifier = int(np.asarray(phase_ids, dtype=np.int64)[members][0])
+            match = next(
+                (entry for entry in entries if int(entry.phase_id) == identifier), None
+            )
+            name = None if match is None else str(match.name)
+        elif entries:
+            name = str(entries[0].name)
+        elif crystal_map.orientations.phase is not None:
+            name = str(crystal_map.orientations.phase.name)
+        rows[int(grain.grain_id)] = {
+            "mean_phi1_deg": float(angles[0]),
+            "mean_Phi_deg": float(angles[1]),
+            "mean_phi2_deg": float(angles[2]),
+            "phase_name": name,
+        }
+    return rows
+
+
 def _grain_rows(crystal_map: Any, segmentation: Any, kam: np.ndarray) -> list[dict[str, Any]]:
     """One row per grain, largest first."""
 
     spreads = segmentation.grain_orientation_spread_deg()
+    orientations = _grain_orientation_rows(crystal_map, segmentation)
     step = float((crystal_map.step_sizes or (1.0, 1.0))[0])
     point_area = step * step
     rows = []
@@ -1806,6 +1887,7 @@ def _grain_rows(crystal_map: Any, segmentation: Any, kam: np.ndarray) -> list[di
                 "equivalent_diameter_um": float(2.0 * np.sqrt(area / np.pi)),
                 "grain_orientation_spread_deg": float(spreads.get(int(grain.grain_id), 0.0)),
                 "mean_kam_deg": float(kam[members].mean()) if members.size else 0.0,
+                **orientations[int(grain.grain_id)],
             }
         )
     rows.sort(key=lambda row: row["size"], reverse=True)

@@ -338,3 +338,116 @@ class TestNarration:
         assert any("grains found at" in message for message in messages)
         assert any("boundary segments" in message for message in messages)
         assert any("fundamental sector" in message for message in messages)
+
+
+class TestGrainOrientationsCloseTheLoop:
+    """Each grain carries what the measured-pair views need, so nothing is retyped."""
+
+    def test_every_grain_row_carries_its_mean_orientation_and_phase(self) -> None:
+        rows = draw()["table"]["rows"]
+        assert rows
+        for row in rows:
+            for key in ("mean_phi1_deg", "mean_Phi_deg", "mean_phi2_deg"):
+                assert isinstance(row[key], float)
+                assert np.isfinite(row[key])
+            assert isinstance(row["phase_name"], str)
+            assert row["phase_name"]
+
+    def test_the_twin_datasets_two_means_are_60_degrees_apart(self) -> None:
+        """The practice map's own known answer, now asked of the *means*.
+
+        The sigma3 dataset is two grains in the twin relation, and the panel
+        already states that as its known answer. Reconstructing the
+        disorientation from the two reported mean orientations must therefore
+        give 60 degrees -- which tests the numbers in the table rather than the
+        segmentation that produced them.
+        """
+
+        from pytex.core.frame_catalog import specimen_frame
+        from pytex.core.orientation import Orientation
+
+        result = draw(dataset="sigma3_twin")
+        rows = result["table"]["rows"]
+        # The dataset is two *orientations*, however many grains they form: the
+        # twin lamella can be split by the grid into several regions of the same
+        # orientation, and taking the first two rows would compare a grain with
+        # its own copy.
+        distinct: dict[tuple[float, float, float], dict] = {}
+        for row in rows:
+            key = (
+                round(row["mean_phi1_deg"], 3),
+                round(row["mean_Phi_deg"], 3),
+                round(row["mean_phi2_deg"], 3),
+            )
+            distinct.setdefault(key, row)
+        assert len(distinct) == 2
+        rows = list(distinct.values())
+        # The map's own phase, so the disorientation is reduced by the symmetry
+        # the measurement was made under rather than by an assumed one.
+        phase = build_map("sigma3_twin", grid=16).orientations.phase
+        frame = specimen_frame()
+        orientations = [
+            Orientation.from_euler(
+                row["mean_phi1_deg"],
+                row["mean_Phi_deg"],
+                row["mean_phi2_deg"],
+                specimen_frame=frame,
+                symmetry=phase.symmetry,
+                phase=phase,
+                convention="bunge",
+                degrees=True,
+            )
+            for row in rows[:2]
+        ]
+        angle = orientations[0].misorientation_to(orientations[1]).angle_deg
+        assert angle == pytest.approx(60.0, abs=0.5)
+
+    def test_the_angles_are_reproducible(self) -> None:
+        """The same map drawn twice must report the same means, or a user cannot
+        quote them."""
+
+        first = {row["grain_id"]: row["mean_phi1_deg"] for row in draw()["table"]["rows"]}
+        second = {row["grain_id"]: row["mean_phi1_deg"] for row in draw()["table"]["rows"]}
+        assert first == second
+
+    def test_two_grains_can_be_handed_straight_to_the_relationship_view(self) -> None:
+        """The point of the columns: an orientation read off this table is an
+        orientation the Variants workspace accepts, with no conversion between."""
+
+        rows = draw()["table"]["rows"]
+        first, second = rows[0], rows[1]
+        answer = REGISTRY.call(
+            "variants.or_from_grains",
+            {
+                "phase": {"builtin": "ni_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "euler_convention": "bunge",
+                "parent_angle1": first["mean_phi1_deg"],
+                "parent_angle2": first["mean_Phi_deg"],
+                "parent_angle3": first["mean_phi2_deg"],
+                "child_angle1": second["mean_phi1_deg"],
+                "child_angle2": second["mean_Phi_deg"],
+                "child_angle3": second["mean_phi2_deg"],
+                "catalog_tolerance_deg": 3.0,
+                "max_index": 3,
+            },
+        )
+        assert answer["data"]["fit"]["pair_count"] == 1
+        assert answer["data"]["naming"]["best_deviation_deg"] >= 0.0
+
+    def test_the_spread_travels_with_the_mean(self) -> None:
+        """A mean has no scatter of its own, so a relationship computed from two
+        means reports a zero residual however noisy the grains are. The grain
+        orientation spread is the only honest measure of what that zero hides,
+        and it has to be in the same row."""
+
+        columns = {column["key"] for column in draw()["table"]["columns"]}
+        assert "grain_orientation_spread_deg" in columns
+        assert {"mean_phi1_deg", "mean_Phi_deg", "mean_phi2_deg"} <= columns
+        help_text = next(
+            column["help"]
+            for column in draw()["table"]["columns"]
+            if column["key"] == "mean_phi1_deg"
+        )
+        assert "GOS" in help_text
+        assert "zero residual" in help_text

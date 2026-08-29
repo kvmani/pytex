@@ -13,6 +13,16 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Grain rows carry their mean orientation and phase.** Every row of the EBSD grain table now
+  reports the grain's symmetry-aware mean orientation as Bunge angles and the phase its points
+  carry — exactly what the measured-pair views of the Variants workspace take, so a
+  relationship between two grains no longer means reading six numbers off one screen and
+  typing them into another.
+
+  The mean is the average over the grain's points, not the reference orientation GROD is
+  measured against; and it sits beside the grain orientation spread on purpose, because a mean
+  has no scatter of its own and a relationship computed from two means reports a zero residual
+  however noisy the grains are. The column's help text says so.
 - **The measured pair, drawn where the measurement puts it.**
   `variants.measured_composite` and a sixth view in the Variants panel place both indexed
   grains by their own orientations, so the world frame is the **specimen** frame the data

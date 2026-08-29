@@ -1001,6 +1001,22 @@ boundary network together. The KAM threshold is separate and does a different jo
 neighbour pairs above it from the average, which is the standard way to keep grain boundaries out of
 an intragranular KAM.
 
+### Taking two grains to the Variants workspace
+
+Every row of the grain table carries the grain's **mean orientation** as Bunge angles (phi1, Phi,
+phi2) and its **phase**. Those are exactly what the two measured-pair views of the Variants
+workspace take, so reading a relationship between two grains is a matter of copying two rows rather
+than converting anything.
+
+The mean is the symmetry-aware average over the grain's points — not the reference orientation GROD
+is measured against, which is a single measured point chosen as representative. Averaging is the
+right operation for handing a grain to a relationship calculation; the reference is the right one
+for measuring deviation *within* the grain.
+
+**Read the GOS column beside it.** A mean has no scatter of its own, so a relationship computed from
+two means reports a residual of zero however noisy the two grains are. The grain orientation spread
+is the only honest measure of what that zero conceals, and it sits in the same row for that reason.
+
 ### GROD and KAM are not the same picture
 
 The `bicrystal_gradient` dataset exists to make this concrete. Its right-hand grain carries a linear

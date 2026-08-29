@@ -51,34 +51,63 @@ plumbing and presentation milestone, mostly in `app/`.
 | **M4a** | F21 part 1: `as_rational_relationship`, the integer statement with the cost of the idealization | **Complete** (2026-08-29) |
 | **M4b** | F21 part 3: the `variants.or_from_grains` operation and its panel | **Complete** (2026-08-29) |
 | **M4c** | F22: the composite viewer for measured grains, with the idealization drawn beside them | **Complete** (2026-08-29) |
-| **M4d** | F23: pick two grains on an EBSD map and flow their mean orientations in with no retyping | Not started |
+| **M4d** | F23 part 1: grain mean orientations and phases in the grain table | **Complete** (2026-08-29) |
+| **M4e** | F23 part 2: pick two grains on the map and carry them across without copying rows | Not started |
 
 ### Next concrete step
 
-**M4d — F23, closing the loop from the map.** The measured-pair path now runs end to end from two
-Euler triples: a named relationship, an integer statement with its price, and a picture of both
-grains in the specimen frame. What it still needs is a way in that does not involve typing six
-angles off another screen.
+**M4e — carrying two picked grains across without copying rows.** M4d put the numbers where a user
+can reach them: every grain row now carries its mean orientation as Bunge angles and its phase. What
+remains of F23 is the gesture — picking two grains on the map and having them arrive in the Variants
+workspace with nothing retyped.
 
-The `ebsd.map` panel already loads and segments scans and computes grain mean orientations. Add:
+What that needs, in order:
 
-- a way to pick **two grains** on the map — one of each phase — and carry their mean orientations
-  into `variants.or_from_grains` and `variants.measured_composite` with no retyping;
-- the phase of each picked grain carried across too, since the scan knows it and the user should not
-  restate it.
+1. A **selection** on the `ebsd.map` panel: click a grain, click a second, see which two are chosen.
+   The map already hovers a row per pixel, so the pixel-to-grain lookup exists.
+2. A **hand-off** across workspaces. This is the new thing: no panel in this application currently
+   seeds another. Whatever mechanism is chosen (a shared session slot, a request stashed on the
+   context) becomes the pattern for every future cross-panel action, so it is worth designing rather
+   than improvising — and it should carry the *phases* too, since the scan knows them.
 
-That makes the whole path — scan, grains, OR, integer statement, composite figure — a workbench
-workflow rather than a scripting exercise, which is what F23 asks for.
+**The trap, restated because it is the one this whole path can hide.** Two means fed into a
+relationship give a residual of exactly zero, for one pair, by construction. The grain orientation
+spreads are the only measure of what that conceals, and they must travel with the orientations and
+be shown where the answer is — not left behind in the table the user copied from.
 
-**The trap this one carries.** A grain mean orientation is an average over a scattered population,
-and the measured-pair view's residual column is identically zero for one pair. Feeding two *means*
-in makes it look as though the relationship were measured exactly, when the real uncertainty lives
-in the scatter of the two grains. Carry the grains' orientation spreads across and say what they
-are, or the panel will present an average as a measurement.
-
-**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
+**Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.****Known and deliberately untouched.**---
 
 ## 3. History
+
+### 2026-08-29 — M4d complete: the grain table carries what the Variants workspace takes
+
+**What shipped.** `_grain_orientation_rows` in `src/pytex/app/services/ebsd.py`, four new columns on
+the grain table (`mean_phi1_deg`, `mean_Phi_deg`, `mean_phi2_deg`, `phase_name`), five tests in
+`tests/unit/test_app_ebsd.py`, and a section in `docs/site/workflows/workbench_application.md`.
+
+**Which mean, and why that one.** The symmetry-aware average over the grain's points
+(`GrainSegmentation.grain_mean_orientation`), not the reference point GROD is measured against — the
+reference is a single measured orientation chosen as representative, which is right for measuring
+deviation *within* a grain and wrong for handing the grain to a relationship calculation. Bunge
+angles, because that is what every vendor exports and what the measured-pair operations default to.
+
+**The honesty problem this creates, and the answer to it.** A mean has no scatter of its own. Two
+means fed into `variants.or_from_grains` give a residual of exactly zero however noisy the two grains
+were, so the number that looks like a quality claim is nothing of the kind. The grain orientation
+spread already sat in the same row; the new columns' help text now points at it explicitly, and the
+docs say it in the same paragraph as the invitation to copy the angles across.
+
+**The test worth keeping.** The `sigma3_twin` practice map's known answer is a 60 deg twin, and the
+test asks that of the *reported means*: reconstruct two orientations from the table's own numbers
+and their disorientation must be 60 deg. That tests the numbers in the table rather than the
+segmentation that produced them. It also has to group rows by orientation first — the lamella splits
+into several grains of the same orientation, and comparing the first two rows compared a grain with
+its own copy.
+
+**Verification.** `ruff check .` clean; `mypy src` clean; `pytest tests/unit` green.
+
+**Not done.** No picking gesture and no cross-panel hand-off — that is M4e, and it needs a mechanism
+this application does not yet have.
 
 ### 2026-08-29 — M4c complete: the measured pair as a picture (F22)
 
