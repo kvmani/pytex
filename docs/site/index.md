@@ -78,6 +78,7 @@ workflows/style_customization
 workflows/combined_structure_diffraction_visualization
 workflows/ipf_colors
 workflows/phase_transformation_manifests_and_scoring
+workflows/or_dossier
 workflows/xrdml_texture_import
 workflows/labotex_open_pole_figures
 ```

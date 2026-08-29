@@ -12,5 +12,6 @@ Current stable schemas:
 - `transformation_manifest.schema.json`
 - `composite_saed_manifest.schema.json`
 - `measured_saed_pattern.schema.json`
+- `or_dossier.schema.json`
 
 Stable schemas must remain versioned here so adapters and workflows do not invent incompatible ad hoc locations.

@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pytex.or_dossier",
+  "title": "PyTex Orientation-Relationship Dossier",
+  "description": "Every number an orientation-relationship declaration implies, in one document: both lattices, the transformation, the misorientation and variant family, and the parallelisms. Written by pytex.core.or_dossier.ORDossier.to_json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "pytex_version",
+    "relationship_name",
+    "variant_index",
+    "parent",
+    "child",
+    "transformation",
+    "misorientation",
+    "parallelism",
+    "interface"
+  ],
+  "properties": {
+    "schema_id": { "const": "pytex.or_dossier" },
+    "schema_version": { "const": "1.0.0" },
+    "pytex_version": { "type": "string", "minLength": 1 },
+    "relationship_name": { "type": "string", "minLength": 1 },
+    "variant_index": {
+      "description": "One-based variant the transformation and parallelism blocks describe; null means the relationship as declared, which is variant 1.",
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "parent": { "$ref": "#/$defs/lattice_block" },
+    "child": { "$ref": "#/$defs/lattice_block" },
+    "transformation": { "$ref": "#/$defs/transformation_block" },
+    "misorientation": { "$ref": "#/$defs/misorientation_block" },
+    "parallelism": { "$ref": "#/$defs/parallelism_block" },
+    "interface": {
+      "description": "The interface-crystallography block. Always null: interface analysis is not implemented, and the key is carried explicitly so that 'not analysed' is distinguishable from 'analysed and empty'.",
+      "type": "null"
+    }
+  },
+  "$defs": {
+    "triple": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "number" }
+    },
+    "integer_triple": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "type": "integer" }
+    },
+    "matrix3": {
+      "description": "A 3x3 matrix as three rows, acting on column vectors.",
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": { "$ref": "#/$defs/triple" }
+    },
+    "lattice_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phase_name",
+        "point_group",
+        "cell_lengths_angstrom",
+        "cell_angles_deg",
+        "volume_angstrom3",
+        "direct_basis",
+        "reciprocal_basis",
+        "metric_tensor",
+        "reciprocal_metric_tensor"
+      ],
+      "properties": {
+        "phase_name": { "type": "string", "minLength": 1 },
+        "point_group": { "type": "string", "minLength": 1 },
+        "cell_lengths_angstrom": { "$ref": "#/$defs/triple" },
+        "cell_angles_deg": { "$ref": "#/$defs/triple" },
+        "volume_angstrom3": { "type": "number", "exclusiveMinimum": 0 },
+        "direct_basis": {
+          "description": "Crystal axes as columns, in the PyTex Cartesian setting: a along x, b in the x-y plane.",
+          "$ref": "#/$defs/matrix3"
+        },
+        "reciprocal_basis": {
+          "description": "Reciprocal axes as columns, normalized so a*_i . a_j = delta_ij.",
+          "$ref": "#/$defs/matrix3"
+        },
+        "metric_tensor": { "$ref": "#/$defs/matrix3" },
+        "reciprocal_metric_tensor": { "$ref": "#/$defs/matrix3" }
+      }
+    },
+    "transformation_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rotation_matrix",
+        "rotation_axis",
+        "rotation_angle_deg",
+        "correspondence_direct",
+        "correspondence_reciprocal",
+        "principal_strains_percent",
+        "volume_change_percent",
+        "polar_rotation_deg",
+        "correspondence_denominator"
+      ],
+      "properties": {
+        "rotation_matrix": {
+          "description": "The parent-to-child rotation as declared, not the symmetry-reduced representative.",
+          "$ref": "#/$defs/matrix3"
+        },
+        "rotation_axis": { "$ref": "#/$defs/triple" },
+        "rotation_angle_deg": { "type": "number", "minimum": 0 },
+        "correspondence_direct": {
+          "description": "Carries parent [uvw] to child [uvw].",
+          "$ref": "#/$defs/matrix3"
+        },
+        "correspondence_reciprocal": {
+          "description": "Carries parent (hkl) to child (hkl); the inverse transpose of correspondence_direct, which preserves the zone law.",
+          "$ref": "#/$defs/matrix3"
+        },
+        "principal_strains_percent": { "$ref": "#/$defs/triple" },
+        "volume_change_percent": { "type": "number" },
+        "polar_rotation_deg": { "type": "number", "minimum": 0 },
+        "correspondence_denominator": {
+          "description": "1 for an integer lattice correspondence; larger when the parent lattice does not map onto the child by strain alone and an atomic shuffle carries the remainder.",
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "misorientation_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "angle_deg",
+        "axis",
+        "variant_count",
+        "packet_plane",
+        "packet_labels",
+        "packet_count",
+        "intervariant_angles_deg"
+      ],
+      "properties": {
+        "angle_deg": {
+          "description": "The symmetry-reduced disorientation angle, which is what an EBSD boundary measurement reports.",
+          "type": "number",
+          "minimum": 0
+        },
+        "axis": { "$ref": "#/$defs/triple" },
+        "variant_count": { "type": "integer", "minimum": 1 },
+        "packet_plane": {
+          "description": "Parent family the variants were grouped by; null when no grouping was requested.",
+          "oneOf": [{ "$ref": "#/$defs/integer_triple" }, { "type": "null" }]
+        },
+        "packet_labels": {
+          "description": "One-based packet of each variant, in generate_variants() order; empty when no grouping was requested.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "packet_count": { "type": "integer", "minimum": 0 },
+        "intervariant_angles_deg": {
+          "description": "The distinct disorientation angles two variants of one parent can meet at.",
+          "type": "array",
+          "items": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "parallelism_block": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["discovery_tolerance_deg", "pairs"],
+      "properties": {
+        "discovery_tolerance_deg": { "type": "number", "minimum": 0 },
+        "pairs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/parallelism" }
+        }
+      }
+    },
+    "parallelism": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "origin",
+        "parent_indices",
+        "child_indices",
+        "parent_label",
+        "child_label",
+        "deviation_deg"
+      ],
+      "properties": {
+        "kind": { "enum": ["plane", "direction"] },
+        "origin": {
+          "description": "'defining' is the declared parallelism, whose deviation is zero by construction. 'discovered' comes from the parallelism search, whose deviation is a rationalization residual: how far the nearest low-index child index sits from the exact child image.",
+          "enum": ["defining", "discovered"]
+        },
+        "parent_indices": { "$ref": "#/$defs/integer_triple" },
+        "child_indices": { "$ref": "#/$defs/integer_triple" },
+        "parent_label": { "type": "string", "minLength": 1 },
+        "child_label": { "type": "string", "minLength": 1 },
+        "deviation_deg": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

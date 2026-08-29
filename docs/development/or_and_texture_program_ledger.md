@@ -20,7 +20,7 @@ document may claim MTEX parity in the meantime — deferring the campaign does n
 | --- | --- | --- |
 | **M1** | Kearns parameter in the GUI (T1) | **Complete** (2026-08-29) |
 | **M2** | F15 variant-aware composite scenes, F18 OR stereogram | **Complete** (2026-08-29) |
-| **M3** | F19 composite crystal viewer in the workbench, F17 OR dossier | Not started |
+| **M3** | F19 composite crystal viewer in the workbench, F17 OR dossier | **Complete** (2026-08-29) |
 | **M4** | F21–F23 measured-pair OR workbench | Not started |
 | **M5** | T3 axial specimen symmetry, T2 ghost correction | Not started |
 | **M6** | F16 interface crystallography, Program D contracts + CLI, T5 uncertainty | Not started |
@@ -32,66 +32,90 @@ everything else in between. The vision document's M4 go/no-go on PTMC is therefo
 
 ---
 
-## 2. Current Milestone — M3: The Composite Crystal Viewer And The OR Dossier
+## 2. Current Milestone — M4: The Measured-Pair OR Workbench
 
-**Goal.** Put M2's Python surfaces in front of a user (F19: a workbench viewer with a variant
-selector, a contact-sheet mode, and one camera driving both crystals), and assemble the numbers,
-tables and figures that already exist into one exportable `ORDossier` (F17).
+**Goal.** F21–F23: take two *measured* orientations — typed in, or picked off an EBSD map — and
+answer "what relationship is this, stated in integers, and what does it look like". Everything M2
+and M3 built is the answer half; M4 is the input half.
 
-**Why now.** M2 is complete: `WorldScene3D.from_orientation_relationship(..., variant=k)`,
-`WorldScene3D.variant_scenes`, `render_variant_contact_sheet`, `plot_or_stereogram` and
-`or_stereogram_pairs` are all landed, tested and documented. They are the two things F19 renders and
-F17 embeds, so M3 no longer has a missing dependency.
-
-**The risk M3 carries that M2 did not.** It is the first GUI increment of this program, so it is
-browser work: Playwright, `crystal.js`, the panel registry, `app/services/`. Follow the vision
-document's Decision 4 split — *all crystallography stays in Python; the browser multiplies matrices
-only*. The child scene is pre-placed in the world frame by Python, so a shared camera cannot drift.
+**Why now.** M3 is complete, so a relationship declared by name already produces a composite scene,
+a stereogram, a contact sheet and an exportable dossier. What no route yet does is start from a
+measurement. The existing `characterize_orientation_relationship` and
+`fit_orientation_relationship` are the numerical core and need no new crystallography — this is a
+plumbing and presentation milestone, mostly in `app/`.
 
 ### Sub-milestones
 
 | Step | Content | State |
 | --- | --- | --- |
-| **M3a** | `variants.composite_scene` and `variants.contact_sheet` service operations over `scene_payload`, with tests | **Complete** (2026-08-29) |
-| **M3b** | The workbench panel: variant selector, contact-sheet mode, appearance toggles, side-by-side and interpenetrating placement | **Complete** (2026-08-29) |
-| **M3c** | F17 `ORDossier`: `describe()`, `to_json()`, `export(directory)`, assembled from existing calls only | Not started |
+| **M4a** | F21: a panel taking two orientations (Euler, matrix, or axis/angle) and reporting the relationship — catalog deviations, the fitted rotation, the integer parallelism statement | Not started |
+| **M4b** | F22: the OR stereogram beside the 3-D view, sharing the camera | Not started |
+| **M4c** | F23: pick two grains on an EBSD map and flow their mean orientations into M4a with no retyping | Not started |
 
 ### Next concrete step
 
-**M3c — the F17 `ORDossier`.** M3a and M3b are complete, so the figures and the numbers the dossier
-bundles all exist and are reachable. What remains is the assembly.
+**M4a — the measured-pair panel.** Add a service operation taking two parent/child orientations and
+returning: the deviation from every catalog relationship (`characterize_orientation_relationship`),
+the fitted relationship and its residuals (`fit_orientation_relationship`), and the integer
+parallelism statement of the fit (`describe_orientation_relationship`, plus the F4 search). Then a
+panel over it.
 
-`ORDossier` with `describe()`, `to_json()` against a schema under `schemas/`, and
-`export(directory)` writing figures as SVG, tables as CSV and Markdown, and numbers as JSON. Its
-contents, all from calls that already exist:
+The output of that operation is the natural input to everything M2/M3 landed: hand its fitted
+relationship to `or_dossier`, `plot_or_stereogram` or `variants.composite_scene` and the whole
+answer half already works. Build the operation so that handing over is one call, not a re-derivation.
 
-- the relationship and its `describe()`, the variant list and the packet grouping;
-- the intervariant misorientation spectrum and the same-parent boundary fingerprint;
-- the composite scene per variant (M2a/M3a) and the OR stereogram (M2b);
-- the variant pole figure, and the per-variant SAED patterns from the existing diffraction stack.
+Two traps to carry in, unchanged since M2:
 
-*The rule the vision document sets, and the one to hold to:* the dossier must **call** those
-functions, never reimplement them. A dossier number that disagrees with the function it came from is
-the exact class of defect this repository exists to prevent.
+1. Name parallelisms from the **variant's own** `parallel_planes` / `parallel_directions`, and spell
+   planes through `pytex.core.miller.canonicalize_sign`, so one plane has one spelling everywhere.
+2. Say what each deviation measures. A fit residual, a catalog separation and a rationalization
+   residual are three different quantities, and a panel that labelled them all "deviation" would be
+   stating something false about two of them.
 
-Two traps to carry in, unchanged from M2 and M3:
-
-1. Name parallelisms from the **variant's own** `parallel_planes` / `parallel_directions`, never the
-   relationship's nominal pair, and spell planes through `canonicalize_sign` so one plane has one
-   spelling across every table and figure in the bundle.
-2. Any deviation the dossier prints must say what it measures. The stereogram's nominated-pair
-   deviation is a *rationalization residual*, not a departure from parallelism.
-
-**Known and deliberately untouched.** `generate_stereonet_grid` and `project_great_circle_trace`
-return polylines that jump the rim when a trace leaves the projected hemisphere, so matplotlib draws
-a chord across the net. `build_or_stereogram_figure_spec` splits its own traces
-(`_split_on_fold_jumps`), but the shared Wulff-net grid and the general vector stereogram were left
-alone: fixing them touches every stereographic figure in the repository and belongs in its own
-increment, not inside M2.
-
----
+**Known and deliberately untouched.**---
 
 ## 3. History
+
+### 2026-08-29 — M3c complete, and M3 with it: the OR dossier (F17)
+
+**What shipped.** `src/pytex/core/or_dossier.py` — `or_dossier(...)`, `ORDossier` and its four block
+types, `or_dossier_schema_path()` — with `schemas/or_dossier.schema.json`, 29 tests in
+`tests/unit/test_or_dossier.py`, a worked example, the workflow page
+`docs/site/workflows/or_dossier.md` with its toctree and API-index entries, and
+`Lattice.volume_angstrom3()`.
+
+**Where it lives, and why not where the plan said.** The vision document names
+`pytex.core.transformation.or_dossier`. That module is already ~4100 lines, and the dossier must
+import `find_parallel_planes`, `variant_close_packed_groups` and (lazily) the plotting stack, so
+putting it there would have meant either more growth or an import cycle. It is a sibling module
+instead, exported from `pytex` and `pytex.core` under the documented names. The deviation is stated
+here rather than left for a later reader to discover.
+
+**The rule, and how it is checked.** The dossier calls the existing functions and reimplements none
+of them. The tests do not compare against recorded output: each value is asserted equal to the
+function a reader would check it against — the volume against `Lattice.volume_angstrom3`, the
+correspondence matrices against `OrientationRelationship`, the spectrum against
+`intervariant_misorientation_angles_deg` — and those functions are in turn pinned to the published
+figures (24 variants, 4 packets, Morito's ten angles, 42.85 deg).
+
+**Two presentation decisions worth carrying forward.**
+
+1. *The `origin` column.* A `defining` parallelism's deviation is zero by construction and measures
+   nothing; a `discovered` one's is a rationalization residual. Listing them in one table without
+   saying which is which would repeat M1's mistake of printing a number that is true and not the
+   number the reader assumes. The column, the schema description and the prose all say it.
+
+2. *The interface block is `null`, not absent.* F16 is not implemented, and a missing section reads
+   as an oversight where an explicit null with a sentence reads as a scope statement.
+
+**Verification.** `ruff check .` clean; `mypy src` clean over 153 files; `pytest tests/unit` green
+(full suite); the worked-example gallery and the class-model atlas regenerated (six new public
+dataclasses moved the atlas counts from 284/267 to 290/273).
+
+**Not done.** The figure bundle omits the variant pole figure and the per-variant SAED patterns:
+they need a measured parent orientation and a diffraction geometry respectively, neither implied by
+a relationship, and the docstring says so rather than shipping an empty figure. No application
+surface over the dossier — it is a library object for now.
 
 ### 2026-08-29 — M3b complete: the composite crystal viewer (F19)
 

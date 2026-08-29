@@ -603,6 +603,75 @@ VARIANT_PARALLELISMS_ARE_THE_VARIANTS_OWN = WorkedExample(
     symbols=(_S_P, _HKL),
     see_also=(_OR_CONCEPT, _API),
 )
+_DOSSIER_CODE = """
+from pytex import or_dossier
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+dossier = or_dossier(ks)
+payload = dossier.to_json()
+
+# Each number beside the function a reader would check it against.
+volume = payload['parent']['volume_angstrom3']
+spectrum = payload['misorientation']
+result = [
+    volume - austenite.lattice.volume_angstrom3(),
+    volume - 3.6 ** 3,
+    float(spectrum['variant_count']),
+    float(spectrum['packet_count']),
+    float(len(spectrum['intervariant_angles_deg'])),
+    max(spectrum['intervariant_angles_deg']),
+]
+""".strip()
+
+
+_DOSSIER = SymbolUse(
+    r"V",
+    "Unit-cell volume of a phase.",
+)
+
+
+OR_DOSSIER_AGREES_WITH_ITS_SOURCES = WorkedExample(
+    id="or-dossier-agrees-with-its-sources",
+    title="The OR dossier reports the numbers its own functions report",
+    domain="transformation",
+    scenario=(
+        "The dossier aggregates an orientation-relationship declaration into one "
+        "serializable document. Its whole value rests on a rule -- that it calls the "
+        "existing functions and never reimplements them -- so what is worth checking "
+        "is not any single number but the agreement. Six values are computed here: "
+        "the difference between the cell volume the dossier reports and the one the "
+        "lattice reports; the difference between that volume and the cube of the "
+        "cubic edge; the variant count; the packet count; the number of distinct "
+        "intervariant angles; and the largest of them. The first two are identities "
+        "and must be exactly zero; the last four are the published Kurdjumov-Sachs "
+        "figures -- 24 variants, 4 packets, 10 distinct angles, the largest being the "
+        "60 degree Sigma3 twin relation."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=_DOSSIER_CODE,
+    expected=[0.0, 0.0, 24.0, 4.0, 10.0, 60.0],
+    unit="angstrom^3, angstrom^3, counts, deg",
+    tolerance=1e-9,
+    reference=(
+        "The first two entries are identities: the dossier reads the volume from the "
+        "lattice rather than recomputing it, and the volume of a cubic cell is the "
+        "cube of its edge. The remaining four are the published Kurdjumov-Sachs "
+        "figures -- 24 crystallographically distinct variants, four packets on the "
+        "four members of the parent {111} family, and the ten distinct intervariant "
+        "disorientations of Morito et al., whose largest is the 60 degree rotation "
+        "about <111> -- the Sigma3 twin relation."
+    ),
+    citation=(
+        "Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) "
+        "1789 (intervariant table and packet structure); Kurdjumov and Sachs, "
+        "Z. Phys. 64 (1930) 325."
+    ),
+    symbols=(_DOSSIER, _OMEGA),
+    see_also=(_OR_CONCEPT, _API),
+)
+
 
 GROUP = ExampleGroup(
     slug="transformation",
@@ -625,5 +694,6 @@ GROUP = ExampleGroup(
         KS_STATEMENT_IS_RECOVERED_FROM_THE_ROTATION,
         KS_VARIANT_CORRESPONDENCE_TABLE,
         VARIANT_PARALLELISMS_ARE_THE_VARIANTS_OWN,
+        OR_DOSSIER_AGREES_WITH_ITS_SOURCES,
     ),
 )

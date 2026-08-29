@@ -836,3 +836,94 @@ result = [worst_deviation_deg, float(len(parent_members))]
 **Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## The OR dossier reports the numbers its own functions report
+
+The dossier aggregates an orientation-relationship declaration into one serializable document. Its whole value rests on a rule -- that it calls the existing functions and never reimplements them -- so what is worth checking is not any single number but the agreement. Six values are computed here: the difference between the cell volume the dossier reports and the one the lattice reports; the difference between that volume and the cube of the cubic edge; the variant count; the packet count; the number of distinct intervariant angles; and the largest of them. The first two are identities and must be exactly zero; the last four are the published Kurdjumov-Sachs figures -- 24 variants, 4 packets, 10 distinct angles, the largest being the 60 degree Sigma3 twin relation.
+
+**Symbols**
+
+- $V$ &mdash; Unit-cell volume of a phase.
+- $(\mathbf{n}, \omega)$ &mdash; Axis-angle pair of the symmetry-reduced misorientation representative.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+from pytex import or_dossier
+
+ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+dossier = or_dossier(ks)
+payload = dossier.to_json()
+
+# Each number beside the function a reader would check it against.
+volume = payload['parent']['volume_angstrom3']
+spectrum = payload['misorientation']
+result = [
+    volume - austenite.lattice.volume_angstrom3(),
+    volume - 3.6 ** 3,
+    float(spectrum['variant_count']),
+    float(spectrum['packet_count']),
+    float(len(spectrum['intervariant_angles_deg'])),
+    max(spectrum['intervariant_angles_deg']),
+]
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | 1.42e-14 | 1e-09 | ✅ pass |
+
+**Why this value**: The first two entries are identities: the dossier reads the volume from the lattice rather than recomputing it, and the volume of a cubic cell is the cube of its edge. The remaining four are the published Kurdjumov-Sachs figures -- 24 crystallographically distinct variants, four packets on the four members of the parent {111} family, and the ten distinct intervariant disorientations of Morito et al., whose largest is the 60 degree rotation about <111> -- the Sigma3 twin relation.
+
+**Citation**: Morito, Tanaka, Konishi, Furuhara and Maki, Acta Materialia 51 (2003) 1789 (intervariant table and packet structure); Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

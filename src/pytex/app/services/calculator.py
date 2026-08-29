@@ -509,7 +509,7 @@ def _phase_summary(request: dict[str, Any]) -> dict[str, Any]:
     lattice = phase.lattice
     metric = np.asarray(lattice.metric_tensor(), dtype=float)
     reciprocal_metric = np.asarray(lattice.reciprocal_metric_tensor(), dtype=float)
-    volume = float(math.sqrt(max(float(np.linalg.det(metric)), 0.0)))
+    volume = lattice.volume_angstrom3()
     # Basis vectors are the columns of the basis matrix, so the reciprocal axes
     # are its columns and the lengths are column norms.
     reciprocal_basis = np.asarray(lattice.reciprocal_basis().matrix, dtype=float).T

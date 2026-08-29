@@ -13,6 +13,26 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The orientation-relationship dossier.** `pytex.or_dossier(relationship, variant=...)`
+  turns a relationship declaration into one typed object carrying every number it implies:
+  both lattices with their cells, volumes, structure matrices and metric tensors; the rotation,
+  both correspondence matrices and the lattice-correspondence strain; the symmetry-reduced
+  disorientation, the variant count, the packet grouping and the intervariant spectrum; and the
+  parallelisms in publication notation. `describe()` is the prose, `to_json()` is a dict against
+  the new `schemas/or_dossier.schema.json`, and `export(directory)` writes the bundle — JSON,
+  CSV, Markdown and two SVG figures.
+
+  The dossier **calls** the existing functions and reimplements none of them, and the tests
+  check each value against the function a reader would check it against rather than against
+  recorded output. Two things it is careful to state rather than imply: a `discovered`
+  parallelism's deviation is a *rationalization residual*, not a departure from parallelism, so
+  the `origin` column keeps it from being read like a `defining` row whose deviation is zero by
+  construction; and the unimplemented interface block is carried as an explicit `null` with a
+  sentence saying so, because a missing section reads as an oversight.
+
+- `Lattice.volume_angstrom3()` — the one definition of cell volume, `sqrt(det G)`. The
+  calculator's phase summary now calls it instead of computing the determinant locally, so one
+  lattice cannot report two volumes.
 - **The composite crystal viewer.** The Variants panel gained two views. *Both crystals of one
   variant* draws the parent and the product in one frame with the parallel plane and direction
   drawn across both, turned by one camera, with a status line reading out how far each plane is

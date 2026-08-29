@@ -125,6 +125,16 @@ See {doc}`../architecture/reference_frame_foundation` and
 - `ParentReconstructionReport`
 - `VariantSelectionReport`
 - `reconstruct_parent_orientation(...)`
+- `or_dossier(...)`
+- `ORDossier`
+- `ORDossierLatticeBlock`
+- `ORDossierTransformationBlock`
+- `ORDossierMisorientationBlock`
+- `ORDossierParallelismBlock`
+- `ORDossierParallelism`
+- `or_dossier_schema_path()`
+
+The dossier aggregates a relationship declaration into one explainable, serializable document; see {doc}`../workflows/or_dossier`.
 
 See {doc}`../concepts/core_model`, {doc}`../concepts/how_pytex_differs`,
 {doc}`../concepts/miller_planes_directions`, and {doc}`../concepts/orientation_texture`.

@@ -347,6 +347,36 @@ class Lattice:
 
         return reciprocal_metric_tensor(self)
 
+    def volume_angstrom3(self) -> float:
+        """The unit-cell volume in cubic angstroms.
+
+        What it does
+            Returns ``sqrt(det G)`` with ``G`` the direct metric tensor, which
+            is the volume of the cell the six parameters describe. Equivalently
+            it is the determinant of the direct basis matrix; the metric form is
+            used because it is manifestly independent of the Cartesian setting
+            chosen for the basis.
+
+        When to use it
+            Whenever a volume per cell is needed — structure-factor
+            normalisation, density, the volume change of a phase
+            transformation. Use it rather than recomputing the determinant
+            locally, so one lattice cannot report two volumes.
+
+        Returns
+        -------
+        float
+            The volume in cubic angstroms; always positive for a valid cell.
+
+        Examples
+        --------
+        A cubic cell of edge ``a`` gives ``a ** 3``: a 3.6 angstrom cell has a
+        volume of 46.656 cubic angstroms.
+        """
+
+        determinant = float(np.linalg.det(self.metric_tensor()))
+        return float(np.sqrt(max(determinant, 0.0)))
+
     def direct_to_reciprocal_components(self, components: Any) -> np.ndarray:
         """Convert direct-basis components to reciprocal-basis components in this
         lattice; see :func:`direct_to_reciprocal_components`.
