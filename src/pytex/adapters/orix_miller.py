@@ -17,8 +17,8 @@ from pytex.core import (
 
 def _require_orix() -> tuple[Any, Any]:
     try:
-        from orix.crystal_map import Phase as OrixPhase  # type: ignore[import-untyped]
-        from orix.vector import Miller as OrixMiller  # type: ignore[import-untyped]
+        from orix.crystal_map import Phase as OrixPhase
+        from orix.vector import Miller as OrixMiller
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The PyTex Miller orix adapter requires the optional 'orix' dependency. "

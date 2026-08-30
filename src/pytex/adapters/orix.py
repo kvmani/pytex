@@ -28,11 +28,11 @@ _PROPER_POINT_GROUP_TO_ORIX = {
 
 def _require_orix() -> tuple[Any, Any, Any, Any, Any]:
     try:
-        from orix.crystal_map import Phase as OrixPhase  # type: ignore[import-untyped]
-        from orix.quaternion import Orientation as OrixOrientation  # type: ignore[import-untyped]
+        from orix.crystal_map import Phase as OrixPhase
+        from orix.quaternion import Orientation as OrixOrientation
         from orix.quaternion import Rotation as OrixRotation
         from orix.quaternion import symmetry as orix_symmetry
-        from orix.vector import Miller as OrixMiller  # type: ignore[import-untyped]
+        from orix.vector import Miller as OrixMiller
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
             "The PyTex orix adapter requires the optional 'orix' dependency. "

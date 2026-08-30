@@ -44,7 +44,22 @@ dev = [
   "h5py>=3.10",
   "hypothesis>=6.100",
   "matplotlib>=3.8",
-  "mypy>=1.10",
+  # Upper bounds on the type checker and on the array library it reads stubs
+  # from. Both are tooling constraints for the checks, not runtime constraints:
+  # `numpy>=1.26` in the runtime dependencies above is deliberately open, and
+  # users are unaffected by either bound.
+  #
+  # numpy: from 2.5 its stubs use PEP 695 `type` statements, which mypy refuses
+  # to parse while `python_version = "3.11"` -- and 3.11 is the version this
+  # package supports, so lowering the guarantee to make the stub parse would be
+  # the wrong trade. Remove the bound when mypy parses stub syntax
+  # independently of the analysis target.
+  #
+  # mypy: 2.x changed which error code a missing optional import reports, and
+  # the codebase's ignores are written against 1.x. Removable once those are
+  # revisited; the pin is what makes the checks reproducible in the meantime.
+  "mypy>=1.10,<2",
+  "numpy<2.5",
   "pytest>=8.2,<9",
   "pytest-cov>=5.0",
   "ruff>=0.5",
@@ -172,6 +187,16 @@ ignore_missing_imports = true
 # so the type checker must not require it to be installed.
 [[tool.mypy.overrides]]
 module = ["webview", "webview.*"]
+ignore_missing_imports = true
+
+# orix backs the optional orientation/Miller adapters. Like every other
+# optional dependency here it must be assumed absent: the base lane does not
+# install the `adapters` extra, so its imports are *not found* rather than
+# merely untyped. Inline `type: ignore[import-untyped]` comments covered only
+# the second case, so the base lane's type check failed on a module it was
+# never meant to require.
+[[tool.mypy.overrides]]
+module = ["orix", "orix.*"]
 ignore_missing_imports = true
 
 # h5py backs the optional EDAX OIM HDF5 scan reader (.oh5/.h5) and ships no

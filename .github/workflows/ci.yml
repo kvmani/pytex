@@ -56,9 +56,23 @@ jobs:
       - name: Type check
         run: python -m mypy src
       - name: Test with optional scientific stack
+        # This lane exists to prove the optional scientific stack is actually
+        # exercised, so a test that skips *because an optional dependency is
+        # missing* fails it. It used to reject every skip, which became
+        # unsatisfiable the moment an operation legitimately could not run from
+        # defaults -- an upload route needs a file from the user, and the
+        # manifest test skips it by design. Rejecting that skip would have
+        # forced a worse design on the application to satisfy a check that had
+        # stopped describing its own intent.
         run: |
+          set -euo pipefail
           python -m pytest -q -rs | tee pytest-rs.txt
-          ! grep -q "SKIPPED" pytest-rs.txt
+          if grep -E "^SKIPPED" pytest-rs.txt \
+             | grep -Ei "pymatgen|orix|kikuchipy|diffsims|matplotlib|h5py|hdf5|extra"; then
+            echo "::error::A test skipped because an optional dependency was missing."
+            echo "::error::This lane installs .[dev,docs,adapters]; the stack must be exercised."
+            exit 1
+          fi
 
   browser:
     runs-on: ubuntu-latest
