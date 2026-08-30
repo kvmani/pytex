@@ -5161,3 +5161,56 @@ examples is asserted by name.
   Retargeting it is defensible and is a change to a tested user flow that this increment did not
   need; the new panel claims the same offer, so it will pick one up if it is ever redirected.
 - **The untracked `tests/test_data/` directory remains untouched and must not be staged.**
+
+## Goal: overlays that belong to their crystal — IN PROGRESS (2026-08-30)
+
+User goal, from the screenshot with the red annotations: a plane overlay is anchored at the origin
+and lies outside the unit cell; it must start at one edge of the cell and end at another, entirely
+inside it, **and this rule applies to every visualization**. Optionally show the plane normal from
+the centre of the plane, behind a toggle. Wherever a hexagonal phase is drawn, show the **full
+hexagonal prism** — three rhombic cells — by default.
+
+Answered by the user before implementation: the prism is three cells (their "2.5" was a slip); the
+plane offset policy is largest cross-section; and the direction arrow is to be re-anchored into the
+plane at the same time.
+
+### Increment 3 — clipped overlays, chorded directions, optional normals (DONE)
+
+The rule already existed and was already right — in `crystal3d._plane_polygon_for_box`, used by the
+single-crystal viewer only. The OR overlays were built in `scene3d` from `crystal_plane_patch`,
+which makes an origin-centred square of scene-scale size. The fix was therefore unification rather
+than invention: the geometry moved to `pytex.plotting.primitives` as `lattice_plane_polygon`, the
+viewer's private helper became a one-line call to it, and `crystal_plane_patch` gained a
+`cell_repeats` mode that returns the clipped polygon.
+
+- **Offset policy**, now shared: largest cross-section, ties toward the box centre, then the larger
+  offset. The last two rules only ever decide ties between congruent members — the two faces of a
+  {100}, the top and bottom (0001) — and they resolve them the way this application already did, so
+  unifying the policy moved no figure that was already right. The crystal-viewer tests confirm it:
+  green without changes.
+- **Both crystals carry the overlay**, each clipped to its own cell, computed in Python. The
+  browser's translate-a-copy trick is gone: it was correct only while the overlays were
+  origin-centred squares.
+- **Directions are chords** of the plane they lie in (`segment_in_polygon`), falling back to a
+  clip against the cell (`segment_in_cell`) when a direction lies in no drawn plane. Refusing to
+  project is deliberate: a projected arrow would assert a parallelism the pair has not got.
+- **Normals** are opt-in, one interplanar spacing long, dashed, in a fourth colour, and drawn in
+  whichever **sense** keeps them inside the crystal — a normal is a line, so its sense is free, and
+  a plane on a cell face would otherwise have its normal wholly outside the cell. That case was
+  caught by the service-level test, not by eye.
+- `Arrow3D` gained a `role` (`direction` / `normal`) so consumers do not have to infer the kind
+  from label text, and the alignment readout reports one line per statement rather than one per
+  drawn copy.
+- The measured composite obeys the same rule; its two overlays are clipped to their own cells and
+  placed with their own crystals.
+
+Verified: the service-level rule is asserted as arithmetic over **every** variant — no patch vertex
+and no arrow endpoint lies outside the nearest crystal's box — plus geometry tests on the clipper
+itself (plane equation, containment, exact diagonal-section area, chord containment, refusal for an
+out-of-plane direction).
+
+### Next
+
+Increment 4 — the hexagonal prism: three rhombic cells tiled about **c**, atoms and bonds filled in,
+the prism frame drawn instead of the rhombus, and the plane clipper clipping to the prism. Default
+on for hexagonal phases.

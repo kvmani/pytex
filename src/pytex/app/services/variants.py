@@ -1146,44 +1146,79 @@ def _primitive_payload(
     Everything is in Cartesian angstrom in the world frame — which is the parent
     crystal frame — so the browser applies the camera rotation and nothing else.
 
+    Every object is emitted **as the scene built it**, both crystals' copies
+    included. The browser used to be handed one copy of each and told to make
+    the second by translating it, which was right only while the overlays were
+    origin-centred squares: clipped to their own cells, the parent's plane and
+    the child's plane have different outlines and neither is a translation of
+    the other.
+
     ``rows`` relabels each object with the **pair** it stands for, taken from
-    the same parallelism rows the table and the caption use. Without it the
-    plotting layer's own label reaches the screen, and that label is written
-    from the raw three-index normal: an overlay reading ``(001)`` beside a
-    caption reading ``(0001)`` for the same plane invites the reader to think
-    two different planes are being discussed. One object, one name.
+    the same parallelism rows the table and the caption use, in the phases' own
+    notation. Only the objects the scene labelled are relabelled — one copy of
+    each statement, on the parent — so the second copy stays silent instead of
+    printing the pair twice over one figure. A normal's label is rebuilt rather
+    than translated, and its length *is* the interplanar spacing, so the number
+    beside it is measured off the geometry rather than copied from a string.
     """
 
     plane_rows = [row for row in rows or [] if row["kind"] == "plane"]
     direction_rows = [row for row in rows or [] if row["kind"] == "direction"]
+    plane_cursor = 0
+    normal_cursor = 0
+    direction_cursor = 0
 
-    def _pair_label(candidates: list[dict[str, Any]], index: int, fallback: Any) -> Any:
+    def _pair_text(candidates: list[dict[str, Any]], index: int, fallback: Any) -> Any:
         if index < len(candidates):
             row = candidates[index]
             return f"{row['parent']} \u2225 {row['child']}"
         return fallback
 
-    return {
-        "arrows": [
-            {
-                "tail": [float(value) for value in arrow.tail],
-                "head": [float(value) for value in arrow.head],
-                "color": str(arrow.color),
-                "label": _pair_label(direction_rows, index, arrow.label),
-            }
-            for index, arrow in enumerate(primitives.arrows)
-        ],
-        "patches": [
+    patches: list[dict[str, Any]] = []
+    for patch in primitives.patches:
+        labelled = bool(patch.label)
+        patch_label: Any = patch.label
+        if labelled and plane_rows:
+            patch_label = _pair_text(plane_rows, plane_cursor, patch.label)
+            plane_cursor += 1
+        patches.append(
             {
                 "vertices": [[float(value) for value in vertex] for vertex in patch.vertices],
                 "normal": [float(value) for value in patch.normal],
                 "color": str(patch.color),
                 "alpha": float(patch.alpha),
-                "label": _pair_label(plane_rows, index, patch.label),
+                "label": patch_label or None,
             }
-            for index, patch in enumerate(primitives.patches)
-        ],
-    }
+        )
+
+    arrows: list[dict[str, Any]] = []
+    for arrow in primitives.arrows:
+        role = str(getattr(arrow, "role", "direction"))
+        labelled = bool(arrow.label)
+        label: Any = arrow.label
+        if labelled and role == "normal":
+            spacing = float(np.linalg.norm(np.asarray(arrow.head) - np.asarray(arrow.tail)))
+            plane = (
+                plane_rows[normal_cursor]["parent"]
+                if normal_cursor < len(plane_rows)
+                else "plane"
+            )
+            label = f"n {plane} \u00b7 d = {spacing:.3f} \u00c5"
+            normal_cursor += 1
+        elif labelled and direction_rows:
+            label = _pair_text(direction_rows, direction_cursor, arrow.label)
+            direction_cursor += 1
+        arrows.append(
+            {
+                "tail": [float(value) for value in arrow.tail],
+                "head": [float(value) for value in arrow.head],
+                "color": str(arrow.color),
+                "role": role,
+                "label": label or None,
+            }
+        )
+
+    return {"arrows": arrows, "patches": patches}
 
 
 def _parallelism_rows(
@@ -1391,8 +1426,25 @@ _COMPOSITE_PARAMETERS = (
     BooleanParameter(
         name="show_parallel_directions",
         label="Draw the parallel directions",
-        help_text="The variant's own parallel directions, as arrows from the world origin.",
+        help_text=(
+            "The variant's own parallel directions, drawn as a chord of the plane each one "
+            "lies in — which is the claim being made — so the arrow is inside the cell and "
+            "visibly in its plane rather than starting at the origin and running past the "
+            "crystal."
+        ),
         default=True,
+        group="Overlays",
+    ),
+    BooleanParameter(
+        name="show_plane_normals",
+        label="Draw the plane normals",
+        help_text=(
+            "An arrow from the centre of each parallel plane, along its normal, exactly one "
+            "interplanar spacing long — so it says where the next plane of the family sits "
+            "rather than pointing an arbitrary distance. Off by default: the normal is a "
+            "second object per plane, and the plane itself is usually the subject."
+        ),
+        default=False,
         group="Overlays",
     ),
     BooleanParameter(
@@ -1503,6 +1555,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
         child_translation=translation,
         show_parallel_planes=bool(request["show_parallel_planes"]),
         show_parallel_directions=bool(request["show_parallel_directions"]),
+        show_plane_normals=bool(request["show_plane_normals"]),
         parent_build_kwargs=build_kwargs,
         child_build_kwargs=build_kwargs,
     )
@@ -1592,6 +1645,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
             "placement": request["placement"],
             "show_parallel_planes": bool(request["show_parallel_planes"]),
             "show_parallel_directions": bool(request["show_parallel_directions"]),
+            "show_plane_normals": bool(request["show_plane_normals"]),
             "show_bonds": bool(request["show_bonds"]),
             "show_unit_cells": bool(request["show_unit_cells"]),
         },
@@ -1710,6 +1764,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             child_translation=translation,
             show_parallel_planes=bool(request["show_parallel_planes"]),
             show_parallel_directions=bool(request["show_parallel_directions"]),
+            show_plane_normals=bool(request["show_plane_normals"]),
             parent_build_kwargs=build_kwargs,
             child_build_kwargs=build_kwargs,
         )
@@ -1825,6 +1880,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             "packet_plane": [int(v) for v in request["packet_plane"]],
             "show_parallel_planes": bool(request["show_parallel_planes"]),
             "show_parallel_directions": bool(request["show_parallel_directions"]),
+            "show_plane_normals": bool(request["show_plane_normals"]),
             "show_bonds": bool(request["show_bonds"]),
             "show_unit_cells": bool(request["show_unit_cells"]),
         },
@@ -2226,9 +2282,12 @@ def _measured_overlays(
     child_matrix: np.ndarray,
     parent_phase: Any,
     child_phase: Any,
+    parent_translation: Any = (0.0, 0.0, 0.0),
+    child_translation: Any = (0.0, 0.0, 0.0),
+    repeats: int = 1,
     length: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Both sides of every measured parallelism, drawn separately.
+    """Both sides of every measured parallelism, drawn separately, each in its cell.
 
     A catalogue relationship holds its objects parallel exactly, so one patch
     says everything. A *measured* pair does not: the parent-side object and the
@@ -2236,18 +2295,48 @@ def _measured_overlays(
     would show a parallelism the measurement does not have. Both are drawn, in
     the specimen frame, so the gap between them **is** the deviation — a guide
     that is honest about being approximate.
+
+    Each side is clipped to its own crystal's cell and placed where that
+    crystal is, by the same rule the catalogue views follow: a plane overlay
+    belongs to a lattice, so it is drawn inside the lattice it belongs to. Two
+    origin-centred squares — which is what these were — sit where neither
+    crystal is and hang outside both.
     """
 
     from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex
-    from pytex.plotting.primitives import Arrow3D, PlanePatch3D, crystal_plane_patch
+    from pytex.plotting.primitives import (
+        crystal_plane_patch,
+        segment_in_cell,
+        segment_in_polygon,
+    )
 
     arrows: list[dict[str, Any]] = []
     patches: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
+    #: The drawn polygon of each side, so its direction can be a chord of it.
+    polygons: dict[str, np.ndarray] = {}
 
-    def _emit_patch(patch: PlanePatch3D, matrix: np.ndarray, color: str, label: str) -> None:
-        vertices = np.asarray(patch.vertices, dtype=float) @ matrix.T
-        normal = matrix @ np.asarray(patch.normal, dtype=float)
+    def _place(points: np.ndarray, matrix: np.ndarray, translation: Any) -> np.ndarray:
+        placed: np.ndarray = points @ np.asarray(matrix, dtype=float).T + np.asarray(
+            translation, dtype=float
+        )
+        return placed
+
+    def _emit_patch(
+        plane: Any,
+        phase: Any,
+        matrix: np.ndarray,
+        translation: Any,
+        color: str,
+        label: str,
+        side: str,
+    ) -> None:
+        patch = crystal_plane_patch(
+            plane, cell_repeats=(repeats,) * 3, extent=0.6 * length, color=color
+        )
+        vertices = _place(np.asarray(patch.vertices, dtype=float), matrix, translation)
+        normal = np.asarray(matrix, dtype=float) @ np.asarray(patch.normal, dtype=float)
+        polygons[side] = vertices
         patches.append(
             {
                 "vertices": [[float(v) for v in vertex] for vertex in vertices],
@@ -2267,17 +2356,23 @@ def _measured_overlays(
             MillerIndex(np.asarray(statement.child_indices, dtype=np.int64), phase=child_phase),
             phase=child_phase,
         )
-        base = crystal_plane_patch(
-            parent_plane, center=(0.0, 0.0, 0.0), extent=0.6 * length, color=_PARENT_OVERLAY
-        )
-        _emit_patch(base, parent_matrix, _PARENT_OVERLAY, statement.parent_label)
         _emit_patch(
-            crystal_plane_patch(
-                child_plane, center=(0.0, 0.0, 0.0), extent=0.6 * length, color=_CHILD_OVERLAY
-            ),
+            parent_plane,
+            parent_phase,
+            parent_matrix,
+            parent_translation,
+            _PARENT_OVERLAY,
+            statement.parent_label,
+            "parent",
+        )
+        _emit_patch(
+            child_plane,
+            child_phase,
             child_matrix,
+            child_translation,
             _CHILD_OVERLAY,
             statement.child_label,
+            "child",
         )
         rows.append(
             {
@@ -2295,19 +2390,50 @@ def _measured_overlays(
         child_direction = CrystalDirection(
             np.asarray(statement.child_indices, dtype=np.float64), phase=child_phase
         )
-        for direction, matrix, color, label in (
-            (parent_direction, parent_matrix, _PARENT_OVERLAY, statement.parent_label),
-            (child_direction, child_matrix, _CHILD_OVERLAY, statement.child_label),
+        for direction, phase, matrix, translation, color, label, side in (
+            (
+                parent_direction,
+                parent_phase,
+                parent_matrix,
+                parent_translation,
+                _PARENT_OVERLAY,
+                statement.parent_label,
+                "parent",
+            ),
+            (
+                child_direction,
+                child_phase,
+                child_matrix,
+                child_translation,
+                _CHILD_OVERLAY,
+                statement.child_label,
+                "child",
+            ),
         ):
-            head = matrix @ (length * np.asarray(direction.unit_vector, dtype=float))
-            arrow = Arrow3D(
-                tail=np.zeros(3, dtype=float), head=head, color=color, label=label
+            world = np.asarray(matrix, dtype=float) @ np.asarray(
+                direction.unit_vector, dtype=float
             )
+            world = world / np.linalg.norm(world)
+            chord = (
+                segment_in_polygon(polygons[side], world) if side in polygons else None
+            )
+            if chord is None:
+                # No plane to lie in — the deviation put it out of the drawn
+                # one, or no plane statement was found. Clip it to the cell
+                # instead, so it still stays inside the crystal.
+                local_tail, local_head = segment_in_cell(
+                    phase, np.asarray(direction.unit_vector, dtype=float), repeats=(repeats,) * 3
+                )
+                chord = (
+                    _place(np.asarray([local_tail]), matrix, translation)[0],
+                    _place(np.asarray([local_head]), matrix, translation)[0],
+                )
             arrows.append(
                 {
-                    "tail": [float(v) for v in arrow.tail],
-                    "head": [float(v) for v in arrow.head],
+                    "tail": [float(v) for v in chord[0]],
+                    "head": [float(v) for v in chord[1]],
                     "color": color,
+                    "role": "direction",
                     "label": label,
                 }
             )
@@ -2481,6 +2607,9 @@ def _measured_composite(request: dict[str, Any]) -> dict[str, Any]:
         child_matrix=child_matrix,
         parent_phase=parent_phase,
         child_phase=child_phase,
+        parent_translation=(0.0, 0.0, 0.0),
+        child_translation=translation,
+        repeats=repeats,
         length=reference_length,
     )
 

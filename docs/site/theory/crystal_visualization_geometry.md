@@ -32,6 +32,29 @@ $$
 
 where $\boldsymbol{\delta}$ ranges over the eight parallelepiped corners implied by $\mathbf{s}$.
 
+## Plane overlays are cut by the cell
+
+A plane overlay is drawn as the polygon in which the lattice plane meets the cell box, not as a
+patch of arbitrary size placed at the plane's orientation. In fractional coordinates a lattice
+plane of a family $(hkl)$ is exactly
+
+$$h x_1 + k x_2 + l x_3 = m, \qquad m \in \mathbb{Z},$$
+
+so the polygon is obtained by intersecting that plane with the twelve edges of the box and ordering
+the intersections about the plane normal. Members with fewer than three distinct intersections —
+those touching only an edge or a corner — are degenerate and are rejected.
+
+Which $m$ is drawn matters, because the members of a family are not congruent in general. PyTex
+takes the member of **largest cross-sectional area** through the box, breaking ties toward the box
+centre and then toward the larger offset. For a cubic cell and $(110)$ this is the diagonal
+rectangle through two opposite edges; for $(100)$, where the two members are congruent faces, it is
+the far face.
+
+A direction drawn alongside a plane is clipped to the *polygon*, giving the chord through its
+centroid. This is a statement of geometry rather than of style: the direction of an orientation
+relationship lies in its plane, and a chord exhibits that, while a segment of arbitrary length
+anchored at the origin does not.
+
 For hexagonal-axis lattices, PyTex can also render an auxiliary hexagonal prism for teaching and visual interpretation. Let the direct basis be
 
 $$

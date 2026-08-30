@@ -95,6 +95,9 @@ const PHASE_COLORS = Object.freeze({
 const OR_COLORS = Object.freeze({
   plane: '#7c3aed',
   direction: '#be123c',
+  // A construction line, not an object the two crystals share: it gets the
+  // fourth colour and a dashed shaft so it cannot be read as a parallelism.
+  normal: '#0f766e',
   // Faint enough to see two lattices through, strong enough to find in a
   // fourteen-rem panel. The service's 0.16 was tuned for a full-size figure.
   planeAlpha: 0.34,
@@ -472,6 +475,7 @@ export function mount(context) {
           showAtoms: state.wall.atoms,
           planeColor: OR_COLORS.plane,
           directionColor: OR_COLORS.direction,
+          normalColor: OR_COLORS.normal,
           planeAlpha: OR_COLORS.planeAlpha,
         }),
         camera,
@@ -652,6 +656,7 @@ export function mount(context) {
       showAtoms: state.wall.atoms,
       planeColor: OR_COLORS.plane,
       directionColor: OR_COLORS.direction,
+      normalColor: OR_COLORS.normal,
       planeAlpha: OR_COLORS.planeAlpha,
     };
     wallGrid.dataset.size = state.wall.size;
@@ -935,7 +940,9 @@ export function mount(context) {
     if (state.legendFor === data) return;
     state.legendFor = data;
     legend.hidden = false;
-    legend.replaceChildren(
+    // Built as a list and filtered before it is handed over: `replaceChildren`
+    // takes nodes, and a null passed to it is inserted as the text "null".
+    const entries = [
       el('span.legend__item', {}, [
         el('span.legend__swatch', { style: `background:${PHASE_COLORS.parent}` }),
         el('span', { text: `${data.parent.label} (parent)` }),
@@ -952,12 +959,21 @@ export function mount(context) {
         el('span.legend__swatch', { style: `background:${OR_COLORS.direction}` }),
         el('span', { text: 'the parallel direction, drawn on both' }),
       ]),
+      // Only when they are on: a legend entry for something not on screen is
+      // a worse error than a missing one, because it is read as a claim.
+      state.result?.inputs?.show_plane_normals
+        ? el('span.legend__item', {}, [
+            el('span.legend__swatch', { style: `background:${OR_COLORS.normal}` }),
+            el('span', { text: 'the plane normal, one interplanar spacing long' }),
+          ])
+        : null,
       el('span.legend__guide', {
         text:
           'Colour is the phase, not the element: both phases are usually the same element. ' +
           'Each triad is its own crystal\u2019s axes, in that crystal\u2019s notation.',
       }),
-    );
+    ];
+    legend.replaceChildren(...entries.filter(Boolean));
   }
 
   /** Switch to the composite view already showing the variant that was clicked. */

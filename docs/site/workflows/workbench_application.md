@@ -508,6 +508,20 @@ tooltips, and the status line reads out how far each parallel plane is from **ed
 parallel direction from **end-on** — because a plane two degrees off edge-on looks edge-on, and no
 picture can tell you otherwise.
 
+**Every overlay is clipped to the cell it belongs to.** A plane overlay is a statement about a
+lattice, so it is drawn where that lattice is: it enters the cell through one edge and leaves
+through another, and no part of it lies outside the crystal. The member of the family drawn is the
+one with the **largest cross-section** through the box, which is what a reader means by "the (110)
+plane of this cell". The parallel direction is drawn as a **chord of that plane** — the claim a
+plane-and-direction pair makes is that the direction lies in the plane, and clipped to the polygon
+the arrow demonstrates it instead of merely having the right slope.
+
+Switch **Draw the plane normals** on and each patch gains an arrow from its centre, exactly one
+interplanar spacing long, dashed and in a fourth colour. The length is the measurement: it spans
+the gap to the next plane of the family, and the label quotes the same *d*. The colour and the dash
+are there because a normal is a construction line — it is not one of the objects the two crystals
+hold parallel, and drawn like one it would be read as one.
+
 Three further things are worth stating rather than leaving to be noticed.
 
 **The overlay carries the variant's own indices.** Each variant holds a *different* member of the

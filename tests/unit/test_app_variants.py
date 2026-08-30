@@ -1361,3 +1361,191 @@ class TestVariantFacts:
             assert patch["label"] == entry["correspondence"]["planes"][0]
             arrow = entry["primitives"]["arrows"][0]
             assert arrow["label"] == entry["correspondence"]["directions"][0]
+
+
+def _box_corners(bounds) -> np.ndarray:  # type: ignore[no-untyped-def]
+    """The eight corners of a bounds array, which a rotated box needs.
+
+    A rotated box is *not* bounded by the images of its two bounds corners, so
+    taking only those would give a box too small and fail a test that should
+    pass.
+    """
+
+    lower, upper = np.asarray(bounds, dtype=float)
+    return np.array(
+        [[lower[0] if i else upper[0],
+          lower[1] if j else upper[1],
+          lower[2] if k else upper[2]]
+         for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        dtype=float,
+    )
+
+
+def _outside_every_crystal(points: np.ndarray, boxes) -> float:  # type: ignore[no-untyped-def]
+    """How far a set of points strays outside the nearest crystal box, in angstrom."""
+
+    return min(
+        max(0.0, float(np.max(np.maximum(lower - points, points - upper))))
+        for lower, upper in boxes
+    )
+
+
+class TestOverlaysStayInTheirCrystal:
+    """The rule: an overlay is drawn inside the lattice it is an overlay of.
+
+    A plane is a statement about a lattice, so it belongs where that lattice is
+    — entering the cell through one edge and leaving through another. The
+    orientation-relationship overlays used to be squares centred on the world
+    origin and sized by a scene-scale heuristic, so they straddled the origin
+    corner and hung outside both crystals. The tests below are the rule stated
+    as arithmetic, over every variant rather than over a chosen one.
+    """
+
+    @staticmethod
+    def _boxes(data: dict) -> list[tuple[np.ndarray, np.ndarray]]:
+        boxes = []
+        parent = np.asarray(data["parent"]["scene"]["bounds"], dtype=float)
+        boxes.append((parent[0], parent[1]))
+        return boxes
+
+    def _wall_boxes(self, data: dict, entry: dict) -> list[tuple[np.ndarray, np.ndarray]]:
+        boxes = self._boxes(data)
+        matrix = np.asarray(entry["child_matrix"], dtype=float)
+        translation = np.asarray(entry["translation"], dtype=float)
+        corners = (matrix @ _box_corners(data["child"]["scene"]["bounds"]).T).T + translation
+        boxes.append((corners.min(axis=0), corners.max(axis=0)))
+        return boxes
+
+    def test_no_overlay_of_any_variant_leaves_its_crystal(self) -> None:
+        data = burgers_sheet(show_plane_normals=True)["data"]
+        for entry in data["variants"]:
+            boxes = self._wall_boxes(data, entry)
+            for patch in entry["primitives"]["patches"]:
+                vertices = np.asarray(patch["vertices"], dtype=float)
+                assert _outside_every_crystal(vertices, boxes) == pytest.approx(0.0, abs=1e-6)
+            for arrow in entry["primitives"]["arrows"]:
+                ends = np.asarray([arrow["tail"], arrow["head"]], dtype=float)
+                assert _outside_every_crystal(ends, boxes) == pytest.approx(0.0, abs=1e-6)
+
+    def test_both_crystals_carry_the_plane_and_the_direction(self) -> None:
+        """One statement, drawn twice — once in each crystal's own cell.
+
+        Not a copy of one outline moved across: the parent's plane clipped to a
+        cubic box and the child's clipped to a hexagonal one are the same
+        physical plane with different outlines, and a figure that showed the
+        parent's outline inside the child's cell would be drawing a plane the
+        child's lattice does not have.
+        """
+
+        data = burgers_sheet()["data"]
+        entry = data["variants"][0]
+        patches = entry["primitives"]["patches"]
+        assert len(patches) == 2
+        first = np.asarray(patches[0]["vertices"], dtype=float)
+        second = np.asarray(patches[1]["vertices"], dtype=float)
+        assert first.shape != second.shape or not np.allclose(
+            first - first.mean(axis=0), second - second.mean(axis=0)
+        )
+        directions = [
+            arrow for arrow in entry["primitives"]["arrows"] if arrow["role"] == "direction"
+        ]
+        assert len(directions) == 2
+
+    def test_the_pair_is_named_once_and_in_each_phase_own_notation(self) -> None:
+        """Labelled on the parent, silent on the child: one statement, one label."""
+
+        entry = burgers_sheet()["data"]["variants"][0]
+        labels = [patch["label"] for patch in entry["primitives"]["patches"]]
+        assert labels[0] == "(110) \u2225 (0001)"
+        assert labels[1] is None
+
+    def test_a_direction_lies_in_the_plane_it_is_drawn_with(self) -> None:
+        """The geometric claim of a plane-and-direction pair, checked.
+
+        Every point of the arrow satisfies the plane's own equation, so the
+        arrow is in the patch rather than merely near it.
+        """
+
+        entry = burgers_sheet()["data"]["variants"][0]
+        patch = entry["primitives"]["patches"][0]
+        normal = np.asarray(patch["normal"], dtype=float)
+        plane_offset = float(np.dot(np.asarray(patch["vertices"][0], dtype=float), normal))
+        arrow = next(
+            item for item in entry["primitives"]["arrows"] if item["role"] == "direction"
+        )
+        for point in (arrow["tail"], arrow["head"]):
+            assert float(np.dot(np.asarray(point, dtype=float), normal)) == pytest.approx(
+                plane_offset, abs=1e-6
+            )
+
+    def test_normals_are_absent_unless_asked_for(self) -> None:
+        entry = burgers_sheet()["data"]["variants"][0]
+        assert not [a for a in entry["primitives"]["arrows"] if a["role"] == "normal"]
+
+    def test_a_normal_is_one_interplanar_spacing_long_and_says_so(self) -> None:
+        """The arrow carries a measurement, not a scene-scale guess.
+
+        Its length is d, so the gap it spans is the gap to the next plane of
+        the family, and its label quotes the same number. A normal drawn at
+        some convenient length would be decoration.
+        """
+
+        from pytex.app.phases import phase_from_request
+        from pytex.core.lattice import CrystalPlane, MillerIndex
+
+        entry = burgers_sheet(show_plane_normals=True)["data"]["variants"][0]
+        normals = [a for a in entry["primitives"]["arrows"] if a["role"] == "normal"]
+        assert len(normals) == 2
+        _, parent_phase = phase_from_request(BETA_ZIRCONIUM)
+        plane = CrystalPlane(
+            MillerIndex(np.array([1, 1, 0]), phase=parent_phase), phase=parent_phase
+        )
+        spacing = float(plane.d_spacing_angstrom)
+        tail = np.asarray(normals[0]["tail"], dtype=float)
+        head = np.asarray(normals[0]["head"], dtype=float)
+        assert float(np.linalg.norm(head - tail)) == pytest.approx(spacing, rel=1e-9)
+        assert normals[0]["label"] is not None
+        assert "(110)" in normals[0]["label"]
+        assert f"{spacing:.3f}" in normals[0]["label"]
+        # The child's copy is silent, like every other second copy.
+        assert normals[1]["label"] is None
+
+    def test_the_measured_pair_obeys_the_same_rule(self) -> None:
+        """The rule is not a property of the catalogue views.
+
+        The measured composite draws two grains where a measurement put them,
+        and its overlays were built the same wrong way. Both sides are clipped
+        to their own cells and placed with their own crystals.
+        """
+
+        data = call(
+            "variants.measured_composite",
+            phase=BETA_ZIRCONIUM,
+            child_phase=ZIRCONIUM,
+            euler_convention="bunge",
+            parent_angle1=30.0,
+            parent_angle2=40.0,
+            parent_angle3=10.0,
+            child_angle1=167.5709,
+            child_angle2=58.2280,
+            child_angle3=0.9653,
+            catalog_tolerance_deg=3.0,
+            max_index=3,
+            repeats=1,
+            placement="side_by_side",
+            show_idealized=False,
+            show_bonds=True,
+            show_unit_cells=True,
+        )["data"]
+        boxes = []
+        for side in ("parent", "child"):
+            matrix = np.asarray(data[side]["matrix"], dtype=float)
+            translation = np.asarray(data[side]["translation"], dtype=float)
+            corners = (matrix @ _box_corners(data[side]["scene"]["bounds"]).T).T + translation
+            boxes.append((corners.min(axis=0), corners.max(axis=0)))
+        for patch in data["primitives"]["patches"]:
+            vertices = np.asarray(patch["vertices"], dtype=float)
+            assert _outside_every_crystal(vertices, boxes) == pytest.approx(0.0, abs=1e-6)
+        for arrow in data["primitives"]["arrows"]:
+            ends = np.asarray([arrow["tail"], arrow["head"]], dtype=float)
+            assert _outside_every_crystal(ends, boxes) == pytest.approx(0.0, abs=1e-6)

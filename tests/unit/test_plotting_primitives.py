@@ -4,6 +4,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 
+import math
+
 import numpy as np
 import pytest
 
@@ -232,3 +234,140 @@ def test_render_primitive_scene_smoke() -> None:
     assert len(figure.axes) == 1
     axis = figure.axes[0]
     assert axis.get_title() == "primitives"
+
+
+class TestPlaneClipping:
+    """A plane overlay is the lattice plane cut by the cell, not a free square.
+
+    The claim under test is geometric and checkable without a reference image:
+    every vertex satisfies the plane equation, every vertex lies in the box, and
+    the polygon closes. The old square failed the second of those by
+    construction — it was centred on the origin and sized by a scene-scale
+    guess, so half of it lay outside the crystal it was drawn for.
+    """
+
+    @staticmethod
+    def _phase(builtin: str):  # type: ignore[no-untyped-def]
+        from pytex.app.phases import phase_from_request
+
+        return phase_from_request({"builtin": builtin})[1]
+
+    def test_the_cubic_110_is_the_diagonal_rectangle_of_the_cell(self) -> None:
+        """(110) of a cubic cell enters at one edge and leaves at the opposite one.
+
+        Its area is the exact ``a * a * sqrt(2)`` of the diagonal section, which
+        is the whole of the claim: not a square of some convenient size with the
+        right normal, but the plane the cell actually cuts.
+        """
+
+        from pytex.plotting.primitives import lattice_plane_polygon
+
+        phase = self._phase("zr_bcc_beta")
+        edge = float(phase.lattice.a)
+        polygon = lattice_plane_polygon(phase, (1, 1, 0))
+        assert polygon is not None
+        assert polygon.shape == (4, 3)
+        # Every vertex inside the cell box, to the floating-point floor.
+        assert np.all(polygon >= -1e-9)
+        assert np.all(polygon <= edge + 1e-9)
+        # Every vertex on one plane: x + y is constant, and equal to the cell edge.
+        assert np.allclose(polygon[:, 0] + polygon[:, 1], edge)
+        area = float(np.linalg.norm(np.cross(polygon[1] - polygon[0], polygon[2] - polygon[1])))
+        assert area == pytest.approx(edge * edge * math.sqrt(2.0), rel=1e-9)
+
+    def test_the_offset_chosen_is_the_largest_cross_section(self) -> None:
+        """The member a reader means by "the (110) plane of this cell".
+
+        The family has members through the origin corner and through the far
+        corner, and both are degenerate — they touch an edge and cut no area.
+        Choosing by area rejects them without a special case.
+        """
+
+        from pytex.plotting.primitives import lattice_plane_polygon
+
+        phase = self._phase("zr_bcc_beta")
+        chosen = lattice_plane_polygon(phase, (1, 1, 0))
+        assert chosen is not None
+        best = 0.0
+        for offset in range(0, 3):
+            candidate = lattice_plane_polygon(phase, (1, 1, 0), offset=float(offset))
+            if candidate is None:
+                continue
+            edges = np.diff(np.vstack([candidate, candidate[:1]]), axis=0)
+            best = max(best, float(np.linalg.norm(np.cross(edges[0], edges[1]))))
+        edges = np.diff(np.vstack([chosen, chosen[:1]]), axis=0)
+        assert float(np.linalg.norm(np.cross(edges[0], edges[1]))) == pytest.approx(best)
+
+    def test_a_hexagonal_basal_plane_is_the_cell_face(self) -> None:
+        from pytex.plotting.primitives import lattice_plane_polygon
+
+        phase = self._phase("zr_hcp")
+        polygon = lattice_plane_polygon(phase, (0, 0, 1))
+        assert polygon is not None
+        # Flat in z, and at one of the two basal faces of the cell.
+        assert np.allclose(polygon[:, 2], polygon[0, 2])
+        assert float(polygon[0, 2]) == pytest.approx(float(phase.lattice.c))
+
+    def test_the_patch_builder_clips_when_asked_and_squares_when_not(self) -> None:
+        from pytex.core.lattice import CrystalPlane, MillerIndex
+        from pytex.plotting.primitives import crystal_plane_patch
+
+        phase = self._phase("zr_bcc_beta")
+        plane = CrystalPlane(MillerIndex(np.array([1, 1, 0]), phase=phase), phase=phase)
+        clipped = crystal_plane_patch(plane, cell_repeats=(1, 1, 1))
+        square = crystal_plane_patch(plane, extent=2.0)
+        assert np.all(clipped.vertices >= -1e-9)
+        # The free square straddles the origin, which is exactly why it is not
+        # what a plane overlay should be.
+        assert np.any(square.vertices < -1e-9)
+
+    def test_a_direction_in_the_plane_is_drawn_as_a_chord_of_it(self) -> None:
+        """The arrow lies in the patch, which is the claim a pair makes.
+
+        Both endpoints are on the polygon's boundary and every point between
+        them is inside it, so the arrow cannot leave the plane or the cell.
+        """
+
+        from pytex.plotting.primitives import lattice_plane_polygon, segment_in_polygon
+
+        phase = self._phase("zr_bcc_beta")
+        polygon = lattice_plane_polygon(phase, (1, 1, 0))
+        basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+        direction = basis @ np.array([-1.0, 1.0, 1.0])
+        chord = segment_in_polygon(polygon, direction)
+        assert chord is not None
+        tail, head = chord
+        plane_offset = float(polygon[0, 0] + polygon[0, 1])
+        for point in (tail, head, 0.5 * (tail + head)):
+            assert float(point[0] + point[1]) == pytest.approx(plane_offset)
+            assert np.all(point >= -1e-9)
+            assert np.all(point <= float(phase.lattice.a) + 1e-9)
+        # And it really is along the direction asked for.
+        along = (head - tail) / np.linalg.norm(head - tail)
+        unit = direction / np.linalg.norm(direction)
+        assert abs(float(np.dot(along, unit))) == pytest.approx(1.0)
+
+    def test_a_direction_out_of_the_plane_is_refused_rather_than_projected(self) -> None:
+        """Refused, because a projected arrow would assert a parallelism.
+
+        The caller falls back to clipping against the cell, which keeps the
+        arrow inside the crystal without claiming it lies in a plane it does
+        not lie in.
+        """
+
+        from pytex.plotting.primitives import lattice_plane_polygon, segment_in_polygon
+
+        phase = self._phase("zr_bcc_beta")
+        polygon = lattice_plane_polygon(phase, (1, 1, 0))
+        assert segment_in_polygon(polygon, np.array([1.0, 1.0, 0.0])) is None
+
+    def test_the_cell_fallback_keeps_a_direction_inside_the_box(self) -> None:
+        from pytex.plotting.primitives import segment_in_cell
+
+        phase = self._phase("zr_bcc_beta")
+        edge = float(phase.lattice.a)
+        tail, head = segment_in_cell(phase, np.array([1.0, 0.0, 0.0]))
+        for point in (tail, head):
+            assert np.all(point >= -1e-9)
+            assert np.all(point <= edge + 1e-9)
+        assert float(np.linalg.norm(head - tail)) == pytest.approx(edge)

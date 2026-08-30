@@ -53,7 +53,10 @@ from pytex.plotting.primitives import (
     Transform3D,
     _draw_primitive_scene,
     crystal_plane_patch,
+    plane_normal_endpoints,
     scene_span,
+    segment_in_cell,
+    segment_in_polygon,
 )
 from pytex.plotting.styles import resolve_style
 
@@ -204,6 +207,7 @@ class WorldScene3D:
         child_translation: Any = (0.0, 0.0, 0.0),
         show_parallel_directions: bool = True,
         show_parallel_planes: bool = True,
+        show_plane_normals: bool = False,
         parent_build_kwargs: dict[str, Any] | None = None,
         child_build_kwargs: dict[str, Any] | None = None,
     ) -> WorldScene3D:
@@ -268,7 +272,12 @@ class WorldScene3D:
             parallel_directions=source.parallel_directions if show_parallel_directions else (),
             parallel_planes=source.parallel_planes if show_parallel_planes else (),
             parent_transform=parent_transform,
+            child_transform=child_transform,
+            parent_phase=relationship.parent_phase,
+            child_phase=relationship.child_phase,
+            repeats=repeats,
             length=_relationship_reference_length(relationship, repeats),
+            show_plane_normals=show_plane_normals,
         )
         if not primitives.is_empty():
             world = world.add_primitives(primitives)
@@ -383,47 +392,180 @@ def _orientation_relationship_primitives(
     parallel_directions: Any,
     parallel_planes: Any,
     parent_transform: Transform3D,
+    child_transform: Transform3D | None = None,
+    parent_phase: Any = None,
+    child_phase: Any = None,
+    repeats: tuple[int, int, int] = (1, 1, 1),
     length: float,
+    show_plane_normals: bool = False,
 ) -> PrimitiveScene3D:
-    """Arrows for parallel directions and patches for parallel planes (world frame).
+    """The parallel objects, drawn on **both** crystals and clipped to each cell.
 
     The pairs are passed in rather than read off the relationship, because under
     a transformation variant the objects that are actually parallel are that
     variant's symmetry images, not the relationship's nominal pair.
+
+    Three properties, and each was previously false:
+
+    **Every overlay is clipped to the cell it belongs to.** A plane is a
+    statement about a lattice, so it is drawn where that lattice is — entering
+    the box through one edge and leaving through another. The patches used to
+    be squares centred on the world origin and sized by a scene-scale
+    heuristic, which straddled the origin corner and hung outside the crystal.
+
+    **Both crystals carry the overlay, each in its own cell.** The parent's
+    ``(110)`` clipped to a cubic box and the child's ``(0001)`` clipped to a
+    hexagonal one are the same physical plane with different outlines, and that
+    is the truthful picture: the claim is that the planes are parallel, not that
+    the cells are alike. A single patch translated onto the second crystal
+    showed the parent's outline in the child's cell.
+
+    **A direction lies in its plane, so its arrow is a chord of the patch.**
+    Clipped to the polygon, the arrow is inside the cell by construction and is
+    visibly *in* the plane it belongs to — which is the whole claim a
+    plane-and-direction pair makes. It used to start at the origin and run on a
+    scene-scale length, so it lay in nothing and left the crystal.
     """
 
     arrows: list[Arrow3D] = []
     patches: list[PlanePatch3D] = []
-    for parent_direction, child_direction in parallel_directions:
-        world_direction = parent_transform.apply_vector(parent_direction.unit_vector)
-        world_direction = world_direction / np.linalg.norm(world_direction)
-        arrows.append(
-            Arrow3D(
-                tail=parent_transform.translation,
-                head=parent_transform.translation + length * world_direction,
-                color="#f59e0b",
-                label=_parallelism_label(
-                    parent_direction.coordinates,
-                    child_direction.coordinates,
-                    family="direction",
-                ),
-            )
+
+    def side(
+        plane_index: int, is_parent: bool
+    ) -> tuple[Any, Transform3D, Any] | None:
+        """The plane, placement and phase of one side of the pair."""
+
+        pairs = list(parallel_planes)
+        if plane_index >= len(pairs):
+            return None
+        parent_plane, child_plane = pairs[plane_index]
+        if is_parent:
+            return parent_plane, parent_transform, parent_phase
+        if child_transform is None:
+            return None
+        return child_plane, child_transform, child_phase
+
+    # The polygons first: the arrows are chords of them, so they have to exist
+    # before a direction can be placed in one.
+    polygons: list[tuple[np.ndarray, Transform3D]] = []
+    for index, (parent_plane, child_plane) in enumerate(parallel_planes):
+        label = _parallelism_label(
+            parent_plane.miller.indices, child_plane.miller.indices, family="plane"
         )
-    for parent_plane, child_plane in parallel_planes:
-        patch = crystal_plane_patch(
-            parent_plane,
-            center=(0.0, 0.0, 0.0),
-            extent=0.6 * length,
-            color="#7c3aed",
-            alpha=0.16,
-            label=_parallelism_label(
-                parent_plane.miller.indices,
-                child_plane.miller.indices,
-                family="plane",
-            ),
-        ).transformed(parent_transform)
-        patches.append(patch)
+        for is_parent, plane in ((True, parent_plane), (False, child_plane)):
+            resolved = side(index, is_parent)
+            if resolved is None:
+                continue
+            _, side_transform, phase = resolved
+            # Built in the crystal's own frame and placed afterwards, so the
+            # cell the overlay is clipped against is the cell it belongs to
+            # rather than an axis-aligned box in the world.
+            local = crystal_plane_patch(
+                plane,
+                cell_repeats=repeats,
+                color="#7c3aed",
+                alpha=0.16,
+                # The pair is named once, on the parent, so the two copies of
+                # one statement do not print it twice over one figure.
+                label=label if is_parent else "",
+            )
+            patch = local.transformed(side_transform)
+            patches.append(patch)
+            polygons.append((patch.vertices, side_transform))
+            if show_plane_normals and phase is not None:
+                spacing = float(plane.d_spacing_angstrom)
+                tail, head = plane_normal_endpoints(
+                    phase, local.vertices, local.normal, length=spacing, repeats=repeats
+                )
+                arrows.append(
+                    Arrow3D(
+                        tail=side_transform.apply_points(tail),
+                        head=side_transform.apply_points(head),
+                        color="#0f766e",
+                        role="normal",
+                        # The arrow is one interplanar spacing long, so it
+                        # carries a measurement rather than a scene-scale
+                        # guess: the gap it spans is the gap between this
+                        # plane and the next of its family.
+                        label=_normal_label(plane, spacing) if is_parent else "",
+                    )
+                )
+
+    for parent_direction, child_direction in parallel_directions:
+        label = _parallelism_label(
+            parent_direction.coordinates, child_direction.coordinates, family="direction"
+        )
+        for is_parent, direction, phase, placement in (
+            (True, parent_direction, parent_phase, parent_transform),
+            (False, child_direction, child_phase, child_transform),
+        ):
+            if placement is None:
+                continue
+            transform: Transform3D = placement
+            world_direction = transform.apply_vector(direction.unit_vector)
+            world_direction = world_direction / np.linalg.norm(world_direction)
+            tail, head = _direction_endpoints(
+                world_direction,
+                polygons=[points for points, owner in polygons if owner is transform],
+                phase=phase,
+                transform=transform,
+                repeats=repeats,
+                length=length,
+            )
+            arrows.append(
+                Arrow3D(
+                    tail=tail,
+                    head=head,
+                    color="#be123c",
+                    role="direction",
+                    label=label if is_parent else "",
+                )
+            )
     return PrimitiveScene3D(arrows=tuple(arrows), patches=tuple(patches))
+
+
+def _normal_label(plane: Any, spacing: float) -> str:
+    """``n (110) - d = 2.552 A``: which normal, and how far apart the planes are."""
+
+    indices = _integer_indices(plane.miller.indices)
+    if indices is None:
+        return f"normal - d = {spacing:.3f} A"
+    text = format_miller_indices(
+        tuple(indices), family="plane", style="plain", scope="specific"
+    )
+    return f"n {text} - d = {spacing:.3f} A"
+
+
+def _direction_endpoints(
+    world_direction: np.ndarray,
+    *,
+    polygons: Sequence[np.ndarray],
+    phase: Any,
+    transform: Transform3D,
+    repeats: tuple[int, int, int],
+    length: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Where a direction arrow starts and ends: in its plane, or across the cell.
+
+    A direction that lies in one of the drawn planes is drawn as a chord of
+    that plane, because that is the relationship being asserted. One that lies
+    in none of them — the planes switched off, or a pair whose direction is not
+    in its plane — is clipped to the cell instead, so the rule that nothing
+    leaves the crystal still holds without claiming a parallelism it has not
+    got.
+    """
+
+    for polygon in polygons:
+        chord = segment_in_polygon(polygon, world_direction)
+        if chord is not None:
+            return chord
+    if phase is not None:
+        # The crystal's own box, in the crystal frame, then placed.
+        local_direction = np.linalg.solve(transform.matrix, world_direction)
+        tail, head = segment_in_cell(phase, local_direction, repeats=repeats)
+        return transform.apply_points(tail), transform.apply_points(head)
+    origin = transform.translation
+    return origin, origin + length * world_direction
 
 
 def render_world_scene_3d(

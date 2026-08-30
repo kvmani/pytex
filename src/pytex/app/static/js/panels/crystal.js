@@ -984,6 +984,7 @@ export function renderScene(scene, camera, frame, appearance) {
           stroke: arrowColor,
           'stroke-width': 1.4 * appearance.directionWidth,
           'stroke-opacity': arrowOpacity,
+          ...(direction.dash ? { 'stroke-dasharray': direction.dash } : {}),
         }),
         arrowHead(a, b, arrowColor, arrowOpacity),
         direction.label && appearance.showLabels

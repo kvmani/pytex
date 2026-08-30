@@ -13,6 +13,14 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Plane normals, behind a toggle** (`show_plane_normals`, off by default). An arrow from the
+  centre of each parallel plane, exactly **one interplanar spacing** long, so it says where the
+  next plane of the family sits instead of pointing an arbitrary distance; the label quotes the
+  same *d*. Drawn dashed and in a fourth colour, because a normal is a construction line and must
+  not read as one of the objects the two crystals hold parallel. Its **sense** is chosen to keep it
+  inside the crystal: a normal is a line, so the direction it is drawn in is a free choice, and a
+  plane lying on a cell face would otherwise have its normal entirely outside the cell.
+
 - **The variant wall: the parent beside every variant, with what each pair asserts written
   under it.** The Variants panel's "every variant at once" view was a grid of thumbnails of two
   interpenetrating crystals, in which the plane the relationship is *about* could not be seen and
@@ -275,6 +283,28 @@ downstream analyses depend on them.
   parameter somewhere of its own and must hide the generated one so the two cannot disagree.
 
 ### Changed
+
+- **Every plane overlay is now the lattice plane clipped to its cell.** A plane overlay is a
+  statement about a lattice, so it is drawn where that lattice is: entering the cell through one
+  edge, leaving through another, with nothing outside it. The orientation-relationship overlays
+  were squares centred on the world **origin**, sized by a scene-scale heuristic — so they
+  straddled the origin corner and hung outside both crystals. The single-crystal viewer had always
+  clipped correctly; that construction now lives in `pytex.plotting.primitives` as
+  `lattice_plane_polygon`, where every overlay can reach it, and the viewer calls the same
+  function. Which member of the family is drawn is chosen by **largest cross-section through the
+  box**, which is what a reader means by "the (110) plane of this cell".
+
+  The overlay is also drawn on **each crystal in its own cell** rather than drawn once and
+  translated onto the second: the parent's (110) clipped to a cubic box and the child's (0001)
+  clipped to a hexagonal one are the same physical plane with different outlines, and a translated
+  copy showed the parent's outline inside the child's cell.
+
+- **A parallel direction is drawn as a chord of the plane it lies in.** That is the claim a
+  plane-and-direction pair makes, and it is now visible: the arrow is inside the cell by
+  construction and demonstrably in the patch. It used to start at the world origin and run for a
+  scene-scale length, so it lay in nothing and left the crystal. A direction that lies in no drawn
+  plane is clipped to the cell instead — the rule holds without asserting a parallelism it has not
+  got.
 
 - **Burgers bcc-to-hcp in zirconium is now the canonical case throughout the Variants panel and the
   new EBSD sub-tab**, replacing fcc-to-bcc martensite as the default phases, relationship, packet

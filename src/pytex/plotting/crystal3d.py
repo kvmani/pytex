@@ -41,7 +41,7 @@ from pytex.core._chemistry import (
 from pytex.core.lattice import AtomicSite, CrystalDirection, CrystalPlane, MillerIndex, Phase
 from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.plotting.frames import add_frame_indicator
-from pytex.plotting.primitives import Transform3D
+from pytex.plotting.primitives import Transform3D, lattice_plane_polygon
 from pytex.plotting.styles import _deep_merge, resolve_style
 
 
@@ -912,70 +912,24 @@ def _hexagonal_prism_geometry(
     return edges, faces
 
 
-def _default_plane_offset(indices: np.ndarray) -> float:
-    return 1.0 if np.any(indices > 0) else -1.0
-
-
 def _plane_polygon_for_box(
     phase: Phase,
     hkl: tuple[int, ...],
     repeats: tuple[int, int, int],
-    offset: float,
+    offset: float | None,
 ) -> np.ndarray | None:
-    basis = phase.lattice.direct_basis().matrix
-    corners_frac = _supercell_corners_fractional(repeats)
-    edge_pairs = (
-        (0, 1),
-        (0, 2),
-        (0, 3),
-        (1, 4),
-        (1, 5),
-        (2, 4),
-        (2, 6),
-        (3, 5),
-        (3, 6),
-        (4, 7),
-        (5, 7),
-        (6, 7),
-    )
-    normal_frac = np.array(hkl, dtype=np.float64)
-    if np.allclose(normal_frac, 0.0):
-        return None
-    intersections: list[np.ndarray] = []
-    for a, b in edge_pairs:
-        start = corners_frac[a]
-        end = corners_frac[b]
-        direction = end - start
-        denominator = float(np.dot(normal_frac, direction))
-        if np.isclose(denominator, 0.0):
-            continue
-        t = (offset - float(np.dot(normal_frac, start))) / denominator
-        if -1e-10 <= t <= 1.0 + 1e-10:
-            point_frac = start + t * direction
-            max_frac = np.array(repeats, dtype=np.float64) + 1e-9
-            if np.all(point_frac >= -1e-9) and np.all(point_frac <= max_frac):
-                intersections.append(basis @ point_frac)
-    if len(intersections) < 3:
-        return None
-    unique_points: list[np.ndarray] = []
-    for point in intersections:
-        if not any(np.allclose(point, existing, atol=1e-8) for existing in unique_points):
-            unique_points.append(point)
-    points = np.vstack(unique_points)
-    normal_cart = phase.lattice.reciprocal_basis().matrix @ normal_frac
-    normal_cart = normal_cart / np.linalg.norm(normal_cart)
-    center = np.mean(points, axis=0)
-    trial = np.array([1.0, 0.0, 0.0], dtype=np.float64)
-    if np.isclose(abs(float(np.dot(trial, normal_cart))), 1.0, atol=1e-8):
-        trial = np.array([0.0, 1.0, 0.0], dtype=np.float64)
-    u_axis = np.cross(normal_cart, trial)
-    u_axis /= np.linalg.norm(u_axis)
-    v_axis = np.cross(normal_cart, u_axis)
-    local = points - center
-    angles = np.arctan2(local @ v_axis, local @ u_axis)
-    polygon = points[np.argsort(angles)]
-    polygon.setflags(write=False)
-    return polygon
+    """The lattice plane clipped to the supercell box.
+
+    One line, because the geometry belongs to `pytex.plotting.primitives` where
+    every other overlay can reach it. It used to live here, which is why the
+    orientation-relationship overlays — built in `scene3d` — drew origin-centred
+    squares instead: the correct construction was in a module they did not use.
+
+    ``offset`` of ``None`` takes the policy the shared function documents: the
+    member of the family with the largest cross-section through the box.
+    """
+
+    return lattice_plane_polygon(phase, hkl, repeats=repeats, offset=offset)
 
 
 def _coerce_plane_overlay(
@@ -1364,10 +1318,11 @@ def build_crystal_scene(
             phase,
             tuple(int(value) for value in plane_overlay.plane.miller.indices),
             repeats,
+            # `None` asks for the family member with the largest cross-section
+            # through the box, which is what a reader means by "the (110) plane
+            # of this cell". An explicit overlay offset still wins.
             offset=(
-                _default_plane_offset(plane_overlay.plane.miller.indices)
-                if plane_overlay.offset is None
-                else float(plane_overlay.offset)
+                None if plane_overlay.offset is None else float(plane_overlay.offset)
             ),
         )
         if polygon is None:

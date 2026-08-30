@@ -39,6 +39,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from itertools import pairwise
 from typing import Any
 
 import numpy as np
@@ -211,6 +212,11 @@ class Arrow3D:
     head: np.ndarray
     color: str = "#2563eb"
     label: str | None = None
+    #: What this arrow *is*, for consumers that treat kinds differently — a
+    #: crystal direction, a plane normal, a triad axis. A renderer that has to
+    #: infer the kind from the label text will get it wrong the first time a
+    #: label is translated or blanked, which is why it travels as data.
+    role: str = "direction"
     linewidth: float = 2.2
     arrow_ratio: float = 0.14
     alpha: float = 0.97
@@ -240,6 +246,7 @@ class Arrow3D:
             head=transform.apply_points(self.head),
             color=self.color,
             label=self.label,
+            role=self.role,
             linewidth=self.linewidth,
             arrow_ratio=self.arrow_ratio,
             alpha=self.alpha,
@@ -627,23 +634,355 @@ def plane_normal_arrow(
     )
 
 
+#: Corners of a supercell box, in fractional coordinates, and the twelve edges
+#: joining them. The edge list is by corner index, so a change of corner order
+#: cannot silently produce a box with the wrong edges.
+_BOX_CORNERS: tuple[tuple[int, int, int], ...] = (
+    (0, 0, 0),
+    (1, 0, 0),
+    (0, 1, 0),
+    (0, 0, 1),
+    (1, 1, 0),
+    (1, 0, 1),
+    (0, 1, 1),
+    (1, 1, 1),
+)
+_BOX_EDGES: tuple[tuple[int, int], ...] = (
+    (0, 1), (0, 2), (0, 3),
+    (1, 4), (1, 5), (2, 4),
+    (2, 6), (3, 5), (3, 6),
+    (4, 7), (5, 7), (6, 7),
+)
+
+
+def _box_corners_fractional(repeats: Sequence[int]) -> np.ndarray:
+    span = np.asarray(repeats, dtype=np.float64)
+    return np.array([[c[0] * span[0], c[1] * span[1], c[2] * span[2]] for c in _BOX_CORNERS])
+
+
+def _polygon_area(points: np.ndarray) -> float:
+    """Area of a planar polygon whose vertices are already in order."""
+
+    if points.shape[0] < 3:
+        return 0.0
+    origin = points[0]
+    total = np.zeros(3, dtype=np.float64)
+    for first, second in pairwise(points[1:]):
+        total = total + np.cross(first - origin, second - origin)
+    return float(np.linalg.norm(total) / 2.0)
+
+
+def _order_planar_polygon(points: np.ndarray, normal: np.ndarray) -> np.ndarray:
+    """Sort coplanar points into a simple polygon, counter-clockwise about `normal`."""
+
+    centre = np.mean(points, axis=0)
+    u_axis, v_axis = _in_plane_axes(normal)
+    local = points - centre
+    angles = np.arctan2(local @ v_axis, local @ u_axis)
+    return points[np.argsort(angles)]
+
+
+def lattice_plane_polygon(
+    phase: Phase,
+    indices: Sequence[int],
+    *,
+    repeats: Sequence[int] = (1, 1, 1),
+    offset: float | None = None,
+) -> np.ndarray | None:
+    """The lattice plane ``(hkl)`` clipped to the cell box, as an ordered polygon.
+
+    Purpose
+    -------
+    A plane overlay is a statement about a *lattice*, so it has to be drawn
+    where that lattice is: entering the box through one edge and leaving
+    through another, with nothing outside it. A fixed-size square centred on
+    the origin — which is what the orientation-relationship overlays used to
+    draw — is a different object that happens to have the right normal. It
+    straddles the origin corner, hangs outside the cell, and its size comes
+    from a scene-scale heuristic rather than from the crystal, so nothing about
+    where it sits or how big it is means anything.
+
+    Method
+    ------
+    The plane ``h·x = offset`` is intersected with the twelve edges of the box
+    (in fractional coordinates, where a lattice plane is exactly this linear
+    equation and the integer offsets are exactly the members of the family).
+    Intersections inside the box are the polygon's vertices, ordered by angle
+    about the normal.
+
+    Choosing the offset
+    -------------------
+    ``offset=None`` picks the member of the family with the **largest
+    cross-section** through the box, ties broken toward the box centre. That is
+    the member a reader means by "the (110) plane of this cell": for a cubic
+    box it is the full diagonal rectangle through two opposite edges, and the
+    degenerate members that merely touch an edge or a corner are rejected for
+    having fewer than three distinct intersections.
+
+    Returns
+    -------
+    ndarray of shape (N, 3) in Cartesian angstrom, or ``None`` when no member
+    of the family cuts the box in a polygon — which happens only for a zero
+    index triple.
+    """
+
+    normal_frac = np.asarray(indices, dtype=np.float64)
+    if np.allclose(normal_frac, 0.0):
+        return None
+    basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
+    corners = _box_corners_fractional(repeats)
+    reciprocal = np.asarray(phase.lattice.reciprocal_basis().matrix, dtype=np.float64)
+    normal_cart = reciprocal @ normal_frac
+    normal_cart = normal_cart / np.linalg.norm(normal_cart)
+
+    def polygon_at(value: float) -> np.ndarray | None:
+        points: list[np.ndarray] = []
+        for first, second in _BOX_EDGES:
+            start = corners[first]
+            direction = corners[second] - start
+            denominator = float(np.dot(normal_frac, direction))
+            if np.isclose(denominator, 0.0):
+                continue
+            step = (value - float(np.dot(normal_frac, start))) / denominator
+            if not -1e-10 <= step <= 1.0 + 1e-10:
+                continue
+            point = basis @ (start + step * direction)
+            if not any(np.allclose(point, seen, atol=1e-8) for seen in points):
+                points.append(point)
+        if len(points) < 3:
+            return None
+        return _order_planar_polygon(np.vstack(points), normal_cart)
+
+    if offset is not None:
+        return polygon_at(float(offset))
+
+    # Every member of the family that can reach the box: `h·x` runs between the
+    # sums of its negative and positive contributions over the box corners.
+    projections = corners @ normal_frac
+    lowest = int(np.floor(float(np.min(projections)) - 1e-9))
+    highest = int(np.ceil(float(np.max(projections)) + 1e-9))
+    middle = float(np.mean(projections))
+    best: np.ndarray | None = None
+    best_key: tuple[float, float, int] | None = None
+    for candidate in range(lowest, highest + 1):
+        polygon = polygon_at(float(candidate))
+        if polygon is None:
+            continue
+        # Largest area wins; among equal areas the one nearest the box centre;
+        # among those, the larger offset. The last two rules only ever decide
+        # ties between congruent members — the two faces of a (100), the top
+        # and bottom (0001) of a hexagonal cell — and they resolve such a tie
+        # the way this application always has, to the far face, so unifying the
+        # policy moves no figure that was already right.
+        key = (-_polygon_area(polygon), abs(candidate - middle), -candidate)
+        if best_key is None or key < best_key:
+            best_key = key
+            best = polygon
+    return best
+
+
+def segment_in_polygon(
+    polygon: Any, direction: Any, *, anchor: Any = None
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """The chord a direction cuts across a convex planar polygon.
+
+    Purpose
+    -------
+    An orientation relationship's direction *lies in* its plane — that is the
+    claim the figure makes — so the arrow drawn for it belongs inside the
+    drawn plane rather than starting at the origin and running off on a
+    scene-scale length. Clipped to the polygon, the arrow is inside the cell by
+    construction and is visibly in the patch it belongs to.
+
+    ``anchor`` defaults to the polygon's centroid. Returns the two endpoints,
+    or ``None`` when the direction lies out of the plane or misses the polygon.
+    """
+
+    points = np.asarray(polygon, dtype=np.float64)
+    if points.shape[0] < 3:
+        return None
+    axis = np.asarray(direction, dtype=np.float64)
+    norm = float(np.linalg.norm(axis))
+    if np.isclose(norm, 0.0):
+        return None
+    axis = axis / norm
+    centre = np.mean(points, axis=0) if anchor is None else np.asarray(anchor, dtype=np.float64)
+    normal = np.cross(points[1] - points[0], points[2] - points[0])
+    normal_norm = float(np.linalg.norm(normal))
+    if np.isclose(normal_norm, 0.0):
+        return None
+    normal = normal / normal_norm
+    # Out of the plane by more than a rounding error: refuse rather than draw a
+    # chord of a plane the direction does not lie in.
+    if abs(float(np.dot(axis, normal))) > 1e-6:
+        return None
+    u_axis = axis
+    v_axis = np.cross(normal, u_axis)
+    local = points - centre
+    us = local @ u_axis
+    vs = local @ v_axis
+    steps: list[float] = []
+    for index in range(points.shape[0]):
+        u0, v0 = float(us[index]), float(vs[index])
+        u1, v1 = float(us[(index + 1) % points.shape[0]]), float(vs[(index + 1) % points.shape[0]])
+        if np.isclose(v0, v1):
+            continue
+        fraction = -v0 / (v1 - v0)
+        if -1e-9 <= fraction <= 1.0 + 1e-9:
+            steps.append(u0 + fraction * (u1 - u0))
+    if len(steps) < 2:
+        return None
+    return centre + min(steps) * u_axis, centre + max(steps) * u_axis
+
+
+def segment_in_cell(
+    phase: Phase,
+    direction: Any,
+    *,
+    repeats: Sequence[int] = (1, 1, 1),
+    anchor: Any = None,
+) -> tuple[np.ndarray, np.ndarray]:
+    """The chord a direction cuts across the cell box, through its centre.
+
+    The fallback for a direction with no plane to lie in — the planes switched
+    off, or a direction that genuinely does not lie in the drawn plane. It
+    keeps the arrow inside the cell, which is the rule being applied, without
+    claiming a relationship to a plane it has none with.
+    """
+
+    basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
+    span = np.asarray(repeats, dtype=np.float64)
+    centre = basis @ (0.5 * span) if anchor is None else np.asarray(anchor, dtype=np.float64)
+    axis = np.asarray(direction, dtype=np.float64)
+    axis = axis / np.linalg.norm(axis)
+    # Slab clipping in fractional coordinates: the box is 0 <= x_i <= span_i.
+    inverse = np.linalg.inv(basis)
+    origin_frac = inverse @ centre
+    axis_frac = inverse @ axis
+    lowest, highest = -np.inf, np.inf
+    for index in range(3):
+        component = float(axis_frac[index])
+        if np.isclose(component, 0.0):
+            continue
+        near = (0.0 - float(origin_frac[index])) / component
+        far = (float(span[index]) - float(origin_frac[index])) / component
+        lowest = max(lowest, min(near, far))
+        highest = min(highest, max(near, far))
+    if not np.isfinite(lowest) or not np.isfinite(highest) or highest <= lowest:
+        edge = float(np.max(np.linalg.norm(basis, axis=0)))
+        return centre - 0.5 * edge * axis, centre + 0.5 * edge * axis
+    return centre + lowest * axis, centre + highest * axis
+
+
+def plane_normal_endpoints(
+    phase: Phase,
+    polygon: Any,
+    normal: Any,
+    *,
+    length: float,
+    repeats: Sequence[int] = (1, 1, 1),
+) -> tuple[np.ndarray, np.ndarray]:
+    """A normal arrow from the centre of a drawn plane that stays in the crystal.
+
+    A plane normal is a *line*: the sense it is drawn in is a free choice, not a
+    fact about the crystal. So the sense is chosen to keep the arrow inside the
+    cell — which matters most for the case that makes it obvious, a plane lying
+    on a cell face, whose outward normal is entirely outside the crystal it
+    belongs to and reads as the very defect that clipping the planes fixed.
+
+    When neither sense fits — a plane through the middle of a cell thinner than
+    its own interplanar spacing — the arrow is clipped to the box instead, so
+    the rule holds at the cost of the length no longer being the full spacing.
+    """
+
+    points = as_float_array(polygon, shape=(None, 3))
+    centre = np.mean(points, axis=0)
+    axis = as_float_array(normal, shape=(3,))
+    axis = axis / np.linalg.norm(axis)
+    basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
+    span = np.asarray(repeats, dtype=np.float64)
+    inverse = np.linalg.inv(basis)
+
+    def inside(point: np.ndarray) -> bool:
+        fractional = inverse @ point
+        return bool(np.all(fractional >= -1e-6) and np.all(fractional <= span + 1e-6))
+
+    for sense in (1.0, -1.0):
+        head = centre + sense * float(length) * axis
+        if inside(head):
+            return centre, head
+    tail, head = segment_in_cell(phase, axis, repeats=repeats, anchor=centre)
+    # Keep the arrow rooted at the plane it belongs to: the chord is centred on
+    # the polygon, so the longer half of it is the one to draw.
+    forward = float(np.linalg.norm(head - centre))
+    backward = float(np.linalg.norm(tail - centre))
+    return (centre, head) if forward >= backward else (centre, tail)
+
+
+def polygon_centre(polygon: Any) -> np.ndarray:
+    """The centroid of a drawn polygon: where a normal arrow starts.
+
+    `plane_normal_arrow` already builds the arrow; what it needed was somewhere
+    to start it. Drawn from the centre of the patch it belongs to, a normal
+    reads as *that plane's* normal; drawn from the origin, as the figures did
+    before the overlays were clipped, it reads as one more axis in the corner.
+    """
+
+    centre: np.ndarray = np.mean(as_float_array(polygon, shape=(None, 3)), axis=0)
+    return centre
+
+
 def crystal_plane_patch(
     plane: CrystalPlane,
     *,
     center: Any = (0.0, 0.0, 0.0),
     extent: float | None = None,
     offset: float = 0.0,
+    cell_repeats: Sequence[int] | None = None,
+    cell_offset: float | None = None,
     color: str = "#0f766e",
     alpha: float = 0.28,
     label: str | Sequence[int] | None = None,
     **patch_kwargs: Any,
 ) -> PlanePatch3D:
-    """Build a square `PlanePatch3D` representing a `CrystalPlane`.
+    """Build a `PlanePatch3D` representing a `CrystalPlane`.
 
-    The patch is centered at ``center + offset * n`` (``n`` the unit normal) and
-    spans ``2 * extent`` angstrom on each in-plane axis. Use it to show a lattice
-    plane, a slip plane, or a habit plane as a translucent sheet in a 3D scene.
+    Two shapes, and the first is the one to want.
+
+    **Clipped to the cell** — pass ``cell_repeats``. The patch is the lattice
+    plane cut by the cell box: it enters through one edge, leaves through
+    another, and nothing of it lies outside the crystal it belongs to. Which
+    member of the family is drawn follows `lattice_plane_polygon`: the largest
+    cross-section unless ``cell_offset`` names one. This is what a plane overlay
+    should be, and the single-crystal viewer has always drawn them this way.
+
+    **A free square** — the default. Centered at ``center + offset * n`` (``n``
+    the unit normal) and spanning ``2 * extent`` angstrom on each in-plane axis.
+    Use it only where there is no cell to clip to; anchored at the origin and
+    sized by a scene-scale guess, it will hang outside the crystal and straddle
+    the origin corner, which is what the orientation-relationship overlays did
+    before they were given ``cell_repeats``.
     """
+
+    if cell_repeats is not None:
+        polygon = lattice_plane_polygon(
+            plane.phase,
+            tuple(int(value) for value in plane.miller.indices),
+            repeats=cell_repeats,
+            offset=cell_offset,
+        )
+        if polygon is not None:
+            return PlanePatch3D(
+                vertices=polygon,
+                normal=plane.normal,
+                color=color,
+                alpha=alpha,
+                label=_plane_label_text(plane, label),
+                **patch_kwargs,
+            )
+        # No member of the family cuts this box: fall through to the square
+        # rather than drawing nothing, so a degenerate case is visible instead
+        # of silently absent.
 
     normal = plane.normal
     if extent is None:

@@ -128,33 +128,31 @@ export function frameOnly(scene) {
  */
 export function primitiveOverlays(
   primitives,
-  { offset = null, planeColor = null, directionColor = null, alpha = null, label = true } = {},
+  { planeColor = null, directionColor = null, normalColor = null, alpha = null } = {},
 ) {
-  const shift = offset
-    ? (point) => [point[0] + offset[0], point[1] + offset[1], point[2] + offset[2]]
-    : (point) => point;
   return {
     planes: (primitives?.patches ?? []).map((patch) => ({
-      vertices: patch.vertices.map(shift),
+      vertices: patch.vertices,
       normal: patch.normal,
       color: planeColor ?? patch.color,
       alpha: alpha ?? patch.alpha,
-      label: label ? patch.label : null,
+      label: patch.label,
     })),
     directions: (primitives?.arrows ?? []).map((arrow) => ({
-      start: shift(arrow.tail),
-      end: shift(arrow.head),
-      color: directionColor ?? arrow.color,
-      label: label ? arrow.label : null,
+      start: arrow.tail,
+      end: arrow.head,
+      // A plane normal is not a crystal direction and must not read as one.
+      // It gets its own colour and a dashed shaft: the solid arrow is a
+      // direction the two crystals hold parallel, the dashed one is a
+      // construction line off the plane it belongs to.
+      color:
+        arrow.role === 'normal'
+          ? (normalColor ?? arrow.color)
+          : (directionColor ?? arrow.color),
+      dash: arrow.role === 'normal' ? '3 2' : null,
+      role: arrow.role ?? 'direction',
+      label: arrow.label,
     })),
-  };
-}
-
-/** Concatenate two overlay bundles. */
-function joinOverlays(...bundles) {
-  return {
-    planes: bundles.flatMap((bundle) => bundle?.planes ?? []),
-    directions: bundles.flatMap((bundle) => bundle?.directions ?? []),
   };
 }
 
@@ -240,6 +238,7 @@ export function variantPanelScene(
     extent = null,
     planeColor = null,
     directionColor = null,
+    normalColor = null,
     planeAlpha = null,
   } = {},
 ) {
@@ -254,15 +253,20 @@ export function variantPanelScene(
     childColor,
     SOLID,
   );
-  const translation = entry.translation ?? [0, 0, 0];
-  const apart = translation.some((value) => Math.abs(value) > 1e-9);
-  const style = { planeColor, directionColor, alpha: planeAlpha };
-  const overlays = joinOverlays(
-    primitiveOverlays(entry.primitives, style),
-    apart
-      ? primitiveOverlays(entry.primitives, { ...style, offset: translation, label: false })
-      : null,
-  );
+  /*
+   * No second copy is made here. The service sends the overlay for *each*
+   * crystal, clipped to that crystal's own cell: the parent's plane and the
+   * child's plane are the same physical plane with different outlines, and one
+   * is not a translation of the other. Synthesising the second copy — which is
+   * what this did while the overlays were origin-centred squares — drew the
+   * parent's outline inside the child's cell.
+   */
+  const overlays = primitiveOverlays(entry.primitives, {
+    planeColor,
+    directionColor,
+    normalColor,
+    alpha: planeAlpha,
+  });
   return mergeScenes([parent, child], {
     overlays,
     extent: extent ?? data.world,
@@ -283,25 +287,19 @@ export function compositeScene(
     showAtoms = true,
     planeColor = null,
     directionColor = null,
+    normalColor = null,
     planeAlpha = null,
   } = {},
 ) {
   const dress = (scene) => (showAtoms ? scene : frameOnly(scene));
-  const translation = data.variant?.translation ?? [0, 0, 0];
-  const apart = translation.some((value) => Math.abs(value) > 1e-9);
-  const style = { planeColor, directionColor, alpha: planeAlpha };
+  const style = { planeColor, directionColor, normalColor, alpha: planeAlpha };
   return mergeScenes(
     [
       tintScene(dress(data.parent?.scene), parentColor, ghostParent ? GHOST : SOLID),
       tintScene(dress(data.child?.scene), childColor, SOLID),
     ],
     {
-      overlays: joinOverlays(
-        primitiveOverlays(data.primitives, style),
-        apart
-          ? primitiveOverlays(data.primitives, { ...style, offset: translation, label: false })
-          : null,
-      ),
+      overlays: primitiveOverlays(data.primitives, style),
       extent: data.world,
       axes: data.parent?.scene?.axes,
       triads: frameTriads(data.variant?.frames, {
@@ -411,6 +409,11 @@ export function screenAlignment(cameraRotation, primitives) {
   const viewing = applyTranspose(cameraRotation, [0, 0, 1]);
   const notes = [];
   for (const patch of primitives?.patches ?? []) {
+    // One reading per statement. Each object is drawn on both crystals and
+    // only the parent's copy is labelled, so reading every copy would print
+    // each angle twice — and the two copies are parallel, so the second
+    // reading could only ever repeat the first.
+    if (!patch.label) continue;
     const fromNormal = acuteAngleDeg(patch.normal, viewing);
     if (Number.isNaN(fromNormal)) continue;
     notes.push({
@@ -422,6 +425,10 @@ export function screenAlignment(cameraRotation, primitives) {
     });
   }
   for (const arrow of primitives?.arrows ?? []) {
+    // Directions only: "how far from end-on" is a question about a direction
+    // the two crystals hold parallel, and a plane normal is neither parallel
+    // to anything nor read that way.
+    if (!arrow.label || (arrow.role ?? 'direction') !== 'direction') continue;
     const vector = [
       arrow.head[0] - arrow.tail[0],
       arrow.head[1] - arrow.tail[1],
