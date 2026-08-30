@@ -5294,3 +5294,34 @@ to be in the blast radius.
 **Verified for the release:** `python -m pytest tests/unit` green (7201 tests, exit 0);
 `npx playwright test` 57 passed against a server it started itself; `ruff` and `mypy` clean over
 154 files.
+
+### CI repair (2026-08-31, after the tag)
+
+CI had been red since before this session — every job, on every recent commit. None of it was a
+defect in the library; the checks were pinned loosely enough that the tooling drifted:
+
+- **Type check, six of nine jobs.** orix was the only optional dependency without an
+  `ignore_missing_imports` override. Inline `type: ignore[import-untyped]` is the wrong code when
+  the module is *absent*, which is its state in the base lane — hence the same step passing in
+  full-scientific, where the `adapters` extra installs it. Fixed with the override every other
+  optional dependency already had.
+- **numpy 2.5 stubs** use PEP 695 `type` statements, which mypy will not parse while the analysis
+  target is 3.11. Lowering the target to 3.12 would trade a real guarantee — this package supports
+  3.11 — for a green tick, so numpy is bounded in the *dev extra* instead, where it constrains the
+  checks and not the runtime dependency. mypy is bounded below 2 for the related reason that 2.x
+  changed which code a missing import reports. Both bounds carry their removal condition.
+- **The full lane rejected every skipped test.** That became unsatisfiable when the Kearns upload
+  routes landed: an operation that needs a file from the user cannot run from defaults, and the
+  manifest test skips it by design (recorded in the M1b entry above). The gate now rejects the
+  skips it exists to catch — those caused by a missing optional dependency.
+
+Reproduced first, then fixed: a clean venv built the way CI builds one (`pip install -e
+'.[dev,docs]'`) failed the type check exactly as the runners do, and passes now.
+
+**Still failing: the `browser` job**, also since before this session. Its logs need repository admin
+rights and the suite passes locally (57/57), so it is left undiagnosed rather than guessed at.
+
+**Note on the tag.** `v0.4.0` points at `ebb868c`, whose CI is red for the pre-existing reasons
+above; the repairs are in `ae4d6ee`, after it. The released code was verified green locally on every
+suite. If a green-CI tag is wanted for the record, the cheapest path is a 0.4.1 carrying only the
+CI repairs — no library change.
