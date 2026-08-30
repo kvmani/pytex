@@ -728,7 +728,7 @@ def cell_region(repeats: Sequence[int] = (1, 1, 1)) -> CellRegion:
 
 
 def hexagonal_prism_region(
-    *, scale: int = 1, height: int = 1, anchor: Sequence[float] = (0.0, 0.0)
+    *, scale: int = 1, height: int = 1, anchor: Any = (0.0, 0.0)
 ) -> CellRegion:
     """The hexagonal prism of a hexagonal lattice, about an axis through ``anchor``.
 

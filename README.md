@@ -66,11 +66,14 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-**Version 0.3.0**, a Workbench feature release: crystal-structure import from `.cif` wherever a
-phase is chosen, an ECCI two-beam tilt solver for the SEM stage, and an explicit
-double-diffraction control on the SAED simulator. See [CHANGELOG.md](CHANGELOG.md) for the
-release notes and every scientific behaviour change stated explicitly — including the one
-capability that changes what a simulated pattern contains, which is off by default.
+**Version 0.4.0**, a Workbench feature release built around orientation relationships: the variant
+view is now a wall of parent-and-variant pairs, each stating the correspondence it realizes, the
+Euler angles that placed it and its rotation axis in both crystal bases; a new EBSD tab determines
+the relationship from measured grain orientations and names it against the catalogue; and every
+plane overlay is now the lattice plane clipped to its cell rather than a square at the world
+origin. See [CHANGELOG.md](CHANGELOG.md) for the release notes and every scientific behaviour
+change stated explicitly — no computed quantity changes in this release, but three classes of
+figure are corrected and the Variants defaults move to Burgers bcc-to-hcp in zirconium.
 
 PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
 application. What exists today:

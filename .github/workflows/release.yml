@@ -1,0 +1,79 @@
+name: Publish release
+
+# Tagging is the whole of a release. Pushing `vX.Y.Z` publishes a GitHub
+# Release whose body is that version's section of CHANGELOG.md, so the notes on
+# the Release page and the notes in the repository are the same text and cannot
+# drift apart.
+#
+# The tag is checked against the version literal before anything is published: a
+# Release named v0.4.0 built from a tree that says 0.3.9 is worse than no
+# Release at all, because every downstream pin resolves it and believes it.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: The tag must match the version literal
+        run: |
+          set -euo pipefail
+          version="$(python -c "import re,pathlib; print(re.search(r'__version__ = \"([^\"]+)\"', pathlib.Path('src/pytex/_version.py').read_text()).group(1))")"
+          tag="${GITHUB_REF_NAME}"
+          if [ "$tag" != "v${version}" ]; then
+            echo "::error::tag ${tag} does not match pytex._version.__version__ (${version}); expected v${version}."
+            exit 1
+          fi
+          echo "tag ${tag} matches version ${version}"
+
+      - name: Take the release notes from the changelog
+        id: notes
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          python - "$version" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          version = sys.argv[1]
+          text = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          # From this version's heading to the next version heading, exclusive.
+          pattern = re.compile(
+              rf"^## \[{re.escape(version)}\][^\n]*\n(.*?)(?=^## \[)",
+              re.MULTILINE | re.DOTALL,
+          )
+          match = pattern.search(text)
+          if match is None:
+              raise SystemExit(f"CHANGELOG.md has no section for {version}")
+          # Written from Python rather than through a shell redirect: the
+          # notes carry crystallographic notation, and a redirect inherits
+          # whatever encoding the interpreter happens to default to.
+          pathlib.Path("release_notes.md").write_text(
+              match.group(1).strip() + "\n", encoding="utf-8"
+          )
+          PY
+          echo "wrote $(wc -l < release_notes.md) lines of notes"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "PyTex ${GITHUB_REF_NAME}" \
+            --notes-file release_notes.md

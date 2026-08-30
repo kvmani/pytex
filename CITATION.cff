@@ -2,7 +2,7 @@ cff-version: 1.2.0
 title: PyTex
 message: "If you use PyTex, please cite the software and the scientific references documented in the repository."
 type: software
-version: 0.3.0
+version: 0.4.0
 license: GPL-3.0-or-later
 authors:
   - family-names: PyTex contributors

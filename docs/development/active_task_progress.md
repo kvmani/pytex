@@ -5265,3 +5265,32 @@ browser run.
 
 Nothing outstanding on this goal. If the prism proves useful in teaching, the obvious follow-on is
 offering it in the figure exports of the TEM and EBSD panels, which build their own scenes.
+
+## Release: PyTex 0.4.0 (2026-08-31)
+
+Cut from the work above. Version literal, `CITATION.cff`, the README status paragraph and the
+changelog section; tagged `v0.4.0`.
+
+**A release workflow now exists** (`.github/workflows/release.yml`). There is no `gh` CLI on this
+machine, so pushing the tag is what publishes the GitHub Release: the workflow refuses to publish
+if the tag disagrees with `pytex._version.__version__`, and takes the release body from that
+version's section of `CHANGELOG.md`, so the notes on the Release page and the notes in the
+repository are the same text.
+
+**Two failures the release exposed, both real:**
+
+- `test_release_metadata` requires the version literal to appear only in `_version.py`, and
+  `test_deprecation.py` had been using `0.4.0` as its example removal version. The guard was right;
+  the example moved to `99.0.0`, which the real version can never reach.
+- `test_scene3d_composition` asserted one arrow and one patch per parallelism pair. The OR figures
+  now draw every parallel object on **both** crystals, so there are two of each; the test was
+  encoding the behaviour the increment deliberately replaced. It now asserts the new contract
+  *and* that only one copy of each pair is labelled.
+
+Neither was caught by the targeted subsets run during the increments, which is the argument for the
+full suite: `test_scene3d_composition` is in the plotting suite and was not in the modules I judged
+to be in the blast radius.
+
+**Verified for the release:** `python -m pytest tests/unit` green (7201 tests, exit 0);
+`npx playwright test` 57 passed against a server it started itself; `ruff` and `mypy` clean over
+154 files.

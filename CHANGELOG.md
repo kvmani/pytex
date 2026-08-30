@@ -11,6 +11,42 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-31
+
+A feature release for the Workbench, and the first in which orientation-relationship analysis is
+its flagship in the interface as well as in the library. It rebuilds the variant view as a wall of
+parent-and-variant pairs that state their own crystallography, adds a dedicated EBSD tab that
+determines the relationship from measured grain orientations, and fixes what every plane overlay in
+the application was drawing.
+
+**Scientific behavior.** No convention changes, and no computed quantity changes: every
+orientation, misorientation, variant, pole figure and diffraction result is what 0.3.0 produced.
+What changes is what is drawn and what is stated beside it.
+
+Three changes alter figures, all of them corrections rather than choices:
+
+- **Plane overlays are now the lattice plane clipped to the cell** — entering through one edge,
+  leaving through another — instead of a fixed-size square centred on the world origin. The
+  orientation-relationship figures in particular drew a patch that straddled the origin corner and
+  hung outside both crystals; a figure published from 0.3.0 shows a plane in the right orientation
+  in the wrong place.
+- **A parallel direction is drawn as a chord of the plane it lies in**, so the figure demonstrates
+  the parallelism it asserts. It previously ran from the origin on a scene-scale length and lay in
+  nothing.
+- **Hexagonal phases are drawn as their hexagonal prism by default.** The same crystal, the
+  conventional cell for it; switch *Draw hexagonal phases as the prism* off for the 120-degree
+  rhombus.
+
+The Variants panel and the new EBSD tab default to **Burgers bcc-to-hcp in zirconium** rather than
+fcc-to-bcc martensite. Every relationship offered before is still offered; what changed is which one
+the panel opens on, chosen so the default exercises four-index Miller-Bravais labels, a hexagonal
+child frame and a non-{111} packet family. Users who opened straight into Kurdjumov-Sachs will
+find it one selection away, and the fcc-to-bcc examples still demonstrate it.
+
+The one earlier item that changes an interpretation, not a number: the Kearns panel no longer
+presents `f_RD + f_TD + f_ND = 1` as a passed check for the routes where it is true by
+construction. See **Fixed**.
+
 ### Added
 
 - **Hexagonal phases are drawn as their hexagonal prism**, on by default

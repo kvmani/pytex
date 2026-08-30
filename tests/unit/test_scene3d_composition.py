@@ -153,13 +153,30 @@ def test_world_scene_renders_loose_primitives() -> None:
 
 
 def test_from_orientation_relationship_builds_two_crystals_and_primitives() -> None:
+    """Two crystals, and every parallel object drawn on **each** of them.
+
+    Two per pair rather than one: a parallelism is a statement about both
+    crystals, and each side is clipped to its own cell, so the parent's plane
+    and the child's plane are the same physical plane with different outlines.
+    One patch at the origin -- which is what this asserted before -- put the
+    whole statement on one crystal and left the other unmarked.
+    """
+
     relationship = _ks_relationship()
     world = WorldScene3D.from_orientation_relationship(relationship, repeats=(1, 1, 1))
     assert len(world.crystals) == 2
     assert world.crystals[0].label == "fcc"
     assert world.crystals[1].label == "bcc"
-    assert len(world.primitives.arrows) == len(relationship.parallel_directions)
-    assert len(world.primitives.patches) == len(relationship.parallel_planes)
+    assert len(world.primitives.arrows) == 2 * len(relationship.parallel_directions)
+    assert len(world.primitives.patches) == 2 * len(relationship.parallel_planes)
+    # The pair is named once, on the parent's copy; the child's copy is silent,
+    # so one statement does not print itself twice over one figure.
+    assert sum(1 for patch in world.primitives.patches if patch.label) == len(
+        relationship.parallel_planes
+    )
+    assert sum(1 for arrow in world.primitives.arrows if arrow.label) == len(
+        relationship.parallel_directions
+    )
 
 
 def test_or_placement_makes_parallel_directions_and_planes_coincide() -> None:
