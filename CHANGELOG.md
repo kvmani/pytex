@@ -11,6 +11,16 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Arsenic was missing from the fallback atomic-number table**, so anything that needed its atomic
+  number raised `ValueError` wherever pymatgen is absent — which is the base test lane *and the
+  deployed environment*, since the optional `adapters` extra is not installed there. Simulating a
+  CBED pattern of gallium arsenide, the textbook non-centrosymmetric case, was the reachable
+  symptom. The table now covers all 118 elements: an atomic number is definitional, so a partial
+  table is a gap with no upside, and the next element anybody needs is the one that breaks. A test
+  breaks the pymatgen import on purpose and checks every element still resolves.
+
 ## [0.4.0] - 2026-08-31
 
 A feature release for the Workbench, and the first in which orientation-relationship analysis is

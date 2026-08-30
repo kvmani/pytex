@@ -1555,6 +1555,15 @@ def _zirconium_allotropes() -> tuple[Phase, Phase]:
     alpha-Zr a = 3.232 A, c = 5.147 A, matching the ``zr_hcp`` fixture.
     """
 
+    # The alpha phase comes from its CIF fixture, and CIF-backed phase creation
+    # is pymatgen's job. Declared here rather than at module scope because it is
+    # this helper that needs it: the rest of the file is pure crystallography
+    # and must keep running in the base lane, where the extra is not installed.
+    pytest.importorskip(
+        "pymatgen",
+        reason="loading a phase from its CIF fixture needs the 'adapters' extra",
+    )
+
     from pytex import crystal_frame, get_phase_fixture
 
     alpha_frame = crystal_frame("alpha_zr")
@@ -1644,6 +1653,12 @@ def test_burgers_principal_strains_are_the_classic_ten_percent_pair() -> None:
 
 def test_cubic_relationships_still_use_an_integer_correspondence() -> None:
     """Widening the denominator search must not change the cubic cases."""
+
+    # Both phases come from CIF fixtures, which is pymatgen's job.
+    pytest.importorskip(
+        "pymatgen",
+        reason="loading a phase from its CIF fixture needs the 'adapters' extra",
+    )
 
     from pytex import crystal_frame, get_phase_fixture
 

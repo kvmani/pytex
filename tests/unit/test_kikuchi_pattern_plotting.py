@@ -24,6 +24,16 @@ from pytex.diffraction.kikuchi import simulate_kikuchi_pattern
 from pytex.diffraction.models import DiffractionGeometry
 from pytex.plotting.diffraction import plot_kikuchi_pattern
 
+# Every test here starts from a phase loaded out of its CIF fixture, and
+# CIF-backed phase creation is pymatgen's job. Declared at module scope because
+# it is the whole module: without the optional `adapters` extra these are not
+# failures but tests that cannot be run, and reporting them as failures hid a
+# real defect underneath them for as long as it lasted.
+pytest.importorskip(
+    "pymatgen",
+    reason="loading a phase from its CIF fixture needs the 'adapters' extra",
+)
+
 CRYSTAL = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"))
 
 
