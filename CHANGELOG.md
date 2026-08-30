@@ -13,6 +13,19 @@ downstream analyses depend on them.
 
 ### Added
 
+- **Hexagonal phases are drawn as their hexagonal prism**, on by default
+  (`hexagonal_prism`, in the crystal viewer and in every variant view). The prism is three rhombic
+  cells about one atomic column — the figure every textbook draws, and the one in which the sixfold
+  symmetry is visible at all; the 120-degree rhombus the lattice is *written* on shows a third of
+  it. Its axis is put through a column of atoms rather than through the cell origin, so the six
+  corner columns are occupied: centred on the origin, a phase whose sites sit at `(1/3, 2/3)` —
+  which is how hcp is usually written — draws a prism with empty corners.
+
+  The prism replaces the rhombic outline rather than being added to it, and **overlays follow the
+  cell that is drawn**: a basal plane is clipped to the hexagon, not to the rhombus inside it. The
+  clipper takes a convex region rather than a box for exactly this reason, so the two shapes share
+  one implementation. Phases that are not on hexagonal axes are unaffected.
+
 - **Plane normals, behind a toggle** (`show_plane_normals`, off by default). An arrow from the
   centre of each parallel plane, exactly **one interplanar spacing** long, so it says where the
   next plane of the family sits instead of pointing an arbitrary distance; the label quotes the

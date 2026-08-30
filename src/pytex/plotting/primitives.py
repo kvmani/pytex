@@ -679,7 +679,134 @@ def _order_planar_polygon(points: np.ndarray, normal: np.ndarray) -> np.ndarray:
     u_axis, v_axis = _in_plane_axes(normal)
     local = points - centre
     angles = np.arctan2(local @ v_axis, local @ u_axis)
-    return points[np.argsort(angles)]
+    ordered: np.ndarray = points[np.argsort(angles)]
+    return ordered
+
+
+@dataclass(frozen=True, slots=True)
+class CellRegion:
+    """The volume a plane overlay is clipped to, in **fractional** coordinates.
+
+    Two shapes are needed and they are not the same polyhedron: the cell box
+    that every lattice has, and the hexagonal prism a hexagonal lattice is
+    conventionally drawn as. Rather than one clipper per shape, a region is a
+    set of half-spaces ``normal . x <= offset`` plus its own corners, and the
+    clipper works for any convex region — so adding a third shape later is a
+    constructor, not another intersection routine.
+
+    Fractional coordinates throughout, because that is the frame in which a
+    lattice plane is the plane ``h . x = m`` with integer ``m``, which is what
+    makes choosing a member of the family a search over integers.
+    """
+
+    half_spaces: tuple[tuple[np.ndarray, float], ...]
+    corners: np.ndarray
+
+    def contains(self, point: Any, *, tolerance: float = 1e-9) -> bool:
+        """Whether a fractional point satisfies every half-space."""
+
+        vector = np.asarray(point, dtype=np.float64)
+        return all(
+            float(np.dot(normal, vector)) <= offset + tolerance
+            for normal, offset in self.half_spaces
+        )
+
+
+def cell_region(repeats: Sequence[int] = (1, 1, 1)) -> CellRegion:
+    """The supercell box: ``0 <= x_i <= repeats_i``."""
+
+    span = np.asarray(repeats, dtype=np.float64)
+    half_spaces: list[tuple[np.ndarray, float]] = []
+    for axis in range(3):
+        lower = np.zeros(3, dtype=np.float64)
+        lower[axis] = -1.0
+        upper = np.zeros(3, dtype=np.float64)
+        upper[axis] = 1.0
+        half_spaces.append((lower, 0.0))
+        half_spaces.append((upper, float(span[axis])))
+    return CellRegion(half_spaces=tuple(half_spaces), corners=_box_corners_fractional(repeats))
+
+
+def hexagonal_prism_region(
+    *, scale: int = 1, height: int = 1, anchor: Sequence[float] = (0.0, 0.0)
+) -> CellRegion:
+    """The hexagonal prism of a hexagonal lattice, about an axis through ``anchor``.
+
+    In fractional coordinates on the ``a1, a2`` axes at 120 degrees, the
+    hexagon of circumradius ``scale`` about the origin is ``|x| <= s``,
+    ``|y| <= s`` and ``|x - y| <= s``: its six vertices are ``a1``,
+    ``a1 + a2``, ``a2`` and their negatives, which is the familiar hexagon and
+    exactly **three** rhombic cells of area. The prism is that hexagon between
+    ``z = 0`` and ``z = height``.
+
+    ``anchor`` shifts the axis within the basal plane. It exists because the
+    prism is a *drawing* — where its axis falls is a free choice — and the
+    choice that makes it look like the figure in every textbook is an axis
+    through a column of atoms, so the six corner columns are occupied too.
+    Centred on the cell origin instead, a phase whose sites sit at
+    ``(1/3, 2/3)`` — which is how hcp is usually written — draws a prism with
+    empty corners.
+    """
+
+    span = float(scale)
+    shift = np.asarray([float(anchor[0]), float(anchor[1]), 0.0], dtype=np.float64)
+    half_spaces: list[tuple[np.ndarray, float]] = []
+    for normal in (
+        np.array([1.0, 0.0, 0.0]),
+        np.array([-1.0, 0.0, 0.0]),
+        np.array([0.0, 1.0, 0.0]),
+        np.array([0.0, -1.0, 0.0]),
+        np.array([1.0, -1.0, 0.0]),
+        np.array([-1.0, 1.0, 0.0]),
+    ):
+        half_spaces.append((normal, span + float(np.dot(normal, shift))))
+    half_spaces.append((np.array([0.0, 0.0, -1.0]), 0.0))
+    half_spaces.append((np.array([0.0, 0.0, 1.0]), float(height)))
+    basal = np.array(
+        [[span, 0.0], [span, span], [0.0, span], [-span, 0.0], [-span, -span], [0.0, -span]],
+        dtype=np.float64,
+    )
+    corners = np.array(
+        [
+            [point[0] + shift[0], point[1] + shift[1], level]
+            for level in (0.0, float(height))
+            for point in basal
+        ],
+        dtype=np.float64,
+    )
+    return CellRegion(half_spaces=tuple(half_spaces), corners=corners)
+
+
+def _polygon_from_region(
+    region: CellRegion, normal_frac: np.ndarray, offset: float, basis: np.ndarray
+) -> np.ndarray | None:
+    """The polygon in which one plane meets a convex region, in Cartesian angstrom.
+
+    Every vertex of the section is the meeting of the plane with two of the
+    region's faces, so the candidates are the solutions of the 3x3 systems over
+    face pairs; those satisfying every other half-space are the section's
+    vertices. It is quadratic in the number of faces, which for six or eight
+    faces is nothing, and it removes the need for a second clipper when the
+    region stops being a box.
+    """
+
+    faces = region.half_spaces
+    points: list[np.ndarray] = []
+    for first in range(len(faces)):
+        for second in range(first + 1, len(faces)):
+            matrix = np.vstack([normal_frac, faces[first][0], faces[second][0]])
+            if abs(float(np.linalg.det(matrix))) < 1e-12:
+                continue
+            target = np.array([offset, faces[first][1], faces[second][1]], dtype=np.float64)
+            candidate = np.linalg.solve(matrix, target)
+            if not region.contains(candidate, tolerance=1e-9):
+                continue
+            if not any(np.allclose(candidate, seen, atol=1e-8) for seen in points):
+                points.append(candidate)
+    if len(points) < 3:
+        return None
+    cartesian = np.asarray([basis @ point for point in points], dtype=np.float64)
+    return cartesian
 
 
 def lattice_plane_polygon(
@@ -688,13 +815,14 @@ def lattice_plane_polygon(
     *,
     repeats: Sequence[int] = (1, 1, 1),
     offset: float | None = None,
+    region: CellRegion | None = None,
 ) -> np.ndarray | None:
-    """The lattice plane ``(hkl)`` clipped to the cell box, as an ordered polygon.
+    """The lattice plane ``(hkl)`` clipped to the cell, as an ordered polygon.
 
     Purpose
     -------
     A plane overlay is a statement about a *lattice*, so it has to be drawn
-    where that lattice is: entering the box through one edge and leaving
+    where that lattice is: entering the cell through one edge and leaving
     through another, with nothing outside it. A fixed-size square centred on
     the origin — which is what the orientation-relationship overlays used to
     draw — is a different object that happens to have the right normal. It
@@ -704,61 +832,47 @@ def lattice_plane_polygon(
 
     Method
     ------
-    The plane ``h·x = offset`` is intersected with the twelve edges of the box
-    (in fractional coordinates, where a lattice plane is exactly this linear
+    The plane ``h.x = offset`` is intersected with the region's faces (in
+    fractional coordinates, where a lattice plane is exactly this linear
     equation and the integer offsets are exactly the members of the family).
-    Intersections inside the box are the polygon's vertices, ordered by angle
-    about the normal.
+    ``region`` defaults to the cell box; pass `hexagonal_prism_region` to clip
+    to the prism a hexagonal crystal is drawn as, so the overlay follows the
+    cell **that is on screen** rather than the one underneath it.
 
     Choosing the offset
     -------------------
     ``offset=None`` picks the member of the family with the **largest
-    cross-section** through the box, ties broken toward the box centre. That is
-    the member a reader means by "the (110) plane of this cell": for a cubic
-    box it is the full diagonal rectangle through two opposite edges, and the
-    degenerate members that merely touch an edge or a corner are rejected for
-    having fewer than three distinct intersections.
+    cross-section** through the region, ties broken toward its centre and then
+    toward the larger offset. That is the member a reader means by "the (110)
+    plane of this cell": for a cubic box it is the full diagonal rectangle
+    through two opposite edges, and the degenerate members that merely touch an
+    edge or a corner are rejected for having fewer than three vertices.
 
     Returns
     -------
     ndarray of shape (N, 3) in Cartesian angstrom, or ``None`` when no member
-    of the family cuts the box in a polygon — which happens only for a zero
-    index triple.
+    of the family cuts the region in a polygon.
     """
 
     normal_frac = np.asarray(indices, dtype=np.float64)
     if np.allclose(normal_frac, 0.0):
         return None
     basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
-    corners = _box_corners_fractional(repeats)
+    volume = region if region is not None else cell_region(repeats)
     reciprocal = np.asarray(phase.lattice.reciprocal_basis().matrix, dtype=np.float64)
     normal_cart = reciprocal @ normal_frac
     normal_cart = normal_cart / np.linalg.norm(normal_cart)
 
     def polygon_at(value: float) -> np.ndarray | None:
-        points: list[np.ndarray] = []
-        for first, second in _BOX_EDGES:
-            start = corners[first]
-            direction = corners[second] - start
-            denominator = float(np.dot(normal_frac, direction))
-            if np.isclose(denominator, 0.0):
-                continue
-            step = (value - float(np.dot(normal_frac, start))) / denominator
-            if not -1e-10 <= step <= 1.0 + 1e-10:
-                continue
-            point = basis @ (start + step * direction)
-            if not any(np.allclose(point, seen, atol=1e-8) for seen in points):
-                points.append(point)
-        if len(points) < 3:
+        points = _polygon_from_region(volume, normal_frac, value, basis)
+        if points is None:
             return None
-        return _order_planar_polygon(np.vstack(points), normal_cart)
+        return _order_planar_polygon(points, normal_cart)
 
     if offset is not None:
         return polygon_at(float(offset))
 
-    # Every member of the family that can reach the box: `h·x` runs between the
-    # sums of its negative and positive contributions over the box corners.
-    projections = corners @ normal_frac
+    projections = volume.corners @ normal_frac
     lowest = int(np.floor(float(np.min(projections)) - 1e-9))
     highest = int(np.ceil(float(np.max(projections)) + 1e-9))
     middle = float(np.mean(projections))
@@ -768,12 +882,12 @@ def lattice_plane_polygon(
         polygon = polygon_at(float(candidate))
         if polygon is None:
             continue
-        # Largest area wins; among equal areas the one nearest the box centre;
-        # among those, the larger offset. The last two rules only ever decide
-        # ties between congruent members — the two faces of a (100), the top
-        # and bottom (0001) of a hexagonal cell — and they resolve such a tie
-        # the way this application always has, to the far face, so unifying the
-        # policy moves no figure that was already right.
+        # Largest area wins; among equal areas the one nearest the region's
+        # centre; among those, the larger offset. The last two rules only ever
+        # decide ties between congruent members — the two faces of a (100), the
+        # top and bottom (0001) of a hexagonal cell — and they resolve such a
+        # tie the way this application always has, to the far face, so unifying
+        # the policy moves no figure that was already right.
         key = (-_polygon_area(polygon), abs(candidate - middle), -candidate)
         if best_key is None or key < best_key:
             best_key = key
@@ -841,6 +955,7 @@ def segment_in_cell(
     *,
     repeats: Sequence[int] = (1, 1, 1),
     anchor: Any = None,
+    region: CellRegion | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """The chord a direction cuts across the cell box, through its centre.
 
@@ -851,23 +966,29 @@ def segment_in_cell(
     """
 
     basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
-    span = np.asarray(repeats, dtype=np.float64)
-    centre = basis @ (0.5 * span) if anchor is None else np.asarray(anchor, dtype=np.float64)
+    volume = region if region is not None else cell_region(repeats)
+    default_centre = basis @ np.mean(volume.corners, axis=0)
+    centre = default_centre if anchor is None else np.asarray(anchor, dtype=np.float64)
     axis = np.asarray(direction, dtype=np.float64)
     axis = axis / np.linalg.norm(axis)
-    # Slab clipping in fractional coordinates: the box is 0 <= x_i <= span_i.
+    # Ray-region clipping in fractional coordinates, where every face of the
+    # region — box or prism — is one linear inequality.
     inverse = np.linalg.inv(basis)
     origin_frac = inverse @ centre
     axis_frac = inverse @ axis
     lowest, highest = -np.inf, np.inf
-    for index in range(3):
-        component = float(axis_frac[index])
-        if np.isclose(component, 0.0):
+    for normal, offset in volume.half_spaces:
+        denominator = float(np.dot(normal, axis_frac))
+        slack = offset - float(np.dot(normal, origin_frac))
+        if np.isclose(denominator, 0.0):
+            if slack < -1e-9:
+                lowest, highest = 0.0, -1.0
             continue
-        near = (0.0 - float(origin_frac[index])) / component
-        far = (float(span[index]) - float(origin_frac[index])) / component
-        lowest = max(lowest, min(near, far))
-        highest = min(highest, max(near, far))
+        bound = slack / denominator
+        if denominator > 0.0:
+            highest = min(highest, bound)
+        else:
+            lowest = max(lowest, bound)
     if not np.isfinite(lowest) or not np.isfinite(highest) or highest <= lowest:
         edge = float(np.max(np.linalg.norm(basis, axis=0)))
         return centre - 0.5 * edge * axis, centre + 0.5 * edge * axis
@@ -881,6 +1002,7 @@ def plane_normal_endpoints(
     *,
     length: float,
     repeats: Sequence[int] = (1, 1, 1),
+    region: CellRegion | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """A normal arrow from the centre of a drawn plane that stays in the crystal.
 
@@ -900,18 +1022,17 @@ def plane_normal_endpoints(
     axis = as_float_array(normal, shape=(3,))
     axis = axis / np.linalg.norm(axis)
     basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=np.float64)
-    span = np.asarray(repeats, dtype=np.float64)
+    volume = region if region is not None else cell_region(repeats)
     inverse = np.linalg.inv(basis)
 
     def inside(point: np.ndarray) -> bool:
-        fractional = inverse @ point
-        return bool(np.all(fractional >= -1e-6) and np.all(fractional <= span + 1e-6))
+        return volume.contains(inverse @ point, tolerance=1e-6)
 
     for sense in (1.0, -1.0):
         head = centre + sense * float(length) * axis
         if inside(head):
             return centre, head
-    tail, head = segment_in_cell(phase, axis, repeats=repeats, anchor=centre)
+    tail, head = segment_in_cell(phase, axis, repeats=repeats, anchor=centre, region=volume)
     # Keep the arrow rooted at the plane it belongs to: the chord is centred on
     # the polygon, so the longer half of it is the one to draw.
     forward = float(np.linalg.norm(head - centre))
@@ -940,6 +1061,7 @@ def crystal_plane_patch(
     offset: float = 0.0,
     cell_repeats: Sequence[int] | None = None,
     cell_offset: float | None = None,
+    cell_region_override: CellRegion | None = None,
     color: str = "#0f766e",
     alpha: float = 0.28,
     label: str | Sequence[int] | None = None,
@@ -949,7 +1071,9 @@ def crystal_plane_patch(
 
     Two shapes, and the first is the one to want.
 
-    **Clipped to the cell** — pass ``cell_repeats``. The patch is the lattice
+    **Clipped to the cell** — pass ``cell_repeats``, or ``cell_region_override``
+    for a cell that is not a box (the hexagonal prism a hexagonal crystal is
+    drawn as, whose overlay must follow the cell that is *on screen*). The patch is the lattice
     plane cut by the cell box: it enters through one edge, leaves through
     another, and nothing of it lies outside the crystal it belongs to. Which
     member of the family is drawn follows `lattice_plane_polygon`: the largest
@@ -964,12 +1088,13 @@ def crystal_plane_patch(
     before they were given ``cell_repeats``.
     """
 
-    if cell_repeats is not None:
+    if cell_repeats is not None or cell_region_override is not None:
         polygon = lattice_plane_polygon(
             plane.phase,
             tuple(int(value) for value in plane.miller.indices),
-            repeats=cell_repeats,
+            repeats=cell_repeats or (1, 1, 1),
             offset=cell_offset,
+            region=cell_region_override,
         )
         if polygon is not None:
             return PlanePatch3D(

@@ -5,6 +5,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import math
+from itertools import pairwise
 
 import numpy as np
 import pytest
@@ -371,3 +372,125 @@ class TestPlaneClipping:
             assert np.all(point >= -1e-9)
             assert np.all(point <= edge + 1e-9)
         assert float(np.linalg.norm(head - tail)) == pytest.approx(edge)
+
+
+class TestHexagonalPrism:
+    """A hexagonal crystal is drawn as its prism: three cells, one outline.
+
+    The prism is a *drawing* of the lattice rather than a cell of it, so what
+    is checked is that it is the right volume — three rhombic cells, six
+    basal edges, twelve vertices — that its atoms are the atoms inside it, and
+    that overlays follow it rather than the rhombus underneath.
+    """
+
+    @staticmethod
+    def _phase(builtin: str):  # type: ignore[no-untyped-def]
+        from pytex.app.phases import phase_from_request
+
+        return phase_from_request({"builtin": builtin})[1]
+
+    def test_the_prism_has_three_times_the_area_of_the_rhombic_cell(self) -> None:
+        """Three cells exactly, which is what makes the hexagon a hexagon.
+
+        A regular hexagon of circumradius ``a`` has area ``3 sqrt(3) a^2 / 2``;
+        the 120-degree rhombus has ``sqrt(3) a^2 / 2``. The ratio is the whole
+        claim of "three cells", and it is checked rather than asserted because
+        the basal section is computed by the same clipper the overlays use.
+        """
+
+        from pytex.plotting.primitives import hexagonal_prism_region, lattice_plane_polygon
+
+        phase = self._phase("zr_hcp")
+        prism = lattice_plane_polygon(
+            phase, (0, 0, 1), region=hexagonal_prism_region(scale=1, height=1)
+        )
+        rhombus = lattice_plane_polygon(phase, (0, 0, 1))
+        assert prism is not None and rhombus is not None
+        assert prism.shape[0] == 6
+        assert rhombus.shape[0] == 4
+
+        def area(points: np.ndarray) -> float:
+            origin = points[0]
+            total = np.zeros(3)
+            for first, second in pairwise(points[1:]):
+                total = total + np.cross(first - origin, second - origin)
+            return float(np.linalg.norm(total) / 2.0)
+
+        assert area(prism) == pytest.approx(3.0 * area(rhombus), rel=1e-9)
+        edge = float(phase.lattice.a)
+        assert area(prism) == pytest.approx(3.0 * math.sqrt(3.0) * edge * edge / 2.0, rel=1e-9)
+
+    def test_the_basal_section_is_a_regular_hexagon(self) -> None:
+        from pytex.plotting.primitives import hexagonal_prism_region, lattice_plane_polygon
+
+        phase = self._phase("zr_hcp")
+        polygon = lattice_plane_polygon(
+            phase, (0, 0, 1), region=hexagonal_prism_region(scale=1, height=1)
+        )
+        assert polygon is not None
+        centre = polygon.mean(axis=0)
+        radii = np.linalg.norm(polygon - centre, axis=1)
+        assert np.allclose(radii, float(phase.lattice.a), atol=1e-9)
+
+    def test_the_scene_draws_the_prism_and_only_the_prism(self) -> None:
+        """One outline. Two would place the crystal's boundary in two places."""
+
+        from pytex.plotting.crystal3d import build_crystal_scene
+
+        phase = self._phase("zr_hcp")
+        scene = build_crystal_scene(
+            phase, repeats=(1, 1, 1), show_unit_cells=True, hexagonal_prism=True
+        )
+        assert [cell.kind for cell in scene.cells] == ["hexagonal_prism"]
+        # Six basal edges top and bottom, six verticals.
+        assert len(scene.cells[0].edges_angstrom) == 18
+        assert scene.lattice_edges == ()
+
+    def test_the_prism_holds_three_cells_worth_of_atoms(self) -> None:
+        from pytex.plotting.crystal3d import build_crystal_scene
+
+        phase = self._phase("zr_hcp")
+        rhombic = build_crystal_scene(phase, repeats=(1, 1, 1))
+        prism = build_crystal_scene(phase, repeats=(1, 1, 1), hexagonal_prism=True)
+        assert len(prism.atoms) > len(rhombic.atoms)
+        # The corner columns are what make it read as hexagonal: six of them,
+        # at the hexagon's vertices, plus the axis column.
+        basal = {
+            (round(float(atom.position_angstrom[0]), 3), round(float(atom.position_angstrom[1]), 3))
+            for atom in prism.atoms
+        }
+        assert len(basal) >= 7
+
+    def test_a_cubic_phase_is_unaffected(self) -> None:
+        """The prism is a hexagonal-axes drawing, and asking for it elsewhere is a no-op."""
+
+        from pytex.plotting.crystal3d import build_crystal_scene, has_hexagonal_axes
+
+        phase = self._phase("zr_bcc_beta")
+        assert not has_hexagonal_axes(phase)
+        plain = build_crystal_scene(phase, repeats=(1, 1, 1), show_unit_cells=True)
+        asked = build_crystal_scene(
+            phase, repeats=(1, 1, 1), show_unit_cells=True, hexagonal_prism=True
+        )
+        assert len(asked.atoms) == len(plain.atoms)
+        assert [cell.kind for cell in asked.cells] == [cell.kind for cell in plain.cells]
+
+    def test_an_overlay_follows_the_prism_rather_than_the_rhombus(self) -> None:
+        """The overlay belongs to the cell that is on screen.
+
+        Clipped to the rhombus while the prism is drawn, a basal plane would be
+        a third shape belonging to neither the crystal nor the statement.
+        """
+
+        from pytex.plotting.crystal3d import build_crystal_scene
+
+        phase = self._phase("zr_hcp")
+        scene = build_crystal_scene(
+            phase,
+            repeats=(1, 1, 1),
+            show_unit_cells=True,
+            hexagonal_prism=True,
+            plane_hkls=((0, 0, 1),),
+        )
+        assert len(scene.planes) == 1
+        assert scene.planes[0].vertices_angstrom.shape[0] == 6

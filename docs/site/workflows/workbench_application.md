@@ -508,11 +508,20 @@ tooltips, and the status line reads out how far each parallel plane is from **ed
 parallel direction from **end-on** — because a plane two degrees off edge-on looks edge-on, and no
 picture can tell you otherwise.
 
+**A hexagonal phase is drawn as its prism.** Three rhombic cells about one atomic column — the
+figure every textbook draws — rather than the single 120-degree rhombus the lattice is written on,
+which shows a third of it and in which the sixfold symmetry cannot be seen. The prism's axis goes
+through a column of atoms, so the six corner columns are occupied; centred on the cell origin
+instead, a phase whose sites sit at (1/3, 2/3) — which is how hcp is usually written — would draw a
+prism with empty corners. Switch **Draw hexagonal phases as the prism** off for the rhombic cell.
+Cubic and other phases are unaffected, because there is no prism to draw.
+
 **Every overlay is clipped to the cell it belongs to.** A plane overlay is a statement about a
 lattice, so it is drawn where that lattice is: it enters the cell through one edge and leaves
 through another, and no part of it lies outside the crystal. The member of the family drawn is the
 one with the **largest cross-section** through the box, which is what a reader means by "the (110)
-plane of this cell". The parallel direction is drawn as a **chord of that plane** — the claim a
+plane of this cell". With the prism on, the cell in question is the prism: a basal plane comes out
+as the hexagon, not as the rhombus inside it. The parallel direction is drawn as a **chord of that plane** — the claim a
 plane-and-direction pair makes is that the direction lies in the plane, and clipped to the polygon
 the arrow demonstrates it instead of merely having the right slope.
 

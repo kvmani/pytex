@@ -5209,8 +5209,59 @@ and no arrow endpoint lies outside the nearest crystal's box — plus geometry t
 itself (plane equation, containment, exact diagonal-section area, chord containment, refusal for an
 out-of-plane direction).
 
+### Increment 4 — the hexagonal prism (DONE)
+
+Half of it already existed: `CrystalCellOverlay(kind="hexagonal_prism")` drew the twelve-edge prism
+correctly and nothing in the workbench ever asked for it, because it drew only the *frame*. What
+was missing was the atoms, the default, and the overlays following it.
+
+- **The clipper takes a convex region, not a box.** `CellRegion` is a set of half-spaces in
+  fractional coordinates plus its corners; `cell_region()` and `hexagonal_prism_region()` build the
+  two shapes, and one intersection routine serves both. Adding a third shape later is a
+  constructor rather than another clipper. The box results are unchanged, which the existing
+  geometry tests assert exactly.
+- **The prism's axis goes through an atomic column**, not through the cell origin. This is the
+  detail that decides whether the picture looks like the textbook: hcp is written with sites at
+  `(1/3, 2/3)`, so an origin-centred prism has six *empty* corner columns. `prism_axis_anchor`
+  keeps the origin when a site is already there and otherwise uses the first site's basal
+  coordinates.
+- **Atoms are filtered, not tiled.** The prism is not a supercell of the rhombic cell, so its atoms
+  come from a larger block cut by the prism itself. Boundary atoms are kept, as everywhere else in
+  the module — dropping them would leave the corner columns half empty, which are the columns that
+  make it read as hexagonal.
+- **One outline.** The prism replaces the rhombic cell overlay *and* the supercell box; two
+  outlines would put the crystal's boundary in two places.
+- Overlays follow: `_cell_region_for` gives each side of an OR figure the region it is drawn as, so
+  the basal plane of a Burgers child comes out as the hexagon while the parent's {110} stays a
+  rectangle in its cubic box.
+
+Exposed as **Draw hexagonal phases as the prism**, default on, in the crystal viewer and in every
+variant view; ignored for phases that are not on hexagonal axes.
+
+`CellRegion` is a new public class, so the class-model atlas was regenerated and its prose counts
+edited (291/274 to 292/275) — the standing cost recorded in this repository's notes.
+
+Verified: prism geometry tested against the exact area identity (the hexagon is three rhombic cells
+and `3 sqrt(3) a^2 / 2`), the six-fold regularity of the basal section, the single outline, the
+corner columns, the no-op for cubic phases, and the overlay following the prism. `ruff` and `mypy`
+clean; `npx playwright test` **57 passed**; and the unit modules this increment can reach —
+`test_plotting_primitives`, `test_app_crystal`, `test_app_variants`, `test_app_ebsd_or`,
+`test_xrd_saed_and_styles`, `test_class_model_atlas`, `test_app_manifest` — green.
+
+**Stated plainly: a full `tests/unit` run was not completed for this increment.** The machine was
+carrying two dozen unrelated Python processes from another project and the suite was taking hours
+rather than the usual twenty minutes; it was green in full immediately before this increment, and
+the modules above are the ones its blast radius reaches. Worth a full run when the machine is idle.
+
+**A testing hazard found and worth remembering.** `playwright.config.js` sets
+`reuseExistingServer: !process.env.CI`, so a Playwright run *reuses* a workbench server already on
+port 8765 — including the preview server used for looking at the app. The Python side of that
+server is whatever was loaded when it started, so browser runs during this work were silently
+testing stale service code while the JS was current. The suite was re-run against a server it
+started itself, which is what the 57 above refers to. Stop the preview server before trusting a
+browser run.
+
 ### Next
 
-Increment 4 — the hexagonal prism: three rhombic cells tiled about **c**, atoms and bonds filled in,
-the prism frame drawn instead of the rhombus, and the plane clipper clipping to the prism. Default
-on for hexagonal phases.
+Nothing outstanding on this goal. If the prism proves useful in teaching, the obvious follow-on is
+offering it in the figure exports of the TEM and EBSD panels, which build their own scenes.

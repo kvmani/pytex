@@ -71,6 +71,11 @@ $$
 
 ordered cyclically in the basal plane and extruded by integer multiples of $\mathbf{c}$.
 
+The prism is also the region plane overlays are clipped to when it is drawn, so a basal plane
+appears as the hexagon rather than as the rhombus inside it, and its axis is placed through an
+atomic column so that the six corner columns are occupied — with the axis on the cell origin, a
+phase whose sites sit at $(1/3, 2/3)$ draws a prism with empty corners.
+
 This hexagonal prism is an explicit visualization overlay, not a replacement for the canonical cell semantics of the PyTex data model. It is useful because it exposes the sixfold basal symmetry more directly than the direct-basis parallelepiped, but users should not confuse it with the primitive cell stored by the library.
 
 Plane overlays are defined from Miller indices $(hkl)$ and the reciprocal-space normal

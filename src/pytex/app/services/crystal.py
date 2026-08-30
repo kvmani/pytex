@@ -1002,6 +1002,19 @@ def _axis_arrows(spec: PhaseSpec) -> list[dict[str, Any]]:
             default=False,
             group="Overlays",
         ),
+        BooleanParameter(
+            name="hexagonal_prism",
+            label="Draw hexagonal phases as the prism",
+            help_text=(
+                "Draw a hexagonal phase as its hexagonal prism — three cells about one "
+                "atomic column — rather than as the 120-degree rhombus the lattice is "
+                "written on. The prism is the figure the sixfold symmetry is visible in; the "
+                "rhombus shows a third of it. Plane overlays follow, so a basal plane is "
+                "clipped to the hexagon. Ignored for phases that are not on hexagonal axes."
+            ),
+            default=True,
+            group="Extent",
+        ),
         ChoiceParameter(
             name="atom_labels",
             label="Atom labels",
@@ -1060,6 +1073,7 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
         show_bonds=bool(request["show_bonds"]),
         bond_tolerance_angstrom=float(request["bond_tolerance_angstrom"]),
         show_unit_cells=bool(request["show_unit_cells"]),
+        hexagonal_prism=bool(request["hexagonal_prism"]),
         atom_label_mode=str(request["atom_labels"]),
         plane_overlays=tuple(_plane_overlay(row, phase) for row in plane_rows),
         direction_overlays=tuple(_direction_overlay(row, phase) for row in direction_rows),
@@ -1127,6 +1141,7 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
             "directions": [list(row) for row in direction_rows],
             "show_bonds": bool(request["show_bonds"]),
             "show_unit_cells": bool(request["show_unit_cells"]),
+            "hexagonal_prism": bool(request["hexagonal_prism"]),
             "atom_labels": request["atom_labels"],
             "bond_tolerance_angstrom": float(request["bond_tolerance_angstrom"]),
         },
@@ -1947,6 +1962,19 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             default=False,
             group="Overlays",
         ),
+        BooleanParameter(
+            name="hexagonal_prism",
+            label="Draw hexagonal phases as the prism",
+            help_text=(
+                "Draw a hexagonal phase as its hexagonal prism — three cells about one "
+                "atomic column — rather than as the 120-degree rhombus the lattice is "
+                "written on. The prism is the figure the sixfold symmetry is visible in; the "
+                "rhombus shows a third of it. Plane overlays follow, so a basal plane is "
+                "clipped to the hexagon. Ignored for phases that are not on hexagonal axes."
+            ),
+            default=True,
+            group="Extent",
+        ),
         ChoiceParameter(
             name="atom_labels",
             label="Atom labels",
@@ -2096,6 +2124,7 @@ def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
         show_bonds=bool(request["show_bonds"]) and appearance["show_bonds"],
         bond_tolerance_angstrom=float(request["bond_tolerance_angstrom"]),
         show_unit_cells=bool(request["show_unit_cells"]) and appearance["show_cells"],
+        hexagonal_prism=bool(request["hexagonal_prism"]),
         atom_label_mode=str(request["atom_labels"]) if appearance["show_labels"] else "none",
         plane_overlays=(
             tuple(_plane_overlay(row, phase) for row in plane_rows)

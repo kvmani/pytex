@@ -41,7 +41,12 @@ from pytex.core._chemistry import (
 from pytex.core.lattice import AtomicSite, CrystalDirection, CrystalPlane, MillerIndex, Phase
 from pytex.core.notation import format_direction_indices, format_plane_indices
 from pytex.plotting.frames import add_frame_indicator
-from pytex.plotting.primitives import Transform3D, lattice_plane_polygon
+from pytex.plotting.primitives import (
+    CellRegion,
+    Transform3D,
+    hexagonal_prism_region,
+    lattice_plane_polygon,
+)
 from pytex.plotting.styles import _deep_merge, resolve_style
 
 
@@ -703,6 +708,108 @@ class CrystalScene:
         )
 
 
+def has_hexagonal_axes(phase: Phase) -> bool:
+    """Whether this lattice is on hexagonal axes: ``a = b``, 90/90/120.
+
+    The test the prism needs, and the reason it is a function: "hexagonal" as a
+    *crystal system* is a symmetry statement, while the prism is a statement
+    about the axes the cell is written on. Trigonal phases on hexagonal axes
+    get the prism too, and correctly so — the drawing follows the cell.
+    """
+
+    lattice = phase.lattice
+    return bool(
+        np.isclose(lattice.a, lattice.b, atol=1e-6)
+        and np.isclose(lattice.alpha_deg, 90.0, atol=1e-6)
+        and np.isclose(lattice.beta_deg, 90.0, atol=1e-6)
+        and np.isclose(lattice.gamma_deg, 120.0, atol=1e-6)
+    )
+
+
+def prism_axis_anchor(phase: Phase) -> np.ndarray:
+    """Where to put the prism's axis: through a column of atoms.
+
+    The prism's placement is a free choice — it is a drawing of the lattice,
+    not a cell of it — and the choice that gives the familiar picture is an
+    axis through an atomic column, so the six corner columns carry atoms too.
+    A site already at the cell origin keeps the origin; otherwise the first
+    site's basal coordinates are used, which for hcp written with sites at
+    ``(1/3, 2/3)`` and ``(2/3, 1/3)`` is the column that makes the corners.
+    """
+
+    if phase.unit_cell is None or not phase.unit_cell.sites:
+        return np.zeros(2, dtype=np.float64)
+    for site in phase.unit_cell.sites:
+        basal = np.asarray(site.fractional_coordinates, dtype=np.float64)[:2]
+        if np.allclose(basal % 1.0, 0.0, atol=1e-9):
+            return np.zeros(2, dtype=np.float64)
+    first = np.asarray(phase.unit_cell.sites[0].fractional_coordinates, dtype=np.float64)
+    return np.asarray(first[:2], dtype=np.float64)
+
+
+def prism_region_for(phase: Phase, repeats: tuple[int, int, int]) -> CellRegion:
+    """The prism this phase is drawn as, at these repeats."""
+
+    return hexagonal_prism_region(
+        scale=max(repeats[0], repeats[1]),
+        height=repeats[2],
+        anchor=prism_axis_anchor(phase),
+    )
+
+
+def _hexagonal_prism_atom_positions(
+    phase: Phase,
+    repeats: tuple[int, int, int],
+    *,
+    include_boundary_atoms: bool = True,
+) -> list[tuple[AtomicSite, np.ndarray]]:
+    """Every atom of the hexagonal prism, which is three rhombic cells.
+
+    The prism is not a supercell of the rhombic cell, so its atoms cannot come
+    from a block of translations: they come from a *larger* block, filtered by
+    the prism itself. Drawn without the filter the picture is a parallelogram
+    of atoms with a hexagon outlined over part of it, which is worse than
+    either alone.
+
+    Boundary atoms are kept, as everywhere else in this module: an atom on the
+    prism wall belongs to the drawing of the prism, and dropping it would leave
+    the six corner columns — the columns that make it *look* hexagonal — half
+    empty.
+    """
+
+    if phase.unit_cell is None or not phase.unit_cell.sites:
+        raise ValueError("Crystal visualization requires phase.unit_cell with atomic sites.")
+    scale = int(max(repeats[0], repeats[1]))
+    height = int(repeats[2])
+    region = prism_region_for(phase, repeats)
+    direct_basis = phase.lattice.direct_basis().matrix
+    tolerance = 1e-9 if include_boundary_atoms else -1e-9
+    atoms: list[tuple[AtomicSite, np.ndarray]] = []
+    seen: set[tuple[str, tuple[float, float, float]]] = set()
+    for site in phase.unit_cell.sites:
+        base = np.asarray(site.fractional_coordinates, dtype=np.float64)
+        for i in range(-scale - 1, scale + 2):
+            for j in range(-scale - 1, scale + 2):
+                for k in range(-1, height + 2):
+                    frac = base + np.array([i, j, k], dtype=np.float64)
+                    if not region.contains(frac, tolerance=tolerance):
+                        continue
+                    position = direct_basis @ frac
+                    key = (
+                        site.species,
+                        (
+                            round(float(position[0]), 6),
+                            round(float(position[1]), 6),
+                            round(float(position[2]), 6),
+                        ),
+                    )
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    atoms.append((site, position))
+    return atoms
+
+
 def _supercell_atom_positions(
     phase: Phase,
     repeats: tuple[int, int, int],
@@ -864,8 +971,13 @@ def _hexagonal_prism_geometry(
             "alpha=beta=90 deg, gamma=120 deg."
         )
     basis = lattice.direct_basis().matrix
-    a_vec = basis[:, 0]
-    b_vec = basis[:, 1]
+    # The hexagon's circumradius in cells. One is the single prism — three
+    # rhombic cells, the figure every hexagonal crystal is drawn as — and
+    # larger values scale it, so "cells along each axis" still means something
+    # in prism mode instead of being quietly ignored.
+    scale = float(max(overlay.span_cells[0], overlay.span_cells[1]))
+    a_vec = scale * basis[:, 0]
+    b_vec = scale * basis[:, 1]
     c_vec = float(overlay.span_cells[2]) * basis[:, 2]
     anchor_cart = basis @ overlay.anchor_fractional
     basal_vectors = (
@@ -917,6 +1029,8 @@ def _plane_polygon_for_box(
     hkl: tuple[int, ...],
     repeats: tuple[int, int, int],
     offset: float | None,
+    *,
+    region: CellRegion | None = None,
 ) -> np.ndarray | None:
     """The lattice plane clipped to the supercell box.
 
@@ -929,7 +1043,7 @@ def _plane_polygon_for_box(
     member of the family with the largest cross-section through the box.
     """
 
-    return lattice_plane_polygon(phase, hkl, repeats=repeats, offset=offset)
+    return lattice_plane_polygon(phase, hkl, repeats=repeats, offset=offset, region=region)
 
 
 def _coerce_plane_overlay(
@@ -1197,6 +1311,7 @@ def build_crystal_scene(
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
     direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
     show_unit_cells: bool = False,
+    hexagonal_prism: bool = False,
     cell_overlays: tuple[CrystalCellOverlay, ...] = (),
     slab_hkl: tuple[int, int, int] | None = None,
     slab_thickness_angstrom: float | None = None,
@@ -1227,8 +1342,18 @@ def build_crystal_scene(
     crystal_style = style["crystal"]
     if render_style == "space_filling":
         show_bonds = False
-    atom_data = _supercell_atom_positions(
-        phase, repeats, include_boundary_atoms=include_boundary_atoms
+    # The prism is the conventional drawing of a hexagonal cell, and it is a
+    # different volume from the rhombic block: three cells rather than one, so
+    # its atoms are filtered out of a larger block rather than tiled.
+    as_prism = bool(hexagonal_prism) and has_hexagonal_axes(phase)
+    atom_data = (
+        _hexagonal_prism_atom_positions(
+            phase, repeats, include_boundary_atoms=include_boundary_atoms
+        )
+        if as_prism
+        else _supercell_atom_positions(
+            phase, repeats, include_boundary_atoms=include_boundary_atoms
+        )
     )
     if slab_hkl is not None and slab_thickness_angstrom is not None:
         normal = phase.lattice.reciprocal_basis().matrix @ np.array(slab_hkl, dtype=np.float64)
@@ -1268,16 +1393,30 @@ def build_crystal_scene(
                             end_species=atom_j.species,
                         )
                     )
-    merged_cell_overlays = (
-        tuple(
+    if not show_unit_cells:
+        default_cells: tuple[CrystalCellOverlay, ...] = ()
+    elif as_prism:
+        # One outline, not three: the prism *is* the cell being shown, and
+        # drawing the rhombi inside it would say the crystal has boundaries
+        # where the picture does not.
+        anchor = prism_axis_anchor(phase)
+        default_cells = (
+            CrystalCellOverlay(
+                kind="hexagonal_prism",
+                anchor_fractional=np.array([anchor[0], anchor[1], 0.0], dtype=np.float64),
+                span_cells=(max(repeats[0], repeats[1]), max(repeats[0], repeats[1]), repeats[2]),
+            ),
+        )
+    else:
+        default_cells = tuple(
             CrystalCellOverlay(anchor_fractional=np.array([i, j, k], dtype=np.float64))
             for i in range(repeats[0])
             for j in range(repeats[1])
             for k in range(repeats[2])
         )
-        if show_unit_cells
-        else ()
-    ) + tuple(_coerce_cell_overlay(overlay, phase=phase) for overlay in cell_overlays)
+    merged_cell_overlays = default_cells + tuple(
+        _coerce_cell_overlay(overlay, phase=phase) for overlay in cell_overlays
+    )
     cells: list[CrystalCellGlyph] = []
     for cell_overlay in merged_cell_overlays:
         edges, faces = _cell_overlay_cartesian(phase, cell_overlay)
@@ -1318,6 +1457,7 @@ def build_crystal_scene(
             phase,
             tuple(int(value) for value in plane_overlay.plane.miller.indices),
             repeats,
+            region=prism_region_for(phase, repeats) if as_prism else None,
             # `None` asks for the family member with the largest cross-section
             # through the box, which is what a reader means by "the (110) plane
             # of this cell". An explicit overlay offset still wins.
@@ -1440,7 +1580,10 @@ def build_crystal_scene(
         cells=tuple(cells),
         planes=tuple(planes),
         directions=tuple(directions),
-        lattice_edges=_supercell_box_edges(phase, repeats),
+        # In prism mode the prism *is* the cell being shown, so the rhombic
+        # supercell box is not drawn around it: two outlines would say the
+        # crystal has boundaries in two different places.
+        lattice_edges=() if as_prism else _supercell_box_edges(phase, repeats),
         repeats=repeats,
         polyhedra=_coordination_polyhedra(
             atoms,
@@ -1967,6 +2110,7 @@ def plot_crystal_structure_3d(
     plane_overlays: tuple[CrystalPlane | CrystalPlaneOverlay, ...] = (),
     direction_overlays: tuple[CrystalDirection | CrystalDirectionOverlay, ...] = (),
     show_unit_cells: bool = False,
+    hexagonal_prism: bool = False,
     cell_overlays: tuple[CrystalCellOverlay, ...] = (),
     slab_hkl: tuple[int, int, int] | None = None,
     slab_thickness_angstrom: float | None = None,
@@ -2024,6 +2168,7 @@ def plot_crystal_structure_3d(
             plane_overlays=plane_overlays,
             direction_overlays=direction_overlays,
             show_unit_cells=show_unit_cells,
+            hexagonal_prism=hexagonal_prism,
             cell_overlays=cell_overlays,
             slab_hkl=slab_hkl,
             slab_thickness_angstrom=slab_thickness_angstrom,

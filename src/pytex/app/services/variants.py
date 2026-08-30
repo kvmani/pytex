@@ -1401,6 +1401,22 @@ _COMPOSITE_PARAMETERS = (
         maximum=3,
         group="Extent",
     ),
+    BooleanParameter(
+        name="hexagonal_prism",
+        label="Draw hexagonal phases as the prism",
+        help_text=(
+            "Draw a hexagonal phase as its **hexagonal prism** — three rhombic cells "
+            "about one atomic column — rather than as the single 120-degree rhombus the "
+            "lattice is written on. The prism is the figure every textbook draws, and it is "
+            "the one in which the sixfold symmetry is visible at all; the rhombus shows a "
+            "third of it.\n\n"
+            "Overlays follow the cell that is drawn: a basal plane is clipped to the hexagon, "
+            "not to the rhombus inside it. Ignored for phases that are not on hexagonal axes, "
+            "where there is no prism to draw."
+        ),
+        default=True,
+        group="Extent",
+    ),
     ChoiceParameter(
         name="placement",
         label="Placement",
@@ -1535,6 +1551,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
     build_kwargs: dict[str, Any] = {
         "show_bonds": bool(request["show_bonds"]),
         "show_unit_cells": bool(request["show_unit_cells"]),
+        "hexagonal_prism": bool(request.get("hexagonal_prism", True)),
     }
 
     # The translation is measured from the two unplaced scenes, so a
@@ -1556,6 +1573,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
         show_parallel_planes=bool(request["show_parallel_planes"]),
         show_parallel_directions=bool(request["show_parallel_directions"]),
         show_plane_normals=bool(request["show_plane_normals"]),
+        hexagonal_prism=bool(request["hexagonal_prism"]),
         parent_build_kwargs=build_kwargs,
         child_build_kwargs=build_kwargs,
     )
@@ -1646,6 +1664,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
             "show_parallel_planes": bool(request["show_parallel_planes"]),
             "show_parallel_directions": bool(request["show_parallel_directions"]),
             "show_plane_normals": bool(request["show_plane_normals"]),
+            "hexagonal_prism": bool(request["hexagonal_prism"]),
             "show_bonds": bool(request["show_bonds"]),
             "show_unit_cells": bool(request["show_unit_cells"]),
         },
@@ -1732,6 +1751,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
     build_kwargs: dict[str, Any] = {
         "show_bonds": bool(request["show_bonds"]),
         "show_unit_cells": bool(request["show_unit_cells"]),
+        "hexagonal_prism": bool(request.get("hexagonal_prism", True)),
     }
     parent_scene = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
     child_scene = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
@@ -1765,6 +1785,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             show_parallel_planes=bool(request["show_parallel_planes"]),
             show_parallel_directions=bool(request["show_parallel_directions"]),
             show_plane_normals=bool(request["show_plane_normals"]),
+            hexagonal_prism=bool(request["hexagonal_prism"]),
             parent_build_kwargs=build_kwargs,
             child_build_kwargs=build_kwargs,
         )
@@ -1881,6 +1902,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             "show_parallel_planes": bool(request["show_parallel_planes"]),
             "show_parallel_directions": bool(request["show_parallel_directions"]),
             "show_plane_normals": bool(request["show_plane_normals"]),
+            "hexagonal_prism": bool(request["hexagonal_prism"]),
             "show_bonds": bool(request["show_bonds"]),
             "show_unit_cells": bool(request["show_unit_cells"]),
         },
@@ -2285,6 +2307,7 @@ def _measured_overlays(
     parent_translation: Any = (0.0, 0.0, 0.0),
     child_translation: Any = (0.0, 0.0, 0.0),
     repeats: int = 1,
+    hexagonal_prism: bool = True,
     length: float,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Both sides of every measured parallelism, drawn separately, each in its cell.
@@ -2304,11 +2327,17 @@ def _measured_overlays(
     """
 
     from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex
+    from pytex.plotting.crystal3d import has_hexagonal_axes, prism_region_for
     from pytex.plotting.primitives import (
         crystal_plane_patch,
         segment_in_cell,
         segment_in_polygon,
     )
+
+    def _region(phase: Any) -> Any:
+        if not hexagonal_prism or not has_hexagonal_axes(phase):
+            return None
+        return prism_region_for(phase, (repeats,) * 3)
 
     arrows: list[dict[str, Any]] = []
     patches: list[dict[str, Any]] = []
@@ -2332,7 +2361,11 @@ def _measured_overlays(
         side: str,
     ) -> None:
         patch = crystal_plane_patch(
-            plane, cell_repeats=(repeats,) * 3, extent=0.6 * length, color=color
+            plane,
+            cell_repeats=(repeats,) * 3,
+            cell_region_override=_region(phase),
+            extent=0.6 * length,
+            color=color,
         )
         vertices = _place(np.asarray(patch.vertices, dtype=float), matrix, translation)
         normal = np.asarray(matrix, dtype=float) @ np.asarray(patch.normal, dtype=float)
@@ -2422,7 +2455,10 @@ def _measured_overlays(
                 # one, or no plane statement was found. Clip it to the cell
                 # instead, so it still stays inside the crystal.
                 local_tail, local_head = segment_in_cell(
-                    phase, np.asarray(direction.unit_vector, dtype=float), repeats=(repeats,) * 3
+                    phase,
+                    np.asarray(direction.unit_vector, dtype=float),
+                    repeats=(repeats,) * 3,
+                    region=_region(phase),
                 )
                 chord = (
                     _place(np.asarray([local_tail]), matrix, translation)[0],
@@ -2589,6 +2625,7 @@ def _measured_composite(request: dict[str, Any]) -> dict[str, Any]:
     build_kwargs: dict[str, Any] = {
         "show_bonds": bool(request["show_bonds"]),
         "show_unit_cells": bool(request["show_unit_cells"]),
+        "hexagonal_prism": bool(request.get("hexagonal_prism", True)),
     }
     parent_scene = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
     child_scene = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
@@ -2610,6 +2647,7 @@ def _measured_composite(request: dict[str, Any]) -> dict[str, Any]:
         parent_translation=(0.0, 0.0, 0.0),
         child_translation=translation,
         repeats=repeats,
+        hexagonal_prism=bool(request.get("hexagonal_prism", True)),
         length=reference_length,
     )
 

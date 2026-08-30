@@ -45,6 +45,8 @@ from pytex.plotting.crystal3d import (
     _view_angles_from_direction,
     _view_vector_from_angles,
     build_crystal_scene,
+    has_hexagonal_axes,
+    prism_region_for,
 )
 from pytex.plotting.primitives import (
     Arrow3D,
@@ -208,6 +210,7 @@ class WorldScene3D:
         show_parallel_directions: bool = True,
         show_parallel_planes: bool = True,
         show_plane_normals: bool = False,
+        hexagonal_prism: bool = False,
         parent_build_kwargs: dict[str, Any] | None = None,
         child_build_kwargs: dict[str, Any] | None = None,
     ) -> WorldScene3D:
@@ -251,8 +254,18 @@ class WorldScene3D:
         child_transform = parent_transform.compose(
             Transform3D.from_matrix(child_rotation, translation=child_translation)
         )
-        parent_kwargs = {"repeats": repeats, "show_unit_cells": True, **(parent_build_kwargs or {})}
-        child_kwargs = {"repeats": repeats, "show_unit_cells": True, **(child_build_kwargs or {})}
+        parent_kwargs = {
+            "repeats": repeats,
+            "show_unit_cells": True,
+            "hexagonal_prism": hexagonal_prism,
+            **(parent_build_kwargs or {}),
+        }
+        child_kwargs = {
+            "repeats": repeats,
+            "show_unit_cells": True,
+            "hexagonal_prism": hexagonal_prism,
+            **(child_build_kwargs or {}),
+        }
         world = (
             cls()
             .add_crystal(
@@ -278,6 +291,7 @@ class WorldScene3D:
             repeats=repeats,
             length=_relationship_reference_length(relationship, repeats),
             show_plane_normals=show_plane_normals,
+            hexagonal_prism=hexagonal_prism,
         )
         if not primitives.is_empty():
             world = world.add_primitives(primitives)
@@ -398,6 +412,7 @@ def _orientation_relationship_primitives(
     repeats: tuple[int, int, int] = (1, 1, 1),
     length: float,
     show_plane_normals: bool = False,
+    hexagonal_prism: bool = False,
 ) -> PrimitiveScene3D:
     """The parallel objects, drawn on **both** crystals and clipped to each cell.
 
@@ -463,6 +478,7 @@ def _orientation_relationship_primitives(
             local = crystal_plane_patch(
                 plane,
                 cell_repeats=repeats,
+                cell_region_override=_cell_region_for(phase, repeats, hexagonal_prism),
                 color="#7c3aed",
                 alpha=0.16,
                 # The pair is named once, on the parent, so the two copies of
@@ -475,7 +491,12 @@ def _orientation_relationship_primitives(
             if show_plane_normals and phase is not None:
                 spacing = float(plane.d_spacing_angstrom)
                 tail, head = plane_normal_endpoints(
-                    phase, local.vertices, local.normal, length=spacing, repeats=repeats
+                    phase,
+                    local.vertices,
+                    local.normal,
+                    length=spacing,
+                    repeats=repeats,
+                    region=_cell_region_for(phase, repeats, hexagonal_prism),
                 )
                 arrows.append(
                     Arrow3D(
@@ -511,6 +532,7 @@ def _orientation_relationship_primitives(
                 transform=transform,
                 repeats=repeats,
                 length=length,
+                region=_cell_region_for(phase, repeats, hexagonal_prism),
             )
             arrows.append(
                 Arrow3D(
@@ -522,6 +544,22 @@ def _orientation_relationship_primitives(
                 )
             )
     return PrimitiveScene3D(arrows=tuple(arrows), patches=tuple(patches))
+
+
+def _cell_region_for(
+    phase: Any, repeats: tuple[int, int, int], hexagonal_prism: bool
+) -> Any:
+    """The region a side's overlay is clipped to: its box, or its prism.
+
+    An overlay has to follow the cell that is *drawn*. With the hexagonal prism
+    on, a basal plane clipped to the rhombic cell would be a rhombus floating
+    inside a hexagon — a third shape belonging to neither the crystal on screen
+    nor the statement being made.
+    """
+
+    if not hexagonal_prism or phase is None or not has_hexagonal_axes(phase):
+        return None
+    return prism_region_for(phase, repeats)
 
 
 def _normal_label(plane: Any, spacing: float) -> str:
@@ -544,6 +582,7 @@ def _direction_endpoints(
     transform: Transform3D,
     repeats: tuple[int, int, int],
     length: float,
+    region: Any = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Where a direction arrow starts and ends: in its plane, or across the cell.
 
@@ -562,7 +601,7 @@ def _direction_endpoints(
     if phase is not None:
         # The crystal's own box, in the crystal frame, then placed.
         local_direction = np.linalg.solve(transform.matrix, world_direction)
-        tail, head = segment_in_cell(phase, local_direction, repeats=repeats)
+        tail, head = segment_in_cell(phase, local_direction, repeats=repeats, region=region)
         return transform.apply_points(tail), transform.apply_points(head)
     origin = transform.translation
     return origin, origin + length * world_direction
