@@ -5091,4 +5091,73 @@ Verified: `ruff` clean; the variant unit tests green; the rewritten Playwright t
 `draws both crystals of a variant, and every variant at one camera` green against the Burgers
 defaults.
 
-#### Increment 2 — OR from measured grains, in EBSD (in progress)
+#### Increment 2 — OR from measured grains, in EBSD (DONE)
+
+`ebsd.or_from_grains` and the ninth EBSD sub-tab, `OR from grains`
+(`services/ebsd_or.py`, `static/js/panels/ebsdor.js`).
+
+The input is a **table** of measured pairs, not six boxes, and the reason is scientific rather than
+ergonomic: a single pair fits any rotation exactly, so its residual is zero by construction and is
+no evidence at all. Only a set has a scatter. Pairs from different variants average correctly
+because the double-coset reduction absorbs the parent symmetry operator that distinguishes them —
+which is essential, since the product grains inside one parent are on different variants by
+definition.
+
+The answer is verdict first, evidence after: the catalogue ladder as bars against the naming
+tolerance; the rational statement with its price; the coincident planes and directions **ranked
+with runners-up**, because a winner alone cannot say whether it led clearly or came out of a tie;
+and one row per pair with the variant it sits on and the distance to it.
+
+Defaults are three exact Burgers pairs (a beta grain at (30, 40, 10) and the alpha grains of
+variants 1, 5 and 9), so the panel opens on a checkable answer. The composition that makes them
+exact is `C = P Rᵀ` — the characterization forms `Cᵀ P`, and getting this backwards produces a
+plausible set of angles that no relationship matches. It is recorded in the test module's docstring
+because it cost a full round of debugging to pin down.
+
+Two defects found and fixed on the way, both pre-existing:
+
+- The measured-pair views' default Euler angles were an exact *Kurdjumov-Sachs* pair while the
+  phases had become zirconium, so the panel's own defaults described a relationship its phases
+  cannot carry. They are now an exact Burgers pair.
+- `shoji_nishiyama` had no display name and reached every bcc-to-hcp characterization table as a
+  lower-cased identifier beside properly cased names.
+
+The hand-off carries the **name** and the two phases into the variant wall, never the fitted
+rotation: the wall draws catalogue relationships, and substituting a fit for the catalogue entry
+would leave picture and caption describing different things. It reads the phases from the form
+rather than from the result's echoed inputs, because the echo is a resolved specification with no
+atomic basis and the wall would have had nothing to draw.
+
+Three examples ship, and the third is the one that matters: **a grain that does not belong to this
+parent**. Two good pairs and one child grown from a different beta grain drag the fit 7.7 degrees off
+Burgers and raise the scatter to ten, so the verdict becomes inconclusive — and the pair table names
+the culprit, because two rows sit within a hundredth of a degree of a variant and the third is tens
+of degrees from every one of them. A panel that answered "Burgers" there would be reporting the
+grains that agreed and hiding the one that did not.
+
+### Verification
+
+`python -m ruff check .` clean. `python -m mypy src` green over 154 files. `python -m pytest
+tests/unit` green (exit 0). `npx playwright test` **57 passed**, including two new assertions and
+four existing tests updated for the change:
+
+- `the EBSD workspace shows six scan views and three scanless tools` — the ninth sub-tab.
+- `zooms below 100% and pans with the pan tool` and `toggling a legend entry keeps the focus on the
+  entry` — both opened the Variants panel and used whatever it drew first. The panel now opens on
+  the wall, which is a grid of thirteen scenes rather than one figure and whose legend is a key
+  rather than a filter, so both now select the pole figure explicitly. The behaviour under test is
+  unchanged; what changed is that they now name the view they were always about.
+- `draws two measured grains in the specimen frame` — its status line now names Burgers.
+
+Two manifest rules also had to move with the change, and both were right to fail: every panel needs
+three examples (the third was written rather than the rule relaxed), and the inventory of Burgers
+examples is asserted by name.
+
+### Deliberately not done
+
+- **No CIF upload path of its own.** The phase pickers already accept a `.cif`, which is what the
+  request asked for; a second uploader would be a second way to say the same thing.
+- **The map's "Send the pair to Variants" button still points at Variants**, not at the new tab.
+  Retargeting it is defensible and is a change to a tested user flow that this increment did not
+  need; the new panel claims the same offer, so it will pick one up if it is ever redirected.
+- **The untracked `tests/test_data/` directory remains untouched and must not be staged.**

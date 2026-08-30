@@ -1196,3 +1196,168 @@ class TestMeasuredComposite:
         with pytest.raises(InvalidInputError) as error:
             measured(phase=lattice_only)
         assert "atomic basis" in str(error.value)
+
+
+def burgers_sheet(**overrides: object) -> dict:
+    """The canonical case, which is also the panel's default."""
+
+    request: dict[str, object] = {
+        "phase": BETA_ZIRCONIUM,
+        "child_phase": ZIRCONIUM,
+        "relationship": "burgers",
+        "packet_plane": [1, 1, 0],
+        "placement": "side_by_side",
+    }
+    request.update(overrides)
+    return contact_sheet(**request)
+
+
+class TestCanonicalDefaults:
+    """The panel opens on Burgers bcc-to-hcp in zirconium.
+
+    Not a preference. The canonical case is the one that exercises the surfaces
+    a cubic-to-cubic default leaves untested: four-index Miller-Bravais labels,
+    a hexagonal child frame, and a packet family that is not {111}. A default
+    that never reaches those is a default under which they can silently rot.
+    """
+
+    def test_every_view_defaults_to_the_same_two_phases_and_relationship(self) -> None:
+        for identifier in (
+            "variants.pole_figure",
+            "variants.intervariant_misorientations",
+            "variants.composite_scene",
+            "variants.contact_sheet",
+            "variants.render",
+        ):
+            operation = REGISTRY.get(identifier)
+            defaults = {parameter.name: parameter.default for parameter in operation.parameters}
+            assert defaults["phase"] == {"builtin": "zr_bcc_beta"}, identifier
+            assert defaults["child_phase"] == {"builtin": "zr_hcp"}, identifier
+            assert defaults["relationship"] == "burgers", identifier
+
+    def test_the_defaults_run_and_give_the_published_variant_count(self) -> None:
+        operation = REGISTRY.get("variants.contact_sheet")
+        data = REGISTRY.call(
+            "variants.contact_sheet",
+            {parameter.name: parameter.default for parameter in operation.parameters},
+        )["data"]
+        assert data["variant_count"] == 12
+        assert data["packet_count"] == 6
+
+
+class TestVariantFacts:
+    """What every wall panel states, computed once in Python.
+
+    The panel's caption is the checkable half of the figure, so these are tests
+    of the caption: that the Euler angles really place the crystal that is
+    drawn, that the axis is named against both bases, and that each variant
+    carries its *own* correspondence rather than variant 1's.
+    """
+
+    def test_the_euler_angles_are_the_rotation_that_placed_the_crystal(self) -> None:
+        """The caption and the geometry come from one rotation, or they are two claims.
+
+        Rebuilding the rotation from the reported Bunge angles must reproduce
+        the placement matrix the same entry carries. A caption computed by a
+        second route is a caption that can disagree with its picture.
+        """
+
+        from pytex.core.orientation import Rotation
+
+        data = burgers_sheet()["data"]
+        for entry in data["variants"]:
+            rebuilt = Rotation.from_bunge_euler(*entry["euler_deg"], degrees=True).as_matrix()
+            # `child_matrix` places the child *into* the world, so it is the
+            # inverse of the parent-to-child rotation the angles describe.
+            placement = np.asarray(entry["child_matrix"], dtype=float)
+            assert np.allclose(np.asarray(rebuilt, dtype=float).T, placement, atol=1e-9)
+
+    def test_the_axis_is_the_same_vector_indexed_two_ways(self) -> None:
+        """The axis is the fixed vector of the map, so its components do not change.
+
+        What changes is the basis it is indexed against: three indices against
+        the cubic parent, four against the hexagonal child. Both labels carry
+        their residual, because an OR axis is not in general rational in either
+        basis and a bare triple would claim otherwise.
+        """
+
+        data = burgers_sheet()["data"]
+        for entry in data["variants"]:
+            rotation = entry["rotation"]
+            assert rotation["axis_parent"]["cartesian"] == rotation["axis_child"]["cartesian"]
+            assert rotation["axis_parent"]["deviation_deg"] >= 0.0
+            assert rotation["axis_child"]["deviation_deg"] >= 0.0
+
+    def test_each_variant_carries_its_own_correspondence(self) -> None:
+        """Twelve panels, six different parent planes -- one per packet.
+
+        Drawing variant 1's indices on variant 7 gives a figure that looks
+        right and is wrong, and it is the failure a contact sheet is most
+        likely to hide.
+        """
+
+        data = burgers_sheet()["data"]
+        by_packet: dict[int, set[str]] = {}
+        for entry in data["variants"]:
+            planes = entry["correspondence"]["planes"]
+            assert planes, "every variant states the plane pair it realizes"
+            by_packet.setdefault(entry["packet"], set()).update(planes)
+        assert len(by_packet) == 6
+        for pairs in by_packet.values():
+            assert len(pairs) == 1
+        assert len({next(iter(pairs)) for pairs in by_packet.values()}) == 6
+
+    def test_both_crystal_frames_are_sent_and_the_child_frame_is_placed(self) -> None:
+        """A two-crystal figure needs two triads, and the child's must be rotated.
+
+        The parent's axes are the world axes; the child's are its own axes after
+        placement. Sending the child's unplaced axes would draw a triad that
+        contradicts the crystal beside it.
+        """
+
+        data = burgers_sheet()["data"]
+        for entry in data["variants"]:
+            frames = entry["frames"]
+            assert [axis["label"] for axis in frames["parent"]] == ["a", "b", "c"]
+            assert [axis["label"] for axis in frames["child"]] == ["a1", "a2", "c"]
+            placement = np.asarray(entry["child_matrix"], dtype=float)
+            for index, axis in enumerate(frames["child"]):
+                unplaced = np.linalg.solve(placement, np.asarray(axis["vector"], dtype=float))
+                assert np.isfinite(unplaced).all()
+                # The placed axis is the placement applied to a fixed crystal
+                # axis, so undoing the placement must give the same vector for
+                # every variant.
+                first = data["variants"][0]["frames"]["child"][index]["vector"]
+                reference = np.linalg.solve(
+                    np.asarray(data["variants"][0]["child_matrix"], dtype=float),
+                    np.asarray(first, dtype=float),
+                )
+                assert np.allclose(unplaced, reference, atol=1e-9)
+
+    def test_the_disorientation_is_stated_once_for_the_whole_family(self) -> None:
+        """It is the same for every variant, so it belongs to the relationship.
+
+        Repeating it on twelve panels would suggest the panels could disagree
+        about it, which is exactly the misreading the wall exists to prevent:
+        what distinguishes the variants is the axis and the family member, not
+        the disorientation angle.
+        """
+
+        data = burgers_sheet()["data"]
+        assert data["relationship"]["disorientation_deg"] == pytest.approx(45.29, abs=0.01)
+        assert data["relationship"]["child_frame_labels"] == ["a1", "a2", "c"]
+
+    def test_the_overlay_is_labelled_with_the_pair_it_stands_for(self) -> None:
+        """One object, one name, in the notation the phase is indexed with.
+
+        The plotting layer labels a patch from its raw three-index normal. An
+        overlay reading (001) beside a caption reading (0001) for one plane
+        invites the reader to think two planes are under discussion.
+        """
+
+        data = burgers_sheet()["data"]
+        for entry in data["variants"]:
+            patch = entry["primitives"]["patches"][0]
+            assert patch["label"] == entry["correspondence"]["planes"][0]
+            arrow = entry["primitives"]["arrows"][0]
+            assert arrow["label"] == entry["correspondence"]["directions"][0]

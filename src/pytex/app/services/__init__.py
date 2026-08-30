@@ -14,6 +14,7 @@ from pytex.app.services import cbed as cbed
 from pytex.app.services import crystal as crystal
 from pytex.app.services import diffraction as diffraction
 from pytex.app.services import ebsd as ebsd
+from pytex.app.services import ebsd_or as ebsd_or
 from pytex.app.services import ebsd_pattern as ebsd_pattern
 from pytex.app.services import ecci as ecci
 from pytex.app.services import kearns as kearns
@@ -28,6 +29,7 @@ __all__ = [
     "crystal",
     "diffraction",
     "ebsd",
+    "ebsd_or",
     "ecci",
     "kearns",
     "tem",

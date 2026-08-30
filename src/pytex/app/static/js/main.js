@@ -37,6 +37,7 @@ import * as ebsdDistribution from './panels/ebsddistribution.js';
 import * as ebsdFigures from './panels/ebsdfigures.js';
 import * as ebsdSummary from './panels/ebsdsummary.js';
 import * as ebsdKikuchi from './panels/ebsdkikuchi.js';
+import * as ebsdOr from './panels/ebsdor.js';
 import * as ecciWorkflow from './panels/ecciWorkflow.js';
 import * as variants from './panels/variants.js';
 import * as texture from './panels/texture.js';
@@ -68,7 +69,7 @@ const TEM_ANALYSIS = {
 };
 
 // EBSD is grouped for the same reason: one scan, seen six ways — followed by
-// two forward/experiment-planning tools. The Kikuchi simulator and ECCI
+// three tools that take no scan. The Kikuchi simulator and ECCI
 // workflow take no scan; both start from a standalone phase and orientation,
 // and belong here because their geometry is the EBSD geometry and nowhere
 // else's. The scan itself is shared between the first six (see
@@ -88,6 +89,12 @@ const EBSD_ANALYSIS = {
     ebsdFigures,
     ebsdKikuchi,
     ecciWorkflow,
+    // Orientation relationships from measured grains. It belongs to EBSD
+    // rather than to Variants because its input is a column of Euler angles
+    // out of an indexing run, which is the EBSD subject; the catalogue side of
+    // the same question — what the named relationship looks like as crystals —
+    // stays in Variants, and the two are joined by a hand-off.
+    ebsdOr,
   ],
 };
 

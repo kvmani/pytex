@@ -402,7 +402,7 @@ workspace navigation wraps, preserving vertical plot space.
 
 ## Workspace Inventory
 
-Seven workspaces hold seventeen panels. A workspace is a *subject*; a panel inside it is a *view* of
+Seven workspaces hold nineteen panels. A workspace is a *subject*; a panel inside it is a *view* of
 that subject, which is why the two grouped workspaces have sub-tabs and the five single ones read
 exactly as flat tabs did.
 
@@ -411,14 +411,16 @@ exactly as flat tabs did.
 | Crystal Viewer | the structure with superimposed planes, directions and annotations, and an orientation dock carrying a pole figure, an inverse pole figure and the crystal's Kikuchi map | `crystal.*` |
 | TEM Analysis | SAED Simulator, TEM Solver, CBED, Composite SAED | `tem.*`, `cbed.*`, `diffraction.*` |
 | XRD | powder peaks, broadened profiles, radiation and profile choices, indexed inspection | `xrd.*` |
-| EBSD | IPF map, GROD, KAM, Scan summary, Distributions, Pole figures, Kikuchi simulator, ECCI workflow | `ebsd.*`, `ecci.*` |
+| EBSD | IPF map, GROD, KAM, Scan summary, Distributions, Pole figures, Kikuchi simulator, ECCI workflow, OR from grains | `ebsd.*`, `ecci.*` |
 | Variants | variant pole figures, packets, and the intervariant misorientation spectrum | `variants.*` |
 | Texture | pole figures, inverse pole figures, ODF sections | `texture.*` |
 | Calculator | interplanar angles, d-spacings, symmetry families, zone axes, cross-phase angles | `calc.*` |
 
-Six of the eight EBSD panels read one scan that belongs to the session rather than to a panel; the
-Kikuchi simulator and ECCI workflow read none, because they are the forward and
-experiment-planning problems downstream of the indexed orientations.
+Six of the nine EBSD panels read one scan that belongs to the session rather than to a panel; the
+Kikuchi simulator, the ECCI workflow and OR from grains read none. The first two are the forward and
+experiment-planning problems downstream of the indexed orientations; the third takes measured
+orientations typed or pasted in, because the grains being compared routinely come from a map the
+session never opened — a published table, a colleague's export, two scans of the same specimen.
 
 ## Testing Obligations
 

@@ -421,6 +421,7 @@ class TestCanonicalExamples:
             "calc.example.burgers",
             "diffraction.example.burgers",
             "variants.example.burgers_poles",
+            "variants.example.burgers_wall",
         }
         for example in examples.values():
             assert example.request["phase"] == {"builtin": "zr_bcc_beta"}

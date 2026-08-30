@@ -267,7 +267,7 @@ export function mount(context) {
       el('label.field__label', { text: 'View' }),
       operationSelect,
       el('p.field__help', {
-        text: 'The pole figure shows where the variants point, the spectrum how they differ from each other, and the two composite views what a single variant and the whole family look like as crystals.',
+        text: 'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals.',
       }),
     ]),
     formHost,
@@ -1319,14 +1319,40 @@ export function mount(context) {
     ]);
   }
 
+  /**
+   * A relationship identified from measured grains, offered by the EBSD panel.
+   *
+   * What crosses is the **name** and the two phases, not the fitted rotation.
+   * The wall draws catalogued relationships; substituting a fitted rotation for
+   * the catalogue entry would leave the picture and its caption describing
+   * different things, and the caption is the half a reader would believe.
+   */
+  function seedFromNamedRelationship() {
+    const offered = claim('or-catalogue');
+    if (!offered?.relationship) return false;
+    const target = operations.find((entry) => entry.id === 'variants.contact_sheet');
+    if (!target) return false;
+    state.operation = target;
+    operationSelect.value = target.id;
+    renderControls({
+      relationship: offered.relationship,
+      phase: offered.phase,
+      child_phase: offered.child_phase,
+    });
+    run();
+    return true;
+  }
+
   renderControls();
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
   frame.setControls(legend);
   context.stage.append(frame.element, facts, details);
-  // A pair handed over from the map is what the user asked for by pressing the
-  // button; the opening example is only what the panel does when nobody asked.
-  if (!seedFromPickedPair() && examples.length) loadExample(examples[0]);
+  // Anything handed over is what the user asked for by pressing a button; the
+  // opening example is only what the panel does when nobody asked.
+  if (!seedFromNamedRelationship() && !seedFromPickedPair() && examples.length) {
+    loadExample(examples[0]);
+  }
 
   return { help: () => state.operation };
 }

@@ -28,6 +28,7 @@ const PANEL_PATH = {
   'Pole figures': ['EBSD', 'Pole figures'],
   'Kikuchi simulator': ['EBSD', 'Kikuchi simulator'],
   'ECCI workflow': ['EBSD', 'ECCI workflow'],
+  'OR from grains': ['EBSD', 'OR from grains'],
   'Kearns parameter': ['Texture', 'Kearns parameter'],
   'SAED Simulator': ['TEM Analysis', 'SAED Simulator'],
   'TEM Solver': ['TEM Analysis', 'TEM Solver'],
@@ -625,6 +626,12 @@ test('the EBSD workspace simulates a Kikuchi pattern and names its bands along t
 test('zooms below 100% and pans with the pan tool', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await workspaceTab(page, 'Variants').click();
+  // The pole figure, explicitly: the panel opens on the variant wall, which is
+  // a grid of thirteen small scenes rather than one drawing, and zoom and pan
+  // are properties of a single figure's frame.
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('#rail-body').getByLabel('View').selectOption('variants.pole_figure'),
+  );
   await expect(page.locator('#stage .plot svg').first()).toBeVisible({ timeout: 20_000 });
   const zoom = page.locator('.plot__zoom');
   await expect(zoom).toHaveText('100%');
@@ -2049,11 +2056,13 @@ test('the pole figure leaves a fly-by trail and the view states its Bunge angles
  * file*. Silently reverting to the practice dataset next to somebody's own data
  * is the worst answer available, and it is the one this asserts against.
  *
- * The seventh and eighth tabs are the odd ones out by design: the Kikuchi
- * simulator and ECCI workflow take no scan, because they start from a phase and
- * a stated orientation rather than from a measured map.
+ * The last three tabs are the odd ones out by design: the Kikuchi simulator and
+ * the ECCI workflow take no scan because they start from a phase and a stated
+ * orientation rather than from a measured map, and OR from grains takes none
+ * because the grains it compares routinely come from a map the session never
+ * opened — a published table, a colleague's export, two scans of one specimen.
  */
-test('the EBSD workspace shows six scan views and two forward tools', async ({ page }) => {
+test('the EBSD workspace shows six scan views and three scanless tools', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await workspaceTab(page, 'EBSD').click();
 
@@ -2067,6 +2076,7 @@ test('the EBSD workspace shows six scan views and two forward tools', async ({ p
     'Pole figures',
     'Kikuchi simulator',
     'ECCI workflow',
+    'OR from grains',
   ]);
 
   // The three map tabs are the same panel opened on different colourings, and
@@ -2228,6 +2238,12 @@ test('the table on screen is capped and the export carries every row', async ({ 
 test('toggling a legend entry keeps the focus on the entry', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await workspaceTab(page, 'Variants').click();
+  // The pole figure, whose legend is the packet filter. The wall the panel
+  // opens on has a legend too, but it is a key rather than a control: its two
+  // crystals are the figure, so there is nothing there to switch off.
+  await expectNewCompletedCalculation(page, () =>
+    page.locator('#rail-body').getByLabel('View').selectOption('variants.pole_figure'),
+  );
 
   const entry = page.locator('.legend__item').first();
   await expect(entry).toBeVisible({ timeout: 30_000 });
@@ -2660,20 +2676,23 @@ test('names the relationship between two measured grains and prices its statemen
   );
 
   /*
-   * The defaults are an exact Kurdjumov-Sachs pair, so the opening press
-   * demonstrates a known answer rather than producing an unverifiable number.
+   * The defaults are an exact Burgers pair -- the panel's canonical case, a
+   * beta-zirconium grain and the alpha grain its first variant produces -- so
+   * the opening press demonstrates a known answer rather than producing an
+   * unverifiable number.
    */
   const verdict = page.locator('#stage .verdict');
-  await expect(verdict).toContainText('Kurdjumov-Sachs (conclusive)');
+  await expect(verdict).toContainText('Burgers (conclusive)');
   await expect(verdict).toContainText('Integer statement');
   await expect(verdict).toContainText('Cost of writing it');
   await expect(verdict).toContainText('idealization');
 
-  // The catalogue ladder is the evidence, and its spacings are the literature's.
+  // The catalogue ladder is the evidence. For a hexagonal product it is the
+  // bcc-to-hcp catalogue, so the runner-up is Shoji-Nishiyama rather than one
+  // of the martensite relationships.
   const table = page.locator('#stage table');
-  await expect(table).toContainText('Greninger-Troiano');
-  await expect(table).toContainText('2.404');
-  await expect(table).toContainText('5.264');
+  await expect(table).toContainText('Burgers');
+  await expect(table).toContainText('Shoji-Nishiyama');
 
   // No figure for this view: it is an answer and a table, and drawing an empty
   // frame would read as a failed render.
@@ -2817,7 +2836,10 @@ test('draws two measured grains in the specimen frame, with what 2.4 degrees loo
    */
   const status = plot.locator('.plot__status');
   await expect(status).toContainText('Specimen frame (RD, TD, ND)');
-  await expect(status).toContainText('Kurdjumov-Sachs');
+  // The panel's defaults are an exact Burgers pair, its canonical case, so the
+  // opening state names a relationship whose answer is known before the run.
+  await expect(status).toContainText('Burgers');
+  await expect(status).toContainText('(0001)');
 
   // The overlays are drawn on both sides, and the legend says why, so a doubled
   // patch reads as the point rather than as a rendering fault.
@@ -2848,6 +2870,86 @@ test('draws two measured grains in the specimen frame, with what 2.4 degrees loo
   const away = Number(/idealized child ([\d.]+)° away/.exec(text)?.[1]);
   expect(away).toBeGreaterThan(2.3);
   expect(away).toBeLessThan(2.5);
+
+  expect(browserErrors).toEqual([]);
+});
+
+
+/*
+ * OR determination from measured grains, and the hand-off that follows it.
+ *
+ * The panel's whole claim is that a table of measured orientations becomes a
+ * named relationship with its evidence attached. The test therefore does the
+ * thing a user does: adds a pair to the table, watches the scatter change from
+ * the zero a single pair always reports, and follows the answer through to the
+ * picture of it.
+ */
+test('names the relationship a table of measured grains shows', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'OR from grains');
+
+  // The defaults are three exact Burgers pairs, so the opening state is a
+  // known answer rather than an unverifiable number.
+  const verdict = page.locator('#stage .verdict');
+  await expect(verdict).toContainText('Burgers');
+  await expect(verdict).toContainText('conclusive');
+  await expect(verdict).toContainText('45.29');
+
+  // The input is a table, because one pair is not an answer. Three rows of six.
+  const rows = page.locator('.grains__row');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first().locator('.grains__cell')).toHaveCount(6);
+
+  // The evidence: every catalogued relationship for *these two crystal
+  // systems*, which is the bcc-to-hcp catalogue and not the martensite one.
+  const ladder = page.locator('svg.ladder');
+  await expect(ladder).toContainText('Burgers');
+  await expect(ladder).toContainText('Shoji-Nishiyama');
+  await expect(ladder).toContainText('tolerance');
+
+  // The statement, in the notation the hexagonal phase is indexed with.
+  await expect(page.locator('.statement')).toContainText('(0001)');
+
+  // The runners-up are shown beside the winner: a chosen direction that leads
+  // by a hundredth of a degree is a choice, not a finding, and only the
+  // ranking can say which this is.
+  const directionRows = page.locator('.coincide').nth(1).locator('tbody tr');
+  expect(await directionRows.count()).toBeGreaterThan(1);
+
+  // Each pair is assigned the variant it sits on -- three grains, three
+  // variants, three distinct indices.
+  const variants = await page
+    .locator('.card:has-text("The pairs, and the variant") tbody tr td:nth-child(5)')
+    .allTextContents();
+  expect(new Set(variants).size).toBe(3);
+
+  /*
+   * Removing a row leaves one pair, whose scatter is zero *by construction*.
+   * The panel has to keep saying so rather than presenting the zero as
+   * agreement, which is the single most misleading number this screen can
+   * show.
+   */
+  const before = (await verdict.textContent()) ?? '';
+  await rows.nth(2).getByRole('button', { name: /Remove pair 3/ }).click();
+  await rows.nth(1).getByRole('button', { name: /Remove pair 2/ }).click();
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: 'Determine the relationship' }).click(),
+  );
+  await expect.poll(() => verdict.textContent()).not.toBe(before);
+  await expect(verdict).toContainText('over 1 pair(s)');
+
+  /*
+   * The hand-off. Identifying a relationship and then seeing it drawn is one
+   * gesture, and what crosses is the *name* and the two phases -- not the
+   * fitted rotation, which would leave the wall's picture and its caption
+   * describing different things.
+   */
+  await expectNewCompletedCalculation(page, () =>
+    page.getByRole('button', { name: /Open this relationship in the variant wall/ }).click(),
+  );
+  const plot = page.locator('#stage .plot');
+  await expect(plot.locator('.plot__title')).toHaveText('Parent and every variant');
+  await expect(plot.locator('.panel--variant')).toHaveCount(12);
 
   expect(browserErrors).toEqual([]);
 });

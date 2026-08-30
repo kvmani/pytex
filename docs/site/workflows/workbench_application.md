@@ -67,7 +67,7 @@ environment variable and the loader reads it. See {mod}`pytex.app.config`.
 
 ## What Is In It
 
-Seven workspaces holding eighteen panels. Every one of them ships with runnable examples, so a user with
+Seven workspaces holding nineteen panels. Every one of them ships with runnable examples, so a user with
 no data of their own can still exercise every feature — the manifest test executes each example, so
 an example cannot rot.
 
@@ -76,7 +76,7 @@ an example cannot rot.
 | **Crystal Viewer** | What does this structure look like, with these planes and directions drawn on it? |
 | **TEM Analysis** | Everything transmission-electron, in four sub-tabs (below). |
 | **XRD** | Which powder peaks should this structure produce, and how do radiation and profile choices change the diffractogram? |
-| **EBSD** | What is in this scan, what does its map show, where should it be believed — and how should the indexed grain be examined next? Eight sub-tabs (below). |
+| **EBSD** | What is in this scan, what does its map show, where should it be believed — and how should the indexed grain be examined next? Nine sub-tabs (below). |
 | **Variants** | Where do the child orientations of one parent grain point, and how do they meet? |
 | **Texture** | Where does a crystal plane point across a whole polycrystal, and what is the one number that summarises it? Two sub-tabs (below). |
 | **Calculator** | Interplanar angles, symmetry families, d-spacings, orientation relationships. |
@@ -100,8 +100,8 @@ second-rank number a designer quotes from exactly that distribution.
 | **Texture** | Where does a crystal plane point across the polycrystal — as a pole figure, an inverse pole figure, or ODF sections? |
 | **Kearns parameter** | What fraction of basal poles lies along each specimen direction, by whichever of the five routes the available data supports? |
 
-The **EBSD** workspace carries eight sub-tabs: six over one scan, followed by two forward and
-experiment-planning tools that need no scan. A scan opened in any of the first six is open in
+The **EBSD** workspace carries nine sub-tabs: six over one scan, followed by three tools that need
+no scan. A scan opened in any of the first six is open in
 all six, because it belongs to the session rather than to a panel — analysing the practice
 dataset in one view while a user's own file is loaded in another would be the worst answer
 available.
@@ -116,6 +116,7 @@ available.
 | **Pole figures** | Where do the measured orientations point, as the scatter rather than as a contour of it? |
 | **Kikuchi simulator** | What pattern would this phase at this orientation throw onto this camera — and does my geometry look right? |
 | **ECCI workflow** | From an EBSD-indexed orientation, which stage tilt and rotation place a target direction on axis for a two-beam ECCI condition? |
+| **OR from grains** | Given the measured orientations of parent and product grains, what orientation relationship is this material transforming through? |
 
 The three map tabs are one panel opened on three colourings, not three panels: every control is
 present in each of them, so a reader who arrived at GROD can switch to KAM or to a
@@ -395,10 +396,17 @@ exports, pick the two phases, and it returns the rotation fitted to the pair, it
 every catalogued relationship, a conclusive-or-not verdict, and the relationship restated in
 integers.
 
-The defaults are an exact Kurdjumov-Sachs pair, so the opening press demonstrates a known answer
-rather than producing an unverifiable number: Kurdjumov-Sachs at zero, Greninger-Troiano 2.40°
-behind it, Nishiyama-Wassermann 5.26° behind that. Those spacings are the literature's, and seeing
-the whole ladder is what makes the naming a judgement rather than an assertion.
+The defaults are an exact **Burgers** pair — a beta-zirconium grain at (30, 40, 10) and the alpha
+grain its first variant produces — so the opening press demonstrates a known answer rather than
+producing an unverifiable number: Burgers at zero, Shoji-Nishiyama far behind it. Load the
+Greninger-Troiano example for the fcc-to-bcc ladder, where the spacings are the literature's:
+Kurdjumov-Sachs at zero, Greninger-Troiano 2.40° behind it, Nishiyama-Wassermann 5.26° behind that.
+Seeing the whole ladder is what makes the naming a judgement rather than an assertion.
+
+The catalogue a run is ranked against follows the two *crystal systems*, not a global list: a
+bcc-to-hcp measurement is compared with Burgers and Shoji-Nishiyama, and the martensite
+relationships never appear, because a relationship defined between two cubic phases cannot be a
+reading of a hexagonal product.
 
 **Four different angles reach this one screen, and they are not interchangeable.** The panel labels
 each with the word for what it measures, and the same words come from the service so the two cannot
@@ -445,46 +453,134 @@ the child is drawn a second time in grey, where the integer statement would put 
 rotation of a crystal rather than a number in a table. The status line reports the same angle, and a
 test asserts the two agree, since they are one quantity reached by two routes.
 
-### The composite views of the variants panel
+### The variant wall, and the pair view behind it
 
-The Variants panel offers four views. Two are figures of where the variants *point* — the pole
-figure and the misorientation spectrum, both described above. The other two show what the variants
-*are*, as crystals.
+The Variants panel offers views of two kinds. Two are figures of where the variants *point* — the
+pole figure and the misorientation spectrum, described above. Two more show what the variants *are*,
+as crystals.
 
-**Both crystals of one variant** draws the parent and the product in one frame with the planes and
-directions the relationship holds parallel drawn across both. It is the picture behind the
-parallelism statement: instead of reading that (111) of austenite is parallel to (011) of ferrite,
-you see one plane through two lattices, with the shared direction as an arrow lying in it. Drag to
-turn both crystals together; the status line reads out how far each parallel plane is from
-**edge-on** and each parallel direction from **end-on**, because a plane two degrees off edge-on
-looks edge-on and no picture can tell you otherwise.
+The panel's canonical case, and its default throughout, is **Burgers bcc-to-hcp in zirconium**. It
+is the default for a reason worth stating: its two phases belong to *different crystal systems*, so
+the default exercises the surfaces a cubic-to-cubic case leaves untested — four-index
+Miller-Bravais labels, a hexagonal child frame, and a packet family that is {110} rather than {111}.
+Twelve variants in six packets of two also fit on one screen at a size where the plane drawn on them
+can actually be seen; twenty-four do not.
 
-**Every variant at once** is the contact sheet: one panel per variant, all at the same camera, with
-the packet and the parallel plane under each. Turning one turns all of them. Click any panel to open
-that variant in the composite view.
+**Parent and every variant** is the wall. The parent stands in its own reference panel, and beside
+it one panel per variant — twelve for Burgers, twenty-four for Kurdjumov-Sachs — all at one camera.
+Each panel is a *pair*, not a thumbnail:
 
-Three things about these views are worth stating rather than leaving to be noticed.
+- The **parent is drawn in every panel**, ghosted, beside its variant. The parallelism is a statement
+  about two crystals, so both have to be in the picture; the reference panel says what "no rotation"
+  looks like, which is what relative judgement needs.
+- The **plane and direction are drawn on both crystals**. This is exact rather than decorative: the
+  two objects are parallel by construction, and a parallel object is unchanged by the translation
+  that separates the crystals, so the second copy is the same plane drawn where the second crystal
+  is. Drawing it once would put the whole statement on one crystal and leave the other unmarked.
+- **Both crystal frames are drawn**, each in its phase's colour and its phase's notation — `a b c`
+  for the cubic parent, `a1 a2 c` for the hexagonal child. A single triad in a two-crystal figure is
+  worse than none, because it will be read as belonging to whichever crystal the reader is looking
+  at, and half the time that is the wrong one.
+
+Under each panel is the part that can be checked: the variant's index and packet, the **specific**
+plane and direction pair *that* variant holds parallel, the **Euler angles** that placed it with the
+parent at (0, 0, 0), and its rotation stated as an angle about an axis named against the **parent
+basis and the child basis alike** — the same physical axis, indexed two ways, each label carrying
+how far it sits from the exact axis, because an OR axis is not in general rational in either basis.
+
+The wall's bar states the camera lock, which was always real and previously invisible: dragging any
+panel turns all of them, so what is compared between panels is orientation and never framing. Its
+presets put the shared parent frame in a named orientation — down `a`, `b` or `c` — plus one
+**edge-on** preset per packet, which is exact in that packet's panels and says which plane it is
+exact for. There is deliberately no "edge-on to every panel's plane" button: one camera cannot be
+edge-on to twelve different {110} members at once, and a control promising it would be wrong in
+eleven panels out of twelve.
+
+One number is stated once, for the whole wall rather than per panel: the symmetry-reduced
+**disorientation**, 45.29° for Burgers. It is the same for every variant — it names the
+relationship, not the variant — and repeating it under twelve pictures would suggest the panels
+could disagree about it. What distinguishes the variants is the *axis* of their rotation and *which*
+family member they carry into parallelism, and those are per panel.
+
+**Parent and one variant** is the same figure with one variant in it, opened by clicking any panel
+of the wall. With room to state them, the facts move under the picture in full rather than into
+tooltips, and the status line reads out how far each parallel plane is from **edge-on** and each
+parallel direction from **end-on** — because a plane two degrees off edge-on looks edge-on, and no
+picture can tell you otherwise.
+
+Three further things are worth stating rather than leaving to be noticed.
 
 **The overlay carries the variant's own indices.** Each variant holds a *different* member of the
-parent family parallel, so the plane named under each panel changes down the sheet — four values
-over the 24 Kurdjumov-Sachs panels, one per packet, and the packet swatch beside it agrees. Quoting
-the relationship's nominal pair on every panel would give twenty-four pictures that look right and
-are wrong for twenty-three of them.
+parent family parallel, so the plane named under each panel changes across the wall — six values
+over the twelve Burgers panels, one per packet, and the packet swatch beside it agrees. Quoting the
+relationship's nominal pair on every panel would give twelve pictures that look right and are wrong
+for eleven of them. The overlay drawn *on* the crystals carries the same pair text as the caption,
+in the same notation, so a hexagonal plane cannot appear as `(001)` in the picture and `(0001)`
+underneath it.
 
-**Colour is the phase, not the element.** The two phases of an orientation relationship are usually
-the same element — austenite and ferrite are both iron — so colouring by species would paint both
-crystals one colour and leave a blob in which no parallelism can be read. The legend says so, in
-those words, because a viewer that quietly changed what a colour meant would be worse than one that
-could not tell the crystals apart.
+**Colour is the phase, not the element** — and the shared plane and direction are neither phase's
+colour. The two phases of an orientation relationship are usually the same element: austenite and
+ferrite are both iron, and both zirconium phases are zirconium. Colouring by species would paint
+both crystals one colour and leave a blob in which no parallelism can be read. The parallel objects
+belong to neither crystal — they are the statement being made about both — so they are drawn in a
+third and a fourth colour, and the legend says all four things in those words.
 
-**All the crystallography is still in Python.** The composite view arrives with both structures
-already placed in the parent frame, so one camera drives them and cannot drift between them. The
-contact sheet arrives as the two structures *once*, in their own crystal frames, plus one 3×3
-placement matrix per variant: sending 24 placed copies of both crystals would be tens of megabytes
-to say what a matrix multiply says exactly, and applying one of those matrices is the same
-arithmetic the camera already does. The two agree by test — the matrix the sheet uses for variant
-*k* is the one the composite view places variant *k* by — because a grid and a detail view that
-disagreed would be worse than either alone.
+**All the crystallography is still in Python.** The one-up view arrives with both structures already
+placed in the parent frame, so one camera drives them and cannot drift between them. The wall
+arrives as the two structures *once*, in their own crystal frames, plus one 3×3 placement matrix per
+variant: sending twenty-four placed copies of both crystals would be tens of megabytes to say what a
+matrix multiply says exactly, and applying one of those matrices is the same arithmetic the camera
+already does. The two agree by test — the matrix the wall uses for variant *k* is the one the one-up
+view places variant *k* by — because a grid and a detail view that disagreed would be worse than
+either alone.
+
+### Determining the relationship from measured grains
+
+The **OR from grains** sub-tab of the EBSD workspace answers the question the Variants panel's
+catalogue views assume: *which* relationship is this material transforming through? Its input is a
+table of measured orientations — one parent grain and one product grain per row, as they come out of
+an indexing run — and its output is the fitted rotation, the name of the catalogued relationship it
+matches, the statement in integers, and the coincident planes and directions the fit admits.
+
+**The input is a table, and that is the point.** A single pair fits any rotation *exactly*: its
+residual is zero by construction, so one pair can never be contradicted by its own data and gives no
+evidence that the relationship is real. Several pairs give a **scatter**, which is the only number in
+the answer that says whether the fit means anything. Rows can be added, removed, or pasted in
+wholesale, because what a user has is a column of Euler angles from OIM, AZtec or MTEX rather than
+six numbers to retype.
+
+**Pairs from different variants are welcome.** Each measured rotation is reduced to its minimum-angle
+representative in the double coset before the pairs are averaged, and the parent symmetry operator
+that distinguishes one variant from another is exactly what that reduction absorbs. Three product
+grains inside one parent, on three different variants, therefore fit *one* rotation with no scatter —
+which is essential, because on a real map the grains inside one parent are on different variants by
+definition.
+
+The defaults are three exact Burgers pairs — one beta grain and three alpha grains grown from it
+through variants 1, 5 and 9 — so the panel opens on an answer that can be checked: Burgers, at zero,
+with zero scatter, leading the runner-up by tens of degrees. The second example perturbs the same
+grains by a few tenths of a degree, which is what a well-calibrated map delivers; the name survives
+and the scatter appears, which is what having more than one pair is *for*.
+
+The answer is laid out verdict first, evidence after:
+
+| Block | What it is for |
+| --- | --- |
+| The verdict | The relationship, whether the naming is conclusive, the fitted rotation with its axis named in both crystal bases, the scatter, and the lead over the runner-up. |
+| The ladder | Every catalogued relationship for these two crystal systems as a bar, with the naming tolerance drawn on as a rule. "Is it Burgers or Shoji-Nishiyama" is a comparison of magnitudes against a threshold, which is what a bar chart with a rule on it says. |
+| The statement | The relationship written the way a paper writes it, with each clause's deviation and the total price of writing it in integers. |
+| The coincidences | The candidate plane and direction pairs, **ranked, runners-up included**. A winner alone cannot say whether it led by a mile or was drawn from a near-tie, and those are different situations for anyone about to write the relationship down. |
+| The pairs | One row per measured pair: its residual, and which variant of the fitted relationship it sits on, with the distance to that variant. A large distance means the pair does not belong to this parent at all — worth seeing rather than rounded away to an index. |
+
+**Naming is deliberately conservative.** A relationship is called conclusive only when it fits within
+the tolerance *and* leads the runner-up by more than the data's own scatter. Two relationships a
+degree apart cannot be told apart by data that scatters by two, and the honest answer is to say so
+rather than to name the nearer one.
+
+Once the relationship is identified, **Open this relationship in the variant wall** carries it into
+the Variants workspace and draws it. What crosses is the *name* and the two phases, not the fitted
+rotation: the wall draws catalogued relationships, and quietly substituting a fitted rotation for the
+catalogue entry would leave the picture and its caption describing different things.
 
 ### The texture panel, against the m.r.d. scale
 

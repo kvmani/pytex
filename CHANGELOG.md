@@ -13,6 +13,44 @@ downstream analyses depend on them.
 
 ### Added
 
+- **The variant wall: the parent beside every variant, with what each pair asserts written
+  under it.** The Variants panel's "every variant at once" view was a grid of thumbnails of two
+  interpenetrating crystals, in which the plane the relationship is *about* could not be seen and
+  no panel said which member of the family it carried. It is now a wall of pairs. The parent is
+  drawn, ghosted, in every panel beside its variant; the parallel plane and direction are drawn on
+  **both** crystals — exact rather than decorative, since a parallel object is unchanged by the
+  translation that separates them; and both crystal frames are drawn, each in its own phase's
+  notation (`a b c` for a cubic parent, `a1 a2 c` for a hexagonal child), because a single triad in
+  a two-crystal figure gets read as belonging to whichever crystal the reader is looking at.
+
+  Every panel now states its own arithmetic: the variant's index and packet, the **specific** plane
+  and direction pair that variant realizes, the **Euler angles** that placed it with the parent at
+  zero, and its rotation as an angle about an axis named against the **parent basis and the child
+  basis alike**, each label carrying its residual because an OR axis is not in general rational in
+  either basis. The symmetry-reduced disorientation is stated once for the whole wall, because it is
+  the same for every variant and repeating it per panel would suggest otherwise.
+
+  The shared camera was always real and nothing on screen said so. A bar now states the lock and
+  offers look-along presets in the parent's axes plus one **edge-on** preset per packet. There is
+  deliberately no "edge-on to every panel's plane" control: one camera cannot be edge-on to twelve
+  different {110} members at once, and a button promising it would be wrong in eleven panels out of
+  twelve.
+
+- **OR determination from measured grains, as its own EBSD sub-tab.** `ebsd.or_from_grains` takes a
+  *table* of measured parent/product orientations — one pair per line, pasteable from an indexing
+  export — and returns the fitted rotation, the catalogue ranking with the naming tolerance drawn
+  on it, the statement in integers with its price, the coincident planes and directions **ranked
+  with their runners-up**, and one row per pair saying which variant it sits on and how far from it.
+
+  A table rather than six boxes for a scientific reason: a single pair fits any rotation exactly, so
+  its residual is zero by construction and proves nothing. Only a set of pairs has a scatter, and
+  pairs from *different* variants average correctly because the double-coset reduction absorbs the
+  parent symmetry operator that distinguishes them. Naming stays conservative — a relationship is
+  called conclusive only when it leads the runner-up by more than the data's own scatter. Identify a
+  relationship here and one button draws it in the variant wall; what crosses is the name and the
+  two phases, never the fitted rotation, so the picture and its caption cannot describe different
+  things.
+
 - **Two grains picked on the map, answered in another workspace.** Clicking a grain on the
   EBSD map picks it, a second click picks the other side of the relationship, and **Send the
   pair to Variants** opens the relationship view with both orientations already in it. The
@@ -235,6 +273,29 @@ downstream analyses depend on them.
 
 - `buildForm(...).field(name)` returns one parameter's control, for a panel that presents a
   parameter somewhere of its own and must hide the generated one so the two cannot disagree.
+
+### Changed
+
+- **Burgers bcc-to-hcp in zirconium is now the canonical case throughout the Variants panel and the
+  new EBSD sub-tab**, replacing fcc-to-bcc martensite as the default phases, relationship, packet
+  family and plotted pole. The two phases belong to different crystal systems, so the *default* now
+  exercises what a cubic-to-cubic default leaves untested: four-index Miller-Bravais labels, a
+  hexagonal child frame, and a packet family that is {110} rather than {111}. The measured-pair
+  views' six default Euler angles are correspondingly an exact Burgers pair. Every relationship the
+  panel offered before is still offered, and the fcc-to-bcc examples still demonstrate them.
+
+- **Overlay labels now carry the pair they stand for, in each phase's own notation.** A parallel
+  plane drawn on a hexagonal crystal was labelled `(001)` from its raw three-index normal while the
+  caption beside it read `(0001)`; one object now has one name.
+
+- **The scene renderer honours per-item colour and opacity** on atoms, bonds, cell edges, planes and
+  directions, and draws one labelled axis triad per crystal rather than one per scene. Previously
+  every plane in a scene took a single colour from the global appearance, which is why two phases
+  and the overlay shared between them could not be told apart.
+
+- **`Shoji-Nishiyama` has a display name.** It is catalogued for bcc-to-hcp comparison but not
+  offered as a construction, so it reached every characterization table as the lower-cased
+  identifier beside properly cased names.
 
 ### Fixed
 

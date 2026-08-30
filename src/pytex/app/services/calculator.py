@@ -1548,6 +1548,13 @@ _RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
 #: reads ``kurdjumov-sachs``, which is a variable name, not a pair of surnames.
 RELATIONSHIP_NAMES: dict[str, str] = {
     identifier: label.split(" (")[0] for identifier, label, _ in _RELATIONSHIPS
+} | {
+    # Catalogued for comparison but not offered as a construction, so it has no
+    # entry among the options above. It still reaches the screen: every
+    # characterization of a bcc-to-hcp pair ranks it as the runner-up to
+    # Burgers, and without a display name it printed as "shoji-nishiyama"
+    # beside properly cased names.
+    "shoji_nishiyama": "Shoji-Nishiyama",
 }
 
 

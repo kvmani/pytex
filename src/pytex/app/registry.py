@@ -108,6 +108,9 @@ _PANEL_DOCUMENTATION = {
         "EBSD grain segmentation and GROD", "theory/ebsd_grain_segmentation_and_grod"
     ),
     "ebsd_kikuchi": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
+    "ebsd_or": DocumentationLink(
+        "Orientation relationships", "concepts/orientation_relationships"
+    ),
     "ecci": DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
     "kearns": DocumentationLink(
         "The Kearns parameter and basal-pole texture",
