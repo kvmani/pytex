@@ -68,6 +68,27 @@ from pytex.core.miller import canonicalize_sign
 
 __all__: tuple[str, ...] = ()
 
+#: The canonical case, used as the default everywhere in this panel.
+#:
+#: Burgers bcc-to-hcp in zirconium, rather than an fcc-to-bcc martensite. Three
+#: reasons, and the third is the one that matters for the pictures:
+#:
+#: - It is the transformation zirconium alloys are made and used through, so the
+#:   default answers a question somebody has.
+#: - Its two phases have *different* crystal systems, so every surface that
+#:   silently assumed cubic-to-cubic is exercised by the default rather than by
+#:   an example nobody runs: four-index Miller-Bravais labels, a hexagonal
+#:   child frame, and a packet family that is not {111}.
+#: - Twelve variants in six packets of two fit on one screen at a size where
+#:   the planes drawn on them can actually be seen; twenty-four cannot.
+_CANONICAL_PARENT = "zr_bcc_beta"
+_CANONICAL_CHILD = "zr_hcp"
+_CANONICAL_RELATIONSHIP = "burgers"
+#: The parent family Burgers is built on: {110}_bcc, which carries the packets.
+_CANONICAL_PACKET_PLANE = (1, 1, 0)
+#: The child plane the canonical case is read on: the basal plane, as (0001).
+_CANONICAL_CHILD_POLE = (0, 0, 1)
+
 _CITATION_MORITO = (
     "Morito, Tanaka, Konishi, Furuhara & Maki, Acta Mater. 51 (2003) 1789 "
     "(packet and block structure of lath martensite)."
@@ -398,39 +419,40 @@ def _child_family(child_phase: Any, indices: tuple[int, ...]) -> tuple[np.ndarra
         phase_parameter(
             label="Parent phase",
             help_text="The phase that transforms, and the frame the figure is drawn in.",
-            builtin="austenite_fcc",
+            builtin=_CANONICAL_PARENT,
         ),
         phase_parameter(
             name="child_phase",
             label="Child phase",
             help_text="The product phase — ferrite or martensite, or alpha for Burgers.",
-            builtin="fe_bcc",
+            builtin=_CANONICAL_CHILD,
         ),
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
             help_text="Which relationship generates the variants.",
             options=_RELATIONSHIPS,
-            default="kurdjumov_sachs",
+            default=_CANONICAL_RELATIONSHIP,
         ),
         IndicesParameter(
             name="pole",
             label="Child plane to plot",
             help_text=(
-                "The child plane whose symmetry family is projected. (100) is the usual choice "
-                "for a cubic product: three poles per variant, so the figure stays readable."
+                "The child plane whose symmetry family is projected. The basal plane (0001) is "
+                "the usual choice for a hexagonal product — one pole per variant, so twelve "
+                "variants stay readable — and (100) the usual choice for a cubic one."
             ),
-            default=(1, 0, 0),
+            default=_CANONICAL_CHILD_POLE,
         ),
         IndicesParameter(
             name="packet_plane",
             label="Parent plane defining packets",
             help_text=(
                 "The parent family whose members the variants are grouped by. Use the family "
-                "the relationship is built on: (111) for the fcc-to-bcc relationships, (110) "
-                "for Burgers."
+                "the relationship is built on: (110) for Burgers, (111) for the fcc-to-bcc "
+                "relationships."
             ),
-            default=(1, 1, 1),
+            default=_CANONICAL_PACKET_PLANE,
         ),
         ChoiceParameter(
             name="projection",
@@ -653,29 +675,29 @@ def _variant_pole_figure(request: dict[str, Any]) -> dict[str, Any]:
         phase_parameter(
             label="Parent phase",
             help_text="The phase that transforms.",
-            builtin="austenite_fcc",
+            builtin=_CANONICAL_PARENT,
         ),
         phase_parameter(
             name="child_phase",
             label="Child phase",
             help_text="The product phase, whose symmetry reduces each misorientation.",
-            builtin="fe_bcc",
+            builtin=_CANONICAL_CHILD,
         ),
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
             help_text="Which relationship generates the variants.",
             options=_RELATIONSHIPS,
-            default="kurdjumov_sachs",
+            default=_CANONICAL_RELATIONSHIP,
         ),
         IndicesParameter(
             name="packet_plane",
             label="Parent plane defining packets",
             help_text=(
-                "Used only to label each pair as within or across a packet. (111) for the "
-                "fcc-to-bcc relationships, (110) for Burgers."
+                "Used only to label each pair as within or across a packet. (110) for Burgers, "
+                "(111) for the fcc-to-bcc relationships."
             ),
-            default=(1, 1, 1),
+            default=_CANONICAL_PACKET_PLANE,
         ),
         BooleanParameter(
             name="merge_equal_angles",
@@ -861,32 +883,32 @@ def _intervariant_misorientations(request: dict[str, Any]) -> dict[str, Any]:
         phase_parameter(
             label="Parent phase",
             help_text="The phase that transforms, and the frame the figure is drawn in.",
-            builtin="austenite_fcc",
+            builtin=_CANONICAL_PARENT,
         ),
         phase_parameter(
             name="child_phase",
             label="Child phase",
             help_text="The product phase.",
-            builtin="fe_bcc",
+            builtin=_CANONICAL_CHILD,
         ),
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
             help_text="Which relationship generates the variants.",
             options=_RELATIONSHIPS,
-            default="kurdjumov_sachs",
+            default=_CANONICAL_RELATIONSHIP,
         ),
         IndicesParameter(
             name="pole",
             label="Child plane to plot",
             help_text="The child plane whose symmetry family is projected.",
-            default=(1, 0, 0),
+            default=_CANONICAL_CHILD_POLE,
         ),
         IndicesParameter(
             name="packet_plane",
             label="Parent plane defining packets",
             help_text="The parent family the variants are grouped and coloured by.",
-            default=(1, 1, 1),
+            default=_CANONICAL_PACKET_PLANE,
         ),
         ChoiceParameter(
             name="projection",
@@ -1116,12 +1138,30 @@ def _child_translation(placement: str, parent_scene: Any, child_scene: Any) -> l
     return [0.65 * span, 0.0, 0.0]
 
 
-def _primitive_payload(primitives: Any) -> dict[str, Any]:
+def _primitive_payload(
+    primitives: Any, rows: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     """The world-frame OR primitives as JSON the browser can draw directly.
 
     Everything is in Cartesian angstrom in the world frame — which is the parent
     crystal frame — so the browser applies the camera rotation and nothing else.
+
+    ``rows`` relabels each object with the **pair** it stands for, taken from
+    the same parallelism rows the table and the caption use. Without it the
+    plotting layer's own label reaches the screen, and that label is written
+    from the raw three-index normal: an overlay reading ``(001)`` beside a
+    caption reading ``(0001)`` for the same plane invites the reader to think
+    two different planes are being discussed. One object, one name.
     """
+
+    plane_rows = [row for row in rows or [] if row["kind"] == "plane"]
+    direction_rows = [row for row in rows or [] if row["kind"] == "direction"]
+
+    def _pair_label(candidates: list[dict[str, Any]], index: int, fallback: Any) -> Any:
+        if index < len(candidates):
+            row = candidates[index]
+            return f"{row['parent']} \u2225 {row['child']}"
+        return fallback
 
     return {
         "arrows": [
@@ -1129,9 +1169,9 @@ def _primitive_payload(primitives: Any) -> dict[str, Any]:
                 "tail": [float(value) for value in arrow.tail],
                 "head": [float(value) for value in arrow.head],
                 "color": str(arrow.color),
-                "label": arrow.label,
+                "label": _pair_label(direction_rows, index, arrow.label),
             }
-            for arrow in primitives.arrows
+            for index, arrow in enumerate(primitives.arrows)
         ],
         "patches": [
             {
@@ -1139,9 +1179,9 @@ def _primitive_payload(primitives: Any) -> dict[str, Any]:
                 "normal": [float(value) for value in patch.normal],
                 "color": str(patch.color),
                 "alpha": float(patch.alpha),
-                "label": patch.label,
+                "label": _pair_label(plane_rows, index, patch.label),
             }
-            for patch in primitives.patches
+            for index, patch in enumerate(primitives.patches)
         ],
     }
 
@@ -1190,6 +1230,97 @@ def _parallelism_rows(
     return rows
 
 
+def _axis_in_basis(axis_cartesian: Any, phase: Any, spec: PhaseSpec) -> dict[str, Any]:
+    """One rotation axis, named in one phase's own indices.
+
+    The Cartesian components are the same in both crystal frames — the axis is
+    the fixed vector of the map between them — so what changes from the parent
+    row to the child row is only how the vector is *indexed*: a three-index
+    ``[uvw]`` against the cubic basis, a four-index ``[uvtw]`` against the
+    hexagonal one. Both are reported because a Burgers axis quoted only in the
+    bcc basis is unusable to anyone working in the alpha phase, and the other
+    way about.
+
+    The residual travels with the label: these axes are not in general rational
+    in either basis, and a label with no error beside it would claim they were.
+    """
+
+    axis = np.asarray(axis_cartesian, dtype=float)
+    label, deviation = _nearest_axis(axis, phase, spec)
+    return {
+        "label": label,
+        "deviation_deg": float(deviation),
+        "cartesian": [float(value) for value in axis],
+    }
+
+
+def _crystal_axes(phase: Any, spec: PhaseSpec, matrix: Any = None) -> list[dict[str, Any]]:
+    """A crystal's own axes as world vectors, labelled the way that phase is indexed.
+
+    Every panel of the wall draws two of these, one per phase, because the whole
+    claim being made is about the relative orientation of two *crystals* and a
+    picture with one triad in it can only say where one of them points. The
+    hexagonal child is labelled ``a1, a2, c`` rather than ``a, b, c``: calling
+    the hexagonal axes a and b next to a four-index plane label would be a
+    quiet contradiction of the notation the label uses.
+
+    ``matrix`` is the placement that carries the crystal into the world frame;
+    omitted, the crystal frame is the world frame, which is true of the parent.
+    """
+
+    basis = np.asarray(phase.lattice.direct_basis().matrix, dtype=float)
+    if matrix is not None:
+        basis = np.asarray(matrix, dtype=float) @ basis
+    labels = ("a1", "a2", "c") if spec.uses_miller_bravais else ("a", "b", "c")
+    return [
+        {"label": labels[index], "vector": [float(value) for value in basis[:, index]]}
+        for index in range(3)
+    ]
+
+
+def _variant_facts(
+    variant: Any,
+    *,
+    parent_spec: PhaseSpec,
+    parent_phase: Any,
+    child_spec: PhaseSpec,
+    child_phase: Any,
+    child_matrix: Any,
+    parallelisms: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Everything a variant panel states in words, computed once, in Python.
+
+    A panel of the wall is a picture plus a caption, and the caption is the part
+    that can be checked: the variant's index, the Euler angles that placed it,
+    the angle and axis of its rotation in *both* crystal bases, and the specific
+    plane and direction this variant — not the relationship, not variant 1 —
+    holds parallel. All of it is derived from the same rotation that placed the
+    crystal in the picture, so the caption cannot drift from the geometry.
+    """
+
+    rotation = variant.parent_to_child_rotation
+    axis = np.asarray(rotation.axis, dtype=float)
+    phi1, phi, phi2 = rotation.to_bunge_euler(degrees=True)
+    planes = [row for row in parallelisms if row["kind"] == "plane"]
+    directions = [row for row in parallelisms if row["kind"] == "direction"]
+    return {
+        "euler_deg": [float(phi1), float(phi), float(phi2)],
+        "rotation": {
+            "angle_deg": float(rotation.angle_deg),
+            "axis_parent": _axis_in_basis(axis, parent_phase, parent_spec),
+            "axis_child": _axis_in_basis(axis, child_phase, child_spec),
+        },
+        "frames": {
+            "parent": _crystal_axes(parent_phase, parent_spec),
+            "child": _crystal_axes(child_phase, child_spec, child_matrix),
+        },
+        "correspondence": {
+            "planes": [f"{row['parent']} ∥ {row['child']}" for row in planes],
+            "directions": [f"{row['parent']} ∥ {row['child']}" for row in directions],
+        },
+    }
+
+
 def _world_extent(points: np.ndarray) -> dict[str, Any]:
     """Centre and radius of a point cloud, for a camera that must frame both crystals."""
 
@@ -1208,20 +1339,20 @@ _COMPOSITE_PARAMETERS = (
     phase_parameter(
         label="Parent phase",
         help_text="The phase that transforms. The world frame is its crystal frame.",
-        builtin="austenite_fcc",
+        builtin=_CANONICAL_PARENT,
     ),
     phase_parameter(
         name="child_phase",
         label="Child phase",
         help_text="The product phase, placed by the variant's rotation.",
-        builtin="fe_bcc",
+        builtin=_CANONICAL_CHILD,
     ),
     ChoiceParameter(
         name="relationship",
         label="Orientation relationship",
         help_text="Which relationship the two crystals are held in.",
         options=_RELATIONSHIPS,
-        default="kurdjumov_sachs",
+        default=_CANONICAL_RELATIONSHIP,
     ),
     IntegerParameter(
         name="repeats",
@@ -1238,9 +1369,13 @@ _COMPOSITE_PARAMETERS = (
     ChoiceParameter(
         name="placement",
         label="Placement",
-        help_text="Whether the two crystals share an origin or stand apart.",
+        help_text=(
+            "Whether the two crystals share an origin or stand apart. Side by side is the "
+            "default here: the overlay is drawn on *both* crystals, so standing them apart "
+            "shows one plane twice rather than one plane once inside a thicket of atoms."
+        ),
         options=_PLACEMENTS,
-        default="interpenetrating",
+        default="side_by_side",
         group="Extent",
     ),
     BooleanParameter(
@@ -1284,7 +1419,7 @@ _COMPOSITE_PARAMETERS = (
 
 @REGISTRY.operation(
     "variants.composite_scene",
-    title="Both crystals of one variant",
+    title="Parent and one variant",
     summary="Parent and product structures in one world frame, with the parallelism drawn on them.",
     help_text=(
         "Builds the two-crystal scene of a single transformation variant: the parent crystal in "
@@ -1411,7 +1546,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
             "world": extent,
             "parent": {"label": parent_spec.name, "scene": parent_payload},
             "child": {"label": child_spec.name, "scene": child_payload},
-            "primitives": _primitive_payload(world.primitives),
+            "primitives": _primitive_payload(world.primitives, rows),
             "parallelisms": rows,
             "variant": {
                 "index": int(variant.variant_index),
@@ -1424,10 +1559,28 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
                     [float(value) for value in row]
                     for row in variant.parent_to_child_rotation.as_matrix()
                 ],
+                **_variant_facts(
+                    variant,
+                    parent_spec=parent_spec,
+                    parent_phase=parent_phase,
+                    child_spec=child_spec,
+                    child_phase=child_phase,
+                    child_matrix=child_transform.matrix,
+                    parallelisms=rows,
+                ),
             },
             "relationship": {
                 "name": relationship_name(str(request["relationship"])),
                 "angle_deg": float(misorientation.angle_deg),
+                "parent": parent_spec.name,
+                "child": child_spec.name,
+                "disorientation_deg": float(misorientation.angle_deg),
+                "parent_frame_labels": [
+                    axis["label"] for axis in _crystal_axes(parent_phase, parent_spec)
+                ],
+                "child_frame_labels": [
+                    axis["label"] for axis in _crystal_axes(child_phase, child_spec)
+                ],
             },
         },
         inputs={
@@ -1449,13 +1602,28 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
 
 @REGISTRY.operation(
     "variants.contact_sheet",
-    title="Every variant at once",
-    summary="One placement matrix and one parallelism statement per variant, for an N-up grid.",
+    title="Parent and every variant",
+    summary=(
+        "The parent, and every variant beside it, at one locked camera: a placement matrix, "
+        "a parallelism, both crystal frames and the rotation in both bases, per variant."
+    ),
     help_text=(
-        "The contact sheet behind the composite viewer: the same two structures, and the "
-        "placement of the child for every variant of the relationship. Seeing 24 panels of one "
-        "parent with 24 differently oriented children is what makes 'twenty-four variants' mean "
+        "The wall behind the one-up viewer: the same two structures, and the placement of the "
+        "child for every variant of the relationship. Seeing twelve panels of one parent with "
+        "twelve differently oriented children is what makes 'twelve variants' mean "
         "something.\n\n"
+        "**Each panel is a pair, not a thumbnail.** The parent stands in every panel beside its "
+        "variant, and the plane and direction the relationship holds parallel are drawn on "
+        "*both* crystals — which is exact rather than decorative, since a parallel object is "
+        "unchanged by the translation that separates them. Both crystal frames are drawn too, "
+        "each in its own phase's notation, because a single triad in a two-crystal figure will "
+        "be read as belonging to whichever crystal the reader is looking at.\n\n"
+        "**Every panel carries its own arithmetic.** The variant's Euler angles, with the "
+        "parent at zero; the angle and axis of its rotation, named against the parent basis "
+        "*and* the child basis with the residual of each label; and the specific plane and "
+        "direction that variant holds parallel. The symmetry-reduced disorientation is stated "
+        "once for the whole wall, because it is the same for every variant and repeating it "
+        "per panel would suggest otherwise.\n\n"
         "**Two scenes, N matrices.** The structures are sent once, each in its own crystal "
         "frame, together with one 3x3 placement matrix per variant. Sending 24 fully placed "
         "copies of both crystals would be tens of megabytes for information a matrix multiply "
@@ -1473,10 +1641,10 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
             label="Parent plane defining packets",
             help_text=(
                 "The parent family whose members the variants are grouped by. Use the family "
-                "the relationship is built on: (111) for the fcc-to-bcc relationships, (110) "
-                "for Burgers."
+                "the relationship is built on: (110) for Burgers, (111) for the fcc-to-bcc "
+                "relationships."
             ),
-            default=(1, 1, 1),
+            default=_CANONICAL_PACKET_PLANE,
             advanced=True,
         ),
     ),
@@ -1555,8 +1723,17 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
                 "packet": int(packet) + 1,
                 "child_matrix": [[float(value) for value in row] for row in matrix],
                 "translation": [float(value) for value in translation],
-                "primitives": _primitive_payload(world.primitives),
+                "primitives": _primitive_payload(world.primitives, parallelisms),
                 "parallelisms": parallelisms,
+                **_variant_facts(
+                    variant,
+                    parent_spec=parent_spec,
+                    parent_phase=parent_phase,
+                    child_spec=child_spec,
+                    child_phase=child_phase,
+                    child_matrix=matrix,
+                    parallelisms=parallelisms,
+                ),
             }
         )
         plane_pairs = [row for row in parallelisms if row["kind"] == "plane"]
@@ -1622,6 +1799,22 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             "variant_count": len(variants),
             "packet_count": packet_count,
             "frames": "own_crystal_frame",
+            "relationship": {
+                "name": relationship_name(str(request["relationship"])),
+                "parent": parent_spec.name,
+                "child": child_spec.name,
+                # The symmetry-reduced angle is a property of the relationship,
+                # not of a variant: every variant is the same disorientation.
+                # It sits here, once, rather than being repeated on twelve
+                # panels as if the panels disagreed about it.
+                "disorientation_deg": float(relationship.misorientation().angle_deg),
+                "parent_frame_labels": [
+                    axis["label"] for axis in _crystal_axes(parent_phase, parent_spec)
+                ],
+                "child_frame_labels": [
+                    axis["label"] for axis in _crystal_axes(child_phase, child_spec)
+                ],
+            },
         },
         inputs={
             "phase": parent_spec.to_json(),
@@ -1701,19 +1894,20 @@ def _orientation_from_euler(
 #: Two operations read the same two grains -- one answers in numbers, the
 #: other draws them -- and a user switching between them must not meet two
 #: different forms for the same input. One definition also means the six
-#: angle defaults, which are an exact Kurdjumov-Sachs pair, cannot drift
-#: apart between the views that demonstrate them.
+#: angle defaults, which are an exact Burgers pair -- a beta grain at
+#: (30, 40, 10) and the alpha grain its first variant produces -- cannot
+#: drift apart between the views that demonstrate them.
 _MEASURED_PAIR_PARAMETERS: tuple[Any, ...] = (
     phase_parameter(
         label="Parent phase",
         help_text="The phase of the first grain — the one that transformed.",
-        builtin="austenite_fcc",
+        builtin=_CANONICAL_PARENT,
     ),
     phase_parameter(
         name="child_phase",
         label="Child phase",
         help_text="The phase of the second grain — the product.",
-        builtin="fe_bcc",
+        builtin=_CANONICAL_CHILD,
     ),
     ChoiceParameter(
         name="euler_convention",
@@ -1754,9 +1948,9 @@ _MEASURED_PAIR_PARAMETERS: tuple[Any, ...] = (
             group="Child grain",
         )
         for index, label, ordinal, default in (
-            (1, "phi1 / alpha", "First", 45.2774),
-            (2, "Phi / beta", "Second", 34.9979),
-            (3, "phi2 / gamma", "Third", 316.2482),
+            (1, "phi1 / alpha", "First", 167.5709),
+            (2, "Phi / beta", "Second", 58.2280),
+            (3, "phi2 / gamma", "Third", 0.9653),
         )
     ),
     NumberParameter(
@@ -2485,6 +2679,33 @@ def _idealized_placement(
 
 REGISTRY.add_examples(
     (
+        ExampleScenario(
+            id="variants.example.burgers_wall",
+            title="Burgers in zirconium: the parent and all twelve variants",
+            panel="variants",
+            summary="The canonical case as crystals: twelve pairs, six packets, one camera.",
+            teaches=(
+                "The whole statement of an orientation relationship, drawn. Each panel holds "
+                "the parent beta crystal beside one alpha variant, with the {110} plane and "
+                "the close-packed direction drawn across both — so the parallelism is seen "
+                "rather than read. The twelve panels fall into six packets of two, one packet "
+                "per member of the parent {110} family, and the caption of each panel names "
+                "which member it is.\n\n"
+                "Every variant is the same 45.29 degree disorientation; what differs between "
+                "them is the axis and which family member is carried into parallelism. Turn "
+                "any panel and all twelve turn with it, which is what makes the comparison "
+                "between them a comparison rather than twelve separate impressions."
+            ),
+            operation="variants.contact_sheet",
+            request={
+                "phase": {"builtin": "zr_bcc_beta"},
+                "child_phase": {"builtin": "zr_hcp"},
+                "relationship": "burgers",
+                "repeats": 1,
+                "placement": "side_by_side",
+                "packet_plane": [1, 1, 0],
+            },
+        ),
         ExampleScenario(
             id="variants.example.ks_packets",
             title="The 24 variants, and the 4 packets they fall into",

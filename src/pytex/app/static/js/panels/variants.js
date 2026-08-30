@@ -29,9 +29,10 @@ import { claim } from '../core/handoff.js';
 import { identity, multiply, rotationX, rotationY } from '../core/rotation3.js';
 import {
   compositeScene,
-  contactSheetScene,
   measuredCompositeScene,
+  parentReferenceScene,
   screenAlignment,
+  variantPanelScene,
 } from '../core/compositescene.js';
 import { defaultAppearance, renderScene } from './crystal.js';
 
@@ -80,6 +81,23 @@ const PHASE_COLORS = Object.freeze({
   // The idealized child, when it is shown beside the measured one. Muted,
   // because it is the comparison and not the measurement.
   ideal: '#9ca3af',
+});
+
+/**
+ * The colours of the relationship itself, as distinct from either crystal.
+ *
+ * The parallel plane and direction belong to neither phase — they are the
+ * statement being made *about* both — so they are drawn in colours that are
+ * neither the parent's nor the child's. The service's own defaults are close
+ * enough to the child's amber to be read as "the child's plane", which is the
+ * one reading the figure must not admit.
+ */
+const OR_COLORS = Object.freeze({
+  plane: '#7c3aed',
+  direction: '#be123c',
+  // Faint enough to see two lattices through, strong enough to find in a
+  // fourteen-rem panel. The service's 0.16 was tuned for a full-size figure.
+  planeAlpha: 0.34,
 });
 
 function packetColor(packet) {
@@ -157,6 +175,11 @@ export function mount(context) {
     // Which result the camera was framed for. Reframing on every redraw would
     // make turning the crystal also rescale it.
     framedFor: null,
+    // How the variant wall is drawn. Three switches, because three questions
+    // are asked of it: how big a panel has to be before its plane can be seen
+    // (size), whether the atoms are wanted at all (atoms), and whether the
+    // parent is the reference or a second subject (ghost).
+    wall: { size: 'm', atoms: false, ghost: true },
     // A pair of grains picked on the EBSD map, if the user arrived that way:
     // the seeded control values and the card that says where they came from.
     // Kept rather than applied once, because the two measured-pair views take
@@ -205,12 +228,15 @@ export function mount(context) {
   /** The frame's heading, which has to follow the view rather than the panel. */
   const FRAME_TITLES = {
     pole: 'Pole figure',
-    composite: 'Composite scene',
-    sheet: 'Variant contact sheet',
+    composite: 'Parent and one variant',
+    sheet: 'Parent and every variant',
     measured: 'The measured pair, in the specimen frame',
   };
 
   const legend = el('div.legend');
+  // The facts of the open variant, under the picture rather than inside the
+  // frame: they are a reading of the figure, not a control on it.
+  const facts = el('div.orfacts', { hidden: true });
   const details = el('div');
   const formHost = el('div');
 
@@ -250,7 +276,7 @@ export function mount(context) {
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
         el('p.field__help', {
-          text: 'Run the first two in order: 24 variants in 4 packets, then the same figure with half as many. The composite examples show the same variants as crystals.',
+          text: 'Start with the Burgers wall: the parent and twelve variants as crystals, at one camera. The pole-figure examples show where the same variants point.',
         }),
         el(
           'div.examples',
@@ -385,10 +411,11 @@ export function mount(context) {
     frame.setTitle(FRAME_TITLES[mode] ?? 'Pole figure');
     publishButton.disabled = mode !== 'pole';
     formatSelect.disabled = mode !== 'pole';
+    facts.hidden = mode !== 'composite';
     if (mode === 'table') return;
     if (mode === 'composite') return drawComposite();
     if (mode === 'measured') return drawMeasuredComposite();
-    if (mode === 'sheet') return drawContactSheet();
+    if (mode === 'sheet') return drawVariantWall();
     drawPoleFigure();
   }
 
@@ -436,19 +463,81 @@ export function mount(context) {
     frame.configure({ formatCursor: () => 'drag to turn · scroll to zoom' });
     frame.setContent(
       renderScene(
-        compositeScene(data, { parentColor: PHASE_COLORS.parent, childColor: PHASE_COLORS.child }),
+        compositeScene(data, {
+          parentColor: PHASE_COLORS.parent,
+          childColor: PHASE_COLORS.child,
+          parentLabel: shortLabel(data.parent.label),
+          childLabel: shortLabel(data.child.label),
+          ghostParent: state.wall.ghost,
+          showAtoms: state.wall.atoms,
+          planeColor: OR_COLORS.plane,
+          directionColor: OR_COLORS.direction,
+          planeAlpha: OR_COLORS.planeAlpha,
+        }),
         camera,
         frame,
-        compositeAppearance(state.appearance),
+        compositeAppearance(state.appearance, { showAtoms: state.wall.atoms }),
       ),
     );
     buildPhaseLegend(data);
+    renderVariantFacts(data);
     const notes = screenAlignment(camera.rotation, data.primitives);
     frame.setStatus(
       `Variant ${data.variant.index} of ${data.variant.count} · ` +
         `${data.parent.label} and ${data.child.label} in the parent frame · ` +
         alignmentStatus(notes),
     );
+  }
+
+  /**
+   * Everything the one-up view asserts, written out under the picture.
+   *
+   * The wall panel abbreviates these because twelve panels have no room; with
+   * one variant on screen there is no reason to make the reader hover a
+   * tooltip for the axis residual or count Euler angles off a caption. The
+   * facts are the same values from the same payload, so the two views cannot
+   * state different numbers for one variant.
+   */
+  function renderVariantFacts(data) {
+    const variant = data.variant ?? {};
+    const relationship = data.relationship ?? {};
+    const rotation = variant.rotation;
+    const euler = variant.euler_deg ?? [];
+    const item = (label, nodes, title = null) =>
+      el('span.orfacts__item', title ? { title } : {}, [
+        el('span.orfacts__label', { text: label }),
+        el('span.orfacts__value', {}, Array.isArray(nodes) ? nodes : [nodes]),
+      ]);
+    const parts = [
+      item('Variant', el('span', { text: `${variant.index} of ${variant.count}` })),
+      ...(variant.correspondence?.planes ?? []).map((pair) =>
+        item('Planes', el('span', { text: pair })),
+      ),
+      ...(variant.correspondence?.directions ?? []).map((pair) =>
+        item('Directions', el('span', { text: pair })),
+      ),
+      euler.length === 3
+        ? item(
+            'Euler (Bunge)',
+            el('span', {
+              text:
+                `${formatNumber(euler[0], 2)}, ${formatNumber(euler[1], 2)}, ` +
+                `${formatNumber(euler[2], 2)}\u00b0`,
+            }),
+            'The child orientation this variant produces from a parent at 0, 0, 0',
+          )
+        : null,
+      rotation ? item('Rotation', axisLine(rotation, data)) : null,
+      relationship.disorientation_deg != null
+        ? item(
+            'Disorientation',
+            el('span', { text: `${formatNumber(relationship.disorientation_deg, 2)}\u00b0` }),
+            'Symmetry-reduced, and therefore the same for every variant: it names the ' +
+              'relationship, not the variant.',
+          )
+        : null,
+    ].filter(Boolean);
+    facts.replaceChildren(...parts);
   }
 
   /**
@@ -528,63 +617,309 @@ export function mount(context) {
   }
 
   /**
-   * Every variant at one camera.
+   * The variant wall: the parent, then every variant beside it, at one camera.
    *
    * The two structures were fetched once; each panel applies its own placement
    * matrix here. Fetching a scene per variant would be the same picture for
-   * twenty-four times the traffic, and is exactly what the payload shape exists
-   * to avoid.
+   * twelve times the traffic, and is exactly what the payload shape exists to
+   * avoid.
+   *
+   * Three things make a panel readable that a thumbnail of two crystals is not.
+   * The parent is **ghosted** and the child solid, so the pair reads as a
+   * reference and a subject rather than as a two-coloured blob. The parallel
+   * plane and direction are drawn on **both** crystals, which is the whole
+   * statement and is what a single overlay at the origin fails to say. And
+   * every panel carries **both crystal frames**, in the phases' own colours and
+   * the phases' own notation, because a triad that could belong to either
+   * crystal is worse than no triad at all.
+   *
+   * Under the picture is the part that can be checked: this variant's index and
+   * packet, the specific plane and direction *it* holds parallel, the Euler
+   * angles that placed it, and its rotation named in both crystal bases.
    */
-  function drawContactSheet() {
+  function drawVariantWall() {
     const data = state.result.data;
-    const appearance = compositeAppearance(state.appearance, { compact: true });
-    const sheet = el(
-      'div.sheet',
-      {},
-      data.variants.map((entry) => {
-        const plane = entry.parallelisms.find((row) => row.kind === 'plane');
-        return el(
-          'button.sheet__cell',
-          {
-            type: 'button',
-            dataset: { variant: String(entry.index), packet: String(entry.packet) },
-            title: `Open variant ${entry.index} in the composite view`,
-            onclick: () => {
-              if (dragMoved) return;
-              openVariant(entry.index);
-            },
-          },
-          [
-            renderScene(
-              contactSheetScene(data, entry, {
-                parentColor: PHASE_COLORS.parent,
-                childColor: PHASE_COLORS.child,
-              }),
-              camera,
-              SILENT_FRAME,
-              appearance,
-            ),
-            el('span.sheet__caption', {}, [
-              el('strong', { text: `V${entry.index}` }),
-              el('span.sheet__packet', {}, [
-                el('span.sheet__swatch', {
-                  style: `background:${packetColor(entry.packet)}`,
-                }),
-                el('span', { text: `packet ${entry.packet}` }),
-              ]),
+    const appearance = compositeAppearance(state.appearance, {
+      compact: true,
+      showAtoms: state.wall.atoms,
+    });
+    const options = {
+      parentColor: PHASE_COLORS.parent,
+      childColor: PHASE_COLORS.child,
+      parentLabel: shortLabel(data.parent.label),
+      childLabel: shortLabel(data.child.label),
+      ghostParent: state.wall.ghost,
+      showAtoms: state.wall.atoms,
+      planeColor: OR_COLORS.plane,
+      directionColor: OR_COLORS.direction,
+      planeAlpha: OR_COLORS.planeAlpha,
+    };
+    wallGrid.dataset.size = state.wall.size;
+    wallGrid.replaceChildren(
+      parentPanel(data, appearance, options),
+      ...data.variants.map((entry) => variantPanel(data, entry, appearance, options)),
+    );
+    updateWallBar(data);
+    buildPhaseLegend(data);
+    frame.setContent(wallRoot);
+    frame.setStatus(wallStatus(data));
+  }
+
+  /** The reference panel: the parent alone, at the same camera and framing. */
+  function parentPanel(data, appearance, options) {
+    return el('div.panel.panel--parent', {}, [
+      el('div.panel__stage', {}, [
+        renderScene(
+          parentReferenceScene(data, {
+            parentColor: PHASE_COLORS.parent,
+            parentLabel: options.parentLabel,
+            showAtoms: state.wall.atoms,
+          }),
+          camera,
+          SILENT_FRAME,
+          appearance,
+        ),
+      ]),
+      el('div.panel__caption', {}, [
+        el('div.panel__head', {}, [
+          el('strong', { text: 'Parent' }),
+          el('span.panel__tag', { text: 'reference' }),
+        ]),
+        el('div.panel__pair', { text: data.parent.label }),
+        el('div.panel__euler', {
+          text: 'phi1 Phi phi2 = 0, 0, 0 \u2014 the frame the others are measured in',
+        }),
+      ]),
+    ]);
+  }
+
+  /** One variant: its picture, and the facts that picture asserts. */
+  function variantPanel(data, entry, appearance, options) {
+    const planes = entry.correspondence?.planes ?? [];
+    const directions = entry.correspondence?.directions ?? [];
+    const euler = entry.euler_deg ?? [];
+    const rotation = entry.rotation;
+    return el(
+      'button.panel.panel--variant',
+      {
+        type: 'button',
+        dataset: { variant: String(entry.index), packet: String(entry.packet) },
+        title: `Open variant ${entry.index} on its own`,
+        style: `--packet:${packetColor(entry.packet)}`,
+        onclick: () => {
+          if (dragMoved) return;
+          openVariant(entry.index);
+        },
+      },
+      [
+        el('div.panel__stage', {}, [
+          renderScene(variantPanelScene(data, entry, options), camera, SILENT_FRAME, appearance),
+        ]),
+        el('div.panel__caption', {}, [
+          el('div.panel__head', {}, [
+            el('strong', { text: `V${entry.index}` }),
+            el('span.panel__packet', {}, [
+              el('span.panel__swatch', {}),
+              el('span', { text: `packet ${entry.packet}` }),
             ]),
-            plane
-              ? el('span.sheet__pair', { text: `${plane.parent} \u2225 ${plane.child}` })
-              : null,
-          ],
-        );
+          ]),
+          // The correspondence this variant realizes, in full. Every variant
+          // holds a *different* member of the parent family parallel, so a
+          // panel that abbreviates its own indices is the one panel that
+          // misleads.
+          ...planes.map((pair) => el('div.panel__pair', { text: pair })),
+          ...directions.map((pair) =>
+            el('div.panel__pair.panel__pair--direction', { text: pair }),
+          ),
+          euler.length === 3
+            ? el('div.panel__euler', {
+                title: 'Bunge Euler angles of this variant, with the parent at 0, 0, 0',
+                text:
+                  `\u03c6\u2081 \u03a6 \u03c6\u2082 = ${formatNumber(euler[0], 1)}, ` +
+                  `${formatNumber(euler[1], 1)}, ${formatNumber(euler[2], 1)}\u00b0`,
+              })
+            : null,
+          rotation ? el('div.panel__axis', {}, axisLine(rotation, data)) : null,
+        ]),
+      ],
+    );
+  }
+
+  /**
+   * The variant's rotation, named in both crystal bases.
+   *
+   * Both, because they are the same physical axis and neither indexing is
+   * sufficient on its own: the axis of a Burgers variant quoted only against
+   * the bcc basis is unusable to someone working in the alpha phase. The
+   * residual travels with each label because these axes are not in general
+   * rational in either basis, and a bare index triple would claim they were.
+   */
+  function axisLine(rotation, data) {
+    const parentLabels = data.relationship?.parent_frame_labels ?? [];
+    const childLabels = data.relationship?.child_frame_labels ?? [];
+    return [
+      el('span', { text: `${formatNumber(rotation.angle_deg, 2)}\u00b0 about ` }),
+      el('span.panel__axisIndex', {
+        style: `color:${PHASE_COLORS.parent}`,
+        title:
+          `Against the parent basis (${parentLabels.join(', ')}), ` +
+          `${formatNumber(rotation.axis_parent.deviation_deg, 2)}\u00b0 from the exact axis`,
+        text: rotation.axis_parent.label,
+      }),
+      el('span', { text: ' \u2261 ' }),
+      el('span.panel__axisIndex', {
+        style: `color:${PHASE_COLORS.child}`,
+        title:
+          `The same axis against the child basis (${childLabels.join(', ')}), ` +
+          `${formatNumber(rotation.axis_child.deviation_deg, 2)}\u00b0 from exact`,
+        text: rotation.axis_child.label,
+      }),
+    ];
+  }
+
+  /**
+   * The wall's own controls, built once and kept.
+   *
+   * Once, because the wall is redrawn on every frame of a drag: rebuilding the
+   * bar would destroy the button under the pointer and take the keyboard focus
+   * with it. Only the panels are replaced on a redraw.
+   */
+  const wallGrid = el('div.wall__grid');
+  const wallLock = el('span.wall__lock');
+  const wallLook = el('div.wall__looks');
+  const wallRoot = el('div.wall', {}, [
+    el('div.wall__bar', {}, [
+      wallLock,
+      wallLook,
+      el('div.wall__switches', {}, [
+        sizeControl(),
+        toggleControl('Atoms', 'atoms', 'Draw the atoms as well as the cell frames'),
+        toggleControl('Ghost parent', 'ghost', 'Draw the parent faintly, as the reference'),
+      ]),
+    ]),
+    wallGrid,
+  ]);
+
+  function sizeControl() {
+    const button = (value, label) =>
+      el('button.wall__size', {
+        type: 'button',
+        text: label,
+        dataset: { size: value },
+        'aria-pressed': String(state.wall.size === value),
+        title: `${label} panels`,
+        onclick: () => {
+          state.wall.size = value;
+          for (const node of wallRoot.querySelectorAll('.wall__size')) {
+            node.setAttribute('aria-pressed', String(node.dataset.size === value));
+          }
+          draw();
+        },
+      });
+    return el('div.wall__group', {}, [
+      el('span.wall__caption', { text: 'Panels' }),
+      button('s', 'S'),
+      button('m', 'M'),
+      button('l', 'L'),
+    ]);
+  }
+
+  function toggleControl(label, key, title) {
+    const input = el('input', {
+      type: 'checkbox',
+      checked: state.wall[key],
+      onchange: (event) => {
+        state.wall[key] = event.currentTarget.checked;
+        draw();
+      },
+    });
+    return el('label.wall__toggle', { title }, [input, el('span', { text: label })]);
+  }
+
+  /**
+   * The "look along" presets, which are the payoff of locking the cameras.
+   *
+   * They are stated in the **parent's** directions, and only in those. One
+   * camera cannot be edge-on to twelve different planes at once — each variant
+   * carries a different member of the parent family — so a button promising
+   * that would be a lie in eleven panels out of twelve. What it *can* do is put
+   * the shared parent frame in a named orientation, which is the comparison the
+   * wall is for: every panel then shows its child against the same view of one
+   * parent.
+   *
+   * The per-packet button is the honest form of "edge-on": the variants of one
+   * packet share the parent plane they hold parallel, so edge-on to that plane
+   * is exactly edge-on in every panel of that packet, and the button says which
+   * plane it is rather than promising all of them.
+   */
+  function updateWallBar(data) {
+    wallLock.textContent =
+      `Locked \u00b7 ${data.variant_count} variants and the parent at one camera \u00b7 ` +
+      'drag any panel to turn them all';
+    const signature = `${data.variant_count}/${data.packet_count}`;
+    if (wallLook.dataset.builtFor === signature && wallLook.childElementCount) return;
+    wallLook.dataset.builtFor = signature;
+    const parentAxes = data.variants?.[0]?.frames?.parent ?? [];
+    const looks = parentAxes.map((axis) =>
+      el('button.wall__look', {
+        type: 'button',
+        text: `down ${axis.label}`,
+        title: `Look down the parent's ${axis.label} axis`,
+        onclick: () => {
+          camera.rotation = lookAlong(axis.vector);
+          draw();
+        },
       }),
     );
-    buildPhaseLegend(data);
-    frame.setContent(sheet);
-    frame.setStatus(
-      `${data.variant_count} variants in ${data.packet_count} packets at one camera · ` +
-        'drag to turn all of them together · click a panel to open it',
+    // One entry per packet: the parent plane its variants share, drawn edge-on.
+    const seen = new Map();
+    for (const entry of data.variants ?? []) {
+      const patch = entry.primitives?.patches?.[0];
+      const plane = entry.correspondence?.planes?.[0];
+      if (!patch || seen.has(entry.packet)) continue;
+      seen.set(entry.packet, {
+        normal: patch.normal,
+        label: (plane ?? '').split(' ')[0] || `packet ${entry.packet}`,
+      });
+    }
+    const edges = [...seen.entries()].map(([packet, { normal, label }]) =>
+      el('button.wall__look.wall__look--edge', {
+        type: 'button',
+        style: `--packet:${packetColor(packet)}`,
+        text: `edge-on ${label}`,
+        title: `Edge-on to the parent plane of packet ${packet} \u2014 exact in its panels`,
+        onclick: () => {
+          camera.rotation = edgeOn(normal);
+          draw();
+        },
+      }),
+    );
+    wallLook.replaceChildren(
+      el('span.wall__caption', { text: 'Look' }),
+      ...looks,
+      ...edges,
+      el('button.wall__look', {
+        type: 'button',
+        text: 'reset',
+        title: 'Back to the opening view',
+        onclick: () => {
+          camera.rotation = multiply(rotationX(-1.2), rotationY(0.6));
+          draw();
+        },
+      }),
+    );
+  }
+
+  /** What the wall shows, in one line — including what is the same in every panel. */
+  function wallStatus(data) {
+    const relationship = data.relationship;
+    const disorientation = relationship
+      ? ` \u00b7 every variant is the same ${formatNumber(relationship.disorientation_deg, 2)}\u00b0 ` +
+        'disorientation; what differs is its axis and which family member it takes'
+      : '';
+    return (
+      `${data.variant_count} variants in ${data.packet_count} packets` +
+      `${disorientation} \u00b7 click a panel to open it`
     );
   }
 
@@ -609,8 +944,18 @@ export function mount(context) {
         el('span.legend__swatch', { style: `background:${PHASE_COLORS.child}` }),
         el('span', { text: `${data.child.label} (child)` }),
       ]),
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${OR_COLORS.plane}` }),
+        el('span', { text: 'the parallel plane, drawn on both crystals' }),
+      ]),
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${OR_COLORS.direction}` }),
+        el('span', { text: 'the parallel direction, drawn on both' }),
+      ]),
       el('span.legend__guide', {
-        text: 'Colour is the phase, not the element: both phases are usually the same element.',
+        text:
+          'Colour is the phase, not the element: both phases are usually the same element. ' +
+          'Each triad is its own crystal\u2019s axes, in that crystal\u2019s notation.',
       }),
     );
   }
@@ -978,7 +1323,7 @@ export function mount(context) {
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
   frame.setControls(legend);
-  context.stage.append(frame.element, details);
+  context.stage.append(frame.element, facts, details);
   // A pair handed over from the map is what the user asked for by pressing the
   // button; the opening example is only what the panel does when nobody asked.
   if (!seedFromPickedPair() && examples.length) loadExample(examples[0]);
@@ -996,17 +1341,90 @@ export function mount(context) {
  * occlude each other correctly instead of one crystal being drawn wholly in
  * front of the other.
  */
-function compositeAppearance(base, { compact = false } = {}) {
+function compositeAppearance(base, { compact = false, showAtoms = true } = {}) {
   return {
     ...base,
+    showAtoms: showAtoms && base.showAtoms,
     showBonds: compact ? false : base.showBonds,
     showLabels: compact ? false : base.showLabels,
-    showGizmo: compact ? false : base.showGizmo,
+    // The gizmo *stays* in the compact panels, against the usual rule that a
+    // small figure sheds its annotations. It is the annotation a wall panel
+    // cannot do without: two crystals are drawn and the question is where each
+    // one points, so a panel with no triads is a panel that cannot be read.
+    showGizmo: true,
     showCells: base.showCells,
     surfaceFinish: compact ? 'flat' : base.surfaceFinish,
     atomScale: compact ? base.atomScale * 0.9 : base.atomScale,
-    annotationScale: base.annotationScale,
+    annotationScale: compact ? base.annotationScale * 1.15 : base.annotationScale,
   };
+}
+
+/**
+ * A phase name short enough to sit under a triad in a small panel.
+ *
+ * The catalogue names are full and correct — "Zirconium (bcc, beta at 863 °C)"
+ * — and unusable as a two-character caption. The parenthesis is where the
+ * qualifier starts in every one of them, so cutting there keeps the element
+ * and drops the commentary.
+ */
+function shortLabel(name) {
+  if (!name) return '';
+  const text = String(name);
+  const cut = text.indexOf('(');
+  const head = (cut > 0 ? text.slice(0, cut) : text).trim();
+  // The qualifier is the half that distinguishes them. Both phases of the
+  // canonical case are called "Zirconium", so a label cut at the parenthesis
+  // puts the same word under both triads — which is worse than no label,
+  // because it asserts the two crystals are the same thing.
+  const qualifier = cut > 0 ? /[A-Za-z0-9]+/.exec(text.slice(cut + 1)) : null;
+  return qualifier ? `${head} ${qualifier[0]}` : head;
+}
+
+/**
+ * A camera rotation that looks straight down a world vector.
+ *
+ * The camera is the world-to-screen rotation, so "look along v" means the
+ * matrix whose third row is v: that is the row that lands on the screen z axis,
+ * which points at the viewer. The other two rows are any right-handed pair
+ * orthogonal to it — the choice only spins the picture in its own plane, and
+ * preferring world z as the up hint keeps that spin stable between presets
+ * instead of flipping as the reader steps through them.
+ */
+function lookAlong(vector) {
+  const z = normaliseVector(vector);
+  const hint = Math.abs(z[2]) > 0.94 ? [0, 1, 0] : [0, 0, 1];
+  const x = normaliseVector(cross(hint, z));
+  const y = cross(z, x);
+  return [x, y, z];
+}
+
+/**
+ * A camera rotation that puts a plane edge-on, with its normal across the screen.
+ *
+ * Edge-on is the orientation in which a plane parallelism can actually be
+ * checked: both lattices collapse onto one line, and a reader sees whether the
+ * line is one line or two. The plane's normal is therefore sent to the screen's
+ * x axis, so the plane itself stands vertically in the picture.
+ */
+function edgeOn(normal) {
+  const x = normaliseVector(normal);
+  const hint = Math.abs(x[2]) > 0.94 ? [0, 1, 0] : [0, 0, 1];
+  const y = normaliseVector(cross(x, hint));
+  const z = cross(x, y);
+  return [x, y, z];
+}
+
+function normaliseVector(vector) {
+  const length = Math.hypot(vector[0], vector[1], vector[2]) || 1;
+  return [vector[0] / length, vector[1] / length, vector[2] / length];
+}
+
+function cross(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
 }
 
 /** A frame that accepts hover registrations and drops them, for the small panels. */

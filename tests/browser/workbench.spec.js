@@ -2533,28 +2533,57 @@ test('draws both crystals of a variant, and every variant at one camera', async 
   const view = page.locator('#rail-body').getByLabel('View');
 
   /*
-   * The composite view.
+   * The one-up view.
    *
    * The claim under test is not "an SVG appeared". It is that the overlay is
-   * labelled with *this* variant's indices and that turning the crystals
-   * changes the readout that says where the parallelism is pointing — the two
-   * things a picture alone cannot demonstrate.
+   * labelled with *this* variant's indices, in *this* phase's notation, that
+   * both crystal frames are drawn and told apart, and that turning the crystals
+   * changes the readout saying where the parallelism now points. None of those
+   * can be demonstrated by a picture alone, and all four were wrong or missing
+   * in the thumbnail sheet this replaced.
+   *
+   * The panel defaults to the canonical case: Burgers, bcc-to-hcp, in zirconium.
    */
   await expectNewCompletedCalculation(page, () =>
     view.selectOption('variants.composite_scene'),
   );
   const plot = page.locator('#stage .plot');
-  await expect(plot.locator('.plot__title')).toHaveText('Composite scene');
+  await expect(plot.locator('.plot__title')).toHaveText('Parent and one variant');
   await expect(plot.locator('svg')).toBeVisible();
   const status = plot.locator('.plot__status');
-  await expect(status).toContainText('Variant 1 of 24');
+  await expect(status).toContainText('Variant 1 of 12');
   await expect(status).toContainText('from edge-on');
 
-  // Colour carries the phase here, not the element -- both phases are iron --
-  // and the legend has to say so, or the change of meaning is silent.
-  await expect(plot).toContainText('Austenite (fcc Fe) (parent)');
-  await expect(plot).toContainText('Ferrite (bcc Fe) (child)');
+  // The child is hexagonal, so its indices are four-index everywhere they
+  // appear -- on the overlay, in the status line and in the facts strip. A
+  // three-index (001) beside a four-index (0001) for one plane would read as
+  // two different planes.
+  await expect(status).toContainText('(0001)');
+
+  // Both crystal frames, each labelled in its own notation. The hexagonal
+  // triad is a1 a2 c; a triad labelled a b c beside a four-index plane label
+  // would contradict the notation that label uses.
+  const triadLabels = await plot.locator('svg text').allTextContents();
+  expect(triadLabels).toContain('a1');
+  expect(triadLabels).toContain('a2');
+  expect(triadLabels.some((label) => /bcc/.test(label))).toBe(true);
+  expect(triadLabels.some((label) => /hcp/.test(label))).toBe(true);
+
+  // The facts under the picture: the correspondence this variant realizes, the
+  // Euler angles that placed it, its rotation named in both bases, and the
+  // disorientation that is the same for every variant.
+  const facts = page.locator('.orfacts');
+  await expect(facts).toContainText('(0001)');
+  await expect(facts).toContainText('Euler (Bunge)');
+  await expect(facts).toContainText('Disorientation');
+
+  // Colour carries the phase here, not the element -- both phases are
+  // zirconium -- and the legend has to say so, or the change of meaning is
+  // silent. It also has to say that the plane belongs to neither crystal.
+  await expect(plot).toContainText('(parent)');
+  await expect(plot).toContainText('(child)');
   await expect(plot).toContainText('Colour is the phase, not the element');
+  await expect(plot).toContainText('drawn on both crystals');
 
   const before = await status.textContent();
   const surface = plot.locator('svg').first();
@@ -2566,39 +2595,54 @@ test('draws both crystals of a variant, and every variant at one camera', async 
   await expect.poll(() => status.textContent()).not.toBe(before);
 
   /*
-   * The contact sheet.
+   * The variant wall.
    *
-   * Twenty-four panels from two scenes and twenty-four matrices, and the packet
-   * column agreeing with the plane column: four packets, four planes, six
+   * Twelve panels plus the parent, from two scenes and twelve matrices, and the
+   * packet column agreeing with the plane column: six packets, six planes, two
    * variants each. That agreement is the whole scientific content of the grid.
    */
   await expectNewCompletedCalculation(page, () => view.selectOption('variants.contact_sheet'));
-  await expect(plot.locator('.plot__title')).toHaveText('Variant contact sheet');
-  const cells = plot.locator('.sheet__cell');
-  await expect(cells).toHaveCount(24);
-  await expect(plot.locator('.plot__status')).toContainText('24 variants in 4 packets');
+  await expect(plot.locator('.plot__title')).toHaveText('Parent and every variant');
+  const panels = plot.locator('.panel--variant');
+  await expect(panels).toHaveCount(12);
+  await expect(plot.locator('.panel--parent')).toHaveCount(1);
+  await expect(plot.locator('.plot__status')).toContainText('12 variants in 6 packets');
+  // The one fact that is the same in every panel is stated once, where it
+  // cannot be mistaken for something that distinguishes them.
+  await expect(plot.locator('.plot__status')).toContainText('every variant is the same');
+  // The lock was always real; saying so is what makes it usable.
+  await expect(plot.locator('.wall__lock')).toContainText('one camera');
 
-  const grouped = await cells.evaluateAll((nodes) => {
+  const grouped = await panels.evaluateAll((nodes) => {
     const byPacket = {};
     for (const node of nodes) {
-      const pair = node.querySelector('.sheet__pair').textContent;
+      const pair = node.querySelector('.panel__pair').textContent;
       (byPacket[node.dataset.packet] ??= new Set()).add(pair);
     }
     return Object.fromEntries(
       Object.entries(byPacket).map(([packet, pairs]) => [packet, [...pairs]]),
     );
   });
-  expect(Object.keys(grouped)).toHaveLength(4);
+  expect(Object.keys(grouped)).toHaveLength(6);
   for (const pairs of Object.values(grouped)) expect(pairs).toHaveLength(1);
-  expect(new Set(Object.values(grouped).map((pairs) => pairs[0])).size).toBe(4);
+  expect(new Set(Object.values(grouped).map((pairs) => pairs[0])).size).toBe(6);
+
+  // Every panel states its own arithmetic: the Euler angles that placed it and
+  // the rotation named against both bases. Twelve panels, twelve different
+  // captions -- a panel repeating variant 1's numbers is the failure this
+  // guards against.
+  const eulers = await panels.locator('.panel__euler').allTextContents();
+  expect(eulers).toHaveLength(12);
+  expect(new Set(eulers).size).toBeGreaterThan(6);
+  await expect(panels.first().locator('.panel__axis')).toContainText('about');
 
   // Clicking a panel opens that variant, so the grid and the detail view are
   // one instrument rather than two.
   await expectNewCompletedCalculation(page, () =>
-    cells.nth(16).getByText('V17', { exact: true }).click(),
+    panels.nth(6).getByText('V7', { exact: true }).click(),
   );
-  await expect(plot.locator('.plot__title')).toHaveText('Composite scene');
-  await expect(plot.locator('.plot__status')).toContainText('Variant 17 of 24');
+  await expect(plot.locator('.plot__title')).toHaveText('Parent and one variant');
+  await expect(plot.locator('.plot__status')).toContainText('Variant 7 of 12');
 
   expect(browserErrors).toEqual([]);
 });

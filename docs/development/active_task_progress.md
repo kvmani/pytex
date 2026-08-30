@@ -5031,3 +5031,64 @@ no green pass on the truncated fixture. `tests/unit/test_app_kearns.py` holds 45
 ### Next task
 
 M2 — variant-aware composite scenes (F15) and the OR stereogram (F18). See the program ledger.
+
+## Goal: the OR variant wall, and OR from measured grains — IN PROGRESS (2026-08-30)
+
+User goal, verbatim in scope: the orientation-relationship visualization is shabby; rebuild it as
+parent + every variant side by side, one locked camera, the OR's defining planes and directions
+highlighted in *both* crystals of every panel, each panel carrying both crystallographic frames, the
+misorientation angle/axis in the parent basis *and* the product basis, the specific plane
+correspondence that pair realizes, the variant id and its Euler angles. Separately, OR determination
+from measured Euler angles becomes its own tab in the EBSD workspace. **Burgers bcc-to-hcp in
+zirconium is the canonical default case throughout.**
+
+The approved UI design (ASCII, both parts) is in the session transcript; the design decisions it
+turned on are recorded per increment below.
+
+### Plan
+
+1. Backend: variant facts (Euler, axis/angle in both bases, frames, correspondence) on the contact
+   sheet and composite payloads; Burgers/Zr defaults.
+2. Frontend: the variant wall replacing the thumbnail sheet, plus the enriched one-up pair view.
+3. Backend: `ebsd.or_from_grains`, multi-pair, with catalogue ranking and coincident directions.
+4. Frontend: the new EBSD sub-tab.
+5. Tests, docs, changelog.
+
+### Progress
+
+#### Increment 1 — the variant wall (DONE)
+
+`variants.contact_sheet` is now the wall the design asked for, and the whole panel defaults to
+Burgers bcc-to-hcp in zirconium.
+
+Payload (`services/variants.py`): every variant entry carries `euler_deg` (Bunge, parent at zero),
+`rotation` (angle plus the axis named against the parent basis *and* the child basis, each with the
+residual of its label), `frames` (both crystals' axes as world vectors, labelled `a b c` /
+`a1 a2 c`), and `correspondence` (the plane and direction pairs *that* variant realizes). The
+relationship's symmetry-reduced disorientation is emitted once, at the top level, because it is the
+same for every variant. Overlay labels are now the pair text from the parallelism rows, so an
+overlay can no longer read `(001)` beside a caption reading `(0001)` for one plane.
+
+Renderer (`panels/crystal.js`): per-item colour and opacity on atoms, bonds, cell edges, planes and
+directions — previously every plane in a scene was one colour from the global appearance, which is
+why two phases and their shared overlay were indistinguishable. `axisGizmo` takes a triad list, so a
+two-phase scene draws two labelled triads in opposite corners.
+
+Composition (`core/compositescene.js`): `variantPanelScene` and `parentReferenceScene`; ghosting as
+a style; overlays drawn on **both** crystals by translating the same primitives onto the child,
+which is exact because a parallel object is unchanged by a translation.
+
+Panel (`panels/variants.js`): the wall — parent reference panel plus one panel per variant, each
+with both triads, the correspondence, the Euler angles and the axis line; a persistent bar stating
+the camera lock with look-along presets in parent axes and one honest per-packet edge-on preset;
+size and detail switches; and a facts strip under the one-up view.
+
+Deliberate limit, recorded because it looks like a missing feature: there is **no** "edge-on to
+every panel's plane" button. One camera cannot be edge-on to twelve different {110} members at
+once; the per-packet buttons are the honest form and say which plane they are exact for.
+
+Verified: `ruff` clean; the variant unit tests green; the rewritten Playwright test
+`draws both crystals of a variant, and every variant at one camera` green against the Burgers
+defaults.
+
+#### Increment 2 — OR from measured grains, in EBSD (in progress)

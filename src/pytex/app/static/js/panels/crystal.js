@@ -826,16 +826,24 @@ export function renderScene(scene, camera, frame, appearance) {
   const minimumAtomDepth = atomDepths.length ? Math.min(...atomDepths) : 0;
   const atomDepthSpan = atomDepths.length ? Math.max(...atomDepths) - minimumAtomDepth : 0;
 
+  /*
+   * A cell edge is either the bare pair of points the single-crystal viewer
+   * sends, or an object carrying its own colour and width. The object form is
+   * what a two-phase scene needs: with one grey for both lattices the frames
+   * of the parent and the child are indistinguishable, and in the lattice-only
+   * detail level the frame *is* the crystal.
+   */
   for (const edge of appearance.showCells ? scene.cell_edges : []) {
-    const a = project(edge[0]);
-    const b = project(edge[1]);
+    const [start, end] = Array.isArray(edge) ? edge : [edge.start, edge.end];
+    const a = project(start);
+    const b = project(end);
     items.push({
       depth: (a.depth + b.depth) / 2 - 1e3, // cell edges sit behind matter at equal depth
       node: svg('line', {
         x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-        stroke: appearance.cellColor,
-        'stroke-width': 0.45 * appearance.cellWidth,
-        'stroke-opacity': appearance.cellOpacity,
+        stroke: edge.color ?? appearance.cellColor,
+        'stroke-width': (edge.width ?? 1) * 0.45 * appearance.cellWidth,
+        'stroke-opacity': edge.opacity ?? appearance.cellOpacity,
       }),
     });
   }
@@ -843,12 +851,17 @@ export function renderScene(scene, camera, frame, appearance) {
   for (const plane of appearance.showPlanes ? scene.planes : []) {
     const points = plane.vertices.map(project);
     if (points.length < 3) continue;
+    // The overlay's own colour wins where it has one: in an OR figure the
+    // parallel plane is not one of the crystal's planes but the statement
+    // being made about both of them, and it has to read as a third thing.
+    const planeColor = plane.color ?? appearance.planeColor;
     const polygon = svg('polygon', {
       points: points.map((point) => `${point.x},${point.y}`).join(' '),
-      fill: appearance.planeColor,
-      'fill-opacity': appearance.planeOpacity,
-      stroke: appearance.planeColor,
-      'stroke-width': 0.5 * appearance.cellWidth,
+      fill: planeColor,
+      'fill-opacity': plane.alpha ?? appearance.planeOpacity,
+      stroke: planeColor,
+      'stroke-width': (plane.edgeWidth ?? 1) * 0.5 * appearance.cellWidth,
+      'stroke-opacity': plane.edgeOpacity ?? 1,
     });
     const depth = points.reduce((sum, point) => sum + point.depth, 0) / points.length;
     items.push({ depth, node: polygon, row: { Plane: plane.label ?? 'plane' } });
@@ -863,7 +876,7 @@ export function renderScene(scene, camera, frame, appearance) {
           x: centroid.x, y: centroid.y,
           'text-anchor': 'middle',
           'font-size': 4.5 * appearance.annotationScale,
-          fill: appearance.planeColor,
+          fill: planeColor,
           'paint-order': 'stroke',
           stroke: 'var(--bg-raised)',
           'stroke-width': 1.2,
@@ -882,9 +895,9 @@ export function renderScene(scene, camera, frame, appearance) {
       node: bondGlyph(
         a,
         b,
-        appearance.bondColor,
+        bond.color ?? appearance.bondColor,
         width,
-        appearance.bondOpacity,
+        bond.opacity ?? appearance.bondOpacity,
         appearance,
       ),
       row: { Bond: bond.species, 'Length / Å': formatNumber(bond.length, 4) },
@@ -892,7 +905,8 @@ export function renderScene(scene, camera, frame, appearance) {
   }
 
   for (const { atom, point } of projectedAtoms) {
-    const radius = atom.radius * camera.scale * camera.zoom * appearance.atomScale;
+    const radius =
+      atom.radius * camera.scale * camera.zoom * appearance.atomScale * (atom.scale ?? 1);
     const color = appearance.speciesColors[atom.species] ?? atom.color;
     const nearness = atomDepthSpan > 1e-12
       ? (point.depth - minimumAtomDepth) / atomDepthSpan
@@ -930,7 +944,9 @@ export function renderScene(scene, camera, frame, appearance) {
       depth: point.depth,
       node: svg('g', {
         'data-atom': atom.species,
-        opacity: appearance.atomOpacity,
+        // A ghosted crystal is a whole scene at reduced opacity, so the
+        // per-atom value has to win over the global one.
+        opacity: atom.opacity ?? appearance.atomOpacity,
       }, [shadow, sphere, depthVeil]),
       row: {
         Element: atom.species,
@@ -958,23 +974,25 @@ export function renderScene(scene, camera, frame, appearance) {
   for (const direction of appearance.showDirections ? scene.directions : []) {
     const a = project(direction.start);
     const b = project(direction.end);
+    const arrowColor = direction.color ?? appearance.directionColor;
+    const arrowOpacity = direction.opacity ?? appearance.directionOpacity;
     items.push({
       depth: Math.max(a.depth, b.depth) + 1e3, // arrows stay legible in front
       node: svg('g', {}, [
         svg('line', {
           x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-          stroke: appearance.directionColor,
+          stroke: arrowColor,
           'stroke-width': 1.4 * appearance.directionWidth,
-          'stroke-opacity': appearance.directionOpacity,
+          'stroke-opacity': arrowOpacity,
         }),
-        arrowHead(a, b, appearance.directionColor, appearance.directionOpacity),
+        arrowHead(a, b, arrowColor, arrowOpacity),
         direction.label && appearance.showLabels
           ? svg('text', {
               x: b.x, y: b.y - 2,
               'text-anchor': 'middle',
               'font-size': 5 * appearance.annotationScale,
-              fill: appearance.directionColor,
-              'fill-opacity': appearance.directionOpacity,
+              fill: arrowColor,
+              'fill-opacity': arrowOpacity,
               'paint-order': 'stroke',
               stroke: 'var(--bg-raised)',
               'stroke-width': 1.4,
@@ -992,7 +1010,18 @@ export function renderScene(scene, camera, frame, appearance) {
     if (item.row) frame.hoverable(item.node, item.row);
   }
 
-  if (appearance.showGizmo) root.append(axisGizmo(scene.axes, camera));
+  if (appearance.showGizmo) {
+    /*
+     * A two-phase scene draws *two* triads, one per crystal, in opposite
+     * corners. A single triad in an OR figure is worse than none: the reader
+     * assumes it belongs to whichever crystal they are looking at, and half
+     * the time they are wrong. Each triad carries its phase's name and its
+     * phase's colour, and the hexagonal one is labelled a1 a2 c.
+     */
+    for (const triad of scene.triads ?? [{ axes: scene.axes }]) {
+      root.append(axisGizmo(triad.axes, camera, triad));
+    }
+  }
   return root;
 }
 
@@ -1002,9 +1031,25 @@ export function renderScene(scene, camera, frame, appearance) {
  * Drawn in the corner at fixed size and rotated with the camera, so it reports
  * where a, b and c now point rather than where they started.
  */
-function axisGizmo(axes, camera) {
-  const group = svg('g', { transform: `translate(${-VIEW + 18} ${VIEW - 18})` });
-  const length = 12;
+function axisGizmo(axes, camera, { anchor = 'left', color = null, label = null, scale = 1 } = {}) {
+  const x0 = anchor === 'right' ? VIEW - 24 : -VIEW + 18;
+  const group = svg('g', { transform: `translate(${x0} ${VIEW - 18})` });
+  const length = 12 * scale;
+  const stroke = color ?? 'var(--ink-muted)';
+  if (label) {
+    group.append(
+      svg('text', {
+        x: 0, y: 12 * scale,
+        'text-anchor': 'middle',
+        'font-size': 4.6 * scale,
+        fill: stroke,
+        'paint-order': 'stroke',
+        stroke: 'var(--bg-raised)',
+        'stroke-width': 1.2,
+        text: label,
+      }),
+    );
+  }
   for (const axis of axes ?? []) {
     const direction = normalise(axis.vector);
     const rotated = applyMatrix(camera.rotation, direction);
@@ -1013,16 +1058,19 @@ function axisGizmo(axes, camera) {
     group.append(
       svg('line', {
         x1: 0, y1: 0, x2: x, y2: y,
-        stroke: 'var(--ink-muted)',
-        'stroke-width': 0.8,
+        stroke,
+        'stroke-width': 0.8 * scale,
       }),
       svg('text', {
         x: x * 1.25, y: y * 1.25,
         'text-anchor': 'middle',
         'dominant-baseline': 'middle',
-        'font-size': 5,
-        fill: 'var(--ink-muted)',
+        'font-size': 5 * scale,
+        fill: stroke,
         'font-style': 'italic',
+        'paint-order': 'stroke',
+        stroke: 'var(--bg-raised)',
+        'stroke-width': 1.1,
         text: axis.label,
       }),
     );

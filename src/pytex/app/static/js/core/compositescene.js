@@ -82,18 +82,39 @@ export function placeScene(scene, matrix, translation = [0, 0, 0]) {
  * silently changed what a colour meant would be worse than one that could not
  * tell the crystals apart.
  */
-export function tintScene(scene, color) {
+export function tintScene(scene, color, { opacity = 1, scale = 1, cellOpacity = 1 } = {}) {
   if (!scene) return scene;
   return {
     ...scene,
-    atoms: (scene.atoms ?? []).map((atom) => ({ ...atom, color })),
+    atoms: (scene.atoms ?? []).map((atom) => ({ ...atom, color, opacity, scale })),
     bonds: (scene.bonds ?? []).map((bond) => ({
       ...bond,
       color,
       start_color: color,
       end_color: color,
+      opacity,
     })),
+    // The cell frame is tinted too, and survives the ghosting at full strength:
+    // in the lattice-only detail level it is the only thing left of the
+    // crystal, and a ghost with no frame is an absence rather than a crystal.
+    cell_edges: (scene.cell_edges ?? []).map((edge) => {
+      const [start, end] = Array.isArray(edge) ? edge : [edge.start, edge.end];
+      return { start, end, color, opacity: cellOpacity };
+    }),
   };
+}
+
+/**
+ * The same scene with its atoms and bonds dropped: the cell frame alone.
+ *
+ * Twelve panels of two ball-and-stick crystals is a wall of coloured dots in
+ * which no plane can be seen, and the question a variant wall is asked — where
+ * does this crystal point — is not answered by atoms. Lattice-only is
+ * therefore the default at wall size, and atoms are one click away.
+ */
+export function frameOnly(scene) {
+  if (!scene) return scene;
+  return { ...scene, atoms: [], bonds: [] };
 }
 
 
@@ -105,21 +126,35 @@ export function tintScene(scene, color) {
  * on the wire is deliberate — a scene's planes belong to a crystal, while these
  * belong to the relationship between two of them.
  */
-export function primitiveOverlays(primitives) {
+export function primitiveOverlays(
+  primitives,
+  { offset = null, planeColor = null, directionColor = null, alpha = null, label = true } = {},
+) {
+  const shift = offset
+    ? (point) => [point[0] + offset[0], point[1] + offset[1], point[2] + offset[2]]
+    : (point) => point;
   return {
     planes: (primitives?.patches ?? []).map((patch) => ({
-      vertices: patch.vertices,
+      vertices: patch.vertices.map(shift),
       normal: patch.normal,
-      color: patch.color,
-      alpha: patch.alpha,
-      label: patch.label,
+      color: planeColor ?? patch.color,
+      alpha: alpha ?? patch.alpha,
+      label: label ? patch.label : null,
     })),
     directions: (primitives?.arrows ?? []).map((arrow) => ({
-      start: arrow.tail,
-      end: arrow.head,
-      color: arrow.color,
-      label: arrow.label,
+      start: shift(arrow.tail),
+      end: shift(arrow.head),
+      color: directionColor ?? arrow.color,
+      label: label ? arrow.label : null,
     })),
+  };
+}
+
+/** Concatenate two overlay bundles. */
+function joinOverlays(...bundles) {
+  return {
+    planes: bundles.flatMap((bundle) => bundle?.planes ?? []),
+    directions: bundles.flatMap((bundle) => bundle?.directions ?? []),
   };
 }
 
@@ -131,7 +166,10 @@ export function primitiveOverlays(primitives) {
  * the camera does not reframe as the reader steps through the panels and
  * mistake a change of framing for a change of orientation.
  */
-export function mergeScenes(scenes, { overlays = null, extent = null, axes = null } = {}) {
+export function mergeScenes(
+  scenes,
+  { overlays = null, extent = null, axes = null, triads = null } = {},
+) {
   const parts = scenes.filter(Boolean);
   const merged = {
     atoms: parts.flatMap((scene) => scene.atoms ?? []),
@@ -143,6 +181,7 @@ export function mergeScenes(scenes, { overlays = null, extent = null, axes = nul
       ...(overlays?.directions ?? []),
     ],
     axes: axes ?? parts[0]?.axes ?? [],
+    triads: triads ?? null,
     centre: extent?.centre ?? parts[0]?.centre ?? [0, 0, 0],
     radius: extent?.radius ?? parts[0]?.radius ?? 1,
     bounds: extent?.bounds ?? parts[0]?.bounds ?? null,
@@ -150,29 +189,151 @@ export function mergeScenes(scenes, { overlays = null, extent = null, axes = nul
   return merged;
 }
 
+/**
+ * How each crystal is drawn in a two-phase figure, at one of two weights.
+ *
+ * The parent is the reference and the child is the subject, so they are not
+ * drawn alike: ghosting the parent is what lets the shared plane be seen
+ * through it. Ghosting is a *style*, not a claim — both crystals are the same
+ * structures at the same scale — so the numbers under the panel are unaffected
+ * by it and the legend says which is which.
+ */
+const GHOST = Object.freeze({ opacity: 0.3, scale: 0.62, cellOpacity: 0.85 });
+const SOLID = Object.freeze({ opacity: 1, scale: 1, cellOpacity: 1 });
+
+/**
+ * Both triads of a two-phase scene, each in its phase's colour.
+ *
+ * `frames` is what the service computed: the parent axes in the world frame,
+ * and the child axes *after* its placement, so the triad reports where the
+ * child's own a1, a2 and c now point rather than where they started.
+ */
+function frameTriads(frames, { parentColor, childColor, parentLabel, childLabel }) {
+  if (!frames) return null;
+  return [
+    { axes: frames.parent, color: parentColor, label: parentLabel, anchor: 'left' },
+    { axes: frames.child, color: childColor, label: childLabel, anchor: 'right' },
+  ];
+}
+
+/**
+ * One panel of the variant wall: the parent and one variant's child, in one frame.
+ *
+ * The overlays are drawn **twice** when the crystals stand apart — once at the
+ * parent and once translated onto the child. That is exact rather than
+ * decorative: the two objects are parallel by construction, and a parallel
+ * plane is unchanged by a translation, so the second copy is the same plane
+ * drawn where the second crystal is. Drawing it once would put the whole
+ * statement on one of the two crystals and leave the other unmarked, which is
+ * precisely the figure that cannot be read.
+ */
+export function variantPanelScene(
+  data,
+  entry,
+  {
+    parentColor,
+    childColor,
+    parentLabel = null,
+    childLabel = null,
+    ghostParent = true,
+    showAtoms = true,
+    extent = null,
+    planeColor = null,
+    directionColor = null,
+    planeAlpha = null,
+  } = {},
+) {
+  const dress = (scene) => (showAtoms ? scene : frameOnly(scene));
+  const parent = tintScene(
+    dress(data.parent?.scene),
+    parentColor,
+    ghostParent ? GHOST : SOLID,
+  );
+  const child = tintScene(
+    dress(placeScene(data.child?.scene, entry.child_matrix, entry.translation)),
+    childColor,
+    SOLID,
+  );
+  const translation = entry.translation ?? [0, 0, 0];
+  const apart = translation.some((value) => Math.abs(value) > 1e-9);
+  const style = { planeColor, directionColor, alpha: planeAlpha };
+  const overlays = joinOverlays(
+    primitiveOverlays(entry.primitives, style),
+    apart
+      ? primitiveOverlays(entry.primitives, { ...style, offset: translation, label: false })
+      : null,
+  );
+  return mergeScenes([parent, child], {
+    overlays,
+    extent: extent ?? data.world,
+    axes: data.parent?.scene?.axes,
+    triads: frameTriads(entry.frames, { parentColor, childColor, parentLabel, childLabel }),
+  });
+}
+
 /** The composite scene of `variants.composite_scene`, whose parts arrive placed. */
-export function compositeScene(data, { parentColor, childColor }) {
+export function compositeScene(
+  data,
+  {
+    parentColor,
+    childColor,
+    parentLabel = null,
+    childLabel = null,
+    ghostParent = false,
+    showAtoms = true,
+    planeColor = null,
+    directionColor = null,
+    planeAlpha = null,
+  } = {},
+) {
+  const dress = (scene) => (showAtoms ? scene : frameOnly(scene));
+  const translation = data.variant?.translation ?? [0, 0, 0];
+  const apart = translation.some((value) => Math.abs(value) > 1e-9);
+  const style = { planeColor, directionColor, alpha: planeAlpha };
   return mergeScenes(
-    [tintScene(data.parent?.scene, parentColor), tintScene(data.child?.scene, childColor)],
+    [
+      tintScene(dress(data.parent?.scene), parentColor, ghostParent ? GHOST : SOLID),
+      tintScene(dress(data.child?.scene), childColor, SOLID),
+    ],
     {
-      overlays: primitiveOverlays(data.primitives),
+      overlays: joinOverlays(
+        primitiveOverlays(data.primitives, style),
+        apart
+          ? primitiveOverlays(data.primitives, { ...style, offset: translation, label: false })
+          : null,
+      ),
       extent: data.world,
       axes: data.parent?.scene?.axes,
+      triads: frameTriads(data.variant?.frames, {
+        parentColor,
+        childColor,
+        parentLabel,
+        childLabel,
+      }),
     },
   );
 }
 
-/** One panel of `variants.contact_sheet`: the parent, plus this variant's child. */
-export function contactSheetScene(data, entry, { parentColor, childColor }) {
-  const child = placeScene(data.child?.scene, entry.child_matrix, entry.translation);
-  return mergeScenes(
-    [tintScene(data.parent?.scene, parentColor), tintScene(child, childColor)],
-    {
-      overlays: primitiveOverlays(entry.primitives),
-      extent: data.world,
-      axes: data.parent?.scene?.axes,
-    },
-  );
+/**
+ * The parent alone, as the wall's reference panel.
+ *
+ * Drawn solid and at the same camera and framing as every variant panel, so
+ * "no rotation" is on screen beside the twelve rotations and the comparison is
+ * made by the eye rather than from memory.
+ */
+export function parentReferenceScene(
+  data,
+  { parentColor, parentLabel = null, showAtoms = true, extent = null } = {},
+) {
+  const scene = showAtoms ? data.parent?.scene : frameOnly(data.parent?.scene);
+  const frames = data.variants?.[0]?.frames;
+  return mergeScenes([tintScene(scene, parentColor, SOLID)], {
+    extent: extent ?? data.world,
+    axes: data.parent?.scene?.axes,
+    triads: frames
+      ? [{ axes: frames.parent, color: parentColor, label: parentLabel, anchor: 'left' }]
+      : null,
+  });
 }
 
 /**
