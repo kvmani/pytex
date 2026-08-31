@@ -5527,14 +5527,60 @@ Plus a third diffpy warning: `Module 'diffpy.Structure' is deprecated`, emitted 
 own `__getattr__`, so *anything* that walks `sys.modules` reading attributes triggers it. Hypothesis
 does exactly that when collecting local constants, which turned every property-based test red.
 
+## Release: PyTex 0.5.0 (2026-08-31) -- and CI green for the first time
+
+`v0.5.0` points at `112f240`, whose CI run **33359665098 is green on all eight jobs**: the base
+matrix on Ubuntu, macOS and Windows across 3.11-3.13, and the browser lane. That is the first fully
+green run in the repository's recorded history; it had been red on every job since before 0.4.0.
+
+Verified for the release: the full suite green locally (exit 0, six by-design skips, none naming a
+dependency), `ruff` and `mypy` clean over 155 files, the Sphinx ratchet at 0 warnings, and CI green
+on every platform. Coverage rose from 89.8% to **91.5%** without touching the ratchet, because the
+tests that used to skip for a missing package now run.
+
+**Taken in `ml_server_deploy` as suite 1.4.0** (`656a18b`, tag `v1.4.0`, release build 33362005929
+green). The dependency gate -- `pip check` over the combined office environment -- accepted the new
+stack beside torch and Flask, and `requirements/resolved.txt` now pins 143 packages including
+pymatgen, orix, diffsims, KikuchiPy, matplotlib, h5py, spglib, numba and hyperspy. The office server
+will therefore get the scientific stack on its next update, which is what closes the original defect
+at its actual point of failure: gallium arsenide raised *there*, not here.
+
+### What the whole exercise was worth, in defects rather than in green ticks
+
+Nine, of which one was the reported symptom:
+
+1. As missing from the fallback atomic-number table (the report).
+2. Covalent radii coming from a sixteen-element placeholder for the *entire* periodic table, because
+   the pymatgen attribute the lookup preferred no longer exists and a broad `except` hid it.
+3. Angles recovered through `arccos` of a dot product, wrong by ~`1e-6` degrees exactly where they
+   claim to be exact, and platform-dependent.
+4. The same in the symmetry-reduced disorientation, via the quaternion scalar part.
+5. The same in the orientation-relationship parallelisms -- which also made an exactly rational K-S
+   statement look irrational.
+6. An unpinned sign in the orthonormal harmonic basis: a uniform ODF evaluating to **-1 m.r.d.**
+7. A non-total spot order in the SAED simulation, decided by a one-ulp difference between
+   symmetry-equivalent reflections.
+8. A workbench race: a duplicate in-flight Kikuchi request discarding the user's zoom on arrival.
+9. And the packaging decision underneath all of it -- an optional extra that made the deployed
+   environment the weakest one anybody ran.
+
+Only the first was visible without CI, and only 3-5 and 8 needed CI's *slowness* and its *other
+platforms* to show themselves. That is the argument for keeping it green.
+
+### Working notes worth keeping
+
+- A Linux environment for this repository now exists in the WSL Ubuntu-24.04 image (`~/pytexenv`,
+  run against the tree over `/mnt/c`). It reproduces some but not all of the runner failures -- it
+  is Python 3.12, so the 3.11-only typing differences do not appear there.
+- The `gh` CLI is installed. It authenticates from the Windows credential manager
+  (`git credential fill` piped to `GH_TOKEN`), which is what made the CI logs readable at all; the
+  previous session recorded them as needing admin rights and left the browser job undiagnosed.
+- Reading a failing job's log is worth more than three careful guesses. Every one of the six
+  remaining defects after round one was named directly by its assertion.
+
 ### Next actions
 
-1. Full local suite, then commit and push.
-2. Watch CI. It is the only place the runner-CPU failures can be confirmed fixed, since they do not
-   reproduce under WSL.
-3. Tag `v0.5.0` once CI is green.
-4. Then `ml_server_deploy`: manifest already updated in its worktree (suite 1.4.0, pytex `ref:
-   v0.5.0`, `test_extras: [dev]`, the CBED-will-raise mirror note replaced by the transitive-package
-   list for IT). Commit and tag it after the pytex tag exists, then watch its release build --
-   `pip check` over the combined office environment is the gate that could still object to
-   pymatgen's and KikuchiPy's transitive set landing beside torch and Flask.
+Nothing outstanding on this goal. If the office server is updated to suite 1.4.0, the thing to check
+by hand is that the CIF route and the CBED symmetry analysis now answer there -- they are the
+capabilities this release exists to deliver, and the deployment gate proves only that the packages
+install.
