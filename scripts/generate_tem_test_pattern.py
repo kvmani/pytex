@@ -41,6 +41,7 @@ prints what it wrote.
 from __future__ import annotations
 
 import json
+import math
 import struct
 import sys
 import zlib
@@ -145,8 +146,34 @@ def _render(image_model: Any) -> np.ndarray:
     return np.clip(np.rint(canvas), 0, 255).astype(np.uint8)
 
 
+#: Significant digits every float in the sidecar is written to.
+#:
+#: The sidecar is a tracked baseline compared against a fresh generation, so it
+#: has to be reproducible on any machine, and a float64 straight from the
+#: simulation is not: the last one or two digits of a spot intensity differ
+#: between BLAS builds, which failed the comparison on Linux while passing on
+#: Windows. Twelve digits is far more precision than a diffraction intensity
+#: carries and enough slack to absorb that.
+_SIDECAR_SIGNIFICANT_DIGITS = 12
+
+
+def _stable(value: float) -> float:
+    """A float rounded to `_SIDECAR_SIGNIFICANT_DIGITS` significant digits."""
+
+    number = float(value)
+    if number == 0.0 or not math.isfinite(number):
+        return number
+    exponent = math.floor(math.log10(abs(number)))
+    return round(number, _SIDECAR_SIGNIFICANT_DIGITS - 1 - exponent)
+
+
 def build() -> tuple[np.ndarray, dict[str, Any]]:
-    """Simulate the pattern and render it. Returns the raster and its answer."""
+    """Simulate the pattern and render it. Returns the raster and its answer.
+
+    Every float in the returned sidecar is rounded to
+    `_SIDECAR_SIGNIFICANT_DIGITS`; the raster is rendered from the unrounded
+    simulation.
+    """
 
     from pytex.app.phases import builtin_phase
     from pytex.core.lattice import ZoneAxis
@@ -184,30 +211,30 @@ def build() -> tuple[np.ndarray, dict[str, Any]]:
         "zone_axis": list(ZONE_AXIS),
         "beam_energy_kev": BEAM_ENERGY_KEV,
         "camera_length_mm": CAMERA_LENGTH_MM,
-        "camera_constant_mm_angstrom": camera_constant,
+        "camera_constant_mm_angstrom": _stable(camera_constant),
         "pixel_size_mm": PIXEL_SIZE_MM,
         "in_plane_rotation_deg": IN_PLANE_ROTATION_DEG,
         "width_px": DETECTOR_PX,
         "height_px": DETECTOR_PX,
-        "centre_px": [float(value) for value in image_model.centre_px],
+        "centre_px": [_stable(value) for value in image_model.centre_px],
         "crystal_to_pattern": [
-            float(value) for value in image_model.crystal_to_pattern().reshape(-1)
+            _stable(value) for value in image_model.crystal_to_pattern().reshape(-1)
         ],
         "spots": [
             {
                 "hkl": [int(value) for value in spot.miller_indices],
-                "x": float(spot.position_px[0]),
-                "y": float(spot.position_px[1]),
-                "d_angstrom": float(spot.d_spacing_angstrom),
-                "g_inv_angstrom": float(spot.g_inv_angstrom),
-                "intensity": float(spot.relative_intensity),
+                "x": _stable(spot.position_px[0]),
+                "y": _stable(spot.position_px[1]),
+                "d_angstrom": _stable(spot.d_spacing_angstrom),
+                "g_inv_angstrom": _stable(spot.g_inv_angstrom),
+                "intensity": _stable(spot.relative_intensity),
             }
             for spot in image_model.spots
         ],
         # Three strong, mutually non-collinear reflections: what a test (or a
         # user) should click to seed the indexing.
         "seed_spots": [
-            {"x": float(spot.position_px[0]), "y": float(spot.position_px[1])}
+            {"x": _stable(spot.position_px[0]), "y": _stable(spot.position_px[1])}
             for spot in image_model.independent_seed_spots(3)
         ],
         "describe": image_model.describe(),

@@ -108,7 +108,7 @@ result = float(np.trace(tensor))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `directional-orientation-tensor-unit-trace` | 1.000000000000 | 1.000000000000 | &mdash; | 4.44e-16 | 1e-12 | ✅ pass |
+| `directional-orientation-tensor-unit-trace` | 1.000000000000 | 1.000000000000 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Analytic identity: tr((1/n) sum v v^T) = (1/n) sum |v|^2 = 1 for unit vectors, independent of the distribution.
 

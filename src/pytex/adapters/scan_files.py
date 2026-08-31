@@ -565,14 +565,15 @@ _OH5_PROPERTY_FIELDS = {
 }
 
 
-def _require_h5py() -> Any:
-    try:
-        import h5py
-    except ImportError as error:  # pragma: no cover - exercised only without h5py
-        raise ImportError(
-            "Reading EDAX OIM HDF5 scans (.oh5/.h5) requires the optional 'h5py' "
-            "dependency. Install PyTex with the 'hdf5' extra."
-        ) from error
+def _h5py() -> Any:
+    """The HDF5 binding the OIM reader uses.
+
+    Required, not optional; imported at call time so the .ang and .ctf readers,
+    which are pure NumPy, do not pay for it.
+    """
+
+    import h5py
+
     return h5py
 
 
@@ -612,7 +613,7 @@ def _oh5_text(group: Any, name: str) -> str | None:
 def _oh5_scan_group(handle: Any, scan: str | None, *, file_path: Path) -> str:
     """Name the scan group to read, of possibly several in one file."""
 
-    h5py = _require_h5py()
+    h5py = _h5py()
     candidates: list[str] = [
         str(name)
         for name in handle
@@ -798,7 +799,7 @@ def read_oh5(
     read_scan : Pick the reader for a path by its extension.
     """
 
-    h5py = _require_h5py()
+    h5py = _h5py()
     file_path = Path(path)
     header_metadata: dict[str, str] = {}
     channels: dict[str, np.ndarray] = {}

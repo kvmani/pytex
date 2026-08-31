@@ -17,8 +17,6 @@ import pytest
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 AUSTENITE = {"builtin": "austenite_fcc"}
 FERRITE = {"builtin": "fe_bcc"}
 BETA_ZIRCONIUM = {"builtin": "zr_bcc_beta"}

@@ -28,11 +28,11 @@ npm run test:browser
 Generated `node_modules/`, Playwright reports, screenshots, and traces stay outside repository
 history. CI installs Chromium in a dedicated Ubuntu/Python 3.11/Node 22 lane.
 
-Install the full scientific lane when you need the optional CIF-backed structure-import path and
-the heavier interoperability or external-baseline tests:
+`.[dev,docs]` is the whole lane: the scientific stack is a required dependency, so the CIF-backed
+structure-import path, the external baselines and the interoperability tests all run from it. To see
+what, if anything, skipped:
 
 ```bash
-python -m pip install -e '.[dev,docs,adapters]'
 python -m pytest -q -rs
 ```
 
@@ -40,7 +40,7 @@ For a fuller user-facing setup guide, including Windows activation details, note
 
 ## Working Expectations
 
-- keep the core package importable without heavy optional scientific dependencies
-- use optional extras for adapters
+- keep `import pytex` cheap: the scientific stack is required, but heavy, so its imports live
+  inside the functions that use them rather than at module level
 - keep generated artifacts out of source directories
 - treat documentation and figures as repo-tracked assets, not temporary outputs

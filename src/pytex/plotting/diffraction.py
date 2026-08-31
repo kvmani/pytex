@@ -17,13 +17,9 @@ from pytex.plotting.frames import add_frame_indicator
 from pytex.plotting.styles import resolve_style
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+
     return plt, object
 
 
@@ -51,7 +47,7 @@ def plot_xrd_pattern(
         The Matplotlib axes.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     xrd_style = style["xrd"]
@@ -174,7 +170,7 @@ def plot_saed_pattern(
         The figure holding the pattern. The caller owns it.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     saed_style = style["saed"]
@@ -425,7 +421,7 @@ def plot_kikuchi_pattern(
     if max_bands is not None and max_bands <= 0:
         raise ValueError("max_bands must be strictly positive when provided.")
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     saed_style = style["saed"]

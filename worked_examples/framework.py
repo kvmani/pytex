@@ -34,11 +34,14 @@ from typing import Any
 import numpy as np
 
 __all__ = [
+    "RESIDUE_SCALE",
+    "ROUNDING_RESIDUE_DISPLAY",
     "ExampleGroup",
     "SeeAlso",
     "SymbolUse",
     "WorkedExample",
     "WorkedExampleResult",
+    "format_residue_scale",
     "format_value",
     "validate_unique_ids",
 ]
@@ -63,6 +66,44 @@ def format_value(value: Any, fmt: str = "{:.4f}") -> str:
     else:
         body = ", ".join(fmt.format(float(item)) for item in flat)
     return f"[{body}]"
+
+
+#: Below this magnitude a number in the gallery is floating-point residue.
+#:
+#: Every quantity these examples report is of order one to a few thousand in
+#: its own unit -- degrees, angstroms, gigapascals, multiples of random -- so a
+#: value twelve orders below one is the rounding of the arithmetic that produced
+#: it and nothing else.
+RESIDUE_SCALE = 1e-12
+
+#: How such a value is written on the page.
+ROUNDING_RESIDUE_DISPLAY = f"< {RESIDUE_SCALE:.0e}"
+
+
+def format_residue_scale(value: Any) -> str | None:
+    """`ROUNDING_RESIDUE_DISPLAY` for a value that is only rounding, else None.
+
+    This is not cosmetic. An example whose expected value is exactly zero -- an
+    analytic identity, a conservation law -- computes not zero but the rounding
+    residue of the arithmetic that got there, of order ``1e-15``. Printed to two
+    significant figures that residue is a *different string* on a different BLAS
+    build, so the generated page would be stale the moment it were regenerated
+    anywhere else, and the staleness check that keeps the gallery honest would
+    fire on the machine rather than on the code.
+
+    The threshold is absolute and deliberately far below any tolerance an
+    example declares for a physical reason: a Monte-Carlo estimate that lands
+    within its ``6e-03`` bound has genuinely measured something, and its digits
+    are reported.
+    """
+
+    array = np.asarray(value)
+    if array.size != 1 or not np.issubdtype(array.dtype, np.floating):
+        return None
+    magnitude = abs(float(array.reshape(-1)[0]))
+    if magnitude == 0.0 or magnitude >= RESIDUE_SCALE:
+        return None
+    return ROUNDING_RESIDUE_DISPLAY
 
 
 @dataclass(frozen=True)
@@ -194,7 +235,24 @@ class WorkedExample:
         )
 
     def computed_display(self, namespace: Mapping[str, Any] | None = None) -> str:
-        return format_value(self.run(namespace), self.result_format)
+        """The computed value as the generated page prints it.
+
+        A value at rounding scale is printed as `ROUNDING_RESIDUE_DISPLAY`, but
+        only when this example's own `result_format` would otherwise expose its
+        digits. A residue rendered through ``"{:.4f}"`` is already ``0.0000`` on
+        every machine, and reads better beside an expected ``0.0000`` than a
+        bound does; one rendered through ``"{:.2e}"`` is ``2.11e-15`` here and
+        ``1.22e-15`` elsewhere, which is the case the bound exists for. See
+        :func:`format_residue_scale`.
+        """
+
+        value = self.run(namespace)
+        rendered = format_value(value, self.result_format)
+        if format_residue_scale(value) is not None:
+            zero = format_value(np.zeros_like(np.asarray(value)), self.result_format)
+            if rendered != zero:
+                return ROUNDING_RESIDUE_DISPLAY
+        return rendered
 
     def expected_display(self) -> str:
         return format_value(self.expected, self.result_format)

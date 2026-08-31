@@ -11,15 +11,88 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-31
+
+One environment, one behaviour. The scientific stack PyTex was built to sit on — **pymatgen, orix,
+diffsims, KikuchiPy, matplotlib and h5py** — is now a **required dependency** rather than a
+`pip install pytex[adapters]` extra, so the same call computes the same answer on every machine
+PyTex is installed on. This is a packaging change with scientific consequences, and it is the whole
+theme of the release: several defects below existed only because there were two behaviours to
+choose between and the deployed one was the weaker.
+
+**Scientific behavior.** Three computed quantities change, all of them corrections. Covalent radii
+now come from pymatgen's Cordero table rather than a sixteen-element list (**Fixed**); every angle
+that should be zero now *is* zero rather than about `1e-06` degrees (**Fixed**); and the orthonormal
+harmonic basis has a pinned sign, which on some platforms flips the sign of an ODF's density
+(**Fixed**). Nothing else moves.
+
+### Changed
+
+- **The scientific stack is required, not optional.** `pymatgen`, `orix`, `diffsims`, `kikuchipy`,
+  `matplotlib` and `h5py` are declared runtime dependencies. Every one of them is a reputable,
+  actively maintained scientific library, and a crystallography library that cannot read a CIF or
+  draw a pole figure is not usefully installed. Concretely: CIF-backed phase creation, the figure
+  and export surfaces, the EDAX OIM HDF5 scan reader and the orix bridges no longer have an
+  "absent" mode, and the code that reported one is gone — `DependencyMissingError` with it. Imports
+  stay *lazy*, because these are heavy modules and `import pytex` must remain cheap; what is gone is
+  the `try`/`except ImportError` and the install hint behind it.
+- **`pytex[adapters]`, `pytex[plotting]` and `pytex[hdf5]` are now empty aliases**, kept so existing
+  install commands in scripts and READMEs keep resolving. They will be removed no earlier than 1.0.
+  `pytex[desktop]` remains a genuine extra: it is a window, not a capability.
+- **`pyebsdindex` is no longer declared anywhere.** Nothing in PyTex imports it; the PyEBSDIndex
+  bridge normalizes a result payload structurally and never needs the package installed.
+- **Removed: `pytex.app.DependencyMissingError`** and the `dependency.missing` error code. Nothing
+  raises them: the conditions they described cannot occur.
+- The worked-example gallery reports a value that is nothing but floating-point residue as
+  `< 1e-12` rather than printing its digits, which differ between platforms.
+
 ### Fixed
 
 - **Arsenic was missing from the fallback atomic-number table**, so anything that needed its atomic
-  number raised `ValueError` wherever pymatgen is absent — which is the base test lane *and the
-  deployed environment*, since the optional `adapters` extra is not installed there. Simulating a
-  CBED pattern of gallium arsenide, the textbook non-centrosymmetric case, was the reachable
-  symptom. The table now covers all 118 elements: an atomic number is definitional, so a partial
-  table is a gap with no upside, and the next element anybody needs is the one that breaks. A test
-  breaks the pymatgen import on purpose and checks every element still resolves.
+  number raised `ValueError` wherever pymatgen was absent — the base test lane *and* the deployed
+  office server, where the `adapters` extra was deliberately not installed. Simulating a CBED
+  pattern of gallium arsenide, the textbook non-centrosymmetric case, was the reachable symptom.
+  There is no longer a fallback table to be incomplete: pymatgen is the single authority for element
+  data, and it is always present.
+- **Covalent radii were coming from a sixteen-element table for every element, always.** Current
+  pymatgen has no `Element.covalent_radius` attribute, so the lookup that was supposed to prefer it
+  raised `AttributeError` on every call and fell through to PyTex's own list — which named sixteen
+  elements and gave every other element a flat 1.15 Å. Bond detection in the crystal viewer was
+  therefore drawing bonds from a placeholder radius for most of the periodic table. Radii now come
+  from pymatgen's Cordero table (96 elements). **Iron's covalent radius changes from 1.24 Å to
+  1.42 Å**, and every element outside the old sixteen changes from 1.15 Å to its tabulated value, so
+  inferred bonds may differ; the trans-curium elements, which pymatgen does not tabulate, keep a
+  documented default.
+- **Angles that should have been exactly zero were about `1e-06` degrees, and platform-dependent.**
+  `arccos` of a dot product loses half its significant digits at the endpoint, so an exactly
+  consistent result — a rotation reconstructed from four exactly consistent zone axes, an exactly
+  rational Kurdjumov-Sachs statement, a symmetry-reduced disorientation between identical
+  orientations — reported a residual of order `1e-06` degrees whose value was decided by the BLAS
+  build. `Rotation.angle_rad`, `quaternions_to_axes_angles`, orientation-set spread, the
+  rational-index deviation, the variant axis label residual, the multi-zone reconstruction scatter
+  and the OR variant misorientation now recover the angle from the geometry rather than from its
+  cosine (see `pytex.core._angles`), and report exact identities as exactly zero.
+- **The orthonormal harmonic basis had an arbitrary per-column sign.** `numpy.linalg.eigh` pins an
+  eigenvector only up to sign and different LAPACK builds choose differently, so a `HarmonicODF`
+  assembled from a chosen coefficient could evaluate to **-1 m.r.d. where a uniform texture must
+  give +1** — on Linux while passing on Windows. The sign is now fixed by convention (the
+  largest-magnitude entry of each column is positive), so the basis, the stored `basis_transform`
+  and every coefficient derived from them are reproducible.
+- The tracked TEM test pattern's sidecar is written to twelve significant digits, so regenerating it
+  on another machine produces the same file. It previously carried full float64 precision, whose
+  last digit differs between platforms.
+
+### Continuous integration
+
+- **One Python lane.** With the stack required, `.[dev,docs]` installs everything the suite
+  exercises, so the separate `full-scientific` job is gone. The remaining lane runs `pytest -rs` and
+  fails if any test skipped because a package was missing.
+- The `browser` job, red for weeks and undiagnosed at 0.4.0, was failing because `pip install -e .`
+  gave the workbench no matplotlib: every figure route answered 500 and the Playwright journeys
+  failed on the console errors. It is a genuine user-facing bug that the dependency change fixes,
+  and the job now proves that an ordinary install can serve the application.
+- The documentation build was failing for the same reason on the other side: the CIF tutorial
+  notebook needs pymatgen to execute.
 
 ## [0.4.0] - 2026-08-31
 

@@ -101,7 +101,7 @@ result = float(np.max(np.abs(solution.intensity_of([2, 2, 0]) - closed_form)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-dynamical-two-beam-limit-of-the-many-beam-solver` | 1.14e-15 | 0.00e+00 | &mdash; | 1.14e-15 | 1e-12 | ✅ pass |
+| `diffraction-dynamical-two-beam-limit-of-the-many-beam-solver` | < 1e-12 | 0.00e+00 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: An analytic identity, not a measurement: the two-beam structure matrix is s I + B with B traceless, and the exponential of a traceless 2x2 matrix is cos(pi s_eff t) I + i sin(pi s_eff t) B / s_eff, which gives the Howie-Whelan expression exactly. The deviation must therefore be zero to floating-point rounding.
 
@@ -193,7 +193,7 @@ result = float(max(deviations))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-dynamical-intensity-is-conserved-without-absorption` | 2.11e-15 | 0.00e+00 | &mdash; | 2.11e-15 | 1e-12 | ✅ pass |
+| `diffraction-dynamical-intensity-is-conserved-without-absorption` | < 1e-12 | 0.00e+00 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Unitarity of the propagator of a Hermitian generator: sum_g |psi_g|^2 is conserved exactly. The expected value is zero by theorem, with the tolerance set by floating-point accumulation over the beam set rather than by any physical uncertainty.
 
@@ -293,7 +293,7 @@ result = float(max(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | 1.56e-17 | 0.00e+00 | radian | 1.56e-17 | 1e-15 | ✅ pass |
+| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | < 1e-12 | 0.00e+00 | radian | < 1e-12 | 1e-15 | ✅ pass |
 
 **Why this value**: An exact cancellation in the closed form: substituting lambda -> lambda (1 + eps) into d_g(eps, lambda) recovers d_g(0, lambda) identically, for every reflection. The expected value is zero by algebra, and the tolerance is floating-point rounding.
 

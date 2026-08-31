@@ -152,7 +152,7 @@ result = transform.rotation_angle_deg
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-graph-multi-hop-angle` | 30.0000 | 30.0000 | deg | 6.04e-14 | 1e-09 | ✅ pass |
+| `frame-graph-multi-hop-angle` | 30.0000 | 30.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The Cartesian-to-specimen edge is the identity and the specimen-to-sample edge is the declared 30-degree mounting rotation about ND, so the composition R = R2 R1 = R2 has rotation angle 30 degrees exactly.
 
@@ -207,7 +207,7 @@ result = float(np.max(np.abs(np.asarray(back) - direction)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-round-trip-residual` | 0.0000 | 0.0000 | &mdash; | 5.55e-17 | 1e-14 | ✅ pass |
+| `frame-round-trip-residual` | 0.0000 | 0.0000 | &mdash; | < 1e-12 | 1e-14 | ✅ pass |
 
 **Why this value**: A frame transform is a proper rotation, so R^-1 = R^T and R^T R = I exactly. The round-trip residual is therefore zero up to floating-point rounding.
 

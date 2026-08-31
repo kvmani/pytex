@@ -38,10 +38,6 @@ def _crystal_frame() -> ReferenceFrame:
 
 @pytest.mark.parametrize("fixture_id", ["ni_fcc", "fe_bcc"])
 def test_xrd_external_baseline_matches_pytex_peak_families(fixture_id: str) -> None:
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed diffraction baseline tests require the optional pymatgen dependency.",
-    )
     payload = json.loads(
         (BASELINE_ROOT / f"{fixture_id}_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
     )
@@ -91,10 +87,6 @@ def test_xrd_external_baseline_matches_pytex_peak_families(fixture_id: str) -> N
 
 
 def test_hcp_xrd_external_baseline_matches_unique_pytex_peaks() -> None:
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed diffraction baseline tests require the optional pymatgen dependency.",
-    )
     payload = json.loads(
         (BASELINE_ROOT / "zr_hcp_pymatgen_xrd_cuka.json").read_text(encoding="utf-8")
     )
@@ -129,10 +121,6 @@ def test_hcp_xrd_external_baseline_matches_unique_pytex_peaks() -> None:
 
 @pytest.mark.parametrize("fixture_id", ["ni_fcc", "fe_bcc"])
 def test_saed_external_baseline_matches_pytex_shell_geometry(fixture_id: str) -> None:
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed diffraction baseline tests require the optional pymatgen dependency.",
-    )
     payload = json.loads(
         (BASELINE_ROOT / f"{fixture_id}_diffsims_saed_001_200kev.json").read_text(encoding="utf-8")
     )

@@ -83,7 +83,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | 7.92e-15 | 1e-09 | ✅ pass |
+| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship is constructed from the parallelism {111}_fcc || {011}_bcc, so mapping the defining parent plane must recover the defining child plane identically (analytic identity).
 
@@ -164,7 +164,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | 8.70e-15 | 1e-09 | ✅ pass |
+| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The Bain correspondence is constructed from (001)_fcc || (001)_bcc with [110]_fcc || [100]_bcc, so mapping the defining parent direction must recover the defining child direction identically (analytic identity).
 
@@ -816,8 +816,17 @@ parent_members = set()
 for variant in ks.generate_variants():
     rotation = variant.parent_to_child_rotation.as_matrix()
     for parent_plane, child_plane in variant.parallel_planes:
-        cosine = float(rotation @ parent_plane.normal @ child_plane.normal)
-        deviation = np.rad2deg(np.arccos(np.clip(cosine, -1.0, 1.0)))
+        rotated = rotation @ parent_plane.normal
+        # atan2 of the chord against the sum, not arccos of the dot product:
+        # these normals are meant to be exactly parallel, and arccos cannot
+        # report an angle below about 1e-6 deg however exact the pair is.
+        deviation = np.rad2deg(
+            2.0
+            * np.arctan2(
+                float(np.linalg.norm(rotated - child_plane.normal)),
+                float(np.linalg.norm(rotated + child_plane.normal)),
+            )
+        )
         worst_deviation_deg = max(worst_deviation_deg, float(deviation))
     indices = np.asarray(variant.parallel_planes[0][0].miller.indices)
     canonical = indices if indices[0] >= 0 else -indices
@@ -829,7 +838,7 @@ result = [worst_deviation_deg, float(len(parent_members))]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | 8.54e-07 | 1e-06 | ✅ pass |
+| `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | < 1e-12 | 1e-06 | ✅ pass |
 
 **Why this value**: Both values are identities. ``V = S_c R S_p^T`` maps ``S_p n_parent`` onto ``S_c n_child`` by construction, so the deviation is exactly zero up to floating-point noise. The fcc {111} family has four members and the 24 Kurdjumov-Sachs variants distribute over them six apiece, which is the packet structure of lath martensite reported by Morito et al.
 
@@ -920,7 +929,7 @@ result = [
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | 1.42e-14 | 1e-09 | ✅ pass |
+| `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The first two entries are identities: the dossier reads the volume from the lattice rather than recomputing it, and the volume of a cubic cell is the cube of its edge. The remaining four are the published Kurdjumov-Sachs figures -- 24 crystallographically distinct variants, four packets on the four members of the parent {111} family, and the ten distinct intervariant disorientations of Morito et al., whose largest is the 60 degree rotation about <111> -- the Sigma3 twin relation.
 

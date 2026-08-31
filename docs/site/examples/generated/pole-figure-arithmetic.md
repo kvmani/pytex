@@ -78,7 +78,7 @@ result = np.array([mean_density, deviation_integral])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | 1.11e-16 | 1e-12 | ✅ pass |
+| `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Definition of the multiples-of-random scale: sum_i w_i P_i = 1 with solid-angle weights summing to one. The deviation identity follows immediately, since sum_i w_i (P_i - 1) = 1 - 1 = 0.
 
@@ -164,7 +164,7 @@ result = np.array([constant_field, sum_mean])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | 1.33e-15 | 1e-12 | ✅ pass |
+| `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Partition of unity of the Nadaraya-Watson estimator: sum_i K_i f_i / sum_i K_i = c whenever every f_i = c, for any kernel and any query direction. Linearity of the solid-angle mean then gives mean(P + P) = 2 for a figure of unit mean.
 

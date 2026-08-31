@@ -66,18 +66,16 @@ python -m pytest -q
 python scripts/check_sphinx_warnings.py --max-warnings 0
 ```
 
-### Full Scientific Lane
+### One Lane
 
-Use the full scientific lane when you need optional structure-import or interoperability coverage:
+There is no second Python lane. As of 0.5.0 the scientific stack -- pymatgen, orix, diffsims,
+KikuchiPy, matplotlib and h5py -- is a required dependency, so `.[dev,docs]` is the controlling
+environment for CIF-backed phase construction, the pinned diffraction external baselines, the
+figure surfaces and the notebook smoke path alike. To confirm nothing skipped:
 
 ```bash
-python -m pip install -e ".[dev,docs,adapters]"
 python -m pytest -q -rs
 ```
-
-The full scientific lane now runs without the previous `pymatgen`-gated skips and is the
-controlling environment for CIF-backed phase construction, pinned diffraction external baselines,
-and the heavier notebook smoke path.
 
 ## Run The Core Quality Gates
 
@@ -169,14 +167,14 @@ python -m jupyter lab docs/site/tutorials/notebooks
 
 ## Troubleshooting
 
-### `ImportError` from broader optional adapters
+### `ImportError` from the scientific stack
 
-The base lane intentionally excludes the heavier optional scientific adapters. Install the full
-scientific lane when you need CIF-backed phase loading, ORIX bridges, or other adapter-heavy
-validation:
+Since 0.5.0 there is nothing optional to install: pymatgen, orix, diffsims, KikuchiPy, matplotlib
+and h5py are required dependencies. An `ImportError` from one of them means the environment is
+incomplete rather than minimal -- reinstall it:
 
 ```bash
-python -m pip install -e ".[dev,docs,adapters]"
+python -m pip install -e ".[dev,docs]"
 ```
 
 ### Sphinx builds but a notebook page shows code with no outputs

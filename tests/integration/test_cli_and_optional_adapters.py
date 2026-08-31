@@ -7,6 +7,8 @@ import sys
 import warnings
 from pathlib import Path
 
+import pytest
+
 from pytex import (
     FrameDomain,
     Handedness,
@@ -82,8 +84,6 @@ def test_python_m_pytex_info_runs() -> None:
 
 
 def test_phase_from_cif_string_optional_adapter_integration() -> None:
-    pytest = __import__("pytest")
-    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
@@ -97,8 +97,6 @@ def test_phase_from_cif_string_optional_adapter_integration() -> None:
 
 
 def test_uploaded_cif_drives_a_workbench_xrd_operation() -> None:
-    pytest = __import__("pytest")
-    pytest.importorskip("pymatgen.core")
     uploaded = {"cif": {"name": "halite.cif", "text": NACL_CIF}}
 
     spec, phase = phase_from_request(uploaded)
@@ -123,9 +121,6 @@ def test_uploaded_cif_drives_a_workbench_xrd_operation() -> None:
 
 
 def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
-    pytest = __import__("pytest")
-    pytest.importorskip("orix")
-    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
@@ -149,8 +144,6 @@ def test_orix_optional_adapter_boundary_preserves_core_semantics() -> None:
 
 
 def test_fixture_backed_powder_xrd_optional_integration_matches_pinned_baseline() -> None:
-    pytest = __import__("pytest")
-    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,

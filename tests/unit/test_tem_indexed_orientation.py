@@ -21,6 +21,7 @@ import math
 import numpy as np
 import pytest
 
+from pytex.core._angles import rotation_angle_from_matrix_rad
 from pytex.core.conventions import FrameDomain, Handedness
 from pytex.core.frame_catalog import sample_frame
 from pytex.core.frames import ReferenceFrame
@@ -97,15 +98,20 @@ def position_for(crystal_to_holder: np.ndarray, zone: ZoneAxis) -> StagePosition
 def symmetry_reduced_angle_deg(
     first: np.ndarray, second: np.ndarray, phase: Phase
 ) -> float:
-    """Smallest angle between two orientations under crystal symmetry."""
+    """Smallest angle between two orientations under crystal symmetry.
+
+    The angle comes from the skew part of each relative rotation rather than
+    from its trace: this helper exists to certify that a recovery is *exact*,
+    and the trace form cannot report better than about ``1e-06`` degrees for a
+    near-identity rotation whatever the recovery actually achieved. See
+    `pytex.core._angles`.
+    """
 
     operators = np.asarray(phase.symmetry.operators, dtype=np.float64)
     relative = np.einsum(
         "ij,njk->nik", first, np.einsum("nij,jk->nik", operators, second.T)
     )
-    angles = np.degrees(
-        np.arccos(np.clip((np.trace(relative, axis1=1, axis2=2) - 1.0) / 2.0, -1.0, 1.0))
-    )
+    angles = np.degrees(rotation_angle_from_matrix_rad(relative))
     return float(np.min(angles))
 
 

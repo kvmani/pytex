@@ -89,13 +89,9 @@ _PANEL_STROKE = "#d7e0ef"
 _SVG_FONT = "Arial"
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover - environment-dependent branch
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> Any:
+    import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -422,7 +418,7 @@ def plot_reference_frame(
         closing it.
     """
 
-    plt = _require_matplotlib()
+    plt = _matplotlib()
     if ax is None:
         figure = plt.figure(figsize=(4.2, 4.2))
         axes = figure.add_subplot(111, projection="3d")
@@ -505,7 +501,7 @@ def plot_frame_relationship(
         ``(figure, axes)``. The caller owns the figure.
     """
 
-    plt = _require_matplotlib()
+    plt = _matplotlib()
     if ax is None:
         figure = plt.figure(figsize=(4.6, 4.6))
         axes = figure.add_subplot(111, projection="3d")
@@ -641,7 +637,7 @@ def add_frame_indicator(
         If ``loc`` is not one of the four supported corners.
     """
 
-    _require_matplotlib()
+    _matplotlib()
     corners = {
         "lower left": (pad, pad),
         "lower right": (1.0 - size - pad, pad),

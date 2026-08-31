@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose, assert_array_equal
 
 from pytex import (
@@ -37,7 +36,6 @@ def _make_phase() -> Phase:
 
 
 def test_orix_miller_adapter_round_trip_for_scalars_and_sets() -> None:
-    pytest.importorskip("orix")
     phase = _make_phase()
 
     plane = MillerPlane.from_hkl([1, 0, 0], phase=phase)
@@ -64,7 +62,6 @@ def test_orix_miller_adapter_round_trip_for_scalars_and_sets() -> None:
 
 
 def test_orix_rotation_adapter_preserves_scalar_first_quaternion_ordering() -> None:
-    pytest.importorskip("orix")
     rotation = Rotation.from_axis_angle([0.0, 0.0, 1.0], np.pi / 3.0)
 
     orix_rotation = to_orix_rotation(rotation)

@@ -168,7 +168,6 @@ def test_phase_rejects_conflicting_space_group_metadata() -> None:
 
 
 def test_phase_can_be_created_from_cif_string() -> None:
-    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
@@ -191,14 +190,15 @@ def test_phase_can_be_created_from_cif_string() -> None:
 
 
 def test_phase_can_be_created_from_pymatgen_structure() -> None:
-    structure_cls = pytest.importorskip("pymatgen.core").Structure
+    from pymatgen.core import Structure
+
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
         axes=("a", "b", "c"),
         handedness=Handedness.RIGHT,
     )
-    structure = structure_cls.from_str(NACL_CIF, fmt="cif")
+    structure = Structure.from_str(NACL_CIF, fmt="cif")
     phase = Phase.from_pymatgen_structure(structure, crystal_frame=crystal, phase_name="rocksalt")
     assert phase.name == "rocksalt"
     assert phase.space_group is not None
@@ -209,7 +209,6 @@ def test_phase_can_be_created_from_pymatgen_structure() -> None:
 
 
 def test_phase_can_be_created_from_cif_path(tmp_path) -> None:
-    pytest.importorskip("pymatgen.core")
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
@@ -229,14 +228,15 @@ def test_phase_can_be_created_from_cif_path(tmp_path) -> None:
 
 
 def test_unit_cell_can_be_created_from_pymatgen_structure() -> None:
-    structure_cls = pytest.importorskip("pymatgen.core").Structure
+    from pymatgen.core import Structure
+
     crystal = ReferenceFrame(
         name="crystal",
         domain=FrameDomain.CRYSTAL,
         axes=("a", "b", "c"),
         handedness=Handedness.RIGHT,
     )
-    structure = structure_cls.from_str(NACL_CIF, fmt="cif")
+    structure = Structure.from_str(NACL_CIF, fmt="cif")
     lattice = Lattice.from_pymatgen_lattice(structure.lattice, crystal_frame=crystal)
     unit_cell = Phase.from_pymatgen_structure(structure, crystal_frame=crystal).unit_cell
     assert unit_cell is not None

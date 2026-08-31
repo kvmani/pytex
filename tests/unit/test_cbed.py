@@ -77,7 +77,7 @@ def _cubic_fcc_phase(name: str, species: str, parameter_angstrom: float) -> Phas
 
 @pytest.fixture(scope="module")
 def aluminium() -> Phase:
-    """FCC aluminium, built inline so the benchmark needs no optional dependency."""
+    """FCC aluminium, built inline: the cell is the subject, not the CIF reader."""
 
     return _cubic_fcc_phase("aluminium-fcc", "Al", 4.0495)
 

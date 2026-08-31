@@ -13,10 +13,12 @@ documentation integrity as one scientific quality system.
 
 ## Execution Lanes
 
-PyTex now treats the test and quality surface as two explicit lanes:
+PyTex treats the test and quality surface as two explicit lanes:
 
-- `base lane`: `.[dev,docs]` for integrity, linting, typing, docs builds, and the default lightweight test suite
-- `full scientific lane`: `.[dev,docs,adapters]` for CIF-backed structure import, pinned diffraction external baselines, and adapter-heavy interoperability coverage
+- `base lane`: `.[dev,docs]` for integrity, linting, typing, docs builds, and the whole test suite.
+  Since 0.5.0 the scientific stack is a required dependency, so this lane covers CIF-backed
+  structure import, the pinned diffraction external baselines and the interoperability tests too;
+  there is no second Python lane, and a test that skips because a package is absent fails CI.
 - `browser lane`: Python 3.11 plus Node 22 and pinned Playwright/Chromium for the shared workbench's
   critical user journeys; the dependency is test-only and the delivered frontend stays self-contained
 
@@ -124,7 +126,7 @@ scientific lane for the immediate roadmap surface, but validation breadth is sti
 - the priority teaching notebooks now smoke-execute in the default suite, but the full notebook atlas still follows a lighter validation path than the primary roadmap sequence
 
 The main quality-gap question is therefore no longer whether the repo can build and test at all, or
-whether the optional `pymatgen`-gated paths execute end to end. The remaining question is how far
+whether the pymatgen-backed paths execute end to end -- since 0.5.0 they execute in every lane. The remaining question is how far
 the current evidence justifies broader scientific claims for structure import, diffraction,
 transformation, and interoperability.
 

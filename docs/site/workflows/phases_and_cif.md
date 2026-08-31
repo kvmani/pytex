@@ -88,13 +88,8 @@ with explicit frame ownership and stable invariants from the start.
 
 ## Installation
 
-This workflow belongs to the full scientific lane:
-
-```bash
-python -m pip install -e '.[dev,docs,adapters]'
-```
-
-The lightweight base lane intentionally excludes the optional structure-import parser stack.
+Nothing extra. pymatgen parses the CIF and determines its symmetry, and it is a required dependency
+as of 0.5.0, so a plain install of PyTex can run everything on this page.
 
 ## Minimal Example: From CIF Text
 

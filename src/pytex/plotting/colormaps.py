@@ -30,13 +30,9 @@ if TYPE_CHECKING:
     from matplotlib.colors import Colormap
 
 
-def _require_matplotlib_colors() -> Any:
-    try:
-        import matplotlib
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib_module() -> Any:
+    import matplotlib
+
     return matplotlib
 
 
@@ -145,7 +141,7 @@ def categorical_colors(count: int) -> tuple[str, ...]:
 
 
 def _build_colormap(spec: ColormapSpec) -> Colormap:
-    matplotlib = _require_matplotlib_colors()
+    matplotlib = _matplotlib_module()
     colormap: Colormap = matplotlib.colors.LinearSegmentedColormap.from_list(
         spec.name, list(spec.colors), N=256
     )
@@ -159,7 +155,7 @@ def register_pytex_colormaps() -> tuple[str, ...]:
     already-registered names are left untouched.
     """
 
-    matplotlib = _require_matplotlib_colors()
+    matplotlib = _matplotlib_module()
     registered = []
     for spec in PYTEX_COLORMAP_SPECS:
         if spec.name not in matplotlib.colormaps:
@@ -174,7 +170,7 @@ def get_pytex_colormap(name: str) -> Colormap:
     names = register_pytex_colormaps()
     if name not in names:
         raise ValueError(f"Unknown PyTex colormap {name!r}; available: {names}.")
-    matplotlib = _require_matplotlib_colors()
+    matplotlib = _matplotlib_module()
     colormap: Colormap = matplotlib.colormaps[name]
     return colormap
 

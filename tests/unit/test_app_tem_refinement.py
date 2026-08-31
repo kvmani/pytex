@@ -18,8 +18,6 @@ import pytest
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 
 def plate(entry: str = "fcc_al_001", **overrides: object) -> dict:
     request: dict = {"pattern": entry}

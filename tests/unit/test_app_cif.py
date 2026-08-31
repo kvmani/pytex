@@ -6,8 +6,9 @@ from dataclasses import replace
 
 import pytest
 
-from pytex.app.errors import DependencyMissingError, InvalidInputError
+from pytex.app.errors import InvalidInputError
 from pytex.app.phases import PhaseSpec, builtin_phase, phase_from_request
+from pytex.core.fixtures import get_phase_fixture, phase_fixtures_available
 from pytex.core.frames import ReferenceFrame
 from pytex.core.lattice import Phase
 from pytex.core.provenance import ProvenanceRecord
@@ -89,20 +90,28 @@ def test_cif_upload_cannot_silently_mix_file_and_manual_fields() -> None:
     assert excinfo.value.details["field"] == "phase"
 
 
-def test_missing_cif_parser_is_an_actionable_optional_dependency_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    def unavailable(*_: object, **__: object) -> Phase:
-        raise ImportError("pymatgen is absent")
+def test_a_real_cif_upload_is_parsed_into_a_phase() -> None:
+    """The CIF path end to end, with the parser actually present.
 
-    monkeypatch.setattr(Phase, "from_cif_string", staticmethod(unavailable))
-    with pytest.raises(DependencyMissingError) as excinfo:
-        phase_from_request(_cif_payload())
+    pymatgen is a required dependency as of 0.5.0, so there is no longer a lane
+    in which this route answers with an install hint instead of a phase. This
+    asserts the outcome the workbench user gets rather than the absence of the
+    error that used to stand in for it, and it reads the checksum-pinned
+    nickel fixture rather than a CIF typed into the test.
+    """
 
-    assert excinfo.value.code == "dependency.missing"
-    assert excinfo.value.details["package"] == "pymatgen"
-    assert excinfo.value.details["extra"] == "adapters"
-    assert "pytex[adapters]" in (excinfo.value.hint or "")
+    if not phase_fixtures_available():
+        pytest.skip("the checksum-pinned phase-fixture corpus is a source-checkout asset")
+
+
+    fixture = get_phase_fixture("ni_fcc")
+    spec, phase = phase_from_request(_cif_payload(text=fixture.read_cif_text()))
+
+    assert phase.lattice.a == pytest.approx(3.52387)
+    assert len(phase.unit_cell.sites) == 4
+    assert {site.species for site in phase.unit_cell.sites} == {"Ni"}
+    assert phase.space_group_number == 225
+    assert "pymatgen" in spec.source
 
 
 def test_malformed_cif_is_reported_against_the_shared_phase_control(

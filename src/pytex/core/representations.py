@@ -112,6 +112,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike
 
+from pytex.core._angles import angle_between_unit_vectors_rad
 from pytex.core._arrays import as_float_array, normalize_quaternions
 from pytex.core.hexagonal import is_hexagonal_phase
 from pytex.core.miller import (
@@ -989,7 +990,16 @@ def _nearest_integer_indices(
         norms * float(np.linalg.norm(target_cartesian))
     )
     best = int(np.argmax(cosines))
-    deviation = float(np.degrees(np.arccos(np.clip(cosines[best], -1.0, 1.0))))
+    # From the vectors, not from their cosine: the interesting label is the one
+    # that is exact, and arccos cannot report zero for it. See pytex.core._angles.
+    deviation = float(
+        np.degrees(
+            angle_between_unit_vectors_rad(
+                cartesian[best] / norms[best],
+                target_cartesian / float(np.linalg.norm(target_cartesian)),
+            )
+        )
+    )
     reduced = reduce_indices(candidates[best][None, :])[0]
     return np.asarray(reduced, dtype=np.int64), deviation
 

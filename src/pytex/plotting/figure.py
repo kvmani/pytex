@@ -29,13 +29,9 @@ import numpy as np
 from pytex.plotting.styles import resolve_style
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> Any:
+    import matplotlib
+
     return matplotlib
 
 
@@ -97,7 +93,7 @@ def publication_style(
             ...
     """
 
-    matplotlib = _require_matplotlib()
+    matplotlib = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     with matplotlib.rc_context(rc_params_from_style(style)):
         yield style
@@ -164,7 +160,7 @@ class PanelGrid:
     ) -> None:
         if rows < 1 or cols < 1:
             raise ValueError("PanelGrid needs at least one row and one column.")
-        matplotlib = _require_matplotlib()
+        matplotlib = _matplotlib()
         import matplotlib.pyplot as plt
 
         self.style = resolve_style(
@@ -249,7 +245,7 @@ def add_scale_bar(
     anchored artist.
     """
 
-    _require_matplotlib()
+    _matplotlib()
     import matplotlib.font_manager as font_manager
     from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 

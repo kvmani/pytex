@@ -26,7 +26,6 @@ from __future__ import annotations
 from pytex.app import services as services
 from pytex.app.contracts import execute, success_envelope, to_jsonable
 from pytex.app.errors import (
-    DependencyMissingError,
     InvalidInputError,
     ServiceError,
     UnknownOperationError,
@@ -38,7 +37,6 @@ from pytex.app.registry import REGISTRY, OperationSpec, ServiceRegistry
 __all__ = [
     "BUILTIN_PHASES",
     "REGISTRY",
-    "DependencyMissingError",
     "InvalidInputError",
     "OperationSpec",
     "PhaseSpec",

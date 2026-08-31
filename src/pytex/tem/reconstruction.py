@@ -54,6 +54,7 @@ from typing import Any
 import numpy as np
 from numpy.typing import ArrayLike
 
+from pytex.core._angles import angle_between_unit_vectors_rad
 from pytex.core._arrays import as_float_array, normalize_vector
 from pytex.core.frame_catalog import specimen_frame as catalog_specimen_frame
 from pytex.core.lattice import Phase, ZoneAxis
@@ -686,9 +687,10 @@ class CurrentState:
 
         matrix = _kabsch_rotation(axes * weights[:, None], beams * weights[:, None])
         predicted = np.einsum("ij,nj->ni", matrix, axes)
-        residuals_deg = np.degrees(
-            np.arccos(np.clip(np.einsum("ni,ni->n", predicted, beams), -1.0, 1.0))
-        )
+        # Not arccos of the dot product: a fit this close to exact is precisely
+        # where that loses half its digits, and the scatter reported here is
+        # meant to be believable at zero. See pytex.core._angles.
+        residuals_deg = np.degrees(angle_between_unit_vectors_rad(predicted, beams))
         measured_scatter = float(np.sqrt(np.mean(residuals_deg**2)))
 
         orientation = Orientation.from_matrix(

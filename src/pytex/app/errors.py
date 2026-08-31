@@ -16,7 +16,6 @@ from __future__ import annotations
 from typing import Any
 
 __all__ = [
-    "DependencyMissingError",
     "InvalidInputError",
     "ServiceError",
     "UnknownOperationError",
@@ -140,22 +139,3 @@ class UnsupportedRequestError(ServiceError):
         details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, code="request.unsupported", hint=hint, details=details)
-
-
-class DependencyMissingError(ServiceError):
-    """An optional dependency is needed for this request and is not installed.
-
-    Optional extras are optional in PyTex, so an operation that needs one fails
-    with a named install command rather than an :class:`ImportError` traceback.
-    """
-
-    status = 501
-
-    def __init__(self, package: str, *, purpose: str, extra: str | None = None) -> None:
-        install = f"pip install pytex[{extra}]" if extra else f"pip install {package}"
-        super().__init__(
-            f"{purpose} requires the optional dependency {package!r}, which is not installed.",
-            code="dependency.missing",
-            hint=f"Install it with: {install}",
-            details={"package": package, "extra": extra, "install": install},
-        )

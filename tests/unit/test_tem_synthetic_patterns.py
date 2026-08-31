@@ -22,8 +22,6 @@ from pytex.core.lattice import ZoneAxis
 from pytex.tem.atlas import pattern_rotational_order, zone_axis_atlas
 from pytex.tem.synthetic import DetectorRaster, synthesize_saed_image
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 CAMERA_CONSTANT = 10.0317  # 200 kV, 400 mm camera length.
 PIXEL_SIZE_MM = 0.024
 

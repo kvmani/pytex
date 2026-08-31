@@ -389,7 +389,7 @@ result = float(np.hypot(*coordinates[0]))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-ebsd-specimen-normal-radius` | 0.363970234266 | 0.363970234266 | &mdash; | 5.55e-17 | 1e-12 | ✅ pass |
+| `diffraction-ebsd-specimen-normal-radius` | 0.363970234266 | 0.363970234266 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: tan(90 deg - 70 deg + 0 deg) = tan(20 deg) = 0.36397023426620234, from the stated laboratory frame alone. The identity is exact, so the tolerance is numerical only.
 
@@ -725,7 +725,7 @@ result = np.array([
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-powder-profile-affine-comparison` | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | &mdash; | 2.66e-15 | 1e-12 | ✅ pass |
+| `diffraction-powder-profile-affine-comparison` | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | [5.000000000000, 5.000000000000, 0.000000000000, 0.000000000000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: The five observed values are constructed independently as 5*x + 5 from x = 1,...,5. The weighted design matrix therefore contains the exact affine solution (5, 5), every residual is zero, and the numerators of both R_p and R_wp are exactly zero.
 

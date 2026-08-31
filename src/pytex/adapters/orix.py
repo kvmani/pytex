@@ -26,18 +26,21 @@ _PROPER_POINT_GROUP_TO_ORIX = {
 }
 
 
-def _require_orix() -> tuple[Any, Any, Any, Any, Any]:
-    try:
-        from orix.crystal_map import Phase as OrixPhase
-        from orix.quaternion import Orientation as OrixOrientation
-        from orix.quaternion import Rotation as OrixRotation
-        from orix.quaternion import symmetry as orix_symmetry
-        from orix.vector import Miller as OrixMiller
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "The PyTex orix adapter requires the optional 'orix' dependency. "
-            "Install PyTex with the 'adapters' extra."
-        ) from exc
+def _orix_types() -> tuple[Any, Any, Any, Any, Any]:
+    """The orix types this adapter converts to and from.
+
+    orix is a required dependency, so this cannot fail for a reason worth
+    recovering from. It is still imported at call time rather than at module
+    import, because orix pulls in a substantial stack and `pytex.adapters` must
+    not make every PyTex import pay for it.
+    """
+
+    from orix.crystal_map import Phase as OrixPhase
+    from orix.quaternion import Orientation as OrixOrientation
+    from orix.quaternion import Rotation as OrixRotation
+    from orix.quaternion import symmetry as orix_symmetry
+    from orix.vector import Miller as OrixMiller
+
     return OrixPhase, OrixOrientation, OrixRotation, orix_symmetry, OrixMiller
 
 
@@ -55,7 +58,7 @@ def to_orix_symmetry(symmetry: SymmetrySpec) -> Any:
     """Convert a PyTex symmetry specification to an orix symmetry object.
     """
 
-    _, _, _, orix_symmetry, _ = _require_orix()
+    _, _, _, orix_symmetry, _ = _orix_types()
     attribute = _PROPER_POINT_GROUP_TO_ORIX[symmetry.proper_point_group]
     return getattr(orix_symmetry, attribute)
 
@@ -79,7 +82,7 @@ def to_orix_rotation(rotations: Rotation | RotationSet) -> Any:
     Accepts a single rotation or a batch.
     """
 
-    _, _, orix_rotation_cls, _, _ = _require_orix()
+    _, _, orix_rotation_cls, _, _ = _orix_types()
     quaternions = (
         rotations.quaternion[None, :]
         if isinstance(rotations, Rotation)
@@ -112,7 +115,7 @@ def to_orix_orientation(orientations: Orientation | OrientationSet) -> Any:
     is lossy in that respect.
     """
 
-    _, orix_orientation_cls, _, _, _ = _require_orix()
+    _, orix_orientation_cls, _, _, _ = _orix_types()
     if isinstance(orientations, Orientation):
         quaternions = orientations.rotation.quaternion[None, :]
         symmetry = orientations.symmetry
@@ -169,7 +172,7 @@ def from_orix_orientation(
 
 
 def _to_orix_phase(phase: Phase) -> Any:
-    orix_phase_cls, _, _, _, _ = _require_orix()
+    orix_phase_cls, _, _, _, _ = _orix_types()
     return orix_phase_cls(
         name=phase.name,
         point_group=phase.symmetry.point_group,
@@ -181,7 +184,7 @@ def to_orix_plane(plane: CrystalPlane) -> Any:
     """Convert a PyTex crystal plane to an orix ``Miller`` object.
     """
 
-    _, _, _, _, orix_miller_cls = _require_orix()
+    _, _, _, _, orix_miller_cls = _orix_types()
     return orix_miller_cls(hkl=plane.miller.indices, phase=_to_orix_phase(plane.phase))
 
 
@@ -189,7 +192,7 @@ def to_orix_direction(direction: CrystalDirection) -> Any:
     """Convert a PyTex crystal direction to an orix ``Miller`` object.
     """
 
-    _, _, _, _, orix_miller_cls = _require_orix()
+    _, _, _, _, orix_miller_cls = _orix_types()
     return orix_miller_cls(uvw=direction.coordinates, phase=_to_orix_phase(direction.phase))
 
 

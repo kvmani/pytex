@@ -1209,17 +1209,9 @@ Calculator. The six scan-based EBSD views are the exception for a scientific rea
 phase definitions belong to the scan header and are imported with the scan, so replacing them with
 an unrelated standalone CIF would discard measurement semantics.
 
-CIF parsing uses the optional `pymatgen` adapter stack. Install a Workbench that needs user CIF
-files with:
-
-```{code-block} console
-$ python -m pip install 'pytex[adapters]'
-```
-
-Without that extra the built-in catalogue and manual phase editor remain fully usable, and a CIF
-choice returns an actionable installation message rather than an import traceback. Parser
-diagnostics are recorded in the Workbench message log; an unreadable file is refused against the
-phase control.
+CIF parsing is pymatgen's job, and pymatgen is a required dependency as of 0.5.0, so a plain
+`pip install pytex` gives every Workbench the CIF route. Parser diagnostics are recorded in the
+Workbench message log; an unreadable file is refused against the phase control.
 
 For the Burgers orientation relationship, choose the built-in example in Calculator, Composite SAED
 or Variants. All three use the same explicit `Zirconium (bcc, beta at 863 °C)` parent and
@@ -1256,9 +1248,7 @@ nothing is interpolated.
 
 The HDF5 formats carry more than their text export does: every per-point scalar channel in the file
 is read, not only the columns an `.ang` row has room for, so a channel a processing tool wrote back
-into the scan is available to colour or modulate the map. Two practical notes. Reading them needs
-`h5py`, which is optional — install PyTex with the `hdf5` extra — and the panel says so rather than
-failing obscurely if it is missing. And a scan saved *with its diffraction patterns* is far larger
+into the scan is available to colour or modulate the map. One practical note: a scan saved *with its diffraction patterns* is far larger
 than a request can carry, which is a property of the file and not of the transport: export it
 without the patterns, or read it with {func}`pytex.adapters.read_scan` in a script.
 

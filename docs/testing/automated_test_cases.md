@@ -70,7 +70,7 @@ space-group, point-group, lattice, and site-count expectations.
 PyTex currently:
 
 1. verifies the hash-pinned catalog and metadata
-2. loads each fixture through the optional `pymatgen`-backed CIF path in the full scientific lane
+2. loads each fixture through the pymatgen-backed CIF path
 3. records conventional and primitive expectations in a pinned audit summary
 4. checks that the loaded phases match the expected space-group, point-group, lattice, and site-count semantics
 

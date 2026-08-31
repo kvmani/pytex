@@ -270,6 +270,29 @@ def _symmetry_projected_raw_basis(
     return projected
 
 
+def _column_sign_convention(columns: np.ndarray) -> np.ndarray:
+    """Signs that make each column's largest-magnitude entry positive.
+
+    An orthonormal basis is only defined up to the sign of each column, and
+    ``numpy.linalg.eigh`` does not pin it: the same Gram matrix yields ``+v`` on
+    one LAPACK build and ``-v`` on another. That is not cosmetic here. The
+    columns are what the harmonic coefficients multiply, so a flipped constant
+    column turns a uniform ODF of density ``+1`` into one of density ``-1``, and
+    it flips the sign of every coefficient a stored `basis_transform` reproduces.
+    A uniform ODF evaluating to ``-1`` m.r.d. on Linux and ``+1`` on Windows is
+    exactly the failure this prevents.
+
+    The convention is the usual one (as in an SVD sign fix): make the entry of
+    largest magnitude positive, lowest index winning a tie. It is arbitrary, but
+    it is *definite*, and every platform computes the same one.
+    """
+
+    dominant = np.argmax(np.abs(columns), axis=0)
+    signs = np.sign(columns[dominant, np.arange(columns.shape[1])])
+    signs[signs == 0.0] = 1.0
+    return np.asarray(signs, dtype=np.float64)
+
+
 def _orthonormalize_weighted_basis(
     raw_basis: np.ndarray,
     quadrature_weights: np.ndarray,
@@ -289,6 +312,9 @@ def _orthonormalize_weighted_basis(
     kept_vectors = eigenvectors[:, keep]
     transform = kept_vectors / np.sqrt(kept_values)[None, :]
     orthonormal_basis = raw_basis @ transform
+    signs = _column_sign_convention(orthonormal_basis)
+    orthonormal_basis = orthonormal_basis * signs[None, :]
+    transform = transform * signs[None, :]
     orthonormal_basis = np.ascontiguousarray(orthonormal_basis, dtype=np.float64)
     orthonormal_basis.setflags(write=False)
     transform = np.ascontiguousarray(transform, dtype=np.float64)

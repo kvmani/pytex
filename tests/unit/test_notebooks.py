@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 import matplotlib
-import pytest
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -82,7 +81,6 @@ def test_priority_teaching_notebooks_use_fixture_corpus_and_manifest_trail() -> 
 
 
 def test_priority_teaching_notebooks_smoke_execute() -> None:
-    pytest.importorskip("pymatgen.core")
     for notebook_name in PRIORITY_NOTEBOOKS:
         _execute_notebook_code_cells(NOTEBOOK_ROOT / notebook_name)
 

@@ -82,7 +82,7 @@ result = float(report.best().path.total_travel_deg)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | 5.26e-13 | 1e-03 | ✅ pass |
+| `tem-tilt-001-to-011-travel` | 45.000 | 45.000 | deg | < 1e-12 | 1e-03 | ✅ pass |
 
 **Why this value**: The angle between [001] and [011] in a cubic lattice is arccos(1/sqrt(2)) = 45 degrees exactly, from the dot product of the two directions divided by their lengths. Independent of the lattice parameter.
 
@@ -161,7 +161,7 @@ result = float(report.best().path.total_travel_deg)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-tilt-001-to-111-travel` | 54.7356 | 54.7356 | deg | 6.11e-13 | 1e-03 | ✅ pass |
+| `tem-tilt-001-to-111-travel` | 54.7356 | 54.7356 | deg | < 1e-12 | 1e-03 | ✅ pass |
 
 **Why this value**: arccos(1/sqrt(3)) = 54.7356 degrees, the analytic angle between <001> and <111> in a cubic lattice, and the standard tetrahedral-angle complement.
 

@@ -147,7 +147,7 @@ result = float(report.triad_sum)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `kearns-triad-sum-is-exactly-one` | 1.000000000000 | 1.000000000000 | &mdash; | 2.22e-16 | 1e-12 | ✅ pass |
+| `kearns-triad-sum-is-exactly-one` | 1.000000000000 | 1.000000000000 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Analytic: sum over an orthonormal triad of d.A.d equals tr(A) = <c.c> = 1, since every basal pole c is a unit vector. Exact for every texture and every orthonormal triad, so the tolerance is floating-point rather than statistical.
 
@@ -223,7 +223,7 @@ result = np.asarray(report.values)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `kearns-ideal-basal-girdle` | [0.500000, 0.500000, 0.000000] | [0.500000, 0.500000, 0.000000] | &mdash; | 2.22e-16 | 1e-10 | ✅ pass |
+| `kearns-ideal-basal-girdle` | [0.500000, 0.500000, 0.000000] | [0.500000, 0.500000, 0.000000] | &mdash; | < 1e-12 | 1e-10 | ✅ pass |
 
 **Why this value**: Analytic: the mean of cos^2 of the angle to an in-plane axis, over a uniform great circle, is 1/2; the angle to the normal is 90 degrees everywhere, so that component is 0.
 

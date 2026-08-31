@@ -171,7 +171,7 @@ class TestMeasuredPattern:
         )
 
     def test_yaml_payload_validates_against_the_schema(self, tmp_path) -> None:
-        jsonschema = pytest.importorskip("jsonschema")
+        import jsonschema
         phase, _ = make_fcc_bcc_phases()
         measured, _ = _pattern_from_simulation(phase, (1, 1, 1))
         payload = measured.to_dict()

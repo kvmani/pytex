@@ -28,8 +28,6 @@ import pytest
 from pytex.app.errors import InvalidInputError
 from pytex.app.registry import REGISTRY
 
-pytest.importorskip("matplotlib", reason="the EBSD stack pulls in the plotting layer")
-
 
 def summary(**overrides):
     request = {"dataset": "bicrystal_gradient"}

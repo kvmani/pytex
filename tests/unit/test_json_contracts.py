@@ -4,7 +4,6 @@ import warnings
 from pathlib import Path
 
 import numpy as np
-import pytest
 
 from pytex import (
     JSON_CONTRACT_SCHEMA_VERSION,
@@ -278,10 +277,6 @@ def test_diffraction_json_contract_round_trip(tmp_path: Path) -> None:
 
 
 def test_fixture_loaded_phase_round_trips_via_json_contract() -> None:
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed phase fixture loading requires the optional pymatgen dependency.",
-    )
     crystal = ReferenceFrame(
         "crystal",
         FrameDomain.CRYSTAL,

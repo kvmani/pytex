@@ -28,7 +28,12 @@ if str(REPO_ROOT / "src") not in sys.path:
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from worked_examples import ExampleGroup, WorkedExample, all_groups  # noqa: E402
+from worked_examples import (  # noqa: E402
+    ExampleGroup,
+    WorkedExample,
+    all_groups,
+    format_residue_scale,
+)
 
 EXAMPLES_DIR = REPO_ROOT / "docs" / "site" / "examples"
 GENERATED_DIR = EXAMPLES_DIR / "generated"
@@ -75,7 +80,11 @@ def _render_result_table(example: WorkedExample) -> str:
         deviation = "exact"
         tolerance = "exact"
     else:
-        deviation = f"{result.max_abs_deviation:.2e}"
+        # The deviation of an exact identity is rounding, and its digits differ
+        # between platforms; see worked_examples.framework.format_residue_scale.
+        deviation = format_residue_scale(result.max_abs_deviation) or (
+            f"{result.max_abs_deviation:.2e}"
+        )
         tolerance = f"{example.tolerance:.0e}"
     status = "✅ pass" if result.within_tolerance else "❌ FAIL"
     header = "| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |"

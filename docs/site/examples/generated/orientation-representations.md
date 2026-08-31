@@ -77,7 +77,7 @@ result = np.array([
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `core-orientation-equal-volume-charts-agree-on-the-so3-volume` | [1.000000000000, 1.000000000000, 1.000000000000] | [1.000000000000, 1.000000000000, 1.000000000000] | &mdash; | 2.22e-16 | 1e-12 | ✅ pass |
+| `core-orientation-equal-volume-charts-agree-on-the-so3-volume` | [1.000000000000, 1.000000000000, 1.000000000000] | [1.000000000000, 1.000000000000, 1.000000000000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: The invariant measure on SO(3), (1 - cos w) dw dOmega / pi^2, gives the group total volume pi^2 before normalization. The homochoric radial function f(w) = [3(w - sin w)/4]^(1/3) reaches R1 = (3 pi/4)^(1/3) at w = pi, so (4/3) pi R1^3 = pi^2; the cubochoric edge is fixed as pi^(2/3) by requiring the same volume. A cube corner is at maximum distance from the centre in the cube, so the volume-preserving map must send it to the ball's surface.
 
@@ -150,7 +150,7 @@ result = np.array([
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `core-orientation-ideal-indices-invert-the-plane-direction-construction` | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
+| `core-orientation-ideal-indices-invert-the-plane-direction-construction` | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: An exact inverse identity, not a fitted result: the plane normal aligned with ND and the direction aligned with RD are recovered by mapping those specimen axes back through g^T and expressing them in the reciprocal and direct bases respectively, so the integer indices and zero residual angles follow by construction.
 

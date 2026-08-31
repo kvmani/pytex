@@ -7,6 +7,10 @@ from typing import overload
 import numpy as np
 from numpy.typing import ArrayLike
 
+from pytex.core._angles import (
+    rotation_angle_between_quaternions_rad,
+    rotation_angle_from_quaternion_rad,
+)
 from pytex.core._arrays import (
     as_float_array,
     normalize_quaternion,
@@ -491,8 +495,11 @@ def quaternions_to_axes_angles(quaternions: ArrayLike) -> tuple[np.ndarray, np.n
     quaternion_array = normalize_quaternions(quaternions)
     canonical = np.array(quaternion_array, copy=True)
     canonical[canonical[:, 0] < 0.0] *= -1.0
-    angles = 2.0 * np.arccos(np.clip(canonical[:, 0], -1.0, 1.0))
+    # The angle comes from the vector part against the scalar, not from the
+    # scalar alone: an identity quaternion must give exactly zero rather than
+    # the 3e-08 rad that `2 arccos(w)` floors out at. See pytex.core._angles.
     sin_half = np.linalg.norm(canonical[:, 1:], axis=1)
+    angles = 2.0 * np.arctan2(sin_half, canonical[:, 0])
     axes = np.zeros((canonical.shape[0], 3), dtype=np.float64)
     axes[:, 2] = 1.0
     non_identity = sin_half > 1e-12
@@ -891,7 +898,7 @@ def _common_branch_and_spread(
     norm = float(np.linalg.norm(mean))
     if norm <= 0.0:
         return aligned, float("inf"), certificate_rad
-    deviations = 2.0 * _safe_arccos(np.abs(aligned @ (mean / norm)))
+    deviations = rotation_angle_between_quaternions_rad(aligned, mean / norm)
     return aligned, float(deviations.max()), certificate_rad
 
 
@@ -1596,7 +1603,7 @@ class Rotation:
         :meth:`Misorientation.disorientation` instead.
         """
 
-        return float(2.0 * _safe_arccos(abs(float(self.quaternion[0]))))
+        return float(rotation_angle_from_quaternion_rad(self.quaternion))
 
     @property
     def angle_deg(self) -> float:

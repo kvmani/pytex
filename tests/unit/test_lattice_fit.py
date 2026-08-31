@@ -366,7 +366,6 @@ def test_the_default_tolerance_is_a_picking_precision_not_a_lattice_spacing() ->
 def test_a_simulated_plate_refines_its_own_beam_centre(entry: str, offset) -> None:
     """End to end on the practice plates, whose true centre is known."""
 
-    pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
     from pytex.app import REGISTRY
 
     opened = REGISTRY.call("tem.gallery_pattern", {"pattern": entry})

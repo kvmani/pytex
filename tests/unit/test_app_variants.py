@@ -436,14 +436,12 @@ class TestPublicationFigure:
         return call("variants.render", **request)
 
     def test_an_svg_figure_is_produced_as_text(self) -> None:
-        pytest.importorskip("matplotlib")
         result = self.render()
         assert result["data"]["encoding"] == "text"
         assert result["data"]["image"].lstrip().startswith(("<?xml", "<svg"))
         assert result["data"]["bytes"] > 0
 
     def test_a_png_figure_is_produced_as_base64(self) -> None:
-        pytest.importorskip("matplotlib")
         import base64
 
         result = self.render(format="png")
@@ -454,7 +452,6 @@ class TestPublicationFigure:
     def test_the_figure_carries_every_pole_the_table_does(self) -> None:
         """One marker per row, or the figure is not of what was exported."""
 
-        pytest.importorskip("matplotlib")
         table = pole_figure()
         rendered = self.render()
         assert rendered["data"]["pole_count"] == len(table["table"]["rows"])
@@ -462,7 +459,7 @@ class TestPublicationFigure:
     def test_no_figure_is_left_open(self) -> None:
         """A leaked figure is a defect here and a memory leak in the server."""
 
-        matplotlib = pytest.importorskip("matplotlib")
+        import matplotlib
         matplotlib.use("Agg", force=False)
         import matplotlib.pyplot as plt
 

@@ -30,8 +30,40 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
   "Topic :: Scientific/Engineering :: Visualization",
 ]
+# One environment, one behaviour.
+#
+# PyTex used to keep the scientific stack behind a `pip install pytex[adapters]`
+# extra, so the same call could compute a result on one machine and raise
+# ModuleNotFoundError on another -- a CBED symmetry analysis of gallium arsenide
+# being the case that finally settled it. Every package below is a reputable,
+# actively maintained scientific library, and a crystallography library that
+# cannot read a CIF is not usefully installed, so they are required rather than
+# suggested. `pytex[adapters]`, `pytex[plotting]` and `pytex[hdf5]` remain as
+# aliases so existing install commands keep working.
 dependencies = [
+  # diffsims and KikuchiPy are the packages the PyTex adapters are written
+  # against. PyTex does not import either one -- the bridges take the caller's
+  # object and read it structurally, which is what keeps their semantics out of
+  # the PyTex model -- but `pytex.adapters.index_hough` calls
+  # `signal.hough_indexing(...)` and cannot run without KikuchiPy present, and
+  # the interop surfaces are meaningless in an environment that has neither.
+  # Declaring them is what makes "PyTex offers a KikuchiPy bridge" a statement
+  # about the installed environment rather than about the caller's homework.
+  "diffsims>=0.6.1",
+  # h5py backs the EDAX OIM HDF5 scan reader (`read_oh5`, for .oh5 and .h5).
+  "h5py>=3.10",
+  "kikuchipy>=0.11.5",
+  # matplotlib renders every figure PyTex draws, including the SVG bundles the
+  # dossier and export surfaces write.
+  "matplotlib>=3.8",
   "numpy>=1.26",
+  # orix supplies the orientation and Miller types the adapters convert to and
+  # from, and the crystal-map model KikuchiPy hands back.
+  "orix>=0.13.3",
+  # pymatgen parses CIF structures, determines their space groups through
+  # spglib, and is the authority for element data: atomic numbers, radii, and
+  # the scattering parameters the X-ray form-factor table is generated from.
+  "pymatgen>=2024.5.1",
   # PyYAML backs two declared data contracts that are on the core import
   # path: the plotting style themes and the measured-SAED pattern format.
   # It is a genuine runtime requirement, not an optional extra.
@@ -41,9 +73,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "h5py>=3.10",
   "hypothesis>=6.100",
-  "matplotlib>=3.8",
+  # jsonschema validates the published JSON contracts against their schemas in
+  # `schemas/`. A check that silently skips is not a check, so it is part of the
+  # test environment rather than something a lane may or may not have.
+  "jsonschema>=4.21",
   # Upper bounds on the type checker and on the array library it reads stubs
   # from. Both are tooling constraints for the checks, not runtime constraints:
   # `numpy>=1.26` in the runtime dependencies above is deliberately open, and
@@ -73,28 +107,22 @@ docs = [
   "sphinxcontrib-bibtex>=2.6",
   "sphinx>=7.4",
 ]
-plotting = [
-  "matplotlib>=3.8",
-]
-# h5py backs the EDAX OIM HDF5 scan reader (`read_oh5`, for .oh5 and .h5
-# files). Optional on purpose: the .ang and .ctf readers are pure NumPy, and
-# `read_oh5` imports h5py lazily so the library stays importable without it.
-hdf5 = [
-  "h5py>=3.10",
-]
 # The desktop window. Optional on purpose: `python -m pytex.app desktop` opens
 # the default browser instead when this is absent, so the application has no
-# mandatory dependency beyond the library itself.
+# mandatory dependency beyond the library itself. It is a window, not a
+# capability: nothing PyTex computes depends on whether it is installed.
 desktop = [
   "pywebview>=5.0",
 ]
-adapters = [
-  "diffsims>=0.6.1",
-  "kikuchipy>=0.11.5",
-  "orix>=0.13.3",
-  "pyebsdindex>=0.2.dev1",
-  "pymatgen>=2024.5.1",
-]
+# Compatibility aliases. matplotlib, h5py, pymatgen, orix, diffsims and
+# KikuchiPy are required dependencies as of 0.5.0, so these extras add nothing;
+# they exist so that `pip install pytex[adapters]` and the other install
+# commands already written down in deployment scripts and READMEs keep resolving
+# instead of failing on an unknown extra. They will be removed no earlier than
+# 1.0.
+adapters = []
+hdf5 = []
+plotting = []
 
 [project.scripts]
 pytex = "pytex.cli:main"
@@ -124,7 +152,7 @@ pythonpath = ["src", "."]
 testpaths = ["tests"]
 filterwarnings = [
   "error",
-  # External pymatgen CIF-parsing chatter (full-scientific lane only); the
+  # External pymatgen CIF-parsing chatter; the
   # messages are informational and version-dependent, not PyTex defects.
   "ignore:Issues encountered while parsing CIF:UserWarning",
   "ignore:No _symmetry_equiv_pos_as_xyz type key found:UserWarning",
@@ -170,8 +198,18 @@ strict = true
 disable_error_code = ["type-arg"]
 packages = ["pytex"]
 
+# The scientific stack -- pymatgen, orix, diffsims, KikuchiPy, h5py -- is
+# required as of 0.5.0 and installed in every lane, but none of it ships type
+# stubs, so mypy must be told to treat those modules as untyped rather than to
+# fail on them.
 [[tool.mypy.overrides]]
-module = ["pymatgen", "pymatgen.*"]
+module = [
+  "diffsims", "diffsims.*",
+  "h5py", "h5py.*",
+  "kikuchipy", "kikuchipy.*",
+  "orix", "orix.*",
+  "pymatgen", "pymatgen.*",
+]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -187,22 +225,4 @@ ignore_missing_imports = true
 # so the type checker must not require it to be installed.
 [[tool.mypy.overrides]]
 module = ["webview", "webview.*"]
-ignore_missing_imports = true
-
-# orix backs the optional orientation/Miller adapters. Like every other
-# optional dependency here it must be assumed absent: the base lane does not
-# install the `adapters` extra, so its imports are *not found* rather than
-# merely untyped. Inline `type: ignore[import-untyped]` comments covered only
-# the second case, so the base lane's type check failed on a module it was
-# never meant to require.
-[[tool.mypy.overrides]]
-module = ["orix", "orix.*"]
-ignore_missing_imports = true
-
-# h5py backs the optional EDAX OIM HDF5 scan reader (.oh5/.h5) and ships no
-# type stubs. It is an optional extra by design - `read_oh5` imports it lazily
-# and raises an install hint without it - so the type checker must neither
-# require it to be installed nor fail on its untyped surface.
-[[tool.mypy.overrides]]
-module = ["h5py", "h5py.*"]
 ignore_missing_imports = true

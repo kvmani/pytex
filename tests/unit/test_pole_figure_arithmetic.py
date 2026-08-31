@@ -910,7 +910,7 @@ def test_scatter_layer_rejects_half_specified_colour_limits() -> None:
 
 
 def test_plot_pole_figure_difference_renders() -> None:
-    matplotlib = pytest.importorskip("matplotlib")
+    import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 

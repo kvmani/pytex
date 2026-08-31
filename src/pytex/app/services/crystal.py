@@ -31,7 +31,7 @@ from typing import Any
 
 import numpy as np
 
-from pytex.app.errors import DependencyMissingError, InvalidInputError
+from pytex.app.errors import InvalidInputError
 from pytex.app.phases import PhaseSpec, phase_from_request
 from pytex.app.registry import (
     REGISTRY,
@@ -2076,13 +2076,10 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
     tags=("export", "figure", "SVG", "publication", "crystal"),
 )
 def _crystal_render(request: dict[str, Any]) -> dict[str, Any]:
-    try:
-        import matplotlib
-    except ImportError as error:
-        raise DependencyMissingError(
-            "matplotlib", purpose="Rendering a publication figure", extra="plotting"
-        ) from error
+    import matplotlib
 
+    # A server process has no display, and the renderer is called from request
+    # handling. `force=False` leaves an already-chosen backend alone.
     matplotlib.use("Agg", force=False)
     import base64
     import io

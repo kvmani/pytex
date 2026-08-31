@@ -183,7 +183,7 @@ phase is:
 That path mirrors the intended public learning route: canonical frames and orientations first,
 structure and provenance second, then texture, EBSD, diffraction, and plotting.
 
-For the validated fixture-to-diffraction route in the full scientific lane, continue with:
+For the validated fixture-to-diffraction route, continue with:
 
 9. `11_powder_xrd_workflows`
 10. `12_saed_workflows`
@@ -192,8 +192,8 @@ For the validated fixture-to-diffraction route in the full scientific lane, cont
 
 ## How This Relates To Validation
 
-- The lightweight notebooks are smoke-executed in the base lane, and the fixture-backed
-  structure/diffraction notebooks are controlled by the full scientific lane.
+- Every notebook, lightweight and fixture-backed alike, is executed by the documentation build in
+  the single contributor lane.
 - Notebook examples are expected to agree with the public concept, workflow, and validation pages.
 - If a notebook shows a pedagogical simplification, the corresponding workflow page should say so
   explicitly rather than leaving the distinction implicit in code cells.

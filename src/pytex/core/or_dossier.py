@@ -704,10 +704,9 @@ class ORDossier:
         directory : path-like
             Created if it does not exist.
         figures : bool
-            Write the SVG figures. They need matplotlib, which is an optional
-            dependency; if it is missing the numbers are still written and the
-            figures are skipped, because a missing plotting library must not
-            cost a reader the data.
+            Write the SVG figures. Set it false to write the numbers alone,
+            which is the faster path when the bundle is being consumed by a
+            program rather than read.
 
         Returns
         -------
@@ -779,20 +778,18 @@ class ORDossier:
         return [path]
 
     def _write_figures(self, target: Path) -> list[Path]:
-        """The SVG figures, or nothing at all if matplotlib is absent.
+        """The SVG figures of the dossier.
 
         Both are drawn by the published plotting functions rather than
         assembled here, so a figure in the bundle is the same figure the
         interactive surfaces draw.
         """
 
-        try:
-            import matplotlib
-        except ImportError:
-            # An optional dependency must not cost a reader the numbers. The
-            # absence is reported through the returned file list, which simply
-            # has no figures in it.
-            return []
+        import matplotlib
+
+        # Written from a script or a server as often as from a session, so the
+        # backend is pinned to the file-writing one; an already-chosen backend
+        # is left alone.
         matplotlib.use("Agg", force=False)
         import matplotlib.pyplot as plt
 

@@ -454,7 +454,7 @@ result = float(np.degrees(angle_plane_plane_rad(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `hex-angle-prism-prism` | 60.0000 | 60.0000 | deg | 7.11e-15 | 1e-09 | ✅ pass |
+| `hex-angle-prism-prism` | 60.0000 | 60.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: First-order prismatic normals are separated by 60 degrees in the hexagonal basal plane.
 

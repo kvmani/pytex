@@ -62,14 +62,10 @@ _DEFAULT_TRIAD_COLORS: tuple[str, str, str] = ("#1d4ed8", "#059669", "#dc2626")
 TRIAD_AXIS_COLORS: tuple[str, str, str] = _DEFAULT_TRIAD_COLORS
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-    except ImportError as exc:  # pragma: no cover - environment-dependent branch
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
     return plt, Poly3DCollection
 
 
@@ -1320,7 +1316,7 @@ def _draw_primitive_scene(
     drawing logic. ``scene_span`` scales label offsets to the figure extent.
     """
 
-    _, poly3d_collection = _require_matplotlib()
+    _, poly3d_collection = _matplotlib()
     arrows = list(scene.arrows)
     labels = list(scene.labels)
     for triad in scene.triads:
@@ -1439,7 +1435,7 @@ def render_primitive_scene_3d(
     renderer.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     crystal_style = style["crystal"]

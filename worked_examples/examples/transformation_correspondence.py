@@ -553,8 +553,17 @@ parent_members = set()
 for variant in ks.generate_variants():
     rotation = variant.parent_to_child_rotation.as_matrix()
     for parent_plane, child_plane in variant.parallel_planes:
-        cosine = float(rotation @ parent_plane.normal @ child_plane.normal)
-        deviation = np.rad2deg(np.arccos(np.clip(cosine, -1.0, 1.0)))
+        rotated = rotation @ parent_plane.normal
+        # atan2 of the chord against the sum, not arccos of the dot product:
+        # these normals are meant to be exactly parallel, and arccos cannot
+        # report an angle below about 1e-6 deg however exact the pair is.
+        deviation = np.rad2deg(
+            2.0
+            * np.arctan2(
+                float(np.linalg.norm(rotated - child_plane.normal)),
+                float(np.linalg.norm(rotated + child_plane.normal)),
+            )
+        )
         worst_deviation_deg = max(worst_deviation_deg, float(deviation))
     indices = np.asarray(variant.parallel_planes[0][0].miller.indices)
     canonical = indices if indices[0] >= 0 else -indices

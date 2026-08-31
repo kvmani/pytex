@@ -329,7 +329,6 @@ def test_the_row_types_validate_their_own_contents() -> None:
 def test_a_practice_plate_scores_near_one(entry: str, phase_key: str) -> None:
     """End to end: a correct indexing of an exact pattern must score highly."""
 
-    pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
     from pytex.app import REGISTRY
     from pytex.app.phases import builtin_phase
     from pytex.diffraction.solving import (

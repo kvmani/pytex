@@ -34,7 +34,7 @@ from typing import Any
 
 import numpy as np
 
-from pytex.app.errors import DependencyMissingError, InvalidInputError
+from pytex.app.errors import InvalidInputError
 from pytex.app.uploads import uploaded_name_and_text
 from pytex.core.conventions import FrameDomain, Handedness
 from pytex.core.frames import ReferenceFrame
@@ -994,10 +994,6 @@ def phase_from_request(payload: Mapping[str, Any] | None) -> tuple[PhaseSpec, Ph
                     crystal_frame=APP_CRYSTAL_FRAME,
                     provenance=provenance,
                 )
-        except ImportError as error:
-            raise DependencyMissingError(
-                "pymatgen", purpose="Loading CIF structures in the Workbench", extra="adapters"
-            ) from error
         except (IndexError, KeyError, RuntimeError, TypeError, ValueError) as error:
             raise InvalidInputError(
                 f"PyTex could not read {name} as a crystallographic structure: {error}",

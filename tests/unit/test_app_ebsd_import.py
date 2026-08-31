@@ -207,7 +207,7 @@ def write_square_oh5(path: Path) -> Path:
     supposed to have. The layout here is the one OIM Analysis 8.6 writes.
     """
 
-    h5py = pytest.importorskip("h5py", reason="the .oh5/.h5 reader needs the 'hdf5' extra")
+    import h5py
     euler = np.zeros((4, 3), dtype=np.float32)
     euler[3, 0] = 1.04720  # 60 degrees about [001], as in SQUARE_ANG
     with h5py.File(path, "w") as handle:
@@ -283,7 +283,6 @@ def test_a_binary_upload_that_did_not_arrive_intact_is_refused(tmp_path: Path) -
 
 
 def test_a_file_that_is_not_hdf5_at_all_is_refused_by_the_reader() -> None:
-    pytest.importorskip("h5py", reason="the .oh5/.h5 reader needs the 'hdf5' extra")
     payload = {
         "name": "map.oh5",
         "data_base64": base64.b64encode(b"plain text pretending to be HDF5").decode("ascii"),

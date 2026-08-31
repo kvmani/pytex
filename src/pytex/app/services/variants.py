@@ -39,7 +39,7 @@ from typing import Any
 
 import numpy as np
 
-from pytex.app.errors import DependencyMissingError, InvalidInputError
+from pytex.app.errors import InvalidInputError
 from pytex.app.phases import PhaseSpec, phase_from_request
 from pytex.app.registry import (
     REGISTRY,
@@ -63,6 +63,10 @@ from pytex.app.services.crystal import (
     _EULER_CONVENTIONS,
     _euler_convention,
     scene_payload,
+)
+from pytex.core._angles import (
+    acute_angle_between_unit_vectors_rad,
+    rotation_angle_from_matrix_rad,
 )
 from pytex.core.miller import canonicalize_sign
 
@@ -292,7 +296,9 @@ def _nearest_axis(axis_cartesian: np.ndarray, phase: Any, spec: PhaseSpec) -> tu
     units = images / np.linalg.norm(images, axis=1)[:, None]
     cosines = units @ target
     best = int(np.argmax(np.abs(cosines)))
-    residual = float(np.degrees(np.arccos(min(abs(float(cosines[best])), 1.0))))
+    residual = float(
+        np.degrees(acute_angle_between_unit_vectors_rad(units[best], target))
+    )
     return direction_label(_canonical_sign(candidates[best]), spec=spec), residual
 
 
@@ -952,13 +958,10 @@ def _intervariant_misorientations(request: dict[str, Any]) -> dict[str, Any]:
     tags=("variant", "pole figure", "figure", "export", "publication"),
 )
 def _variant_render(request: dict[str, Any]) -> dict[str, Any]:
-    try:
-        import matplotlib
-    except ImportError as error:
-        raise DependencyMissingError(
-            "matplotlib", purpose="Rendering a publication figure", extra="plotting"
-        ) from error
+    import matplotlib
 
+    # A server process has no display, and the renderer is called from request
+    # handling. `force=False` leaves an already-chosen backend alone.
     matplotlib.use("Agg", force=False)
     import base64
     import io
@@ -2827,9 +2830,7 @@ def _idealized_placement(
         for operator in child_operators:
             candidate = base @ operator
             relative = candidate.T @ child_matrix
-            angle = float(
-                np.degrees(np.arccos(np.clip((np.trace(relative) - 1.0) / 2.0, -1.0, 1.0)))
-            )
+            angle = float(np.degrees(rotation_angle_from_matrix_rad(relative)))
             if angle < best_angle:
                 best_angle = angle
                 best_matrix = candidate

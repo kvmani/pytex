@@ -50,7 +50,7 @@ result = key.colors_from_crystal_directions(corners)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ipf-cubic-sector-corners-are-primaries` | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | &mdash; | 3.88e-30 | 1e-12 | ✅ pass |
+| `ipf-cubic-sector-corners-are-primaries` | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Analytic identity: a sector corner has barycentric weights equal to a standard basis vector, which the colour map carries to the corresponding primary for any saturation exponent.
 
@@ -98,7 +98,7 @@ result = key.colors_from_crystal_directions(direction)[0]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | 9.58e-30 | 1e-12 | ✅ pass |
+| `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Closed form: beta = (dz - dx, sqrt(2)(dx - dy), sqrt(3) dy) evaluated at (1,1,3)/sqrt(11) gives (2, 0, sqrt(3))/sqrt(11), and (beta / max beta) ** 2 = (1, 0, 3/4) exactly.
 
@@ -150,7 +150,7 @@ result = float(np.abs(colors - colors[0]).max())
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ipf-symmetric-equivalents-share-one-colour` | 7.08e-15 | 0.00e+00 | &mdash; | 7.08e-15 | 1e-12 | ✅ pass |
+| `ipf-symmetric-equivalents-share-one-colour` | < 1e-12 | 0.00e+00 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Analytic identity: the colour is a function of the symmetry-reduced direction alone, so it is constant on a symmetry orbit by construction. The expected spread is exactly zero.
 

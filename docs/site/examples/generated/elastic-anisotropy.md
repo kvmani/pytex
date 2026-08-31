@@ -108,7 +108,7 @@ result = float(k_voigt - k_reuss)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `elastic-cubic-voigt-reuss-bulk-moduli-coincide` | -8.527e-14 | 0.000e+00 | GPa | 8.53e-14 | 1e-09 | ✅ pass |
+| `elastic-cubic-voigt-reuss-bulk-moduli-coincide` | < 1e-12 | 0.000e+00 | GPa | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Analytic identity: K_V = (C11 + 2 C12)/3 and K_R = 1/(3(S11 + 2 S12)) are equal for cubic symmetry, since S11 + 2 S12 = 3/(C11 + 2 C12).
 

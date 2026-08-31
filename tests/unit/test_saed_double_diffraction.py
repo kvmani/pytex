@@ -28,8 +28,6 @@ from pytex.app.phases import builtin_phase
 from pytex.core.lattice import ZoneAxis
 from pytex.diffraction.saed import generate_saed_pattern
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 
 def pattern(phase_id: str, zone: tuple[int, int, int], **overrides):
     phase = builtin_phase(phase_id).to_phase()

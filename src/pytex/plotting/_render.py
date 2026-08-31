@@ -242,14 +242,10 @@ class FigureSpec3D:
     grid: bool = True
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-        from matplotlib.figure import Figure
-    except ImportError as exc:  # pragma: no cover - environment-dependent branch
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
     return plt, Figure
 
 
@@ -306,7 +302,7 @@ def render_figure_spec(
 
 
 def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     if ax is None:
         fig, axes = plt.subplots(figsize=(6.2, 6.2))
     else:
@@ -461,7 +457,7 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
 
 
 def render_multi_figure_spec_2d(spec: MultiFigureSpec2D) -> Any:
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     n_panels = len(spec.panels)
     ncols = min(spec.ncols, n_panels)
     nrows = int(np.ceil(n_panels / ncols))
@@ -481,7 +477,7 @@ def render_multi_figure_spec_2d(spec: MultiFigureSpec2D) -> Any:
 
 
 def render_figure_spec_3d(spec: FigureSpec3D, *, ax: Any | None = None) -> Any:
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     if ax is None:
         fig = plt.figure(figsize=(7.0, 6.2))
         axes = fig.add_subplot(111, projection="3d")

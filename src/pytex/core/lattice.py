@@ -38,15 +38,19 @@ def _spglib_dict_shim_silenced() -> Iterator[None]:
             warnings.warn_explicit(item.message, item.category, item.filename, item.lineno)
 
 
-def _require_pymatgen() -> tuple[Any, Any]:
-    try:
-        from pymatgen.core.structure import Structure
-        from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-    except ImportError as exc:
-        raise ImportError(
-            "CIF-backed phase creation requires the optional 'pymatgen' dependency. "
-            "Install PyTex with the 'adapters' extra."
-        ) from exc
+def _pymatgen_types() -> tuple[Any, Any]:
+    """pymatgen's structure reader and its spglib-backed symmetry analyzer.
+
+    pymatgen is a required dependency, so this cannot fail for a reason worth
+    recovering from: a CIF either parses or it does not, and the caller sees the
+    parse error rather than an install hint. It is imported at call time
+    because pymatgen loads a large data table on first use and `pytex.core`
+    must stay cheap to import.
+    """
+
+    from pymatgen.core.structure import Structure
+    from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
+
     return Structure, SpacegroupAnalyzer
 
 
@@ -689,7 +693,7 @@ class Phase:
         Phase
         """
 
-        _, spacegroup_analyzer_cls = _require_pymatgen()
+        _, spacegroup_analyzer_cls = _pymatgen_types()
         analyzer = spacegroup_analyzer_cls(
             structure,
             symprec=float(symprec),
@@ -774,7 +778,7 @@ class Phase:
         from_cif_string : The same construction from CIF text already in memory.
         """
 
-        structure_cls, _ = _require_pymatgen()
+        structure_cls, _ = _pymatgen_types()
         cif_path = Path(path)
         structure = structure_cls.from_file(str(cif_path))
         if primitive:
@@ -814,7 +818,7 @@ class Phase:
         on disk.
         """
 
-        structure_cls, _ = _require_pymatgen()
+        structure_cls, _ = _pymatgen_types()
         structure = structure_cls.from_str(cif_text, fmt="cif")
         if primitive:
             structure = structure.get_primitive_structure()

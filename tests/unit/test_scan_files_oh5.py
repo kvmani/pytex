@@ -12,13 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import h5py
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
 
 from pytex.adapters import SCAN_FILE_SUFFIXES, read_oh5, read_scan, scan_reader_for
-
-h5py = pytest.importorskip("h5py", reason="the .oh5/.h5 reader needs the optional 'hdf5' extra")
 
 # A 2x3 square scan: three columns, two rows, 0.5 um steps.
 SQUARE_EULER = np.array(

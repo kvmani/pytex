@@ -15,15 +15,16 @@ from pytex.core import (
 )
 
 
-def _require_orix() -> tuple[Any, Any]:
-    try:
-        from orix.crystal_map import Phase as OrixPhase
-        from orix.vector import Miller as OrixMiller
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "The PyTex Miller orix adapter requires the optional 'orix' dependency. "
-            "Install PyTex with the 'adapters' extra."
-        ) from exc
+def _orix_types() -> tuple[Any, Any]:
+    """The orix types this adapter converts to and from.
+
+    Required, not optional; imported at call time only to keep orix's stack off
+    the `pytex.adapters` import path. See `pytex.adapters.orix`.
+    """
+
+    from orix.crystal_map import Phase as OrixPhase
+    from orix.vector import Miller as OrixMiller
+
     return OrixPhase, OrixMiller
 
 
@@ -52,7 +53,7 @@ def to_orix_phase(pytex_phase: Phase) -> Any:
     """Convert a PyTex phase to an orix ``Phase``.
     """
 
-    orix_phase_cls, _ = _require_orix()
+    orix_phase_cls, _ = _orix_types()
     return orix_phase_cls(
         name=pytex_phase.name,
         point_group=pytex_phase.symmetry.point_group,
@@ -66,7 +67,7 @@ def to_orix_miller_plane(planes: MillerPlane | MillerPlaneSet) -> Any:
     Accepts a single plane or a plane set.
     """
 
-    _, orix_miller_cls = _require_orix()
+    _, orix_miller_cls = _orix_types()
     if isinstance(planes, MillerPlane):
         return orix_miller_cls(hkl=planes.indices, phase=to_orix_phase(planes.phase))
     return orix_miller_cls(hkl=planes.indices, phase=to_orix_phase(planes.phase))
@@ -78,7 +79,7 @@ def to_orix_miller_direction(directions: MillerDirection | MillerDirectionSet) -
     Accepts a single direction or a direction set.
     """
 
-    _, orix_miller_cls = _require_orix()
+    _, orix_miller_cls = _orix_types()
     if isinstance(directions, MillerDirection):
         return orix_miller_cls(uvw=directions.indices, phase=to_orix_phase(directions.phase))
     return orix_miller_cls(uvw=directions.indices, phase=to_orix_phase(directions.phase))

@@ -234,7 +234,7 @@ result = next(row['polar_deg'] for row in rows if row['axis'] == 'ND')
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | 4.97e-14 | 1e-09 | ✅ pass |
+| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Goss is {011}<100>: the sheet normal is a <011> direction, and the angle between <011> and the crystal c axis <001> is arccos(1/sqrt(2)) = 45 degrees exactly, whatever the lattice parameter. The tolerance is machine precision, not a margin.
 

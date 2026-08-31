@@ -66,14 +66,15 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-**Version 0.4.0**, a Workbench feature release built around orientation relationships: the variant
-view is now a wall of parent-and-variant pairs, each stating the correspondence it realizes, the
-Euler angles that placed it and its rotation axis in both crystal bases; a new EBSD tab determines
-the relationship from measured grain orientations and names it against the catalogue; and every
-plane overlay is now the lattice plane clipped to its cell rather than a square at the world
-origin. See [CHANGELOG.md](CHANGELOG.md) for the release notes and every scientific behaviour
-change stated explicitly — no computed quantity changes in this release, but three classes of
-figure are corrected and the Variants defaults move to Burgers bcc-to-hcp in zirconium.
+**Version 0.5.0**, the release that makes one PyTex install behave like every other. The scientific
+stack — pymatgen, orix, diffsims, KikuchiPy, matplotlib and h5py — is now a **required dependency**
+rather than an optional `adapters` extra, so reading a CIF, drawing a figure or opening a vendor
+scan works wherever PyTex is installed instead of raising on the machines that skipped the extra.
+Three computed quantities are corrected as a direct result: covalent radii were silently coming
+from a sixteen-element placeholder table for the whole periodic table, angles that should be
+exactly zero were about `1e-06` degrees and platform-dependent, and the orthonormal harmonic basis
+had an unpinned sign that could invert an ODF's density on some platforms. See
+[CHANGELOG.md](CHANGELOG.md) for every scientific behaviour change stated explicitly.
 
 PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
 application. What exists today:
@@ -116,12 +117,11 @@ conflicting conventions before the surfaces they would rest on are settled.
 
 ## Quick Start
 
-PyTex now uses two documented contributor lanes:
+PyTex has one contributor lane. The scientific stack is a required dependency as of 0.5.0, so
+`.[dev,docs]` installs everything the suite exercises -- there is no second environment in which a
+different set of tests runs.
 
-- `base lane`: core development, docs, integrity, and the default test suite
-- `full scientific lane`: base lane plus optional scientific adapters such as `pymatgen`, ORIX, KikuchiPy, and diffsims
-
-Install the base lane in editable mode with development tools:
+Install it in editable mode with development tools:
 
 ```bash
 python -m pip install -e '.[dev,docs]'
@@ -132,13 +132,12 @@ python -m pytest -q
 python scripts/check_sphinx_warnings.py --max-warnings 602
 ```
 
-Install the full scientific lane when you need the CIF-backed structure-import path and the
-optional interoperability coverage exercised by the heavier validation surfaces:
-
-```bash
-python -m pip install -e '.[dev,docs,adapters]'
-python -m pytest -q -rs
-```
+There is one lane. The scientific stack -- pymatgen, orix, diffsims, KikuchiPy, matplotlib and
+h5py -- is a required dependency as of 0.5.0, so `pip install pytex` gives every machine the same
+behaviour: CIF-backed structure import, the pinned diffraction baselines, the figure surfaces and
+the vendor-scan readers all work, or none of them installed. `pytex[adapters]`,
+`pytex[plotting]` and `pytex[hdf5]` are kept as empty aliases so existing install commands keep
+resolving.
 
 Inspect the documentation inventory from the CLI:
 
@@ -200,8 +199,8 @@ pytex/
 
 - Keep README, roadmap, CI, manifests, and validation ledgers synchronized with the actual
   repository state.
-- Maintain one explicit base lane and one explicit full scientific lane so optional-dependency
-  expectations are executable rather than implicit.
+- Keep the single contributor lane exhaustive: a test that skips because a package is absent fails
+  CI, so what the suite covers cannot quietly depend on what happens to be installed.
 - Broaden the current first-wave structure-import, diffraction, and transformation validation
   programs without weakening the pinned in-repo reproducibility path.
 - Preserve the current core-model clarity while raising MTEX-foundational coverage in orientation,

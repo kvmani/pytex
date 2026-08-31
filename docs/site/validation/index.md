@@ -51,8 +51,8 @@ does this passing test justify?"
 - CIF-backed phase creation, point-group preservation, and space-group preservation
 - runtime plotting semantics for the highest-value publication-facing surfaces
 - transformation-variant prediction and bounded experimental parent-candidate scoring
-- the bundled phase-fixture corpus through pinned conventional and primitive audit expectations in the full scientific lane
-- pinned diffraction external-baseline payloads for starter powder-XRD and SAED cases in the full scientific lane
+- the bundled phase-fixture corpus through pinned conventional and primitive audit expectations
+- pinned diffraction external-baseline payloads for starter powder-XRD and SAED cases
 
 ## What Is Still Limited
 
@@ -60,7 +60,6 @@ does this passing test justify?"
 - Diffraction coverage is still stronger on geometry and kinematics than on full physical intensity
   modeling.
 - Adapter support is not automatically equivalent to broad live-package interoperability coverage.
-- CIF-backed phase construction and pinned diffraction baseline claims belong to the full scientific lane, not the lightweight base lane.
 - A passing validation page does not imply every neighboring workflow variant is equally mature.
 
 For optional interoperability specifically, the controlling question is: which semantic boundary has

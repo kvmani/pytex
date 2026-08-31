@@ -22,8 +22,6 @@ from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import builtin_phase
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 CAMERA_CONSTANT = 180.0
 PIXEL_SIZE = 0.05
 CENTRE = (512.0, 512.0)

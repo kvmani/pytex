@@ -246,7 +246,7 @@ result = float(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | 3.55e-15 | 1e-09 | ✅ pass |
+| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Exact by construction rather than by measurement: the roll is a rotation about the beam, which is the projection axis, so it acts on the detector plane as a plane rotation through the same angle. Thirty degrees of roll must move every spot's azimuth by thirty degrees, whatever the lattice, the camera constant or the reflection.
 
@@ -582,7 +582,7 @@ result = float(np.linalg.norm(fit.centre - truth))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | 1.27e-13 | 1e-06 | ✅ pass |
+| `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | < 1e-12 | 1e-06 | ✅ pass |
 
 **Why this value**: Exact. The eight points are exact nodes of the lattice about the true centre, so the least-squares problem for the centre with the integer assignment held fixed has that point as its exact solution: the residual is zero and the recovered centre is the generating one. Independent of the basis chosen and of the starting error, up to the half-spacing limit at which a fit would be relabelling which node the origin is.
 
@@ -707,7 +707,7 @@ result = float(score.rms_relative_length_deviation)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-scoring-calibration-bias` | 0.0476190476 | 0.0476190476 | &mdash; | 4.16e-17 | 1e-12 | ✅ pass |
+| `saed-scoring-calibration-bias` | 0.0476190476 | 0.0476190476 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: d = 1/|g|, so measured g larger by a factor 1.05 makes every measured d smaller by 1/1.05. The relative deviation is 1/1.05 - 1 = -0.0476190476 on every spot, and the r.m.s. of a constant is that constant. Identical on every spot is the signature that distinguishes a calibration error from an indexing error.
 

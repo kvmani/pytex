@@ -30,8 +30,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 from scripts.generate_tem_test_pattern import (
     OUTPUT_DIR,
     STEM,

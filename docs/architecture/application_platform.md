@@ -372,9 +372,9 @@ derives the same `PhaseSpec` wire form that built-ins and manual input use for r
 Thus lattice, point group, space group, atomic basis, filename and CIF provenance cross the tool
 boundary together, and downstream services remain parser-independent.
 
-`pymatgen` remains in the optional `adapters` extra per Decision 3. A build without it keeps every
-built-in and manual workflow; selecting CIF returns a named dependency error with the install
-command. A malformed or wrongly suffixed file is an input error attached to the phase control.
+`pymatgen` is a required dependency as of 0.5.0, so the CIF route answers on every install rather
+than returning an install hint on some of them; superseding the optional-extra treatment recorded in
+Decision 3. A malformed or wrongly suffixed file is an input error attached to the phase control.
 Parser warnings are captured and written to the application log instead of becoming unowned
 runtime warnings.
 

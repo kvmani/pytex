@@ -63,13 +63,9 @@ __all__ = ["plot_kikuchi_map"]
 DEFAULT_TRACE_SAMPLES = 721
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> Any:
+    import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -224,7 +220,7 @@ def plot_kikuchi_map(
     if max_labels is not None and max_labels <= 0:
         raise ValueError("max_labels must be strictly positive when provided.")
 
-    plt = _require_matplotlib()
+    plt = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     spherical = style["spherical"]

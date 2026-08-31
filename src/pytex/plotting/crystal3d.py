@@ -53,31 +53,21 @@ from pytex.plotting.styles import _deep_merge, resolve_style
 def _to_hex(color: Any) -> str:
     """``matplotlib.colors.to_hex``, imported on demand.
 
-    Matplotlib is an *optional* dependency behind the ``pytex[plotting]`` extra,
-    and the repository forbids import-time coupling to optional stacks. A
-    module-level ``from matplotlib.colors import to_hex`` made matplotlib
-    mandatory for ``import pytex``; importing inside the call restores the
-    declared contract at the cost of one cached dict lookup.
+    matplotlib is a required dependency, but a heavy one, and the repository
+    forbids import-time coupling to heavy scientific stacks: a module-level
+    ``from matplotlib.colors import to_hex`` would make every ``import pytex``
+    pay for it. Importing inside the call costs one cached dict lookup.
     """
 
-    try:
-        from matplotlib.colors import to_hex
-    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+    from matplotlib.colors import to_hex
+
     return str(to_hex(color))
 
 
 def _to_rgb(color: Any) -> tuple[float, float, float]:
     """``matplotlib.colors.to_rgb``, imported on demand. See :func:`_to_hex`."""
 
-    try:
-        from matplotlib.colors import to_rgb
-    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+    from matplotlib.colors import to_rgb
     red, green, blue = to_rgb(color)
     return (float(red), float(green), float(blue))
 
@@ -131,14 +121,10 @@ def _merged_style_overrides(
     return merged
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
     return plt, Poly3DCollection
 
 
@@ -1815,7 +1801,7 @@ def _zoom_to_fit(
 def _draw_crystal_frame(axes: Any, scene: CrystalScene, crystal_style: dict[str, Any]) -> None:
     """Draw the lattice box edges and any unit-cell overlays for one scene."""
 
-    _, poly3d_collection = _require_matplotlib()
+    _, poly3d_collection = _matplotlib()
     lattice_linewidth = float(crystal_style.get("lattice_linewidth", 1.2))
     for edge in scene.lattice_edges:
         axes.plot(
@@ -2028,7 +2014,7 @@ def _draw_crystal_planes_and_directions(
 ) -> None:
     """Draw plane patches (with labels) and direction quivers (with labels)."""
 
-    _, poly3d_collection = _require_matplotlib()
+    _, poly3d_collection = _matplotlib()
     for plane in scene.planes:
         axes.add_collection3d(
             poly3d_collection(
@@ -2148,7 +2134,7 @@ def plot_crystal_structure_3d(
     the scene. Off by default, so existing figures are unchanged.
     """
 
-    plt, poly3d_collection = _require_matplotlib()
+    plt, poly3d_collection = _matplotlib()
     effective_overrides = _merged_style_overrides(render_style, style_overrides)
     style = resolve_style(theme=theme, style_path=style_path, overrides=effective_overrides)
     common = style["common"]

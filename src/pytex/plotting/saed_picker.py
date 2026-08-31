@@ -27,14 +27,11 @@ from pytex.diffraction.solving import (
 )
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as error:  # pragma: no cover - exercised only without matplotlib
-        raise ImportError(
-            "Interactive spot picking requires matplotlib. Install it, or build a "
-            "MeasuredSAEDPattern directly from coordinates."
-        ) from error
+def _matplotlib() -> Any:
+    """pyplot, imported on demand. See `pytex.plotting.crystal3d._to_hex`."""
+
+    import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -186,7 +183,7 @@ class SAEDSpotPicker:
     def show(self, *, ax: Any | None = None) -> SAEDSpotPicker:
         """Draw the pattern and connect the mouse and key handlers."""
 
-        plt = _require_matplotlib()
+        plt = _matplotlib()
         if ax is None:
             self.figure, self.axes = plt.subplots()
         else:

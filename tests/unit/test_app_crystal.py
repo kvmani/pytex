@@ -25,8 +25,6 @@ from pytex.app.services.crystal import (
     orientation_overlay,
 )
 
-pytest.importorskip("matplotlib", reason="the crystal scene is built by the plotting layer")
-
 
 def scene(**request: object) -> dict:
     return REGISTRY.call("crystal.scene", request)["data"]["scene"]

@@ -8,10 +8,11 @@ every optional dependency happens to be present.
    ``pytex.plotting.styles`` import ``yaml`` at module level, but ``pyyaml`` was
    not a declared dependency. A fresh ``pip install pytex`` therefore failed on
    the very first ``import pytex``.
-2. **Import-time coupling to an optional stack.** ``pytex.plotting.crystal3d``
-   and ``pytex.plotting.scene3d`` imported ``matplotlib.colors`` at module
-   level, silently making the ``plotting`` extra mandatory and contradicting the
-   ``_require_matplotlib()`` guards used everywhere else.
+2. **Import-time coupling to a heavy stack.** ``pytex.plotting.crystal3d`` and
+   ``pytex.plotting.scene3d`` imported ``matplotlib.colors`` at module level,
+   making every ``import pytex`` pay for matplotlib. It is a required
+   dependency now, so this is a cost rather than a failure -- but the lazy
+   imports the rest of the plotting layer uses are still the contract.
 3. **A version literal in four files.** Bumping the release version would have
    left the manifest writers stamping the old one.
 
@@ -22,6 +23,7 @@ in the environment running them.
 from __future__ import annotations
 
 import ast
+import importlib
 import sys
 import tomllib
 from pathlib import Path
@@ -38,6 +40,15 @@ PYPROJECT = REPO_ROOT / "pyproject.toml"
 _IMPORT_NAME_BY_DISTRIBUTION = {
     "pyyaml": "yaml",
 }
+
+#: Declared dependencies whose top-level module PyTex never imports itself.
+#:
+#: They are still required, and this file still checks they import: the adapter
+#: surfaces are written against them and read the caller's object structurally,
+#: so `pytex.adapters.index_hough` calls `signal.hough_indexing(...)` on an
+#: object only KikuchiPy makes. An environment without them cannot run those
+#: surfaces, which is the definition of a runtime dependency.
+_DEPENDENCIES_PYTEX_DOES_NOT_IMPORT = frozenset({"diffsims", "kikuchipy"})
 
 
 def _declared_runtime_imports() -> set[str]:
@@ -97,10 +108,10 @@ _SOURCE_FILES = sorted(
 def test_module_level_imports_are_declared_dependencies(source_path: Path) -> None:
     """Importing PyTex must not require anything beyond its declared dependencies.
 
-    An optional stack may only be imported inside a function or behind a
-    ``try``/``except ImportError`` guard, so that ``import pytex`` succeeds on a
-    minimal install and the missing extra is reported with a useful message at
-    the point of use.
+    Anything imported at module level runs on ``import pytex``, so it must be a
+    declared dependency. A package that is *not* declared -- a test-only tool, a
+    truly optional extra like ``pywebview`` -- may only be imported inside a
+    function or behind a ``try``/``except ImportError`` guard.
     """
 
     tree = ast.parse(source_path.read_text(encoding="utf-8"))
@@ -125,6 +136,42 @@ def test_importing_pytex_needs_only_declared_dependencies() -> None:
         if undeclared:
             offenders[str(source_path.relative_to(REPO_ROOT))] = undeclared
     assert not offenders, offenders
+
+
+@pytest.mark.parametrize("module_name", sorted(_declared_runtime_imports()))
+def test_every_declared_dependency_actually_imports(module_name: str) -> None:
+    """A declared dependency that is not installed is a broken environment.
+
+    This is the executable form of the 0.5.0 packaging decision. PyTex used to
+    keep its scientific stack behind an optional extra, so the same call could
+    read a CIF on one machine and raise `ModuleNotFoundError` on another -- and
+    the machine it raised on was the deployed one. Making the stack required is
+    only worth something if "required" is checked, so every distribution named
+    in `[project] dependencies` is imported here.
+
+    It also catches the quieter failure: an import name that does not match its
+    distribution name and was never added to `_IMPORT_NAME_BY_DISTRIBUTION`,
+    which would otherwise make this check silently vacuous.
+    """
+
+    importlib.import_module(module_name)
+
+
+def test_the_dependencies_pytex_does_not_import_are_still_declared() -> None:
+    """The adapter-facing packages must not be quietly dropped.
+
+    Nothing in `src/pytex` contains the string `import kikuchipy`, so the
+    module-level import checks above can never notice if KikuchiPy leaves the
+    dependency list. The bridges would keep importing and keep type-checking,
+    and `index_hough` would fail at the call site in a user's session instead.
+    """
+
+    declared = _declared_runtime_imports()
+    missing = _DEPENDENCIES_PYTEX_DOES_NOT_IMPORT - declared
+    assert not missing, (
+        f"{sorted(missing)} are required by the adapter surfaces but are no longer declared "
+        "in pyproject.toml. See the comment beside them there."
+    )
 
 
 # --------------------------------------------------------------------------- #

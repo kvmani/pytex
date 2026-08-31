@@ -69,7 +69,7 @@ result = float(np.abs(factors).max())
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `plasticity-fcc-cube-schmid-factor` | 0.408248 | 0.408248 | &mdash; | 1.05e-15 | 1e-09 | ✅ pass |
+| `plasticity-fcc-cube-schmid-factor` | 0.408248 | 0.408248 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Analytic: for [001] tension the {111}<110> systems give m = (t.n)(t.d) = (1/sqrt(3))(1/sqrt(2)) = 1/sqrt(6) on the eight systems that are stressed at all.
 
@@ -135,7 +135,7 @@ result = float(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `plasticity-fcc-cube-taylor-factor` | 2.449490 | 2.449490 | &mdash; | 2.66e-15 | 1e-06 | ✅ pass |
+| `plasticity-fcc-cube-taylor-factor` | 2.449490 | 2.449490 | &mdash; | < 1e-12 | 1e-06 | ✅ pass |
 
 **Why this value**: Analytic: the full-constraint Taylor factor of the cube orientation for {111}<110> slip in uniaxial tension is sqrt(6).
 

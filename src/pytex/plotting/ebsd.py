@@ -16,13 +16,9 @@ from pytex.plotting.ipf import IPFColorKey
 from pytex.plotting.styles import resolve_style
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+
     return plt, object
 
 
@@ -132,7 +128,7 @@ def plot_ipf_map(
         The Matplotlib axes.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     if crystal_map.orientations.symmetry is None:
         raise ValueError("plot_ipf_map() requires crystal-map orientations with crystal symmetry.")
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
@@ -226,7 +222,7 @@ def plot_kam_map(
         The Matplotlib axes, with a labelled colorbar in degrees.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     register_pytex_colormaps()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
@@ -348,7 +344,7 @@ def plot_gnd_density_map(
     be quoted in any figure caption.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     from pytex.ebsd.gnd import geometrically_necessary_dislocation_density
 
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
@@ -431,7 +427,7 @@ def plot_property_map(
 ) -> Any:
     """Render a per-point scalar property channel (IQ, CI, BC, MAD, ...)."""
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     values = crystal_map.get_property(name)
@@ -501,7 +497,7 @@ def plot_phase_map(
 ) -> Any:
     """Render a phase map, coloring each point by its phase assignment."""
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     from matplotlib.colors import BoundaryNorm, ListedColormap
     from matplotlib.patches import Patch
 
@@ -591,7 +587,7 @@ def plot_ipf_xyz_maps(
 ) -> Any:
     """Render a side-by-side triptych of IPF maps for the given sample directions."""
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     width, height = common["figure"]["figsize"]

@@ -59,13 +59,9 @@ VARIANT_COLOR_PALETTE: tuple[str, ...] = (
 VARIANT_MARKER_CYCLE: tuple[str, ...] = ("s", "^", "D", "v", "P", "X", "h", "*")
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> Any:
+    import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -711,7 +707,7 @@ def render_composite_saed(
     """
 
     plot_config = CompositeSAEDPlotConfig() if config is None else config
-    plt = _require_matplotlib()
+    plt = _matplotlib()
 
     rendered = pattern
     if plot_config.variant_indices is not None:

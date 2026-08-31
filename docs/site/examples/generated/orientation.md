@@ -76,7 +76,7 @@ result = float(np.degrees(g.distance_to(rebuilt)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `orientation-euler-matrix-roundtrip` | 0.0000 | 0.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: A representation round trip is an identity map; the disorientation must be 0 degrees.
 
@@ -146,7 +146,7 @@ result = float(np.degrees(cube.distance_to(twin)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | 7.11e-15 | 1e-06 | ✅ pass |
+| `orientation-sigma3-disorientation` | 60.0000 | 60.0000 | deg | < 1e-12 | 1e-06 | ✅ pass |
 
 **Why this value**: The Sigma 3 coincidence-site boundary is a 60-degree rotation about <111>.
 

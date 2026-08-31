@@ -145,7 +145,6 @@ def test_ipf_color_key_generates_finite_colors_from_orientations() -> None:
 
 
 def test_orix_orientation_adapter_round_trip_preserves_orientation_set_payload() -> None:
-    pytest.importorskip("orix")
     crystal, specimen, phase = make_phase()
     orientations = OrientationSet.from_rodrigues(
         np.array([[0.0, 0.0, 0.0], [0.0, 0.0, np.tan(np.pi / 8.0)]], dtype=np.float64),
@@ -478,7 +477,6 @@ def test_plot_ipf_xyz_maps_returns_three_panels() -> None:
 
 
 def test_orix_rotation_and_orientation_adapters_round_trip() -> None:
-    pytest.importorskip("orix")
     crystal_map, phase = make_crystal_map()
     orix_rotation = to_orix_rotation(crystal_map.orientations.as_rotation_set())
     recovered_rotation = from_orix_rotation(orix_rotation)

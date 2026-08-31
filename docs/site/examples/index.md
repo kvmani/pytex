@@ -58,9 +58,9 @@ The complete set of computed-versus-expected values at a glance:
 | `saed-finite-thickness-rectangular-slab` | [1.000000000000, 0.405284734569, 0.000000000000] | [1.000000000000, 0.405284734569, 0.000000000000] | dimensionless | ✅ |
 | `diffraction-cbed-aluminium-extinction-distances-at-100kv` | [555.2, 663.9, 1062.5] | [556.0, 673.0, 1057.0] | angstrom | ✅ |
 | `diffraction-cbed-two-beam-thickness-inverts-the-fringe-relation` | [2000.000000, 500.000000] | [2000.000000, 500.000000] | angstrom | ✅ |
-| `diffraction-dynamical-two-beam-limit-of-the-many-beam-solver` | 1.14e-15 | 0.00e+00 | &mdash; | ✅ |
-| `diffraction-dynamical-intensity-is-conserved-without-absorption` | 2.11e-15 | 0.00e+00 | &mdash; | ✅ |
-| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | 1.56e-17 | 0.00e+00 | radian | ✅ |
+| `diffraction-dynamical-two-beam-limit-of-the-many-beam-solver` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
+| `diffraction-dynamical-intensity-is-conserved-without-absorption` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
+| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | < 1e-12 | 0.00e+00 | radian | ✅ |
 | `diffraction-groups-construction-yields-buxtons-thirty-one` | 31 | 31 | &mdash; | ✅ |
 | `diffraction-groups-friedel-observation-splits-the-point-groups` | [21, 11] | [21, 11] | &mdash; | ✅ |
 | `diffraction-groups-zincblende-down-001-loses-the-two-fold` | [1, 1, 1, 0, 1, 1, 1] | [1, 1, 1, 0, 1, 1, 1] | &mdash; | ✅ |
@@ -69,12 +69,12 @@ The complete set of computed-versus-expected values at a glance:
 | `texture-odf-named-component-fit-recovers-exact-mixture` | [0.700000000, 0.300000000, 0.000000000] | [0.700000000, 0.300000000, 0.000000000] | volume fraction | ✅ |
 | `ipf-cubic-sector-corners-are-primaries` | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | [1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000] | &mdash; | ✅ |
 | `ipf-cubic-closed-form-colour-113` | [1.000000, 0.000000, 0.750000] | [1.000000, 0.000000, 0.750000] | &mdash; | ✅ |
-| `ipf-symmetric-equivalents-share-one-colour` | 7.08e-15 | 0.00e+00 | &mdash; | ✅ |
+| `ipf-symmetric-equivalents-share-one-colour` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
 | `mdf-triclinic-mean-disorientation-angle` | 126.3581 | 126.4756 | deg | ✅ |
 | `mdf-cubic-maximum-disorientation-angle` | 62.7994 | 62.7994 | deg | ✅ |
 | `mdf-cubic-random-low-angle-fraction` | 0.0223 | 0.0223 | &mdash; | ✅ |
 | `elastic-cubic-youngs-modulus-110-equals-112` | [66.6888, 130.3376, 130.3376, 191.1497] | [66.6888, 130.3376, 130.3376, 191.1497] | GPa | ✅ |
-| `elastic-cubic-voigt-reuss-bulk-moduli-coincide` | -8.527e-14 | 0.000e+00 | GPa | ✅ |
+| `elastic-cubic-voigt-reuss-bulk-moduli-coincide` | < 1e-12 | 0.000e+00 | GPa | ✅ |
 | `elastic-random-aggregate-matches-voigt-reuss-closed-form` | [54.6314, 40.0264] | [54.6400, 40.0339] | GPa | ✅ |
 | `plasticity-fcc-cube-schmid-factor` | 0.408248 | 0.408248 | &mdash; | ✅ |
 | `plasticity-fcc-cube-taylor-factor` | 2.449490 | 2.449490 | &mdash; | ✅ |

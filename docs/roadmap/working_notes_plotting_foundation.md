@@ -86,8 +86,8 @@ collection (Line3DCollection) inside the sorted mesh; per-species legend.
 
 ## Known Constraints
 
-- Matplotlib is an optional extra: every foundation module keeps imports
-  inside functions and raises the standard install hint.
+- Matplotlib is required but heavy: every foundation module keeps its imports
+  inside the functions that use them, so `import pytex` does not pay for it.
 - Existing tests pin plot titles ("Phase Map", "Kernel Average
   Misorientation", "IPF Map (z)") and the phi2 3-sections + colorbar axes
   count; upgrades must keep those contracts or update tests deliberately.

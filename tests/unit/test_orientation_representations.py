@@ -40,10 +40,6 @@ from pytex.core.representations import (
 def ni_fcc_phase() -> object:
     """Nickel, the canonical FCC case, from the pinned CIF fixture."""
 
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed phase fixtures require the optional pymatgen dependency.",
-    )
     from pytex.core.fixtures import get_phase_fixture
 
     return get_phase_fixture("ni_fcc").load_phase(crystal_frame=crystal_frame())
@@ -53,10 +49,6 @@ def ni_fcc_phase() -> object:
 def zr_hcp_phase() -> object:
     """Zirconium, the canonical HCP case, from the pinned CIF fixture."""
 
-    pytest.importorskip(
-        "pymatgen.core",
-        reason="CIF-backed phase fixtures require the optional pymatgen dependency.",
-    )
     from pytex.core.fixtures import get_phase_fixture
 
     return get_phase_fixture("zr_hcp").load_phase(crystal_frame=crystal_frame())

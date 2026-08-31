@@ -83,5 +83,5 @@ dataset. PyTex is designed to force that ambiguity into the open early.
 3. Move to {doc}`../validation/index` before broadening this example into a larger workflow so you
    know which surfaces are `implemented` and which remain `foundational`.
 4. Use {doc}`../workflows/phases_and_cif` when the workflow starts from crystallographic structure
-   data rather than from orientations alone. That path requires the full scientific lane.
+   data rather than from orientations alone.
 5. Move to {doc}`../workflows/ebsd_import_normalization` if your data comes from EBSD tooling.

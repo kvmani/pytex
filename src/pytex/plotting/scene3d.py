@@ -66,31 +66,21 @@ from pytex.plotting.styles import resolve_style
 def _to_hex(color: Any) -> str:
     """``matplotlib.colors.to_hex``, imported on demand.
 
-    Matplotlib is an *optional* dependency behind the ``pytex[plotting]`` extra,
-    and the repository forbids import-time coupling to optional stacks. A
-    module-level ``from matplotlib.colors import to_hex`` made matplotlib
-    mandatory for ``import pytex``; importing inside the call restores the
-    declared contract at the cost of one cached dict lookup.
+    matplotlib is a required dependency, but a heavy one, and the repository
+    forbids import-time coupling to heavy scientific stacks: a module-level
+    ``from matplotlib.colors import to_hex`` would make every ``import pytex``
+    pay for it. Importing inside the call costs one cached dict lookup.
     """
 
-    try:
-        from matplotlib.colors import to_hex
-    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+    from matplotlib.colors import to_hex
+
     return str(to_hex(color))
 
 
 def _to_rgb(color: Any) -> tuple[float, float, float]:
     """``matplotlib.colors.to_rgb``, imported on demand. See :func:`_to_hex`."""
 
-    try:
-        from matplotlib.colors import to_rgb
-    except ImportError as exc:  # pragma: no cover - exercised only without matplotlib
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+    from matplotlib.colors import to_rgb
     red, green, blue = to_rgb(color)
     return (float(red), float(green), float(blue))
 
@@ -101,14 +91,10 @@ _PARENT_ACCENT = "#2563eb"
 _CHILD_ACCENT = "#dc2626"
 
 
-def _require_matplotlib() -> tuple[Any, Any]:
-    try:
-        import matplotlib.pyplot as plt
-        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-    except ImportError as exc:  # pragma: no cover - environment-dependent branch
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> tuple[Any, Any]:
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+
     return plt, Poly3DCollection
 
 
@@ -630,7 +616,7 @@ def render_world_scene_3d(
     to look along a world vector, and ``show_legend`` for a merged species key.
     """
 
-    plt, poly3d_collection = _require_matplotlib()
+    plt, poly3d_collection = _matplotlib()
     style = resolve_style(theme=theme, style_path=style_path, overrides=style_overrides)
     common = style["common"]
     crystal_style = style["crystal"]
@@ -786,7 +772,7 @@ def render_variant_contact_sheet(
         has the wrong length, or ``ax``/``title`` is passed through.
     """
 
-    plt, _ = _require_matplotlib()
+    plt, _ = _matplotlib()
     panels = tuple(scenes)
     if not panels:
         raise ValueError("render_variant_contact_sheet requires at least one scene.")

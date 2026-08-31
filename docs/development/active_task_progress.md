@@ -5325,3 +5325,144 @@ rights and the suite passes locally (57/57), so it is left undiagnosed rather th
 above; the repairs are in `ae4d6ee`, after it. The released code was verified green locally on every
 suite. If a green-CI tag is wanted for the record, the cheapest path is a 0.4.1 carrying only the
 CI repairs — no library change.
+
+## Goal: one environment, and a green CI (2026-08-31)
+
+**Objective.** Make pymatgen and KikuchiPy required dependencies rather than optional extras, so a
+PyTex install computes the same answers everywhere -- including the office deployment, where the
+`adapters` extra was deliberately not installed and a CBED simulation of gallium arsenide therefore
+raised. Then take CI from red to green on every job, and cut the release that carries it.
+
+**Why now.** The "missing As" defect was patched in `39f8ea3` by completing the fallback atomic-number
+table. That fixed the symptom. The cause is that PyTex had two element-data implementations and the
+deployed one was the weaker, so the next divergence was only a matter of which quantity someone
+needed next. The instruction is explicit: a reputable, maintained scientific library is allowed to be
+a hard dependency, and the adapter-shaped optionality is not worth its cost.
+
+### What CI was actually failing on (read from the run logs, not guessed)
+
+Run 33341297802 on `39f8ea3`, every job red. Four distinct causes:
+
+1. **Missing optional dependency in a lane that needed it.** The docs build executes
+   `04_phases_lattices_space_groups_and_cif.ipynb`, which needs pymatgen, and the base lane did not
+   install it. The `browser` job -- undiagnosed at the last release because its logs need repository
+   access -- was the same shape: `pip install -e .` gave it no matplotlib, so every figure route
+   answered 500 and the Playwright journeys failed on console errors. Both are fixed by the
+   dependency change itself.
+2. **Tolerances tuned to one machine.** A cluster of assertions at `1e-6` and `1e-9` that report
+   `1.207e-06` on Linux and macOS and pass on Windows. Same digits everywhere, so it is a
+   deterministic BLAS/LAPACK difference, not flakiness.
+3. **Generated assets pinned to platform noise.** The worked-example gallery records a value near
+   `1e-15` to three significant figures, and the class-model SVGs differ byte-for-byte under a
+   different matplotlib build.
+4. **A lane gate that no longer describes its own intent** (`full-scientific`), which becomes
+   redundant once the stack is core.
+
+### Increment 1 -- the scientific stack becomes core (IN PROGRESS)
+
+- `pyproject.toml`: diffsims, h5py, KikuchiPy, matplotlib, orix and pymatgen moved into
+  `dependencies`. `adapters`, `plotting` and `hdf5` remain as empty alias extras so existing install
+  commands keep resolving; `pyebsdindex` is dropped, because nothing in the tree imports it.
+  jsonschema joins the `dev` extra: it validates the published JSON contracts, and a check that
+  silently skips is not a check.
+- `pytex.core._chemistry`: pymatgen is the single authority. The 118-entry fallback table is gone.
+  **A real bug surfaced here**: current pymatgen has no `Element.covalent_radius` attribute at all,
+  so the old `except Exception` fallback meant PyTex had *always* been using its own sixteen-element
+  table, and every element outside it got 1.15 A. Covalent radii now come from pymatgen's Cordero
+  table (`CovalentRadius.radius`, 96 elements). Bond-detection radii change slightly as a result --
+  Fe 1.24 to 1.42 A -- which is a behaviour change worth its changelog line.
+- Optional-dependency guards removed from the library: `_require_pymatgen`, `_require_orix` (x2),
+  `_require_h5py`, and sixteen copies of the matplotlib guard across `pytex.plotting`. The lazy
+  *import* is kept everywhere -- these are heavy modules and `import pytex` must stay cheap -- but
+  the try/except and the install hint are gone. `DependencyMissingError` is deleted: nothing raises
+  it any more.
+- Tests: every `pytest.importorskip` for one of these packages removed (56 of them across 37 files).
+
+**A second defect found while doing it, and a worse one than the first.** Current pymatgen has no
+`Element.covalent_radius` attribute -- it was removed, and the table lives in
+`pymatgen.core.molecule_structure_comparator.CovalentRadius`. The old lookup wrapped the access in
+`except Exception`, so it had been raising `AttributeError` on *every* call and falling through to
+PyTex's own sixteen-element list, giving every other element a flat 1.15 A. Bond detection in the
+crystal viewer was drawing from a placeholder for most of the periodic table, and the broad `except`
+is exactly what hid it. Radii now come from pymatgen's Cordero table (96 elements); Fe moves 1.24 ->
+1.42 A, which is a changelog line.
+
+### Increment 2 -- angles recovered where they are small (DONE)
+
+A Linux/macOS test environment was needed to work on this, so one was built in the WSL Ubuntu 24.04
+image already on the machine (`~/pytexenv`, run against the repo over `/mnt/c`). Two of the CI
+failures reproduce there; the rest need the runners' CPUs, and were fixed by construction rather
+than by reproduction.
+
+**The root cause of the whole tolerance cluster was one habit**: recovering an angle as `arccos` of
+a dot product. Its derivative is unbounded at the endpoint, so an argument correct to `1e-16` yields
+an angle wrong by `1e-8` rad -- about `1e-6` degrees. Every failing assertion was a quantity that
+*should be exactly zero*, which is precisely where the formulation has no digits left, and the
+`1e-6` residue it produced was decided by BLAS summation order. That is why the same test passed on
+Windows and failed on Linux with the identical value `1.2074182697257333e-06`.
+
+`pytex.core._angles` is the fix: Kahan's `2 atan2(||a-b||, ||a+b||)` between unit vectors, `atan2`
+of the skew part against the trace for a matrix, `2 atan2(||q_vec||, |q_w|)` for a quaternion. Each
+takes the small quantity directly instead of through a cosine that has already lost it. Applied to
+`Rotation.angle_rad`, `quaternions_to_axes_angles`, the orientation-set spread, the rational-index
+deviation, the variant axis-label residual, the OR variant misorientation, the multi-zone
+reconstruction scatter, and the `symmetry_reduced_angle_deg` helper in the TEM test module. Exact
+identities now report exactly zero, on every platform, and no assertion was loosened.
+
+**A third defect, and the most serious of the three.** `test_harmonic_odf` failed on Linux with a
+uniform ODF evaluating to **-1 m.r.d.** -- a sign, not a tolerance. `numpy.linalg.eigh` pins an
+eigenvector only up to sign, and different LAPACK builds choose differently, so the orthonormal
+harmonic basis had an arbitrary per-column sign and a coefficient set by hand against the constant
+column could produce a negative density. The sign is now fixed by convention in
+`_orthonormalize_weighted_basis` (largest-magnitude entry positive), which makes the basis, the
+stored `basis_transform`, and every coefficient derived from them reproducible.
+
+### Increment 3 -- generated assets that pinned platform noise (DONE)
+
+- **The TEM test-pattern sidecar** is a tracked baseline compared to a fresh generation with `==`,
+  and carried full float64 precision, whose last digit differs between BLAS builds. Written to
+  twelve significant digits now, and regenerated.
+- **The worked-example gallery** printed the rounding residue of exact identities to two significant
+  figures -- `2.11e-15` here, `1.22e-15` on a runner -- so the committed page was stale the moment
+  it was regenerated anywhere else. A value below `1e-12` is now written `< 1e-12`, in both the
+  computed and the deviation columns, and only where the example's own format would have exposed
+  the digits (a `{:.4f}` residue already reads `0.0000` everywhere and is left alone). The
+  Monte-Carlo examples, whose tolerances are physical, are untouched by the rule.
+- **The class-model atlas** failed byte comparison on the Windows and macOS runners. It passes under
+  Linux with the full stack installed, so the cause was the base lane's missing optional packages
+  changing what the model could resolve -- fixed by increment 1, not by regenerating anything.
+
+### Increment 4 -- one CI lane (DONE)
+
+`full-scientific` deleted: with the stack required, `.[dev,docs]` installs everything and the job
+had nothing left to add. Its skip gate moved into the remaining lane, where it now rejects a skip
+naming any of the required packages rather than the word "extra". The `browser` job's install is
+left as a plain `pip install -e .` deliberately -- that is what makes it prove an ordinary install
+can serve the application, which is the thing that was broken.
+
+### Increment 5 -- "required" made executable (DONE)
+
+Worth recording because it is a genuine hole the change opened. **Nothing in PyTex imports
+`kikuchipy` or `diffsims`.** The bridges take the caller's object and read it structurally, which is
+deliberate -- it is what keeps their semantics out of the PyTex model -- so declaring them as
+dependencies would otherwise be an unchecked assertion: they could be deleted from `pyproject.toml`
+and every test would still pass, while `pytex.adapters.index_hough` (which calls
+`signal.hough_indexing(...)` on an object only KikuchiPy makes) would fail in a user's session.
+
+`tests/unit/test_release_metadata.py` now imports every distribution named in
+`[project] dependencies`, and separately asserts that the two PyTex never imports are still
+declared. `pyebsdindex` is deliberately *not* declared: PyTex only normalizes its result payload
+structurally and never calls into it, and its wheels are the least reliable of the set.
+
+### Next actions
+
+1. Commit and push. The full Windows suite was green apart from two failures caused by bumping the
+   version literal mid-run (the process held 0.4.0 while the file said 0.5.0); re-running clean.
+2. Watch CI. It is the only place the runner-CPU failures can be confirmed fixed, since they do not
+   reproduce under WSL.
+3. Tag `v0.5.0` once CI is green.
+4. Then `ml_server_deploy`: manifest already updated in its worktree (suite 1.4.0, pytex `ref:
+   v0.5.0`, `test_extras: [dev]`, the CBED-will-raise mirror note replaced by the transitive-package
+   list for IT). Commit and tag it after the pytex tag exists, then watch its release build --
+   `pip check` over the combined office environment is the gate that could still object to
+   pymatgen's and KikuchiPy's transitive set landing beside torch and Flask.

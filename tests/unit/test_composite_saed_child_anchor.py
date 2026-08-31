@@ -285,10 +285,10 @@ class TestExportCarriesTheAnchor:
     ) -> None:
         import json
 
+        import jsonschema
+
         from pytex.adapters import composite_saed_manifest_schema_path
         from pytex.diffraction import export_composite_saed
-
-        jsonschema = pytest.importorskip("jsonschema")
         pattern = simulate_composite_saed_from_child_zone(
             burgers,
             ZoneAxis(np.array([0, 0, 1]), phase=burgers.child_phase),

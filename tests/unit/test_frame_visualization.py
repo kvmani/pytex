@@ -450,12 +450,7 @@ def test_triad_palette_is_shared_across_renderers() -> None:
 
 
 def _ni_fcc_phase() -> object:
-    # Loaded from a CIF fixture, which is pymatgen's job; the rest of this file
-    # draws frames and needs no optional extra.
-    pytest.importorskip(
-        "pymatgen",
-        reason="loading a phase from its CIF fixture needs the 'adapters' extra",
-    )
+    # Loaded from a CIF fixture, which pymatgen parses.
 
     from pytex import crystal_frame as _crystal_frame
     from pytex import get_phase_fixture

@@ -321,7 +321,6 @@ def test_gnd_density_map_renders_with_the_units_it_plots() -> None:
     drawn, or the numbers on it are uninterpretable.
     """
 
-    pytest.importorskip("matplotlib")
     from pytex.plotting import plot_gnd_density_map
 
     crystal_map = _tilt_map(0.8)
@@ -338,7 +337,6 @@ def test_gnd_density_map_renders_with_the_units_it_plots() -> None:
 def test_gnd_density_map_plots_the_computed_field() -> None:
     """The rendered image must be the density, not a re-derived quantity."""
 
-    pytest.importorskip("matplotlib")
     from pytex.plotting import plot_gnd_density_map
 
     crystal_map = _tilt_map(0.8)

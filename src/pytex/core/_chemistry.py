@@ -1,60 +1,18 @@
 from __future__ import annotations
 
 import re
-
-#: Atomic number for every element, used when pymatgen is not installed.
-#:
-#: Complete rather than partial, because an atomic number is definitional: there
-#: is no judgement in the value and therefore no reason to carry only some of
-#: them. The partial table this replaced held Ga and Ge but not As, so a CBED
-#: simulation of gallium arsenide -- the textbook non-centrosymmetric case, and
-#: the one the symmetry test uses -- raised wherever pymatgen was absent. That
-#: is the base test lane, and it is also the deployed office environment, where
-#: the optional `adapters` extra is deliberately not installed.
-_FALLBACK_ATOMIC_NUMBERS = {
-    "H": 1, "He": 2, "Li": 3, "Be": 4, "B": 5, "C": 6, "N": 7,
-    "O": 8, "F": 9, "Ne": 10, "Na": 11, "Mg": 12, "Al": 13, "Si": 14,
-    "P": 15, "S": 16, "Cl": 17, "Ar": 18, "K": 19, "Ca": 20, "Sc": 21,
-    "Ti": 22, "V": 23, "Cr": 24, "Mn": 25, "Fe": 26, "Co": 27, "Ni": 28,
-    "Cu": 29, "Zn": 30, "Ga": 31, "Ge": 32, "As": 33, "Se": 34, "Br": 35,
-    "Kr": 36, "Rb": 37, "Sr": 38, "Y": 39, "Zr": 40, "Nb": 41, "Mo": 42,
-    "Tc": 43, "Ru": 44, "Rh": 45, "Pd": 46, "Ag": 47, "Cd": 48, "In": 49,
-    "Sn": 50, "Sb": 51, "Te": 52, "I": 53, "Xe": 54, "Cs": 55, "Ba": 56,
-    "La": 57, "Ce": 58, "Pr": 59, "Nd": 60, "Pm": 61, "Sm": 62, "Eu": 63,
-    "Gd": 64, "Tb": 65, "Dy": 66, "Ho": 67, "Er": 68, "Tm": 69, "Yb": 70,
-    "Lu": 71, "Hf": 72, "Ta": 73, "W": 74, "Re": 75, "Os": 76, "Ir": 77,
-    "Pt": 78, "Au": 79, "Hg": 80, "Tl": 81, "Pb": 82, "Bi": 83, "Po": 84,
-    "At": 85, "Rn": 86, "Fr": 87, "Ra": 88, "Ac": 89, "Th": 90, "Pa": 91,
-    "U": 92, "Np": 93, "Pu": 94, "Am": 95, "Cm": 96, "Bk": 97, "Cf": 98,
-    "Es": 99, "Fm": 100, "Md": 101, "No": 102, "Lr": 103, "Rf": 104, "Db": 105,
-    "Sg": 106, "Bh": 107, "Hs": 108, "Mt": 109, "Ds": 110, "Rg": 111, "Cn": 112,
-    "Nh": 113, "Fl": 114, "Mc": 115, "Lv": 116, "Ts": 117, "Og": 118,
-}
-
-_FALLBACK_COVALENT_RADII = {
-    "H": 0.31,
-    "C": 0.76,
-    "N": 0.71,
-    "O": 0.66,
-    "Na": 1.66,
-    "Mg": 1.41,
-    "Al": 1.21,
-    "Si": 1.11,
-    "P": 1.07,
-    "S": 1.05,
-    "Cl": 1.02,
-    "Ti": 1.60,
-    "Fe": 1.24,
-    "Ni": 1.24,
-    "Cu": 1.32,
-    "Zn": 1.22,
-}
+from collections.abc import Mapping
+from functools import lru_cache
+from typing import Any
 
 # Jmol/CPK element colors, the palette VESTA and every other crystal viewer
-# renders from. Two species must never come out the same colour on a figure, so
-# this table is kept complete through the common structural elements rather than
-# partial: a missing element used to fall back to one shared grey, and near-
-# duplicates (Ni/Cl both green) made two-species structures unreadable.
+# renders from. This is a *display* convention, not element data: pymatgen has
+# no equivalent table, so it is carried here rather than looked up.
+#
+# Two species must never come out the same colour on a figure, so the table is
+# kept complete through the common structural elements rather than partial: a
+# missing element used to fall back to one shared grey, and near-duplicates
+# (Ni/Cl both green) made two-species structures unreadable.
 _FALLBACK_CPK_COLORS = {
     "H": "#ffffff",
     "He": "#d9ffff",
@@ -140,6 +98,20 @@ _FALLBACK_CPK_COLORS = {
 }
 
 
+def _element(symbol: str) -> Any:
+    """pymatgen's element record for a bare element symbol.
+
+    Imported at call time rather than at module import: pymatgen loads a large
+    data table on first use, and `pytex.core` must stay cheap to import. It is
+    a required dependency, so the import cannot fail for a reason worth
+    recovering from.
+    """
+
+    from pymatgen.core.periodic_table import Element
+
+    return Element(symbol)
+
+
 def normalize_species_symbol(species: str) -> str:
     match = re.match(r"([A-Z][a-z]?)", species.strip())
     if match is None:
@@ -148,28 +120,69 @@ def normalize_species_symbol(species: str) -> str:
 
 
 def atomic_number(species: str) -> int:
+    """Atomic number ``Z`` for a species label, from pymatgen's periodic table.
+
+    ``species`` may carry a charge or a site suffix (``"As3-"``); it is reduced
+    to its element symbol first. pymatgen is a required dependency, so there is
+    one answer for every element on every machine -- the arrangement that
+    replaced a hand-maintained partial table which held Ga and Ge but not As,
+    and so raised on gallium arsenide wherever the extra was not installed.
+
+    Raises
+    ------
+    ValueError
+        If the symbol is not an element.
+    """
+
     symbol = normalize_species_symbol(species)
     try:
-        from pymatgen.core.periodic_table import Element
-
-        return int(Element(symbol).Z)
+        return int(_element(symbol).Z)
     except Exception as exc:
-        if symbol not in _FALLBACK_ATOMIC_NUMBERS:
-            raise ValueError(f"No atomic number available for species {species!r}.") from exc
-        return _FALLBACK_ATOMIC_NUMBERS[symbol]
+        raise ValueError(f"No atomic number available for species {species!r}.") from exc
+
+
+#: Covalent radius used for elements pymatgen tabulates none for.
+#:
+#: Its table stops at curium, so this covers the trans-curium elements only. A
+#: gap in the reference data, not a missing dependency: a mid-range value chosen
+#: so bond detection stays plausible rather than collapsing to zero-length or
+#: bonding everything to everything.
+_UNTABULATED_COVALENT_RADIUS_ANGSTROM = 1.15
+
+
+@lru_cache(maxsize=1)
+def _covalent_radii() -> Mapping[str, float]:
+    """pymatgen's Cordero covalent-radius table, keyed by element symbol.
+
+    Read through both module paths because pymatgen moved this table from
+    ``pymatgen.analysis`` to ``pymatgen.core`` and left a deprecation stub
+    behind; importing the stub emits a ``DeprecationWarning`` that the test
+    suite turns into an error. This is a version shim for one relocated import,
+    not an optional-dependency guard -- pymatgen itself is required.
+
+    These radii are *not* interchangeable with `Element.atomic_radius`: the
+    covalent radius is what bond detection sums, and the atomic radius is a
+    display size.
+    """
+
+    try:
+        from pymatgen.core.molecule_structure_comparator import CovalentRadius
+    except ImportError:  # pragma: no cover - pymatgen older than the move
+        from pymatgen.analysis.molecule_structure_comparator import CovalentRadius
+    return {str(symbol): float(radius) for symbol, radius in CovalentRadius.radius.items()}
 
 
 def covalent_radius_angstrom(species: str) -> float:
-    symbol = normalize_species_symbol(species)
-    try:
-        from pymatgen.core.periodic_table import Element
+    """Covalent radius in angstrom, from pymatgen's table, for bond detection.
 
-        radius = Element(symbol).covalent_radius
-        if radius is None:
-            raise ValueError
-        return float(radius)
-    except Exception:
-        return float(_FALLBACK_COVALENT_RADII.get(symbol, 1.15))
+    This is the length bond detection sums; `display_radius_angstrom` chooses
+    what an atom is *drawn* as, which is a separate question. Falls back to
+    `_UNTABULATED_COVALENT_RADIUS_ANGSTROM` for the trans-curium elements the
+    table does not reach.
+    """
+
+    symbol = normalize_species_symbol(species)
+    return _covalent_radii().get(symbol, float(_UNTABULATED_COVALENT_RADIUS_ANGSTROM))
 
 
 # Distinct hues for species outside the CPK table. A single shared grey fallback
@@ -197,18 +210,16 @@ def cpk_color(species: str) -> str:
 
 
 def _element_data_radius(species: str, key: str) -> float | None:
-    """Read a radius entry from pymatgen's element data table, if available."""
+    """Read a radius entry from pymatgen's element data table, if it has one."""
 
     symbol = normalize_species_symbol(species)
     try:
-        from pymatgen.core.periodic_table import Element
-
-        value = Element(symbol).data.get(key)
-        if value is None:
-            return None
-        return float(value)
+        value = _element(symbol).data.get(key)
     except Exception:
         return None
+    if value is None:
+        return None
+    return float(value)
 
 
 def atomic_radius_angstrom(species: str) -> float:

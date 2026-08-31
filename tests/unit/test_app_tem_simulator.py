@@ -28,8 +28,6 @@ from pytex.app.errors import InvalidInputError
 from pytex.app.phases import builtin_phase
 from pytex.app.registry import REGISTRY
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 BASE_REQUEST = {
     "phase": {"builtin": "zr_hcp"},
     "orientation_source": "uvw",

@@ -11,13 +11,9 @@ from pytex.properties.tensors import (
 )
 
 
-def _require_matplotlib() -> Any:
-    try:
-        import matplotlib.pyplot as plt
-    except ImportError as exc:  # pragma: no cover
-        raise ImportError(
-            "PyTex plotting requires matplotlib. Install the 'pytex[plotting]' extra."
-        ) from exc
+def _matplotlib() -> Any:
+    import matplotlib.pyplot as plt
+
     return plt
 
 
@@ -43,7 +39,7 @@ def plot_youngs_modulus_surface(
     override.
     """
 
-    plt = _require_matplotlib()
+    plt = _matplotlib()
     if isinstance(tensor, DirectionalModulusSurface):
         surface = tensor
     else:

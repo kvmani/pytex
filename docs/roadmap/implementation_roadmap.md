@@ -103,10 +103,11 @@ The current baseline has now closed the Phase 1 release gates below:
 
 Tasks:
 
-- standardize the base contributor lane around `.[dev,docs]`
-- standardize the full scientific lane around `.[dev,docs,adapters]`
-- keep CI, local-development docs, and README synchronized with those two lanes
-- ensure the full scientific lane covers the optional structure and diffraction paths that depend on `pymatgen`
+- standardize the contributor lane around `.[dev,docs]`, which since 0.5.0 carries the whole
+  scientific stack because it is a required dependency
+- keep CI, local-development docs, and README synchronized with that lane
+- ensure no test skips because a dependency is absent; a lane that can skip its own subject is not
+  a lane
 
 Primary repository surfaces:
 

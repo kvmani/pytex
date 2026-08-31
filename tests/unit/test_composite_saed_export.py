@@ -311,7 +311,7 @@ class TestManifest:
     def test_manifest_validates_against_its_schema(
         self, burgers_composite: CompositeSAEDPattern, tmp_path
     ) -> None:
-        jsonschema = pytest.importorskip("jsonschema")
+        import jsonschema
         export = export_composite_saed(burgers_composite, tmp_path, figure_formats=("svg",))
         payload = json.loads(export.manifest_path.read_text(encoding="utf-8"))
         schema = json.loads(composite_saed_manifest_schema_path().read_text(encoding="utf-8"))

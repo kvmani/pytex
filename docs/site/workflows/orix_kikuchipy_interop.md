@@ -92,8 +92,6 @@ odf = dataset.crystal_map.to_odf(phase="ferrite")
   transfer, not on the full ORIX workflow stack.
 - KikuchiPy-facing normalization is validated primarily through PyTex canonicalization behavior and
   xmap-like payload normalization, not through a full dependency-pinned external environment matrix.
-- The strongest executable adapter and CIF-backed claims belong to the full scientific lane
-  (`.[dev,docs,adapters]`), not to the lightweight base lane.
 - If you need release-specific package interoperability guarantees, treat the tests above as the
   current controlling evidence and add environment-pinned integration coverage before making
   stronger claims.

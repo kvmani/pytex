@@ -22,8 +22,6 @@ from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
 from pytex.app.phases import builtin_phase
 
-pytest.importorskip("matplotlib", reason="the diffraction stack pulls in the plotting layer")
-
 
 def symmetry_cosine(phase, first, second) -> float:
     """Largest |cos| between two directions over the symmetry orbit.

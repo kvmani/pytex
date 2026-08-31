@@ -6,7 +6,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
 
 from pytex import (
     CrystalMap,
@@ -31,7 +30,6 @@ def _legend_labels(ax: object) -> list[str]:
 
 
 def test_structural_plotting_validation_cases_match_expected_surface_properties() -> None:
-    pytest.importorskip("pymatgen.core")
     figures = build_plotting_validation_figures()
 
     xrd = figures["xrd_ni_fcc_journal"]

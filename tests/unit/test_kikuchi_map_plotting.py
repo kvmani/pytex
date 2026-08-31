@@ -25,10 +25,6 @@ from pytex.plotting.kikuchi_map import plot_kikuchi_map
 # it is the whole module: without the optional `adapters` extra these are not
 # failures but tests that cannot be run, and reporting them as failures hid a
 # real defect underneath them for as long as it lasted.
-pytest.importorskip(
-    "pymatgen",
-    reason="loading a phase from its CIF fixture needs the 'adapters' extra",
-)
 
 CRYSTAL = ReferenceFrame("crystal", FrameDomain.CRYSTAL, ("a", "b", "c"))
 
