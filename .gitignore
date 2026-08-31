@@ -12,6 +12,8 @@ __pycache__/
 .coverage.*
 coverage.xml
 htmlcov/
+# The CI lane tees pytest's skip report here to gate on it.
+pytest-rs.txt
 dist/
 build/
 

@@ -22,7 +22,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install base lane
+      # One lane. The scientific stack -- pymatgen, orix, diffsims, KikuchiPy,
+      # matplotlib, h5py -- moved into the required dependencies in 0.5.0, so
+      # `.[dev,docs]` installs everything the suite exercises and the separate
+      # `full-scientific` job that used to add `[adapters]` has nothing left to
+      # add. Its skip gate lives in the test step below.
+      - name: Install
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e '.[dev,docs]'
@@ -35,42 +41,19 @@ jobs:
       - name: Docs build
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
         run: python scripts/check_sphinx_warnings.py --max-warnings 0
+      # `-rs` and the gate below are what stop this lane from passing by not
+      # running. Every scientific dependency is required as of 0.5.0, so a test
+      # that skips because a package is absent means the environment is broken,
+      # not that the test was optional.
       - name: Test with coverage ratchet
-        run: python -m pytest -q --cov=pytex --cov-report=term --cov-fail-under=87
-
-  full-scientific:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install full scientific lane
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[dev,docs,adapters]'
-      - name: Repo integrity
-        run: python scripts/check_repo_integrity.py
-      - name: Lint
-        run: python -m ruff check .
-      - name: Type check
-        run: python -m mypy src
-      - name: Test with optional scientific stack
-        # This lane exists to prove the optional scientific stack is actually
-        # exercised, so a test that skips *because an optional dependency is
-        # missing* fails it. It used to reject every skip, which became
-        # unsatisfiable the moment an operation legitimately could not run from
-        # defaults -- an upload route needs a file from the user, and the
-        # manifest test skips it by design. Rejecting that skip would have
-        # forced a worse design on the application to satisfy a check that had
-        # stopped describing its own intent.
+        shell: bash
         run: |
           set -euo pipefail
-          python -m pytest -q -rs | tee pytest-rs.txt
-          if grep -E "^SKIPPED" pytest-rs.txt \
-             | grep -Ei "pymatgen|orix|kikuchipy|diffsims|matplotlib|h5py|hdf5|extra"; then
-            echo "::error::A test skipped because an optional dependency was missing."
-            echo "::error::This lane installs .[dev,docs,adapters]; the stack must be exercised."
+          python -m pytest -q -rs --cov=pytex --cov-report=term --cov-fail-under=87 | tee pytest-rs.txt
+          deps='diffsims|h5py|jsonschema|kikuchipy|matplotlib|orix|pymatgen'
+          if grep -E '^SKIPPED' pytest-rs.txt | grep -Ei "$deps"; then
+            echo "::error::A test skipped because a dependency was missing."
+            echo "::error::Every package above is a required dependency; the install is incomplete."
             exit 1
           fi
 
@@ -85,6 +68,10 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      # A plain `pip install -e .` is the point: this job proves that what a
+      # user gets from an ordinary install can actually serve the workbench.
+      # Before 0.5.0 it could not -- matplotlib was an extra, so every figure
+      # route answered 500 and this job had been red for weeks.
       - name: Install workbench and browser-test dependencies
         run: |
           python -m pip install --upgrade pip
