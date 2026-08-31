@@ -16,6 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover - import-cycle guard
     # function that needs it.
     from pytex.core.parent_reconstruction import OrientationRelationshipCatalog
 
+from pytex.core._angles import acute_angle_between_unit_vectors_rad
 from pytex.core._arrays import as_int_array
 from pytex.core.batches import VectorSet
 from pytex.core.frames import ReferenceFrame
@@ -2819,6 +2820,17 @@ def _crystallographic_label(indices: np.ndarray, *, phase: Phase, reciprocal: bo
     )
 
 
+#: The angle below which two directions are parallel rather than nearly so.
+#:
+#: A clause that is exactly parallel by construction computes to a deviation of
+#: order ``1e-14`` degrees, not to zero, so a bit-exact comparison against the
+#: caller's tolerance would refuse it -- and ``tolerance_deg=0.0``, which reads
+#: as "only exact parallelism", would accept nothing at all. This is the width
+#: of that rounding, five orders below any tolerance a crystallographer would
+#: type and far above the residue itself.
+_PARALLEL_ROUNDING_DEG = 1e-9
+
+
 @dataclass(frozen=True, slots=True)
 class ORParallelismStatement:
     """One ``(hkl)_p || (hkl)_c`` or ``[uvw]_p || [uvw]_c`` clause of an OR statement.
@@ -2915,9 +2927,15 @@ def _parallelism_statements(
     # representative, so parallelism is judged on |cos|.
     cosines = np.abs(image_units @ child_units.T)
     best_columns = np.argmax(cosines, axis=1)
-    best_cosines = cosines[np.arange(cosines.shape[0]), best_columns]
-    deviations = np.degrees(np.arccos(np.clip(best_cosines, -1.0, 1.0)))
-    accepted = np.flatnonzero(deviations <= tolerance_deg)
+    # The winner is found from the cosine matrix, which is what an all-pairs
+    # comparison can afford; the deviation itself is then taken from the two
+    # vectors. An exactly parallel clause -- which is the whole point of a
+    # rational orientation relationship -- must read as zero, and arccos of a
+    # cosine cannot report better than about 1e-06 deg. See pytex.core._angles.
+    deviations = np.degrees(
+        acute_angle_between_unit_vectors_rad(image_units, child_units[best_columns])
+    )
+    accepted = np.flatnonzero(deviations <= tolerance_deg + _PARALLEL_ROUNDING_DEG)
 
     parent_keys = {
         int(row): _family_key(parent_triples[row], phase=parent_phase, reciprocal=reciprocal)
@@ -2930,9 +2948,9 @@ def _parallelism_statements(
     # Fit quality outranks preference: a nominated family must not promote a
     # visibly worse clause above an exact one. Bucketing the deviation to
     # milli-degrees first lets preference decide among clauses that are equally
-    # exact in any meaningful sense (and absorbs the ~1e-6 deg
-    # matrix-quaternion round-trip floor), while a genuinely poorer fit still
-    # sorts below.
+    # exact in any meaningful sense, while a genuinely poorer fit still sorts
+    # below. The bucket used to have a second job -- absorbing the ~1e-6 deg
+    # floor of an arccos-recovered angle -- which it no longer needs.
     ranked = sorted(
         accepted,
         key=lambda row: (

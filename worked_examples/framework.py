@@ -91,6 +91,11 @@ def format_residue_scale(value: Any) -> str | None:
     anywhere else, and the staleness check that keeps the gallery honest would
     fire on the machine rather than on the code.
 
+    Exactly zero is included, and that is the point rather than an oversight:
+    the same identity evaluates to ``0.0`` on one platform and ``1.4e-14`` on
+    another, so a rendering that distinguishes them is a rendering that goes
+    stale when the machine changes.
+
     The threshold is absolute and deliberately far below any tolerance an
     example declares for a physical reason: a Monte-Carlo estimate that lands
     within its ``6e-03`` bound has genuinely measured something, and its digits
@@ -100,8 +105,7 @@ def format_residue_scale(value: Any) -> str | None:
     array = np.asarray(value)
     if array.size != 1 or not np.issubdtype(array.dtype, np.floating):
         return None
-    magnitude = abs(float(array.reshape(-1)[0]))
-    if magnitude == 0.0 or magnitude >= RESIDUE_SCALE:
+    if abs(float(array.reshape(-1)[0])) >= RESIDUE_SCALE:
         return None
     return ROUNDING_RESIDUE_DISPLAY
 

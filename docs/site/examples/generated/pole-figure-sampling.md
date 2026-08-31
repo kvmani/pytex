@@ -47,7 +47,7 @@ result = float(field.mean())
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `pole-figure-raster-unweighted-mean-is-biased` | 0.500000 | 0.500000 | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
+| `pole-figure-raster-unweighted-mean-is-biased` | 0.500000 | 0.500000 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Analytic: an unweighted mean over a raster uniform in psi evaluates the integral of cos^2(psi) d(psi) over [0, pi/2] divided by pi/2, which is exactly 1/2. The correct spherical mean is 1/3.
 
@@ -92,7 +92,7 @@ result = float(fine.mean() / coarse.mean())
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `pole-figure-raster-bias-survives-refinement` | 1.000000000 | 1.000000000 | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
+| `pole-figure-raster-bias-survives-refinement` | 1.000000000 | 1.000000000 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Analytic: both unweighted means equal 1/2 exactly, independent of the raster step, so their ratio is 1. A discretisation error would not behave this way.
 
@@ -222,7 +222,7 @@ result = np.concatenate((calibration.defocus_factors, corrected.intensities))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `pole-figure-random-standard-defocus-calibration` | [1.000000, 0.800000, 0.500000, 20.000000] | [1.000000, 0.800000, 0.500000, 20.000000] | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `pole-figure-random-standard-defocus-calibration` | [1.000000, 0.800000, 0.500000, 20.000000] | [1.000000, 0.800000, 0.500000, 20.000000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Direct arithmetic independent of PyTex: ([110, 90, 60] - 10) / (110 - 10) = [1, 0.8, 0.5], and the corrected specimen value is (12 - 2) / 0.5 = 20.
 

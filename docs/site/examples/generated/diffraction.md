@@ -281,7 +281,7 @@ result = float(np.hypot(*axis.coordinates))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-gnomonic-zone-axis-radius` | 1.000000000000 | 1.000000000000 | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `diffraction-gnomonic-zone-axis-radius` | 1.000000000000 | 1.000000000000 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: The gnomonic projection maps a direction at angle psi from the detector normal to radius tan(psi). In a cubic crystal [011] makes an angle of 45 degrees with [001]; at the cube orientation with an untilted detector [001] is the detector normal, so the radius is tan(45 deg) = 1 exactly. The identity is exact, so the tolerance is numerical only.
 
@@ -470,7 +470,7 @@ result = float(model.factors([MillerPlane.from_hkl([1, 1, 1], phase=nickel)])[0]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-march-dollase-family-factor` | 2.309132723130 | 2.309132723130 | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `diffraction-march-dollase-family-factor` | 2.309132723130 | 2.309132723130 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: With r = 1/2 the March function is P(a) = (r^2 cos^2 a + sin^2 a / r)^(-3/2). The cubic {111} family has four members up to inversion: one at a = 0, giving P = r^-3 = 8, and three at cos^2 a = 1/9, where the bracket is 1/36 + 16/9 = 65/36 and P = (36/65)^(3/2) = 216 / (65 sqrt(65)). The family mean is therefore (8 + 3 * 216 / (65 sqrt(65))) / 4 = 2 + 162 / (65 sqrt(65)) = 2.3091327231300272, evaluated in exact decimal arithmetic independently of PyTex.
 
@@ -794,7 +794,7 @@ result = np.array(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | 0.00e+00 | 1e-06 | ✅ pass |
+| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | < 1e-12 | 1e-06 | ✅ pass |
 
 **Why this value**: Closed-form angles between cubic directions: arccos(1/sqrt(2)) = 45 deg for [001]-[011], arccos(1/sqrt(3)) = 54.735610 deg for [001]-[111], and arccos(2/sqrt(6)) = 35.264390 deg for [001]-[112]. The two [111] and [112] values are complementary, summing to 90 degrees, because [112] is the reflection of [001] in the plane perpendicular to [111].
 

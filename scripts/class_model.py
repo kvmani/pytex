@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 import importlib
 import inspect
 import pkgutil
@@ -54,6 +55,8 @@ import typing
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import numpy.typing
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT / "src") not in sys.path:  # pragma: no cover - import-path setup
@@ -232,6 +235,51 @@ def _is_many(annotation: object) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=1)
+def _expandable_aliases() -> tuple[tuple[str, frozenset[object]], ...]:
+    """Named unions the type system may flatten, and what they flatten into.
+
+    NumPy's ``ArrayLike`` is a PEP 695 ``TypeAliasType`` on Python 3.12 and
+    later and a plain ``Union`` alias on 3.11, so ``get_type_hints`` keeps the
+    name on one interpreter and expands it into a dozen implementation types on
+    the other. A card that reads ``ArrayLike`` here and
+    ``_Buffer | _SupportsArray | ...`` on a 3.11 runner is not a canonical
+    asset: the atlas SVGs are compared byte for byte, and this alone made them
+    fail on half the CI matrix.
+
+    The alias name is what the source wrote, so the alias name is what the card
+    shows, whichever way the interpreter resolved it. Longest first, so a
+    larger alias is recognised before any alias contained inside it.
+    """
+
+    aliases: list[tuple[str, frozenset[object]]] = []
+    for name in ("ArrayLike", "DTypeLike"):
+        alias = getattr(numpy.typing, name, None)
+        if alias is None:  # pragma: no cover - a NumPy without the alias
+            continue
+        # `__value__` is the TypeAliasType's right-hand side; on 3.11 the alias
+        # *is* its right-hand side already.
+        members = typing.get_args(getattr(alias, "__value__", alias))
+        if members:
+            aliases.append((name, frozenset(members)))
+    aliases.sort(key=lambda item: len(item[1]), reverse=True)
+    return tuple(aliases)
+
+
+def _collapse_expanded_aliases(members: list[object]) -> list[object | str]:
+    """Rewrite flattened alias members back to the alias name. See above."""
+
+    rendered: list[object | str] = list(members)
+    for name, expansion in _expandable_aliases():
+        present = [item for item in rendered if item in expansion]
+        if len(present) != len(expansion):
+            continue
+        first = rendered.index(present[0])
+        rendered = [item for item in rendered if item not in expansion]
+        rendered.insert(first, name)
+    return rendered
+
+
 def short_type_name(annotation: object) -> str:
     """Render an annotation compactly enough to sit inside a diagram card.
 
@@ -253,7 +301,10 @@ def short_type_name(annotation: object) -> str:
 
     if origin is typing.Union or origin is types.UnionType:
         inner = [arg for arg in args if arg is not type(None)]
-        rendered = " | ".join(short_type_name(arg) for arg in inner)
+        parts = _collapse_expanded_aliases(inner)
+        rendered = " | ".join(
+            part if isinstance(part, str) else short_type_name(part) for part in parts
+        )
         return f"{rendered}?" if len(args) != len(inner) else rendered
 
     if origin is not None:

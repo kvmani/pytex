@@ -197,7 +197,7 @@ result = max(rows, key=lambda row: row['mrd'])['polar_deg']
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | 0.00e+00 | 6e+00 | ✅ pass |
+| `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | < 1e-12 | 6e+00 | ✅ pass |
 
 **Why this value**: The Goss component {011}<100> places {011} in the sheet plane, so its (011) pole lies along ND at a polar angle of zero. The tolerance is the grid spacing, not a fitted margin.
 

@@ -239,7 +239,7 @@ result = float(envelope.accessible_solid_angle_sr())
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-holder-accessible-solid-angle` | 1.04720 | 1.04720 | sr | 0.00e+00 | 1e-09 | ✅ pass |
+| `tem-holder-accessible-solid-angle` | 1.04720 | 1.04720 | sr | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: Omega = (beta_max - beta_min) * (sin alpha_max - sin alpha_min) = (pi/3) * (2 sin 30 deg) = pi/3 = 1.04720 sr, integrating the cos(alpha) Jacobian of the beam-direction map over the tilt rectangle.
 
@@ -274,7 +274,7 @@ result = residual_from_rotation_error_deg(5.0, 90.0)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-diffraction-rotation-residual` | 5.000000 | 5.000000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `tem-diffraction-rotation-residual` | 5.000000 | 5.000000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: For theta = 90 degrees, sin(theta) = 1, so the expression reduces to 2 asin(sin(dphi/2)) = dphi exactly. The residual equals the calibration error itself when the target is perpendicular to the current zone axis.
 
@@ -476,7 +476,7 @@ result = float(np.max(np.abs(indexed.matrix - np.eye(3))))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | 0.00e+00 | 1e-12 | ✅ pass |
+| `tem-indexed-orientation-identity` | 0.00e+00 | 0.00e+00 | dimensionless | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: At zero tilt the stage rotation is the identity; at zero diffraction rotation so is Rz; and an unmirrored pattern has identity parity. The composition therefore reduces to the crystal-to-pattern rotation itself, which is the identity by construction, so the deviation is exactly zero.
 
@@ -571,7 +571,7 @@ result = float(fit.diffraction_rotation_deg)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `tem-self-calibrated-diffraction-rotation` | 37.000000 | 37.000000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The value planted in the synthetic patterns. Recovery is exact rather than fitted: once the zone axes fix the orientation, the residual R_stage U R^T is by construction a pure rotation about the beam axis whose angle is the diffraction rotation, so the value is read off directly.
 

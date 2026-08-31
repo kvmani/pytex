@@ -2355,17 +2355,59 @@ def test_describe_says_it_is_an_idealization_and_what_it_cost() -> None:
     assert "Compare the residual against the scatter" in text
 
 
-def test_the_rationalizer_refuses_rather_than_inventing_a_statement() -> None:
+def test_the_rationalizer_rejects_a_search_it_cannot_run() -> None:
     _, _, parent, child = make_phases()
     ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
         parent_phase=parent, child_phase=child
     )
-    report = _measured_report(ks)
     with pytest.raises(ValueError, match="max_index must be at least 1"):
-        report.as_rational_relationship(max_index=0)
-    # A plane clause exists at |index| <= 1 -- {111} is index 1 -- but nothing
-    # in that plane completes it, so this is the second refusal, and it says so
-    # rather than reporting the plane alone as though it were the statement.
+        _measured_report(ks).as_rational_relationship(max_index=0)
+
+
+def test_exact_kurdjumov_sachs_rationalizes_at_index_one_with_no_tolerance() -> None:
+    """Zero tolerance is the strongest thing a caller can ask for, and K-S meets it.
+
+    Both clauses of K-S are index-1 families -- {111} against {110}, <110>
+    against <111> -- so an exactly K-S rotation satisfies them to rounding and
+    the search has to say so. This used to raise: the deviations were recovered
+    with ``arccos`` of a dot product, which cannot report better than about
+    ``1e-06`` degrees for a pair that is exactly parallel, and the test that
+    stood here asserted the refusal that produced.
+    """
+
+    _, _, parent, child = make_phases()
+    ks = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    result = _measured_report(ks).as_rational_relationship(tolerance_deg=0.0, max_index=1)
+    assert result.plane_statement.deviation_deg == pytest.approx(0.0, abs=1e-9)
+    assert result.direction_statement.deviation_deg == pytest.approx(0.0, abs=1e-9)
+
+
+def test_a_plane_without_a_direction_in_it_is_refused_by_name() -> None:
+    """The second refusal: a clause found, but nothing to complete it with.
+
+    A rotation about [100] leaves ``(100)`` exactly parallel to itself, so the
+    plane clause is there at ``|index| <= 1``; the directions *in* that plane
+    are turned by the rotation angle, which is not a low-index parallelism at
+    any tolerance worth the name. The error must say which plane it could not
+    complete rather than reporting the plane alone as though it were the
+    statement.
+    """
+
+    from pytex.core import characterize_orientation_relationship, specimen_frame
+
+    _, _, parent, child = make_phases()
+    parent_matrix = Rotation.from_axis_angle([1.0, 2.0, 3.0], 0.7).as_matrix()
+    in_plane_turn = Rotation.from_axis_angle([1.0, 0.0, 0.0], 0.37).as_matrix()
+    frame = specimen_frame()
+    parents = OrientationSet.from_matrices(
+        parent_matrix[None, :, :], specimen_frame=frame, phase=parent
+    )
+    children = OrientationSet.from_matrices(
+        (parent_matrix @ in_plane_turn.T)[None, :, :], specimen_frame=frame, phase=child
+    )
+    report = characterize_orientation_relationship(parents, children)
     with pytest.raises(ValueError, match="No direction clause lies in"):
         report.as_rational_relationship(tolerance_deg=0.0, max_index=1)
 

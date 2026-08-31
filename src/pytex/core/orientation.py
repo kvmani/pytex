@@ -674,13 +674,21 @@ def _disorientation_scalar_projection_cached(
     right_key: bytes,
     left_count: int,
     right_count: int,
-) -> np.ndarray:
-    """Rows ``a`` such that ``a . q`` is the scalar part of ``p * q * r^-1``.
+) -> tuple[np.ndarray, np.ndarray]:
+    """The symmetry-conjugation of a relative quaternion, as linear algebra.
 
-    The disorientation angle only needs the scalar part of the symmetry-
-    conjugated relative quaternion, and that scalar part is *linear* in the
-    relative quaternion. Precomputing one row per operator pair turns the
-    whole symmetry reduction into a single matrix product.
+    ``p * q * r^-1`` is *linear* in ``q``, so each operator pair is a 4x4 matrix
+    and the whole symmetry reduction becomes one matrix product. Two things are
+    returned, because the reduction needs them for different reasons:
+
+    - ``projection``, the first row of each matrix. ``|projection @ q|`` is the
+      absolute scalar part of every conjugated candidate, which is all that is
+      needed to find *which* operator pair minimizes the angle.
+    - ``actions``, the full 4x4 matrices. Once the winner is known, the answer
+      wants its whole quaternion, not just the scalar part: an angle recovered
+      from ``w`` alone cannot resolve better than about ``3e-08`` radians near
+      the identity, and a disorientation between symmetry-equivalent
+      orientations *is* the identity. See `pytex.core._angles`.
     """
 
     left_quaternions = matrices_to_quaternions(
@@ -695,7 +703,8 @@ def _disorientation_scalar_projection_cached(
     conjugates = right_quaternions * np.array([1.0, -1.0, -1.0, -1.0])
     right_action = _quaternion_right_matrices(conjugates)
     combined = np.einsum("bij,ajk->abik", right_action, left_action, optimize=True)
-    projection = combined[:, :, 0, :].reshape(-1, 4)
+    actions = combined.reshape(-1, 4, 4)
+    projection = actions[:, 0, :]
 
     # Only |a . q| matters, so rows that agree up to an overall sign are
     # redundant. For same-phase cubic symmetry this collapses 24 x 24 operator
@@ -706,14 +715,17 @@ def _disorientation_scalar_projection_cached(
     signs[signs == 0.0] = 1.0
     canonical = np.round(projection * signs[:, None], 12)
     _, unique_rows = np.unique(canonical, axis=0, return_index=True)
-    projection = projection[np.sort(unique_rows)]
-    return np.ascontiguousarray(projection)
+    kept = np.sort(unique_rows)
+    return (
+        np.ascontiguousarray(projection[kept]),
+        np.ascontiguousarray(actions[kept]),
+    )
 
 
 def _disorientation_scalar_projection(
     left_operators: np.ndarray,
     right_operators: np.ndarray,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     left = np.ascontiguousarray(np.asarray(left_operators, dtype=np.float64))
     right = np.ascontiguousarray(np.asarray(right_operators, dtype=np.float64))
     return _disorientation_scalar_projection_cached(
@@ -739,16 +751,24 @@ def _reduced_pair_disorientation_angles_from_quaternions(
     total = quaternions.shape[0]
     if total == 0:
         return np.empty(0, dtype=np.float64)
-    projection = _disorientation_scalar_projection(left_operators, right_operators)
+    projection, actions = _disorientation_scalar_projection(left_operators, right_operators)
     per_row = max(projection.shape[0], 1)
     block = max(1, int(max_block_elements // per_row))
     angles = np.empty(total, dtype=np.float64)
     for start in range(0, total, block):
         stop = min(start + block, total)
-        scalars = quaternions[start:stop] @ projection.T
-        np.abs(scalars, out=scalars)
-        best = np.clip(scalars.max(axis=1), 0.0, 1.0)
-        angles[start:stop] = 2.0 * np.arccos(best)
+        rows = quaternions[start:stop]
+        scalars = np.abs(rows @ projection.T)
+        winners = np.argmax(scalars, axis=1)
+        # The winning operator pair is found from the scalar parts, but the
+        # angle is taken from the winner's whole quaternion. Applying the 4x4
+        # once per distinct winner keeps that to at most one small matmul per
+        # operator pair and never materializes a per-row stack of matrices.
+        conjugated = np.empty_like(rows)
+        for index in np.unique(winners):
+            selected = winners == index
+            conjugated[selected] = rows[selected] @ actions[index].T
+        angles[start:stop] = rotation_angle_from_quaternion_rad(conjugated)
     return angles
 
 

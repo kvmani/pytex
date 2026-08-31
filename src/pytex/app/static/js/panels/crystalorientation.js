@@ -101,6 +101,7 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     fit: null,
     readoutTimer: null,
     readoutToken: 0,
+    kikuchiToken: 0,
     editing: false,
   };
 
@@ -695,14 +696,28 @@ export function orientationDock({ camera, setCamera, request, showError }) {
     const payload = { phase: scene.phase, centre_direction: centre.join(' ') };
     const key = JSON.stringify(payload);
     if (key === state.kikuchiRequest && state.kikuchi) return;
+    /*
+     * The guard above cannot catch a request that is still in flight -- there
+     * is no `state.kikuchi` yet to compare against -- so two calls for the same
+     * map can be running at once, and the slower one used to land afterwards
+     * and refit the view. A user who had zoomed in the meantime watched the map
+     * jump back for no reason they could see. A token makes the newest request
+     * the only one whose answer is applied.
+     */
+    const token = (state.kikuchiToken += 1);
     state.kikuchiPending = true;
     kikuchiStatus.textContent = 'Computing the band network…';
     try {
-      state.kikuchi = await call('crystal.kikuchi_map', payload);
+      const computed = await call('crystal.kikuchi_map', payload);
+      if (token !== state.kikuchiToken) return;
+      // A *new* map is a new picture; a window into the old one means nothing
+      // on it, so the view is fitted again. The same map arriving twice is not
+      // a new picture, and refitting there would only discard a magnification
+      // the user asked for.
+      const isNewMap = key !== state.kikuchiRequest;
+      state.kikuchi = computed;
       state.kikuchiRequest = key;
-      // A new map is a new picture; a window into the old one means nothing on
-      // it, so the view is fitted again rather than carried over.
-      state.mapView = { zoom: 1, x: 0, y: 0 };
+      if (isNewMap) state.mapView = { zoom: 1, x: 0, y: 0 };
       const data = state.kikuchi.data;
       kikuchiStatus.textContent =
         `${data.bands.length} bands, ${data.zone_axes.length} zone axes within ` +
@@ -710,6 +725,7 @@ export function orientationDock({ camera, setCamera, request, showError }) {
         'direction now on the beam. Scroll to magnify, drag to move, double-click to fit.';
       draw();
     } catch (error) {
+      if (token !== state.kikuchiToken) return;
       // A map is an atlas beside the figures, not one of them: if it cannot be
       // computed the other two must carry on turning with the crystal.
       state.kikuchi = null;
@@ -719,7 +735,7 @@ export function orientationDock({ camera, setCamera, request, showError }) {
         : 'No map for this phase and centre.';
       kikuchiFigure.replaceChildren();
     } finally {
-      state.kikuchiPending = false;
+      if (token === state.kikuchiToken) state.kikuchiPending = false;
     }
   }
 

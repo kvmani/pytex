@@ -67,7 +67,7 @@ result = float(np.degrees(angle_plane_plane_rad(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cubic-angle-100-110` | 45.0000 | 45.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `cubic-angle-100-110` | 45.0000 | 45.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: For cubic metrics the interplanar angle is arccos(h1 h2 + k1 k2 + l1 l2 over norms); for (100) and (110) this is arccos(1/sqrt(2)) = 45 degrees, independent of a.
 
@@ -132,7 +132,7 @@ result = float(np.degrees(angle_plane_plane_rad(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cubic-angle-100-111` | 54.7356 | 54.7356 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `cubic-angle-100-111` | 54.7356 | 54.7356 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: arccos(1/sqrt(3)) = 54.7356 degrees for cubic (100) vs (111).
 
@@ -197,7 +197,7 @@ result = float(np.degrees(angle_dir_dir_rad(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cubic-angle-dir-110-111` | 35.2644 | 35.2644 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `cubic-angle-dir-110-111` | 35.2644 | 35.2644 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: arccos(sqrt(2/3)) = 35.2644 degrees for cubic [110] vs [111].
 
@@ -259,7 +259,7 @@ result = MillerPlane.from_hkl([1, 1, 1], phase=cubic).d_spacing_angstrom
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cubic-dspacing-111` | 2.30940 | 2.30940 | angstrom | 0.00e+00 | 1e-09 | ✅ pass |
+| `cubic-dspacing-111` | 2.30940 | 2.30940 | angstrom | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: d_111 = a / sqrt(3) = 4 / sqrt(3) = 2.30940 angstrom.
 
@@ -389,7 +389,7 @@ result = float(np.degrees(angle_plane_plane_rad(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `hex-angle-basal-prism` | 90.0000 | 90.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `hex-angle-basal-prism` | 90.0000 | 90.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The basal-plane normal is c*; prismatic normals lie in the basal plane, so the angle is 90 degrees.
 
@@ -518,7 +518,7 @@ result = float(residual_deg)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `cubic-nearest-low-index-round-trip` | 0.0000 | 0.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `cubic-nearest-low-index-round-trip` | 0.0000 | 0.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The vector is the Cartesian image of [3 2 1] under the direct basis, and gcd(3, 2, 1) = 1 so the triple is already primitive. The nearest primitive triple to a direction that is one is therefore itself, at zero angle.
 

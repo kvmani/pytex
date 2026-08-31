@@ -53,7 +53,7 @@ result = transform.rotation_angle_deg
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-axis-correspondence-angle` | 90.0000 | 90.0000 | deg | 0.00e+00 | 1e-09 | ✅ pass |
+| `frame-axis-correspondence-angle` | 90.0000 | 90.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The declaration fixes R e_x = e_TD, R e_y = -e_RD, R e_z = e_ND, i.e. the signed permutation [[0,-1,0],[1,0,0],[0,0,1]]. Its trace is 1, and the rotation angle follows from cos(omega) = (trace - 1) / 2 = 0, so omega = 90 degrees exactly.
 
@@ -103,7 +103,7 @@ result = np.asarray(transform.apply_to_directions(np.array([1.0, 0.0, 0.0])))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-axis-correspondence-components` | [0.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 0.0000] | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `frame-axis-correspondence-components` | [0.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 0.0000] | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: By definition of a basis, the source frame's x axis has source components e_x. The declaration 'x is TD' therefore forces its target components to be the TD basis vector (0, 1, 0).
 
@@ -254,7 +254,7 @@ result = sample.determinant
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-right-handed-determinant` | 1.0000 | 1.0000 | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `frame-right-handed-determinant` | 1.0000 | 1.0000 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: For a right-handed orthonormal triad the determinant of the matrix whose columns are the axis vectors is exactly +1; a left-handed triad gives -1.
 

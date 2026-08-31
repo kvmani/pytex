@@ -246,13 +246,23 @@ class TestStatement:
 
         The ranking is the evidence for the chosen pair, and it is what makes
         "best coincident direction" a finding rather than a choice.
+
+        Ordered by fit *to the milli-degree*, which is the published contract
+        rather than a weakening of it: clauses that are equally exact in any
+        meaningful sense are then ordered by whether the relationship nominates
+        their family, because which of several exact parallelisms is *the*
+        statement is a fact about the two structures and not about the rotation.
+        Asserting a raw ascending order would pin the arbitrary side of that,
+        and did: it held only while the deviations of exact clauses were
+        `arccos` noise around `1e-06` degrees rather than the `1e-07` and below
+        they are now.
         """
 
         data = run(pairs_text([1, 5, 9]), max_statements=5)["data"]
         directions = data["coincidences"]["directions"]
         assert len(directions) > 1
-        deviations = [row["deviation_deg"] for row in directions]
-        assert deviations == sorted(deviations)
+        buckets = [round(row["deviation_deg"], 3) for row in directions]
+        assert buckets == sorted(buckets)
 
 
 class TestVariantAssignment:

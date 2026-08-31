@@ -651,7 +651,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-parallelism-statement-from-rotation` | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | indices, deg | 0.00e+00 | 1e-04 | ✅ pass |
+| `or-ks-parallelism-statement-from-rotation` | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | indices, deg | < 1e-12 | 1e-04 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship is defined by {111}_fcc || {011}_bcc and <110>_fcc || <111>_bcc, so recovering the statement from the rotation must reproduce exactly those families at zero deviation (analytic identity). The 1e-4 deg tolerance is the matrix-quaternion round-trip noise floor, not a physical margin.
 

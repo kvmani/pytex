@@ -5454,10 +5454,54 @@ and every test would still pass, while `pytex.adapters.index_hough` (which calls
 declared. `pyebsdindex` is deliberately *not* declared: PyTex only normalizes its result payload
 structurally and never calls into it, and its wheels are the least reliable of the set.
 
+### Increment 6 -- the second CI round, which is where the rest of it surfaced
+
+Pushing was the only way to see the runner-CPU and Python-3.11 failures, and it paid: the docs build
+and seven of the browser job's eight previous failures were fixed by increment 1 alone, and the
+browser job went from "every journey fails on 500s" to **56 passed, 1 failed**. What remained was
+six more defects, none of which reproduce on this machine:
+
+- **The symmetry-reduced disorientation still went through `arccos`.** It was the one angle path
+  taken from the *scalar part alone*: the reduction finds the best operator pair from
+  `max |a_k . q|`, and `2 arccos(w)` floors at about `3e-08` rad however exact the pair is. The
+  winner is now applied as a full 4x4 quaternion action and the angle taken from the whole
+  quaternion, so a spread between symmetry-equivalent orientations reads `1e-13` degrees instead of
+  `1e-06`. One small matmul per distinct winner, so no stack of per-row matrices is materialized.
+- **The OR parallelism deviations were the last of the cluster**, computed from an all-pairs cosine
+  matrix. The winner is still found from the cosines -- that is what an all-pairs comparison can
+  afford -- but the deviation is taken from the two vectors.
+  - This changed a *behaviour*: an exactly Kurdjumov-Sachs rotation now rationalizes at
+    `tolerance_deg=0.0, max_index=1`, because both its clauses really are exact. The test that
+    stood there asserted the refusal the old floor produced, so it was encoding the defect. It is
+    replaced by one asserting the correct outcome plus a constructed case (a rotation about [100])
+    that still exercises the "no direction clause lies in that plane" branch.
+  - Acceptance is now `deviation <= tolerance + 1e-9 deg`, because an exactly parallel clause
+    computes to `1e-14`, not to zero, and `tolerance_deg=0.0` would otherwise accept nothing at all.
+- **The TEM sidecar's spot order was not total.** Symmetry-equivalent reflections of one ring tie on
+  both sort keys, and the tie fell to generation order. The Miller indices now break it -- which
+  also makes the label limit, applied by position, deterministic.
+- **The class-model atlas rendered `ArrayLike` differently on Python 3.11.** NumPy's alias is a PEP
+  695 `TypeAliasType` on 3.12+ and a plain `Union` on 3.11, so `get_type_hints` keeps the name on
+  one and expands it into seven implementation types on the other -- which widened a card by nine
+  pixels and moved every edge in the figure. `scripts/class_model.py` now collapses a flattened
+  alias back to its name. (The earlier reading, that the base lane's missing packages caused this,
+  was wrong: it passed under WSL because WSL runs 3.12.)
+- **The gallery distinguished exact zero from rounding residue.** The same identity gives `0.0` on
+  one platform and `1.4e-14` on another; both now read `< 1e-12`.
+- **orix emits diffpy.structure's deprecation warnings**, which `filterwarnings = ["error"]` turned
+  into twelve failures on Python 3.13. Ignored by message, alongside the spglib entry that exists
+  for the same reason: a migration between two packages PyTex reaches through a third has no
+  caller-side spelling that avoids it.
+- **The browser job's one remaining failure was a real race.** `refreshKikuchi` cannot dedupe a
+  request that is still in flight, so two calls for the same map could run at once and the slower
+  one refitted the view on arrival -- discarding a magnification the user had asked for in between.
+  A token makes the newest request the only one whose answer is applied, and the view is refitted
+  only when the map actually changed. The Playwright job now uploads its report and traces on
+  failure; diagnosing this one took a guess where it should have taken a look.
+
 ### Next actions
 
-1. Commit and push. The full Windows suite was green apart from two failures caused by bumping the
-   version literal mid-run (the process held 0.4.0 while the file said 0.5.0); re-running clean.
+1. Full local suite, then commit and push.
 2. Watch CI. It is the only place the runner-CPU failures can be confirmed fixed, since they do not
    reproduce under WSL.
 3. Tag `v0.5.0` once CI is green.

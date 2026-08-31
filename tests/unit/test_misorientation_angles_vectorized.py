@@ -186,13 +186,21 @@ def test_scalar_projection_deduplicates_redundant_operator_pairs() -> None:
     For same-phase cubic symmetry the 24 x 24 operator pairs collapse to 24
     distinct rows. This is what makes the symmetry reduction cheap, so it is
     pinned rather than left as an implementation detail.
+
+    The full 4x4 conjugation of each surviving pair is returned alongside, and
+    must be deduplicated in step with the rows: the reduction finds the winning
+    pair from the scalar rows and then reads its angle off that pair's whole
+    quaternion, so a row and an action that disagreed about which pair they
+    describe would give the right winner and the wrong angle.
     """
 
     crystal, _ = _frames()
     operators = SymmetrySpec.from_point_group("m-3m", reference_frame=crystal).operators
-    projection = _disorientation_scalar_projection(operators, operators)
+    projection, actions = _disorientation_scalar_projection(operators, operators)
 
     assert projection.shape == (24, 4)
+    assert actions.shape == (24, 4, 4)
+    np.testing.assert_allclose(actions[:, 0, :], projection, atol=0.0)
 
 
 def test_medoid_resolves_exact_ties_to_the_lowest_index() -> None:

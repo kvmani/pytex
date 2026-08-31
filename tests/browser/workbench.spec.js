@@ -1975,6 +1975,10 @@ test('the crystal viewer magnifies its Kikuchi map and names the bands along the
   // The wheel magnifies about the pointer: the window narrows, and it does not
   // stay centred on the middle of the map when the pointer is not there.
   const figure = page.locator('.orient__canvas--zoomable');
+  // Scrolled into view first: `boundingBox` reports page coordinates, and a
+  // pointer aimed below the fold lands on nothing at all, so the wheel would be
+  // delivered to the page instead of to the map.
+  await figure.scrollIntoViewIfNeeded();
   const box = await figure.boundingBox();
   await page.mouse.move(box.x + box.width * 0.3, box.y + box.height * 0.35);
   for (let notch = 0; notch < 8; notch += 1) await page.mouse.wheel(0, -120);

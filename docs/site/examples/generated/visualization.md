@@ -74,7 +74,7 @@ result = float(np.max(np.abs(placed - expected)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | 0.00e+00 | 1e-12 | ✅ pass |
+| `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Transform3D.from_orientation(o) is defined to apply the orientation matrix g, which is the crystal-to-sample map o.map_crystal_vector; the two are identical, so the deviation is 0.
 
@@ -141,7 +141,7 @@ result = float(parent_direction.unit_vector @ placed)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | 0.00e+00 | 1e-09 | ✅ pass |
+| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship fixes <110>_fcc || <111>_bcc; placing the child by the inverse relationship rotation makes the paired directions collinear, so their cosine is 1.
 
@@ -212,7 +212,7 @@ result = float(scene.bond_lengths_angstrom()[0])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | 0.00e+00 | 1e-12 | ✅ pass |
+| `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: NaCl-type geometry: the cation at (0, 0, 0) and anion at (1/2, 0, 0) are separated by a/2 along the cube edge; with a = 4 angstrom the bond length is exactly 2 angstrom.
 

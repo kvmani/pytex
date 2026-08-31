@@ -451,10 +451,18 @@ def generate_saed_pattern(
         )
     if include_double_diffraction:
         spots = _apply_double_diffraction(spots, coupling=float(double_diffraction_coupling))
+    # A *total* order. Intensity and radius alone leave the symmetry-equivalent
+    # reflections of one ring tied, and a tie is broken by whatever order they
+    # were generated in -- which is not guaranteed to be the same on another
+    # machine. The tracked test pattern's sidecar listed its spots in a
+    # different order on Linux than on Windows for exactly that reason, and the
+    # label limit below is applied by position, so the tie decided which spots
+    # got named. The indices settle it.
     spots.sort(
         key=lambda spot: (
             -spot.intensity,
             float(np.linalg.norm(spot.detector_coordinates)),
+            tuple(int(value) for value in spot.miller_indices),
         )
     )
     limited_spots = []

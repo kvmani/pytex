@@ -162,6 +162,13 @@ filterwarnings = [
   # spglib-internal deprecation, not a PyTex defect, and no caller-side filter
   # or adapter shim can suppress it at the point of emission.
   "ignore:Set OLD_ERROR_HANDLING to false:DeprecationWarning",
+  # orix builds its Phase on diffpy.structure, which is renaming its own API,
+  # and every `to_orix_phase` call therefore emits diffpy's deprecation from
+  # inside orix. It is a migration between two packages PyTex depends on
+  # through a third; there is no caller-side spelling that avoids it, and it
+  # will disappear when orix moves to the new names.
+  "ignore:'diffpy.structure.GetSpaceGroup' is deprecated:DeprecationWarning",
+  "ignore:'diffpy.structure.Structure.placeInLattice' is deprecated:DeprecationWarning",
 ]
 
 [tool.ruff]

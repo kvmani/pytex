@@ -620,7 +620,7 @@ result = float(radius[forbidden] / radius[row_of(0, 0, 4)])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `kinematic-silicon-double-diffraction-002` | 0.500000 | 0.500000 | dimensionless | 0.00e+00 | 1e-12 | ✅ pass |
+| `kinematic-silicon-double-diffraction-002` | 0.500000 | 0.500000 | dimensionless | < 1e-12 | 1e-12 | ✅ pass |
 
 **Why this value**: Detector radius is proportional to |g|, and |g_00l| = l/a for a cubic cell, so the ratio r(002)/r(004) is exactly 1/2 independent of the lattice parameter and the camera constant.
 
