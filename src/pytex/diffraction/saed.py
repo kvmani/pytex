@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -228,6 +229,20 @@ class SAEDPattern:
         return max(radii) * 1.15
 
 
+def _ordering_key(value: float) -> float:
+    """A float rounded to twelve significant digits, for use as a sort key.
+
+    Quantities that are equal by symmetry can differ in their last bit, and a
+    sort that sees that difference is a sort whose result depends on the
+    machine. See the ordering comment in :func:`simulate_saed_pattern`.
+    """
+
+    number = float(value)
+    if number == 0.0 or not math.isfinite(number):
+        return number
+    return float(f"{number:.11e}")
+
+
 def _apply_double_diffraction(spots: list[SAEDSpot], *, coupling: float) -> list[SAEDSpot]:
     """Give the reachable forbidden reflections of a zone an indicative intensity.
 
@@ -451,17 +466,25 @@ def generate_saed_pattern(
         )
     if include_double_diffraction:
         spots = _apply_double_diffraction(spots, coupling=float(double_diffraction_coupling))
-    # A *total* order. Intensity and radius alone leave the symmetry-equivalent
-    # reflections of one ring tied, and a tie is broken by whatever order they
-    # were generated in -- which is not guaranteed to be the same on another
-    # machine. The tracked test pattern's sidecar listed its spots in a
-    # different order on Linux than on Windows for exactly that reason, and the
-    # label limit below is applied by position, so the tie decided which spots
-    # got named. The indices settle it.
+    # A *total* order, and one that does not depend on the last bit of a float.
+    #
+    # Two things were wrong with ordering on intensity and radius alone. The
+    # symmetry-equivalent reflections of one ring are exactly tied on both, so
+    # the order fell to however they happened to be generated; and they are only
+    # tied *mathematically* -- a structure-factor sum can put them one unit in
+    # the last place apart, and which way round differs between BLAS builds, so
+    # the sort saw an ordering where there is none. The tracked test pattern's
+    # sidecar listed its spots differently on Linux than on Windows for both
+    # reasons at once, and the label limit below is applied by position, so this
+    # decided which spots got named.
+    #
+    # The keys are therefore rounded to twelve significant digits -- far more
+    # precision than a diffraction intensity carries -- and the Miller indices
+    # settle what remains.
     spots.sort(
         key=lambda spot: (
-            -spot.intensity,
-            float(np.linalg.norm(spot.detector_coordinates)),
+            -_ordering_key(spot.intensity),
+            _ordering_key(float(np.linalg.norm(spot.detector_coordinates))),
             tuple(int(value) for value in spot.miller_indices),
         )
     )

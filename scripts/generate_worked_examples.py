@@ -32,7 +32,7 @@ from worked_examples import (  # noqa: E402
     ExampleGroup,
     WorkedExample,
     all_groups,
-    format_residue_scale,
+    format_margin,
 )
 
 EXAMPLES_DIR = REPO_ROOT / "docs" / "site" / "examples"
@@ -81,8 +81,8 @@ def _render_result_table(example: WorkedExample) -> str:
         tolerance = "exact"
     else:
         # The deviation of an exact identity is rounding, and its digits differ
-        # between platforms; see worked_examples.framework.format_residue_scale.
-        deviation = format_residue_scale(result.max_abs_deviation) or (
+        # between platforms; see worked_examples.framework.format_margin.
+        deviation = format_margin(result.max_abs_deviation, example.tolerance) or (
             f"{result.max_abs_deviation:.2e}"
         )
         tolerance = f"{example.tolerance:.0e}"

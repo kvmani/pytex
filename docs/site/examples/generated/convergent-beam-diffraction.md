@@ -159,7 +159,7 @@ result = np.array([
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-cbed-two-beam-thickness-inverts-the-fringe-relation` | [2000.000000, 500.000000] | [2000.000000, 500.000000] | angstrom | < 1e-12 | 1e-06 | ✅ pass |
+| `diffraction-cbed-two-beam-thickness-inverts-the-fringe-relation` | [2000.000000, 500.000000] | [2000.000000, 500.000000] | angstrom | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: An exact inversion of the two-beam minimum condition t s_eff,n = n with s_eff^2 = s^2 + xi^-2, which rearranges to (s_n/n)^2 = 1/t^2 - (1/xi^2)(1/n^2). The generated minima lie on that line by construction, so a least-squares fit returns the intercept 1/t^2 and the slope -1/xi^2 to machine precision.
 

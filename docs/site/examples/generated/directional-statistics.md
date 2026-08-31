@@ -164,7 +164,7 @@ result = float(abs(axes(signed).mean_direction()[2]))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `directional-mean-axis-of-randomly-signed-axes` | 0.999982 | 1.000000 | &mdash; | 1.85e-05 | 5e-03 | ✅ pass |
+| `directional-mean-axis-of-randomly-signed-axes` | 0.999982 | 1.000000 | &mdash; | < 5e-05 | 5e-03 | ✅ pass |
 
 **Why this value**: Analytic: the axes are drawn about z, so the principal eigenvector of the orientation tensor is z and its z-component is 1. Random signs cannot affect it, since the tensor is invariant under v -> -v.
 

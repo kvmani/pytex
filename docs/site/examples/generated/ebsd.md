@@ -137,7 +137,7 @@ result = float(curvature[4, 5, 2, 0])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `ebsd-planted-lattice-curvature` | 13962.634016 | 13962.634016 | rad/m | < 1e-12 | 1e-06 | ✅ pass |
+| `ebsd-planted-lattice-curvature` | 13962.634016 | 13962.634016 | rad/m | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: 0.8 degrees per micrometre is 0.8 * pi / 180 radians per 1e-6 metre, that is 0.013962634015954637 / 1e-6 = 13962.634015954637 rad/m. The identity is exact; the tolerance is numerical only. Note that the third column of the curvature tensor is NaN throughout, because a surface map cannot measure the out-of-plane gradient.
 

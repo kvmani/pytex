@@ -53,7 +53,7 @@ result = transform.rotation_angle_deg
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-axis-correspondence-angle` | 90.0000 | 90.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `frame-axis-correspondence-angle` | 90.0000 | 90.0000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The declaration fixes R e_x = e_TD, R e_y = -e_RD, R e_z = e_ND, i.e. the signed permutation [[0,-1,0],[1,0,0],[0,0,1]]. Its trace is 1, and the rotation angle follows from cos(omega) = (trace - 1) / 2 = 0, so omega = 90 degrees exactly.
 
@@ -152,7 +152,7 @@ result = transform.rotation_angle_deg
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-graph-multi-hop-angle` | 30.0000 | 30.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `frame-graph-multi-hop-angle` | 30.0000 | 30.0000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The Cartesian-to-specimen edge is the identity and the specimen-to-sample edge is the declared 30-degree mounting rotation about ND, so the composition R = R2 R1 = R2 has rotation angle 30 degrees exactly.
 
@@ -207,7 +207,7 @@ result = float(np.max(np.abs(np.asarray(back) - direction)))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `frame-round-trip-residual` | 0.0000 | 0.0000 | &mdash; | < 1e-12 | 1e-14 | ✅ pass |
+| `frame-round-trip-residual` | 0.0000 | 0.0000 | &mdash; | < 1e-14 | 1e-14 | ✅ pass |
 
 **Why this value**: A frame transform is a proper rotation, so R^-1 = R^T and R^T R = I exactly. The round-trip residual is therefore zero up to floating-point rounding.
 

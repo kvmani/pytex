@@ -169,6 +169,11 @@ filterwarnings = [
   # will disappear when orix moves to the new names.
   "ignore:'diffpy.structure.GetSpaceGroup' is deprecated:DeprecationWarning",
   "ignore:'diffpy.structure.Structure.placeInLattice' is deprecated:DeprecationWarning",
+  # And the module itself, which the package emits from `__getattr__` -- so
+  # anything that walks `sys.modules` reading attributes triggers it. Hypothesis
+  # does exactly that when it collects local constants, which turned every
+  # property-based test in the suite red.
+  "ignore:Module 'diffpy.Structure' is deprecated:DeprecationWarning",
 ]
 
 [tool.ruff]

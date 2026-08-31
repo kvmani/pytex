@@ -105,7 +105,7 @@ result = min(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `composite-ks-exact-child-zone` | 0.0000 | 0.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `composite-ks-exact-child-zone` | 0.0000 | 0.0000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The defining KS direction parallelism makes the mapped child zone rational, so the deviation of the best variant is exactly 0 degrees.
 
@@ -176,7 +176,7 @@ result = min(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `composite-burgers-exact-basal-zone` | 0.0000 | 0.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `composite-burgers-exact-basal-zone` | 0.0000 | 0.0000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The defining Burgers plane parallelism {110}_bcc || (0001)_hcp makes the mapped child zone exactly rational, so the deviation of the best variant is 0 degrees.
 
@@ -425,7 +425,7 @@ result = [largest_shift, parent_shift]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `composite-child-anchored-geometry-consistency` | [0.0000, 0.0000] | [0.0000, 0.0000] | mm | < 1e-12 | 1e-09 | ✅ pass |
+| `composite-child-anchored-geometry-consistency` | [0.0000, 0.0000] | [0.0000, 0.0000] | mm | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: An exact identity of the construction, not a measured agreement: the child-anchored entry point maps the requested child zone back through R_k^T and then delegates to the parent-anchored engine, so the shared detector basis is the same object built the same way. Any nonzero displacement would mean the two paths had diverged. The 1e-9 mm tolerance is the floating-point round trip through the rotation, not a physical margin.
 
@@ -533,7 +533,7 @@ result = [
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `solving-simulate-then-solve-closure` | [1.0000, 0.0000, 110.0000, 0.0000] | [1.0000, 0.0000, 110.0000, 0.0000] | fraction, 1/angstrom, family code, count | < 1e-12 | 1e-09 | ✅ pass |
+| `solving-simulate-then-solve-closure` | [1.0000, 0.0000, 110.0000, 0.0000] | [1.0000, 0.0000, 110.0000, 0.0000] | fraction, 1/angstrom, family code, count | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: All four are identities of the round trip, not measured agreements. Every simulated spot is by construction a reflection of the phase in the zone, so a correct solver indexes all of them (1.0) at zero residual, recovers the <110> zone family (sorted absolute indices 0, 1, 1, encoded as 110), and assigns each spot the family it came from (0 mismatches). The zone axis is compared as a family because a crystal symmetry operation relabels the crystal without changing anything physical, so [110], [011] and [101] are one answer.
 
@@ -660,7 +660,7 @@ result = np.asarray(shape.intensity_factor(excitation))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-finite-thickness-rectangular-slab` | [1.000000000000, 0.405284734569, 0.000000000000] | [1.000000000000, 0.405284734569, 0.000000000000] | dimensionless | < 1e-12 | 1e-15 | ✅ pass |
+| `saed-finite-thickness-rectangular-slab` | [1.000000000000, 0.405284734569, 0.000000000000] | [1.000000000000, 0.405284734569, 0.000000000000] | dimensionless | < 1e-15 | 1e-15 | ✅ pass |
 
 **Why this value**: The Fourier transform of a uniform slab of thickness t is sin(pi t s_g)/(pi t s_g). Squaring gives intensity 1 at s_g=0, 4/pi^2 at t s_g=1/2, and the first zero at |s_g|=1/t.
 

@@ -150,7 +150,7 @@ result = np.array([
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `core-orientation-ideal-indices-invert-the-plane-direction-construction` | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
+| `core-orientation-ideal-indices-invert-the-plane-direction-construction` | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | [1.000000000, 1.000000000, 2.000000000, 1.000000000, 1.000000000, -1.000000000, 0.000000000, 0.000000000] | &mdash; | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: An exact inverse identity, not a fitted result: the plane normal aligned with ND and the direction aligned with RD are recovered by mapping those specimen axes back through g^T and expressing them in the reciprocal and direct bases respectively, so the integer indices and zero residual angles follow by construction.
 

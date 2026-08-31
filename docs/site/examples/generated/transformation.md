@@ -83,7 +83,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | < 1e-12 | 1e-09 | ✅ pass |
+| `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship is constructed from the parallelism {111}_fcc || {011}_bcc, so mapping the defining parent plane must recover the defining child plane identically (analytic identity).
 
@@ -164,7 +164,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | < 1e-12 | 1e-09 | ✅ pass |
+| `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The Bain correspondence is constructed from (001)_fcc || (001)_bcc with [110]_fcc || [100]_bcc, so mapping the defining parent direction must recover the defining child direction identically (analytic identity).
 
@@ -360,7 +360,7 @@ result = np.array([report.deviation_from_nominal_deg, report.mean_residual_deg])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-fit-recovers-gt-from-ks-nominal` | [2.4037, 0.0000] | [2.4037, 0.0000] | deg | 1.70e-05 | 5e-03 | ✅ pass |
+| `or-fit-recovers-gt-from-ks-nominal` | [2.4037, 0.0000] | [2.4037, 0.0000] | deg | < 5e-05 | 5e-03 | ✅ pass |
 
 **Why this value**: Exact GT-generated pairs must refit GT identically (zero residual is an analytic identity), and the reported distance from the KS nominal is the documented KS-GT representative separation of 2.40 deg.
 
@@ -651,7 +651,7 @@ result = np.concatenate(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-parallelism-statement-from-rotation` | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | indices, deg | < 1e-12 | 1e-04 | ✅ pass |
+| `or-ks-parallelism-statement-from-rotation` | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | [1.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 0.0000, 1.0000, 1.0000, 1.0000, 1.0000, 1.0000, 0.0000, 0.0000] | indices, deg | < 1e-06 | 1e-04 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship is defined by {111}_fcc || {011}_bcc and <110>_fcc || <111>_bcc, so recovering the statement from the rotation must reproduce exactly those families at zero deviation (analytic identity). The 1e-4 deg tolerance is the matrix-quaternion round-trip noise floor, not a physical margin.
 
@@ -838,7 +838,7 @@ result = [worst_deviation_deg, float(len(parent_members))]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | < 1e-12 | 1e-06 | ✅ pass |
+| `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: Both values are identities. ``V = S_c R S_p^T`` maps ``S_p n_parent`` onto ``S_c n_child`` by construction, so the deviation is exactly zero up to floating-point noise. The fcc {111} family has four members and the 24 Kurdjumov-Sachs variants distribute over them six apiece, which is the packet structure of lath martensite reported by Morito et al.
 
@@ -929,7 +929,7 @@ result = [
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | < 1e-12 | 1e-09 | ✅ pass |
+| `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The first two entries are identities: the dossier reads the volume from the lattice rather than recomputing it, and the volume of a cubic cell is the cube of its edge. The remaining four are the published Kurdjumov-Sachs figures -- 24 crystallographically distinct variants, four packets on the four members of the parent {111} family, and the ten distinct intervariant disorientations of Morito et al., whose largest is the 60 degree rotation about <111> -- the Sigma3 twin relation.
 
@@ -1036,7 +1036,7 @@ result = [
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `or-rationalization-costs-the-ks-gt-separation` | [0.0000, 1.0000, 1.0000, 2.4037] | [0.0000, 1.0000, 1.0000, 2.4037] | deg, booleans, deg | 1.70e-05 | 5e-03 | ✅ pass |
+| `or-rationalization-costs-the-ks-gt-separation` | [0.0000, 1.0000, 1.0000, 2.4037] | [0.0000, 1.0000, 1.0000, 2.4037] | deg, booleans, deg | < 5e-05 | 5e-03 | ✅ pass |
 
 **Why this value**: The zero residual is an analytic identity: the pairs were generated from the relationship being fitted. The 2.40 deg is the documented separation between the Greninger-Troiano and Kurdjumov-Sachs representatives, which is exactly what it costs to write the former with the latter's indices.
 

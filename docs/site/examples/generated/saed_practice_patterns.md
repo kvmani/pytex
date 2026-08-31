@@ -120,7 +120,7 @@ result = radius_px * image.raster.pixel_size_mm
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | < 1e-12 | 1e-09 | ✅ pass |
+| `saed-practice-camera-constant-identity` | 4.95454 | 4.95454 | mm | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: r = (L*lambda) / d with d_200 = a/2 = 2.02475 A for a = 4.0495 A, giving r = 10.0317 / 2.02475 = 4.95454 mm. Analytic from the lattice parameter and the definition of the camera constant; no program output enters it.
 
@@ -246,7 +246,7 @@ result = float(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `saed-practice-roll-about-the-beam` | 30.000000 | 30.000000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: Exact by construction rather than by measurement: the roll is a rotation about the beam, which is the projection axis, so it acts on the detector plane as a plane rotation through the same angle. Thirty degrees of roll must move every spot's azimuth by thirty degrees, whatever the lattice, the camera constant or the reflection.
 
@@ -360,7 +360,7 @@ result = by_indices[(0, 0, 2)].g_inv_angstrom / by_indices[(0, 1, 0)].g_inv_angs
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
+| `saed-practice-hcp-prism-axial-ratio` | 1.08762 | 1.08762 | &mdash; | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: |g_0002| / |g_01-10| = (2/c) / (2 / (sqrt(3) a)) = sqrt(3) a / c = sqrt(3) * 3.232 / 5.147 = 1.08762, from the hexagonal reciprocal metric alone. Independent of the camera constant, which cancels in the ratio.
 
@@ -471,7 +471,7 @@ result = prism.angle_from_current_deg
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-atlas-basal-to-prism` | 90.000000 | 90.000000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `saed-practice-atlas-basal-to-prism` | 90.000000 | 90.000000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: In a hexagonal lattice alpha = beta = 90 degrees, so c is orthogonal to both a axes by construction of the cell. The angle between [0001] and [2-1-10] is therefore exactly 90 degrees for any c/a.
 
@@ -582,7 +582,7 @@ result = float(np.linalg.norm(fit.centre - truth))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | < 1e-12 | 1e-06 | ✅ pass |
+| `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: Exact. The eight points are exact nodes of the lattice about the true centre, so the least-squares problem for the centre with the integer assignment held fixed has that point as its exact solution: the residual is zero and the recovered centre is the generating one. Independent of the basis chosen and of the starting error, up to the half-spacing limit at which a fit would be relabelling which node the origin is.
 
@@ -830,7 +830,7 @@ result = radius_px * image.raster.pixel_size_mm
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `saed-practice-double-diffraction-forbidden-200` | 3.69422 | 3.69422 | mm | < 1e-12 | 1e-09 | ✅ pass |
+| `saed-practice-double-diffraction-forbidden-200` | 3.69422 | 3.69422 | mm | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: r = (L*lambda) / d with d_200 = a/2 = 2.71551 A for a = 5.43102 A, giving r = 10.0317 / 2.71551 = 3.69420 mm. The same camera equation that places a genuine reflection, applied to a forbidden one: double diffraction changes which reflections are visible, never where they are. Analytic from the lattice parameter; no program output enters it.
 

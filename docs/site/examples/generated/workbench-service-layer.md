@@ -197,7 +197,7 @@ result = max(rows, key=lambda row: row['mrd'])['polar_deg']
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | < 1e-12 | 6e+00 | ✅ pass |
+| `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | < 6e-02 | 6e+00 | ✅ pass |
 
 **Why this value**: The Goss component {011}<100> places {011} in the sheet plane, so its (011) pole lies along ND at a polar angle of zero. The tolerance is the grid spacing, not a fitted margin.
 
@@ -234,7 +234,7 @@ result = next(row['polar_deg'] for row in rows if row['axis'] == 'ND')
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | < 1e-12 | 1e-09 | ✅ pass |
+| `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: Goss is {011}<100>: the sheet normal is a <011> direction, and the angle between <011> and the crystal c axis <001> is arccos(1/sqrt(2)) = 45 degrees exactly, whatever the lattice parameter. The tolerance is machine precision, not a margin.
 
@@ -271,7 +271,7 @@ result = float(np.max(np.abs(recovered - np.asarray(brass))))
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `workbench-crystal-viewer-euler-round-trip` | 2.45e-10 | 0.00e+00 | deg | 2.45e-10 | 1e-06 | ✅ pass |
+| `workbench-crystal-viewer-euler-round-trip` | < 1e-08 | 0.00e+00 | deg | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: A rotation matrix and its Euler decomposition name the same element of SO(3), so the round trip is the identity up to floating-point error. Brass is (arctan(1/sqrt(2)), 45, 0) degrees in Bunge angles. The tolerance is a micro-degree rather than machine epsilon because the reader deliberately rounds to a picodegree before wrapping into [0, 360), so that an angle landing a hair below zero is reported as zero rather than as a full turn.
 

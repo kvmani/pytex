@@ -141,7 +141,7 @@ result = float(parent_direction.unit_vector @ placed)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | < 1e-12 | 1e-09 | ✅ pass |
+| `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The Kurdjumov-Sachs relationship fixes <110>_fcc || <111>_bcc; placing the child by the inverse relationship rotation makes the paired directions collinear, so their cosine is 1.
 
@@ -290,7 +290,7 @@ result = [worst_pole_gap, worst_circle_gap]
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `viz-or-stereogram-parallelism-coincides` | [0.0000, 0.0000] | [0.0000, 0.0000] | projection-plane units | < 1e-12 | 1e-09 | ✅ pass |
+| `viz-or-stereogram-parallelism-coincides` | [0.0000, 0.0000] | [0.0000, 0.0000] | projection-plane units | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: An identity, not a measurement. Each transformation variant maps its own parent normal exactly onto its own child normal, so once the child pole is carried back into the parent frame the two are the same unit vector and every projection of them coincides. The 1e-9 tolerance is a floating-point floor, not a physical margin; the measured worst gap is of order 1e-15.
 

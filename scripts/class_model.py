@@ -236,23 +236,22 @@ def _is_many(annotation: object) -> bool:
 
 
 @functools.lru_cache(maxsize=1)
-def _expandable_aliases() -> tuple[tuple[str, frozenset[object]], ...]:
+def _expandable_aliases() -> tuple[tuple[str, object, tuple[object, ...]], ...]:
     """Named unions the type system may flatten, and what they flatten into.
 
     NumPy's ``ArrayLike`` is a PEP 695 ``TypeAliasType`` on Python 3.12 and
     later and a plain ``Union`` alias on 3.11, so ``get_type_hints`` keeps the
-    name on one interpreter and expands it into a dozen implementation types on
+    name on one interpreter and expands it into seven implementation types on
     the other. A card that reads ``ArrayLike`` here and
     ``_Buffer | _SupportsArray | ...`` on a 3.11 runner is not a canonical
     asset: the atlas SVGs are compared byte for byte, and this alone made them
     fail on half the CI matrix.
 
-    The alias name is what the source wrote, so the alias name is what the card
-    shows, whichever way the interpreter resolved it. Longest first, so a
-    larger alias is recognised before any alias contained inside it.
+    Returned longest first, so a larger alias is recognised before any alias
+    contained inside it.
     """
 
-    aliases: list[tuple[str, frozenset[object]]] = []
+    aliases: list[tuple[str, object, tuple[object, ...]]] = []
     for name in ("ArrayLike", "DTypeLike"):
         alias = getattr(numpy.typing, name, None)
         if alias is None:  # pragma: no cover - a NumPy without the alias
@@ -261,21 +260,46 @@ def _expandable_aliases() -> tuple[tuple[str, frozenset[object]], ...]:
         # *is* its right-hand side already.
         members = typing.get_args(getattr(alias, "__value__", alias))
         if members:
-            aliases.append((name, frozenset(members)))
-    aliases.sort(key=lambda item: len(item[1]), reverse=True)
+            aliases.append((name, alias, members))
+    aliases.sort(key=lambda item: len(item[2]), reverse=True)
     return tuple(aliases)
 
 
-def _collapse_expanded_aliases(members: list[object]) -> list[object | str]:
-    """Rewrite flattened alias members back to the alias name. See above."""
+def _normalize_alias_union(members: list[object]) -> list[object | str]:
+    """Rewrite a union so both spellings of an alias come out the same.
 
-    rendered: list[object | str] = list(members)
-    for name, expansion in _expandable_aliases():
-        present = [item for item in rendered if item in expansion]
-        if len(present) != len(expansion):
+    Two passes, and both are needed. First every alias *object* still present as
+    a member is replaced by the members it stands for, which brings the 3.12+
+    reading into the shape the 3.11 one already has -- necessary because
+    ``ArrayLike`` contains ``str``, so ``str | ArrayLike`` flattens to exactly
+    ``ArrayLike`` on 3.11 and the ``str`` cannot be recovered afterwards.
+    Then any alias whose whole expansion is present is collapsed back to its
+    name. The result is the same text on every interpreter.
+    """
+
+    expansions = {name: (alias, set(members)) for name, alias, members in _expandable_aliases()}
+
+    expanded: list[object] = []
+    for item in members:
+        for _, alias, alias_members in _expandable_aliases():
+            if item is alias:
+                expanded.extend(alias_members)
+                break
+        else:
+            expanded.append(item)
+
+    deduplicated: list[object] = []
+    for item in expanded:
+        if item not in deduplicated:
+            deduplicated.append(item)
+
+    rendered: list[object | str] = list(deduplicated)
+    for name, (_, alias_members) in expansions.items():
+        present = [item for item in rendered if item in alias_members]
+        if len(present) != len(alias_members):
             continue
         first = rendered.index(present[0])
-        rendered = [item for item in rendered if item not in expansion]
+        rendered = [item for item in rendered if item not in alias_members]
         rendered.insert(first, name)
     return rendered
 
@@ -301,7 +325,7 @@ def short_type_name(annotation: object) -> str:
 
     if origin is typing.Union or origin is types.UnionType:
         inner = [arg for arg in args if arg is not type(None)]
-        parts = _collapse_expanded_aliases(inner)
+        parts = _normalize_alias_union(inner)
         rendered = " | ".join(
             part if isinstance(part, str) else short_type_name(part) for part in parts
         )

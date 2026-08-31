@@ -34,14 +34,12 @@ from typing import Any
 import numpy as np
 
 __all__ = [
-    "RESIDUE_SCALE",
-    "ROUNDING_RESIDUE_DISPLAY",
     "ExampleGroup",
     "SeeAlso",
     "SymbolUse",
     "WorkedExample",
     "WorkedExampleResult",
-    "format_residue_scale",
+    "format_margin",
     "format_value",
     "validate_unique_ids",
 ]
@@ -68,46 +66,53 @@ def format_value(value: Any, fmt: str = "{:.4f}") -> str:
     return f"[{body}]"
 
 
-#: Below this magnitude a number in the gallery is floating-point residue.
+#: Rounding scale for a quantity of order one, in absolute terms.
 #:
-#: Every quantity these examples report is of order one to a few thousand in
-#: its own unit -- degrees, angstroms, gigapascals, multiples of random -- so a
-#: value twelve orders below one is the rounding of the arithmetic that produced
-#: it and nothing else.
-RESIDUE_SCALE = 1e-12
-
-#: How such a value is written on the page.
-ROUNDING_RESIDUE_DISPLAY = f"< {RESIDUE_SCALE:.0e}"
+#: Every number these examples report is of order one to a few thousand in its
+#: own unit -- degrees, angstroms, gigapascals, multiples of random -- so twelve
+#: orders below one is the width of the arithmetic and not of anything measured.
+_DOUBLE_PRECISION_FLOOR = 1e-12
 
 
-def format_residue_scale(value: Any) -> str | None:
-    """`ROUNDING_RESIDUE_DISPLAY` for a value that is only rounding, else None.
+def format_margin(value: Any, tolerance: float) -> str | None:
+    """A bound, for a value far enough below the tolerance to be rounding.
 
-    This is not cosmetic. An example whose expected value is exactly zero -- an
-    analytic identity, a conservation law -- computes not zero but the rounding
-    residue of the arithmetic that got there, of order ``1e-15``. Printed to two
-    significant figures that residue is a *different string* on a different BLAS
-    build, so the generated page would be stale the moment it were regenerated
-    anywhere else, and the staleness check that keeps the gallery honest would
-    fire on the machine rather than on the code.
+    This is not cosmetic. The generated pages are compared against a fresh
+    generation, so every number printed on them has to be the same number on
+    any machine -- and the deviation of an example that holds *exactly* is not
+    a number, it is the rounding of the arithmetic that got there. Printed to
+    three significant figures it reads ``2.11e-15`` on one BLAS build and
+    ``1.22e-15`` on another, and the staleness check that keeps the gallery
+    honest then fires on the machine rather than on the code. An exact zero and
+    a residue of ``1e-14`` are the same claim and must print the same way.
 
-    Exactly zero is included, and that is the point rather than an oversight:
-    the same identity evaluates to ``0.0`` on one platform and ``1.4e-14`` on
-    another, so a rendering that distinguishes them is a rendering that goes
-    stale when the machine changes.
+    A deviation smaller than a hundredth of the example's own tolerance is
+    therefore reported as being smaller than that, and nothing else about it is
+    claimed. Above that the digits are a real margin -- a quadrature error, a
+    truncation, a Monte-Carlo estimate -- reproducible well past three figures,
+    and they are printed.
 
-    The threshold is absolute and deliberately far below any tolerance an
-    example declares for a physical reason: a Monte-Carlo estimate that lands
-    within its ``6e-03`` bound has genuinely measured something, and its digits
-    are reported.
+    The bound is floored at `_DOUBLE_PRECISION_FLOOR`, because an example whose
+    tolerance is already at rounding scale would otherwise get a bound below
+    what a float64 can express, and never take it; and capped at the tolerance
+    itself, so the page never claims a looser bound than the one the example is
+    judged by.
+
+    Returns
+    -------
+    str or None
+        The bound, or ``None`` when the value is large enough to print.
     """
 
+    if not (tolerance > 0.0):
+        return None
     array = np.asarray(value)
     if array.size != 1 or not np.issubdtype(array.dtype, np.floating):
         return None
-    if abs(float(array.reshape(-1)[0])) >= RESIDUE_SCALE:
+    bound = min(tolerance, max(tolerance / 100.0, _DOUBLE_PRECISION_FLOOR))
+    if abs(float(array.reshape(-1)[0])) >= bound:
         return None
-    return ROUNDING_RESIDUE_DISPLAY
+    return f"< {bound:.0e}"
 
 
 @dataclass(frozen=True)
@@ -241,21 +246,22 @@ class WorkedExample:
     def computed_display(self, namespace: Mapping[str, Any] | None = None) -> str:
         """The computed value as the generated page prints it.
 
-        A value at rounding scale is printed as `ROUNDING_RESIDUE_DISPLAY`, but
-        only when this example's own `result_format` would otherwise expose its
-        digits. A residue rendered through ``"{:.4f}"`` is already ``0.0000`` on
-        every machine, and reads better beside an expected ``0.0000`` than a
-        bound does; one rendered through ``"{:.2e}"`` is ``2.11e-15`` here and
+        A value at rounding scale is printed as a bound, but only when this
+        example's own `result_format` would otherwise expose its digits. A
+        residue rendered through ``"{:.4f}"`` is already ``0.0000`` on every
+        machine, and reads better beside an expected ``0.0000`` than a bound
+        does; one rendered through ``"{:.2e}"`` is ``2.11e-15`` here and
         ``1.22e-15`` elsewhere, which is the case the bound exists for. See
-        :func:`format_residue_scale`.
+        :func:`format_margin`.
         """
 
         value = self.run(namespace)
         rendered = format_value(value, self.result_format)
-        if format_residue_scale(value) is not None:
+        bound = format_margin(value, self.tolerance)
+        if bound is not None:
             zero = format_value(np.zeros_like(np.asarray(value)), self.result_format)
             if rendered != zero:
-                return ROUNDING_RESIDUE_DISPLAY
+                return bound
         return rendered
 
     def expected_display(self) -> str:

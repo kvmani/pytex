@@ -44,7 +44,7 @@ result = np.array([a0, ratio])
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | < 1e-12 | 1e-06 | ✅ pass |
+| `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: A_0 = 1 is the SO(3) normalization identity for character expansions, and psi(halfwidth) = psi(0)/2 is the definition of the kernel halfwidth (both analytic identities).
 
@@ -191,7 +191,7 @@ result = np.array([fit.fraction_for('cube'), fit.fraction_for('goss'), fit.rando
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `texture-odf-named-component-fit-recovers-exact-mixture` | [0.700000000, 0.300000000, 0.000000000] | [0.700000000, 0.300000000, 0.000000000] | volume fraction | < 1e-12 | 1e-09 | ✅ pass |
+| `texture-odf-named-component-fit-recovers-exact-mixture` | [0.700000000, 0.300000000, 0.000000000] | [0.700000000, 0.300000000, 0.000000000] | volume fraction | < 1e-11 | 1e-09 | ✅ pass |
 
 **Why this value**: The target density is defined as the exact linear combination 0.7*K(g,cube) + 0.3*K(g,Goss). The component design uses those same two normalized kernel columns plus a constant random-density column, so the unique full-rank constrained solution is [0.7, 0.3, 0.0].
 

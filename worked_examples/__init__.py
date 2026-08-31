@@ -22,7 +22,7 @@ from .framework import (
     SymbolUse,
     WorkedExample,
     WorkedExampleResult,
-    format_residue_scale,
+    format_margin,
     format_value,
     validate_unique_ids,
 )
@@ -37,7 +37,7 @@ __all__ = [
     "all_examples",
     "all_groups",
     "example_by_id",
-    "format_residue_scale",
+    "format_margin",
     "format_value",
     "iter_examples",
     "validate_unique_ids",

@@ -293,7 +293,7 @@ result = float(max(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | < 1e-12 | 0.00e+00 | radian | < 1e-12 | 1e-15 | ✅ pass |
+| `diffraction-holz-strain-and-wavelength-are-exactly-degenerate` | < 1e-15 | 0.00e+00 | radian | < 1e-15 | 1e-15 | ✅ pass |
 
 **Why this value**: An exact cancellation in the closed form: substituting lambda -> lambda (1 + eps) into d_g(eps, lambda) recovers d_g(0, lambda) identically, for every reflection. The expected value is zero by algebra, and the tolerance is floating-point rounding.
 

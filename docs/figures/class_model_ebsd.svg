@@ -127,7 +127,7 @@
   <text x="718.5" y="200.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">phase: int | str | Phase | CrystalMapPhase?</text>
   <text x="718.5" y="220.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">specimen_symmetry: SymmetrySpec?</text>
   <text x="718.5" y="240.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">poles: CrystalPlane | ArrayLike[]</text>
-  <text x="718.5" y="260.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">sample_directions: str | ArrayLike[]</text>
+  <text x="718.5" y="260.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">sample_directions: ArrayLike[]</text>
   <text x="718.5" y="280.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">weights: OrientationQualityWeights?</text>
   <text x="718.5" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kernel: KernelSpec</text>
   <text x="718.5" y="320.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">include_symmetry_family: bool</text>

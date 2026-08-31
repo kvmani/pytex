@@ -549,7 +549,7 @@ result = float(np.trapezoid(factors, u) / 2.0)
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-march-dollase-normalization` | 1.000000000 | 1.000000000 | &mdash; | 5.71e-11 | 1e-06 | ✅ pass |
+| `diffraction-march-dollase-normalization` | 1.000000000 | 1.000000000 | &mdash; | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: Substituting u = cos(a), the spherical average is the integral over u in [-1, 1] of ((r^2 - 1/r) u^2 + 1/r)^(-3/2), halved. Its antiderivative is u / (B sqrt(A u^2 + B)) with A = r^2 - 1/r and B = 1/r, so the average evaluates to 1 / (B sqrt(A + B)) = r / r = 1 for every positive r. The identity is exact; the tolerance is the quadrature error alone.
 
@@ -794,7 +794,7 @@ result = np.array(
 
 | Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | < 1e-12 | 1e-06 | ✅ pass |
+| `diffraction-kikuchi-map-zone-axis-tilt-angles` | [45.000000, 54.735610, 35.264390] | [45.000000, 54.735610, 35.264390] | deg | < 1e-08 | 1e-06 | ✅ pass |
 
 **Why this value**: Closed-form angles between cubic directions: arccos(1/sqrt(2)) = 45 deg for [001]-[011], arccos(1/sqrt(3)) = 54.735610 deg for [001]-[111], and arccos(2/sqrt(6)) = 35.264390 deg for [001]-[112]. The two [111] and [112] values are complementary, summing to 90 degrees, because [112] is the reflection of [001] in the plane perpendicular to [111].
 

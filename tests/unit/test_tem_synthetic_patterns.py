@@ -191,10 +191,23 @@ def test_jitter_is_deterministic_and_bounded() -> None:
 
 
 def test_intensities_are_normalized_and_ordered() -> None:
+    """Brightest first, to the precision an intensity actually has.
+
+    Compared at twelve significant digits rather than bit for bit, which is the
+    same precision the ordering itself uses. Symmetry-equivalent reflections
+    have equal intensity mathematically and can come out of the structure-factor
+    sum one unit in the last place apart -- differently on a different BLAS
+    build -- so a strict comparison of the raw floats would be asserting an
+    order that the physics does not define. Those ties are settled by the Miller
+    indices instead; see the ordering comment in
+    `pytex.diffraction.saed.simulate_saed_pattern`.
+    """
+
     image = image_of("al_fcc", (0, 0, 1))
     intensities = [spot.relative_intensity for spot in image.spots]
     assert max(intensities) == pytest.approx(1.0)
-    assert intensities == sorted(intensities, reverse=True)
+    rounded = [float(f"{value:.11e}") for value in intensities]
+    assert rounded == sorted(rounded, reverse=True)
 
 
 def test_brighter_spots_are_drawn_larger_but_bounded() -> None:

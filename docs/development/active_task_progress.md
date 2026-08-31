@@ -5499,6 +5499,34 @@ six more defects, none of which reproduce on this machine:
   only when the map actually changed. The Playwright job now uploads its report and traces on
   failure; diagnosing this one took a guess where it should have taken a look.
 
+### Increment 7 -- the third round, and the shape of what is left
+
+The browser job **passes**, which is the first time it has since before 0.4.0. Every remaining
+failure was one of three things I had fixed only partly:
+
+- **The alias collapse was one-directional.** `ArrayLike` *contains* `str`, so `str | ArrayLike`
+  flattens to exactly `ArrayLike` on 3.11 and the `str` cannot be recovered. Collapsing the flattened
+  form therefore gave `ArrayLike` where 3.12+ gave `str | ArrayLike`. The normalisation now runs both
+  ways: any alias object still present as a member is expanded first, then the whole expansion is
+  collapsed to the name, so both interpreters produce the same text. The atlas changed by one label.
+- **Rounding the sidecar's *output* did not fix its *order*.** Symmetry-equivalent reflections have
+  equal intensity mathematically but can come out of the structure-factor sum one ulp apart, and
+  which way round differs between BLAS builds, so the sort saw an ordering where there is none. Both
+  sorts -- `simulate_saed_pattern` and `synthesize_saed_image` -- now round their keys to twelve
+  significant digits and break the remaining tie on the Miller indices. The tracked pattern changed
+  order and was regenerated; `describe()` now names a different member of the same {11-20} family as
+  the strongest, which is the point: it is now the *same* member everywhere.
+- **A `1e-12` threshold was the wrong shape for the gallery.** A deviation of `1.09e-12` on one
+  platform and `9.7e-13` on another straddles it and renders differently either side. The bound is
+  now taken from the example's own tolerance -- a hundredth of it -- floored at `1e-12` and capped at
+  the tolerance itself, so the digits are printed only where they are a real margin (a quadrature
+  error, a truncation, a Monte-Carlo estimate) and reproducible well past three figures. No printed
+  number below `1e-9` remains anywhere in the gallery.
+
+Plus a third diffpy warning: `Module 'diffpy.Structure' is deprecated`, emitted from the package's
+own `__getattr__`, so *anything* that walks `sys.modules` reading attributes triggers it. Hypothesis
+does exactly that when collecting local constants, which turned every property-based test red.
+
 ### Next actions
 
 1. Full local suite, then commit and push.

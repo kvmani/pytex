@@ -690,7 +690,18 @@ def synthesize_saed_image(
     )
     visible = inside & (relative >= float(intensity_floor))
 
-    order = np.argsort(-relative, kind="stable")
+    # Ordered by relative intensity, ties falling to the pattern's own order --
+    # which is total, because SAEDPattern sorts by its Miller indices last.
+    #
+    # The key is rounded first, and that is the load-bearing part. Two
+    # symmetry-equivalent reflections have the same intensity mathematically and
+    # can differ by one unit in the last place after the structure-factor sum, so
+    # an unrounded key sorts them by that difference and puts them in a different
+    # order on a different BLAS build. Twelve digits is far more precision than a
+    # diffraction intensity carries, and the tracked test pattern is a baseline
+    # compared against a fresh generation, so its spot list has to be the same
+    # list everywhere.
+    order = np.argsort(-np.round(relative, 12), kind="stable")
     spots: list[SyntheticSpot] = []
     for index in order:
         if not bool(visible[index]):
