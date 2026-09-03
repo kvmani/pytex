@@ -24,6 +24,7 @@
  */
 
 import { call } from '../core/api.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { plotFrame } from '../core/plotframe.js';
@@ -100,12 +101,12 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'The crystal, and where it points' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'Choose a phase and a direction to look down it. The pattern is the exact ' +
+        explainer(
+          'Choose a phase and a direction to look down it. The pattern is the exact ' +
             'zone-axis section: every reflection sits at the camera constant divided by its ' +
             'own d-spacing, which is the relation a real plate is calibrated by.',
-        }),
+          { label: 'What this panel does' },
+        ),
         formHost,
         runButton,
       ]),

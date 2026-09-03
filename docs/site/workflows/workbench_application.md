@@ -167,8 +167,17 @@ Press <kbd>Ctrl</kbd>+<kbd>K</kbd> to search every operation, example and materi
 
 ## Help, Documentation, And Appearance
 
-The **?** beside a field explains that input in place. The **Help** button explains the active
-operation, every input, the returned result and the scientific sources. Each operation also names
+Help in the Workbench is available rather than present, at three depths. The **?** beside a field
+explains that input in place, from the same declaration Python validates the input against. A
+**ⓘ** line explains a *view* — what a figure is, what an example set demonstrates, what a group of
+controls does not change — and is closed until asked; its label names its subject, so
+*Why the beam is picked first* and *Which files, in which order* can be told apart without opening
+either. The **Help** button explains the active
+operation, every input, the returned result and the scientific sources.
+
+Nothing that answers a question already asked is put behind either of those. A map legend, an
+empty-state message, a submission receipt and the summary of the calculation you have just chosen
+stay on screen, because collapsing them would hide the answer rather than the explanation. Each operation also names
 the closest canonical Sphinx page; **Read the full guide** opens that page for the theory,
 conventions, worked examples and related APIs. The manifest test verifies that every operation has
 a link and that its MyST source exists under `docs/site/`, so documentation moves cannot leave a
@@ -236,6 +245,21 @@ Profile and reflection-stick colours, line width, area fill, labels and linear, 
 log-like display scaling update immediately without recomputing or altering the scientific result.
 Four built-in standards demonstrate fcc indexing and Cu doublet splitting, silicon extinctions,
 the wavelength shift under Mo radiation and the hcp zirconium metric.
+
+### The shape of a control panel
+
+A control gets the width its value needs and no more. An index box holds three monospaced
+characters and a sign, which is every index anyone types, so a three-index row is three small boxes
+rather than a field spanning the rail. A number, a picker, a single index row and a short text
+field put their label *beside* them rather than above, which is the difference between a 36-pixel
+field and a 59-pixel one — on the EBSD map panel it is the difference between the whole panel
+fitting and the run button being below the fold.
+
+The controls that keep a label above them do so for a reason rather than by omission: a text area
+and a JSON editor need the full width, an add-a-row index stack grows downwards so a label pinned
+to its first row would drift away from what it names, and a checkbox already carries its label
+beside the box. Below 60 rem of viewport every label goes back on top rather than the control
+shrinking to a width no value fits in.
 
 ### Entering Miller indices
 
@@ -383,6 +407,37 @@ disorientations**: 10.53°, 14.88°, 20.61°, 21.06°, 47.11°, 49.47°, 50.51°
 60.00°. Those are the values of Morito *et al.*, Acta Mater. **51** (2003) 1789, Table 2. Of the ten,
 only three occur *within* a packet — 10.53°, 49.47° and 60° — and those three are the ones with an
 exactly rational axis, ⟨111⟩ and ⟨110⟩. The 60°/⟨111⟩ pair is the Σ3 twin relation.
+
+#### The relationship picker, and stating one of your own
+
+Every panel that generates variants — the variant table, the pole figure, the intervariant
+misorientations, the variant wall, and the composite SAED pattern — offers the same picker, so a
+relationship means the same thing in all of them. Beside the classical transformation
+relationships it carries two cubic-cubic entries that are not transformations at all:
+
+| Entry | Statement | Variants |
+| --- | --- | --- |
+| **Cube-on-cube** | $(001)_p \parallel (001)_c$, $[100]_p \parallel [100]_c$ | 1 |
+| **Coherent twin (fcc, Σ3)** | $(111)_p \parallel (111)_c$, $[1\bar{1}0]_p \parallel [\bar{1}10]_c$ | 4 |
+
+Cube-on-cube is the coherent cubic precipitate on a cubic matrix, and its identity rotation is why
+every child reflection in its composite pattern lands on a parent reciprocal-lattice row. The twin
+is the annealing or deformation twin: 180° about the ⟨111⟩ twin-plane normal, which cubic symmetry
+reduces to the Σ3 60°/⟨111⟩ an EBSD map reports. Run its intervariant misorientations and the table
+returns 38.94° — the Σ9 boundary two Σ3 twins make, which nothing told it to expect.
+
+The last entry is **Custom**. Four index boxes take a parent plane, a child plane, a parent
+direction and a child direction, and the panel builds the relationship those parallelisms imply.
+This is not a lesser path: it is the same `from_parallel_plane_direction` constructor every named
+relationship in the list is one call to. A custom relationship therefore gets the whole treatment —
+misorientation, variant count, packet grouping, intervariant boundaries, variant pole figure,
+composite SAED. Typing Kurdjumov-Sachs into it, (111) ∥ (011) with [-101] ∥ [-1-11], reproduces the
+catalogued Kurdjumov-Sachs exactly, and a worked example pins that.
+
+The direction need not lie exactly in its plane: the normal component is removed, so a literature
+statement that is only approximately self-consistent still yields a proper rotation. A direction
+*parallel* to its own plane normal leaves no rotation about that normal to fix, and is refused with
+the reason said on the control.
 
 This is the panel's whole argument: a measured misorientation histogram from prior-austenite grains
 should show peaks at those angles and nowhere else, and a peak elsewhere is a boundary between two
@@ -1191,6 +1246,24 @@ with the result rather than living only in the documentation:
 They are constructions, not measurements: no detector geometry, no indexing step, and no noise model
 beyond the stated spread.
 
+**One dataset serves the whole workspace, and it is the equiaxed polycrystal by default.** The EBSD
+workspace is six views of one thing — the map, GROD, KAM, the summary, the distributions, the
+discrete figures — so there is one *Dataset* control, beside *Open a scan*, and choosing there moves
+every view. Two views of "the same" scan reporting different microstructures is the worst answer
+available, and one picker per panel made it reachable in two clicks.
+
+The default is the polycrystal because it is the realistic case: twelve grains, a spread within
+each, and quality channels that fall at the boundaries. The bicrystal and the twinned matrix are
+built to isolate one teaching point each, and each is one choice away.
+
+An example that names a dataset — several do, because they exist to teach one construction — moves
+the workspace onto it when you *click* it. A panel opening itself on its first example does not: it
+runs that example's settings on whatever dataset the workspace is already on.
+
+A script calling the API is under no such rule. `dataset` is an ordinary parameter of
+`ebsd.map`, `ebsd.scan_summary`, `ebsd.distribution` and `ebsd.discrete_figure`, and a caller names
+whichever map it means.
+
 ## Using Your Own Material
 
 Every phase control offers the built-in catalogue — NaCl, austenite, ferrite, beta-bcc and
@@ -1239,7 +1312,8 @@ long as the reader has it open; nothing is retained between requests. See {mod}`
 
 **EBSD — `.ang`, `.ctf`, `.oh5` and `.h5`.** *Open a scan* in the EBSD rail takes an EDAX/TSL
 `.ang`, an Oxford/HKL `.ctf`, or an EDAX OIM HDF5 scan under either of its two extensions, `.oh5`
-and `.h5` (one format, two names). While one is open it replaces the practice dataset, and every
+and `.h5` (one format, two names). While one is open it replaces the practice dataset in every view
+of the workspace — the *Dataset* picker greys out and says so — and every
 control means exactly what it means for a practice map: the colouring, the scalar modulation, the
 boundary overlay and the grain threshold all act on the imported map. Hexagonal scans — which EDAX
 writes by default — have no rectangular shape, so they are drawn on a half-step raster: every

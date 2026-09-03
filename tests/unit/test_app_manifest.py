@@ -427,6 +427,50 @@ class TestCanonicalExamples:
             assert example.request["phase"] == {"builtin": "zr_bcc_beta"}
             assert example.request["child_phase"] == {"builtin": "zr_hcp"}
 
+    def test_a_group_says_whether_it_starts_closed(self) -> None:
+        """The frontend cannot guess which sections are conditional.
+
+        A group opens by default, because most of them hold controls that apply
+        whatever else is set. The custom orientation-relationship parallelisms do
+        not: they are ignored unless the relationship is *Custom*, so an open
+        section spends five lines of rail on four boxes nobody is using. The
+        manifest carries that as `groupCollapsed`, per parameter, and every
+        parameter of the group agrees — one disagreeing would leave the section's
+        state depending on which member the frontend happened to read first.
+        """
+
+        collapsed: dict[tuple[str, str], set[bool]] = {}
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                group = parameter.get("group")
+                if group is None:
+                    assert "groupCollapsed" not in parameter
+                    continue
+                assert isinstance(parameter["groupCollapsed"], bool)
+                collapsed.setdefault((operation["id"], group), set()).add(
+                    parameter["groupCollapsed"]
+                )
+
+        for (operation_id, group), states in collapsed.items():
+            assert len(states) == 1, (
+                f"{operation_id} group {group!r} is declared both collapsed and open"
+            )
+
+        custom = {
+            operation_id
+            for (operation_id, group), states in collapsed.items()
+            if group == "Custom relationship" and states == {True}
+        }
+        assert custom == {
+            "calc.orientation_relationship",
+            "diffraction.composite_saed",
+            "variants.composite_scene",
+            "variants.contact_sheet",
+            "variants.intervariant_misorientations",
+            "variants.pole_figure",
+            "variants.render",
+        }
+
     def test_examples_appear_in_the_manifest(self) -> None:
         manifest = REGISTRY.manifest()
         listed = {entry["id"] for entry in manifest["examples"]}

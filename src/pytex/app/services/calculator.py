@@ -1649,6 +1649,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             ),
             default=(1, 1, 1),
             group=group,
+            group_collapsed=True,
         ),
         IndicesParameter(
             name="custom_child_plane",
@@ -1656,6 +1657,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             help_text="The child plane brought parallel to the parent plane above.",
             default=(0, 1, 1),
             group=group,
+            group_collapsed=True,
         ),
         IndicesParameter(
             name="custom_parent_direction",
@@ -1668,6 +1670,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             ),
             default=(-1, 0, 1),
             group=group,
+            group_collapsed=True,
         ),
         IndicesParameter(
             name="custom_child_direction",
@@ -1675,6 +1678,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             help_text="The child direction brought parallel to the parent direction above.",
             default=(-1, -1, 1),
             group=group,
+            group_collapsed=True,
         ),
     )
 

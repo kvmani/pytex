@@ -16,6 +16,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { download, renderResult } from '../core/result.js';
@@ -272,11 +273,12 @@ function contourStyleControl(style, { disabled, onChange, onReset }) {
   return el('details.group.appearance', {}, [
     el('summary', { text: 'Contour properties' }),
     el('div.group__body', {}, [
-      el('p.field__help', {
-        text: disabled
+      explainer(
+        disabled
           ? 'Contour properties apply to pole figures and ODF sections; the inverse pole figure is one point per grain.'
           : 'Presentation only. Levels, palette and interpolation do not alter the ODF or exported m.r.d. rows.',
-      }),
+        { label: 'What these controls change' },
+      ),
       fieldset,
     ]),
   ]);
@@ -362,9 +364,10 @@ export function mount(context) {
     el('div.field', {}, [
       el('label.field__label', { text: 'View' }),
       viewSelect,
-      el('p.field__help', {
-        text: 'The same texture seen three ways: where a plane points, which direction is along a specimen axis, and the orientation density itself.',
-      }),
+      explainer(
+        'The same texture seen three ways: where a plane points, which direction is along a specimen axis, and the orientation density itself.',
+        { label: 'What each figure is' },
+      ),
     ]),
     el('details.group', { open: true, id: 'texture-files' }, [
       el('summary', { text: 'Open pole figures' }),
@@ -376,9 +379,10 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Run the random baseline first: it is flat at 1 m.r.d., which is what every other figure here is measured against.',
-        }),
+        explainer(
+          'Run the random baseline first: it is flat at 1 m.r.d., which is what every other figure here is measured against.',
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},
@@ -476,12 +480,12 @@ export function mount(context) {
         : 'No file open yet. Choose one or more .xrdml pole-figure files.',
     });
     fileHost.replaceChildren(
-      el('p.field__help', {
-        text:
-          'Panalytical XRDML pole-figure files, one per measured reflection. Give the plane of ' +
+      explainer(
+        'Panalytical XRDML pole-figure files, one per measured reflection. Give the plane of ' +
           'each below, in the order they are listed here: the file records the diffraction ' +
           'angle, not the reflection.',
-      }),
+        { label: 'Which files, in which order' },
+      ),
       input,
       summary,
       state.files.length

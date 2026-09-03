@@ -34,6 +34,10 @@ export function buildForm(operation, { initial = {}, onChange = () => {} } = {})
 
   const ungrouped = [];
   const advanced = [];
+  // A group opens unless a member asks otherwise. One member is enough: a
+  // section that matters only under one setting of another control is that kind
+  // of section however many of its parameters say so.
+  const collapsed = new Set();
 
   for (const parameter of operation.parameters ?? []) {
     const field = buildField(parameter, {
@@ -45,12 +49,13 @@ export function buildForm(operation, { initial = {}, onChange = () => {} } = {})
     else if (parameter.group) {
       if (!groups.has(parameter.group)) groups.set(parameter.group, []);
       groups.get(parameter.group).push(field.element);
+      if (parameter.groupCollapsed) collapsed.add(parameter.group);
     } else ungrouped.push(field.element);
   }
 
   append(root, ungrouped);
   for (const [name, nodes] of groups) {
-    root.append(disclosure(name, nodes, { open: true }));
+    root.append(disclosure(name, nodes, { open: !collapsed.has(name) }));
   }
   if (advanced.length) root.append(disclosure('Advanced', advanced, { open: false }));
 
@@ -131,7 +136,12 @@ function buildField(parameter, { value, onChange }) {
     ? el('div.field__row', {}, [input.element, helpButton])
     : input.element;
 
-  const element = el('div.field', {}, [label, body, helpNode, errorNode]);
+  const element = el(isCompact(parameter) ? 'div.field.field--compact' : 'div.field', {}, [
+    label,
+    body,
+    helpNode,
+    errorNode,
+  ]);
 
   const field = {
     element,
@@ -162,6 +172,30 @@ function buildField(parameter, { value, onChange }) {
   }
 
   return field;
+}
+
+/**
+ * Whether this parameter's label can sit beside its control instead of above it.
+ *
+ * A stacked label costs a line of rail per parameter, and for the short controls
+ * that line is spent on nothing: a number, a picker and a single row of index
+ * boxes are all narrower than the rail, so the space beside them was already
+ * empty. The kinds listed here are exactly the ones whose control has a natural
+ * width smaller than the rail.
+ *
+ * Everything else keeps the stacked layout, and for a reason rather than by
+ * omission. A text area and a JSON editor need the full width, and a label
+ * squeezed beside one would push the value into a column too narrow to read. An
+ * `indices-list` grows downwards a row at a time, so a label pinned to its first
+ * row would drift away from the stack it names. A boolean already carries its
+ * label beside the box.
+ *
+ * @param {object} parameter - Manifest entry for one parameter.
+ * @returns {boolean}
+ */
+function isCompact(parameter) {
+  if (parameter.kind === 'text' && parameter.multiline) return false;
+  return ['number', 'integer', 'choice', 'indices', 'text'].includes(parameter.kind);
 }
 
 let idCounter = 0;

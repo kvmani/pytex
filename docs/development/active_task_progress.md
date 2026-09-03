@@ -5644,13 +5644,122 @@ of Kurdjumov-Sachs against the catalogued constructor — that last is what pins
 path to the named one). Gallery regenerated. Documentation, notation and public-API-docstring
 policy suites green.
 
+### Increment 2 — the compact field (landed)
+
+Measured before changing anything: 13 fields in the Crystal Viewer rail, every number and every
+picker **59 px** tall, in a rail 384 px wide. The control was 100% of that width and the label sat
+on a line of its own above it — a line spent on nothing, because a number and a picker are both
+narrower than the rail and the space beside them was already empty.
+
+`.field--compact` puts the two on one row. `controls.js` decides which kinds take it, and the
+predicate is stated as a rule with reasons rather than a list: number, integer, choice, single
+index row and single-line text, because those are the controls with a natural width smaller than
+the rail. Text areas, JSON editors, `indices-list` and booleans keep the stacked layout, each for
+a reason recorded on the predicate.
+
+Result: those fields are **36 px**. On the EBSD map panel the whole rail down to *Draw the map* now
+fits without scrolling; it did not before.
+
+Two CSS traps worth recording, both the same trap:
+
+- `input[type="number"] { width: 100% }` is an attribute selector and outweighs a bare
+  `.field--compact > input`, so the first attempt left every number box stretched to the rail with
+  its label stranded above it. The index boxes already carried a comment about exactly this; the
+  new rules now carry the type selector for the same reason.
+- A fixed picker width is tidy in a column of short labels and wrong the moment an option is long.
+  "Bicrystal with a deformation gradient" is a dataset a user picks *by name*, and a native
+  `select` gives no usable ellipsis to read a clipped one through — so a compact picker grows into
+  whatever its label leaves.
+
+Below 60 rem of viewport the label goes back on top rather than the control shrinking to a width
+no value fits in.
+
+A group can now also declare that it starts **closed**, through `group_collapsed` on the parameter.
+Most groups hold controls that apply whatever else is set and should be open; the custom
+orientation-relationship parallelisms do not — they are ignored unless the relationship is *Custom*
+— so an open section spent five lines of rail on four boxes nobody was using, on all seven panels
+that offer the picker. Declared on the parameter rather than on a group object because there is no
+group object: a group is whatever set of parameters names it, and one member asking is enough. A
+manifest test pins that the members of a group agree, since one disagreeing would leave the
+section's state depending on which member the frontend read first.
+
+### Increment 3 — panel prose behind an affordance (landed)
+
+Field help was already one click away: `controls.js` renders each parameter's manifest help behind
+the `?` beside its label. What was not was the prose each *panel* writes about itself — what a view
+shows, what an example set is for, what a group of controls does not change — pinned above the
+controls it describes, around forty passages of two to five lines each.
+
+`core/explainer.js` collapses one passage into a single muted line, using the browser's own
+`<details>` rather than a second hand-written popover: keyboard-reachable, announced, printable,
+and no state in the module.
+
+**Thirty-two passages moved; eight deliberately did not.** The conversion pass was syntactic and
+could not tell prose from an answer the user had just asked for, so a second pass reverted the
+ones that are not prose: the EBSD map **legend** (the key to the picture), CBED's *no fringe
+minima* **empty state**, the feedback **receipt**, the About drawer's own content, the calculator's
+summary of the selected calculation, the count of loaded Kearns files, a bare label, and the
+"click the transmitted beam to start" instruction that is the only thing in its host — collapsing
+that one leaves an empty panel. Each is listed with its reason in the second-pass script's table
+and, where it matters, in the module docstring.
+
+Every surviving explainer got a label naming its subject — *What each view is*, *Why the beam is
+picked first*, *Which files, in which order* — because nine lines all reading "Help" tell a reader
+nothing about which one to open.
+
+The phase editor's CIF hint was rewritten rather than moved: a one-line label plus an explainer
+that now also says the cell controls are disabled while a CIF is loaded, which the three-line
+sentence it replaces did not.
+
+### Increment 4 — one dataset for the EBSD workspace (landed)
+
+**The defect.** The opened *file* was already workspace-wide, and `core/ebsdscan.js` said why in
+its docstring. The *practice dataset* was not: every panel's form carried its own generated
+`dataset` picker, so the IPF map could be showing the bicrystal while the grain-size distribution
+beside it counted the polycrystal's twelve grains, with nothing on screen saying they disagreed.
+Two views of "the same" scan reporting different microstructures, reachable in two clicks.
+
+**The fix.** One picker, in the scan-opener group, built from the manifest's own options so the
+gallery stays a Python decision. `adoptForm` hides the generated copies in every panel — one
+place, so a panel cannot forget one — and `withScan` writes the shared choice into every request
+rather than trusting a hidden control to carry it.
+
+**The default is now the equiaxed polycrystal**, via a named `DEFAULT_ENTRY_ID` rather than
+`GALLERY[0]`: display order and default are two decisions, and coupling them means reordering the
+gallery silently changes what every map shows. A user arriving at the IPF map for the first time
+should see a microstructure, not a two-grain construction built to isolate one teaching point.
+The constructions stay one choice away and each still states its known answer.
+
+**The subtlety that made this a two-pass job.** Three of the four panels open by loading their
+first example, so the panel is not empty on arrival, and several of those examples name a dataset
+because they exist to teach one construction. With a naive "read the form back" rule, opening the
+scan summary silently dragged the whole workspace onto that example's dataset — the very defect
+being fixed, back through the front door. So the distinction is explicit: a user *clicking* an
+example is choosing its dataset and the workspace follows; a panel *opening itself* on one is not,
+and the workspace's choice wins. `adoptForm(form, { adoptDataset })` carries it, defaulting to
+false, because silently moving every other view is not something to do unless asked.
+
+Confirmed in the running workbench: opens on the polycrystal; choosing the twin on the map moves
+KAM, the scan summary (5 grains, not 12), the distributions and the pole figures; returning to the
+map keeps it. A new browser test pins both halves, and the grain count is what catches a
+regression in the second.
+
+One existing browser test — the two-grain pick handed to Variants — relied on the bicrystal being
+the default. It now *names* the dataset it needs, with the reason it needs that one, which is what
+it should have done in the first place.
+
+Two defects found while re-reading the new picker rather than by a failing test, both now pinned:
+
+- The set of live pickers grew without bound. Panels are rebuilt as the user moves between the
+  views, so it accumulated `<select>` elements whose rail had long since been replaced — a leak
+  that grows for as long as somebody keeps clicking. Detached ones are dropped on the next pass.
+- A panel opened *while a file was already open* showed its picker enabled, contradicting the map
+  beside it, because only the open and close handlers set that state. The initial state is now set
+  where the picker is built, and the browser test asserts it on a panel reached after the file was
+  opened.
+
 ### Next actions
 
-- Increment 2: the generic control-density pass — label and control on one row for the compact
-  kinds, capped input widths.
-- Increment 3: panel prose behind help affordances. Field help is *already* behind a `?` button
-  in `core/controls.js`; what is not is the prose each panel writes itself, and the two paragraphs
-  the EBSD scan-opener shows unconditionally.
-- Increment 4: the EBSD single active dataset, polycrystal by default. The uploaded scan is
-  already workspace-wide in `core/ebsdscan.js`; the *practice dataset choice* is not, and that is
-  the defect.
+- Nothing outstanding on the OR work.
+- Remaining density candidates, if wanted: the TEM panel's rail is the longest left, and the
+  Kearns route pages still open with several visible paragraphs each.

@@ -15,9 +15,10 @@
  */
 
 import { call } from '../core/api.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
-import { scanControls, withScan } from '../core/ebsdscan.js';
+import { activeDataset, adoptForm, scanControls, withScan } from '../core/ebsdscan.js';
 import { offer } from '../core/handoff.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
@@ -134,7 +135,11 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     onclick: () => run(),
   });
 
-  const scan = scanControls({ onChange: () => run(), showError: context.showError });
+  const scan = scanControls({
+    operation,
+    onChange: () => run(),
+    showError: context.showError,
+  });
 
   context.rail.append(
     scan.element,
@@ -143,17 +148,17 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'Each dataset is a construction with a known answer, so the numbers on screen can be ' +
+        explainer(
+          'Each dataset is a construction with a known answer, so the numbers on screen can be ' +
             'checked rather than trusted. The GROD and KAM examples are the same microstructure ' +
             'seen two ways.',
-        }),
+          { label: 'Why these datasets' },
+        ),
         el(
           'div.examples',
           {},
           examples.map((example) =>
-            el('button.example', { type: 'button', onclick: () => loadExample(example) }, [
+            el('button.example', { type: 'button', onclick: () => loadExample(example, { chosen: true }) }, [
               el('strong', { text: example.title }),
               el('span', { text: example.summary }),
             ]),
@@ -184,18 +189,28 @@ export function mount(context, { colouring = 'ipf' } = {}) {
   // also the fastest way to see what the four controls above it do.
   run();
 
-  function renderControls(initial = {}) {
-    state.form = buildForm(operation, { initial });
+  /**
+   * Rebuild the form.
+   *
+   * `chosen` says whether these values came from a user action. It decides one
+   * thing: whether a `dataset` among them may move the whole EBSD workspace.
+   * Clicking an example is choosing its dataset; this panel opening itself on
+   * an example is not, and the workspace's own choice wins there.
+   */
+  function renderControls(initial = {}, { chosen = false } = {}) {
+    const dataset = activeDataset();
+    state.form = buildForm(operation, {
+      initial: chosen ? { dataset, ...initial } : { ...initial, dataset },
+    });
     formHost.replaceChildren(state.form.element);
-    // The scan travels beside the form, so its generated control is not shown.
-    for (const field of state.form.element.querySelectorAll('.field')) {
-      if (field.querySelector('[id^="ctl-scan_file-"]')) field.hidden = true;
-    }
+    // The scan file and the dataset are workspace-wide and presented beside
+    // the form, so their generated controls are hidden rather than shown twice.
+    adoptForm(state.form, { adoptDataset: chosen });
   }
 
-  function loadExample(example) {
+  function loadExample(example, { chosen = false } = {}) {
     state.teaches = example.teaches;
-    renderControls(example.request);
+    renderControls(example.request, { chosen });
     run();
   }
 
@@ -350,13 +365,13 @@ export function mount(context, { colouring = 'ipf' } = {}) {
           },
         }),
       ]),
-      el('p.field__help', {
-        text:
-          'Click a grain to pick it, and a second for the other side of the relationship. What ' +
+      explainer(
+        'Click a grain to pick it, and a second for the other side of the relationship. What ' +
           'travels across is each grain’s symmetry-aware mean orientation, its phase as ' +
           'the scan names it, and its spread — nothing is retyped, and nothing ' +
           'about the scatter is left behind.',
-      }),
+        { label: 'How to pick the two grains' },
+      ),
     ];
   }
 
@@ -538,8 +553,7 @@ export function mount(context, { colouring = 'ipf' } = {}) {
     } else if (data.colouring === 'ipf') {
       legend.append(
         el('p.field__help', {
-          text:
-            `Colour is the crystal direction along specimen ${data.ipf_direction}, folded into ` +
+          text: `Colour is the crystal direction along specimen ${data.ipf_direction}, folded into ` +
             'the fundamental sector. The colour key belongs to the point group: two maps of ' +
             'different symmetries are not colour-comparable.',
         }),

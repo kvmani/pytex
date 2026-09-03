@@ -67,7 +67,15 @@ from pytex.core.orientation import OrientationSet
 from pytex.core.symmetry import SymmetrySpec
 from pytex.ebsd.models import CrystalMap
 
-__all__ = ["GALLERY", "GalleryEntry", "build_map", "entry_ids", "get_entry"]
+__all__ = [
+    "DEFAULT_ENTRY_ID",
+    "GALLERY",
+    "GalleryEntry",
+    "build_map",
+    "default_entry",
+    "entry_ids",
+    "get_entry",
+]
 
 #: Side of a gallery map when the caller does not choose one. Large enough that
 #: grains have interiors and boundaries have length. The workbench asks for a
@@ -213,6 +221,26 @@ GALLERY: tuple[GalleryEntry, ...] = (
         ),
     ),
 )
+
+
+#: The dataset every EBSD view opens on unless told otherwise.
+#:
+#: Named rather than taken as ``GALLERY[0]``, because display order and default
+#: are two different decisions and coupling them means reordering the gallery
+#: silently changes what every map shows. The equiaxed polycrystal is the
+#: default because it is the realistic case: twelve grains, a spread within each,
+#: and quality channels that fall at the boundaries. A user arriving at the IPF
+#: map, the KAM map or the grain-size distribution for the first time should see
+#: a microstructure, not a two-grain construction built to isolate one teaching
+#: point. The constructions stay one choice away, and each still states the known
+#: answer that makes it checkable.
+DEFAULT_ENTRY_ID = "equiaxed_polycrystal"
+
+
+def default_entry() -> GalleryEntry:
+    """The entry every EBSD operation defaults to."""
+
+    return get_entry(DEFAULT_ENTRY_ID)
 
 
 def entry_ids() -> tuple[str, ...]:

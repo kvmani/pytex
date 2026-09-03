@@ -2122,6 +2122,57 @@ test('the EBSD workspace shows six scan views and three scanless tools', async (
   expect(browserErrors).toEqual([]);
 });
 
+/**
+ * One dataset for the whole EBSD workspace, and the polycrystal by default.
+ *
+ * Every panel's form still declares a `dataset` parameter — the manifest is the
+ * source of the option list, and a script calling the API names its own map. On
+ * screen, though, there is one control and one answer, because the workspace is
+ * six views of one thing. Before this, each panel carried its own copy of the
+ * generated picker, so the IPF map could be showing the bicrystal while the
+ * summary beside it counted the polycrystal's twelve grains, with nothing
+ * saying they disagreed.
+ *
+ * Two things are asserted, and the second is the one that was broken:
+ *
+ * 1. Every view opens on the equiaxed polycrystal — the realistic case, rather
+ *    than a two-grain construction built to isolate one teaching point.
+ * 2. Choosing another dataset anywhere moves *every* view onto it, including
+ *    the three that open themselves on an example. Those examples name datasets
+ *    of their own, so a panel opening on one used to drag the workspace back;
+ *    the summary's grain count is what catches that, because the polycrystal has
+ *    twelve grains by construction and the twin dataset does not.
+ */
+test('one dataset serves the whole EBSD workspace, polycrystal by default', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'IPF map');
+
+  const picker = () => page.locator('#rail-body').getByLabel('Practice dataset');
+  await expect(picker()).toHaveValue('equiaxed_polycrystal', { timeout: 30_000 });
+  await expect(page.locator('#stage')).toContainText('Equiaxed polycrystal', { timeout: 30_000 });
+
+  // Twelve grains by construction, which is the summary's own known answer.
+  await openPanel(page, 'Scan summary');
+  await expect(picker()).toHaveValue('equiaxed_polycrystal', { timeout: 30_000 });
+  await expect(page.locator('.summary-headline')).toContainText('12', { timeout: 30_000 });
+
+  // Chosen on the summary; every other view must follow it.
+  await picker().selectOption('sigma3_twin');
+  await expect(page.locator('#stage')).toContainText('Annealing twins', { timeout: 30_000 });
+
+  for (const view of ['IPF map', 'KAM', 'Distributions', 'Pole figures']) {
+    await openPanel(page, view);
+    await expect(picker()).toHaveValue('sigma3_twin', { timeout: 30_000 });
+  }
+
+  // Including back on the summary, whose own first example names the
+  // polycrystal — opening a panel is not choosing a dataset.
+  await openPanel(page, 'Scan summary');
+  await expect(picker()).toHaveValue('sigma3_twin', { timeout: 30_000 });
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('a scan opened in one EBSD view is the scan every view analyses', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'Scan summary');
@@ -2135,19 +2186,31 @@ test('a scan opened in one EBSD view is the scan every view analyses', async ({ 
   // The scan is hexagonal and tiny, unlike every practice dataset.
   await expect(page.locator('.summary-cards')).toContainText('hexagonal', { timeout: 30_000 });
 
+  // The dataset picker is held while a file is open, and says why. Held rather
+  // than hidden: a control that vanishes leaves a reader wondering where the
+  // datasets went, and a greyed one with a reason beside it does not.
+  const picker = page.locator('#rail-body').getByLabel('Practice dataset');
+  await expect(picker).toBeDisabled();
+  await expect(page.locator('#rail-body')).toContainText('Your own scan is open');
+
   // And the map, reached afterwards, is a map of that scan rather than of the
-  // practice dataset its own control still names.
+  // practice dataset its own control still names — including the picker, which
+  // opens held on a panel reached *after* the file was opened rather than
+  // enabled and contradicting the map beside it.
   await openPanel(page, 'IPF map');
   await expect(page.locator('#rail-body')).toContainText('synthetic_hex_grid.ang');
+  await expect(page.locator('#rail-body').getByLabel('Practice dataset')).toBeDisabled();
   await expect(page.locator('#stage')).toContainText('synthetic_hex_grid.ang', {
     timeout: 30_000,
   });
 
-  // Closing it anywhere closes it everywhere.
+  // Closing it anywhere closes it everywhere, and gives the picker back.
   await page.getByRole('button', { name: 'Close the scan', exact: true }).click();
   await expect(page.locator('#rail-body')).toContainText('No scan open', { timeout: 30_000 });
+  await expect(page.locator('#rail-body').getByLabel('Practice dataset')).toBeEnabled();
   await openPanel(page, 'Distributions');
   await expect(page.locator('#rail-body')).toContainText('No scan open');
+  await expect(page.locator('#rail-body').getByLabel('Practice dataset')).toBeEnabled();
 
   expect(browserErrors).toEqual([]);
 });
@@ -2744,9 +2807,19 @@ test('carries two grains picked off the map into the Variants workspace', async 
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'IPF map');
 
-  // The default dataset is the bicrystal, so opposite sides of the image are
-  // two different grains by construction — and one of them carries a real
-  // spread, since it holds the deformation gradient.
+  /*
+   * This test needs the bicrystal specifically: opposite sides of the image are
+   * then two different grains *by construction*, and one of them carries a real
+   * spread because it holds the deformation gradient. It says so rather than
+   * relying on it being what the workspace opens on — the workspace opens on
+   * the polycrystal, and a test that depended on that default silently would
+   * start picking two grains that merely happen to differ.
+   */
+  await page.locator('#rail-body').getByLabel('Practice dataset').selectOption('bicrystal_gradient');
+  await expect(page.locator('#stage')).toContainText('Bicrystal with a deformation gradient', {
+    timeout: 30_000,
+  });
+
   const picks = page.locator('#stage .picks');
   await expect(picks).toContainText('Parent grain');
   const image = page.locator('#stage .plot svg image');

@@ -236,7 +236,9 @@ export function mountFeedback({ drawer, body, config, context = () => ({}) }) {
       el('div.feedback__receipt', {}, [
         el('h2', { text: receipt.stored ? 'Thank you — it is on its way' : 'That did not save' }),
         ...markdown(payload.acknowledgement ?? ''),
-        el('p.field__help', { text: receipt.delivery_detail ?? '' }),
+        el('p.field__help', {
+          text: receipt.delivery_detail ?? '',
+        }),
         el('div.feedback__actions', {}, [
           el('button.button.button--primary', {
             type: 'button',

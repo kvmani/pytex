@@ -21,6 +21,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult, saveBlob } from '../core/result.js';
@@ -269,18 +270,20 @@ export function mount(context) {
     el('div.field', {}, [
       el('label.field__label', { text: 'View' }),
       operationSelect,
-      el('p.field__help', {
-        text: 'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals.',
-      }),
+      explainer(
+        'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals.',
+        { label: 'What each figure is' },
+      ),
     ]),
     formHost,
     runButton,
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Start with the Burgers wall: the parent and twelve variants as crystals, at one camera. The pole-figure examples show where the same variants point.',
-        }),
+        explainer(
+          'Start with the Burgers wall: the parent and twelve variants as crystals, at one camera. The pole-figure examples show where the same variants point.',
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},

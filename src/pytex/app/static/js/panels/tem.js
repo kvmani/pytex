@@ -26,6 +26,7 @@
  */
 
 import { append, el, formatNumber, markdown, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
@@ -417,12 +418,12 @@ export function mount(context) {
   context.rail.append(
     append(stepOne, [
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'Pick a practice plate to try the workflow on — each one is a real calculation with ' +
+        explainer(
+          'Pick a practice plate to try the workflow on — each one is a real calculation with ' +
             'the answer attached — or open a micrograph of your own. Your image stays on this ' +
             'machine; only the coordinates you click are sent.',
-        }),
+          { label: 'What these plates are' },
+        ),
         el(
           'div.examples',
           {},
@@ -433,7 +434,9 @@ export function mount(context) {
             ]),
           ),
         ),
-        el('p.field__help', { text: 'Or open your own pattern image:' }),
+        el('p.field__help', {
+          text: 'Or open your own pattern image:',
+        }),
         fileInput,
         galleryHost,
         galleryButton,
@@ -441,12 +444,12 @@ export function mount(context) {
     ]),
     append(stepTwo, [
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'Click the transmitted beam first, then the reflections. The beam is not a ' +
+        explainer(
+          'Click the transmitted beam first, then the reflections. The beam is not a ' +
             'reflection: it is the origin every spot is measured from, so an error there biases ' +
             'every d-spacing in the pattern.',
-        }),
+          { label: 'How to measure a plate' },
+        ),
         centreHost,
         solveHost,
         solveButton,
@@ -454,12 +457,12 @@ export function mount(context) {
     ]),
     append(stepThree, [
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'Every zone axis of this phase near the one on the beam, with how far it is, how ' +
+        explainer(
+          'Every zone axis of this phase near the one on the beam, with how far it is, how ' +
             'much its pattern shows, and whether the holder can reach it. Choose a destination ' +
             'from the list and it becomes the tilt target below.',
-        }),
+          { label: 'What this table lists' },
+        ),
         atlasHost,
         atlasButton,
       ]),
@@ -468,9 +471,10 @@ export function mount(context) {
     el('details.group', {}, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Complete scenarios you can run without a pattern of your own.',
-        }),
+        explainer(
+          'Complete scenarios you can run without a pattern of your own.',
+          { label: 'What these examples are' },
+        ),
         el(
           'div.examples',
           {},
@@ -972,8 +976,7 @@ export function mount(context) {
     if (!state.picks.centre) {
       centreHost.replaceChildren(
         el('p.field__help', {
-          text:
-            'Click the transmitted beam on the pattern to start. Every pick then appears here ' +
+          text: 'Click the transmitted beam on the pattern to start. Every pick then appears here ' +
             'as a coordinate you can read, type over, or nudge a fraction of a pixel at a time.',
         }),
       );
@@ -981,13 +984,13 @@ export function mount(context) {
     }
     centreHost.replaceChildren(
       el('div.field__label', { text: 'Picked coordinates' }),
-      el('p.field__help', {
-        text:
-          'The beam is not a reflection: it is the origin every spot is measured from, so an ' +
+      explainer(
+        'The beam is not a reflection: it is the origin every spot is measured from, so an ' +
           'error there biases every d-spacing at once while leaving the pattern ' +
           'self-consistent. Select a row to nudge it with the pad or the arrow keys; the ' +
           'overlay re-fits as you go.',
-      }),
+        { label: 'Why the beam is picked first' },
+      ),
       pickTable(),
       nudgePad(),
       centreButtonHost,
@@ -1317,8 +1320,7 @@ export function mount(context) {
       el('summary', { text: 'Coordinates as text' }),
       el('div.group__body', {}, [
         el('p.field__help', {
-          text:
-            'One "x, y" per line, transmitted beam first. Copy it to keep this measurement, ' +
+          text: 'One "x, y" per line, transmitted beam first. Copy it to keep this measurement, ' +
             'or paste a set in and apply it.',
         }),
         area,

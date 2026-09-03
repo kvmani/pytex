@@ -25,6 +25,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
@@ -71,23 +72,23 @@ export function mount(context) {
   });
 
   context.rail.append(
-    el('p.field__help', {
-      text:
-        'Enter the measured orientations of grains of the two phases — one parent and one ' +
+    explainer(
+      'Enter the measured orientations of grains of the two phases — one parent and one ' +
         'product per row — and the panel fits the relationship they show, names it if it ' +
         'is a catalogued one, and states it in integers.',
-    }),
+      { label: 'What this panel does' },
+    ),
     formHost,
     runButton,
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'The first is the canonical case with exact numbers, so the answer can be ' +
+        explainer(
+          'The first is the canonical case with exact numbers, so the answer can be ' +
             'checked; the second is the same grains with measurement noise, where the ' +
             'scatter starts to mean something.',
-        }),
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},

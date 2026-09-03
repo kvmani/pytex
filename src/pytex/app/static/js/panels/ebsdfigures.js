@@ -16,7 +16,7 @@
 import { call } from '../core/api.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
-import { scanControls, withScan } from '../core/ebsdscan.js';
+import { activeDataset, adoptForm, scanControls, withScan } from '../core/ebsdscan.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
 
@@ -49,7 +49,11 @@ export function mount(context) {
     onclick: () => run(),
   });
 
-  const scan = scanControls({ onChange: () => run(), showError: context.showError });
+  const scan = scanControls({
+    operation,
+    onChange: () => run(),
+    showError: context.showError,
+  });
 
   context.rail.append(
     scan.element,
@@ -63,7 +67,7 @@ export function mount(context) {
               'div.examples',
               {},
               examples.map((example) =>
-                el('button.example', { type: 'button', onclick: () => loadExample(example) }, [
+                el('button.example', { type: 'button', onclick: () => loadExample(example, { chosen: true }) }, [
                   el('strong', { text: example.title }),
                   el('span', { text: example.summary }),
                 ]),
@@ -76,17 +80,28 @@ export function mount(context) {
 
   context.stage.append(frame.element, details);
 
-  function renderControls(initial = {}) {
-    state.form = buildForm(operation, { initial });
+  /**
+   * Rebuild the form.
+   *
+   * `chosen` says whether these values came from a user action. It decides one
+   * thing: whether a `dataset` among them may move the whole EBSD workspace.
+   * Clicking an example is choosing its dataset; this panel opening itself on
+   * an example is not, and the workspace's own choice wins there.
+   */
+  function renderControls(initial = {}, { chosen = false } = {}) {
+    const dataset = activeDataset();
+    state.form = buildForm(operation, {
+      initial: chosen ? { dataset, ...initial } : { ...initial, dataset },
+    });
     formHost.replaceChildren(state.form.element);
-    for (const field of state.form.element.querySelectorAll('.field')) {
-      if (field.querySelector('[id^="ctl-scan_file-"]')) field.hidden = true;
-    }
+    // The scan file and the dataset are workspace-wide and presented beside
+    // the form, so their generated controls are hidden rather than shown twice.
+    adoptForm(state.form, { adoptDataset: chosen });
   }
 
-  function loadExample(example) {
+  function loadExample(example, { chosen = false } = {}) {
     state.teaches = example.teaches;
-    renderControls(example.request);
+    renderControls(example.request, { chosen });
     run();
   }
 

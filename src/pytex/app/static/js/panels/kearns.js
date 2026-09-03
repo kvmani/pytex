@@ -28,6 +28,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { download, renderResult } from '../core/result.js';
@@ -126,11 +127,11 @@ export function mount(context) {
     el('details.group', { open: examples.length > 0 }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'The three routes on one synthetic specimen whose true f is known. Run them in '
+        explainer(
+          'The three routes on one synthetic specimen whose true f is known. Run them in '
             + 'order and watch the same number come back three different ways.',
-        }),
+          { label: 'What these examples show' },
+        ),
         exampleList,
       ]),
     ]),
@@ -171,11 +172,11 @@ export function mount(context) {
       onchange: (event) => openFiles([...(event.target.files ?? [])]),
     });
     fileHost.replaceChildren(
-      el('p.field__help', {
-        text:
-          'Panalytical XRDML pole-figure files. Give the plane of each below, in the order '
+      explainer(
+        'Panalytical XRDML pole-figure files. Give the plane of each below, in the order '
           + 'they are listed here: the file records the diffraction angle, not the reflection.',
-      }),
+        { label: 'Which files, in which order' },
+      ),
       input,
       el('p.field__help', {
         text: state.files.length

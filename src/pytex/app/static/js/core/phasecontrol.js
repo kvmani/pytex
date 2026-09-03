@@ -17,6 +17,7 @@
  */
 
 import { el } from './dom.js';
+import { explainer } from './explainer.js';
 
 const CATALOGUE = { phases: [], pointGroups: [] };
 
@@ -164,9 +165,16 @@ export function phaseControl(parameter, value, onChange, id) {
   ]);
 
   const cifGroup = el('div.phase-cif', {}, [
-    el('span.field__help', {
-      text: 'Or load a .cif file with its lattice, symmetry, space group and atomic sites:',
-    }),
+    // A label, then the detail behind it. The sentence this replaces named all
+    // four things a CIF brings and ran to three lines in a rail this narrow,
+    // every time, for a control most sessions never touch.
+    el('span.field__label', { text: 'Or load a .cif file' }),
+    explainer(
+      'Its lattice, symmetry, space group and atomic sites replace the catalogue ' +
+        'phase entirely. The cell and symmetry controls above are disabled while one is ' +
+        'loaded, because they would then describe something the calculation is not using.',
+      { label: 'What a CIF replaces' },
+    ),
     cifInput,
     cifStatus,
     removeCif,

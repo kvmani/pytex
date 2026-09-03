@@ -25,6 +25,7 @@
  */
 
 import { call } from '../core/api.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { bandLabelNode, labelAngleDeg } from '../core/kikuchilabel.js';
@@ -88,13 +89,13 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'The crystal, and the camera that sees it' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'The beam is the laboratory z axis and the stage tilt axis is x; the camera sits '
+        explainer(
+          'The beam is the laboratory z axis and the stage tilt axis is x; the camera sits '
             + 'on −y. Tilting the stage tips the specimen normal towards the camera, and that '
             + 'normal then falls at gnomonic radius tan(90° − tilt + elevation) from the '
             + 'pattern centre — about 0.36 at the usual 70°.',
-        }),
+          { label: 'The geometry this assumes' },
+        ),
         formHost,
         runButton,
       ]),

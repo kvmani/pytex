@@ -152,6 +152,14 @@ class Parameter:
     group : str, optional
         Control-panel section this parameter belongs to, so a long form can be
         split without the frontend inventing a grouping.
+    group_collapsed : bool
+        Start this parameter's group closed. For a section that matters only
+        under one setting of another control -- the parallelisms of a custom
+        orientation relationship, which are ignored unless the relationship is
+        *Custom* -- so it costs one line of rail rather than five when it does
+        not apply. Declared on the parameter rather than on the group because
+        there is no group object: a group is whatever set of parameters names
+        it, and one member asking for it is enough.
     advanced : bool
         Hidden behind the panel's "Advanced" disclosure. Use for parameters
         with a good default that most users should not touch.
@@ -164,6 +172,7 @@ class Parameter:
     default: Any = None
     units: str | None = None
     group: str | None = None
+    group_collapsed: bool = False
     advanced: bool = False
 
     #: Discriminator the frontend switches on to choose a control widget.
@@ -186,6 +195,7 @@ class Parameter:
             payload["units"] = self.units
         if self.group is not None:
             payload["group"] = self.group
+            payload["groupCollapsed"] = self.group_collapsed
         payload.update(self._describe_extra())
         return payload
 

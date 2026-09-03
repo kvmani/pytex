@@ -679,8 +679,7 @@ function renderAbout(body, about) {
 
     el('h3', { text: 'This session' }),
     el('p.field__help', {
-      text:
-        `${app.manifest?.operations?.length ?? 0} operations across ${PANELS.length} ` +
+      text: `${app.manifest?.operations?.length ?? 0} operations across ${PANELS.length} ` +
         `panels in ${WORKSPACES.length} workspaces, running in the ` +
         `${app.shell?.shell ?? 'unknown'} shell.`,
     }),

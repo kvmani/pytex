@@ -7,6 +7,7 @@
  */
 
 import { el } from './dom.js';
+import { explainer } from './explainer.js';
 
 export const DEFAULT_MARKER_STYLE = Object.freeze({
   shape: 'circle',
@@ -131,9 +132,10 @@ export function markerStyleControl({ onChange }) {
   const root = el('details.group.appearance', {}, [
     el('summary', { text: 'Appearance' }),
     el('div.group__body', {}, [
-      el('p.field__help', {
-        text: 'These controls change only the drawing. Spot coordinates, indices, intensities and exports stay unchanged.',
-      }),
+      explainer(
+        'These controls change only the drawing. Spot coordinates, indices, intensities and exports stay unchanged.',
+        { label: 'What these controls change' },
+      ),
       selectField(
         'Spot shape',
         'Use shape as a second visual channel or to match a publication convention.',

@@ -15,6 +15,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
@@ -94,9 +95,10 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Run the first two in order: the same zone axis with 24 variants and then with one.',
-        }),
+        explainer(
+          'Run the first two in order: the same zone axis with 24 variants and then with one.',
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},

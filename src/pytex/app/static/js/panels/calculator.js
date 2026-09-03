@@ -13,6 +13,7 @@
  */
 
 import { el, formatNumber } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { renderResult } from '../core/result.js';
 import { call } from '../core/api.js';
@@ -74,16 +75,19 @@ export function mount(context) {
     el('div.field', {}, [
       el('label.field__label', { text: 'Calculation' }),
       chooser,
-      el('p.field__help', { text: state.operation?.summary ?? '' }),
+      el('p.field__help', {
+        text: state.operation?.summary ?? '',
+      }),
     ]),
     formHost,
     runButton,
     el('details.group', { open: examples.length > 0 }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Complete, runnable cases on the built-in materials. Each one lands you in a working state you can then edit.',
-        }),
+        explainer(
+          'Complete, runnable cases on the built-in materials. Each one lands you in a working state you can then edit.',
+          { label: 'What these examples are' },
+        ),
         exampleList,
       ]),
     ]),

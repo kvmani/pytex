@@ -23,6 +23,7 @@
  */
 
 import { call } from '../core/api.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import * as log from '../core/logbook.js';
@@ -99,11 +100,11 @@ export function mount(context) {
     el('div.field', {}, [
       el('label.field__label', { text: 'View' }),
       viewSelect,
-      el('p.field__help', {
-        text:
-          'The pattern itself, the thickness its fringes measure, and the Laue-zone rings that ' +
+      explainer(
+        'The pattern itself, the thickness its fringes measure, and the Laue-zone rings that ' +
           'measure the repeat along the beam.',
-      }),
+        { label: 'What each view is' },
+      ),
     ]),
     formHost,
     runButton,
@@ -111,11 +112,11 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text:
-            'The first two are the same crystal and thickness at two convergence angles — the ' +
+        explainer(
+          'The first two are the same crystal and thickness at two convergence angles — the ' +
             'one parameter that decides whether CBED can measure a thickness at all.',
-        }),
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},
@@ -347,7 +348,9 @@ export function mount(context) {
     const width = 900;
     const height = 520;
     if (!points.length) {
-      frame.setContent(el('p.field__help', { text: 'No fringe minima to plot.' }));
+      frame.setContent(el('p.field__help', {
+                         text: 'No fringe minima to plot.',
+                       }));
       return;
     }
 
@@ -564,12 +567,12 @@ function appearanceControls(appearance, onChange) {
           value: appearance.gamma,
           oninput: change('gamma'),
         }),
-        el('p.field__help', {
-          text:
-            'Below 1 lifts the faint outer fringes, which are orders of magnitude weaker than ' +
+        explainer(
+          'Below 1 lifts the faint outer fringes, which are orders of magnitude weaker than ' +
             'the disc centres. It changes the display only; the numbers in the table are the ' +
             'computed intensities.',
-        }),
+          { label: 'How the contrast curve works' },
+        ),
       ]),
       toggle('cbed-outlines', 'Disc outlines', appearance.outlines, change('outlines')),
       toggle('cbed-labels', 'Reflection labels', appearance.labels, change('labels')),

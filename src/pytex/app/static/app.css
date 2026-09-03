@@ -898,6 +898,105 @@ table.result tbody tr:hover {
   letter-spacing: 0.01em;
 }
 
+/* The compact field: label and control on one line.
+
+   A stacked label costs a whole line of rail for every parameter, and for the
+   short controls it is a line spent on nothing — a number, a picker and a row
+   of index boxes are all narrower than the rail, so the space beside them was
+   already empty. Putting the label there halves the field.
+
+   Only the *short* kinds take it, which `controls.js` decides: text areas, JSON
+   editors and repeatable index lists still stack, because their control needs
+   the full width and a label squeezed beside it would push the value into a
+   column too narrow to read.
+
+   Help and error text keep a line of their own — `flex-basis: 100%` — so the
+   popover reads as prose rather than as a third column. */
+.field--compact {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+}
+
+.field--compact > .field__label {
+  flex: 1 1 6rem;
+  min-width: 0;
+}
+
+/* The type selectors are carried here for the reason the index boxes carry
+   theirs: the base rule that sets `width: 100%` is an attribute selector, which
+   outweighs a bare class, so a plain `.field--compact > input` loses to it and
+   every number box stretches to the rail with its label stranded above. */
+.field--compact > input[type="number"],
+.field--compact > input[type="text"],
+.field--compact > input[type="search"],
+.field--compact > select {
+  flex: 0 0 auto;
+  width: var(--field-compact-width, 7.5rem);
+}
+
+/* A picker takes the room its label leaves rather than a fixed width. A fixed
+   one is tidier in a column of short labels and wrong the moment an option is
+   long — "Bicrystal with a deformation gradient" is a dataset a user picks by
+   name, and a native select gives no usable ellipsis to read it through. */
+.field--compact > select {
+  flex: 1 1 9rem;
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Free text is the one compact kind whose value has no natural length, so it
+   takes what the label leaves rather than a fixed width. */
+.field--compact > input[type="text"],
+.field--compact > input[type="search"] {
+  flex: 1 1 8rem;
+  width: auto;
+  min-width: 0;
+}
+
+.field--compact > .indices {
+  flex: 0 0 auto;
+}
+
+.field--compact > .field__help,
+.field--compact > .field__error {
+  flex: 1 1 100%;
+}
+
+/* A control narrow enough to sit beside its label is narrow enough to be
+   crowded by the stepper arrows a number input draws inside itself, so the
+   value gets the room and the arrows go. They were never the way anyone typed
+   a lattice parameter. */
+.field--compact > input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.field--compact > input[type="number"]::-webkit-outer-spin-button,
+.field--compact > input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* Narrow rails put the label back on top rather than shrinking the control to
+   a width no value fits in. */
+@media (max-width: 60rem) {
+  .field--compact {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .field--compact > input[type="number"],
+  .field--compact > input[type="text"],
+  .field--compact > input[type="search"],
+  .field--compact > select {
+    width: 100%;
+  }
+}
+
 .field__help-button {
   appearance: none;
   border: 1px solid var(--line-strong);
@@ -927,6 +1026,63 @@ table.result tbody tr:hover {
   padding: 0.5rem 0.625rem;
   border-radius: var(--radius);
   max-width: 44ch;
+}
+
+/* Panel prose, collapsed. See js/core/explainer.js for why it collapses.
+
+   Closed, an explainer is one muted line the height of a label — deliberately
+   quieter than a group summary, because it is optional reading and a group is
+   not. Open, it is the same paragraph the panel used to show unconditionally,
+   in the same type as the field help popover, so the two kinds of help do not
+   look like two kinds of thing. */
+.explainer {
+  margin: 0;
+}
+
+.explainer__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  cursor: pointer;
+  list-style: none;
+  padding: 0.125rem 0;
+  user-select: none;
+}
+
+.explainer__summary::-webkit-details-marker {
+  display: none;
+}
+
+.explainer__summary:hover,
+.explainer[open] > .explainer__summary {
+  color: var(--accent);
+}
+
+.explainer__mark {
+  font-size: 0.875rem;
+  line-height: 1;
+  flex: none;
+}
+
+.explainer__body {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  background: var(--bg-sunken);
+  padding: 0.5rem 0.625rem;
+  border-radius: var(--radius);
+  max-width: 44ch;
+}
+
+.explainer__body > p {
+  margin: 0;
+}
+
+.explainer__body > p + p,
+.explainer__body > ul {
+  margin-top: 0.5rem;
 }
 
 .field__error {

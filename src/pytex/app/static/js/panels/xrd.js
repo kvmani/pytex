@@ -1,6 +1,7 @@
 /** Powder XRD: an indexed diffractogram whose peaks remain inspectable. */
 
 import { call } from '../core/api.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { plotFrame } from '../core/plotframe.js';
@@ -59,9 +60,10 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'These standards isolate extinction rules, wavelength, doublet splitting and hexagonal metrics.',
-        }),
+        explainer(
+          'These standards isolate extinction rules, wavelength, doublet splitting and hexagonal metrics.',
+          { label: 'What these examples show' },
+        ),
         el('div.examples', {}, examples.map((example) =>
           el('button.example', { type: 'button', onclick: () => loadExample(example) }, [
             el('strong', { text: example.title }),
@@ -198,9 +200,10 @@ function appearanceControls(style, onChange) {
   ]);
 
   body.append(
-    el('p.field__help', {
-      text: 'Display controls redraw the existing profile. They never change peak positions, integrated intensities or exports.',
-    }),
+    explainer(
+      'Display controls redraw the existing profile. They never change peak positions, integrated intensities or exports.',
+      { label: 'What these controls change' },
+    ),
     colorControl('Profile colour', 'lineColor', 'Line and optional area-fill colour.'),
     colorControl('Reflection-stick colour', 'stickColor', 'Independent colour for indexed families.'),
     el('label.field', {}, [

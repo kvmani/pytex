@@ -16,6 +16,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { buildForm } from '../core/controls.js';
 import {
   applyMatrix,
@@ -210,9 +211,10 @@ function appearanceControl(appearance, scene, { onChange, onReset }) {
   return el('details.group.appearance', {}, [
     el('summary', { text: 'Object properties' }),
     el('div.group__body', {}, [
-      el('p.field__help', {
-        text: 'Presentation only: these controls redraw existing geometry. Positions, planes, indices and exported data do not change.',
-      }),
+      explainer(
+        'Presentation only: these controls redraw existing geometry. Positions, planes, indices and exported data do not change.',
+        { label: 'What these controls change' },
+      ),
       el('div.object-toggle-grid', {}, [
         appearanceToggle('Atoms', appearance, 'showAtoms', onChange),
         appearanceToggle('Bonds', appearance, 'showBonds', onChange),
@@ -459,9 +461,10 @@ export function mount(context) {
     el('details.group', { open: true }, [
       el('summary', { text: 'Try an example' }),
       el('div.group__body', {}, [
-        el('p.field__help', {
-          text: 'Structures chosen so that one rotation makes a crystallographic point obvious.',
-        }),
+        explainer(
+          'Structures chosen so that one rotation makes a crystallographic point obvious.',
+          { label: 'What these examples show' },
+        ),
         el(
           'div.examples',
           {},

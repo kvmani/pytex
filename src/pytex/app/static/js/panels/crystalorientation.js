@@ -30,6 +30,7 @@
  */
 
 import { el, formatNumber, svg } from '../core/dom.js';
+import { explainer } from '../core/explainer.js';
 import { bandLabelNode, labelAngleDeg } from '../core/kikuchilabel.js';
 import { applyMatrix, applyTranspose } from '../core/rotation3.js';
 import { call } from '../core/api.js';
@@ -304,12 +305,12 @@ export function orientationDock({ camera, setCamera, request, showError }) {
   const controls = el('details.group.orient-controls', { open: true }, [
     el('summary', { text: 'Orientation' }),
     el('div.group__body', {}, [
-      el('p.field__help', {
-        text:
-          'The screen is the specimen frame: RD points right, TD up, and ND out of the screen. '
+      explainer(
+        'The screen is the specimen frame: RD points right, TD up, and ND out of the screen. '
           + 'Turning the structure and setting these angles are the same act, so the numbers '
           + 'follow the drag and the drag follows the numbers.',
-      }),
+        { label: 'Which frame you are looking at' },
+      ),
       el('label.field', {}, [
         el('span.field__label', { text: 'Euler convention' }),
         conventionSelect,

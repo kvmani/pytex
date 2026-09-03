@@ -40,7 +40,13 @@ from typing import Any
 import numpy as np
 
 from pytex.adapters.scan_files import SCAN_FILE_SUFFIXES
-from pytex.app.ebsd_gallery import GALLERY, build_map, entry_ids, get_entry
+from pytex.app.ebsd_gallery import (
+    DEFAULT_ENTRY_ID,
+    GALLERY,
+    build_map,
+    entry_ids,
+    get_entry,
+)
 from pytex.app.errors import InvalidInputError, UnsupportedRequestError
 from pytex.app.logbook import APP_LOG
 from pytex.app.registry import (
@@ -611,7 +617,7 @@ def _source_parameters() -> tuple[Parameter, ...]:
                 "file of your own is open."
             ),
             options=tuple((entry.id, entry.title, entry.summary) for entry in GALLERY),
-            default=GALLERY[0].id,
+            default=DEFAULT_ENTRY_ID,
         ),
         ObjectParameter(
             name="scan_file",
