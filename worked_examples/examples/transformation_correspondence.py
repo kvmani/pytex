@@ -761,6 +761,158 @@ RATIONALIZATION_COSTS_THE_KS_GT_SEPARATION = WorkedExample(
 )
 
 
+TWIN_IS_SIGMA_3 = WorkedExample(
+    id="or-fcc-twin-is-sigma-3",
+    title="The coherent fcc twin is 60 degrees about <111> with four variants",
+    domain="transformation",
+    scenario=(
+        "The coherent twin of a face-centred cubic metal is stated as the "
+        "parallelism (111) || (111) with [1-10] || [-110] -- the two-fold "
+        "rotation about the twin-plane normal. Three numbers are computed from "
+        "that statement alone: the raw rotation angle, the angle after cubic "
+        "symmetry reduction, and how many crystallographically distinct twin "
+        "orientations one parent grain can produce. The reduced angle is the "
+        "Sigma 3 coincidence-site misorientation an EBSD map reports for an "
+        "annealing twin, and the multiplicity is one twin per close-packed "
+        "plane."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=(
+        "twin = OrientationRelationship.from_fcc_twin_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "result = np.array(\n"
+        "    [\n"
+        "        twin.parent_to_child_rotation.angle_deg,\n"
+        "        twin.misorientation().angle_deg,\n"
+        "        float(len(twin.generate_variants())),\n"
+        "    ]\n"
+        ")"
+    ),
+    expected=[180.0, 60.0, 4.0],
+    unit="deg, deg, count",
+    tolerance=1e-6,
+    reference=(
+        "A twin operation is the two-fold rotation about the twin-plane normal, "
+        "so the raw angle is 180 deg exactly. Under the cubic rotation group "
+        "that class contains the 60 deg rotation about <111>, which is the "
+        "Sigma 3 coincidence-site lattice misorientation of Ranganathan's "
+        "construction. The four {111} planes of the cubic lattice give four "
+        "distinct twin orientations. All three are fixed by symmetry, not by "
+        "any measurement."
+    ),
+    citation=(
+        "Ranganathan, Acta Cryst. 21 (1966) 197 (CSL construction); "
+        "Randle, The Role of the Coincidence Site Lattice in Grain Boundary "
+        "Engineering (1996)."
+    ),
+    symbols=(_HKL, _UVW),
+    see_also=(_OR_CONCEPT, _API),
+)
+
+
+CUBE_ON_CUBE_IS_THE_IDENTITY = WorkedExample(
+    id="or-cube-on-cube-is-the-identity",
+    title="Cube-on-cube leaves every parent direction where it was",
+    domain="transformation",
+    scenario=(
+        "A coherent cubic precipitate on a cubic matrix shares all three "
+        "crystal axes: (001) || (001) with [100] || [100]. The relationship "
+        "that statement implies must therefore be the identity rotation, with "
+        "one variant and no misorientation. The computed quantities are the "
+        "rotation angle, the variant count, and the child components of the "
+        "parent direction [112], which must come back as [112] unchanged."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=(
+        "cube = OrientationRelationship.from_cube_on_cube_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "mapped = cube.map_direction_to_child(\n"
+        "    CrystalDirection(np.array([1.0, 1.0, 2.0]), phase=austenite)\n"
+        ")\n"
+        "result = np.concatenate(\n"
+        "    [\n"
+        "        [cube.parent_to_child_rotation.angle_deg, float(len(cube.generate_variants()))],\n"
+        "        mapped.rational_indices.astype(float),\n"
+        "    ]\n"
+        ")"
+    ),
+    expected=[0.0, 1.0, 1.0, 1.0, 2.0],
+    unit="deg, count, indices",
+    tolerance=1e-9,
+    reference=(
+        "Holding all three axes of one cubic lattice parallel to all three of "
+        "another leaves no rotation: the parent-to-child rotation is the "
+        "identity by construction, the cubic point group maps its single "
+        "variant onto itself, and every direction keeps its indices. An "
+        "analytic identity."
+    ),
+    citation=(
+        "Porter, Easterling and Sherif, Phase Transformations in Metals and "
+        "Alloys, 3rd ed., ch. 3 (coherent cubic precipitates)."
+    ),
+    symbols=(_UVW,),
+    see_also=(_OR_CONCEPT, _API),
+)
+
+
+CUSTOM_STATEMENT_REPRODUCES_KS = WorkedExample(
+    id="or-custom-statement-reproduces-ks",
+    title="Kurdjumov-Sachs stated as parallelisms is Kurdjumov-Sachs",
+    domain="transformation",
+    scenario=(
+        "``from_parallel_plane_direction`` is the surface behind every "
+        "user-defined orientation relationship: a parent plane, a child plane, "
+        "a parent direction and a child direction, and nothing else. Typing the "
+        "published Kurdjumov-Sachs statement into it -- (111) || (011) with "
+        "[-101] || [-1-11] -- must give the same object the catalogued "
+        "constructor gives. Two quantities check that: the misorientation angle "
+        "and the variant count, compared against the named relationship built "
+        "beside it."
+    ),
+    setup=CORRESPONDENCE_SETUP,
+    code=(
+        "named = OrientationRelationship.from_kurdjumov_sachs_correspondence(\n"
+        "    parent_phase=austenite, child_phase=ferrite\n"
+        ")\n"
+        "stated = OrientationRelationship.from_parallel_plane_direction(\n"
+        '    name="custom",\n'
+        "    parent_plane=CrystalPlane(\n"
+        "        MillerIndex(np.array([1, 1, 1]), phase=austenite), phase=austenite\n"
+        "    ),\n"
+        "    child_plane=CrystalPlane(\n"
+        "        MillerIndex(np.array([0, 1, 1]), phase=ferrite), phase=ferrite\n"
+        "    ),\n"
+        "    parent_direction=CrystalDirection(np.array([-1.0, 0.0, 1.0]), phase=austenite),\n"
+        "    child_direction=CrystalDirection(np.array([-1.0, -1.0, 1.0]), phase=ferrite),\n"
+        ")\n"
+        "result = np.array(\n"
+        "    [\n"
+        "        stated.misorientation().angle_deg - named.misorientation().angle_deg,\n"
+        "        float(len(stated.generate_variants())),\n"
+        "        stated.misorientation().angle_deg,\n"
+        "    ]\n"
+        ")"
+    ),
+    expected=[0.0, 24.0, 42.85],
+    unit="deg, count, deg",
+    tolerance=5e-3,
+    reference=(
+        "The named constructor is defined as this statement, so the difference "
+        "is zero as an identity rather than as an agreement. The 24 variants "
+        "and the 42.85 deg representative are the published values for "
+        "Kurdjumov-Sachs."
+    ),
+    citation=(
+        "Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Morito et al., "
+        "Acta Mater. 51 (2003) 1789."
+    ),
+    symbols=(_HKL, _UVW),
+    see_also=(_OR_CONCEPT, _API),
+)
+
+
 GROUP = ExampleGroup(
     slug="transformation",
     title="Orientation-relationship correspondence",
@@ -784,5 +936,8 @@ GROUP = ExampleGroup(
         VARIANT_PARALLELISMS_ARE_THE_VARIANTS_OWN,
         OR_DOSSIER_AGREES_WITH_ITS_SOURCES,
         RATIONALIZATION_COSTS_THE_KS_GT_SEPARATION,
+        TWIN_IS_SIGMA_3,
+        CUBE_ON_CUBE_IS_THE_IDENTITY,
+        CUSTOM_STATEMENT_REPRODUCES_KS,
     ),
 )

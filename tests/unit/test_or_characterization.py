@@ -187,7 +187,24 @@ class TestParallelismExtraction:
 
 
 class TestCatalogDispatch:
-    def test_cubic_cubic_resolves_to_the_fcc_bcc_family(self) -> None:
+    def test_cubic_cubic_resolves_to_the_fcc_bcc_family_and_the_two_non_transformations(
+        self,
+    ) -> None:
+        """Cubic-cubic ranks against more than the martensite family.
+
+        The fcc->bcc entries are the transformation relationships and are the
+        reason this catalog exists. Cube-on-cube and the coherent twin are not
+        transformations at all -- one is a coherent precipitate sharing its
+        matrix's axes, the other is a Sigma 3 boundary -- but they are the two
+        commonest ways two cubic orientations are related, and without them a
+        measured Sigma 3 was reported as a number of degrees away from Bain.
+
+        They are *added* to the family rather than replacing it, which is what
+        `test_exact_kurdjumov_sachs_pairs_are_identified_conclusively` and the
+        deviation tests below go on to check: a genuine martensite pair still
+        ranks where it did.
+        """
+
         parent, child = _fcc_bcc()
         catalog = default_relationship_catalog(parent_phase=parent, child_phase=child)
         assert catalog is not None
@@ -197,6 +214,8 @@ class TestCatalogDispatch:
             "nishiyama_wassermann",
             "greninger_troiano",
             "pitsch",
+            "cube_on_cube",
+            "fcc_twin",
         }
 
     def test_cubic_hexagonal_resolves_to_burgers_and_shoji_nishiyama(self) -> None:

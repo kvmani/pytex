@@ -41,11 +41,12 @@ from pytex.app.registry import (
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import (
-    _RELATIONSHIP_CONSTRUCTORS,
     _RELATIONSHIPS,
+    custom_relationship_parameters,
     direction_label,
     phase_parameter,
     relationship_name,
+    resolve_relationship,
 )
 
 __all__: tuple[str, ...] = ()
@@ -92,23 +93,6 @@ _SPOT_COLUMNS: tuple[Column, ...] = (
     ),
     Column("double_diffraction", "Double diffraction"),
 )
-
-
-def _relationship(name: str, parent: Any, child: Any) -> Any:
-    from pytex.core.transformation import OrientationRelationship
-
-    constructor = getattr(OrientationRelationship, _RELATIONSHIP_CONSTRUCTORS[name])
-    try:
-        return constructor(parent_phase=parent, child_phase=child)
-    except (ValueError, TypeError) as error:
-        raise InvalidInputError(
-            f"The {relationship_name(name)} relationship does not apply to these phases: {error}",
-            field="relationship",
-            hint=(
-                "The fcc-to-bcc relationships need a cubic parent and a cubic child; Burgers "
-                "needs a cubic parent and a hexagonal child."
-            ),
-        ) from error
 
 
 def _variant_selection(text: str | None, available: int) -> tuple[int, ...] | None:
@@ -188,10 +172,16 @@ def _variant_selection(text: str | None, available: int) -> tuple[int, ...] | No
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
-            help_text="Which relationship generates the product variants.",
+            help_text=(
+                "Which relationship generates the variants. **Custom** takes the "
+            "parallelisms from the boxes below instead of from this list; everything "
+            "downstream — the variants, the packets, the boundaries, the composite "
+            "pattern — is derived from them exactly as it is for a named relationship."
+            ),
             options=_RELATIONSHIPS,
             default="kurdjumov_sachs",
         ),
+        *custom_relationship_parameters(),
         IndicesParameter(
             name="zone_axis",
             label="Parent zone axis [uvw]",
@@ -308,7 +298,7 @@ def _composite_saed(request: dict[str, Any]) -> dict[str, Any]:
 
     parent_spec, parent_phase = phase_from_request(request["phase"])
     child_spec, child_phase = phase_from_request(request["child_phase"])
-    relationship = _relationship(str(request["relationship"]), parent_phase, child_phase)
+    relationship = resolve_relationship(request, parent_phase, child_phase)
     available = len(relationship.generate_variants())
     variants = _variant_selection(request.get("variants"), available)
     zone_indices = tuple(request["zone_axis"])

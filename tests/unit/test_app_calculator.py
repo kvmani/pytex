@@ -587,3 +587,109 @@ class TestOrientationRelationships:
                 relationship="kurdjumov_sachs",
             )
         assert excinfo.value.details["field"] == "relationship"
+
+    def test_cube_on_cube_is_one_variant_and_no_misorientation(self) -> None:
+        """Parallel axes: the answer is fixed by the statement, not by a run."""
+
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="cube_on_cube",
+        )
+        assert result["data"]["variant_count"] == 1
+        assert float(result["data"]["misorientation_angle_deg"]) == pytest.approx(0.0, abs=1e-9)
+        planes = result["data"]["parallel_planes"][0]
+        assert planes["parent"] == "(001)"
+        assert planes["child"] == "(001)"
+
+    def test_the_coherent_twin_is_sigma_3_with_four_variants(self) -> None:
+        """60 degrees about <111> and one twin per {111}: the Sigma 3 boundary.
+
+        Independent of this code: the coherent FCC twin is the two-fold rotation
+        about the twin-plane normal, which cubic symmetry reduces to the Sigma 3
+        misorientation of 60 degrees about <111>, and there are four {111}
+        planes to twin on.
+        """
+
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="fcc_twin",
+        )
+        assert result["data"]["variant_count"] == 4
+        assert float(result["data"]["misorientation_angle_deg"]) == pytest.approx(60.0, abs=1e-6)
+        planes = result["data"]["parallel_planes"][0]
+        assert planes["parent"] == "(111)"
+        assert planes["child"] == "(111)"
+
+    def test_a_custom_statement_of_kurdjumov_sachs_reproduces_kurdjumov_sachs(self) -> None:
+        """The custom path is the named path, checked by making it say the same thing.
+
+        Kurdjumov-Sachs is (111) || (011) with [-101] || [-1-11]. Typed into the
+        custom boxes it must give the same 24 variants at the same 42.85 degrees
+        as the catalogued constructor -- otherwise "custom" is a second, weaker
+        way of stating a relationship rather than the same way.
+        """
+
+        named = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="kurdjumov_sachs",
+        )
+        custom = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="custom",
+            custom_parent_plane=(1, 1, 1),
+            custom_child_plane=(0, 1, 1),
+            custom_parent_direction=(-1, 0, 1),
+            custom_child_direction=(-1, -1, 1),
+        )
+        assert custom["data"]["variant_count"] == named["data"]["variant_count"] == 24
+        assert float(custom["data"]["misorientation_angle_deg"]) == pytest.approx(
+            float(named["data"]["misorientation_angle_deg"]), abs=1e-9
+        )
+
+    def test_a_custom_statement_can_express_a_relationship_no_constructor_names(self) -> None:
+        """The point of the custom path: an OR that is not on the list.
+
+        (110) || (111) with [001] || [1-10] is not one of the catalogued
+        relationships. What is checked is that it is *carried through* -- the
+        parallelisms come back as stated, and a variant set is generated from
+        them -- not that its angle equals any particular number.
+        """
+
+        result = call(
+            "calc.orientation_relationship",
+            phase={"builtin": "austenite_fcc"},
+            child_phase={"builtin": "fe_bcc"},
+            relationship="custom",
+            custom_parent_plane=(1, 1, 0),
+            custom_child_plane=(1, 1, 1),
+            custom_parent_direction=(0, 0, 1),
+            custom_child_direction=(1, -1, 0),
+        )
+        planes = result["data"]["parallel_planes"][0]
+        assert planes["parent"] == "(110)"
+        assert planes["child"] == "(111)"
+        assert result["data"]["variant_count"] >= 1
+
+    def test_a_degenerate_custom_statement_is_refused_on_the_control(self) -> None:
+        """A direction along its own plane normal leaves no rotation to fix."""
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            call(
+                "calc.orientation_relationship",
+                phase={"builtin": "austenite_fcc"},
+                child_phase={"builtin": "fe_bcc"},
+                relationship="custom",
+                custom_parent_plane=(1, 1, 1),
+                custom_child_plane=(0, 1, 1),
+                custom_parent_direction=(1, 1, 1),
+                custom_child_direction=(-1, -1, 1),
+            )
+        assert excinfo.value.details["field"] == "relationship"

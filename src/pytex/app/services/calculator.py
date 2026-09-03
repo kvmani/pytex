@@ -1514,6 +1514,18 @@ def _interphase_angles(request: dict[str, Any]) -> dict[str, Any]:
 #: Names and defining parallelisms follow the literature they are attributed to;
 #: the constructors live in :mod:`pytex.core.transformation`, so the application
 #: never re-derives a relationship it can look up.
+#: The identifier of the user-defined relationship.
+#:
+#: Not a constructor on :class:`OrientationRelationship` but a *statement* the
+#: user makes -- a parent plane parallel to a child plane, a parent direction
+#: parallel to a child direction -- which is what every named relationship in
+#: the table below also is. It is resolved by :func:`resolve_relationship`
+#: through the same ``from_parallel_plane_direction`` constructor the named ones
+#: use, so a custom relationship is not a second class of object: variants,
+#: packets, intervariant boundaries and composite diffraction all work on it
+#: unchanged.
+CUSTOM_RELATIONSHIP = "custom"
+
 _RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
     (
         "kurdjumov_sachs",
@@ -1537,6 +1549,21 @@ _RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
         "Burgers (bcc to hcp)",
         "{110}β ∥ {0001}α with ⟨111⟩β ∥ ⟨11-20⟩α; the titanium and zirconium relationship.",
     ),
+    (
+        "cube_on_cube",
+        "Cube-on-cube (cubic to cubic)",
+        "(001) ∥ (001) with [100] ∥ [100]; parallel axes, the identity rotation; 1 variant.",
+    ),
+    (
+        "fcc_twin",
+        "Coherent twin (fcc, Σ3)",
+        "(111) ∥ (111) with [1-10] ∥ [-110]; 60° about ⟨111⟩ after reduction; 4 variants.",
+    ),
+    (
+        CUSTOM_RELATIONSHIP,
+        "Custom — your own parallelisms",
+        "State a plane pair and a direction pair yourself; everything else is derived from them.",
+    ),
 )
 
 #: How each relationship is written in prose and in a title.
@@ -1549,6 +1576,10 @@ _RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
 RELATIONSHIP_NAMES: dict[str, str] = {
     identifier: label.split(" (")[0] for identifier, label, _ in _RELATIONSHIPS
 } | {
+    # A sentence says "the custom relationship", not "the Custom - your own
+    # parallelisms relationship". The picker needs the longer label to explain
+    # itself; prose needs the noun.
+    CUSTOM_RELATIONSHIP: "custom",
     # Catalogued for comparison but not offered as a construction, so it has no
     # entry among the options above. It still reaches the screen: every
     # characterization of a bcc-to-hcp pair ranks it as the runner-up to
@@ -1572,7 +1603,204 @@ _RELATIONSHIP_CONSTRUCTORS = {
     "greninger_troiano": "from_greninger_troiano_correspondence",
     "pitsch": "from_pitsch_correspondence",
     "burgers": "from_burgers_correspondence",
+    "cube_on_cube": "from_cube_on_cube_correspondence",
+    "fcc_twin": "from_fcc_twin_correspondence",
 }
+
+
+def custom_relationship_parameters() -> tuple[Parameter, ...]:
+    """The four index rows that define a relationship the user states themselves.
+
+    Purpose
+    -------
+    A published orientation relationship is a pair of parallelisms, and the
+    named entries in :data:`_RELATIONSHIPS` are nothing more than those pairs
+    written down once. These parameters let a user write down a pair that is not
+    on the list -- one from a paper, one they have just fitted, or one they want
+    to test a hypothesis with -- and get the same treatment: the misorientation,
+    every crystallographically distinct variant, the packet grouping, the
+    intervariant boundaries, and the composite diffraction pattern.
+
+    Declared once and shared by every operation that offers the relationship
+    picker, so a custom relationship means the same thing in the variant table
+    as it does in the composite pattern.
+
+    When to use
+    -----------
+    Only when ``relationship`` is ``"custom"``. They are ignored otherwise, and
+    grouped behind their own disclosure so they cost nothing on screen while the
+    relationship is a named one.
+
+    Returns
+    -------
+    tuple of Parameter
+        Parent plane, child plane, parent direction, child direction.
+    """
+
+    group = "Custom relationship"
+    return (
+        IndicesParameter(
+            name="custom_parent_plane",
+            label="Parent plane (hkl)",
+            help_text=(
+                "The parent plane held parallel to the child plane. With the direction pair "
+                "below, this is the whole statement of the relationship: Kurdjumov-Sachs is "
+                "(111) here, (011) as the child plane, [-101] and [-1-11] as the directions."
+            ),
+            default=(1, 1, 1),
+            group=group,
+        ),
+        IndicesParameter(
+            name="custom_child_plane",
+            label="Child plane (hkl)",
+            help_text="The child plane brought parallel to the parent plane above.",
+            default=(0, 1, 1),
+            group=group,
+        ),
+        IndicesParameter(
+            name="custom_parent_direction",
+            label="Parent direction [uvw]",
+            help_text=(
+                "The parent direction held parallel to the child direction, fixing the rotation "
+                "that remains about the common plane normal. It need not lie exactly in the "
+                "plane: the normal component is removed, so a literature statement that is only "
+                "approximately consistent still yields a proper rotation."
+            ),
+            default=(-1, 0, 1),
+            group=group,
+        ),
+        IndicesParameter(
+            name="custom_child_direction",
+            label="Child direction [uvw]",
+            help_text="The child direction brought parallel to the parent direction above.",
+            default=(-1, -1, 1),
+            group=group,
+        ),
+    )
+
+
+def custom_relationship_request(request: dict[str, Any]) -> dict[str, Any]:
+    """The ``custom_*`` fields of a request, ready to forward to a sub-request.
+
+    Purpose
+    -------
+    Some operations compute by calling another operation's handler with a
+    hand-built request -- the variant figure draws from the variant pole figure
+    rather than reimplementing it -- and a hand-built request lists its keys.
+    A custom relationship adds four more, and a forwarder that does not know
+    about them turns "Custom" into a missing field at the far end.
+
+    Returning them as a mapping to splat in means a forwarder cannot list three
+    of the four, and a fifth added later reaches every forwarder at once.
+    """
+
+    return {
+        parameter.name: request[parameter.name]
+        for parameter in custom_relationship_parameters()
+        if parameter.name in request
+    }
+
+
+def resolve_relationship(
+    request: dict[str, Any],
+    parent_phase: Any,
+    child_phase: Any,
+    *,
+    name: str | None = None,
+) -> Any:
+    """Build the relationship an operation was asked for, named or custom.
+
+    Purpose
+    -------
+    The one place that turns the ``relationship`` choice into an
+    :class:`~pytex.core.transformation.OrientationRelationship`. Three services
+    offer the same picker -- the calculator, the variant tools, and composite
+    diffraction -- and each used to carry its own copy of the lookup, which is
+    three places for an option to go missing from.
+
+    Parameters
+    ----------
+    request : dict
+        The validated request. Read for ``relationship`` unless ``name`` says
+        otherwise, and for the ``custom_*`` index rows when the choice is
+        ``"custom"``.
+    parent_phase, child_phase : Phase
+        The two phases the relationship is built between.
+    name : str, optional
+        Use this identifier instead of the one in the request.
+
+    Returns
+    -------
+    OrientationRelationship
+
+    Raises
+    ------
+    InvalidInputError
+        When a named relationship does not apply to these phases, or when a
+        custom statement does not define a rotation. Both name ``relationship``
+        so the message lands on the control the user chose from.
+    """
+
+    from pytex.core.lattice import CrystalDirection, CrystalPlane, MillerIndex
+    from pytex.core.transformation import OrientationRelationship
+
+    identifier = str(name if name is not None else request["relationship"])
+    if identifier != CUSTOM_RELATIONSHIP:
+        constructor = getattr(OrientationRelationship, _RELATIONSHIP_CONSTRUCTORS[identifier])
+        try:
+            return constructor(parent_phase=parent_phase, child_phase=child_phase)
+        except (ValueError, TypeError) as error:
+            raise InvalidInputError(
+                f"The {relationship_name(identifier)} relationship does not apply to these "
+                f"phases: {error}",
+                field="relationship",
+                hint=(
+                    "The fcc-to-bcc relationships, cube-on-cube and the coherent twin need a "
+                    "cubic parent and a cubic child; Burgers needs a cubic parent and a "
+                    "hexagonal child. Choose Custom to state a relationship these two phases "
+                    "can actually carry."
+                ),
+            ) from error
+
+    def _row(field: str) -> list[float]:
+        row = request.get(field)
+        if row is None:
+            raise InvalidInputError(
+                "A custom relationship needs all four index rows.",
+                field=field,
+                hint=(
+                    "Choose a named relationship, or fill in the parent and child plane and "
+                    "the parent and child direction."
+                ),
+            )
+        return [float(value) for value in row]
+
+    def _plane(field: str, phase: Any) -> Any:
+        indices = np.asarray([int(value) for value in _row(field)], dtype=np.int64)
+        return CrystalPlane(MillerIndex(indices=indices, phase=phase), phase=phase)
+
+    def _direction(field: str, phase: Any) -> Any:
+        return CrystalDirection(np.asarray(_row(field), dtype=np.float64), phase=phase)
+
+    try:
+        return OrientationRelationship.from_parallel_plane_direction(
+            name=CUSTOM_RELATIONSHIP,
+            parent_plane=_plane("custom_parent_plane", parent_phase),
+            child_plane=_plane("custom_child_plane", child_phase),
+            parent_direction=_direction("custom_parent_direction", parent_phase),
+            child_direction=_direction("custom_child_direction", child_phase),
+        )
+    except (ValueError, TypeError, np.linalg.LinAlgError) as error:
+        raise InvalidInputError(
+            f"Those parallelisms do not define a rotation: {error}",
+            field="relationship",
+            hint=(
+                "The direction must not be parallel to its own plane normal — with nothing "
+                "left lying in the plane there is no rotation about the normal to fix. "
+                "Kurdjumov-Sachs is the worked shape: parent (111) with [-101], child (011) "
+                "with [-1-11]."
+            ),
+        ) from error
 
 
 @REGISTRY.operation(
@@ -1608,10 +1836,16 @@ _RELATIONSHIP_CONSTRUCTORS = {
         ChoiceParameter(
             name="relationship",
             label="Relationship",
-            help_text="Which classical relationship to build.",
+            help_text=(
+                "Which relationship to build. **Custom** takes the parallelisms from the boxes "
+                "below instead of from this list, and everything else — the misorientation, the "
+                "variants, the parallelism table — is derived from them exactly as it is for a "
+                "named relationship."
+            ),
             options=_RELATIONSHIPS,
             default="kurdjumov_sachs",
         ),
+        *custom_relationship_parameters(),
         BooleanParameter(
             name="reduce_by_child_symmetry",
             label="Reduce variants by child symmetry",
@@ -1635,24 +1869,10 @@ _RELATIONSHIP_CONSTRUCTORS = {
     tags=("orientation relationship", "variant", "martensite", "Bain", "Burgers", "OR"),
 )
 def _orientation_relationship(request: dict[str, Any]) -> dict[str, Any]:
-    from pytex.core.transformation import OrientationRelationship
-
     parent_spec, parent_phase = phase_from_request(request["phase"])
     child_spec, child_phase = phase_from_request(request["child_phase"])
     name = str(request["relationship"])
-    constructor = getattr(OrientationRelationship, _RELATIONSHIP_CONSTRUCTORS[name])
-    try:
-        relationship = constructor(parent_phase=parent_phase, child_phase=child_phase)
-    except (ValueError, TypeError) as error:
-        raise InvalidInputError(
-            f"The {relationship_name(name)} relationship does not apply to these two phases: "
-            f"{error}",
-            field="relationship",
-            hint=(
-                "The fcc-to-bcc relationships need a cubic parent and a cubic child; Burgers "
-                "needs a cubic parent and a hexagonal child."
-            ),
-        ) from error
+    relationship = resolve_relationship(request, parent_phase, child_phase, name=name)
     variants = relationship.generate_variants(
         reduce_by_child_symmetry=bool(request["reduce_by_child_symmetry"])
     )

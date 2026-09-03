@@ -514,6 +514,115 @@ class OrientationRelationship:
         )
 
     @classmethod
+    def from_cube_on_cube_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "cube_on_cube",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Cube-on-cube OR: (001)_p || (001)_c, [100]_p || [100]_c.
+
+        Purpose
+        -------
+        The parallel-axes relationship: the two cubic lattices share all three
+        crystal axes, so the parent-to-child rotation is the identity. It is the
+        relationship of a coherent cubic precipitate grown on a cubic matrix --
+        gamma-prime in a nickel superalloy, TiN or NbC in ferrite, an epitaxial
+        cubic film on a cubic substrate -- and the baseline every other cubic
+        pairing is a departure from.
+
+        It is also the degenerate case worth having explicitly: one variant, no
+        misorientation, and a composite diffraction pattern in which every child
+        reflection lies on a parent reciprocal-lattice row. A superlattice
+        reflection in such a pattern therefore comes from the child's *motif*,
+        not from any rotation, which is exactly the reading the identity
+        rotation makes available.
+
+        Both phases must be cubic (proper point group 432); this is checked
+        rather than assumed, because "cube on cube" says nothing about two
+        lattices that have no cube to share.
+        """
+
+        _require_proper_point_group(
+            parent_phase, "432", role="parent", relationship="Cube-on-cube"
+        )
+        _require_proper_point_group(child_phase, "432", role="child", relationship="Cube-on-cube")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(
+                _miller_index((0, 0, 1), phase=parent_phase), phase=parent_phase
+            ),
+            child_plane=CrystalPlane(
+                _miller_index((0, 0, 1), phase=child_phase), phase=child_phase
+            ),
+            parent_direction=_crystal_direction((1.0, 0.0, 0.0), phase=parent_phase),
+            child_direction=_crystal_direction((1.0, 0.0, 0.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
+    def from_fcc_twin_correspondence(
+        cls,
+        *,
+        parent_phase: Phase,
+        child_phase: Phase,
+        name: str = "fcc_twin",
+        provenance: ProvenanceRecord | None = None,
+    ) -> OrientationRelationship:
+        """Coherent FCC twin: (111)_p || (111)_c, [1-10]_p || [-110]_c.
+
+        Purpose
+        -------
+        The annealing- and deformation-twin relationship of face-centred cubic
+        metals, stated as the parallelism it is defined by rather than as the
+        angle it comes out as. The statement is the 180 degree rotation about
+        the ``<111>`` twin-plane normal -- equivalently, the mirror in the
+        composition plane followed by inversion, which is the proper rotation a
+        centrosymmetric lattice cannot tell from the mirror.
+
+        Under cubic symmetry that 180 degree rotation reduces to the familiar
+        **60 degrees about <111>**, the Sigma 3 coincidence-site boundary, and
+        :meth:`misorientation` reports it that way. Four ``{111}`` planes give
+        **four variants**, one twin orientation per close-packed plane of the
+        parent.
+
+        Why parent and child are two phases
+        -----------------------------------
+        A twin is not a second material: matrix and twin have the same lattice
+        and the same point group. This type requires distinct phases -- an OR
+        between a phase and itself is rejected at construction -- so a twin is
+        expressed as two phase *objects* differing in name alone, e.g.
+        ``Phase("nickel", ...)`` and ``Phase("nickel (twin)", ...)``. That is
+        not a workaround: the twin is a distinct orientation domain, it is what
+        an EBSD map segments it as, and naming it separately is what lets every
+        variant, boundary and composite-diffraction report say which domain a
+        quantity belongs to.
+
+        Both phases must be cubic (proper point group 432). The relationship is
+        stated for face-centred cubic because that is the structure whose
+        stacking makes ``{111}`` the coherent twin plane; the rotation itself is
+        a property of the cubic point group, so it applies unchanged to any
+        cubic pair whose twin plane is ``{111}``.
+        """
+
+        _require_proper_point_group(parent_phase, "432", role="parent", relationship="FCC twin")
+        _require_proper_point_group(child_phase, "432", role="child", relationship="FCC twin")
+        return cls.from_parallel_plane_direction(
+            name=name,
+            parent_plane=CrystalPlane(
+                _miller_index((1, 1, 1), phase=parent_phase), phase=parent_phase
+            ),
+            child_plane=CrystalPlane(
+                _miller_index((1, 1, 1), phase=child_phase), phase=child_phase
+            ),
+            parent_direction=_crystal_direction((1.0, -1.0, 0.0), phase=parent_phase),
+            child_direction=_crystal_direction((-1.0, 1.0, 0.0), phase=child_phase),
+            provenance=provenance,
+        )
+
+    @classmethod
     def from_nishiyama_wassermann_correspondence(
         cls,
         *,

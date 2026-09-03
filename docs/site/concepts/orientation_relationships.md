@@ -60,6 +60,63 @@ relationship with 4 variants) — plus the generic
 (`standard_fcc_bcc_relationships`, `standard_bcc_hcp_relationships`,
 `standard_fcc_hcp_relationships`) bundle them per phase pair.
 
+### Two cubic-cubic relationships that are not transformations
+
+Not every relationship between two cubic phases is a phase transformation, and
+two that are not are common enough to be named rather than measured:
+
+`from_cube_on_cube_correspondence(...)`
+: $(001)_{p} \parallel (001)_{c}$ with $[100]_{p} \parallel [100]_{c}$ — the
+  two lattices share all three axes, so the rotation is the identity and there
+  is **one variant**. This is the coherent cubic precipitate on a cubic matrix:
+  $\gamma'$ in a nickel superalloy, TiN or NbC in ferrite, an epitaxial cubic
+  film on a cubic substrate. In a composite diffraction pattern every child
+  reflection then lies on a parent reciprocal-lattice row, so a superlattice
+  spot can only come from the child's *motif* — which is exactly the reading
+  the identity rotation makes available.
+
+`from_fcc_twin_correspondence(...)`
+: $(111)_{p} \parallel (111)_{c}$ with $[1\bar{1}0]_{p} \parallel
+  [\bar{1}10]_{c}$ — the coherent annealing or deformation twin of an fcc
+  metal, stated as the two-fold rotation about the $\langle 111 \rangle$
+  twin-plane normal. The raw rotation is $180^{\circ}$; reduced by cubic
+  symmetry it is the $\Sigma 3$ misorientation, $60^{\circ}$ about
+  $\langle 111 \rangle$, which is what an EBSD map reports. Four $\{111\}$
+  planes give **four variants**, and two $\Sigma 3$ twins meeting produce the
+  $\Sigma 9$ boundary at $38.94^{\circ}$ — a consequence the intervariant
+  misorientation table returns without being told.
+
+  Matrix and twin are the same material, and an `OrientationRelationship`
+  between a phase and itself is rejected at construction, so a twin is
+  expressed as two `Phase` objects differing in name — `Phase("nickel", ...)`
+  and `Phase("nickel (twin)", ...)`. That is not a workaround: the twin is a
+  distinct orientation domain, an EBSD map segments it as one, and naming it
+  separately is what lets every variant, boundary and diffraction report say
+  which domain a quantity belongs to.
+
+Both join `standard_cubic_cubic_relationships`, which
+`default_relationship_catalog` adds to the fcc→bcc family for a cubic-cubic
+pair. Without them a measured $\Sigma 3$ boundary was reported as so many
+degrees away from Bain, which is true and useless.
+
+### Stating a relationship of your own
+
+`from_parallel_plane_direction(...)` is not a lesser path than the named
+constructors — it is the path all of them take. Every entry above is one call
+to it with the parallelisms of its publication written down. Anything stated
+that way therefore gets the same treatment as a catalogued relationship: the
+misorientation, every crystallographically distinct variant, the packet
+grouping, the intervariant boundary table, the variant pole figure, and the
+composite diffraction pattern.
+
+In the workbench the same is true of the **Custom** entry in every
+relationship picker: choosing it takes the parent plane, child plane, parent
+direction and child direction from four index boxes and builds the
+relationship through this constructor. The in-plane direction need not be
+exactly perpendicular to the plane normal — the normal component is removed —
+so a literature statement that is only approximately self-consistent still
+yields a proper rotation rather than an error.
+
 ## Mapping indices across the relationship
 
 The correspondence surface answers the canonical OR questions:
@@ -318,7 +375,8 @@ doctrine of the development guide).
 ## Variants
 
 `generate_variants()` enumerates the crystallographically distinct child
-orientations (Bain 3; NW, Pitsch, Burgers 12; KS, GT 24), and
+orientations (cube-on-cube 1; Bain 3; the coherent fcc twin 4; NW, Pitsch,
+Burgers 12; KS, GT 24), and
 `intervariant_misorientations(...)` gives the axis/angle table between
 variants. Mapping the parent close-packed plane across all 24 KS variants
 shows the expected physics: exactly the six variants sharing that
@@ -330,7 +388,11 @@ land on irrational images.
 The executable worked examples in the
 [transformation gallery](../examples/generated/transformation.md) compute the
 Kurdjumov-Sachs plane correspondence and the Bain direction correspondence
-live from the code and check them against their defining parallelisms.
+live from the code and check them against their defining parallelisms. Three
+more cover the relationships added above: the coherent twin against the
+$\Sigma 3$ coincidence-site value, cube-on-cube against the identity, and a
+custom statement of Kurdjumov-Sachs against the catalogued constructor —
+which is what pins the user-defined path to the named one.
 
 ## The notebook teaching track
 

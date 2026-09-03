@@ -1043,3 +1043,261 @@ result = [
 **Citation**: Greninger and Troiano, Trans. AIME 185 (1949) 590; Kurdjumov and Sachs, Z. Phys. 64 (1930) 325.
 
 **See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## The coherent fcc twin is 60 degrees about <111> with four variants
+
+The coherent twin of a face-centred cubic metal is stated as the parallelism (111) || (111) with [1-10] || [-110] -- the two-fold rotation about the twin-plane normal. Three numbers are computed from that statement alone: the raw rotation angle, the angle after cubic symmetry reduction, and how many crystallographically distinct twin orientations one parent grain can produce. The reduced angle is the Sigma 3 coincidence-site misorientation an EBSD map reports for an annealing twin, and the multiplicity is one twin per close-packed plane.
+
+**Symbols**
+
+- $(hkl)$ &mdash; Miller plane indices.
+- $[uvw]$ &mdash; Miller direction indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+twin = OrientationRelationship.from_fcc_twin_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+result = np.array(
+    [
+        twin.parent_to_child_rotation.angle_deg,
+        twin.misorientation().angle_deg,
+        float(len(twin.generate_variants())),
+    ]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-fcc-twin-is-sigma-3` | [180.0000, 60.0000, 4.0000] | [180.0000, 60.0000, 4.0000] | deg, deg, count | < 1e-08 | 1e-06 | ✅ pass |
+
+**Why this value**: A twin operation is the two-fold rotation about the twin-plane normal, so the raw angle is 180 deg exactly. Under the cubic rotation group that class contains the 60 deg rotation about <111>, which is the Sigma 3 coincidence-site lattice misorientation of Ranganathan's construction. The four {111} planes of the cubic lattice give four distinct twin orientations. All three are fixed by symmetry, not by any measurement.
+
+**Citation**: Ranganathan, Acta Cryst. 21 (1966) 197 (CSL construction); Randle, The Role of the Coincidence Site Lattice in Grain Boundary Engineering (1996).
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Cube-on-cube leaves every parent direction where it was
+
+A coherent cubic precipitate on a cubic matrix shares all three crystal axes: (001) || (001) with [100] || [100]. The relationship that statement implies must therefore be the identity rotation, with one variant and no misorientation. The computed quantities are the rotation angle, the variant count, and the child components of the parent direction [112], which must come back as [112] unchanged.
+
+**Symbols**
+
+- $[uvw]$ &mdash; Miller direction indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+cube = OrientationRelationship.from_cube_on_cube_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+mapped = cube.map_direction_to_child(
+    CrystalDirection(np.array([1.0, 1.0, 2.0]), phase=austenite)
+)
+result = np.concatenate(
+    [
+        [cube.parent_to_child_rotation.angle_deg, float(len(cube.generate_variants()))],
+        mapped.rational_indices.astype(float),
+    ]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-cube-on-cube-is-the-identity` | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | deg, count, indices | < 1e-11 | 1e-09 | ✅ pass |
+
+**Why this value**: Holding all three axes of one cubic lattice parallel to all three of another leaves no rotation: the parent-to-child rotation is the identity by construction, the cubic point group maps its single variant onto itself, and every direction keeps its indices. An analytic identity.
+
+**Citation**: Porter, Easterling and Sherif, Phase Transformations in Metals and Alloys, 3rd ed., ch. 3 (coherent cubic precipitates).
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`
+
+## Kurdjumov-Sachs stated as parallelisms is Kurdjumov-Sachs
+
+``from_parallel_plane_direction`` is the surface behind every user-defined orientation relationship: a parent plane, a child plane, a parent direction and a child direction, and nothing else. Typing the published Kurdjumov-Sachs statement into it -- (111) || (011) with [-101] || [-1-11] -- must give the same object the catalogued constructor gives. Two quantities check that: the misorientation angle and the variant count, compared against the named relationship built beside it.
+
+**Symbols**
+
+- $(hkl)$ &mdash; Miller plane indices.
+- $[uvw]$ &mdash; Miller direction indices.
+
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+import numpy as np
+from pytex import (
+    CrystalDirection,
+    CrystalPlane,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    MillerIndex,
+    OrientationRelationship,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+)
+
+parent_frame = ReferenceFrame(
+    name="austenite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+child_frame = ReferenceFrame(
+    name="ferrite_crystal",
+    domain=FrameDomain.CRYSTAL,
+    axes=("a", "b", "c"),
+    handedness=Handedness.RIGHT,
+)
+austenite = Phase(
+    "austenite",
+    lattice=Lattice(3.6, 3.6, 3.6, 90.0, 90.0, 90.0, crystal_frame=parent_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=parent_frame),
+    crystal_frame=parent_frame,
+)
+ferrite = Phase(
+    "ferrite",
+    lattice=Lattice(2.87, 2.87, 2.87, 90.0, 90.0, 90.0, crystal_frame=child_frame),
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=child_frame),
+    crystal_frame=child_frame,
+)
+```
+
+:::
+
+**Compute**
+
+```python
+named = OrientationRelationship.from_kurdjumov_sachs_correspondence(
+    parent_phase=austenite, child_phase=ferrite
+)
+stated = OrientationRelationship.from_parallel_plane_direction(
+    name="custom",
+    parent_plane=CrystalPlane(
+        MillerIndex(np.array([1, 1, 1]), phase=austenite), phase=austenite
+    ),
+    child_plane=CrystalPlane(
+        MillerIndex(np.array([0, 1, 1]), phase=ferrite), phase=ferrite
+    ),
+    parent_direction=CrystalDirection(np.array([-1.0, 0.0, 1.0]), phase=austenite),
+    child_direction=CrystalDirection(np.array([-1.0, -1.0, 1.0]), phase=ferrite),
+)
+result = np.array(
+    [
+        stated.misorientation().angle_deg - named.misorientation().angle_deg,
+        float(len(stated.generate_variants())),
+        stated.misorientation().angle_deg,
+    ]
+)
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `or-custom-statement-reproduces-ks` | [0.0000, 24.0000, 42.8478] | [0.0000, 24.0000, 42.8500] | deg, count, deg | 2.24e-03 | 5e-03 | ✅ pass |
+
+**Why this value**: The named constructor is defined as this statement, so the difference is zero as an identity rather than as an agreement. The 24 variants and the 42.85 deg representative are the published values for Kurdjumov-Sachs.
+
+**Citation**: Kurdjumov and Sachs, Z. Phys. 64 (1930) 325; Morito et al., Acta Mater. 51 (2003) 1789.
+
+**See also**: {doc}`Orientation relationships <../../concepts/orientation_relationships>`, {doc}`Transformation API <../../api/index>`

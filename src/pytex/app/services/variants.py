@@ -52,12 +52,14 @@ from pytex.app.registry import (
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import (
-    _RELATIONSHIP_CONSTRUCTORS,
     _RELATIONSHIPS,
+    custom_relationship_parameters,
+    custom_relationship_request,
     direction_label,
     phase_parameter,
     plane_label,
     relationship_name,
+    resolve_relationship,
 )
 from pytex.app.services.crystal import (
     _EULER_CONVENTIONS,
@@ -302,25 +304,6 @@ def _nearest_axis(axis_cartesian: np.ndarray, phase: Any, spec: PhaseSpec) -> tu
     return direction_label(_canonical_sign(candidates[best]), spec=spec), residual
 
 
-def _relationship(name: str, parent: Any, child: Any) -> Any:
-    """Build a named relationship, or explain why these phases cannot carry it."""
-
-    from pytex.core.transformation import OrientationRelationship
-
-    constructor = getattr(OrientationRelationship, _RELATIONSHIP_CONSTRUCTORS[name])
-    try:
-        return constructor(parent_phase=parent, child_phase=child)
-    except (ValueError, TypeError) as error:
-        raise InvalidInputError(
-            f"The {relationship_name(name)} relationship does not apply to these phases: {error}",
-            field="relationship",
-            hint=(
-                "The fcc-to-bcc relationships need a cubic parent and a cubic child; Burgers "
-                "needs a cubic parent and a hexagonal child."
-            ),
-        ) from error
-
-
 def _packet_labels(relationship: Any, parent_spec: PhaseSpec, indices: tuple[int, ...]) -> Any:
     """Group the variants by the parent plane each carries into parallelism.
 
@@ -436,10 +419,16 @@ def _child_family(child_phase: Any, indices: tuple[int, ...]) -> tuple[np.ndarra
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
-            help_text="Which relationship generates the variants.",
+            help_text=(
+                "Which relationship generates the variants. **Custom** takes the "
+                "parallelisms from the boxes below instead of from this list; everything "
+                "downstream — the variants, the packets, the boundaries, the composite "
+                "pattern — is derived from them exactly as it is for a named relationship."
+            ),
             options=_RELATIONSHIPS,
             default=_CANONICAL_RELATIONSHIP,
         ),
+        *custom_relationship_parameters(),
         IndicesParameter(
             name="pole",
             label="Child plane to plot",
@@ -507,7 +496,7 @@ def _variant_pole_figure(request: dict[str, Any]) -> dict[str, Any]:
     parent_spec, parent_phase = phase_from_request(request["phase"])
     child_spec, child_phase = phase_from_request(request["child_phase"])
     name = str(request["relationship"])
-    relationship = _relationship(name, parent_phase, child_phase)
+    relationship = resolve_relationship(request, parent_phase, child_phase, name=name)
     variants = relationship.generate_variants()
     packets = _packet_labels(relationship, parent_spec, tuple(request["packet_plane"]))
     method = str(request["projection"])
@@ -692,10 +681,16 @@ def _variant_pole_figure(request: dict[str, Any]) -> dict[str, Any]:
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
-            help_text="Which relationship generates the variants.",
+            help_text=(
+                "Which relationship generates the variants. **Custom** takes the "
+                "parallelisms from the boxes below instead of from this list; everything "
+                "downstream — the variants, the packets, the boundaries, the composite "
+                "pattern — is derived from them exactly as it is for a named relationship."
+            ),
             options=_RELATIONSHIPS,
             default=_CANONICAL_RELATIONSHIP,
         ),
+        *custom_relationship_parameters(),
         IndicesParameter(
             name="packet_plane",
             label="Parent plane defining packets",
@@ -737,7 +732,7 @@ def _intervariant_misorientations(request: dict[str, Any]) -> dict[str, Any]:
     parent_spec, parent_phase = phase_from_request(request["phase"])
     child_spec, child_phase = phase_from_request(request["child_phase"])
     name = str(request["relationship"])
-    relationship = _relationship(name, parent_phase, child_phase)
+    relationship = resolve_relationship(request, parent_phase, child_phase, name=name)
     variants = relationship.generate_variants()
     if len(variants) < 2:
         raise InvalidInputError(
@@ -900,10 +895,16 @@ def _intervariant_misorientations(request: dict[str, Any]) -> dict[str, Any]:
         ChoiceParameter(
             name="relationship",
             label="Orientation relationship",
-            help_text="Which relationship generates the variants.",
+            help_text=(
+                "Which relationship generates the variants. **Custom** takes the "
+                "parallelisms from the boxes below instead of from this list; everything "
+                "downstream — the variants, the packets, the boundaries, the composite "
+                "pattern — is derived from them exactly as it is for a named relationship."
+            ),
             options=_RELATIONSHIPS,
             default=_CANONICAL_RELATIONSHIP,
         ),
+        *custom_relationship_parameters(),
         IndicesParameter(
             name="pole",
             label="Child plane to plot",
@@ -978,6 +979,7 @@ def _variant_render(request: dict[str, Any]) -> dict[str, Any]:
             "phase": request["phase"],
             "child_phase": request["child_phase"],
             "relationship": request["relationship"],
+            **custom_relationship_request(request),
             "pole": request["pole"],
             "packet_plane": request["packet_plane"],
             "projection": request["projection"],
@@ -1098,7 +1100,7 @@ def _composite_relationship(request: dict[str, Any]) -> tuple[Any, Any, Any, Any
                     "Lattice geometry alone supports the calculator but not the viewer."
                 ),
             )
-    relationship = _relationship(str(request["relationship"]), parent_phase, child_phase)
+    relationship = resolve_relationship(request, parent_phase, child_phase)
     return parent_spec, parent_phase, child_spec, child_phase, relationship
 
 
@@ -1388,10 +1390,16 @@ _COMPOSITE_PARAMETERS = (
     ChoiceParameter(
         name="relationship",
         label="Orientation relationship",
-        help_text="Which relationship the two crystals are held in.",
+        help_text=(
+            "Which relationship generates the variants. **Custom** takes the "
+            "parallelisms from the boxes below instead of from this list; everything "
+            "downstream — the variants, the packets, the boundaries, the composite "
+            "pattern — is derived from them exactly as it is for a named relationship."
+        ),
         options=_RELATIONSHIPS,
         default=_CANONICAL_RELATIONSHIP,
     ),
+    *custom_relationship_parameters(),
     IntegerParameter(
         name="repeats",
         label="Cells along each axis",

@@ -5584,3 +5584,73 @@ Nothing outstanding on this goal. If the office server is updated to suite 1.4.0
 by hand is that the CIF route and the CBED symmetry analysis now answer there -- they are the
 capabilities this release exists to deliver, and the deployment gate proves only that the packages
 install.
+
+## Workbench Density And The OR Library — IN PROGRESS (opened 2026-09-03)
+
+**Objective.** Three things, in one goal because two of them are the same screen.
+
+1. **Density.** Hide explanatory prose behind help affordances across every panel, and give an
+   input only the width it needs. A `[uvw]` box holds three characters; it should not be allotted
+   a full-width row.
+2. **EBSD, one dataset.** The workspace shows every practice dataset and each panel chooses its
+   own, so the IPF map and the KAM map can be looking at different scans without saying so. The
+   polycrystal becomes the default for every feature, the choice becomes one workspace-wide
+   choice, and changing it — or opening a file — moves every map and every derived number onto it.
+3. **The OR library.** Add cube-on-cube and the coherent fcc twin, and let a user state a
+   relationship of their own from parallelisms, with the full downstream treatment: variant count,
+   packets, intervariant boundaries, composite SAED.
+
+### Increment 1 — the OR library (landed)
+
+**Core.** Two constructors on `OrientationRelationship`:
+
+- `from_cube_on_cube_correspondence` — (001)‖(001), [100]‖[100]. Identity rotation, one variant.
+  The coherent cubic precipitate on a cubic matrix. Requires proper group 432 on both sides.
+- `from_fcc_twin_correspondence` — (111)‖(111), [1-10]‖[-110]. 180° about ⟨111⟩ raw, the Σ3
+  60°/⟨111⟩ after symmetry reduction, four variants (one per close-packed plane). Intervariant
+  misorientations come out {0°, 38.94°} — the Σ9 boundary two Σ3 twins make, which is a
+  consequence the code was not told and returns anyway.
+
+**A decision worth recording: a twin needs two phases.** `OrientationRelationship` rejects a
+relationship between a phase and itself, and `phases_semantically_match` counts the *name*. So a
+twin is stated as two `Phase` objects differing in name — `Phase("nickel")` and
+`Phase("nickel (twin)")`. This is not a workaround for the invariant; the twin is a distinct
+orientation domain, an EBSD map segments it as one, and the separate name is what lets a variant,
+boundary or diffraction report say which domain a number belongs to. Documented on the
+constructor, in the concept page, and in the new catalog.
+
+**Catalog.** `standard_cubic_cubic_relationships` holds the two, and `_CATALOG_DISPATCH` adds it
+to the fcc→bcc family for a cubic-cubic pair. This *changes what a ranking can say*: a measured Σ3
+boundary used to be reported as a number of degrees away from Bain. The six OR characterization,
+identification, refinement and reconstruction suites are green unchanged, so nothing that already
+had a name lost it.
+
+**App.** One resolver replaces three copies. `resolve_relationship(request, parent, child)` in
+`services/calculator.py` is now the only place that turns the `relationship` choice into an
+object; `variants.py` and `diffraction.py` had a private copy each, which is three places for an
+option to go missing from. Alongside it, `custom_relationship_parameters()` declares the four
+index rows of a user-stated OR and `custom_relationship_request()` forwards them, so a hand-built
+sub-request (the variant figure calls the variant pole figure) cannot list three of the four.
+
+Every picker gained three options — cube-on-cube, the coherent twin, and **Custom**. Verified by
+calling each of `calc.orientation_relationship`, `variants.render`, `variants.pole_figure`,
+`variants.intervariant_misorientations`, `variants.composite_scene`, `variants.contact_sheet` and
+`diffraction.composite_saed` with all three: all answer. The one refusal is correct and already
+worded — cube-on-cube has a single variant, so there are no variant *pairs* to report.
+
+**Verification.** `ruff` and `mypy` clean. New: five core tests, five app tests, three worked
+examples (twin against the Σ3 CSL value, cube-on-cube against the identity, and a custom statement
+of Kurdjumov-Sachs against the catalogued constructor — that last is what pins the user-defined
+path to the named one). Gallery regenerated. Documentation, notation and public-API-docstring
+policy suites green.
+
+### Next actions
+
+- Increment 2: the generic control-density pass — label and control on one row for the compact
+  kinds, capped input widths.
+- Increment 3: panel prose behind help affordances. Field help is *already* behind a `?` button
+  in `core/controls.js`; what is not is the prose each panel writes itself, and the two paragraphs
+  the EBSD scan-opener shows unconditionally.
+- Increment 4: the EBSD single active dataset, polycrystal by default. The uploaded scan is
+  already workspace-wide in `core/ebsdscan.js`; the *practice dataset choice* is not, and that is
+  the defect.

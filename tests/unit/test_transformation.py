@@ -181,6 +181,139 @@ def test_bain_correspondence_rejects_non_cubic_phases() -> None:
         )
 
 
+def test_cube_on_cube_is_the_identity_and_has_exactly_one_variant() -> None:
+    """Parallel axes: the rotation is the identity, so nothing has to be trusted.
+
+    The expected values have analytic provenance rather than a recorded output.
+    (001) || (001) with [100] || [100] leaves all three axes in place, so the
+    matrix is I, the misorientation is zero, and the cubic point group maps the
+    single variant onto itself.
+    """
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_cube_on_cube_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    assert relationship.name == "cube_on_cube"
+    assert_allclose(relationship.parent_to_child_rotation.as_matrix(), np.eye(3), atol=1e-12)
+    assert relationship.misorientation().angle_deg == pytest.approx(0.0, abs=1e-9)
+    assert len(relationship.generate_variants()) == 1
+    for parent_vector in ([1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0]):
+        mapped = relationship.map_parent_vector_to_child(
+            VectorSet(values=np.array([parent_vector]), reference_frame=parent.crystal_frame)
+        )
+        assert_allclose(mapped.values[0], parent_vector, atol=1e-12)
+
+
+def test_cube_on_cube_rejects_a_non_cubic_phase() -> None:
+    crystal_child = ReferenceFrame(
+        name="hcp_child",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    _, _, parent, _ = make_phases()
+    child = Phase(
+        "hcp_child",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_child),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_child),
+        crystal_frame=crystal_child,
+    )
+    with pytest.raises(ValueError, match="Cube-on-cube correspondence requires a cubic child"):
+        OrientationRelationship.from_cube_on_cube_correspondence(
+            parent_phase=parent, child_phase=child
+        )
+
+
+def test_fcc_twin_is_180_degrees_about_111_and_sigma_3_after_symmetry_reduction() -> None:
+    """The coherent FCC twin, checked against the CSL statement, not a stored run.
+
+    Independent provenance: the twin operation is the two-fold rotation about
+    the ``<111>`` twin-plane normal. Three consequences follow analytically and
+    are asserted here rather than recorded.
+
+    1. The raw rotation is 180 degrees about ``[111]``.
+    2. Reduced by cubic symmetry it is the Sigma 3 misorientation, 60 degrees
+       about ``<111>`` (Ranganathan's CSL construction; the boundary an EBSD
+       map reports for an annealing twin).
+    3. A two-fold rotation is its own inverse, so applying it twice is the
+       identity.
+    4. The composition plane is invariant: (111) of the matrix stays (111).
+    """
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_fcc_twin_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    assert relationship.name == "fcc_twin"
+    rotation = relationship.parent_to_child_rotation
+    assert rotation.angle_deg == pytest.approx(180.0, abs=1e-9)
+    axis = np.asarray(rotation.axis, dtype=float)
+    assert_allclose(np.abs(axis), np.full(3, 1.0 / np.sqrt(3.0)), atol=1e-9)
+
+    assert relationship.misorientation().angle_deg == pytest.approx(60.0, abs=1e-9)
+
+    matrix = rotation.as_matrix()
+    assert_allclose(matrix @ matrix, np.eye(3), atol=1e-12)
+
+    composition_plane = relationship.map_parent_vector_to_child(
+        VectorSet(values=np.array([[1.0, 1.0, 1.0]]), reference_frame=parent.crystal_frame)
+    )
+    assert_allclose(composition_plane.values[0], [1.0, 1.0, 1.0], atol=1e-9)
+
+
+def test_fcc_twin_has_one_variant_per_close_packed_plane() -> None:
+    """Four ``{111}`` planes, four twin orientations -- not 24 and not 12."""
+
+    _, _, parent, child = make_phases()
+    relationship = OrientationRelationship.from_fcc_twin_correspondence(
+        parent_phase=parent, child_phase=child
+    )
+    variants = relationship.generate_variants()
+    assert len(variants) == 4
+
+    # Each variant is a cubic image of the 180 degree twin rotation. Their raw
+    # axis and angle differ -- the reduced representative of a symmetry class is
+    # not the statement the class was built from -- so what is pinned is
+    # membership: every variant matches some S @ R0 to machine precision.
+    operators = np.asarray(relationship.parent_phase.symmetry.operators, dtype=float)
+    twin_matrix = relationship.parent_to_child_rotation.as_matrix()
+    images = np.einsum("nij,jk,mkl->nmil", operators, twin_matrix, operators).reshape(-1, 3, 3)
+    for variant in variants:
+        matrix = variant.parent_to_child_rotation.as_matrix()
+        traces = np.einsum("ij,nij->n", matrix, images)
+        assert float(np.max(traces)) == pytest.approx(3.0, abs=1e-9)
+
+    # Two Sigma 3 twins meeting make a Sigma 9 boundary: 38.94 degrees about
+    # <110>. It is the textbook consequence of the CSL algebra 3 x 3 = 9, and it
+    # is what an EBSD map of a twinned FCC metal actually shows.
+    from pytex.core import intervariant_misorientation_angles_deg
+
+    angles = np.unique(np.round(intervariant_misorientation_angles_deg(relationship), 6))
+    assert angles[0] == pytest.approx(0.0, abs=1e-6)
+    assert angles[-1] == pytest.approx(38.9424, abs=1e-3)
+
+
+def test_fcc_twin_rejects_a_non_cubic_phase() -> None:
+    crystal_parent = ReferenceFrame(
+        name="hcp_parent",
+        domain=FrameDomain.CRYSTAL,
+        axes=("a", "b", "c"),
+        handedness=Handedness.RIGHT,
+    )
+    _, _, _, child = make_phases()
+    parent = Phase(
+        "hcp_parent",
+        lattice=Lattice(2.95, 2.95, 4.68, 90.0, 90.0, 120.0, crystal_frame=crystal_parent),
+        symmetry=SymmetrySpec.from_point_group("6/mmm", reference_frame=crystal_parent),
+        crystal_frame=crystal_parent,
+    )
+    with pytest.raises(ValueError, match="FCC twin correspondence requires a cubic parent"):
+        OrientationRelationship.from_fcc_twin_correspondence(
+            parent_phase=parent, child_phase=child
+        )
+
+
 def test_orientation_relationship_can_build_named_nw_correspondence() -> None:
     _, _, parent, child = make_phases()
     relationship = OrientationRelationship.from_nishiyama_wassermann_correspondence(

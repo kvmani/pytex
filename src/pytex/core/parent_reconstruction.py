@@ -415,6 +415,56 @@ def standard_fcc_bcc_relationships(
     )
 
 
+def standard_cubic_cubic_relationships(
+    *,
+    parent_phase: Phase,
+    child_phase: Phase,
+    provenance: ProvenanceRecord | None = None,
+) -> OrientationRelationshipCatalog:
+    """The cubic-to-cubic relationships that are not transformation ORs.
+
+    Purpose
+    -------
+    Two cubic phases are related by more than the austenite-to-ferrite family.
+    The two that a cubic-cubic ranking must be able to name are:
+
+    ``cube_on_cube``
+        Parallel axes, the identity rotation. A coherent cubic precipitate on a
+        cubic matrix -- gamma-prime in a superalloy, TiN in ferrite, an
+        epitaxial film on a cubic substrate.
+    ``fcc_twin``
+        The coherent ``{111}`` twin, 60 degrees about ``<111>`` after symmetry
+        reduction: the Sigma 3 boundary of an annealing or deformation twin.
+
+    Why they belong in the default cubic-cubic catalog
+    --------------------------------------------------
+    Without them a measured Sigma 3 boundary is reported as some number of
+    degrees away from Bain, which is true and useless. Neither is a
+    transformation relationship, and neither displaces one: they are added to
+    the fcc->bcc family rather than replacing it, and a genuine
+    martensite relationship still ranks against Bain, Kurdjumov-Sachs,
+    Nishiyama-Wassermann, Greninger-Troiano and Pitsch exactly as before.
+
+    Note on the twin's two phases. Matrix and twin are the same material, and
+    :class:`~pytex.core.transformation.OrientationRelationship` rejects a
+    relationship between a phase and itself, so the twin is built from the two
+    phase objects handed in. Passing the same phase twice raises; pass a
+    distinguishable child, e.g. ``Phase("nickel (twin)", ...)``.
+    """
+
+    return OrientationRelationshipCatalog(
+        relationships=(
+            OrientationRelationship.from_cube_on_cube_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+            OrientationRelationship.from_fcc_twin_correspondence(
+                parent_phase=parent_phase, child_phase=child_phase, provenance=provenance
+            ),
+        ),
+        provenance=provenance,
+    )
+
+
 def standard_bcc_hcp_relationships(
     *,
     parent_phase: Phase,
@@ -522,9 +572,16 @@ def standard_ferrite_cementite_relationships(
 #: fcc parent from a bcc one by point group alone, so it resolves to the full
 #: fcc->bcc family (Bain, Kurdjumov-Sachs, Nishiyama-Wassermann,
 #: Greninger-Troiano, Pitsch); that is the intended reading of a cubic-cubic
-#: transformation catalog and is stated in `default_relationship_catalog`.
+#: transformation catalog and is stated in `default_relationship_catalog`. It
+#: also carries the two cubic-cubic relationships that are not transformations
+#: at all -- cube-on-cube and the coherent {111} twin -- because a measured
+#: Sigma 3 boundary reported as a deviation from Bain is a named answer the
+#: ranking could have given and did not.
 _CATALOG_DISPATCH: dict[tuple[str, str], tuple[str, ...]] = {
-    ("cubic", "cubic"): ("standard_fcc_bcc_relationships",),
+    ("cubic", "cubic"): (
+        "standard_fcc_bcc_relationships",
+        "standard_cubic_cubic_relationships",
+    ),
     ("cubic", "hexagonal"): (
         "standard_bcc_hcp_relationships",
         "standard_fcc_hcp_relationships",
@@ -588,6 +645,7 @@ __all__ = [
     "reconstruct_parent_orientation",
     "select_variants",
     "standard_bcc_hcp_relationships",
+    "standard_cubic_cubic_relationships",
     "standard_fcc_bcc_relationships",
     "standard_fcc_hcp_relationships",
     "standard_ferrite_cementite_relationships",

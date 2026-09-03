@@ -120,6 +120,9 @@ The complete set of computed-versus-expected values at a glance:
 | `or-ks-variant-parallelisms-are-per-variant` | [0.0000, 4.0000] | [0.0000, 4.0000] | deg, count | ✅ |
 | `or-dossier-agrees-with-its-sources` | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | [0.0000, 0.0000, 24.0000, 4.0000, 10.0000, 60.0000] | angstrom^3, angstrom^3, counts, deg | ✅ |
 | `or-rationalization-costs-the-ks-gt-separation` | [0.0000, 1.0000, 1.0000, 2.4037] | [0.0000, 1.0000, 1.0000, 2.4037] | deg, booleans, deg | ✅ |
+| `or-fcc-twin-is-sigma-3` | [180.0000, 60.0000, 4.0000] | [180.0000, 60.0000, 4.0000] | deg, deg, count | ✅ |
+| `or-cube-on-cube-is-the-identity` | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | [0.0000, 1.0000, 1.0000, 1.0000, 2.0000] | deg, count, indices | ✅ |
+| `or-custom-statement-reproduces-ks` | [0.0000, 24.0000, 42.8478] | [0.0000, 24.0000, 42.8500] | deg, count, deg | ✅ |
 | `viz-transform-crystal-to-sample-consistency` | 0.0000 | 0.0000 | &mdash; | ✅ |
 | `viz-or-parallel-direction-alignment` | 1.0000 | 1.0000 | &mdash; | ✅ |
 | `viz-scene-bond-length-halite-identity` | 2.0000 | 2.0000 | angstrom | ✅ |
