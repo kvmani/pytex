@@ -44,6 +44,12 @@ from pytex.app.registry import (
     Parameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
+from pytex.core.hexagonal import (
+    direction_uvtw_to_uvw,
+    direction_uvw_to_uvtw,
+    plane_hkil_to_hkl,
+    plane_hkl_to_hkil,
+)
 from pytex.core.lattice import Phase
 from pytex.core.miller import (
     MillerDirectionSet,
@@ -60,6 +66,13 @@ __all__ = ["direction_label", "family_label", "phase_parameter", "plane_label"]
 
 _CITATION_ITA = "International Tables for Crystallography, Volume A (Space-Group Symmetry), 6th ed."
 _CITATION_CULLITY = "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Appendix 3."
+_CITATION_FRANK = (
+    "Frank, Acta Crystallogr. 18 (1965) 862 (Miller-Bravais indices as four-dimensional vectors)."
+)
+_CITATION_OTTE_CROCKER = (
+    "Otte & Crocker, Phys. Status Solidi 9 (1965) 441 "
+    "(crystallographic formulae for hexagonal lattices)."
+)
 
 
 # --------------------------------------------------------------------------
@@ -1058,6 +1071,288 @@ def _symmetry_family(request: dict[str, Any]) -> dict[str, Any]:
 
 
 @REGISTRY.operation(
+    "calc.hexagonal_indices",
+    title="Hexagonal index converter (3 ↔ 4)",
+    summary="Miller (hkl) or [uvw] to Miller-Bravais (hkil) or [UVTW], and back.",
+    help_text=(
+        "Converts one plane or one direction between the three-index Miller form and the "
+        "four-index Miller-Bravais form used for hexagonal and trigonal crystals, in whichever "
+        "of the two directions is wanted.\n\n"
+        "**Why the four-index form exists.** The hexagonal basal plane has three equivalent "
+        "⟨a⟩ axes at 120°, but a three-index basis names only two of them. The three "
+        "crystallographically identical close-packed directions therefore get the unrelated "
+        "labels [100], [010] and [-1-10], and nothing about those symbols says they are the same "
+        "family. Adding the redundant third basal index makes them permutations of each other — "
+        "[2-1-10], [-12-10], [-1-120] — so a family can be read off the indices.\n\n"
+        "**Planes take the redundant index; directions take a change of basis.** For a plane, "
+        "`i = -(h + k)` and nothing else changes, because the reciprocal basis vectors are "
+        "already at 120° to one another. For a direction the transformation is real: "
+        "`U = (2u - v)/3`, `V = (2v - u)/3`, `T = -(U + V)`, `W = w`, and back through "
+        "`u = 2U + V`, `v = 2V + U`, `w = W`. This is why (100) and [100] convert differently, "
+        "and why converting a direction as though it were a plane is a silent error rather than "
+        "a loud one.\n\n"
+        "**Redundancy is checked, not assumed.** A four-index plane must satisfy "
+        "`i = -(h + k)` and a four-index direction `U + V + T = 0`; a quadruple that does not is "
+        "refused rather than quietly reinterpreted. The three-index direction is carried through "
+        "exact rational arithmetic and the denominators cleared, so the answer is always an "
+        "integer quadruple describing the same line — [111] becomes [11-23], not a decimal.\n\n"
+        "The table is the symmetry family of whichever entity was given, written in both "
+        "notations side by side, because seeing the four-index members as permutations of one "
+        "another is the point of the notation."
+    ),
+    parameters=(
+        phase_parameter(
+            help_text=(
+                "A hexagonal or trigonal phase. The conversion itself needs only the crystal "
+                "system, but the family, the spacing and the angle reported alongside it are "
+                "properties of this cell and this point group."
+            ),
+            builtin="ti_hcp",
+        ),
+        ChoiceParameter(
+            name="kind",
+            label="Kind",
+            help_text=(
+                "Whether the indices describe a plane or a direction. The two convert by "
+                "different rules, so this is not a labelling choice."
+            ),
+            options=(
+                (
+                    "plane",
+                    "Plane (hkl) ↔ (hkil)",
+                    "Insert or drop the redundant index i = -(h + k).",
+                ),
+                (
+                    "direction",
+                    "Direction [uvw] ↔ [UVTW]",
+                    "Change basis between the two- and three-axis basal descriptions.",
+                ),
+            ),
+            default="direction",
+        ),
+        ChoiceParameter(
+            name="input_notation",
+            label="Given in",
+            help_text=(
+                "Which of the two rows below is read. The other is ignored, and the answer is "
+                "reported in both notations either way."
+            ),
+            options=(
+                ("three", "Three indices", "Convert the three-index row to four indices."),
+                ("four", "Four indices", "Convert the four-index row to three indices."),
+            ),
+            default="four",
+        ),
+        IndicesParameter(
+            name="three_index",
+            label="Three-index row (hkl)",
+            help_text=(
+                "Read when *Given in* is Three indices. A plane (hkl) or a direction [uvw] — "
+                "which one is set by *Kind*, not by this box."
+            ),
+            default=(1, 1, 1),
+            group="Indices",
+        ),
+        IndicesParameter(
+            name="four_index",
+            label="Four-index row (hkil)",
+            help_text=(
+                "Read when *Given in* is Four indices. A plane (hkil) with i = -(h + k), or a "
+                "direction [UVTW] with U + V + T = 0."
+            ),
+            default=(1, 1, -2, 0),
+            width=4,
+            group="Indices",
+        ),
+        BooleanParameter(
+            name="antipodal",
+            label="Treat reversed directions as equal",
+            help_text=(
+                "Applies to directions only; planes are always antipodal. On, the family lists "
+                "one representative per reversed pair, which is the shorter list. Off lists both "
+                "senses, and is the setting under which the four-index members are literally "
+                "permutations of one another rather than permutations up to sign."
+            ),
+            default=True,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "One row per member of the family, in both notations; the converted row itself under "
+        "`data.three_index` and `data.four_index`."
+    ),
+    panel="calculator",
+    citations=(
+        _CITATION_ITA,
+        _CITATION_FRANK,
+        _CITATION_OTTE_CROCKER,
+    ),
+    tags=(
+        "hexagonal",
+        "Miller-Bravais",
+        "four-index",
+        "hkil",
+        "UVTW",
+        "conversion",
+        "notation",
+        "hcp",
+    ),
+)
+def _hexagonal_indices(request: dict[str, Any]) -> dict[str, Any]:
+    spec, phase = phase_from_request(request["phase"])
+    if not spec.uses_miller_bravais:
+        raise InvalidInputError(
+            f"{spec.name} is {spec.point_group}, which is neither hexagonal nor trigonal, so "
+            "the four-index Miller-Bravais notation does not apply to it.",
+            field="phase",
+            hint=(
+                "Miller-Bravais indices exist to make the three equivalent basal ⟨a⟩ axes "
+                "permutations of one another, which only happens under hexagonal symmetry. "
+                "Choose a hexagonal phase such as titanium, zirconium or magnesium, or load a "
+                "hexagonal CIF."
+            ),
+        )
+    kind = str(request["kind"])
+    given = str(request["input_notation"])
+    is_plane = kind == "plane"
+
+    widen = plane_hkl_to_hkil if is_plane else direction_uvw_to_uvtw
+    if given == "three":
+        three = tuple(int(value) for value in request["three_index"])
+        four = tuple(int(value) for value in widen(three))
+    else:
+        four = tuple(int(value) for value in request["four_index"])
+        narrow = plane_hkil_to_hkl if is_plane else direction_uvtw_to_uvw
+        try:
+            three = tuple(int(value) for value in narrow(four))
+        except ValueError as error:
+            constraint = "i = -(h + k)" if is_plane else "U + V + T = 0"
+            raise InvalidInputError(
+                f"That four-index {kind} is not self-consistent: {error}",
+                field="four_index",
+                hint=(
+                    f"The third index is redundant, not free: it is fixed by {constraint}. For "
+                    + (
+                        "the first-order prism plane the row is 1 0 -1 0, not 1 0 1 0."
+                        if is_plane
+                        else "the close-packed direction the row is 2 -1 -1 0, not 2 -1 1 0."
+                    )
+                ),
+            ) from error
+
+    three_text = format_miller_indices(three, family=kind, style="plain", scope="specific")
+    four_text = format_miller_indices(four, family=kind, style="plain", scope="specific")
+    family_text = format_miller_indices(four, family=kind, style="plain", scope="family")
+
+    antipodal = bool(request["antipodal"])
+    if is_plane:
+        members, mask = _plane_set(phase, [three]).symmetry_equivalent_indices()
+    else:
+        members, mask = _direction_set(phase, [three]).symmetry_equivalent_indices(
+            antipodal=antipodal
+        )
+    valid = np.asarray(members[0])[np.asarray(mask[0], dtype=bool)]
+    rows: list[dict[str, Any]] = []
+    for position, row in enumerate(valid):
+        triple = tuple(int(value) for value in row)
+        quadruple = tuple(int(value) for value in widen(triple))
+        rows.append(
+            {
+                "index": position + 1,
+                "three_index": format_miller_indices(
+                    triple, family=kind, style="plain", scope="specific"
+                ),
+                "four_index": format_miller_indices(
+                    quadruple, family=kind, style="plain", scope="specific"
+                ),
+                "i1": quadruple[0],
+                "i2": quadruple[1],
+                "i3": quadruple[2],
+                "i4": quadruple[3],
+            }
+        )
+
+    # One geometric fact about the converted entity, so the answer is checkable
+    # against something other than the arithmetic that produced it: a spacing
+    # for a plane, and for a direction its inclination from the c axis, which is
+    # 90 degrees for every basal direction whatever its indices.
+    extras: dict[str, Any] = {}
+    if is_plane:
+        extras["d_spacing_angstrom"] = float(_plane_set(phase, [three]).d_spacings_angstrom()[0])
+        fact = f"Every member has the interplanar spacing d = {extras['d_spacing_angstrom']:.5f} Å."
+    else:
+        c_axis = _direction_set(phase, [(0, 0, 1)])
+        angle_deg = float(np.degrees(_direction_set(phase, [three]).angle_matrix_rad(c_axis)[0, 0]))
+        extras["angle_to_c_axis_deg"] = angle_deg
+        fact = f"It lies {angle_deg:.3f}° from the c axis [0001]" + (
+            ", so it is a basal direction." if abs(angle_deg - 90.0) < 1e-6 else "."
+        )
+
+    symbols = "hkl → hkil" if is_plane else "uvw → UVTW"
+    rule = (
+        "the redundant index i = -(h + k) is inserted, because the reciprocal basis vectors "
+        "already lie at 120° to one another"
+        if is_plane
+        else "the basal components are re-expressed on three coplanar axes through "
+        "U = (2u - v)/3, V = (2v - u)/3, T = -(U + V), W = w, and the denominators cleared"
+    )
+    result = AppResult(
+        title=f"{three_text} = {four_text} in {spec.name}",
+        summary=(
+            f"The {kind} {three_text} is written {four_text} in Miller-Bravais notation "
+            f"({symbols}): {rule}. {fact} Its family {family_text} has {len(rows)} distinct "
+            "members. In the four-index form those members are permutations of the first three "
+            "indices, up to the sign convention in force; in the three-index form they are not, "
+            "which is what the notation exists to fix."
+        ),
+        table=ResultTable(
+            columns=(
+                Column("index", "#", numeric=True),
+                Column("three_index", "Three-index"),
+                Column("four_index", "Four-index"),
+                Column("i1", "h" if is_plane else "U", numeric=True),
+                Column("i2", "k" if is_plane else "V", numeric=True),
+                Column("i3", "i" if is_plane else "T", numeric=True),
+                Column("i4", "l" if is_plane else "W", numeric=True),
+            ),
+            rows=tuple(rows),
+            caption=f"Members of {family_text}, in both notations.",
+        ),
+        data={
+            "kind": kind,
+            "three_index": list(three),
+            "four_index": list(four),
+            "three_index_label": three_text,
+            "four_index_label": four_text,
+            "family_label": family_text,
+            "multiplicity": len(rows),
+            "members": [
+                {"three_index": row["three_index"], "four_index": row["four_index"]} for row in rows
+            ],
+            **extras,
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "kind": kind,
+            "input_notation": given,
+            "three_index": list(three),
+            "four_index": list(four),
+            "antipodal": antipodal,
+        },
+        notes=(
+            "Planes and directions convert by different rules. A four-index plane is the same "
+            "three numbers with i = -(h + k) inserted; a four-index direction is a genuine change "
+            "of basis. The two therefore disagree in general — (100) is (10-10) while [100] is "
+            "[2-1-10] — and where they do coincide, as (110) and [110] both do, that is a "
+            "property of those particular indices rather than a rule.",
+            "Directions are reduced to lowest terms, so [11-23] rather than [22-46].",
+        ),
+        citations=(_CITATION_ITA, _CITATION_FRANK, _CITATION_OTTE_CROCKER),
+    )
+    return result.to_json()
+
+
+@REGISTRY.operation(
     "calc.zone_axis",
     title="Zone axis from two planes",
     summary="The common direction of two planes, and the reflections in that zone.",
@@ -1608,7 +1903,9 @@ _RELATIONSHIP_CONSTRUCTORS = {
 }
 
 
-def custom_relationship_parameters() -> tuple[Parameter, ...]:
+def custom_relationship_parameters(
+    *, group: str = "Custom relationship", collapsed: bool = True
+) -> tuple[Parameter, ...]:
     """The four index rows that define a relationship the user states themselves.
 
     Purpose
@@ -1627,9 +1924,20 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
 
     When to use
     -----------
-    Only when ``relationship`` is ``"custom"``. They are ignored otherwise, and
-    grouped behind their own disclosure so they cost nothing on screen while the
-    relationship is a named one.
+    On an operation whose ``relationship`` picker offers *Custom*, where they
+    apply only to that choice: they are ignored otherwise, and grouped behind
+    their own disclosure so they cost nothing on screen while the relationship
+    is a named one. On an operation that is *about* a user-stated relationship
+    -- ``variants.custom_relationship`` -- they are the subject rather than a
+    fallback, so it passes its own heading and ``collapsed=False`` and they open
+    with the panel.
+
+    Parameters
+    ----------
+    group : str
+        Control-panel section the four rows are gathered under.
+    collapsed : bool
+        Whether that section starts closed.
 
     Returns
     -------
@@ -1637,7 +1945,6 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
         Parent plane, child plane, parent direction, child direction.
     """
 
-    group = "Custom relationship"
     return (
         IndicesParameter(
             name="custom_parent_plane",
@@ -1649,7 +1956,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             ),
             default=(1, 1, 1),
             group=group,
-            group_collapsed=True,
+            group_collapsed=collapsed,
         ),
         IndicesParameter(
             name="custom_child_plane",
@@ -1657,7 +1964,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             help_text="The child plane brought parallel to the parent plane above.",
             default=(0, 1, 1),
             group=group,
-            group_collapsed=True,
+            group_collapsed=collapsed,
         ),
         IndicesParameter(
             name="custom_parent_direction",
@@ -1670,7 +1977,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             ),
             default=(-1, 0, 1),
             group=group,
-            group_collapsed=True,
+            group_collapsed=collapsed,
         ),
         IndicesParameter(
             name="custom_child_direction",
@@ -1678,7 +1985,7 @@ def custom_relationship_parameters() -> tuple[Parameter, ...]:
             help_text="The child direction brought parallel to the parent direction above.",
             default=(-1, -1, 1),
             group=group,
-            group_collapsed=True,
+            group_collapsed=collapsed,
         ),
     )
 
@@ -1711,6 +2018,7 @@ def resolve_relationship(
     child_phase: Any,
     *,
     name: str | None = None,
+    custom_name: str | None = None,
 ) -> Any:
     """Build the relationship an operation was asked for, named or custom.
 
@@ -1732,6 +2040,10 @@ def resolve_relationship(
         The two phases the relationship is built between.
     name : str, optional
         Use this identifier instead of the one in the request.
+    custom_name : str, optional
+        The name a user-stated relationship is built under, and therefore the
+        name it carries into ``describe()``, reports and figures. Ignored for a
+        named relationship, whose name is its own. Defaults to ``"custom"``.
 
     Returns
     -------
@@ -1788,7 +2100,7 @@ def resolve_relationship(
 
     try:
         return OrientationRelationship.from_parallel_plane_direction(
-            name=CUSTOM_RELATIONSHIP,
+            name=custom_name or CUSTOM_RELATIONSHIP,
             parent_plane=_plane("custom_parent_plane", parent_phase),
             child_plane=_plane("custom_child_plane", child_phase),
             parent_direction=_direction("custom_parent_direction", parent_phase),
@@ -2018,6 +2330,32 @@ REGISTRY.add_examples(
             request={
                 "phase": {"builtin": "zr_hcp"},
                 "planes": [[0, 0, 1], [1, 0, 0], [1, 0, 1]],
+            },
+        ),
+        ExampleScenario(
+            id="calc.example.basal_slip_indices",
+            title="Why the hcp slip direction is written [2-1-10] and not [100]",
+            panel="calculator",
+            summary="The close-packed basal direction of titanium, in both notations.",
+            teaches=(
+                "The three close-packed basal directions are crystallographically identical, but "
+                "in three-index form they read [100], [010] and [-1-10], which share no visible "
+                "relationship. Converted, they are [2-1-10], [-12-10] and [-1-120]: permutations "
+                "of one another, and obviously one family. That is the whole reason the "
+                "four-index notation exists, and why the hcp slip system is quoted as "
+                "(0001)<11-20>. Reversed senses are listed here, so the six members are the "
+                "permutations of the first three indices and their reverses. Note also that a "
+                "direction converts by a change of basis, not by inserting an index: the "
+                "plane (100) becomes (1 0 -1 0) while the direction [100] becomes [2 -1 -1 0]."
+            ),
+            operation="calc.hexagonal_indices",
+            request={
+                "phase": {"builtin": "ti_hcp"},
+                "kind": "direction",
+                "input_notation": "three",
+                "three_index": [1, 0, 0],
+                "four_index": [1, 1, -2, 0],
+                "antipodal": False,
             },
         ),
         ExampleScenario(

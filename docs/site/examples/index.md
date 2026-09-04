@@ -133,6 +133,7 @@ The complete set of computed-versus-expected values at a glance:
 | `workbench-goss-pole-at-nd` | 0.0 | 0.0 | deg | ✅ |
 | `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | ✅ |
 | `workbench-crystal-viewer-euler-round-trip` | < 1e-08 | 0.00e+00 | deg | ✅ |
+| `workbench-hexagonal-index-conversion` | [2, -1, -1, 0, 1, 0, -1, 0] | [2, -1, -1, 0, 1, 0, -1, 0] | &mdash; | ✅ |
 
 ## Example groups
 
@@ -159,7 +160,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
-- {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation.
+- {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
 
 ```{toctree}
 :maxdepth: 1

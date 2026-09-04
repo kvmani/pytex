@@ -233,7 +233,6 @@ GOSS_POLE_AT_CENTRE = WorkedExample(
 )
 
 
-
 CRYSTAL_VIEWER_GOSS_ND = WorkedExample(
     id="workbench-crystal-viewer-goss-nd",
     title="The crystal viewer's camera is an orientation: Goss puts ND 45 degrees from [001]",
@@ -322,6 +321,58 @@ CRYSTAL_VIEWER_EULER_ROUND_TRIP = WorkedExample(
     result_format="{:.2e}",
 )
 
+HEXAGONAL_SLIP_DIRECTION = WorkedExample(
+    id="workbench-hexagonal-index-conversion",
+    title="The hcp slip direction [100] is [2-1-10], and the plane (100) is (10-10)",
+    domain="application",
+    scenario=(
+        "Hexagonal slip systems are quoted in four indices — basal slip is (0001)<11-20> — "
+        "because the three-index basis names only two of the three equivalent basal axes, so "
+        "the three identical close-packed directions come out as the unrelated symbols [100], "
+        "[010] and [110]. A plane and a direction with the same three indices do not convert to "
+        "the same quadruple: the plane takes the redundant index i = -(h + k) unchanged, while "
+        "the direction is re-expressed on three coplanar axes and its basal components change. "
+        "Converting a direction by the plane rule is the classic silent error in hexagonal "
+        "indexing, and this pair is where it shows."
+    ),
+    setup=REGISTRY_SETUP
+    + """
+TITANIUM = {
+    "phase": {"builtin": "ti_hcp"},
+    "input_notation": "three",
+    "three_index": [1, 0, 0],
+    "four_index": [1, 1, -2, 0],
+}
+""",
+    code=(
+        "direction = REGISTRY.call(\n"
+        "    'calc.hexagonal_indices', dict(TITANIUM, kind='direction')\n"
+        ")\n"
+        "plane = REGISTRY.call('calc.hexagonal_indices', dict(TITANIUM, kind='plane'))\n"
+        "result = direction['data']['four_index'] + plane['data']['four_index']"
+    ),
+    expected=[2, -1, -1, 0, 1, 0, -1, 0],
+    unit="",
+    tolerance=0,
+    reference=(
+        "The Weber transformation U = (2u - v)/3, V = (2v - u)/3, T = -(U + V), W = w sends "
+        "[100] to [2-1-10] after clearing denominators; the plane rule inserts i = -(h + k) and "
+        "sends (100) to (10-10). Both are standard tabulated identities of the Miller-Bravais "
+        "notation, not outputs of this code."
+    ),
+    citation=(
+        "Otte & Crocker, Physica Status Solidi 9 (1965) 441; "
+        "Frank, Acta Crystallographica 18 (1965) 862."
+    ),
+    symbols=(),
+    see_also=(
+        SeeAlso("Miller planes and directions", "../../concepts/miller_planes_directions"),
+        _GUIDE,
+    ),
+    result_format="{:.0f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="workbench-service-layer",
     title="Workbench service layer",
@@ -330,7 +381,7 @@ GROUP = ExampleGroup(
         "value fixed independently of this code: the Kurdjumov-Sachs packet structure and "
         "intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact "
         "identity, the assertion a Miller component label makes about where its poles land, and the "
-        "crystal viewer's claim that its camera is an orientation."
+        "crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share."
     ),
     examples=(
         KS_PACKET_COUNT,
@@ -339,6 +390,7 @@ GROUP = ExampleGroup(
         GOSS_POLE_AT_CENTRE,
         CRYSTAL_VIEWER_GOSS_ND,
         CRYSTAL_VIEWER_EULER_ROUND_TRIP,
+        HEXAGONAL_SLIP_DIRECTION,
     ),
 )
 

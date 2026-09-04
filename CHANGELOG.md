@@ -11,6 +11,30 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+### Added
+
+- **A hexagonal index converter in the calculator** (`calc.hexagonal_indices`). Converts one plane
+  or one direction between the three-index Miller form and the four-index Miller-Bravais form, in
+  either direction, and lists the symmetry family of the result in both notations side by side. The
+  two rules are kept distinct because they are distinct: a plane takes the redundant index
+  `i = -(h + k)` and is otherwise unchanged, while a direction is a change of basis, so `(100)`
+  becomes `(10-10)` but `[100]` becomes `[2-1-10]`. The redundancy constraints are checked rather
+  than assumed, and four-index directions come back reduced to lowest terms.
+- **A user-stated orientation relationship as a view of the Variants panel**
+  (`variants.custom_relationship`). Two phases — either of which may be a loaded CIF — two
+  parallelisms and a **name**, and the view returns the misorientation the statement implies, every
+  crystallographically distinct variant with its packet, and the discrete spectrum of boundaries
+  those variants can make with each other. The name is carried into the relationship object, so a
+  relationship taken from a paper is reported under the paper's name rather than as an anonymous
+  custom entry. Kurdjumov-Sachs stated by hand reproduces the catalogued constructor exactly, which
+  is what the tests and the rail's first example pin.
+
+### Changed
+
+- `custom_relationship_parameters()` takes `group` and `collapsed`, and `resolve_relationship()`
+  takes `custom_name`, so the four index rows can be the subject of an operation rather than only a
+  fallback behind a picker, and a user-stated relationship can carry the user's name.
+
 ## [0.5.0] - 2026-08-31
 
 One environment, one behaviour. The scientific stack PyTex was built to sit on — **pymatgen, orix,

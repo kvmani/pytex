@@ -117,6 +117,14 @@ exactly perpendicular to the plane normal — the normal component is removed �
 so a literature statement that is only approximately self-consistent still
 yields a proper rotation rather than an error.
 
+The Variants panel additionally carries **A relationship you state yourself** as
+a view in its own right (`variants.custom_relationship`). It takes the two
+phases — either of which may be a loaded CIF — the two parallelisms, and a
+**name**, and reports the misorientation, the variant list, the packet grouping
+and the intervariant boundary spectrum together. The name is passed to this
+constructor, so it is the name the relationship carries into `describe()`,
+reports and figures.
+
 ## Mapping indices across the relationship
 
 The correspondence surface answers the canonical OR questions:

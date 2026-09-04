@@ -41,6 +41,17 @@ Use:
 
 The conversion helpers are vectorized and use integer arithmetic throughout.
 
+The same conversions are exposed in the workbench as a calculator entry,
+**Hexagonal index converter (3 ↔ 4)** (`calc.hexagonal_indices`), which converts
+one plane or one direction in either direction and lists the symmetry family of
+the result in both notations side by side. The two rules are kept distinct
+there for the reason they are kept distinct here: a plane takes the redundant
+index $i = -(h + k)$ and is otherwise unchanged, while a direction is a genuine
+change of basis, so $(100)$ becomes $(10\bar{1}0)$ but $[100]$ becomes
+$[2\bar{1}\bar{1}0]$. Converting a direction by the plane rule is the classic
+silent error in hexagonal indexing, and it is the one the operation's `kind`
+control exists to prevent.
+
 ## Antipodal And Family Semantics
 
 PyTex separates exact stored indices from family semantics:

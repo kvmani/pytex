@@ -5763,3 +5763,117 @@ Two defects found while re-reading the new picker rather than by a failing test,
 - Nothing outstanding on the OR work.
 - Remaining density candidates, if wanted: the TEM panel's rail is the longest left, and the
   Kearns route pages still open with several visible paragraphs each.
+
+
+## Hexagonal Index Converter, And A User-Stated OR As A Sub-Tool — COMPLETE (2026-09-04)
+
+**Objective.** Two workbench additions asked for together:
+
+1. A dedicated hexagonal Miller <-> Miller-Bravais converter, for planes *and* directions, in both
+   directions, as its own entry in the calculator's Calculation list.
+2. A first-class user-defined orientation relationship in the OR (Variants) tool: the user gives
+   two phases -- each of which may be a loaded CIF -- the two parallel planes, the two parallel
+   directions, and a *name*, and gets the variant count, every variant, the misorientation, and the
+   intervariant boundary spectrum in one place.
+
+**What already exists, so is not rebuilt.** `pytex.core.hexagonal` already carries the exact
+rational conversions in both directions for both planes and directions, with the redundancy
+constraints checked rather than assumed; `pytex.core.miller` carries the vectorized forms. The
+custom relationship already reaches every OR operation through `resolve_relationship` and
+`custom_relationship_parameters` (commit b96c7bc), and the phase control already accepts CIF text
+for any `editor="phase"` parameter. What is missing is a calculator surface for the first, and for
+the second a single sub-tool that answers the whole question at once and lets the user name the
+relationship they stated.
+
+### Increment 1 -- `calc.hexagonal_indices` (landed)
+
+One calculator entry, both kinds and both directions. `kind` says plane or direction, `Given in`
+says which of the two index rows is read, and the answer comes back in both notations either way.
+The unread row is ignored, which is the same rule the `custom_*` rows already follow when the
+relationship picker is on a named entry, and a test pins it.
+
+**No new mathematics.** `pytex.core.hexagonal` already had all four conversions with the redundancy
+constraints checked rather than assumed, and directions carried through exact rational arithmetic
+with the denominators cleared. The operation is a surface over them; writing a second copy of the
+Weber transformation in the service layer would have been the defect this repository's shared-core
+rule exists to prevent.
+
+**The table is the symmetry family, not the conversion.** A two-row conversion table is thin, and
+the family is the thing that makes the notation's case: with reversed senses listed, the six
+close-packed basal directions are the permutations of (2, -1, -1) and their reverses, while their
+three-index labels share no visible relationship at all. So the operation borrows
+`calc.symmetry_family`'s `antipodal` switch and renders each member in both notations side by side.
+
+Two facts are reported beside the conversion so the answer is checkable against something other
+than the arithmetic that produced it: `d` for a plane, and the angle to the c axis for a direction,
+which is exactly 90 degrees for every basal direction whatever c/a is. Both are asserted in the
+tests against closed forms -- `d(10-10) = sqrt(3)a/2` -- rather than against recorded output.
+
+**Refusals name their own control.** A non-hexagonal phase is refused on `phase`; a quadruple
+violating `i = -(h+k)` or `U + V + T = 0` is refused on `four_index`, with the correct row for the
+prism plane or the close-packed direction in the hint. Trigonal phases are accepted: PyTex stores
+them in the hexagonal setting, and `PhaseSpec.uses_miller_bravais` is the existing gate for exactly
+this question, so quartz converts and nickel does not.
+
+Fourteen tests, one rail example, one worked example (`workbench-hexagonal-index-conversion`,
+which asserts the plane and the direction answers *together* -- the classic silent error in
+hexagonal indexing is converting a direction by the plane rule, and it only shows when both are on
+screen). Docs: a paragraph on the Miller concepts page and a Changelog entry.
+
+### Increment 2 -- `variants.custom_relationship` (landed)
+
+The OR panel's sixth view: two phases, two parallelisms, a name.
+
+**What was already there, and what was missing.** Since b96c7bc, *Custom* has been an entry in
+every relationship picker and reaches every OR operation through one `resolve_relationship`; and
+the shared phase control has always accepted CIF text, so both phases could already be loaded
+files. What was missing was a place where the user-stated relationship is the *subject*: the four
+index rows sat collapsed behind a picker whose default is a named entry, the answer was split
+across three operations, and the relationship could not be given a name.
+
+So this view is composition, not new physics. It calls the same constructor, the same
+`generate_variants`, the same `intervariant_misorientations`, the same `_packet_labels`. What is
+new is that it answers the whole question in one result and that the name is a parameter.
+
+**The name is carried into the relationship object**, not pasted into the title afterwards, so it
+reaches `describe()`, the exported JSON, and anything drawn from the same statement. That needed
+one keyword on `resolve_relationship` (`custom_name`) rather than a second construction path.
+
+**`custom_relationship_parameters()` now takes `group` and `collapsed`** so the four rows can open
+with the panel here and stay collapsed everywhere else, without a second declaration of the same
+four parameters -- which is the thing that helper exists to prevent.
+
+**One table, two answers, so `report` chooses the view.** `AppResult` carries one table. Both the
+variant rows and the boundary spectrum are computed on every call and both are in `data`, so the
+control selects which becomes rows, not what is calculated; a test asserts both are present
+whichever is shown.
+
+**Defaults that check themselves.** This one view opens on austenite and ferrite rather than the
+panel's canonical beta/alpha zirconium pair, because the shared parallelism defaults are the
+Kurdjumov-Sachs statement: the untouched form therefore reproduces a published answer -- 24
+variants, 4 packets of 6, the ten Morito angles -- and the reason is recorded on the constants.
+
+**A one-variant relationship is an answer, not an error.** Cube-on-cube stated by hand has no
+variant pairs; the spectrum comes back empty and the summary says why, rather than the call being
+refused as `variants.intervariant_misorientations` refuses it.
+
+Eleven tests. The two that matter: Kurdjumov-Sachs *stated* equals Kurdjumov-Sachs *catalogued* on
+variant count and misorientation, and the whole thing run with **both phases read from the pinned
+fixture CIFs** -- nickel and alpha iron -- which is the path the request was actually about. Two
+rail examples: KS stated rather than selected, and Pitsch-Schrader, which PyTex does not catalogue
+and which gives 6 variants where Burgers gives 12 on the same phase pair (both counts verified
+before the prose claiming them was written).
+
+Wired into the panel by two lines in `variants.js` -- `VIEWS` and `VIEW_MODES` -- plus the rail's
+explainer. A test reads `VIEWS` out of the JS and asserts the operation is listed, because a view
+the panel does not list is a view no user can reach.
+
+### Verification
+
+`ruff format`, `ruff check`, `mypy` clean on every touched file. Green:
+`test_app_calculator.py`, `test_app_variants.py`, `test_app_manifest.py`,
+`test_documentation_policy.py`, `test_worked_examples.py`. Worked-example gallery regenerated.
+
+### Next actions
+
+- Nothing outstanding on this goal.

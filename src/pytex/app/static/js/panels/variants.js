@@ -149,6 +149,7 @@ const VIEWS = [
   'variants.contact_sheet',
   'variants.or_from_grains',
   'variants.measured_composite',
+  'variants.custom_relationship',
 ];
 
 /** Which kind of drawing each view needs. `table` has no picture, by design. */
@@ -159,6 +160,7 @@ const VIEW_MODES = {
   'variants.contact_sheet': 'sheet',
   'variants.or_from_grains': 'table',
   'variants.measured_composite': 'measured',
+  'variants.custom_relationship': 'table',
 };
 
 export function mount(context) {
@@ -271,7 +273,7 @@ export function mount(context) {
       el('label.field__label', { text: 'View' }),
       operationSelect,
       explainer(
-        'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals.',
+        'The pole figure shows where the variants point and the spectrum how they differ from each other; the two crystal views show the parent beside one variant, and beside every variant, with the planes and directions the relationship holds parallel drawn on both crystals. The last view takes a relationship you state yourself — two phases, two parallelisms and a name — and answers the same questions about it.',
         { label: 'What each figure is' },
       ),
     ]),

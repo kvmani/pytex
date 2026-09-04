@@ -439,6 +439,42 @@ statement that is only approximately self-consistent still yields a proper rotat
 *parallel* to its own plane normal leaves no rotation about that normal to fix, and is refused with
 the reason said on the control.
 
+#### A relationship you state yourself, as its own view
+
+**Custom** is an entry in every picker; **A relationship you state yourself** is the panel's own
+view for the case where the user-stated relationship *is* the subject. Choose it and the four index
+rows open with the panel rather than behind a disclosure, beside two phase controls and one more
+box: a **name**.
+
+The name is not decoration. It is carried into the relationship object, so it is what the title,
+the prose, the `describe()` text and the exported JSON call the relationship — a statement taken
+from a paper is reported under the paper's name rather than as an anonymous custom entry.
+
+Either phase may be a built-in, a cell typed into the panel, or a `.cif` file loaded through the
+shared phase control, so the everyday case — two structures downloaded as CIFs and a relationship
+read off a figure caption — is four file-and-index actions with no Python. The view answers the
+whole question in one place:
+
+- the misorientation the statement implies, as an angle about an axis;
+- how many crystallographically distinct child orientations one parent grain produces;
+- which packet each of them falls in, under a parent family you choose;
+- the discrete spectrum of boundaries those variants can make with each other.
+
+The **Table** control chooses which of the last two is shown as rows; both are computed either way
+and both are in the export, so it selects a view rather than a calculation.
+
+The variant count is the first thing to read, because it is a consequence of the statement rather
+than a setting: Kurdjumov-Sachs typed in gives 24, Nishiyama-Wassermann 12, cube-on-cube 1. A
+relationship from a paper that does not return the paper's variant count has not been entered as
+the paper states it. Two examples in the rail run that check — Kurdjumov-Sachs stated rather than
+selected, and Pitsch-Schrader, which PyTex does not catalogue at all and which gives six variants
+where Burgers gives twelve on the same beta-to-alpha zirconium pair.
+
+Two phases are always required, and PyTex refuses a relationship between a phase and itself. A twin
+or a coherent precipitate of one material is therefore stated as two phases differing in name,
+which is not a workaround: the separate name is what lets a variant, a boundary or a diffraction
+report say which orientation domain a number belongs to.
+
 This is the panel's whole argument: a measured misorientation histogram from prior-austenite grains
 should show peaks at those angles and nowhere else, and a peak elsewhere is a boundary between two
 *different* parent grains.

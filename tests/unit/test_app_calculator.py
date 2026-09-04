@@ -10,6 +10,7 @@ is compared against a previously recorded output of this code.
 from __future__ import annotations
 
 import math
+from typing import ClassVar
 
 import numpy as np
 import pytest
@@ -693,3 +694,181 @@ class TestOrientationRelationships:
                 custom_child_direction=(-1, -1, 1),
             )
         assert excinfo.value.details["field"] == "relationship"
+
+
+class TestHexagonalIndexConverter:
+    """Miller <-> Miller-Bravais, against identities fixed by the notation itself.
+
+    Every expected value here is one a hexagonal-crystallography text states as
+    a worked identity -- [100] = [2-1-10], [110] = [11-20], (100) = (10-10),
+    (001) = (0001) -- or is forced by an exact geometric argument, such as a
+    basal direction lying at 90 degrees to the c axis whatever c/a is, and the
+    prism spacing being sqrt(3)a/2 in any hexagonal cell.
+    """
+
+    TITANIUM: ClassVar[dict[str, str]] = {"builtin": "ti_hcp"}
+
+    def convert(self, **request: object) -> dict:
+        base: dict[str, object] = {
+            "phase": self.TITANIUM,
+            "kind": "direction",
+            "input_notation": "three",
+            "three_index": (1, 0, 0),
+            "four_index": (1, 1, -2, 0),
+        }
+        base.update(request)
+        return call("calc.hexagonal_indices", **base)
+
+    @pytest.mark.parametrize(
+        ("uvw", "uvtw"),
+        [
+            ((1, 0, 0), (2, -1, -1, 0)),
+            ((0, 1, 0), (-1, 2, -1, 0)),
+            ((1, 1, 0), (1, 1, -2, 0)),
+            ((0, 0, 1), (0, 0, 0, 1)),
+            ((1, 1, 1), (1, 1, -2, 3)),
+        ],
+    )
+    def test_a_direction_converts_both_ways(
+        self, uvw: tuple[int, ...], uvtw: tuple[int, ...]
+    ) -> None:
+        """The Weber transformation, and its exact inverse.
+
+        These five are the identities every hexagonal text tabulates. The round
+        trip is asserted in the same test because a converter that is right in
+        one direction and wrong in the other is the failure mode a one-way test
+        cannot see.
+        """
+
+        widened = self.convert(kind="direction", input_notation="three", three_index=uvw)
+        assert tuple(widened["data"]["four_index"]) == uvtw
+        narrowed = self.convert(kind="direction", input_notation="four", four_index=uvtw)
+        assert tuple(narrowed["data"]["three_index"]) == uvw
+
+    @pytest.mark.parametrize(
+        ("hkl", "hkil"),
+        [
+            ((1, 0, 0), (1, 0, -1, 0)),
+            ((1, 1, 0), (1, 1, -2, 0)),
+            ((0, 0, 1), (0, 0, 0, 1)),
+            ((1, 1, 2), (1, 1, -2, 2)),
+        ],
+    )
+    def test_a_plane_converts_both_ways(self, hkl: tuple[int, ...], hkil: tuple[int, ...]) -> None:
+        """A plane takes the redundant index and keeps h, k and l unchanged."""
+
+        widened = self.convert(kind="plane", input_notation="three", three_index=hkl)
+        assert tuple(widened["data"]["four_index"]) == hkil
+        narrowed = self.convert(kind="plane", input_notation="four", four_index=hkil)
+        assert tuple(narrowed["data"]["three_index"]) == hkl
+
+    def test_a_plane_and_a_direction_of_the_same_indices_do_not_agree(self) -> None:
+        """The distinction the operation exists to keep.
+
+        (100) is (10-10) and [100] is [2-1-10]. Converting a direction by the
+        plane rule is the classic silent error in hexagonal indexing, so it is
+        pinned rather than assumed.
+        """
+
+        plane = self.convert(kind="plane", input_notation="three", three_index=(1, 0, 0))
+        direction = self.convert(kind="direction", input_notation="three", three_index=(1, 0, 0))
+        assert tuple(plane["data"]["four_index"]) == (1, 0, -1, 0)
+        assert tuple(direction["data"]["four_index"]) == (2, -1, -1, 0)
+
+    def test_a_four_index_direction_is_reduced_to_lowest_terms(self) -> None:
+        """[22-46] and [11-23] are the same line; only one of them is an index."""
+
+        result = self.convert(kind="direction", input_notation="three", three_index=(2, 2, 2))
+        assert tuple(result["data"]["four_index"]) == (1, 1, -2, 3)
+
+    def test_a_basal_direction_is_ninety_degrees_from_the_c_axis(self) -> None:
+        """True for every hexagonal cell, whatever c/a is."""
+
+        result = self.convert(kind="direction", input_notation="four", four_index=(2, -1, -1, 0))
+        assert result["data"]["angle_to_c_axis_deg"] == pytest.approx(90.0, abs=1e-9)
+
+    def test_the_prism_spacing_is_the_analytic_one(self) -> None:
+        """d(10-10) = sqrt(3)a/2 in any hexagonal cell, from the reciprocal metric."""
+
+        spec = builtin_phase("ti_hcp")
+        result = self.convert(kind="plane", input_notation="four", four_index=(1, 0, -1, 0))
+        assert result["data"]["d_spacing_angstrom"] == pytest.approx(
+            math.sqrt(3.0) * spec.a / 2.0, rel=1e-12
+        )
+
+    def test_the_close_packed_family_has_three_members_or_six_with_both_senses(self) -> None:
+        """Three basal a axes; six directions once reversals are counted apart."""
+
+        merged = self.convert(kind="direction", input_notation="four", four_index=(2, -1, -1, 0))
+        split = self.convert(
+            kind="direction",
+            input_notation="four",
+            four_index=(2, -1, -1, 0),
+            antipodal=False,
+        )
+        assert merged["data"]["multiplicity"] == 3
+        assert split["data"]["multiplicity"] == 6
+
+    def test_the_family_is_a_permutation_set_in_four_indices_only(self) -> None:
+        """The whole reason the notation exists, asserted rather than described.
+
+        With both senses listed, the six members of the close-packed family are
+        exactly the permutations of (2, -1, -1) and their reverses, padded with
+        a zero c index. The three-index labels of those same six directions are
+        not permutations of one another, which is what makes the family
+        invisible in that notation.
+        """
+
+        result = self.convert(
+            kind="direction",
+            input_notation="four",
+            four_index=(2, -1, -1, 0),
+            antipodal=False,
+        )
+        quadruples = {
+            tuple(int(value) for value in (row["i1"], row["i2"], row["i3"], row["i4"]))
+            for row in result["table"]["rows"]
+        }
+        expected = set()
+        for basal in ((2, -1, -1), (-1, 2, -1), (-1, -1, 2)):
+            expected.add((*basal, 0))
+            expected.add((*(-value for value in basal), 0))
+        assert quadruples == expected
+
+    def test_an_inconsistent_four_index_row_is_refused_on_its_own_control(self) -> None:
+        """The third index is fixed, not free, and a violation names the box."""
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            self.convert(kind="direction", input_notation="four", four_index=(2, -1, 1, 0))
+        assert excinfo.value.details["field"] == "four_index"
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            self.convert(kind="plane", input_notation="four", four_index=(1, 0, 1, 0))
+        assert excinfo.value.details["field"] == "four_index"
+
+    def test_a_cubic_phase_is_refused_on_the_phase_control(self) -> None:
+        """Miller-Bravais indices mean nothing without hexagonal symmetry."""
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            self.convert(phase=NICKEL)
+        assert excinfo.value.details["field"] == "phase"
+
+    def test_a_trigonal_phase_is_accepted(self) -> None:
+        """PyTex stores trigonal cells in the hexagonal setting, and quartz is 32."""
+
+        result = self.convert(
+            phase={"builtin": "quartz_alpha"},
+            kind="direction",
+            input_notation="three",
+            three_index=(1, 0, 0),
+        )
+        assert tuple(result["data"]["four_index"]) == (2, -1, -1, 0)
+
+    def test_the_unread_row_does_not_change_the_answer(self) -> None:
+        """Only the row the notation choice names is read; the other is ignored."""
+
+        first = self.convert(input_notation="three", three_index=(1, 0, 0), four_index=(0, 0, 0, 1))
+        second = self.convert(
+            input_notation="three", three_index=(1, 0, 0), four_index=(1, 1, -2, 0)
+        )
+        assert first["data"]["four_index"] == second["data"]["four_index"]

@@ -49,10 +49,12 @@ from pytex.app.registry import (
     IndicesParameter,
     IntegerParameter,
     NumberParameter,
+    TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import (
     _RELATIONSHIPS,
+    CUSTOM_RELATIONSHIP,
     custom_relationship_parameters,
     custom_relationship_request,
     direction_label,
@@ -94,6 +96,27 @@ _CANONICAL_RELATIONSHIP = "burgers"
 _CANONICAL_PACKET_PLANE = (1, 1, 0)
 #: The child plane the canonical case is read on: the basal plane, as (0001).
 _CANONICAL_CHILD_POLE = (0, 0, 1)
+
+#: The pair this one sub-tool opens on, which is *not* the panel's canonical
+#: Burgers pair.
+#:
+#: The shared parallelism defaults from `custom_relationship_parameters` are the
+#: Kurdjumov-Sachs statement, so pairing them with austenite and ferrite means
+#: the untouched form reproduces a relationship whose answer is published: 24
+#: variants in 4 packets of 6, and the ten Morito disorientations. A default
+#: whose correctness the user can check is worth more here than agreement with
+#: the sibling views, because this is the tool whose whole premise is that a
+#: statement typed in by hand gets the treatment a catalogued one gets.
+_STATED_PARENT = "austenite_fcc"
+_STATED_CHILD = "fe_bcc"
+_STATED_PACKET_PLANE = (1, 1, 1)
+
+#: Heading for the two controls that shape the *report* rather than the
+#: relationship. They are grouped so that they render after the parallelisms:
+#: the control panel lays ungrouped fields out first and groups after, and the
+#: statement being made is what a reader of this panel should meet before the
+#: choices about how to present its consequences.
+_REPORTING_GROUP = "Grouping and report"
 
 _CITATION_MORITO = (
     "Morito, Tanaka, Konishi, Furuhara & Maki, Acta Mater. 51 (2003) 1789 "
@@ -298,9 +321,7 @@ def _nearest_axis(axis_cartesian: np.ndarray, phase: Any, spec: PhaseSpec) -> tu
     units = images / np.linalg.norm(images, axis=1)[:, None]
     cosines = units @ target
     best = int(np.argmax(np.abs(cosines)))
-    residual = float(
-        np.degrees(acute_angle_between_unit_vectors_rad(units[best], target))
-    )
+    residual = float(np.degrees(acute_angle_between_unit_vectors_rad(units[best], target)))
     return direction_label(_canonical_sign(candidates[best]), spec=spec), residual
 
 
@@ -865,6 +886,323 @@ def _intervariant_misorientations(request: dict[str, Any]) -> dict[str, Any]:
 
 
 @REGISTRY.operation(
+    "variants.custom_relationship",
+    title="A relationship you state yourself",
+    summary="Name two phases and two parallelisms; get the variants and their boundaries.",
+    help_text=(
+        "The sub-tool for an orientation relationship that is not on the list. Give the two "
+        "phases — each may be a built-in, a cell you type, or a CIF you load — the plane pair "
+        "and the direction pair that define the relationship, and a name to call it by. "
+        "Everything the named relationships get is then derived from that statement: the "
+        "misorientation it implies, every crystallographically distinct variant one parent "
+        "grain produces, the packet those variants fall into, and the discrete spectrum of "
+        "boundaries the variants can make with each other.\n\n"
+        "**Why a name is a parameter.** The name is carried into the relationship object, so it "
+        "appears in the title, in the prose, in the exported JSON and in every figure drawn from "
+        "the same statement. A relationship from a paper should be reported under the paper's "
+        "name, not as *custom*.\n\n"
+        "**Two phases, always.** A relationship is between two orientation domains, and PyTex "
+        "refuses one between a phase and itself. A twin or a coherent precipitate of the same "
+        "material is therefore stated as two phases differing in name, which is not a "
+        "workaround: the separate name is what lets a variant, a boundary or a diffraction "
+        "report say which domain a number belongs to.\n\n"
+        "**What is checked.** The plane pair fixes the common normal and the direction pair "
+        "fixes the rotation left about it. The directions need not lie exactly in their planes — "
+        "the normal component is removed, so a literature statement that is only approximately "
+        "self-consistent still yields a proper rotation — but a direction parallel to its own "
+        "plane normal leaves nothing to fix and is refused rather than guessed at.\n\n"
+        "**Reading the variant count.** It is not a free number: it is the order of the parent "
+        "point group divided by the number of operations that leave the stated correspondence "
+        "unchanged. Kurdjumov-Sachs stated by hand gives 24, Nishiyama-Wassermann 12, "
+        "cube-on-cube 1 — which is the check to run first on a relationship you have just typed "
+        "in."
+    ),
+    parameters=(
+        phase_parameter(
+            label="Parent phase",
+            help_text=(
+                "The phase that transforms. A built-in, a cell you type, or a .cif file you "
+                "load; the relationship is built against whatever lattice and point group it "
+                "carries."
+            ),
+            builtin=_STATED_PARENT,
+        ),
+        phase_parameter(
+            name="child_phase",
+            label="Child phase",
+            help_text=(
+                "The product phase, whose symmetry reduces the variant list and the boundary "
+                "angles. Also a built-in, a typed cell, or a loaded .cif file. It must differ "
+                "from the parent by at least its name."
+            ),
+            builtin=_STATED_CHILD,
+        ),
+        TextParameter(
+            name="or_name",
+            label="Name for this relationship",
+            help_text=(
+                "What to call it. Carried into the title, the prose and the exported JSON, so a "
+                "relationship taken from a paper is reported under the paper's name rather than "
+                "as an anonymous custom entry."
+            ),
+            default="My relationship",
+            max_length=60,
+            placeholder="e.g. Pitsch-Schrader",
+        ),
+        *custom_relationship_parameters(group="The relationship you are stating", collapsed=False),
+        IndicesParameter(
+            name="packet_plane",
+            label="Parent plane defining packets",
+            help_text=(
+                "The parent family the variants are grouped by. Variants that carry the same "
+                "member of this family into parallelism share a packet. Use the plane the "
+                "relationship is defined on — the parent plane above — unless there is a reason "
+                "not to."
+            ),
+            default=_STATED_PACKET_PLANE,
+            group=_REPORTING_GROUP,
+        ),
+        ChoiceParameter(
+            name="report",
+            label="Table",
+            help_text=(
+                "Which set of rows to show. Both are computed either way and both are in the "
+                "exported JSON, so this chooses the view, not the calculation."
+            ),
+            group=_REPORTING_GROUP,
+            options=(
+                (
+                    "variants",
+                    "The variants",
+                    "One row per child orientation, with its packet and its rotation.",
+                ),
+                (
+                    "boundaries",
+                    "The boundary spectrum",
+                    "One row per distinct disorientation two variants can meet at.",
+                ),
+            ),
+            default="variants",
+        ),
+        BooleanParameter(
+            name="reduce_by_child_symmetry",
+            label="Reduce variants by child symmetry",
+            help_text=(
+                "On, the list holds one entry per crystallographically distinct child "
+                "orientation, which is the count quoted in the literature. Off lists every "
+                "symmetry image, which is longer and rarely what is wanted."
+            ),
+            default=True,
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "The chosen table, with the variants, the packets, the misorientation and the whole "
+        "intervariant spectrum under `data`."
+    ),
+    panel="variants",
+    citations=(_CITATION_MORITO, _CITATION_BUNGE, _CITATION_RANDLE),
+    tags=(
+        "orientation relationship",
+        "custom",
+        "user-defined",
+        "variant",
+        "misorientation",
+        "packet",
+        "CIF",
+        "OR",
+    ),
+)
+def _custom_relationship(request: dict[str, Any]) -> dict[str, Any]:
+    from pytex.core.transformation import intervariant_misorientations
+
+    parent_spec, parent_phase = phase_from_request(request["phase"])
+    child_spec, child_phase = phase_from_request(request["child_phase"])
+    label = str(request["or_name"]).strip()
+    relationship = resolve_relationship(
+        request,
+        parent_phase,
+        child_phase,
+        name=CUSTOM_RELATIONSHIP,
+        custom_name=label,
+    )
+    variants = relationship.generate_variants(
+        reduce_by_child_symmetry=bool(request["reduce_by_child_symmetry"])
+    )
+    representative = relationship.misorientation()
+    packets = _packet_labels(relationship, parent_spec, tuple(request["packet_plane"]))
+    by_variant = {
+        variant.variant_index: int(packets[position]) + 1
+        for position, variant in enumerate(variants)
+    }
+
+    variant_rows: list[dict[str, Any]] = []
+    for variant in variants:
+        rotation = variant.parent_to_child_rotation
+        axis = np.asarray(rotation.axis, dtype=float)
+        variant_rows.append(
+            {
+                "variant": int(variant.variant_index),
+                "packet": by_variant[variant.variant_index],
+                "angle_deg": float(rotation.angle_deg),
+                "axis_x": float(axis[0]),
+                "axis_y": float(axis[1]),
+                "axis_z": float(axis[2]),
+            }
+        )
+
+    # The boundaries the variants can make with each other. Only defined once
+    # there are two variants: a one-variant relationship such as cube-on-cube is
+    # a legitimate answer to the question asked, not an error, so the spectrum is
+    # reported as empty rather than the whole call being refused.
+    boundary_rows: list[dict[str, Any]] = []
+    spectrum: dict[float, dict[str, Any]] = {}
+    if len(variants) > 1:
+        for pair in intervariant_misorientations(relationship, variants=variants):
+            same = by_variant[pair.variant_a] == by_variant[pair.variant_b]
+            key = round(float(pair.angle_deg), 3)
+            entry = spectrum.setdefault(
+                key, {"angle_deg": key, "pairs": 0, "same_packet": 0, "cross_packet": 0}
+            )
+            entry["pairs"] += 1
+            if same:
+                entry["same_packet"] += 1
+            else:
+                entry["cross_packet"] += 1
+        boundary_rows = sorted(spectrum.values(), key=lambda entry: float(entry["angle_deg"]))
+
+    plane_pairs = [
+        {
+            "parent": plane_label(
+                tuple(int(value) for value in parent.miller.as_array()), spec=parent_spec
+            ),
+            "child": plane_label(
+                tuple(int(value) for value in child.miller.as_array()), spec=child_spec
+            ),
+        }
+        for parent, child in relationship.parallel_planes
+    ]
+    direction_pairs = [
+        {
+            "parent": direction_label(
+                tuple(round(value) for value in parent.coordinates), spec=parent_spec
+            ),
+            "child": direction_label(
+                tuple(round(value) for value in child.coordinates), spec=child_spec
+            ),
+        }
+        for parent, child in relationship.parallel_directions
+    ]
+    statement = " with ".join(
+        part
+        for part in (
+            f"{plane_pairs[0]['parent']} ∥ {plane_pairs[0]['child']}" if plane_pairs else "",
+            f"{direction_pairs[0]['parent']} ∥ {direction_pairs[0]['child']}"
+            if direction_pairs
+            else "",
+        )
+        if part
+    )
+
+    counts: dict[int, int] = {}
+    for packet in by_variant.values():
+        counts[packet] = counts.get(packet, 0) + 1
+    packet_sizes = sorted(set(counts.values()))
+    packet_count = len(counts)
+    packet_text = (
+        f"{packet_count} packet"
+        + ("" if packet_count == 1 else "s")
+        + (
+            f" of {packet_sizes[0]}"
+            if len(packet_sizes) == 1
+            else " of uneven size, so the grouping plane is not the family this relationship is "
+            "built on"
+        )
+    )
+    if boundary_rows:
+        angles = [float(entry["angle_deg"]) for entry in boundary_rows]
+        boundary_text = (
+            f"The variants meet each other at {len(boundary_rows)} distinct disorientations "
+            f"between {min(angles):.2f}° and {max(angles):.2f}° — a discrete spectrum, which is "
+            "what a measured misorientation histogram is compared against."
+        )
+    else:
+        boundary_text = (
+            "With a single variant there are no variant pairs, so the boundary spectrum is empty; "
+            "every child grain from one parent shares an orientation."
+        )
+
+    axis = np.asarray(representative.rotation.axis, dtype=float)
+    if str(request["report"]) == "boundaries":
+        columns: tuple[Column, ...] = (
+            Column("angle_deg", "Disorientation", units="°", numeric=True, digits=3),
+            Column("pairs", "Pairs", numeric=True),
+            Column("same_packet", "Within a packet", numeric=True),
+            Column("cross_packet", "Across packets", numeric=True),
+        )
+        table_rows: tuple[dict[str, Any], ...] = tuple(boundary_rows)
+        caption = f"Distinct disorientations among the {len(variants)} variants of {label}."
+    else:
+        columns = (
+            Column("variant", "Variant", numeric=True),
+            Column("packet", "Packet", numeric=True),
+            Column("angle_deg", "Angle", units="°", numeric=True, digits=4),
+            Column("axis_x", "Axis x", numeric=True, digits=5),
+            Column("axis_y", "Axis y", numeric=True, digits=5),
+            Column("axis_z", "Axis z", numeric=True, digits=5),
+        )
+        table_rows = tuple(variant_rows)
+        caption = f"Variants of {label}, from {parent_spec.name} to {child_spec.name}."
+
+    result = AppResult(
+        title=f"{label}: {parent_spec.name} to {child_spec.name}",
+        summary=(
+            f"You stated {label} as {statement or 'a pair of parallelisms'}. That statement "
+            f"implies a misorientation of {representative.angle_deg:.2f}° about "
+            f"[{axis[0]:.3f} {axis[1]:.3f} {axis[2]:.3f}], and one {parent_spec.name} grain "
+            f"transforming under it produces {len(variants)} crystallographically distinct "
+            f"{child_spec.name} orientations, falling into {packet_text}. {boundary_text}"
+        ),
+        table=ResultTable(columns=columns, rows=table_rows, caption=caption),
+        data={
+            "relationship": label,
+            "variant_count": len(variants),
+            "packet_count": packet_count,
+            "packets": by_variant,
+            "misorientation_angle_deg": float(representative.angle_deg),
+            "misorientation_axis": [float(value) for value in axis],
+            "variants": variant_rows,
+            "intervariant_spectrum": boundary_rows,
+            "parallel_planes": plane_pairs,
+            "parallel_directions": direction_pairs,
+            "description": relationship.describe(),
+            "columns": [column.to_json() for column in columns],
+        },
+        inputs={
+            "phase": parent_spec.to_json(),
+            "child_phase": child_spec.to_json(),
+            "or_name": label,
+            **{key: list(value) for key, value in custom_relationship_request(request).items()},
+            "packet_plane": [int(value) for value in request["packet_plane"]],
+            "report": str(request["report"]),
+            "reduce_by_child_symmetry": bool(request["reduce_by_child_symmetry"]),
+        },
+        notes=(
+            "The variant count is a consequence of the statement, not a setting. Reproduce a "
+            "published relationship here and it must give the published count; if it does not, "
+            "the parallelisms as typed are not the ones the paper states.",
+            "Boundary angles are disorientations: the minimum over the child point group, which "
+            "is the convention EBSD software reports.",
+            "Every variant is given equal weight. A real microstructure shows variant selection, "
+            "which is a property of the transformation conditions rather than of the "
+            "crystallography.",
+        ),
+        citations=(_CITATION_MORITO, _CITATION_BUNGE, _CITATION_RANDLE),
+    )
+    return result.to_json()
+
+
+@REGISTRY.operation(
     "variants.render",
     title="Publication figure of the pole figure",
     summary="Render the variant pole figure through the publication renderer.",
@@ -1107,9 +1445,7 @@ def _composite_relationship(request: dict[str, Any]) -> tuple[Any, Any, Any, Any
 def _resolved_variants(relationship: Any) -> tuple[Any, ...]:
     variants = relationship.generate_variants()
     if not variants:  # pragma: no cover - a relationship always has at least one
-        raise InvalidInputError(
-            "This relationship generates no variants.", field="relationship"
-        )
+        raise InvalidInputError("This relationship generates no variants.", field="relationship")
     return tuple(variants)
 
 
@@ -1119,8 +1455,7 @@ def _variant_at(relationship: Any, index: int) -> Any:
     variants = _resolved_variants(relationship)
     if not 1 <= index <= len(variants):
         raise InvalidInputError(
-            f"This relationship has {len(variants)} variants, so variant {index} "
-            "does not exist.",
+            f"This relationship has {len(variants)} variants, so variant {index} does not exist.",
             field="variant",
             hint=(
                 f"Choose a variant between 1 and {len(variants)}. Kurdjumov-Sachs and "
@@ -1143,9 +1478,7 @@ def _child_translation(placement: str, parent_scene: Any, child_scene: Any) -> l
     return [0.65 * span, 0.0, 0.0]
 
 
-def _primitive_payload(
-    primitives: Any, rows: list[dict[str, Any]] | None = None
-) -> dict[str, Any]:
+def _primitive_payload(primitives: Any, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     """The world-frame OR primitives as JSON the browser can draw directly.
 
     Everything is in Cartesian angstrom in the world frame — which is the parent
@@ -1204,9 +1537,7 @@ def _primitive_payload(
         if labelled and role == "normal":
             spacing = float(np.linalg.norm(np.asarray(arrow.head) - np.asarray(arrow.tail)))
             plane = (
-                plane_rows[normal_cursor]["parent"]
-                if normal_cursor < len(plane_rows)
-                else "plane"
+                plane_rows[normal_cursor]["parent"] if normal_cursor < len(plane_rows) else "plane"
             )
             label = f"n {plane} \u00b7 d = {spacing:.3f} \u00c5"
             normal_cursor += 1
@@ -1572,9 +1903,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
 
     parent_reference = build_crystal_scene(parent_phase, repeats=(repeats,) * 3, **build_kwargs)
     child_reference = build_crystal_scene(child_phase, repeats=(repeats,) * 3, **build_kwargs)
-    translation = _child_translation(
-        str(request["placement"]), parent_reference, child_reference
-    )
+    translation = _child_translation(str(request["placement"]), parent_reference, child_reference)
 
     world = WorldScene3D.from_orientation_relationship(
         relationship,
@@ -1633,9 +1962,7 @@ def _variant_composite_scene(request: dict[str, Any]) -> dict[str, Any]:
             "variant": {
                 "index": int(variant.variant_index),
                 "count": len(variants),
-                "child_matrix": [
-                    [float(value) for value in row] for row in child_transform.matrix
-                ],
+                "child_matrix": [[float(value) for value in row] for row in child_transform.matrix],
                 "translation": [float(value) for value in translation],
                 "parent_to_child_matrix": [
                     [float(value) for value in row]
@@ -1801,9 +2128,7 @@ def _variant_contact_sheet(request: dict[str, Any]) -> dict[str, Any]:
             child_build_kwargs=build_kwargs,
         )
         matrix = np.asarray(world.crystals[1].transform.matrix, dtype=float)
-        parallelisms = _parallelism_rows(
-            variant, parent_spec=parent_spec, child_spec=child_spec
-        )
+        parallelisms = _parallelism_rows(variant, parent_spec=parent_spec, child_spec=child_spec)
         entries.append(
             {
                 "index": int(variant.variant_index),
@@ -2165,9 +2490,7 @@ def _or_from_grains(request: dict[str, Any]) -> dict[str, Any]:
     statement: dict[str, Any] | None = None
     statement_note: str | None = None
     try:
-        rationalized = report.as_rational_relationship(
-            max_index=max_index, tolerance_deg=tolerance
-        )
+        rationalized = report.as_rational_relationship(max_index=max_index, tolerance_deg=tolerance)
     except ValueError as error:
         # Not an input error: a rotation with no low-index statement is a real
         # answer, and the panel says so rather than failing the whole run.
@@ -2454,13 +2777,9 @@ def _measured_overlays(
                 "child",
             ),
         ):
-            world = np.asarray(matrix, dtype=float) @ np.asarray(
-                direction.unit_vector, dtype=float
-            )
+            world = np.asarray(matrix, dtype=float) @ np.asarray(direction.unit_vector, dtype=float)
             world = world / np.linalg.norm(world)
-            chord = (
-                segment_in_polygon(polygons[side], world) if side in polygons else None
-            )
+            chord = segment_in_polygon(polygons[side], world) if side in polygons else None
             if chord is None:
                 # No plane to lie in — the deviation put it out of the drawn
                 # one, or no plane statement was found. Clip it to the cell
@@ -2646,9 +2965,11 @@ def _measured_composite(request: dict[str, Any]) -> dict[str, Any]:
     # the placement, and there is no relationship in it.
     parent_matrix = np.asarray(parent_orientation.as_matrix(), dtype=float)
     child_matrix = np.asarray(child_orientation.as_matrix(), dtype=float)
-    reference_length = float(
-        np.max(np.linalg.norm(parent_phase.lattice.direct_basis().matrix, axis=0))
-    ) * repeats * 1.05
+    reference_length = (
+        float(np.max(np.linalg.norm(parent_phase.lattice.direct_basis().matrix, axis=0)))
+        * repeats
+        * 1.05
+    )
     primitives, rows = _measured_overlays(
         report,
         parent_matrix=parent_matrix,
@@ -2832,9 +3153,9 @@ def _idealized_placement(
     best_matrix: np.ndarray | None = None
     best_angle = float("inf")
     for variant in rationalized.relationship.generate_variants():
-        base = parent_matrix @ np.asarray(
-            variant.parent_to_child_rotation.as_matrix(), dtype=float
-        ).T
+        base = (
+            parent_matrix @ np.asarray(variant.parent_to_child_rotation.as_matrix(), dtype=float).T
+        )
         for operator in child_operators:
             candidate = base @ operator
             relative = candidate.T @ child_matrix
@@ -2855,6 +3176,66 @@ def _idealized_placement(
 
 REGISTRY.add_examples(
     (
+        ExampleScenario(
+            id="variants.example.stated_ks",
+            title="Kurdjumov-Sachs, typed in rather than looked up",
+            panel="variants",
+            summary="The same relationship stated as two parallelisms and given a name.",
+            teaches=(
+                "This is the check to run on any relationship you type in. Nothing here selects "
+                "Kurdjumov-Sachs from a list: the four index rows are the whole input, and the "
+                "24 variants, the four packets of six and the ten intervariant disorientations "
+                "come out of them. Because those numbers are published, agreement means the "
+                "statement was entered correctly — and a relationship from a paper that gives "
+                "the paper's variant count is a relationship you can then trust the rest of the "
+                "workbench with."
+            ),
+            operation="variants.custom_relationship",
+            request={
+                "phase": {"builtin": "austenite_fcc"},
+                "child_phase": {"builtin": "fe_bcc"},
+                "or_name": "Kurdjumov-Sachs (stated, not selected)",
+                "custom_parent_plane": [1, 1, 1],
+                "custom_child_plane": [0, 1, 1],
+                "custom_parent_direction": [-1, 0, 1],
+                "custom_child_direction": [-1, -1, 1],
+                "packet_plane": [1, 1, 1],
+                "report": "boundaries",
+                "reduce_by_child_symmetry": True,
+            },
+        ),
+        ExampleScenario(
+            id="variants.example.stated_pitsch_schrader",
+            title="A relationship with no entry in the catalogue",
+            panel="variants",
+            summary="Pitsch-Schrader stated by hand between beta and alpha zirconium.",
+            teaches=(
+                "The Pitsch-Schrader relationship — (110)beta parallel to (0001)alpha with "
+                "[001]beta parallel to [11-20]alpha — is not one of the constructors PyTex "
+                "catalogues, and it does not have to be. Stated here it yields its own variant "
+                "count and its own boundary spectrum, reported under the name given rather "
+                "than as an anonymous custom entry. It gives six variants where Burgers gives "
+                "twelve on the very same phase pair, and the two statements differ only in "
+                "which direction is held parallel within the shared plane parallelism — which "
+                "is exactly the comparison this tool exists for. Note also what the panel says "
+                "about the packets: grouping by the parent (110) family no longer divides six "
+                "variants evenly, and rather than quietly reporting a number the result says "
+                "the grouping plane is not the family this relationship is built on."
+            ),
+            operation="variants.custom_relationship",
+            request={
+                "phase": {"builtin": "zr_bcc_beta"},
+                "child_phase": {"builtin": "zr_hcp"},
+                "or_name": "Pitsch-Schrader",
+                "custom_parent_plane": [1, 1, 0],
+                "custom_child_plane": [0, 0, 1],
+                "custom_parent_direction": [0, 0, 1],
+                "custom_child_direction": [1, 1, 0],
+                "packet_plane": [1, 1, 0],
+                "report": "variants",
+                "reduce_by_child_symmetry": True,
+            },
+        ),
         ExampleScenario(
             id="variants.example.burgers_wall",
             title="Burgers in zirconium: the parent and all twelve variants",

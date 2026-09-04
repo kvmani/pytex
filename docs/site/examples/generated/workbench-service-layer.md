@@ -4,7 +4,7 @@
 
 # Workbench service layer
 
-The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation.
+The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
 
 ```{note}
 Every number on this page is computed live from the public PyTex API when the documentation is regenerated, then checked against an independently known reference value by `tests/unit/test_worked_examples.py`. The code shown is exactly the code that produced the computed value, so you can copy any snippet and reproduce the tabulated output.
@@ -278,3 +278,44 @@ result = float(np.max(np.abs(recovered - np.asarray(brass))))
 **Citation**: Bunge, Texture Analysis in Materials Science, Butterworths (1982), chapter 2 (the ZXZ Euler convention and its matrix).
 
 **See also**: {doc}`Texture foundation <../../concepts/texture_foundation>`, {doc}`The PyTex Workbench <../../workflows/workbench_application>`
+
+## The hcp slip direction [100] is [2-1-10], and the plane (100) is (10-10)
+
+Hexagonal slip systems are quoted in four indices — basal slip is (0001)<11-20> — because the three-index basis names only two of the three equivalent basal axes, so the three identical close-packed directions come out as the unrelated symbols [100], [010] and [110]. A plane and a direction with the same three indices do not convert to the same quadruple: the plane takes the redundant index i = -(h + k) unchanged, while the direction is re-expressed on three coplanar axes and its basal components change. Converting a direction by the plane rule is the classic silent error in hexagonal indexing, and this pair is where it shows.
+
+:::{dropdown} Setup (imports and object construction)
+
+```python
+from pytex.app import REGISTRY
+
+TITANIUM = {
+    "phase": {"builtin": "ti_hcp"},
+    "input_notation": "three",
+    "three_index": [1, 0, 0],
+    "four_index": [1, 1, -2, 0],
+}
+```
+
+:::
+
+**Compute**
+
+```python
+direction = REGISTRY.call(
+    'calc.hexagonal_indices', dict(TITANIUM, kind='direction')
+)
+plane = REGISTRY.call('calc.hexagonal_indices', dict(TITANIUM, kind='plane'))
+result = direction['data']['four_index'] + plane['data']['four_index']
+```
+
+**Result**
+
+| Quantity | Computed (live) | Expected (reference) | Unit | Deviation | Tolerance | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| `workbench-hexagonal-index-conversion` | [2, -1, -1, 0, 1, 0, -1, 0] | [2, -1, -1, 0, 1, 0, -1, 0] | &mdash; | exact | exact | ✅ pass |
+
+**Why this value**: The Weber transformation U = (2u - v)/3, V = (2v - u)/3, T = -(U + V), W = w sends [100] to [2-1-10] after clearing denominators; the plane rule inserts i = -(h + k) and sends (100) to (10-10). Both are standard tabulated identities of the Miller-Bravais notation, not outputs of this code.
+
+**Citation**: Otte & Crocker, Physica Status Solidi 9 (1965) 441; Frank, Acta Crystallographica 18 (1965) 862.
+
+**See also**: {doc}`Miller planes and directions <../../concepts/miller_planes_directions>`, {doc}`The PyTex Workbench <../../workflows/workbench_application>`

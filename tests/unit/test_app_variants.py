@@ -13,12 +13,15 @@ circle, and the two projections agree there and nowhere else.
 from __future__ import annotations
 
 import math
+from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 import pytest
 
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
+from pytex.core.fixtures import get_phase_fixture, phase_fixtures_available
 
 AUSTENITE = {"builtin": "austenite_fcc"}
 FERRITE = {"builtin": "fe_bcc"}
@@ -460,6 +463,7 @@ class TestPublicationFigure:
         """A leaked figure is a defect here and a memory leak in the server."""
 
         import matplotlib
+
         matplotlib.use("Agg", force=False)
         import matplotlib.pyplot as plt
 
@@ -641,9 +645,7 @@ class TestCompositeScene:
 
         offsets = {
             tuple(
-                composite(variant=index, placement="side_by_side")["data"]["variant"][
-                    "translation"
-                ]
+                composite(variant=index, placement="side_by_side")["data"]["variant"]["translation"]
             )
             for index in (1, 5, 13, 22)
         }
@@ -844,9 +846,7 @@ def _euler_of(relationship, variant_index: int = 0):  # type: ignore[no-untyped-
         symmetry=relationship.child_phase.symmetry,
         phase=relationship.child_phase,
     )
-    child_angles = quaternions_to_euler_angles(
-        child.rotation.quaternion[None, :], degrees=True
-    )[0]
+    child_angles = quaternions_to_euler_angles(child.rotation.quaternion[None, :], degrees=True)[0]
     return parent_angles, tuple(float(value) for value in child_angles)
 
 
@@ -858,9 +858,7 @@ def _relationship_between(name: str, parent: dict, child: dict):  # type: ignore
     _, child_phase = phase_from_request(child)
     constructor = {
         "kurdjumov_sachs": OrientationRelationship.from_kurdjumov_sachs_correspondence,
-        "nishiyama_wassermann": (
-            OrientationRelationship.from_nishiyama_wassermann_correspondence
-        ),
+        "nishiyama_wassermann": (OrientationRelationship.from_nishiyama_wassermann_correspondence),
         "greninger_troiano": OrientationRelationship.from_greninger_troiano_correspondence,
     }[name]
     return constructor(parent_phase=parent_phase, child_phase=child_phase)
@@ -1370,10 +1368,12 @@ def _box_corners(bounds) -> np.ndarray:  # type: ignore[no-untyped-def]
 
     lower, upper = np.asarray(bounds, dtype=float)
     return np.array(
-        [[lower[0] if i else upper[0],
-          lower[1] if j else upper[1],
-          lower[2] if k else upper[2]]
-         for i in (0, 1) for j in (0, 1) for k in (0, 1)],
+        [
+            [lower[0] if i else upper[0], lower[1] if j else upper[1], lower[2] if k else upper[2]]
+            for i in (0, 1)
+            for j in (0, 1)
+            for k in (0, 1)
+        ],
         dtype=float,
     )
 
@@ -1467,9 +1467,7 @@ class TestOverlaysStayInTheirCrystal:
         patch = entry["primitives"]["patches"][0]
         normal = np.asarray(patch["normal"], dtype=float)
         plane_offset = float(np.dot(np.asarray(patch["vertices"][0], dtype=float), normal))
-        arrow = next(
-            item for item in entry["primitives"]["arrows"] if item["role"] == "direction"
-        )
+        arrow = next(item for item in entry["primitives"]["arrows"] if item["role"] == "direction")
         for point in (arrow["tail"], arrow["head"]):
             assert float(np.dot(np.asarray(point, dtype=float), normal)) == pytest.approx(
                 plane_offset, abs=1e-6
@@ -1546,3 +1544,174 @@ class TestOverlaysStayInTheirCrystal:
         for arrow in data["primitives"]["arrows"]:
             ends = np.asarray([arrow["tail"], arrow["head"]], dtype=float)
             assert _outside_every_crystal(ends, boxes) == pytest.approx(0.0, abs=1e-6)
+
+
+class TestUserStatedRelationship:
+    """The sub-tool for an OR that is not on the list.
+
+    The test that matters is the one that closes the loop: Kurdjumov-Sachs
+    stated as four index rows, with nothing selecting it from a catalogue, must
+    give the published 24 variants, 4 packets of 6, and the ten Morito
+    disorientations. If the user-stated path did not agree with the catalogued
+    constructor it would be a second implementation of the same physics, which
+    is exactly what this operation exists not to be.
+    """
+
+    KS_STATEMENT: ClassVar[dict[str, object]] = {
+        "custom_parent_plane": [1, 1, 1],
+        "custom_child_plane": [0, 1, 1],
+        "custom_parent_direction": [-1, 0, 1],
+        "custom_child_direction": [-1, -1, 1],
+    }
+
+    def state(self, **overrides: object) -> dict:
+        request: dict[str, object] = {
+            "phase": AUSTENITE,
+            "child_phase": FERRITE,
+            "or_name": "Kurdjumov-Sachs, stated by hand",
+            "packet_plane": [1, 1, 1],
+            "report": "variants",
+            "reduce_by_child_symmetry": True,
+            **self.KS_STATEMENT,
+        }
+        request.update(overrides)
+        return call("variants.custom_relationship", **request)
+
+    def test_a_stated_relationship_reproduces_the_catalogued_one(self) -> None:
+        """Four index rows, and the published Kurdjumov-Sachs numbers come out."""
+
+        stated = self.state()
+        catalogued = call(
+            "calc.orientation_relationship",
+            phase=AUSTENITE,
+            child_phase=FERRITE,
+            relationship="kurdjumov_sachs",
+            reduce_by_child_symmetry=True,
+        )
+        assert stated["data"]["variant_count"] == 24
+        assert stated["data"]["variant_count"] == catalogued["data"]["variant_count"]
+        assert stated["data"]["misorientation_angle_deg"] == pytest.approx(
+            catalogued["data"]["misorientation_angle_deg"], abs=1e-9
+        )
+
+    def test_the_packets_are_four_of_six(self) -> None:
+        """The parent {111} family has four members, and 24 variants divide evenly."""
+
+        data = self.state()["data"]
+        sizes: dict[int, int] = {}
+        for packet in data["packets"].values():
+            sizes[packet] = sizes.get(packet, 0) + 1
+        assert data["packet_count"] == 4
+        assert sorted(sizes.values()) == [6, 6, 6, 6]
+
+    def test_the_boundary_spectrum_is_the_published_one(self) -> None:
+        """The ten Morito disorientations, from a statement rather than a name."""
+
+        rows = self.state(report="boundaries")["table"]["rows"]
+        angles = [float(row["angle_deg"]) for row in rows]
+        assert angles == pytest.approx(MORITO_ANGLES_DEG, abs=0.01)
+
+    def test_both_tables_are_computed_whichever_one_is_shown(self) -> None:
+        """The choice is a view, not a calculation, so both sets are exported."""
+
+        variants_view = self.state(report="variants")
+        boundaries_view = self.state(report="boundaries")
+        for payload in (variants_view, boundaries_view):
+            assert len(payload["data"]["variants"]) == 24
+            assert len(payload["data"]["intervariant_spectrum"]) == 10
+        assert variants_view["table"]["rows"][0]["variant"] == 1
+        assert "angle_deg" in boundaries_view["table"]["rows"][0]
+
+    def test_the_name_the_user_gave_reaches_the_report(self) -> None:
+        """A relationship from a paper is reported under the paper's name."""
+
+        payload = self.state(or_name="Pitsch-Schrader")
+        assert payload["data"]["relationship"] == "Pitsch-Schrader"
+        assert payload["title"].startswith("Pitsch-Schrader:")
+        assert "Pitsch-Schrader" in payload["summary"]
+        assert "Pitsch-Schrader" in payload["data"]["description"]
+
+    def test_the_statement_is_echoed_back_in_the_notation_of_each_phase(self) -> None:
+        """What was stated, restated: the parallelisms come back as given."""
+
+        data = self.state()["data"]
+        assert data["parallel_planes"][0] == {"parent": "(111)", "child": "(011)"}
+        assert data["parallel_directions"][0]["parent"] == "[-1 0 1]"
+
+    def test_a_hexagonal_child_is_labelled_in_four_indices(self) -> None:
+        """Burgers stated by hand, and the hcp side reads (0001), not (001)."""
+
+        data = self.state(
+            phase=BETA_ZIRCONIUM,
+            child_phase=ZIRCONIUM,
+            or_name="Burgers, stated by hand",
+            packet_plane=[1, 1, 0],
+            custom_parent_plane=[1, 1, 0],
+            custom_child_plane=[0, 0, 1],
+            custom_parent_direction=[-1, 1, 1],
+            custom_child_direction=[1, 1, 0],
+        )["data"]
+        assert data["variant_count"] == 12
+        assert data["parallel_planes"][0] == {"parent": "(110)", "child": "(0001)"}
+        assert data["parallel_directions"][0]["child"] == "[1 1 -2 0]"
+
+    def test_a_one_variant_relationship_reports_an_empty_spectrum(self) -> None:
+        """Cube-on-cube has no variant pairs, which is an answer, not an error."""
+
+        payload = self.state(
+            or_name="Cube on cube",
+            custom_parent_plane=[0, 0, 1],
+            custom_child_plane=[0, 0, 1],
+            custom_parent_direction=[1, 0, 0],
+            custom_child_direction=[1, 0, 0],
+        )
+        assert payload["data"]["variant_count"] == 1
+        assert payload["data"]["intervariant_spectrum"] == []
+        assert "no variant pairs" in payload["summary"]
+
+    def test_a_degenerate_statement_is_refused_on_the_relationship(self) -> None:
+        """A direction along its own plane normal leaves no rotation to fix."""
+
+        with pytest.raises(InvalidInputError) as excinfo:
+            self.state(
+                custom_parent_direction=[1, 1, 1],
+                custom_child_direction=[-1, -1, 1],
+            )
+        assert excinfo.value.details["field"] == "relationship"
+
+    @pytest.mark.skipif(
+        not phase_fixtures_available(),
+        reason="the checksum-pinned phase-fixture corpus is a source-checkout asset",
+    )
+    def test_both_phases_may_arrive_as_loaded_cif_files(self) -> None:
+        """The stated use: two CIFs in, a named relationship and its variants out.
+
+        Nickel and alpha iron are read from the pinned fixture CIFs rather than
+        from the built-in catalogue, so this exercises the path a user actually
+        takes -- open two files, type four index rows, press the button. The
+        variant count and the boundary spectrum are fixed by the two point
+        groups and the statement, not by the lattice parameters, so they are the
+        published Kurdjumov-Sachs numbers even though neither phase is iron
+        austenite.
+        """
+
+        parent = {"cif": {"name": "ni.cif", "text": get_phase_fixture("ni_fcc").read_cif_text()}}
+        child = {"cif": {"name": "fe.cif", "text": get_phase_fixture("fe_bcc").read_cif_text()}}
+        payload = self.state(phase=parent, child_phase=child, or_name="KS from two CIFs")
+        assert payload["data"]["variant_count"] == 24
+        assert payload["data"]["packet_count"] == 4
+        assert [
+            float(row["angle_deg"]) for row in payload["data"]["intervariant_spectrum"]
+        ] == pytest.approx(MORITO_ANGLES_DEG, abs=0.01)
+        assert payload["inputs"]["phase"]["source"] is not None
+        assert "ni.cif" in payload["inputs"]["phase"]["source"]
+
+    def test_the_sub_tool_is_offered_by_the_panel(self) -> None:
+        """A view the panel does not list is a view no user can reach."""
+
+        views = (
+            Path("src/pytex/app/static/js/panels/variants.js")
+            .read_text(encoding="utf-8")
+            .split("const VIEW_MODES")[0]
+        )
+        assert "'variants.custom_relationship'" in views
