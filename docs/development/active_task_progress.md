@@ -6172,7 +6172,7 @@ the structure fixed and varies only the cell and the instrument aberrations.
 
 ### Planned increments
 
-- [ ] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
+- [x] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
 - [ ] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
 - [ ] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
 - [ ] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
@@ -6185,6 +6185,38 @@ KikuchiPy was missing from `.venv` (Python 3.11) and is now installed (0.13.1, w
 rosettasciio, scikit-image, scikit-learn, pint, traits). This closes the long-standing
 `test_every_declared_dependency_actually_imports[kikuchipy]` local failure recorded above.
 
+### Increment 1 -- peak detection and single-peak fitting (landed)
+
+`src/pytex/diffraction/xrd_peaks.py` with `PeakFit`, `PeakTable`, `detect_peaks`, `fit_peaks`,
+`detect_and_fit_peaks`, and the three profile-shape functions.
+
+**Detection is scale-matched, not threshold-matched.** The pattern is SNIP-subtracted,
+Anscombe-transformed so Poisson noise is homoscedastic at every count level, and convolved with
+zero-mean unit-L2-norm Ricker kernels; the response at each angle is interpolated to *that angle's*
+expected FWHM from the calibrated Caglioti curve. Unit L2 norm is the point: white unit-variance
+noise gives a unit-variance response, so the detection threshold is quotable in noise sigmas rather
+than in counts, and the same setting works on a pattern whose strongest and weakest peaks differ by
+decades. A feature narrower than the instrument can produce, or broader than it, is rejected without
+any threshold in angle units.
+
+**A resolved K-alpha2 line is a peak, and admitting it is a lattice-parameter bias, not a spurious
+row.** Above roughly 90 degrees the doublet separates far enough for the filter to report alpha2 in
+its own right. Each accepted candidate therefore suppresses the angle its own alpha2 partner would
+sit at, computed from Bragg's law at fixed `d`. Without this the Ni test scan yields 13 candidates
+for 7 reflections.
+
+**Verification against the generating physics, not against a stored run.** On a Poisson-noised
+synthetic Ni scan the seven fitted positions match the reflection list that produced the pattern to
+better than one millidegree, with position ESDs near 0.0002 degrees and reduced chi-squared between
+0.93 and 1.32. A test also pins the thing that motivates modelling the doublet: fitting a single
+symmetric line to the unresolved pair displaces every centre to higher angle by more than five
+millidegrees, which at 45 degrees is a lattice-parameter error of about 1 part in 10^4.
+
+24 tests in `tests/unit/test_xrd_peaks.py`. Ruff and mypy clean.
+
+**Atlas regeneration.** `PeakFit` and `PeakTable` are new public classes, so the class-model SVGs
+were regenerated and the atlas prose counts moved from 297/280 to 299/282.
+
 ### Status
 
-Increment 1 in progress.
+Increment 1 landed. Increment 2 (corrections and transforms) next.
