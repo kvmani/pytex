@@ -6055,3 +6055,30 @@ driven by hand in the browser and confirmed to render.
 ### Next actions
 
 - Version bump to 0.6.0 and release notes.
+
+### Increment 4 — release 0.6.0 (landed)
+
+`src/pytex/_version.py` to `0.6.0`, `CITATION.cff` with it -- the release-metadata test holds the
+two together, and caught the second one being forgotten.
+
+The changelog entry leads with what the release is *for*: XRD stops being a simulator. It records
+the `AtomicSite` equality fix under **Fixed** with its scientific consequence stated -- every
+preferred-orientation-corrected pattern was failing for structure-bearing phases -- because
+`CHANGELOG.md` requires behaviour changes to be explicit. The entries that were sitting under
+`Unreleased` (the hexagonal index converter and the user-stated orientation relationship) ship in
+this release and were folded into it.
+
+The entry carries a **"Scope, stated deliberately"** section, which is unusual for a changelog and
+is the right place for it: a reader deciding whether to use `refine_rietveld` needs to know, before
+they start, that it will not refine atomic coordinates and why declining is the better outcome.
+
+### Known environment gap, not a defect of this work
+
+`test_release_metadata.py::test_every_declared_dependency_actually_imports[kikuchipy]` fails
+locally because KikuchiPy is not installed in this venv. Verified pre-existing by stashing the
+whole change and re-running: it fails identically on the unmodified tree.
+
+### Status
+
+The goal is complete: library, tutorial, workbench, version and release notes all landed and
+pushed. Every increment is on `main`.

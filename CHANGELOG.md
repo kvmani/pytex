@@ -11,8 +11,59 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-09-05
+
+**XRD stops being a simulator.** Before this release PyTex could calculate what a phase would
+diffract and scale that calculation against a measurement. It could not say what the background of
+a raw scan was, how much of a peak's width belonged to the diffractometer rather than the specimen,
+or whether a structural model actually accounted for the data. Those are the questions a
+diffractometer raises, and answering them is what separates a teaching simulator from an
+instrument. Three new modules answer them, a tutorial works through all of them against a pattern
+with known answers, and the workbench's XRD panel grows from one view to four.
+
+**Scientific behavior.** One correctness fix, and it is not confined to XRD: `AtomicSite` used the
+generated dataclass equality, which compares its coordinate array with `==` and raises "truth value
+of an array is ambiguous". Every phase comparison involving a phase with an atomic basis therefore
+raised, which had left `apply_preferred_orientation` broken for exactly the phases it is useful on
+(**Fixed**). Nothing else moves; the new surfaces are additions.
+
 ### Added
 
+- **Background estimation from a raw scan** (`pytex.diffraction.xrd_background`).
+  `estimate_background` returns a `PowderBackground` carrying the curve, the settings that produced
+  it, and a `describe()`. Two estimators, because they answer different questions: **SNIP**
+  (Ryan et al. 1988, with Morhac's decreasing-window order) is non-parametric and assumes only that
+  the background varies more slowly than the peaks, so it follows curved and structured backgrounds
+  that no low-order polynomial can; a **Chebyshev** fit by iteratively reweighted least squares with
+  *asymmetric* clipping is parametric and yields the coefficients a refinement carries. The
+  asymmetry is the design, not a detail: peaks are one-sided excursions, so a symmetric rejection
+  would drag the curve up into the peak feet. Neither estimator is told where the peaks are, which
+  is what allows a background to be used to find them.
+- **An instrumental resolution function, its calibration, and size-strain separation**
+  (`pytex.diffraction.xrd_instrument`). `InstrumentBroadening` is the Caglioti Gaussian width plus a
+  Lorentzian term, combined into one pseudo-Voigt by the Thompson-Cox-Hastings construction.
+  `calibrate_instrument_broadening` fits `U`, `V`, `W` to a line-profile standard -- exactly linear
+  in the squared widths, so no starting values and no convergence question --
+  `deconvolve_instrument_width` removes it from measured widths under a Gaussian, Lorentzian or
+  pseudo-Voigt model, and `williamson_hall` and `scherrer_size_nm` turn what remains into a
+  crystallite size and a microstrain.
+- **Whole-profile (Rietveld) refinement** (`pytex.diffraction.rietveld`). `refine_rietveld` fits the
+  measured profile point by point: overall scale, isotropic cell dilation, detector zero, Caglioti
+  `U`/`V`/`W`, Lorentzian `Y`, an overall isotropic displacement parameter, March-Dollase texture
+  strength, and a Chebyshev background refined *jointly* rather than subtracted beforehand. It
+  reports `R_p`, `R_wp`, `R_exp`, `R_Bragg` from Rietveld intensity partitioning, the goodness of
+  fit, the Durbin-Watson statistic, per-parameter standard uncertainties in crystallographic
+  `3.5241(6)` notation, and a `describe()` that states the scope of what was refined.
+- **Tutorial 33, `33_quantitative_xrd_background_instrument_and_rietveld`.** Works through all four
+  questions in the order they depend on each other, on a synthetic scan built from the pinned
+  `ni_fcc` fixture with a cell dilation, a zero-point error, a peak width and a texture put in
+  deliberately. Every step is checked against the number it was built from, and the checks are
+  asserted, so a regression fails the documentation build rather than printing a wrong number under
+  confident prose.
+- **Three new workbench operations and a four-view XRD panel.** `xrd.background`, `xrd.rietveld` and
+  `xrd.size_strain` join `xrd.powder_pattern` behind a view selector. They take a pasted two-column
+  scan, or generate a demonstration scan from stated departures -- which is marked `synthetic`, and
+  every result built on it says in its notes that it was generated rather than measured.
 - **A hexagonal index converter in the calculator** (`calc.hexagonal_indices`). Converts one plane
   or one direction between the three-index Miller form and the four-index Miller-Bravais form, in
   either direction, and lists the symmetry family of the result in both notations side by side. The
@@ -29,11 +80,46 @@ downstream analyses depend on them.
   custom entry. Kurdjumov-Sachs stated by hand reproduces the catalogued constructor exactly, which
   is what the tests and the rail's first example pin.
 
+### Fixed
+
+- **`AtomicSite` equality raised instead of comparing.** The generated dataclass `__eq__` compared
+  `fractional_coordinates` with `==`, producing an array and then "truth value of an array with more
+  than one element is ambiguous". Any code path comparing two phases with an atomic basis therefore
+  raised -- including `MarchDollaseModel.factors`, which checks that a reflection belongs to the
+  phase its preferred-orientation axis does, and so `apply_preferred_orientation` and every
+  preferred-orientation-corrected pattern failed for structure-bearing phases. `AtomicSite` now
+  carries the explicit `__eq__`/`__hash__` pair `MillerIndex` already used.
+
 ### Changed
 
+- **The XRD panel is a multi-view panel.** It follows the `VIEWS` / `VIEW_MODES` pattern the Variants
+  panel established. The vertical display scale moved out of the appearance group into the rail
+  proper and now governs the analysis views too, because on a linear axis scaled to 20,000-count
+  peaks a 150-count background is a line on the axis and the background view could not show the
+  thing it exists to show.
 - `custom_relationship_parameters()` takes `group` and `collapsed`, and `resolve_relationship()`
   takes `custom_name`, so the four index rows can be the subject of an operation rather than only a
   fallback behind a picker, and a user-stated relationship can carry the user's name.
+
+### Scope, stated deliberately
+
+`refine_rietveld` does **not** refine atomic coordinates, site occupancies, anisotropic displacement
+parameters, or the independent cell edges of a low-symmetry cell. Those are the parameters that make
+a refinement a structure determination, and they need constraints, restraints and a symmetry-mode
+apparatus this release does not have. Refining them without that apparatus produces a lower `R_wp`
+and a structure nobody should publish, which is a worse outcome than declining. The scope is stated
+in `describe()` so a reader of a result cannot mistake it for something larger. What is offered is
+the part that is well posed against a *known* structure: the cell, the zero point, the peak shape,
+the texture strength, the background, and an honest account of how well the model does.
+
+Two details of that honesty are worth knowing. Standard uncertainties come from the singular value
+decomposition of the Jacobian, so a rank-deficient pair -- two parameters the data genuinely cannot
+tell apart -- gets an *infinite* uncertainty rather than a small one, and is therefore visible
+instead of being quietly reported as well determined. And a March-Dollase coefficient is not started
+from exactly 1: that is the untextured point, with plate-like and needle-like textures on opposite
+sides of it, and a local optimizer commits to whichever side its first derivative happens to point.
+A short coarse scan picks the side from the data, and runs only when the caller has left the
+default, because a stated starting value is information the scan would discard.
 
 ## [0.5.0] - 2026-08-31
 
