@@ -6173,7 +6173,7 @@ the structure fixed and varies only the cell and the instrument aberrations.
 ### Planned increments
 
 - [x] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
-- [ ] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
+- [x] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
 - [ ] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
 - [ ] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
 - [ ] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
@@ -6217,6 +6217,49 @@ millidegrees, which at 45 degrees is a lattice-parameter error of about 1 part i
 **Atlas regeneration.** `PeakFit` and `PeakTable` are new public classes, so the class-model SVGs
 were regenerated and the atlas prose counts moved from 297/280 to 299/282.
 
+### Increment 2 -- corrections and display transforms (landed)
+
+`src/pytex/diffraction/xrd_corrections.py`, kept as small named operations rather than one
+"prepare data" step, with every applied step appended to the pattern's `corrections` metadata.
+
+**The position aberrations are separated by their angular signature, not by assertion.** Zero is
+constant, specimen displacement goes as `-2 s cos(theta) / R`, transparency as
+`-sin(2 theta) / (2 mu R)`, refraction as `4 delta / sin(2 theta)`. The tests assert each
+*signature* rather than a stored magnitude, because the signature is the entire basis of the
+extrapolation methods increment 4 depends on: displacement vanishing at back-reflection is why
+extrapolating to `theta = 90` degrees works at all.
+
+`correct_peak_positions` carries the standard uncertainties through untouched. A known aberration
+is a bias, not a random error, so removing it does not change how well a position is known -- and
+that is pinned by a test.
+
+**Rachinger stripping is implemented and documented as display-only, with numbers.** On a synthetic
+Ni scan it removes 86 to 94 per cent of each resolved K-alpha2 line and clears every one of them
+from the candidate list, which is what makes a stripped pattern easy to read. What it does not do
+is disappear cleanly: the recursion re-subtracts its own residual at each successive partner angle,
+leaving a decaying ringing train above the strongest reflection, and the first few points have no
+lower-angle data to draw on. Two causes no ratio choice fixes -- the true alpha2 profile is slightly
+wider in `2 theta` because `d(2 theta_2) / d(2 theta_1)` is not one, and the ratio is not exactly a
+half. When the input carries uncertainties the output carries the propagated ones, so the noise cost
+is visible rather than assumed away. This is the quantitative form of the argument for modelling.
+
+**A monochromator correction whose limiting cases were wrong in my first draft.** The parallel
+setting at `2 theta_M = 90` degrees gives `P = 1`, not `cos^2(2 theta)`: the surviving component is
+the one the specimen scatters without angular dependence. `cos^2(2 theta)` is the *perpendicular*
+limit. Both limits, and the inequality `parallel >= perpendicular` that follows from
+`(1 + m c) - (m + c) = (1 - m)(1 - c)`, are now derived in the docstring and pinned by tests.
+
+**Display transforms as a first-class surface.** `ProfileView` carries abscissa in `2 theta`, `d`,
+`Q` or `sin^2(theta)` and ordinate on a linear, square-root or log10 scale, deliberately as a
+*different type* from `MeasuredPowderPattern` so a transformed view cannot be fed back into an
+analysis expecting measured units. The square-root ordinate is defended statistically rather than
+aesthetically, and a test proves the claim: across a synthetic step from 100 to 10000 counts the
+linear noise amplitude differs by more than a factor of five, and on the square-root ordinate it is
+equal to within 20 per cent.
+
+32 tests in `tests/unit/test_xrd_corrections.py`. Ruff and mypy clean over the whole tree. Atlas
+regenerated for `ProfileView`; counts 299/282 to 300/283.
+
 ### Status
 
-Increment 1 landed. Increment 2 (corrections and transforms) next.
+Increments 1 and 2 landed. Increment 3 (indexing and figures of merit) next.
