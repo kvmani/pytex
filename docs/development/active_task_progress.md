@@ -5877,3 +5877,87 @@ the panel does not list is a view no user can reach.
 ### Next actions
 
 - Nothing outstanding on this goal.
+
+## XRD beyond simulation: background, instrument, Rietveld — IN PROGRESS (2026-09-05)
+
+**Objective.** The XRD surface simulated a powder pattern and could scale-compare it against a
+measurement. Add the three capabilities that turn that into an analysis surface: background
+estimation from a raw experimental pattern, an instrumental resolution function with calibration
+and size/strain deconvolution, and whole-profile (Rietveld) refinement. Then a tutorial notebook,
+GUI exposure, a version bump and release notes.
+
+### Increment 1 — the library layer (landed)
+
+Three new modules under `src/pytex/diffraction/`:
+
+**`xrd_background.py`.** `estimate_background(measured, method=...)` returning `PowderBackground`.
+Two estimators because they answer different questions: SNIP (Ryan 1988, with Morhac's
+decreasing-window order) is non-parametric and copes with curved backgrounds, and a Chebyshev fit
+by iteratively reweighted least squares with *asymmetric* clipping is parametric and is what a
+refinement can carry. The asymmetry is the point -- peaks are one-sided excursions, so symmetric
+rejection drags the curve up into the peak feet. `subtract()` refuses a pattern it was not
+estimated on, because a background interpolated onto another grid is a second modelling step.
+
+**`xrd_instrument.py`.** `InstrumentBroadening` is the Caglioti Gaussian width plus a Lorentzian
+term, combined by Thompson-Cox-Hastings into one pseudo-Voigt width and mixing.
+`calibrate_instrument_broadening` fits U, V, W to a standard's widths -- exactly linear in the
+squared widths, so no starting values and no convergence question -- and then evaluates the fitted
+parabola across the calibrated range, because a parabola through four widths can dip below zero
+between them and the failure is otherwise silent until a later width evaluation.
+`deconvolve_instrument_width` refuses a measured width narrower than the instrument's own: that is
+not a very small crystallite, it is an impossible measurement. `williamson_hall` and
+`scherrer_size_nm` turn what remains into a size and a microstrain.
+
+**`rietveld.py`.** `refine_rietveld` fits the whole profile: scale, cell dilation, detector zero,
+Caglioti U/V/W, Lorentzian Y, overall B_iso, March-Dollase texture strength, and Chebyshev
+background, all bounded, through `scipy.optimize.least_squares`. Reports `R_p`, `R_wp`, `R_exp`,
+`R_Bragg` from Rietveld intensity partitioning, goodness of fit, Durbin-Watson, and per-parameter
+standard uncertainties from the SVD of the Jacobian -- a rank-deficient pair gets an *infinite*
+uncertainty rather than a small one, so a correlated pair is visible instead of quietly reported as
+well determined.
+
+### Three decisions worth recording
+
+**What is deliberately not refined.** Atomic coordinates, occupancies, anisotropic displacement
+parameters, and the independent cell edges of a low-symmetry cell. Those need constraints,
+restraints and a symmetry-mode apparatus this module does not have, and refining them without it
+buys a lower `R_wp` and a structure nobody should publish. `lattice_scale` is an isotropic
+dilation, which is symmetry-preserving in every crystal system and is therefore the safe general
+cell parameter. The scope is stated in `describe()` so a reader of the output cannot miss it.
+
+**Reflection families are enumerated once, over a padded window.** The cell moves during
+refinement; a reflection entering or leaving the model mid-fit makes the residual discontinuous and
+the optimizer's derivative estimates wrong. Positions and structure factors are recomputed each
+step from the dilated cell, the family list is not.
+
+**`march_coefficient = 1` is a bad place to start, so it is not started from.** r = 1 is the
+untextured point with plate-like and needle-like textures on opposite sides; a local optimizer
+commits to whichever side its first derivative points. On a synthetic silicon pattern built at
+r = 0.75 it settled at 1.257 (R_wp 0.037) while 0.75 was available at R_wp 0.020. A nine-point
+coarse scan with the scale re-optimized analytically at each trial now picks the side from the
+data, and runs *only* when the caller left the default, because a stated starting value is
+information the scan would discard.
+
+### A pre-existing defect this surfaced
+
+`AtomicSite` used the generated dataclass `__eq__`, which compares `fractional_coordinates` with
+`==` and raises "truth value of an array is ambiguous". Every phase comparison involving a phase
+with an atomic basis therefore raised -- which meant `apply_preferred_orientation` was broken for
+exactly the phases it is useful on, since `MarchDollaseModel.factors` compares
+`plane.phase != self.preferred_orientation.phase`. Fixed with the explicit `__eq__`/`__hash__`
+pair already used by `MillerIndex` a few hundred lines below.
+
+### Verification
+
+`ruff format`, `ruff check`, `mypy` clean on every touched file. 31 new tests in
+`tests/unit/test_xrd_rietveld.py`, all green; the load-bearing ones are recovery tests -- a pattern
+built from a known cell, zero, width and texture, with the refinement required to find those values
+back (cell to 2e-5 in the dilation, texture to 0.02 in r). Green:
+`test_lattice.py`, `test_xrd_measurement.py`, `test_xrd_realism.py`, `test_app_xrd.py`,
+`test_xrd_saed_and_styles.py`, `test_public_api_docstrings.py`, `test_documentation_policy.py`.
+
+### Next actions
+
+- Theory note under `docs/site/theory/` and a tutorial notebook (`33_rietveld_...ipynb`).
+- GUI: new `xrd.*` operations and panel views for background, refinement and comparison.
+- Version bump to 0.6.0 and release notes.

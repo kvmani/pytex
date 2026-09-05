@@ -507,6 +507,34 @@ class AtomicSite:
     occupancy: float = 1.0
     b_iso: float | None = None
 
+    def __eq__(self, other: object) -> bool:
+        # The generated dataclass __eq__ compares the coordinate array with
+        # `==`, which yields an array and raises "truth value is ambiguous".
+        # Two sites are the same site when they name the same species at the
+        # same place with the same occupancy.
+        if not isinstance(other, AtomicSite):
+            return NotImplemented
+        return (
+            self.label == other.label
+            and self.species == other.species
+            and bool(
+                np.array_equal(self.fractional_coordinates, other.fractional_coordinates)
+            )
+            and self.occupancy == other.occupancy
+            and self.b_iso == other.b_iso
+        )
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.label,
+                self.species,
+                tuple(float(value) for value in self.fractional_coordinates),
+                self.occupancy,
+                self.b_iso,
+            )
+        )
+
     def __post_init__(self) -> None:
         object.__setattr__(
             self, "fractional_coordinates", as_float_array(self.fractional_coordinates, shape=(3,))
