@@ -218,6 +218,13 @@ from pytex.diffraction.xrd_corrections import (
     variable_to_fixed_slit,
     zero_shift_deg,
 )
+from pytex.diffraction.xrd_indexing import (
+    INDEXED_REFLECTION_SCHEMA,
+    PEAK_INDEXING_SCHEMA,
+    IndexedReflection,
+    PeakIndexing,
+    index_peaks,
+)
 from pytex.diffraction.xrd_instrument import (
     DECONVOLUTION_MODES,
     INSTRUMENT_BROADENING_SCHEMA,
@@ -270,6 +277,7 @@ __all__ = [
     "DEFAULT_ROUTE_MAX_LEG_DEG",
     "FINITE_THICKNESS_SHAPE_FACTOR_SCHEMA",
     "HOLZ_LINE_PATTERN_SCHEMA",
+    "INDEXED_REFLECTION_SCHEMA",
     "INSTRUMENT_BROADENING_SCHEMA",
     "INTENSITY_NORMALIZATIONS",
     "INTENSITY_SCALES",
@@ -278,6 +286,7 @@ __all__ = [
     "MEASURED_POWDER_PATTERN_SCHEMA",
     "PATTERN_SOLUTION_SCHEMA",
     "PEAK_FIT_SCHEMA",
+    "PEAK_INDEXING_SCHEMA",
     "PEAK_SHAPES",
     "PEAK_TABLE_SCHEMA",
     "PLANE_POINT_GROUP_SYMBOLS",
@@ -312,6 +321,7 @@ __all__ = [
     "HOLZLine",
     "HOLZLineIntersection",
     "HOLZLinePattern",
+    "IndexedReflection",
     "IndexingCandidate",
     "InstrumentBroadening",
     "IntensityNormalization",
@@ -338,6 +348,7 @@ __all__ = [
     "PatternSolution",
     "PatternSolutionReport",
     "PeakFit",
+    "PeakIndexing",
     "PeakShape",
     "PeakTable",
     "PlanarLatticeFit",
@@ -416,6 +427,7 @@ __all__ = [
     "generate_xrd_pattern",
     "holz_line_pattern",
     "holz_ring_radii_inv_angstrom",
+    "index_peaks",
     "index_saed_pattern",
     "is_hexagonal_phase",
     "kalpha2_partner_two_theta_deg",

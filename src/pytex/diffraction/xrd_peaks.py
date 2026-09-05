@@ -1101,6 +1101,35 @@ def _fit_one_peak(
     )
 
 
+def _merge_coincident_fits(
+    fits: list[PeakFit], *, tolerance_fraction: float
+) -> list[PeakFit]:
+    """Collapse fits that converged to the same angle into one reflection.
+
+    Two windows centred on different candidates can slide onto the same strong
+    line. The duplicate is not merely redundant: an indexer matching one-to-one
+    would give the two copies different ``(hkl)``, inventing a reflection at a
+    spacing nothing diffracted from. The fit with the lower reduced
+    chi-squared wins, because it is the one whose window actually described its
+    data.
+    """
+
+    if tolerance_fraction <= 0.0 or len(fits) < 2:
+        return fits
+    ordered = sorted(fits, key=lambda item: item.two_theta_deg)
+    kept: list[PeakFit] = [ordered[0]]
+    for candidate in ordered[1:]:
+        previous = kept[-1]
+        separation = abs(candidate.two_theta_deg - previous.two_theta_deg)
+        width = 0.5 * (candidate.fwhm_deg + previous.fwhm_deg)
+        if separation < tolerance_fraction * width:
+            if candidate.reduced_chi_squared < previous.reduced_chi_squared:
+                kept[-1] = candidate
+        else:
+            kept.append(candidate)
+    return kept
+
+
 def fit_peaks(
     measured: MeasuredPowderPattern,
     centres_deg: Iterable[float],
@@ -1111,6 +1140,7 @@ def fit_peaks(
     shape: PeakShape = "pseudo_voigt",
     model_doublet: bool = True,
     window_fwhm: float = 4.0,
+    merge_tolerance_fwhm: float = 0.25,
     name: str | None = None,
 ) -> PeakTable:
     """Fit a profile to each candidate position and return positions with ESDs.
@@ -1140,6 +1170,14 @@ def fit_peaks(
     present, from Poisson counting statistics when the intensity unit is
     counts, and unity otherwise.
 
+    Finally, fits that converged to the *same* angle are merged. Two candidates
+    can be far enough apart to survive detection -- for instance where a weak
+    reflection is predicted beside a strong one -- and then both windows slide
+    onto the strong line. Two fits at one angle are one reflection, and leaving
+    both in place would let an indexer pair each of them with a different
+    ``(hkl)``, which puts a reflection at a spacing nothing diffracted from.
+    The survivor is the fit with the lower reduced chi-squared.
+
     Parameters
     ----------
     measured
@@ -1165,6 +1203,10 @@ def fit_peaks(
     window_fwhm
         Half-width of each fit window in expected FWHM. Too small starves the
         background; too large invites the neighbouring reflection in.
+    merge_tolerance_fwhm
+        Fits whose centres agree to within this fraction of their mean FWHM are
+        treated as one reflection. Set it to zero to keep every fit, which is
+        useful only for inspecting the raw behaviour.
     name
         Name for the returned table.
 
@@ -1253,6 +1295,8 @@ def fit_peaks(
             "angular range."
         )
 
+    fits = _merge_coincident_fits(fits, tolerance_fraction=merge_tolerance_fwhm)
+
     return PeakTable(
         name=name or f"{measured.name} peaks",
         peaks=tuple(fits),
@@ -1277,6 +1321,7 @@ def detect_and_fit_peaks(
     shape: PeakShape = "pseudo_voigt",
     model_doublet: bool = True,
     window_fwhm: float = 4.0,
+    merge_tolerance_fwhm: float = 0.25,
     two_theta_range_deg: tuple[float, float] | None = None,
     max_peaks: int = 128,
     name: str | None = None,
@@ -1298,7 +1343,7 @@ def detect_and_fit_peaks(
         detection and fixes the modelled partner position during fitting.
     instrument, expected_fwhm_deg, prominence_sigma, two_theta_range_deg, max_peaks
         Passed to :func:`detect_peaks`.
-    shape, model_doublet, window_fwhm, name
+    shape, model_doublet, window_fwhm, merge_tolerance_fwhm, name
         Passed to :func:`fit_peaks`.
 
     Returns
@@ -1338,6 +1383,7 @@ def detect_and_fit_peaks(
         shape=shape,
         model_doublet=model_doublet,
         window_fwhm=window_fwhm,
+        merge_tolerance_fwhm=merge_tolerance_fwhm,
         name=name,
     )
 

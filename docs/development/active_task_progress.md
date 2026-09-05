@@ -6174,7 +6174,7 @@ the structure fixed and varies only the cell and the instrument aberrations.
 
 - [x] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
 - [x] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
-- [ ] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
+- [x] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
 - [ ] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
 - [ ] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
 - [ ] 6. Theory note, notebook tutorial, worked examples, docs index updates.
@@ -6260,6 +6260,44 @@ equal to within 20 per cent.
 32 tests in `tests/unit/test_xrd_corrections.py`. Ruff and mypy clean over the whole tree. Atlas
 regenerated for `ProfileView`; counts 299/282 to 300/283.
 
+### Increment 3 -- indexing and figures of merit (landed)
+
+`src/pytex/diffraction/xrd_indexing.py` with `IndexedReflection`, `PeakIndexing` and `index_peaks`,
+for the known-phase case only. Unknown-cell autoindexing (ITO, TREOR, DICVOL) is cited as
+deliberately out of scope rather than silently absent.
+
+**The assignment is global, not greedy.** A nearest-line pass can give two peaks the same
+reflection, or pair a peak with a near neighbour and strand the true partner -- and neither failure
+is visible in the output it produces. `scipy.optimize.linear_sum_assignment` minimizes the total
+discrepancy over all one-to-one pairings at once. A test asserts one-to-oneness on magnesium, whose
+pattern is crowded enough for a greedy pass to fail.
+
+**Correctness is asserted structurally where it can be.** An F-lattice may only give unmixed-parity
+indices; an I-lattice only an even index sum; cubic `Q` must be proportional to `h^2 + k^2 + l^2`,
+which recovers the generating `a` to better than one part in 1e4 with a relative scatter under
+1e-4. Those hold whatever the fitted angles happen to be, so they cannot rot into
+stored-output comparisons.
+
+**A defect this increment found upstream.** Magnesium 015 and 122 sit 0.23 degrees apart. Two
+detection candidates survived the separation rule, then *both* fit windows slid onto the same strong
+line, and the one-to-one assignment dutifully gave the two copies different `(hkl)` -- inventing a
+reflection at a spacing nothing diffracted from, with a 236 millidegree residual. `fit_peaks` now
+merges fits that converged to the same angle (`merge_tolerance_fwhm`, default a quarter of the mean
+FWHM), keeping the one with the lower reduced chi-squared. Worst magnesium residual fell from 236 to
+6.5 millidegrees.
+
+What remains on magnesium is honest and instructive: one badly fitted residue (reduced chi-squared
+198) on the shoulder of the overlapped pair, reported as an unindexed peak, with 122 reported as
+unobserved. A test pins that anything left unindexed is a *failed* fit rather than a good peak
+thrown away. This is the motivating case for the Le Bail method in increment 4.
+
+**Residuals carry the diagnosis, and `describe()` reads them.** A 0.05 degree zero error appears as
+seven same-signed residuals, and the prose names it as a zero-point or displacement error rather
+than a wrong cell. `M_N` and `F_N` are returned with the `N` they were computed over, because `M_7`
+and `M_20` are not comparable and a bare number invites treating them as if they were.
+
+19 tests in `tests/unit/test_xrd_indexing.py`. Ruff and mypy clean. Atlas 300/283 to 302/285.
+
 ### Status
 
-Increments 1 and 2 landed. Increment 3 (indexing and figures of merit) next.
+Increments 1-3 landed. Increment 4 (lattice-parameter determination) next -- the goal's centre.

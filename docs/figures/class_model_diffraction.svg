@@ -94,6 +94,18 @@
   <text x="495.5" y="260.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">matches: SpotAssignment[]</text>
   <text x="495.5" y="280.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">unmatched_observed_cluster_ids: ndarray</text>
   <text x="495.5" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">unmatched_simulated_spot_indices: ndarray</text>
+  <rect x="1126.9" y="453.0" width="282.6" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
+  <rect x="1127.9" y="454.0" width="280.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
+  <text x="1141.9" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">RadiationSpec</text>
+  <text x="1141.9" y="499.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">diffraction.xrd</text>
+  <text x="1141.9" y="517.0" font-size="13" font-family="Arial" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
+  <line x1="1127.9" y1="521.0" x2="1408.5" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
+  <text x="1141.9" y="543.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">name: str</text>
+  <text x="1141.9" y="563.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">wavelength_angstrom: float</text>
+  <text x="1141.9" y="583.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kalpha2_wavelength_angstrom: float?</text>
+  <text x="1141.9" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kalpha2_relative_intensity: float</text>
+  <text x="1141.9" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">anode: str?</text>
+  <text x="1141.9" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kind: str</text>
   <rect x="842.2" y="110.0" width="238.4" height="243.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
   <rect x="843.2" y="111.0" width="236.4" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
   <text x="857.2" y="139.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">CBEDPattern</text>
@@ -135,18 +147,6 @@
   <text x="1500.9" y="300.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">calculated_intensity: ndarray</text>
   <text x="1500.9" y="320.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">background_intensity: ndarray</text>
   <text x="1500.9" y="340.0" font-size="15" font-family="Arial" fill="#40506f" text-anchor="start">+ 12 more</text>
-  <rect x="1126.9" y="453.0" width="282.6" height="203.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
-  <rect x="1127.9" y="454.0" width="280.6" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
-  <text x="1141.9" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">RadiationSpec</text>
-  <text x="1141.9" y="499.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">diffraction.xrd</text>
-  <text x="1141.9" y="517.0" font-size="13" font-family="Arial" fill="#f59e0b" text-anchor="start">«frozen dataclass»</text>
-  <line x1="1127.9" y1="521.0" x2="1408.5" y2="521.0" stroke="#f59e0b" stroke-width="1" opacity="0.35"/>
-  <text x="1141.9" y="543.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">name: str</text>
-  <text x="1141.9" y="563.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">wavelength_angstrom: float</text>
-  <text x="1141.9" y="583.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kalpha2_wavelength_angstrom: float?</text>
-  <text x="1141.9" y="603.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kalpha2_relative_intensity: float</text>
-  <text x="1141.9" y="623.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">anode: str?</text>
-  <text x="1141.9" y="643.0" font-size="15" font-family="Arial" fill="#07122f" text-anchor="start">kind: str</text>
   <rect x="686.7" y="453.0" width="309.3" height="163.0" rx="8" fill="#fdf6e8" stroke="#f59e0b" stroke-width="1.2"/>
   <rect x="687.7" y="454.0" width="307.3" height="4" rx="2" fill="#f59e0b" opacity="0.85"/>
   <text x="701.7" y="482.0" font-size="18" font-family="Arial" fill="#07122f" text-anchor="start" font-weight="bold">VariantZonePattern</text>
