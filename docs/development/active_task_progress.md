@@ -5961,3 +5961,38 @@ back (cell to 2e-5 in the dilation, texture to 0.02 in r). Green:
 - Theory note under `docs/site/theory/` and a tutorial notebook (`33_rietveld_...ipynb`).
 - GUI: new `xrd.*` operations and panel views for background, refinement and comparison.
 - Version bump to 0.6.0 and release notes.
+
+### Increment 2 — the tutorial notebook (landed)
+
+`33_quantitative_xrd_background_instrument_and_rietveld.ipynb`, 38 cells, in the smoke-executed
+priority set. Runs in about five seconds.
+
+Built on a *synthetic* measurement with ground truth throughout: the pinned `ni_fcc` fixture, a
+cell dilated by 1.003, a +0.05 deg zero-point error, a 0.14 deg peak width and a curved
+background, then Poisson noise. Every step is checked against the number it was built from rather
+than admired -- the refinement recovers the dilation to 1.4e-6, the zero shift to 3e-4 deg, the
+lattice parameter to 5e-6 A, and the March-Dollase r to 0.7488(20) against a true 0.75. The
+notebook asserts these, so a regression fails the docs build rather than printing a wrong number
+next to confident prose.
+
+**Two prose claims had to be corrected against the computed output**, which is the notebook's own
+argument working: the scale-only comparison gives R_wp near 75%, not the "near 30%" first written,
+and the wrong-width refinement does not raise R_wp "a little" -- it nearly triples it. The
+surviving teaching point is sharper than the one drafted: what distinguishes the two fits is not
+the size of the misfit but its *shape*, which is why R_Bragg and Durbin-Watson move furthest
+(1.86 -> 0.44) and why the difference curve is what a refinement is read from.
+
+**The background degree is 10, and the notebook says why.** At the default 4 the reference
+refinement gave GoF 1.80 and Durbin-Watson 0.63 -- a Chebyshev too stiff for the low-angle hump.
+That is invisible in R_wp and unmistakable in Durbin-Watson, so the choice is made in the text as
+a worked instance of the section that follows it.
+
+**Switched from `si_diamond` to the pinned `ni_fcc` fixture** because `PRIORITY_NOTEBOOKS` carries
+a contract the built-in phase catalogue does not satisfy: a priority notebook must draw its
+structure from the hash-checked corpus, so every number in it is reproducible from a file in the
+repository.
+
+### Next actions
+
+- GUI: new `xrd.*` operations and panel views for background, refinement and comparison.
+- Version bump to 0.6.0 and release notes.

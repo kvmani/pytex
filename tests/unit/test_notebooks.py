@@ -17,6 +17,7 @@ PRIORITY_NOTEBOOKS = (
     "12_saed_workflows.ipynb",
     "13_crystal_visualization_workflows.ipynb",
     "15_structure_diffraction_visualization_pipeline.ipynb",
+    "33_quantitative_xrd_background_instrument_and_rietveld.ipynb",
 )
 
 

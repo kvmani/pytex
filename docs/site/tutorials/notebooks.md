@@ -58,6 +58,7 @@ notebooks/29_dynamical_cbed_and_point_groups
 notebooks/30_kikuchi_maps_and_zone_axis_routing
 notebooks/31_kearns_parameter
 notebooks/32_ecci_workflow_from_ebsd
+notebooks/33_quantitative_xrd_background_instrument_and_rietveld
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -141,6 +142,23 @@ pages.
    asserted. It ends on real Panalytical scans of three zirconium products, where
    the three sections of one plate sum to 1.43 instead of 1 — and the diagnosis of
    that number is the whole point of the notebook.
+
+## Quantitative Powder-XRD Track
+
+10. `33_quantitative_xrd_background_instrument_and_rietveld` — the step from *what would this
+    phase diffract?* to *what does this scan say?* Answers the four questions a diffractometer
+    raises, in the order they depend on each other: what the background is (SNIP against a
+    Chebyshev fit, measured against the background the pattern was built from), how much of the
+    peak width belongs to the instrument (a Caglioti resolution function calibrated from a
+    standard, then deconvolved), how large the crystallites are (Williamson-Hall recovering a
+    known 25 nm and 0.2% microstrain, with Scherrer shown failing peak by peak in the way that
+    reveals strain), and finally whole-profile refinement recovering a cell dilation, a detector
+    zero error and a peak width that were put into the pattern deliberately. Two results carry
+    the notebook. The zero-point error is separated from the cell rather than absorbed by it,
+    which is the entire argument for refining both. And a refinement with the peak width held at
+    the wrong value keeps a respectable-looking R factor while its Durbin-Watson statistic
+    collapses — the residual acquires the derivative shape of the peak, at every reflection —
+    which is why the difference curve, not the R factor, is what a refinement is read from.
 
 ## How To Use These
 
