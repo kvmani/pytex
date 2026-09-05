@@ -1715,3 +1715,24 @@ class TestUserStatedRelationship:
             .split("const VIEW_MODES")[0]
         )
         assert "'variants.custom_relationship'" in views
+
+    def test_the_panel_opens_on_a_view_that_draws(self) -> None:
+        """A figure panel that opens on a table view looks broken before it is used.
+
+        The panel gives its stage to a visualisation, and which example sits
+        first in the manifest is decided by registration order elsewhere. When
+        the two user-stated relationship examples were added they went to the
+        front of that list, and the panel began opening on a table with an empty
+        stage. The choice is now made in the panel, and pinned here.
+        """
+
+        panel = Path("src/pytex/app/static/js/panels/variants.js").read_text(encoding="utf-8")
+        assert "VIEW_MODES[entry.operation] !== 'table'" in panel
+        # And the manifest must still offer at least one drawing example to find.
+        modes = panel.split("const VIEW_MODES")[1].split("};")[0]
+        drawing = {
+            example.operation
+            for example in REGISTRY.examples()
+            if example.panel == "variants" and f"'{example.operation}': 'table'" not in modes
+        }
+        assert drawing, "the Variants panel has no example that draws anything"

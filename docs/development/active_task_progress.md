@@ -6082,3 +6082,30 @@ whole change and re-running: it fails identically on the unmodified tree.
 
 The goal is complete: library, tutorial, workbench, version and release notes all landed and
 pushed. Every increment is on `main`.
+
+### Increment 5 — the two things the full lanes caught (landed)
+
+**The class-model atlas.** Five new public classes -- `PowderBackground`, `InstrumentBroadening`,
+`WilliamsonHallAnalysis`, `RefinedParameter`, `RietveldResult` -- so the committed SVGs no longer
+matched their generator. Regenerated with `scripts/generate_class_model_figures.py` (three figures
+changed) and the atlas page's prose counts moved from 292/275 to 297/280 classes and dataclasses.
+The inheritance count is still 6, which is the number that page exists to make a point about.
+
+**A regression from the previous commit, found by the browser lane and fixed here.** The Variants
+panel opened on an empty stage. `shows every figure and its controls without scrolling the stage`
+failed looking for an SVG that was not there, and the cause was upstream of this goal: commit
+`c96c207` registered the two user-stated-relationship examples, they went to the front of the
+manifest's example list, and `variants.js` opens on `examples[0]` -- which is now a **table** view.
+A panel whose whole layout rule is "visualisation gets the room" was opening with no visualisation.
+
+The panel now opens on the first example whose view actually draws, falling back to `examples[0]`.
+The choice is made in the panel rather than depending on registration order elsewhere, because
+registration order is exactly what changed underneath it. A unit test pins both halves: the panel
+makes the choice, and the manifest still offers at least one drawing example to find.
+
+### Verification
+
+Full Playwright lane: 59 passed, 0 failed. Full unit suite green apart from
+`test_every_declared_dependency_actually_imports[kikuchipy]`, which fails because KikuchiPy is not
+installed in this venv -- verified pre-existing by stashing the entire change and re-running on the
+unmodified tree.

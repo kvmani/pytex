@@ -1371,8 +1371,15 @@ export function mount(context) {
   context.stage.append(frame.element, facts, details);
   // Anything handed over is what the user asked for by pressing a button; the
   // opening example is only what the panel does when nobody asked.
+  //
+  // It opens on an example that *draws*. This panel gives the stage to a
+  // visualisation, so opening on one of the table-only views leaves the stage
+  // empty and the panel looking broken to anyone who has not pressed anything
+  // yet. Which example sits first in the manifest is decided by registration
+  // order elsewhere, so the choice is made here rather than depended on.
   if (!seedFromNamedRelationship() && !seedFromPickedPair() && examples.length) {
-    loadExample(examples[0]);
+    const drawn = examples.find((entry) => VIEW_MODES[entry.operation] !== 'table');
+    loadExample(drawn ?? examples[0]);
   }
 
   return { help: () => state.operation };
