@@ -6491,6 +6491,23 @@ pattern the whole-pattern fit reaches a reduced chi-squared of 1.7 where the pea
 reaches 75, while both agree on the cell to 1e-4 -- which is the clearest available statement of
 what Le Bail is for.
 
+### The algorithm page
+
+The repository documents an algorithm at two levels deliberately, and the theory note is only the
+first: `docs/site/algorithms/` carries "the algorithm as steps a reader could reimplement, the
+constraints and tolerances with what each is calibrated against, and the failure modes". The goal
+asked for a full algorithm description of each method employed, so
+`docs/site/algorithms/precise_lattice_parameter_determination.md` supplies that level: pseudocode
+for each of the four stages, a table of every setting with the criterion for choosing it, the
+constraint matrix per crystal system, a table mapping each aberration to the extrapolation function
+that matches it, and calibrated behaviour tables carrying the measured numbers -- the detection and
+fit statistics, the re-indexing convergence, the five-method accuracy sweep, and the Le Bail
+displacement recovery. It is registered in the algorithms toctree, in the theory index's
+theory-to-algorithm table, and in `docs/README.md`.
+
+Sphinx builds clean with it: `sphinx -b html docs/site` exits 0 with no warnings, which also
+confirms the MyST syntax and every cross-reference in both new pages.
+
 ### Status
 
 **Goal complete.** All six increments landed and pushed. Library, workbench, theory note, notebook

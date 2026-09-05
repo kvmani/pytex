@@ -108,3 +108,4 @@ steps, the calibrated tolerances, the worked cubic and hexagonal numbers, and th
 | {doc}`saed_ratio_angle_indexing` | {doc}`../algorithms/saed_pattern_indexing` |
 | {doc}`tem_specimen_tilt_navigation` | {doc}`../algorithms/tem_tilt_navigation` |
 | {doc}`reciprocal_space_and_kinematic_spots` | {doc}`../algorithms/composite_saed_assembly` |
+| {doc}`precise_lattice_parameter_determination` | {doc}`../algorithms/precise_lattice_parameter_determination` |
