@@ -6127,3 +6127,64 @@ rather than anything introduced here — but it means `ruff format` cannot be ru
 because it would rewrite half the repository in an unrelated commit.
 
 Six commits, all pushed to `main`: `827ed10`, `1ebc565`, `39f3f13`, `9a907c9`, `7cc75fe`, `7a056bd`.
+
+---
+
+## Goal (opened 2026-09-05) — precise lattice-parameter determination from measured XRD patterns
+
+### Objective
+
+Implement, to repository standard, the five-stage XRD roadmap surveyed with the user: peak
+detection and single-peak fitting, day-to-day profile corrections (Kalpha2 stripping, zero and
+displacement, axis and intensity scales), reflection indexing with figures of merit, precise
+lattice-parameter **determination** (not structural refinement), and a dedicated
+"Determine lattice parameters" sub-tab in the workbench XRD panel. Deliverables include theory
+notes with full derivations and citations, hand-authored notebook tutorials, executable worked
+examples, and unit tests, per `AGENTS.md`.
+
+### Why this is not `refine_rietveld`
+
+`rietveld.py` varies an *isotropic* `lattice_scale`. That is adequate for cubic and structurally
+incapable of changing `c/a`, so it cannot determine a hexagonal cell. It also couples the cell to
+structure factors, thermal parameters, and preferred orientation, which in a textured metal biases
+peak positions -- exactly the bias precise parameter work exists to remove. The new surface holds
+the structure fixed and varies only the cell and the instrument aberrations.
+
+### The scientific decisions, fixed before coding
+
+1. **Cohen least squares on the reciprocal metric tensor is the default method.** `sin^2(theta)`
+   is linear in the components of `G*`, so one code path covers cubic through triclinic with no
+   starting guess, no local minima, and an analytic covariance that yields real ESDs on `a` and
+   `c`. This is Cullity Ch. 11 generalized.
+2. **A systematic-error coefficient is refined alongside the cell**, against a selectable
+   extrapolation function (Nelson-Riley, Bradley-Jay, cos^2/sin, none). Averaging `a` over
+   reflections cannot remove specimen displacement because the error is theta-dependent; this can.
+3. **Le Bail whole-pattern decomposition is the second method**, for overlapped patterns. Intensities
+   are partitioned rather than refined, so texture and a wrong atomic basis cannot bias the cell.
+   Le Bail over Pawley because Pawley's intensity block goes singular on overlaps.
+4. **Kalpha2 is modelled, not stripped, on every fitting path.** Rachinger stripping is implemented
+   for display and peak picking only, and says so in its own documentation.
+5. **Zero and specimen displacement are not refined together from one specimen scan.** They are
+   separable in principle and badly correlated over a typical range; zero belongs to the calibrated
+   instrument, displacement to the specimen.
+6. The naive per-reflection average is implemented **as a selectable method**, so the teaching
+   comparison against Cohen on the user's own data is one click.
+
+### Planned increments
+
+- [ ] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
+- [ ] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
+- [ ] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
+- [ ] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
+- [ ] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
+- [ ] 6. Theory note, notebook tutorial, worked examples, docs index updates.
+
+### Environment note
+
+KikuchiPy was missing from `.venv` (Python 3.11) and is now installed (0.13.1, with hyperspy 2.4.0,
+rosettasciio, scikit-image, scikit-learn, pint, traits). This closes the long-standing
+`test_every_declared_dependency_actually_imports[kikuchipy]` local failure recorded above.
+
+### Status
+
+Increment 1 in progress.
