@@ -6109,3 +6109,21 @@ Full Playwright lane: 59 passed, 0 failed. Full unit suite green apart from
 `test_every_declared_dependency_actually_imports[kikuchipy]`, which fails because KikuchiPy is not
 installed in this venv -- verified pre-existing by stashing the entire change and re-running on the
 unmodified tree.
+
+### Final verification — GOAL COMPLETE (2026-09-05)
+
+Base lane green on the whole tree, matching what CI runs:
+
+- `python -m ruff check .` — all checks passed.
+- `python -m mypy src` — no issues in 158 source files.
+- `pytest tests/unit` — full suite passed, one deselection:
+  `test_every_declared_dependency_actually_imports[kikuchipy]`, which fails because KikuchiPy is
+  not installed in this venv and fails identically on the unmodified tree.
+- Full Playwright lane — 59 passed, 0 failed.
+
+Note for a later session: `ruff format --check` disagrees with 156 of 331 files tree-wide, including
+many this goal never touched. CI runs `ruff check .` only, so this is long-standing repository state
+rather than anything introduced here — but it means `ruff format` cannot be run tree-wide casually,
+because it would rewrite half the repository in an unrelated commit.
+
+Six commits, all pushed to `main`: `827ed10`, `1ebc565`, `39f3f13`, `9a907c9`, `7cc75fe`, `7a056bd`.
