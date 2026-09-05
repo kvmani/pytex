@@ -66,15 +66,20 @@ The PyTex library is organized into complementary, layered modules:
 
 ## Current Status
 
-**Version 0.5.0**, the release that makes one PyTex install behave like every other. The scientific
-stack — pymatgen, orix, diffsims, KikuchiPy, matplotlib and h5py — is now a **required dependency**
-rather than an optional `adapters` extra, so reading a CIF, drawing a figure or opening a vendor
-scan works wherever PyTex is installed instead of raising on the machines that skipped the extra.
-Three computed quantities are corrected as a direct result: covalent radii were silently coming
-from a sixteen-element placeholder table for the whole periodic table, angles that should be
-exactly zero were about `1e-06` degrees and platform-dependent, and the orthonormal harmonic basis
-had an unpinned sign that could invert an ODF's density on some platforms. See
-[CHANGELOG.md](CHANGELOG.md) for every scientific behaviour change stated explicitly.
+**Version 0.6.0**, the release where XRD stops being a simulator. PyTex could already calculate what
+a phase would diffract; it could not say what the background of a raw scan was, how much of a peak's
+width belonged to the diffractometer rather than the specimen, or whether a structural model
+actually accounted for the data. It can now: **background estimation** from a raw scan by SNIP or a
+Chebyshev fit, an **instrumental resolution function** calibrated from a line-profile standard and
+deconvolved from measured widths into a crystallite size and a microstrain, and **whole-profile
+Rietveld refinement** reporting `R_p`, `R_wp`, `R_exp`, `R_Bragg`, the goodness of fit and the
+Durbin–Watson statistic. The refinement is deliberate about its scope: it adjusts the cell, the zero
+point, the peak shape, the texture strength and the background against a *known* structure, and
+declines to refine atomic coordinates or occupancies, because doing that without constraints and
+restraints buys a lower `R_wp` and a structure nobody should publish. One correctness fix comes with
+it — `AtomicSite` equality raised instead of comparing, which had left preferred-orientation
+correction broken for every phase with an atomic basis. See [CHANGELOG.md](CHANGELOG.md) for every
+scientific behaviour change stated explicitly.
 
 PyTex is a validated foundation with substantial scientific breadth on top of it, plus an
 application. What exists today:
@@ -92,7 +97,9 @@ parameter.
 cleanup, GND density, multiphase topology graphs, and readers for `.ang`, `.ctf` and OIM HDF5
 (`.oh5`/`.h5`).
 
-**Diffraction.** Powder XRD with profiles, preferred orientation and measured-profile comparison;
+**Diffraction.** Powder XRD end to end: simulation with profiles and preferred orientation, then
+background estimation from a raw scan, an instrumental resolution function with size–strain
+deconvolution, and whole-profile Rietveld refinement with its agreement indices;
 SAED simulation and ratio/angle indexing of a measured pattern; Kikuchi bands and the gnomonic
 projection, stereographic Kikuchi maps with zone-axis routing, and the EBSD camera geometry;
 convergent-beam diffraction, including the dynamical many-beam treatment and diffraction-group
