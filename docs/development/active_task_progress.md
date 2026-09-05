@@ -6175,7 +6175,7 @@ the structure fixed and varies only the cell and the instrument aberrations.
 - [x] 1. `xrd_peaks.py` -- detection and single-peak fitting with position ESDs, plus tests.
 - [x] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
 - [x] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
-- [ ] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
+- [x] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
 - [ ] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
 - [ ] 6. Theory note, notebook tutorial, worked examples, docs index updates.
 
@@ -6298,6 +6298,74 @@ and `M_20` are not comparable and a bare number invites treating them as if they
 
 19 tests in `tests/unit/test_xrd_indexing.py`. Ruff and mypy clean. Atlas 300/283 to 302/285.
 
+### Increment 4 -- lattice-parameter determination (landed)
+
+`src/pytex/diffraction/xrd_lattice_parameter.py`: `LatticeParameterResult`, `crystal_system_of`,
+`extrapolation_values`, `determine_lattice_parameters`, `nelson_riley_extrapolation`,
+`determine_lattice_parameters_le_bail`, `determine_lattice_parameters_from_pattern`.
+
+**One code path for every crystal system.** `sin^2(theta) = (lambda^2 / 4) h^T G* h` is *linear* in
+the six independent components of the reciprocal metric tensor, so the design row is
+`[h^2, k^2, l^2, 2hk, 2hl, 2kl]` and the crystal system supplies a 6-by-n constraint matrix reducing
+them to the genuinely free parameters -- one for cubic, six for triclinic. The hexagonal case is the
+one worth reading: `a* = b*` and `gamma* = 60` degrees give `G*12 = G*11 / 2`, and the familiar
+`A (h^2 + hk + k^2) + C l^2` falls out as a *consequence* rather than being written in as a special
+case. A test asserts that identity directly on the metric tensor.
+
+**The identity that unifies the graphical and algebraic treatments.** If an aberration gives
+`Delta d / d = -K f(theta)`, then since `Delta(sin^2 theta) / sin^2(theta) = -2 Delta d / d`, the
+Cohen design column is `sin^2(theta) f(theta)` -- the *same* `f` one would plot `a` against.
+Bradley-Jay `cos^2(theta)` then reproduces the classical Cohen `sin^2(2 theta) / 4` column exactly,
+which a test checks algebraically.
+
+**The central claim, measured rather than asserted.** With a 100 micrometre specimen displacement
+injected into a synthetic Ni scan (peaks moved 47 down to 12 millidegrees):
+
+| method | error in `a` | relative |
+| --- | --- | --- |
+| naive per-reflection average | +1411 uA | 4.0e-4 |
+| average, high angles only | +270 uA | 7.7e-5 |
+| Cohen, no drift term | +306 uA | 8.7e-5 |
+| Cohen, Bradley-Jay | -141 uA | 4.0e-5 |
+| Cohen, Nelson-Riley | +17 uA | 4.8e-6 |
+| **Cohen, cos^2/sin (matches the aberration)** | **-0.3 uA** | **9.6e-8** |
+| Le Bail, displacement refined | -3.2 uA | 9.1e-7 |
+
+Three and a half orders of magnitude between the naive average and the matched extrapolation, on
+identical data. The `average` method is kept precisely so this comparison is one call away, and it
+refuses a non-cubic cell with an explanation: outside the cubic system a lattice parameter *per
+reflection* does not exist, because one reflection cannot determine two parameters.
+
+**Le Bail, and three defects found building it.** All three produced a *wrong cell*, not merely a
+poor fit, and all three were found by asking why the reduced chi-squared was not near one:
+
+1. *Only K-alpha1 was modelled* against doublet data. The unmodelled alpha2 peak is a residual as
+   large as itself, and the refinement absorbed it into the cell -- 39 uA of error on a clean
+   pattern. The partner costs no parameter; Bragg law at fixed `d` fixes it.
+2. *Weights were taken from the background-subtracted profile.* Subtraction removes signal, not
+   variance: a 150-count background point still has sigma near 12, and weighting it as though its
+   uncertainty were one over-weights everything between the peaks by an order of magnitude.
+3. *The extraction output was used as a peak amplitude.* The Le Bail partition sums observed
+   counts, so it returns an integrated intensity; multiplying a unit-height profile by it overstated
+   every peak by the number of points beneath it -- about twentyfold at this step size. Normalizing
+   each reflection profile to unit sum makes the extracted quantity the integrated intensity,
+   which is what it always was.
+
+After fixing those, the remaining misfit was localized rather than shrugged at: chi-squared 9.3
+total, of which 8.7 lay *between* the peaks and only 0.33 under them. SNIP removes the background
+shape but leaves a level offset, and clipping the subtracted profile at zero biases it further. The
+fit now refines a two-parameter straight-line residual background -- far too stiff to follow a peak
+-- and does not clip.
+
+Le Bail now recovers the injected 0.100 mm displacement as **0.10048 mm** (Ni) and **0.09996 mm**
+(Ti), with `a` and `c` to about 2 uA and reduced chi-squared near 1.15. Leaving the displacement
+unmodelled raises it to 19 (Ni) and 32 (Ti), so the goodness of fit fails loudly rather than
+quietly -- which is what a test pins.
+
+39 tests in `tests/unit/test_xrd_lattice_parameter.py`, all passing on the first run. Ruff and mypy
+clean. Atlas 302/285 to 303/286.
+
 ### Status
 
-Increments 1-3 landed. Increment 4 (lattice-parameter determination) next -- the goal's centre.
+Increments 1-4 landed: the library is complete. Increment 5 (workbench sub-tab) and increment 6
+(theory note, notebook, worked examples) remain.
