@@ -109,6 +109,12 @@ The complete set of computed-versus-expected values at a glance:
 | `saed-lattice-fit-recovers-the-beam-centre` | 0.000000000 | 0.000000000 | px | ✅ |
 | `saed-scoring-calibration-bias` | 0.0476190476 | 0.0476190476 | &mdash; | ✅ |
 | `saed-practice-double-diffraction-forbidden-200` | 3.69422 | 3.69422 | mm | ✅ |
+| `lattice-nelson-riley-at-sixty-degrees` | 0.2637038 | 0.2637038 | &mdash; | ✅ |
+| `lattice-extrapolation-vanishes-at-backscatter` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
+| `lattice-cohen-drift-column-identity` | < 1e-15 | 0.00e+00 | &mdash; | ✅ |
+| `lattice-hexagonal-quadratic-form` | 1.2332292 | 1.2332292 | 1/angstrom^2 | ✅ |
+| `lattice-cohen-recovers-the-nickel-cell` | 3.52387 | 3.52387 | angstrom | ✅ |
+| `lattice-averaging-fails-by-a-measured-amount` | 4173 | 4000 | &mdash; | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
 | `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | ✅ |
@@ -158,6 +164,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`The Kearns parameter <generated/kearns-parameter>` &mdash; The scalar texture index the zirconium industry specifies components against, checked against the identities that calibrate it -- 1/3 for a random texture, an exact sum of 1 over any orthonormal triad, (1/2, 1/2, 0) for an ideal basal girdle -- and against the tabulated calculation in Kearns' own 1965 report.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
+- {doc}`Precise lattice-parameter determination <generated/lattice-parameters>` &mdash; The extrapolation functions and the drift-column identity checked against closed-form algebra, the hexagonal quadratic form checked against the textbook expression it must reduce to, and an end-to-end determination through a deliberately displaced specimen checked against the pinned fixture cell the pattern was generated from - alongside the same data solved by averaging, which leaves the displacement in the answer.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
 - {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
@@ -187,6 +194,7 @@ generated/pole-figure-arithmetic
 generated/kearns-parameter
 generated/tem_tilt_navigation
 generated/saed_practice_patterns
+generated/lattice-parameters
 generated/transformation
 generated/visualization
 generated/workbench-service-layer

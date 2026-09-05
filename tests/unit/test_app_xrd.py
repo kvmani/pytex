@@ -88,6 +88,7 @@ _EXAMPLE_ABSCISSA = {
     "xrd.background": "two_theta_deg",
     "xrd.rietveld": "two_theta_deg",
     "xrd.size_strain": "abscissa",
+    "xrd.lattice_parameters": "abscissa",
 }
 
 
@@ -102,6 +103,9 @@ def test_every_xrd_example_is_canonical_and_runnable() -> None:
         "xrd.example.rietveld_zero_and_cell",
         "xrd.example.rietveld_width_wrong",
         "xrd.example.size_strain",
+        "xrd.example.lattice_average_fails",
+        "xrd.example.lattice_cohen_extrapolation",
+        "xrd.example.lattice_hexagonal_le_bail",
     }
     for example in examples:
         result = REGISTRY.call(example.operation, example.request)
@@ -250,3 +254,264 @@ def test_shared_frontend_exposes_xrd_plot_and_live_appearance_controls() -> None
     listed = {entry.strip().strip("',\"") for entry in views.group(1).split("\n") if entry.strip()}
     registered = {operation.id for operation in REGISTRY.operations() if operation.panel == "xrd"}
     assert registered <= listed, registered - listed
+
+
+# ---------------------------------------------------------------------------
+# Determine lattice parameters
+# ---------------------------------------------------------------------------
+
+#: The demonstration scan is built with the cell dilated by this factor, so the
+#: answer every method below is chasing is known before the call is made.
+DEMONSTRATION_DILATION = 1.003
+
+
+def determine(**request: object) -> dict:
+    base: dict[str, object] = {"phase": {"builtin": "ni_fcc"}, "radiation": "cu_ka_doublet"}
+    base.update(request)
+    return REGISTRY.call("xrd.lattice_parameters", base)
+
+
+def nickel_target() -> float:
+    from pytex.app.phases import builtin_phase
+
+    return builtin_phase("ni_fcc").to_phase().lattice.a * DEMONSTRATION_DILATION
+
+
+def test_matching_the_extrapolation_to_the_aberration_beats_averaging() -> None:
+    """The argument the view exists to make, on a scan whose answer is known.
+
+    The demonstration scan carries a 0.05 degree detector zero error. A constant
+    angular offset gives Delta(sin^2 theta) = sin^2(theta) cot(theta) Delta(2
+    theta), so cot(theta) is the extrapolation function that matches it; the
+    others are the wrong shape and leave most of the error behind.
+    """
+
+    target = nickel_target()
+
+    def error(**request: object) -> float:
+        return abs(determine(**request)["data"]["a"] - target) / target
+
+    naive = error(method="average", extrapolation="none")
+    uncorrected = error(method="cohen", extrapolation="none")
+    mismatched = error(method="cohen", extrapolation="nelson_riley")
+    matched = error(method="cohen", extrapolation="cot_theta")
+
+    assert naive > 3.0e-4
+    assert uncorrected < naive
+    assert mismatched < uncorrected
+    assert matched < 1.0e-5
+    assert matched < mismatched / 20.0
+
+
+def test_the_goodness_of_fit_tracks_the_accuracy() -> None:
+    """A user cannot check against a known answer on real data, so chi-squared
+    has to be the thing that tells them which method worked."""
+
+    target = nickel_target()
+    rows = [
+        determine(method="cohen", extrapolation=function)["data"]
+        for function in ("none", "nelson_riley", "cot_theta")
+    ]
+    errors = [abs(row["a"] - target) for row in rows]
+    chi_squared = [row["reduced_chi_squared"] for row in rows]
+    assert errors == sorted(errors, reverse=True)
+    assert chi_squared == sorted(chi_squared, reverse=True)
+
+
+def test_re_indexing_recovers_the_high_angle_reflections() -> None:
+    """A starting cell 0.3 per cent wrong misplaces a 121 degree line by 0.6
+    degrees, well outside the indexing tolerance. Without a second indexing
+    pass the tool would silently drop exactly the reflections that carry the
+    precision, and would therefore require the answer in advance."""
+
+    result = determine(method="cohen", extrapolation="cot_theta")
+    rows = result["table"]["rows"]
+    assert len(rows) == 6
+    assert [row["hkl_label"] for row in rows[:3]] == ["(111)", "(200)", "(220)"]
+    assert rows[-1]["two_theta_observed_deg"] > 115.0
+
+
+def test_the_average_method_refuses_a_hexagonal_cell_as_a_field_error() -> None:
+    with pytest.raises(InvalidInputError) as raised:
+        determine(phase={"builtin": "ti_hcp"}, method="average")
+    assert raised.value.details["field"] == "method"
+    assert "cubic" in str(raised.value)
+
+
+def test_a_hexagonal_determination_reports_both_parameters_and_their_ratio() -> None:
+    from pytex.app.phases import builtin_phase
+
+    lattice = builtin_phase("ti_hcp").to_phase().lattice
+    data = determine(phase={"builtin": "ti_hcp"}, method="le_bail", systematic="zero")["data"]
+    assert data["crystal_system"] == "hexagonal"
+    assert data["a"] == pytest.approx(lattice.a * DEMONSTRATION_DILATION, rel=5.0e-5)
+    assert data["c"] == pytest.approx(lattice.c * DEMONSTRATION_DILATION, rel=5.0e-5)
+    assert data["axial_ratio"] == pytest.approx(lattice.c / lattice.a, rel=1.0e-4)
+    # No per-reflection lattice parameter exists here, so the view must not
+    # draw an extrapolation plot that pretends one does. A whole-pattern fit
+    # measures no individual position either, so its picture is the difference
+    # curve rather than a residual scatter.
+    assert data["plot_kind"] == "profile"
+    assert len(data["abscissa"]) == len(data["calculated"]) == len(data["difference"])
+    assert data["weighted_profile_r"] is not None
+
+
+def test_le_bail_does_not_report_positions_it_never_measured() -> None:
+    """A whole-pattern fit measures no individual peak position, so the table
+    must not carry a residual or an uncertainty column full of zeros."""
+
+    result = determine(method="le_bail", systematic="zero")
+    keys = {column["key"] for column in result["table"]["columns"]}
+    assert "residual_mdeg" not in keys
+    assert "standard_uncertainty_mdeg" not in keys
+    assert "two_theta_calculated_deg" in keys
+    assert result["data"]["columns"] == result["table"]["columns"]
+
+
+def test_the_drift_column_recovers_the_zero_error_that_was_injected() -> None:
+    """The strongest available check that the drift machinery is right.
+
+    A detector zero error is a *constant* Delta(2 theta), and the cot(theta)
+    extrapolation function is derived to be exactly the one that represents it.
+    So if the algebra is right, the angular shift the drift term removes must
+    come back constant across the pattern and equal to the 0.05 degree zero the
+    demonstration scan was built with -- neither of which was fitted for
+    directly.
+    """
+
+    rows = determine(method="cohen", extrapolation="cot_theta")["table"]["rows"]
+    shifts = [row["systematic_shift_mdeg"] for row in rows]
+    sigmas = [row["standard_uncertainty_mdeg"] for row in rows]
+    assert all(shift == pytest.approx(shifts[0], rel=1.0e-6) for shift in shifts)
+    assert abs(shifts[0]) == pytest.approx(50.0, abs=2.0)
+    # And it must dwarf the position uncertainties, or it would not be worth
+    # refining in the first place.
+    assert max(sigmas) > 0.0
+    assert abs(shifts[0]) > 50.0 * max(sigmas)
+
+
+def test_a_displacement_correction_falls_towards_back_reflection() -> None:
+    """The other drift shape, and the reason extrapolation works at all."""
+
+    rows = determine(
+        specimen_displacement_mm=0.2, method="cohen", extrapolation="cos_squared_over_sin"
+    )["table"]["rows"]
+    shifts = [abs(row["systematic_shift_mdeg"]) for row in rows]
+    assert shifts[0] > shifts[-1]
+    assert shifts[-1] < 0.6 * shifts[0]
+
+
+def test_no_correction_leaves_the_drift_column_empty_and_says_so() -> None:
+    result = determine(method="cohen", extrapolation="none")
+    assert all(row["systematic_shift_mdeg"] == 0.0 for row in result["table"]["rows"])
+    assert "inside the quoted cell" in result["data"]["describe"]
+
+
+def test_an_injected_displacement_is_declared_in_the_notes() -> None:
+    result = determine(specimen_displacement_mm=0.1)
+    joined = " ".join(result["notes"])
+    assert "100 \u00b5m specimen displacement" in joined
+    assert "two aberrations of different angular form" in joined
+    assert result["data"]["synthetic"] is True
+
+
+def test_the_result_refuses_to_call_a_lattice_parameter_a_stress() -> None:
+    result = determine()
+    joined = " ".join(result["notes"]) + result["data"]["describe"]
+    assert "not a stress" in joined
+    assert "X-ray elastic constants" in joined
+
+
+def test_the_plot_payload_carries_what_the_view_draws() -> None:
+    data = determine(method="cohen", extrapolation="cot_theta")["data"]
+    assert data["plot_kind"] == "extrapolation"
+    assert len(data["abscissa"]) == len(data["ordinate"]) == data["reflection_count"]
+    assert data["abscissa_label"]
+    assert data["ordinate_label"]
+    # The intercept of the drawn line and the determined value must agree, or
+    # the picture would contradict the number printed beside it.
+    assert data["line_intercept"] == pytest.approx(data["a"], rel=5.0e-5)
+
+
+def test_a_pasted_scan_is_determined_without_a_demonstration_claim() -> None:
+    simulated = REGISTRY.call(
+        "xrd.powder_pattern",
+        {
+            "phase": {"builtin": "ni_fcc"},
+            "radiation": "cu_ka_doublet",
+            "two_theta_min_deg": 40.0,
+            "two_theta_max_deg": 145.0,
+            "profile": "pseudo_voigt",
+            "fwhm_deg": 0.12,
+            "resolution_deg": 0.01,
+        },
+    )["data"]
+    lines = [
+        f"{angle} {20000.0 * value + 150.0}"
+        for angle, value in zip(simulated["two_theta_deg"], simulated["intensity"], strict=True)
+    ]
+    result = determine(
+        data_source="paste",
+        scan="\n".join(lines),
+        method="cohen",
+        extrapolation="nelson_riley",
+        expected_fwhm_deg=0.12,
+    )
+    from pytex.app.phases import builtin_phase
+
+    assert result["data"]["synthetic"] is False
+    assert result["data"]["a"] == pytest.approx(
+        builtin_phase("ni_fcc").to_phase().lattice.a, rel=1.0e-4
+    )
+
+
+def test_the_panel_opens_on_the_view_it_lists_first() -> None:
+    """`xrd.js` opens on `examples[0]`, so registration order decides the
+    landing view. Adding examples for a new view put them at the front of the
+    manifest and silently changed the XRD panel from opening on the simulation
+    to opening on a determination -- the same failure the Variants panel had
+    when its example list was reordered. The order is a contract, so it is
+    pinned here rather than remembered.
+    """
+
+    panel_source = (
+        Path("src/pytex/app/static/js/panels/xrd.js").read_text(encoding="utf-8")
+    )
+    assert "loadExample(examples[0])" in panel_source, (
+        "the panel no longer opens on the first example; update this guard to match"
+    )
+    views = re.search(r"const VIEWS = \[(.*?)\];", panel_source, re.S)
+    assert views is not None
+    first_view = re.findall(r"'([^']+)'", views.group(1))[0]
+    examples = [example for example in REGISTRY.examples() if example.panel == "xrd"]
+    assert examples[0].operation == first_view
+
+
+def test_uncertainties_stay_with_their_reflections_under_an_angular_floor() -> None:
+    """An angular floor filters the determination but not the indexing behind it.
+
+    The table looks up each position uncertainty by angle rather than by row
+    position for exactly this case: a positional lookup would attach every
+    uncertainty to the wrong reflection the moment an operator restricts the
+    range -- which is the case they would restrict it for.
+    """
+
+    everything = determine(method="cohen", extrapolation="cot_theta")
+    restricted = determine(
+        method="cohen", extrapolation="cot_theta", minimum_two_theta_deg=90.0
+    )
+    assert len(restricted["table"]["rows"]) < len(everything["table"]["rows"])
+    assert all(
+        row["two_theta_observed_deg"] >= 90.0 for row in restricted["table"]["rows"]
+    )
+
+    # Every surviving row must keep the uncertainty it had in the full table.
+    full = {
+        round(row["two_theta_observed_deg"], 6): row["standard_uncertainty_mdeg"]
+        for row in everything["table"]["rows"]
+    }
+    for row in restricted["table"]["rows"]:
+        assert row["standard_uncertainty_mdeg"] > 0.0
+        assert row["standard_uncertainty_mdeg"] == pytest.approx(
+            full[round(row["two_theta_observed_deg"], 6)]
+        )

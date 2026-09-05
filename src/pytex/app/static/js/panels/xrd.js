@@ -28,14 +28,15 @@ const DEFAULT_APPEARANCE = Object.freeze({
 });
 
 /**
- * The four questions this workspace answers, in the order they depend on each
+ * The questions this workspace answers, in the order they depend on each
  * other: what would this phase diffract, what is the background of a real
- * scan, how much of a peak's width is the instrument, and what does the scan
- * say the structure actually is.
+ * scan, what is the cell to the precision strain work needs, what does the
+ * scan say the structure is, and how much of a peak's width is the instrument.
  */
 const VIEWS = [
   'xrd.powder_pattern',
   'xrd.background',
+  'xrd.lattice_parameters',
   'xrd.rietveld',
   'xrd.size_strain',
 ];
@@ -44,6 +45,7 @@ const VIEWS = [
 const VIEW_MODES = {
   'xrd.powder_pattern': 'profile',
   'xrd.background': 'overlay',
+  'xrd.lattice_parameters': 'lattice',
   'xrd.rietveld': 'overlay',
   'xrd.size_strain': 'scatter',
 };
@@ -52,6 +54,7 @@ const VIEW_MODES = {
 const VIEW_ACTIONS = {
   'xrd.powder_pattern': ['Simulate XRD pattern', 'Simulating…'],
   'xrd.background': ['Estimate background', 'Estimating…'],
+  'xrd.lattice_parameters': ['Determine lattice parameters', 'Determining…'],
   'xrd.rietveld': ['Refine against the scan', 'Refining…'],
   'xrd.size_strain': ['Separate size and strain', 'Fitting…'],
 };
@@ -146,7 +149,7 @@ export function mount(context) {
     legend.replaceChildren();
     details.replaceChildren();
     appearance.hidden = mode() !== 'profile';
-    scaleControl.hidden = mode() === 'scatter';
+    scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
     // A run left in flight by the previous view will decline to touch the
     // button, so the new view has to hand it back itself.
     runButton.disabled = false;
@@ -206,7 +209,7 @@ export function mount(context) {
       viewSelect.value = target.id;
       frame.setTitle(target.title);
       appearance.hidden = mode() !== 'profile';
-      scaleControl.hidden = mode() === 'scatter';
+      scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
       runButton.disabled = false;
       runButton.textContent = VIEW_ACTIONS[target.id][0];
     }
@@ -247,6 +250,7 @@ export function mount(context) {
   function draw() {
     if (mode() === 'overlay') return drawOverlay();
     if (mode() === 'scatter') return drawScatter();
+    if (mode() === 'lattice') return drawLattice();
     return drawProfile();
   }
 
@@ -287,6 +291,69 @@ export function mount(context) {
       el('span', { text: 'Observed − calculated' }),
     ])] : []));
     frame.setStatus(overlayStatus(data, state.operation.id));
+  }
+
+  /**
+   * The lattice view draws whichever picture actually carries the argument.
+   *
+   * For a cubic cell that is the classical extrapolation plot: a lattice
+   * parameter computed separately from every reflection, against the
+   * extrapolation function, with the fitted line and its intercept at
+   * f(theta) = 0. The scatter of the points is the random error and the *slope*
+   * is the systematic one, so a reader can see at a glance that averaging the
+   * points would land on their mean rather than on the intercept.
+   *
+   * Outside the cubic system no per-reflection lattice parameter exists, so the
+   * honest picture is the residual against angle: structure left there is
+   * structure the determination did not describe.
+   */
+  function drawLattice() {
+    const data = state.result.data;
+    frame.configure({ toData: () => null, formatCursor: () => '' });
+    frame.setContent(renderLattice(data));
+    legend.replaceChildren(...latticeLegend(data));
+    const drift = data.plot_kind === 'profile'
+      ? `R_wp = ${formatNumber(data.weighted_profile_r, 4)} on the subtracted profile`
+      : (data.extrapolation === 'none'
+        ? 'no systematic term refined'
+        : `D = ${data.drift_coefficient.toExponential(2)} (${data.extrapolation})`);
+    frame.setStatus(
+      `a = ${formatNumber(data.a, 6)} ± ${formatNumber(data.a_standard_uncertainty, 6)} Å · `
+      + `σ/a = ${data.relative_uncertainty.toExponential(1)} · ${drift} · `
+      + `χ²ᵥ = ${formatNumber(data.reduced_chi_squared, 3)}`,
+    );
+  }
+
+  /** The legend names what the red mark means, which differs by plot kind. */
+  function latticeLegend(data) {
+    if (data.plot_kind === 'profile') {
+      return [
+        ['#94a3b8', 'Observed − background'],
+        ['#2563eb', 'Calculated'],
+        ['#7c3aed', 'Difference'],
+      ].map(([color, label]) => el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: `background:${color}` }),
+        el('span', { text: label }),
+      ]));
+    }
+    const items = [el('span.legend__item', {}, [
+      el('span.legend__swatch', { style: 'background:#2563eb' }),
+      el('span', { text: 'Reflections' }),
+    ])];
+    if (data.plot_kind === 'extrapolation') {
+      // Under the averaging method the line and the answer disagree, and that
+      // disagreement is the entire lesson -- so the legend has to name it
+      // rather than let the reader assume the circle sits on the line.
+      items.push(el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: 'background:#dc2626' }),
+        el('span', {
+          text: data.method === 'average'
+            ? 'Where extrapolation would land — the average does not'
+            : 'Extrapolated to θ = 90°',
+        }),
+      ]));
+    }
+    return items;
   }
 
   function drawScatter() {
@@ -704,6 +771,207 @@ function renderOverlay(data, series, ceiling, operationId, yScale) {
 }
 
 /** Draw the Williamson-Hall points and the line fitted through them. */
+/**
+ * The extrapolation plot, or the residual plot when no per-reflection lattice
+ * parameter exists. The abscissa always reaches zero for the extrapolation
+ * kind, because the intercept there *is* the answer and cropping to the data
+ * would hide the quantity being read off the picture.
+ */
+function renderLattice(data) {
+  if (data.plot_kind === 'profile') return renderLatticeProfile(data);
+  const root = svg('svg', {
+    viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': data.plot_kind === 'extrapolation'
+      ? 'Lattice parameter extrapolated against the systematic-error function'
+      : 'Position residuals against angle',
+  });
+  const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
+  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom;
+  const extrapolating = data.plot_kind === 'extrapolation';
+
+  const xs = data.abscissa;
+  const ys = data.ordinate;
+  const minX = extrapolating ? 0 : Math.min(...xs) - 3;
+  const maxX = Math.max(...xs, extrapolating ? 0 : -Infinity) * (extrapolating ? 1.08 : 1)
+    + (extrapolating ? 0 : 3);
+  const candidates = extrapolating ? [...ys, data.line_intercept, data.a] : [...ys, 0];
+  let minY = Math.min(...candidates);
+  let maxY = Math.max(...candidates);
+  const pad = (maxY - minY) * 0.18 || Math.abs(maxY || 1) * 0.1;
+  minY -= pad;
+  maxY += pad;
+  const xAt = (value) => MARGIN.left + ((value - minX) / (maxX - minX || 1)) * plotWidth;
+  const yAt = (value) => MARGIN.top + (1 - (value - minY) / (maxY - minY || 1)) * plotHeight;
+
+  for (let step = 0; step <= 4; step += 1) {
+    const value = minY + ((maxY - minY) * step) / 4;
+    const y = yAt(value);
+    root.append(
+      svg('line', {
+        x1: MARGIN.left, y1: y, x2: WIDTH - MARGIN.right, y2: y,
+        stroke: 'currentColor', 'stroke-opacity': 0.1, 'stroke-width': 0.6,
+      }),
+      svg('text', {
+        x: MARGIN.left - 12, y: y + 4, 'text-anchor': 'end', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.6,
+        text: extrapolating ? formatNumber(value, 5) : formatNumber(value, 2),
+      }),
+    );
+  }
+  const tickStep = niceStep(maxX - minX, 6);
+  for (let value = Math.ceil(minX / tickStep) * tickStep; value <= maxX + 1e-9; value += tickStep) {
+    const x = xAt(value);
+    root.append(
+      svg('line', {
+        x1: x, y1: MARGIN.top, x2: x, y2: HEIGHT - MARGIN.bottom,
+        stroke: 'currentColor', 'stroke-opacity': 0.08, 'stroke-width': 0.6,
+      }),
+      svg('text', {
+        x, y: HEIGHT - MARGIN.bottom + 24, 'text-anchor': 'middle', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.65, text: formatNumber(value, 2),
+      }),
+    );
+  }
+  root.append(
+    svg('text', {
+      x: MARGIN.left + plotWidth / 2, y: HEIGHT - 16, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor', text: data.abscissa_label,
+    }),
+    svg('text', {
+      x: 19, y: MARGIN.top + plotHeight / 2, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor',
+      transform: `rotate(-90 19 ${MARGIN.top + plotHeight / 2})`,
+      text: data.ordinate_label,
+    }),
+  );
+
+  if (extrapolating) {
+    // The fitted line, and the intercept it is drawn to reach.
+    root.append(
+      svg('line', {
+        x1: xAt(0), y1: yAt(data.line_intercept),
+        x2: xAt(maxX), y2: yAt(data.line_intercept + data.line_slope * maxX),
+        stroke: '#dc2626', 'stroke-width': 1.8,
+      }),
+      svg('line', {
+        x1: MARGIN.left, y1: yAt(data.a), x2: WIDTH - MARGIN.right, y2: yAt(data.a),
+        stroke: '#dc2626', 'stroke-width': 1, 'stroke-dasharray': '5 4',
+        'stroke-opacity': 0.7,
+      }),
+      svg('circle', {
+        cx: xAt(0), cy: yAt(data.a), r: 5.5, fill: 'none',
+        stroke: '#dc2626', 'stroke-width': 1.8,
+      }),
+      svg('text', {
+        x: xAt(0) + 14, y: yAt(data.a) - 12, 'font-size': 12, fill: '#dc2626',
+        text: `determined a = ${formatNumber(data.a, 6)} Å`,
+      }),
+    );
+  } else {
+    root.append(svg('line', {
+      x1: MARGIN.left, y1: yAt(0), x2: WIDTH - MARGIN.right, y2: yAt(0),
+      stroke: '#dc2626', 'stroke-width': 1.4, 'stroke-opacity': 0.8,
+    }));
+  }
+
+  for (const [index, x] of xs.entries()) {
+    root.append(svg('circle', {
+      cx: xAt(x), cy: yAt(ys[index]), r: 4.5, fill: '#2563eb', 'fill-opacity': 0.85,
+    }));
+  }
+  return root;
+}
+
+/**
+ * A whole-pattern fit measures no individual peak position, so it has no
+ * residual per reflection to plot. Its diagnostic is the difference curve,
+ * drawn below the observed and calculated profiles on the same scale: the eye
+ * reads structure there far faster than it reads an R factor.
+ */
+function renderLatticeProfile(data) {
+  const root = svg('svg', {
+    viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': 'Observed, calculated and difference profiles of the whole-pattern fit',
+  });
+  const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
+  // The difference curve gets the bottom fifth, on the same intensity scale as
+  // the profiles above it, so its size is honestly comparable with theirs.
+  const profileHeight = (HEIGHT - MARGIN.top - MARGIN.bottom) * 0.76;
+  const differenceTop = MARGIN.top + profileHeight + 26;
+  const differenceHeight = HEIGHT - MARGIN.bottom - differenceTop;
+
+  const xs = data.abscissa;
+  const minX = xs[0];
+  const maxX = xs[xs.length - 1];
+  const ceiling = Math.max(...data.ordinate, ...data.calculated) || 1;
+  const xAt = (value) => MARGIN.left + ((value - minX) / (maxX - minX || 1)) * plotWidth;
+  const yAt = (value) => MARGIN.top + (1 - value / ceiling) * profileHeight;
+  const dAt = (value) => differenceTop + differenceHeight / 2 - (value / ceiling) * profileHeight;
+
+  for (let step = 0; step <= 4; step += 1) {
+    const value = (ceiling * step) / 4;
+    const y = yAt(value);
+    root.append(
+      svg('line', {
+        x1: MARGIN.left, y1: y, x2: WIDTH - MARGIN.right, y2: y,
+        stroke: 'currentColor', 'stroke-opacity': step === 0 ? 0.4 : 0.08,
+        'stroke-width': step === 0 ? 1 : 0.6,
+      }),
+      svg('text', {
+        x: MARGIN.left - 12, y: y + 4, 'text-anchor': 'end', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.6, text: formatNumber(value, 0),
+      }),
+    );
+  }
+  const tickStep = niceStep(maxX - minX, 6);
+  for (let value = Math.ceil(minX / tickStep) * tickStep; value <= maxX; value += tickStep) {
+    root.append(svg('text', {
+      x: xAt(value), y: HEIGHT - MARGIN.bottom + 24, 'text-anchor': 'middle',
+      'font-size': 12, fill: 'currentColor', 'fill-opacity': 0.65,
+      text: formatNumber(value, 0),
+    }));
+  }
+  root.append(
+    svg('text', {
+      x: MARGIN.left + plotWidth / 2, y: HEIGHT - 16, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor', text: data.abscissa_label,
+    }),
+    svg('text', {
+      x: 19, y: MARGIN.top + profileHeight / 2, 'text-anchor': 'middle',
+      'font-size': 14, fill: 'currentColor',
+      transform: `rotate(-90 19 ${MARGIN.top + profileHeight / 2})`,
+      text: data.ordinate_label,
+    }),
+    svg('line', {
+      x1: MARGIN.left, y1: dAt(0), x2: WIDTH - MARGIN.right, y2: dAt(0),
+      stroke: 'currentColor', 'stroke-opacity': 0.35, 'stroke-width': 1,
+    }),
+    svg('text', {
+      x: MARGIN.left + 6, y: differenceTop + 12, 'font-size': 12,
+      fill: '#7c3aed', text: 'observed − calculated, same scale',
+    }),
+  );
+
+  const path = (values, project) => values
+    .map((value, index) => `${index === 0 ? 'M' : 'L'}${xAt(xs[index]).toFixed(2)} `
+      + `${project(value).toFixed(2)}`)
+    .join(' ');
+  root.append(
+    svg('path', {
+      d: path(data.ordinate, yAt), fill: 'none', stroke: '#94a3b8', 'stroke-width': 1,
+    }),
+    svg('path', {
+      d: path(data.calculated, yAt), fill: 'none', stroke: '#2563eb', 'stroke-width': 1.5,
+    }),
+    svg('path', {
+      d: path(data.difference, dAt), fill: 'none', stroke: '#7c3aed', 'stroke-width': 1,
+    }),
+  );
+  return root;
+}
+
 function renderWilliamsonHall(data) {
   const root = svg('svg', {
     viewBox: `0 0 ${WIDTH} ${HEIGHT}`,

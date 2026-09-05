@@ -144,6 +144,7 @@ index with cross-links to the matching implementation pages.
 - [Diffraction Geometry And Bragg Rings](site/theory/diffraction_geometry_and_bragg_rings.md)
 - [Reciprocal Space And Kinematic Spots](site/theory/reciprocal_space_and_kinematic_spots.md)
 - [Powder XRD And SAED Foundations](site/theory/powder_xrd_and_saed.md)
+- [Precise Lattice-Parameter Determination](site/theory/precise_lattice_parameter_determination.md)
 - [Ratio/Angle Indexing Of A Measured SAED Pattern](site/theory/saed_ratio_angle_indexing.md)
 - [Fitting The Pattern Lattice, And Scoring The Solutions](site/theory/lattice_fit_and_solution_scoring.md)
 - [Kikuchi Bands And The Gnomonic Projection](site/theory/kikuchi_bands_and_gnomonic_projection.md)

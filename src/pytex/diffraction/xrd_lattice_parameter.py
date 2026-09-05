@@ -69,6 +69,24 @@ reproduces Cohen's classical ``sin^2(2 theta)`` drift column exactly, since
 ``f`` vanishes at ``theta = 90`` degrees, the fitted cell is the extrapolated
 one.
 
+Each aberration has its *own* matching ``f``, and choosing the right one is not
+a detail: on a synthetic pattern the matched function removes a displacement to
+one part in ``10^7`` while a merely reasonable one leaves ten times more.
+
+=========================  ===========================  =====================
+Aberration                 ``Delta(2 theta)``           Matching ``f(theta)``
+=========================  ===========================  =====================
+Detector zero              ``z``                        ``cot(theta)``
+Specimen displacement      ``-2 s cos(theta) / R``      ``cos^2(theta)/sin(theta)``
+Absorption and both above  --                           Nelson-Riley
+Camera absorption          --                           ``cos^2(theta)``
+=========================  ===========================  =====================
+
+One drift term removes one aberration. A pattern carrying both a zero error and
+a specimen displacement cannot be fully corrected by any single ``f``, which is
+exactly why precise work calibrates the zero against a standard first and
+refines only the displacement afterwards.
+
 What is deliberately not here
 -----------------------------
 Refining the detector zero and the specimen displacement *together* from a
@@ -137,7 +155,13 @@ from pytex.diffraction.xrd_peaks import (
 LATTICE_PARAMETER_SCHEMA = "pytex.diffraction.lattice_parameter_result"
 
 LatticeMethod = Literal["cohen", "average", "le_bail"]
-ExtrapolationFunction = Literal["nelson_riley", "bradley_jay", "cos_squared_over_sin", "none"]
+ExtrapolationFunction = Literal[
+    "nelson_riley",
+    "bradley_jay",
+    "cos_squared_over_sin",
+    "cot_theta",
+    "none",
+]
 SystematicTerm = Literal["zero", "displacement", "none"]
 
 LATTICE_METHODS: tuple[LatticeMethod, ...] = ("cohen", "average", "le_bail")
@@ -145,6 +169,7 @@ EXTRAPOLATION_FUNCTIONS: tuple[ExtrapolationFunction, ...] = (
     "nelson_riley",
     "bradley_jay",
     "cos_squared_over_sin",
+    "cot_theta",
     "none",
 )
 SYSTEMATIC_TERMS: tuple[SystematicTerm, ...] = ("zero", "displacement", "none")
@@ -364,6 +389,15 @@ def extrapolation_values(
       the exact form for specimen displacement on a Bragg-Brentano
       diffractometer, and is the right choice when displacement is known to
       dominate.
+    * ``"cot_theta"``: ``f = cot(theta)``. The exact form for a **detector
+      zero** error, which is worth deriving because a constant angular offset
+      looks at first as though it could not be extrapolated away at all. A
+      constant ``Delta(2 theta) = z`` gives
+      ``Delta(sin^2 theta) = sin(theta) cos(theta) z``, and
+      ``sin(theta) cos(theta) = sin^2(theta) cot(theta)``, so the drift column
+      is ``sin^2(theta) cot(theta)`` and the extrapolation function is
+      ``cot(theta)`` -- which does vanish at 90 degrees. The fitted ``D`` is
+      then the zero error itself, in radians.
     * ``"none"``: ``f = 0``. No systematic correction, which is worth running
       to see how much the correction was worth.
 
@@ -401,6 +435,8 @@ def extrapolation_values(
         )
     if function == "cos_squared_over_sin":
         return np.square(np.cos(theta)) / np.sin(theta)
+    if function == "cot_theta":
+        return np.cos(theta) / np.sin(theta)
     return 0.5 * (
         np.square(np.cos(theta)) / np.sin(theta) + np.square(np.cos(theta)) / theta
     )
@@ -453,6 +489,13 @@ class LatticeParameterResult:
         The observed positions those residuals belong to.
     reference_lattice : Lattice | None
         The starting cell, retained so a strain can be quoted against it.
+    profile_two_theta_deg, profile_observed, profile_calculated : np.ndarray | None
+        The fitted profile, present only for a whole-pattern method. A Le Bail
+        fit has no per-reflection residual to report -- it never measures an
+        individual peak position -- so its difference curve *is* its diagnostic,
+        and it is carried here rather than left for the caller to recompute.
+        ``None`` for the position methods, whose diagnostic is the residual
+        column instead.
     settings : Mapping[str, float | str]
         The settings the determination ran with.
     """
@@ -479,6 +522,9 @@ class LatticeParameterResult:
     miller_indices: tuple[tuple[int, int, int], ...]
     two_theta_deg: np.ndarray
     reference_lattice: Lattice | None = None
+    profile_two_theta_deg: np.ndarray | None = None
+    profile_observed: np.ndarray | None = None
+    profile_calculated: np.ndarray | None = None
     settings: Mapping[str, float | str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -504,6 +550,25 @@ class LatticeParameterResult:
             raise ValueError("Residuals must align with their Miller indices.")
         object.__setattr__(self, "residual_two_theta_deg", residuals)
         object.__setattr__(self, "two_theta_deg", positions)
+        profile = [
+            self.profile_two_theta_deg,
+            self.profile_observed,
+            self.profile_calculated,
+        ]
+        if any(item is not None for item in profile):
+            if any(item is None for item in profile):
+                raise ValueError(
+                    "A fitted profile needs all three of its arrays: angles, observed and "
+                    "calculated."
+                )
+            arrays = [
+                as_float_array(item, shape=(None,)) for item in profile if item is not None
+            ]
+            if arrays[0].shape != arrays[1].shape or arrays[0].shape != arrays[2].shape:
+                raise ValueError("The fitted profile arrays must all have the same shape.")
+            object.__setattr__(self, "profile_two_theta_deg", arrays[0])
+            object.__setattr__(self, "profile_observed", arrays[1])
+            object.__setattr__(self, "profile_calculated", arrays[2])
         object.__setattr__(self, "settings", MappingProxyType(dict(self.settings)))
 
     @property
@@ -518,6 +583,36 @@ class LatticeParameterResult:
         """
 
         return float(self.a_standard_uncertainty / self.a)
+
+    @property
+    def weighted_profile_r(self) -> float | None:
+        """Return ``R_wp`` for a whole-pattern fit, or ``None`` for the others.
+
+        ``R_wp = sqrt(sum w (y_obs - y_calc)^2 / sum w y_obs^2)`` with
+        ``w = 1 / y_obs``, the conventional Rietveld weighting. It belongs
+        beside the reduced chi-squared rather than instead of it: ``R_wp``
+        alone flatters a pattern with a large background, and the goodness of
+        fit does not.
+
+        One caveat, because the number invites comparison it cannot support:
+        this ``R_wp`` is computed on the **background-subtracted** profile,
+        since that is what this method fits. A Rietveld program quotes
+        ``R_wp`` on the raw profile, where a large background inflates the
+        denominator and lowers the ratio. The value here is therefore
+        systematically *higher* than a published ``R_wp`` on the same data,
+        and the two must not be compared.
+        """
+
+        if self.profile_observed is None or self.profile_calculated is None:
+            return None
+        observed = np.asarray(self.profile_observed, dtype=np.float64)
+        calculated = np.asarray(self.profile_calculated, dtype=np.float64)
+        weights = 1.0 / np.maximum(np.abs(observed), 1.0)
+        denominator = float(np.sum(weights * np.square(observed)))
+        if denominator <= 0.0:
+            return None
+        numerator = float(np.sum(weights * np.square(observed - calculated)))
+        return float(np.sqrt(numerator / denominator))
 
     @property
     def axial_ratio(self) -> float:
@@ -618,6 +713,7 @@ class LatticeParameterResult:
             "drift_standard_uncertainty": float(self.drift_standard_uncertainty),
             "reflection_count": int(self.reflection_count),
             "reduced_chi_squared": float(self.reduced_chi_squared),
+            "weighted_profile_r": self.weighted_profile_r,
             "strain_relative_to_reference": self.strain_relative_to_reference,
             "reflections": [
                 {
@@ -667,7 +763,29 @@ class LatticeParameterResult:
             cell += f", beta = {self.beta_deg:.5f} degrees"
 
         shifts = self.systematic_shift_deg
-        if self.extrapolation == "none":
+        systematic = str(self.settings.get("systematic", "none"))
+        if self.method == "le_bail":
+            # A whole-pattern fit refines the aberration itself rather than a
+            # drift coefficient, and reports it in its own physical units. The
+            # extrapolation field is "none" for such a result because no
+            # extrapolation function was used -- which is not the same thing as
+            # no correction having been made, and saying so would be wrong.
+            units = {"displacement": "mm", "zero": "degrees 2*theta"}.get(systematic, "")
+            drift = (
+                (
+                    f" A specimen displacement of {self.drift_coefficient:.5f} {units} was "
+                    f"refined as part of the whole-pattern fit, rather than absorbed into the "
+                    f"cell."
+                    if systematic == "displacement"
+                    else f" A detector zero of {self.drift_coefficient:.5f} {units} was refined "
+                    f"as part of the whole-pattern fit, rather than absorbed into the cell."
+                )
+                if systematic in {"displacement", "zero"}
+                else " No instrumental aberration was refined, so any zero-point, specimen "
+                "displacement or transparency error is inside the quoted cell rather than "
+                "removed from it; compare the goodness of fit against a run that refines one."
+            )
+        elif self.extrapolation == "none":
             drift = (
                 " No systematic-error term was refined, so any uncorrected zero-point, specimen "
                 "displacement or transparency error is inside the quoted cell rather than "
@@ -727,7 +845,8 @@ class LatticeParameterResult:
         return (
             f"Lattice parameters of '{self.phase_name}' determined by {method_prose}. The "
             f"{self.crystal_system} system leaves {len(self.free_parameter_names)} free "
-            f"reciprocal-cell parameters ({parameters}), determined from "
+            f"reciprocal-cell parameter{'' if len(self.free_parameter_names) == 1 else 's'} "
+            f"({parameters}), determined from "
             f"{self.reflection_count} reflections. {cell}. The relative uncertainty is "
             f"{self.relative_uncertainty:.2e}. {precision}.{drift} The reduced chi-squared is "
             f"{self.reduced_chi_squared:.3f}, so {fit_quality}.{strain_prose} "
@@ -1305,6 +1424,16 @@ def determine_lattice_parameters_le_bail(
     free_cell = start_parameters.size
     # [cell..., systematic, U, V, W, eta, residual background constant and slope]
     scale = float(np.max(np.abs(observed))) or 1.0
+    # A ten per cent window on each free reciprocal-cell parameter, built by
+    # magnitude rather than by multiplication. An off-diagonal component of G*
+    # is negative whenever the corresponding reciprocal angle is obtuse -- which
+    # a triclinic cell routinely is -- and `start * 0.9` would then be the
+    # *upper* bound, producing an inverted interval the optimizer rejects. A
+    # component that starts at exactly zero, as every off-diagonal one does in
+    # an orthogonal system, needs an absolute window rather than a relative one.
+    cell_span = np.maximum(0.1 * np.abs(start_parameters), 1.0e-4)
+    cell_lower = start_parameters - cell_span
+    cell_upper = start_parameters + cell_span
     start = np.concatenate(
         [
             start_parameters,
@@ -1317,7 +1446,7 @@ def determine_lattice_parameters_le_bail(
     )
     lower = np.concatenate(
         [
-            start_parameters * 0.9,
+            cell_lower,
             np.array([-1.0]),
             np.array([-0.5, -0.5, 1.0e-5, 0.0]),
             np.array([-0.05 * scale, -0.05 * scale]),
@@ -1325,7 +1454,7 @@ def determine_lattice_parameters_le_bail(
     )
     upper = np.concatenate(
         [
-            start_parameters * 1.1,
+            cell_upper,
             np.array([1.0]),
             np.array([0.5, 0.5, 1.0, 1.0]),
             np.array([0.05 * scale, 0.05 * scale]),
@@ -1496,6 +1625,7 @@ def determine_lattice_parameters_le_bail(
     )
 
     angles, _, _ = positions_and_shapes(parameters)
+    fitted_profile = intensities @ profiles(parameters) + residual_background(parameters)
     modelled = np.isfinite(angles) & (angles >= axis[0]) & (angles <= axis[-1])
     strong = intensities >= 0.01 * float(np.max(intensities))
     keep = modelled & strong
@@ -1522,6 +1652,9 @@ def determine_lattice_parameters_le_bail(
         miller_indices=tuple(item for item, flag in zip(miller, keep, strict=True) if flag),
         two_theta_deg=angles[keep],
         reference_lattice=phase.lattice,
+        profile_two_theta_deg=axis,
+        profile_observed=observed,
+        profile_calculated=fitted_profile,
         settings={
             "wavelength_angstrom": wavelength,
             "systematic": systematic,
@@ -1538,14 +1671,17 @@ def determine_lattice_parameters_from_pattern(
     *,
     method: LatticeMethod = "cohen",
     extrapolation: ExtrapolationFunction = "nelson_riley",
+    radiation: RadiationSpec | None = None,
     instrument: InstrumentBroadening | None = None,
+    systematic: SystematicTerm = "zero",
     tolerance_deg: float = 0.3,
     max_index: int = 6,
     prominence_sigma: float = 5.0,
     minimum_two_theta_deg: float | None = None,
+    indexing_passes: int = 3,
     phase_name: str | None = None,
 ) -> tuple[LatticeParameterResult, PeakIndexing | None]:
-    """Run the whole pipeline: detect, fit, index, determine.
+    """Run the whole pipeline: detect, fit, index, determine, re-index, repeat.
 
     Purpose
     -------
@@ -1553,6 +1689,27 @@ def determine_lattice_parameters_from_pattern(
     indexing is returned alongside the result so the reflection assignment and
     its figures of merit can be inspected, which is where a wrong answer is
     visible.
+
+    Method
+    ------
+    Detection and fitting
+    (:func:`~pytex.diffraction.xrd_peaks.detect_and_fit_peaks`), then indexing
+    (:func:`~pytex.diffraction.xrd_indexing.index_peaks`), then determination
+    -- and then **indexing again against the cell just determined**.
+
+    That last step is not a refinement flourish; without it the tool would
+    require the answer in advance. Indexing matches a measured angle to a
+    calculated one within a fixed tolerance, and a starting cell wrong by a
+    fraction ``e`` misplaces a reflection by ``Delta(2 theta) = 2 e tan(theta)``
+    -- which grows without bound towards back-reflection. A cell wrong by three
+    parts in a thousand, well within the range of a real alloy against a
+    tabulated composition, misplaces a reflection at 121 degrees by 0.6
+    degrees. The high-angle reflections then fall outside the tolerance and are
+    silently dropped, and those are precisely the reflections that carry almost
+    all of the precision. The first pass indexes whatever it can, the
+    determination corrects the cell, and the second pass recovers the rest.
+
+    Passes stop early once the indexed count stops growing.
 
     Parameters
     ----------
@@ -1564,16 +1721,27 @@ def determine_lattice_parameters_from_pattern(
         ``"cohen"``, ``"average"`` or ``"le_bail"``.
     extrapolation
         Systematic-error function for the position methods.
+    radiation
+        Falls back to ``measured.radiation``.
     instrument
         Calibrated resolution function, used for detection and fitting.
+    systematic
+        Le Bail systematic term. Ignored by the position methods.
     tolerance_deg
-        Indexing tolerance.
+        Indexing tolerance, applied on every pass.
     max_index
         Largest index enumerated.
     prominence_sigma
         Detection threshold in noise standard deviations.
     minimum_two_theta_deg
-        Discard reflections below this angle.
+        Discard reflections below this angle. Applied *after* the indexing
+        passes converge, never during them: a first pass against a wrong
+        starting cell indexes the low-angle reflections, which are exactly the
+        ones a floor discards, so applying both at once can leave nothing at
+        all.
+    indexing_passes
+        Maximum index-then-determine passes. One disables re-indexing, which
+        is worth doing only to see what it was worth.
     phase_name
         Name for the report.
 
@@ -1589,30 +1757,71 @@ def determine_lattice_parameters_from_pattern(
         Propagated from any stage; the message names the stage that failed.
     """
 
+    if indexing_passes < 1:
+        raise ValueError("determine_lattice_parameters_from_pattern needs at least one pass.")
     if method == "le_bail":
         return (
             determine_lattice_parameters_le_bail(
-                measured, phase, instrument=instrument, max_index=max_index
+                measured,
+                phase,
+                radiation=radiation,
+                instrument=instrument,
+                systematic=systematic,
+                max_index=max_index,
             ),
             None,
         )
     table: PeakTable = detect_and_fit_peaks(
-        measured, instrument=instrument, prominence_sigma=prominence_sigma
+        measured,
+        radiation=radiation,
+        instrument=instrument,
+        prominence_sigma=prominence_sigma,
     )
+    # The angular floor is deliberately *not* applied inside the loop. The
+    # first pass indexes only what a wrong starting cell allows, which is the
+    # low-angle reflections -- precisely the ones a floor discards. Applying
+    # both at once lets them cancel each other out and leave nothing to
+    # determine a cell from. The loop therefore converges on the full set, and
+    # the floor is applied once at the end.
     indexing = index_peaks(
         table,
         phase,
+        radiation=radiation,
         tolerance_deg=tolerance_deg,
         max_index=max_index,
         phase_name=phase_name,
     )
     result = determine_lattice_parameters(
-        indexing,
-        phase,
-        method=method,
-        extrapolation=extrapolation,
-        minimum_two_theta_deg=minimum_two_theta_deg,
+        indexing, phase, method=method, extrapolation=extrapolation
     )
+    for _ in range(indexing_passes - 1):
+        working = replace(phase, lattice=result.to_lattice(), unit_cell=None)
+        retried = index_peaks(
+            table,
+            working,
+            radiation=radiation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            phase_name=phase_name,
+        )
+        if retried.indexed_count <= indexing.indexed_count:
+            break
+        indexing = retried
+        # The determination itself keeps using the *original* phase: only its
+        # symmetry and its reference lattice matter there, and swapping in the
+        # working cell would make the reported strain relative to a moving
+        # target rather than to the phase the operator chose.
+        result = determine_lattice_parameters(
+            indexing, phase, method=method, extrapolation=extrapolation
+        )
+    if minimum_two_theta_deg is not None:
+        result = determine_lattice_parameters(
+            indexing,
+            phase,
+            method=method,
+            extrapolation=extrapolation,
+            minimum_two_theta_deg=minimum_two_theta_deg,
+        )
     return (result, indexing)
 
 

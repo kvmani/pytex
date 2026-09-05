@@ -18,6 +18,7 @@ PRIORITY_NOTEBOOKS = (
     "13_crystal_visualization_workflows.ipynb",
     "15_structure_diffraction_visualization_pipeline.ipynb",
     "33_quantitative_xrd_background_instrument_and_rietveld.ipynb",
+    "34_precise_lattice_parameters.ipynb",
 )
 
 

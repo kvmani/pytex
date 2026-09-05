@@ -6176,8 +6176,8 @@ the structure fixed and varies only the cell and the instrument aberrations.
 - [x] 2. `xrd_corrections.py` -- Rachinger, aberration corrections, axis/intensity transforms.
 - [x] 3. `xrd_indexing.py` -- known-phase assignment, de Wolff M20, Smith-Snyder F_N.
 - [x] 4. `xrd_lattice_parameter.py` -- Cohen, Nelson-Riley, Le Bail, naive average.
-- [ ] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
-- [ ] 6. Theory note, notebook tutorial, worked examples, docs index updates.
+- [x] 5. Workbench: `xrd.lattice_parameters` operation and panel wiring.
+- [x] 6. Theory note, notebook tutorial, worked examples, docs index updates.
 
 ### Environment note
 
@@ -6365,7 +6365,134 @@ quietly -- which is what a test pins.
 39 tests in `tests/unit/test_xrd_lattice_parameter.py`, all passing on the first run. Ruff and mypy
 clean. Atlas 302/285 to 303/286.
 
+### Increment 5 -- the workbench sub-tab (landed)
+
+`xrd.lattice_parameters` registered in `src/pytex/app/services/xrd.py`, with a `lattice` view mode
+in `xrd.js`. The panel's view list is now: simulate, background, **determine lattice parameters**,
+Rietveld, size-strain.
+
+**The demonstration scan is the teaching instrument.** It already carried a cell dilated by 1.003
+and a 0.05 degree detector zero error, so the answer is known before the calculation starts. The
+operation adds an injectable specimen displacement on top. The sweep, on identical data:
+
+| method / f(theta) | a | error | reduced chi-squared |
+| --- | --- | --- | --- |
+| average | 3.532339 | -2102 uA (5.9e-4) | 8419 |
+| cohen, none | 3.532603 | -1839 uA | 7770 |
+| cohen, Bradley-Jay | 3.535015 | +574 uA | 771 |
+| cohen, Nelson-Riley | 3.533881 | -561 uA | 3.60 |
+| cohen, cos^2/sin | 3.533928 | -514 uA | 1.74 |
+| **cohen, cot(theta)** | **3.534430** | **-12 uA (3.4e-6)** | **0.89** |
+
+The reduced chi-squared tracks the accuracy across four orders of magnitude, which matters: on real
+data the goodness of fit is all a reader has in place of a known answer.
+
+**A new extrapolation function, derived because the panel demanded it.** None of the offered
+functions matched the demonstration scan's *zero* error, whose `Delta(2 theta)` is constant. It
+looked at first as though a constant could not be extrapolated away at all. It can:
+`Delta(sin^2 theta) = sin(theta)cos(theta) Delta(2 theta) = sin^2(theta) cot(theta) Delta(2 theta)`,
+so `f = cot(theta)` is the matching function, it vanishes at 90 degrees like the others, and the
+fitted `D` is the zero error itself in radians. A test confirms the machinery end to end: the
+angular shift the drift term removes comes back **constant at 49.7 millidegrees** against an
+injected 50, neither of which was fitted for directly.
+
+**Three defects the wiring exposed.**
+
+1. *A cubic Le Bail run drew an extrapolation plot.* The plot branches tested `system == "cubic"`
+   first, so a whole-pattern fit produced a per-reflection lattice parameter computed from its own
+   *calculated* angles -- a plot of the model against itself, convincing and meaningless. The
+   whole-pattern branch is now tested first. Found by the browser test, not by inspection.
+2. *The panel stopped opening on the simulation view.* `xrd.js` opens on `examples[0]`, so putting
+   the new examples at the front of the manifest silently changed the landing view -- the same
+   failure the Variants panel had. The examples were reordered to match the view order, and
+   `test_the_panel_opens_on_the_view_it_lists_first` now pins the contract rather than leaving it
+   to be remembered a third time.
+3. *Indexing dropped exactly the reflections that carry the precision.* A starting cell wrong by
+   `e` misplaces a reflection by `2 e tan(theta)`, so the 1.003 dilation put the 121 degree line
+   0.6 degrees out -- outside any sane tolerance. Only 3 of 6 reflections indexed. The pipeline now
+   indexes, determines, and **re-indexes against the cell just determined**; without that the tool
+   would require the answer in advance. Converges in two passes, 6 of 6.
+
+**Le Bail got its own picture, and an R factor.** Its residual plot was all zeros, which was honest
+and useless: a whole-pattern fit measures no individual peak position. `LatticeParameterResult` now
+carries the fitted profile, the panel draws observed/calculated/difference, and
+`weighted_profile_r` is reported -- with the docstring stating plainly that it is computed on the
+*background-subtracted* profile and is therefore systematically higher than a published `R_wp`,
+which must not be compared with it.
+
+Verified in the browser: all three examples render, and the full Playwright lane is 59 passed.
+
+### Increment 6 -- theory, notebook, worked examples (landed)
+
+**`docs/site/theory/precise_lattice_parameter_determination.md`**, indexed in
+`docs/site/theory/index.md` and `docs/README.md`. Nine sections carrying the full derivations: why
+averaging fails, the four aberrations and their signatures, scale-matched detection, the Rachinger
+variance-propagation argument, indexing and the figures of merit, the linear form in `G*` with the
+hexagonal constraint worked through, the drift-column identity with a table mapping each aberration
+to its matching `f`, the Le Bail algorithm with its three load-bearing implementation points, and a
+section stating plainly that strain is not stress.
+
+**Twelve new symbols registered** in `docs/standards/terminology_and_symbol_registry.md` under a
+new "Powder diffraction and precise lattice parameters" heading, plus `G*` and `Q` added to the
+lattice section.
+
+**`34_precise_lattice_parameters.ipynb`**, 35 cells, added to `PRIORITY_NOTEBOOKS` so it is
+smoke-executed in the unit lane. It opens on the method everyone reaches for, shows it failing by
+4e-4 on a scan whose cell is known, then repairs it one effect at a time and closes on hexagonal
+zirconium where the averaging question cannot be asked at all. Executed end to end: Cohen with the
+matched function lands at 9.6e-8, and Le Bail returns the injected 0.100 mm displacement as
+**0.10021 mm** with `a` and `c` good to 5 microangstrom.
+
+Two notebook-specific gotchas worth recording: `plt.show()` under the Agg backend raises through
+the warnings filter, so notebooks end figures with `constrained_layout` and no `show()`; and
+`PointGroup` exposes `hermann_mauguin`, not `name`.
+
+**Six worked examples** in `worked_examples/examples/precise_lattice_parameters.py`, every expected
+value independently provenanced rather than copied from a run:
+
+- the Nelson-Riley function at `theta = pi/3`, evaluated by hand as `0.2637038`;
+- every extrapolation function summing to zero at `theta = 90` degrees;
+- the Bradley-Jay drift column equalling `sin^2(2 theta)/4` to machine precision, which is the
+  double-angle identity;
+- the hexagonal quadratic form for zirconium `(213)` against the textbook
+  `(4/3)(h^2+hk+k^2)/a^2 + l^2/c^2 = 1.2332292`;
+- an end-to-end determination through a displaced specimen returning the pinned fixture's own
+  `a = 3.52387`;
+- and the same data averaged, whose error ratio against the matched extrapolation is of order
+  `10^3` to `10^4`.
+
+### Four more defects found by review after the increments were working
+
+Each of these produced a wrong or misleading *result*, not a crash, and none would have been caught
+by the tests as they stood.
+
+1. **Le Bail cell bounds inverted on a negative metric component.** The bounds were built as
+   `start * 0.9` and `start * 1.1`. An off-diagonal component of `G*` is negative whenever the
+   corresponding reciprocal angle is obtuse, which a triclinic cell routinely is, and the lower
+   bound would then sit above the upper one. They are built by magnitude now, with an absolute
+   window for a component that starts at exactly zero.
+2. **The angular floor and the re-indexing pass cancelled each other.** A first pass against a
+   wrong starting cell indexes the *low-angle* reflections -- exactly the ones a floor discards --
+   so asking for both left nothing to determine a cell from. The floor is now applied once, after
+   the passes converge.
+3. **Position uncertainties were looked up by row position.** That is correct only while nothing
+   filters the determination without also filtering the indexing behind it, which is precisely what
+   the angular floor does. The lookup is keyed on the angle now, and a test restricts the range and
+   checks every surviving row keeps the uncertainty it had.
+4. **A Le Bail run claimed no correction had been made.** Its `extrapolation` field is `"none"`
+   because no extrapolation *function* was used, and `describe()` read that as "no systematic-error
+   term was refined" -- telling the reader the displacement was left in the cell at the moment it
+   had just been taken out of it. It now reports the refined aberration in its own units.
+
+Coverage was also extended past the cubic and hexagonal cases the increments were built on:
+alpha-uranium exercises the three-parameter orthorhombic path (all three edges recovered to 5e-5,
+and demonstrably not tied together), and alpha-quartz the trigonal one. On alpha-uranium's crowded
+pattern the whole-pattern fit reaches a reduced chi-squared of 1.7 where the peak-position route
+reaches 75, while both agree on the cell to 1e-4 -- which is the clearest available statement of
+what Le Bail is for.
+
 ### Status
 
-Increments 1-4 landed: the library is complete. Increment 5 (workbench sub-tab) and increment 6
-(theory note, notebook, worked examples) remain.
+**Goal complete.** All six increments landed and pushed. Library, workbench, theory note, notebook
+tutorial, worked examples and tests are in place; ruff, mypy, the unit lane and the 59-test
+Playwright lane are green.

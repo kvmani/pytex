@@ -59,6 +59,7 @@ notebooks/30_kikuchi_maps_and_zone_axis_routing
 notebooks/31_kearns_parameter
 notebooks/32_ecci_workflow_from_ebsd
 notebooks/33_quantitative_xrd_background_instrument_and_rietveld
+notebooks/34_precise_lattice_parameters
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -226,3 +227,29 @@ For the validated fixture-to-diffraction route, continue with:
 ### Informative
 
 - {doc}`../architecture/overview`
+
+11. `34_precise_lattice_parameters` — the step from *what does this scan say?* to *how well does
+    it say it?* Opens on the method everyone reaches for first, computing a lattice parameter from
+    each reflection and averaging, and shows it failing by four parts in ten thousand on a scan
+    whose true cell is known because the notebook put it there. The cause is one line of calculus:
+    differentiating Bragg's law gives Δd/d = −cot θ · Δθ, so a fixed angular error is a
+    *θ-dependent* spacing error, and averaging divides the random scatter by √N while leaving the
+    bias exactly where it was.
+
+    What follows is the repair, one physical effect at a time: why the square-root ordinate is a
+    statistical choice rather than a cosmetic one, why K-alpha2 should be stripped to look at and
+    modelled to fit, and the identity that unifies the classical graphical extrapolation with
+    least squares — whatever function the old method plots *a* against is the same function that
+    appears, times sin²θ, as a design column. Choosing the one that matches the aberration's own
+    angular form takes the error from 4 × 10⁻⁴ to 1 × 10⁻⁷ on identical peak positions, and the
+    reduced chi-squared tracks that improvement across four orders of magnitude — which matters,
+    because on real data the goodness of fit is all a reader has in place of a known answer.
+
+    It closes on hexagonal zirconium, where the averaging question cannot even be asked: one
+    reflection cannot determine both *a* and *c*, and the library refuses rather than returning a
+    number. Le Bail decomposition recovers both, and returns the injected 100 µm specimen
+    displacement as 0.100 mm — a far stronger check than a plausible-looking cell, since a wrong
+    model can reach a right answer by compensating errors but will not also reproduce a physical
+    quantity nobody fitted for. The last section says plainly what the notebook has *not* produced:
+    a stress, which needs several specimen tilts and the X-ray elastic constants of the reflection
+    used.

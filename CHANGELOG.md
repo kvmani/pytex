@@ -11,6 +11,84 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+**Precise lattice-parameter determination.** PyTex could refine a structure against a scan; it
+could not determine a *cell* to the precision that strain and thermal-expansion work needs, and the
+method most people reach for -- computing a lattice parameter from each reflection and averaging --
+is wrong by about two orders of magnitude more than that work tolerates. Four new modules supply
+the peak fitting, the corrections, the indexing and the determination; the workbench grows a
+"Determine lattice parameters" view; and a theory note, a notebook and six worked examples carry
+the derivations and the evidence.
+
+**Scientific behavior.** Additions only; no existing surface changes its answers.
+
+### Added
+
+- **Peak detection and single-peak fitting** (`pytex.diffraction.xrd_peaks`). `detect_peaks`,
+  `fit_peaks`, `detect_and_fit_peaks`, returning a `PeakTable` of `PeakFit` objects that carry a
+  position **and its standard uncertainty** -- a lattice parameter quoted without one cannot be
+  compared with anything. Detection is matched to the instrument rather than to a threshold: the
+  pattern is SNIP-subtracted, Anscombe-transformed so Poisson noise is homoscedastic at every count
+  level, then convolved with zero-mean unit-L2-norm Ricker kernels whose scale is interpolated at
+  each angle to that angle's expected FWHM from the Caglioti curve. Unit L2 norm is what lets the
+  detection threshold be quoted in noise standard deviations rather than counts. A feature the
+  diffractometer could not have produced -- too narrow, or too broad -- is rejected with no
+  threshold expressed in angle units at all. Fitting models the K-alpha2 partner at the position
+  Bragg's law fixes it to, which costs no parameter; a single symmetric line fitted to the
+  unresolved pair displaces every centre upward by more than five millidegrees.
+
+- **Day-to-day corrections and display transforms** (`pytex.diffraction.xrd_corrections`). The four
+  position aberrations written down by their angular signature -- zero constant, specimen
+  displacement `-2 s cos(theta) / R`, transparency `-sin(2 theta) / (2 mu R)`, refraction
+  `4 delta / sin(2 theta)` -- because that dependence is the only thing that lets them be told
+  apart, and because displacement vanishing at back-reflection is *why* extrapolating a lattice
+  parameter to theta = 90 degrees works. Rachinger K-alpha2 stripping is provided and documented as
+  display-only, with the numbers: it removes 86 to 94 per cent of each resolved alpha2 line, leaves
+  a ringing train above the strongest reflection because the recursion re-subtracts its own
+  residual, and inflates the uncertainty it propagates. `ProfileView` carries abscissa in
+  `2 theta`, `d`, `Q` or `sin^2(theta)` and ordinate on a linear, square-root or log10 scale, as a
+  deliberately *separate type* so a transformed view cannot be fed back into an analysis expecting
+  measured units.
+
+- **Indexing with figures of merit** (`pytex.diffraction.xrd_indexing`). `index_peaks` assigns
+  Miller indices from a candidate phase by global one-to-one assignment rather than a nearest-line
+  pass, which can give two peaks the same reflection or strand a true partner without either
+  failure being visible in the result. de Wolff's `M_N` and Smith and Snyder's `F_N` are returned
+  with the `N` they were computed over, since `M_7` and `M_20` are not comparable.
+
+- **Lattice-parameter determination** (`pytex.diffraction.xrd_lattice_parameter`).
+  `determine_lattice_parameters` solves weighted linear least squares in `sin^2(theta)`, which is
+  linear in the six independent components of the reciprocal metric tensor, so one code path covers
+  cubic through triclinic with no starting guess, no local minimum and an analytic covariance. The
+  crystal system enters as a constraint matrix: for hexagonal, `a* = b*` and `gamma* = 60` degrees
+  give `G*12 = G*11 / 2`, and the familiar `A(h^2 + hk + k^2) + C l^2` falls out as a consequence
+  rather than being written in. A systematic-error coefficient is refined alongside the cell against
+  a selectable extrapolation function, all of which vanish at theta = 90 degrees.
+  `determine_lattice_parameters_le_bail` supplies whole-pattern decomposition for overlapped
+  patterns, with extracted rather than modelled intensities so neither texture nor a wrong atomic
+  basis can bias the cell. `nelson_riley_extrapolation` reproduces the classical graphical
+  construction, and the naive per-reflection average is kept as a selectable method so the
+  comparison can be made on the reader's own data -- it refuses a non-cubic cell, because outside
+  the cubic system a lattice parameter per reflection does not exist.
+
+- **A `cot(theta)` extrapolation function**, which is the exact form for a *detector zero*. A
+  constant angular offset looks at first as though it could not be extrapolated away at all; it can,
+  because `Delta(sin^2 theta) = sin(theta) cos(theta) Delta(2 theta) = sin^2(theta) cot(theta)
+  Delta(2 theta)`, and `cot(90 degrees) = 0`. The fitted coefficient is then the zero error itself.
+
+- **`xrd.lattice_parameters` in the workbench**, with an injectable specimen displacement on the
+  demonstration scan so every method can be checked against an answer known in advance. A cubic
+  determination draws the classical extrapolation plot, where the scatter about the line is the
+  random error and the slope is the systematic one; a whole-pattern fit draws its difference curve,
+  because it measures no individual peak position and must not draw a residual implying it did.
+
+- **Theory, tutorial and worked examples.**
+  `docs/site/theory/precise_lattice_parameter_determination.md` carries the derivations, including
+  the identity that makes the classical graphical extrapolation and the least-squares drift column
+  the same method. `34_precise_lattice_parameters.ipynb` works through it against patterns with
+  known cells. Six worked examples take their expected values from hand algebra, a double-angle
+  identity, the textbook hexagonal expression and the pinned fixture cell -- never from a run of
+  this code. Twelve symbols are registered in the terminology registry.
+
 ## [0.6.0] - 2026-09-05
 
 **XRD stops being a simulator.** Before this release PyTex could calculate what a phase would

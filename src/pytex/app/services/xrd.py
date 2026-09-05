@@ -30,12 +30,18 @@ from pytex.app.services.calculator import phase_parameter, plane_label
 from pytex.diffraction.rietveld import _scaled_phase, refine_rietveld
 from pytex.diffraction.xrd import RadiationSpec, generate_xrd_pattern
 from pytex.diffraction.xrd_background import estimate_background
+from pytex.diffraction.xrd_corrections import specimen_displacement_shift_deg
 from pytex.diffraction.xrd_instrument import (
     InstrumentBroadening,
     calibrate_instrument_broadening,
     deconvolve_instrument_width,
     scherrer_size_nm,
     williamson_hall,
+)
+from pytex.diffraction.xrd_lattice_parameter import (
+    crystal_system_of,
+    determine_lattice_parameters_from_pattern,
+    extrapolation_values,
 )
 from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
 
@@ -1445,6 +1451,92 @@ REGISTRY.add_examples(
             },
         ),
         ExampleScenario(
+            id="xrd.example.lattice_average_fails",
+            title="Averaging a lattice parameter, and why it fails",
+            panel="xrd",
+            summary=(
+                "The naive per-reflection mean on a scan with a known detector zero error."
+            ),
+            teaches=(
+                "The demonstration scan carries a cell dilated by 1.003 and a 0.05\u00b0 "
+                "detector zero error, so the answer is known before the calculation starts. "
+                "Averaging a lattice parameter over the reflections lands about 3000 "
+                "microangstrom low \u2014 8 parts in 10\u2074, when elastic strains of "
+                "engineering interest are 1 part in 10\u2074. Nothing about the arithmetic is "
+                "wrong: \u0394d/d = \u2212cot\u03b8\u00b7\u0394\u03b8 makes a fixed "
+                "angular error a \u03b8-dependent spacing error, and averaging a bias does not "
+                "remove it. Now run the companion example."
+            ),
+            operation="xrd.lattice_parameters",
+            request={
+                "phase": {"builtin": "ni_fcc"},
+                "radiation": "cu_ka_doublet",
+                "method": "average",
+                "extrapolation": "none",
+                "specimen_displacement_mm": 0.0,
+            },
+        ),
+        ExampleScenario(
+            id="xrd.example.lattice_cohen_extrapolation",
+            title="The same scan, extrapolated to \u03b8 = 90\u00b0",
+            panel="xrd",
+            summary=(
+                "Cohen least squares with the extrapolation function that matches the "
+                "aberration."
+            ),
+            teaches=(
+                "Identical data, one changed assumption. A detector zero error is a constant "
+                "\u0394(2\u03b8), and since \u0394(sin\u00b2\u03b8) = "
+                "sin\u03b8\u00b7cos\u03b8\u00b7\u0394(2\u03b8) = "
+                "sin\u00b2\u03b8\u00b7cot\u03b8\u00b7\u0394(2\u03b8), the matching "
+                "extrapolation function is cot\u03b8 \u2014 which vanishes at \u03b8 = "
+                "90\u00b0, so the fitted cell is the extrapolated one. The determined a now "
+                "lands within about 10 microangstrom of the truth, 3 parts in 10\u2076: better "
+                "than the average by more than two orders of magnitude.\n\n"
+                "In the plot, the scatter of the points about the line is the random error and "
+                "the *slope* is the systematic one. Averaging the points would land on their "
+                "mean; the answer is the intercept. Try Nelson\u2013Riley and "
+                "cos\u00b2\u03b8/sin\u03b8 as well: they are the wrong shape for a zero "
+                "error and leave most of it behind, which is the point of choosing the "
+                "function to match the aberration."
+            ),
+            operation="xrd.lattice_parameters",
+            request={
+                "phase": {"builtin": "ni_fcc"},
+                "radiation": "cu_ka_doublet",
+                "method": "cohen",
+                "extrapolation": "cot_theta",
+                "specimen_displacement_mm": 0.0,
+            },
+        ),
+        ExampleScenario(
+            id="xrd.example.lattice_hexagonal_le_bail",
+            title="A hexagonal cell from the whole pattern",
+            panel="xrd",
+            summary="Titanium a and c together, by Le Bail decomposition.",
+            teaches=(
+                "Outside the cubic system a lattice parameter *per reflection* does not exist: "
+                "one reflection cannot determine both a and c, so the average method refuses "
+                "the phase rather than returning a number. The joint solution is the only kind "
+                "available, and hexagonal patterns overlap badly enough that fitting individual "
+                "peaks runs out of resolvable lines before the reflection list runs out of "
+                "reflections.\n\n"
+                "Le Bail decomposition uses every measured point and extracts the reflection "
+                "intensities rather than modelling them, so neither texture nor a wrong atomic "
+                "basis can bias the cell. Watch c/a, which is the quantity hexagonal work turns "
+                "on, and switch the systematic term to 'Neither' to see the goodness of fit "
+                "fail loudly rather than quietly."
+            ),
+            operation="xrd.lattice_parameters",
+            request={
+                "phase": {"builtin": "ti_hcp"},
+                "radiation": "cu_ka_doublet",
+                "method": "le_bail",
+                "systematic": "zero",
+                "specimen_displacement_mm": 0.0,
+            },
+        ),
+        ExampleScenario(
             id="xrd.example.rietveld_zero_and_cell",
             title="A cell and a zero error, told apart",
             panel="xrd",
@@ -1533,3 +1625,638 @@ REGISTRY.add_examples(
         ),
     )
 )
+
+
+_CITATION_COHEN_LS = "Cohen, Rev. Sci. Instrum. 6 (1935) 68, doi:10.1063/1.1751937."
+_CITATION_NELSON_RILEY_FN = (
+    "Nelson & Riley, Proc. Phys. Soc. 57 (1945) 160, doi:10.1088/0959-5309/57/3/302."
+)
+_CITATION_LE_BAIL_METHOD = (
+    "Le Bail, Duroy & Fourquet, Mater. Res. Bull. 23 (1988) 447, "
+    "doi:10.1016/0025-5408(88)90019-0."
+)
+_CITATION_CULLITY_CH11 = (
+    "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Ch. 11 "
+    "(Precise Parameter Measurements)."
+)
+
+_LATTICE_COLUMNS = (
+    Column("hkl_label", "Reflection"),
+    Column(
+        "two_theta_observed_deg",
+        "2\u03b8 observed",
+        units="\u00b0",
+        numeric=True,
+        digits=5,
+        help_text="Fitted K\u03b11 position after profile fitting.",
+    ),
+    Column(
+        "standard_uncertainty_mdeg",
+        "\u03c3(2\u03b8)",
+        units="m\u00b0",
+        numeric=True,
+        digits=2,
+        help_text="Position uncertainty from the profile fit, in millidegrees.",
+    ),
+    Column(
+        "two_theta_calculated_deg",
+        "2\u03b8 from the cell",
+        units="\u00b0",
+        numeric=True,
+        digits=5,
+        help_text="Where the determined cell puts this reflection.",
+    ),
+    Column(
+        "residual_mdeg",
+        "Residual",
+        units="m\u00b0",
+        numeric=True,
+        digits=2,
+        help_text="Observed minus calculated. Structure here is structure the model missed.",
+    ),
+    Column(
+        "systematic_shift_mdeg",
+        "Removed by the drift term",
+        units="m\u00b0",
+        numeric=True,
+        digits=2,
+        help_text=(
+            "How far the refined systematic-error term moved this reflection. Compare it with "
+            "\u03c3(2\u03b8): if it is much larger, the correction did real work."
+        ),
+    ),
+    Column(
+        "d_observed_angstrom",
+        "d observed",
+        units="\u00c5",
+        numeric=True,
+        digits=6,
+    ),
+)
+
+
+@REGISTRY.operation(
+    "xrd.lattice_parameters",
+    title="Determine lattice parameters",
+    summary=(
+        "Precise cell determination with the systematic error refined away, not averaged over."
+    ),
+    help_text=(
+        "This determines a unit cell. It does not refine a structure: the atomic basis is held "
+        "fixed and only the cell and the errors of the instrument are varied, which is what "
+        "stops texture and an imperfect structural model from leaking into the answer.\n\n"
+        "Averaging a lattice parameter over several reflections is the intuitive method and it "
+        "does not work. Differentiating Bragg's law gives \u0394d/d = \u2212cot\u03b8 "
+        "\u0394\u03b8, so a fixed angular error produces a *\u03b8-dependent* error in the "
+        "spacing. The errors that dominate a laboratory scan \u2014 a detector zero offset, a "
+        "specimen a few tens of micrometres off the diffractometer axis \u2014 are systematic, "
+        "so averaging divides the random scatter by \u221aN and leaves the bias untouched. Run "
+        "the average method against the extrapolation methods on the same demonstration scan "
+        "and read the difference: it is roughly three orders of magnitude.\n\n"
+        "Cohen's method is the default. Because sin\u00b2\u03b8 = (\u03bb\u00b2/4)\u00b7"
+        "h\u1d40G*h is *linear* in the reciprocal metric tensor, one solution covers cubic "
+        "through triclinic with no starting guess and an analytic covariance \u2014 so the "
+        "uncertainties quoted here are real, not decorative. A systematic-error coefficient is "
+        "refined alongside the cell against the chosen extrapolation function, every one of "
+        "which vanishes at \u03b8 = 90\u00b0. That is why extrapolation works, and why the "
+        "highest-angle reflections carry nearly all the weight.\n\n"
+        "Le Bail decomposition uses every measured point instead of a handful of fitted "
+        "positions, and is the method for a hexagonal or lower-symmetry pattern where the "
+        "reflections overlap. Its intensities are extracted rather than modelled, so neither "
+        "texture nor a wrong basis can bias the cell.\n\n"
+        "For residual stress this supplies the spacings, not the stress. A symmetric "
+        "\u03b8\u20132\u03b8 scan measures planes parallel to the surface only; a stress "
+        "needs several specimen tilts and the X-ray elastic constants of the reflection used."
+    ),
+    parameters=(
+        phase_parameter(
+            help_text=(
+                "The phase whose cell is determined. Its symmetry decides how many cell "
+                "parameters may vary \u2014 one for cubic, two for hexagonal \u2014 and its "
+                "reflections are what the measured peaks are indexed against."
+            ),
+            builtin="ni_fcc",
+        ),
+        *_scan_parameters(),
+        NumberParameter(
+            name="specimen_displacement_mm",
+            label="Injected specimen displacement",
+            help_text=(
+                "Added to the demonstration scan as a *known* aberration, so the methods can be "
+                "judged against a value that is known in advance. A real specimen is routinely "
+                "50 \u00b5m off the axis. Ignored for a pasted scan."
+            ),
+            units="mm",
+            default=0.0,
+            minimum=-1.0,
+            maximum=1.0,
+            group="Measurement",
+        ),
+        ChoiceParameter(
+            name="radiation",
+            label="Radiation",
+            help_text=(
+                "The wavelength every spacing is referred to. A wrong choice scales every "
+                "lattice parameter by the wavelength ratio."
+            ),
+            options=(
+                ("cu_ka", "Cu K\u03b1 (single averaged line)", "One copper line."),
+                ("cu_ka_doublet", "Cu K\u03b11/K\u03b12", "Common laboratory copper doublet."),
+                ("co_ka_doublet", "Co K\u03b11/K\u03b12", "Reduces Fe fluorescence."),
+                ("mo_ka_doublet", "Mo K\u03b11/K\u03b12", "Short-wavelength molybdenum."),
+            ),
+            default="cu_ka_doublet",
+        ),
+        ChoiceParameter(
+            name="method",
+            label="Method",
+            help_text=(
+                "The naive average is offered so its failure can be seen rather than described. "
+                "Cohen is the default. Le Bail is for overlapped patterns."
+            ),
+            options=(
+                (
+                    "cohen",
+                    "Cohen least squares (recommended)",
+                    "Linear in the metric tensor; every crystal system; real uncertainties.",
+                ),
+                (
+                    "average",
+                    "Average over reflections (teaching comparison)",
+                    "Cubic only. Cannot remove a systematic error; run it to see by how much.",
+                ),
+                (
+                    "le_bail",
+                    "Le Bail whole-pattern decomposition",
+                    "Every measured point; handles overlapped reflections.",
+                ),
+            ),
+            default="cohen",
+            group="Method",
+        ),
+        ChoiceParameter(
+            name="extrapolation",
+            label="Extrapolation function",
+            help_text=(
+                "The angular form the systematic error is assumed to take. cos\u00b2\u03b8/"
+                "sin\u03b8 is the exact form for specimen displacement on a Bragg\u2013Brentano "
+                "instrument; Nelson\u2013Riley approximates displacement and absorption "
+                "together and is the usual choice. All of them vanish at \u03b8 = 90\u00b0, "
+                "which is what makes the fitted cell the extrapolated one. Ignored by the "
+                "average and Le Bail methods."
+            ),
+            options=(
+                (
+                    "nelson_riley",
+                    "Nelson\u2013Riley",
+                    "\u00bd(cos\u00b2\u03b8/sin\u03b8 + cos\u00b2\u03b8/\u03b8); "
+                    "the standard choice.",
+                ),
+                (
+                    "cos_squared_over_sin",
+                    "cos\u00b2\u03b8/sin\u03b8",
+                    "Exact for specimen displacement.",
+                ),
+                (
+                    "cot_theta",
+                    "cot\u03b8",
+                    "Exact for a detector zero error; the fitted D is the zero itself.",
+                ),
+                (
+                    "bradley_jay",
+                    "Bradley\u2013Jay (cos\u00b2\u03b8)",
+                    "Gives Cohen's classical sin\u00b2(2\u03b8) drift column.",
+                ),
+                (
+                    "none",
+                    "None",
+                    "No correction. Run it to see what the correction was worth.",
+                ),
+            ),
+            default="nelson_riley",
+            group="Method",
+        ),
+        ChoiceParameter(
+            name="systematic",
+            label="Le Bail systematic term",
+            help_text=(
+                "Which aberration the whole-pattern fit refines. Exactly one: a zero and a "
+                "displacement differ only as constant against cos\u03b8, and over one scan's "
+                "angular range that difference is comparable to the noise, so refining both is "
+                "ill-conditioned. Zero belongs to a calibrated instrument; displacement belongs "
+                "to the specimen."
+            ),
+            options=(
+                ("displacement", "Specimen displacement", "Refined in millimetres."),
+                ("zero", "Detector zero", "Refined in degrees 2\u03b8."),
+                ("none", "Neither", "Run it to see the fit fail."),
+            ),
+            default="displacement",
+            group="Method",
+        ),
+        NumberParameter(
+            name="minimum_two_theta_deg",
+            label="Discard reflections below",
+            help_text=(
+                "The crudest defence against systematic error: cot\u03b8 shrinks towards "
+                "back-reflection, so high-angle reflections are intrinsically more precise. It "
+                "helps, and it is no substitute for refining the drift term."
+            ),
+            units="\u00b0 2\u03b8",
+            default=0.0,
+            minimum=0.0,
+            maximum=175.0,
+            group="Method",
+        ),
+        NumberParameter(
+            name="expected_fwhm_deg",
+            label="Expected peak width",
+            help_text=(
+                "Sets the scale of the matched filter that finds the peaks and the size of each "
+                "fit window. It only needs to be right to within about a factor of two."
+            ),
+            units="\u00b0 2\u03b8",
+            default=0.14,
+            minimum=0.01,
+            maximum=2.0,
+            advanced=True,
+            group="Peak finding",
+        ),
+        NumberParameter(
+            name="prominence_sigma",
+            label="Detection threshold",
+            help_text=(
+                "How far above the noise a feature must rise to be treated as a peak, in robust "
+                "standard deviations of the matched-filter response."
+            ),
+            default=5.0,
+            minimum=1.0,
+            maximum=50.0,
+            advanced=True,
+            group="Peak finding",
+        ),
+        NumberParameter(
+            name="tolerance_deg",
+            label="Indexing tolerance",
+            help_text=(
+                "How far a measured peak may sit from a calculated reflection and still be "
+                "matched to it. Wider than any uncorrected zero or displacement error, and "
+                "narrower than the spacing between neighbouring lines."
+            ),
+            units="\u00b0 2\u03b8",
+            default=0.3,
+            minimum=0.01,
+            maximum=3.0,
+            advanced=True,
+            group="Peak finding",
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Maximum Miller index",
+            help_text="Largest |h|, |k|, |l| enumerated when predicting reflections.",
+            default=6,
+            minimum=1,
+            maximum=12,
+            advanced=True,
+            group="Peak finding",
+        ),
+    ),
+    returns=(
+        "The determined cell with standard uncertainties, the refined systematic-error term, "
+        "and the per-reflection residuals behind both."
+    ),
+    panel="xrd",
+    citations=(
+        _CITATION_CULLITY_CH11,
+        _CITATION_COHEN_LS,
+        _CITATION_NELSON_RILEY_FN,
+        _CITATION_LE_BAIL_METHOD,
+    ),
+    tags=(
+        "XRD",
+        "lattice parameter",
+        "precise",
+        "Cohen",
+        "Nelson-Riley",
+        "Le Bail",
+        "strain",
+        "stress",
+    ),
+)
+def _lattice_parameters(request: dict[str, Any]) -> dict[str, Any]:
+    spec, phase = phase_from_request(request["phase"])
+    radiation = _RADIATION[str(request["radiation"])]()
+    measured, generated = _measured_from_request(request, phase, radiation)
+
+    displacement = float(request["specimen_displacement_mm"])
+    if generated and displacement != 0.0:
+        axis = np.asarray(measured.two_theta_deg, dtype=float)
+        measured = MeasuredPowderPattern(
+            name=measured.name,
+            two_theta_deg=axis
+            + specimen_displacement_shift_deg(
+                axis, displacement_mm=displacement, goniometer_radius_mm=240.0
+            ),
+            intensity=measured.intensity,
+            radiation=radiation,
+            synthetic=True,
+        )
+
+    method = cast(Literal["cohen", "average", "le_bail"], request["method"])
+    extrapolation = cast(Any, request["extrapolation"])
+    instrument = InstrumentBroadening.ideal(float(request["expected_fwhm_deg"]))
+
+    try:
+        system = crystal_system_of(phase)
+    except ValueError as error:
+        raise InvalidInputError(
+            f"This phase has no cell parameterization here: {error}",
+            field="phase",
+            hint="Choose a phase in one of the seven crystal systems.",
+        ) from error
+
+    floor = float(request["minimum_two_theta_deg"])
+    try:
+        result, indexing = determine_lattice_parameters_from_pattern(
+            measured,
+            phase,
+            method=method,
+            extrapolation=extrapolation,
+            radiation=radiation,
+            instrument=instrument,
+            systematic=cast(Any, request["systematic"]),
+            tolerance_deg=float(request["tolerance_deg"]),
+            max_index=int(request["max_index"]),
+            prominence_sigma=float(request["prominence_sigma"]),
+            minimum_two_theta_deg=floor if floor > 0.0 else None,
+            phase_name=spec.name,
+        )
+    except ValueError as error:
+        message = str(error)
+        if "cubic cell" in message:
+            field, hint = (
+                "method",
+                "The average method needs a cubic phase; every other cell needs a joint "
+                "solution, so choose Cohen least squares or Le Bail.",
+            )
+        elif "detected" in message or "fitted" in message:
+            field, hint = (
+                "prominence_sigma",
+                "Lower the detection threshold, or check the expected peak width.",
+            )
+        elif "angular restriction" in message:
+            field, hint = (
+                "minimum_two_theta_deg",
+                "Lower the angular floor so more reflections survive.",
+            )
+        else:
+            field, hint = (
+                "tolerance_deg",
+                "Widen the indexing tolerance, or check that the phase and radiation are right.",
+            )
+        raise InvalidInputError(
+            f"The lattice parameters could not be determined: {message}",
+            field=field,
+            hint=hint,
+        ) from error
+
+    shifts = result.systematic_shift_deg
+    calculated = result.two_theta_deg - result.residual_two_theta_deg
+    # Keyed on the angle, not on position. An angular floor filters the
+    # determination's reflections without filtering the indexing's, so a
+    # positional lookup would attach each uncertainty to the wrong reflection
+    # exactly when the operator restricts the range -- which is the case they
+    # would restrict it for.
+    sigma_by_angle = (
+        {}
+        if indexing is None
+        else {
+            round(item.peak.two_theta_deg, 9): (
+                1000.0 * item.peak.two_theta_standard_uncertainty_deg
+            )
+            for item in indexing.reflections
+        }
+    )
+    wavelength = float(radiation.wavelength_angstrom)
+    rows = tuple(
+        {
+            "hkl_label": _powder_label(indices, spec=spec),
+            "two_theta_observed_deg": float(angle),
+            "standard_uncertainty_mdeg": float(
+                sigma_by_angle.get(round(float(angle), 9), 0.0)
+            ),
+            "two_theta_calculated_deg": float(calculated[index]),
+            "residual_mdeg": 1000.0 * float(result.residual_two_theta_deg[index]),
+            "systematic_shift_mdeg": 1000.0 * float(shifts[index]),
+            "d_observed_angstrom": float(
+                wavelength / (2.0 * np.sin(np.deg2rad(0.5 * float(angle))))
+            ),
+        }
+        for index, (indices, angle) in enumerate(
+            zip(result.miller_indices, result.two_theta_deg, strict=True)
+        )
+    )
+
+    # The plot each method deserves. The whole-pattern branch is tested first
+    # and not last: a Le Bail fit measures no individual peak position, so a
+    # per-reflection lattice parameter computed from its output would be
+    # computed from the *calculated* angles -- a plot of the model against
+    # itself, which would look convincing and mean nothing. Its diagnostic is
+    # the difference curve. A cubic cell determined from fitted positions gets
+    # the classical extrapolation, where a lattice parameter per reflection
+    # does exist and the intercept is the answer. Everything else gets the
+    # residual against angle, which works in every crystal system.
+    if result.profile_two_theta_deg is not None:
+        assert result.profile_observed is not None
+        assert result.profile_calculated is not None
+        keep = _decimate(int(result.profile_two_theta_deg.size))
+        plot = {
+            "plot_kind": "profile",
+            "abscissa": result.profile_two_theta_deg[keep].tolist(),
+            "ordinate": result.profile_observed[keep].tolist(),
+            "calculated": result.profile_calculated[keep].tolist(),
+            "difference": (
+                result.profile_observed[keep] - result.profile_calculated[keep]
+            ).tolist(),
+            "abscissa_label": "2\u03b8 (\u00b0)",
+            "ordinate_label": "intensity, background removed",
+            "line_slope": 0.0,
+            "line_intercept": 0.0,
+            "determined": float(result.a),
+        }
+    elif system == "cubic" and result.two_theta_deg.size >= 2:
+        sums = np.array(
+            [sum(value**2 for value in indices) for indices in result.miller_indices],
+            dtype=float,
+        )
+        spacings = wavelength / (2.0 * np.sin(np.deg2rad(0.5 * result.two_theta_deg)))
+        per_reflection = spacings * np.sqrt(sums)
+        function = (
+            "nelson_riley" if result.extrapolation == "none" else result.extrapolation
+        )
+        abscissa = extrapolation_values(result.two_theta_deg, function=cast(Any, function))
+        slope, intercept = np.polyfit(abscissa, per_reflection, 1)
+        plot = {
+            "plot_kind": "extrapolation",
+            "abscissa": abscissa.tolist(),
+            "ordinate": per_reflection.tolist(),
+            "abscissa_label": _EXTRAPOLATION_LABELS[function],
+            "ordinate_label": "a from each reflection (\u00c5)",
+            "line_slope": float(slope),
+            "line_intercept": float(intercept),
+            "determined": float(result.a),
+        }
+    else:
+        plot = {
+            "plot_kind": "residual",
+            "abscissa": result.two_theta_deg.tolist(),
+            "ordinate": (1000.0 * result.residual_two_theta_deg).tolist(),
+            "abscissa_label": "2\u03b8 (\u00b0)",
+            "ordinate_label": "observed \u2212 calculated (m\u00b0)",
+            "line_slope": 0.0,
+            "line_intercept": 0.0,
+            "determined": float(result.a),
+        }
+
+    notes: list[str] = []
+    if generated:
+        notes.extend(_demonstration_notes(phase.lattice.a))
+        if displacement != 0.0:
+            lowest = float(result.two_theta_deg[0])
+            worst = 1000.0 * abs(
+                float(
+                    specimen_displacement_shift_deg(
+                        [lowest], displacement_mm=displacement, goniometer_radius_mm=240.0
+                    )[0]
+                )
+            )
+            notes.append(
+                f"A {1000.0 * displacement:.0f} \u00b5m specimen displacement was injected on "
+                "top of that, at a 240 mm goniometer radius. It moves the lowest-angle "
+                f"reflection by {worst:.0f} m\u00b0 and the highest by less, which is exactly "
+                "the \u03b8-dependence that averaging cannot remove. Note that the scan now "
+                "carries two aberrations of different angular form \u2014 a constant zero and "
+                "a cos\u03b8 displacement \u2014 and no single extrapolation function removes "
+                "both. That is why precise work calibrates the zero against a standard first."
+            )
+        notes.append(
+            "The cell to recover is a = "
+            f"{phase.lattice.a * _DEMO_LATTICE_SCALE:.5f} \u00c5. Compare it with the value "
+            "above, then switch the method and watch it move."
+        )
+    notes.append(
+        "Read the drift column against \u03c3(2\u03b8). A correction much larger than the "
+        "position uncertainties did real work; one much smaller means the specimen was already "
+        "well aligned and every method should agree."
+    )
+    notes.append(
+        "This is a lattice parameter, not a stress. A symmetric scan measures the spacing of "
+        "planes parallel to the specimen surface only; a stress needs several specimen tilts "
+        "and the X-ray elastic constants of the reflection used."
+    )
+
+    if method == "le_bail":
+        # A whole-pattern decomposition never fits an individual peak position,
+        # so it has no observed angle, no position uncertainty and no residual
+        # to report per reflection. Printing zeros in those columns would be a
+        # claim; the narrower column set is the honest one.
+        columns: tuple[Column, ...] = _LE_BAIL_COLUMNS
+        rows = tuple(
+            {
+                key: row[key]
+                for key in ("hkl_label", "two_theta_calculated_deg", "d_observed_angstrom")
+            }
+            for row in rows
+        )
+        caption = (
+            f"{result.reflection_count} reflections modelled by the whole-pattern fit, at the "
+            "angles the determined cell puts them. A Le Bail fit measures no individual peak "
+            "position, so it reports none."
+        )
+    else:
+        columns = _LATTICE_COLUMNS
+        caption = (
+            f"{result.reflection_count} reflections behind the determined cell, with the "
+            "residual and the systematic shift removed from each."
+        )
+    result_payload = AppResult(
+        title=f"Lattice parameters of {spec.name}",
+        summary=(
+            f"a = {result.a:.6f} \u00b1 {result.a_standard_uncertainty:.6f} \u00c5"
+            + (
+                ""
+                if system == "cubic"
+                else f", c = {result.c:.6f} \u00b1 {result.c_standard_uncertainty:.6f} "
+                f"\u00c5, c/a = {result.axial_ratio:.6f}"
+            )
+            + f" from {result.reflection_count} reflections of a {system} cell, a relative "
+            f"uncertainty of {result.relative_uncertainty:.1e}."
+        ),
+        table=ResultTable(columns=columns, rows=rows, caption=caption),
+        data={
+            **plot,
+            "columns": [column.to_json() for column in columns],
+            "method": method,
+            "crystal_system": system,
+            "a": float(result.a),
+            "b": float(result.b),
+            "c": float(result.c),
+            "a_standard_uncertainty": float(result.a_standard_uncertainty),
+            "c_standard_uncertainty": float(result.c_standard_uncertainty),
+            "axial_ratio": float(result.axial_ratio),
+            "relative_uncertainty": float(result.relative_uncertainty),
+            "drift_coefficient": float(result.drift_coefficient),
+            "drift_standard_uncertainty": float(result.drift_standard_uncertainty),
+            "extrapolation": result.extrapolation,
+            "reduced_chi_squared": float(result.reduced_chi_squared),
+            "weighted_profile_r": result.weighted_profile_r,
+            "reflection_count": int(result.reflection_count),
+            "strain_relative_to_reference": result.strain_relative_to_reference,
+            "figure_of_merit_m": (
+                None if indexing is None else float(indexing.figure_of_merit_m()[0])
+            ),
+            "synthetic": generated,
+            "describe": result.describe(),
+            "phase_name": spec.name,
+        },
+        inputs={
+            "phase": spec.to_json(),
+            "data_source": request["data_source"],
+            "specimen_displacement_mm": displacement,
+            "radiation": request["radiation"],
+            "method": method,
+            "extrapolation": request["extrapolation"],
+            "systematic": request["systematic"],
+            "minimum_two_theta_deg": float(request["minimum_two_theta_deg"]),
+            "expected_fwhm_deg": float(request["expected_fwhm_deg"]),
+            "prominence_sigma": float(request["prominence_sigma"]),
+            "tolerance_deg": float(request["tolerance_deg"]),
+            "max_index": int(request["max_index"]),
+            "demonstration_seed": int(request["demonstration_seed"]),
+        },
+        notes=tuple(notes),
+        citations=(_CITATION_CULLITY_CH11, _CITATION_COHEN_LS, _CITATION_NELSON_RILEY_FN),
+    )
+    return result_payload.to_json()
+
+
+_LE_BAIL_COLUMNS = (
+    Column("hkl_label", "Reflection"),
+    Column(
+        "two_theta_calculated_deg",
+        "2\u03b8 from the cell",
+        units="\u00b0",
+        numeric=True,
+        digits=5,
+        help_text="Where the determined cell puts this reflection.",
+    ),
+    Column("d_observed_angstrom", "d", units="\u00c5", numeric=True, digits=6),
+)
+
+_EXTRAPOLATION_LABELS = {
+    "nelson_riley": "\u00bd(cos\u00b2\u03b8/sin\u03b8 + cos\u00b2\u03b8/\u03b8)",
+    "cos_squared_over_sin": "cos\u00b2\u03b8 / sin\u03b8",
+    "cot_theta": "cot\u03b8",
+    "bradley_jay": "cos\u00b2\u03b8",
+    "none": "cos\u00b2\u03b8 / sin\u03b8",
+}

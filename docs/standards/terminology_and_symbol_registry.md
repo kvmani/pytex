@@ -135,7 +135,27 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | $\mathbf{a}^{*}, \mathbf{b}^{*}, \mathbf{c}^{*}$ | Reciprocal-lattice basis vectors under the PyTex normalization rule. |
 | $\mathbf{g}_{hkl}$ | Reciprocal-lattice vector associated with Miller indices $(hkl)$. |
 | $\mathbf{G}$ | Direct-space metric tensor. |
+| $\mathbf{G}^{*}$ | Reciprocal-space metric tensor, $\mathbf{G}^{*} = \mathbf{G}^{-1}$. Its six independent components are the free parameters of a lattice-parameter determination, because $1/d_{hkl}^{2} = \mathbf{h}^{\mathsf{T}} \mathbf{G}^{*} \mathbf{h}$ is linear in them. |
 | $d_{hkl}$ | Interplanar spacing for the $(hkl)$ family. |
+| $Q_{hkl}$ | $1/d_{hkl}^{2}$, the reciprocal square spacing. The quantity de Wolff's figure of merit measures discrepancies in, because it is linear in the cell parameters and so weights a given cell error equally at every angle. |
+
+### Powder diffraction and precise lattice parameters
+
+| Symbol | Meaning |
+| --- | --- |
+| $\lambda_{1}, \lambda_{2}$ | K$\alpha_1$ and K$\alpha_2$ wavelengths of a characteristic doublet. Both lines diffract from the same planes, so $\sin\theta_{2} = (\lambda_{2}/\lambda_{1})\sin\theta_{1}$ and the pair separates as $\tan\theta$. |
+| $z$ | Detector zero-point error, a constant added to every measured $2\theta$. Belongs to the instrument, not the specimen. |
+| $s$ | Specimen surface displacement from the diffractometer axis, in millimetres. Produces $\Delta(2\theta) = -2s\cos\theta / R$. |
+| $R$ | Goniometer radius. |
+| $\mu$ | Linear absorption coefficient of the specimen, governing the transparency aberration $\Delta(2\theta) = -\sin 2\theta / (2\mu R)$. |
+| $\delta$ | Refractive-index decrement, $n = 1 - \delta$. Of order $10^{-5}$, which is the precision level a Cohen determination reaches, so it is not negligible there. |
+| $f(\theta)$ | Extrapolation function of a precise lattice-parameter determination. Every admissible $f$ vanishes at $\theta = 90^{\circ}$, which is what makes the extrapolated cell the aberration-free one. |
+| $D$ | Systematic-error (drift) coefficient refined alongside the cell, in the design column $D\,\sin^{2}\theta\,f(\theta)$. It is the same $f$ that the classical graphical construction plots $a$ against. |
+| $U, V, W$ | Caglioti coefficients of the Gaussian instrumental width, $\mathrm{FWHM}^{2} = U\tan^{2}\theta + V\tan\theta + W$. |
+| $\eta$ | Lorentzian mixing fraction of a pseudo-Voigt profile, $\eta L + (1-\eta) G$. |
+| $M_{N}$ | de Wolff figure of merit, $Q_{N} / (2\langle|\Delta Q|\rangle N_{\mathrm{poss}})$. |
+| $F_{N}$ | Smith-Snyder figure of merit, $N / (\langle|\Delta 2\theta|\rangle N_{\mathrm{poss}})$. |
+| $R_{wp}$ | Weighted profile residual of a whole-pattern fit. |
 
 ### Miller indices and crystallographic geometry
 
@@ -186,12 +206,17 @@ New notation is introduced through this registry, not ad hoc in a single page:
 | Symbol | Meaning |
 | --- | --- |
 | $f$, $f_{\mathrm{RD}}$, $f_{\mathrm{TD}}$, $f_{\mathrm{ND}}$ | Kearns orientation parameter along a specimen direction: the volume-weighted mean of $\cos^{2}$ of the angle between each crystal's basal pole and that direction, and hence the effective fraction of basal poles aligned with it. Bounded to $[0,1]$; exactly $1/3$ for a random texture. Distinct from the ODF density $f(g)$, which is a function on $SO(3)$. |
-| $\mathbf{A}$ | Pole orientation tensor $\langle \mathbf{c}\,\mathbf{c}^{\mathsf{T}}angle$ of the basal-pole distribution in the specimen frame, so that $f(\mathbf{d}) = \mathbf{d}^{\mathsf{T}}\mathbf{A}\mathbf{d}$. Unit trace, which is why the Kearns parameters of an orthonormal triad sum identically to 1. The weighted counterpart of the directional-statistics orientation tensor $oldsymbol{\Theta}$. |
+| $\mathbf{A}$ | Pole orientation tensor $\langle \mathbf{c}\,\mathbf{c}^{\mathsf{T}}
+angle$ of the basal-pole distribution in the specimen frame, so that $f(\mathbf{d}) = \mathbf{d}^{\mathsf{T}}\mathbf{A}\mathbf{d}$. Unit trace, which is why the Kearns parameters of an orthonormal triad sum identically to 1. The weighted counterpart of the directional-statistics orientation tensor $oldsymbol{\Theta}$. |
 | $\phi$ | Tilt of a crystal's basal pole $[0001]$ from the specimen reference direction. Distinct from the first Euler angle $arphi_1$ and from the pole-figure azimuth. |
 | $I(\phi)$ | Basal-pole density averaged over the full $360^{\circ}$ of azimuth about the reference direction — the *tilt profile*. Kearns' Eq. (5) integrates it against $\sin\phi\cos^{2}\phi$. Scale-free: only ratios of $I$ enter $f$. |
 | $V_{\Delta\phi}$ | Volume fraction of crystals whose basal pole lies in the tilt band $\Delta\phi$, equal to $I(\phi)\sin\phi\,\Delta\phi$ normalized over $[0,\pi/2]$. Vanishes at $\phi = 0$ however intense the pole is there, because the band has no area. |
 | $\phi_{hkil}$ | Fixed angle between the $(hkil)$ plane normal and $[0001]$, from the phase's reciprocal metric. What lets a $	heta$-$2	heta$ peak intensity be read as a basal-pole density at a known tilt. |
-| $ho$, $eta$ | ODF kernel shrinkage: $ho = \langle\cos^{2}etaangle$ of a pole smeared by the kernel, and $eta = (3ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ from $\mathbf{I}/3$. Here $eta$ is a scalar shrinkage factor, distinct from the lattice angle $eta$ and the holder tilt $eta$. |
+| $
+ho$, $eta$ | ODF kernel shrinkage: $
+ho = \langle\cos^{2}eta
+angle$ of a pole smeared by the kernel, and $eta = (3
+ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ from $\mathbf{I}/3$. Here $eta$ is a scalar shrinkage factor, distinct from the lattice angle $eta$ and the holder tilt $eta$. |
 
 ### Directional statistics
 

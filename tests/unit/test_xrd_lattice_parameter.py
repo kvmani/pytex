@@ -474,3 +474,131 @@ def test_determination_validates_its_inputs() -> None:
         determine_lattice_parameters(indexing, phase, extrapolation="taylor")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="survives the angular restriction"):
         determine_lattice_parameters(indexing, phase, minimum_two_theta_deg=179.0)
+
+
+# ---------------------------------------------------------------------------
+# Lower symmetry: three free parameters, and crowded patterns
+# ---------------------------------------------------------------------------
+
+
+def test_an_orthorhombic_cell_determines_three_independent_edges() -> None:
+    """Nothing above exercises a system with more than two free parameters.
+
+    Alpha-uranium is orthorhombic, so `a`, `b` and `c` are independent and the
+    constraint matrix has three columns. A determination that silently tied any
+    two of them together would still look plausible on a cubic or hexagonal
+    test.
+    """
+
+    phase = builtin_phase("alpha_u").to_phase()
+    assert crystal_system_of(phase) == "orthorhombic"
+    result, indexing = _determine("alpha_u", _scan("alpha_u", peak_counts=40_000.0, seed=3))
+    assert len(result.free_parameter_names) == 3
+    assert indexing is not None
+    assert indexing.indexed_count > 20
+    for determined, truth in (
+        (result.a, phase.lattice.a),
+        (result.b, phase.lattice.b),
+        (result.c, phase.lattice.c),
+    ):
+        assert determined == pytest.approx(truth, rel=5.0e-5)
+    # The three edges are genuinely different, so a tied parameterization could
+    # not have produced this.
+    assert len({round(value, 3) for value in (result.a, result.b, result.c)}) == 3
+
+
+def test_le_bail_beats_peak_fitting_on_a_crowded_low_symmetry_pattern() -> None:
+    """The reason the whole-pattern method exists, measured.
+
+    On a heavily overlapped orthorhombic pattern the single-peak route runs out
+    of resolvable lines and its goodness of fit degrades badly, while the
+    whole-pattern fit stays near unity. Both must still land on the same cell:
+    two methods with different failure modes agreeing is the strongest evidence
+    available without an external standard.
+    """
+
+    phase = builtin_phase("alpha_u").to_phase()
+    measured = _scan("alpha_u", peak_counts=40_000.0, seed=3)
+    positions, _ = _determine("alpha_u", measured)
+    whole_pattern = determine_lattice_parameters_le_bail(
+        measured, phase, systematic="none", cycles=8
+    )
+    assert whole_pattern.reduced_chi_squared < 0.2 * positions.reduced_chi_squared
+    assert whole_pattern.reduced_chi_squared < 3.0
+    for from_profile, from_positions in (
+        (whole_pattern.a, positions.a),
+        (whole_pattern.b, positions.b),
+        (whole_pattern.c, positions.c),
+    ):
+        assert from_profile == pytest.approx(from_positions, rel=1.0e-4)
+
+
+def test_a_trigonal_cell_uses_the_hexagonal_constraint() -> None:
+    phase = builtin_phase("quartz_alpha").to_phase()
+    assert crystal_system_of(phase) == "trigonal"
+    result = determine_lattice_parameters_le_bail(
+        _scan("quartz_alpha", peak_counts=40_000.0, seed=3),
+        phase,
+        systematic="none",
+        cycles=8,
+    )
+    assert len(result.free_parameter_names) == 2
+    assert result.a == pytest.approx(phase.lattice.a, rel=2.0e-5)
+    assert result.c == pytest.approx(phase.lattice.c, rel=2.0e-5)
+    assert result.gamma_deg == pytest.approx(120.0, abs=1.0e-6)
+
+
+def test_the_le_bail_cell_bounds_survive_a_negative_metric_component() -> None:
+    """A relative bound built by multiplication inverts on a negative parameter.
+
+    Off-diagonal components of G* are negative whenever the corresponding
+    reciprocal angle is obtuse, which a triclinic cell routinely is. Building
+    the bounds as `start * 0.9` and `start * 1.1` would then put the lower bound
+    above the upper one and the optimizer would refuse the problem outright.
+    The bounds are built by magnitude instead; this checks the arithmetic
+    directly, since no built-in phase is triclinic.
+    """
+
+    start = np.array([0.12, -0.03, 0.0])
+    span = np.maximum(0.1 * np.abs(start), 1.0e-4)
+    lower = start - span
+    upper = start + span
+    assert np.all(lower < upper)
+    assert np.all(lower <= start)
+    assert np.all(start <= upper)
+    # A component starting at exactly zero still gets a usable window.
+    assert upper[2] - lower[2] == pytest.approx(2.0e-4)
+
+
+def test_le_bail_describes_the_aberration_it_refined_in_physical_units() -> None:
+    """A whole-pattern fit refines the aberration itself, not a drift coefficient.
+
+    Its `extrapolation` field is "none" because no extrapolation function was
+    used -- which is not the same thing as no correction having been made.
+    Reporting the first as the second would tell a reader the displacement was
+    left in the cell when it had just been taken out of it.
+    """
+
+    phase = builtin_phase("ni_fcc").to_phase()
+    measured = _scan("ni_fcc", displacement_mm=0.10)
+
+    refined = determine_lattice_parameters_le_bail(
+        measured, phase, systematic="displacement", cycles=10
+    )
+    prose = refined.describe()
+    assert "specimen displacement of" in prose
+    assert "mm was" in prose
+    assert "rather than absorbed into the cell" in prose
+    assert "No systematic-error term was refined" not in prose
+
+    zero = determine_lattice_parameters_le_bail(
+        measured, phase, systematic="zero", cycles=6
+    )
+    assert "detector zero of" in zero.describe()
+    assert "degrees 2*theta" in zero.describe()
+
+    ignored = determine_lattice_parameters_le_bail(
+        measured, phase, systematic="none", cycles=6
+    )
+    assert "No instrumental aberration was refined" in ignored.describe()
+    assert "inside the quoted cell" in ignored.describe()

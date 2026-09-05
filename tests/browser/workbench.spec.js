@@ -415,6 +415,36 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   await expect(status).toContainText('not a measurement');
   await expect(status).toContainText('of the signal assigned to background');
 
+  // The determination view has to prove two different things: that it reaches
+  // the precision it claims, and that the picture it draws matches the method
+  // that ran. A cubic cell gets the classical extrapolation plot; the whole
+  // pattern fit gets a difference curve, because it never measures a single
+  // peak position and must not draw a residual that implies it did.
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('xrd.lattice_parameters').then(() =>
+      page.getByRole('button', { name: 'Determine lattice parameters', exact: true }).click(),
+    ),
+  );
+  await expect(status).toContainText('a = 3.53');
+  await expect(status).toContainText('σ/a');
+  await expect(status).toContainText('nelson_riley');
+  await expect(
+    page.locator('#stage svg[aria-label="Lattice parameter extrapolated against the '
+      + 'systematic-error function"]'),
+  ).toBeVisible();
+
+  await expectNewCompletedCalculation(page, () => {
+    const method = page.locator('#rail-body select').filter({ hasText: 'Cohen least squares' });
+    return method.selectOption('le_bail').then(() =>
+      page.getByRole('button', { name: 'Determine lattice parameters', exact: true }).click(),
+    );
+  });
+  await expect(status).toContainText('R_wp');
+  await expect(
+    page.locator('#stage svg[aria-label="Observed, calculated and difference profiles of the '
+      + 'whole-pattern fit"]'),
+  ).toBeVisible();
+
   await expectNewCompletedCalculation(page, () =>
     view.selectOption('xrd.rietveld').then(() =>
       page.getByRole('button', { name: 'Refine against the scan', exact: true }).click(),
