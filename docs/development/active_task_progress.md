@@ -5996,3 +5996,62 @@ repository.
 
 - GUI: new `xrd.*` operations and panel views for background, refinement and comparison.
 - Version bump to 0.6.0 and release notes.
+
+### Increment 3 — the workbench (landed)
+
+The XRD panel was one operation with one drawing. It is now four views behind a selector, following
+the `VIEWS` / `VIEW_MODES` pattern the Variants panel already uses: the simulation, background
+estimation, Rietveld refinement, and crystallite size and microstrain.
+
+**Three new operations**, sharing one declaration of where a scan comes from, so a pasted scan means
+the same thing in every view. `xrd.background`, `xrd.rietveld` and `xrd.size_strain`.
+
+**The scan-source problem, and how it was answered.** These views need a *measured* profile, and the
+workbench has no file-upload control. A pasted two-column scan is the honest input and the
+`TextParameter(multiline=True)` precedent from `ebsd_or` covers it -- but a panel that opens empty
+teaches nothing, and a realistic default scan is five thousand lines. So the source is an explicit
+choice: paste, or generate a demonstration scan. The generated one is built from stated departures
+(cell x1.003, +0.05 deg zero, 0.14 deg width, curved background, Poisson noise), is marked
+`synthetic`, and every result built on it carries a note saying it was generated, not measured. A
+test asserts both.
+
+**Defaults that check themselves.** The size/strain form opens on the LaB6 lines at Cu K-alpha
+paired with a specimen built from exactly 25 nm and 0.2% microstrain, and returns exactly that. Its
+help text claims the answer and a test holds it to the claim.
+
+### Two things the tests caught that the prose had wrong
+
+**A claim about the zero point.** The example text said that holding the detector zero lets the cell
+"quietly absorb" it while `R_wp` barely moves. It does not: `R_wp` went from 7.1% to 18.7%. A zero
+error displaces every peak by the same angle and a cell dilation displaces them in proportion to
+tan(theta), so over a hundred-degree scan the two cannot fully trade. The corrected text says that,
+and adds the case where the original claim *would* hold -- a narrow scan, where the two are nearly
+indistinguishable. The test now asserts the truth: the cell moves, *and* the fit degrades, *and*
+Durbin-Watson falls, because the second and third are what make the first diagnosable.
+
+**A race in the panel.** The browser test failed with `data[entry.key] is not iterable`. A run
+launched by one view was resolving after the view had changed, and its result was being handed to a
+renderer expecting different keys. Each run now remembers the view that launched it and declines to
+consume the answer if the view has moved on; the new view hands the run button back itself, since
+the in-flight run will no longer touch it.
+
+### One usability fix found by looking at it
+
+On a linear axis scaled to 20,000-count peaks, a 150-count background is a line on the axis -- so the
+background view could not show the thing it exists to show. The vertical-scale control moved out of
+the appearance group, which is hidden for non-simulation views, into the rail proper, and the overlay
+renderer honours it. Its tick labels are placed at even fractions of the drawn height and labelled
+with the counts they correspond to, so a square-root axis stays readable instead of crowding every
+label into the bottom fifth.
+
+### Verification
+
+`ruff`, `mypy`, `node --check` clean. Green: `test_app_xrd.py` (15 tests, 8 new),
+`test_app_manifest.py`, `test_documentation_policy.py`, `test_xrd_rietveld.py`. One new Playwright
+test walks all three analysis views and checks each status line for the number that view exists to
+produce, plus the presence of the residual band and the Williamson-Hall drawing. All four views
+driven by hand in the browser and confirmed to render.
+
+### Next actions
+
+- Version bump to 0.6.0 and release notes.

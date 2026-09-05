@@ -397,6 +397,49 @@ test('offers the shared CIF phase loader in every structure-aware workspace', as
 
 });
 
+test('every XRD analysis view runs and reports what it found', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await openPanel(page, 'XRD');
+  const view = page.locator('#rail-body select').first();
+  const status = page.locator('#stage .plot__status').first();
+
+  // Each view is checked on its own status line rather than on a success count,
+  // because a count only proves that *something* finished. The status carries
+  // the number the view exists to produce, so a view wired to the wrong
+  // operation fails here instead of passing quietly.
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('xrd.background').then(() =>
+      page.getByRole('button', { name: 'Estimate background', exact: true }).click(),
+    ),
+  );
+  await expect(status).toContainText('not a measurement');
+  await expect(status).toContainText('of the signal assigned to background');
+
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('xrd.rietveld').then(() =>
+      page.getByRole('button', { name: 'Refine against the scan', exact: true }).click(),
+    ),
+  );
+  await expect(status).toContainText('R_wp');
+  await expect(status).toContainText('Durbin');
+  // The residual band is what a refinement is read from, so its absence is a
+  // defect even when every number on the status line is right.
+  await expect(page.locator('#stage svg[aria-label="Rietveld refinement"]')).toBeVisible();
+
+  await expectNewCompletedCalculation(page, () =>
+    view.selectOption('xrd.size_strain').then(() =>
+      page.getByRole('button', { name: 'Separate size and strain', exact: true }).click(),
+    ),
+  );
+  // The untouched form is built from a known 25 nm and 0.2%, so the view can be
+  // checked rather than merely exercised.
+  await expect(status).toContainText('D = 25.000 nm');
+  await expect(status).toContainText('0.002');
+  await expect(page.locator('#stage svg[aria-label="Williamson-Hall plot"]')).toBeVisible();
+
+  expect(browserErrors).toEqual([]);
+});
+
 test('completes the critical default calculations across panels', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   const journeys = [
