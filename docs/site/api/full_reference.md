@@ -97,6 +97,10 @@ support objects that are imported elsewhere in the library.
 ```
 
 ```{eval-rst}
+.. automodule:: pytex.core.symbols
+```
+
+```{eval-rst}
 .. automodule:: pytex.core.symmetry
 ```
 

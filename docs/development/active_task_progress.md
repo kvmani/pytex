@@ -6932,3 +6932,74 @@ two commits contain GUI-layout work their subjects do not mention.
 **Next actions.** Verify the rendered forms in the browser lane at desktop and at 390 px; extend
 `tests/browser/workbench.spec.js` with an assertion that the Bunge triple occupies one row; run the
 full unit lane.
+
+### Increment 3 — the row had to stop wrapping (landed, 7323a14)
+
+The browser lane found the first version of the layout wrong in a way the unit tests could not
+see. `.field-row` was there, the three fields were inside it, and the row still occupied three
+lines. A compact field keeps its label beside its control, and a field carrying `φ₁`, its unit
+suffix and its help button measures **167 px** next to its box; three of those are 500 px in a
+**271 px** rail, so the row wrapped into exactly the three lines it existed to replace.
+
+Inside a row the label therefore goes back on top — the opposite of the compact rule everywhere
+else, and arithmetic rather than taste: stacked, the cell is as wide as the wider of the label and
+the box, about 80 px, and three fit with room over. The alternative considered and rejected was to
+drop the units and the help button from a field in a row: that buys the width by removing the two
+things that say what the number is and what it means, from the controls least able to spare them.
+A bare `Φ` with no unit and no help is not a compact label, it is an unlabelled box.
+
+A field whose help popover is open, or which is reporting an error, now takes the whole row while
+it has something to say. Prose in a third of a narrow rail is unreadable and an error message is
+the last thing that should be. Done with `:has()`, which degrades to a narrow-wrapped message
+rather than to a hidden one.
+
+**A test of ours broke, correctly.** Two assertions found a control's wrapper with
+`ancestor::div[@class="field"]` — an exact match on the whole class attribute — which stopped
+matching the moment every field gained a width modifier. Replaced with a `fieldOf` helper matching
+the class *token*, so the next modifier does not break it again.
+
+**Verified in the browser, not assumed.** The three Bunge angles share one line at 1440 px and at
+375 px; the values typed into them reach the service and return in the geometry readout
+(35.0, 48.0, 12.0°); the phase control's cell editor shows `α β γ` with the registry's meanings as
+tooltips. Two new specs pin both. Full browser lane green, **62 passed**.
+
+### Increment 4 — the second sweep, found by scanning rather than by eye (landed, 7f2eede)
+
+The first pass picked rows by hand and therefore missed some. A scan for *adjacent, unrowed,
+narrow, numeric* parameters sharing a group and a unit found six more sets, including the two the
+hand pass most should have caught: `variants` declares **two further Euler triples**, for the
+parent and child grains of a measured pair, whose labels ("Parent phi1 / alpha" and five like it)
+were the widest thing in their sections — six lines for what is two orientations.
+
+Those two triples are labelled by *ordinal*, not by symbol, and deliberately: which symbols they
+are depends on the `euler_convention` control directly above them, and a control labelled with the
+wrong symbol is worse than one labelled with a word. The same reasoning already applied to the
+crystal viewer's triple and the calculator's dual-purpose angle/axis boxes.
+
+Four more pairs joined: the ECCI stage tilt and rotation, its camera elevation and azimuth, the
+EBSD screen size, and the grain and high-angle thresholds.
+
+**A new test caught a real error here.** `ebsd.distribution` declares the grain threshold but not
+the high-angle one, so the name-keyed annotation gave it a row of *one* — a wrapper and an
+aria-group around a single field, which tells a screen reader a group is present and tells the
+next reader that a member went missing. `test_a_row_is_worth_drawing` failed on it before any page
+rendered it.
+
+**Where the numbers stand.** 92 parameters share a row; 51 show a symbol; **319 of 549 controls
+are narrower than the single default they all used to have**; an operation's form is 10% fewer
+lines before counting the width. The great majority of the narrowing was derived from constraints
+the parameters already declared, so it needs no maintenance.
+
+**Scope checked and deliberately not extended.** The hand-built controls in the panels
+(`crystal.js`, `xrd.js`, `texture.js`) were reviewed and left alone: they are colour swatches,
+range sliders and toggles inside the presentation-only `appearance` groups, which the platform
+document already places outside the scientific contract, and a slider is a control that *should*
+take the full width. Every scientific input in the application comes from the manifest and is
+therefore covered.
+
+**Status: the goal is met.** The rule is declared on the parameter, applied by one renderer,
+checked by eleven tests, and written into `AGENTS.md` as a cardinal rule. What remains open, and is
+outside it: the Kearns and Texture panels have long word-labelled controls that no registered
+symbol shortens, so their rails are still the tallest in the application; shortening those means
+either registering symbols for quantities the registry does not yet name, or shortening the labels
+themselves, and both are editorial decisions rather than mechanical ones.
