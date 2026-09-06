@@ -922,6 +922,144 @@ def _contour_levels(
     return [minimum + step * (index + 1) for index in range(count)]
 
 
+def _harmonic_sections(odf: Any, *, resolution_deg: float) -> list[dict[str, Any]]:
+    """Slice a harmonic ODF at the three phi-2 sections texture papers print.
+
+    A harmonic ODF has no section method of its own: it is a series, evaluated
+    wherever it is asked. It also needs no ``|G|`` correction of the kind
+    :func:`_odf_random_reference` applies to a discrete ODF, because its
+    densities are already in multiples of a random distribution by
+    construction — its mean density over SO(3) is 1.
+    """
+
+    from pytex.core.orientation import OrientationSet
+
+    phi1 = np.arange(0.0, 360.0 + 1e-9, resolution_deg)
+    big_phi = np.arange(0.0, 90.0 + 1e-9, resolution_deg)
+    phi1_mesh, big_phi_mesh = np.meshgrid(phi1, big_phi, indexing="xy")
+    payload: list[dict[str, Any]] = []
+    for phi2_value in (0.0, 45.0, 65.0):
+        angles = np.column_stack(
+            [
+                phi1_mesh.reshape(-1),
+                big_phi_mesh.reshape(-1),
+                np.full(phi1_mesh.size, float(phi2_value)),
+            ]
+        )
+        orientations = OrientationSet.from_euler_angles(
+            angles,
+            crystal_frame=odf.crystal_frame,
+            specimen_frame=odf.specimen_frame,
+            symmetry=odf.crystal_symmetry,
+            phase=odf.phase,
+            convention="bunge",
+            degrees=True,
+        )
+        densities = np.asarray(odf.evaluate(orientations), dtype=float).reshape(
+            big_phi.size, phi1.size
+        )
+        payload.append(
+            {
+                "phi2_deg": float(phi2_value),
+                "phi1_deg": [float(value) for value in phi1],
+                "big_phi_deg": [float(value) for value in big_phi],
+                "densities": [[float(value) for value in row] for row in densities],
+                "max_mrd": float(densities.max()),
+            }
+        )
+    return payload
+
+
+def _measured_harmonic_odf(
+    pole_figures: list[Any],
+    *,
+    degree_bandlimit: int,
+    quadrature_step_deg: float,
+    halfwidth_deg: float,
+    regularization: float,
+    ghost_correction: str,
+    resolution_deg: float,
+) -> dict[str, Any]:
+    """Reconstruct an ODF by the series-expansion route, optionally de-ghosted.
+
+    Purpose
+    -------
+    The classical Bunge method, and the only route in this application on which
+    ghost correction is defined. A pole figure obeys Friedel's law, so it
+    determines the even-degree half of the expansion and nothing at all of the
+    odd half; the even-only solution that results carries false maxima where the
+    specimen is empty and depresses the true maxima to pay for them.
+
+    Method and honesty
+    ------------------
+    Regularized least squares for the symmetry-projected harmonic coefficients,
+    then — when asked — an odd part recovered from positivity by
+    :func:`pytex.texture.correct_ghosts`. The correction's own cost travels back
+    with the sections, because the odd part it supplies is an *inference*, not a
+    measurement: no pole-figure experiment can confirm or refute it.
+
+    Returns
+    -------
+    dict
+        The same shape :func:`_measured_odf` returns, plus ``ghost`` describing
+        the correction when one was applied.
+    """
+
+    from pytex.texture.ghosts import GhostCorrectionSpec
+    from pytex.texture.harmonics import HarmonicODF
+    from pytex.texture.models import KernelSpec
+
+    spec = (
+        None
+        if ghost_correction == "none"
+        else GhostCorrectionSpec(method=ghost_correction)
+    )
+    report = HarmonicODF.invert_pole_figures(
+        pole_figures,
+        degree_bandlimit=degree_bandlimit,
+        regularization=regularization,
+        pole_kernel=KernelSpec(halfwidth_deg=halfwidth_deg),
+        phi1_step_deg=quadrature_step_deg,
+        big_phi_step_deg=quadrature_step_deg,
+        phi2_step_deg=quadrature_step_deg,
+        ghost_correction=spec,
+    )
+    odf = report.final_odf
+    sections = _harmonic_sections(odf, resolution_deg=resolution_deg)
+    ghost: dict[str, Any] | None = None
+    if report.ghost_correction is not None:
+        correction = report.ghost_correction
+        ghost = {
+            "method": correction.method,
+            "odd_basis_size": correction.odd_basis_size,
+            "amplitude_ratio": correction.ghost_amplitude_ratio,
+            "negative_before": correction.negative_density_fraction_before,
+            "negative_after": correction.negative_density_fraction_after,
+            "minimum_before": correction.minimum_density_before,
+            "minimum_after": correction.minimum_density_after,
+            "maximum_before": correction.maximum_density_before,
+            "maximum_after": correction.maximum_density_after,
+            "texture_index_before": correction.texture_index_before,
+            "texture_index_after": correction.texture_index_after,
+            "pole_figure_max_change": correction.pole_figure_max_change,
+            "describe": correction.describe(),
+        }
+    return {
+        "sections": sections,
+        "max_mrd": float(max(section["max_mrd"] for section in sections)),
+        "residual": float(report.relative_residual_norm),
+        "dictionary_count": int(report.basis_size),
+        "coefficient_count": int(report.basis_size),
+        "observation_count": int(report.observation_count),
+        "pole_figure_count": len(pole_figures),
+        "method": "harmonic",
+        "method_label": (
+            f"harmonic series to degree {degree_bandlimit}, {report.basis_size} coefficients"
+        ),
+        "ghost": ghost,
+    }
+
+
 def _measured_odf(
     pole_figures: list[Any],
     *,
@@ -1005,6 +1143,12 @@ def _measured_odf(
         "residual": float(report.residual_norm),
         "dictionary_count": int(dictionary_count),
         "pole_figure_count": len(pole_figures),
+        "method": "dictionary",
+        "method_label": f"non-negative dictionary of {int(dictionary_count)} orientations",
+        # Ghost correction is defined on the harmonic expansion, where the odd
+        # part is an explicit set of coefficients. The dictionary route has no
+        # such split: its non-negativity constraint acts on the weights.
+        "ghost": None,
     }
 
 
@@ -1132,6 +1276,102 @@ def _measured_odf(
             maximum=30.0,
             advanced=True,
         ),
+        ChoiceParameter(
+            name="odf_method",
+            label="Inversion route",
+            help_text=(
+                "How the orientation distribution is solved for.\n\n"
+                "**Dictionary** fits non-negative weights on a cloud of orientations. It cannot "
+                "produce a negative density because it is not allowed to, and it has no explicit "
+                "odd part to correct.\n\n"
+                "**Harmonic series** is the classical Bunge expansion. It is the only route on "
+                "which ghost correction is defined, because it is the only one that separates "
+                "the even part a pole figure determines from the odd part it cannot see."
+            ),
+            options=(
+                (
+                    "dictionary",
+                    "Non-negative dictionary",
+                    "Weights on an orientation cloud; never negative, no explicit odd part.",
+                ),
+                (
+                    "harmonic",
+                    "Harmonic series (Bunge)",
+                    "Symmetry-projected coefficients; the route ghost correction applies to.",
+                ),
+            ),
+            default="dictionary",
+            advanced=True,
+        ),
+        ChoiceParameter(
+            name="ghost_correction",
+            label="Ghost correction",
+            help_text=(
+                "Recover the odd part of the distribution, which a pole figure cannot measure.\n\n"
+                "A diffraction pole figure obeys Friedel's law and cannot tell a plane normal "
+                "from its opposite, so it fixes only the even-degree half of the expansion. "
+                "Setting the odd half to zero is not neutral: it puts false maxima where the "
+                "specimen is empty and depresses the true maxima to pay for them. Correction "
+                "adds the smallest odd part that makes the density non-negative.\n\n"
+                "**Zero range** asks for more — that the density stay at zero wherever the "
+                "measurement says the specimen has no such orientations at all.\n\n"
+                "**What it costs.** The odd part is an inference from positivity, not a "
+                "measurement, and no pole-figure experiment can confirm or refute it. The size "
+                "of the inference is reported beside the sections. Applies to the harmonic "
+                "route only."
+            ),
+            options=(
+                (
+                    "none",
+                    "None (even part only)",
+                    "Report what the data determine, and nothing else.",
+                ),
+                (
+                    "positivity",
+                    "Positivity",
+                    "The smallest odd part that makes the density non-negative.",
+                ),
+                (
+                    "zero_range",
+                    "Zero range",
+                    "Positivity, plus holding the measured empty range empty.",
+                ),
+            ),
+            default="none",
+            advanced=True,
+        ),
+        IntegerParameter(
+            name="odf_bandlimit",
+            label="Harmonic bandlimit",
+            help_text=(
+                "Highest harmonic degree retained by the series route. Higher resolves a sharper "
+                "texture, costs steeply more, and is more sensitive to noise. Ignored by the "
+                "dictionary route.\n\n"
+                "**It also decides whether ghost correction can do anything.** The odd part is "
+                "expanded to the same degree, and a symmetry admits odd terms only where it has "
+                "an odd-degree invariant: for a cubic material the first one is at **degree 9**, "
+                "so a cubic ODF expanded to degree 6 or 8 has no ghost part to correct and the "
+                "correction will say so. Lower symmetries admit odd terms much earlier."
+            ),
+            default=6,
+            minimum=2,
+            maximum=16,
+            advanced=True,
+        ),
+        NumberParameter(
+            name="odf_regularization",
+            label="Harmonic regularization",
+            help_text=(
+                "Tikhonov weight on the harmonic coefficients. This is the whole defence against "
+                "an under-determined fit: with fewer measured points than coefficients, the "
+                "unregularized solution is a picture of the null space rather than of the "
+                "specimen. Larger is smoother and more stable."
+            ),
+            default=0.01,
+            minimum=1e-8,
+            maximum=1.0,
+            advanced=True,
+        ),
         BooleanParameter(
             name="shared_scale",
             label="One scale for every figure",
@@ -1223,9 +1463,15 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
         ]
         rows.extend({**point, "figure": label, "file": name} for point in points)
         reconstructed.append(pole_figure)
+        # The identifier drawn on the figure itself. A plate of six discs is
+        # unreadable without one, and the file name is the only identifier a
+        # measurement always has; the sample name in the file is better when it
+        # is there, which for a lab instrument is most of the time.
+        sample_label = (measurement.sample_name or "").strip() or name.rsplit(".", 1)[0]
         figures.append(
             {
                 "file": name,
+                "sample_label": sample_label,
                 "label": label,
                 "indices": list(indices),
                 "points": points,
@@ -1241,6 +1487,13 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
                 "sample_name": measurement.sample_name,
             }
         )
+
+    # A label that is the same on every panel identifies nothing. The sample
+    # name in the file is the better identifier when it distinguishes the
+    # figures, and the file name is the only one that always does.
+    if len({figure["sample_label"] for figure in figures}) < len(figures):
+        for figure in figures:
+            figure["sample_label"] = str(figure["file"]).rsplit(".", 1)[0]
 
     overall_min = min(figure["minimum"] for figure in figures)
     overall_max = max(figure["maximum"] for figure in figures)
@@ -1265,13 +1518,27 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             f"{int(request['dictionary_count'])} orientations.",
             source="texture.measured_pole_figures",
         )
-        odf = _measured_odf(
-            reconstructed,
-            phase=phase,
-            dictionary_count=int(request["dictionary_count"]),
-            halfwidth_deg=float(request["odf_halfwidth_deg"]),
-            resolution_deg=5.0,
-        )
+        if str(request["odf_method"]) == "harmonic":
+            odf = _measured_harmonic_odf(
+                reconstructed,
+                degree_bandlimit=int(request["odf_bandlimit"]),
+                # Coarser than the section grid on purpose: the quadrature is
+                # three-dimensional, so its cost is the cube of the step, and it
+                # only has to resolve the response kernel.
+                quadrature_step_deg=20.0,
+                halfwidth_deg=float(request["odf_halfwidth_deg"]),
+                regularization=float(request["odf_regularization"]),
+                ghost_correction=str(request["ghost_correction"]),
+                resolution_deg=5.0,
+            )
+        else:
+            odf = _measured_odf(
+                reconstructed,
+                phase=phase,
+                dictionary_count=int(request["dictionary_count"]),
+                halfwidth_deg=float(request["odf_halfwidth_deg"]),
+                resolution_deg=5.0,
+            )
         APP_LOG.notice(
             f"ODF reconstructed: peak {odf['max_mrd']:.2f} m.r.d., residual {odf['residual']:.4g}.",
             source="texture.measured_pole_figures",
@@ -1280,6 +1547,47 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
 
     unit = {"mrd": "m.r.d.", "max": "peak = 1", "none": "counts"}[normalization]
     names = ", ".join(figure["label"] for figure in figures)
+    notes = [
+        "These are measurements, so no answer is known in advance. A figure whose intensities "
+        "are not normalised to m.r.d. means nothing outside its own file: detector counts "
+        "depend on the counting time and the instrument.",
+        "Defocusing and absorption corrections are not applied here. A reflection measured to "
+        "high tilt falls off for instrumental reasons as well as textural ones, and the "
+        "outer rim of an uncorrected figure is the part to distrust.",
+        "The plane assigned to each file comes from the order the files were opened, not from "
+        "the file: XRDML records the diffraction angle rather than the reflection.",
+        "ODF reconstruction from pole figures is ill-posed: projections lose the odd-order "
+        "information, so the result depends on the dictionary, the kernel and the "
+        "regularization. Three figures from different planes is the usual minimum, and the "
+        "reported residual is what says whether the estimate is worth anything.",
+    ]
+    if odf is not None and odf.get("coefficient_count", 0) > int(odf.get("observation_count", 0)):
+        # Stated rather than blocked: an under-determined fit is legitimate when
+        # the regularization is doing the work knowingly, and misleading when it
+        # is not. The reader is the one who can tell the difference.
+        notes.append(
+            f"The harmonic fit solved for {odf['coefficient_count']} coefficients from "
+            f"{odf['observation_count']} measured intensities. There are fewer data than "
+            "unknowns, so the regularization, not the specimen, is deciding the part of the "
+            "answer the data leave free: lower the bandlimit, measure more directions, or read "
+            "the result as a smoothed lower bound on the texture."
+        )
+    if odf is not None and odf.get("ghost") is not None:
+        ghost = odf["ghost"]
+        notes.append(
+            "Ghost correction was requested but did nothing: this symmetry admits no odd-degree "
+            "harmonic term at or below the chosen bandlimit, so the even-only solution already "
+            "spans every function the symmetry allows. For a cubic material the first odd "
+            "invariant is at degree 9."
+            if ghost["odd_basis_size"] == 0
+            else (
+                "The odd part the ghost correction supplied is an inference from positivity, not "
+                "a measurement: no pole-figure experiment can confirm or refute it. It changed "
+                "the pole densities the ODF predicts at the measured directions by at most "
+                f"{ghost['pole_figure_max_change']:.3g} m.r.d., which is the check that it did "
+                "not buy positivity with data agreement."
+            )
+        )
     result = AppResult(
         title=f"Measured pole figures of {spec.name}: {names}",
         summary=(
@@ -1297,8 +1605,27 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
                 if odf is None
                 else (
                     f" The ODF reconstructed from them peaks at {odf['max_mrd']:.2f} m.r.d. with "
-                    f"a residual of {odf['residual']:.4g} over {odf['dictionary_count']} "
-                    "dictionary orientations."
+                    f"a residual of {odf['residual']:.4g}, over a "
+                    f"{odf.get('method_label', 'dictionary')}."
+                )
+            )
+            + (
+                ""
+                if odf is None or odf.get("ghost") is None
+                else (
+                    " Ghost correction did nothing, and could not: the crystal and specimen "
+                    f"symmetries admit no odd-degree harmonic term at degree "
+                    f"{int(request['odf_bandlimit'])} or below, so the even-only solution "
+                    "already spans every function the symmetry allows. For a cubic material the "
+                    "first odd invariant is at degree 9."
+                    if odf["ghost"]["odd_basis_size"] == 0
+                    else f" Ghost correction by {odf['ghost']['method']} added an odd part "
+                    f"{odf['ghost']['amplitude_ratio']:.3f} times the even one, taking the "
+                    f"negative density from {odf['ghost']['negative_before']:.1%} of orientation "
+                    f"space to {odf['ghost']['negative_after']:.1%} and the peak from "
+                    f"{odf['ghost']['maximum_before']:.2f} to "
+                    f"{odf['ghost']['maximum_after']:.2f} m.r.d. That odd part is an inference "
+                    "from positivity, not a measurement."
                 )
             )
         ),
@@ -1333,22 +1660,13 @@ def _measured_pole_figures(request: dict[str, Any]) -> dict[str, Any]:
             "reconstruct_odf": bool(request["reconstruct_odf"]),
             "dictionary_count": int(request["dictionary_count"]),
             "odf_halfwidth_deg": float(request["odf_halfwidth_deg"]),
+            "odf_method": str(request["odf_method"]),
+            "odf_bandlimit": int(request["odf_bandlimit"]),
+            "odf_regularization": float(request["odf_regularization"]),
+            "ghost_correction": str(request["ghost_correction"]),
             "files": [str(item.get("name", "")) for item in items if isinstance(item, dict)],
         },
-        notes=(
-            "These are measurements, so no answer is known in advance. A figure whose intensities "
-            "are not normalised to m.r.d. means nothing outside its own file: detector counts "
-            "depend on the counting time and the instrument.",
-            "Defocusing and absorption corrections are not applied here. A reflection measured to "
-            "high tilt falls off for instrumental reasons as well as textural ones, and the "
-            "outer rim of an uncorrected figure is the part to distrust.",
-            "The plane assigned to each file comes from the order the files were opened, not from "
-            "the file: XRDML records the diffraction angle rather than the reflection.",
-            "ODF reconstruction from pole figures is ill-posed: projections lose the odd-order "
-            "information, so the result depends on the dictionary, the kernel and the "
-            "regularization. Three figures from different planes is the usual minimum, and the "
-            "reported residual is what says whether the estimate is worth anything.",
-        ),
+        notes=tuple(notes),
         citations=(_CITATION_BUNGE, _CITATION_RANDLE),
     )
     return result.to_json()

@@ -197,3 +197,86 @@ def test_no_odf_is_computed_unless_it_is_asked_for() -> None:
     """It is the expensive branch, and most sessions only want the figures."""
 
     assert measured([("a.xrdml", [1, 1, 1])])["data"]["odf"] is None
+
+
+def test_a_plate_of_figures_is_labelled_by_something_that_distinguishes_them() -> None:
+    """A label repeated on every panel identifies nothing.
+
+    The sample name inside the file is the better identifier when it varies, and
+    the file name is the only one that always does. Every fixture here is the
+    same file, so the fallback is exactly the case under test.
+    """
+
+    figures = measured(
+        [("cold-rolled.xrdml", [1, 1, 1]), ("annealed.xrdml", [2, 0, 0])]
+    )["data"]["figures"]
+    labels = [figure["sample_label"] for figure in figures]
+    assert labels == ["cold-rolled", "annealed"]
+    assert len(set(labels)) == len(labels)
+
+
+@pytest.fixture(scope="module")
+def harmonic_reconstruction() -> dict:
+    """One harmonic inversion of the fixture, with ghost correction requested."""
+
+    return measured(
+        [("a.xrdml", [1, 1, 1])],
+        reconstruct_odf=True,
+        odf_method="harmonic",
+        odf_bandlimit=6,
+        ghost_correction="positivity",
+    )
+
+
+def test_the_harmonic_route_says_what_it_solved_for(harmonic_reconstruction: dict) -> None:
+    odf = harmonic_reconstruction["data"]["odf"]
+    assert odf["method"] == "harmonic"
+    assert "harmonic series to degree 6" in odf["method_label"]
+    assert odf["coefficient_count"] > 0
+    assert odf["observation_count"] > 0
+
+
+def test_an_under_determined_harmonic_fit_says_so(harmonic_reconstruction: dict) -> None:
+    """Fewer measured intensities than coefficients means the regularization decides.
+
+    Stated rather than blocked: an under-determined fit is legitimate when the
+    smoothing is doing the work knowingly, and misleading when it is not. The
+    reader is the one who can tell the difference, so the reader is told.
+    """
+
+    odf = harmonic_reconstruction["data"]["odf"]
+    assert odf["coefficient_count"] > odf["observation_count"]
+    notes = " ".join(harmonic_reconstruction["notes"])
+    assert "fewer data than unknowns" in notes
+    assert "regularization, not the specimen" in notes
+
+
+def test_ghost_correction_on_a_cubic_material_reports_that_it_could_not_act(
+    harmonic_reconstruction: dict,
+) -> None:
+    """The rotation group 432 has no odd-degree invariant below degree 9.
+
+    So a cubic ODF expanded to degree 6 has no ghost part to correct, and the
+    application must say that rather than report a correction of size zero as
+    though a correction had been made.
+    """
+
+    ghost = harmonic_reconstruction["data"]["odf"]["ghost"]
+    assert ghost is not None
+    assert ghost["odd_basis_size"] == 0
+    assert ghost["amplitude_ratio"] == 0.0
+    assert "no odd-degree harmonic term" in harmonic_reconstruction["summary"]
+    assert "first odd invariant is at degree 9" in " ".join(harmonic_reconstruction["notes"])
+
+
+def test_the_dictionary_route_has_no_odd_part_to_correct() -> None:
+    """Ghost correction is defined on the expansion, not on a cloud of weights."""
+
+    odf = measured(
+        [("a.xrdml", [1, 1, 1])],
+        reconstruct_odf=True,
+        dictionary_count=120,
+    )["data"]["odf"]
+    assert odf["method"] == "dictionary"
+    assert odf["ghost"] is None
+    assert "dictionary of 120 orientations" in odf["method_label"]

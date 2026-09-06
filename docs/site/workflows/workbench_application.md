@@ -1370,11 +1370,12 @@ believing a feature in it.
 ```
 
 **Texture — `.xrdml` pole figures.** The **Measured pole figures** view opens one or more Panalytical
-XRDML files, one per measured reflection, and draws them in **tabs** — full size, one at a time,
-rather than shrunk into a row. Give the plane of each file in the order the files were opened: XRDML
-records the diffraction angle, not the reflection, so the assignment cannot be read from the file.
+XRDML files, one per measured reflection or one per sample, and draws them either in **tabs** — full
+size, one at a time — or as a **plate**, every figure at once. Give the plane of each file in the
+order the files were opened: XRDML records the diffraction angle, not the reflection, so the
+assignment cannot be read from the file.
 
-Two controls decide whether the set can be read as a set:
+Three controls decide whether the set can be read as a set:
 
 - **One scale for every figure** puts them all on the same intensity range. Two pole figures of one
   specimen drawn on separate scales cannot be compared, and comparing them is the reason to measure
@@ -1382,13 +1383,40 @@ Two controls decide whether the set can be read as a set:
 - **Contour levels** are a reading decision, not a property of the data. Type them — `1, 2, 4, 7, 10`
   is the sequence most of the texture literature uses — or leave the field empty for evenly spaced
   ones. Whatever is chosen applies to every figure in the set.
+- **Measured layout**, under *Contour properties*, chooses between the two. Tabs give one figure the
+  whole stage; **All together, one scale** draws every opened figure as a plate at the shared levels,
+  with each disc carrying its own sample identifier — the sample name from the file when that
+  distinguishes the figures, and the file name when it does not. Reading a difference between
+  samples by clicking between tabs is not a comparison; the plate is the view that makes it one.
 
 **Reconstruct the ODF** inverts the opened set into an orientation distribution and adds it as a
 further tab, sliced at φ₂ = 0°, 45° and 65°. This is the classical inverse problem of quantitative
 texture analysis and it is **ill-posed**: pole figures are projections and lose the odd-order
-information, so the answer depends on the dictionary, the kernel and the regularization. One pole
+information, so the answer depends on the route, the kernel and the regularization. One pole
 figure cannot constrain it at all and three from different planes is the usual minimum. The residual
 is printed beside the sections; read it before the peaks.
+
+Two advanced settings decide *which* inverse problem is solved.
+
+- **Inversion route.** *Non-negative dictionary* fits weights on a cloud of orientations; it cannot
+  return a negative density because it is not allowed to, and it has no explicit odd part.
+  *Harmonic series (Bunge)* fits symmetry-projected coefficients, and is the only route on which
+  ghost correction is defined, because it is the only one that separates the even part a pole figure
+  determines from the odd part it cannot see.
+- **Ghost correction**, on the harmonic route: *Positivity* adds the smallest odd part that makes the
+  density non-negative; *Zero range* additionally holds the density at zero wherever the measurement
+  says the specimen has no such orientations. The panel reports the size of the odd part against the
+  even one, because that odd part is an **inference from positivity, not a measurement** — no
+  pole-figure experiment can confirm or refute it.
+
+  Whether it can act at all depends on the symmetry and the bandlimit. A symmetry admits odd terms
+  only where it has an odd-degree invariant, and for a cubic material the first one is at **degree
+  9**; asking for correction on a cubic ODF expanded to degree 6 or 8 gets a statement that there
+  was no ghost part to correct rather than a correction of size zero dressed up as one.
+
+  When the harmonic fit has fewer measured intensities than coefficients — easy to arrange by
+  raising the bandlimit — the result says so: the regularization, not the specimen, is then deciding
+  the part of the answer the data leave free.
 
 Normalisation decides what the numbers mean at all. A measured figure arrives in detector counts,
 which depend on the counting time and the instrument; **m.r.d.** rescales it so a texture-free

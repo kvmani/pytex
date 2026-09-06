@@ -6532,7 +6532,7 @@ the GUI.
 | 1 | Ghost correction in the harmonic ODF, with the Friedel folding it depends on | **done** |
 | 2 | Contour control: explicit levels, level scales, shared scales, publication defaults | **done** |
 | 3 | Multi-sample comparison figures on one scale, with sample identification | **done** |
-| 4 | The GUI surface for both, in the texture workspace | not started |
+| 4 | The GUI surface for both, in the texture workspace | **done** |
 | 5 | Worked examples and the algorithm page | not started |
 | 6 | Notebook / workflow documentation and the parity matrix | not started |
 
@@ -6617,3 +6617,51 @@ rendering test asserting no warnings were raised and closing every figure it ope
 **Next concrete step.** Increment 4: the GUI. `src/pytex/app/services/texture.py` computes pole
 figures for the workspace; it needs a contour-settings surface (scale, count or explicit levels,
 range, colormap, labels) and a multi-sample comparison mode, with the panel exposing them.
+
+## Increment 4 - the workbench surface (landed)
+
+**What was already there.** The panel's contour controls turned out to be well developed already:
+display mode, level count, explicit levels, upper colour limit, palette, line colour and width,
+fill opacity and display-grid size, with the measured view computing one shared scale and one level
+set across every opened figure server-side. So increment 4 was not "add contour controls"; it was
+the two things that were genuinely missing.
+
+**What shipped.**
+
+1. *A comparison plate.* `Measured layout` chooses tabs or a plate; `renderComparisonPlate` draws
+   every opened figure at the shared levels in one SVG, each disc labelled with its sample. The
+   labels come from the service: the XRDML sample name when it distinguishes the figures, the file
+   stem when it does not - the fixture set proves the fallback, since every panel otherwise read
+   `synthetic_random_standard_not_experimental`. In plate layout the tabs collapse to *All figures*
+   and *ODF*, because there is nothing left to switch between.
+2. *Ghost correction in the application.* An `Inversion route` choice adds the harmonic series
+   beside the existing non-negative dictionary, with `Ghost correction`, `Harmonic bandlimit` and
+   `Harmonic regularization` on it. `_measured_harmonic_odf` runs the inversion and the correction
+   and returns the same payload shape the dictionary route does, plus a `ghost` block; the summary,
+   the notes and the figure's status line all report what the correction cost.
+
+**Three things the application now says that it could not before.**
+
+- *Ghost correction on a cubic material at a modest bandlimit does nothing, and says so.* 432 has
+  no odd-degree invariant below degree 9, so degree 6 or 8 has no ghost part; reporting a
+  correction of size zero as though a correction had been made would be the misleading answer. At
+  degree 9 the odd basis is 19 functions and the correction fires.
+- *An under-determined harmonic fit says so.* The fixture gives 12 measured intensities per figure
+  against 23 coefficients at degree 6, and the note states that the regularization rather than the
+  specimen is deciding the free part.
+- *The legend formats its numbers.* A shared scale hands back levels like `0.922614068981962`,
+  which the legend printed verbatim.
+
+**Cost, measured.** The harmonic route on the three-figure fixture: ~19 s at degree 6, ~57 s at
+degree 9, against well under a second for the dictionary route. The basis projection dominates.
+Both are opt-in and advanced; a later increment could cut the cost by projecting the raw basis in
+blocks rather than materialising `(n_spec x n_quad x n_crys, n_terms)` at once.
+
+**Verified.** `ruff`, `mypy`, `tests/unit/test_app_texture_import.py` (18 tests, 5 new), and the
+whole Playwright lane - 60 tests, including the new plate test, green in 3.1 minutes. The plate was
+also driven by hand and screenshotted.
+
+**Next concrete step.** Increment 5: a worked example for the ghost correction and one for the
+shared contour scale, registered in `worked_examples/`, plus the algorithm page
+`docs/site/algorithms/ghost_correction.md` at the level the repository's algorithm pages are
+written to: pseudocode, every setting with what it is calibrated against, and the failure modes.

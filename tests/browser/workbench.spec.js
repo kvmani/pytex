@@ -1587,6 +1587,68 @@ test('XRDML pole figures open into tabs on one shared scale', async ({ page }) =
 });
 
 /*
+ * The comparison plate: every measured figure at once, on one scale, labelled.
+ *
+ * Tabs make a reader hold one figure in their head while looking at another,
+ * which is not a comparison. The plate draws all of them together at the shared
+ * levels with the sample identifier on each disc. The assertions are that the
+ * layout control produces one drawing holding every figure, that each panel
+ * carries its own identifier, and that the tabs collapse because there is
+ * nothing left to switch between.
+ */
+test('measured pole figures can be drawn as one labelled comparison plate', async ({ page }) => {
+  const browserErrors = await openWorkbench(page);
+  await workspaceTab(page, 'Texture').click();
+
+  const text = readFileSync('fixtures/xrdml/synthetic_random_standard.xrdml', 'utf-8');
+  await page.locator('#rail-body select[aria-label="View"]').selectOption({
+    label: 'Measured pole figures',
+  });
+  await page.setInputFiles('#texture-files input[type="file"]', [
+    { name: 'sample-A.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    { name: 'sample-B.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+    { name: 'sample-C.xrdml', mimeType: 'application/xml', buffer: Buffer.from(text, 'utf-8') },
+  ]);
+  await expect(page.locator('#rail-body')).toContainText('3 file(s) open');
+  const poles = page.locator('.indices--multi').filter({ has: page.locator('[id^="ctl-poles-"]') });
+  await fillIndices(poles, [
+    [1, 1, 1],
+    [2, 0, 0],
+    [2, 2, 0],
+  ]);
+  await page.getByRole('button', { name: 'Build texture', exact: true }).click();
+  await expect(page.locator('.figure-tab')).toHaveCount(3, { timeout: 30_000 });
+
+  // Switch the layout. The plate is one drawing holding every figure, so the
+  // assertion is on the drawing rather than on the status line.
+  await page.getByText('Contour properties', { exact: true }).click();
+  await page.getByLabel('Measured layout').selectOption('plate');
+  const plate = page.locator('#stage svg[data-plate-panels]');
+  await expect(plate).toHaveAttribute('data-plate-panels', '3', { timeout: 30_000 });
+
+  const panels = page.locator('#stage [data-plate-panel]');
+  await expect(panels).toHaveCount(3);
+  // Each disc names its own sample, so a panel can be attributed without
+  // counting rows against a caption.
+  await expect(plate).toContainText('{111}');
+  await expect(plate).toContainText('{220}');
+
+  const status = page.locator('#stage .plot__status').first();
+  await expect(status).toContainText('3 figures on one plate');
+  await expect(status).toContainText('one scale');
+
+  // With every figure on screen there is nothing left to switch between.
+  await expect(page.locator('.figure-tab')).toHaveCount(0);
+
+  // And back: the layout is a presentation choice, not a different result.
+  await page.getByLabel('Measured layout').selectOption('tabs');
+  await expect(page.locator('.figure-tab')).toHaveCount(3);
+  await expect(page.locator('#stage svg[data-plate-panels]')).toHaveCount(0);
+
+  expect(browserErrors).toEqual([]);
+});
+
+/*
  * Opening a real EBSD scan.
  *
  * The panel's practice datasets are constructions with known answers, which is

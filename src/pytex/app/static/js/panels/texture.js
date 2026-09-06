@@ -42,6 +42,11 @@ const MEASURED = 'texture.measured_pole_figures';
 const VIEW = 100;
 
 const DEFAULT_CONTOUR_STYLE = Object.freeze({
+  // 'tabs' shows one measured figure at a time; 'plate' shows every one of them
+  // at once, on the shared scale, each labelled with its sample. Comparing is
+  // the reason to measure more than one figure, and a comparison a reader has
+  // to make by clicking between tabs is not one.
+  layout: 'tabs',
   mode: 'filled_lines',
   levelCount: 8,
   customLevels: '',
@@ -154,6 +159,15 @@ function contourStyleControl(style, { disabled, onChange, onReset }) {
     ['filled', 'Filled contours'],
     ['lines', 'Contour lines'],
   ].map(([value, text]) => el('option', { value, text, selected: style.mode === value })));
+  const layout = el('select', {
+    oninput: (event) => {
+      style.layout = event.currentTarget.value;
+      onChange({ rebuildGrid: true });
+    },
+  }, [
+    ['tabs', 'One figure at a time'],
+    ['plate', 'All together, one scale'],
+  ].map(([value, text]) => el('option', { value, text, selected: style.layout === value })));
   const palette = el('select', {
     oninput: (event) => {
       style.palette = event.currentTarget.value;
@@ -174,6 +188,14 @@ function contourStyleControl(style, { disabled, onChange, onReset }) {
   const opacityOutput = el('output', { text: style.fillOpacity.toFixed(2) });
   const lineColorOutput = el('output', { text: style.lineColor.toUpperCase() });
   fieldset.append(
+    el('label.field', {}, [
+      el('span.field__label', { text: 'Measured layout' }),
+      layout,
+      el('span.field__hint', {
+        text: 'A plate draws every opened figure at once, on the shared scale, each labelled '
+          + 'with its sample. Applies to measured pole figures.',
+      }),
+    ]),
     el('label.field', {}, [el('span.field__label', { text: 'Contour display' }), mode]),
     el('label.field', {}, [
       el('span.field__label', { text: 'Automatic levels' }),
@@ -296,6 +318,7 @@ export function mount(context) {
     form: null,
     contour: defaultContourStyle(),
     contourGrid: null,
+    plateGrids: null,
     plotNode: null,
     // The measured view: the opened files, and which figure's tab is showing.
     files: [],
@@ -332,6 +355,7 @@ export function mount(context) {
         state.operation = operations.find((entry) => entry.id === viewSelect.value);
         state.teaches = null;
         state.contourGrid = null;
+        state.plateGrids = null;
         renderControls(carryOver());
         renderAppearanceControls();
         renderFileControls();
@@ -431,12 +455,16 @@ export function mount(context) {
       contourStyleControl(state.contour, {
         disabled: !supportsContours,
         onChange: ({ rebuildGrid = false } = {}) => {
-          if (rebuildGrid) state.contourGrid = null;
+          if (rebuildGrid) {
+            state.contourGrid = null;
+            state.plateGrids = null;
+          }
           if (state.result) draw(true);
         },
         onReset: () => {
           state.contour = defaultContourStyle();
           state.contourGrid = null;
+          state.plateGrids = null;
           renderAppearanceControls();
           if (state.result) draw(true);
         },
@@ -449,6 +477,7 @@ export function mount(context) {
     viewSelect.value = state.operation.id;
     state.teaches = example.teaches;
     state.contourGrid = null;
+    state.plateGrids = null;
     renderControls(example.request);
     renderAppearanceControls();
     run();
@@ -517,22 +546,34 @@ export function mount(context) {
   }
 
   /**
-   * One tab per opened figure.
+   * The tabs over the measured figures.
    *
-   * Tabs rather than a column of small figures: a pole figure read at a third
-   * of the stage is a picture of a texture rather than a measurement of one,
-   * and the contour levels — which are shared across all of them — are what
-   * makes flipping between full-size figures a comparison.
+   * One tab per figure while the layout shows them one at a time: a pole figure
+   * read at a third of the stage is a picture of a texture rather than a
+   * measurement of one, and the shared contour levels are what make flipping
+   * between full-size figures a comparison. In plate layout every figure is on
+   * screen already, so the tabs collapse to the two things that are still
+   * distinct views — the plate, and the ODF derived from all of it.
    */
   function renderFigureTabs() {
     const data = state.result?.data ?? {};
     const figures = data.figures ?? [];
+    const plated = state.contour.layout === 'plate' && figures.length > 1;
     // The reconstructed ODF is a further tab, last, because it is derived from
-    // every figure before it rather than being one of them.
+    // every figure before it rather than being one of them. Its index stays
+    // len(figures) in both layouts, so nothing else has to know which is shown.
     const entries = [
-      ...figures.map((figure) => ({ label: figure.label, title: figure.file })),
+      ...(plated
+        ? [{ label: 'All figures', title: 'Every opened figure, on one scale', index: 0 }]
+        : figures.map((figure, index) => ({
+          label: figure.label, title: figure.file, index,
+        }))),
       ...(data.odf
-        ? [{ label: 'ODF', title: 'Orientation distribution reconstructed from these figures' }]
+        ? [{
+          label: 'ODF',
+          title: 'Orientation distribution reconstructed from these figures',
+          index: figures.length,
+        }]
         : []),
     ];
     tabs.hidden = state.operation.id !== MEASURED || entries.length < 2;
@@ -541,16 +582,17 @@ export function mount(context) {
       return;
     }
     tabs.replaceChildren(
-      ...entries.map((entry, index) =>
+      ...entries.map((entry) =>
         el('button.figure-tab', {
           type: 'button',
           role: 'tab',
           text: entry.label,
           title: entry.title,
-          'aria-selected': String(index === state.figureIndex),
+          'aria-selected': String(entry.index === state.figureIndex),
           onclick: () => {
-            state.figureIndex = index;
+            state.figureIndex = entry.index;
             state.contourGrid = null;
+            state.plateGrids = null;
             draw(true);
           },
         }),
@@ -575,11 +617,45 @@ export function mount(context) {
       frame.setContent(state.plotNode, { preserveViewport });
       renderRampLegend(data.odf.max_mrd, state.contour);
       renderFigureTabs();
+      const ghost = data.odf.ghost;
       frame.setStatus(
         `ODF from ${data.odf.pole_figure_count} measured figure(s) · peak ` +
           `${formatNumber(data.odf.max_mrd, 2)} m.r.d. · residual ` +
-          `${formatNumber(data.odf.residual, 4)} over ${data.odf.dictionary_count} dictionary ` +
-          'orientations · ill-posed: read the residual before the peaks',
+          `${formatNumber(data.odf.residual, 4)} · ` +
+          `${data.odf.method_label ?? `${data.odf.dictionary_count} dictionary orientations`}` +
+          (ghost
+            ? (ghost.odd_basis_size
+              ? ` · ghost-corrected (${ghost.method}), odd part `
+                + `${formatNumber(ghost.amplitude_ratio, 3)} of the even one — an inference from `
+                + 'positivity, not a measurement'
+              : ' · ghost correction had nothing to do: this symmetry admits no odd term at this '
+                + 'bandlimit')
+            : '') +
+          ' · ill-posed: read the residual before the peaks',
+      );
+      return;
+    }
+    if (state.contour.layout === 'plate' && figures.length > 1) {
+      const plateStyle = {
+        ...state.contour,
+        customLevels: data.levels.join(' '),
+        scaleMax: data.scale.maximum,
+      };
+      state.plateGrids ??= figures.map((entry) =>
+        interpolatePoleFigure(entry.points, state.contour.gridSize));
+      frame.configure({ toData: null, formatCursor: null });
+      state.plotNode = renderComparisonPlate(figures, state.plateGrids, plateStyle, data);
+      frame.setContent(state.plotNode, { preserveViewport });
+      renderRampLegend(data.scale.maximum, plateStyle);
+      renderFigureTabs();
+      frame.setStatus(
+        `${figures.length} figures on one plate · `
+          + (data.shared_scale
+            ? `one scale, ${formatNumber(data.scale.minimum, 2)} to `
+              + `${formatNumber(data.scale.maximum, 2)} ${data.unit}`
+            : 'each figure on its own scale, so the plate is not a comparison')
+          + ` · contours at ${data.levels.map((level) => formatNumber(level, 2)).join(', ')}`
+          + ' · hover read-out is available one figure at a time',
       );
       return;
     }
@@ -623,6 +699,7 @@ export function mount(context) {
       const result = await call(state.operation.id, request);
       state.result = result;
       state.contourGrid = null;
+      state.plateGrids = null;
       draw();
       renderResult(details, result, { teaches: state.teaches });
     } catch (error) {
@@ -726,7 +803,9 @@ export function mount(context) {
       ...stops.map((value) =>
         el('span.legend__item', {}, [
           el('span.legend__swatch', { style: `background:${paletteColor(value, style, maxMrd)}` }),
-          el('span', { text: value === 1 ? '1 (random)' : String(value) }),
+          // Formatted, not stringified: a shared scale hands back levels like
+          // 0.922614068981962, and a legend is unreadable at that width.
+          el('span', { text: value === 1 ? '1 (random)' : formatNumber(value, 2) }),
         ]),
       ),
     );
@@ -899,6 +978,71 @@ function drawContourGrid(parent, grid, style, maxMrd, mapPoint) {
   }
   return levels;
 }
+
+/**
+ * Every measured figure at once, on one scale, each identified.
+ *
+ * The comparison case. Drawn from the same interpolated grids and the same
+ * declared levels as the single view, so a panel of the plate and the same
+ * figure in its own tab are the same drawing at a different size; only the
+ * hover read-out is dropped, because a plate is for reading differences
+ * between figures rather than values within one.
+ */
+function renderComparisonPlate(figures, grids, style, data) {
+  const columns = Math.min(3, figures.length);
+  const rows = Math.ceil(figures.length / columns);
+  const cellWidth = 2.55 * VIEW;
+  const cellHeight = 3.0 * VIEW;
+  const root = svg('svg', {
+    viewBox: `0 0 ${columns * cellWidth} ${rows * cellHeight}`,
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': `${figures.length} measured pole figures on one intensity scale`,
+    'data-plate-panels': String(figures.length),
+  });
+  figures.forEach((figure, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const cell = svg('g', {
+      transform: `translate(${(column + 0.5) * cellWidth} ${(row + 0.5) * cellHeight})`,
+      'data-plate-panel': figure.sample_label ?? figure.file,
+    });
+    const clipId = `plate-clip-${index}-${Math.random().toString(36).slice(2, 7)}`;
+    const defs = svg('defs');
+    const clip = svg('clipPath', { id: clipId });
+    clip.append(svg('circle', { cx: 0, cy: 0, r: VIEW }));
+    defs.append(clip);
+    cell.append(defs);
+    const body = svg('g', { 'clip-path': `url(#${clipId})` });
+    drawContourGrid(body, grids[index], style, figure.scale.maximum,
+      (x, y) => ({ x: x * VIEW, y: -y * VIEW }));
+    cell.append(body);
+    discFrame(cell, data.specimen_axes ?? ['RD', 'TD']);
+    // The sample identifier goes on the drawing itself: a plate of six discs
+    // cannot be attributed from a caption, and a figure cut out of one for a
+    // talk takes its label with it.
+    cell.append(svg('text', {
+      x: 0,
+      y: -VIEW * 1.2,
+      'text-anchor': 'middle',
+      'font-size': 10,
+      fill: 'currentColor',
+      text: figure.sample_label ?? figure.file,
+    }));
+    cell.append(svg('text', {
+      x: 0,
+      y: VIEW * 1.34,
+      'text-anchor': 'middle',
+      'font-size': 8,
+      fill: 'currentColor',
+      'fill-opacity': 0.75,
+      text: `${figure.label} · max ${formatNumber(figure.maximum, 2)} · `
+        + `min ${formatNumber(figure.minimum, 2)}`,
+    }));
+    root.append(cell);
+  });
+  return root;
+}
+
 
 /**
  * The pole figure, drawn as a filled density.

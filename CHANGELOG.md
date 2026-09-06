@@ -47,6 +47,16 @@ values were the ones in error.
   the projection's distortion is largest exactly where pole figures are most crowded.
 - `ContourLayer2D` gains `filled`, `label_lines` and `label_format`; `MultiFigureSpec2D` gains
   `shared_colorbar_label`.
+- **In the workbench**, the measured-pole-figure view gains a **Measured layout** control: tabs as
+  before, or a plate drawing every opened figure at once on the shared levels, each disc carrying
+  its own sample identifier. The identifier is the sample name from the file when that
+  distinguishes the figures and the file name when it does not, because a label repeated on every
+  panel identifies nothing.
+- **In the workbench**, an **Inversion route** choice (non-negative dictionary, as before, or the
+  harmonic series) with **Ghost correction** and a **Harmonic bandlimit** and **regularization** on
+  the series route. The panel states the size of the odd part against the even one, says when the
+  symmetry admits no odd term at the chosen bandlimit rather than reporting a zero correction as a
+  correction, and says when the fit has fewer measured intensities than coefficients.
 - **Ghost correction** (`pytex.texture.ghosts`): `correct_ghosts`, `GhostCorrectionSpec`,
   `GhostCorrectionReport`. The correction holds the measured even part fixed and adds the smallest
   odd part that makes the density admissible, by minimizing a smooth convex functional of the
