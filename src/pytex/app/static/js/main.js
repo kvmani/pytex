@@ -441,6 +441,46 @@ function buildSubtabs(workspace) {
 }
 
 /**
+ * Let a panel put its own views in the workspace sub-tab strip.
+ *
+ * A workspace whose single panel answers several questions needs the same
+ * affordance a multi-panel workspace gets, and for the same reason: a control
+ * that names one destination and conceals the rest makes the workspace's own
+ * capabilities undiscoverable, and costs two clicks to change instead of one.
+ * Rendering them into the shell's strip rather than onto the stage means a view
+ * tab and a panel sub-tab are visibly and structurally the same thing, and
+ * means the tabs cost the stage no height -- a strip drawn above the plot card
+ * pushes it past the bottom of the stage, which is the scroll the figure-layout
+ * rule exists to forbid.
+ *
+ * View tabs are appended after any panel tabs, so a grouped workspace whose
+ * panel also has views composes without a special case.
+ *
+ * @returns {(id: string) => void} a function that marks one view selected.
+ */
+function setViews(items, onSelect) {
+  dom.subtabs.hidden = false;
+  for (const item of items) {
+    dom.subtabs.append(
+      el('button.subtab.viewtab', {
+        type: 'button',
+        role: 'tab',
+        text: item.title,
+        title: item.summary ?? '',
+        'aria-selected': 'false',
+        dataset: { view: item.id },
+        onclick: () => onSelect(item.id),
+      }),
+    );
+  }
+  return (id) => {
+    for (const tab of dom.subtabs.querySelectorAll('.viewtab')) {
+      tab.setAttribute('aria-selected', String(tab.dataset.view === id));
+    }
+  };
+}
+
+/**
  * Open a workspace, and one panel inside it.
  *
  * `target` names the workspace or, for a grouped one, the panel to land on;
@@ -481,6 +521,7 @@ function activate(target, panelId = null) {
     // knows what a workspace is. What travels *with* the user is a `handoff`
     // offer; this moves the user.
     openPanel,
+    setViews,
   });
 }
 

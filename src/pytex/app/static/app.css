@@ -4340,25 +4340,19 @@ dl.detail dd {
 /* --------------------------------------------------------- view sub-tabs */
 
 /*
- * A workspace whose panel answers several questions states them as tabs rather
- * than hiding all but one behind a dropdown. The same argument the one-screen
- * form rule makes about inputs applies to operations: a control that names one
- * destination and conceals the rest makes the workspace's own capabilities
- * undiscoverable, and costs two clicks to change instead of one.
+ * A workspace whose single panel answers several questions states them as tabs
+ * rather than hiding all but one behind a dropdown. The same argument the
+ * one-screen form rule makes about inputs applies to operations: a control that
+ * names one destination and conceals the rest makes the workspace's own
+ * capabilities undiscoverable, and costs two clicks to change instead of one.
  *
- * These reuse `.subtab` for their look, so a view tab and a workspace sub-tab
- * are visibly the same kind of thing, and sit on the stage above the plot
- * rather than in the control rail — they select the question, and the rail
- * answers it.
+ * `.viewtab` carries no rules of its own by design. View tabs live in the
+ * shell's `.subtabs` strip and are styled entirely as `.subtab`, because a view
+ * tab and a panel sub-tab are the same affordance; the extra class exists only
+ * so a panel can find the tabs it created. Putting them there rather than on
+ * the stage also costs the figure no height, and a strip above the plot card
+ * would push the card past the bottom of the stage.
  */
-.viewtabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.125rem;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--line);
-}
 
 /* ------------------------------------------------------ candidate phases */
 

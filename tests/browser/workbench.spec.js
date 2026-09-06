@@ -475,15 +475,25 @@ test('offers the shared CIF phase loader in every structure-aware workspace', as
 test('every XRD analysis view runs and reports what it found', async ({ page }) => {
   const browserErrors = await openWorkbench(page);
   await openPanel(page, 'XRD');
-  const view = page.locator('#rail-body select').first();
+  // The views are sub-tabs in the shell's strip, not a dropdown in the rail: a
+  // control naming one destination and hiding the rest made the workspace's own
+  // operations undiscoverable. Selecting one is therefore a click on a tab.
+  const view = (id) => page.locator(`#subtabs .viewtab[data-view="${id}"]`).click();
   const status = page.locator('#stage .plot__status').first();
+
+  // Every registered view must be reachable from the strip, so a view added to
+  // the panel without a tab -- which is a view no user can open -- fails here.
+  await expect(page.locator('#subtabs .viewtab')).toHaveCount(6);
+  await expect(
+    page.locator('#subtabs .viewtab[aria-selected="true"]'),
+  ).toHaveText('Powder XRD pattern');
 
   // Each view is checked on its own status line rather than on a success count,
   // because a count only proves that *something* finished. The status carries
   // the number the view exists to produce, so a view wired to the wrong
   // operation fails here instead of passing quietly.
   await expectNewCompletedCalculation(page, () =>
-    view.selectOption('xrd.background').then(() =>
+    view('xrd.background').then(() =>
       page.getByRole('button', { name: 'Estimate background', exact: true }).click(),
     ),
   );
@@ -496,7 +506,7 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   // pattern fit gets a difference curve, because it never measures a single
   // peak position and must not draw a residual that implies it did.
   await expectNewCompletedCalculation(page, () =>
-    view.selectOption('xrd.lattice_parameters').then(() =>
+    view('xrd.lattice_parameters').then(() =>
       page.getByRole('button', { name: 'Determine lattice parameters', exact: true }).click(),
     ),
   );
@@ -521,7 +531,7 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   ).toBeVisible();
 
   await expectNewCompletedCalculation(page, () =>
-    view.selectOption('xrd.rietveld').then(() =>
+    view('xrd.rietveld').then(() =>
       page.getByRole('button', { name: 'Refine against the scan', exact: true }).click(),
     ),
   );
@@ -532,7 +542,7 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   await expect(page.locator('#stage svg[aria-label="Rietveld refinement"]')).toBeVisible();
 
   await expectNewCompletedCalculation(page, () =>
-    view.selectOption('xrd.size_strain').then(() =>
+    view('xrd.size_strain').then(() =>
       page.getByRole('button', { name: 'Separate size and strain', exact: true }).click(),
     ),
   );
@@ -541,6 +551,22 @@ test('every XRD analysis view runs and reports what it found', async ({ page }) 
   await expect(status).toContainText('D = 25.000 nm');
   await expect(status).toContainText('0.002');
   await expect(page.locator('#stage svg[aria-label="Williamson-Hall plot"]')).toBeVisible();
+
+  // Identification is the one view not told the answer in advance, so the check
+  // is that it recovers the phase the demonstration scan was generated from and
+  // that it draws the runner-up as well as the winner. A ranking a reader
+  // cannot check against the scan is a number to be trusted rather than read.
+  await expectNewCompletedCalculation(page, () =>
+    view('xrd.phase_identification').then(() =>
+      page.getByRole('button', { name: 'Identify the phase', exact: true }).click(),
+    ),
+  );
+  await expect(status).toContainText('Nickel (fcc)');
+  await expect(status).toContainText('ahead of the next by');
+  await expect(
+    page.locator('#stage svg[aria-label="Measured scan with each candidate phase’s '
+      + 'calculated line positions"]'),
+  ).toBeVisible();
 
   expect(browserErrors).toEqual([]);
 });

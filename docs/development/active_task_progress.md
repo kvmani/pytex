@@ -7232,3 +7232,38 @@ include.
 
 **Noticed in passing, not fixed here.** `PowderPattern`'s class docstring documents its arrays as
 `two_theta_deg` and `intensity`; the fields are `two_theta_grid_deg` and `intensity_grid`.
+
+### Increment 6 - the browser lane, which found a real layout regression
+
+Running the Playwright lane caught something the unit lane structurally cannot: the view-tab strip,
+drawn on the stage above the plot card, pushed the card 38 px past the bottom of the stage. That
+breaks the figure-layout rule directly - `.plot` is sized `height: calc(100% - 1.5rem)` against the
+stage, with `flex: none`, so it does not know about a sibling above it and overflows by exactly the
+strip's height.
+
+The fix is better than the thing it fixes. The shell **already has a sub-tab strip**, outside the
+stage and already accounted for in the layout, hidden for a single-panel workspace. `main.js` now
+exposes `setViews` on the panel mount context, and the XRD panel renders its six views into that
+strip instead of onto the stage. Three things follow, and the third is why this is the right design
+rather than a workaround:
+
+1. The tabs cost the figure no height at all, so the layout rule holds with nothing to tune.
+2. A view tab and a workspace sub-tab are now visibly *and* structurally the same thing, which is
+   what they always were conceptually - `.viewtab` carries no styling of its own, only a hook a
+   panel can find its own tabs by.
+3. View tabs are appended after any panel tabs, so a grouped workspace whose panel also has views
+   composes without a special case.
+
+The browser spec was updated to drive tabs rather than the dropdown, to assert that all six
+registered views are reachable from the strip (a view without a tab is a view no user can open),
+and to run the identification view end to end - checking that it recovers nickel from the
+demonstration scan and draws the candidate stick rows, because a ranking a reader cannot check
+against the scan is a number to be trusted rather than read.
+
+**A pre-existing failure, investigated and not mine.** `loads every scientific workspace without
+browser errors` fails on this machine because the Kearns panel populates the stage only when its
+auto-run returns, and the 5 s expectation is marginal against a cold server here. Verified by
+building a worktree at `e2e8730` - the commit before this goal - serving it on its own port and
+running the test there: it fails 3/3 on that tree too. Also isolated against each of my three
+frontend files in turn. It is a timing sensitivity in the test, not a regression, and fixing it is
+outside this goal.

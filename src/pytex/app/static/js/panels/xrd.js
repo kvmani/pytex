@@ -150,23 +150,13 @@ export function mount(context) {
   // perform are only discoverable by opening it; a strip states all of them at
   // once, which is the same argument the one-screen form rule makes about
   // inputs. It also makes switching one click rather than two.
-  const viewTabs = el('nav.viewtabs', { role: 'tablist', 'aria-label': 'XRD analyses' },
-    operations.map((entry) => el('button.subtab.viewtab', {
-      type: 'button',
-      role: 'tab',
-      text: entry.title,
-      title: entry.summary,
-      'aria-selected': String(entry.id === state.operation.id),
-      dataset: { view: entry.id },
-      onclick: () => selectView(entry.id),
-    })),
-  );
-
-  function markActiveTab() {
-    for (const tab of viewTabs.children) {
-      tab.setAttribute('aria-selected', String(tab.dataset.view === state.operation.id));
-    }
-  }
+  //
+  // They go in the shell's own sub-tab strip rather than onto the stage: a view
+  // tab and a workspace sub-tab are the same affordance and belong in the same
+  // place, and a strip drawn above the plot card would push the card past the
+  // bottom of the stage, which is exactly the scroll the figure-layout rule
+  // forbids.
+  const markActiveTab = context.setViews(operations, (id) => selectView(id));
 
   function selectView(id) {
     const chosen = operations.find((entry) => entry.id === id);
@@ -174,7 +164,7 @@ export function mount(context) {
     state.operation = chosen;
     state.result = null;
     state.teaches = null;
-    markActiveTab();
+    markActiveTab(state.operation.id);
     frame.setTitle(chosen.title);
     frame.setStatus(chosen.summary);
     frame.setContent(null);
@@ -195,6 +185,7 @@ export function mount(context) {
   }
 
   pattern.element.hidden = !PATTERN_OPERATIONS.has(state.operation.id);
+  markActiveTab(state.operation.id);
 
   context.rail.append(
     pattern.element,
@@ -221,7 +212,7 @@ export function mount(context) {
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
   frame.setControls(legend);
-  context.stage.append(viewTabs, frame.element, details);
+  context.stage.append(frame.element, details);
 
   function renderControls(initial = {}) {
     state.form = buildForm(state.operation, { initial });
@@ -238,7 +229,7 @@ export function mount(context) {
     const target = operations.find((entry) => entry.id === example.operation);
     if (target && target !== state.operation) {
       state.operation = target;
-      markActiveTab();
+      markActiveTab(state.operation.id);
       frame.setTitle(target.title);
       appearance.hidden = mode() !== 'profile';
       scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
