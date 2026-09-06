@@ -910,3 +910,42 @@ class TestFrontendIsSelfContained:
         assert (STATIC_ROOT / "index.html").is_file()
         assert (STATIC_ROOT / "app.css").is_file()
         assert (STATIC_ROOT / "js" / "main.js").is_file()
+
+
+class TestDocumentationServing:
+    def test_docs_root_locates_existing_documentation(self) -> None:
+        from pytex.app.server import docs_root
+
+        root = docs_root()
+        assert root is not None
+        assert root.is_dir()
+        assert (root / "index.html").is_file()
+
+    def test_server_serves_docs_index_and_subpages(self, server: AppServer) -> None:
+        status, headers, body = get(server, "/docs/")
+        assert status == 200
+        assert "text/html" in headers["Content-Type"]
+        assert b"PyTex" in body
+
+        status_no_slash, _, _ = get(server, "/docs")
+        assert status_no_slash == 200
+
+    def test_server_serves_docs_theory_pages(self, server: AppServer) -> None:
+        status, headers, body = get(server, "/docs/theory/tem_specimen_tilt_navigation.html")
+        assert status == 200
+        assert "text/html" in headers["Content-Type"]
+        assert b"TEM Specimen Tilt Navigation" in body
+
+    def test_server_serves_mathjax_assets(self, server: AppServer) -> None:
+        status, headers, body = get(server, "/docs/_static/mathjax/tex-chtml-full.js")
+        assert status == 200
+        assert "javascript" in headers["Content-Type"]
+        assert len(body) > 100_000
+
+    def test_server_rejects_nonexistent_and_traversal_docs(self, server: AppServer) -> None:
+        status, _, _ = get(server, "/docs/nonexistent_page.html")
+        assert status == 404
+
+        status_escape, _, _ = get(server, "/docs/../server.py")
+        assert status_escape in {403, 404}
+

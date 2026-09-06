@@ -37,6 +37,7 @@ from pytex.app.registry import (
     REGISTRY,
     BooleanParameter,
     ChoiceParameter,
+    DocumentationLink,
     ExampleScenario,
     IndicesParameter,
     IntegerParameter,
@@ -256,6 +257,8 @@ _CALIBRATION_PARAMETERS = (
         minimum=0.0,
         required=False,
         group="Calibration",
+        symbol="camera_constant",
+        field_width="short",
     ),
     NumberParameter(
         name="pixel_size_mm",
@@ -266,6 +269,7 @@ _CALIBRATION_PARAMETERS = (
         minimum=0.0,
         required=False,
         group="Calibration",
+        field_width="short",
     ),
     NumberParameter(
         name="reciprocal_per_px_angstrom",
@@ -284,6 +288,7 @@ _CALIBRATION_PARAMETERS = (
         minimum=0.0,
         required=False,
         group="Calibration",
+        field_width="short",
     ),
 )
 
@@ -459,6 +464,9 @@ _CALIBRATION_PARAMETERS = (
         "solutions and their calculated patterns under `data`."
     ),
     panel="tem",
+    documentation=DocumentationLink(
+        "Ratio/angle indexing of measured SAED", "theory/saed_ratio_angle_indexing"
+    ),
     citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
     tags=("TEM", "SAED", "indexing", "solve", "zone axis", "pattern", "calibration", "score"),
 )
@@ -774,6 +782,9 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="alpha_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="beta_deg",
@@ -782,6 +793,9 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="beta_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="alpha_limit_deg",
@@ -794,6 +808,7 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beta_limit_deg",
@@ -807,6 +822,7 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beam_rotation_deg",
@@ -823,6 +839,7 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            field_width="short",
         ),
         NumberParameter(
             name="orientation_uncertainty_deg",
@@ -860,6 +877,9 @@ def _solve_pattern(request: dict[str, Any]) -> dict[str, Any]:
     ),
     returns="One row per candidate move; the full report and paths under `data`.",
     panel="tem",
+    documentation=DocumentationLink(
+        "TEM specimen tilt navigation", "theory/tem_specimen_tilt_navigation"
+    ),
     citations=(
         _CITATION_WILLIAMS,
         "Liu, J. Appl. Crystallogr. 27 (1994) 755 (double-tilt holder geometry).",
@@ -1159,6 +1179,8 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             required=False,
             advanced=True,
+            row="Frame size",
+            field_width="short",
         ),
         NumberParameter(
             name="frame_height",
@@ -1168,10 +1190,16 @@ def _plan_tilt(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             required=False,
             advanced=True,
+            row="Frame size",
+            field_width="short",
         ),
     ),
     returns="One row per picked spot with its lattice node and residual; the overlay under `data`.",
     panel="tem",
+    documentation=DocumentationLink(
+        "Planar lattice fit and spot error minimization",
+        "theory/lattice_fit_and_solution_scoring",
+    ),
     citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON),
     tags=("TEM", "SAED", "lattice", "centre", "refine", "picks", "overlay"),
 )
@@ -1394,6 +1422,7 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Instrument",
+            field_width="short",
         ),
         BooleanParameter(
             name="realistic_scatter",
@@ -1714,30 +1743,40 @@ def _origin_label(spot: Any, *, spec: Any) -> str:
             ),
             units="deg",
             default=0.0,
+            field_width="short",
         ),
         NumberParameter(
             name="phi1_deg",
-            label="phi1",
+            label="First Bunge angle",
+            symbol="phi_1",
             help_text="First Bunge angle, about the specimen Z axis. Used in orientation mode.",
             units="deg",
             default=0.0,
             group="Orientation (Bunge)",
+            row="Orientation (Bunge)",
+            field_width="short",
         ),
         NumberParameter(
             name="Phi_deg",
-            label="Phi",
+            label="Second Bunge angle",
+            symbol="Phi",
             help_text="Second Bunge angle, about the new X axis.",
             units="deg",
             default=0.0,
             group="Orientation (Bunge)",
+            row="Orientation (Bunge)",
+            field_width="short",
         ),
         NumberParameter(
             name="phi2_deg",
-            label="phi2",
+            label="Third Bunge angle",
+            symbol="phi_2",
             help_text="Third Bunge angle, about the new Z axis.",
             units="deg",
             default=0.0,
             group="Orientation (Bunge)",
+            row="Orientation (Bunge)",
+            field_width="short",
         ),
         NumberParameter(
             name="camera_length_mm",
@@ -1782,6 +1821,7 @@ def _origin_label(spot: Any, *, spec: Any) -> str:
             minimum=0.0001,
             maximum=1.0,
             group="Instrument",
+            field_width="short",
         ),
         BooleanParameter(
             name="show_kikuchi",
@@ -1861,6 +1901,7 @@ def _origin_label(spot: Any, *, spec: Any) -> str:
         "under `data`."
     ),
     panel="tem_simulator",
+    documentation=DocumentationLink("SAED pattern generation", "workflows/saed_generation"),
     citations=(_CITATION_WILLIAMS, _CITATION_HIRSCH, _CITATION_EDINGTON),
     tags=("TEM", "SAED", "simulation", "zone axis", "Kikuchi", "orientation", "teaching"),
 )
@@ -2156,6 +2197,9 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="alpha_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="beta_deg",
@@ -2164,6 +2208,9 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="beta_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="alpha_limit_deg",
@@ -2174,6 +2221,7 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beta_limit_deg",
@@ -2184,6 +2232,7 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beam_rotation_deg",
@@ -2196,6 +2245,7 @@ def _simulate_saed(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=0.0,
             group="Stage",
+            field_width="short",
         ),
         IntegerParameter(
             name="max_index",
@@ -2529,6 +2579,9 @@ def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="alpha_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="beta_deg",
@@ -2537,6 +2590,9 @@ def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
             units="°",
             default=0.0,
             group="Stage",
+            symbol="beta_tilt",
+            row="Stage tilt",
+            field_width="short",
         ),
         NumberParameter(
             name="alpha_limit_deg",
@@ -2547,6 +2603,7 @@ def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beta_limit_deg",
@@ -2557,6 +2614,7 @@ def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
             minimum=1.0,
             maximum=90.0,
             group="Stage",
+            row="Stage limits",
         ),
         NumberParameter(
             name="beam_rotation_deg",
@@ -2568,6 +2626,7 @@ def _slerp_points(start: np.ndarray, end: np.ndarray, count: int) -> np.ndarray:
             units="°",
             default=0.0,
             group="Stage",
+            field_width="short",
         ),
         IntegerParameter(
             name="max_index",
@@ -3340,6 +3399,8 @@ def _line_through_frame(
             help_text="The transmitted beam, in picked coordinates. Every band is placed from it.",
             default=512.0,
             group="Frame",
+            row="Beam centre",
+            field_width="short",
         ),
         NumberParameter(
             name="centre_y",
@@ -3347,6 +3408,8 @@ def _line_through_frame(
             help_text="The transmitted beam's second coordinate.",
             default=512.0,
             group="Frame",
+            row="Beam centre",
+            field_width="short",
         ),
         NumberParameter(
             name="frame_width",
@@ -3355,6 +3418,8 @@ def _line_through_frame(
             default=1024.0,
             minimum=1.0,
             group="Frame",
+            row="Frame size",
+            field_width="short",
         ),
         NumberParameter(
             name="frame_height",
@@ -3363,6 +3428,8 @@ def _line_through_frame(
             default=1024.0,
             minimum=1.0,
             group="Frame",
+            row="Frame size",
+            field_width="short",
         ),
         IndicesParameter(
             name="target_zone_axis",
@@ -3387,6 +3454,8 @@ def _line_through_frame(
             default=200.0,
             minimum=1.0,
             advanced=True,
+            symbol="accelerating_voltage",
+            field_width="short",
         ),
         IntegerParameter(
             name="max_index",
@@ -3418,6 +3487,7 @@ def _line_through_frame(
         "edges and the connecting band under `data`, all in picked pixel coordinates."
     ),
     panel="tem",
+    documentation=DocumentationLink("Kikuchi band geometry", "workflows/kikuchi_geometry"),
     citations=(_CITATION_WILLIAMS, _CITATION_EDINGTON, _CITATION_KIKUCHI),
     tags=("TEM", "Kikuchi", "bands", "overlay", "navigation", "zone axis", "SAED"),
 )

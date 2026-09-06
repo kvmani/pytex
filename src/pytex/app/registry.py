@@ -42,8 +42,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pytex.app.errors import InvalidInputError, UnknownOperationError
+from pytex.core.symbols import has_symbol, symbol
 
 __all__ = [
+    "FIELD_WIDTHS",
     "REGISTRY",
     "BooleanParameter",
     "ChoiceParameter",
@@ -64,6 +66,34 @@ Handler = Callable[[dict[str, Any]], dict[str, Any]]
 
 _SPHINX_SOURCE_BASE = "https://github.com/kvmani/pytex/blob/main/docs/site/"
 
+#: How wide a control needs to be, named by the content rather than by pixels.
+#:
+#: A parameter knows what it holds; it does not know how wide the rail is, what
+#: the font is, or whether the window is a laptop or a phone. So it declares the
+#: former and the stylesheet owns the latter. The tokens, narrowest first:
+#:
+#: ``index``
+#:     A single Miller index or a similarly tiny integer. Three characters,
+#:     because that is the widest an index ever is in practice and a box sized
+#:     for more invites a run of digits (Decision 9 of the application platform
+#:     document).
+#: ``tiny``
+#:     A small bounded count: a repeat number, a harmonic degree, an index
+#:     limit. Up to four characters.
+#: ``short``
+#:     A physical quantity with a known scale and a decimal or two: an angle in
+#:     degrees, a lattice edge in angstrom, a tilt. Up to six characters.
+#: ``medium``
+#:     The default, and the width for anything whose magnitude is not bounded
+#:     by its meaning.
+#: ``long``
+#:     A value that is genuinely text-like and needs room to be read: a file
+#:     name, a formula, a comma-separated list.
+#: ``full``
+#:     The whole rail. For controls that are not a single value at all --- a
+#:     text area, a JSON editor, a repeatable row stack.
+FIELD_WIDTHS: tuple[str, ...] = ("index", "tiny", "short", "medium", "long", "full")
+
 
 @dataclass(frozen=True)
 class DocumentationLink:
@@ -71,8 +101,9 @@ class DocumentationLink:
 
     ``path`` is the document name below ``docs/site`` without ``.md``. Keeping
     the source-relative name in the manifest lets tests prove the page exists;
-    ``url`` points at GitHub's rendered view of that canonical MyST source until
-    the project publishes a dedicated Sphinx host.
+    ``url`` points at the local in-app HTML document served directly by the PyTex
+    workbench, ensuring publication-quality offline MathJax mathematics
+    rendering on airgapped or office network environments.
     """
 
     title: str
@@ -84,7 +115,8 @@ class DocumentationLink:
         return {
             "title": self.title,
             "path": self.path,
-            "url": f"{_SPHINX_SOURCE_BASE}{self.path}.md",
+            "url": f"/docs/{self.path}.html",
+            "source_url": f"{_SPHINX_SOURCE_BASE}{self.path}.md",
         }
 
 
@@ -163,6 +195,34 @@ class Parameter:
     advanced : bool
         Hidden behind the panel's "Advanced" disclosure. Use for parameters
         with a good default that most users should not touch.
+    symbol : str, optional
+        Name of a registered symbol in :mod:`pytex.core.symbols`. The control
+        *shows* the symbol --- the two characters of a first Bunge angle rather
+        than the six of ``phi1`` --- while ``label`` remains what the control is
+        *called*, and is carried into the accessible name, the tooltip and every
+        error message. This is what lets three Euler angles share one line: the
+        label was most of the width, not the value. Registration is checked at
+        construction, so a misspelled name fails the import rather than
+        shipping a control labelled with a raw registry key.
+    row : str, optional
+        Name of a layout row. Parameters that declare the same ``row`` render
+        side by side on one line instead of one under the other. Use it for a
+        set of quantities that are read and entered *together* and are short
+        enough to fit --- the three Bunge angles, a tilt pair, the cell edges.
+        It is a presentation grouping only: it changes no name, no default and
+        no validation, and a client that ignores it renders a correct form.
+    field_width : str, optional
+        How much width the control needs, as one of :data:`FIELD_WIDTHS`.
+        Declared in characters-of-content terms rather than pixels, because
+        that is the thing the parameter actually knows: a Miller index is never
+        more than a few characters however wide the rail is. When omitted, a
+        width is derived from the declared bounds --- see
+        :meth:`_derived_field_width` --- so most parameters need not say
+        anything and still stop short of the full rail.
+
+    See Also
+    --------
+    pytex.core.symbols : The registry ``symbol`` names.
     """
 
     name: str
@@ -174,9 +234,29 @@ class Parameter:
     group: str | None = None
     group_collapsed: bool = False
     advanced: bool = False
+    symbol: str | None = None
+    row: str | None = None
+    field_width: str | None = None
 
     #: Discriminator the frontend switches on to choose a control widget.
     kind: str = field(default="text", init=False)
+
+    def __post_init__(self) -> None:
+        # Construction-time, per AGENTS.md: an invariant checked where the
+        # mistake is made names the parameter that made it. Checked downstream
+        # it would surface as a control labelled with a raw registry key, which
+        # nothing fails on.
+        if self.symbol is not None and not has_symbol(self.symbol):
+            try:
+                symbol(self.symbol)
+            except KeyError as exc:
+                raise ValueError(f"Parameter {self.name!r}: {exc.args[0]}") from None
+        if self.field_width is not None and self.field_width not in FIELD_WIDTHS:
+            allowed = ", ".join(FIELD_WIDTHS)
+            raise ValueError(
+                f"Parameter {self.name!r}: field_width must be one of {allowed}; "
+                f"got {self.field_width!r}."
+            )
 
     def describe(self) -> dict[str, Any]:
         """Return the manifest entry for this parameter."""
@@ -188,6 +268,7 @@ class Parameter:
             "help": self.help_text,
             "required": self.required,
             "advanced": self.advanced,
+            "fieldWidth": self.resolved_field_width(),
         }
         if self.default is not None:
             payload["default"] = self.default
@@ -196,8 +277,34 @@ class Parameter:
         if self.group is not None:
             payload["group"] = self.group
             payload["groupCollapsed"] = self.group_collapsed
+        if self.symbol is not None:
+            registered = symbol(self.symbol)
+            payload["symbol"] = registered.text
+            payload["symbolLatex"] = registered.latex
+        if self.row is not None:
+            payload["row"] = self.row
         payload.update(self._describe_extra())
         return payload
+
+    def resolved_field_width(self) -> str:
+        """The width token this control will be rendered at.
+
+        The declared ``field_width`` if there is one, otherwise whatever the
+        parameter's own constraints imply. Published in the manifest so the
+        frontend never has to re-derive it and the two cannot disagree.
+        """
+
+        return self.field_width or self._derived_field_width()
+
+    def _derived_field_width(self) -> str:
+        """The width implied by this parameter's constraints.
+
+        The base answer is ``"medium"``: a kind with no declared bounds could
+        hold anything, and guessing narrow there truncates a value the user can
+        no longer read. Subclasses that *do* know their content narrow it.
+        """
+
+        return "medium"
 
     def _describe_extra(self) -> dict[str, Any]:
         return {}
@@ -244,6 +351,21 @@ class NumberParameter(Parameter):
             extra["step"] = self.step
         return extra
 
+    def _derived_field_width(self) -> str:
+        """A bounded real is a short box; an unbounded one keeps the default.
+
+        Almost every real quantity in this application is an angle, a length in
+        angstrom, a voltage in kilovolts or a fraction, and every one of those
+        is at most six characters with the decimals anyone types. Declaring
+        bounds is therefore enough to earn the narrow box, which is why so few
+        parameters need to say ``field_width`` at all.
+        """
+
+        if self.minimum is None or self.maximum is None:
+            return "medium"
+        span = max(abs(self.minimum), abs(self.maximum))
+        return "short" if span < 1.0e4 else "medium"
+
     def coerce(self, value: Any) -> float:
         if isinstance(value, bool) or not isinstance(value, int | float | str):
             raise self._invalid(f"expected a number, got {type(value).__name__}.")
@@ -280,6 +402,18 @@ class IntegerParameter(Parameter):
             extra["maximum"] = self.maximum
         return extra
 
+    def _derived_field_width(self) -> str:
+        """A bounded integer is exactly as wide as its widest legal value."""
+
+        if self.minimum is None or self.maximum is None:
+            return "medium"
+        digits = max(len(str(self.minimum)), len(str(self.maximum)))
+        if digits <= 3:
+            return "index"
+        if digits <= 5:
+            return "tiny"
+        return "medium"
+
     def coerce(self, value: Any) -> int:
         if isinstance(value, bool):
             raise self._invalid("expected an integer, got a boolean.")
@@ -314,6 +448,20 @@ class TextParameter(Parameter):
             extra["placeholder"] = self.placeholder
         return extra
 
+    def _derived_field_width(self) -> str:
+        """A text area takes the rail; a one-line box takes what it can use.
+
+        ``max_length`` is the only thing free text declares about its size, so
+        a short bounded string --- a two-letter element symbol, a Laue class
+        name --- gets a box its content fits rather than one the rail fits.
+        """
+
+        if self.multiline:
+            return "full"
+        if self.max_length is not None and self.max_length <= 6:
+            return "short"
+        return "long"
+
     def coerce(self, value: Any) -> str:
         if not isinstance(value, str):
             raise self._invalid(f"expected text, got {type(value).__name__}.")
@@ -330,6 +478,11 @@ class BooleanParameter(Parameter):
     """A toggle."""
 
     kind: str = field(default="boolean", init=False)
+
+    def _derived_field_width(self) -> str:
+        """A checkbox carries its label beside the box and owns the line."""
+
+        return "full"
 
     def coerce(self, value: Any) -> bool:
         if isinstance(value, bool):
@@ -399,6 +552,16 @@ class IndicesParameter(Parameter):
             "symbols": list(_index_symbols(self.label, self.width)),
         }
 
+    def _derived_field_width(self) -> str:
+        """One row of index boxes, each three characters wide.
+
+        The row is the narrowest control in the application and is why the
+        cardinal layout rule exists: a set of indices sized to the rail wasted
+        most of a line to hold ``1 1 0``, and three of those wasted three.
+        """
+
+        return "index"
+
     def coerce(self, value: Any) -> tuple[int, ...]:
         return _coerce_index_row(value, parameter=self)
 
@@ -426,6 +589,15 @@ class IndicesListParameter(Parameter):
         if self.max_rows is not None:
             extra["maxRows"] = self.max_rows
         return extra
+
+    def _derived_field_width(self) -> str:
+        """A stack that grows downwards owns its line.
+
+        Each row is still a row of three-character boxes; it is the *stack*,
+        with its ordinals and its add and remove buttons, that needs the rail.
+        """
+
+        return "full"
 
     def coerce(self, value: Any) -> tuple[tuple[int, ...], ...]:
         rows: list[Any]
@@ -457,6 +629,11 @@ class ObjectParameter(Parameter):
 
     def _describe_extra(self) -> dict[str, Any]:
         return {"editor": self.editor}
+
+    def _derived_field_width(self) -> str:
+        """A structured document is not a value on a line."""
+
+        return "full"
 
     def coerce(self, value: Any) -> dict[str, Any]:
         if not isinstance(value, Mapping):

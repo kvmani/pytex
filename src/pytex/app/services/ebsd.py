@@ -53,6 +53,7 @@ from pytex.app.registry import (
     REGISTRY,
     BooleanParameter,
     ChoiceParameter,
+    DocumentationLink,
     ExampleScenario,
     IndicesParameter,
     IntegerParameter,
@@ -821,6 +822,9 @@ def _source_parameters() -> tuple[Parameter, ...]:
         "for."
     ),
     panel="ebsd",
+    documentation=DocumentationLink(
+        "EBSD KAM and dislocation density", "theory/ebsd_kam_parameterization"
+    ),
     tags=(
         "ebsd",
         "ipf",
@@ -1017,6 +1021,9 @@ def _channel_statistics(values: np.ndarray) -> dict[str, float] | None:
     ),
     returns="One row per reported quantity; the whole summary, sectioned, under `data`.",
     panel="ebsd",
+    documentation=DocumentationLink(
+        "EBSD foundation and crystal map model", "concepts/ebsd_foundation"
+    ),
     citations=(_CITATION_RANDLE_ENGLER,),
     tags=("EBSD", "summary", "metadata", "statistics", "quality", "OIM"),
 )
@@ -1405,6 +1412,10 @@ _DISTRIBUTION_QUANTITIES = {
     returns="One row per bin; the values' statistics and any reference series under `data`.",
     panel="ebsd",
     citations=(_CITATION_RANDLE_ENGLER, _CITATION_WRIGHT_KAM),
+    documentation=DocumentationLink(
+        "EBSD Kernel Average Misorientation and Disorientation",
+        "theory/ebsd_kam_parameterization",
+    ),
     tags=("EBSD", "distribution", "histogram", "grain size", "misorientation", "KAM", "GROD"),
 )
 def _distribution(request: dict[str, Any]) -> dict[str, Any]:

@@ -5,6 +5,56 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## In-App Publication-Quality Offline Documentation System — COMPLETE (2026-09-06)
+
+**Objective.** Provide publication-quality documentation of algorithms and mathematics for all
+crucial operations in the front-end GUI app as HTML documents served directly within the app over
+its HTTP server. Replace external GitHub markdown links with local in-app documentation using
+vendored offline MathJax. Deliver rigorous, transparent mathematical derivations for the TEM solver
+(spot indexing, multi-spot picking and error minimization, and alpha/beta tilt prediction) and EBSD
+(KAM evaluation, topological neighborhoods, thresholding, and GND dislocation density evaluation).
+
+### Progress Ledger
+
+| Step | Scope | State |
+|---|---|---|
+| 1 | Active task ledger initialized | Complete |
+| 2 | Theory notes expanded with publication-quality math (TEM spot indexing, multi-spot picking error minimization, tilt navigation, EBSD KAM & GND) | Complete |
+| 3 | Backend server `/docs/` routing & vendored MathJax offline font/CSP support | Complete |
+| 4 | Registry & service operation documentation links updated to in-app URLs (`/docs/...html`) | Complete |
+| 5 | Frontend GUI masthead Docs button & in-app Help link integration | Complete |
+| 6 | Verification (Sphinx ratchet 0 warnings, unit tests 777 passed, symbol tests 192 passed, worked examples 134 passed, repo integrity passed) | Complete |
+
+### Technical Summary & Verification
+
+1. **Theory Notes**:
+   - `docs/site/theory/ebsd_kam_parameterization.md`: Full mathematical treatment of Kernel Average Misorientation (KAM) over crystal symmetry groups $G$, 4-connected/8-connected square and 6-connected hexagonal lattices, boundary truncation thresholding $\theta_{\text{thresh}}$, grain segmentation masks, and geometrically necessary dislocation (GND) density evaluation ($\rho_{\text{GND}} = \alpha \theta / (b d)$ vs Nye curvature tensor $b_i = \alpha_{ij} r_j$).
+   - `docs/site/theory/saed_ratio_angle_indexing.md`: Full derivation of multi-spot candidate assignment and residual error minimization across zone axes, zero-order Laue zone projection $\mathbf{g}_j^\text{det} = \mathbf{R}\mathbf{g}_j^c$, adaptive match radii $r_{\text{match}, i} = \varepsilon_\ell \lVert \mathbf{g}_i^o \rVert$, bijective assignment, and planar lattice least-squares refinement.
+   - `docs/site/theory/tem_specimen_tilt_navigation.md`: Complete closed-form stage rotation kinematics $\mathbf{R}_{\text{stage}}(\alpha, \beta)$, beam projection, and analytical inversion for required tilt angles $(\alpha^*, \beta^*)$ to reach targeted zone axes.
+
+2. **In-App Server & Routing**:
+   - `src/pytex/app/server.py`: Implemented `docs_root()` resolving documentation build directory (`STATIC_ROOT / "docs"`, `docs/_build/html`, or `docs/site/_build/html`). Added `_DOCS_CONTENT_TYPES` for all HTML, MathJax web fonts (`.woff`, `.woff2`, `.ttf`), images, and map assets. Enhanced CSP header with `font-src 'self' data:;` and script/style allowances for offline vendored MathJax. Implemented safe `_serve_docs()` with path traversal defense and directory index resolution.
+   - `tests/unit/test_app_server.py`: Added comprehensive `TestDocumentationServing` suite verifying HTTP 200 responses, proper MIME types, MathJax asset delivery, 404 handling, and traversal rejection.
+
+3. **Manifest & Service Links**:
+   - `src/pytex/app/registry.py`: Updated `DocumentationLink.describe()` to emit `/docs/{path}.html` for `url` (in-app viewer) and preserve `source_url` pointing to GitHub Sphinx source.
+   - Attached granular `documentation` links to TEM operations (`solve_pattern`, `plan_tilt`, `fit_lattice`, `simulate_saed`, `kikuchi_overlay`) and EBSD operations (`map`, `scan_summary`, `distribution`).
+   - `src/pytex/app/about.py`: Updated About identity document to link to `/docs/index.html`.
+
+4. **Frontend Integration**:
+   - `src/pytex/app/static/index.html`: Added masthead `Docs` button (`#open-docs`) linking to `/docs/index.html`.
+   - `src/pytex/app/static/js/core/result.js`: Updated documentation drawer header to "In-App Scientific Documentation" and pointed action button directly to `operation.documentation.url`.
+
+5. **Verification**:
+   - `python scripts/check_sphinx_warnings.py --max-warnings 0`: Built 100+ documentation pages and executed all notebooks with 0 warnings.
+   - `python -m pytest -p no:napari tests/unit/test_app_about.py tests/unit/test_app_manifest.py tests/unit/test_app_server.py`: 777 passed, 6 skipped.
+   - `python -m pytest -p no:napari tests/unit/test_symbols.py`: 192 passed.
+   - `python -m pytest -p no:napari tests/unit/test_worked_examples.py`: 134 passed.
+   - `python -m ruff check`: All checks passed.
+   - `python -m mypy`: Success, 0 issues found in 33 source files.
+   - `python scripts/check_repo_integrity.py`: Passed.
+
+
 ## ECCI Stage Console — COMPLETE (2026-08-27)
 
 **Objective.** The ECCI panel's two views occupied only the top half of the stage, and its tilt and

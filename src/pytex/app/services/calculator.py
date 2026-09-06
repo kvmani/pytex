@@ -393,24 +393,30 @@ def _rotation_parameters(
         ),
         NumberParameter(
             name="rotation_1",
-            label="φ₁ or axis x",
+            label="First angle, or the axis x component",
             help_text="First Euler angle in degrees, or the x component of the rotation axis.",
             default=components[0],
             group="Relative orientation",
+            row="Relative orientation",
+            field_width="short",
         ),
         NumberParameter(
             name="rotation_2",
-            label="Φ or axis y",
+            label="Second angle, or the axis y component",
             help_text="Second Euler angle in degrees, or the y component of the rotation axis.",
             default=components[1],
             group="Relative orientation",
+            row="Relative orientation",
+            field_width="short",
         ),
         NumberParameter(
             name="rotation_3",
-            label="φ₂ or axis z",
+            label="Third angle, or the axis z component",
             help_text="Third Euler angle in degrees, or the z component of the rotation axis.",
             default=components[2],
             group="Relative orientation",
+            row="Relative orientation",
+            field_width="short",
         ),
         NumberParameter(
             name="rotation_angle_deg",
@@ -421,6 +427,8 @@ def _rotation_parameters(
             units="°",
             default=angle_deg,
             group="Relative orientation",
+            symbol="omega",
+            field_width="short",
         ),
     )
 
@@ -1504,6 +1512,8 @@ def _zone_axis(request: dict[str, Any]) -> dict[str, Any]:
             units="Å",
             default=0.5,
             minimum=0.0,
+            symbol="d_spacing",
+            field_width="short",
         ),
         BooleanParameter(
             name="allowed_only",

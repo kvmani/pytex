@@ -73,6 +73,7 @@ __all__ = [
     "AppServer",
     "PortInUseError",
     "create_server",
+    "docs_root",
     "serve",
 ]
 
@@ -111,6 +112,49 @@ _CONTENT_TYPES = {
     ".webmanifest": "application/manifest+json",
     ".woff2": "font/woff2",
 }
+
+#: Extended content types for Sphinx documentation assets.
+_DOCS_CONTENT_TYPES = {
+    **_CONTENT_TYPES,
+    ".woff": "font/woff",
+    ".ttf": "font/ttf",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".map": "application/json; charset=utf-8",
+    ".inv": "application/octet-stream",
+}
+
+
+def docs_root() -> Path | None:
+    """Locate the built HTML documentation root if available.
+
+    Checked in order:
+    1. PYTEX_DOCS_ROOT environment variable (if explicitly set)
+    2. Bundled inside the package static tree: `STATIC_ROOT / 'docs'`
+    3. Repository build: `docs/_build/html` (relative to pytex repo root)
+    4. Site build: `docs/site/_build/html`
+    """
+
+    import os
+
+    env_root = os.environ.get("PYTEX_DOCS_ROOT")
+    if env_root:
+        candidate = Path(env_root).resolve()
+        if candidate.is_dir():
+            return candidate
+
+    bundled = STATIC_ROOT / "docs"
+    if bundled.is_dir():
+        return bundled.resolve()
+
+    repo_root = Path(__file__).resolve().parents[3]
+    for rel in ("docs/_build/html", "docs/site/_build/html"):
+        candidate = (repo_root / rel).resolve()
+        if candidate.is_dir():
+            return candidate
+
+    return None
+
 
 #: Largest request body accepted, in bytes. Uploaded diffraction patterns are
 #: the reason it is measured in megabytes rather than kilobytes.
@@ -193,7 +237,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header(
             "Content-Security-Policy",
             "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
-            "script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'",
+            "script-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self'; "
+            "base-uri 'none'; form-action 'none'",
         )
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
@@ -255,6 +300,12 @@ class _Handler(BaseHTTPRequestHandler):
                     "/api/experience, /api/log, /api/call, /api/export and /api/feedback."
                 ),
             )
+            return
+        if path == "/docs" or path == "/docs/":
+            self._serve_docs("index.html")
+            return
+        if path.startswith("/docs/"):
+            self._serve_docs(path.removeprefix("/docs/"))
             return
         self._serve_static(path)
 
@@ -563,6 +614,58 @@ class _Handler(BaseHTTPRequestHandler):
             return
         # The frontend is versioned with the package, so a running server may
         # cache it; a colleague picking up a new release gets a new process.
+        self._send(
+            HTTPStatus.OK,
+            candidate.read_bytes(),
+            content_type=content_type,
+            headers={"Cache-Control": "no-cache"},
+        )
+
+    # -- documentation -----------------------------------------------------
+
+    def _serve_docs(self, relative_path: str) -> None:
+        root = docs_root()
+        if root is None:
+            self._send_error_json(
+                HTTPStatus.NOT_FOUND,
+                "docs.not_built",
+                "PyTex documentation is not built yet.",
+                hint=(
+                    "Run 'python -m sphinx -b html docs/site docs/_build/html' "
+                    "to generate the offline documentation."
+                ),
+            )
+            return
+        relative = "index.html" if relative_path in {"", "/"} else relative_path.lstrip("/")
+        candidate = (root / relative).resolve()
+        try:
+            candidate.relative_to(root.resolve())
+        except ValueError:
+            self._send_error_json(
+                HTTPStatus.FORBIDDEN, "path.outside_root", "That documentation path is invalid."
+            )
+            return
+        if candidate.is_dir():
+            candidate = candidate / "index.html"
+        if not candidate.is_file():
+            self._send_error_json(
+                HTTPStatus.NOT_FOUND,
+                "docs.not_found",
+                f"No documentation file at {relative_path!r}.",
+                hint=(
+                    "Verify that the documentation was built with "
+                    "'python -m sphinx -b html docs/site docs/_build/html'."
+                ),
+            )
+            return
+        content_type = _DOCS_CONTENT_TYPES.get(candidate.suffix.lower())
+        if content_type is None:
+            self._send_error_json(
+                HTTPStatus.FORBIDDEN,
+                "file.unsupported_type",
+                f"The documentation server does not serve {candidate.suffix!r} files.",
+            )
+            return
         self._send(
             HTTPStatus.OK,
             candidate.read_bytes(),

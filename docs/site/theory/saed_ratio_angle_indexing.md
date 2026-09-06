@@ -102,10 +102,52 @@ carries crystal Cartesian vectors into the pattern frame. Equation {eq}`eq-saed-
 proper rotation by construction, as a product of two orthonormal right-handed bases, so no
 re-orthogonalization or determinant repair is required.
 
-Every permitted zone reflection is projected through $\mathbf{R}$ and each measured spot claims
-the nearest unclaimed prediction lying within its match radius
-$\varepsilon_{\ell}\lVert\mathbf{g}\rVert$. Reflections are not reused, so two spots cannot be
-assigned one reflection.
+## Multi-Spot Assignment And Residual Error Minimization
+
+Once the seed rotation $\mathbf{R}$ is formed from two non-collinear spots, all permitted reflections
+$\mathbf{g}_j^{c}$ for the candidate phase are projected into the detector frame:
+
+$$
+\mathbf{g}_j^{\text{det}} = \mathbf{R}\,\mathbf{g}_j^{c}
+$$
+
+Reflections lying in the zero-order Laue zone satisfy $\lvert (\mathbf{g}_j^{\text{det}})_z \rvert \le \varepsilon_{\ell} \max_i \lVert \mathbf{g}_i^o \rVert$.
+Their in-plane components $\mathbf{g}_j^{\text{proj}} = \left( (\mathbf{g}_j^{\text{det}})_x, (\mathbf{g}_j^{\text{det}})_y \right)$
+form the pool of predicted spot positions.
+
+Each measured spot $\mathbf{g}_i^o$ ($i = 1, \dots, N$) searches for the nearest unclaimed prediction within
+its adaptive match radius:
+
+$$
+r_{\text{match}, i} = \varepsilon_{\ell}\,\lVert \mathbf{g}_i^o \rVert
+$$
+
+A predicted reflection $\mathbf{g}_j^{\text{proj}}$ is assigned to spot $i$ if:
+
+$$
+\delta_i \equiv \lVert \mathbf{g}_i^o - \mathbf{g}_j^{\text{proj}} \rVert \le r_{\text{match}, i}
+$$ (eq-saed-residual)
+
+and $\mathbf{g}_j^{\text{proj}}$ has not been claimed by any closer measured spot. Reflections are not reused,
+enforcing a strictly bijective (one-to-one) correspondence between physical reflections and observed spots.
+
+The residual error across all $N_{\text{indexed}}$ assigned spots is quantified by the mean reciprocal residual:
+
+$$
+\bar{\delta} = \frac{1}{N_{\text{indexed}}} \sum_{i \in \text{indexed}} \delta_i
+$$ (eq-saed-mean-residual)
+
+and the matched fraction:
+
+$$
+f_{\text{match}} = \frac{N_{\text{indexed}}}{N}
+$$ (eq-saed-matched-fraction)
+
+When users pick four or more spots on the interactive plate, the planar lattice is over-determined.
+PyTex provides linear least-squares refinement of the beam centre $\mathbf{c}$ and lattice basis vectors
+$\mathbf{a}, \mathbf{b}$ prior to indexing (`pytex.diffraction.lattice_fit`), eliminating manual
+beam-picking bias and isolating outlier picks. See [Fitting The Pattern Lattice And Scoring The Solutions](lattice_fit_and_solution_scoring.md)
+for the full least-squares derivation.
 
 ## Ranking And Deduplication
 

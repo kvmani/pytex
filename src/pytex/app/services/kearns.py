@@ -628,6 +628,7 @@ def _parse_euler_angles(text: str, *, phase: Any) -> Any:
             minimum=100.0,
             maximum=200000.0,
             advanced=True,
+            field_width="short",
         ),
         NumberParameter(
             name="seed",
@@ -637,6 +638,7 @@ def _parse_euler_angles(text: str, *, phase: Any) -> Any:
             minimum=0.0,
             maximum=1e9,
             advanced=True,
+            field_width="short",
         ),
     ),
     returns=(

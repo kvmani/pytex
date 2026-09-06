@@ -948,6 +948,8 @@ def _axis_arrows(spec: PhaseSpec) -> list[dict[str, Any]]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="a",
+            row="Repeats",
         ),
         IntegerParameter(
             name="repeat_b",
@@ -957,6 +959,8 @@ def _axis_arrows(spec: PhaseSpec) -> list[dict[str, Any]]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="b",
+            row="Repeats",
         ),
         IntegerParameter(
             name="repeat_c",
@@ -966,6 +970,8 @@ def _axis_arrows(spec: PhaseSpec) -> list[dict[str, Any]]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="c",
+            row="Repeats",
         ),
         IndicesListParameter(
             name="planes",
@@ -1187,30 +1193,33 @@ def _crystal_scene(request: dict[str, Any]) -> dict[str, Any]:
         ),
         NumberParameter(
             name="angle1",
-            label="phi1 / alpha",
+            label="First Euler angle",
             help_text="First Euler angle, in degrees.",
             units="deg",
             default=0.0,
             minimum=-360.0,
             maximum=720.0,
+            row="Euler angles",
         ),
         NumberParameter(
             name="angle2",
-            label="Phi / beta",
+            label="Second Euler angle",
             help_text="Second Euler angle, in degrees.",
             units="deg",
             default=0.0,
             minimum=-360.0,
             maximum=720.0,
+            row="Euler angles",
         ),
         NumberParameter(
             name="angle3",
-            label="phi2 / gamma",
+            label="Third Euler angle",
             help_text="Third Euler angle, in degrees.",
             units="deg",
             default=0.0,
             minimum=-360.0,
             maximum=720.0,
+            row="Euler angles",
         ),
         TextParameter(
             name="camera_matrix",
@@ -1897,6 +1906,8 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="a",
+            row="Repeats",
         ),
         IntegerParameter(
             name="repeat_b",
@@ -1906,6 +1917,8 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="b",
+            row="Repeats",
         ),
         IntegerParameter(
             name="repeat_c",
@@ -1915,6 +1928,8 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             minimum=1,
             maximum=6,
             group="Extent",
+            symbol="c",
+            row="Repeats",
         ),
         IndicesListParameter(
             name="planes",
@@ -1939,6 +1954,8 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             minimum=-90.0,
             maximum=90.0,
             group="Camera",
+            row="Camera",
+            field_width="short",
         ),
         NumberParameter(
             name="azimuth_deg",
@@ -1947,6 +1964,8 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             units="°",
             default=34.0,
             group="Camera",
+            row="Camera",
+            field_width="short",
         ),
         BooleanParameter(
             name="show_bonds",

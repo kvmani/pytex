@@ -997,6 +997,128 @@ table.result tbody tr:hover {
   }
 }
 
+/* ------------------------------------------------ how wide a control gets
+
+   The cardinal layout rule of this application: a control is as wide as the
+   value it holds, and no wider. A Miller index is never more than three
+   characters, so a box sized to the rail spent most of a line holding `1 1 0`
+   — and a form of such boxes spent a screen holding a dozen numbers, which is
+   the scrolling that stops the mandatory inputs of an operation being visible
+   at once.
+
+   The parameter declares the token (`pytex.app.registry.FIELD_WIDTHS`); this is
+   the only place a token becomes a length, because a length depends on the
+   font and the rail and a parameter knows neither. `medium` is the width every
+   compact control had before the tokens existed, so an unannotated parameter
+   renders exactly as it used to. */
+.field--w-index {
+  --field-compact-width: 3rem;
+}
+
+.field--w-tiny {
+  --field-compact-width: 4.25rem;
+}
+
+.field--w-short {
+  --field-compact-width: 5.75rem;
+}
+
+.field--w-medium {
+  --field-compact-width: 7.5rem;
+}
+
+.field--w-long {
+  --field-compact-width: 11rem;
+}
+
+/* Free text normally takes whatever the label leaves, because its value has no
+   natural length. When the parameter says otherwise — a two-letter element
+   symbol, a Laue class — the declared width wins, and two classes plus the
+   attribute selector is what it takes to outrank the growing rule above. */
+.field--compact.field--w-index > input[type="text"],
+.field--compact.field--w-tiny > input[type="text"],
+.field--compact.field--w-short > input[type="text"],
+.field--compact.field--w-index > input[type="search"],
+.field--compact.field--w-tiny > input[type="search"],
+.field--compact.field--w-short > input[type="search"] {
+  flex: 0 0 auto;
+  width: var(--field-compact-width);
+}
+
+/* A symbol label is `φ₁`. Reserving the six-rem column that the word labels
+   share would give the whole saving straight back, so a symbolic field's label
+   is exactly as wide as the symbol and the control starts beside it. */
+.field--symbolic > .field__label {
+  flex: 0 0 auto;
+}
+
+/* Set in a math face and in italic, as a scalar variable is set in the
+   literature, which also tells the eye at a glance that this label is a symbol
+   and not an abbreviated word. The registry
+   (`docs/standards/terminology_and_symbol_registry.md`) fixes which symbol; the
+   Unicode text comes from `pytex.core.symbols` and never from a panel. */
+.field__symbol {
+  font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", Georgia, serif;
+  font-style: italic;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------- several fields on one line
+
+   Quantities that are entered together are read together: the three Bunge
+   angles are one orientation, not three numbers, and a tilt pair is one stage
+   position. Stacked they cost three lines and a scroll; on one line they cost
+   one and the button stays in view.
+
+   This is only affordable because the labels are symbols — `φ₁ Φ φ₂` is nine
+   characters where `phi1 Phi phi2` was thirteen and "First Bunge angle" was
+   far more. The row wraps rather than crushing its fields, so a narrow rail
+   degrades to the stacked layout instead of to three unusable boxes. */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.375rem 0.75rem;
+}
+
+.field-row > .field {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.field-row > .field--compact {
+  justify-content: flex-start;
+  gap: 0.25rem 0.375rem;
+}
+
+/* Help and error text belong to the row, not to the column of one field: a
+   message wrapped inside a third of the rail is unreadable, and the popover is
+   prose. Both break the line and take the width. */
+.field-row > .field > .field__help,
+.field-row > .field > .field__error {
+  flex: 1 1 100%;
+  min-width: min(100%, 14rem);
+}
+
+@media (max-width: 60rem) {
+  /* The compact rule has already put labels back on top at this width. Fields
+     in a row keep sharing the line while they each still have room for a value,
+     and wrap when they do not. */
+  .field-row > .field--compact {
+    flex: 1 1 7rem;
+  }
+
+  .field-row > .field--compact > input[type="number"],
+  .field-row > .field--compact > input[type="text"],
+  .field-row > .field--compact > input[type="search"],
+  .field-row > .field--compact > select {
+    width: 100%;
+  }
+}
+
 .field__help-button {
   appearance: none;
   border: 1px solid var(--line-strong);

@@ -445,6 +445,7 @@ def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
             maximum=2**31 - 1,
             advanced=True,
             group=group,
+            field_width="short",
         ),
     )
 

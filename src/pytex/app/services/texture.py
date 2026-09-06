@@ -209,6 +209,7 @@ def _model_parameters() -> tuple[Any, ...]:
             minimum=0,
             maximum=1_000_000,
             advanced=True,
+            field_width="short",
         ),
     )
 

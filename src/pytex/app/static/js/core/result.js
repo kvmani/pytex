@@ -267,7 +267,7 @@ export function renderHelp(container, operation) {
   if (operation.documentation) {
     container.append(
       el('aside.docs-link', {}, [
-        el('span.docs-link__eyebrow', { text: 'Sphinx documentation' }),
+        el('span.docs-link__eyebrow', { text: 'In-App Scientific Documentation' }),
         el('strong', { text: operation.documentation.title }),
         el('p', { text: 'Open the full guide for theory, conventions, worked examples and related APIs.' }),
         el('a.button.button--primary', {

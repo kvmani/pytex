@@ -203,6 +203,12 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # sigma is the standard symbol for their uncertainty, so they are the correct
 # characters in the column headers a microscopist reads.
 "src/pytex/app/services/tem.py" = ["RUF001"]
+# This module exists to hold the registered symbols in the characters the
+# literature writes them with. Every Greek letter in it is deliberate and is the
+# whole point of the file, so the confusable-character rules have nothing left
+# to say here: a warning on every entry would be noise that trains the reader to
+# ignore the rule where it does catch something.
+"src/pytex/core/symbols.py" = ["RUF001", "RUF002"]
 
 [tool.mypy]
 python_version = "3.11"

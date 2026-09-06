@@ -69,7 +69,7 @@ def test_about_describes_the_program_in_prose() -> None:
 @pytest.mark.parametrize("link", about_document()["links"], ids=lambda link: link["label"])
 def test_about_links_are_labelled_absolute_urls(link: dict[str, str]) -> None:
     assert link["label"].strip()
-    assert link["url"].startswith("https://")
+    assert link["url"].startswith("https://") or link["url"].startswith("/docs/")
 
 
 def test_manifest_carries_the_about_document() -> None:
@@ -95,3 +95,5 @@ def test_about_page_is_reachable_from_the_shell_markup() -> None:
     assert 'id="open-about"' in markup
     assert 'id="about-drawer"' in markup
     assert 'id="about-body"' in markup
+    assert 'id="open-docs"' in markup
+    assert 'href="/docs/index.html"' in markup

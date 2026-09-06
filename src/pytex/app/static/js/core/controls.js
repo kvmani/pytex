@@ -10,6 +10,25 @@
  * Parameters are grouped by their declared `group`, and anything marked
  * `advanced` hides behind a disclosure — the "dense but not cluttered" rule
  * applied mechanically instead of panel by panel.
+ *
+ * Three declarations do the compacting, and all three come from the manifest
+ * rather than from a panel's own opinion:
+ *
+ * - `symbol` — what the control is *shown* as. A parameter that names a
+ *   registered symbol is labelled `φ₁`, not `phi1`. The label survives as the
+ *   accessible name and the tooltip, so nothing is lost to a screen reader or
+ *   to someone meeting the quantity for the first time.
+ * - `row` — parameters that share one render side by side. Three Bunge angles
+ *   become one line instead of three, which is only possible once the labels
+ *   are symbols.
+ * - `fieldWidth` — how much width the value actually needs, as a token the
+ *   stylesheet turns into a length. A Miller index gets three characters, not
+ *   the rail.
+ *
+ * The point of all three is the same: every mandatory input of an operation
+ * should be on screen at once, so the user reads the form, fills it, and
+ * presses the button — without scrolling a rail to find out what else is
+ * being asked of them.
  */
 
 import { append, clear, el, markdown } from './dom.js';
@@ -45,19 +64,20 @@ export function buildForm(operation, { initial = {}, onChange = () => {} } = {})
       onChange,
     });
     fields.set(parameter.name, field);
-    if (parameter.advanced) advanced.push(field.element);
+    const entry = { parameter, element: field.element };
+    if (parameter.advanced) advanced.push(entry);
     else if (parameter.group) {
       if (!groups.has(parameter.group)) groups.set(parameter.group, []);
-      groups.get(parameter.group).push(field.element);
+      groups.get(parameter.group).push(entry);
       if (parameter.groupCollapsed) collapsed.add(parameter.group);
-    } else ungrouped.push(field.element);
+    } else ungrouped.push(entry);
   }
 
-  append(root, ungrouped);
-  for (const [name, nodes] of groups) {
-    root.append(disclosure(name, nodes, { open: !collapsed.has(name) }));
+  append(root, layout(ungrouped));
+  for (const [name, entries] of groups) {
+    root.append(disclosure(name, layout(entries), { open: !collapsed.has(name) }));
   }
-  if (advanced.length) root.append(disclosure('Advanced', advanced, { open: false }));
+  if (advanced.length) root.append(disclosure('Advanced', layout(advanced), { open: false }));
 
   return {
     element: root,
@@ -99,6 +119,49 @@ export function buildForm(operation, { initial = {}, onChange = () => {} } = {})
   };
 }
 
+/**
+ * Fold the fields that declared a shared `row` into one line each.
+ *
+ * Why a run rather than a lookup
+ * ------------------------------
+ * Only *consecutive* parameters naming the same row are joined. A row is a
+ * statement about reading order — these values are entered together, so put
+ * them together — and parameters that are not adjacent in the declaration are
+ * not adjacent on screen either. Joining across a gap would silently reorder
+ * the form relative to the declaration that the help text, the examples and
+ * the error messages all follow.
+ *
+ * A client that ignored this entirely would render one field per line, which is
+ * the layout that existed before and is still correct. Nothing here changes a
+ * name, a value or a validation.
+ *
+ * @param {{parameter: object, element: HTMLElement}[]} entries
+ * @returns {HTMLElement[]}
+ */
+function layout(entries) {
+  const nodes = [];
+  let open = null;
+  for (const { parameter, element } of entries) {
+    const row = parameter.row ?? null;
+    if (row && open && open.name === row) {
+      open.container.append(element);
+      continue;
+    }
+    if (row) {
+      // The row's name is its accessible name: "Orientation (Bunge)" is what
+      // the three boxes are collectively, and without it a screen reader meets
+      // three angles with no statement of what they parameterise.
+      const container = el('div.field-row', { role: 'group', 'aria-label': row }, [element]);
+      open = { name: row, container };
+      nodes.push(container);
+    } else {
+      open = null;
+      nodes.push(element);
+    }
+  }
+  return nodes;
+}
+
 function disclosure(title, nodes, { open }) {
   const body = el('div.group__body', {}, nodes);
   return el('details.group', { open }, [el('summary', { text: title }), body]);
@@ -125,23 +188,44 @@ function buildField(parameter, { value, onChange }) {
   // A checkbox puts its label beside the box, so repeating it in the field
   // header would say the same thing twice; the help button moves inline instead.
   const inlineLabel = parameter.kind === 'boolean';
+  // The symbol is what the control *shows*; the label is what it is *called*.
+  // Swapping one for the other would buy width by making the form unreadable to
+  // anyone who does not already know the quantity, so the label is kept as the
+  // accessible name and the tooltip and only the visible text gets shorter.
+  const shown = parameter.symbol ?? parameter.label;
   const label = inlineLabel
     ? null
-    : el('label.field__label', { for: input.id }, [
-        parameter.label,
-        parameter.units ? el('span.field__units', { text: parameter.units }) : null,
-        helpButton,
-      ]);
+    : el(
+        'label.field__label',
+        {
+          for: input.id,
+          title: parameter.symbol ? parameter.label : null,
+          'aria-label': parameter.symbol ? parameter.label : null,
+        },
+        [
+          parameter.symbol
+            ? el('span.field__symbol', { text: shown })
+            : shown,
+          parameter.units ? el('span.field__units', { text: parameter.units }) : null,
+          helpButton,
+        ],
+      );
   const body = inlineLabel
     ? el('div.field__row', {}, [input.element, helpButton])
     : input.element;
 
-  const element = el(isCompact(parameter) ? 'div.field.field--compact' : 'div.field', {}, [
-    label,
-    body,
-    helpNode,
-    errorNode,
-  ]);
+  const classes = ['field'];
+  if (isCompact(parameter)) classes.push('field--compact');
+  // A symbol label is two characters, so it must not reserve the six the word
+  // labels share a column at. The class says "this label is as wide as it
+  // looks" and the stylesheet stops padding it out to a column.
+  if (parameter.symbol) classes.push('field--symbolic');
+  // The width comes from the declaration, never from the panel: the parameter
+  // is the only thing that knows a Miller index is three characters and a file
+  // name is not. `medium` is the historical width, so an older manifest with no
+  // `fieldWidth` renders exactly as it did.
+  classes.push(`field--w-${widthToken(parameter)}`);
+  const element = el(`div.${classes.join('.')}`, {}, [label, body, helpNode, errorNode]);
 
   const field = {
     element,
@@ -196,6 +280,16 @@ function buildField(parameter, { value, onChange }) {
 function isCompact(parameter) {
   if (parameter.kind === 'text' && parameter.multiline) return false;
   return ['number', 'integer', 'choice', 'indices', 'text'].includes(parameter.kind);
+}
+
+//: The width tokens the stylesheet defines a length for. A manifest naming
+//: anything else — an older or newer server than this page — falls back to the
+//: default rather than rendering an unstyled control of no width at all.
+const WIDTH_TOKENS = new Set(['index', 'tiny', 'short', 'medium', 'long', 'full']);
+
+/** The declared width token for a parameter, or the safe default. */
+function widthToken(parameter) {
+  return WIDTH_TOKENS.has(parameter.fieldWidth) ? parameter.fieldWidth : 'medium';
 }
 
 let idCounter = 0;

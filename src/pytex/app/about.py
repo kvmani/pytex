@@ -121,7 +121,8 @@ def about_document() -> dict[str, Any]:
             "notice": LICENSE_NOTICE,
         },
         "links": [
-            {"label": "Documentation", "url": "https://github.com/kvmani/pytex"},
+            {"label": "Documentation", "url": "/docs/index.html"},
+            {"label": "Source repository", "url": "https://github.com/kvmani/pytex"},
             {"label": "Licence text", "url": LICENSE_URL},
         ],
     }

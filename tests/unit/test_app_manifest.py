@@ -84,7 +84,8 @@ def test_every_operation_links_to_an_existing_sphinx_page(spec) -> None:  # type
     assert source.is_file(), f"{spec.id} links to missing Sphinx source {source}"
     described = link.describe()
     assert described["path"] == link.path
-    assert described["url"].endswith(f"docs/site/{link.path}.md")
+    assert described["url"] == f"/docs/{link.path}.html"
+    assert described["source_url"].endswith(f"docs/site/{link.path}.md")
 
 
 @pytest.mark.parametrize("spec", REGISTRY.operations(), ids=lambda spec: spec.id)
