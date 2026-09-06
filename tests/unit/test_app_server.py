@@ -10,6 +10,7 @@ miss — status codes, content types, header behaviour, and the traversal defenc
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -477,6 +478,11 @@ class TestShellCapabilities:
         assert web["can_write_local_files"] is False
 
 
+#: The generated Sphinx bundle inside the package. Present only after
+#: `scripts/build_docs_bundle.py` has run, which happens at packaging time.
+_DOCS_BUNDLE = STATIC_ROOT / "docs"
+
+
 class TestFrontendIsSelfContained:
     """The page must load nothing from the network.
 
@@ -505,9 +511,23 @@ class TestFrontendIsSelfContained:
     """
 
     def test_no_external_urls_in_the_static_tree(self) -> None:
+        """The hand-authored frontend reaches the network nowhere.
+
+        `static/docs` is excluded, and the exclusion is the point rather than a
+        loophole: it is the *generated* Sphinx bundle, not frontend source, and
+        its pages carry DOI hyperlinks in every citation. Those are links a
+        reader may click, not resources the page loads, and demanding a
+        documentation set with no outward references would be demanding one with
+        no citations. What the bundle must not do -- fetch a script, a
+        stylesheet or a font from the network -- is a different claim, and
+        `test_the_documentation_bundle_loads_no_external_resources` makes it.
+        """
+
         offenders = []
         for path in STATIC_ROOT.rglob("*"):
             if not path.is_file() or path.suffix not in {".html", ".css", ".js"}:
+                continue
+            if _DOCS_BUNDLE in path.parents:
                 continue
             text = path.read_text(encoding="utf-8")
             for marker in ("http://", "https://"):
@@ -519,6 +539,39 @@ class TestFrontendIsSelfContained:
                     ):
                         offenders.append(f"{path.name}: {line.strip()[:80]}")
         assert not offenders, f"the frontend must not reference the network: {offenders}"
+
+    def test_the_documentation_bundle_loads_no_external_resources(self) -> None:
+        """If the bundle is built, every asset it pulls must be local.
+
+        This is the air-gap claim, stated over the thing that actually breaks:
+        a `<script src>`, `<link href>` or `<img src>` pointing at a CDN renders
+        perfectly on the machine that built it and leaves a lab host with raw
+        TeX and an unstyled page. Hyperlinks in prose are deliberately not
+        checked -- a citation should point at its DOI.
+
+        Skipped when the bundle has not been built, because it is a packaging
+        step rather than a checkout artifact; `scripts/build_docs_bundle.py`
+        runs the same check itself and refuses to produce a bundle that fails.
+        """
+
+        if not _DOCS_BUNDLE.is_dir():
+            pytest.skip("documentation bundle not built; run scripts/build_docs_bundle.py")
+
+        # src= and href= on resource elements only, not anchors.
+        pattern = re.compile(
+            r"<(?:script|link|img|source)\b[^>]*?(?:src|href)\s*=\s*[\"\']"
+            r"(https?://[^\"\']+)",
+            re.IGNORECASE,
+        )
+        offenders: list[str] = []
+        for path in _DOCS_BUNDLE.rglob("*.html"):
+            for match in pattern.finditer(path.read_text(encoding="utf-8", errors="ignore")):
+                offenders.append(f"{path.name}: {match.group(1)[:80]}")
+                break
+        assert not offenders, (
+            "the bundled documentation must load every asset locally, or it is "
+            f"blank on an air-gapped host: {offenders[:5]}"
+        )
 
     def test_elements_marked_hidden_are_actually_hidden(self) -> None:
         """Every overlay in the page closes itself by setting ``hidden``.
