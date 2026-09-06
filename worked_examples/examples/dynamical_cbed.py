@@ -386,6 +386,165 @@ ZINCBLENDE_DIFFRACTION_GROUP = WorkedExample(
 )
 
 
+SILICON_SETUP = """
+import numpy as np
+from pytex import (
+    AtomicSite,
+    FrameDomain,
+    Handedness,
+    Lattice,
+    Phase,
+    ReferenceFrame,
+    SymmetrySpec,
+    UnitCell,
+    diffraction_group_for,
+)
+from pytex.diffraction.cbed import electron_structure_factor_angstrom
+
+crystal = ReferenceFrame(
+    name="crystal", domain=FrameDomain.CRYSTAL, axes=("a", "b", "c"), handedness=Handedness.RIGHT
+)
+# Silicon, a = 5.43102 A. The full eight-atom diamond basis is required rather
+# than decorative: a reflection is forbidden by its structure factor, and a
+# phase carrying no atomic sites has no structure factor to vanish.
+_DIAMOND_BASIS = (
+    (0.0, 0.0, 0.0),
+    (0.0, 0.5, 0.5),
+    (0.5, 0.0, 0.5),
+    (0.5, 0.5, 0.0),
+    (0.25, 0.25, 0.25),
+    (0.25, 0.75, 0.75),
+    (0.75, 0.25, 0.75),
+    (0.75, 0.75, 0.25),
+)
+silicon_lattice = Lattice(5.43102, 5.43102, 5.43102, 90.0, 90.0, 90.0, crystal_frame=crystal)
+silicon = Phase(
+    name="silicon",
+    lattice=silicon_lattice,
+    symmetry=SymmetrySpec.from_point_group("m-3m", reference_frame=crystal),
+    crystal_frame=crystal,
+    unit_cell=UnitCell(
+        lattice=silicon_lattice,
+        sites=tuple(
+            AtomicSite(label=f"Si{index + 1}", species="Si", fractional_coordinates=xyz)
+            for index, xyz in enumerate(_DIAMOND_BASIS)
+        ),
+    ),
+)
+"""
+
+
+SILICON_GLIDE_EXTINCTION = WorkedExample(
+    id="diffraction-cbed-silicon-200-is-extinguished-by-the-diamond-glide",
+    title="Silicon (200) vanishes exactly, and (111) does not",
+    domain="diffraction",
+    scenario=(
+        "Silicon is the specimen convergent-beam diffraction is taught and "
+        "calibrated on, and the first thing a correct implementation must "
+        "reproduce on it is which reflections are absent. The diamond structure "
+        "puts a second atom at (1/4, 1/4, 1/4) of the fcc cell, and for h+k+l = "
+        "4n+2 the two sublattices scatter exactly out of phase: the structure "
+        "factor is the fcc value multiplied by 1 + exp(i pi (h+k+l)/2), which is "
+        "1 + exp(i pi) = 0 for (200). This is a cancellation between two terms "
+        "of equal magnitude, so it tests the phase convention of the structure "
+        "factor and not merely its size - a sign error in the exponent leaves "
+        "(200) at twice the fcc amplitude instead of zero, which looks like a "
+        "strong reflection rather than like a bug. (111), with h+k+l = 3, is "
+        "unaffected and is checked alongside so the test cannot pass by "
+        "returning zero for everything."
+    ),
+    setup=SILICON_SETUP,
+    code=(
+        "forbidden = float(\n"
+        "    np.abs(electron_structure_factor_angstrom(silicon, np.array([[2, 0, 0]])))[0]\n"
+        ")\n"
+        "allowed = float(\n"
+        "    np.abs(electron_structure_factor_angstrom(silicon, np.array([[1, 1, 1]])))[0]\n"
+        ")\n"
+        "result = [forbidden, float(allowed > 1.0)]"
+    ),
+    expected=[0.0, 1.0],
+    unit="",
+    tolerance=1e-9,
+    reference=(
+        "An analytic identity of the diamond structure, not a measurement. The "
+        "basis factor 1 + exp(i pi (h+k+l)/2) vanishes identically when h+k+l = "
+        "4n+2, so |F(200)| is zero to floating-point rounding for any atomic "
+        "scattering factor whatever; and (111) has h+k+l = 3, where the same "
+        "factor is 1 - i and non-zero. The second entry is a boolean."
+    ),
+    citation=(
+        "International Tables for Crystallography, Volume A, space group Fd-3m "
+        "(No. 227), reflection conditions; Williams and Carter, Transmission "
+        "Electron Microscopy, 2nd ed. (Springer, 2009), Chapter 13."
+    ),
+    see_also=(_DIFFRACTION_CONCEPT, _API),
+    result_format="{:.3e}",
+)
+
+
+SILICON_ZONE_CHOICE = WorkedExample(
+    id="diffraction-cbed-the-zone-axis-is-part-of-the-silicon-measurement",
+    title="Down [111] silicon and zincblende are indistinguishable; down [001] they are not",
+    domain="diffraction",
+    scenario=(
+        "Choosing the zone axis is a step of the method, not a detail, and "
+        "silicon against gallium arsenide is where that is clearest: identical "
+        "lattice, one centrosymmetric and one not, so anything separating them "
+        "separates the centre of symmetry and nothing else. Down [001] the two "
+        "recorded observables differ - both give a four-fold bright-field disc, "
+        "but the whole pattern is 4mm for silicon and 2mm for zincblende - and "
+        "one exposure settles the question. Down [111] the diffraction groups "
+        "still differ (6_Rmm_R against 3m), yet they differ only in elements "
+        "carrying the reciprocity tag, so both the bright field and the whole "
+        "pattern read 3m and the exposure decides nothing. An operator who "
+        "records the [111] pattern and concludes 'centrosymmetric' has "
+        "concluded from an observation that cannot support it. The check "
+        "confirms the indistinguishability down [111] and the separation down "
+        "[001] in the same expression, because it is the contrast that is the "
+        "lesson."
+    ),
+    setup=GROUPS_SETUP,
+    code=(
+        "si_111 = diffraction_group_for('m-3m', [1, 1, 1])\n"
+        "gaas_111 = diffraction_group_for('-43m', [1, 1, 1])\n"
+        "si_001 = diffraction_group_for('m-3m', [0, 0, 1])\n"
+        "gaas_001 = diffraction_group_for('-43m', [0, 0, 1])\n"
+        "result = [\n"
+        "    # [111]: the two observables agree, so the exposure cannot separate them.\n"
+        "    float(si_111.bright_field_symbol == gaas_111.bright_field_symbol),\n"
+        "    float(si_111.whole_pattern_symbol == gaas_111.whole_pattern_symbol),\n"
+        "    # and yet the underlying groups are different.\n"
+        "    float(si_111.symbol != gaas_111.symbol),\n"
+        "    # [001]: the whole pattern separates them.\n"
+        "    float(si_001.whole_pattern_symbol != gaas_001.whole_pattern_symbol),\n"
+        "    # and the centre of symmetry follows exactly.\n"
+        "    float(si_001.has_friedel_symmetry),\n"
+        "    float(not gaas_001.has_friedel_symmetry),\n"
+        "]"
+    ),
+    expected=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+    unit="",
+    tolerance=0.0,
+    reference=(
+        "Group theory, evaluated from the published diffraction-group "
+        "construction rather than measured. Down the three-fold, m-3m gives "
+        "6_Rmm_R and -43m gives 3m; both project to bright-field 3m and "
+        "whole-pattern 3m, since the groups differ only in reciprocity-tagged "
+        "elements, which no single exposure records. Down the four-fold, 4mm1_R "
+        "against 4_Rmm_R differ in the whole pattern, 4mm against 2mm. Each "
+        "entry is a boolean agreement, so the tolerance is zero."
+    ),
+    citation=(
+        "Buxton, Eades, Steeds and Rackham, Philosophical Transactions of the "
+        "Royal Society A 281 (1976) 171-194, Tables 2 and 3; Spence and Zuo, "
+        "Electron Microdiffraction (Plenum, 1992), Chapter 3."
+    ),
+    see_also=(_DIFFRACTION_CONCEPT, _API),
+    result_format="{:.0f}",
+)
+
+
 GROUP = ExampleGroup(
     slug="dynamical-cbed-and-symmetry",
     title="Dynamical CBED and symmetry determination",
@@ -402,5 +561,7 @@ GROUP = ExampleGroup(
         THIRTY_ONE_DIFFRACTION_GROUPS,
         CENTROSYMMETRY_SPLIT,
         ZINCBLENDE_DIFFRACTION_GROUP,
+        SILICON_GLIDE_EXTINCTION,
+        SILICON_ZONE_CHOICE,
     ),
 )

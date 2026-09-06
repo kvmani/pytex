@@ -41,6 +41,7 @@ variant_correspondence
 composite_saed_assembly
 saed_pattern_indexing
 tem_tilt_navigation
+cbed_thickness_and_symmetry
 precise_lattice_parameter_determination
 ghost_correction
 ```
