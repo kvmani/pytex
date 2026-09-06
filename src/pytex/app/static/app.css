@@ -1085,37 +1085,70 @@ table.result tbody tr:hover {
 }
 
 .field-row > .field {
-  flex: 0 1 auto;
+  flex: 1 1 0;
+  min-width: 3.75rem;
+}
+
+/* Inside a row the label goes back on top of its control, which is the opposite
+   of what the compact field does everywhere else — and the reason is arithmetic
+   rather than taste.
+
+   The rail is about 270 px. A compact field carrying `φ₁`, its unit suffix and its
+   help button measures 167 px beside its box, so three of them are 500 px and
+   the row wraps into the three lines it was supposed to replace. Stacked, the
+   cell is only as wide as the wider of the label and the box — about 80 px —
+   and the three fit with room to spare.
+
+   The alternative was to drop the units and the help button from a field in a
+   row. That buys the width by taking away the two things that say what the
+   number is and what it means, from the controls least able to spare them: a
+   bare `Φ` with no unit and no help is not a compact label, it is an unlabelled
+   box. */
+.field-row > .field--compact {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.125rem;
+}
+
+.field-row > .field--compact > .field__label {
+  flex: 0 0 auto;
+}
+
+.field-row > .field--compact > input[type="number"],
+.field-row > .field--compact > input[type="text"],
+.field-row > .field--compact > input[type="search"],
+.field-row > .field--compact > select {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Help and error text are prose, and prose in a third of a narrow rail is
+   unreadable. A field whose popover is open, or which is reporting an error,
+   takes the whole row for as long as it has something to say; its neighbours
+   drop to the line below and come back when it is dismissed.
+
+   Where `:has()` is unavailable the message still renders, wrapped inside the
+   column. That is worse to read but loses nothing, which is the right way for
+   this to degrade — the alternative, hiding the message, would not be. */
+.field-row > .field--compact:has(> .field__help:not([hidden])),
+.field-row > .field--compact:has(> .field__error:not([hidden])) {
+  flex: 1 1 100%;
+}
+
+.field-row > .field > .field__help,
+.field-row > .field > .field__error {
   min-width: 0;
 }
 
-.field-row > .field--compact {
-  justify-content: flex-start;
-  gap: 0.25rem 0.375rem;
-}
-
-/* Help and error text belong to the row, not to the column of one field: a
-   message wrapped inside a third of the rail is unreadable, and the popover is
-   prose. Both break the line and take the width. */
-.field-row > .field > .field__help,
-.field-row > .field > .field__error {
-  flex: 1 1 100%;
-  min-width: min(100%, 14rem);
-}
-
 @media (max-width: 60rem) {
-  /* The compact rule has already put labels back on top at this width. Fields
-     in a row keep sharing the line while they each still have room for a value,
-     and wrap when they do not. */
+  /* On a phone the rail is the full width of the screen, so a row of three has
+     more room per field than it did on the desktop rail, not less. The cells
+     keep sharing the line and wrap only when a value would be squeezed below a
+     usable width. */
   .field-row > .field--compact {
-    flex: 1 1 7rem;
-  }
-
-  .field-row > .field--compact > input[type="number"],
-  .field-row > .field--compact > input[type="text"],
-  .field-row > .field--compact > input[type="search"],
-  .field-row > .field--compact > select {
-    width: 100%;
+    flex: 1 1 5rem;
   }
 }
 

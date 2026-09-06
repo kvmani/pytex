@@ -60,6 +60,20 @@ function workspaceTab(page, name) {
 }
 
 /** Open a panel by name, through its workspace tab and any sub-tab. */
+/**
+ * The `.field` wrapper a control sits inside.
+ *
+ * Matched on the class *token*, not on the whole class attribute: a field
+ * carries a width modifier (`field--w-index`) and often a compact or symbolic
+ * one, so `@class="field"` finds nothing. `field-row` is not matched, because
+ * its token is `field-row` and the padded comparison requires the whole token.
+ */
+function fieldOf(locator) {
+  return locator.locator(
+    'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " field ")]',
+  );
+}
+
 async function openPanel(page, name) {
   const [workspace, sub] = PANEL_PATH[name] ?? [name, null];
   await workspaceTab(page, workspace).click();
@@ -290,13 +304,15 @@ test('Miller indices are typed one index to a box', async ({ page }) => {
   await added.locator('.indices__box').nth(0).fill('2');
   // A row started and not finished is named for the indices still missing,
   // which the server cannot phrase as well: by then it is one list with a hole.
-  await expect(planes.locator('xpath=ancestor::div[@class="field"]').locator('.field__error'))
-    .toContainText('k, l are still empty');
+  //
+  // The ancestor is matched on the `field` class *token* rather than on the
+  // whole class attribute: a field also carries a width modifier, and matching
+  // the attribute exactly made this assertion fail the moment one was added.
+  await expect(fieldOf(planes).locator('.field__error')).toContainText('k, l are still empty');
 
   await added.locator('.indices__box').nth(1).fill('0');
   await added.locator('.indices__box').nth(2).fill('0');
-  await expect(planes.locator('xpath=ancestor::div[@class="field"]').locator('.field__error'))
-    .toBeHidden();
+  await expect(fieldOf(planes).locator('.field__error')).toBeHidden();
 
   await expectNewCompletedCalculation(page, () =>
     page.locator('#rail-body').getByRole('button', { name: 'Build structure' }).click(),
@@ -336,6 +352,65 @@ test('all three index boxes fit inside the rail', async ({ page }) => {
   await boxes.nth(0).fill('-100');
   const overflow = await boxes.nth(0).evaluate((node) => node.scrollWidth - node.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('the three Bunge angles are one row of symbol-labelled boxes', async ({ page }) => {
+  await openWorkbench(page);
+  await openPanel(page, 'Kikuchi simulator');
+
+  const row = page.locator('#rail-body .field-row[aria-label="Orientation (Bunge)"]');
+  await expect(row).toHaveCount(1);
+  const fields = row.locator('> .field');
+  await expect(fields).toHaveCount(3);
+
+  // The point of the whole surface: one line, not three. Measured rather than
+  // asserted through a class, because the class can be present while the row
+  // wraps -- which is exactly what happened when the fields kept their inline
+  // labels and each one measured 167 px in a 271 px rail.
+  const tops = [];
+  for (let index = 0; index < 3; index += 1) {
+    const box = await fields.nth(index).boundingBox();
+    tops.push(Math.round(box.y));
+  }
+  expect(new Set(tops).size).toBe(1);
+
+  // Shown as symbols, and still named. A symbol buys the width; losing the
+  // words would spend it on a form nobody new can read, and on a control a
+  // screen reader announces as a glyph.
+  await expect(fields.nth(0).locator('.field__symbol')).toHaveText('\u03c6\u2081');
+  await expect(fields.nth(1).locator('.field__symbol')).toHaveText('\u03a6');
+  await expect(fields.nth(2).locator('.field__symbol')).toHaveText('\u03c6\u2082');
+  await expect(fields.nth(0).locator('.field__label')).toHaveAttribute(
+    'aria-label',
+    'First Bunge angle',
+  );
+
+  // And they are still the operation's inputs, not decoration.
+  const inputs = row.locator('input');
+  await inputs.nth(0).fill('35');
+  await inputs.nth(1).fill('48');
+  await inputs.nth(2).fill('12');
+  await page.getByRole('button', { name: 'Simulate the pattern' }).click();
+  // The geometry readout, not the message log: the log says a simulation
+  // finished whatever it was given, so it would pass on the defaults too.
+  await expect(page.getByText('35.0, 48.0, 12.0', { exact: false }).first()).toBeVisible({
+    timeout: 30000,
+  });
+});
+
+test('the lattice cell editor labels its boxes with the lattice symbols', async ({ page }) => {
+  await openWorkbench(page);
+
+  // This control is built by the frontend, not from a parameter declaration,
+  // so it is the one that would drift if the symbol table were not served with
+  // the manifest. It labelled these boxes "alpha", "beta", "gamma".
+  await page.locator('#rail-body summary', { hasText: 'Cell parameters' }).first().click();
+  const cells = page.locator('#rail-body .cell-row label.cell-cell');
+  await expect(cells.nth(3).locator('span')).toHaveText('\u03b1');
+  await expect(cells.nth(4).locator('span')).toHaveText('\u03b2');
+  await expect(cells.nth(5).locator('span')).toHaveText('\u03b3');
+  // The word stays as the accessible name of the box itself.
+  await expect(cells.nth(3).locator('input')).toHaveAttribute('aria-label', 'alpha');
 });
 
 test('loads every scientific workspace without browser errors', async ({ page }) => {
