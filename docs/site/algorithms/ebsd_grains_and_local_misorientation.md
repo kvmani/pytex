@@ -15,6 +15,17 @@ produced it. This page states each derivation and the parameter that decides it,
 because a grain size quoted without its threshold, or a KAM map without its
 kernel, is not reproducible.
 
+```{figure} ../../figures/ebsd_grain_metrics_algorithm.svg
+:alt: Four-lane flow sheet. Lane 1 turns the orientation grid into a neighbour
+  graph and computes symmetry-reduced pair disorientations. Lane 2 thresholds
+  the edges and takes connected components. Lane 3 derives KAM, GROD, GOS and
+  GAM, distinguished by what each compares a point with. Lane 4 forms the
+  curvature and Nye tensors and reports a lower-bound GND density.
+:width: 100%
+
+Segmentation, the local metrics, and the route to dislocation density.
+```
+
 ## 1. Segmentation: from points to grains
 
 ### 1.1 The algorithm

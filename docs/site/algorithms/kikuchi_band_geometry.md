@@ -12,6 +12,17 @@ visible bands, where they land, how wide they are — because the forward model 
 what indexing inverts, what a calibration fits, and what a simulated pattern is
 compared against.
 
+```{figure} ../../figures/kikuchi_geometry_algorithm.svg
+:alt: Three-lane flow sheet. Lane 1 enumerates candidate planes, reduces
+  antipodal pairs, and filters by centring and a kinematic intensity threshold.
+  Lane 2 carries each normal into the laboratory frame and computes the Bragg
+  angle from the relativistic wavelength. Lane 3 projects gnomonically and
+  reports band centre lines, edges at twice the Bragg angle, and zone axes.
+:width: 100%
+
+The forward model that orientation determination inverts.
+```
+
 ## 1. Why bands, and why they are straight
 
 A Kikuchi band comes from a lattice plane, not from a reflection. Inelastically

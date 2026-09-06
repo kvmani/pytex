@@ -37,6 +37,10 @@ ALGORITHM_FIGURES = (
     "variant_correspondence_algorithm.svg",
     "composite_saed_algorithm.svg",
     "saed_indexing_algorithm.svg",
+    "pole_figure_inversion_algorithm.svg",
+    "rietveld_refinement_algorithm.svg",
+    "ebsd_grain_metrics_algorithm.svg",
+    "kikuchi_geometry_algorithm.svg",
 )
 
 #: Figures produced by scripts/generate_reference_frame_figures.py.
@@ -315,7 +319,11 @@ def test_algorithm_figures_are_deterministic() -> None:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
     from generate_algorithm_figures import (
         composite_saed_figure,
+        ebsd_grain_metrics_figure,
+        kikuchi_geometry_figure,
         or_determination_figure,
+        pole_figure_inversion_figure,
+        rietveld_refinement_figure,
         saed_indexing_figure,
         variant_correspondence_figure,
     )
@@ -325,6 +333,10 @@ def test_algorithm_figures_are_deterministic() -> None:
         "variant_correspondence_algorithm.svg": variant_correspondence_figure(),
         "composite_saed_algorithm.svg": composite_saed_figure(),
         "saed_indexing_algorithm.svg": saed_indexing_figure(),
+        "pole_figure_inversion_algorithm.svg": pole_figure_inversion_figure(),
+        "rietveld_refinement_algorithm.svg": rietveld_refinement_figure(),
+        "ebsd_grain_metrics_algorithm.svg": ebsd_grain_metrics_figure(),
+        "kikuchi_geometry_algorithm.svg": kikuchi_geometry_figure(),
     }
     for name, svg in produced.items():
         committed = (FIGURES_DIR / name).read_text(encoding="utf-8")

@@ -20,6 +20,13 @@ Outputs (tracked as canonical documentation assets):
   parent + variant zone-axis pattern on one shared detector.
 - ``docs/figures/saed_indexing_algorithm.svg`` — solving a measured pattern by
   ratio/angle indexing.
+- ``docs/figures/pole_figure_inversion_algorithm.svg`` — recovering an ODF from
+  measured pole figures.
+- ``docs/figures/rietveld_refinement_algorithm.svg`` — whole-profile powder
+  refinement.
+- ``docs/figures/ebsd_grain_metrics_algorithm.svg`` — grains, the local
+  misorientation family, and GND density.
+- ``docs/figures/kikuchi_geometry_algorithm.svg`` — the Kikuchi forward model.
 
 Each figure states its stages, the constraint governing each stage, and — in the
 footer — what the algorithm deliberately does not do.
@@ -734,6 +741,590 @@ def saed_indexing_figure() -> str:
     )
 
 
+def pole_figure_inversion_figure() -> str:
+    """Flow sheet for `ODF.invert_pole_figures` and the harmonic route."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - the measurement, corrected before it is inverted",
+                [
+                    AlgorithmStage(
+                        label="Measured pole figures",
+                        role="input",
+                        formula="P_hkl(y), in m.r.d.",
+                        detail=[
+                            "Several independent {hkl}; one is never",
+                            "enough. Intensities on the",
+                            "multiples-of-random scale.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Defocus correction",
+                        detail=[
+                            "Calibrated from a texture-free standard.",
+                            "Uncorrected, the inversion reproduces an",
+                            "instrumental rim as a texture feature.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - build the operator on the observations' scale",
+                [
+                    AlgorithmStage(
+                        label="Kernel response",
+                        formula="A[i,j] = sum_family psi(angle(g_j h, y_i))",
+                        detail=[
+                            "Pole density of dictionary orientation j",
+                            "at measured direction i, summed over the",
+                            "{hkl} symmetry family.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Rescale to m.r.d.",
+                        role="decision",
+                        formula="A <- A / random_pole_density(psi)",
+                        detail=[
+                            "The raw kernel sum for a random texture",
+                            "is the kernel mean, not 1 - a factor of",
+                            "order 64 at a 12 degree halfwidth.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - solve, constrained by what an ODF is",
+                [
+                    AlgorithmStage(
+                        label="Non-negative simplex fit",
+                        formula="min |Aw - b|^2 + lam|w|^2,  w>=0, sum w = 1",
+                        detail=[
+                            "Both constraints are physics: a density",
+                            "cannot be negative and integrates to one.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Projected gradient",
+                        formula="w <- proj_simplex(w - grad / L)",
+                        detail=[
+                            "Step 1/L with L the Lipschitz constant.",
+                            "Stationarity measured scale-free.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Harmonic alternative",
+                        detail=[
+                            "Unknowns are symmetry-projected",
+                            "coefficients to degree L instead.",
+                            "Even degrees only: pole figures carry",
+                            "no odd information.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "4 - judge the fit, do not trust it",
+                [
+                    AlgorithmStage(
+                        label="Residual report",
+                        role="output",
+                        formula="relative residual, MAE, max error, coverage",
+                        detail=[
+                            "Errors in m.r.d., so they read directly",
+                            "against the texture strength.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Recalculate unfitted poles",
+                        role="decision",
+                        detail=[
+                            "The only check that carries information:",
+                            "the map is non-injective, so a low",
+                            "residual on the fitted poles proves",
+                            "nothing about the ODF.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Pole-figure inversion to an orientation distribution",
+        subtitle="ODF.invert_pole_figures - the discrete route, with the harmonic route alongside",
+        description=(
+            "Four-lane flow sheet. Lane 1 takes measured pole figures on the m.r.d. scale "
+            "and applies the defocus correction. Lane 2 builds the kernel response operator "
+            "and rescales it to the observations' scale. Lane 3 solves the non-negative, "
+            "simplex-constrained, Tikhonov-regularised least-squares problem by projected "
+            "gradient, with the harmonic series expansion as the alternative unknown. Lane 4 "
+            "reports residuals and recalculates poles that were not fitted, which is the only "
+            "check that carries information because the forward map is not injective."
+        ),
+        notes=[
+            SideNote(
+                stage_index=3,
+                title="Failure: a fit that reports success",
+                lines=[
+                    "Skip the rescale and the weights cannot",
+                    "absorb the kernel mean, because they are",
+                    "constrained to sum to one. The solver stalls",
+                    "near a relative residual of 1, its step stops",
+                    "moving, and it reports convergence.",
+                ],
+            ),
+            SideNote(
+                stage_index=5,
+                title="Constraint: scale-free stationarity",
+                lines=[
+                    "The raw step is proportional to 1/L, so on a",
+                    "large-operator system the first step is tiny",
+                    "for that reason alone. Multiplying by L and",
+                    "dividing by |A^T b| makes one tolerance mean",
+                    "the same thing in any units.",
+                ],
+            ),
+            SideNote(
+                stage_index=6,
+                title="Structural: the odd part is absent",
+                lines=[
+                    "Friedel's law makes pole figures",
+                    "centrosymmetric, so they determine only the",
+                    "even-order ODF. No regularisation recovers",
+                    "the odd part; ghost correction infers one",
+                    "from positivity and states its cost.",
+                ],
+            ),
+        ],
+        footer=[
+            "Not modelled here: ghost correction (see the ghost-correction page), grain",
+            "statistics, and any claim of uniqueness - several ODFs reproduce one pole-figure",
+            "set exactly.",
+        ],
+    )
+
+
+def rietveld_refinement_figure() -> str:
+    """Flow sheet for `refine_rietveld`."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - the model, assembled once",
+                [
+                    AlgorithmStage(
+                        label="Measured profile",
+                        role="input",
+                        formula="y_obs(2theta), background NOT subtracted",
+                        detail=[
+                            "Subtracting first removes the",
+                            "background-scale correlation the",
+                            "uncertainties depend on.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Enumerate reflections",
+                        formula="over a PADDED angular window",
+                        detail=[
+                            "Once, from the starting cell. Padding",
+                            "stops a dilating cell moving a",
+                            "reflection in or out mid-refinement.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - the forward calculation, per evaluation",
+                [
+                    AlgorithmStage(
+                        label="Positions",
+                        formula="from the dilated cell + zero shift",
+                    ),
+                    AlgorithmStage(
+                        label="Intensities",
+                        formula="m |F|^2 L(theta) P_march",
+                        detail=[
+                            "Multiplicity, structure factor with",
+                            "B_iso, Lorentz-polarisation, and the",
+                            "March-Dollase texture factor.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Profile + background",
+                        formula="Thompson-Cox-Hastings pV + Chebyshev",
+                        detail=[
+                            "Widths from the Caglioti form",
+                            "U tan^2 t + V tan t + W, plus Y.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - refine, bounded",
+                [
+                    AlgorithmStage(
+                        label="Trust-region least squares",
+                        formula="min sum w (y_obs - y_calc)^2",
+                        detail=[
+                            "scipy least_squares. Every parameter",
+                            "bounded, because an unbounded fit",
+                            "reaches a lower R_wp at an impossible",
+                            "cell.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Uncertainties",
+                        detail=[
+                            "From the Jacobian at the solution,",
+                            "with the background still in the model.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "4 - judge it, and not by R_wp alone",
+                [
+                    AlgorithmStage(
+                        label="R factors",
+                        role="output",
+                        formula="R_p, R_wp, R_exp, GoF = R_wp/R_exp",
+                        detail=["Fractions, not percentages."],
+                    ),
+                    AlgorithmStage(
+                        label="Durbin-Watson",
+                        role="decision",
+                        detail=[
+                            "Serial correlation of the weighted",
+                            "residuals. Near 2 uncorrelated; well",
+                            "under 1 means systematic misfit that",
+                            "R_wp does not show.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Residual curve",
+                        role="output",
+                        detail=[
+                            "The most informative single output.",
+                            "Derivative-shaped at peaks: positions.",
+                            "Symmetric at peaks: widths.",
+                            "High-angle only: B_iso or absorption.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Rietveld whole-profile refinement",
+        subtitle="refine_rietveld - fitting the pattern point by point, not extracted intensities",
+        description=(
+            "Four-lane flow sheet. Lane 1 takes the raw measured profile with its background "
+            "intact and enumerates reflection families once over a padded angular window. "
+            "Lane 2 recomputes positions, intensities, profiles and background at every "
+            "evaluation. Lane 3 minimises the weighted residual by bounded trust-region least "
+            "squares and takes uncertainties from the Jacobian. Lane 4 reports the R factors, "
+            "the Durbin-Watson statistic and the residual curve, which diagnoses what to "
+            "refine next in a way no scalar does."
+        ),
+        notes=[
+            SideNote(
+                stage_index=5,
+                title="Constraint: bounds encode physics",
+                lines=[
+                    "Zero shift within +/- 1 degree: beyond that",
+                    "it is a broken diffractometer, and left free",
+                    "it swaps places with the cell. Cell dilation",
+                    "within 10 percent: a refinement wanting more",
+                    "has misidentified the phase.",
+                ],
+            ),
+            SideNote(
+                stage_index=6,
+                title="Practice: refine incrementally",
+                lines=[
+                    "The default set is scale, zero, cell, one",
+                    "width, and background. Turning everything on",
+                    "at once reaches a low R_wp at a meaningless",
+                    "minimum, because zero-against-cell and",
+                    "background-against-scale trade freely.",
+                ],
+            ),
+        ],
+        footer=[
+            "Use this when phase fractions, structure or profile parameters are the target.",
+            "For the cell alone, the extrapolation route makes fewer assumptions and gives a",
+            "better lattice parameter.",
+        ],
+    )
+
+
+def ebsd_grain_metrics_figure() -> str:
+    """Flow sheet for segmentation and the local-misorientation family."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - the map, as a graph",
+                [
+                    AlgorithmStage(
+                        label="Orientations on a grid",
+                        role="input",
+                        detail=[
+                            "Square (4/8) or hexagonal (6)",
+                            "topology, with phases per point.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Neighbour pairs",
+                        formula="first shell; phase boundaries dropped",
+                        detail=[
+                            "A misorientation between different",
+                            "phases is not defined here.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Pair disorientation",
+                        formula="min over the symmetry orbit",
+                        detail=[
+                            "576 candidates per cubic pair,",
+                            "evaluated vectorised over all pairs.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - grains",
+                [
+                    AlgorithmStage(
+                        label="Threshold the edges",
+                        role="decision",
+                        formula="keep pairs with angle <= theta_c",
+                        detail=["Conventionally 5 to 15 degrees."],
+                    ),
+                    AlgorithmStage(
+                        label="Connected components",
+                        formula="flood fill = components of the edge set",
+                        detail=[
+                            "Grain ids numbered by each",
+                            "component's lowest member, so they are",
+                            "a function of the data.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - the four local metrics, by what each compares",
+                [
+                    AlgorithmStage(
+                        label="KAM",
+                        formula="point vs its neighbours",
+                        detail=[
+                            "Short-wavelength gradient.",
+                            "Exclude boundaries or it becomes a",
+                            "boundary map.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="GROD",
+                        formula="point vs its grain reference",
+                        detail=["Long-wavelength rotation."],
+                    ),
+                    AlgorithmStage(
+                        label="GOS / GAM",
+                        formula="grain averages of the two",
+                        detail=["Per-grain deformation measures."],
+                    ),
+                ],
+            ),
+            (
+                "4 - dislocation content",
+                [
+                    AlgorithmStage(
+                        label="Curvature tensor",
+                        formula="kappa_ij = d omega_i / d x_j",
+                    ),
+                    AlgorithmStage(
+                        label="Nye tensor",
+                        formula="alpha = kappa^T - tr(kappa) I",
+                    ),
+                    AlgorithmStage(
+                        label="GND density",
+                        role="output",
+                        formula="rho = sum |alpha_measurable| / b",
+                        detail=[
+                            "A LOWER BOUND: a surface scan cannot",
+                            "measure the gradient normal to itself,",
+                            "and statistically stored dislocations",
+                            "produce no curvature at all.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Grains, local misorientation, and dislocation density",
+        subtitle="segment_grains, the KAM/GROD/GOS/GAM family, and the Nye route to GND",
+        description=(
+            "Four-lane flow sheet. Lane 1 turns the orientation grid into a neighbour graph "
+            "and computes symmetry-reduced pair disorientations. Lane 2 thresholds the edges "
+            "and takes connected components, giving grains. Lane 3 derives the four local "
+            "misorientation metrics, distinguished by what each compares a point with. Lane 4 "
+            "forms the lattice curvature and Nye tensors and reports a lower-bound "
+            "geometrically necessary dislocation density."
+        ),
+        notes=[
+            SideNote(
+                stage_index=3,
+                title="Inherent: flood fill merges gradients",
+                lines=[
+                    "Points connected by a chain of small steps",
+                    "join, so a grain with a continuous gradient",
+                    "can exceed theta_c end to end and remain one",
+                    "grain. That is the definition, not a defect -",
+                    "and it is why GROD exists.",
+                ],
+            ),
+            SideNote(
+                stage_index=5,
+                title="Constraint: KAM is grid-dependent",
+                lines=[
+                    "A larger kernel smooths and lowers KAM, so",
+                    "values are comparable only at equal step size",
+                    "and equal order. Report both.",
+                ],
+            ),
+        ],
+        footer=[
+            "Every number here depends on a choice: theta_c and connectivity for grains, step",
+            "and kernel for KAM, method and Burgers vector for GND. A result quoted without",
+            "them is not reproducible.",
+        ],
+    )
+
+
+def kikuchi_geometry_figure() -> str:
+    """Flow sheet for `simulate_kikuchi_pattern`."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - which planes can give a band",
+                [
+                    AlgorithmStage(
+                        label="Enumerate planes",
+                        role="input",
+                        formula="(hkl) to max_index",
+                        detail=["Cost is cubic in the index limit."],
+                    ),
+                    AlgorithmStage(
+                        label="Antipodal reduction",
+                        detail=[
+                            "(hkl) and its opposite are the same",
+                            "plane and would draw one band twice.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Centring and intensity",
+                        role="decision",
+                        formula="reflection condition, then |F|^2",
+                        detail=[
+                            "A systematically absent reflection",
+                            "produces no band at all.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - into the laboratory frame",
+                [
+                    AlgorithmStage(
+                        label="Carry the normal through",
+                        formula="n_lab = T_spec->lab . R_cry->spec . n_cry",
+                        detail=[
+                            "Frames are checked, not assumed: a",
+                            "mismatch gives a plausible wrong",
+                            "pattern.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Bragg angle",
+                        formula="sin(theta_B) = lambda / 2d",
+                        detail=[
+                            "Relativistic wavelength. Planes that",
+                            "cannot satisfy it are dropped.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - onto the detector",
+                [
+                    AlgorithmStage(
+                        label="Gnomonic projection",
+                        formula="great circles -> straight lines",
+                        detail=[
+                            "Origin at the pattern centre; one unit",
+                            "is one detector distance, so the frame",
+                            "is detector-size independent.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Band edges",
+                        role="output",
+                        formula="angular width = 2 theta_B",
+                        detail=[
+                            "Width measures d INVERSELY: wide bands",
+                            "are low-d planes.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Zone axes",
+                        role="output",
+                        formula="h u + k v + l w = 0",
+                        detail=[
+                            "The bright intersections a human",
+                            "indexes by.",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Kikuchi band geometry and pattern simulation",
+        subtitle="simulate_kikuchi_pattern - the forward model that indexing inverts",
+        description=(
+            "Three-lane flow sheet. Lane 1 enumerates candidate lattice planes, reduces "
+            "antipodal pairs, and filters by the centring reflection condition and a kinematic "
+            "intensity threshold. Lane 2 carries each plane normal into the laboratory frame "
+            "through the crystal orientation and computes the Bragg angle from the "
+            "relativistic electron wavelength. Lane 3 projects gnomonically, where great "
+            "circles become straight lines, and reports band centre lines, edges at twice the "
+            "Bragg angle, and the zone axes where bands intersect."
+        ),
+        notes=[
+            SideNote(
+                stage_index=6,
+                title="Constraint: the forward hemisphere only",
+                lines=[
+                    "Directions travelling away from the detector",
+                    "have no intersection and are reported invalid.",
+                    "A silent wrap would place a band on the",
+                    "opposite side of the pattern.",
+                ],
+            ),
+            SideNote(
+                stage_index=7,
+                title="Reading: min_d_spacing drops WIDE bands",
+                lines=[
+                    "Band width grows as spacing falls, so a",
+                    "minimum-spacing cut removes the widest,",
+                    "weakest, high-order bands - not the",
+                    "narrowest.",
+                ],
+            ),
+        ],
+        footer=[
+            "Geometric and kinematic: band positions and widths are exact, intensities are a",
+            "|F|^2 proxy. No excess/deficiency asymmetry, no dynamical contrast, no inelastic",
+            "background, no detector response.",
+        ],
+    )
+
+
 def main() -> int:
     """Write every algorithm figure into ``docs/figures/``."""
 
@@ -742,6 +1333,10 @@ def main() -> int:
         "variant_correspondence_algorithm.svg": variant_correspondence_figure(),
         "composite_saed_algorithm.svg": composite_saed_figure(),
         "saed_indexing_algorithm.svg": saed_indexing_figure(),
+        "pole_figure_inversion_algorithm.svg": pole_figure_inversion_figure(),
+        "rietveld_refinement_algorithm.svg": rietveld_refinement_figure(),
+        "ebsd_grain_metrics_algorithm.svg": ebsd_grain_metrics_figure(),
+        "kikuchi_geometry_algorithm.svg": kikuchi_geometry_figure(),
     }
     FIGURES.mkdir(parents=True, exist_ok=True)
     for name, svg in figures.items():

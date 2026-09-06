@@ -14,6 +14,17 @@ parameters, the refinement strategy, and the statistics, with particular
 attention to the ways a refinement produces an excellent $R_{wp}$ and a wrong
 answer.
 
+```{figure} ../../figures/rietveld_refinement_algorithm.svg
+:alt: Four-lane flow sheet. Lane 1 takes the raw profile with its background
+  intact and enumerates reflections once over a padded window. Lane 2
+  recomputes positions, intensities, profiles and background every evaluation.
+  Lane 3 minimises the weighted residual by bounded trust-region least squares.
+  Lane 4 reports the R factors, Durbin-Watson, and the residual curve.
+:width: 100%
+
+The refinement, with the bounds and the practice that govern it.
+```
+
 ## 1. The forward model
 
 At each measured $2\theta_i$ the calculated intensity is

@@ -16,6 +16,18 @@ quantitative texture analysis, and it is ill-posed in three distinct ways that
 this page keeps separate, because they have different cures and only two of them
 have any cure at all.
 
+```{figure} ../../figures/pole_figure_inversion_algorithm.svg
+:alt: Four-lane flow sheet. Lane 1 takes measured pole figures on the m.r.d.
+  scale and applies the defocus correction. Lane 2 builds the kernel response
+  operator and rescales it to the observations' scale. Lane 3 solves the
+  non-negative, simplex-constrained, regularised least-squares problem by
+  projected gradient, with the harmonic series as the alternative unknown.
+  Lane 4 reports residuals and recalculates unfitted poles.
+:width: 100%
+
+The algorithm, with the constraint governing each stage.
+```
+
 ## 1. The forward model, which is where the difficulty comes from
 
 The pole density of the plane family $\{hkl\}$ along the specimen direction

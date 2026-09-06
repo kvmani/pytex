@@ -36,6 +36,7 @@ documents so the code and the description cannot drift apart.
 | --- | --- |
 | {doc}`ebsd_grains_and_local_misorientation` | grains from a point grid; KAM, GROD, GOS, GAM; GND density |
 | {doc}`csl_boundaries` | assigning a Sigma value, and what it does not establish |
+| {doc}`kikuchi_band_geometry` | which planes give bands, where they land, and how wide they are |
 
 **Transmission electron microscopy and diffraction**
 
@@ -51,6 +52,7 @@ documents so the code and the description cannot drift apart.
 | Page | The computation |
 | --- | --- |
 | {doc}`schmid_and_taylor` | which system yields first, and what a strain costs |
+| {doc}`elastic_homogenization` | single-crystal stiffness plus a texture to an aggregate, with bounds |
 
 **Orientation relationships**
 
@@ -58,12 +60,14 @@ documents so the code and the description cannot drift apart.
 | --- | --- |
 | {doc}`orientation_relationship_determination` | an OR from measured parent/child orientations |
 | {doc}`variant_correspondence` | variant-resolved plane and direction correspondence |
+| {doc}`parent_grain_reconstruction` | recovering a transformed-away parent, and variant selection |
 
 **X-ray diffraction**
 
 | Page | The computation |
 | --- | --- |
 | {doc}`precise_lattice_parameter_determination` | a cell from peak positions, with the systematic error extrapolated away |
+| {doc}`rietveld_refinement` | fitting the whole profile: structure, scale, widths, texture, background |
 
 ## Conventions used throughout
 
@@ -100,5 +104,9 @@ kearns_parameter
 misorientation_and_disorientation
 ebsd_grains_and_local_misorientation
 csl_boundaries
+kikuchi_band_geometry
 schmid_and_taylor
+elastic_homogenization
+parent_grain_reconstruction
+rietveld_refinement
 ```
