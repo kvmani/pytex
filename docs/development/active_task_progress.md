@@ -6842,3 +6842,93 @@ re-run before believing it -- but re-run, rather than assuming.
 **Status: the goal is complete.** All six planned increments landed, plus this seventh. What
 remains open and is deliberately outside it: a defocus model beyond the existing random-standard
 calibration, and the MTEX comparison campaign, which is deferred at the user's instruction.
+
+## Goal (opened 2026-09-06) — a form that fits on one screen
+
+**Objective, as stated by the user.** Give every input only the width it needs; do not give a
+`[uvw]` box, which never holds more than three characters, a wide field. Label an angle with its
+symbol — `φ₁` rather than "Phi 1" — because the label was the thing consuming the width, and with
+symbols the three Euler angles of the Kikuchi simulator fit on one row instead of three. Present
+every mandatory input at once so the user reads the form, fills it in, and presses
+calculate/simulate. **Make this a cardinal principle of the repository**, and apply it holistically
+rather than panel by panel.
+
+This continues the *Workbench Density* goal of 2026-09-03, whose increment 2 introduced
+`.field--compact` (label beside control). That halved a field's height; it did not address its
+width, and it left every label as words.
+
+### The shape of the answer
+
+Not a panel-by-panel edit. Every control in the workbench is generated from a parameter
+declaration (Decision 2 of the application platform document), so the rule is declared on the
+parameter and applied by the one renderer. Three new declarations, all optional, all
+presentation-only — a client that ignores them renders the form that existed before, and none of
+them changes a name, a default or a validation:
+
+- **`field_width`** — how much width the value needs, in *characters of content*, from the
+  vocabulary `FIELD_WIDTHS` (`index`, `tiny`, `short`, `medium`, `long`, `full`). Not pixels: the
+  parameter knows a Miller index is three characters and knows nothing about the rail or the font,
+  so `app.css` is the only place a token becomes a length.
+- **`symbol`** — the name of an entry in the new `pytex.core.symbols`. The control shows the
+  symbol; `label` survives as the accessible name, the tooltip and the text of every error.
+- **`row`** — a run of adjacent parameters that render on one line.
+
+### Increment 1 — the surface, the registry, and the sweep (landed, a8a4516)
+
+**`pytex.core.symbols`.** The machine-readable half of the terminology and symbol registry: 26
+entries, each with a Unicode form for a control, a mathtext body for a figure axis, and the same
+one-line meaning the standards document gives. Naming an unregistered symbol raises at
+construction, with the near matches in the message — the usual cause is one character (`phi1` for
+`phi_1`). The holder tilts and the lattice angles are deliberately separate entries although both
+are written α and β, which is what lets an error message say which one a control means.
+
+**Most of the narrowing cost nothing per parameter.** `_derived_field_width` reads the constraints
+a parameter already declares: a bounded number derives `short`, a bounded integer derives its own
+digit count, an `indices` parameter derives `index`, a text area derives `full`. That narrowed
+**264 of 546 controls with no per-parameter edit** and nothing new to keep in step. Explicit
+declarations were then added where the derivation could not see the answer — 71 parameters,
+mostly unbounded angles and the quantities that now share a row.
+
+**What now shares a line.** The Bunge triple in all four operations that take one
+(`ebsd.simulate_kikuchi_pattern`, `ecci.resimulate`, `ecci.solve_workflow`, `tem.simulate_saed`) —
+the case the user named; the TEM stage tilt pair and its limits; the detector frame size and beam
+centre; the EBSD/ECCI pattern centre (`x*`, `y*`, `z*`); the five CBED fringe minima; the crystal
+viewer's camera and cell repeats; the XRD angular range.
+
+**A second registry was avoided.** One control is not generated from a declaration — the cell
+editor inside the phase control, whose six boxes are the lattice parameters and were labelled with
+the words "alpha", "beta", "gamma". Typing the glyphs into `phasecontrol.js` would be exactly the
+inline formatting the module exists to prevent, so the symbol table is published in the manifest
+and read through the new `core/symbols.js`, which falls back to the name when the table is absent.
+
+**Verified.** `ruff` and `mypy` clean; `tests/unit/test_symbols.py` (new, 117 cases) and the full
+`tests/unit/test_app_manifest.py` green.
+
+### Increment 2 — the rule made checkable, and written down (in progress)
+
+Nine new tests in `test_app_manifest.py` pin the rule rather than leaving it to review: every
+parameter publishes a width from the declared vocabulary; an `indices` row is never given the
+rail; a symbol is always published alongside the words it stands for and is always one the
+registry defines; the manifest carries the symbol table; a row's members are adjacent, sit in one
+section, number at least two, and are all narrow enough to share a line; and — the cardinal one —
+**every mandatory input is reachable without opening a disclosure**, so a form cannot look complete
+while hiding a required control behind Advanced or inside a collapsed group. That last invariant
+already held across all operations; it is now pinned rather than lucky.
+
+Written down in three places: `AGENTS.md` gains the cardinal rule and the "symbols come from
+`pytex.core.symbols` alone" rule; `docs/architecture/application_platform.md` gains Decision 13,
+which records why screen real estate is treated as a scientific resource here rather than as a
+matter of taste; `docs/standards/terminology_and_symbol_registry.md` gains a section on its
+machine-readable half and on the look-it-up-never-type-it rule.
+
+**Worktree hazard encountered, and recorded because it affects how this history reads.** A
+concurrent session is committing in this same worktree. It ran `git reset --hard` once, discarding
+this goal's in-progress edits (replayed from scratchpad patch scripts, nothing lost), and later
+committed with `git add -A`-style staging, sweeping part of this change into `71d3aae` and
+`555fb7b` — commits whose messages describe unrelated work. The code is intact and `a8a4516`
+carries the remainder under an honest message, but a reader of the history should know that those
+two commits contain GUI-layout work their subjects do not mention.
+
+**Next actions.** Verify the rendered forms in the browser lane at desktop and at 390 px; extend
+`tests/browser/workbench.spec.js` with an assertion that the Bunge triple occupies one row; run the
+full unit lane.

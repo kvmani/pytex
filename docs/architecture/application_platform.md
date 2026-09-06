@@ -378,6 +378,60 @@ Decision 3. A malformed or wrongly suffixed file is an input error attached to t
 Parser warnings are captured and written to the application log instead of becoming unowned
 runtime warnings.
 
+## Decision 13 — A Form Fits On One Screen, And A Control Is As Wide As Its Value
+
+The workbench spent most of its width on nothing. A Miller index box, which never holds more than
+three characters, was allotted the full rail. Three Bunge angles took three lines because `phi1`,
+`Phi` and `phi2` were the widest thing on each of them — the *labels* were the layout, not the
+values. A user reached the button by scrolling, which means they never saw the operation's inputs
+as one statement and could not check them before pressing it.
+
+Screen real estate is treated here as a scientific resource rather than a matter of taste. The
+inputs of a calculation are a single statement about what is being computed; a form that shows
+half of them at a time is a form the user cannot read.
+
+So the rule is declared on the parameter, in Python, and applied by the one control renderer:
+
+- **`field_width` — how much width the value needs, in characters of content.** Not pixels: a
+  parameter knows that a Miller index is three characters, and knows nothing about the rail, the
+  font, or whether the window is a laptop or a phone. `FIELD_WIDTHS` names the tokens
+  (`index`, `tiny`, `short`, `medium`, `long`, `full`) and `app.css` is the only place a token
+  becomes a length. Most parameters declare nothing and are still narrowed: a bounded number
+  derives `short` from its own bounds, a bounded integer derives its digit count, an `indices`
+  parameter derives `index`. That is the majority of the application's controls, narrowed with no
+  per-parameter edit and nothing new to keep in step.
+- **`symbol` — what the control is shown as.** A parameter naming a registered symbol is labelled
+  as the literature labels it. This is what makes the row possible: `φ₁ Φ φ₂` is nine characters
+  where "First Bunge angle" alone was seventeen.
+- **`row` — quantities entered together are laid out together.** The Bunge triple, a stage tilt
+  pair, the pattern centre, the CBED fringe minima. Only a run of adjacent parameters is joined, so
+  the form's order still follows the declaration that the help text, the examples and the error
+  messages all follow.
+
+**The symbol never replaces the words.** `label` remains what the control is *called* and is used
+for the accessible name, the tooltip, and the text of every error the server sends back. A symbol
+is shorthand for someone who already knows the quantity, and this application is also used by
+someone meeting it for the first time; compactness bought by making the form unreadable to that
+person, or to a screen reader, is not a saving. The tests check both halves are present.
+
+**Where the symbols come from.** `pytex.core.symbols` is the machine-readable half of
+`docs/standards/terminology_and_symbol_registry.md`: one entry per symbol, carrying the Unicode
+form for a control and the mathtext form for a figure axis. Naming an unregistered symbol is a
+construction-time error, so a misspelling fails the import rather than shipping a control labelled
+with a raw registry key. The table is also published in the manifest, because one control is built
+by the frontend rather than from a declaration — the cell editor inside the phase control, whose
+six boxes are the lattice parameters and were labelled with the words "alpha", "beta" and "gamma".
+Typing the glyphs into a JavaScript file would be exactly the inline formatting the module exists
+to prevent, so they are served from Python and there remains one registry.
+
+**Every mandatory input is reachable without opening anything.** A required parameter with no
+default may not sit behind the Advanced disclosure or inside a section that starts closed: the form
+would look complete, the call would fail, and the message would name a control that is not on
+screen. Parameters that have defaults may be hidden, because they are answered already.
+
+A client that ignores all of this renders the form that existed before — one field per line, every
+control at the rail's width. None of it changes a name, a default, or a validation.
+
 ## Frontend Architecture
 
 No framework, but not ad hoc either. The frontend is four layers:
@@ -387,8 +441,10 @@ No framework, but not ad hoc either. The frontend is four layers:
   surfacing that shows the server's user-facing message and hint rather than a stack trace, and
   start/finish activity events consumed by the shared progress/history bar.
 - `core/controls.js` — the manifest-driven control renderer (Decision 2), including the
-  one-box-per-index Miller control of Decision 9 and the shared CIF-backed phase control of
-  Decision 12.
+  one-box-per-index Miller control of Decision 9, the shared CIF-backed phase control of
+  Decision 12, and the symbol labels, shared rows and declared widths of Decision 13.
+- `core/symbols.js` — the manifest's symbol table, for the one control the frontend builds itself
+  rather than from a parameter declaration (Decision 13).
 - `core/feedback.js` — the feedback and feature-request drawer, built from the invitation the
   server publishes rather than from text in the page (Decision 11).
 - `core/tour.js` — the welcome and the skippable tour (Decision 11).

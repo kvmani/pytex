@@ -16,6 +16,7 @@ from pytex.app import REGISTRY
 from pytex.app.contracts import dumps, execute, to_jsonable
 from pytex.app.errors import InvalidInputError, ServiceError
 from pytex.app.registry import (
+    FIELD_WIDTHS,
     ChoiceParameter,
     IndicesListParameter,
     IndicesParameter,
@@ -24,6 +25,20 @@ from pytex.app.registry import (
     ServiceRegistry,
 )
 from pytex.app.results import APP_RESULT_SCHEMA
+from pytex.core.symbols import registered_symbols, symbol
+
+
+def symbol_text_for(parameter: dict) -> str:
+    """The published text of whichever registered symbol this parameter shows.
+
+    Looked up by glyph rather than by name because the manifest publishes the
+    rendered form, not the registry key -- the frontend has no use for the key.
+    """
+
+    for name, entry in registered_symbols().items():
+        if entry.text == parameter["symbol"]:
+            return symbol(name).text
+    return parameter["symbol"]
 
 
 def _choice_keys() -> frozenset[str]:
@@ -471,6 +486,188 @@ class TestCanonicalExamples:
             "variants.pole_figure",
             "variants.render",
         }
+
+    def test_every_parameter_declares_a_width_the_stylesheet_knows(self) -> None:
+        """A control is as wide as its value, and the parameter says how wide.
+
+        Published rather than derived in the browser, so the two cannot
+        disagree, and constrained to the declared vocabulary, so a token the
+        stylesheet has no length for cannot reach a page — where it would
+        silently fall back to the default and leave a Miller index box at the
+        width of the rail, which is the defect this whole surface removes.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                width = parameter["fieldWidth"]
+                assert width in FIELD_WIDTHS, (
+                    f"{operation['id']}.{parameter['name']} declares width {width!r}"
+                )
+
+    def test_a_miller_index_row_is_never_given_the_rail(self) -> None:
+        """The case the rule was written for.
+
+        An index is at most a few characters and the control is one box per
+        index. Whatever else changes, this must not drift back to a full-width
+        row: the width is the thing that stops a user reading three boxes as
+        one long field and typing a run of digits into it.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                if parameter["kind"] == "indices":
+                    assert parameter["fieldWidth"] == "index"
+
+    def test_a_symbol_is_published_with_the_words_it_stands_for(self) -> None:
+        """A symbol shortens the control; it never replaces its name.
+
+        `label` is what the control is called and is used for the accessible
+        name, the tooltip and every error message, so a parameter that shows
+        `φ₁` must still say "First Bunge angle" somewhere a reader can reach.
+        The two must also be different: a label that is already the symbol
+        means the words were lost when the symbol was added.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                if "symbol" not in parameter:
+                    assert "symbolLatex" not in parameter
+                    continue
+                assert parameter["symbol"] == symbol_text_for(parameter)
+                assert parameter["symbolLatex"]
+                assert parameter["label"].strip()
+                assert parameter["label"] != parameter["symbol"]
+
+    def test_a_symbol_comes_from_the_registry_and_not_from_a_declaration(self) -> None:
+        """Every published symbol is one `pytex.core.symbols` defines.
+
+        The point of the registry is that a Greek letter is looked up rather
+        than typed. A parameter carrying a glyph the registry does not know
+        would mean someone had reached around it.
+        """
+
+        known = {entry.text for entry in registered_symbols().values()}
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                if "symbol" in parameter:
+                    assert parameter["symbol"] in known, (
+                        f"{operation['id']}.{parameter['name']} shows an unregistered symbol"
+                    )
+
+    def test_the_manifest_publishes_the_symbol_table(self) -> None:
+        """For the controls the frontend builds itself.
+
+        The phase control's cell editor is not generated from a parameter, and
+        its six boxes are the lattice parameters. Without the table it labelled
+        them "alpha", "beta", "gamma"; with a table typed into JavaScript there
+        would be two registries. So it is served.
+        """
+
+        table = REGISTRY.manifest()["symbols"]
+        assert set(table) == set(registered_symbols())
+        for name, entry in table.items():
+            assert entry["text"] == registered_symbols()[name].text
+            assert entry["latex"] and entry["meaning"]
+        # The lattice parameters in particular, since that is the control the
+        # table exists for.
+        for name in ("a", "b", "c", "alpha", "beta", "gamma"):
+            assert name in table
+
+    def test_the_fields_of_a_row_are_adjacent_and_in_one_section(self) -> None:
+        """A row is a statement about reading order.
+
+        The renderer joins a *run* of parameters naming the same row, so a row
+        interrupted by another parameter would render as two rows with the same
+        accessible name — and a row whose members sit in different groups, or
+        one of which is advanced, cannot be drawn at all. Both are declaration
+        errors, and neither is visible without looking at the page.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            runs: list[str] = []
+            buckets: dict[str, set[tuple[str | None, bool]]] = {}
+            previous: str | None = None
+            for parameter in operation["parameters"]:
+                row = parameter.get("row")
+                if row is not None:
+                    if row != previous:
+                        runs.append(row)
+                    buckets.setdefault(row, set()).add(
+                        (parameter.get("group"), parameter["advanced"])
+                    )
+                previous = row
+
+            assert len(runs) == len(set(runs)), (
+                f"{operation['id']} declares a row whose members are not adjacent: {runs}"
+            )
+            for row, placements in buckets.items():
+                assert len(placements) == 1, (
+                    f"{operation['id']} row {row!r} spans more than one section"
+                )
+
+    def test_a_row_is_worth_drawing(self) -> None:
+        """Two fields or it is not a row.
+
+        A row of one is a field with an extra wrapper and an aria-group around
+        it, which is noise for a screen reader and a hint to the next reader
+        that a second member went missing.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            counts: dict[str, int] = {}
+            for parameter in operation["parameters"]:
+                row = parameter.get("row")
+                if row is not None:
+                    counts[row] = counts.get(row, 0) + 1
+            for row, count in counts.items():
+                assert count >= 2, f"{operation['id']} row {row!r} has one member"
+
+    def test_a_rows_fields_are_all_narrow_enough_to_share_a_line(self) -> None:
+        """A row of full-width controls is three stacked controls with a gap.
+
+        Only the short kinds can share a line. Declaring a row over a text area
+        or a repeatable index stack would produce a layout that is worse than
+        the one it replaced, so it is refused here rather than discovered on a
+        page.
+        """
+
+        shareable = {"index", "tiny", "short", "medium"}
+        for operation in REGISTRY.manifest()["operations"]:
+            for parameter in operation["parameters"]:
+                if parameter.get("row") is None:
+                    continue
+                assert parameter["fieldWidth"] in shareable, (
+                    f"{operation['id']}.{parameter['name']} is in a row at width "
+                    f"{parameter['fieldWidth']!r}"
+                )
+
+    def test_every_mandatory_input_is_visible_without_opening_anything(self) -> None:
+        """The cardinal layout rule of the workbench.
+
+        A user should be able to read an operation's form, fill it in, and press
+        the button. A required parameter with no default that is hidden behind
+        the Advanced disclosure, or inside a section that starts closed, breaks
+        that: the form looks complete, the call fails, and the message names a
+        control that is not on screen.
+
+        Parameters with defaults may be hidden — they are answered already.
+        """
+
+        for operation in REGISTRY.manifest()["operations"]:
+            closed = {
+                parameter["group"]
+                for parameter in operation["parameters"]
+                if parameter.get("groupCollapsed")
+            }
+            for parameter in operation["parameters"]:
+                if not parameter["required"] or "default" in parameter:
+                    continue
+                assert not parameter["advanced"], (
+                    f"{operation['id']}.{parameter['name']} is mandatory but advanced"
+                )
+                assert parameter.get("group") not in closed, (
+                    f"{operation['id']}.{parameter['name']} is mandatory but starts hidden"
+                )
 
     def test_examples_appear_in_the_manifest(self) -> None:
         manifest = REGISTRY.manifest()

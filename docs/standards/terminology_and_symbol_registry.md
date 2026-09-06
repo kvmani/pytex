@@ -48,6 +48,37 @@ New notation is introduced through this registry, not ad hoc in a single page:
    normalization, Euler labeling) identical to those fixed in
    [Notation and Conventions](notation_and_conventions.md).
 
+## The Machine-Readable Half: `pytex.core.symbols`
+
+This document fixes what a symbol *means*. `pytex.core.symbols` fixes how it is
+*written*, for the surfaces that render one at runtime: a control label in the
+workbench, a matplotlib axis, a line of log. Each entry carries the Unicode form,
+the mathtext body without delimiters, and the same one-line meaning the tables
+below give.
+
+The two are meant to be read together, and the rule that keeps them together is
+that a symbol shown to a user is **looked up, never typed**:
+
+- A Greek letter written inline — into a service declaration, a JavaScript file,
+  or a figure label — is unreviewable against this document. It is spelled three
+  ways within a week (`phi1`, `Phi 1`, `φ1`), and nothing fails when it drifts.
+- Naming the registered symbol instead makes the spelling a lookup, and an
+  unregistered name a construction-time error rather than a typo that ships.
+- Where a symbol must reach a surface that cannot import Python — the phase
+  control's cell editor in the browser — the table is *served* to it, in the
+  application manifest, rather than duplicated there.
+
+The module is deliberately smaller than the tables below: it holds the symbols
+the running application actually renders. A symbol defined here and not yet in
+the module is registered and usable in prose, figures and worked examples; it is
+added to the module at the moment some surface needs to draw it.
+
+Two entries that look like duplicates are not. The holder tilts of a double-tilt
+TEM stage and the lattice angles are both written $\alpha$ and $\beta$, and they
+are unrelated quantities; they are separate registry entries with separate
+meanings, which is what lets a help string, an error message, or a test say which
+one a given control means even though the glyph is the same.
+
 ## Core Terms
 
 | Term | Fixed meaning |

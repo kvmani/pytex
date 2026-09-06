@@ -76,6 +76,25 @@ If implementation choices conflict with these documents, stop and reconcile the 
   $\{hkl\}$ / $\langle uvw \rangle$ and a specific plane or direction takes $(hkl)$ / $[uvw]$; negative indices
   are overbarred in publication-facing output. See
   `docs/standards/notation_and_conventions.md`.
+- **Cardinal rule - a form asks for everything it needs on one screen, and no control is
+  wider than its value.** Screen real estate is a scientific resource: a user who must scroll a
+  control rail to discover what else an operation wants cannot see the inputs as one statement,
+  and cannot check them before pressing the button. Three obligations follow, and all three are
+  declared on the parameter so one renderer applies them everywhere:
+  - **Width is declared, in characters of content.** A `[uvw]` box holds three characters and is
+    given three; a bounded number derives a short box from its own bounds. Nothing is allotted the
+    full rail because nobody said otherwise. See `FIELD_WIDTHS` in `pytex.app.registry`.
+  - **A label that has a symbol shows the symbol.** `phi1` is written as the registry writes it,
+    and the three Bunge angles then fit on one line where the words needed three. The words
+    survive as the accessible name, the tooltip and the text of every error - compactness is never
+    bought by making a form unreadable to a newcomer or to a screen reader.
+  - **Quantities entered together are laid out together**, via the parameter's `row`, and every
+    mandatory input is reachable without opening a disclosure.
+  Enforced by `tests/unit/test_app_manifest.py`, so this is checked rather than remembered.
+- Symbols shown to a user are produced by `pytex.core.symbols` alone, never typed inline - in
+  Python, in JavaScript, or in a figure label. The module is the machine-readable half of
+  `docs/standards/terminology_and_symbol_registry.md`, and an unregistered name is a
+  construction-time error.
 - Publication-quality SVG figures are mandatory where reference frames, geometry, or conventions matter.
 - Canonical architecture, process-flow, validation, workflow, and teaching diagrams must follow the
   central visualization style guide.
