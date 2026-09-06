@@ -120,6 +120,10 @@ The complete set of computed-versus-expected values at a glance:
 | `lattice-hexagonal-quadratic-form` | 1.2332292 | 1.2332292 | 1/angstrom^2 | ✅ |
 | `lattice-cohen-recovers-the-nickel-cell` | 3.52387 | 3.52387 | angstrom | ✅ |
 | `lattice-averaging-fails-by-a-measured-amount` | 4173 | 4000 | &mdash; | ✅ |
+| `phase-id-ranking-returns-the-generating-phase` | 1 | 1 | &mdash; | ✅ |
+| `phase-id-refinement-recovers-an-imposed-cell-dilation` | 1.0040 | 1.0040 | &mdash; | ✅ |
+| `phase-id-uniform-dilation-preserves-spacing-ratios` | < 1e-12 | 0.0e+00 | &mdash; | ✅ |
+| `phase-id-every-candidate-offered-is-ranked` | 5 | 5 | &mdash; | ✅ |
 | `or-ks-plane-correspondence-identity` | [0.0000, 1.0000, 1.0000, 0.0000] | [0.0000, 1.0000, 1.0000, 0.0000] | indices, deg | ✅ |
 | `or-bain-direction-correspondence-identity` | [1.0000, 0.0000, 0.0000, 0.0000] | [1.0000, 0.0000, 0.0000, 0.0000] | indices, deg | ✅ |
 | `or-ks-misorientation-representation` | [42.8478, 0.9679, 0.1776, 0.1776] | [42.8500, 0.9679, 0.1776, 0.1776] | deg, axis components | ✅ |
@@ -170,6 +174,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.
 - {doc}`Simulated SAED plates and the zone-axis atlas <generated/saed_practice_patterns>` &mdash; The geometry a practice diffraction pattern must reproduce if indexing it is to teach anything: the camera-constant identity that places every reflection, the hcp prism-zone aspect ratio that measures c/a without any calibration at all, and the basal-to-prism angle the zone-axis atlas has to report as exactly 90 degrees, the beam centre a lattice fit recovers from the spots, and the length bias a mis-set camera constant leaves in the scoring while the angles stay put, and the forbidden reflection that double diffraction puts on a real plate at exactly the radius a genuine one would occupy.
 - {doc}`Precise lattice-parameter determination <generated/lattice-parameters>` &mdash; The extrapolation functions and the drift-column identity checked against closed-form algebra, the hexagonal quadratic form checked against the textbook expression it must reduce to, and an end-to-end determination through a deliberately displaced specimen checked against the pinned fixture cell the pattern was generated from - alongside the same data solved by averaging, which leaves the displacement in the answer.
+- {doc}`Phase identification from a powder pattern <generated/phase-identification>` &mdash; A pattern generated from a known fixture ranked against three candidates chosen to be wrong in three different ways; a cell dilation imposed by the example and recovered by the refinement; the algebraic identity that makes that refinement safe rather than a way of flattering any candidate; and the contract a comparison of several uploaded structures depends on, that an impossible candidate is scored rather than dropped.
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
 - {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
@@ -200,6 +205,7 @@ generated/kearns-parameter
 generated/tem_tilt_navigation
 generated/saed_practice_patterns
 generated/lattice-parameters
+generated/phase-identification
 generated/transformation
 generated/visualization
 generated/workbench-service-layer

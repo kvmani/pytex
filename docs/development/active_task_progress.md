@@ -7058,7 +7058,7 @@ accounts for them best, and it must be told when the answer is *none of them*.
 **Progress.**
 
 - [x] 1 library module + unit tests
-- [ ] 2 docs
+- [x] 2 docs
 - [x] 3 service
 - [x] 4 GUI sub-tabs
 
@@ -7175,3 +7175,60 @@ candidate list accepts catalogue additions, and a four-candidate run returns Nic
 every peak. 16 new app tests including the CIF-upload path, 44 library tests, `ruff` and `mypy`
 clean over `src/pytex` and `tests/unit`, and the manifest, server, documentation-policy,
 repo-integrity, symbol and notation suites green.
+
+### Increment 5 - the documentation the rule requires (landed)
+
+- `docs/site/theory/phase_identification_from_powder_patterns.md` - the derivations. Section 1 is
+  the one worth reading: it shows *algebraically* why `M_N` and `F_N` cannot rank candidates, since
+  both are computed over indexed reflections only and neither term in either expression changes
+  when a strong peak goes unindexed or a predicted strong line fails to appear - which is the
+  entire content of the fcc/bcc distinction. Sections 2-3 derive the four criteria and why
+  intensities are the weakest evidence; section 4 proves the cell-dilation refinement safe;
+  section 5 the two qualifications; section 7 states what this is not.
+- `docs/site/algorithms/phase_identification.md` - the implementation page, with the generated flow
+  sheet, the settings table, a failure-reading table worked through on the four-candidate nickel
+  case, and the failure modes.
+- `docs/figures/phase_identification_algorithm.svg` - four-lane flow sheet from
+  `scripts/generate_algorithm_figures.py`, registered in `test_figure_markers.ALGORITHM_FIGURES`
+  (the guard caught the omission, as designed).
+- `worked_examples/examples/phase_identification.py` - four executable examples, gallery
+  regenerated. Provenance for each is independent of this code: the generating fixture of a
+  synthetic pattern; a cell dilation the example itself imposes and the refinement must recover;
+  the algebraic identity that a uniform dilation leaves every `d`-spacing ratio unchanged (expected
+  exactly zero, to 1e-12); and the contract that five candidates offered return five rows when one
+  of them cannot be indexed.
+
+  The ratio example was wrong on first run and the failure was informative: a dilated cell moves
+  every line to lower angle and so pulls an extra reflection into a fixed angular window, making an
+  elementwise comparison a comparison of different reflections. Families are now matched by Miller
+  index, which is what the identity actually claims.
+- Indexes and cross-links: `docs/README.md`, the theory and algorithm indexes with their
+  note/implementation pairing table, and `docs/site/workflows/xrd_generation.md` (which also now
+  documents the sub-tabs).
+- `docs/testing/mtex_parity_matrix.md` - a row stating plainly that **MTEX has no
+  phase-identification entry point at all**, so no parity is claimed in either direction and none
+  is possible; the scientific comparison class is search-match software, from which this differs in
+  scope because the retrieval half needs a licensed reference database a GPL-compatible library
+  cannot ship.
+
+**Verification.** `sphinx -b html docs/site` exit 0 with no warnings; the four new worked examples
+green; documentation-policy, reference-policy, repo-integrity, figure-marker and manifest suites
+green; `ruff` clean over `src/pytex`, `tests/unit`, `scripts` and `worked_examples`; `mypy` clean
+over 166 source files.
+
+## Status: the goal is met.
+
+Automated peak detection, indexing against several user-supplied CIFs, a per-candidate matching
+score and a recommended best match all exist, are exposed as a sub-tab of the XRD workspace
+alongside the other five analyses now rendered as sub-tabs, and are documented to the repository's
+standard with theory, an algorithm page, a generated figure, four executable worked examples and a
+parity statement.
+
+**Open, and deliberately not attempted.** Retrieval - proposing candidates the user did not offer -
+needs a licensed reference database and is out of scope for this repository, as the parity row now
+records. Quantitative multi-phase analysis remains the job of a Rietveld refinement of the
+identified phases together; the identification is what tells that refinement which phases to
+include.
+
+**Noticed in passing, not fixed here.** `PowderPattern`'s class docstring documents its arrays as
+`two_theta_deg` and `intensity`; the fields are `two_theta_grid_deg` and `intensity_grid`.

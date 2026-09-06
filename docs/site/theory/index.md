@@ -76,6 +76,7 @@ experimental_parent_candidate_scoring
 diffraction_geometry_and_bragg_rings
 reciprocal_space_and_kinematic_spots
 powder_xrd_and_saed
+phase_identification_from_powder_patterns
 precise_lattice_parameter_determination
 saed_ratio_angle_indexing
 lattice_fit_and_solution_scoring
@@ -108,5 +109,6 @@ steps, the calibrated tolerances, the worked cubic and hexagonal numbers, and th
 | {doc}`saed_ratio_angle_indexing` | {doc}`../algorithms/saed_pattern_indexing` |
 | {doc}`tem_specimen_tilt_navigation` | {doc}`../algorithms/tem_tilt_navigation` |
 | {doc}`reciprocal_space_and_kinematic_spots` | {doc}`../algorithms/composite_saed_assembly` |
+| {doc}`phase_identification_from_powder_patterns` | {doc}`../algorithms/phase_identification` |
 | {doc}`precise_lattice_parameter_determination` | {doc}`../algorithms/precise_lattice_parameter_determination` |
 | {doc}`ghost_problem_and_odd_harmonics` | {doc}`../algorithms/ghost_correction` |

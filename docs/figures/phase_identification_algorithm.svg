@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1466" height="1169" viewBox="0 0 1466 1169" role="img">
+  <title>Phase identification among candidate structures</title>
+  <desc>Four-lane flow sheet. Lane 1 detects and fits the peaks of the measured scan once, and takes the candidate structures as CIF files or catalogue entries. Lane 2 runs per candidate: one uniform cell dilation is refined by grid search, the candidate's own reflections are enumerated under its symmetry, and peaks are assigned to lines by the Hungarian algorithm; a candidate that predicts no line at all is scored zero with a stated reason rather than aborting the comparison. Lane 3 scores four bounded criteria that fail for different physical reasons: explained intensity, completeness, position agreement and intensity agreement. Lane 4 ranks by their weighted mean and then qualifies the winner twice - whether it explains the pattern in absolute terms, and whether it is distinguished from the runner-up.</desc>
+  <defs>
+    <marker id="pytex-algo-arrow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#40506f"/>
+    </marker>
+    <marker id="pytex-algo-arrow-flow" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="9" refX="11" refY="4.5" orient="auto">
+      <path d="M0,0 L12,4.5 L0,9 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <rect width="1466" height="1169" fill="#fbfdff"/>
+  <text x="40.0" y="46.0" font-size="25" font-family="Arial" fill="#07122f" text-anchor="start">Phase identification among candidate structures</text>
+  <text x="40.0" y="72.0" font-size="13" font-family="Arial" fill="#40506f" text-anchor="start">identify_phase_from_pattern - ranking supplied candidates, and declining to choose</text>
+  <text x="40.0" y="96.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">1 - the measurement, once, shared by every candidate</text>
+  <rect x="40.0" y="108.0" width="236.0" height="194.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
+  <text x="54.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">Measured diffractogram</text>
+  <text x="54.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">I(2*theta), lambda</text>
+  <text x="54.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A raw scan with its background</text>
+  <text x="54.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">intact,</text>
+  <text x="54.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">and the radiation it was</text>
+  <text x="54.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">measured with.</text>
+  <text x="54.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A position without its</text>
+  <text x="54.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">wavelength is not</text>
+  <text x="54.0" y="272.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">a measurement of anything.</text>
+  <rect x="310.0" y="108.0" width="236.0" height="194.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="324.0" y="135.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Detect and fit</text>
+  <text x="324.0" y="157.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">detect_and_fit_peaks</text>
+  <text x="324.0" y="176.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Ricker filter on the</text>
+  <text x="324.0" y="192.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">variance-stabilised</text>
+  <text x="324.0" y="208.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">profile, then a pseudo-Voigt</text>
+  <text x="324.0" y="224.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">per peak.</text>
+  <text x="324.0" y="240.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Yields positions with ESDs and</text>
+  <text x="324.0" y="256.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">integrated intensities.</text>
+  <line x1="276.0" y1="205.0" x2="306.0" y2="205.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="108.0" width="236.0" height="194.0" rx="8" fill="#eef7f0" stroke="#a7ccb4" stroke-width="1.4"/>
+  <text x="594.0" y="135.0" font-size="15" font-family="Arial" fill="#124a2a" text-anchor="start" font-weight="bold">Candidate structures</text>
+  <text x="594.0" y="154.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">CIF files, or catalogue</text>
+  <text x="594.0" y="170.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">entries.</text>
+  <text x="594.0" y="186.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Two or more make it a choice;</text>
+  <text x="594.0" y="202.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">one is</text>
+  <text x="594.0" y="218.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">a check on that phase, and the</text>
+  <text x="594.0" y="234.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">report</text>
+  <text x="594.0" y="250.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">says so.</text>
+  <line x1="546.0" y1="205.0" x2="576.0" y2="205.0" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <line x1="158.0" y1="302.0" x2="158.0" y2="342.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
+  <text x="40.0" y="336.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">2 - per candidate: place its lines, then assign them</text>
+  <rect x="40.0" y="348.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="54.0" y="375.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Refine one cell dilation</text>
+  <text x="54.0" y="397.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">min_s sum_p min_j clip(|2th_p</text>
+  <text x="54.0" y="416.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">- 2th_j(s)|, eps)</text>
+  <text x="54.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Grid search on s in [1-d, 1+d],</text>
+  <text x="54.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">d = 0.02.</text>
+  <text x="54.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A grid, not a gradient: the</text>
+  <text x="54.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">objective is</text>
+  <text x="54.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">piecewise linear with a minimum</text>
+  <text x="54.0" y="515.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">at every</text>
+  <text x="54.0" y="531.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">near-coincidence.</text>
+  <rect x="310.0" y="348.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="324.0" y="375.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Enumerate reflections</text>
+  <text x="324.0" y="397.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">generate_powder_reflections</text>
+  <text x="324.0" y="416.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The candidate's own symmetry</text>
+  <text x="324.0" y="432.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">and</text>
+  <text x="324.0" y="448.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">systematic absences, not a</text>
+  <text x="324.0" y="464.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">generic</text>
+  <text x="324.0" y="480.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">(hkl) list. Families below the</text>
+  <text x="324.0" y="496.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">intensity</text>
+  <text x="324.0" y="512.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">floor are never offered for</text>
+  <text x="324.0" y="528.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">matching.</text>
+  <line x1="276.0" y1="454.5" x2="306.0" y2="454.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="348.0" width="236.0" height="213.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="594.0" y="375.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Global assignment</text>
+  <text x="594.0" y="397.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">Hungarian on |2th_obs -</text>
+  <text x="594.0" y="416.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">2th_calc|</text>
+  <text x="594.0" y="435.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">One-to-one over all pairings at</text>
+  <text x="594.0" y="451.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">once.</text>
+  <text x="594.0" y="467.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">A greedy nearest-line pass can</text>
+  <text x="594.0" y="483.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">assign two</text>
+  <text x="594.0" y="499.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">peaks to one reflection and</text>
+  <text x="594.0" y="515.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">strand the</text>
+  <text x="594.0" y="531.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">true partner, invisibly.</text>
+  <line x1="546.0" y1="454.5" x2="576.0" y2="454.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="850.0" y="348.0" width="236.0" height="213.0" rx="8" fill="#fdeef1" stroke="#eebfc8" stroke-width="1.4"/>
+  <text x="864.0" y="375.0" font-size="15" font-family="Arial" fill="#8a1030" text-anchor="start" font-weight="bold">Cannot be indexed</text>
+  <text x="864.0" y="394.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Predicts no line in range at</text>
+  <text x="864.0" y="410.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">all:</text>
+  <text x="864.0" y="426.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">scored zero with the reason</text>
+  <text x="864.0" y="442.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">stated,</text>
+  <text x="864.0" y="458.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">never raised. One impossible</text>
+  <text x="864.0" y="474.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">CIF among</text>
+  <text x="864.0" y="490.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">five must not cost the other</text>
+  <text x="864.0" y="506.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">four.</text>
+  <line x1="816.0" y1="454.5" x2="846.0" y2="454.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="1126.0" y="348.0" width="300.0" height="179.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="1142.0" y="373.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Why a dilation cannot rescue a wrong phase</text>
+  <text x="1142.0" y="396.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">d -&gt; s d leaves every ratio d_hkl / d_h'k'l'</text>
+  <text x="1142.0" y="415.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">unchanged exactly, and the ratios are what</text>
+  <text x="1142.0" y="434.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">indexing tests. A candidate a scale factor</text>
+  <text x="1142.0" y="453.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">rescues is the right structure with the wrong</text>
+  <text x="1142.0" y="472.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">cell size. The factor is reported, not hidden:</text>
+  <text x="1142.0" y="491.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">pinned at the edge means stretched as far as</text>
+  <text x="1142.0" y="510.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">allowed and still not fitting.</text>
+  <line x1="158.0" y1="561.0" x2="158.0" y2="601.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
+  <text x="40.0" y="595.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">3 - four criteria, each bounded, each failing differently</text>
+  <rect x="40.0" y="607.0" width="236.0" height="213.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="54.0" y="634.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Explained intensity</text>
+  <text x="54.0" y="656.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">E = sum_indexed A_p / sum_all</text>
+  <text x="54.0" y="675.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">A_p</text>
+  <text x="54.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Intensity-weighted, not</text>
+  <text x="54.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">counted:</text>
+  <text x="54.0" y="726.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">a strong unindexed peak is a</text>
+  <text x="54.0" y="742.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">second</text>
+  <text x="54.0" y="758.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">phase; a weak one is a trace.</text>
+  <rect x="310.0" y="607.0" width="236.0" height="213.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="324.0" y="634.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Completeness</text>
+  <text x="324.0" y="656.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">C = |observed strong| /</text>
+  <text x="324.0" y="675.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">|predicted strong|</text>
+  <text x="324.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Inside the measured span only.</text>
+  <text x="324.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">This is what separates two</text>
+  <text x="324.0" y="726.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">cells</text>
+  <text x="324.0" y="742.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">differing by a centring: a</text>
+  <text x="324.0" y="758.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">centring is</text>
+  <text x="324.0" y="774.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">a claim about absent lines.</text>
+  <line x1="276.0" y1="713.5" x2="306.0" y2="713.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="607.0" width="236.0" height="213.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="594.0" y="634.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Position</text>
+  <text x="594.0" y="656.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">P = max(0, 1 - &lt;|d2th|&gt; /</text>
+  <text x="594.0" y="675.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">eps)</text>
+  <text x="594.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">How far inside the window the</text>
+  <text x="594.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">lines</text>
+  <text x="594.0" y="726.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">landed, not whether they landed</text>
+  <text x="594.0" y="742.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">inside</text>
+  <text x="594.0" y="758.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">it. Widening eps judges every</text>
+  <text x="594.0" y="774.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">match</text>
+  <text x="594.0" y="790.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">against the laxer standard.</text>
+  <line x1="546.0" y1="713.5" x2="576.0" y2="713.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="850.0" y="607.0" width="236.0" height="213.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="864.0" y="634.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Intensity agreement</text>
+  <text x="864.0" y="656.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">S = 1 - (1/2) sum |o_i -</text>
+  <text x="864.0" y="675.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">c_i|, unit sum</text>
+  <text x="864.0" y="694.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">One minus Bray-Curtis:</text>
+  <text x="864.0" y="710.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">scale-free and</text>
+  <text x="864.0" y="726.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">bounded. Undefined below two</text>
+  <text x="864.0" y="742.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">indexed</text>
+  <text x="864.0" y="758.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">lines, and then renormalised</text>
+  <text x="864.0" y="774.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">away rather</text>
+  <text x="864.0" y="790.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">than counted as a failure.</text>
+  <line x1="816.0" y1="713.5" x2="846.0" y2="713.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="1126.0" y="607.0" width="300.0" height="160.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="1142.0" y="632.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Why intensity is weighted least</text>
+  <text x="1142.0" y="655.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Preferred orientation, microabsorption,</text>
+  <text x="1142.0" y="674.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">extinction and a coarse powder all move a</text>
+  <text x="1142.0" y="693.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">measured intensity by factors while moving no</text>
+  <text x="1142.0" y="712.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">peak position at all. Weighting S heavily would</text>
+  <text x="1142.0" y="731.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">reject the correct phase of any textured</text>
+  <text x="1142.0" y="750.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">specimen, which is most engineering specimens.</text>
+  <line x1="158.0" y1="820.0" x2="158.0" y2="860.0" stroke="#2563eb" stroke-width="2.4" marker-end="url(#pytex-algo-arrow-flow)"/>
+  <text x="40.0" y="854.0" font-size="13" font-family="Arial" fill="#7c3aed" text-anchor="start">4 - rank, then qualify the winner twice</text>
+  <rect x="40.0" y="866.0" width="236.0" height="229.0" rx="8" fill="#eef4ff" stroke="#b9cdf2" stroke-width="1.4"/>
+  <text x="54.0" y="893.0" font-size="15" font-family="Arial" fill="#0f2f6b" text-anchor="start" font-weight="bold">Weighted mean</text>
+  <text x="54.0" y="915.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">score = sum_D w_k x_k / sum_D</text>
+  <text x="54.0" y="934.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">w_k</text>
+  <text x="54.0" y="953.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Over the criteria that are</text>
+  <text x="54.0" y="969.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">defined.</text>
+  <text x="54.0" y="985.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Weights declared and</text>
+  <text x="54.0" y="1001.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">overridable:</text>
+  <text x="54.0" y="1017.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">they encode a judgement about</text>
+  <text x="54.0" y="1033.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">evidence,</text>
+  <text x="54.0" y="1049.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">not a law of diffraction.</text>
+  <rect x="310.0" y="866.0" width="236.0" height="229.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="324.0" y="893.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Conclusive?</text>
+  <text x="324.0" y="915.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">best score &gt;= minimum_score</text>
+  <text x="324.0" y="934.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">If not: none of the candidates</text>
+  <text x="324.0" y="950.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">offered</text>
+  <text x="324.0" y="966.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">accounts for this pattern.</text>
+  <text x="324.0" y="982.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Widen the</text>
+  <text x="324.0" y="998.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">list, suspect a mixture, or</text>
+  <text x="324.0" y="1014.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">check the</text>
+  <text x="324.0" y="1030.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">tolerance against the</text>
+  <text x="324.0" y="1046.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">aberrations.</text>
+  <line x1="276.0" y1="980.5" x2="306.0" y2="980.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="580.0" y="866.0" width="236.0" height="229.0" rx="8" fill="#fdf6e8" stroke="#e6d4a8" stroke-width="1.4"/>
+  <text x="594.0" y="893.0" font-size="15" font-family="Arial" fill="#6b4a06" text-anchor="start" font-weight="bold">Decisive?</text>
+  <text x="594.0" y="915.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">best - runner_up &gt;=</text>
+  <text x="594.0" y="934.0" font-size="13" font-family="Arial" fill="#2563eb" text-anchor="start">decisive_margin</text>
+  <text x="594.0" y="953.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">If not: this scan does not tell</text>
+  <text x="594.0" y="969.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">the top</text>
+  <text x="594.0" y="985.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">two apart. The remedy is</text>
+  <text x="594.0" y="1001.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">measurement,</text>
+  <text x="594.0" y="1017.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">not computation - high-angle</text>
+  <text x="594.0" y="1033.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">counts,</text>
+  <text x="594.0" y="1049.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">another wavelength, or</text>
+  <text x="594.0" y="1065.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">chemistry.</text>
+  <line x1="546.0" y1="980.5" x2="576.0" y2="980.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="850.0" y="866.0" width="236.0" height="229.0" rx="8" fill="#f3eefc" stroke="#cdbdee" stroke-width="1.4"/>
+  <text x="864.0" y="893.0" font-size="15" font-family="Arial" fill="#42227e" text-anchor="start" font-weight="bold">Ranked report</text>
+  <text x="864.0" y="912.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">Every candidate with its four</text>
+  <text x="864.0" y="928.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">criteria,</text>
+  <text x="864.0" y="944.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">its refined dilation, M_N and</text>
+  <text x="864.0" y="960.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">F_N, its</text>
+  <text x="864.0" y="976.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">unindexed peaks, and</text>
+  <text x="864.0" y="992.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">describe().</text>
+  <line x1="816.0" y1="980.5" x2="846.0" y2="980.5" stroke="#40506f" stroke-width="2" marker-end="url(#pytex-algo-arrow)"/>
+  <rect x="1126.0" y="866.0" width="300.0" height="179.0" rx="8" fill="#f7faff" stroke="#c8d8f2" stroke-width="1.0"/>
+  <text x="1142.0" y="891.0" font-size="14" font-family="Arial" fill="#07122f" text-anchor="start">Not retrieval, and not quantification</text>
+  <text x="1142.0" y="914.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">The candidates must be supplied: nothing here</text>
+  <text x="1142.0" y="933.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">searches a database for a structure nobody</text>
+  <text x="1142.0" y="952.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">proposed, so a low best score may mean the</text>
+  <text x="1142.0" y="971.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">right phase was never offered. And when several</text>
+  <text x="1142.0" y="990.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">candidates each explain part of the pattern the</text>
+  <text x="1142.0" y="1009.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">next step is a multi-phase Rietveld refinement,</text>
+  <text x="1142.0" y="1028.0" font-size="12" font-family="Arial" fill="#40506f" text-anchor="start">not a larger score.</text>
+</svg>

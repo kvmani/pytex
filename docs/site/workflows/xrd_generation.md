@@ -134,6 +134,18 @@ target backed by the same row written to CSV and Excel.
 The built-in nickel, silicon, Mo-on-nickel and alpha-zirconium cases make radiation, extinction,
 doublet and crystal-metric behaviour testable without external files.
 
+The panel's six analyses are sub-tabs across the top of the stage rather than entries in a
+dropdown, so what the workspace can do is visible without opening a control. They run in the
+order the questions depend on each other: simulate a pattern, **identify which phase a measured
+one is**, estimate its background, determine its cell, refine the whole profile, and separate
+size from strain. The scan loaded in one is the scan analysed in the next.
+
+**Identify the phase** is the one operation not told the answer in advance. Offer it several
+candidate structures - built-in phases, or `.cif` files opened several at a time - and it detects
+and fits the peaks, ranks every candidate on four criteria, and says both whether the winner
+explains the pattern and whether it is distinguished from the runner-up. See
+{doc}`../algorithms/phase_identification`.
+
 ## Related Material
 
 - {doc}`../concepts/technical_glossary_and_symbols`
@@ -142,6 +154,8 @@ doublet and crystal-metric behaviour testable without external files.
 - {doc}`../tutorials/notebooks/11_powder_xrd_workflows`
 - {doc}`style_customization`
 - {doc}`/theory/powder_xrd_and_saed`
+- {doc}`/theory/phase_identification_from_powder_patterns`
+- {doc}`../algorithms/phase_identification`
 
 ## References
 

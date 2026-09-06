@@ -39,6 +39,7 @@ ALGORITHM_FIGURES = (
     "saed_indexing_algorithm.svg",
     "pole_figure_inversion_algorithm.svg",
     "rietveld_refinement_algorithm.svg",
+    "phase_identification_algorithm.svg",
     "ebsd_grain_metrics_algorithm.svg",
     "kikuchi_geometry_algorithm.svg",
 )

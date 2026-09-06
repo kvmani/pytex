@@ -144,6 +144,8 @@ index with cross-links to the matching implementation pages.
 - [Diffraction Geometry And Bragg Rings](site/theory/diffraction_geometry_and_bragg_rings.md)
 - [Reciprocal Space And Kinematic Spots](site/theory/reciprocal_space_and_kinematic_spots.md)
 - [Powder XRD And SAED Foundations](site/theory/powder_xrd_and_saed.md)
+- [Phase Identification From Powder Patterns](site/theory/phase_identification_from_powder_patterns.md)
+- [Identifying A Phase Among Candidate Structures (algorithm)](site/algorithms/phase_identification.md)
 - [Precise Lattice-Parameter Determination](site/theory/precise_lattice_parameter_determination.md)
 - [Determining A Lattice Parameter Precisely (algorithm)](site/algorithms/precise_lattice_parameter_determination.md)
 - [Correcting The Ghosts In A Pole-Figure ODF (algorithm)](site/algorithms/ghost_correction.md)

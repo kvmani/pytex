@@ -66,6 +66,7 @@ documents so the code and the description cannot drift apart.
 
 | Page | The computation |
 | --- | --- |
+| {doc}`phase_identification` | which of several candidate structures a measured pattern is, and whether the answer is believable |
 | {doc}`precise_lattice_parameter_determination` | a cell from peak positions, with the systematic error extrapolated away |
 | {doc}`rietveld_refinement` | fitting the whole profile: structure, scale, widths, texture, background |
 
@@ -96,6 +97,7 @@ composite_saed_assembly
 saed_pattern_indexing
 tem_tilt_navigation
 cbed_thickness_and_symmetry
+phase_identification
 precise_lattice_parameter_determination
 pole_figure_inversion
 ghost_correction

@@ -24,6 +24,8 @@ Outputs (tracked as canonical documentation assets):
   measured pole figures.
 - ``docs/figures/rietveld_refinement_algorithm.svg`` — whole-profile powder
   refinement.
+- ``docs/figures/phase_identification_algorithm.svg`` — ranking candidate
+  structures against a measured powder pattern.
 - ``docs/figures/ebsd_grain_metrics_algorithm.svg`` — grains, the local
   misorientation family, and GND density.
 - ``docs/figures/kikuchi_geometry_algorithm.svg`` — the Kikuchi forward model.
@@ -1325,6 +1327,247 @@ def kikuchi_geometry_figure() -> str:
     )
 
 
+def phase_identification_figure() -> str:
+    """Flow sheet for `identify_phase_from_pattern`."""
+
+    return algorithm_flow_svg(
+        [
+            (
+                "1 - the measurement, once, shared by every candidate",
+                [
+                    AlgorithmStage(
+                        label="Measured diffractogram",
+                        role="input",
+                        formula="I(2*theta), lambda",
+                        detail=[
+                            "A raw scan with its background intact,",
+                            "and the radiation it was measured with.",
+                            "A position without its wavelength is not",
+                            "a measurement of anything.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Detect and fit",
+                        formula="detect_and_fit_peaks",
+                        detail=[
+                            "Ricker filter on the variance-stabilised",
+                            "profile, then a pseudo-Voigt per peak.",
+                            "Yields positions with ESDs and",
+                            "integrated intensities.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Candidate structures",
+                        role="input",
+                        detail=[
+                            "CIF files, or catalogue entries.",
+                            "Two or more make it a choice; one is",
+                            "a check on that phase, and the report",
+                            "says so.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "2 - per candidate: place its lines, then assign them",
+                [
+                    AlgorithmStage(
+                        label="Refine one cell dilation",
+                        formula="min_s sum_p min_j clip(|2th_p - 2th_j(s)|, eps)",
+                        detail=[
+                            "Grid search on s in [1-d, 1+d], d = 0.02.",
+                            "A grid, not a gradient: the objective is",
+                            "piecewise linear with a minimum at every",
+                            "near-coincidence.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Enumerate reflections",
+                        formula="generate_powder_reflections",
+                        detail=[
+                            "The candidate's own symmetry and",
+                            "systematic absences, not a generic",
+                            "(hkl) list. Families below the intensity",
+                            "floor are never offered for matching.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Global assignment",
+                        formula="Hungarian on |2th_obs - 2th_calc|",
+                        detail=[
+                            "One-to-one over all pairings at once.",
+                            "A greedy nearest-line pass can assign two",
+                            "peaks to one reflection and strand the",
+                            "true partner, invisibly.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Cannot be indexed",
+                        role="reject",
+                        detail=[
+                            "Predicts no line in range at all:",
+                            "scored zero with the reason stated,",
+                            "never raised. One impossible CIF among",
+                            "five must not cost the other four.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "3 - four criteria, each bounded, each failing differently",
+                [
+                    AlgorithmStage(
+                        label="Explained intensity",
+                        role="decision",
+                        formula="E = sum_indexed A_p / sum_all A_p",
+                        detail=[
+                            "Intensity-weighted, not counted:",
+                            "a strong unindexed peak is a second",
+                            "phase; a weak one is a trace.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Completeness",
+                        role="decision",
+                        formula="C = |observed strong| / |predicted strong|",
+                        detail=[
+                            "Inside the measured span only.",
+                            "This is what separates two cells",
+                            "differing by a centring: a centring is",
+                            "a claim about absent lines.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Position",
+                        role="decision",
+                        formula="P = max(0, 1 - <|d2th|> / eps)",
+                        detail=[
+                            "How far inside the window the lines",
+                            "landed, not whether they landed inside",
+                            "it. Widening eps judges every match",
+                            "against the laxer standard.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Intensity agreement",
+                        role="decision",
+                        formula="S = 1 - (1/2) sum |o_i - c_i|, unit sum",
+                        detail=[
+                            "One minus Bray-Curtis: scale-free and",
+                            "bounded. Undefined below two indexed",
+                            "lines, and then renormalised away rather",
+                            "than counted as a failure.",
+                        ],
+                    ),
+                ],
+            ),
+            (
+                "4 - rank, then qualify the winner twice",
+                [
+                    AlgorithmStage(
+                        label="Weighted mean",
+                        formula="score = sum_D w_k x_k / sum_D w_k",
+                        detail=[
+                            "Over the criteria that are defined.",
+                            "Weights declared and overridable:",
+                            "they encode a judgement about evidence,",
+                            "not a law of diffraction.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Conclusive?",
+                        role="decision",
+                        formula="best score >= minimum_score",
+                        detail=[
+                            "If not: none of the candidates offered",
+                            "accounts for this pattern. Widen the",
+                            "list, suspect a mixture, or check the",
+                            "tolerance against the aberrations.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Decisive?",
+                        role="decision",
+                        formula="best - runner_up >= decisive_margin",
+                        detail=[
+                            "If not: this scan does not tell the top",
+                            "two apart. The remedy is measurement,",
+                            "not computation - high-angle counts,",
+                            "another wavelength, or chemistry.",
+                        ],
+                    ),
+                    AlgorithmStage(
+                        label="Ranked report",
+                        role="output",
+                        detail=[
+                            "Every candidate with its four criteria,",
+                            "its refined dilation, M_N and F_N, its",
+                            "unindexed peaks, and describe().",
+                        ],
+                    ),
+                ],
+            ),
+        ],
+        title="Phase identification among candidate structures",
+        subtitle=(
+            "identify_phase_from_pattern - ranking supplied candidates, "
+            "and declining to choose"
+        ),
+        description=(
+            "Four-lane flow sheet. Lane 1 detects and fits the peaks of the measured scan once, "
+            "and takes the candidate structures as CIF files or catalogue entries. Lane 2 runs "
+            "per candidate: one uniform cell dilation is refined by grid search, the candidate's "
+            "own reflections are enumerated under its symmetry, and peaks are assigned to lines "
+            "by the Hungarian algorithm; a candidate that predicts no line at all is scored zero "
+            "with a stated reason rather than aborting the comparison. Lane 3 scores four "
+            "bounded criteria that fail for different physical reasons: explained intensity, "
+            "completeness, position agreement and intensity agreement. Lane 4 ranks by their "
+            "weighted mean and then qualifies the winner twice - whether it explains the pattern "
+            "in absolute terms, and whether it is distinguished from the runner-up."
+        ),
+        notes=[
+            SideNote(
+                stage_index=3,
+                title="Why a dilation cannot rescue a wrong phase",
+                lines=[
+                    "d -> s d leaves every ratio d_hkl / d_h'k'l'",
+                    "unchanged exactly, and the ratios are what",
+                    "indexing tests. A candidate a scale factor",
+                    "rescues is the right structure with the wrong",
+                    "cell size. The factor is reported, not hidden:",
+                    "pinned at the edge means stretched as far as",
+                    "allowed and still not fitting.",
+                ],
+            ),
+            SideNote(
+                stage_index=10,
+                title="Why intensity is weighted least",
+                lines=[
+                    "Preferred orientation, microabsorption,",
+                    "extinction and a coarse powder all move a",
+                    "measured intensity by factors while moving no",
+                    "peak position at all. Weighting S heavily would",
+                    "reject the correct phase of any textured",
+                    "specimen, which is most engineering specimens.",
+                ],
+            ),
+            SideNote(
+                stage_index=13,
+                title="Not retrieval, and not quantification",
+                lines=[
+                    "The candidates must be supplied: nothing here",
+                    "searches a database for a structure nobody",
+                    "proposed, so a low best score may mean the",
+                    "right phase was never offered. And when several",
+                    "candidates each explain part of the pattern the",
+                    "next step is a multi-phase Rietveld refinement,",
+                    "not a larger score.",
+                ],
+            ),
+        ],
+    )
+
+
 def main() -> int:
     """Write every algorithm figure into ``docs/figures/``."""
 
@@ -1335,6 +1578,7 @@ def main() -> int:
         "saed_indexing_algorithm.svg": saed_indexing_figure(),
         "pole_figure_inversion_algorithm.svg": pole_figure_inversion_figure(),
         "rietveld_refinement_algorithm.svg": rietveld_refinement_figure(),
+        "phase_identification_algorithm.svg": phase_identification_figure(),
         "ebsd_grain_metrics_algorithm.svg": ebsd_grain_metrics_figure(),
         "kikuchi_geometry_algorithm.svg": kikuchi_geometry_figure(),
     }
