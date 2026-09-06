@@ -88,6 +88,9 @@ The complete set of computed-versus-expected values at a glance:
 | `directional-mean-axis-of-randomly-signed-axes` | 0.999982 | 1.000000 | &mdash; | ✅ |
 | `ghost-pole-figure-is-centrosymmetric` | 1.000000 | 1.000000 | &mdash; | ✅ |
 | `ghost-odd-degrees-are-half-the-harmonic-basis` | 0.46740 | 0.46739 | &mdash; | ✅ |
+| `ghost-cubic-first-odd-invariant-is-degree-nine` | 9 | 9 | &mdash; | ✅ |
+| `ghost-correction-restores-a-non-negative-density` | -0.0000 | 0.0000 | m.r.d. | ✅ |
+| `ghost-correction-leaves-the-measured-fit-untouched` | 0.000878 | 0.000000 | m.r.d. | ✅ |
 | `texture-pole-figure-mrd-unit-mean-density` | [1.000000000000, -0.000000000000] | [1.000000000000, 0.000000000000] | m.r.d. | ✅ |
 | `texture-pole-figure-resampling-and-addition-identities` | [0.000000000000, 2.000000000000] | [0.000000000000, 2.000000000000] | m.r.d. | ✅ |
 | `kearns-random-texture-is-one-third` | 0.001800 | 0.000000 | &mdash; | ✅ |
@@ -159,7 +162,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Schmid and Taylor plasticity factors <generated/schmid-and-taylor>` &mdash; Slip geometry against exact answers: eight fcc systems share a Schmid factor of 1/sqrt(6) under [001] tension, the cube orientation's full-constraint Taylor factor is exactly sqrt(6), and a random fcc texture averages Taylor's 1938 value of 3.06.
 - {doc}`Pole-figure raster sampling <generated/pole-figure-sampling>` &mdash; Why a measured pole figure needs solid-angle weights: the unweighted mean of cos^2 over a tilt raster is exactly 1/2 against a true spherical mean of 1/3, a 50 percent bias that survives halving the raster step, while the weighted mean converges.
 - {doc}`Directional statistics and mean axes <generated/directional-statistics>` &mdash; Averaging axes rather than vectors: the orientation tensor has unit trace, its eigenvalues take exact values at the girdle and cluster limits, and it recovers a fibre axis from randomly signed data where the vector resultant fails outright.
-- {doc}`The ghost problem <generated/ghost-problem>` &mdash; What diffraction pole figures cannot determine: an asymmetric texture still gives a pole set closed under negation, and excluding the odd harmonic degrees that centrosymmetry annihilates discards nearly half the basis.
+- {doc}`The ghost problem, and its correction <generated/ghost-problem>` &mdash; What diffraction pole figures cannot determine, and what positivity can recover of it: an asymmetric texture still gives a pole set closed under negation, excluding the odd harmonic degrees discards nearly half the basis, a cubic material has no odd term below degree 9, and the correction removes the negative density without moving the fit.
 - {doc}`Pole-figure arithmetic <generated/pole-figure-arithmetic>` &mdash; Exact identities behind comparing two pole figures: the multiples-of-random scale, resampling onto a shared support, and the additivity of pole densities.
 - {doc}`The Kearns parameter <generated/kearns-parameter>` &mdash; The scalar texture index the zirconium industry specifies components against, checked against the identities that calibrate it -- 1/3 for a random texture, an exact sum of 1 over any orthonormal triad, (1/2, 1/2, 0) for an ideal basal girdle -- and against the tabulated calculation in Kearns' own 1965 report.
 - {doc}`TEM tilt navigation <generated/tem_tilt_navigation>` &mdash; Holder tilts that bring a target zone axis onto the electron beam: analytic interzonal travel for the standard cubic transitions, the closed-form solid angle a double-tilt holder commands, the cost of an uncalibrated diffraction rotation, and the group-order counts that decide whether a single indexed pattern leaves a real ambiguity.

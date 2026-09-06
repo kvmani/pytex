@@ -6533,7 +6533,7 @@ the GUI.
 | 2 | Contour control: explicit levels, level scales, shared scales, publication defaults | **done** |
 | 3 | Multi-sample comparison figures on one scale, with sample identification | **done** |
 | 4 | The GUI surface for both, in the texture workspace | **done** |
-| 5 | Worked examples and the algorithm page | not started |
+| 5 | Worked examples and the algorithm page | **done** |
 | 6 | Notebook / workflow documentation and the parity matrix | not started |
 
 ## Increment 1 - ghost correction (landed)
@@ -6665,3 +6665,32 @@ also driven by hand and screenshotted.
 shared contour scale, registered in `worked_examples/`, plus the algorithm page
 `docs/site/algorithms/ghost_correction.md` at the level the repository's algorithm pages are
 written to: pseudocode, every setting with what it is calibrated against, and the failure modes.
+
+## Increment 5 - the algorithm page and the worked examples (landed)
+
+**What shipped.** `docs/site/algorithms/ghost_correction.md`, registered in the algorithms toctree,
+in the theory index's theory-to-algorithm table and in `docs/README.md`. Three worked examples
+added to the `ghost-problem` group, which is now "The ghost problem, and its correction".
+
+**The example worth keeping.** `ghost-cubic-first-odd-invariant-is-degree-nine` computes the
+dimension of the degree-l invariant subspace of a rotation group by character theory - the group
+average of chi_l(theta) = sin((l + 1/2) theta) / sin(theta / 2) - and takes the smallest odd degree
+with an invariant. It returns 9 for the cubic rotation group, which is the classical tabulated
+result, and the same computation gives 7 for hexagonal 622 and 3 for orthorhombic 222. It is fast,
+purely analytic, needs no quadrature, and it explains in one number why ghost correction on a cubic
+material below degree 9 has nothing to do. It also independently confirms the empty odd basis the
+code reports for that case, which until now was only asserted by a unit test against the code's own
+behaviour.
+
+The other two run a small orthorhombic inversion (3.4 s) and check the two claims that matter: the
+corrected minimum density is zero, because the minimum-norm feasible point sits on the constraint
+boundary; and the predicted pole densities move by less than 5e-3 m.r.d., because odd harmonics are
+annihilated by a Friedel-symmetric operator exactly. Both expected values are analytic identities,
+not recorded output.
+
+**Verified.** `ruff`, the worked-example lane, and the regenerated gallery.
+
+**Next concrete step.** Increment 6: the notebook and parity-matrix pass. `docs/site/tutorials/
+notebooks/` has a PF-to-ODF notebook that describes the ghost problem as unaddressed;
+`docs/testing/mtex_parity_matrix.md` needs a row for ghost correction, and the roadmap documents
+that still list it as the biggest credibility gap need their claims retired.

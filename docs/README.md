@@ -146,6 +146,7 @@ index with cross-links to the matching implementation pages.
 - [Powder XRD And SAED Foundations](site/theory/powder_xrd_and_saed.md)
 - [Precise Lattice-Parameter Determination](site/theory/precise_lattice_parameter_determination.md)
 - [Determining A Lattice Parameter Precisely (algorithm)](site/algorithms/precise_lattice_parameter_determination.md)
+- [Correcting The Ghosts In A Pole-Figure ODF (algorithm)](site/algorithms/ghost_correction.md)
 - [Ratio/Angle Indexing Of A Measured SAED Pattern](site/theory/saed_ratio_angle_indexing.md)
 - [Fitting The Pattern Lattice, And Scoring The Solutions](site/theory/lattice_fit_and_solution_scoring.md)
 - [Kikuchi Bands And The Gnomonic Projection](site/theory/kikuchi_bands_and_gnomonic_projection.md)

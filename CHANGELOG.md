@@ -78,6 +78,14 @@ values were the ones in error.
   basis function is invisible to a Friedel-symmetric operator, and a known-answer case where the
   correction halves the distance to the true distribution.
 
+- **Documentation.** `docs/site/algorithms/ghost_correction.md` states the correction at the level
+  the repository's algorithm pages are written to: the pipeline, pseudocode for the minimization,
+  the table of first odd-degree invariants by rotation group, every setting with what it is
+  calibrated against, measured behaviour on a known-answer case, and the failure modes.
+  `docs/site/workflows/pole_figure_presentation.md` covers contour control and comparison plates.
+  Three worked examples compute the numbers live: the first odd cubic invariant at degree 9 by
+  character theory, the restored non-negativity, and the untouched fit.
+
 ### Fixed
 
 - The pole-density forward model ignored `PoleFigure.antipodal`. Friedel's law was stated in the
