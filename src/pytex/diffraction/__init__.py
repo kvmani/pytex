@@ -260,6 +260,8 @@ from pytex.diffraction.xrd_measurement import (
     MeasuredPowderPattern,
     PowderPatternComparison,
     compare_powder_patterns,
+    read_powder_pattern,
+    read_powder_xrdml,
     read_powder_xy,
     write_powder_xy,
 )
@@ -475,6 +477,8 @@ __all__ = [
     "pseudo_voigt_area",
     "pseudo_voigt_profile",
     "rationalize_zone_axis",
+    "read_powder_pattern",
+    "read_powder_xrdml",
     "read_powder_xy",
     "refine_rietveld",
     "refraction_decrement",

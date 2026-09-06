@@ -14,6 +14,7 @@ from typing import Any, Literal, cast
 import numpy as np
 
 from pytex.app.errors import InvalidInputError
+from pytex.app.logbook import APP_LOG
 from pytex.app.phases import phase_from_request
 from pytex.app.registry import (
     REGISTRY,
@@ -23,10 +24,12 @@ from pytex.app.registry import (
     IndicesParameter,
     IntegerParameter,
     NumberParameter,
+    ObjectParameter,
     TextParameter,
 )
 from pytex.app.results import AppResult, Column, ResultTable
 from pytex.app.services.calculator import phase_parameter, plane_label
+from pytex.app.uploads import uploaded_file
 from pytex.diffraction.rietveld import _scaled_phase, refine_rietveld
 from pytex.diffraction.xrd import RadiationSpec, generate_xrd_pattern
 from pytex.diffraction.xrd_background import estimate_background
@@ -43,7 +46,7 @@ from pytex.diffraction.xrd_lattice_parameter import (
     determine_lattice_parameters_from_pattern,
     extrapolation_values,
 )
-from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
+from pytex.diffraction.xrd_measurement import MeasuredPowderPattern, read_powder_pattern
 
 __all__: tuple[str, ...] = ()
 
@@ -382,11 +385,14 @@ _DEMO_BACKGROUND_COUNTS = 150.0
 _MAX_PROFILE_ROWS = 1200
 
 
+PATTERN_FILE_SUFFIXES: tuple[str, ...] = (".xy", ".xrdml", ".csv", ".dat", ".txt")
+
+
 def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
     """Return the shared "where does the scan come from" controls.
 
-    One declaration, used by every analysis operation, so the meaning of a
-    pasted scan cannot drift between views.
+    One declaration, used by every analysis operation, so the meaning of an
+    experimental scan cannot drift between views.
     """
 
     return (
@@ -396,9 +402,8 @@ def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
             help_text=(
                 "Where the measured profile comes from. A demonstration scan is generated from "
                 "the selected phase with a deliberate cell dilation, zero-point error, peak "
-                "width and curved background, then given Poisson counting noise \u2014 so every "
-                "answer below can be checked against a value that is known in advance. It is "
-                "marked synthetic in the result and is not a measurement of anything."
+                "width and curved background, then given Poisson counting noise. An experimental "
+                "pattern file (.xy, .xrdml, .csv, .dat) can be opened and loaded directly."
             ),
             options=(
                 (
@@ -407,19 +412,34 @@ def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
                     "Synthetic, with known answers, for learning and method development.",
                 ),
                 (
+                    "file",
+                    "Use an experimental pattern file",
+                    "An experimental powder diffractogram (.xy, .xrdml, .csv, .dat).",
+                ),
+                (
                     "paste",
                     "Use the pasted scan",
-                    "Two columns of your own data: 2\u03b8 and intensity.",
+                    "Two columns of your own data: 2θ and intensity (legacy fallback).",
                 ),
             ),
             default="demonstration",
+            group=group,
+        ),
+        ObjectParameter(
+            name="scan_file",
+            label="Pattern file",
+            help_text=(
+                "An experimental powder diffraction pattern (.xy, .xrdml, .csv, .dat). "
+                "Opened through **Open a pattern file** in the workbench rail."
+            ),
+            required=False,
             group=group,
         ),
         TextParameter(
             name="scan",
             label="Pasted scan",
             help_text=(
-                "Two numbers per line: 2\u03b8 in degrees, then intensity. Blank lines and "
+                "Two numbers per line: 2θ in degrees, then intensity. Blank lines and "
                 "lines beginning with `#` are ignored, and commas count as separators so a "
                 "pasted `.xy` or CSV export works unchanged.\n\n"
                 "Paste the **raw** scan. Do not subtract a background first: the refinement "
@@ -431,6 +451,7 @@ def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
             required=False,
             default="",
             placeholder="30.00  152\n30.02  148\n30.04  157",
+            advanced=True,
             group=group,
         ),
         IntegerParameter(
@@ -438,7 +459,7 @@ def _scan_parameters(*, group: str = "Measurement") -> tuple[Any, ...]:
             label="Demonstration noise seed",
             help_text=(
                 "Seed for the counting noise of the demonstration scan, so a result is "
-                "reproducible. Ignored when a pasted scan is used."
+                "reproducible. Ignored when an experimental pattern is used."
             ),
             default=20260905,
             minimum=0,
@@ -464,7 +485,7 @@ def _parse_scan(text: str) -> tuple[np.ndarray, np.ndarray]:
             raise InvalidInputError(
                 f"Line {number} of the pasted scan has only one number.",
                 field="scan",
-                hint="Each line needs a 2\u03b8 value and an intensity, separated by "
+                hint="Each line needs a 2θ value and an intensity, separated by "
                 "whitespace or a comma.",
             )
         try:
@@ -492,7 +513,46 @@ def _measured_from_request(
 ) -> tuple[MeasuredPowderPattern, bool]:
     """Return the profile to analyse, and whether it was generated rather than measured."""
 
-    if str(request["data_source"]) == "paste":
+    data_source = str(request.get("data_source", "demonstration"))
+    scan_file = request.get("scan_file")
+
+    if data_source == "file" or scan_file:
+        if not scan_file:
+            raise InvalidInputError(
+                "No experimental pattern file was provided.",
+                field="scan_file",
+                hint=(
+                    "Choose an experimental pattern file (.xy, .xrdml, .csv, .dat) using the "
+                    "pattern loader, or switch the scan source back to the demonstration scan."
+                ),
+            )
+        with uploaded_file(scan_file, field="scan_file", suffixes=PATTERN_FILE_SUFFIXES) as (
+            path,
+            name,
+        ):
+            try:
+                pattern = read_powder_pattern(path, name=name, radiation=radiation)
+            except Exception as error:
+                raise InvalidInputError(
+                    f"The pattern file {name} could not be read: {error}",
+                    field="scan_file",
+                    hint=(
+                        "Verify that the file is a valid 2-column .xy/.csv or a PANalytical .xrdml "
+                        "powder scan with increasing 2θ angles."
+                    ),
+                ) from error
+        APP_LOG.info(
+            f"Loaded experimental pattern '{pattern.name}' ({len(pattern)} points).",
+            source="xrd",
+            detail={
+                "points": len(pattern),
+                "two_theta_min": float(pattern.two_theta_deg[0]),
+                "two_theta_max": float(pattern.two_theta_deg[-1]),
+            },
+        )
+        return pattern, False
+
+    if data_source == "paste":
         text = str(request.get("scan") or "")
         if not text.strip():
             raise InvalidInputError(
@@ -534,7 +594,7 @@ def _measured_from_request(
         raise InvalidInputError(
             f"A demonstration scan could not be generated for this phase: {error}",
             field="phase",
-            hint="Choose a phase with an atomic basis, or paste a scan instead.",
+            hint="Choose a phase with an atomic basis, or open an experimental pattern instead.",
         ) from error
     angles = ideal.two_theta_grid_deg + _DEMO_ZERO_SHIFT_DEG
     noiseless = (

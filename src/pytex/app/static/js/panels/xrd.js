@@ -6,6 +6,7 @@ import { buildForm } from '../core/controls.js';
 import { el, formatNumber, svg } from '../core/dom.js';
 import { plotFrame } from '../core/plotframe.js';
 import { renderResult } from '../core/result.js';
+import { patternControls, adoptForm, withPattern } from '../core/xrdscan.js';
 
 export const panel = {
   id: 'xrd',
@@ -40,6 +41,13 @@ const VIEWS = [
   'xrd.rietveld',
   'xrd.size_strain',
 ];
+
+/** Operations that analyze an experimental powder diffractogram. */
+const PATTERN_OPERATIONS = new Set([
+  'xrd.background',
+  'xrd.lattice_parameters',
+  'xrd.rietveld',
+]);
 
 /** Which kind of drawing each view needs. */
 const VIEW_MODES = {
@@ -90,6 +98,10 @@ export function mount(context) {
   const legend = el('div.legend');
   const details = el('div');
   const formHost = el('div');
+  const pattern = patternControls({
+    onChange: () => run(),
+    showError: (error) => context.showError(error),
+  });
   const runButton = el('button.button.button--primary.button--block', {
     type: 'button',
     text: VIEW_ACTIONS[state.operation.id][0],
@@ -150,6 +162,7 @@ export function mount(context) {
     details.replaceChildren();
     appearance.hidden = mode() !== 'profile';
     scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
+    pattern.element.hidden = !PATTERN_OPERATIONS.has(chosen.id);
     // A run left in flight by the previous view will decline to touch the
     // button, so the new view has to hand it back itself.
     runButton.disabled = false;
@@ -161,6 +174,8 @@ export function mount(context) {
     return VIEW_MODES[state.operation.id] ?? 'profile';
   }
 
+  pattern.element.hidden = !PATTERN_OPERATIONS.has(state.operation.id);
+
   context.rail.append(
     el('label.field', {}, [
       el('span.field__label', { text: 'View' }),
@@ -169,6 +184,7 @@ export function mount(context) {
         text: 'Simulation first, then the three questions a measured scan raises.',
       }),
     ]),
+    pattern.element,
     formHost,
     runButton,
     scaleControl,
@@ -196,6 +212,9 @@ export function mount(context) {
 
   function renderControls(initial = {}) {
     state.form = buildForm(state.operation, { initial });
+    if (PATTERN_OPERATIONS.has(state.operation.id)) {
+      adoptForm(state.form);
+    }
     formHost.replaceChildren(state.form.element);
   }
 
@@ -210,6 +229,7 @@ export function mount(context) {
       frame.setTitle(target.title);
       appearance.hidden = mode() !== 'profile';
       scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
+      pattern.element.hidden = !PATTERN_OPERATIONS.has(target.id);
       runButton.disabled = false;
       runButton.textContent = VIEW_ACTIONS[target.id][0];
     }
@@ -230,7 +250,11 @@ export function mount(context) {
     runButton.textContent = busy;
     state.form.clearErrors();
     try {
-      const result = await call(launched.id, state.form.values());
+      let values = state.form.values();
+      if (PATTERN_OPERATIONS.has(launched.id)) {
+        values = withPattern(values);
+      }
+      const result = await call(launched.id, values);
       if (state.operation !== launched) return;
       state.result = result;
       draw();

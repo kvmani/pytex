@@ -5,6 +5,45 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)
+
+**Objective.** Support direct loading and analysis of experimental powder XRD pattern files
+(`.xy`, `.xrdml`, `.csv`, `.dat`) across the XRD workspace and analysis services (`xrd.background`,
+`xrd.lattice_parameters`, `xrd.rietveld`), replacing the legacy "pasted scan" requirement with an
+integrated file selector and reader. Generate a realistic synthetic experimental pattern fixture in
+`.xy` format with designed background and Caglioti instrument broadening.
+
+### Progress Ledger
+
+| Step | Scope | State |
+|---|---|---|
+| 1 | Active task ledger initialized | Complete |
+| 2 | Diffraction layer readers: `read_powder_xrdml` and `read_powder_pattern` | Complete |
+| 3 | App service layer: `scan_file` ObjectParameter & file dispatch in `_measured_from_request` | Complete |
+| 4 | Frontend GUI: `xrdscan.js` pattern file selector component & `xrd.js` integration | Complete |
+| 5 | Synthetic experimental fixtures (`.xy` with designed background/instrument broadening, and `.xrdml`) | Complete |
+| 6 | Verification: unit tests, linter, type checks, and repo integrity | Complete |
+
+### Technical Summary & Verification
+
+1. **Diffraction & Adapters**:
+   - `src/pytex/adapters/xrdml.py`: Implemented `read_powder_xrdml(path, *, name=None, radiation=None) -> MeasuredPowderPattern` to parse PANalytical 1D powder diffractograms (`.xrdml`, `.xrdml.bz2`). Auto-detects 2θ continuous/stepped scans, scales counts/intensities by common counting time, extracts wavelength metadata (Cu Kα doublet), and preserves sample/instrument provenance.
+   - `src/pytex/diffraction/xrd_measurement.py`: Implemented `read_powder_pattern(path, *, name=None, radiation=None, **kwargs)` which dispatches `.xrdml` to `read_powder_xrdml` and `.xy`/`.csv`/`.dat`/`.txt` to `read_powder_xy`. Re-exported in `pytex` top-level namespace.
+2. **App Services (`xrd.py`)**:
+   - Registered `scan_file: ObjectParameter` on `xrd.background`, `xrd.lattice_parameters`, and `xrd.rietveld`.
+   - Updated `_measured_from_request`: When `scan_file` is provided (or `data_source == "file"`), safely extracts uploaded payload and calls `read_powder_pattern`. Retains backward-compatible fallback for `data_source == "paste"` and `data_source == "demonstration"`.
+3. **Frontend UI Components**:
+   - `src/pytex/app/static/js/core/xrdscan.js`: Implemented shared pattern loader component with file input (`accept=".xy,.xrdml,.csv,.dat,.txt"`), explainer on supported formats, live file status, and close button to revert to demonstration scans. Form adapter `adoptForm` hides raw `scan_file` inputs, and `withPattern` injects the open pattern into analysis requests.
+   - `src/pytex/app/static/js/panels/xrd.js`: Mounted `patternControls` in rail for analysis operations (`xrd.background`, `xrd.lattice_parameters`, `xrd.rietveld`), hiding it in simulation view.
+4. **Fixtures & Generator**:
+   - `scripts/generate_xrd_test_patterns.py`: Generates realistic synthetic experimental diffractograms using Ni FCC standard ($a = 3.52387$ Å), Cu Kα doublet, Caglioti instrument broadening ($U = 0.005, V = -0.002, W = 0.008$), pseudo-Voigt profile ($\eta = 0.6$), designed curved background (low-angle air scattering + sample curvature), and Poisson counting noise.
+   - Generated `fixtures/diffraction/experimental_ni_fcc_pattern.xy` (4001 points) and `fixtures/diffraction/experimental_ni_fcc_pattern.xrdml`.
+5. **Verification**:
+   - `tests/unit/test_xrd_measurement.py`: Added tests for `read_powder_pattern` and `read_powder_xrdml` validating 2θ support, intensity calibration, radiation extraction, and error handling (16 passed).
+   - `tests/unit/test_app_xrd.py`: Added tests verifying `xrd.background`, `xrd.lattice_parameters`, and `xrd.rietveld` accept `scan_file` payloads with `.xy` and `.xrdml` patterns, mark results non-synthetic, determine accurate lattice parameters ($a \approx 3.52387$ Å), converge refinement, and reject missing files (34 passed).
+   - `tests/unit/test_app_manifest.py`: Full manifest test suite passing (703 passed).
+   - Linters & Typing: `ruff check` passed, `mypy` passed (169 source files with 0 issues), `scripts/check_repo_integrity.py` passed.
+
 ## In-App Publication-Quality Offline Documentation System — COMPLETE (2026-09-06)
 
 **Objective.** Provide publication-quality documentation of algorithms and mathematics for all

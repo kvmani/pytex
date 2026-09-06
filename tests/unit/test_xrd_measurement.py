@@ -16,6 +16,8 @@ from pytex import (
     SymmetrySpec,
     compare_powder_patterns,
     from_json_contract,
+    read_powder_pattern,
+    read_powder_xrdml,
     read_powder_xy,
     to_json_contract,
     write_powder_xy,
@@ -23,6 +25,8 @@ from pytex import (
 
 ROOT = Path(__file__).resolve().parents[2]
 SYNTHETIC_PROFILE = ROOT / "fixtures" / "diffraction" / "synthetic_powder_profile.xy"
+NI_FCC_XY = ROOT / "fixtures" / "diffraction" / "experimental_ni_fcc_pattern.xy"
+NI_FCC_XRDML = ROOT / "fixtures" / "diffraction" / "experimental_ni_fcc_pattern.xrdml"
 
 
 def _phase() -> Phase:
@@ -198,3 +202,55 @@ def test_comparison_rejects_an_inconsistent_portable_result() -> None:
             weight_model="unit",
             fitted_background=False,
         )
+
+
+def test_read_powder_pattern_loads_experimental_xy_fixture() -> None:
+    assert NI_FCC_XY.exists(), f"Fixture missing: {NI_FCC_XY}"
+    pattern = read_powder_pattern(NI_FCC_XY)
+
+    assert isinstance(pattern, MeasuredPowderPattern)
+    assert pattern.name == "experimental-ni-fcc-standard"
+    assert len(pattern.two_theta_deg) == 4001
+    assert pattern.two_theta_deg[0] == pytest.approx(20.0, abs=1e-3)
+    assert pattern.two_theta_deg[-1] == pytest.approx(100.0, abs=1e-3)
+    assert np.all(np.diff(pattern.two_theta_deg) > 0.0)
+    assert pattern.intensity.max() > 10000.0
+    assert np.all(pattern.intensity >= 0.0)
+    assert pattern.intensity_unit == "counts"
+
+
+def test_read_powder_pattern_loads_experimental_xrdml_fixture() -> None:
+    assert NI_FCC_XRDML.exists(), f"Fixture missing: {NI_FCC_XRDML}"
+    pattern = read_powder_pattern(NI_FCC_XRDML)
+
+    assert isinstance(pattern, MeasuredPowderPattern)
+    assert pattern.name == "Nickel FCC standard"
+    assert len(pattern.two_theta_deg) == 4001
+    assert pattern.two_theta_deg[0] == pytest.approx(20.0, abs=1e-3)
+    assert pattern.two_theta_deg[-1] == pytest.approx(100.0, abs=1e-3)
+    assert np.all(np.diff(pattern.two_theta_deg) > 0.0)
+    assert pattern.intensity.max() > 10000.0
+    assert pattern.radiation is not None
+    assert pattern.radiation.name == "Cu Ka doublet"
+    assert pattern.radiation.wavelength_angstrom == pytest.approx(1.540598, abs=1e-5)
+    assert pattern.radiation.kalpha2_wavelength_angstrom == pytest.approx(1.544426, abs=1e-5)
+    assert pattern.radiation.kalpha2_relative_intensity == pytest.approx(0.5, abs=1e-3)
+
+
+def test_read_powder_xrdml_preserves_metadata_and_provenance() -> None:
+    pattern = read_powder_xrdml(NI_FCC_XRDML, name="custom-name")
+
+    assert pattern.name == "custom-name"
+    assert pattern.metadata.get("sample_id") == "Ni-FCC-Powder"
+    assert pattern.provenance is not None
+    assert pattern.provenance.source_system == "xrdml_powder"
+    assert "PANalytical XRDML" in pattern.provenance.notes[0]
+    assert "4001 points" in pattern.describe()
+
+
+def test_read_powder_pattern_rejects_malformed_data(tmp_path: Path) -> None:
+    malformed = tmp_path / "malformed.xy"
+    malformed.write_text("not a number here\nstill not numbers\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        read_powder_pattern(malformed)
+

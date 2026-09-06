@@ -5,7 +5,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree
+
+if TYPE_CHECKING:
+    from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
 
 import numpy as np
 
@@ -17,6 +21,7 @@ from pytex.core.provenance import ProvenanceRecord
 from pytex.core.sphere import raster_solid_angle_weights
 from pytex.core.symmetry import SymmetrySpec
 from pytex.diffraction.stereonets import spherical_angles_to_directions
+from pytex.diffraction.xrd import RadiationSpec
 from pytex.texture.models import ODF, KernelSpec, ODFInversionReport, PoleFigure
 
 XRDML_NAMESPACE = "http://www.xrdml.com/XRDMeasurement/1.3"
@@ -496,10 +501,175 @@ def invert_xrdml_pole_figures(
     )
 
 
+def read_powder_xrdml(
+    path: str | Path,
+    *,
+    name: str | None = None,
+    radiation: RadiationSpec | None = None,
+) -> MeasuredPowderPattern:
+    """Read a 1D powder X-ray diffractogram from a PANalytical XRDML file.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the ``.xrdml`` (or ``.xrdml.bz2``) file.
+    name : str, optional
+        Sample or profile name override. If omitted, takes the sample name from
+        the XML or the file stem.
+    radiation : RadiationSpec, optional
+        Radiation specification override. If omitted, read from the
+        ``<usedWavelength>`` block.
+
+    Returns
+    -------
+    MeasuredPowderPattern
+        The validated, immutable powder profile with 2θ angles and intensities.
+    """
+    from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
+
+    source = Path(path)
+    root = ElementTree.fromstring(_open_xrdml_text(source))
+    namespace = _namespace(root)
+    measurement = root.find(namespace + "xrdMeasurement")
+    if measurement is None:
+        raise ValueError("XRDML file does not contain an xrdMeasurement element.")
+
+    scans = measurement.findall(namespace + "scan")
+    if not scans:
+        raise ValueError("XRDML powder pattern import requires at least one scan.")
+
+    # Wavelength extraction
+    if radiation is None:
+        used_wavelength = measurement.find(namespace + "usedWavelength")
+        if used_wavelength is not None:
+            k_alpha1 = _find_text(used_wavelength, namespace + "kAlpha1")
+            k_alpha2 = _find_text(used_wavelength, namespace + "kAlpha2")
+            ratio = _find_text(used_wavelength, namespace + "ratioKAlpha2KAlpha1")
+            if k_alpha1 is not None:
+                wl1 = float(k_alpha1)
+                if k_alpha2 is not None:
+                    wl2 = float(k_alpha2)
+                    r = float(ratio) if ratio is not None else 0.5
+                    rad_name = (
+                        "Cu Ka doublet" if abs(wl1 - 1.540598) < 0.005 else "XRDML doublet"
+                    )
+                    radiation = RadiationSpec(
+                        name=rad_name,
+                        wavelength_angstrom=wl1,
+                        kalpha2_wavelength_angstrom=wl2,
+                        kalpha2_relative_intensity=r,
+                    )
+                else:
+                    rad_name = "Cu Ka" if abs(wl1 - 1.540598) < 0.005 else "XRDML wavelength"
+                    radiation = RadiationSpec(
+                        name=rad_name,
+                        wavelength_angstrom=wl1,
+                    )
+
+    sample = root.find(namespace + "sample")
+    sample_name = _find_text(sample, namespace + "name") if sample is not None else None
+    sample_id = _find_text(sample, namespace + "id") if sample is not None else None
+
+    angles_list: list[np.ndarray] = []
+    intensities_list: list[np.ndarray] = []
+
+    for scan in scans:
+        points = scan.find(namespace + "dataPoints")
+        if points is None:
+            continue
+        intensities_node = points.find(namespace + "intensities")
+        count_time_text = _find_text(points, namespace + "commonCountingTime") or "1.0"
+        count_time = float(count_time_text)
+        if count_time <= 0.0:
+            count_time = 1.0
+
+        if intensities_node is not None and intensities_node.text:
+            intensities = np.fromstring(intensities_node.text, sep=" ", dtype=np.float64)
+        else:
+            counts_node = points.find(namespace + "counts")
+            if counts_node is None or counts_node.text is None:
+                continue
+            intensities = np.fromstring(counts_node.text, sep=" ", dtype=np.float64) / count_time
+
+        if intensities.size == 0:
+            continue
+
+        point_count = int(intensities.size)
+        two_theta_node = None
+        for pos in points.findall(namespace + "positions"):
+            axis_name = pos.attrib.get("axis", "").lower()
+            if axis_name in {"2theta", "2θ", "twotheta", "gonio"}:
+                two_theta_node = pos
+                break
+        if two_theta_node is None:
+            for pos in points.findall(namespace + "positions"):
+                if (
+                    pos.find(namespace + "startPosition") is not None
+                    or pos.find(namespace + "listPositions") is not None
+                ):
+                    two_theta_node = pos
+                    break
+        if two_theta_node is None:
+            continue
+
+        two_theta = _scan_position_array(
+            two_theta_node, point_count=point_count, namespace=namespace
+        )
+        angles_list.append(two_theta)
+        intensities_list.append(intensities)
+
+    if not angles_list:
+        raise ValueError("Could not decode any valid powder diffractogram points from XRDML file.")
+
+    all_angles = np.concatenate(angles_list)
+    all_intensities = np.concatenate(intensities_list)
+
+    if np.any(np.diff(all_angles) < 0.0):
+        sort_idx = np.argsort(all_angles)
+        all_angles = all_angles[sort_idx]
+        all_intensities = all_intensities[sort_idx]
+
+    unique_angles, unique_indices = np.unique(all_angles, return_index=True)
+    if unique_angles.size < all_angles.size:
+        all_angles = unique_angles
+        all_intensities = all_intensities[unique_indices]
+
+    provenance = ProvenanceRecord(
+        source_system="xrdml_powder",
+        source_path=str(source),
+        metadata={
+            "sample_name": sample_name or "",
+            "sample_id": sample_id or "",
+            "measurement_type": measurement.attrib.get("measurementType", ""),
+            "scan_axis": scans[0].attrib.get("scanAxis", ""),
+        },
+        notes=("Imported from PANalytical XRDML powder diffractogram.",),
+    )
+
+    return MeasuredPowderPattern(
+        name=name or sample_name or source.stem,
+        two_theta_deg=all_angles,
+        intensity=all_intensities,
+        intensity_unit="counts",
+        radiation=radiation,
+        synthetic=False,
+        metadata={
+            "source_system": "xrdml",
+            "sample_name": sample_name or "",
+            "sample_id": sample_id or "",
+            "measurement_type": measurement.attrib.get("measurementType", ""),
+            "scan_axis": scans[0].attrib.get("scanAxis", ""),
+        },
+        provenance=provenance,
+    )
+
+
 __all__ = [
     "XRDML_NAMESPACE",
     "XRDMLPoleFigureMeasurement",
     "invert_xrdml_pole_figures",
     "load_xrdml_pole_figure",
+    "read_powder_xrdml",
     "read_xrdml_pole_figure",
 ]
+

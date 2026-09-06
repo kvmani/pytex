@@ -515,3 +515,71 @@ def test_uncertainties_stay_with_their_reflections_under_an_angular_floor() -> N
         assert row["standard_uncertainty_mdeg"] == pytest.approx(
             full[round(row["two_theta_observed_deg"], 6)]
         )
+
+
+ROOT = Path(__file__).resolve().parents[2]
+NI_FCC_XY = ROOT / "fixtures" / "diffraction" / "experimental_ni_fcc_pattern.xy"
+NI_FCC_XRDML = ROOT / "fixtures" / "diffraction" / "experimental_ni_fcc_pattern.xrdml"
+
+
+def test_operations_accept_experimental_pattern_file_xy() -> None:
+    assert NI_FCC_XY.exists()
+    text = NI_FCC_XY.read_text(encoding="utf-8")
+    scan_file = {"name": "experimental_ni_fcc_pattern.xy", "text": text}
+
+    # 1. Background estimation
+    bg = REGISTRY.call(
+        "xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file}
+    )
+    assert bg["data"]["synthetic"] is False
+    assert len(bg["data"]["two_theta_deg"]) == 4001
+
+    # 2. Lattice parameters
+    lp = REGISTRY.call(
+        "xrd.lattice_parameters",
+        {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file},
+    )
+    assert lp["data"]["synthetic"] is False
+    assert lp["data"]["a"] == pytest.approx(3.52387, rel=1e-3)
+
+    # 3. Rietveld refinement
+    riet = REGISTRY.call(
+        "xrd.rietveld",
+        {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file},
+    )
+    assert riet["data"]["synthetic"] is False
+    assert riet["data"]["weighted_profile_r_factor"] < 0.45
+
+
+def test_operations_accept_experimental_pattern_file_xrdml() -> None:
+    assert NI_FCC_XRDML.exists()
+    text = NI_FCC_XRDML.read_text(encoding="utf-8")
+    scan_file = {"name": "experimental_ni_fcc_pattern.xrdml", "text": text}
+
+    bg = REGISTRY.call(
+        "xrd.background", {"phase": {"builtin": "ni_fcc"}, "scan_file": scan_file}
+    )
+    assert bg["data"]["synthetic"] is False
+    assert len(bg["data"]["two_theta_deg"]) == 4001
+
+
+def test_operation_rejects_missing_scan_file_when_source_is_file() -> None:
+    with pytest.raises(InvalidInputError) as caught:
+        REGISTRY.call(
+            "xrd.background", {"phase": {"builtin": "ni_fcc"}, "data_source": "file"}
+        )
+    assert caught.value.details["field"] == "scan_file"
+
+
+def test_pattern_controls_are_wired_in_panel_js() -> None:
+    static = Path("src/pytex/app/static/js")
+    panel = (static / "panels" / "xrd.js").read_text(encoding="utf-8")
+    xrdscan = (static / "core" / "xrdscan.js").read_text(encoding="utf-8")
+
+    assert "patternControls" in panel
+    assert "adoptForm" in panel
+    assert "withPattern" in panel
+    assert "PATTERN_OPERATIONS" in panel
+    assert "Experimental pattern" in xrdscan
+    assert ".xy,.xrdml,.csv,.dat,.txt" in xrdscan
+

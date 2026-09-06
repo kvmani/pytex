@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal
+from typing import Any, Literal
 
 import numpy as np
 
@@ -431,6 +431,73 @@ def compare_powder_patterns(
     )
 
 
+def read_powder_pattern(
+    path: str | Path,
+    *,
+    name: str | None = None,
+    radiation: RadiationSpec | None = None,
+    **kwargs: Any,
+) -> MeasuredPowderPattern:
+    """Read a measured powder diffractogram, detecting format from extension.
+
+    Supports:
+    - PANalytical XRDML XML scans: ``.xrdml``, ``.xrdml.bz2``
+    - Columnar whitespace / CSV profiles: ``.xy``, ``.csv``, ``.dat``, ``.txt``
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the experimental powder diffraction file.
+    name : str, optional
+        Profile or sample name override.
+    radiation : RadiationSpec, optional
+        Radiation specification override.
+    **kwargs : Any
+        Additional keyword arguments forwarded to :func:`read_powder_xy` when reading
+        columnar text files.
+
+    Returns
+    -------
+    MeasuredPowderPattern
+        Validated powder diffraction profile.
+    """
+    source = Path(path)
+    suffixes = [s.lower() for s in source.suffixes]
+    if ".xrdml" in suffixes:
+        from pytex.adapters.xrdml import read_powder_xrdml
+
+        return read_powder_xrdml(source, name=name, radiation=radiation)
+    return read_powder_xy(source, name=name, radiation=radiation, **kwargs)
+
+
+def read_powder_xrdml(
+    path: str | Path,
+    *,
+    name: str | None = None,
+    radiation: RadiationSpec | None = None,
+) -> MeasuredPowderPattern:
+    """Read a measured 1D powder diffractogram from a PANalytical XRDML XML file.
+
+    Parameters
+    ----------
+    path : str or Path
+        Path to the ``.xrdml`` or ``.xrdml.bz2`` file.
+    name : str, optional
+        Profile or sample name override.
+    radiation : RadiationSpec, optional
+        Radiation specification override. If omitted, extracted from the file's
+        ``<usedWavelength>`` metadata.
+
+    Returns
+    -------
+    MeasuredPowderPattern
+        Validated powder diffraction profile.
+    """
+    from pytex.adapters.xrdml import read_powder_xrdml as _read_powder_xrdml
+
+    return _read_powder_xrdml(path, name=name, radiation=radiation)
+
+
 __all__ = [
     "INTENSITY_UNITS",
     "MEASURED_POWDER_PATTERN_SCHEMA",
@@ -438,6 +505,9 @@ __all__ = [
     "MeasuredPowderPattern",
     "PowderPatternComparison",
     "compare_powder_patterns",
+    "read_powder_pattern",
+    "read_powder_xrdml",
     "read_powder_xy",
     "write_powder_xy",
 ]
+
