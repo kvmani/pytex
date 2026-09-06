@@ -705,15 +705,28 @@ def _refine_cell_scale(
     wavelength = float(radiation.wavelength_angstrom)
     scales = np.linspace(1.0 - half_range, 1.0 + half_range, int(steps))
 
-    # sin(theta) = lambda / (2 s d). Values above one are reflections the scaled
-    # cell pushes past back-reflection; they are excluded by being sent to an
-    # angle no observed peak can be near rather than by reshaping the array.
-    sine = wavelength / (2.0 * scales[:, None] * spacings[None, :])
-    angles = np.where(
-        sine <= 1.0, 2.0 * np.degrees(np.arcsin(np.clip(sine, 0.0, 1.0))), 1.0e6
-    )
-    distance = np.abs(observed_deg[None, :, None] - angles[:, None, :])
-    cost = np.minimum(distance.min(axis=2), float(tolerance_deg)).sum(axis=1)
+    # Scored in chunks of the scale axis. The natural expression is one
+    # (scales, peaks, lines) array, but that is the product of three quantities
+    # the caller controls independently: a triclinic cell at max_index 8
+    # predicts thousands of lines, and against a hundred peaks over four
+    # hundred scales the temporary runs to gigabytes. Chunking bounds it to a
+    # few megabytes and costs a Python loop of a dozen iterations.
+    lines = int(spacings.size)
+    chunk = max(1, min(int(scales.size), 4_000_000 // max(lines * int(observed_deg.size), 1)))
+    cost = np.empty(scales.size, dtype=float)
+    for start in range(0, int(scales.size), chunk):
+        block = scales[start : start + chunk]
+        sine = wavelength / (2.0 * block[:, None] * spacings[None, :])
+        # sin(theta) above one is a reflection this scale pushes past
+        # back-reflection. Sending it to an angle no peak can be near excludes
+        # it without reshaping the array per scale.
+        angles = np.where(
+            sine <= 1.0, 2.0 * np.degrees(np.arcsin(np.clip(sine, 0.0, 1.0))), 1.0e6
+        )
+        distance = np.abs(observed_deg[None, :, None] - angles[:, None, :])
+        cost[start : start + block.size] = np.minimum(
+            distance.min(axis=2), float(tolerance_deg)
+        ).sum(axis=1)
     return float(scales[int(np.argmin(cost))])
 
 

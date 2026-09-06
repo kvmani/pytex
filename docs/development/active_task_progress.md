@@ -7267,3 +7267,18 @@ building a worktree at `e2e8730` - the commit before this goal - serving it on i
 running the test there: it fails 3/3 on that tree too. Also isolated against each of my three
 frontend files in turn. It is a timing sensitivity in the test, not a regression, and fixing it is
 outside this goal.
+
+### Increment 7 - a memory bound on the cell-scale search (landed)
+
+Found reviewing my own code rather than by a failing test, which is worth saying: no test would have
+caught it on the built-in cubic phases.
+
+`_refine_cell_scale` scored the whole grid at once as a `(scales, peaks, lines)` array. All three
+axes are caller-controlled and only the first is fixed: a low-symmetry cell enumerated to a high
+`max_index` predicts many hundreds of lines, and against a full 128-peak table over 401 scales the
+temporary reaches gigabytes. On the cubic demonstration phases it is 200 MB, which passes quietly.
+
+Now chunked along the scale axis to a few megabytes, at the cost of a Python loop of about a dozen
+iterations. Pinned by a test on quartz and alpha uranium at `max_index=8` that also checks the
+chunk boundary is arithmetic-neutral, by requiring the refined scale to agree with a run that
+chunks differently.

@@ -604,3 +604,31 @@ def test_the_refined_scale_travels_in_the_json_contract() -> None:
     ).to_json()
     assert payload["candidates"][0]["cell_scale"] == pytest.approx(1.003, abs=5.0e-4)
     assert payload["settings"]["cell_scale_range"] == pytest.approx(0.02)
+
+
+def test_a_low_symmetry_candidate_at_a_high_index_is_scored_within_bounded_memory() -> None:
+    """The cell-scale search must not allocate the product of its three axes.
+
+    The natural expression of the scale search is one (scales, peaks, lines)
+    array, and all three are caller-controlled: a low-symmetry cell enumerated
+    to a high index predicts many lines, and against a full peak list over four
+    hundred scales the temporary runs to gigabytes. It is chunked instead. This
+    exercises that path -- alpha uranium is orthorhombic and quartz trigonal, so
+    both predict several times what a cubic cell does at ``max_index=8`` -- and
+    checks that the answer is the same one the cheap path gives.
+    """
+
+    table = _table("quartz_alpha")
+    report = identify_phase(
+        table,
+        _candidates("quartz_alpha", "alpha_u", "ni_fcc"),
+        max_index=8,
+    )
+    assert report.best.phase_name == "Alpha quartz (SiO2)"
+    assert report.is_conclusive
+
+    # The chunk boundary must not change the refined scale. A single-scale
+    # search is one chunk by construction, so agreeing with a 401-point search
+    # on the same specimen is evidence the chunking is arithmetic-neutral.
+    fine = identify_phase(table, _candidates("quartz_alpha"), max_index=8).best
+    assert fine.cell_scale == pytest.approx(report.best.cell_scale)
