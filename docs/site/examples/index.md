@@ -64,6 +64,8 @@ The complete set of computed-versus-expected values at a glance:
 | `diffraction-groups-construction-yields-buxtons-thirty-one` | 31 | 31 | &mdash; | ✅ |
 | `diffraction-groups-friedel-observation-splits-the-point-groups` | [21, 11] | [21, 11] | &mdash; | ✅ |
 | `diffraction-groups-zincblende-down-001-loses-the-two-fold` | [1, 1, 1, 0, 1, 1, 1] | [1, 1, 1, 0, 1, 1, 1] | &mdash; | ✅ |
+| `diffraction-cbed-silicon-200-is-extinguished-by-the-diamond-glide` | [2.288e-15, 1.000e+00] | [0.000e+00, 1.000e+00] | &mdash; | ✅ |
+| `diffraction-cbed-the-zone-axis-is-part-of-the-silicon-measurement` | [1, 1, 1, 1, 1, 1] | [1, 1, 1, 1, 1, 1] | &mdash; | ✅ |
 | `texture-gaussian-kernel-normalization-and-halfwidth` | [1.000000, 0.500000] | [1.000000, 0.500000] | &mdash; | ✅ |
 | `texture-uniform-odf-pole-density-is-one-mrd` | [1.000013, 1.000248, 0.999713] | [1.000000, 1.000000, 1.000000] | m.r.d. | ✅ |
 | `texture-odf-named-component-fit-recovers-exact-mixture` | [0.700000000, 0.300000000, 0.000000000] | [0.700000000, 0.300000000, 0.000000000] | volume fraction | ✅ |
