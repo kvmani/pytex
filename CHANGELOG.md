@@ -78,6 +78,11 @@ values were the ones in error.
   basis function is invisible to a Friedel-symmetric operator, and a known-answer case where the
   correction halves the distance to the true distribution.
 
+- **ODF sections are contoured on one ladder.** `build_odf_figure_spec(kind="sections")` gave every
+  panel its own automatic levels, so a weak section could not be told from a strong one -- and the
+  panels are slices of a single distribution, not separate measurements. The levels are now
+  computed across the whole set, the plate carries one colour bar, and a `contours` argument takes
+  the same `ContourSpec` the pole figures use.
 - **Documentation.** `docs/site/algorithms/ghost_correction.md` states the correction at the level
   the repository's algorithm pages are written to: the pipeline, pseudocode for the minimization,
   the table of first odd-degree invariants by rotation group, every setting with what it is

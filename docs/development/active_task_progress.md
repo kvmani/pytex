@@ -6654,8 +6654,7 @@ the two things that were genuinely missing.
 
 **Cost, measured.** The harmonic route on the three-figure fixture: ~19 s at degree 6, ~57 s at
 degree 9, against well under a second for the dictionary route. The basis projection dominates.
-Both are opt-in and advanced; a later increment could cut the cost by projecting the raw basis in
-blocks rather than materialising `(n_spec x n_quad x n_crys, n_terms)` at once.
+Both are opt-in and advanced. (Increment 7 cut this: degree 9 is now 14 s.)
 
 **Verified.** `ruff`, `mypy`, `tests/unit/test_app_texture_import.py` (18 tests, 5 new), and the
 whole Playwright lane - 60 tests, including the new plate test, green in 3.1 minutes. The plate was
@@ -6720,8 +6719,28 @@ of documents that still say it is absent. Retired in this increment:
 **Verified.** `sphinx -b html docs/site` exits 0 with no warnings, having re-executed the edited
 notebook; `test_notebooks`, `test_documentation_policy` and `test_reference_policy` green.
 
-**Status: the goal's six increments are all landed.** What remains open, and is deliberately not in
-this goal: the cost of the harmonic route (the basis projection materialises a large intermediate
-array, and a blocked projection would make degree 9+ interactive), a defocus model beyond the
-existing random-standard calibration, and the MTEX comparison campaign that is deferred at the
-user's instruction.
+## Increment 7 - the two things the increments themselves exposed (landed)
+
+Not planned; both came out of running the work.
+
+1. **The harmonic basis was four times slower than it needed to be.** Profiling the degree-9 odd
+   basis showed 83 per cent of the time inside `_wigner_small_d`, and almost all of that in
+   `cos(beta/2) ** exponent` and `sin(beta/2) ** exponent` - recomputed for every one of 1525
+   terms over the same angles. The powers are now tabulated once per basis evaluation and shared
+   across every term, each row computed by the same `numpy.power` call the per-term code used, so
+   the values are bit-for-bit unchanged: checked over *every* term to degree 9 on a 5001-point
+   angle grid, maximum difference exactly 0.0. The odd basis build fell from 16.4 s to 2.9 s, and
+   the workbench's degree-9 ghost-corrected route from 57 s to 14 s.
+2. **ODF sections were each contoured on their own scale.** `build_odf_figure_spec(kind="sections")`
+   passed a level *count* to matplotlib per panel, so a weak section and a strong one drew the same
+   picture - the same defect as a plate of self-scaled pole figures, and worse, because the panels
+   are slices of one distribution rather than separate measurements. The ladder is now shared
+   across the set, the plate carries one colour bar, and the same `ContourSpec` the pole figures
+   take is accepted.
+
+**Verified.** The full unit lane green before these two changes; `ruff`, `mypy`, and the nine
+texture and plotting modules green after, with two new tests for the shared section ladder.
+
+**Status: the goal is complete.** All six planned increments landed, plus this seventh. What
+remains open and is deliberately outside it: a defocus model beyond the existing random-standard
+calibration, and the MTEX comparison campaign, which is deferred at the user's instruction.

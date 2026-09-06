@@ -103,6 +103,11 @@ back onto the densities with the measured even part — without that iteration's
 on the repository's demonstration case, alternating projection needed 2667 iterations to the same
 answer the minimizer reaches in 4.
 
+The cost of a correction is dominated by stage 2 rather than by this minimization. The half-angle
+powers of the Wigner $d$ functions are tabulated once per basis evaluation and shared across every
+term, which is what makes a degree-9 odd basis affordable: it cut that basis from 16.4 s to 2.9 s,
+and a degree-9 ghost-corrected inversion in the workbench from 57 s to 14 s.
+
 **Why the second term is not optional.** Positivity *bounds* the odd part; it does not determine
 it. Once the density is admissible, every remaining direction in the odd subspace is free, and an
 unregularized minimizer stops at whichever admissible point it happens to reach first. On the

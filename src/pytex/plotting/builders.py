@@ -21,6 +21,7 @@ from pytex.plotting._render import (
     TextLayer2D,
 )
 from pytex.plotting.colormaps import register_pytex_colormaps
+from pytex.plotting.pole_figures import ContourSpec
 from pytex.texture.harmonics import HarmonicODF
 from pytex.texture.models import (
     ODF,
@@ -581,11 +582,23 @@ def build_odf_figure_spec(
     bins: int = 72,
     sigma_bins: float = 1.25,
     levels: int = 12,
+    contours: ContourSpec | None = None,
     section_phi2_deg: tuple[float, ...] = (0.0, 15.0, 30.0, 45.0, 60.0, 75.0),
     section_phi1_steps: int = 181,
     section_big_phi_steps: int = 91,
     title: str | None = None,
 ) -> FigureSpec2D | MultiFigureSpec2D:
+    """Figure spec for an orientation distribution.
+
+    ``kind="sections"`` draws the constant-phi2 sections texture papers print.
+    Every section is contoured at the **same** levels, computed across the whole
+    set: they are slices of one distribution, and autoscaling each of them
+    separately makes a weak section look like a strong one, which is the same
+    error a plate of self-scaled pole figures makes. Pass ``contours`` to state
+    the levels outright, or a range shared with another figure; ``levels``
+    remains the number of automatic ones when no spec is given.
+    """
+
     if isinstance(odf, HarmonicODF):
         euler_set = odf.quadrature_orientations.as_euler_set(convention="bunge", degrees=True)
         weights = odf.quadrature_densities
@@ -635,37 +648,52 @@ def build_odf_figure_spec(
             ),
         )
     if kind == "sections":
-        panels = []
-        for phi2_deg in section_phi2_deg:
-            phi1, big_phi, values = _bunge_section_grid(
+        grids = [
+            _bunge_section_grid(
                 odf,
                 phi2_deg=phi2_deg,
                 phi1_steps=section_phi1_steps,
                 big_phi_steps=section_big_phi_steps,
             )
-            panels.append(
-                FigureSpec2D(
-                    title=rf"$\phi_2 = {phi2_deg:.0f}^\circ$",
-                    xlabel=r"$\phi_1$ (deg)",
-                    ylabel=r"$\Phi$ (deg)",
-                    xlim=(0.0, 360.0),
-                    ylim=(0.0, 90.0),
-                    equal_aspect=False,
-                    contour_layers=(
-                        ContourLayer2D(
-                            x=phi1,
-                            y=big_phi,
-                            values=values,
-                            levels=levels,
-                            colorbar_label="density",
-                        ),
+            for phi2_deg in section_phi2_deg
+        ]
+        # One ladder for the whole set, from the pooled densities: the sections
+        # are slices of a single distribution, so a level must mean the same
+        # thing in every panel or the set cannot be read as one figure.
+        spec = ContourSpec(count=int(levels)) if contours is None else contours
+        section_values = [values for _, _, values in grids]
+        section_levels = spec.shared_across(section_values).levels_for(
+            np.concatenate([values.reshape(-1) for values in section_values])
+        )
+        panels = [
+            FigureSpec2D(
+                title=rf"$\phi_2 = {phi2_deg:.0f}^\circ$",
+                xlabel=r"$\phi_1$ (deg)",
+                ylabel=r"$\Phi$ (deg)",
+                xlim=(0.0, 360.0),
+                ylim=(0.0, 90.0),
+                equal_aspect=False,
+                contour_layers=(
+                    ContourLayer2D(
+                        x=phi1,
+                        y=big_phi,
+                        values=values,
+                        levels=section_levels,
+                        cmap=spec.cmap,
+                        filled=spec.filled,
+                        label_lines=spec.label_lines,
+                        line_color="black" if spec.lines else None,
+                        colorbar_label=None,
                     ),
-                )
+                ),
             )
+            for phi2_deg, (phi1, big_phi, values) in zip(section_phi2_deg, grids, strict=True)
+        ]
         return MultiFigureSpec2D(
             panels=tuple(panels),
             ncols=3,
             suptitle=title or "ODF Bunge Sections",
+            shared_colorbar_label="density",
         )
     raise ValueError("ODF kind must be 'scatter', 'contour', or 'sections'.")
 

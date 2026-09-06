@@ -30,6 +30,8 @@ from pytex.core import (
     SymmetrySpec,
 )
 from pytex.core.orientation import OrientationSet
+from pytex.plotting._render import MultiFigureSpec2D
+from pytex.plotting.builders import build_odf_figure_spec
 from pytex.plotting.pole_figures import (
     RANDOM_LEVEL_MRD,
     ContourSpec,
@@ -296,3 +298,77 @@ def test_the_plate_and_the_single_figure_render(recwarn: pytest.WarningsRecorder
         plt.close(single)
         plt.close(plate)
     assert [warning.message for warning in recwarn] == []
+
+
+def test_odf_sections_share_one_ladder_across_the_whole_set() -> None:
+    """Sections are slices of one distribution, so a level must mean one thing.
+
+    Autoscaling each panel separately makes a weak section look like a strong
+    one, which is the same error a plate of self-scaled pole figures makes; it
+    is worse here, because the panels are not even different measurements.
+    """
+
+    crystal, specimen, phase = _context()
+    generator = np.random.default_rng(19)
+    angles = np.array([35.0, 45.0, 0.0]) + 9.0 * generator.standard_normal((150, 3))
+    odf = ODF(
+        orientations=OrientationSet.from_euler_angles(
+            angles,
+            crystal_frame=crystal,
+            specimen_frame=specimen,
+            symmetry=phase.symmetry,
+            phase=phase,
+        ),
+        weights=np.ones(150),
+        kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=12.0),
+    )
+    spec = build_odf_figure_spec(
+        odf,
+        kind="sections",
+        section_phi2_deg=(0.0, 45.0, 65.0),
+        section_phi1_steps=37,
+        section_big_phi_steps=19,
+    )
+    assert isinstance(spec, MultiFigureSpec2D)
+    assert len(spec.panels) == 3
+    ladders = [panel.contour_layers[0].levels for panel in spec.panels]
+    for ladder in ladders[1:]:
+        assert_allclose(ladder, ladders[0])
+    # One bar for the set, not one per panel: a bar each would say, wrongly,
+    # that each panel had its own scale.
+    assert spec.shared_colorbar_label == "density"
+    assert all(panel.contour_layers[0].colorbar_label is None for panel in spec.panels)
+    # The ladder covers the strongest section, so the weaker ones read as weaker.
+    peaks = [float(np.max(panel.contour_layers[0].values)) for panel in spec.panels]
+    assert float(np.max(ladders[0])) == pytest.approx(max(peaks))
+
+
+def test_odf_sections_accept_a_stated_contour_ladder() -> None:
+    """The same level control the pole figures have, on the sections."""
+
+    crystal, specimen, phase = _context()
+    odf = ODF(
+        orientations=OrientationSet.from_euler_angles(
+            np.array([[0.0, 0.0, 0.0], [35.0, 45.0, 0.0]]),
+            crystal_frame=crystal,
+            specimen_frame=specimen,
+            symmetry=phase.symmetry,
+            phase=phase,
+        ),
+        weights=np.ones(2),
+        kernel=KernelSpec(name="de_la_vallee_poussin", halfwidth_deg=15.0),
+    )
+    spec = build_odf_figure_spec(
+        odf,
+        kind="sections",
+        section_phi2_deg=(0.0, 45.0),
+        section_phi1_steps=25,
+        section_big_phi_steps=13,
+        contours=ContourSpec(scale="explicit", values=(1.0, 2.0, 4.0, 8.0), filled=False),
+    )
+    assert isinstance(spec, MultiFigureSpec2D)
+    for panel in spec.panels:
+        layer = panel.contour_layers[0]
+        assert_allclose(layer.levels, np.array([1.0, 2.0, 4.0, 8.0]))
+        assert layer.filled is False
+        assert layer.line_color == "black"

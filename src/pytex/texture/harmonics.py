@@ -168,11 +168,37 @@ def _log_factorial(value: int) -> float:
     return float(lgamma(value + 1))
 
 
-def _wigner_small_d(
+def _half_angle_powers(beta_rad: np.ndarray, *, max_exponent: int) -> tuple[np.ndarray, np.ndarray]:
+    """Powers of ``cos(beta/2)`` and ``sin(beta/2)`` up to ``max_exponent``.
+
+    Every Wigner d value at every degree is a sum of products of these, and a
+    basis at bandlimit L asks for a thousand or more of them over the same
+    angles. Computing each power once instead of once per term is what makes
+    the odd basis of a degree-9 expansion affordable: the powers were 83 per
+    cent of the cost of building a basis.
+
+    Each row is computed by the same ``numpy.power`` call the per-term code
+    used, so the values are bit-for-bit what they were before the table
+    existed.
+    """
+
+    cos_half = np.cos(beta_rad / 2.0)
+    sin_half = np.sin(beta_rad / 2.0)
+    shape = (max_exponent + 1, *np.shape(beta_rad))
+    cos_powers = np.empty(shape, dtype=np.float64)
+    sin_powers = np.empty(shape, dtype=np.float64)
+    for exponent in range(max_exponent + 1):
+        cos_powers[exponent] = cos_half**exponent
+        sin_powers[exponent] = sin_half**exponent
+    return cos_powers, sin_powers
+
+
+def _wigner_small_d_from_powers(
     degree: int,
     sample_order: int,
     crystal_order: int,
-    beta_rad: np.ndarray,
+    cos_powers: np.ndarray,
+    sin_powers: np.ndarray,
 ) -> np.ndarray:
     # The Wigner coefficient is a ratio of factorials, and both halves overflow
     # fast: at degree 7 the numerator already exceeds int64, so evaluating it
@@ -188,9 +214,7 @@ def _wigner_small_d(
     )
     k_min = max(0, crystal_order - sample_order)
     k_max = min(degree - sample_order, degree + crystal_order)
-    cos_half = np.cos(beta_rad / 2.0)
-    sin_half = np.sin(beta_rad / 2.0)
-    values = np.zeros_like(beta_rad, dtype=np.float64)
+    values = np.zeros(cos_powers.shape[1:], dtype=np.float64)
     for k in range(k_min, k_max + 1):
         log_denominator = (
             _log_factorial(degree + crystal_order - k)
@@ -203,19 +227,44 @@ def _wigner_small_d(
         coefficient = ((-1) ** (k - sample_order + crystal_order)) * np.exp(
             log_prefactor - log_denominator
         )
-        values += coefficient * (cos_half**exponent_cos) * (sin_half**exponent_sin)
+        values += coefficient * cos_powers[exponent_cos] * sin_powers[exponent_sin]
     values = np.ascontiguousarray(values, dtype=np.float64)
     values.setflags(write=False)
     return values
+
+
+def _wigner_small_d(
+    degree: int,
+    sample_order: int,
+    crystal_order: int,
+    beta_rad: np.ndarray,
+) -> np.ndarray:
+    """One Wigner small-d value over an array of second Euler angles.
+
+    The single-term form, which builds its own power table. Evaluating a whole
+    basis goes through :func:`_wigner_small_d_from_powers` with one table
+    shared across every term.
+    """
+
+    cos_powers, sin_powers = _half_angle_powers(beta_rad, max_exponent=2 * degree)
+    return _wigner_small_d_from_powers(
+        degree, sample_order, crystal_order, cos_powers, sin_powers
+    )
 
 
 def _evaluate_raw_terms(angles_rad: np.ndarray, terms: Sequence[HarmonicBasisTerm]) -> np.ndarray:
     phi1 = angles_rad[:, 0]
     big_phi = angles_rad[:, 1]
     phi2 = angles_rad[:, 2]
+    # Every term of every degree draws on the same half-angle powers, and no
+    # exponent exceeds twice the highest degree present.
+    max_degree = max((term.degree for term in terms), default=0)
+    cos_powers, sin_powers = _half_angle_powers(big_phi, max_exponent=2 * max_degree)
     columns: list[np.ndarray] = []
     for term in terms:
-        d_values = _wigner_small_d(term.degree, term.sample_order, term.crystal_order, big_phi)
+        d_values = _wigner_small_d_from_powers(
+            term.degree, term.sample_order, term.crystal_order, cos_powers, sin_powers
+        )
         phase = term.sample_order * phi1 + term.crystal_order * phi2
         if term.component == "real":
             column = d_values * np.cos(phase)

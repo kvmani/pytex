@@ -7,19 +7,22 @@ even-only solution that results carries the classical *ghost* artefacts: false
 maxima where the true distribution is empty, and depressed true maxima.
 
 The correction implemented here is the positivity / zero-range family
-(Dahms and Bunge), stated as an alternating projection between two convex sets
-in the quadrature-weighted function space:
+(Dahms and Bunge). Classically it is stated as an alternating projection between
+two convex sets in the quadrature-weighted function space:
 
 * :math:`C_+` — the densities that are physically admissible: non-negative
   everywhere, and identically zero on a declared zero range;
 * :math:`C_d` — the densities whose even part equals the measured even part,
   which is an affine set because the even part is exactly what the data fixed.
 
-Alternating orthogonal projection onto two convex sets converges to a point of
-their intersection when one exists, so the corrected ODF is the admissible
-distribution nearest the even-only solution in the least-squares sense — and,
-critically, it reproduces the measured pole figures exactly as well as the
-uncorrected one, because the projection never touches the even part.
+That characterisation is what makes the answer meaningful — the corrected ODF is
+an admissible distribution near the even-only solution, and it reproduces the
+measured pole figures exactly as well, because nothing touches the even part.
+The *computation* is the equivalent convex minimization rather than the
+iteration: the violation of admissibility is a smooth convex function of the
+odd coefficients, so a quasi-Newton minimizer reaches the same point in tens of
+steps where alternating projection takes thousands. See
+``docs/site/algorithms/ghost_correction.md``.
 
 References
 ----------
