@@ -6738,8 +6738,17 @@ Not planned; both came out of running the work.
    across the set, the plate carries one colour bar, and the same `ContourSpec` the pole figures
    take is accepted.
 
-**Verified.** The full unit lane green before these two changes; `ruff`, `mypy`, and the nine
-texture and plotting modules green after, with two new tests for the shared section ladder.
+**Verified.** `ruff`, `mypy`, the full unit lane, the 60-test Playwright lane, and
+`sphinx -b html docs/site` (exit 0, no warnings) all green at `d83fcdf`, with two new tests for the
+shared section ladder.
+
+**One note for a later session on this machine.** Two consecutive Playwright runs each failed one
+test, a *different* one each time, and each failure passed on its own immediately afterwards; a
+third clean run was 60/60. Both failures were in panels this goal never touched. Another session
+was writing to the repository at the same time (`src/pytex/core/symbols.py` and a matching
+`pyproject.toml` ruff exclusion appeared mid-run), and the browser lane reuses whatever server
+holds port 8765. Treat a single browser failure under those conditions as environmental, and
+re-run before believing it -- but re-run, rather than assuming.
 
 **Status: the goal is complete.** All six planned increments landed, plus this seventh. What
 remains open and is deliberately outside it: a defocus model beyond the existing random-standard
