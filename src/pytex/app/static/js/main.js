@@ -25,6 +25,7 @@ import { mountFeedback } from './core/feedback.js';
 import * as log from './core/logbook.js';
 import { createTour } from './core/tour.js';
 import { renderHelp, setExportFormats } from './core/result.js';
+import { setSymbols } from './core/symbols.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as saedsim from './panels/saedsim.js';
@@ -238,6 +239,9 @@ async function start() {
   app.experience = await fetchExperience();
   setExportFormats(app.manifest.export_formats);
   setOperationTitles(app.manifest.operations);
+  // Before any panel mounts: a control that labels itself with a symbol must
+  // have the table by the time it is built, and every panel is built later.
+  setSymbols(app.manifest.symbols);
   log.notice(
     `PyTex ${app.manifest.version ?? ''} ready in the ${app.shell.shell} shell: ` +
       `${app.manifest.operations.length} operations across ${PANELS.length} panels ` +

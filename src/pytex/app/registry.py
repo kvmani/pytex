@@ -1053,6 +1053,7 @@ class ServiceRegistry:
         from pytex import __version__
         from pytex.app.about import about_document
         from pytex.app.export import EXPORT_FORMATS
+        from pytex.core.symbols import registered_symbols
 
         return {
             "schema": "pytex.app_manifest/1",
@@ -1077,6 +1078,22 @@ class ServiceRegistry:
                 }
                 for identifier, spec in EXPORT_FORMATS.items()
             ],
+            # The symbol table, for the controls the frontend builds itself
+            # rather than from a parameter declaration -- the cell editor of the
+            # phase control is the one that matters, whose six boxes are the
+            # lattice parameters and were labelled with the words "alpha",
+            # "beta", "gamma". Published here for the same reason the export
+            # formats are: so there is one registry, in Python, and no Greek
+            # letter is ever typed into a JavaScript file where nothing can
+            # check it against the standards document.
+            "symbols": {
+                name: {
+                    "text": entry.text,
+                    "latex": entry.latex,
+                    "meaning": entry.meaning,
+                }
+                for name, entry in registered_symbols().items()
+            },
         }
 
     def call(self, operation_id: str, request: Mapping[str, Any] | None = None) -> dict[str, Any]:

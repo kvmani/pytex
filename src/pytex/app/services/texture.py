@@ -1276,6 +1276,8 @@ def _measured_odf(
             minimum=2.0,
             maximum=30.0,
             advanced=True,
+            symbol="halfwidth",
+            field_width="short",
         ),
         ChoiceParameter(
             name="odf_method",

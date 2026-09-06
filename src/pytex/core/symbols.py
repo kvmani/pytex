@@ -106,7 +106,6 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("Phi", "Φ", r"\Phi", "Second Bunge Euler angle, about the new x axis."),
             _entry("phi_2", "φ₂", r"\varphi_2", "Third Bunge Euler angle, about the new z axis."),
             _entry("omega", "ω", r"\omega", "Rotation angle of an axis-angle pair."),
-            _entry("theta_rotation", "θ", r"\theta", "In-plane rotation about the viewing axis."),
             # -- lattice -----------------------------------------------------
             _entry("a", "a", "a", "Direct-lattice edge length along the a axis."),
             _entry("b", "b", "b", "Direct-lattice edge length along the b axis."),
@@ -114,16 +113,8 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("alpha", "α", r"\alpha", "Lattice angle between the b and c axes."),
             _entry("beta", "β", r"\beta", "Lattice angle between the c and a axes."),
             _entry("gamma", "γ", r"\gamma", "Lattice angle between the a and b axes."),
-            _entry("c_over_a", "c/a", "c/a", "Axial ratio of a hexagonal or tetragonal cell."),
             _entry("d_spacing", "d", "d", "Interplanar spacing of a reflecting plane family."),
             # -- diffraction -------------------------------------------------
-            _entry(
-                "two_theta",
-                "2θ",
-                r"2\theta",
-                "Scattering angle between the incident and diffracted beams.",
-            ),
-            _entry("theta_bragg", "θ", r"\theta", "Bragg angle, half the scattering angle."),
             _entry("wavelength", "λ", r"\lambda", "Radiation wavelength."),
             _entry(
                 "camera_constant", "Lλ", r"L\lambda", "Camera constant of a diffraction pattern."
@@ -131,12 +122,6 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("camera_length", "L", "L", "Effective camera length of a diffraction geometry."),
             _entry(
                 "accelerating_voltage", "V", "V", "Accelerating voltage of the electron source."
-            ),
-            _entry(
-                "excitation_error",
-                "s_g",
-                "s_{g}",
-                "Excitation error of a reflection from the Ewald sphere.",
             ),
             _entry("s_1", "s₁", "s_{1}", "Deviation parameter of the first CBED fringe minimum."),
             _entry("s_2", "s₂", "s_{2}", "Deviation parameter of the second CBED fringe minimum."),
@@ -167,20 +152,7 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             ),
             # -- texture -------------------------------------------------------
             _entry("halfwidth", "ψ", r"\psi", "Halfwidth of an ODF kernel."),
-            _entry(
-                "harmonic_degree", "L", "L", "Truncation degree of a spherical-harmonic series."
-            ),
-            _entry(
-                "tilt",
-                "φ",
-                r"\phi",
-                "Tilt of a crystal direction from the specimen reference direction.",
-            ),
-            _entry("azimuth", "β", r"\beta", "Azimuth about the projection centre."),
-            _entry("kearns_f", "f", "f", "Kearns texture factor."),
             # -- misc ----------------------------------------------------------
-            _entry("index_limit", "|h|", "|h|", "Largest absolute index enumerated."),
-            _entry("temperature", "T", "T", "Temperature."),
         )
     )
 )

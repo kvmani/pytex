@@ -187,6 +187,8 @@ _AXIS_COLUMNS = (
             minimum=-40.0,
             maximum=40.0,
             group="Camera",
+            row="Camera",
+            field_width="short",
         ),
         NumberParameter(
             name="detector_azimuth_deg",
@@ -197,10 +199,12 @@ _AXIS_COLUMNS = (
             minimum=-180.0,
             maximum=180.0,
             group="Camera",
+            row="Camera",
+            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_x",
-            label="Pattern centre x*",
+            label="Pattern centre, across the screen",
             help_text=(
                 "Where the camera axis meets the screen, as a fraction of the screen width "
                 "from its left edge."
@@ -209,10 +213,13 @@ _AXIS_COLUMNS = (
             minimum=0.0,
             maximum=1.0,
             group="Camera",
+            symbol="pattern_centre_x",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_y",
-            label="Pattern centre y*",
+            label="Pattern centre, down the screen",
             help_text=(
                 "The same, as a fraction of the screen height from its top edge. Vendors "
                 "differ over this origin, so a value copied from a vendor file may need "
@@ -222,10 +229,13 @@ _AXIS_COLUMNS = (
             minimum=0.0,
             maximum=1.0,
             group="Camera",
+            symbol="pattern_centre_y",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="detector_distance",
-            label="Camera distance z*",
+            label="Camera distance",
             help_text=(
                 "Specimen-to-screen distance, as a fraction of the screen width. This is the "
                 "quantity a pattern-centre calibration reports; 0.5 to 0.8 covers the usual "
@@ -235,6 +245,9 @@ _AXIS_COLUMNS = (
             minimum=0.1,
             maximum=3.0,
             group="Camera",
+            symbol="detector_distance",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",

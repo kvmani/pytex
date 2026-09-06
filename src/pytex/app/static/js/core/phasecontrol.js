@@ -18,6 +18,7 @@
 
 import { el } from './dom.js';
 import { explainer } from './explainer.js';
+import { symbolMeaning, symbolText } from './symbols.js';
 
 const CATALOGUE = { phases: [], pointGroups: [] };
 
@@ -83,6 +84,17 @@ export function phaseControl(parameter, value, onChange, id) {
   );
 
   const cellInputs = {};
+  /*
+   * Six boxes for the six lattice parameters, labelled as the literature
+   * labels them: `a b c` and `α β γ`, not the words "alpha", "beta" and
+   * "gamma". The glyphs come from the manifest's symbol table rather than from
+   * this file, so they are the same characters `pytex.core.symbols` puts on a
+   * figure axis and are checked against the standards document in one place.
+   *
+   * The name stays as the accessible name and the tooltip: `α` alone tells a
+   * newcomer nothing, and a screen reader would announce a glyph it may not
+   * have a word for.
+   */
   const cellRow = (names, step) =>
     el(
       'div.cell-row',
@@ -92,14 +104,18 @@ export function phaseControl(parameter, value, onChange, id) {
           type: 'number',
           step,
           'aria-label': name,
-          placeholder: name,
+          title: symbolMeaning(name),
+          placeholder: symbolText(name),
           oninput: () => {
             state.edited = true;
             onChange();
           },
         });
         cellInputs[name] = input;
-        return el('label.cell-cell', {}, [el('span', { text: name }), input]);
+        return el('label.cell-cell', { title: symbolMeaning(name) }, [
+          el('span.field__symbol', { text: symbolText(name) }),
+          input,
+        ]);
       }),
     );
 

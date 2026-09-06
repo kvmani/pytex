@@ -139,6 +139,8 @@ def _powder_label(indices: tuple[int, int, int], *, spec: Any) -> str:
             minimum=0.0,
             maximum=175.0,
             group="Scan",
+            row="Angular range",
+            field_width="short",
         ),
         NumberParameter(
             name="two_theta_max_deg",
@@ -149,6 +151,8 @@ def _powder_label(indices: tuple[int, int, int], *, spec: Any) -> str:
             minimum=1.0,
             maximum=180.0,
             group="Scan",
+            row="Angular range",
+            field_width="short",
         ),
         ChoiceParameter(
             name="profile",
@@ -1237,6 +1241,8 @@ _SIZE_STRAIN_COLUMNS = (
             minimum=0.1,
             maximum=10.0,
             group="Specimen",
+            symbol="wavelength",
+            field_width="short",
         ),
         ChoiceParameter(
             name="mode",

@@ -724,7 +724,7 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
         ),
         NumberParameter(
             name="pattern_centre_x",
-            label="Pattern centre x*",
+            label="Pattern centre, across the screen",
             help_text=(
                 "Where the EBSD camera axis meets the screen, as a fraction of the screen width."
             ),
@@ -732,10 +732,13 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             minimum=0.0,
             maximum=1.0,
             group="EBSD camera",
+            symbol="pattern_centre_x",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_y",
-            label="Pattern centre y*",
+            label="Pattern centre, down the screen",
             help_text=(
                 "Where the EBSD camera axis meets the screen, as a fraction of the screen height."
             ),
@@ -743,15 +746,21 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             minimum=0.0,
             maximum=1.0,
             group="EBSD camera",
+            symbol="pattern_centre_y",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="detector_distance",
-            label="EBSD camera distance z*",
+            label="Camera distance",
             help_text="EBSD specimen-to-screen distance, as a fraction of the screen width.",
             default=0.65,
             minimum=0.1,
             maximum=3.0,
             group="EBSD camera",
+            symbol="detector_distance",
+            row="Pattern centre",
+            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",
