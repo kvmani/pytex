@@ -2336,35 +2336,45 @@ _MEASURED_PAIR_PARAMETERS: tuple[Any, ...] = (
     *(
         NumberParameter(
             name=f"parent_angle{index}",
-            label=f"Parent {label}",
+            label=f"{ordinal} Euler angle",
             help_text=f"{ordinal} Euler angle of the parent grain, in degrees.",
             units="deg",
             default=default,
             minimum=-360.0,
             maximum=720.0,
             group="Parent grain",
+            # One line for the triple. No symbol: which symbol these are is
+            # decided by `euler_convention` above, and a control labelled with
+            # the wrong one is worse than a control labelled with a word.
+            row="Parent grain",
+            field_width="short",
         )
-        for index, label, ordinal, default in (
-            (1, "phi1 / alpha", "First", 30.0),
-            (2, "Phi / beta", "Second", 40.0),
-            (3, "phi2 / gamma", "Third", 10.0),
+        for index, ordinal, default in (
+            (1, "First", 30.0),
+            (2, "Second", 40.0),
+            (3, "Third", 10.0),
         )
     ),
     *(
         NumberParameter(
             name=f"child_angle{index}",
-            label=f"Child {label}",
+            label=f"{ordinal} Euler angle",
             help_text=f"{ordinal} Euler angle of the child grain, in degrees.",
             units="deg",
             default=default,
             minimum=-360.0,
             maximum=720.0,
             group="Child grain",
+            # One line for the triple. No symbol: which symbol these are is
+            # decided by `euler_convention` above, and a control labelled with
+            # the wrong one is worse than a control labelled with a word.
+            row="Child grain",
+            field_width="short",
         )
-        for index, label, ordinal, default in (
-            (1, "phi1 / alpha", "First", 167.5709),
-            (2, "Phi / beta", "Second", 58.2280),
-            (3, "phi2 / gamma", "Third", 0.9653),
+        for index, ordinal, default in (
+            (1, "First", 167.5709),
+            (2, "Second", 58.2280),
+            (3, "Third", 0.9653),
         )
     ),
     NumberParameter(

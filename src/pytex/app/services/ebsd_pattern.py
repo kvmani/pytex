@@ -271,6 +271,8 @@ _AXIS_COLUMNS = (
             minimum=64,
             maximum=2048,
             group="Camera",
+            row="Screen size",
+            field_width="tiny",
         ),
         IntegerParameter(
             name="detector_height_px",
@@ -281,6 +283,8 @@ _AXIS_COLUMNS = (
             minimum=64,
             maximum=2048,
             group="Camera",
+            row="Screen size",
+            field_width="tiny",
         ),
         NumberParameter(
             name="pixel_size_um",
