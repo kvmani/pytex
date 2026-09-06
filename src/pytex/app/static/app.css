@@ -4336,3 +4336,80 @@ dl.detail dd {
 .received__note--warning {
   color: var(--warn);
 }
+
+/* --------------------------------------------------------- view sub-tabs */
+
+/*
+ * A workspace whose panel answers several questions states them as tabs rather
+ * than hiding all but one behind a dropdown. The same argument the one-screen
+ * form rule makes about inputs applies to operations: a control that names one
+ * destination and conceals the rest makes the workspace's own capabilities
+ * undiscoverable, and costs two clicks to change instead of one.
+ *
+ * These reuse `.subtab` for their look, so a view tab and a workspace sub-tab
+ * are visibly the same kind of thing, and sit on the stage above the plot
+ * rather than in the control rail — they select the question, and the rail
+ * answers it.
+ */
+.viewtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ------------------------------------------------------ candidate phases */
+
+.candidates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.candidates__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-raised) 60%, transparent);
+}
+
+.candidates__name {
+  font-size: 0.8125rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.candidates__origin {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.candidates__remove {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.75rem;
+}
+
+.candidates__empty {
+  margin: 0;
+  padding: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--ink-muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.candidates__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}

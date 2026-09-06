@@ -411,11 +411,23 @@ export function plotFrame({
       return mapping.toData ? mapping.toData(point.x, point.y) : point;
     },
 
-    /** Put an SVG (or any node) on the stage and wire the instrument interactions to it. */
+    /**
+     * Put an SVG (or any node) on the stage and wire the instrument interactions to it.
+     *
+     * `null` empties the stage, which is what a panel means when it clears the
+     * drawing on switching view. It has to be handled here rather than left to
+     * the DOM: `append(null)` writes the *string* "null" onto the canvas, so a
+     * caller asking for an empty stage would get a stage with the word null on
+     * it.
+     */
     setContent(node, { preserveViewport = false } = {}) {
       const oldBase = view.base;
       const oldCurrent = view.current;
       clear(canvas);
+      if (node === null || node === undefined) {
+        view.svg = null;
+        return;
+      }
       canvas.append(node);
       if (node instanceof SVGSVGElement) {
         attachCursor(node);

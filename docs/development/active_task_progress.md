@@ -7059,8 +7059,8 @@ accounts for them best, and it must be told when the answer is *none of them*.
 
 - [x] 1 library module + unit tests
 - [ ] 2 docs
-- [ ] 3 service
-- [ ] 4 GUI sub-tabs
+- [x] 3 service
+- [x] 4 GUI sub-tabs
 
 ### Increment 1 - the library surface (landed)
 
@@ -7111,3 +7111,67 @@ and 311th public classes, so the three affected SVGs and the page's stated count
 **Noticed in passing, out of scope, not fixed here.** `PowderPattern`'s class docstring documents
 its arrays as `two_theta_deg` and `intensity`; the fields are actually `two_theta_grid_deg` and
 `intensity_grid`.
+
+### Increment 2 - the cell-scale refinement, which the demonstration scan forced (landed)
+
+Running the operation on the workbench's own demonstration scan exposed a gap that would have made
+the feature useless on real data. The demo dilates the cell by 1.003 - deliberately, to teach
+lattice-parameter extrapolation - and nickel then indexed only 3 of 6 peaks and scored 0.704
+against its own pattern. That is not a demo artefact: `d(2theta) = 2*e*tan(theta)` turns three parts
+in a thousand into more than half a degree at back-reflection, so *every* real specimen measured
+against a tabulated CIF - a solid solution, a different temperature, a residual stress - loses
+exactly the high-angle lines that would have confirmed it.
+
+So `identify_phase` now refines a single uniform cell dilation per candidate before indexing
+(`cell_scale_range`, default plus or minus 2 per cent), by a grid search on the total
+tolerance-clipped distance from each peak to the nearest calculated line. A grid rather than a
+gradient method because the objective is piecewise linear with a local minimum at every near
+coincidence.
+
+**Why this cannot be used to make a wrong candidate fit**, which is the obvious objection: a uniform
+dilation multiplies every `d` by the same factor and so preserves their *ratios* exactly, and the
+ratios are what indexing tests. A candidate rescued by a scale factor is the right structure with
+the wrong cell size, which is the case this exists for. The refined factor is reported per candidate
+rather than applied silently, and the demonstration shows both readings at once: nickel needs
++0.260 per cent and wins at 0.962 with 6 of 6 peaks; copper is pinned at -2.000 per cent, the edge
+of the search range, which is the visible signature of a candidate being stretched as far as it is
+allowed and still not fitting.
+
+Nickel's score moved from 0.704 to 0.962 on the same scan.
+
+### Increment 3 - the service operation (landed)
+
+`xrd.phase_identification` in `pytex.app.services.xrd`. Takes the candidate list through a new
+`phase_candidates` editor, plus the shared scan-source controls, and returns the ranked table, the
+verdict, the fitted peaks and every candidate's calculated line positions for overlay.
+
+Two decisions worth recording. **The evidence weighting is offered as three specimen situations,
+not four numbers** - balanced, textured specimen, positions only. Four raw weights would put a
+scoring model on the control rail; the three situations put the *decision* there, which is the thing
+the operator knows and the software does not. **A malformed candidate names itself**: a user with
+five CIFs open who is told only that "a phase could not be parsed" has to close all five.
+
+### Increment 4 - sub-tabs, as the user asked mid-task (landed)
+
+The XRD workspace's view dropdown is now a sub-tab strip on the stage, and phase identification is
+one of its six tabs. The argument is the same one the one-screen form rule makes about inputs: a
+dropdown names one destination and conceals the rest, so the operations the workspace can perform
+were only discoverable by opening it, and switching cost two clicks instead of one. The tabs reuse
+the `.subtab` styling of the workspace strip, so a view tab and a workspace sub-tab read as the same
+kind of thing.
+
+The candidate control (`core/phasecandidates.js`) takes several CIF files in one file dialogue,
+because a user comparing candidates has a folder of them.
+
+**A latent bug the sub-tabs exposed.** `plotFrame.setContent(null)` wrote the literal string "null"
+onto the stage, because `Node.append(null)` stringifies. Every view switch had done this; with a
+dropdown it was rare enough to go unnoticed, and with one-click tabs it is on screen constantly.
+Fixed in `setContent` rather than at the call sites, since clearing the stage is what a caller
+passing null means.
+
+**Verification.** Driven in the browser end to end on a fresh server: the six sub-tabs render, the
+candidate list accepts catalogue additions, and a four-candidate run returns Nickel 0.962 / Copper
+0.617 / Ferrite 0.582 / Halite 0.407 with the stick-row overlay showing the winner's ticks under
+every peak. 16 new app tests including the CIF-upload path, 44 library tests, `ruff` and `mypy`
+clean over `src/pytex` and `tests/unit`, and the manifest, server, documentation-policy,
+repo-integrity, symbol and notation suites green.

@@ -26,6 +26,7 @@ import * as log from './core/logbook.js';
 import { createTour } from './core/tour.js';
 import { renderHelp, setExportFormats } from './core/result.js';
 import { setSymbols } from './core/symbols.js';
+import { setCandidateCatalogue } from './core/phasecandidates.js';
 import { setPhaseCatalogue } from './core/phasecontrol.js';
 import * as crystal from './panels/crystal.js';
 import * as saedsim from './panels/saedsim.js';
@@ -257,6 +258,7 @@ async function start() {
       phases: catalogue.data.phases,
       pointGroups: catalogue.data.point_groups,
     });
+    setCandidateCatalogue(catalogue.data.phases);
   } catch (error) {
     showError(error);
   }

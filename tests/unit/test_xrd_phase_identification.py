@@ -215,10 +215,18 @@ def test_a_candidate_matching_no_peak_scores_zero_without_being_rejected() -> No
     it puts lines everywhere *except* where the peaks are. Indexing succeeds and
     assigns nothing, which is a measurement about copper rather than an error,
     and it must score zero on that evidence rather than on a missing result.
+
+    The cell-scale search is switched off here, because with it on the question
+    being asked changes: a candidate free to dilate is no longer the same
+    candidate, and copper stretched onto nickel's lines is a different finding
+    from copper missing them.
     """
 
     report = identify_phase(
-        _table("ni_fcc"), _candidates("ni_fcc", "cu_fcc"), tolerance_deg=0.05
+        _table("ni_fcc"),
+        _candidates("ni_fcc", "cu_fcc"),
+        tolerance_deg=0.05,
+        cell_scale_range=0.0,
     )
     copper = next(item for item in report if item.phase_name == "Copper (fcc)")
     assert copper.indexing is not None
@@ -492,3 +500,107 @@ def test_an_identification_needs_at_least_one_candidate() -> None:
 def test_a_candidate_without_an_indexing_must_state_why() -> None:
     with pytest.raises(ValueError, match="rejection reason"):
         PhaseCandidateScore(phase_name="stub", indexing=None)
+
+
+# ---------------------------------------------------------------------------
+# The cell-scale refinement: matching a tabulated CIF to a real specimen
+# ---------------------------------------------------------------------------
+
+
+def _dilated_scan(identifier: str, scale: float, *, seed: int = 11) -> PeakTable:
+    """Return fitted peaks of a specimen whose cell differs from the tabulated one."""
+
+    phase = _dilated(
+        builtin_phase(identifier).to_phase(), scale, name=f"{identifier} specimen"
+    )
+    radiation = RadiationSpec.cu_ka()
+    pattern = generate_xrd_pattern(
+        phase,
+        radiation=radiation,
+        two_theta_range_deg=RANGE,
+        resolution_deg=0.01,
+        broadening_fwhm_deg=FWHM,
+        profile="pseudo_voigt",
+        max_index=6,
+    )
+    profile = np.asarray(pattern.intensity_grid, dtype=float)
+    measured = MeasuredPowderPattern(
+        name=f"{identifier} dilated by {scale}",
+        two_theta_deg=np.asarray(pattern.two_theta_grid_deg, dtype=float),
+        intensity=np.random.default_rng(seed)
+        .poisson(profile / profile.max() * 30000.0 + 150.0)
+        .astype(float),
+        radiation=radiation,
+        synthetic=True,
+    )
+    return detect_and_fit_peaks(measured, instrument=InstrumentBroadening.ideal(FWHM))
+
+
+def test_a_specimen_whose_cell_differs_from_the_cif_is_still_identified() -> None:
+    """The case every real identification meets: a solid solution against a tabulated cell.
+
+    ``Delta(2 theta) = 2 e tan(theta)`` makes a three-parts-in-a-thousand cell
+    difference -- ordinary for an alloy against a pure-element CIF -- displace a
+    back-reflection line by more than half a degree. Without the scale
+    refinement the true phase loses exactly the high-angle lines that would
+    have confirmed it.
+    """
+
+    table = _dilated_scan("ni_fcc", 1.003)
+    unrefined = identify_phase(
+        table, _candidates("ni_fcc"), tolerance_deg=0.3, cell_scale_range=0.0
+    ).best
+    refined = identify_phase(table, _candidates("ni_fcc"), tolerance_deg=0.3).best
+
+    assert refined.indexed_count > unrefined.indexed_count
+    assert refined.explained_intensity_fraction > unrefined.explained_intensity_fraction
+    assert refined.score > unrefined.score
+
+
+def test_the_refined_scale_recovers_the_dilation_that_was_applied() -> None:
+    """The reported factor is a measurement, so it is checked against the truth."""
+
+    refined = identify_phase(
+        _dilated_scan("ni_fcc", 1.003), _candidates("ni_fcc")
+    ).best
+    assert refined.cell_scale == pytest.approx(1.003, abs=5.0e-4)
+    assert f"{refined.cell_scale:.5f}" in refined.describe()
+
+
+def test_a_uniform_dilation_cannot_make_a_wrong_structure_fit() -> None:
+    """Scaling preserves every ratio of d spacings, and ratios are what indexing tests.
+
+    This is the property that makes the refinement safe. If a scale factor could
+    rescue an arbitrary candidate the criterion would be worthless, so the fcc
+    pattern is offered a body-centred and a rock-salt candidate with the full
+    search range available to both.
+    """
+
+    report = identify_phase(
+        _table("ni_fcc"), _candidates("ni_fcc", "fe_bcc", "nacl"), cell_scale_range=0.02
+    )
+    assert report.best.phase_name == "Nickel (fcc)"
+    assert report.is_decisive
+    for loser in report.candidates[1:]:
+        assert loser.completeness < report.best.completeness
+
+
+def test_the_refinement_is_off_when_the_range_is_zero() -> None:
+    candidate = identify_phase(
+        _table("ni_fcc"), _candidates("ni_fcc"), cell_scale_range=0.0
+    ).best
+    assert candidate.cell_scale == 1.0
+    assert "dilated by a factor" not in candidate.describe()
+
+
+def test_an_impossible_cell_scale_range_is_refused() -> None:
+    with pytest.raises(ValueError, match="cell_scale_range"):
+        identify_phase(_table("ni_fcc"), _candidates("ni_fcc"), cell_scale_range=1.5)
+
+
+def test_the_refined_scale_travels_in_the_json_contract() -> None:
+    payload = identify_phase(
+        _dilated_scan("ni_fcc", 1.003), _candidates("ni_fcc")
+    ).to_json()
+    assert payload["candidates"][0]["cell_scale"] == pytest.approx(1.003, abs=5.0e-4)
+    assert payload["settings"]["cell_scale_range"] == pytest.approx(0.02)

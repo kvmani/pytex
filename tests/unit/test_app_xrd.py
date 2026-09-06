@@ -9,6 +9,7 @@ import pytest
 
 from pytex.app import REGISTRY
 from pytex.app.errors import InvalidInputError
+from pytex.core.fixtures import get_phase_fixture
 
 
 def simulate(**request: object) -> dict:
@@ -583,3 +584,182 @@ def test_pattern_controls_are_wired_in_panel_js() -> None:
     assert "Experimental pattern" in xrdscan
     assert ".xy,.xrdml,.csv,.dat,.txt" in xrdscan
 
+
+
+# ---------------------------------------------------------------------------
+# Phase identification: the one operation told several phases rather than one
+# ---------------------------------------------------------------------------
+
+
+def identify(**request: object) -> dict:
+    return REGISTRY.call("xrd.phase_identification", request)
+
+
+def _builtin(*identifiers: str) -> dict:
+    return {"phases": [{"phase": {"builtin": identifier}} for identifier in identifiers]}
+
+
+def _from_cif(identifier: str, name: str) -> dict:
+    """Return a candidate entry carrying CIF text, as the browser sends one."""
+
+    return {
+        "label": name,
+        "phase": {"cif": {"name": name, "text": get_phase_fixture(identifier).read_cif_text()}},
+    }
+
+
+def test_the_demonstration_specimen_is_recovered_from_a_list_of_candidates() -> None:
+    """The synthetic scan is made of nickel, so the ranking must return nickel.
+
+    The demonstration scan carries a cell dilated by 1.003 on top of a detector
+    zero error, which is the whole point: a tabulated CIF never matches a real
+    specimen exactly, and an identification that only worked on an undilated
+    cell would not survive first contact with a laboratory.
+    """
+
+    result = identify(candidates=_builtin("ni_fcc", "cu_fcc", "fe_bcc", "nacl"))
+    assert result["data"]["best_phase_name"] == "Nickel (fcc)"
+    assert result["data"]["is_conclusive"] is True
+    assert result["data"]["is_decisive"] is True
+    assert result["table"]["rows"][0]["phase_name"] == "Nickel (fcc)"
+
+
+def test_candidates_may_be_uploaded_as_cif_files() -> None:
+    """The point of the feature: the candidates are the user's own structure files."""
+
+    result = identify(
+        candidates={
+            "phases": [
+                _from_cif("ni_fcc", "nickel.cif"),
+                _from_cif("fe_bcc", "ferrite.cif"),
+            ]
+        }
+    )
+    assert result["data"]["best_phase_name"] == "nickel.cif"
+    rows = {row["phase_name"]: row for row in result["table"]["rows"]}
+    assert set(rows) == {"nickel.cif", "ferrite.cif"}
+    # Provenance survives into the table, so a ranking can be traced to the
+    # files that produced it rather than only to the labels on screen.
+    assert "nickel.cif" in rows["nickel.cif"]["source"]
+
+
+def test_built_in_and_uploaded_candidates_compete_in_one_ranking() -> None:
+    result = identify(
+        candidates={
+            "phases": [
+                {"phase": {"builtin": "fe_bcc"}},
+                _from_cif("ni_fcc", "unknown_powder.cif"),
+                {"phase": {"builtin": "nacl"}},
+            ]
+        }
+    )
+    assert result["data"]["best_phase_name"] == "unknown_powder.cif"
+
+
+def test_the_table_reports_every_criterion_and_not_only_the_total() -> None:
+    """Which criterion a candidate fails is the diagnosis; the total is not."""
+
+    result = identify(candidates=_builtin("ni_fcc", "fe_bcc"))
+    keys = {column["key"] for column in result["table"]["columns"]}
+    assert {"score", "explained", "completeness", "position", "intensity"} <= keys
+    assert result["data"]["columns"] == result["table"]["columns"]
+    for row in result["table"]["rows"]:
+        assert set(keys) <= set(row)
+
+
+def test_a_centring_is_separated_by_lines_seen_rather_than_by_position() -> None:
+    """A bcc candidate on an fcc pattern must lose on absent lines, not on angles."""
+
+    result = identify(candidates=_builtin("ni_fcc", "fe_bcc"))
+    rows = {row["phase_name"]: row for row in result["table"]["rows"]}
+    assert rows["Nickel (fcc)"]["completeness"] > rows["Ferrite (bcc Fe)"]["completeness"]
+
+
+def test_the_refined_cell_dilation_is_reported_for_every_candidate() -> None:
+    """A candidate stretched to the edge of the search range has to be visible.
+
+    The dilation is what makes a tabulated CIF usable on a real specimen, and
+    it is also the thing that could flatter a wrong candidate, so it is a
+    reported column rather than a hidden step.
+    """
+
+    result = identify(candidates=_builtin("ni_fcc", "cu_fcc"), cell_scale_range=0.02)
+    rows = {row["phase_name"]: row for row in result["table"]["rows"]}
+    # The demonstration scan dilates the cell by 1.003, so the true phase needs
+    # about +0.3 per cent and no more.
+    assert rows["Nickel (fcc)"]["cell_dilation_percent"] == pytest.approx(0.3, abs=0.1)
+    # Copper's cell is 2.6 per cent larger than nickel's, so the search pins it
+    # at the edge of the two per cent range: it is being stretched as far as it
+    # is allowed and still does not fit. That is the reading the column exists
+    # to make possible, and it is why the dilation is reported rather than
+    # silently applied.
+    assert rows["Copper (fcc)"]["cell_dilation_percent"] == pytest.approx(-2.0, abs=0.01)
+
+
+def test_every_indexed_candidate_travels_as_an_overlay_for_the_plot() -> None:
+    """The drawing has to let a reader check the ranking, not only read it."""
+
+    result = identify(candidates=_builtin("ni_fcc", "fe_bcc", "nacl"))
+    overlays = result["data"]["overlays"]
+    assert overlays[0]["phase_name"] == "Nickel (fcc)"
+    for entry in overlays:
+        assert len(entry["two_theta_deg"]) == len(entry["labels"])
+        assert len(entry["two_theta_deg"]) == len(entry["relative_intensity"])
+
+
+def test_the_fitted_peaks_travel_with_the_result() -> None:
+    """Peak detection is where an identification most often goes wrong."""
+
+    result = identify(candidates=_builtin("ni_fcc"))
+    peaks = result["data"]["peaks"]
+    assert peaks and len(peaks) == result["data"]["peak_count"]
+    assert all(peak["two_theta_deg"] > 0.0 for peak in peaks)
+
+
+def test_one_candidate_is_a_check_rather_than_an_identification_and_says_so() -> None:
+    result = identify(candidates=_builtin("ni_fcc"))
+    assert "a check on one phase" in result["data"]["describe"]
+
+
+def test_a_pattern_no_candidate_explains_is_reported_as_inconclusive() -> None:
+    result = identify(candidates=_builtin("quartz_alpha", "alpha_u"))
+    assert result["data"]["is_conclusive"] is False
+    assert "No candidate accounts for this pattern" in result["summary"]
+
+
+def test_the_textured_weighting_discards_intensity_evidence() -> None:
+    """A rolled sheet's intensities are moved by orientation, not by structure."""
+
+    balanced = identify(candidates=_builtin("ni_fcc", "fe_bcc"), weighting="standard")
+    textured = identify(candidates=_builtin("ni_fcc", "fe_bcc"), weighting="textured")
+    assert balanced["data"]["best_score"] != pytest.approx(textured["data"]["best_score"])
+    assert textured["data"]["best_phase_name"] == "Nickel (fcc)"
+
+
+def test_an_empty_candidate_list_is_refused_beside_the_right_control() -> None:
+    with pytest.raises(InvalidInputError) as error:
+        identify(candidates={"phases": []})
+    assert error.value.details["field"] == "candidates"
+
+
+def test_an_unreadable_candidate_names_itself_in_the_error() -> None:
+    """A user with five CIFs open must be told which one failed, not that one did."""
+
+    with pytest.raises(InvalidInputError) as error:
+        identify(
+            candidates={
+                "phases": [
+                    {"phase": {"builtin": "ni_fcc"}},
+                    {"phase": {"cif": {"name": "broken.cif", "text": "not a cif"}}},
+                ]
+            }
+        )
+    assert error.value.details["field"] == "candidates"
+    assert "Candidate 2" in error.value.message
+
+
+def test_the_operation_declares_its_search_match_citations() -> None:
+    spec = REGISTRY.get("xrd.phase_identification")
+    joined = " ".join(spec.citations)
+    assert "10.1021/ac50125a001" in joined  # Hanawalt, Rinn & Frevel
+    assert "10.1107/S0021889886089458" in joined  # Dollase, on why intensities are weak evidence

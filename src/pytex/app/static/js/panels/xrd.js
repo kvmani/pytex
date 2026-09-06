@@ -36,6 +36,7 @@ const DEFAULT_APPEARANCE = Object.freeze({
  */
 const VIEWS = [
   'xrd.powder_pattern',
+  'xrd.phase_identification',
   'xrd.background',
   'xrd.lattice_parameters',
   'xrd.rietveld',
@@ -44,6 +45,7 @@ const VIEWS = [
 
 /** Operations that analyze an experimental powder diffractogram. */
 const PATTERN_OPERATIONS = new Set([
+  'xrd.phase_identification',
   'xrd.background',
   'xrd.lattice_parameters',
   'xrd.rietveld',
@@ -52,6 +54,7 @@ const PATTERN_OPERATIONS = new Set([
 /** Which kind of drawing each view needs. */
 const VIEW_MODES = {
   'xrd.powder_pattern': 'profile',
+  'xrd.phase_identification': 'identification',
   'xrd.background': 'overlay',
   'xrd.lattice_parameters': 'lattice',
   'xrd.rietveld': 'overlay',
@@ -61,6 +64,7 @@ const VIEW_MODES = {
 /** What the run button says while each view is working. */
 const VIEW_ACTIONS = {
   'xrd.powder_pattern': ['Simulate XRD pattern', 'Simulating…'],
+  'xrd.phase_identification': ['Identify the phase', 'Ranking candidates…'],
   'xrd.background': ['Estimate background', 'Estimating…'],
   'xrd.lattice_parameters': ['Determine lattice parameters', 'Determining…'],
   'xrd.rietveld': ['Refine against the scan', 'Refining…'],
@@ -141,13 +145,28 @@ export function mount(context) {
     }),
   ]);
 
-  const viewSelect = el('select', {
-    oninput: (event) => selectView(event.currentTarget.value),
-  }, operations.map((entry) => el('option', {
-    value: entry.id,
-    text: entry.title,
-    selected: entry.id === state.operation.id,
-  })));
+  // The views are sub-tabs rather than a dropdown. A dropdown states one
+  // destination and hides the rest, so the operations this workspace can
+  // perform are only discoverable by opening it; a strip states all of them at
+  // once, which is the same argument the one-screen form rule makes about
+  // inputs. It also makes switching one click rather than two.
+  const viewTabs = el('nav.viewtabs', { role: 'tablist', 'aria-label': 'XRD analyses' },
+    operations.map((entry) => el('button.subtab.viewtab', {
+      type: 'button',
+      role: 'tab',
+      text: entry.title,
+      title: entry.summary,
+      'aria-selected': String(entry.id === state.operation.id),
+      dataset: { view: entry.id },
+      onclick: () => selectView(entry.id),
+    })),
+  );
+
+  function markActiveTab() {
+    for (const tab of viewTabs.children) {
+      tab.setAttribute('aria-selected', String(tab.dataset.view === state.operation.id));
+    }
+  }
 
   function selectView(id) {
     const chosen = operations.find((entry) => entry.id === id);
@@ -155,6 +174,7 @@ export function mount(context) {
     state.operation = chosen;
     state.result = null;
     state.teaches = null;
+    markActiveTab();
     frame.setTitle(chosen.title);
     frame.setStatus(chosen.summary);
     frame.setContent(null);
@@ -177,13 +197,6 @@ export function mount(context) {
   pattern.element.hidden = !PATTERN_OPERATIONS.has(state.operation.id);
 
   context.rail.append(
-    el('label.field', {}, [
-      el('span.field__label', { text: 'View' }),
-      viewSelect,
-      el('span.field__hint', {
-        text: 'Simulation first, then the three questions a measured scan raises.',
-      }),
-    ]),
     pattern.element,
     formHost,
     runButton,
@@ -208,7 +221,7 @@ export function mount(context) {
   // The legend is a control, so it rides inside the frame rather than under it:
   // toggling a source and seeing the drawing change must not need a scroll.
   frame.setControls(legend);
-  context.stage.append(frame.element, details);
+  context.stage.append(viewTabs, frame.element, details);
 
   function renderControls(initial = {}) {
     state.form = buildForm(state.operation, { initial });
@@ -225,7 +238,7 @@ export function mount(context) {
     const target = operations.find((entry) => entry.id === example.operation);
     if (target && target !== state.operation) {
       state.operation = target;
-      viewSelect.value = target.id;
+      markActiveTab();
       frame.setTitle(target.title);
       appearance.hidden = mode() !== 'profile';
       scaleControl.hidden = mode() === 'scatter' || mode() === 'lattice';
@@ -272,6 +285,7 @@ export function mount(context) {
   }
 
   function draw() {
+    if (mode() === 'identification') return drawIdentification();
     if (mode() === 'overlay') return drawOverlay();
     if (mode() === 'scatter') return drawScatter();
     if (mode() === 'lattice') return drawLattice();
@@ -315,6 +329,40 @@ export function mount(context) {
       el('span', { text: 'Observed − calculated' }),
     ])] : []));
     frame.setStatus(overlayStatus(data, state.operation.id));
+  }
+
+  /**
+   * The identification view: the scan with every candidate's lines beneath it.
+   *
+   * The legend carries the verdict rather than the series names, because the
+   * rows are labelled in the drawing itself and the thing a reader needs beside
+   * the picture is whether the winner is actually believable.
+   */
+  function drawIdentification() {
+    const data = state.result.data;
+    frame.configure({ toData: () => null, formatCursor: () => '' });
+    frame.setContent(renderIdentification(data, state.appearance.yScale));
+    legend.replaceChildren(
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: 'background:#64748b' }),
+        el('span', { text: 'Measured scan' }),
+      ]),
+      el('span.legend__item', {}, [
+        el('span.legend__swatch', { style: 'background:#0f172a;opacity:0.25' }),
+        el('span', { text: 'Fitted peaks' }),
+      ]),
+    );
+    const margin = Number.isFinite(data.margin)
+      ? `, ahead of the next by ${formatNumber(data.margin, 3)}`
+      : ', the only candidate offered';
+    frame.setStatus(
+      data.is_conclusive
+        ? (data.is_decisive
+          ? `${data.best_phase_name} at ${formatNumber(data.best_score, 3)}${margin}.`
+          : `${data.best_phase_name} scores best, but the top two are not told apart by this scan.`)
+        : `No candidate accounts for this pattern; the best reaches only `
+          + `${formatNumber(data.best_score, 3)}.`,
+    );
   }
 
   /**
@@ -801,6 +849,136 @@ function renderOverlay(data, series, ceiling, operationId, yScale) {
  * kind, because the intercept there *is* the answer and cropping to the data
  * would hide the quantity being read off the picture.
  */
+/** Colours for the candidate stick rows, best first. */
+const CANDIDATE_COLORS = ['#2563eb', '#dc2626', '#15803d', '#b45309', '#7c3aed', '#0f766e'];
+
+/**
+ * The identification picture: the scan, and under it one stick row per
+ * candidate at the angles that candidate puts its lines.
+ *
+ * This is the drawing that lets a reader *check* the ranking rather than trust
+ * it. A table of scores says nickel won; the stick rows say why — the winner's
+ * ticks sit under every peak and nowhere else, while the runner-up has ticks
+ * standing over flat background and peaks standing over no tick. Both failures
+ * are visible at a glance and neither is legible from a number.
+ *
+ * Rows are ordered by score with the winner immediately under the profile, so
+ * the comparison a reader makes most often is between adjacent rows.
+ */
+function renderIdentification(data, yScale) {
+  const root = svg('svg', {
+    viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
+    preserveAspectRatio: 'xMidYMid meet',
+    'aria-label': 'Measured scan with each candidate phase’s calculated line positions',
+  });
+  const overlays = (data.overlays ?? []).slice(0, CANDIDATE_COLORS.length);
+  const rowHeight = 26;
+  const bandHeight = overlays.length * rowHeight;
+  const plotWidth = WIDTH - MARGIN.left - MARGIN.right;
+  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom - bandHeight;
+  const angles = data.two_theta_deg;
+  const minimum = angles[0];
+  const maximum = angles[angles.length - 1];
+  let ceiling = 0;
+  for (const value of data.observed) if (value > ceiling) ceiling = value;
+  ceiling = ceiling > 0 ? ceiling : 1;
+
+  const xAt = (angle) => MARGIN.left + ((angle - minimum) / (maximum - minimum)) * plotWidth;
+  const yAt = (counts) =>
+    MARGIN.top + (1 - transformedIntensity(counts / ceiling, yScale)) * plotHeight;
+
+  for (let step = 0; step <= 4; step += 1) {
+    const fraction = step / 4;
+    const y = MARGIN.top + (1 - fraction) * plotHeight;
+    root.append(
+      svg('line', {
+        x1: MARGIN.left, y1: y, x2: WIDTH - MARGIN.right, y2: y,
+        stroke: 'currentColor', 'stroke-opacity': step === 0 ? 0.5 : 0.1,
+        'stroke-width': step === 0 ? 1 : 0.6,
+      }),
+      svg('text', {
+        x: MARGIN.left - 12, y: y + 4, 'text-anchor': 'end', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.6,
+        text: formatNumber(ceiling * inverseIntensity(fraction, yScale), 0),
+      }),
+    );
+  }
+
+  const tickStep = niceStep(maximum - minimum, 8);
+  const firstTick = Math.ceil(minimum / tickStep) * tickStep;
+  for (let value = firstTick; value <= maximum + 1e-9; value += tickStep) {
+    const x = xAt(value);
+    root.append(
+      svg('line', {
+        x1: x, y1: MARGIN.top, x2: x, y2: HEIGHT - MARGIN.bottom,
+        stroke: 'currentColor', 'stroke-opacity': 0.08, 'stroke-width': 0.6,
+      }),
+      svg('text', {
+        x, y: HEIGHT - MARGIN.bottom + 24, 'text-anchor': 'middle', 'font-size': 12,
+        fill: 'currentColor', 'fill-opacity': 0.65, text: formatNumber(value, 0),
+      }),
+    );
+  }
+
+  const points = [];
+  for (let index = 0; index < angles.length; index += 1) {
+    points.push(`${xAt(angles[index]).toFixed(2)},${yAt(data.observed[index]).toFixed(2)}`);
+  }
+  root.append(svg('polyline', {
+    points: points.join(' '), fill: 'none', stroke: '#64748b', 'stroke-width': 1.1,
+  }));
+
+  // The fitted peak positions, drawn on the profile itself. Peak detection is
+  // where an identification most often goes wrong, so what was actually fitted
+  // has to be visible beside what the candidates predict.
+  for (const peak of data.peaks ?? []) {
+    const x = xAt(peak.two_theta_deg);
+    root.append(svg('line', {
+      x1: x, y1: MARGIN.top, x2: x, y2: MARGIN.top + plotHeight,
+      stroke: '#0f172a', 'stroke-opacity': 0.18, 'stroke-width': 1,
+      'stroke-dasharray': '3 3',
+    }));
+  }
+
+  overlays.forEach((entry, row) => {
+    const color = CANDIDATE_COLORS[row];
+    const top = MARGIN.top + plotHeight + row * rowHeight;
+    const baseline = top + rowHeight - 8;
+    root.append(svg('text', {
+      x: MARGIN.left - 12, y: baseline, 'text-anchor': 'end', 'font-size': 11,
+      fill: color, text: `${entry.phase_name} · ${formatNumber(entry.score, 3)}`,
+    }));
+    root.append(svg('line', {
+      x1: MARGIN.left, y1: baseline, x2: WIDTH - MARGIN.right, y2: baseline,
+      stroke: color, 'stroke-opacity': 0.25, 'stroke-width': 0.8,
+    }));
+    entry.two_theta_deg.forEach((angle, index) => {
+      const strength = entry.relative_intensity?.[index] ?? 1;
+      const height = 4 + 12 * Math.sqrt(Math.max(0, Math.min(1, strength)));
+      const x = xAt(angle);
+      root.append(svg('line', {
+        x1: x, y1: baseline, x2: x, y2: baseline - height,
+        stroke: color, 'stroke-width': 1.6,
+      }, [svg('title', { text: `${entry.phase_name} ${entry.labels?.[index] ?? ''} at ${formatNumber(angle, 3)}°` })]));
+    });
+  });
+
+  root.append(
+    svg('text', {
+      x: MARGIN.left + plotWidth / 2, y: HEIGHT - 14, 'text-anchor': 'middle',
+      'font-size': 13, fill: 'currentColor', 'fill-opacity': 0.75,
+      text: '2θ (°)',
+    }),
+    svg('text', {
+      x: 18, y: MARGIN.top + plotHeight / 2, 'font-size': 13, fill: 'currentColor',
+      'fill-opacity': 0.75, 'text-anchor': 'middle',
+      transform: `rotate(-90 18 ${MARGIN.top + plotHeight / 2})`, text: 'Intensity (counts)',
+    }),
+  );
+  return root;
+}
+
+
 function renderLattice(data) {
   if (data.plot_kind === 'profile') return renderLatticeProfile(data);
   const root = svg('svg', {

@@ -33,6 +33,7 @@
 
 import { append, clear, el, markdown } from './dom.js';
 import * as log from './logbook.js';
+import { phaseCandidatesControl } from './phasecandidates.js';
 import { phaseControl } from './phasecontrol.js';
 
 /**
@@ -608,6 +609,9 @@ function splitRows(value, width, multi) {
 
 function objectInput(parameter, value, onChange, id) {
   if (parameter.editor === 'phase') return phaseControl(parameter, value, onChange, id);
+  if (parameter.editor === 'phase_candidates') {
+    return phaseCandidatesControl(parameter, value, onChange, id);
+  }
   const node = el('textarea', { id, rows: 4, oninput: onChange, spellcheck: 'false' });
   node.value = value ? JSON.stringify(value, null, 2) : '';
   return {

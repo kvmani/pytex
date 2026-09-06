@@ -9,6 +9,7 @@ and turns the resulting reflection objects and sampled profile into the common
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, Literal, cast
 
 import numpy as np
@@ -47,6 +48,7 @@ from pytex.diffraction.xrd_lattice_parameter import (
     extrapolation_values,
 )
 from pytex.diffraction.xrd_measurement import MeasuredPowderPattern, read_powder_pattern
+from pytex.diffraction.xrd_phase_identification import identify_phase_from_pattern
 
 __all__: tuple[str, ...] = ()
 
@@ -2324,3 +2326,647 @@ _EXTRAPOLATION_LABELS = {
     "bradley_jay": "cos\u00b2\u03b8",
     "none": "cos\u00b2\u03b8 / sin\u03b8",
 }
+
+
+# ---------------------------------------------------------------------------
+# Phase identification. The one operation on this panel that does not require
+# the answer as an input: every other analysis is told the phase and measures
+# something about it, while this one is told several and decides between them.
+# ---------------------------------------------------------------------------
+
+_CITATION_HANAWALT = (
+    "Hanawalt, Rinn & Frevel, Ind. Eng. Chem. Anal. Ed. 10 (1938) 457, doi:10.1021/ac50125a001."
+)
+_CITATION_SMITH_SNYDER_FN = (
+    "Smith & Snyder, J. Appl. Crystallogr. 12 (1979) 60, doi:10.1107/S002188987901178X."
+)
+_CITATION_DOLLASE_MARCH = (
+    "Dollase, J. Appl. Crystallogr. 19 (1986) 267, doi:10.1107/S0021889886089458."
+)
+_CITATION_CULLITY_CH14 = (
+    "Cullity & Stock, Elements of X-Ray Diffraction, 3rd ed., Prentice Hall (2001), Ch. 14."
+)
+
+#: The three weightings the operation offers, and what each is for. Exposing
+#: four raw numbers would put a scoring model on the control rail; exposing the
+#: three specimen situations a laboratory actually meets puts the *decision*
+#: there instead, which is the thing the operator knows and the software does
+#: not.
+_WEIGHTING_PRESETS: dict[str, dict[str, float]] = {
+    "standard": {
+        "explained_intensity_fraction": 0.40,
+        "completeness": 0.25,
+        "position_score": 0.20,
+        "intensity_agreement": 0.15,
+    },
+    "textured": {
+        "explained_intensity_fraction": 0.40,
+        "completeness": 0.30,
+        "position_score": 0.30,
+        "intensity_agreement": 0.00,
+    },
+    "positions_only": {
+        "explained_intensity_fraction": 0.50,
+        "completeness": 0.00,
+        "position_score": 0.50,
+        "intensity_agreement": 0.00,
+    },
+}
+
+_CANDIDATE_COLUMNS = (
+    Column("rank", "Rank", numeric=True),
+    Column("phase_name", "Candidate"),
+    Column(
+        "score",
+        "Score",
+        numeric=True,
+        digits=3,
+        help_text=(
+            "Weighted mean of the four criteria, in [0, 1]. Read the criteria beside it: which "
+            "one a candidate fails says more than its total does."
+        ),
+    ),
+    Column(
+        "explained",
+        "Intensity explained",
+        units="%",
+        numeric=True,
+        digits=1,
+        help_text=(
+            "Share of the measured integrated intensity carried by peaks this candidate "
+            "indexed. A strong unindexed peak is the signature of a second phase."
+        ),
+    ),
+    Column(
+        "completeness",
+        "Lines seen",
+        units="%",
+        numeric=True,
+        digits=1,
+        help_text=(
+            "Share of the candidate's own strong reflections, inside the measured range, that "
+            "were actually observed. This is what separates two cells differing by a centring: "
+            "a centring is a statement about which lines are absent."
+        ),
+    ),
+    Column(
+        "position",
+        "Position",
+        numeric=True,
+        digits=3,
+        help_text=(
+            "1 - mean|Δ2θ| / tolerance. How far inside the matching window the lines "
+            "landed, not merely whether they landed inside it."
+        ),
+    ),
+    Column(
+        "intensity",
+        "Intensity",
+        numeric=True,
+        digits=3,
+        help_text=(
+            "Bounded similarity of observed and calculated relative intensities. Weighted least "
+            "of the four: preferred orientation moves intensities without moving positions."
+        ),
+    ),
+    Column("indexed", "Peaks indexed"),
+    Column(
+        "cell_dilation_percent",
+        "Cell",
+        units="%",
+        numeric=True,
+        digits=3,
+        help_text=(
+            "How far the candidate's cell had to be dilated to place its lines, as a "
+            "percentage. A few hundredths is the ordinary difference between a tabulated cell "
+            "and a real solid solution; a value at the edge of the search range means the "
+            "candidate had to be stretched to fit, and should be read with suspicion."
+        ),
+    ),
+    Column(
+        "figure_of_merit_m",
+        "M",
+        numeric=True,
+        digits=1,
+        help_text="de Wolff's figure of merit for this candidate's assignment.",
+    ),
+    Column("source", "From"),
+)
+
+
+def _candidate_phases(request: dict[str, Any]) -> tuple[list[tuple[str, Any]], dict[str, str]]:
+    """Resolve the candidate list into named phases and their provenance.
+
+    One malformed entry names itself in the error. A user who has opened five
+    CIFs needs to be told *which* one the server could not read, and a message
+    that only says "a phase could not be parsed" makes them close all five.
+    """
+
+    payload = request.get("candidates") or {}
+    entries = payload.get("phases") if isinstance(payload, Mapping) else None
+    if not isinstance(entries, list) or not entries:
+        raise InvalidInputError(
+            "No candidate phases were offered.",
+            field="candidates",
+            hint=(
+                "Add at least two candidates — built-in phases or .cif files you open "
+                "— so there is something to choose between. One candidate is a check on "
+                "that phase rather than an identification."
+            ),
+        )
+
+    named: list[tuple[str, Any]] = []
+    sources: dict[str, str] = {}
+    seen: dict[str, int] = {}
+    for position, entry in enumerate(entries, start=1):
+        if not isinstance(entry, Mapping):
+            raise InvalidInputError(
+                f"Candidate {position} is not a phase.",
+                field="candidates",
+                hint="Remove it and add the phase again.",
+            )
+        try:
+            spec, phase = phase_from_request(entry.get("phase"))
+        except InvalidInputError as error:
+            raise InvalidInputError(
+                f"Candidate {position} could not be read: {error.message}",
+                field="candidates",
+                hint=error.hint,
+            ) from error
+        label = str(entry.get("label") or spec.name or f"candidate {position}")
+        count = seen.get(label, 0)
+        seen[label] = count + 1
+        if count:
+            label = f"{label} ({count + 1})"
+        named.append((label, phase))
+        sources[label] = str(spec.source or "built-in catalogue")
+    return named, sources
+
+
+@REGISTRY.operation(
+    "xrd.phase_identification",
+    title="Identify the phase",
+    summary="Rank several candidate structures against a measured scan, and say which fits.",
+    help_text=(
+        "Every other analysis on this panel is *told* the phase and measures something about "
+        "it. This one is told several and decides between them, which is the step that comes "
+        "first on a specimen whose identity is suspected rather than established.\n\n"
+        "The peaks are detected and profile-fitted, then each candidate is indexed against them "
+        "by a global one-to-one assignment and scored on four criteria. Read the criteria, not "
+        "only the total — *which* one a candidate fails is the diagnosis:\n\n"
+        "- **Intensity explained.** How much of the measured intensity the candidate accounts "
+        "for. A strong peak it cannot explain means something else is in the specimen.\n"
+        "- **Lines seen.** How many of the candidate's own strong reflections actually appeared. "
+        "This is the criterion that separates a face-centred cell from a body-centred one, "
+        "because a centring is a claim about which lines are *absent* rather than present.\n"
+        "- **Position.** How far *inside* the matching tolerance the lines landed. A candidate "
+        "sitting at the edge of the window throughout has the wrong cell dimensions even though "
+        "every peak was formally indexed.\n"
+        "- **Intensity.** Whether the relative intensities track the calculated ones. It carries "
+        "the least weight on purpose: preferred orientation, microabsorption and a coarse powder "
+        "move measured intensities by factors without moving a single peak position, so no "
+        "candidate is rejected on intensity alone.\n\n"
+        "A ranking always has a winner, which is not the same as having an answer. The verdict "
+        "therefore states two things separately: whether the best candidate explains the pattern "
+        "in absolute terms, and whether it beats the runner-up by enough to be distinguished "
+        "from it. When it does not, the honest readings are printed — that none of the "
+        "candidates offered accounts for this scan, or that this scan does not tell the top two "
+        "apart and a longer count at high angle, a different wavelength or chemistry is needed.\n\n"
+        "This is not a database search. The candidates must be supplied; the operation ranks "
+        "what it is given and cannot propose a phase nobody thought of. Nor does it quantify a "
+        "mixture: when several candidates each explain part of the pattern, the next step is a "
+        "multi-phase Rietveld refinement, not a higher score."
+    ),
+    parameters=(
+        ObjectParameter(
+            name="candidates",
+            label="Candidate phases",
+            help_text=(
+                "The structures to choose between. Add built-in phases or open .cif files; two "
+                "or more make it an identification rather than a check. A candidate that cannot "
+                "be indexed at all is scored zero with the reason stated rather than aborting "
+                "the comparison, so one unreadable structure among five costs you only that one."
+            ),
+            editor="phase_candidates",
+            default={
+                "phases": [
+                    {"phase": {"builtin": "ni_fcc"}},
+                    {"phase": {"builtin": "fe_bcc"}},
+                ]
+            },
+        ),
+        phase_parameter(
+            label="Demonstration specimen",
+            help_text=(
+                "Only used to generate the demonstration scan — it is the phase the "
+                "synthetic specimen is *made of*, and the answer the ranking should recover. An "
+                "experimental scan is analysed without reference to it, which is the point: an "
+                "identification that consulted a declared phase would not be one."
+            ),
+            builtin="ni_fcc",
+        ),
+        *_scan_parameters(),
+        ChoiceParameter(
+            name="weighting",
+            label="Evidence weighting",
+            help_text=(
+                "Which evidence to trust for *this* specimen. Balanced suits a well-prepared "
+                "random powder. Choose the textured weighting for a rolled sheet, a coating or "
+                "anything with a rolling or fibre texture, where measured intensities are moved "
+                "by orientation rather than by structure. Positions only is the strictest "
+                "setting: it asks solely where the lines are and how much intensity is left "
+                "unexplained."
+            ),
+            options=(
+                (
+                    "standard",
+                    "Balanced",
+                    "All four criteria, with intensity weighted least.",
+                ),
+                (
+                    "textured",
+                    "Textured specimen",
+                    "Ignore intensities: orientation moves them, not structure.",
+                ),
+                (
+                    "positions_only",
+                    "Positions only",
+                    "Line positions and unexplained intensity alone.",
+                ),
+            ),
+            default="standard",
+            group="Scoring",
+        ),
+        NumberParameter(
+            name="tolerance_deg",
+            label="Matching tolerance",
+            help_text=(
+                "How far a calculated line may sit from a measured peak and still be matched. "
+                "Set it wider than the instrument's uncorrected zero-point and displacement "
+                "errors and narrower than the spacing between neighbouring calculated lines. It "
+                "also sets the scale of the position criterion, so widening it to rescue a "
+                "candidate judges every match against the laxer standard it was admitted under."
+            ),
+            units="° 2θ",
+            default=0.3,
+            minimum=0.01,
+            maximum=3.0,
+            group="Scoring",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="prominence_sigma",
+            label="Detection threshold",
+            help_text=(
+                "How far above the local noise a feature must rise to be fitted as a peak, in "
+                "units of that noise. Lower it to admit weak lines, at the cost of admitting "
+                "background structure with them. Peak detection is where an identification most "
+                "often goes wrong, so the fitted peaks are listed with the result."
+            ),
+            units="σ",
+            default=5.0,
+            minimum=1.0,
+            maximum=30.0,
+            group="Scoring",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="minimum_two_theta_deg",
+            label="Ignore below",
+            help_text=(
+                "Discard everything below this angle. The low-angle end of a laboratory scan "
+                "often carries a beam-stop shadow or an air-scatter rise that is not "
+                "diffraction, and fitting it as peaks penalizes every candidate equally and "
+                "wrongly."
+            ),
+            units="° 2θ",
+            default=0.0,
+            minimum=0.0,
+            maximum=90.0,
+            advanced=True,
+            group="Scoring",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="strong_line_threshold",
+            label="Strong-line threshold",
+            help_text=(
+                "Relative intensity above which a predicted line is one the operator would "
+                "expect to see, and so counts towards the lines-seen criterion. Raise it for a "
+                "noisy scan in which weak calculated lines genuinely could not have been "
+                "detected."
+            ),
+            default=0.05,
+            minimum=0.005,
+            maximum=0.5,
+            advanced=True,
+            group="Scoring",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="cell_scale_range",
+            label="Cell dilation searched",
+            help_text=(
+                "How far each candidate's cell may be uniformly dilated before matching, as a "
+                "fraction. A CIF records the cell of somebody else's specimen; yours is a "
+                "different composition, at a different temperature, possibly stressed, and by "
+                "Δ2θ = 2·e·tanθ a difference of three parts in a thousand moves a "
+                "back-reflection line by more than half a degree. Without this the true phase "
+                "loses exactly the high-angle lines that would have confirmed it. A uniform "
+                "dilation preserves every ratio of d spacings — which is what indexing "
+                "tests — so it cannot make a wrong structure fit, and the factor each "
+                "candidate needed is reported. Set it to zero to match the CIF cells exactly."
+            ),
+            default=0.02,
+            minimum=0.0,
+            maximum=0.1,
+            advanced=True,
+            group="Scoring",
+            field_width="short",
+        ),
+        IntegerParameter(
+            name="max_index",
+            label="Largest index enumerated",
+            help_text="Largest |h|, |k|, |l| generated for every candidate.",
+            default=6,
+            minimum=2,
+            maximum=12,
+            advanced=True,
+            group="Scoring",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="minimum_score",
+            label="Acceptance threshold",
+            help_text=(
+                "The score the best candidate must reach before the identification is called "
+                "conclusive. Below it, the verdict says that none of the candidates offered "
+                "accounts for the pattern."
+            ),
+            default=0.55,
+            minimum=0.1,
+            maximum=0.95,
+            advanced=True,
+            group="Verdict",
+            field_width="short",
+        ),
+        NumberParameter(
+            name="decisive_margin",
+            label="Decisive margin",
+            help_text=(
+                "The lead over the runner-up below which the top two are reported as not "
+                "distinguished by this scan."
+            ),
+            default=0.05,
+            minimum=0.005,
+            maximum=0.5,
+            advanced=True,
+            group="Verdict",
+            field_width="short",
+        ),
+        ChoiceParameter(
+            name="radiation",
+            label="Radiation",
+            help_text=(
+                "The wavelength the scan was measured with. It converts every angle into a "
+                "spacing, so a wrong choice moves every candidate's calculated lines together "
+                "and can make the true phase look wrong."
+            ),
+            options=(
+                ("cu_ka", "Cu Kα (single averaged line)", "One copper line."),
+                ("cu_ka_doublet", "Cu Kα1/Kα2", "Common laboratory copper doublet."),
+                ("co_ka_doublet", "Co Kα1/Kα2", "Reduces Fe fluorescence."),
+                ("mo_ka_doublet", "Mo Kα1/Kα2", "Short-wavelength molybdenum."),
+            ),
+            default="cu_ka",
+            advanced=True,
+        ),
+    ),
+    returns=(
+        "The ranked candidates with their four criteria, the verdict on the best match, the "
+        "fitted peaks, and the calculated line positions of every candidate for overlay."
+    ),
+    panel="xrd",
+    citations=(
+        _CITATION_HANAWALT,
+        _CITATION_SMITH_SNYDER_FN,
+        _CITATION_DOLLASE_MARCH,
+        _CITATION_CULLITY_CH14,
+    ),
+    tags=(
+        "XRD",
+        "phase identification",
+        "search match",
+        "CIF",
+        "indexing",
+        "experimental data",
+    ),
+)
+def _phase_identification(request: dict[str, Any]) -> dict[str, Any]:
+    spec, demonstration_phase = phase_from_request(request["phase"])
+    radiation = _RADIATION[str(request["radiation"])]()
+    measured, generated = _measured_from_request(request, demonstration_phase, radiation)
+    named, sources = _candidate_phases(request)
+
+    floor = float(request["minimum_two_theta_deg"])
+    try:
+        identification, table = identify_phase_from_pattern(
+            measured,
+            named,
+            radiation=radiation,
+            sources=sources,
+            prominence_sigma=float(request["prominence_sigma"]),
+            minimum_two_theta_deg=floor if floor > 0.0 else None,
+            tolerance_deg=float(request["tolerance_deg"]),
+            max_index=int(request["max_index"]),
+            strong_line_threshold=float(request["strong_line_threshold"]),
+            cell_scale_range=float(request["cell_scale_range"]),
+            weights=_WEIGHTING_PRESETS[str(request["weighting"])],
+            minimum_score=float(request["minimum_score"]),
+            decisive_margin=float(request["decisive_margin"]),
+            name=f"{measured.name} phase identification",
+        )
+    except ValueError as error:
+        raise InvalidInputError(
+            f"The pattern could not be identified: {error}",
+            field="prominence_sigma",
+            hint=(
+                "If no peak was detected, lower the detection threshold. If every candidate was "
+                "refused, check the radiation and the angular range of the scan."
+            ),
+        ) from error
+
+    best = identification.best
+    rows = []
+    for position, candidate in enumerate(identification.candidates, start=1):
+        merit = (
+            None if candidate.indexing is None else float(candidate.indexing.figure_of_merit_m()[0])
+        )
+        unindexed = 0 if candidate.indexing is None else len(candidate.indexing.unindexed_peaks)
+        rows.append(
+            {
+                "rank": position,
+                "phase_name": candidate.phase_name,
+                "score": float(candidate.score),
+                "explained": 100.0 * float(candidate.explained_intensity_fraction),
+                "completeness": 100.0 * float(candidate.completeness),
+                "position": float(candidate.position_score),
+                "intensity": float(candidate.intensity_agreement),
+                "indexed": (
+                    candidate.rejection
+                    if candidate.indexing is None
+                    else f"{candidate.indexed_count} of {candidate.indexed_count + unindexed}"
+                ),
+                "cell_dilation_percent": 1.0e2 * (float(candidate.cell_scale) - 1.0),
+                "figure_of_merit_m": merit,
+                "source": candidate.source,
+            }
+        )
+
+    # Every candidate's calculated line positions travel with the result, so the
+    # plot can overlay the runner-up on the scan as well as the winner. Reading
+    # *where* the loser's lines fall is how a user checks the ranking rather
+    # than trusting it.
+    overlays = []
+    for candidate in identification.candidates:
+        if candidate.indexing is None:
+            continue
+        overlays.append(
+            {
+                "phase_name": candidate.phase_name,
+                "score": float(candidate.score),
+                "two_theta_deg": [
+                    float(item.two_theta_calculated_deg) for item in candidate.indexing
+                ],
+                "labels": [
+                    _powder_label(item.miller_indices, spec=spec) for item in candidate.indexing
+                ],
+                "relative_intensity": [
+                    float(item.relative_intensity_calculated) for item in candidate.indexing
+                ],
+            }
+        )
+
+    verdict = (
+        "conclusive and decisive"
+        if identification.is_conclusive and identification.is_decisive
+        else (
+            "not decisive"
+            if identification.is_conclusive
+            else "not conclusive"
+        )
+    )
+    if identification.is_conclusive and identification.is_decisive:
+        summary = (
+            f"{best.phase_name} at a score of {best.score:.3f}"
+            + (
+                ""
+                if identification.runner_up is None
+                else f", clear of {identification.runner_up.phase_name} by "
+                f"{identification.margin:.3f}"
+            )
+            + f", from {identification.peak_count} fitted peaks."
+        )
+    elif identification.is_conclusive:
+        summary = (
+            f"{best.phase_name} scores best at {best.score:.3f}, but "
+            f"{identification.runner_up.phase_name if identification.runner_up else 'the next'} "
+            "is too close to be told apart on this scan."
+        )
+    else:
+        summary = (
+            f"No candidate accounts for this pattern. The best, {best.phase_name}, reaches only "
+            f"{best.score:.3f} against a {identification.minimum_score:.2f} threshold."
+        )
+
+    notes: list[str] = []
+    if generated:
+        notes.append(
+            "This scan was generated, not measured: a synthetic profile of the demonstration "
+            f"specimen ({spec.name}) with its cell dilated by {_DEMO_LATTICE_SCALE:g}, a "
+            f"{_DEMO_ZERO_SHIFT_DEG:g}° detector zero error, a curved background and "
+            "Poisson counting noise. The answer is therefore known in advance, which is what "
+            "makes it useful for learning: the dilation is larger than many real alloying "
+            "effects, so watch how the matching tolerance has to accommodate it."
+        )
+    if best.indexing is not None and best.indexing.unindexed_peaks:
+        notes.append(
+            f"{len(best.indexing.unindexed_peaks)} measured peaks are not explained by the best "
+            "match. Check whether any is strong: a strong unexplained peak means a second phase, "
+            "and the quantitative step is then a multi-phase Rietveld refinement rather than a "
+            "further search."
+        )
+    notes.append(
+        "Read the losing candidates' criteria, not only their totals. A candidate that fails on "
+        "lines-seen while scoring well on position has the right cell metric and the wrong "
+        "centring or basis — a different fault from one that fails on position, which has "
+        "the wrong cell dimensions."
+    )
+    notes.append(
+        "The candidates must be supplied. This ranks what it is given and cannot propose a phase "
+        "nobody offered, so a low best score is as likely to mean the right structure is missing "
+        "from the list as that the scan is poor."
+    )
+
+    return AppResult(
+        title=f"Phase identification of {measured.name}",
+        summary=summary,
+        table=ResultTable(
+            columns=_CANDIDATE_COLUMNS,
+            rows=tuple(rows),
+            caption=(
+                f"{len(identification.candidates)} candidates ranked against "
+                f"{identification.peak_count} fitted peaks within "
+                f"{float(request['tolerance_deg']):.2f}° 2θ."
+            ),
+        ),
+        data={
+            "two_theta_deg": [float(value) for value in measured.two_theta_deg],
+            "observed": [float(value) for value in measured.intensity],
+            "peaks": [
+                {
+                    "two_theta_deg": float(peak.two_theta_deg),
+                    "height": float(peak.height),
+                    "integrated_intensity": float(peak.integrated_intensity),
+                    "fwhm_deg": float(peak.fwhm_deg),
+                }
+                for peak in table
+            ],
+            "candidates": [item.to_json() for item in identification.candidates],
+            "overlays": overlays,
+            "best_phase_name": best.phase_name,
+            "best_score": float(best.score),
+            "margin": float(identification.margin),
+            "is_conclusive": identification.is_conclusive,
+            "is_decisive": identification.is_decisive,
+            "verdict": verdict,
+            "peak_count": int(identification.peak_count),
+            "synthetic": generated,
+            "describe": identification.describe(),
+            "best_describe": best.describe(),
+            "columns": [column.to_json() for column in _CANDIDATE_COLUMNS],
+        },
+        inputs={
+            "candidates": request["candidates"],
+            "phase": spec.to_json(),
+            "data_source": request["data_source"],
+            "radiation": request["radiation"],
+            "weighting": request["weighting"],
+            "tolerance_deg": float(request["tolerance_deg"]),
+            "prominence_sigma": float(request["prominence_sigma"]),
+            "minimum_two_theta_deg": floor,
+            "strong_line_threshold": float(request["strong_line_threshold"]),
+            "cell_scale_range": float(request["cell_scale_range"]),
+            "max_index": int(request["max_index"]),
+            "minimum_score": float(request["minimum_score"]),
+            "decisive_margin": float(request["decisive_margin"]),
+            "demonstration_seed": int(request["demonstration_seed"]),
+        },
+        notes=tuple(notes),
+        citations=(
+            _CITATION_HANAWALT,
+            _CITATION_SMITH_SNYDER_FN,
+            _CITATION_DOLLASE_MARCH,
+            _CITATION_CULLITY_CH14,
+        ),
+    ).to_json()

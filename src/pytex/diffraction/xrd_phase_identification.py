@@ -124,6 +124,7 @@ from typing import Any
 import numpy as np
 
 from pytex.core.lattice import Phase
+from pytex.diffraction.rietveld import _scaled_phase
 from pytex.diffraction.xrd import RadiationSpec, generate_powder_reflections
 from pytex.diffraction.xrd_indexing import PeakIndexing, index_peaks
 from pytex.diffraction.xrd_measurement import MeasuredPowderPattern
@@ -237,6 +238,12 @@ class PhaseCandidateScore:
     strong_line_threshold : float
         Relative-intensity threshold above which a calculated line counted
         towards :attr:`completeness`.
+    cell_scale : float
+        The uniform cell dilation applied to the candidate before indexing, one
+        when none was refined. A value a few parts in a thousand from one is
+        the ordinary difference between a tabulated cell and a real solid
+        solution; a value at the edge of the search range means the candidate
+        had to be stretched to fit and should be read with suspicion.
     weights : Mapping[str, float]
         The criterion weighting the combined score was formed with.
     """
@@ -252,6 +259,7 @@ class PhaseCandidateScore:
     strongest_unexplained_fraction: float = 0.0
     strongest_unobserved_relative_intensity: float = 0.0
     strong_line_threshold: float = 0.05
+    cell_scale: float = 1.0
     weights: Mapping[str, float] = field(default_factory=lambda: DEFAULT_CRITERION_WEIGHTS)
 
     def __post_init__(self) -> None:
@@ -340,6 +348,7 @@ class PhaseCandidateScore:
                 self.strongest_unobserved_relative_intensity
             ),
             "strong_line_threshold": float(self.strong_line_threshold),
+            "cell_scale": float(self.cell_scale),
             "figure_of_merit_m": merit_m,
             "figure_of_merit_f": merit_f,
             "indexing": None if self.indexing is None else self.indexing.to_json(),
@@ -378,6 +387,15 @@ class PhaseCandidateScore:
             parts.append(
                 " Too few reflections were indexed for the intensity comparison to mean "
                 "anything, so it was left out of the score rather than counted as a failure."
+            )
+        if abs(self.cell_scale - 1.0) > 1.0e-6:
+            parts.append(
+                f" Its cell was dilated by a factor {self.cell_scale:.5f} "
+                f"({1.0e2 * (self.cell_scale - 1.0):+.3f} per cent) before matching. A uniform "
+                "dilation preserves every ratio of d spacings, so it cannot make a wrong "
+                "structure fit; a shift of this size is the ordinary difference between a "
+                "tabulated cell and a specimen of different composition, temperature or "
+                "residual stress."
             )
         if self.strongest_unexplained_fraction >= 0.2:
             parts.append(
@@ -628,6 +646,77 @@ def _as_named_candidates(
     return tuple(unique)
 
 
+def _refine_cell_scale(
+    *,
+    phase: Phase,
+    observed_deg: np.ndarray,
+    radiation: RadiationSpec,
+    tolerance_deg: float,
+    max_index: int,
+    half_range: float,
+    steps: int = 401,
+) -> float:
+    """Return the uniform cell dilation that best places this candidate's lines.
+
+    Why this exists
+    ---------------
+    A CIF records the cell of the specimen someone else measured. A real
+    specimen is a solid solution, or sits at a different temperature, or carries
+    a residual stress, and its cell differs from the tabulated one by a fraction
+    of a per cent -- which by ``Delta(2 theta) = 2 e tan(theta)`` displaces a
+    back-reflection line by far more than any sensible matching tolerance.
+    Without this step the true phase loses precisely the high-angle lines that
+    would have confirmed it, and an identification of any real alloy against a
+    tabulated cell would fail.
+
+    Why it cannot rescue a wrong candidate
+    --------------------------------------
+    A uniform dilation multiplies every ``d`` spacing by the same factor, so it
+    preserves their *ratios* exactly. The ratios are what indexing tests. A
+    candidate whose relative line positions are wrong stays wrong at every
+    scale, and one strong enough to be rescued by a scale factor is the right
+    structure with the wrong cell size -- which is the case this is for. The
+    refined factor is reported rather than hidden, because a specimen needing
+    half a per cent is telling you about its composition.
+
+    Method
+    ------
+    A one-parameter grid search over the declared range, scoring each scale by
+    the total tolerance-clipped distance from each observed peak to the nearest
+    calculated line. The objective is piecewise linear with many local minima --
+    every near-coincidence is one -- so a gradient method would land in the
+    nearest of them; a grid of a few hundred points over a two per cent range
+    resolves the cell to better than the matching tolerance and is a handful of
+    vectorized operations.
+    """
+
+    reflections = generate_powder_reflections(
+        phase,
+        radiation=radiation,
+        # The lines that matter may sit outside the measured range at scale
+        # one and inside it at another, so the enumeration is widened by the
+        # search range rather than clipped to what is currently visible.
+        two_theta_range_deg=(1.0e-3, 179.999),
+        max_index=max_index,
+    )
+    if not reflections:
+        return 1.0
+    spacings = np.array([item.d_spacing_angstrom for item in reflections], dtype=float)
+    wavelength = float(radiation.wavelength_angstrom)
+    scales = np.linspace(1.0 - half_range, 1.0 + half_range, int(steps))
+
+    # sin(theta) = lambda / (2 s d). Values above one are reflections the scaled
+    # cell pushes past back-reflection; they are excluded by being sent to an
+    # angle no observed peak can be near rather than by reshaping the array.
+    sine = wavelength / (2.0 * scales[:, None] * spacings[None, :])
+    angles = np.where(
+        sine <= 1.0, 2.0 * np.degrees(np.arcsin(np.clip(sine, 0.0, 1.0))), 1.0e6
+    )
+    distance = np.abs(observed_deg[None, :, None] - angles[:, None, :])
+    cost = np.minimum(distance.min(axis=2), float(tolerance_deg)).sum(axis=1)
+    return float(scales[int(np.argmin(cost))])
+
+
 def _bray_curtis_similarity(observed: np.ndarray, calculated: np.ndarray) -> float:
     """Return ``1 - `` the Bray-Curtis dissimilarity of two intensity vectors.
 
@@ -659,8 +748,21 @@ def _score_candidate(
     weights: Mapping[str, float],
     total_measured_intensity: float,
     strongest_measured_intensity: float,
+    cell_scale_range: float,
 ) -> PhaseCandidateScore:
     """Index one candidate against the peak table and score it on the four criteria."""
+
+    cell_scale = 1.0
+    if cell_scale_range > 0.0:
+        cell_scale = _refine_cell_scale(
+            phase=phase,
+            observed_deg=table.two_theta_deg,
+            radiation=radiation,
+            tolerance_deg=tolerance_deg,
+            max_index=max_index,
+            half_range=cell_scale_range,
+        )
+        phase = _scaled_phase(phase, cell_scale)
 
     try:
         indexing = index_peaks(
@@ -685,6 +787,7 @@ def _score_candidate(
             rejection=str(error),
             weights=weights,
             strong_line_threshold=strong_line_threshold,
+            cell_scale=cell_scale,
         )
 
     explained = sum(item.peak.integrated_intensity for item in indexing.reflections)
@@ -772,6 +875,7 @@ def _score_candidate(
         strongest_unobserved_relative_intensity=strongest_unobserved,
         strong_line_threshold=float(strong_line_threshold),
         weights=weights,
+        cell_scale=cell_scale,
     )
 
 
@@ -785,6 +889,7 @@ def identify_phase(
     max_index: int = 6,
     minimum_relative_intensity: float = 0.001,
     strong_line_threshold: float = 0.05,
+    cell_scale_range: float = 0.02,
     weights: Mapping[str, float] | None = None,
     minimum_score: float = 0.55,
     decisive_margin: float = 0.05,
@@ -864,6 +969,17 @@ def identify_phase(
         Relative intensity above which a predicted line counts towards
         ``completeness``. The default of 0.05 asks only about lines an operator
         would expect to see on the plot.
+    cell_scale_range
+        Half-width of the uniform cell dilation searched for each candidate
+        before indexing, as a fraction. A tabulated cell and a real specimen of
+        different composition, temperature or residual stress differ by a
+        fraction of a per cent, and by ``Delta(2 theta) = 2 e tan(theta)`` that
+        displaces a back-reflection line by far more than any sensible
+        tolerance -- so without this the true phase loses exactly the
+        high-angle lines that would have confirmed it. A uniform dilation
+        preserves every ratio of ``d`` spacings, which is what indexing tests,
+        so it cannot make a wrong structure fit; the refined factor is reported
+        per candidate. Set it to zero to match the CIF cells exactly.
     weights
         Criterion weighting, overriding :data:`DEFAULT_CRITERION_WEIGHTS`.
         Missing criteria default to zero weight. Lower
@@ -915,6 +1031,8 @@ def identify_phase(
         raise ValueError("identify_phase requires a finite, positive tolerance_deg.")
     if not 0.0 < float(strong_line_threshold) <= 1.0:
         raise ValueError("strong_line_threshold must lie in (0, 1].")
+    if not 0.0 <= float(cell_scale_range) < 1.0:
+        raise ValueError("cell_scale_range must lie in [0, 1).")
     spec = radiation if radiation is not None else table.radiation
     if spec is None:
         raise ValueError(
@@ -943,6 +1061,7 @@ def identify_phase(
             weights=resolved_weights,
             total_measured_intensity=total_intensity,
             strongest_measured_intensity=strongest_intensity,
+            cell_scale_range=float(cell_scale_range),
         )
         for phase_name, phase in pairs
     )
@@ -958,6 +1077,7 @@ def identify_phase(
             "max_index": float(max_index),
             "minimum_relative_intensity": float(minimum_relative_intensity),
             "strong_line_threshold": float(strong_line_threshold),
+            "cell_scale_range": float(cell_scale_range),
             "source_table": table.name,
             "radiation": spec.name,
         },
@@ -978,6 +1098,7 @@ def identify_phase_from_pattern(
     max_index: int = 6,
     minimum_relative_intensity: float = 0.001,
     strong_line_threshold: float = 0.05,
+    cell_scale_range: float = 0.02,
     weights: Mapping[str, float] | None = None,
     minimum_score: float = 0.55,
     decisive_margin: float = 0.05,
@@ -1008,8 +1129,8 @@ def identify_phase_from_pattern(
     measured
         The measured diffractogram.
     candidates, radiation, sources, tolerance_deg, max_index,
-    minimum_relative_intensity, strong_line_threshold, weights, minimum_score,
-    decisive_margin, name
+    minimum_relative_intensity, strong_line_threshold, cell_scale_range,
+    weights, minimum_score, decisive_margin, name
         As for :func:`identify_phase`.
     prominence_sigma
         Detection threshold in units of the local noise. Lower it to admit weak
@@ -1066,6 +1187,7 @@ def identify_phase_from_pattern(
         max_index=max_index,
         minimum_relative_intensity=minimum_relative_intensity,
         strong_line_threshold=strong_line_threshold,
+        cell_scale_range=cell_scale_range,
         weights=weights,
         minimum_score=minimum_score,
         decisive_margin=decisive_margin,
