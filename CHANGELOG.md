@@ -11,6 +11,51 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+**Ghost correction, and the Friedel symmetry that makes it necessary.** A pole figure cannot
+distinguish a plane normal from its opposite, so it determines only the even-degree half of an
+ODF -- the classical ghost problem, which PyTex documented and did not address. It now does:
+`correct_ghosts` recovers an odd part from positivity and reports exactly what that inference cost.
+Along the way the forward operator was found to ignore the antipodal convention its own pole
+figures declare, which made the degeneracy inexact in the code and let an inversion appear to
+determine part of a component no diffraction experiment can see.
+
+**Scientific behavior.** The pole-density forward model now folds opposite normals together
+whenever the pole figure declares itself antipodal. For a crystal symmetry whose pole family is
+already closed under inversion -- every cubic case, and most others in practice -- the change is
+invisible after normalization, because both the response and its random level scale together. For
+a low-symmetry phase whose family is not closed, predicted pole densities change, and the previous
+values were the ones in error.
+
+### Added
+
+- **Ghost correction** (`pytex.texture.ghosts`): `correct_ghosts`, `GhostCorrectionSpec`,
+  `GhostCorrectionReport`. The correction holds the measured even part fixed and adds the smallest
+  odd part that makes the density admissible, by minimizing a smooth convex functional of the
+  inadmissible density -- the negative part everywhere, plus the whole density inside a declared
+  zero range. Both classical methods are available: `"positivity"` and `"zero_range"`.
+- `HarmonicODF.invert_pole_figures(..., ghost_correction=...)` runs the correction as part of an
+  inversion and attaches its report, and `HarmonicODFReconstructionReport.final_odf` is the
+  distribution to quote numbers from -- the corrected one when a correction was applied, so that
+  asking for one actually changes what downstream code reads.
+- `GhostCorrectionReport.describe()` states the assumption, the size of the odd part against the
+  even one, the negative density removed, the change to every derived quantity, the residual
+  violation, and the largest change to the predicted pole densities -- which must stay at the
+  quadrature-error level, because a correction that moved the fit would be spending data agreement
+  it is not entitled to spend.
+- `antipodal` on `random_pole_density`, `ODF.evaluate_pole_density`, and
+  `HarmonicODF.evaluate_pole_density` (the last defaulting to `True`, since it normalizes
+  internally and therefore owns the convention).
+- `tests/unit/test_ghost_correction.py`: 17 tests, including the direct check that an odd-degree
+  basis function is invisible to a Friedel-symmetric operator, and a known-answer case where the
+  correction halves the distance to the true distribution.
+
+### Fixed
+
+- The pole-density forward model ignored `PoleFigure.antipodal`. Friedel's law was stated in the
+  documentation and in the choice of `even_degrees_only`, but not in the operator, so for a phase
+  whose pole family is not closed under inversion the model predicted a dependence on the sign of a
+  normal that no diffraction measurement carries.
+
 **Precise lattice-parameter determination.** PyTex could refine a structure against a scan; it
 could not determine a *cell* to the precision that strain and thermal-expansion work needs, and the
 method most people reach for -- computing a lattice parameter from each reflection and averaging --

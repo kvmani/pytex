@@ -8,6 +8,12 @@ from pytex.texture.components import (
     fit_odf_components,
 )
 from pytex.texture.fibres import NAMED_BCC_FIBRES, Fibre, fibre_axis_alignment_quaternion
+from pytex.texture.ghosts import (
+    GHOST_CORRECTION_METHODS,
+    GhostCorrectionReport,
+    GhostCorrectionSpec,
+    correct_ghosts,
+)
 from pytex.texture.harmonics import HarmonicBasisTerm, HarmonicODF, HarmonicODFReconstructionReport
 from pytex.texture.kearns import (
     KEARNS_ISOTROPIC_VALUE,
@@ -55,6 +61,7 @@ from pytex.texture.reconstruction import (
 
 __all__ = [
     "DEFAULT_RESAMPLING_HALFWIDTH_DEG",
+    "GHOST_CORRECTION_METHODS",
     "KEARNS_ISOTROPIC_VALUE",
     "NAMED_BCC_FIBRES",
     "ODF",
@@ -67,6 +74,8 @@ __all__ = [
     "DiffractogramReflection",
     "Fibre",
     "GaussianSO3Kernel",
+    "GhostCorrectionReport",
+    "GhostCorrectionSpec",
     "HarmonicBasisTerm",
     "HarmonicODF",
     "HarmonicODFReconstructionReport",
@@ -89,6 +98,7 @@ __all__ = [
     "basal_tilt_angle_deg",
     "basal_tilt_profile",
     "component_volume_fractions",
+    "correct_ghosts",
     "defocus_from_random_standard",
     "fibre_axis_alignment_quaternion",
     "fit_odf_components",

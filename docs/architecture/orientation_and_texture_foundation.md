@@ -66,8 +66,9 @@ the entire content of the result. Hence `PoleFigureDifference`.
   does not transfer a curve between reflections or extrapolate beyond the measured tilt interval
 - the resampling kernel is a fixed von Mises-Fisher shape; a kernel library on
   S2 matching the existing SO(3) one is not yet implemented
-- ghost correction and zero-range methods are still absent, so the odd part of
-  a reconstructed ODF remains unconstrained
+- ghost correction is implemented (`pytex.texture.correct_ghosts`, positivity and zero-range),
+  and the odd part it supplies is an inference from positivity rather than a measurement; the
+  correction reports its own size and cost, and it is not applied unless asked for
 
 ## Why This Still Moves The Project Forward
 

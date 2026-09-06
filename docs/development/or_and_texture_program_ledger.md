@@ -56,7 +56,7 @@ computes something narrower than what it appears to report:
 | Step | Content | State |
 | --- | --- | --- |
 | **M5a** | T3: axial specimen symmetry as a declarable point group, through to the pole-figure and ODF surfaces | Not started |
-| **M5b** | T2: ghost correction in `invert_pole_figures`, with the correction's own cost reported | Not started |
+| **M5b** | T2: ghost correction in `invert_pole_figures`, with the correction's own cost reported | **Complete** (2026-09-06) - `pytex.texture.correct_ghosts`; see the texture-engine goal in `active_task_progress.md` |
 
 ### Next concrete step
 

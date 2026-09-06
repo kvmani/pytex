@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from math import lgamma
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -19,6 +20,9 @@ from pytex.texture.models import (
     _pole_density_response_matrix,
     random_pole_density,
 )
+
+if TYPE_CHECKING:
+    from pytex.texture.ghosts import GhostCorrectionReport, GhostCorrectionSpec
 
 
 def _identity_operators() -> np.ndarray:
@@ -587,6 +591,7 @@ class HarmonicODF:
         sample_directions: ArrayLike,
         *,
         include_symmetry_family: bool = True,
+        antipodal: bool = True,
     ) -> np.ndarray:
         """Pole density at chosen specimen directions.
 
@@ -598,6 +603,12 @@ class HarmonicODF:
             ``(n, 3)`` specimen directions.
         include_symmetry_family : bool
             Include the whole ``{hkl}`` family (default), as a measurement does.
+        antipodal : bool
+            Identify opposite normals (default), which is Friedel's law and what
+            a diffraction pole figure measures. Switching it off models a
+            hypothetical experiment that can tell ``h`` from ``-h``, in which
+            the odd-degree part of the ODF becomes visible and the ghost problem
+            does not arise.
 
         Returns
         -------
@@ -624,9 +635,12 @@ class HarmonicODF:
             sample_directions=sample_directions,
             kernel=self.pole_kernel,
             include_symmetry_family=include_symmetry_family,
+            antipodal=antipodal,
         )
         weighted_density = self.quadrature_weights * self.quadrature_densities
-        density = (response @ weighted_density) / random_pole_density(self.pole_kernel)
+        density = (response @ weighted_density) / random_pole_density(
+            self.pole_kernel, antipodal=antipodal
+        )
         density = np.ascontiguousarray(density, dtype=np.float64)
         density.setflags(write=False)
         return density
@@ -663,6 +677,7 @@ class HarmonicODF:
                 pole,
                 sample_directions,
                 include_symmetry_family=include_symmetry_family,
+                antipodal=antipodal,
             ),
             specimen_frame=self.specimen_frame,
             antipodal=antipodal,
@@ -689,6 +704,7 @@ class HarmonicODF:
         big_phi_step_deg: float = 30.0,
         phi2_step_deg: float = 30.0,
         basis_tolerance: float = 1e-10,
+        ghost_correction: GhostCorrectionSpec | bool | None = None,
         provenance: ProvenanceRecord | None = None,
     ) -> HarmonicODFReconstructionReport:
         """Estimate a harmonic ODF from measured pole figures.
@@ -707,8 +723,11 @@ class HarmonicODF:
         pole figures determine only the even-order coefficients under Friedel's
         law, so the odd part is unconstrained — the classical ghost problem — and
         truncation at ``degree_bandlimit`` bounds the angular detail recoverable.
-        Ghost correction and zero-range methods are not applied; treat the result
-        as a band-limited regularized estimate.
+        The truncation is intrinsic. The ghost problem is not left standing: pass
+        ``ghost_correction`` to recover an odd part from positivity, and read
+        :attr:`HarmonicODFReconstructionReport.ghost_correction` for what that
+        inference cost. Without it the result is an even-only, band-limited,
+        regularized estimate whose odd part was silently set to zero.
 
         Parameters
         ----------
@@ -731,12 +750,25 @@ class HarmonicODF:
             Smoothing kernel for the response model.
         phi1_step_deg, big_phi_step_deg, phi2_step_deg : float
             Quadrature grid spacing in Bunge Euler space.
+        ghost_correction : GhostCorrectionSpec or bool, optional
+            Recover the odd part from positivity after the inversion. ``True``
+            applies the default :class:`~pytex.texture.GhostCorrectionSpec`;
+            a spec applies that spec; ``None`` or ``False`` leaves the odd part
+            at zero. The corrected distribution is reached through
+            :attr:`~HarmonicODFReconstructionReport.final_odf`, never by
+            replacing :attr:`~HarmonicODFReconstructionReport.odf`, so the
+            residuals and density diagnostics in the report always describe the
+            solution the data alone produced.
 
         Returns
         -------
         HarmonicODFReconstructionReport
             The estimated ODF with the residual and conditioning information
             needed to judge the fit.
+
+        See Also
+        --------
+        pytex.texture.correct_ghosts
         """
 
         if not pole_figures:
@@ -810,15 +842,21 @@ class HarmonicODF:
         # including mean_density, texture_index and entropy, would carry that
         # factor. The pole-figure round trip would still close, which is why this
         # scale error is invisible unless the ODF itself is inspected.
-        kernel_mean = random_pole_density(inversion_kernel)
         blocks = []
         for pole_figure in pole_figures:
+            # Friedel folding is a property of the measurement, so it is read
+            # off each figure rather than chosen here; the normalization must
+            # follow it, or the fitted densities carry a factor of two.
+            kernel_mean = random_pole_density(
+                inversion_kernel, antipodal=pole_figure.antipodal
+            )
             response = _pole_density_response_matrix(
                 quadrature_orientations,
                 pole=pole_figure.pole,
                 sample_directions=pole_figure.sample_directions,
                 kernel=inversion_kernel,
                 include_symmetry_family=include_symmetry_family,
+                antipodal=pole_figure.antipodal,
             )
             blocks.append(
                 (response @ (quadrature_weights[:, None] * quadrature_basis_values)) / kernel_mean
@@ -870,6 +908,19 @@ class HarmonicODF:
             if singular_values.size > 0 and singular_values[-1] > 0.0
             else float("inf")
         )
+        ghost_report: GhostCorrectionReport | None = None
+        if ghost_correction:
+            # Imported here rather than at module scope: the ghost module builds
+            # on this one, and a top-level import would close the cycle.
+            from pytex.texture.ghosts import correct_ghosts
+
+            ghost_report = correct_ghosts(
+                harmonic_odf,
+                spec=None if ghost_correction is True else ghost_correction,
+                pole_figures=pole_figures,
+                include_symmetry_family=include_symmetry_family,
+                provenance=provenance,
+            )
         return HarmonicODFReconstructionReport(
             odf=harmonic_odf,
             residual_norm=residual_norm,
@@ -896,6 +947,7 @@ class HarmonicODF:
             coefficient_l2_norm=float(np.linalg.norm(coefficients)),
             coefficient_max_abs=float(np.max(np.abs(coefficients))),
             negative_density_fraction=float(np.mean(harmonic_odf.quadrature_densities < 0.0)),
+            ghost_correction=ghost_report,
             provenance=provenance,
         )
 
@@ -932,6 +984,11 @@ class HarmonicODFReconstructionReport:
         Pole densities the solution implies, for direct comparison.
     mean_density : float
         Should be near 1 for a correctly normalized ODF.
+    ghost_correction : GhostCorrectionReport, optional
+        Present when a ghost correction was requested. Its ``odf`` is the
+        corrected distribution and its ``describe()`` states what the correction
+        assumed and what it cost; every other field of this report continues to
+        describe the uncorrected inversion.
     provenance : ProvenanceRecord, optional
     """
 
@@ -958,6 +1015,7 @@ class HarmonicODFReconstructionReport:
     coefficient_l2_norm: float = 0.0
     coefficient_max_abs: float = 0.0
     negative_density_fraction: float = 0.0
+    ghost_correction: GhostCorrectionReport | None = None
     provenance: ProvenanceRecord | None = None
 
     def __post_init__(self) -> None:
@@ -995,6 +1053,21 @@ class HarmonicODFReconstructionReport:
         if not 0.0 <= self.negative_density_fraction <= 1.0:
             raise ValueError("negative_density_fraction must lie in [0, 1].")
         object.__setattr__(self, "predicted_intensities", predicted)
+
+    @property
+    def final_odf(self) -> HarmonicODF:
+        """The distribution this reconstruction recommends quoting numbers from.
+
+        The ghost-corrected ODF when a correction was applied, and the direct
+        inversion output otherwise. Use this — rather than :attr:`odf` — for any
+        density, texture index, entropy, volume fraction or Kearns parameter, so
+        that requesting a correction actually changes the numbers reported
+        downstream instead of only adding a report nobody reads.
+        """
+
+        if self.ghost_correction is None:
+            return self.odf
+        return self.ghost_correction.odf
 
 
 __all__ = [

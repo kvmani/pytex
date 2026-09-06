@@ -54,7 +54,7 @@ DEFAULT_RESAMPLING_HALFWIDTH_DEG = 5.0
 _KERNEL_MEAN_NODES = 512
 
 
-def random_pole_density(kernel: KernelSpec) -> float:
+def random_pole_density(kernel: KernelSpec, *, antipodal: bool = False) -> float:
     r"""The pole density a *random* texture produces under this kernel.
 
     Purpose
@@ -89,6 +89,14 @@ def random_pole_density(kernel: KernelSpec) -> float:
     ----------
     kernel : KernelSpec
         The kernel the ODF was estimated with.
+    antipodal : bool
+        Match a response that identifies opposite poles. Friedel's law makes a
+        diffraction pole figure blind to the sign of a normal, and a response
+        evaluated at ``arccos|cos|`` therefore has a *different* random level:
+        the kernel's near lobe is counted for both members of every antipodal
+        pair, which asymptotically doubles it. Normalizing a folded response by
+        the unfolded mean is a factor-of-two scale error, so this flag must
+        match the response being normalized.
 
     Returns
     -------
@@ -97,7 +105,8 @@ def random_pole_density(kernel: KernelSpec) -> float:
     """
 
     nodes, weights = np.polynomial.legendre.leggauss(_KERNEL_MEAN_NODES)
-    angles = np.arccos(np.clip(nodes, -1.0, 1.0))
+    cosines = np.abs(nodes) if antipodal else nodes
+    angles = np.arccos(np.clip(cosines, -1.0, 1.0))
     values = np.asarray(kernel.evaluate(angles), dtype=np.float64)
     mean = 0.5 * float(np.sum(values * weights))
     if not np.isfinite(mean) or mean <= 0.0:
@@ -205,7 +214,19 @@ def _pole_density_response_matrix(
     sample_directions: ArrayLike,
     kernel: KernelSpec,
     include_symmetry_family: bool,
+    antipodal: bool = False,
 ) -> np.ndarray:
+    """Kernel response of every support orientation at every specimen direction.
+
+    ``antipodal`` folds opposite normals together, which is Friedel's law: a
+    diffraction pole figure cannot tell ``h`` from ``-h``, so the response must
+    not either. Folding is what makes odd-degree harmonics invisible to the
+    forward model, and leaving it out lets an inversion appear to determine an
+    odd part that no diffraction measurement can carry. It changes the scale of
+    the response, so :func:`random_pole_density` must be called with the same
+    flag when converting to multiples of a random distribution.
+    """
+
     direction_array = normalize_vectors(sample_directions)
     if dictionary.crystal_frame != pole.phase.crystal_frame:
         raise ValueError("PoleFigure inversion dictionary must use the pole phase crystal frame.")
@@ -233,6 +254,8 @@ def _pole_density_response_matrix(
         mapped_families,
         optimize=True,
     )
+    if antipodal:
+        cos_angles = np.abs(cos_angles)
     angles = np.arccos(np.clip(cos_angles, -1.0, 1.0))
     response = kernel.evaluate(angles)
     block = np.mean(response, axis=2)
@@ -1990,6 +2013,7 @@ class ODF:
         sample_directions: ArrayLike,
         *,
         include_symmetry_family: bool = True,
+        antipodal: bool = False,
     ) -> np.ndarray:
         """Pole density at chosen specimen directions, without binning.
 
@@ -2007,6 +2031,15 @@ class ODF:
             ``(n, 3)`` specimen directions.
         include_symmetry_family : bool
             Include the whole ``{hkl}`` family (default).
+        antipodal : bool
+            Identify opposite normals, as Friedel's law does. Off by default,
+            because this method returns the raw kernel response and the caller
+            owns the normalization: switching it on without also passing
+            ``antipodal=True`` to :func:`random_pole_density` is a
+            factor-of-two scale error.
+            :meth:`~pytex.texture.HarmonicODF.evaluate_pole_density`, which
+            normalizes internally and therefore owns the convention itself,
+            folds by default.
 
         Returns
         -------
@@ -2026,6 +2059,7 @@ class ODF:
             sample_directions=sample_directions,
             kernel=self.kernel,
             include_symmetry_family=include_symmetry_family,
+            antipodal=antipodal,
         )
         density = response @ self.normalized_weights
         density = np.ascontiguousarray(density, dtype=np.float64)

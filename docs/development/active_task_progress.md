@@ -6513,3 +6513,73 @@ confirms the MyST syntax and every cross-reference in both new pages.
 **Goal complete.** All six increments landed and pushed. Library, workbench, theory note, notebook
 tutorial, worked examples and tests are in place; ruff, mypy, the unit lane and the 59-test
 Playwright lane are green.
+
+
+---
+
+# Goal: A thorough improvement of the texture engine
+
+**Objective (user, 2026-09-06).** Bring ghost correction into the texture engine; make contour
+levels plottable and changeable; make multi-sample pole-figure comparison possible on a shared
+scale with per-figure sample identification, in the manner of LaboTex; and reach
+publication-quality figures with minimal intervention while still exposing the settings through
+the GUI.
+
+**Plan.** Six increments, each landed on `main` on its own:
+
+| # | Increment | State |
+| --- | --- | --- |
+| 1 | Ghost correction in the harmonic ODF, with the Friedel folding it depends on | **done** |
+| 2 | Contour control: explicit levels, level scales, shared scales, publication defaults | not started |
+| 3 | Multi-sample comparison figures on one scale, with sample identification | not started |
+| 4 | The GUI surface for both, in the texture workspace | not started |
+| 5 | Worked examples and the algorithm page | not started |
+| 6 | Notebook / workflow documentation and the parity matrix | not started |
+
+## Increment 1 - ghost correction (landed)
+
+**What shipped.** `src/pytex/texture/ghosts.py`: `correct_ghosts`, `GhostCorrectionSpec`,
+`GhostCorrectionReport`, wired into `HarmonicODF.invert_pole_figures` through a `ghost_correction`
+argument and reached through `HarmonicODFReconstructionReport.final_odf`. 17 tests in
+`tests/unit/test_ghost_correction.py`. The theory note
+`docs/site/theory/ghost_problem_and_odd_harmonics.md` gains the derivation and the measured
+behaviour; the foundation document's claim that ghost correction is absent is retired.
+
+**The defect found on the way, which mattered more than the feature.** The pole-density forward
+model `_pole_density_response_matrix` ignored `PoleFigure.antipodal`. Friedel's law was in the
+prose and in the `even_degrees_only` default, but not in the operator, so for a phase whose pole
+family is not closed under inversion the model predicted a dependence on the sign of a normal that
+no diffraction experiment carries -- and an odd-degree harmonic produced a *visible* pole-density
+signal, two orders of magnitude larger than it should. Ghost correction on top of that operator
+would have been decorative: the odd part it added would have changed the fit. The operator now
+folds when the figure declares itself antipodal, `random_pole_density` takes the matching flag
+(the folded random level is asymptotically twice the unfolded one, so mismatching them is a
+factor-of-two scale error), and a test checks the invisibility directly.
+
+**Three decisions worth keeping.**
+
+1. *The correction is a convex minimization, not the textbook alternating projection.* The
+   classical Dahms-Bunge iteration converges to the same point but takes thousands of iterations
+   in the shallow directions where the two sets nearly touch; the smooth convex functional reaches
+   it in four. The measured comparison is in the scratch experiment, not committed: POCS at 2667
+   iterations gave a ghost amplitude ratio of 0.134 and a distance-to-truth of 0.0915, the
+   minimizer gives 0.145 and 0.0945 in 4 iterations.
+2. *Minimum norm is enforced explicitly.* Positivity does not determine the odd part; it bounds it.
+   Without the `odd_regularization` term the minimizer stopped at the first admissible point it
+   found -- ratio 0.198, distance 0.137, both worse -- and would have reported an odd part larger
+   than the data force as though the data forced it.
+3. *`report.odf` still means the data alone.* The corrected distribution is `final_odf`. Replacing
+   `odf` would have left the residuals and density diagnostics describing a different function from
+   the one they are attached to.
+
+**Verified.** `ruff`, `mypy` (10 texture modules), and the texture test modules
+(`test_ghost_correction`, `test_harmonic_odf`, `test_texture`, `test_pole_figure_arithmetic`,
+`test_labotex_texture`, `test_xrdml_texture`, `test_texture_kernel_breadth`, `test_app_texture`,
+`test_odf_component_fitting`, `test_texture_components_and_fibres`, `test_app_texture_import`) all
+green.
+
+**Next concrete step.** Increment 2. `build_pole_figure_spec` takes `levels: int` and passes it to
+matplotlib, which chooses the values; nothing can state the levels, the scale they run on, or a
+range shared with another figure. Start with a `ContourSpec` in `pytex.plotting` carrying explicit
+levels, a level scale (linear / geometric / explicit), and an optional shared range, then have the
+pole-figure builder take it.
