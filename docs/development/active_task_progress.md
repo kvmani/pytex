@@ -7030,3 +7030,84 @@ than mechanical ones; they belong with whoever owns the terminology registry, no
 pass. An earlier draft of this note claimed the Kearns and Texture rails were the tallest in the
 application; that was asserted rather than measured and is wrong — the tallest are the crystal
 viewer's and ECCI's, and both are long because they genuinely take twenty-odd parameters.
+
+
+## Goal - XRD phase identification from several candidate CIFs (in progress, 2026-09-06)
+
+**Objective.** An experimental powder scan is loaded; its peaks are detected and fitted; the user
+offers several candidate phases (built-in, or CIF files they upload); the application indexes the
+scan against every candidate, scores each one on the same criteria, ranks them, and says which is
+the best match and by how much. Exposed as a sub-tab of the XRD workspace, and the workspace's
+existing view dropdown becomes sub-tabs at the same time.
+
+**What already exists and is reused, not rewritten.** `xrd_peaks.detect_and_fit_peaks` does the
+detection and profile fitting; `xrd_indexing.index_peaks` does the *single*-candidate assignment by
+the Hungarian algorithm and already reports de Wolff `M_N` and Smith-Snyder `F_N`. The missing
+piece is the comparison across candidates, which is a different question from indexing one of
+them: indexing asks how well one cell accounts for the lines, identification asks which of several
+accounts for them best, and it must be told when the answer is *none of them*.
+
+**Plan.**
+
+1. `pytex.diffraction.xrd_phase_identification` - `PhaseCandidateScore`, `PhaseIdentification`,
+   `identify_phase`. Scores every candidate on four independent criteria and combines them.
+2. Theory note and workflow page; a worked example with an independently known answer.
+3. `xrd.phase_identification` service operation, taking several CIF uploads.
+4. The XRD panel: sub-tabs in place of the view dropdown, plus the new sub-tab.
+
+**Progress.**
+
+- [x] 1 library module + unit tests
+- [ ] 2 docs
+- [ ] 3 service
+- [ ] 4 GUI sub-tabs
+
+### Increment 1 - the library surface (landed)
+
+`src/pytex/diffraction/xrd_phase_identification.py`: `PhaseCandidateScore`, `PhaseIdentification`,
+`identify_phase` and `identify_phase_from_pattern`, exported from `pytex.diffraction`.
+
+**The design decision worth recording.** Identification is *not* indexing repeated. `M_N` and `F_N`
+reward a cell for putting lines where lines were seen; they are blind to the two facts that
+actually separate phases - a strong measured peak the candidate cannot explain, and a strong line
+the candidate insists on that the scan does not show. So each candidate is scored on four bounded,
+independent criteria, all reported individually because *which one a candidate fails* is diagnostic
+in a way its total is not:
+
+- `explained_intensity_fraction` - measured integrated intensity carried by indexed peaks.
+  Intensity-weighted, not counted: a strong unindexed peak is decisive, a weak one is a trace.
+- `completeness` - share of the candidate's own strong lines, inside the measured span, actually
+  observed. This is what carries the fcc/bcc distinction, since a centring is a claim about
+  *absent* lines. Judged strictly inside the measured range, so a candidate is never penalised for
+  the operator's scan limits.
+- `position_score` - `1 - <|d(2theta)|>/tolerance`, clipped: how far *inside* the window the lines
+  landed, not merely whether they landed inside it.
+- `intensity_agreement` - one minus the Bray-Curtis dissimilarity of the observed and calculated
+  relative intensities, so it is scale-free and bounded. Deliberately the lowest-weighted of the
+  four: preferred orientation, microabsorption and a coarse powder all move measured intensities by
+  factors without moving a single position (Dollase 1986).
+
+The weights are a declared, overridable parameter rather than a hidden constant, because they
+encode a judgement about evidence rather than a law of diffraction.
+
+**The two qualifications on the winner.** A ranking always has a winner, which is not the same as
+having an answer, so `is_conclusive` (best score reaches `minimum_score`) and `is_decisive` (lead
+over the runner-up reaches `decisive_margin`) are reported separately from the ranking and
+`describe()` says in words when neither holds. An undefined criterion is renormalised away rather
+than scored zero, since "not measurable here" and "measured and bad" are different findings.
+
+**Robustness that the multi-candidate case specifically needs.** A candidate that cannot be indexed
+at all is recorded with a stated reason and a zero score, never raised - one impossible CIF among
+five must not abort the comparison of the other four. Duplicate candidate names are numbered rather
+than merged, because two uploaded CIFs legitimately share a formula. The ranking is independent of
+the order candidates were supplied in, with ties broken deterministically.
+
+**Verification.** 33 unit tests in `tests/unit/test_xrd_phase_identification.py`, green; `ruff` and
+`mypy` clean; `test_xrd_indexing`, the four documentation-policy suites and the class-model atlas
+green. The atlas needed regenerating: `PhaseCandidateScore` and `PhaseIdentification` are the 310th
+and 311th public classes, so the three affected SVGs and the page's stated counts moved with them
+(309/292 to 311/294), exactly as the repository is designed to force.
+
+**Noticed in passing, out of scope, not fixed here.** `PowderPattern`'s class docstring documents
+its arrays as `two_theta_deg` and `intensity`; the fields are actually `two_theta_grid_deg` and
+`intensity_grid`.
