@@ -7003,8 +7003,24 @@ now presents its whole form in 6 lines**, and **56 of 57 operations do so in 12 
 exception is `crystal.render` at 13, which has 20 parameters. Read the button, fill the form, press
 it: that is now the normal case rather than the lucky one.
 
+### Increment 5 - the atlas the new class made stale (landed, 4f2d53f)
+
+The full unit lane caught the one thing the targeted lanes could not: `pytex.core.symbols.Symbol`
+is the 309th public class, and the two committed class-model SVGs and the atlas page's stated
+counts were a class behind. This is the repository working as designed - the figures are compared
+with their generator byte-for-byte and the prose counts are read back out of the page, so a new
+public class cannot land without the drawing that describes the library moving with it.
+Regenerated; 309 classes, 292 dataclasses, 6 inheritance relations, the last unchanged and the one
+the page's argument actually rests on.
+
 **Status: the goal is met.** The rule is declared on the parameter, applied by one renderer,
 checked by eleven tests, and written into `AGENTS.md` as a cardinal rule.
+
+**Verification of record.** `ruff` and `mypy` clean; `sphinx -b html docs/site` exit 0 with no
+warnings; the full Playwright lane 62 passed, including two new specs that *measure* the row rather
+than assert a class; the manifest, symbol, notation, documentation-policy and repo-integrity
+suites green; the nine service suites for every module touched green; the class-model atlas green
+after regeneration; and the full unit lane green on the final tree.
 
 **What remains open, and is outside this goal.** Some controls are still labelled with words that
 no registered symbol shortens — "Naming tolerance", "Largest index in the statement", the ECCI
