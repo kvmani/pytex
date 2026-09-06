@@ -432,6 +432,74 @@ screen. Parameters that have defaults may be hidden, because they are answered a
 A client that ignores all of this renders the form that existed before — one field per line, every
 control at the rail's width. None of it changes a name, a default, or a validation.
 
+## Decision 14 — The Documentation Ships Inside The Distribution
+
+The workbench serves its own documentation from ``/docs/``, and
+`pytex.app.server.docs_root` looks for the built HTML in four places, in order:
+
+1. `PYTEX_DOCS_ROOT`, if the operator sets it;
+2. **bundled in the package**, at `pytex/app/static/docs`;
+3. `docs/_build/html` in a repository checkout;
+4. `docs/site/_build/html` in a repository checkout.
+
+For a while only 3 and 4 could ever match, and that is a trap rather than a
+limitation, because **it works perfectly on the machine of whoever is asking**.
+A developer runs Sphinx in the checkout, `/docs/` starts working, and nothing
+says that the feature is resting on a directory which is in `.gitignore` — so it
+is in no clone, no sdist and no wheel — and that the target deployment is an
+office intranet host, frequently air-gapped, with no checkout, no network, and
+Sphinx not installed because it is an optional `docs` extra. The failure at the
+other end is a 404 advising the reader to run Sphinx, on a machine that cannot.
+
+So the built HTML is now part of the distribution. `scripts/build_docs_bundle.py`
+renders `docs/site` into `pytex/app/static/docs`, and
+`[tool.setuptools.package-data]` ships it. Candidate 2 sits *above* the checkout
+paths deliberately: an installed copy must prefer the docs it shipped with over
+whatever stale build happens to be lying in a sibling directory.
+
+**The bundle is generated and therefore not committed.** It is ~50 MB per
+rebuild, and the repository's cardinal rule tracks a generated file only when
+documentation, a test, a manifest or a pinned baseline names it. Nothing does —
+the *packaging* consumes it, on the machine that builds the wheel — so it is
+git-ignored and produced as a release step. `tests/unit/test_release_metadata.py`
+pins all three halves of the arrangement: that the packaging declares the glob,
+that `docs_root` prefers the bundled copy, and that the bundle is not tracked.
+A dropped glob would otherwise restore the original failure in silence, with
+green tests and a developer's browser still showing the docs.
+
+**Offline maths.** `docs/site/conf.py` vendors the MathJax `tex-chtml-full`
+bundle under `_static/mathjax` and points `mathjax_path` at it, and those files
+*are* tracked. The bundle script verifies that the rendered output actually
+contains MathJax and that no page references a CDN, because a CDN-linked build
+looks perfect on the machine that made it and shows raw TeX on the one that
+matters.
+
+### Releasing to an air-gapped host
+
+On a machine with a network:
+
+```bash
+pip install -e ".[docs]"
+python scripts/build_docs_bundle.py     # renders the site into the package
+python -m build --wheel                 # the wheel now carries it
+```
+
+Carry the single `.whl` across, then on the target host:
+
+```bash
+pip install --no-index pytex-<version>-py3-none-any.whl
+python -m pytex.app serve --host 0.0.0.0 --port 8765
+```
+
+`/docs/` then resolves to the bundled copy, verified by unpacking the wheel onto
+a path with no checkout anywhere near it and confirming `docs_root()` lands
+inside the installed package.
+
+**If the wheel size is a problem**, the bundle is separable: build the site
+normally, copy the HTML tree to the host, and set `PYTEX_DOCS_ROOT` to it. That
+is candidate 1 and outranks everything else. The trade is one artifact to
+install against two to keep in step, which is why the bundle is the default.
+
 ## Frontend Architecture
 
 No framework, but not ad hoc either. The frontend is four layers:

@@ -157,6 +157,30 @@ python -m pytex core demo
 For full install, notebook, Sphinx, and PDF build guidance on Windows, macOS, and Linux, see
 `docs/site/tutorials/installation_and_build.md`.
 
+### Deploying to an intranet or air-gapped host
+
+The workbench serves its own documentation at `/docs/`, and that HTML has to travel *inside* the
+distribution: the Sphinx build directories are git-ignored, so they reach no clone and no wheel, and
+the target host generally has no checkout, no network, and no Sphinx. Build the bundle before the
+wheel, on a machine that has all three:
+
+```bash
+python -m pip install -e '.[docs]'
+python scripts/build_docs_bundle.py
+python -m build --wheel
+```
+
+Then carry the single `.whl` across and install it offline:
+
+```bash
+python -m pip install --no-index pytex-<version>-py3-none-any.whl
+python -m pytex.app serve --host 0.0.0.0 --port 8765
+```
+
+MathJax is vendored, so every derivation renders with no network. If the wheel size matters, copy
+the built HTML to the host separately and point `PYTEX_DOCS_ROOT` at it instead. Decision 14 of
+`docs/architecture/application_platform.md` records why the bundle is the default.
+
 ## Repository Layout
 
 ```text

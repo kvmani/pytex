@@ -99,3 +99,13 @@ feedback.json
 # test, a manifest, or a pinned baseline refers to it by name. Add the entry here
 # before or in the commit that first produces the artifact - history is permanent,
 # so a stray committed once is carried by every clone forever.
+
+# The in-app documentation bundle: Sphinx output rendered into the package by
+# `scripts/build_docs_bundle.py` immediately before a wheel is built. It is
+# regenerable and large, so it is packaged rather than committed.
+src/pytex/app/static/docs/
+docs/_build/bundle-doctrees/
+# myst-nb writes its executed notebooks beside the Sphinx output directory, so
+# bundling into the package drops this alongside the docs. The bundle script
+# removes it, and it is ignored so an interrupted build cannot leave it staged.
+src/pytex/app/static/jupyter_execute/

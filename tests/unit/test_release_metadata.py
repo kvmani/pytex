@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -277,3 +278,77 @@ def test_the_phase_fixture_corpus_reports_its_own_availability() -> None:
     assert phase_fixtures_available() is phase_fixture_catalog_path().is_file()
     # The tests run from a source checkout, so the corpus must be present here.
     assert phase_fixtures_available()
+
+
+# ---------------------------------------------------------------------------
+# The in-app documentation bundle
+# ---------------------------------------------------------------------------
+
+
+def test_the_documentation_bundle_is_declared_as_package_data() -> None:
+    """The workbench's ``/docs/`` must survive being installed.
+
+    This is the executable form of a defect found in deployment rehearsal. The
+    workbench serves documentation from ``/docs/``, and it worked perfectly in
+    development for a reason that guaranteed it would fail everywhere else:
+    :func:`pytex.app.server.docs_root` was resolving to ``docs/_build/html``, a
+    Sphinx build that exists only in a checkout where somebody has run Sphinx.
+    Both build directories are git-ignored, so neither travels in a wheel, an
+    sdist, or a clone, and the target deployment is an air-gapped intranet host
+    with none of the three -- and no Sphinx to build them with.
+
+    The fix is to render the site into the package before the distribution is
+    built (``scripts/build_docs_bundle.py``) and to ship it. That only works
+    while the packaging *declares* it, and a dropped glob would restore the
+    original failure silently: the tests would stay green, the developer's
+    browser would keep showing the docs, and the office would get a 404.
+    """
+
+    payload = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))
+    globs = payload["tool"]["setuptools"]["package-data"]["pytex.app"]
+    assert any(glob.startswith("static/docs") for glob in globs), (
+        "pyproject.toml must ship the built documentation as package data; "
+        f"pytex.app declares only {globs}."
+    )
+
+
+def test_the_bundled_documentation_outranks_a_checkout_build() -> None:
+    """An installed copy must prefer its own docs to whatever is lying around.
+
+    ``docs_root`` checks the bundled location *before* the two repository build
+    directories. The order matters on a developer machine that has both: without
+    it, an installed PyTex would serve whichever stale build happened to sit in
+    a sibling checkout, and the bundle it actually shipped would never be read.
+    """
+
+    source = (REPO_ROOT / "src" / "pytex" / "app" / "server.py").read_text(encoding="utf-8")
+    body = source[source.index("def docs_root(") :]
+    bundled = body.index('STATIC_ROOT / "docs"')
+    checkout = body.index('"docs/_build/html"')
+    assert bundled < checkout, (
+        "docs_root() must check the bundled package directory before any "
+        "repository build directory."
+    )
+
+
+def test_the_documentation_bundle_is_not_committed() -> None:
+    """It is generated, so the repository must not carry it.
+
+    The cardinal rule: nothing a command here can regenerate is tracked unless
+    documentation, a test, a manifest or a pinned baseline names it by name.
+    Nothing names this -- the *packaging* consumes it, on the machine that
+    builds the wheel -- and it is 50 MB per rebuild, which is exactly the kind
+    of artifact that must never reach history.
+    """
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "src/pytex/app/static/docs"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert tracked.stdout.strip() == "", (
+        "The generated documentation bundle must not be committed; found "
+        f"{tracked.stdout.splitlines()[:3]}"
+    )

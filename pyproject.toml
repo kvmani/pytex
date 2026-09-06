@@ -142,7 +142,19 @@ where = ["src"]
 "pytex" = ["py.typed"]
 # The frontend is the application. It must be inside the wheel, or an installed
 # PyTex serves a 500 from an empty static root.
-"pytex.app" = ["static/*.html", "static/*.css", "static/js/*.js", "static/js/**/*.js"]
+"pytex.app" = [
+  "static/*.html",
+  "static/*.css",
+  "static/js/*.js",
+  "static/js/**/*.js",
+  # The built documentation, rendered by `python scripts/build_docs_bundle.py`
+  # before the distribution is built. Without it an installed PyTex serves a
+  # 404 from /docs/, because the only other places `docs_root()` looks are
+  # build directories that exist in a checkout and travel nowhere. The office
+  # deployment is an air-gapped intranet host with no checkout, no network and
+  # no Sphinx, so the HTML has to be inside the wheel.
+  "static/docs/**/*",
+]
 "pytex.diffraction._data" = ["*.json"]
 "pytex.plotting.themes" = ["*.yaml"]
 
