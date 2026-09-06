@@ -6997,9 +6997,20 @@ document already places outside the scientific contract, and a slider is a contr
 take the full width. Every scientific input in the application comes from the manifest and is
 therefore covered.
 
+**What the user asked for, measured.** Counting only what a panel shows when it opens — advanced
+controls and collapsed groups excluded, since those are answered already — the **median operation
+now presents its whole form in 6 lines**, and **56 of 57 operations do so in 12 or fewer**. The one
+exception is `crystal.render` at 13, which has 20 parameters. Read the button, fill the form, press
+it: that is now the normal case rather than the lucky one.
+
 **Status: the goal is met.** The rule is declared on the parameter, applied by one renderer,
-checked by eleven tests, and written into `AGENTS.md` as a cardinal rule. What remains open, and is
-outside it: the Kearns and Texture panels have long word-labelled controls that no registered
-symbol shortens, so their rails are still the tallest in the application; shortening those means
-either registering symbols for quantities the registry does not yet name, or shortening the labels
-themselves, and both are editorial decisions rather than mechanical ones.
+checked by eleven tests, and written into `AGENTS.md` as a cardinal rule.
+
+**What remains open, and is outside this goal.** Some controls are still labelled with words that
+no registered symbol shortens — "Naming tolerance", "Largest index in the statement", the ECCI
+camera pair. Shortening them means either registering symbols for quantities the registry does not
+yet name, or rewriting the labels, and both are editorial decisions about scientific naming rather
+than mechanical ones; they belong with whoever owns the terminology registry, not with a layout
+pass. An earlier draft of this note claimed the Kearns and Texture rails were the tallest in the
+application; that was asserted rather than measured and is wrong — the tallest are the crystal
+viewer's and ECCI's, and both are long because they genuinely take twenty-odd parameters.
