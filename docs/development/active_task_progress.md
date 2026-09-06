@@ -6534,7 +6534,7 @@ the GUI.
 | 3 | Multi-sample comparison figures on one scale, with sample identification | **done** |
 | 4 | The GUI surface for both, in the texture workspace | **done** |
 | 5 | Worked examples and the algorithm page | **done** |
-| 6 | Notebook / workflow documentation and the parity matrix | not started |
+| 6 | Notebook / workflow documentation and the parity matrix | **done** |
 
 ## Increment 1 - ghost correction (landed)
 
@@ -6694,3 +6694,34 @@ not recorded output.
 notebooks/` has a PF-to-ODF notebook that describes the ghost problem as unaddressed;
 `docs/testing/mtex_parity_matrix.md` needs a row for ghost correction, and the roadmap documents
 that still list it as the biggest credibility gap need their claims retired.
+
+## Increment 6 - retiring the claims that are no longer true (landed)
+
+Stale foundational claims are defects in this repository, and shipping a capability leaves a trail
+of documents that still say it is absent. Retired in this increment:
+
+- **Notebook 06** (`06_texture_odf_and_pole_figure_inversion.ipynb`) said "No ghost correction" in
+  its section 10 and, in section 6, that supplying the odd part from a prior is what every serious
+  treatment does - without saying that PyTex now does it. Both are corrected, in prose only: no
+  code cell was added, because the notebook is cubic nickel and the docs build executes it, so a
+  demonstration there would cost build time to show a correction that has nothing to correct below
+  degree 9. The executable demonstration is in the worked examples instead, and the notebook points
+  at it.
+- **`docs/testing/mtex_parity_matrix.md`** gains a ghost-correction row. It records what was
+  implemented and validated and states explicitly that **no MTEX comparison has been run and none
+  is claimed** - MTEX parity is deferred by the user, and deferring the campaign does not license
+  the claim.
+- **The roadmaps**: the vision document's finding 8 and its T2 section, its readiness table, and
+  its opening paragraph; the critical review's horizon-9-10 row; the 2026-08 capability review's
+  scorecard row, its "Lacking" paragraph and its first recommendation. The capability review's
+  prose is marked as superseded rather than rewritten, because it is a dated review and its value
+  is as a record of what was true then.
+
+**Verified.** `sphinx -b html docs/site` exits 0 with no warnings, having re-executed the edited
+notebook; `test_notebooks`, `test_documentation_policy` and `test_reference_policy` green.
+
+**Status: the goal's six increments are all landed.** What remains open, and is deliberately not in
+this goal: the cost of the harmonic route (the basis projection materialises a large intermediate
+array, and a blocked projection would make degree 9+ interactive), a defocus model beyond the
+existing random-standard calibration, and the MTEX comparison campaign that is deferred at the
+user's instruction.

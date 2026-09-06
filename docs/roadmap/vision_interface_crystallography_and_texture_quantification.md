@@ -14,7 +14,8 @@ parent and product crystals of any variant of any OR in three dimensions, draws 
 between them, produces the whole crystallographic dossier of an OR in a single call, determines the
 OR from two measured EBSD grains and shows it as a locked composite view — and, in the texture half
 of the library, closes the three quantification gaps (Kearns factors in the GUI, ghost correction,
-axial specimen symmetry) that currently bound what the tool may honestly claim.
+axial specimen symmetry) that bound what the tool may honestly claim. Two of the three are closed:
+Kearns reached the GUI in M1 and ghost correction landed on 2026-09-06.
 
 The terminal deliverable is a peer-reviewed methods paper describing the algorithms and the
 integrated tool. Section 9 states the paper plan and the gates that must close before submission.
@@ -96,9 +97,11 @@ Each is a *verified absence*, not a suspicion:
    statement to a *nearest-integer relationship object*, and no locked composite viewer.
 7. **The Kearns parameter is absent from the GUI.** Searching `src/pytex/app` for `kearns` returns
    nothing. Four validated Python routes exist and none is reachable from the workbench.
-8. **Ghost correction is not implemented.** `HarmonicODF.invert_pole_figures` says so in its own
-   docstring, and `docs/site/theory/ghost_problem_and_odd_harmonics.md` states it plainly. This
-   bounds every quantitative texture-strength claim the library makes.
+8. **Ghost correction is implemented** (2026-09-06, T2 delivered). `correct_ghosts` recovers the
+   odd part from positivity or by the zero-range method and reports what the inference cost;
+   `HarmonicODF.invert_pole_figures` takes `ghost_correction=` and offers the corrected
+   distribution as `final_odf`. What still bounds a texture-strength claim is narrower and stated
+   in the report: the odd part is an inference from positivity, not a measurement.
 9. **Axial (fibre) specimen symmetry does not exist.** `_SPECIMEN_SYMMETRY_POINT_GROUPS` in
    `core/symmetry.py` offers `triclinic`, `monoclinic`, `orthorhombic`, and `orthotropic` — nothing
    for wires and rods, which is the geometry the Kearns parameter is most often measured on.
@@ -353,12 +356,15 @@ no reviewer can check.
 panel, example scenarios, and Playwright coverage. The science is already validated. It is the
 highest impact-per-hour item in the whole program.
 
-### T2 — Ghost correction (**L**)
+### T2 — Ghost correction (**L**) — **delivered 2026-09-06**
 
-The largest scientific-credibility gap in the texture half of the library, named as such by the
+Was the largest scientific-credibility gap in the texture half of the library, named as such by the
 2026-08 capability review. Pole figures determine only the even-order coefficients under Friedel's
-law; the odd part is currently left unconstrained, and the reconstruction must be read as the even
-part alone.
+law; the odd part was left unconstrained, and the reconstruction had to be read as the even part
+alone. Both methods below shipped, in `pytex.texture.ghosts`, with the algorithm page
+`docs/site/algorithms/ghost_correction.md` and five worked examples. The specification below is
+kept as the record of what was asked for; the delivery notes are in
+`docs/development/active_task_progress.md`.
 
 ```python
 HarmonicODF.invert_pole_figures(
@@ -379,9 +385,12 @@ part's contribution, the change in texture index and entropy, and an honest stat
 unconstrained. `docs/site/theory/ghost_problem_and_odd_harmonics.md` — which currently states the
 absence — is updated in the same change.
 
-*Validation:* synthetic ODFs with a known odd part must be recovered to a stated tolerance; the
-texture index must move toward truth, not merely change; an MTEX parity row is required before any
-document claims parity.
+*Validation, as delivered:* on an orthorhombic component whose answer is known by construction the
+correction halves the quadrature-weighted distance to the true distribution, restores the depressed
+maximum from 3.74 to 4.24 m.r.d. against a true 4.06, and removes the negative density; it changes
+the predicted pole densities by 8e-4 m.r.d., which is the quadrature error. An MTEX parity row now
+exists and records that **no comparison has been run** — MTEX parity is deferred, and no document
+claims it.
 
 ### T3 — Axial (fibre) specimen symmetry (**M**)
 
@@ -542,7 +551,7 @@ Kearns comparison; ghost correction before and after; the measured two-grain cas
 | --- | --- | --- |
 | MTEX parity numbers actually generated | **Blocked** — no MATLAB/MTEX machine | Logistics; start immediately, longest lead time |
 | A measured EBSD dataset with a known OR | **Missing** | Acquire or license; needed for case study (c) |
-| Ghost correction validated | **Not implemented** | T2 |
+| Ghost correction validated | **Implemented and validated against a known-answer case** (2026-09-06); MTEX comparison not run, and not claimed | T2 |
 | Kearns reachable in the tool being described | **Not in the GUI** | T1 |
 | Axial symmetry for the wire case | **Not implemented** | T3 |
 | Version DOI and `CITATION.cff` pinned to the release described | `CITATION.cff` exists; needs a Zenodo DOI and a tagged release | Program D |

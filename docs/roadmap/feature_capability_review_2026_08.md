@@ -21,7 +21,7 @@ governance increment.
 | 2 | Composite OR patterns | 9 | Best-in-class; not quantitative across phases |
 | 3 | SAED for arbitrary orientation / zone axis | 8 | Correct kinematics; no thickness shape factor, no HOLZ, no dynamical |
 | 4 | Tilt solving to a target zone axis | 9.5 | The strongest subsystem in the repo |
-| 5 | ODF from XRDML / LaboTex / EBSD | 8 | Full stack minus ghost correction and a defocus model |
+| 5 | ODF from XRDML / LaboTex / EBSD | 8 | Full stack minus a defocus model; ghost correction landed 2026-09-06, after this review |
 | 6 | Pole-figure arithmetic | 2 → **8** | Was the clearest hole; addressed in full, see below |
 | 7 | XRD pattern computation | 7 | Excellent forward model, zero analysis of measured data |
 | 8 | EBSD | 8.5 | Broad and deep; square plus `.ang` hex-grid topology, and EDAX OIM HDF5 (`.oh5`/`.h5`) import |
@@ -163,7 +163,8 @@ side. Ingest: `read_xrdml_pole_figure` / `invert_xrdml_pole_figures`,
 `CrystalMap.to_odf` for EBSD. `core/misorientation_distribution.py` provides the
 MDF core.
 
-**Lacking.** No ghost correction and no zero-range method — the odd part of the
+**Lacking, as of this review (superseded 2026-09-06 by `pytex.texture.correct_ghosts`, which
+implements both).** No ghost correction and no zero-range method — the odd part of the
 ODF is unconstrained, and the docstrings say so. Named ideal-component mixture fitting now returns
 non-negative fractions plus a random term and density residual, but component-centre/halfwidth
 refinement with Gauss/Bingham shapes is not implemented.
@@ -171,7 +172,7 @@ No uncertainty quantification (bootstrap on ODF or volume fractions). No `.epf`,
 `.uxd` or popLA `.xpc` readers.
 
 **Next.**
-1. Ghost correction (zero-range / positivity) — the biggest scientific credibility gap in texture.
+1. ~~Ghost correction (zero-range / positivity) — the biggest scientific credibility gap in texture.~~ **Delivered 2026-09-06**; see `docs/site/algorithms/ghost_correction.md`.
 2. ~~A defocus model plus random-standard calibration~~ — implemented as
    `defocus_from_random_standard(...)`; broader experimental fixtures remain desirable.
 3. Extend named-component fitting with centre/halfwidth refinement and bootstrap uncertainty.
