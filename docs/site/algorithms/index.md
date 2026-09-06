@@ -27,12 +27,15 @@ documents so the code and the description cannot drift apart.
 | {doc}`pole_figure_inversion` | measured pole figures to an ODF, by the discrete and the harmonic route |
 | {doc}`ghost_correction` | recovering the odd part that a pole figure cannot measure |
 | {doc}`ipf_coloring` | an orientation, a chosen specimen direction, and the colour that follows |
+| {doc}`kearns_parameter` | the basal-pole second-moment tensor, by three routes that disagree predictably |
+| {doc}`misorientation_and_disorientation` | the symmetry orbit, its canonical representative, and boundary statistics |
 
 **Electron backscatter diffraction**
 
 | Page | The computation |
 | --- | --- |
 | {doc}`ebsd_grains_and_local_misorientation` | grains from a point grid; KAM, GROD, GOS, GAM; GND density |
+| {doc}`csl_boundaries` | assigning a Sigma value, and what it does not establish |
 
 **Transmission electron microscopy and diffraction**
 
@@ -42,6 +45,12 @@ documents so the code and the description cannot drift apart.
 | {doc}`cbed_thickness_and_symmetry` | foil thickness from fringes; point group including the centre of symmetry |
 | {doc}`tem_tilt_navigation` | the holder tilts that reach a target zone axis |
 | {doc}`composite_saed_assembly` | a parent-plus-variant pattern from an orientation relationship |
+
+**Mechanical response**
+
+| Page | The computation |
+| --- | --- |
+| {doc}`schmid_and_taylor` | which system yields first, and what a strain costs |
 
 **Orientation relationships**
 
@@ -87,5 +96,9 @@ precise_lattice_parameter_determination
 pole_figure_inversion
 ghost_correction
 ipf_coloring
+kearns_parameter
+misorientation_and_disorientation
 ebsd_grains_and_local_misorientation
+csl_boundaries
+schmid_and_taylor
 ```
