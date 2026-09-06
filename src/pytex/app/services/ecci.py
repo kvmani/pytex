@@ -687,7 +687,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             maximum=89.0,
             group="Stage (current)",
             row="Stage",
-            field_width="short",
         ),
         NumberParameter(
             name="stage_rotation_deg",
@@ -702,7 +701,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             maximum=180.0,
             group="Stage (current)",
             row="Stage",
-            field_width="short",
         ),
         NumberParameter(
             name="detector_elevation_deg",
@@ -716,7 +714,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             maximum=40.0,
             group="EBSD camera",
             row="Camera",
-            field_width="short",
         ),
         NumberParameter(
             name="detector_azimuth_deg",
@@ -728,7 +725,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             maximum=180.0,
             group="EBSD camera",
             row="Camera",
-            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_x",
@@ -742,7 +738,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             group="EBSD camera",
             symbol="pattern_centre_x",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_y",
@@ -756,7 +751,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             group="EBSD camera",
             symbol="pattern_centre_y",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="detector_distance",
@@ -768,7 +762,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             group="EBSD camera",
             symbol="detector_distance",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",
@@ -793,7 +786,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             advanced=True,
             help_text="EBSD camera width in pixels.",
             row="Screen size",
-            field_width="tiny",
         ),
         IntegerParameter(
             name="detector_height_px",
@@ -806,7 +798,6 @@ def _shared_parameters(*, tilt_default: float = 70.0, rotation_default: float = 
             advanced=True,
             help_text="EBSD camera height in pixels.",
             row="Screen size",
-            field_width="tiny",
         ),
         NumberParameter(
             name="pixel_size_um",

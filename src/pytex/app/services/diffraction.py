@@ -261,7 +261,6 @@ def _variant_selection(text: str | None, available: int) -> tuple[int, ...] | No
             maximum=5000.0,
             group="Instrument",
             symbol="camera_constant",
-            field_width="short",
         ),
         IntegerParameter(
             name="max_index",

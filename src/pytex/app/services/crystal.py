@@ -1955,7 +1955,6 @@ def _kikuchi_map(request: dict[str, Any]) -> dict[str, Any]:
             maximum=90.0,
             group="Camera",
             row="Camera",
-            field_width="short",
         ),
         NumberParameter(
             name="azimuth_deg",

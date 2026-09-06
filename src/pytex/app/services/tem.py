@@ -1398,7 +1398,6 @@ def _fit_lattice(request: dict[str, Any]) -> dict[str, Any]:
             maximum=4000.0,
             group="Instrument",
             symbol="camera_length",
-            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",
@@ -1794,7 +1793,6 @@ def _origin_label(spot: Any, *, spec: Any) -> str:
             maximum=4000.0,
             group="Instrument",
             symbol="camera_length",
-            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",

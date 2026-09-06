@@ -188,7 +188,6 @@ _AXIS_COLUMNS = (
             maximum=40.0,
             group="Camera",
             row="Camera",
-            field_width="short",
         ),
         NumberParameter(
             name="detector_azimuth_deg",
@@ -200,7 +199,6 @@ _AXIS_COLUMNS = (
             maximum=180.0,
             group="Camera",
             row="Camera",
-            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_x",
@@ -215,7 +213,6 @@ _AXIS_COLUMNS = (
             group="Camera",
             symbol="pattern_centre_x",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="pattern_centre_y",
@@ -231,7 +228,6 @@ _AXIS_COLUMNS = (
             group="Camera",
             symbol="pattern_centre_y",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="detector_distance",
@@ -247,7 +243,6 @@ _AXIS_COLUMNS = (
             group="Camera",
             symbol="detector_distance",
             row="Pattern centre",
-            field_width="short",
         ),
         NumberParameter(
             name="beam_energy_kev",
@@ -272,7 +267,6 @@ _AXIS_COLUMNS = (
             maximum=2048,
             group="Camera",
             row="Screen size",
-            field_width="tiny",
         ),
         IntegerParameter(
             name="detector_height_px",
@@ -284,7 +278,6 @@ _AXIS_COLUMNS = (
             maximum=2048,
             group="Camera",
             row="Screen size",
-            field_width="tiny",
         ),
         NumberParameter(
             name="pixel_size_um",

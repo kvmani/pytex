@@ -778,7 +778,6 @@ def _source_parameters() -> tuple[Parameter, ...]:
             maximum=62.8,
             group="Boundaries",
             row="Thresholds",
-            field_width="short",
         ),
         NumberParameter(
             name="high_angle_threshold_deg",
@@ -793,7 +792,6 @@ def _source_parameters() -> tuple[Parameter, ...]:
             maximum=62.8,
             group="Boundaries",
             row="Thresholds",
-            field_width="short",
         ),
         NumberParameter(
             name="kam_threshold_deg",
@@ -1013,7 +1011,6 @@ def _channel_statistics(values: np.ndarray) -> dict[str, float] | None:
             minimum=0.1,
             maximum=62.8,
             row="Thresholds",
-            field_width="short",
         ),
         NumberParameter(
             name="high_angle_threshold_deg",
@@ -1024,7 +1021,6 @@ def _channel_statistics(values: np.ndarray) -> dict[str, float] | None:
             minimum=0.1,
             maximum=62.8,
             row="Thresholds",
-            field_width="short",
         ),
     ),
     returns="One row per reported quantity; the whole summary, sectioned, under `data`.",
@@ -1393,7 +1389,6 @@ _DISTRIBUTION_QUANTITIES = {
             default=5.0,
             minimum=0.1,
             maximum=62.8,
-            field_width="short",
         ),
         NumberParameter(
             name="kam_threshold_deg",

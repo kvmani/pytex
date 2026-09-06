@@ -386,7 +386,6 @@ def _disc_rows(pattern: Any, spec: Any) -> list[dict[str, Any]]:
             maximum=5000.0,
             group="Detector",
             symbol="camera_constant",
-            field_width="short",
         ),
         NumberParameter(
             name="g_max_inv_angstrom",
@@ -860,7 +859,6 @@ def _thickness_from_fringes(request: dict[str, Any]) -> dict[str, Any]:
             maximum=5000.0,
             advanced=True,
             symbol="camera_constant",
-            field_width="short",
         ),
     ),
     returns="Ring radii in reciprocal angstrom and millimetres, with the layer spacing H.",

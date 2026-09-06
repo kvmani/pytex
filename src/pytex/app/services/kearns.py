@@ -1528,7 +1528,6 @@ def _plane_label_of(plane: Any) -> str:
             maximum=30.0,
             advanced=True,
             symbol="halfwidth",
-            field_width="short",
         ),
     ),
     returns=(
