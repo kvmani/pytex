@@ -196,6 +196,7 @@ from pytex.core.sphere import (
     project_directions,
     raster_solid_angle_weights,
     spherical_angles_to_directions,
+    unproject_plane_points,
 )
 from pytex.core.symmetry import FundamentalSector, SymmetrySpec
 from pytex.core.transformation import (
@@ -436,6 +437,7 @@ __all__ = [
     "standard_ferrite_cementite_relationships",
     "standard_hcp_bcc_relationships",
     "strip_reciprocal_star",
+    "unproject_plane_points",
     "variant_close_packed_groups",
     "variant_correspondence_table",
     "variant_pole_figure",

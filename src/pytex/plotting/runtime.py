@@ -26,6 +26,11 @@ from pytex.plotting.builders import (
     coerce_rotation_set,
     coerce_vector_set,
 )
+from pytex.plotting.pole_figures import (
+    PoleFigureSet,
+    PoleFigureStyle,
+    build_pole_figure_contour_spec,
+)
 from pytex.plotting.spherical import (
     plot_crystal_directions as _plot_crystal_directions,
 )
@@ -546,6 +551,79 @@ def plot_pole_figure(
         ),
         ax=ax,
     )
+
+
+def plot_pole_figure_contours(
+    pole_figure: PoleFigure,
+    *,
+    style: PoleFigureStyle | None = None,
+    ax: Any | None = None,
+) -> Any:
+    """Draw a publication-quality contoured pole figure.
+
+    Purpose
+    -------
+    The figure that goes in a paper, as against the scatter and histogram views
+    of :func:`plot_pole_figure`, which show where the data are and are for
+    diagnosis. The density is evaluated on the sphere at the inverse
+    projections of the raster points, contoured at levels the caller can state,
+    and annotated with the specimen axes, the pole family and the extrema.
+
+    Parameters
+    ----------
+    pole_figure : PoleFigure
+    style : PoleFigureStyle, optional
+        Every setting the drawing makes, including its
+        :class:`~pytex.plotting.pole_figures.ContourSpec`. The default is the
+        publication one.
+    ax : matplotlib Axes, optional
+
+    Returns
+    -------
+    Any
+        The Matplotlib figure.
+
+    See Also
+    --------
+    plot_pole_figure_comparison : several samples on one scale.
+    pytex.plotting.pole_figures.PoleFigureStyle : the settings.
+    """
+
+    return render_figure_spec(build_pole_figure_contour_spec(pole_figure, style=style), ax=ax)
+
+
+def plot_pole_figure_comparison(
+    figure_set: PoleFigureSet,
+    *,
+    suptitle: str | None = None,
+) -> Any:
+    """Draw a comparison plate: samples down the rows, poles across the columns.
+
+    Purpose
+    -------
+    Comparing textures means comparing them on one scale. This draws every
+    panel at the same contour levels, labels each with its sample identifier,
+    and gives the plate a single colour bar, so that a difference on the page
+    is a difference in the specimens rather than a difference in how each panel
+    was scaled.
+
+    Parameters
+    ----------
+    figure_set : PoleFigureSet
+        The samples, their figures, and the shared style.
+    suptitle : str, optional
+
+    Returns
+    -------
+    Any
+        The Matplotlib figure.
+
+    See Also
+    --------
+    pytex.plotting.pole_figures.PoleFigureSet : the set and its scale sharing.
+    """
+
+    return render_figure_spec(figure_set.build(suptitle=suptitle))
 
 
 def plot_pole_figure_difference(

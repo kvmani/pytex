@@ -792,6 +792,106 @@ class PoleFigure:
             provenance=self.provenance if provenance is None else provenance,
         )
 
+    def density_on_directions(
+        self,
+        directions: ArrayLike,
+        *,
+        halfwidth_deg: float = DEFAULT_RESAMPLING_HALFWIDTH_DEG,
+        estimator: ResamplingEstimator | None = None,
+        normalize: bool = True,
+        normalization_resolution_deg: float = 5.0,
+    ) -> np.ndarray:
+        """Pole density at arbitrary specimen directions, in m.r.d.
+
+        Purpose
+        -------
+        The scattered-support analogue of :meth:`on_grid` for targets that are
+        not a grid. Contouring a pole figure for publication means evaluating
+        the density on a raster of the *drawing*, whose points are the inverse
+        projections of pixel centres and therefore form no spherical grid at
+        all; binning poles into drawing pixels instead makes the result depend
+        on the pixel size and smooths in the distorted plane rather than on the
+        sphere.
+
+        When to use
+        -----------
+        For contouring, for reading a density off a picked point, and for
+        sampling a fibre or a great circle. Use :meth:`on_grid` instead when
+        the target *is* a grid: it returns a full :class:`PoleFigure` and its
+        weights make integration valid.
+
+        Parameters
+        ----------
+        directions : ArrayLike
+            ``(n, 3)`` specimen directions; normalized internally.
+        halfwidth_deg : float
+            Kernel halfwidth. The consequential choice, as in :meth:`on_grid`:
+            set it from the angular resolution of the measurement.
+        estimator : str, optional
+            Override the estimator implied by :attr:`sampling`.
+        normalize : bool
+            Rescale so the field integrates to 1 over the sphere, i.e. to
+            multiples of a random distribution (default). The scale factor is
+            computed on an equal-area integration grid, because the supplied
+            directions carry no weights of their own and their mean is
+            therefore not an integral.
+        normalization_resolution_deg : float
+            Resolution of that integration grid. Finer costs more and changes
+            the scale factor only in the fourth decimal for a smooth field.
+
+        Returns
+        -------
+        np.ndarray
+            ``(n,)`` densities, read-only, clipped at zero: a kernel estimate
+            of a non-negative field cannot be negative, and a small negative
+            value would be a numerical artefact plotted as a physical one.
+
+        See Also
+        --------
+        on_grid : the grid-target form, which returns a PoleFigure.
+        pytex.core.sphere.unproject_plane_points : drawing coordinates to
+            directions, the map that makes a contour raster possible.
+        """
+
+        chosen = "density" if self.sampling == "scattered_poles" else "interpolate"
+        if estimator is not None:
+            if estimator not in _RESAMPLING_ESTIMATORS:
+                raise ValueError("estimator must be 'density' or 'interpolate'.")
+            chosen = estimator
+        if self.intensities.size == 0:
+            raise ValueError("Density evaluation requires at least one sampled direction.")
+        target = normalize_vectors(directions)
+        kappa = _spherical_kappa_from_halfwidth(halfwidth_deg)
+        estimated = _resample_directions(
+            target=target,
+            source=self.sample_directions,
+            values=self.intensities,
+            kappa=kappa,
+            antipodal=self.antipodal,
+            estimator=chosen,
+        )
+        if normalize:
+            grid = self.integration_grid(resolution_deg=normalization_resolution_deg)
+            reference = _resample_directions(
+                target=np.asarray(grid.vectors.values, dtype=np.float64),
+                source=self.sample_directions,
+                values=self.intensities,
+                kappa=kappa,
+                antipodal=self.antipodal,
+                estimator=chosen,
+            )
+            mean_density = float(np.sum(grid.weights * reference))
+            if not mean_density > 0.0:
+                raise ValueError(
+                    "Cannot normalize to m.r.d.: the resampled figure is zero everywhere. "
+                    "Widen halfwidth_deg, or check that the directions overlap the figure."
+                )
+            estimated = estimated / mean_density
+        density = np.ascontiguousarray(np.maximum(estimated, 0.0), dtype=np.float64)
+        density.setflags(write=False)
+        return density
+
+
     def integration_grid(self, *, resolution_deg: float = 5.0) -> S2Grid:
         """An equal-area grid suitable for integrating this figure.
 

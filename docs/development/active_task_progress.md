@@ -6530,8 +6530,8 @@ the GUI.
 | # | Increment | State |
 | --- | --- | --- |
 | 1 | Ghost correction in the harmonic ODF, with the Friedel folding it depends on | **done** |
-| 2 | Contour control: explicit levels, level scales, shared scales, publication defaults | not started |
-| 3 | Multi-sample comparison figures on one scale, with sample identification | not started |
+| 2 | Contour control: explicit levels, level scales, shared scales, publication defaults | **done** |
+| 3 | Multi-sample comparison figures on one scale, with sample identification | **done** |
 | 4 | The GUI surface for both, in the texture workspace | not started |
 | 5 | Worked examples and the algorithm page | not started |
 | 6 | Notebook / workflow documentation and the parity matrix | not started |
@@ -6583,3 +6583,37 @@ matplotlib, which chooses the values; nothing can state the levels, the scale th
 range shared with another figure. Start with a `ContourSpec` in `pytex.plotting` carrying explicit
 levels, a level scale (linear / geometric / explicit), and an optional shared range, then have the
 pole-figure builder take it.
+
+
+## Increments 2 and 3 - contour control and comparison plates (landed)
+
+**What shipped.** `src/pytex/plotting/pole_figures.py`: `ContourSpec`, `PoleFigureStyle`,
+`PoleFigureSet`, `build_pole_figure_contour_spec`, `pole_figure_density_grid`, with
+`plot_pole_figure_contours` and `plot_pole_figure_comparison` in the runtime layer. Supporting
+surfaces: `pytex.core.sphere.unproject_plane_points` and `PoleFigure.density_on_directions`, which
+are what make a contour raster evaluable on the sphere. `ContourLayer2D` gained `filled`,
+`label_lines`, `label_format`; `MultiFigureSpec2D` gained `shared_colorbar_label` and the
+constrained layout a shared bar needs. 13 tests in `tests/unit/test_pole_figure_plotting.py`; the
+workflow page `docs/site/workflows/pole_figure_presentation.md`.
+
+**Two decisions worth keeping.**
+
+1. *The density is estimated on the sphere, never binned into drawing pixels.* The existing
+   `kind="contour"` path bins scattered poles into a 2-D histogram and blurs it with a Gaussian in
+   the projection plane, which smooths across a distortion that is largest exactly where pole
+   figures are most crowded. The new path inverse-projects each raster point and evaluates there.
+   The calibration is an identity rather than a tolerance: an isotropic specimen contours flat at
+   1 m.r.d., which the test checks directly.
+2. *PyTex rotates the drawing; it does not mirror it.* The familiar RD-up/TD-right layout is a
+   reflection of the projection of a right-handed specimen frame, not a rotation of it. Applying
+   one silently would reverse the sense of every asymmetric feature - a shear texture would lean
+   the wrong way. `rotation_deg` rotates, the rim labels rotate with the data, and the page says
+   so explicitly.
+
+**Verified.** `ruff`, `mypy`, and `test_pole_figure_plotting`, `test_runtime_plotting`,
+`test_plotting_structural_validation`, `test_plotting_figure`, `test_sphere` all green, with the
+rendering test asserting no warnings were raised and closing every figure it opens.
+
+**Next concrete step.** Increment 4: the GUI. `src/pytex/app/services/texture.py` computes pole
+figures for the workspace; it needs a contour-settings surface (scale, count or explicit levels,
+range, colormap, labels) and a multi-sample comparison mode, with the panel exposing them.

@@ -11,6 +11,8 @@ downstream analyses depend on them.
 
 ## [Unreleased]
 
+**A thorough pass over the texture engine.** Three things a texture study needs and PyTex could not do: recover the half of an ODF a pole figure cannot measure, state the contour levels a figure is drawn at, and compare several samples on one scale. All three are in, along with the forward-model defect the first of them exposed.
+
 **Ghost correction, and the Friedel symmetry that makes it necessary.** A pole figure cannot
 distinguish a plane normal from its opposite, so it determines only the even-degree half of an
 ODF -- the classical ghost problem, which PyTex documented and did not address. It now does:
@@ -28,6 +30,23 @@ values were the ones in error.
 
 ### Added
 
+- **Pole-figure presentation** (`pytex.plotting.pole_figures`): `ContourSpec`, `PoleFigureStyle`,
+  `PoleFigureSet`, `build_pole_figure_contour_spec`, `pole_figure_density_grid`, and the runtime
+  entry points `plot_pole_figure_contours` and `plot_pole_figure_comparison`. Contour levels can be
+  stated outright, generated on a linear or geometric ladder, or shared across a whole plate; the
+  1 m.r.d. level is carried by default because it is the only level on a pole figure with an
+  absolute meaning. The publication defaults drop the Cartesian axes and grid and put the specimen
+  axes, the pole family, the extrema and a sample identifier on the drawing instead.
+- **Multi-sample comparison plates**: samples down the rows, poles across the columns, every panel
+  at the same levels and one colour bar for the plate -- because contouring each panel on its own
+  maximum makes a weak texture and a strong one look alike, which is the most common way a
+  pole-figure plate misleads.
+- `PoleFigure.density_on_directions`, the scattered-target analogue of `on_grid`, and
+  `pytex.core.sphere.unproject_plane_points`, the inverse of `project_directions`. Together they
+  let a contour raster be evaluated on the sphere rather than binned in the drawing plane, where
+  the projection's distortion is largest exactly where pole figures are most crowded.
+- `ContourLayer2D` gains `filled`, `label_lines` and `label_format`; `MultiFigureSpec2D` gains
+  `shared_colorbar_label`.
 - **Ghost correction** (`pytex.texture.ghosts`): `correct_ghosts`, `GhostCorrectionSpec`,
   `GhostCorrectionReport`. The correction holds the measured even part fixed and adds the smallest
   odd part that makes the density admissible, by minimizing a smooth convex functional of the

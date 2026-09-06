@@ -443,6 +443,11 @@ def build_pole_figure_spec(
             ),
         )
     if kind == "contour":
+        # A binned-and-blurred contour is a diagnostic view: it smooths in the
+        # projection plane, where the distortion is largest exactly where pole
+        # figures are most crowded. For a figure that will be published use
+        # pytex.plotting.pole_figures.build_pole_figure_contour_spec, which
+        # estimates the density on the sphere and lets the levels be stated.
         histogram, xedges, yedges = pole_figure.histogram(bins=bins, method=method)
         return FigureSpec2D(
             title=title or f"Pole Figure Contours {_pole_figure_label(pole_figure)}",

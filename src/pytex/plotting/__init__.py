@@ -67,6 +67,15 @@ from pytex.plotting.frames import (
 )
 from pytex.plotting.ipf import IPFColorKey, ipf_color, ipf_colors, plot_ipf_key
 from pytex.plotting.kikuchi_map import plot_kikuchi_map
+from pytex.plotting.pole_figures import (
+    CONTOUR_SCALES,
+    RANDOM_LEVEL_MRD,
+    ContourSpec,
+    PoleFigureSet,
+    PoleFigureStyle,
+    build_pole_figure_contour_spec,
+    pole_figure_density_grid,
+)
 from pytex.plotting.primitives import (
     TRIAD_AXIS_COLORS,
     Arrow3D,
@@ -96,6 +105,8 @@ from pytex.plotting.runtime import (
     plot_odf_phi2_sections,
     plot_orientations,
     plot_pole_figure,
+    plot_pole_figure_comparison,
+    plot_pole_figure_contours,
     plot_pole_figure_difference,
     plot_quaternion_set,
     plot_rotations,
@@ -128,15 +139,18 @@ from pytex.plotting.styles import (
 )
 
 __all__ = [
+    "CONTOUR_SCALES",
     "DEFAULT_VIEW_AZIM_DEG",
     "DEFAULT_VIEW_ELEV_DEG",
     "OKABE_ITO_COLORS",
+    "RANDOM_LEVEL_MRD",
     "TRIAD_AXIS_COLORS",
     "AnnotationResult",
     "Arrow3D",
     "AxisTriad3D",
     "ColormapSpec",
     "CompositeSAEDPlotConfig",
+    "ContourSpec",
     "CrystalAtomGlyph",
     "CrystalBondGlyph",
     "CrystalCellGlyph",
@@ -157,6 +171,8 @@ __all__ = [
     "PlaneAnnotationStyle",
     "PlanePatch3D",
     "PointCloud3D",
+    "PoleFigureSet",
+    "PoleFigureStyle",
     "PolyLine3D",
     "PrimitiveScene3D",
     "SAEDSpotPicker",
@@ -169,6 +185,7 @@ __all__ = [
     "add_scale_bar",
     "build_crystal_scene",
     "build_or_stereogram_figure_spec",
+    "build_pole_figure_contour_spec",
     "categorical_colors",
     "crystal_plane_patch",
     "direction_arrow",
@@ -205,6 +222,8 @@ __all__ = [
     "plot_orientations",
     "plot_phase_map",
     "plot_pole_figure",
+    "plot_pole_figure_comparison",
+    "plot_pole_figure_contours",
     "plot_pole_figure_difference",
     "plot_property_map",
     "plot_quaternion_set",
@@ -219,6 +238,7 @@ __all__ = [
     "plot_wulff_net",
     "plot_xrd_pattern",
     "plot_youngs_modulus_surface",
+    "pole_figure_density_grid",
     "project_orthographic",
     "publication_style",
     "rc_params_from_style",

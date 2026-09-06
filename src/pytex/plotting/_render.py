@@ -122,6 +122,14 @@ class ContourLayer2D:
     colorbar_label: str | None = None
     line_color: str | None = "black"
     line_width: float = 0.45
+    #: Draw filled bands. Turning it off leaves the level lines alone, which is
+    #: what a single-colour journal figure needs; the colour bar then has
+    #: nothing to describe and is skipped.
+    filled: bool = True
+    #: Write each level's value onto its line, so the drawing can be read
+    #: without a colour bar at all.
+    label_lines: bool = False
+    label_format: str = "%.2f"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "x", as_float_array(self.x, shape=(None,)))
@@ -131,6 +139,8 @@ class ContourLayer2D:
             raise ValueError("ContourLayer2D.values must have shape (len(y), len(x)).")
         if isinstance(self.levels, np.ndarray):
             object.__setattr__(self, "levels", as_float_array(self.levels, shape=(None,)))
+        if not self.filled and self.line_color is None:
+            raise ValueError("A ContourLayer2D that is neither filled nor lined draws nothing.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,10 +185,20 @@ class FigureSpec2D:
 
 @dataclass(frozen=True, slots=True)
 class MultiFigureSpec2D:
+    """A grid of 2-D panels, optionally sharing one colour bar.
+
+    ``shared_colorbar_label`` is what makes a comparison plate honest: one bar
+    for the whole grid states that every panel is on the same scale, where a
+    bar per panel would suggest each had its own. It is drawn from the last
+    panel's mappable, so the panels must already have been given identical
+    levels — :meth:`pytex.plotting.pole_figures.PoleFigureSet.build` does that.
+    """
+
     panels: tuple[FigureSpec2D, ...]
     ncols: int = 3
     figsize: tuple[float, float] | None = None
     suptitle: str | None = None
+    shared_colorbar_label: str | None = None
 
     def __post_init__(self) -> None:
         if not self.panels:
@@ -308,6 +328,21 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
     else:
         axes = ax
         fig = axes.figure
+    _draw_figure_spec_2d(spec, axes)
+    fig.tight_layout()
+    return fig
+
+
+def _draw_figure_spec_2d(spec: FigureSpec2D, axes: Any) -> Any | None:
+    """Draw one 2-D panel and return its colour mappable, if it has one.
+
+    Separated from :func:`render_figure_spec_2d` so a grid of panels can attach
+    a single shared colour bar to the mappable of the last one drawn; a panel
+    rendered on its own attaches its own bar as before.
+    """
+
+    fig = axes.figure
+    mappable: Any | None = None
     image_artist: Any | None = None
     for image_layer in spec.image_layers:
         image_artist = axes.imshow(
@@ -318,22 +353,25 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             alpha=image_layer.alpha,
             aspect="auto",
         )
+        mappable = image_artist
         if image_layer.colorbar_label is not None:
             colorbar = fig.colorbar(image_artist, ax=axes)
             colorbar.set_label(image_layer.colorbar_label)
     contour_artist: Any | None = None
     for contour_layer in spec.contour_layers:
         xx, yy = np.meshgrid(contour_layer.x, contour_layer.y)
-        contour_artist = axes.contourf(
-            xx,
-            yy,
-            contour_layer.values,
-            levels=contour_layer.levels,
-            cmap=contour_layer.cmap,
-            alpha=contour_layer.alpha,
-        )
+        if contour_layer.filled:
+            contour_artist = axes.contourf(
+                xx,
+                yy,
+                contour_layer.values,
+                levels=contour_layer.levels,
+                cmap=contour_layer.cmap,
+                alpha=contour_layer.alpha,
+            )
+            mappable = contour_artist
         if contour_layer.line_color is not None:
-            axes.contour(
+            lines = axes.contour(
                 xx,
                 yy,
                 contour_layer.values,
@@ -342,7 +380,11 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
                 linewidths=contour_layer.line_width,
                 alpha=min(1.0, contour_layer.alpha + 0.05),
             )
-        if contour_layer.colorbar_label is not None:
+            if contour_layer.label_lines:
+                axes.clabel(lines, fmt=contour_layer.label_format, fontsize=7.0, inline=True)
+            if contour_artist is None:
+                contour_artist = lines
+        if contour_layer.colorbar_label is not None and contour_artist is not None:
             colorbar = fig.colorbar(contour_artist, ax=axes)
             colorbar.set_label(contour_layer.colorbar_label)
     scatter_artist: Any | None = None
@@ -361,6 +403,8 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
             linewidths=scatter_layer.linewidths,
             label=scatter_layer.label,
         )
+        if scatter_layer.values is not None:
+            mappable = scatter_artist
         if scatter_layer.values is not None and scatter_layer.colorbar_label is not None:
             colorbar = fig.colorbar(scatter_artist, ax=axes)
             colorbar.set_label(scatter_layer.colorbar_label)
@@ -452,8 +496,7 @@ def render_figure_spec_2d(spec: FigureSpec2D, *, ax: Any | None = None) -> Any:
         or any(layer.label is not None for layer in spec.line_layers)
     ):
         axes.legend(loc="best")
-    fig.tight_layout()
-    return fig
+    return mappable
 
 
 def render_multi_figure_spec_2d(spec: MultiFigureSpec2D) -> Any:
@@ -462,17 +505,39 @@ def render_multi_figure_spec_2d(spec: MultiFigureSpec2D) -> Any:
     ncols = min(spec.ncols, n_panels)
     nrows = int(np.ceil(n_panels / ncols))
     figsize = spec.figsize or (6.0 * ncols, 5.4 * nrows)
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, squeeze=False)
+    # A shared colour bar has to be laid out with the panels rather than after
+    # them: tight_layout runs before the bar exists, so the bar would steal its
+    # space from the figure edge and its tick labels would fall off the canvas.
+    shared_bar = spec.shared_colorbar_label is not None
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=figsize,
+        squeeze=False,
+        layout="constrained" if shared_bar else None,
+    )
     flat_axes = axes.ravel()
+    mappable: Any | None = None
     for axis, panel in zip(flat_axes, spec.panels, strict=False):
-        render_figure_spec_2d(panel, ax=axis)
+        panel_mappable = _draw_figure_spec_2d(panel, axis)
+        mappable = mappable or panel_mappable
     for axis in flat_axes[n_panels:]:
         axis.set_visible(False)
     if spec.suptitle is not None:
-        fig.suptitle(spec.suptitle, y=0.995)
-        fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.975))
-    else:
-        fig.tight_layout()
+        fig.suptitle(spec.suptitle, y=None if shared_bar else 0.995)
+    if not shared_bar:
+        if spec.suptitle is not None:
+            fig.tight_layout(rect=(0.0, 0.0, 1.0, 0.975))
+        else:
+            fig.tight_layout()
+    elif mappable is not None:
+        colorbar = fig.colorbar(
+            mappable,
+            ax=list(flat_axes[:n_panels]),
+            fraction=0.04,
+            pad=0.02,
+        )
+        colorbar.set_label(spec.shared_colorbar_label)
     return fig
 
 

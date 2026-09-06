@@ -225,6 +225,83 @@ def project_directions(
     return freeze_array(np.ascontiguousarray(projected))
 
 
+def unproject_plane_points(
+    points: ArrayLike,
+    *,
+    method: str = "equal_area",
+) -> np.ndarray:
+    """Invert :func:`project_directions`: plane coordinates back to directions.
+
+    Purpose
+    -------
+    Contouring a pole figure at publication quality means evaluating its
+    density on a regular raster *of the drawing*, not binning scattered poles
+    into drawing pixels. That requires knowing which direction each raster
+    point stands for, which is this map. Because it is the exact inverse of the
+    projection, the density is estimated on the sphere where the kernel is
+    defined, and no smoothing happens in the distorted plane.
+
+    When to use
+    -----------
+    Whenever a computation is indexed by drawing coordinates but the physics is
+    on the sphere: contour rasters, pointer read-out from a click, masks over
+    the projection disc.
+
+    Method
+    ------
+    With ``r`` the distance from the origin and the azimuth carried through
+    unchanged, the polar angle from ``+z`` follows from inverting the radial
+    formula of :func:`project_directions`:
+
+    - stereographic: ``rho = 2 arctan(r)``
+    - equal area: ``rho = 2 arcsin(r / 2)``
+
+    Parameters
+    ----------
+    points : ArrayLike
+        A single ``(2,)`` point or an ``(N, 2)`` stack of plane coordinates.
+    method : str
+        ``"equal_area"`` (default) or ``"stereographic"``; must match the
+        projection that produced the coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        Read-only ``(N, 3)`` unit vectors on the upper hemisphere. A point
+        outside the projection boundary has no direction; its radius is clipped
+        to the boundary rather than producing a non-finite result, so a raster
+        may be built over the bounding square and masked afterwards.
+
+    Examples
+    --------
+    The rim maps back to the equator: a point at radius ``sqrt(2)`` under the
+    equal-area map returns a direction with ``z = 0``, and the origin returns
+    ``+z`` under both maps. Both identities are pinned in
+    ``tests/unit/test_sphere.py``.
+
+    See Also
+    --------
+    project_directions : the forward map this inverts.
+    """
+
+    array = np.atleast_2d(np.asarray(points, dtype=np.float64))
+    if array.ndim != 2 or array.shape[1] != 2:
+        raise ValueError("unproject_plane_points expects (2,) or (N, 2) plane coordinates.")
+    radius = np.hypot(array[:, 0], array[:, 1])
+    azimuth = np.arctan2(array[:, 1], array[:, 0])
+    if method == "equal_area":
+        polar = 2.0 * np.arcsin(np.clip(radius / 2.0, -1.0, 1.0))
+    elif method == "stereographic":
+        polar = 2.0 * np.arctan(radius)
+    else:
+        raise ValueError("Projection method must be either 'equal_area' or 'stereographic'.")
+    sin_polar = np.sin(polar)
+    directions = np.column_stack(
+        [sin_polar * np.cos(azimuth), sin_polar * np.sin(azimuth), np.cos(polar)]
+    )
+    return freeze_array(np.ascontiguousarray(directions))
+
+
 def _broadcast_unit_rows(
     left: np.ndarray,
     right: np.ndarray,
