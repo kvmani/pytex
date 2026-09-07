@@ -24,6 +24,16 @@ Run it before building a distribution::
     python scripts/build_docs_bundle.py
     python -m build
 
+Or render it somewhere else entirely, for a deployment that runs PyTex from
+source rather than from a wheel::
+
+    python scripts/build_docs_bundle.py --output /srv/ml/shared/docs/pytex
+
+That copy is found through ``PYTEX_DOCS_ROOT``, which is ``docs_root()``'s first
+candidate. A deployment whose releases are replaced on every upgrade wants the
+docs in persistent state beside them, not inside the release that is about to be
+swapped out.
+
 The bundle is generated, so it is git-ignored and must never be committed; the
 repository's cardinal rule is that nothing a command here can regenerate is
 tracked unless documentation, a test, or a pinned baseline names it. Nothing
@@ -81,14 +91,30 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Delete any existing bundle before building, rather than building over it.",
     )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=BUNDLE_ROOT,
+        help=(
+            "Where to render the bundle. Defaults to the location the wheel ships. "
+            "Give a path outside the checkout for a deployment that serves the docs "
+            "through PYTEX_DOCS_ROOT."
+        ),
+    )
     return parser
 
 
-def build(*, keep_sources: bool = False, clean: bool = False) -> int:
-    """Render the site into the package and report what was produced."""
+def build(
+    *,
+    keep_sources: bool = False,
+    clean: bool = False,
+    output: Path | None = None,
+) -> int:
+    """Render the site into ``output`` and report what was produced."""
 
-    if clean and BUNDLE_ROOT.exists():
-        shutil.rmtree(BUNDLE_ROOT)
+    bundle_root = (output or BUNDLE_ROOT).resolve()
+    if clean and bundle_root.exists():
+        shutil.rmtree(bundle_root)
 
     command = [
         sys.executable,
@@ -99,7 +125,7 @@ def build(*, keep_sources: bool = False, clean: bool = False) -> int:
         "-d",
         str(DOCTREE_ROOT),
         str(SOURCE_ROOT),
-        str(BUNDLE_ROOT),
+        str(bundle_root),
     ]
     print("$", " ".join(command), flush=True)
     completed = subprocess.run(command, cwd=REPO_ROOT, check=False)
@@ -109,39 +135,45 @@ def build(*, keep_sources: bool = False, clean: bool = False) -> int:
 
     if not keep_sources:
         for name in PRUNE:
-            victim = BUNDLE_ROOT / name
+            victim = bundle_root / name
             if victim.exists():
                 shutil.rmtree(victim)
 
     # myst-nb writes its executed notebooks *beside* the output directory, which
     # for this build means inside the package. Nothing serves them and nothing
     # should ship them, so they go before the wheel is built.
-    stray = BUNDLE_ROOT.parent / "jupyter_execute"
+    stray = bundle_root.parent / "jupyter_execute"
     if stray.is_dir():
         shutil.rmtree(stray)
 
-    problems = _verify()
+    problems = _verify(bundle_root)
     for problem in problems:
         print(f"error: {problem}", file=sys.stderr)
     if problems:
         return 1
 
-    files = sum(1 for path in BUNDLE_ROOT.rglob("*") if path.is_file())
-    size_mb = sum(p.stat().st_size for p in BUNDLE_ROOT.rglob("*") if p.is_file()) / 1e6
-    print(f"bundled {files} files ({size_mb:.1f} MB) into {BUNDLE_ROOT.relative_to(REPO_ROOT)}")
+    files = sum(1 for path in bundle_root.rglob("*") if path.is_file())
+    size_mb = sum(p.stat().st_size for p in bundle_root.rglob("*") if p.is_file()) / 1e6
+    # An output outside the checkout has no relative form, and a traceback here
+    # would fail a build that had already succeeded.
+    try:
+        where: Path | str = bundle_root.relative_to(REPO_ROOT)
+    except ValueError:
+        where = bundle_root
+    print(f"bundled {files} files ({size_mb:.1f} MB) into {where}")
     return 0
 
 
-def _verify() -> list[str]:
+def _verify(bundle_root: Path) -> list[str]:
     """The checks worth failing the build over, rather than discovering in the office."""
 
     problems: list[str] = []
-    index = BUNDLE_ROOT / "index.html"
+    index = bundle_root / "index.html"
     if not index.is_file():
         problems.append(f"{index} was not produced; /docs/ would 404 on the server.")
         return problems
 
-    mathjax = BUNDLE_ROOT / "_static" / "mathjax" / "tex-chtml-full.js"
+    mathjax = bundle_root / "_static" / "mathjax" / "tex-chtml-full.js"
     if not mathjax.is_file():
         problems.append(
             "the vendored MathJax bundle is missing from the build; every derivation "
@@ -150,7 +182,7 @@ def _verify() -> list[str]:
 
     # A page that still points at a CDN is the failure this whole arrangement
     # exists to prevent, and it is invisible on a machine that has a network.
-    for page in list(BUNDLE_ROOT.glob("*.html"))[:20]:
+    for page in list(bundle_root.glob("*.html"))[:20]:
         text = page.read_text(encoding="utf-8", errors="ignore")
         if "cdn.jsdelivr.net" in text or "cdnjs.cloudflare.com" in text:
             problems.append(f"{page.name} references a CDN; the build is not offline-safe.")
@@ -160,7 +192,7 @@ def _verify() -> list[str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    return build(keep_sources=args.keep_sources, clean=args.clean)
+    return build(keep_sources=args.keep_sources, clean=args.clean, output=args.output)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,34 @@ Every release entry must state scientific behavior changes explicitly —
 "fixed" for correctness, "changed" for convention or semantics — because
 downstream analyses depend on them.
 
+## [0.8.1] - 2026-09-07
+
+**A test-precondition fix, cut so that the tag deployments pin is one CI proved.**
+No library or application behaviour changes; `0.8.0` and `0.8.1` compute the same
+answers from the same inputs.
+
+### Fixed
+
+- The `/docs` route tests required a built documentation tree and did not say so, which had left
+  six of the seven CI base jobs red since the bundle landed in 0.7.0. The bundle is 55 MB of
+  generated Sphinx output and is git-ignored, as the repository-content rule requires, so a clean
+  checkout has none and there is nothing to serve; the tests nevertheless passed on a developer
+  machine with `docs/_build/html` lying around, and on exactly one CI job -- the ubuntu-3.11 one,
+  whose Sphinx-warning step builds into that path as a side effect. They now skip when no tree
+  exists, naming the command that produces one.
+
+  The guarantee that the bundle actually ships is unaffected and does not depend on them:
+  `tests/unit/test_release_metadata.py` asserts statically, on every platform, that `static/docs`
+  is declared as package data and that `docs_root()` prefers the bundled copy over any checkout
+  build.
+
+- `scripts/build_docs_bundle.py` could only render into the package tree. A deployment that runs
+  PyTex from source over `PYTHONPATH` -- which is how the ML server suite runs it, so that a
+  rollback stays a symlink swap needing no network -- cannot use that: the bundle would land inside
+  a release directory the next upgrade replaces, be rebuilt on every deployment, and be removed by
+  the next prune. It now takes `--output`, so such a deployment can build it once into persistent
+  state and point `PYTEX_DOCS_ROOT` at the result.
+
 ## [0.8.0] - 2026-09-07
 
 **PyTex stops needing to be told the phase.** Every diffraction analysis in the library so far took
