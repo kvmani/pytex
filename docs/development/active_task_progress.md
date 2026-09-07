@@ -7282,3 +7282,70 @@ Now chunked along the scale axis to a few megabytes, at the cost of a Python loo
 iterations. Pinned by a test on quartz and alpha uranium at `max_index=8` that also checks the
 chunk boundary is arithmetic-neutral, by requiring the refined scale to agree with a run that
 chunks differently.
+
+## Goal - release 0.8.x and get a working bundle to the office server (2026-09-07)
+
+**Objective.** Cut a PyTex release carrying the phase-identification work, sync `ml_server_deploy`
+to it, and have a complete air-gapped bundle ready for an office rollout.
+
+### What shipped
+
+- **PyTex v0.8.0** - phase identification, the documentation bundle, twenty algorithm pages.
+- **PyTex v0.8.1** - `build_docs_bundle.py --output`, plus the CI fix below. No behaviour change.
+- **Suite v1.5.0** (`ml_server_deploy`) - seeded persistent state, post-deployment assertions,
+  on-server documentation build, PyTex pinned at v0.8.1. Bundle published, checksum verified,
+  contents inspected.
+
+### Four defects found, every one by running something rather than reading it
+
+1. **A fresh install aborted before changing anything.** `ML_SEED_BACKUP` ran `find` over a
+   `backups/` directory that does not exist on a new host; under `set -euo pipefail` that exits 1
+   and takes the deployment with it. It failed **18 of 25** rehearsal scenarios - every path that
+   reached an actual deploy - and would have stopped the first deployment on the office server.
+2. **`--allow-missing-seeds` could never have worked.** It let a deployment past preflight, and the
+   health check then asserted the exact consequences of the waived seed at severity `fail`. Fixed
+   narrowly: the waiver relaxes only the three families that assert seeded *content*, while units,
+   endpoints, routes and the advertised address must still pass.
+3. **PyTex CI was red on six of seven base jobs** since the documentation bundle landed in 0.7.0,
+   and the seventh was green by accident - ubuntu-3.11's Sphinx-warning step happens to build into
+   `docs/_build/html`, which is what `docs_root()` was finding. The `/docs` route tests now skip
+   when no tree exists; the packaging guarantee they were confused with is asserted statically in
+   `test_release_metadata.py` on every platform.
+4. **ShellCheck SC2034** on the seed-path variables. Assigned in `update.sh`, read in
+   `lib/common.sh`; `-x` follows a `source` but not the reverse.
+
+The pattern is worth recording: the 1.5.0 deployment work was well-designed and had **never met a
+single one of its repository's own gates** - not ShellCheck, not the rehearsal, not CI. Reviewing
+it was not a formality.
+
+### /docs on an air-gapped host, closed properly
+
+The route had answered 404 there since the workbench gained it: PyTex renders its site into the
+*installed package*, and the suite runs application code from source over `PYTHONPATH` so that a
+rollback stays a symlink swap needing no network, so the 55 MB of generated HTML reached neither
+the checkout nor the archive.
+
+Rather than ship it, the deployment builds it - as `update.sh`'s last step, into
+`shared/docs/pytex`, with `PYTEX_DOCS_ROOT` (the first `docs_root()` candidate) pointing at it.
+Three properties, all deliberate and all pinned by rehearsal scenarios: nothing waits on it, it
+cannot fail a deployment, and it is stamped with the component commit so an unchanged component
+reuses it. `deploy/build_docs.sh` does the same build on demand.
+
+**Verified end to end, not asserted.** From a pristine checkout on Linux/Python 3.12 - the office
+platform - with only the seven `docs` wheels added: Sphinx succeeded (541 files, 57 MB, all 34
+notebooks executed under `nb_execution_raise_on_error`), and served through `PYTEX_DOCS_ROOT` every
+route answered 200 - the index, the new theory and algorithm pages, the worked-example gallery and
+the vendored MathJax - with zero CDN references.
+
+### Verification of record
+
+28 of 28 rehearsal scenarios on Ubuntu 24.04 with real `systemd --user` units and GitHub
+unreachable; 61 manifest tests; the full PyTex unit lane green locally (7929 passed); PyTex CI green
+on the docs-precondition fix across all seven base jobs plus browser; the suite build green through
+every gate including the dependency gate and its own in-CI rehearsal; the published archive
+downloaded, checksum verified, and confirmed to pin PyTex at `63931c5` with the documentation
+build declared and all 34 notebooks aboard.
+
+**The office mirror needs seven more wheels** for the documentation build: `sphinx`, `furo`,
+`myst-nb`, `myst-parser`, `sphinx-design`, `sphinx-copybutton`, `sphinxcontrib-bibtex`. All
+pure-Python on PyPI. Without them the rollout still succeeds and `/docs` stays as it is today.
