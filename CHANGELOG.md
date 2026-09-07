@@ -9,6 +9,113 @@ Every release entry must state scientific behavior changes explicitly —
 "fixed" for correctness, "changed" for convention or semantics — because
 downstream analyses depend on them.
 
+## [0.8.0] - 2026-09-07
+
+**PyTex stops needing to be told the phase.** Every diffraction analysis in the library so far took
+the phase as an input and measured something about it. The step before all of them -- deciding
+*which* phase a measured pattern is -- was missing, so the workbench could determine a cell to
+seven figures for a specimen whose identity nobody had established. It can now be given several
+candidate structures, as CIF files or from the catalogue, and asked which of them the scan is.
+
+Alongside it: the documentation is now built into the package, so the workbench's `/docs` works on
+a host with no network and no Sphinx; and the algorithms section grows from seven pages to twenty,
+which is the layer between the theory notes and the notebooks that most of the library was missing.
+
+**Scientific behavior.** Additions only. No existing surface changes its answers.
+
+### Added
+
+- **Phase identification** (`pytex.diffraction.xrd_phase_identification`): `identify_phase`,
+  `identify_phase_from_pattern`, `PhaseCandidateScore`, `PhaseIdentification`. Detects and fits the
+  peaks of a measured diffractogram, indexes every supplied candidate against them, scores each on
+  four criteria, ranks them, and states whether the winner is believable.
+
+  Ranking candidates is not indexing one of them repeatedly, and the reason is worth stating
+  because it decided the design. de Wolff's `M_N` and Smith and Snyder's `F_N` are computed over
+  the indexed reflections only, so no term in either changes when a strong measured peak goes
+  unindexed, or when a reflection the candidate predicts at full intensity fails to appear. Those
+  two are the whole content of the fcc/bcc distinction -- both centrings put lines at
+  `(lambda^2/4a^2)` times a set of integers, so for a suitable ratio of cell parameters several
+  coincide, and what never coincides is which reflections are *absent*.
+
+  So each candidate is scored on four bounded, independent criteria, reported individually because
+  which one a candidate fails is diagnostic in a way its total is not: the share of measured
+  integrated intensity it explains, the share of its own strong lines inside the measured span that
+  were observed, how far *inside* the matching window its lines landed, and a scale-free similarity
+  between observed and calculated intensities. The last carries the least weight by design --
+  preferred orientation, microabsorption, extinction and a coarse powder all move a measured
+  intensity by factors while moving no peak position -- and the weights are an overridable
+  parameter rather than a constant, because they encode a judgement about evidence rather than a
+  law of diffraction.
+
+- **One uniform cell dilation refined per candidate**, which is what makes a tabulated CIF usable
+  on a real specimen. A deposited cell and a solid solution differ by a fraction of a per cent, and
+  `Delta(2 theta) = 2 e tan(theta)` turns three parts in a thousand into more than half a degree at
+  back-reflection -- so without it the true phase loses exactly the high-angle lines that would
+  have confirmed it. It cannot make a wrong structure fit: a uniform dilation multiplies every `d`
+  by the same factor and leaves every *ratio* unchanged, and the ratios are what indexing tests.
+  The refined factor is reported per candidate rather than applied silently, and a value pinned at
+  the edge of the search range is the visible signature of a candidate stretched as far as it is
+  allowed and still not fitting.
+
+- **Two qualifications on the winner**, reported separately from the ranking because a ranking
+  always has a winner and that is not the same as having an answer. `is_conclusive` says the best
+  candidate explains the pattern in absolute terms; `is_decisive` says it beats the runner-up by
+  enough to be distinguished from it. When either fails, `describe()` says so in words and names
+  the remedy -- widen the candidate list or suspect a mixture for the first; count longer at high
+  angle, change wavelength or use chemistry for the second, since that one is a statement about the
+  measurement rather than about the candidates.
+
+- **In the workbench**, an **Identify the phase** view taking several candidates at once: catalogue
+  entries and `.cif` files, opened several to a dialogue because a user comparing candidates has a
+  folder of them. The plot draws the measured scan with the fitted peak positions and one stick row
+  per candidate at the angles that candidate puts its lines, ranked, so the ranking can be checked
+  against the scan rather than trusted. Evidence weighting is offered as three specimen situations
+  -- balanced, textured specimen, positions only -- rather than as four raw numbers, because the
+  situation is the thing the operator knows.
+
+- **The XRD workspace's six analyses are sub-tabs** rather than entries in a dropdown. A control
+  that names one destination and conceals the rest makes the workspace's own capabilities
+  discoverable only by opening it, which is the same argument the one-screen form rule makes about
+  inputs. Panels can now put their own views in the shell's sub-tab strip through `setViews` on the
+  mount context, so a view tab and a workspace sub-tab are one affordance.
+
+- **The documentation ships inside the package.** `scripts/build_docs_bundle.py` renders the Sphinx
+  site into `pytex/app/static/docs`, and the packaging carries it. The workbench's `/docs` was
+  going to 404 on an air-gapped host -- and to do so while working perfectly for everyone able to
+  notice -- because the only locations `docs_root()` could match were git-ignored build directories
+  in a checkout. A separate test now asserts the bundle loads nothing over the network, so the
+  air-gap claim is checked rather than asserted.
+
+- **The algorithms section grows from seven pages to twenty**, covering pole-figure inversion, IPF
+  colouring, EBSD grains and local misorientation, the Kearns parameter, misorientation and
+  disorientation, CSL boundaries, Schmid and Taylor, elastic homogenisation, ghost correction,
+  parent-grain reconstruction, Kikuchi band geometry, dynamical CBED, and phase identification --
+  each with a generated flow sheet, the settings that matter, worked numbers on a case with a known
+  answer, and the failure modes. Four new worked-example groups accompany them.
+
+- **Theory note** `phase_identification_from_powder_patterns`, **algorithm page**
+  `phase_identification`, the generated `phase_identification_algorithm.svg` flow sheet, and four
+  executable worked examples whose expected values have provenance independent of this code: the
+  generating fixture of a synthetic pattern, a cell dilation the example imposes and the refinement
+  recovers, the exact invariance of `d`-spacing ratios under a uniform dilation, and the contract
+  that an impossible candidate is scored rather than dropped.
+
+### Fixed
+
+- `plotFrame.setContent(null)` wrote the literal string `null` onto the plot stage, because
+  `Node.append(null)` stringifies its argument. Every view switch in the workbench had always done
+  this; a dropdown made it rare enough to go unnoticed and one-click sub-tabs made it constant.
+
+- The cell-scale search allocated its whole grid at once as a `(scales, peaks, lines)` array. All
+  three axes are caller-controlled and only the first is fixed, so a low-symmetry cell enumerated
+  to a high `max_index` against a full peak list reached gigabytes; it is chunked now.
+
+- `test_no_external_urls_in_the_static_tree` was scanning the bundled documentation, which is 500
+  pages of Sphinx output whose every citation carries a DOI link. The claim it was making is split
+  into the two different things it conflated: the hand-authored frontend must *reference* the
+  network nowhere, and the bundle must *load* nothing from it.
+
 ## [0.7.0] - 2026-09-06
 
 **A thorough pass over the texture engine.** Three things a texture study needs and PyTex could not do: recover the half of an ODF a pole figure cannot measure, state the contour levels a figure is drawn at, and compare several samples on one scale. All three are in, along with the forward-model defect the first of them exposed.
