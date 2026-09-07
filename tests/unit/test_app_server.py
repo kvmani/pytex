@@ -22,7 +22,13 @@ from unittest.mock import Mock
 
 import pytest
 
-from pytex.app.server import STATIC_ROOT, AppServer, _Handler, create_server
+from pytex.app.server import (
+    STATIC_ROOT,
+    AppServer,
+    _Handler,
+    create_server,
+    docs_root,
+)
 
 
 @pytest.fixture(scope="module")
@@ -965,10 +971,37 @@ class TestFrontendIsSelfContained:
         assert (STATIC_ROOT / "js" / "main.js").is_file()
 
 
+#: Whether a built documentation tree exists for the server to serve.
+#:
+#: The bundle is 55 MB of generated Sphinx output. It is git-ignored, as the
+#: repository-content rule requires, so a clean checkout has none and these
+#: runtime tests have nothing to serve. Their precondition is therefore checked
+#: rather than assumed: before this, they passed on a developer machine that
+#: happened to have `docs/_build/html` lying around and on exactly one CI job --
+#: the ubuntu-3.11 one, whose Sphinx-warning step builds into that path as a
+#: side effect -- and failed on the other six, which is not a defect those tests
+#: were describing.
+#:
+#: The guarantee that the bundle actually *ships* does not depend on this and is
+#: not weakened by it: `test_release_metadata.py` asserts statically, on every
+#: platform, that `static/docs` is declared as package data and that
+#: `docs_root()` prefers the bundled copy to any checkout build.
+#:
+#: To run these locally: `python scripts/build_docs_bundle.py`.
+_DOCS_BUILT = docs_root() is not None
+
+_needs_docs = pytest.mark.skipif(
+    not _DOCS_BUILT,
+    reason=(
+        "no built documentation tree; run `python scripts/build_docs_bundle.py` "
+        "(or a Sphinx build into docs/_build/html) to exercise the /docs routes"
+    ),
+)
+
+
+@_needs_docs
 class TestDocumentationServing:
     def test_docs_root_locates_existing_documentation(self) -> None:
-        from pytex.app.server import docs_root
-
         root = docs_root()
         assert root is not None
         assert root.is_dir()
