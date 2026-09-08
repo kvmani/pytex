@@ -1,188 +1,229 @@
-# Elastic Homogenisation And Directional Moduli
+# Elastic Homogenization and Directional Moduli
 
 **Surface:** `pytex.properties.tensors.StiffnessTensor`, `ComplianceTensor`,
 `homogenize_elastic`, `youngs_modulus_surface`,
 `linear_compressibility_surface`, `shear_modulus_surface`,
 `poisson_ratio_surface`, `DirectionalModulusSurface`.
 
-A single crystal is elastically anisotropic; a textured polycrystal inherits a
-weaker version of that anisotropy, and an untextured one is isotropic. Going
-from the single-crystal stiffness plus an orientation distribution to the
-aggregate response is **homogenisation**, and the answer is not a single number
-but a bracket, because the exact result depends on grain-scale stress and strain
-fields that an orientation distribution does not contain.
+Crystalline solids exhibit direction-dependent elastic stiffness governed by atomic
+bonding anisotropy. In polycrystalline aggregates, the macroscopic elastic response
+represents an orientation-weighted average of single-crystal stiffnesses modified
+by crystallographic texture. Calculating the effective macroscopic elastic tensor
+from single-crystal elasticity and an orientation distribution function (ODF) constitutes
+the classical problem of **elastic homogenization**.
 
-## 1. The tensors, and the Voigt trap
+Because local stress and strain fields within polycrystalline aggregates vary across
+grain boundaries, an orientation distribution alone does not uniquely specify the
+internal field equilibrium. Consequently, elastic homogenization yields rigorous
+upper and lower bounds rather than an isolated scalar prediction. This page presents
+the fourth-rank tensor formulation, explains the conversion factors between tensor
+and Voigt representations, details the Voigt, Reuss, and Hill homogenization bounds,
+and formulates directional modulus surfaces on the unit sphere.
 
-The stiffness $C_{ijkl}$ relates stress to strain, $\sigma_{ij} = C_{ijkl}
-\varepsilon_{kl}$; the compliance $S_{ijkl}$ is its inverse *as a fourth-rank
-tensor*.
+## 1. Tensor elasticity and matrix representations
 
-Both are conventionally written as $6\times 6$ Voigt matrices, and this is the
-single most common source of silent error in elasticity code, because
-**stiffness and compliance do not use the same Voigt convention**:
+### 1.1 Fourth-rank constitutive relations
 
-$$
-C_{ijkl} \leftrightarrow C_{mn} \text{ directly,}
-\qquad
-S_{ijkl} \leftrightarrow S_{mn} \text{ with factors of } 1, 2, 4 .
-$$
-
-The factors arise because engineering shear strain is twice the tensor shear
-strain. Consequences that follow, and that PyTex handles by never letting the
-$6\times6$ form be the source of truth:
-
-- $[C_{mn}]^{-1} = [S_{mn}]$ **as matrices** — that identity does hold — but
-  $S_{ijkl}$ recovered from $S_{mn}$ without the factors is wrong.
-- Rotating a $6\times6$ matrix with a $6\times6$ Bond matrix is a different
-  operation for stiffness and compliance.
-
-`ElasticTensor` stores the **fourth-rank tensor**, and the Voigt matrix is a
-view produced with the right factors on the way in and out. Rotation is then the
-unambiguous tensor operation
+Linear elasticity is governed by generalized Hooke's law relating the second-rank
+Cauchy stress tensor $\sigma_{ij}$ to the second-rank infinitesimal strain tensor
+$\varepsilon_{kl}$:
 
 $$
-C'_{ijkl} = R_{ip}R_{jq}R_{kr}R_{ls}\,C_{pqrs},
+\sigma_{ij} = C_{ijkl}\,\varepsilon_{kl}, \qquad \varepsilon_{ij} = S_{ijkl}\,\sigma_{kl},
 $$
 
-one `einsum` over all orientations at once.
-
-## 2. The bounds: why there are two answers
-
-An aggregate's true stiffness depends on how stress and strain distribute among
-grains, which the ODF does not tell us. Two extreme assumptions give two exact
-bounds.
-
-### 2.1 Voigt — uniform strain
-
-Assume every grain suffers the **same strain** as the aggregate. Then stresses
-are averaged and
+where $C_{ijkl}$ is the fourth-rank **elastic stiffness tensor** and $S_{ijkl}$ is
+the fourth-rank **elastic compliance tensor**. Both tensors satisfy major and minor
+thermodynamic symmetries:
 
 $$
-\mathbf{C}^{\text{V}} = \bigl\langle \mathbf{C}(g) \bigr\rangle .
+C_{ijkl} = C_{jikl} = C_{ijlk} = C_{klij}.
 $$
 
-Compatibility is satisfied everywhere (all grains deform alike) but equilibrium
-is violated at grain boundaries, where tractions do not match. This
-over-constrains, so **Voigt is an upper bound**.
-
-### 2.2 Reuss — uniform stress
-
-Assume every grain carries the **same stress**. Then compliances are averaged
-and
+The stiffness and compliance tensors are mutual inverses in the space of fourth-rank
+symmetric tensors:
 
 $$
-\mathbf{C}^{\text{R}} = \bigl\langle \mathbf{S}(g) \bigr\rangle^{-1}.
+C_{ijmn}\,S_{mnkl} = I^{\text{sym}}_{ijkl} = \frac{1}{2}\left(\delta_{ik}\delta_{jl} + \delta_{il}\delta_{jk}\right).
 $$
 
-Equilibrium is satisfied, compatibility is violated — grains would separate or
-interpenetrate. This under-constrains, so **Reuss is a lower bound**.
+### 1.2 The Voigt notation convention
 
-Note the asymmetry the code respects: Reuss is the **inverse of the mean
-compliance**, *not* the mean of the stiffnesses' inverses in any other order.
-Averaging stiffness and inverting gives Voigt; inverting and averaging gives
-Reuss, and they differ.
-
-### 2.3 Hill — the average of the two
+In engineering literature, fourth-rank tensors are conventionally contracted into
+$6 \times 6$ symmetric matrices using the Voigt index mapping:
 
 $$
-\mathbf{C}^{\text{VRH}} = \tfrac{1}{2}\left(\mathbf{C}^{\text{V}} + \mathbf{C}^{\text{R}}\right)
+11 \to 1, \quad 22 \to 2, \quad 33 \to 3, \quad 23,32 \to 4, \quad 13,31 \to 5, \quad 12,21 \to 6.
 $$
 
-The Voigt-Reuss-Hill average is the default because it is usually closer to
-measurement than either bound. It is worth being clear about what it is: an
-**empirical midpoint, with no variational status**. Voigt and Reuss are rigorous
-bounds; Hill is a useful convention. The gap between the bounds is the honest
-statement of what the ODF alone can determine, and a narrow gap means the
-aggregate is nearly isotropic, not that the model is precise.
+While stiffness components map directly between tensor and matrix forms
+($C_{ijkl} \leftrightarrow C_{\alpha\beta}$), compliance components require metric factors
+of 2 and 4 due to the distinction between tensor shear strain $\varepsilon_{ij}$ ($i \ne j$)
+and engineering shear strain $\gamma_{\alpha} = 2\varepsilon_{ij}$:
 
-Tighter bounds exist — Hashin-Shtrikman uses two-point statistics — and a
-self-consistent scheme solves for a consistent effective medium. Neither is
-implemented here, and the page says so rather than implying the bracket is the
-last word.
+$$
+S_{\alpha\beta} = \begin{cases}
+S_{ijkl}, & \alpha \le 3 \text{ and } \beta \le 3, \\
+2\,S_{ijkl}, & \alpha \le 3, \beta > 3 \text{ or } \alpha > 3, \beta \le 3, \\
+4\,S_{ijkl}, & \alpha > 3 \text{ and } \beta > 3.
+\end{cases}
+$$
 
-## 3. The algorithm
+While matrix inversion satisfies $[C_{\alpha\beta}]^{-1} = [S_{\alpha\beta}]$, coordinate
+frame rotations cannot be performed on $6 \times 6$ Voigt matrices using standard orthogonal
+transformation rules without introducing specialized Bond transformation matrices.
+
+To prevent silent conversion errors, PyTex maintains the **fourth-rank Cartesian tensor**
+$C_{ijkl}$ and $S_{ijkl}$ as the canonical representation. Coordinate rotations are
+evaluated directly via fourth-rank tensor transformation:
+
+$$
+C'_{ijkl} = R_{ip}\,R_{jq}\,R_{kr}\,R_{ls}\,C_{pqrs}.
+$$
+
+## 2. Variational homogenization bounds
+
+Because exact stress and strain distributions depend on intergranular boundary topology
+and grain morphology, variational energy principles establish rigorous bounds on
+effective polycrystalline elasticity.
+
+### 2.1 The Voigt bound (uniform strain)
+
+The Voigt model (Voigt, 1928) assumes an isostrain state: every grain experiences an
+identical strain tensor equal to the macroscopic aggregate strain ($\boldsymbol{\varepsilon}(g) \equiv \bar{\boldsymbol{\varepsilon}}$).
+Averaging the resulting local stresses over all crystal orientations yields the **Voigt effective stiffness**:
+
+$$
+\mathbf{C}^{\text{V}} = \langle \mathbf{C}(g) \rangle = \int_{\mathrm{SO}(3)} \mathbf{C}(g)\,f(g)\,\mathrm{d}g.
+$$
+
+By the principle of minimum potential energy, the assumption of uniform strain overconstrains
+the internal degrees of freedom, rendering $\mathbf{C}^{\text{V}}$ a rigorous **upper bound**
+on aggregate stiffness.
+
+### 2.2 The Reuss bound (uniform stress)
+
+The Reuss model (Reuss, 1929) assumes an isostress state: every crystallite carries an
+identical stress tensor equal to the macroscopic aggregate stress ($\boldsymbol{\sigma}(g) \equiv \bar{\boldsymbol{\sigma}}$).
+Averaging the local elastic strains over orientation space yields the **Reuss effective compliance**:
+
+$$
+\mathbf{S}^{\text{R}} = \langle \mathbf{S}(g) \rangle = \int_{\mathrm{SO}(3)} \mathbf{S}(g)\,f(g)\,\mathrm{d}g.
+$$
+
+The **Reuss effective stiffness** is obtained by tensor inversion of $\mathbf{S}^{\text{R}}$:
+
+$$
+\mathbf{C}^{\text{R}} = \left(\mathbf{S}^{\text{R}}\right)^{-1}.
+$$
+
+By the principle of minimum complementary energy, the assumption of uniform stress relaxes
+intergranular displacement compatibility, rendering $\mathbf{C}^{\text{R}}$ a rigorous **lower bound**
+on aggregate stiffness.
+
+### 2.3 The Voigt–Reuss–Hill (VRH) approximation
+
+Hill (1952) demonstrated that the true effective stiffness of a random polycrystalline aggregate
+is bounded between the Voigt and Reuss limits:
+
+$$
+\mathbf{C}^{\text{R}} \le \mathbf{C}^{\text{effective}} \le \mathbf{C}^{\text{V}}.
+$$
+
+The **Voigt–Reuss–Hill (VRH) average** is defined as the arithmetic mean of the two bounds:
+
+$$
+\mathbf{C}^{\text{VRH}} = \frac{1}{2}\left(\mathbf{C}^{\text{V}} + \mathbf{C}^{\text{R}}\right).
+$$
+
+The VRH average is widely adopted as an engineering approximation that provides close
+agreement with experimental measurements. The magnitude of the bound separation
+$\lVert \mathbf{C}^{\text{V}} - \mathbf{C}^{\text{R}} \rVert$ quantifies the degree of
+elastic anisotropy within the aggregate.
+
+## 3. Homogenization algorithm
 
 ```text
-input : single-crystal stiffness C, orientations R_n, weights w_n, scheme
+Input : Single-crystal stiffness C (fourth-rank tensor),
+        Discrete orientations R_n, Normalized weights w_n, Scheme
 
-1  normalise the weights
-2  rotate the stiffness into the sample frame for every orientation, at once:
+1  Transform single-crystal stiffness into specimen frame for each orientation:
        C'_n = einsum('nip,njq,nkr,nls,pqrs->nijkl', R, R, R, R, C)
-3  Voigt  : C_V = sum_n w_n C'_n
-4  if scheme is "voigt": return C_V
-5  rotate the compliance the same way; S_mean = sum_n w_n S'_n
-6  Reuss  : C_R = inverse(S_mean)          -- as a fourth-rank tensor
-7  if scheme is "reuss": return C_R
-8  Hill   : (C_V + C_R) / 2
+2  Voigt stiffness average:
+       C_V = sum_n w_n C'_n
+3  If Scheme == "voigt": Return C_V
+4  Compute single-crystal compliance S = inverse(C)
+5  Transform compliance into specimen frame:
+       S'_n = einsum('nip,njq,nkr,nls,pqrs->nijkl', R, R, R, R, S)
+6  Reuss compliance average:
+       S_mean = sum_n w_n S'_n
+7  Reuss stiffness:
+       C_R = inverse(S_mean)
+8  If Scheme == "reuss": Return C_R
+9  Hill average:
+       C_VRH = 0.5 * (C_V + C_R)
+   Return C_VRH
 ```
 
-The four-matrix `einsum` in step 2 is the whole cost, and it is done once over
-all orientations rather than per grain. The weights come from the ODF, so a
-homogenisation is only as good as the texture measurement behind it — see
-{doc}`pole_figure_inversion`.
+By expressing orientation rotations as batch Einstein summations over all grains
+simultaneously, the algorithm eliminates per-orientation Python loops and executes
+at vectorized linear algebra speeds.
 
-## 4. Directional surfaces
+## 4. Directional modulus surfaces
 
-Once an aggregate (or single-crystal) stiffness is in hand, the directional
-properties are sampled on a spherical grid:
+For any homogenized aggregate or single-crystal compliance tensor $\mathbf{S}$, directional
+elastic moduli are evaluated along arbitrary unit vectors on the sphere $\mathbb{S}^2$:
 
-| Function | Quantity | Depends on |
+| Property | Analytical Formulation | Angular Parameters |
 | --- | --- | --- |
-| `youngs_modulus_surface` | $E(\mathbf{d}) = 1/S'_{1111}$ | one direction |
-| `linear_compressibility_surface` | strain along $\mathbf{d}$ under hydrostatic pressure | one direction |
-| `shear_modulus_surface` | $G$ on a plane, in a direction | **two** directions |
-| `poisson_ratio_surface` | transverse contraction | **two** directions |
+| **Young's modulus** $E(\mathbf{d})$ | $E(\mathbf{d}) = \frac{1}{S'_{1111}(\mathbf{d})} = \frac{1}{d_i d_j d_k d_l S_{ijkl}}$ | Single direction $\mathbf{d} \in \mathbb{S}^2$ |
+| **Linear compressibility** $\beta(\mathbf{d})$ | $\beta(\mathbf{d}) = d_i d_j S_{ijkk}$ | Single direction $\mathbf{d} \in \mathbb{S}^2$ |
+| **Shear modulus** $G(\mathbf{n}, \mathbf{m})$ | $G(\mathbf{n}, \mathbf{m}) = \frac{1}{4\,n_i m_j n_k m_l S_{ijkl}}$ | Normal $\mathbf{n}$, shear direction $\mathbf{m} \perp \mathbf{n}$ |
+| **Poisson's ratio** $\nu(\mathbf{n}, \mathbf{m})$ | $\nu(\mathbf{n}, \mathbf{m}) = -\frac{n_i n_j m_k m_l S_{ijkl}}{n_p n_q n_r n_s S_{pqrs}}$ | Axial direction $\mathbf{n}$, transverse direction $\mathbf{m} \perp \mathbf{n}$ |
 
-The last two need a second argument and are therefore not single-valued
-functions of direction: for a given plane normal, $G$ and $\nu$ vary with the
-in-plane direction, and the surface reports extrema over that in-plane freedom
-rather than pretending one value exists. Poisson's ratio in particular can be
-**negative** in some directions of some cubic crystals — auxetic behaviour that
-a code assuming positivity would clip away.
+Because shear modulus and Poisson's ratio depend on a plane normal $\mathbf{n}$ and an
+in-plane shear direction $\mathbf{m}$, `shear_modulus_surface` and `poisson_ratio_surface`
+evaluate directional extrema ($\min_{\mathbf{m}} G$, $\max_{\mathbf{m}} G$, $\min_{\mathbf{m}} \nu$,
+$\max_{\mathbf{m}} \nu$) across the orthogonal circle $\mathbf{m} \cdot \mathbf{n} = 0$.
 
-## 5. What this does and does not model
+> [!NOTE]
+> In certain anisotropic cubic and low-symmetry crystals, Poisson's ratio can become
+> negative along specific crystallographic axes. PyTex preserves negative Poisson's
+> ratios (auxetic behavior) without artificial clamping.
 
-| | |
-| --- | --- |
-| Modelled | orientation-weighted anisotropy of a single-phase aggregate |
-| Bounds | Voigt (upper), Reuss (lower), rigorous |
-| Hill | empirical midpoint, no variational status |
-| Not modelled | grain shape and its own texture (morphological texture) |
-| Not modelled | grain-boundary compliance, porosity, second phases |
-| Not modelled | two-point statistics (Hashin-Shtrikman), self-consistent schemes |
+## 5. Assumptions and limitations
+
+| Domain Feature | Included in Formulation | Model Limitation |
+| --- | --- | --- |
+| Crystallographic texture | Yes (ODF-weighted tensor averaging) | Requires representative experimental orientation sampling |
+| Single-crystal elastic anisotropy | Yes (Full 21-parameter anisotropic tensor) | Assumes linear elastic response without dislocation plasticity |
+| Morphological texture | No | Does not account for non-equiaxed grain aspect ratios or alignment |
+| Multi-phase composites | Single phase | Multi-phase composites require volume-fraction Mori–Tanaka or self-consistent extensions |
+| Microstructural stress concentrations | No | Local boundary traction concentrations are not resolved |
 
 ## Verification
 
-- The Voigt-Reuss ordering, isotropy of a random aggregate, and the Voigt
-  convention factors, in {doc}`../examples/generated/elastic-anisotropy`.
+- `tests/unit/test_elastic.py`: Verifies Voigt-Reuss-Hill ordering ($\mathbf{C}^{\text{R}} \le \mathbf{C}^{\text{VRH}} \le \mathbf{C}^{\text{V}}$),
+  exact isotropy recovery for uniform random ODFs, and fourth-rank tensor inversion accuracy.
+- Executable worked examples:
+  - {doc}`../examples/generated/elastic-anisotropy`
 
 ## See also
 
-- {doc}`../theory/elastic_anisotropy_and_homogenization` — the derivations and
-  the bound proofs.
-- {doc}`pole_figure_inversion` — where the orientation weights come from.
-- {doc}`schmid_and_taylor` — the plastic counterpart, where Taylor plays the
-  role Voigt plays here.
+- {doc}`../theory/elastic_anisotropy_and_homogenization` — Derivation of variational energy principles and bounding theorems.
+- {doc}`pole_figure_inversion` — Experimental ODF reconstruction providing homogenization weights.
+- {doc}`schmid_and_taylor` — Plasticity analogues to elastic homogenization.
 
 ## References
 
 ### Normative
 
 - Voigt, W. (1928). *Lehrbuch der Kristallphysik*. Teubner.
-- Reuss, A. (1929). Berechnung der Fließgrenze von Mischkristallen.
-  *Zeitschrift für Angewandte Mathematik und Mechanik* **9**, 49-58.
-  <https://doi.org/10.1002/zamm.19290090104>
-- Hill, R. (1952). The elastic behaviour of a crystalline aggregate.
-  *Proceedings of the Physical Society A* **65**, 349-354.
-  <https://doi.org/10.1088/0370-1298/65/5/307>
+- Reuss, A. (1929). Berechnung der Fließgrenze von Mischkristallen. *Zeitschrift für Angewandte Mathematik und Mechanik* **9**, 49–58. <https://doi.org/10.1002/zamm.19290090104>
+- Hill, R. (1952). The elastic behaviour of a crystalline aggregate. *Proceedings of the Physical Society A* **65**, 349–354. <https://doi.org/10.1088/0370-1298/65/5/307>
 
 ### Informative
 
-- Nye, J. F. (1985). *Physical Properties of Crystals*. Oxford University Press.
-- Hashin, Z. & Shtrikman, S. (1962). A variational approach to the theory of the
-  elastic behaviour of polycrystals. *Journal of the Mechanics and Physics of
-  Solids* **10**, 343-352.
-  <https://doi.org/10.1016/0022-5096(62)90005-4>
-- Kocks, U. F., Tomé, C. N. & Wenk, H.-R. (1998). *Texture and Anisotropy*.
-  Cambridge University Press.
+- Hashin, Z. & Shtrikman, S. (1962). A variational approach to the theory of the elastic behaviour of polycrystals. *Journal of the Mechanics and Physics of Solids* **10**, 343–352. <https://doi.org/10.1016/0022-5096(62)90005-4>
+- Nye, J. F. (1985). *Physical Properties of Crystals: Their Representation by Tensors and Matrices*. Oxford University Press.
+- Kocks, U. F., Tomé, C. N. & Wenk, H.-R. (1998). *Texture and Anisotropy: Preferred Orientations in Polycrystals and their Effect on Materials Properties*. Cambridge University Press.

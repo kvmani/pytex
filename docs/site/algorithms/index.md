@@ -20,73 +20,75 @@ They sit between the other documentation layers rather than duplicating them:
 The pages group by the question they answer, and each states the surface it
 documents so the code and the description cannot drift apart.
 
-**Texture and orientation**
+**Texture and orientation analysis**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`pole_figure_inversion` | measured pole figures to an ODF, by the discrete and the harmonic route |
-| {doc}`ghost_correction` | recovering the odd part that a pole figure cannot measure |
-| {doc}`ipf_coloring` | an orientation, a chosen specimen direction, and the colour that follows |
-| {doc}`kearns_parameter` | the basal-pole second-moment tensor, by three routes that disagree predictably |
-| {doc}`misorientation_and_disorientation` | the symmetry orbit, its canonical representative, and boundary statistics |
+| {doc}`pole_figure_inversion` | Forward projection operator assembly, discrete simplex regularisation, and spherical harmonic expansion |
+| {doc}`ghost_correction` | Group character projection, odd-harmonic basis construction, and non-negative profile regularisation |
+| {doc}`ipf_coloring` | Directional projection $g^{-1}\mathbf{y}$, fundamental sector reduction, and barycentric RGB gamut mapping |
+| {doc}`kearns_parameter` | Basal orientation tensor $\mathbf{A}$, principal axis spectral decomposition, and kernel deconvolution |
+| {doc}`misorientation_and_disorientation` | Rotational symmetry cosets, Mackenzie statistical baseline, and canonical fundamental region reduction |
 
-**Electron backscatter diffraction**
+**Electron backscatter diffraction (EBSD)**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`ebsd_grains_and_local_misorientation` | grains from a point grid; KAM, GROD, GOS, GAM; GND density |
-| {doc}`csl_boundaries` | assigning a Sigma value, and what it does not establish |
-| {doc}`kikuchi_band_geometry` | which planes give bands, where they land, and how wide they are |
+| {doc}`ebsd_grains_and_local_misorientation` | Spatial flood-fill segmentation, misorientation gradient fields (KAM, GROD, GOS), and GND scaling |
+| {doc}`csl_boundaries` | Brandon criterion tolerance boundaries, CSL rotation registry lookup, and metric tie-breaking |
+| {doc}`kikuchi_band_geometry` | Gnomonic band projection, Bragg bandwidth calculation, and detector frame transformations |
 
 **Transmission electron microscopy and diffraction**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`saed_pattern_indexing` | phase, zone axis, orientation and indices from picked spots |
-| {doc}`cbed_thickness_and_symmetry` | foil thickness from fringes; point group including the centre of symmetry |
-| {doc}`tem_tilt_navigation` | the holder tilts that reach a target zone axis |
-| {doc}`composite_saed_assembly` | a parent-plus-variant pattern from an orientation relationship |
+| {doc}`saed_pattern_indexing` | Invariant edge-ratio triangle matching, zone-axis determination, and dynamical intensity gating |
+| {doc}`cbed_thickness_and_symmetry` | Two-beam dynamical fringe fitting, specimen thickness extraction, and diffraction group symmetry |
+| {doc}`tem_tilt_navigation` | Double-tilt gimbal angle kinematics, rotation matrix decomposition, and shortest-path tilt planning |
+| {doc}`composite_saed_assembly` | Orientation-relationship variant mapping, reciprocal lattice transformation, and composite pattern synthesis |
 
-**Mechanical response**
+**Crystal mechanics and properties**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`schmid_and_taylor` | which system yields first, and what a strain costs |
-| {doc}`elastic_homogenization` | single-crystal stiffness plus a texture to an aggregate, with bounds |
+| {doc}`schmid_and_taylor` | Single-system resolved shear stress optimization and multi-system full-constraint linear programming |
+| {doc}`elastic_homogenization` | Fourth-rank Cartesian tensor rotation, Voigt–Reuss–Hill bounds, and directional modulus surfaces |
 
-**Orientation relationships**
+**Orientation relationships and microstructural transformations**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`orientation_relationship_determination` | an OR from measured parent/child orientations |
-| {doc}`variant_correspondence` | variant-resolved plane and direction correspondence |
-| {doc}`parent_grain_reconstruction` | recovering a transformed-away parent, and variant selection |
+| {doc}`orientation_relationship_determination` | Double coset symmetry filtering, variant cluster absorption, and habit plane/direction alignment |
+| {doc}`variant_correspondence` | Covariant plane and contravariant direction metric transformations across non-cubic lattices |
+| {doc}`parent_grain_reconstruction` | Graph voting, variant pair disorientation inversion, and median orientation voting |
 
-**X-ray diffraction**
+**Powder X-ray diffraction**
 
-| Page | The computation |
+| Page | Computational Core |
 | --- | --- |
-| {doc}`phase_identification` | which of several candidate structures a measured pattern is, and whether the answer is believable |
-| {doc}`precise_lattice_parameter_determination` | a cell from peak positions, with the systematic error extrapolated away |
-| {doc}`rietveld_refinement` | fitting the whole profile: structure, scale, widths, texture, background |
+| {doc}`phase_identification` | Continuous wavelet peak detection, bipartite Hungarian matching, and multi-criteria figure of merit |
+| {doc}`precise_lattice_parameter_determination` | Doublet-constrained profile fitting, iterative re-indexing, and generalized Cohen least-squares |
+| {doc}`rietveld_refinement` | Whole-pattern profile least squares, Caglioti instrumental broadening, and March–Dollase texture fitting |
 
-## Conventions used throughout
+## Conventions and units
 
-Every page works two systems side by side so nothing hexagonal is left implicit:
+To ensure comprehensive crystallographic coverage across all crystal systems, algorithms
+consistently address both high-symmetry cubic systems and non-orthogonal hexagonal systems:
+- **Cubic systems:** Exemplified by Kurdjumov–Sachs and Nishiyama–Wassermann $\mathrm{fcc} \to \mathrm{bcc}$
+  transformations (austenite $\to$ martensite/ferrite).
+- **Hexagonal close-packed systems:** Exemplified by Burgers $\mathrm{bcc} \leftrightarrow \mathrm{hcp}$
+  transformations ($\beta \leftrightarrow \alpha$ titanium and zirconium alloys).
 
-- **cubic** — Kurdjumov-Sachs, fcc → bcc (austenite → martensite);
-- **hexagonal** — Burgers, bcc → hcp (β → α titanium and zirconium).
+Standard physical and geometrical units are adopted across all public interfaces:
+- Angles: Degrees ($^\circ$) for orientation parameters and detector angles; radians in internal trigonometric routines.
+- Reciprocal distances: Inverse ångströms ($\text{Å}^{-1}$) or inverse nanometers ($\text{nm}^{-1}$).
+- Real-space lengths: Nanometers ($\text{nm}$) or ångströms ($\text{Å}$) for crystal unit cells; millimeters ($\text{mm}$) for detector dimensions.
+- Orientations: Crystal-to-specimen rotation matrices in Bunge $(\phi_1, \Phi, \phi_2)$ Euler angle conventions.
+- Symbols and notation: Governed strictly by {doc}`../standards/terminology_and_symbol_registry`.
 
-Angles are in degrees on every public surface, lengths on a detector in
-millimetres, reciprocal lengths in Å⁻¹. Orientation matrices are crystal-to-
-specimen in the Bunge convention, so a parent/child pair shows the rotation
-$\mathbf{V} = \mathbf{C}^{\mathsf{T}}\mathbf{P}$. Symbols follow
-{doc}`../standards/terminology_and_symbol_registry`.
-
-Each figure on these pages is **generated** by
-`scripts/generate_algorithm_figures.py` rather than drawn by hand, so a diagram
-cannot drift from the algorithm it illustrates, and each is held to the
-repository's figure layout guards.
+All architectural diagrams in this section are generated directly from code specifications
+via `scripts/generate_algorithm_figures.py`, guaranteeing permanent synchronization between
+published diagrams and underlying software implementations.
 
 ```{toctree}
 :maxdepth: 1

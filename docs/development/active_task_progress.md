@@ -21,8 +21,8 @@ conventions, references, and API behavior.
 | 0 | Implementation plan approved & active task ledger initialized | Complete |
 | 1 | Increment 1: Algorithm pages — Diffraction & TEM (`cbed`, `saed`, `composite_saed`, `tem_tilt`) | Complete |
 | 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | Complete |
-| 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | In progress |
-| 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Pending |
+| 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Complete |
+| 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | In progress |
 | 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Pending |
 | 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Pending |
 
@@ -41,6 +41,19 @@ conventions, references, and API behavior.
 - `docs/site/algorithms/ebsd_grains_and_local_misorientation.md`: Replaced informal opening with rigorous EBSD derived-metrics overview; clarified cumulative orientation gradients in flood fill; refined boundary filtering and GND dimensional scaling.
 - `docs/site/algorithms/kikuchi_band_geometry.md`: Refined inverse bandwidth relationship to interplanar spacing and explicit construction-time frame validation rationale.
 - `docs/site/algorithms/misorientation_and_disorientation.md`: Standardized symmetry orbit and canonical fundamental-region selection; refined Mackenzie random baseline and skewness explanation.
+- Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
+
+### Increment 3 Technical Summary
+- `docs/site/algorithms/pole_figure_inversion.md`: Replaced colloquial phrasing with rigorous Radon projection non-injectivity, Lipschitz stationarity scaling, and discrete vs harmonic comparative analysis.
+- `docs/site/algorithms/ghost_correction.md`: Refined group character theory invariants, L-BFGS-B non-negativity penalty formulation, and analytical deconvolution principles.
+- `docs/site/algorithms/ipf_coloring.md`: Formalized directional projection $\mathbf{h} = g^{-1}\mathbf{y}$, fundamental sector reduction, and barycentric gamut contrast mapping.
+- `docs/site/algorithms/kearns_parameter.md`: Formalized second-moment orientation tensor $\mathbf{A} = \langle \mathbf{v}\mathbf{v}^\mathsf{T} \rangle$, trace identity $\operatorname{tr}(\mathbf{A}) = 1$, and kernel shrinkage factor $\beta = (3\rho - 1)/2$.
+- `docs/site/algorithms/schmid_and_taylor.md`: Refined single-system stress control vs multi-system strain compatibility, linear program formulation, and von Mises rank-deficiency ($M=\infty$).
+- `docs/site/algorithms/elastic_homogenization.md`: Clarified fourth-rank tensor operations, Voigt/Mandel shear strain factors ($1, 2, 4$), variational bounds (Voigt, Reuss, Hill), and directional modulus surfaces.
+- `docs/site/algorithms/phase_identification.md`: Replaced informal phrases with Hungarian bipartite matching, scale-invariant cell dilation, and four-part composite figure of merit.
+- `docs/site/algorithms/precise_lattice_parameter_determination.md`: Refined Anscombe variance-stabilized wavelet peak finding, multi-pass re-indexing ($\Delta 2\theta = 2e\tan\theta$), generalized Cohen least squares, and whole-pattern Le Bail refinement.
+- `docs/site/algorithms/rietveld_refinement.md`: Refined whole-pattern profile forward model, Caglioti resolution parameters, trust-region parameter bounds, and diagnostic residual curve interpretation.
+- `docs/site/algorithms/index.md`: Updated computational core descriptions and crystallographic convention overviews.
 - Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
 
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)

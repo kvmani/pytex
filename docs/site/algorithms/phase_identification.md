@@ -1,13 +1,21 @@
-# Identifying A Phase Among Candidate Structures
+# Powder XRD Phase Identification
 
 **Surface:** `pytex.diffraction.xrd_phase_identification.identify_phase`,
-`identify_phase_from_pattern`, `PhaseCandidateScore`, `PhaseIdentification`, on top of
-`pytex.diffraction.xrd_peaks.detect_and_fit_peaks` and
+`identify_phase_from_pattern`, `PhaseCandidateScore`, `PhaseIdentification`,
+built upon `pytex.diffraction.xrd_peaks.detect_and_fit_peaks` and
 `pytex.diffraction.xrd_indexing.index_peaks`. In the workbench: **XRD → Identify the phase**.
 
-The derivations are in {doc}`../theory/phase_identification_from_powder_patterns`. This page is
-the implementation: the stages in order, the settings that matter with the values they take, what
-each stage produces on a case with a known answer, and how it fails.
+Phase identification from powder X-ray diffraction (PXRD) profiles solves the classical
+crystallographic search-match problem: determining the constituent crystalline phases
+present within an unknown polycrystalline sample by matching observed diffraction peaks
+against reference crystal structures. In real polycrystalline specimens, preferred
+orientation (texture), solid-solution lattice expansion or contraction, instrumental
+peak broadening, and multiphase superposition obscure naive fingerprint matching.
+
+PyTex implements a deterministic, multi-stage search-match algorithm featuring global
+bipartite reflection matching, scalar lattice dilation optimization, and a four-parameter
+bounded figure of merit. This page details the algorithmic pipeline, specifies operational
+parameters, provides diagnostic failure analysis, and establishes verification baselines.
 
 ```{figure} ../../figures/phase_identification_algorithm.svg
 :alt: Four-lane flow sheet. Lane 1 detects and fits the peaks of the measured
@@ -18,202 +26,188 @@ each stage produces on a case with a known answer, and how it fails.
   winner twice.
 :width: 100%
 
-The ranking, with the constraints that keep it honest.
+Algorithmic execution pipeline for powder XRD phase identification.
 ```
 
-## 1. The pipeline, and where each stage can go wrong
+## 1. Algorithmic pipeline
 
-| Stage | Surface | Produces | Fails as |
+| Stage | Computational Module | Output Data Structure | Potential Numerical Anomalies |
 | --- | --- | --- | --- |
-| 1. Detect and fit | `detect_and_fit_peaks` | positions, ESDs, integrated intensities | too few peaks (threshold high) or background structure fitted as peaks (threshold low) — penalises every candidate equally and wrongly |
-| 2. Refine dilation | internal, per candidate | one scalar $s$ | $s$ pinned at $\pm\delta$: the candidate was stretched as far as allowed and still did not fit |
-| 3. Enumerate | `generate_powder_reflections` | that candidate's own $(hkl)$ lines | no line in range at all — recorded as a rejection, never raised |
-| 4. Assign | `index_peaks` | $(hkl)$ per peak, $M_N$, $F_N$ | nothing assigned: the cell is wrong by more than the tolerance can absorb |
-| 5. Score | `PhaseCandidateScore` | four criteria in $[0,1]$ | see §6 for what each failure means |
-| 6. Rank and qualify | `PhaseIdentification` | ranking, `is_conclusive`, `is_decisive` | a winner that is neither — read §7 before believing it |
+| 1. Peak detection & fitting | `detect_and_fit_peaks` | Centroid $2\theta_p$, intensity $A_p$, FWHM, ESD | Inappropriate prominence threshold causing peak omissions or fitting background noise |
+| 2. Lattice dilation search | Internal grid optimization | Metric scale factor $s \in [1-\delta, 1+\delta]$ | Convergence to search boundary $\pm\delta$ indicating significant lattice mismatch |
+| 3. Reflection generation | `generate_powder_reflections` | Kinematic $(hkl)$ lines and relative intensities | Zero reflections within experimental $2\theta$ window |
+| 4. Bipartite assignment | `index_peaks` (Hungarian method) | Global one-to-one pairs $(2\theta_p \leftrightarrow hkl)$ | Unindexed peaks exceeding matching tolerance $\varepsilon$ |
+| 5. Multi-criteria scoring | `PhaseCandidateScore` | Four normalized metrics in $[0, 1]$ | Incomplete indexing or missing predicted lines |
+| 6. Qualification & ranking | `PhaseIdentification` | Sorted candidates, `is_conclusive`, `is_decisive` | Ambiguous score margin between top structural candidates |
 
-Stages 2–5 run once per candidate; stage 1 runs once and is shared, so the peaks every candidate is
-judged against are literally the same peaks.
+Stage 1 executes once on the experimental pattern and is cached. Stages 2–5 execute
+independently for each candidate structure, guaranteeing that ranking comparisons are
+evaluated against an identical experimental peak list.
 
-## 2. Stage 1 — the peaks, and why they are returned
+## 2. Peak detection and profile fitting
 
-`identify_phase_from_pattern` runs detection and fitting exactly as
-{doc}`precise_lattice_parameter_determination` §2–3 describes, then filters to converged fits, then
-ranks. The fitted `PeakTable` is **returned alongside the identification, not consumed inside it**.
+The function `identify_phase_from_pattern` executes automated background subtraction,
+local peak detection, and non-linear least-squares pseudo-Voigt profile fitting as
+detailed in {doc}`precise_lattice_parameter_determination`. The resulting `PeakTable`
+is preserved on the final `PhaseIdentification` report.
 
-That is deliberate. Peak detection is where an identification most often goes wrong, and the
-failure is invisible in the ranking: a threshold that swallows the weak lines lowers every
-candidate's completeness together, and a threshold that promotes shoulders of the background into
-peaks lowers every candidate's explained intensity together. Neither changes the *order*, so the
-ranking looks healthy while resting on a peak list nobody looked at. The workbench draws the fitted
-positions on the scan for the same reason.
+Retaining the fitted `PeakTable` ensures analytical traceability: if detection thresholds
+are improperly configured, systematic errors affect all candidate structures equally:
+- An excessively high prominence threshold omits low-intensity reflections, artificially
+  degrading completeness scores for all candidates.
+- An excessively low prominence threshold fits diffuse background fluctuations as diffraction
+  peaks, depressing the explained intensity fraction across all candidates.
 
-| Setting | Default | Choose it by |
+| Parameter | Default | Operational Selection Criteria |
 | --- | --- | --- |
-| `prominence_sigma` | 5.0 | lower to 3–4 to admit weak lines and expect background structure with them |
-| `expected_fwhm_deg` | estimated | only needs to be right within about a factor of two |
-| `minimum_two_theta_deg` | none | set it above a beam-stop shadow or air-scatter rise, which are not diffraction |
-| `max_peaks` | 128 | rarely binding on a laboratory scan |
+| `prominence_sigma` | 5.0 | Peak detection significance threshold above background noise standard deviation. |
+| `expected_fwhm_deg` | Estimated | Nominal instrumental FWHM; automatically estimated from scan resolution if omitted. |
+| `minimum_two_theta_deg` | None | Low-angle cutoff to exclude direct-beam shadows and air-scattering signals. |
+| `max_peaks` | 128 | Maximum peak capacity for indexing and bipartite assignment. |
 
-## 3. Stage 2 — the cell dilation
+## 3. Lattice dilation optimization
 
-For each candidate a single scalar $s$ is refined before anything is indexed, minimising
+Solid-solution alloying, thermal expansion, and macroscopic residual stress alter crystal
+lattice constants relative to nominal database entries without altering space-group
+symmetry. Prior to assignment, PyTex optimizes an isotropic lattice scale factor $s$ by
+minimizing the robust truncated distance objective:
 
 $$
-\Phi(s) = \sum_{p} \min\!\left(\min_{j} \left| 2\theta_p - 2\theta_j(s) \right|,\; \varepsilon\right),
+\Phi(s) = \sum_{p=1}^P \min\!\left(\min_{j} \left| 2\theta_p - 2\theta_j(s) \right|,\; \varepsilon\right),
 \qquad \sin\theta_j(s) = \frac{\lambda}{2 s d_j},
 $$
 
-by a grid of 401 points on $[1-\delta, 1+\delta]$. A grid rather than a gradient method because
-$\Phi$ is piecewise linear with a local minimum at every near-coincidence. The clip at $\varepsilon$
-keeps a line that is nowhere near any peak from dominating the sum.
+evaluated over an equispaced 401-point grid across $s \in [1-\delta, 1+\delta]$. A grid
+search is employed because $\Phi(s)$ is non-convex and piecewise linear, exhibiting local
+minima at discrete peak-line coincidences. The threshold parameter $\varepsilon$ prevents
+unassociated outliers from biasing the optimum scale factor.
 
-Reflections are enumerated once over the full angular range rather than over the measured window,
-because a line outside the window at $s = 1$ may be inside it at another $s$. Values of $s$ for
-which $\lambda / (2 s d_j) > 1$ are excluded: those reflections are past back-reflection.
+> [!NOTE]
+> Isotropic dilation preserves interplanar spacing ratios ($d_i / d_j = \text{const}$),
+> ensuring that metric scaling cannot artificially convert an incorrect crystal structure
+> into a match. Refined values of $s$ departing significantly from unity indicate either
+> chemical substitution or an incompatible structural model.
 
-**Why this cannot rescue a wrong candidate** is derived in
-{doc}`../theory/phase_identification_from_powder_patterns` §4 and checked as an executable worked
-example: a uniform dilation preserves every ratio of $d$ spacings exactly, and the ratios are what
-indexing tests.
-
-| Setting | Default | Choose it by |
+| Parameter | Default | Interpretation |
 | --- | --- | --- |
-| `cell_scale_range` ($\delta$) | 0.02 | covers alloying, thermal expansion and residual stress; set 0 to match the CIF cells exactly |
+| `cell_scale_range` ($\delta$) | 0.02 | Permissible isotropic lattice strain search bracket ($\pm 2\%$). Set to 0 to enforce rigid database lattice parameters. |
 
-Reported per candidate as `cell_scale`, and in the workbench as the **Cell** column in per cent.
-Read it: a few hundredths of a per cent is an ordinary composition difference; a value at the edge
-of the range is a candidate that did not fit.
+## 4. Reflection generation and global assignment
 
-## 4. Stages 3–4 — enumeration and assignment
+### 4.1 Symmetry-constrained reflection generation
 
-Each candidate's reflections come from its *own* symmetry and systematic absences, not from a
-generic $(hkl)$ list, which is what makes the completeness criterion meaningful. Families below
-`minimum_relative_intensity` (default 0.001 of the strongest) are never offered for matching:
-assigning a strong observed peak to a line that should be invisible is not an explanation.
+Kinematic reflections are generated using candidate point-group symmetry, lattice
+centering, and Wyckoff atomic coordinates. Systematic absences (screw axes, glide
+planes, non-primitive Bravais centerings) are strictly enforced. Reflections with
+theoretical relative intensities below `minimum_relative_intensity` ($0.001$ of peak line)
+are excluded from candidate line matching.
 
-The assignment is the Hungarian algorithm on $|2\theta_{\text{obs}} - 2\theta_{\text{calc}}|$, as in
-{doc}`precise_lattice_parameter_determination` §5 — global and one-to-one, because a greedy
-nearest-line pass can assign two peaks to one reflection and strand the true partner, and neither
-failure is visible in the result it produces.
+### 4.2 Hungarian bipartite matching
 
-**A candidate that predicts no line in range is recorded, not raised.** It is scored zero with the
-reason carried in `rejection`, and the ranking of the others proceeds. This matters specifically
-because the candidates are user-supplied: one unreadable or implausible CIF among five must cost
-the user that one, not the whole comparison.
+Assigning observed peak centroids to theoretical reflection lines requires global
+optimization. A greedy nearest-neighbor assignment can yield degenerate assignments,
+mapping multiple observed peaks to a single reflection and stranding valid neighbors.
+PyTex constructs a cost matrix $C_{pj} = |2\theta_p - 2\theta_j|$ and applies the
+**Hungarian algorithm** (Kuhn, 1955) to compute a minimum-cost, strictly one-to-one
+bipartite matching.
 
-## 5. Stage 5 — the four criteria
+If a candidate structure predicts zero reflections within the experimental angular range,
+it is scored zero and recorded as a rejected candidate with an explicit diagnostic reason
+rather than raising an exception, preserving evaluation continuity across user-supplied libraries.
 
-Defined and derived in {doc}`../theory/phase_identification_from_powder_patterns` §2. In summary:
+## 5. Composite figure of merit (FOM)
 
-| Criterion | Expression | Undefined when |
+PyTex evaluates candidate structures against four bounded, complementary criteria
+defined in $[0, 1]$:
+
+| Metric | Mathematical Definition | Physical Significance |
 | --- | --- | --- |
-| `explained_intensity_fraction` | $\sum_{\text{indexed}} A_p \big/ \sum_{\text{all}} A_p$ | — |
-| `completeness` | observed strong lines / predicted strong lines, inside the measured span | — |
-| `position_score` | $\max(0,\, 1 - \langle|\Delta 2\theta|\rangle / \varepsilon)$ | nothing indexed |
-| `intensity_agreement` | $1 - \tfrac12 \sum_i |\hat o_i - \hat c_i|$ | fewer than two indexed lines |
+| **Explained Intensity Fraction** ($E$) | $E = \frac{\sum_{p \in \text{indexed}} A_p}{\sum_{p \in \text{all}} A_p}$ | Fraction of total experimental diffraction intensity accounted for by the candidate. |
+| **Completeness** ($C$) | $C = \frac{N_{\text{observed}}}{N_{\text{predicted}}}$ | Proportion of theoretically expected reflection lines observed in the pattern. |
+| **Position Agreement** ($P$) | $P = \max\!\left(0,\, 1 - \frac{\langle|\Delta 2\theta|\rangle}{\varepsilon}\right)$ | Average angular proximity between observed and calculated diffraction lines. |
+| **Intensity Correlation** ($S$) | $S = 1 - \frac{1}{2}\sum_{i} |\hat{o}_i - \hat{c}_i|$ | Normalized $L_1$ correlation between observed and theoretical relative intensity vectors. |
 
-An undefined criterion is renormalised out of the weighted mean rather than scored zero.
+The composite score $\text{FOM}$ represents a normalized weighted sum:
 
-The weighting is a parameter. The workbench offers three presets, stated as specimen situations
-rather than as four numbers, because the situation is what the operator knows:
+$$
+\text{FOM} = w_E E + w_C C + w_P P + w_S S, \qquad \sum w_i = 1.
+$$
 
-| Preset | $(E, C, P, S)$ | For |
+If a metric is mathematically undefined (e.g., $S$ with fewer than two indexed reflections),
+its weight is redistributed proportionally among the remaining active criteria.
+
+### Weighting presets
+
+| Preset Name | $(w_E, w_C, w_P, w_S)$ | Recommended Application Scenario |
 | --- | --- | --- |
-| Balanced | $(0.40, 0.25, 0.20, 0.15)$ | a well-prepared random powder |
-| Textured specimen | $(0.40, 0.30, 0.30, 0.00)$ | rolled sheet, coatings, anything with a rolling or fibre texture |
-| Positions only | $(0.50, 0.00, 0.50, 0.00)$ | the strictest reading: line positions and unexplained intensity alone |
+| **Balanced** | $(0.40, 0.25, 0.20, 0.15)$ | Untextured, well-ground isotropic powder specimens. |
+| **Textured Specimen** | $(0.40, 0.30, 0.30, 0.00)$ | Rolled sheet, extruded rods, thin films exhibiting strong preferred orientation. |
+| **Positions Only** | $(0.50, 0.00, 0.50, 0.00)$ | Preliminary screening relying solely on peak positions and intensity capture. |
 
-## 6. Reading a failure
+## 6. Diagnostic interpretation of scoring profiles
 
-The point of reporting four criteria rather than one score is that the pattern of failure names the
-fault. Worked through on a synthetic nickel scan offered four candidates:
+Decomposing the match into four independent metrics allows unambiguous identification
+of structural and microstructural defects:
 
-| Candidate | Score | $E$ | $C$ | $P$ | $s - 1$ | Reading |
-| --- | --- | --- | --- | --- | --- | --- |
-| Nickel (fcc) | 0.962 | 1.00 | 1.00 | 0.94 | $+0.26\%$ | correct; the dilation recovers the scan's deliberate one |
-| Copper (fcc) | 0.617 | 0.78 | 0.40 | 0.34 | $-2.00\%$ | right centring, wrong cell size — pinned at the search-range edge |
-| Ferrite (bcc) | 0.582 | 0.49 | 0.25 | 0.94 | $+0.64\%$ | good positions, quarter of its lines seen: wrong centring |
-| Halite (NaCl) | 0.407 | 0.15 | 0.20 | 0.94 | $-0.94\%$ | explains a seventh of the intensity: not present |
-
-Copper and ferrite score similarly and fail completely differently — copper on position, ferrite on
-completeness — which the total alone would hide. The general readings:
-
-| Symptom | Reading |
+| Diagnostic Pattern | Physical / Crystallographic Cause |
 | --- | --- |
-| High $P$, low $C$ | right cell metric, wrong centring or basis |
-| High $C$ and $P$, low $E$ | the candidate is present and so is something else: a second phase |
-| Low $P$, everything else moderate | wrong cell dimensions, or $\varepsilon$ narrower than the instrument's aberrations |
-| High $E, C, P$, low $S$ | right framework, wrong basis — *or* a textured specimen; check that first |
-| $s$ pinned at $\pm\delta$ | stretched as far as permitted and still not fitting |
+| High $P$, Low $C$ | Incorrect Bravais centering or space-group symmetry (predicting reflections absent in the true structure). |
+| High $C$, High $P$, Low $E$ | Multiphase mixture: candidate is present, but unindexed peaks belong to secondary phases. |
+| Low $P$, Moderate $E, C$ | Inaccurate lattice parameters or instrumental zero-shift aberration exceeding tolerance $\varepsilon$. |
+| High $E, C, P$, Low $S$ | Correct phase exhibiting strong crystallographic preferred orientation (texture). |
+| $s$ pinned at $1 \pm \delta$ | Lattice parameter mismatch exceeds permitted search bounds. |
 
-## 7. Stage 6 — the two qualifications
+## 7. Statistical qualification boundaries
 
-`is_conclusive` and `is_decisive` are separate booleans because they fail for different reasons and
-have different remedies:
+The `PhaseIdentification` report validates matching decisions via two independent
+Boolean criteria:
 
-| | Test | If false |
-| --- | --- | --- |
-| `is_conclusive` | best score $\ge$ `minimum_score` (0.55) | none of the candidates offered accounts for this pattern: widen the list, suspect a mixture, or check $\varepsilon$ against the aberrations |
-| `is_decisive` | best $-$ runner-up $\ge$ `decisive_margin` (0.05) | this *scan* does not tell the top two apart: count longer at high angle, change wavelength, or use chemistry |
+- **`is_conclusive`:** Evaluates whether the top-ranked candidate explains the pattern
+  sufficiently to be credible:
+  $$
+  \text{FOM}_{\text{top}} \ge \text{minimum\_score} \quad (\text{default: } 0.55).
+  $$
+- **`is_decisive`:** Evaluates whether the top candidate is statistically distinct from
+  competing candidates:
+  $$
+  \text{FOM}_{\text{top}} - \text{FOM}_{\text{runner-up}} \ge \text{decisive\_margin} \quad (\text{default: } 0.05).
+  $$
 
-`describe()` states whichever holds in prose, with its remedy. `margin` is `nan` for a single
-candidate rather than zero, because a comparison of one has no margin and reporting zero would read
-as a tie; `is_decisive` is then true by convention, since nothing was chosen between.
+When `is_decisive=False`, the experimental scan cannot distinguish between candidate
+structures with statistical confidence, indicating the need for extended high-angle
+counting, wavelength variation, or complementary chemical analysis.
 
-## 8. Failure modes, and what they look like
+## Verification
 
-| Symptom | Cause | Fix |
-| --- | --- | --- |
-| Every candidate scores near zero | detection found no peaks, or the radiation is wrong | check the returned peak table first, then `radiation` |
-| The true phase indexes only its low-angle lines | `cell_scale_range` set to 0 with a real specimen | leave the default; the effect grows as $\tan\theta$ |
-| Two candidates tie at a high score | genuinely indistinguishable on this angular range | §7: the remedy is measurement |
-| A wrong candidate scores above the threshold | the range admits many lines and the candidate predicts many | read $C$ and $E$, not the total; consider `positions_only` |
-| Ranking changes when candidates are added | it cannot: scores are computed per candidate and independently | if observed, that is a defect — the property is pinned by a test |
-| A strong peak is unindexed by the winner | a second phase | multi-phase {doc}`rietveld_refinement`, not a further search |
+- `tests/unit/test_xrd_phase_identification.py`: Verifies ranking correctness on synthetic
+  and experimental benchmarks, Bravais lattice discrimination, dilation recovery,
+  and candidate order invariance.
+- Executable worked examples:
+  - {doc}`../examples/generated/phase-identification`
 
-## 9. Verification
+## See also
 
-- `tests/unit/test_xrd_phase_identification.py` — 44 tests, including that the generating phase of
-  a synthetic pattern ranks first; that a centring is separated by completeness rather than by
-  position; that the refined dilation recovers an imposed one; that the ranking is independent of
-  the order candidates were offered in; and that a candidate predicting nothing is recorded rather
-  than raised.
-- `tests/unit/test_app_xrd.py` — the service operation, including candidates supplied as uploaded
-  CIF text.
-- {doc}`../examples/index` — four executable worked examples with independent provenance,
-  including the algebraic identity that makes the cell dilation safe.
+- {doc}`../theory/phase_identification_from_powder_patterns` — Detailed mathematical derivations of criteria metrics.
+- {doc}`precise_lattice_parameter_determination` — Peak fitting and instrumental aberration correction.
+- {doc}`rietveld_refinement` — Quantitative multi-phase whole-pattern profile refinement.
 
-## 10. References
+## References
 
 ### Normative
 
 - Hanawalt, J. D., Rinn, H. W. & Frevel, L. K. (1938). Chemical analysis by X-ray diffraction.
-  *Industrial & Engineering Chemistry Analytical Edition* **10**, 457-512.
-  <https://doi.org/10.1021/ac50125a001>
+  *Industrial & Engineering Chemistry Analytical Edition* **10**, 457–512. <https://doi.org/10.1021/ac50125a001>
 - Smith, G. S. & Snyder, R. L. (1979). $F_N$: a criterion for rating powder diffraction patterns.
-  *Journal of Applied Crystallography* **12**, 60-65.
-  <https://doi.org/10.1107/S002188987901178X>
+  *Journal of Applied Crystallography* **12**, 60–65. <https://doi.org/10.1107/S002188987901178X>
 - de Wolff, P. M. (1968). A simplified criterion for the reliability of a powder pattern indexing.
-  *Journal of Applied Crystallography* **1**, 108-113.
-  <https://doi.org/10.1107/S002188986800508X>
-- Dollase, W. A. (1986). Correction of intensities for preferred orientation in powder
-  diffractometry. *Journal of Applied Crystallography* **19**, 267-272.
-  <https://doi.org/10.1107/S0021889886089458>
+  *Journal of Applied Crystallography* **1**, 108–113. <https://doi.org/10.1107/S002188986800508X>
+- Dollase, W. A. (1986). Correction of intensities for preferred orientation in powder diffractometry.
+  *Journal of Applied Crystallography* **19**, 267–272. <https://doi.org/10.1107/S0021889886089458>
 
 ### Informative
 
-- Cullity, B. D. & Stock, S. R. (2001). *Elements of X-Ray Diffraction*, 3rd ed., Ch. 14.
-  Prentice Hall.
+- Cullity, B. D. & Stock, S. R. (2001). *Elements of X-Ray Diffraction*, 3rd ed. Prentice Hall.
 - Gates-Rector, S. & Blanton, T. (2019). The Powder Diffraction File. *Powder Diffraction* **34**,
-  352-360. <https://doi.org/10.1017/S0885715619000812>
-- Kuhn, H. W. (1955). The Hungarian method for the assignment problem. *Naval Research Logistics
-  Quarterly* **2**, 83-97. <https://doi.org/10.1002/nav.3800020109>
-
-## See also
-
-- {doc}`../theory/phase_identification_from_powder_patterns` — the derivations
-- {doc}`precise_lattice_parameter_determination` — detection, fitting and indexing in detail
-- {doc}`rietveld_refinement` — the quantitative step once the phases are settled
-- {doc}`../workflows/xrd_generation` — the workbench workflow
-- {doc}`../workflows/phases_and_cif` — how a candidate arrives from a CIF
+  352–360. <https://doi.org/10.1017/S0885715619000812>
+- Kuhn, H. W. (1955). The Hungarian method for the assignment problem. *Naval Research Logistics Quarterly*
+  **2**, 83–97. <https://doi.org/10.1002/nav.3800020109>

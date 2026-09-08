@@ -10,11 +10,12 @@ reporting, and the workbench operation `texture.measured_pole_figures`.
 A diffractometer measures **pole figures**: the density of one plane normal
 $\{hkl\}$ over specimen directions. Every physical model of a polycrystal —
 elastic and plastic anisotropy, the Kearns factor, variant selection —
-needs the **orientation distribution function** $f(g)$ instead. Recovering
-$f$ from a handful of pole figures is the central inverse problem of
-quantitative texture analysis, and it is ill-posed in three distinct ways that
-this page keeps separate, because they have different cures and only two of them
-have any cure at all.
+needs the **orientation distribution function** $f(g)$ instead. Recovering $f(g)$ from a finite set of measured pole figures constitutes the
+fundamental inverse problem of quantitative texture analysis. This inverse problem
+is ill-posed due to projection non-injectivity, diffraction centrosymmetry
+(Friedel's law), and experimental noise. This page details the discrete and
+harmonic inversion formulations, their regularisation schemes, and their
+physical limitations.
 
 ```{figure} ../../figures/pole_figure_inversion_algorithm.svg
 :alt: Four-lane flow sheet. Lane 1 takes measured pole figures on the m.r.d.
@@ -28,7 +29,7 @@ have any cure at all.
 The algorithm, with the constraint governing each stage.
 ```
 
-## 1. The forward model, which is where the difficulty comes from
+## 1. Mathematical foundation of the forward projection
 
 The pole density of the plane family $\{hkl\}$ along the specimen direction
 $\mathbf{y}$ is the ODF integrated over every orientation that puts some member
@@ -40,23 +41,25 @@ P_{hkl}(\mathbf{y}) \;=\; \frac{1}{m}\sum_{i=1}^{m}\;
 $$
 
 This is a **projection**: a one-parameter family of orientations — the rotations
-about $\mathbf{y}$ — is integrated away at every point. Three consequences
-follow, and they are the whole subject:
+about $\mathbf{y}$ — is integrated away at every point. Three physical consequences
+govern the inversion:
 
-1. **The map is not injective.** Different ODFs give identical pole figures. One
-   pole figure never determines $f$; several independent $\{hkl\}$ do better but
-   never reach uniqueness.
-2. **Friedel's law halves the information.** A diffraction experiment cannot
-   distinguish $\mathbf{h}$ from $-\mathbf{h}$, so pole figures are centro
-   symmetric and determine only the **even-order** part of $f$. The odd part is
-   invisible to the measurement. This is the *ghost problem*, and it is
-   structural: no amount of data or regularisation recovers the odd part,
-   because no odd information was recorded. See
-   {doc}`ghost_correction` for what can be inferred instead.
-3. **The data are finite and noisy**, so even the even part is recovered only up
-   to a resolution the measurement supports.
+1. **Non-injectivity.** Different ODFs can yield identical pole figures. A single
+   pole figure never uniquely determines $f(g)$; multiple independent $\{hkl\}$
+   projections constrain the solution space, but cannot restore uniqueness without
+   regularizing assumptions.
+2. **Friedel's law and the ghost problem.** In conventional X-ray and neutron
+   diffraction, Friedel's law ($I_{\mathbf{h}} = I_{-\mathbf{h}}$) renders pole
+   figures centrosymmetric. Consequently, measured pole figures contain information
+   only about the **even-order** harmonic components of $f(g)$. The odd-order
+   components are invisible to kinematic diffraction. See {doc}`ghost_correction`
+   for non-negativity and entropy-based recovery methods.
+3. **Discrete sampling and noise.** Experimental pole figures are sampled over
+   finite angular grids and contain counting noise, limiting the achievable
+   angular resolution.
 
-PyTex offers two routes, differing in what the unknown *is*.
+PyTex provides two distinct mathematical paths: a discrete orientation dictionary
+formulation and a continuous spherical harmonic series expansion.
 
 ## 2. Route A — the discrete route
 
@@ -76,16 +79,15 @@ input : pole figures P_1..P_K (intensities in m.r.d.), dictionary G of N orienta
 5  stack the per-figure blocks into one A; stack the intensities into one b
 ```
 
-Step 4 is not cosmetic and is worth stating because getting it wrong produces a
-failure that *reports success*. The observations are pole densities in multiples
-of a random distribution, so a random texture reads 1.0 everywhere. The raw
-kernel sum for a random texture is not 1 but the kernel's spherical mean — at a
-$12^\circ$ halfwidth, a factor of order 64. The weights are constrained to sum
-to one (section 2.2), so the model **cannot** absorb that factor into its
-amplitude: the solver stalls at a relative residual near 1 and its stationarity
-test then sees a step that has stopped moving and declares convergence. Dividing
-the operator by the kernel's random level puts both sides on the same scale, and
-the system becomes fittable rather than merely mis-scaled.
+Step 4 normalizes the kernel projection operator to multiples of a random
+distribution (m.r.d.). Measured pole figure intensities are expressed in m.r.d.,
+where an isotropic (random) polycrystal yields unit intensity everywhere. Because
+the orientation weights $w$ are constrained to the probability simplex
+($\sum_j w_j = 1$), the raw sum of spherical kernel densities (which exceeds
+unity by the kernel spherical concentration factor) cannot be absorbed by weight
+scaling. Normalizing each row block of $\mathbf{A}$ by the kernel's analytical
+random pole density ensures metric consistency between the linear operator and
+measured intensities, preventing artificial solver stalling.
 
 ### 2.2 The constrained least-squares problem
 
@@ -96,13 +98,14 @@ $$
 w \ge 0,\quad \sum_j w_j = 1 .
 $$
 
-Both constraints are physics, not numerical convenience. An ODF is a probability
-density: it cannot be negative, and it integrates to one. Solving unconstrained
-and clipping afterwards gives a different — and worse — answer, because the
-negative excursions have already distorted the fitted positive lobes.
+Both constraints reflect fundamental physical principles: an orientation distribution
+function is a probability density, requiring non-negativity ($w_j \ge 0$) and unit
+total probability ($\sum_j w_j = 1$). Solving an unconstrained least-squares system
+and subsequently clipping negative values introduces severe distortion, as negative
+density artifacts alter the amplitude of adjacent positive peaks.
 
-The Tikhonov term $\lambda$ trades detail for stability. It is the knob that
-decides how much of the noise the solution is allowed to explain.
+The Tikhonov regularization parameter $\lambda$ balances residual minimization
+against solution smoothness, preventing overfitting to experimental counting noise.
 
 ### 2.3 The solver
 
@@ -119,41 +122,43 @@ repeat up to max_iterations:
     stop when stationarity <= tolerance
 ```
 
-**Why stationarity is scaled the way it is.** The step length is $1/L$, so the
-raw step $\lVert w_{n+1}-w_n\rVert$ is proportional to $1/L$. On a system whose
-operator has large entries the very first step is tiny *for that reason alone*,
-and testing the raw step against a fixed tolerance declares convergence
-immediately and returns the uniform starting guess as the answer — a smooth,
-plausible, entirely uninformative ODF. Multiplying by $L$ recovers the projected
--gradient magnitude and dividing by $\lVert A^{\mathsf{T}} b\rVert$ makes it
-dimensionless, so one tolerance means the same thing whatever units the pole
-densities carry.
+**Scaling of the stationarity metric.** The projected gradient step length is
+$1/L$, meaning the unscaled parameter step $\lVert w_{n+1}-w_n\rVert$ scales
+inversely with the Lipschitz constant $L$. For an operator matrix with large
+entries, $L$ is large and the unscaled step $\lVert w_{n+1}-w_n\rVert$ is small
+regardless of distance from the true stationary point. Evaluating unscaled
+parameter increments against a fixed threshold can trigger premature convergence
+termination at the initial uniform estimate. Multiplying the increment by $L$
+reconstructs the projected gradient magnitude, while dividing by
+$\lVert A^{\mathsf{T}} b\rVert$ yields a dimensionless stationarity metric that is
+invariant to the absolute intensity scale of the input pole densities.
 
-### 2.4 What the report carries, and how to read it
+### 2.4 Diagnostic inversion reporting
 
-`ODFInversionReport` exists so the fit can be judged rather than trusted:
+The `ODFInversionReport` structure provides diagnostic metrics to evaluate
+solution fidelity and numerical condition:
 
-| Field | Read it for |
+| Field | Interpretation |
 | --- | --- |
-| `relative_residual_norm` | the headline. Near 1 means the model explained nothing |
-| `mean_absolute_error`, `max_absolute_error` | in m.r.d., so directly interpretable against the texture strength |
-| `converged`, `iterations`, `objective_history` | whether the solver stopped or merely ran out |
-| `dictionary_coverage_ratio` | observations per dictionary orientation. Below 1 the system is underdetermined and the regularisation is doing the deciding |
-| `predicted_intensities` | for a measured-versus-recalculated pole figure, which is the only honest visual check |
+| `relative_residual_norm` | Normalized residual $\lVert A w - b\rVert / \lVert b\rVert$. Values approaching 1 indicate that the model accounts for negligible measured variation. |
+| `mean_absolute_error`, `max_absolute_error` | Residual errors in m.r.d., directly comparable to physical texture intensity peaks. |
+| `converged`, `iterations`, `objective_history` | Optimization termination status and convergence trajectory across iterations. |
+| `dictionary_coverage_ratio` | Ratio of measured pole directions to dictionary orientations ($M/N$). Values below unity signify an underdetermined system where regularization dominates the solution. |
+| `predicted_intensities` | Forward-projected pole figure intensities for direct validation against experimental data. |
 
-A converged fit with a low residual is **not** evidence of a correct ODF: the
-map is non-injective, so a wrong $f$ can reproduce the data exactly. The
-recalculated pole figures of *poles that were not fitted* are the check that
-carries information.
+Because the spherical Radon projection is non-injective, a low residual norm on
+the fitted pole figures is a necessary but insufficient condition for ODF
+accuracy. Validating the reconstructed ODF against *unfitted* experimental pole
+figures provides an independent verification of solution fidelity.
 
-### 2.5 Cost and limits
+### 2.5 Computational complexity and resolution bounds
 
-| | |
+| Attribute | Scaling / Bound |
 | --- | --- |
-| Operator build | $O(K \cdot n_{\text{pts}} \cdot N \cdot m)$, vectorised over the dictionary |
-| Per iteration | one Gram product, $O(N^{2})$ |
-| Angular detail | bounded by the dictionary resolution **and** by the kernel halfwidth, whichever is coarser |
-| Failure mode | one pole figure, or several from nearly parallel poles, leaves the system underdetermined; the answer is then mostly the regularisation |
+| Operator construction | $O(K \cdot n_{\text{pts}} \cdot N \cdot m)$, vectorized over dictionary orientations |
+| Iteration cost | $O(N^{2})$ via precomputed Gram matrix $G = A^{\mathsf{T}} A$ |
+| Angular resolution | Bounded jointly by dictionary spacing $\Delta g$ and kernel halfwidth $b$ |
+| System conditioning | Severely underdetermined if only one pole figure or coplanar reflection poles are provided |
 
 ## 3. Route B — the harmonic route
 
@@ -165,76 +170,83 @@ $$
 f(g) = \sum_{\ell=0}^{L}\sum_{\mu,\nu} C_\ell^{\mu\nu}\, \dot{T}_\ell^{\mu\nu}(g).
 $$
 
-The response of each basis function at each measured point is built the same
-way, and the system is solved as regularised least squares.
+The projection operator for each generalized spherical harmonic basis function is
+evaluated across measurement directions, forming a linear system solved via
+regularized least squares.
 
-Two limits are intrinsic and are *not* worked around:
+Two physical and mathematical constraints govern the harmonic approach:
 
-- **Truncation at `degree_bandlimit`** bounds the recoverable detail. Raising it
-  raises cost and noise sensitivity together.
-- **Odd degrees are not determined.** `even_degrees_only` defaults to the honest
-  choice, because pole figures carry no odd information. Passing
-  `ghost_correction` recovers an odd part from positivity and reports what that
-  inference cost; without it the odd part is silently zero, which is a specific
-  and named error rather than a neutral default.
+- **Bandwidth truncation at degree $L$ (`degree_bandlimit`).** The maximum series
+  degree limits the minimum resolvable angular feature size ($\Delta \omega \approx 360^\circ / L$).
+  Increasing $L$ improves angular sharpness but escalates parameter count ($O(L^3)$)
+  and amplifies sensitivity to high-frequency experimental noise.
+- **Null space of odd harmonic degrees.** In the presence of Friedel symmetry,
+  diffraction pole figures provide constraints solely on even harmonic coefficients
+  ($\ell = 0, 2, 4, \dots$). The odd coefficients ($\ell = 1, 3, 5, \dots$) reside in the
+  null space of the projection operator. By default, `even_degrees_only=True` restricts
+  the inversion to even orders ($f_{\text{even}}$), setting odd coefficients to zero.
+  Activating `ghost_correction` reconstructs non-zero odd coefficients by enforcing
+  physical non-negativity ($f(g) \ge 0$) via iterative entropy or positivity
+  regularization; see {doc}`ghost_correction`.
 
-### Choosing between the routes
+### Method comparison: discrete versus harmonic routes
 
-| | discrete | harmonic |
+| Characteristic | Discrete Route (`ODF`) | Harmonic Route (`HarmonicODF`) |
 | --- | --- | --- |
-| Unknown | weights on a dictionary | coefficients to degree $L$ |
-| Non-negativity | enforced exactly | not enforced; positivity is a post-check |
-| Sharp textures | dictionary resolution limits it | needs high $L$, which rings |
-| Smooth textures | needs a large dictionary | compact and natural |
-| Ghost correction | not applicable | available |
-| Natural output | a discrete ODF, ready for sampling | a series, ready for analytic integration |
+| Unknown parameters | Non-negative weights on orientation grid | Generalized harmonic coefficients $C_\ell^{\mu\nu}$ up to degree $L$ |
+| Non-negativity | Enforced strictly via simplex projection ($w_j \ge 0$) | Not intrinsically constrained; truncation can yield negative lobes |
+| Sharp textures | Limited by grid discretization and kernel width | Requires high $L$, prone to Gibbs ringing phenomena |
+| Weak/smooth textures | Requires extensive orientation grid | Highly compact and computationally efficient |
+| Ghost artifacts | Suppressed by strict non-negativity constraint | Explicit ghost correction required to resolve odd harmonics |
+| Mathematical form | Discrete kernel mixture, ideal for Monte Carlo sampling | Continuous series, admitting exact analytical derivatives and integrals |
 
-The workbench exposes both as the **Inversion route** control on
-`texture.measured_pole_figures`, so the same measured data can be inverted both
-ways and the answers compared — which is the practical test of whether a feature
-of the ODF is real or an artefact of one method.
+The PyTex workbench provides both options via the **Inversion route** selector on
+`texture.measured_pole_figures`, allowing direct comparison between discrete and
+harmonic reconstructions from identical experimental data.
 
-## 4. Before inverting: what the measurement needs first
+## 4. Upstream corrections: experimental data preprocessing
 
-An inversion is only as good as the pole figures entering it, and two
-corrections belong upstream of everything above.
+The accuracy of ODF inversion depends strictly on experimental pole figure
+calibration prior to optimization:
 
-- **Defocus.** At high tilt the irradiated area leaves the focusing circle and
-  the measured intensity falls for geometric reasons that have nothing to do
-  with texture. `defocus_from_random_standard` calibrates the fall-off from a
-  texture-free standard, and `PoleFigureCorrectionSpec` applies it. Uncorrected,
-  the inversion faithfully reproduces an instrumental artefact as a rim of low
-  density.
-- **Normalisation to m.r.d.** The operator is built on the multiples-of-random
-  scale (section 2.1). A scattered pole *cloud* whose intensities are per-pole
-  weights is not on that scale; resample it onto a grid with
-  `PoleFigure.on_grid` first.
+- **Defocus correction.** At elevated specimen tilt angles $\chi$, the beam
+  footprint expands beyond the diffractometer receiving slit, causing geometric
+  intensity attenuation unrelated to crystallographic texture.
+  `defocus_from_random_standard` establishes the attenuation profile from a
+  texture-free isotropic standard, and `PoleFigureCorrectionSpec` corrects measured
+  intensities. Omitting defocus correction causes artificial intensity deficits at the
+  periphery of recalculated pole figures.
+- **Normalization to m.r.d.** As established in Section 2.1, the linear operator
+  presupposes intensities expressed in multiples of a random distribution (m.r.d.).
+  Scattered or unbinned count distributions must be regularized onto a standard
+  equispaced spherical grid via `PoleFigure.on_grid` prior to operator assembly.
 
-`residual_reports_for_pole_figures` compares measured and recalculated figures
-per pole, which is where a bad defocus correction shows up as a systematic
-residual in the outer rings rather than as noise.
+The function `residual_reports_for_pole_figures` computes point-by-point
+discrepancies between measured and recalculated pole figures, identifying
+systematic experimental artifacts (such as uncorrected defocus gradients) that
+deviate from random Gaussian counting errors.
 
-## 5. How the rest of PyTex uses the result
+## 5. Downstream applications in PyTex
 
-| Consumer | Uses the ODF for |
+| Target Workflow | Application of Reconstructed ODF |
 | --- | --- |
-| `texture.odf_sections` | constant-$\varphi_2$ sections, on one shared contour ladder |
-| `fit_odf_components`, `component_volume_fractions` | volume fractions of named components (Cube, Goss, Brass …) |
-| `pytex.texture.kearns` | the Kearns factor $f$, by integrating basal-pole density against $\sin\phi\cos^{2}\phi$ |
-| `pytex.texture.fibres` | fibre density along a declared axis |
-| `ODF.pole_figure` | recalculated pole figures, including of poles never measured — the check of section 2.4 |
+| `texture.odf_sections` | Visualization of constant-$\varphi_2$ sections with unified contour scaling |
+| `fit_odf_components`, `component_volume_fractions` | Quantitative decomposition into ideal rolling, recrystallization, or shear texture components |
+| `pytex.texture.kearns` | Calculation of Kearns orientation parameters $f$ by integrating basal plane densities |
+| `pytex.texture.fibres` | Extraction of continuous orientation density along crystallographic fiber axes |
+| `ODF.pole_figure` | Forward recalculation of pole figures, including unmeasured reflections for model validation |
 
-## 6. Constraints and failure modes
+## 6. Constraints and diagnostic conditions
 
-| Situation | What happens | What to do |
+| Diagnostic Scenario | Underlying Physical / Numerical Cause | Recommended Action |
 | --- | --- | --- |
-| One pole figure | badly underdetermined; result dominated by $\lambda$ | measure at least three independent $\{hkl\}$ |
-| Poles nearly parallel | same, less obviously | choose poles spanning the sector |
-| Dictionary too coarse | sharp components smear to the dictionary spacing | refine the dictionary, not the kernel |
-| Kernel too wide | everything smooth, residual acceptable | reduce halfwidth; watch the residual rise as noise is admitted |
-| `converged=False` | ran out of iterations | raise `max_iterations` before trusting anything |
-| Mismatched specimen frames | refused at call time | this is a construction-time invariant, not a warning |
-| Odd part needed | zero unless ghost-corrected | see {doc}`ghost_correction` |
+| Single pole figure | Severe non-uniqueness; solution dominated by Tikhonov prior $\lambda$ | Measure at least three independent crystallographic reflections $\{hkl\}$ |
+| Nearly parallel reflection normals | Insufficient angular diversity among projection directions | Select reflection families with divergent reciprocal space angles |
+| Discretization smearing | Dictionary grid spacing exceeds the physical orientation spread | Increase dictionary angular sampling density |
+| Excess smoothing with low residual | Kernel halfwidth $b$ excessively large, filtering genuine texture peaks | Reduce kernel halfwidth until residual stabilizes near experimental noise |
+| `converged=False` | Maximum iterations reached prior to satisfying stationarity tolerance | Increase `max_iterations` or verify numerical conditioning of operator |
+| Reference frame mismatch | Specimen coordinate axes of input pole figures are mutually inconsistent | Verify coordinate alignments; PyTex raises a construction-time error |
+| Missing odd harmonic components | Friedel's law restricts kinematic diffraction to even harmonic orders | Apply entropy- or positivity-based ghost correction; see {doc}`ghost_correction` |
 
 ## Verification
 

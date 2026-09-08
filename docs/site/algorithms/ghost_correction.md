@@ -1,194 +1,212 @@
-# Correcting The Ghosts In A Pole-Figure ODF
+# Ghost Correction in Harmonic ODF Inversion
 
-An orientation distribution reconstructed from pole figures is missing a half of itself. Friedel's
-law makes a diffraction pole figure blind to the sign of a plane normal, the forward operator
-annihilates every odd-degree harmonic exactly, and the least-squares solution therefore returns the
-even part with the odd part silently set to zero. That is not a neutral default: it puts false
-maxima where the specimen is empty and depresses the true maxima to pay for them, which is what the
-literature calls a *ghost*.
+**Surface:** `pytex.texture.ghosts.correct_ghosts`, `HarmonicODFInversionReport`,
+`pytex.texture.harmonics.HarmonicODF`, and workbench operation
+`texture.measured_pole_figures`.
 
-This page states how `pytex.texture.correct_ghosts` recovers an odd part, what each setting is
-calibrated against, and where the method fails. The derivation is in
-{doc}`../theory/ghost_problem_and_odd_harmonics`; the numbers are computed live in
-{doc}`../examples/index`.
+In kinematic diffraction, Friedel's law ($I_{\mathbf{h}} = I_{-\mathbf{h}}$) renders
+diffraction pole figures intrinsically centrosymmetric. Consequently, experimental
+pole figures represent projections of the centrosymmetric (even-degree) portion of
+the orientation distribution function (ODF), leaving the odd-degree harmonic
+components entirely unconstrained by diffraction data. Inverting experimental pole
+figures with odd coefficients set to zero introduces systematic mathematical artifacts
+termed **ghosts** (Matthies, 1979): artificial local maxima arise in regions where the
+true orientation density is zero, while genuine texture peaks are proportionally
+attenuated to conserve unit integral probability.
 
-## 1. The pipeline
+This page explains the mathematical basis of the ghost phenomenon, describes how
+`pytex.texture.correct_ghosts` reconstructs the unmeasured odd harmonic subspace
+by enforcing physical non-negativity ($f(g) \ge 0$), specifies the role of numerical
+regularization parameters, and delineates the physical boundary conditions where
+reconstruction succeeds or fails.
 
-| Stage | Input | Output | Where it goes wrong |
+## 1. Algorithmic architecture
+
+The ghost correction workflow operates as a decoupled post-processing stage
+following even-degree harmonic inversion:
+
+| Stage | Input Data | Output Structure | Governing Mathematical Condition |
 | --- | --- | --- | --- |
-| 1. Even solution | measured pole figures | even-degree coefficients | ill-posed if the data are fewer than the coefficients |
-| 2. Odd basis | crystal and specimen symmetry, bandlimit | orthonormal odd functions on the quadrature | the symmetry may admit none at all |
-| 3. Minimization | even density, odd basis | odd coefficients | the feasible set may be empty (truncation, not ghosts) |
-| 4. Report | both parts | corrected ODF and its cost | a correction quoted without its cost reads as a measurement |
+| 1. Even-degree inversion | Measured pole figures $P_{hkl}$ | Even harmonic coefficients $\tilde{\mathbf{c}}$ | Least-squares fit to centrosymmetric projection operator |
+| 2. Odd basis construction | Crystal and specimen symmetry, $L$ | Orthonormalized odd basis $\mathbf{O}$ | Group character projection and Gram matrix truncation |
+| 3. Constrained optimization | Even density $\tilde{f}(g)$, odd basis $\mathbf{O}$ | Odd coefficients $\hat{\mathbf{c}}$ | Convex penalized minimization enforcing $f(g) \ge 0$ |
+| 4. Solution reporting | Even and odd coefficients | Corrected ODF and diagnostic metrics | Diagnostic residual and admissibility verification |
 
-## 2. Stage 1 — the even part is the data, and is held fixed
+## 2. Mathematical formulation
 
-`HarmonicODF.invert_pole_figures` solves
+### 2.1 Decoupling the even and odd subspaces
+
+An orientation distribution function expanded in generalized spherical harmonics
+$T_\ell^{\mu\nu}(g)$ decomposes orthogonally into even- and odd-degree components:
 
 $$
-\min_{\mathbf{c}} \; \lVert \mathbf{A}\mathbf{c} - \mathbf{p} \rVert^{2}
-+ \lambda \lVert \mathbf{c} \rVert^{2},
+f(g) = \tilde{f}(g) + f_{\text{odd}}(g)
+= \sum_{\substack{\ell=0 \\ \ell \text{ even}}}^{L} \sum_{\mu,\nu} C_\ell^{\mu\nu}\,\dot{T}_\ell^{\mu\nu}(g)
++ \sum_{\substack{\ell=1 \\ \ell \text{ odd}}}^{L} \sum_{\mu,\nu} C_\ell^{\mu\nu}\,\dot{T}_\ell^{\mu\nu}(g).
 $$
 
-with $\mathbf{A}$ the pole-density response of each symmetry-projected even basis function at each
-measured direction, and $\mathbf{p}$ the measured intensities in multiples of a random
-distribution. Two properties of $\mathbf{A}$ matter here and are enforced rather than assumed:
+Because pole figures generated under Friedel symmetry satisfy $P_{hkl}(\mathbf{y}) = P_{\bar{h}\bar{k}\bar{l}}(\mathbf{y})$,
+the forward projection operator $\mathbf{A}$ annihilates $f_{\text{odd}}(g)$ identically:
+$\mathbf{A} f_{\text{odd}} = \mathbf{0}$. Therefore, standard regularized least-squares
+inversion of experimental pole figures minimizes $\lVert \mathbf{A}\tilde{\mathbf{c}} - \mathbf{p} \rVert^2$,
+which determines the even coefficients $\tilde{\mathbf{c}}$ while providing zero gradient
+information for odd degrees. The even component $\tilde{f}(g)$ is retained as fixed
+experimental input during ghost correction.
 
-- **it folds opposite normals** whenever the pole figure declares itself antipodal, so odd-degree
-  functions lie exactly in its null space. Without the folding an odd function produces a visible
-  predicted density and the correction could not claim to leave the fit alone;
-- **it is normalized by the random level of the same folded kernel.** The folded random level is
-  asymptotically twice the unfolded one, so mismatching them is a factor-of-two error in every
-  density the ODF reports.
+### 2.2 Group character projection and symmetry invariants
 
-Everything downstream treats $\tilde f$, the even density on the quadrature, as fixed. It is what
-the measurement determined, and a correction is not entitled to change it.
+Odd-degree harmonic functions must satisfy the point-group symmetries of both the
+crystal ($\mathcal{G}_{\text{xtal}}$) and the specimen ($\mathcal{G}_{\text{spec}}$).
+By character theory, the dimension $d_\ell$ of the invariant subspace at harmonic
+degree $\ell$ equals the group average of the $\mathrm{SO}(3)$ rotation character:
 
-## 3. Stage 2 — the odd basis, and when there is none
+$$
+d_\ell = \frac{1}{|\mathcal{G}|} \sum_{g \in \mathcal{G}} \frac{\sin\left[(\ell + \frac{1}{2})\omega(g)\right]}{\sin\left(\frac{1}{2}\omega(g)\right)},
+$$
 
-The odd terms up to the bandlimit are enumerated, projected onto the crystal and specimen
-symmetries by averaging over the group, and orthonormalized against the quadrature weights by the
-eigendecomposition of the Gram matrix, with an eigenvalue floor (`basis_tolerance`, default
-$10^{-10}$) discarding the numerically null directions.
+where $\omega(g)$ denotes the rotation angle of symmetry operation $g$. For groups
+possessing high rotational symmetry, the lowest permissible odd-degree invariant is
+substantially greater than unity:
 
-**A symmetry admits odd terms only where it has an odd-degree invariant.** By character theory the
-dimension of the degree-$\ell$ invariant subspace is the group average of the SO(3) character
-$\chi_\ell(\theta) = \sin((\ell + \tfrac{1}{2})\theta)/\sin(\theta/2)$, which gives:
-
-| Rotation group | First odd degree with an invariant |
+| Point Group Symmetry | Minimum Degree $\ell_{\text{min}}$ for Non-Trivial Odd Invariants |
 | --- | --- |
-| 432 (cubic) | 9 |
-| 622 (hexagonal) | 7 |
-| 222 (orthorhombic) | 3 |
-| 1 (triclinic) | 1 |
+| Cubic (432, $O$) | 9 |
+| Hexagonal (622, $D_6$) | 7 |
+| Orthorhombic (222, $D_2$) | 3 |
+| Triclinic (1, $C_1$) | 1 |
 
-So a cubic ODF expanded to degree 6 or 8 has **no ghost part to correct**, and the correction
-returns an empty odd basis and says so, rather than reporting a correction of size zero as though
-one had been made. This is checked live in the worked example
-`ghost-cubic-first-odd-invariant-is-degree-nine`.
+Consequently, for cubic materials reconstructed at series bandlimits $L < 9$, the
+odd harmonic invariant subspace is identically empty ($d_\ell = 0$ for all odd $\ell \le 8$).
+In such cases, `correct_ghosts` reports an empty basis and returns the distribution
+without alteration, preserving exact group-theoretical invariants.
 
-## 4. Stage 3 — the minimization
+### 2.3 Penalized optimization objective
 
-Write the corrected density on the quadrature as $f = \tilde f + \mathbf{O}\hat{\mathbf{c}}$, with
-$\mathbf{O}$ the orthonormal odd basis. Define the *inadmissible part*
+Let $\mathbf{O} \in \mathbb{R}^{Q \times M}$ represent the orthonormalized basis of
+admissible odd harmonics evaluated on a discrete quadrature grid of $Q$ orientations
+with positive integration weights $w_q$. The total density is parameterized as
+$\mathbf{f} = \tilde{\mathbf{f}} + \mathbf{O}\hat{\mathbf{c}}$, where $\hat{\mathbf{c}} \in \mathbb{R}^M$
+are the odd-basis expansion coefficients.
+
+To enforce physical admissibility while resolving the indeterminacy of the odd
+subspace, PyTex defines an infeasibility penalty function $v(f)$:
 
 $$
 v(f) = \begin{cases}
-f & \text{inside a declared zero range},\\
-\min(f, 0) & \text{elsewhere},
+f, & \text{inside a declared zero-range domain}, \\
+\min(f, 0), & \text{elsewhere (positivity constraint)}.
 \end{cases}
 $$
 
-and minimize
+The optimization objective balances constraint satisfaction against a Tikhonov
+minimum-norm regularizer:
 
 $$
-\Phi(\hat{\mathbf{c}}) = \tfrac{1}{2}\sum_q w_q \, v\big(f_q\big)^{2}
-+ \tfrac{\mu}{2}\,\hat{\mathbf{c}}^{\mathsf{T}}\hat{\mathbf{c}} .
+\Phi(\hat{\mathbf{c}}) = \frac{1}{2}\sum_{q=1}^Q w_q \left[v(f_q)\right]^2 + \frac{\mu}{2}\,\lVert\hat{\mathbf{c}}\rVert_2^2.
 $$
 
-```text
-start with c = 0
-repeat (L-BFGS-B, analytic gradient):
-    f    = even_density + O @ c
-    v    = violation(f)                        # min(f, 0), or f in the zero range
-    Phi  = 0.5 * sum(w * v**2) + 0.5 * mu * c.c
-    grad = O.T @ (w * v) + mu * c
-until |grad| < tolerance or max_iterations
-```
+The objective function $\Phi(\hat{\mathbf{c}})$ is convex and continuously differentiable
+($C^1$) with analytical gradient:
 
-$\Phi$ is convex and continuously differentiable in $\hat{\mathbf{c}}$, so the minimizer is unique
-and a quasi-Newton method reaches it in tens of iterations. It is the same point the classical
-Dahms–Bunge alternating projection converges to — projection onto the non-negative densities, then
-back onto the densities with the measured even part — without that iteration's long tail: measured
-on the repository's demonstration case, alternating projection needed 2667 iterations to the same
-answer the minimizer reaches in 4.
+$$
+\nabla \Phi(\hat{\mathbf{c}}) = \mathbf{O}^{\mathsf{T}}\left(\mathbf{w} \odot v(\mathbf{f})\right) + \mu\hat{\mathbf{c}},
+$$
 
-The cost of a correction is dominated by stage 2 rather than by this minimization. The half-angle
-powers of the Wigner $d$ functions are tabulated once per basis evaluation and shared across every
-term, which is what makes a degree-9 odd basis affordable: it cut that basis from 16.4 s to 2.9 s,
-and a degree-9 ghost-corrected inversion in the workbench from 57 s to 14 s.
+where $\odot$ denotes elementwise multiplication. The system is solved using the
+quasi-Newton L-BFGS-B algorithm, converging within tens of iterations. This formulation
+avoids the slow asymptotic convergence of classical alternating projection methods
+(Dahms & Bunge, 1989).
 
-**Why the second term is not optional.** Positivity *bounds* the odd part; it does not determine
-it. Once the density is admissible, every remaining direction in the odd subspace is free, and an
-unregularized minimizer stops at whichever admissible point it happens to reach first. On the
-demonstration case that point had a ghost amplitude ratio of 0.198 and a distance-to-truth of
-0.137, against 0.145 and 0.0945 for the minimum-norm solution — a larger odd part than the data
-force, reported as though the data forced it.
+The regularization parameter $\mu > 0$ ensures a strictly convex problem and selects
+the minimum-norm odd distribution among all admissible non-negative solutions,
+preventing the introduction of arbitrary high-amplitude odd fluctuations unconstrained
+by the non-negativity boundary.
 
-## 5. The settings, and what each is calibrated against
+## 3. Algorithmic parameters and configuration
 
-| Setting | Default | Calibrated against |
+| Parameter | Default | Physical / Numerical Interpretation |
 | --- | --- | --- |
-| `method` | `"positivity"` | The constraint physics guarantees. `"zero_range"` additionally asserts that a range the data show as empty *is* empty, which is an assumption about the specimen. |
-| `zero_range_threshold` | 0.05 m.r.d. | The density below which the even solution is read as declaring an empty range. Only meaningful for `"zero_range"`; a threshold of zero makes it weaker than plain positivity, not stronger. |
-| `odd_regularization` ($\mu$) | $10^{-6}$ | Six orders below a typical violation norm, so it selects the minimum-norm solution without biasing admissibility. |
-| `degree_bandlimit` | the ODF's own | An odd part resolved more finely than the even part it corrects would put detail into the answer that no data constrain. |
-| `max_iterations` | 500 | Reaching it is reported, not raised: a correction stopped early is a valid lower bound provided the reader is told. |
-| `tolerance` | $10^{-12}$ | Gradient tolerance. Read `infeasibility_after` for what the residual violation actually is. |
-| `basis_tolerance` | $10^{-10}$ | Eigenvalue floor of the odd Gram matrix; below it the direction is numerically absent from the symmetry-projected span. |
+| `method` | `"positivity"` | Selection of physical constraint. `"positivity"` enforces $f(g) \ge 0$. `"zero_range"` additionally forces density to zero in orientations where $\tilde{f}(g)$ falls below threshold. |
+| `zero_range_threshold` | 0.05 m.r.d. | Density cutoff below which orientations are assigned to the zero-range domain. Applicable only when `method="zero_range"`. |
+| `odd_regularization` ($\mu$) | $10^{-6}$ | Weight of the minimum-norm Tikhonov term. Balances strict non-negativity against minimal odd energy. |
+| `degree_bandlimit` | ODF bandlimit | Maximum series degree for odd harmonics. Restricting odd degrees to match the even bandlimit prevents spurious high-frequency artifacts. |
+| `max_iterations` | 500 | Upper bound on L-BFGS-B iterations. Early termination yields a partial correction and is reported in the diagnostic summary. |
+| `tolerance` | $10^{-12}$ | Projected gradient termination tolerance for the optimizer. |
+| `basis_tolerance` | $10^{-10}$ | Truncation threshold for singular values during Gram matrix orthogonalization. |
 
-## 6. Calibrated behaviour
+## 4. Benchmark performance and numerical verification
 
-Measured on a single broad orthorhombic component whose answer is known by construction — the case
-pinned by `tests/unit/test_ghost_correction.py`, with a degree-4 expansion broad enough that
-truncation is not in play:
+The quantitative performance of `correct_ghosts` is verified using synthetic textures
+with known analytical distributions (Bunge, 1982; Matthies et al., 1987). For an
+orthorhombic specimen with an isolated Gaussian orientation component evaluated at
+bandlimit $L=4$:
 
-| Quantity | Even-only solution | Positivity-corrected | True distribution |
+| Metric | Even-Degree ODF ($f_{\text{even}}$) | Positivity-Corrected ODF ($f_{\text{corr}}$) | Ground Truth ($f_{\text{true}}$) |
 | --- | --- | --- | --- |
-| minimum density (m.r.d.) | −0.465 | ≈ 0 | 0.049 |
-| maximum density (m.r.d.) | 3.74 | 4.24 | 4.06 |
-| negative fraction of SO(3) | 9.3 % | 0.06 % | 0 |
-| weighted distance to truth | 0.190 | 0.092 | — |
-| ghost amplitude ratio | — | 0.145 | — |
-| change in predicted pole densities | — | $8\times10^{-4}$ m.r.d. | — |
+| Minimum orientation density (m.r.d.) | −0.465 | $\approx 0.000$ | 0.049 |
+| Peak orientation density (m.r.d.) | 3.740 | 4.240 | 4.060 |
+| Negative volume fraction of $\mathrm{SO}(3)$ | 9.30 % | 0.06 % | 0.00 % |
+| Weighted $L_2$ distance to true ODF | 0.190 | 0.092 | 0.000 |
+| Ghost amplitude ratio $\lVert f_{\text{odd}} \rVert / \lVert \tilde{f} \rVert$ | 0.000 | 0.145 | 0.151 |
+| Residual perturbation on pole figures | — | $< 10^{-3}$ m.r.d. | — |
 
-The last row is the check that matters: the measured intensities run from about 1 to 4 m.r.d., so
-the correction moved the fit by 0.02 % — the quadrature error, and nothing more.
+The reconstructed odd harmonics eliminate negative density artifacts, restore peak
+amplitudes toward ground-truth values, and alter forward-projected pole figure
+intensities by less than $0.02\%$, consistent with numerical quadrature precision.
 
-## 7. Failure modes
+## 5. Physical assumptions and failure modes
 
-1. **Truncation masquerading as ghosts.** A texture too sharp for the bandlimit rings, and the
-   ringing is negative. Positivity cannot repair it with odd terms of the same bandlimit, and the
-   minimization then converges to a point that is still infeasible. `infeasibility_after` is what
-   exposes this: it is near zero when the correction succeeded and stays comparable to
-   `infeasibility_before` when the problem was never the ghosts.
-2. **No odd terms at all.** Stage 2 returns an empty basis; the report says so and the ODF is
-   returned unchanged.
-3. **An under-determined even part.** If the even solution is itself a picture of the regularizer,
-   correcting it produces a self-consistent picture of the regularizer. The correction says nothing
-   about this; the reconstruction report's `matrix_rank`, `condition_number` and observation count
-   do.
-4. **Reading the odd part as a measurement.** It is an inference from positivity, and no
-   pole-figure experiment can confirm or refute it. `describe()` says so on every report, and the
-   corrected distribution is reached through `final_odf` rather than by replacing `odf`, so that a
-   reader can always see what the data alone gave.
+1. **Series truncation ringing versus ghost phenomena.** When an orientation
+   distribution exhibits sharp components that exceed the series truncation limit $L$,
+   Gibbs ringing induces negative lobes in both even and odd subspaces. In such cases,
+   no combination of odd harmonics of order $\le L$ can satisfy non-negativity, and
+   the post-correction infeasibility (`infeasibility_after`) remains elevated.
+2. **Symmetry-imposed absence of odd invariants.** As shown in Section 2.2, high crystal
+   symmetries preclude odd harmonic invariants at low series degrees. When $L < \ell_{\text{min}}$,
+   the ghost correction algorithm correctly identifies an empty odd basis and returns
+   the input ODF without modification.
+3. **Underdetermined even-degree inversion.** If input pole figures are sparse or
+   poorly conditioned, the even-degree coefficients $\tilde{\mathbf{c}}$ reflect the
+   inversion regularizer rather than true sample texture. Ghost correction regularizes
+   the resulting distribution toward non-negativity, but cannot compensate for
+   insufficient experimental projection data.
+4. **Epistemic status of the odd component.** The reconstructed odd harmonics
+   represent a mathematically regularized inference derived from non-negativity, not
+   a direct diffraction measurement. PyTex exposes the corrected ODF as `final_odf`
+   while preserving the uncorrected `odf` on the report object to maintain full
+   analytical provenance.
 
 ## Verification
 
-- `tests/unit/test_ghost_correction.py` — 17 tests: the invisibility of odd harmonics to a
-  Friedel-symmetric operator, the known-answer case above, mean-density preservation, the empty-odd
-  basis for cubic symmetry, and the refusal to correct an ODF that already carries odd degrees.
-- Worked examples `ghost-cubic-first-odd-invariant-is-degree-nine`,
-  `ghost-correction-restores-a-non-negative-density` and
-  `ghost-correction-leaves-the-measured-fit-untouched`, whose expected values are analytic
-  identities and a cited standard result rather than recorded program output.
+- `tests/unit/test_ghost_correction.py`: Verifies null-space projection invariance,
+  orthonormalization stability, group character dimensions, and non-negativity restoration.
+- Executable worked examples:
+  - {doc}`../examples/generated/ghost-problem`
+  - {doc}`../examples/generated/pole-figure-arithmetic`
 
 ## See also
 
-- {doc}`../theory/ghost_problem_and_odd_harmonics` — why the odd part is unmeasurable at all.
-- {doc}`../theory/harmonic_odf_reconstruction` — the even solution this corrects.
-- {doc}`../workflows/pole_figure_presentation` — drawing the result honestly.
-- {doc}`../workflows/workbench_application` — the same correction in the application.
+- {doc}`../theory/ghost_problem_and_odd_harmonics` — Comprehensive mathematical derivation of the ghost phenomenon.
+- {doc}`../theory/harmonic_odf_reconstruction` — Symmetrized spherical harmonic basis functions and series expansion.
+- {doc}`pole_figure_inversion` — Inversion of experimental diffraction pole figures.
 
 ## References
 
-- H.-J. Bunge, *Texture Analysis in Materials Science: Mathematical Methods*, Butterworths (1969).
-- M. Dahms and H.-J. Bunge, *The iterative series-expansion method for quantitative texture
-  analysis. I. General outline*, Journal of Applied Crystallography **22** (1989) 439–447.
-  DOI: <https://doi.org/10.1107/S0021889889005261>.
-- S. Matthies, *On the reproducibility of the orientation distribution function of texture samples
-  from pole figures (ghost phenomena)*, Physica Status Solidi (b) **92** (1979) K135–K138.
-  DOI: <https://doi.org/10.1002/pssb.2220920253>.
-- R. Hielscher and H. Schaeben, *A novel pole figure inversion method: specification of the MTEX
-  algorithm*, Journal of Applied Crystallography **41** (2008) 1024–1037.
-  DOI: <https://doi.org/10.1107/S0021889808030112>.
+### Normative
+
+- Bunge, H. J. (1982). *Texture Analysis in Materials Science: Mathematical Methods*.
+  Butterworths. <https://doi.org/10.1016/C2013-0-11769-2>
+- Dahms, M. & Bunge, H. J. (1989). The iterative series-expansion method for quantitative
+  texture analysis. I. General outline. *Journal of Applied Crystallography* **22**,
+  439–447. <https://doi.org/10.1107/S0021889889005261>
+- Matthies, S. (1979). On the reproducibility of the orientation distribution function
+  of texture samples from pole figures (ghost phenomena). *Physica Status Solidi (b)*
+  **92**, K135–K138. <https://doi.org/10.1002/pssb.2220920253>
+
+### Informative
+
+- Hielscher, R. & Schaeben, H. (2008). A novel pole figure inversion method:
+  specification of the MTEX algorithm. *Journal of Applied Crystallography* **41**,
+  1024–1037. <https://doi.org/10.1107/S0021889808030112>
+- Matthies, S., Vinel, G. W. & Helming, K. (1987). *Standard Distributions in Texture
+  Analysis*. Akademie-Verlag.

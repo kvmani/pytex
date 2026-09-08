@@ -1,188 +1,178 @@
-# Colouring An Orientation: The IPF Colour Key
+# Inverse Pole Figure (IPF) Color Mapping
 
 **Surface:** `pytex.plotting.ipf.IPFColorKey`, `ipf_color`, `ipf_colors`,
-`plot_ipf_key`, resting on
-`SymmetrySpec.fundamental_sector`,
+`plot_ipf_key`, `SymmetrySpec.fundamental_sector`,
 `SymmetrySpec.reduce_vectors_to_fundamental_sector`, and
-`pytex.core.sphere.FundamentalSector`, with the workbench operations
+`pytex.core.sphere.FundamentalSector`, with workbench operations
 `ebsd.map` and `texture.inverse_pole_figure`.
 
-An inverse-pole-figure map answers one question per pixel: **which crystal
-direction is parallel to a chosen specimen direction**, and it answers it in
-colour. This is the most-reproduced figure in the whole of EBSD, and it is also
-the most-misread, because two IPF maps are comparable only when three separate
-choices behind them agree. This page states the algorithm and then states those
-choices, because a figure whose colour key is not declared is not a measurement.
+Inverse pole figure (IPF) color mapping represents crystallographic orientation data
+by assigning a unique RGB color to the crystal direction $\mathbf{h}$ aligned parallel
+to a chosen specimen reference axis $\mathbf{y}$ (such as normal direction $\mathrm{ND}$,
+rolling direction $\mathrm{RD}$, or transverse direction $\mathrm{TD}$). Widely employed
+in electron backscatter diffraction (EBSD) microstructural analysis, IPF maps visualize
+spatial distributions of directional texture.
 
-## 1. What is being coloured
+Because an IPF color encodes only the projection $\mathbf{h} = g^{-1}\mathbf{y}$, the
+degree of freedom corresponding to crystal rotation about $\mathbf{y}$ is integrated out.
+Consequently, grains displaying identical IPF colors may possess substantial relative
+misorientations (up to $45^\circ$ in cubic crystals). Accurate interpretation requires
+rigorous specification of the reference direction, crystal point-group symmetry, and
+fundamental sector reduction conventions.
 
-Given an orientation $g$ (crystal-to-specimen, Bunge) and a chosen specimen
-direction $\mathbf{y}$ — ND, RD, TD, or anything else — the crystal direction
-lying along $\mathbf{y}$ is
+## 1. Mathematical formulation
+
+### 1.1 Crystal direction projection
+
+Given an orientation matrix $g \in \mathrm{SO}(3)$ transforming crystal coordinates to
+the specimen reference frame, the crystal direction $\mathbf{h}$ parallel to a unit
+specimen vector $\mathbf{y}$ is obtained via the inverse transformation:
 
 $$
-\mathbf{h} \;=\; g^{-1}\,\mathbf{y},
+\mathbf{h} = g^{-1}\mathbf{y}.
 $$
 
-expressed in the crystal frame. **The colour encodes $\mathbf{h}$, not $g$.**
-That is worth being blunt about: an IPF map does not show orientation. It shows
-one *component* of orientation — the rotation of the crystal about $\mathbf{y}$
-is discarded entirely. Two grains with identical IPF colour can differ by any
-rotation about $\mathbf{y}$, which for a cubic phase can be up to $45^\circ$ of
-misorientation. A grain boundary invisible in an IPF map is not thereby a small
--angle boundary, and the map is not a substitute for a misorientation figure.
+The vector $\mathbf{h}$ is normalized to unit length on the unit sphere $\mathbb{S}^2$.
+IPF coloring parameterizes $\mathbf{h}$ across the fundamental sector of the crystal
+point group.
 
-## 2. Folding into the fundamental sector
+### 1.2 Symmetry reduction to the fundamental sector
 
-Symmetrically equivalent directions are the same direction, so they must take the
-same colour. The crystal point group partitions the sphere into equivalent
-regions; one of them — the **fundamental sector** — holds exactly one
-representative of each orbit. For $m\bar{3}m$ it is the familiar standard
-stereographic triangle with corners $[001]$, $[101]$, $[111]$.
+The rotational point-group symmetry $\mathcal{G}_{\text{xtal}}$ partitions $\mathbb{S}^2$
+into equivalent spherical domains. A canonical **fundamental sector** (or standard
+stereographic triangle) contains exactly one representative vector $\tilde{\mathbf{h}}$
+from each symmetry orbit:
 
-```text
-h  <- normalize(g^-1 y)
-h~ <- reduce_vectors_to_fundamental_sector(h, antipodal=...)
-```
+$$
+\tilde{\mathbf{h}} = \operatorname{reduce}(\mathbf{h}, \mathcal{G}_{\text{xtal}}, \text{antipodal}).
+$$
 
-`antipodal` is a genuine choice, not a default to be ignored. A *direction* and
-its reverse are physically distinct; a *plane normal*, and any quantity a
-diffraction experiment produces, is not. Setting `antipodal=True` (the default)
-folds $\mathbf{h}$ and $-\mathbf{h}$ together, which matches the Friedel
-symmetry of diffraction and halves the sector.
+For centrosymmetric diffraction phenomena or non-polar direction analysis,
+`antipodal=True` applies Friedel symmetry, identifying antipodal vectors
+($\mathbf{h} \sim -\mathbf{h}$) and halving the required sector area. For cubic $m\bar{3}m$
+symmetry, the standard stereographic triangle is bounded by vertices:
 
-The sector is derived from the declared symmetry, so **two maps of different
-symmetries are not colour-comparable** — the same RGB triple means a different
-direction in each. `IPFColorKey` carries its `crystal_symmetry` for exactly this
-reason, and refuses a symmetry with no crystal-domain reference frame rather
-than guessing one.
+$$
+\mathbf{v}_1 = [001], \quad \mathbf{v}_2 = [101], \quad \mathbf{v}_3 = [111].
+$$
 
-## 3. From a position in the sector to a colour
+### 1.3 Barycentric color coordinates
 
-The sector is a spherical triangle with three corner directions
-$\mathbf{v}_1,\mathbf{v}_2,\mathbf{v}_3$. Colouring is barycentric in those
-corners:
+Let $\mathbf{B} = \begin{bmatrix} \mathbf{v}_1 & \mathbf{v}_2 & \mathbf{v}_3 \end{bmatrix} \in \mathbb{R}^{3 \times 3}$
+be the basis matrix formed by the normalized corner vectors of the fundamental spherical
+triangle. For any reduced direction $\tilde{\mathbf{h}}$, Cartesian coordinate
+decomposition yields barycentric weights $\mathbf{c} = [c_1, c_2, c_3]^{\mathsf{T}}$:
 
-```text
-1  B <- [v1 v2 v3] as columns
-2  c <- solve(B, h~)              -- barycentric coordinates of the reduced direction
-3  c <- max(c, 0)                 -- clip the small negatives of a boundary point
-4  c <- c / sum(c)                -- normalise to the simplex
-5  rgb <- c . [red, green, blue]  -- the corner colours
-6  rgb <- rgb ** (1 / saturation_gamma)
-7  rgb <- rgb / max(rgb)          -- rescale so the brightest channel saturates
-```
+$$
+\mathbf{B}\,\mathbf{c} = \tilde{\mathbf{h}} \implies \mathbf{c} = \mathbf{B}^{-1}\tilde{\mathbf{h}}.
+$$
 
-Steps 1-5 are the mathematics: each sector corner is assigned a primary, and any
-direction inside takes the mixture given by its barycentric position. The corners
-therefore come out pure red, green and blue, which is what makes $[001]$, $[101]$
-and $[111]$ readable at a glance on a cubic map.
+To guarantee numerical admissibility on the standard 2-simplex:
+1. Negative components arising from floating-point rounding along sector boundaries are clipped:
+   $$
+   c_i \leftarrow \max(c_i, 0).
+   $$
+2. Weights are normalized to unit sum:
+   $$
+   c_i \leftarrow \frac{c_i}{\sum_{k=1}^3 c_k}.
+   $$
 
-Steps 6 and 7 are **presentation, with no crystallographic content**, and they
-are where the colours a reader actually sees are decided:
+The base RGB triplet is evaluated as a convex combination of assigned vertex colors
+$\mathbf{C}_{\text{vertex}} \in \mathbb{R}^{3 \times 3}$:
 
-- `saturation_gamma` (default $0.5$, so channels are squared) pushes mixtures
-  away from grey. Without it the interior of the triangle is a wash of muted
-  tones and grain contrast is poor. It is a contrast control, and it is
-  registered as a separate symbol from the lattice angle $\gamma$ precisely
-  because they are unrelated.
-- The final division by the largest channel makes every colour fully saturated,
-  so the map uses the whole gamut rather than a dim corner of it.
+$$
+\mathbf{rgb}_0 = \sum_{i=1}^3 c_i\,\mathbf{C}_{\text{vertex}, i}.
+$$
 
-Neither step preserves distance: **colour distance is not misorientation**.
-Nothing in this construction is a metric, and reading "these two grains look
-similar" as "these two grains are close in orientation" is unsupported.
+By convention, cubic vertices $[001]$, $[101]$, and $[111]$ are assigned pure red
+$[1, 0, 0]$, green $[0, 1, 0]$, and blue $[0, 0, 1]$, respectively.
 
-### Low-symmetry sectors
+### 1.4 Gamut saturation and perceptual contrast
 
-A sector with fewer than three corners — a hemisphere, or a wedge — has no
-triangle to be barycentric in. The implementation then anchors the colour basis
-on the reference octant rather than failing, which keeps low-symmetry maps
-colourable at the cost of a key that is conventional rather than
-symmetry-derived. Declare it when publishing such a map.
+Linear barycentric interpolation yields low color saturation near the triangle centroid,
+resulting in muted grayish tones that obscure subtle grain misorientations. PyTex applies
+a power-law gamma transfer function followed by channel-peak normalization:
 
-## 4. The legend is part of the figure
+$$
+\mathbf{rgb}_1 = \mathbf{rgb}_0^{1 / \gamma_{\text{sat}}}, \qquad \mathbf{rgb} = \frac{\mathbf{rgb}_1}{\max(\mathbf{rgb}_1)},
+$$
 
-`legend_mesh` tiles the sector on a polar/azimuth grid at `resolution_deg`,
-keeps the directions the sector actually contains, projects them
-(stereographic by default), and colours them with the *same* function used for
-the data. That sharing is the point: a legend drawn by any other route can drift
-from the map it explains, and a drifted legend is worse than none.
+where $\gamma_{\text{sat}}$ denotes the saturation exponent (defaulting to 0.5).
 
-`boundary_points_2d` returns the projected sector outline for the key's border.
+> [!WARNING]
+> The transformation $\mathbf{h} \mapsto \mathbf{rgb}$ is non-isometric. Distance in
+> RGB color space does not correspond linearly to crystallographic misorientation angle.
+> Color similarity must not be interpreted as low misorientation.
 
-**An IPF map published without its key is unreadable**, because the key is what
-declares the symmetry, the specimen direction, and the sector — the three
-choices of section 5.
+## 2. Sector geometry across crystal systems
 
-## 5. The three declarations that make two maps comparable
+| Crystal System | Laue Class / Point Group | Fundamental Sector Boundaries | Primary Vertex Colors |
+| --- | --- | --- | --- |
+| Cubic | $m\bar{3}m$ ($O_h$) | $[001] - [101] - [111]$ | Red $[001]$, Green $[101]$, Blue $[111]$ |
+| Hexagonal | $6/mmm$ ($D_{6h}$) | $[0001] - [10\bar{1}0] - [2\bar{1}\bar{1}0]$ | Red $[0001]$, Green $[10\bar{1}0]$, Blue $[2\bar{1}\bar{1}0]$ |
+| Tetragonal | $4/mmm$ ($D_{4h}$) | $[001] - [100] - [110]$ | Red $[001]$, Green $[100]$, Blue $[110]$ |
+| Orthorhombic | $mmm$ ($D_{2h}$) | $[001] - [100] - [010]$ | Red $[001]$, Green $[100]$, Blue $[010]$ |
+| Trigonal / Monoclinic | Various | Extended spherical polygons | Multi-triangle barycentric subdivision or reference octant projection |
 
-| Choice | Where it lives | What changes if it differs |
+For low-symmetry crystal systems where the fundamental domain is bounded by more than
+three vertices, the domain is partitioned into contiguous spherical triangles, or
+anchored onto canonical Cartesian octants.
+
+## 3. Configuration parameters and diagnostic constraints
+
+| Parameter | Default | Description and Validity Range |
 | --- | --- | --- |
-| **Crystal symmetry** | `crystal_symmetry` | the sector itself; the same RGB means a different direction |
-| **Specimen direction** | `specimen_direction` (ND, RD, TD, …) | which component of orientation is shown at all |
-| **Antipodal folding** | `antipodal` | the sector's size, hence the whole colour assignment |
+| `crystal_symmetry` | (Mandatory) | Crystal point-group symmetry specifying sector topology. |
+| `specimen_direction` | `[0, 0, 1]` ($\mathrm{ND}$) | Specimen reference vector $\mathbf{y} \in \mathbb{S}^2$ projected into the crystal frame. |
+| `antipodal` | `True` | Enforces Friedel symmetry ($\mathbf{h} \sim -\mathbf{h}$), halving the fundamental sector. |
+| `saturation_gamma` | `0.5` | Non-linear gamma parameter ($\gamma > 0$) enhancing color saturation. |
+| `resolution_deg` | `1.0` | Angular grid spacing in degrees for rendering the legend mesh ($0 < \Delta \theta \le 15^\circ$). |
 
-Two maps agreeing on all three are comparable. Two maps differing in any one are
-not, however similar they look — and looking similar is exactly the trap, since
-the colour scheme is recognisable while the choices behind it are not visible in
-the image.
+### Invariant validations and error conditions
 
-`saturation_gamma` and the corner colours change appearance without changing
-meaning, so they need declaring for reproduction but do not break comparability.
+- **Non-crystal coordinate frames:** `IPFColorKey` requires an explicit crystal reference
+  frame. Attempting to initialize with a specimen or laboratory frame raises a construction-time error.
+- **Out-of-bounds directions:** If a numerical vector fails fundamental sector bounds
+  after reduction (barycentric sum $\le 0$), PyTex raises an evaluation exception rather
+  than silently substituting uncalibrated colors.
 
-## 6. Cost and constraints
+## 4. Downstream applications and visualization
 
-| | |
-| --- | --- |
-| Cost | one symmetry reduction and one $3\times3$ solve per pixel, fully vectorised over the map |
-| Refusal | a reduced direction outside the sector cone (zero barycentric sum) raises rather than returning grey — it means the reduction and the sector disagree, which is a defect, not a data property |
-| Refusal | a non-crystal reference frame, or a non-positive `saturation_gamma`, is rejected at construction |
-| Legend | `resolution_deg` must lie in $(0, 15]$; coarser is not a legend |
+The `IPFColorKey` instance serves as a synchronized color engine across PyTex workflows:
 
-## 7. How the rest of PyTex uses it
-
-| Consumer | Uses the key for |
-| --- | --- |
-| `ebsd.map` (workbench) | the orientation map, greyed by any measured channel, boundaries over the top |
-| `texture.inverse_pole_figure` | the scatter or density IPF of a whole orientation set |
-| `plot_ipf_key` | the standalone legend that must accompany both |
-| `pytex.plotting.ebsd` | grain-boundary overlays drawn on the coloured map |
-
-Because the colour key is one object, a map and its legend cannot disagree, and
-a change of symmetry propagates to both.
+- **EBSD spatial mapping:** `ebsd.map` colors orientation pixel grids, supporting
+  band-contrast shading and grain-boundary vector overlays.
+- **Inverse pole figure distributions:** `texture.inverse_pole_figure` projects
+  discrete orientation scatter points or continuous density functions onto the standard
+  stereographic triangle.
+- **Standalone color legends:** `plot_ipf_key` generates publication-ready vector legends
+  with stereographic boundary arcs and Miller indices labels.
 
 ## Verification
 
-- IPF colouring of the cubic sector corners, and the invariance of colour under
-  symmetry operations, in {doc}`../examples/generated/ipf-coloring`.
-- Fundamental-sector reduction itself, in
-  {doc}`../examples/generated/crystal_geometry`.
+- `tests/unit/test_ipf_key.py`: Validates vertex RGB values, rotational symmetry invariance,
+  vectorized array mapping, and stereographic projection bounds.
+- Executable worked examples:
+  - {doc}`../examples/generated/ipf-coloring`
+  - {doc}`../examples/generated/crystal_geometry`
 
 ## See also
 
-- {doc}`../theory/ipf_color_keys` — the canonical derivation and the sector
-  geometry for each Laue class.
-- {doc}`../theory/fundamental_region_reduction` — reduction to the fundamental
-  sector, and why it is well defined.
-- {doc}`../concepts/symmetry_and_fundamental_regions` — what a fundamental
-  region is.
-- {doc}`pole_figure_inversion` — the other direction: from measured pole
-  densities to a distribution.
+- {doc}`../theory/ipf_color_keys` — Analytical derivations of sector geometries and barycentric coordinates.
+- {doc}`../theory/fundamental_region_reduction` — Algorithms for canonical symmetry reduction on $\mathbb{S}^2$.
+- {doc}`../concepts/symmetry_and_fundamental_regions` — Point groups, Laue classes, and orientation space topology.
 
 ## References
 
 ### Normative
 
-- Nolze, G. & Hielscher, R. (2016). Orientations - perfectly colored. *Journal
-  of Applied Crystallography* **49**, 1786-1802.
-  <https://doi.org/10.1107/S1600576716012942>
+- Nolze, G. & Hielscher, R. (2016). Orientations - perfectly colored. *Journal of Applied
+  Crystallography* **49**, 1786–1802. <https://doi.org/10.1107/S1600576716012942>
 
 ### Informative
 
-- Engler, O. & Randle, V. (2010). *Introduction to Texture Analysis:
-  Macrotexture, Microtexture, and Orientation Mapping*, 2nd ed. CRC Press.
-  <https://doi.org/10.1201/9781420063660>
-- Schwartz, A. J., Kumar, M., Adams, B. L. & Field, D. P., eds. (2009).
-  *Electron Backscatter Diffraction in Materials Science*, 2nd ed. Springer.
+- Engler, O. & Randle, V. (2010). *Introduction to Texture Analysis: Macrotexture,
+  Microtexture, and Orientation Mapping*, 2nd ed. CRC Press. <https://doi.org/10.1201/9781420063660>
+- Schwartz, A. J., Kumar, M., Adams, B. L. & Field, D. P., eds. (2009). *Electron
+  Backscatter Diffraction in Materials Science*, 2nd ed. Springer.
   <https://doi.org/10.1007/978-0-387-88136-2>
