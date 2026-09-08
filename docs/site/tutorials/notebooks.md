@@ -60,6 +60,7 @@ notebooks/31_kearns_parameter
 notebooks/32_ecci_workflow_from_ebsd
 notebooks/33_quantitative_xrd_background_instrument_and_rietveld
 notebooks/34_precise_lattice_parameters
+notebooks/35_hrem_simulation
 ```
 
 ## Orientation-Relationship Teaching Track
@@ -253,3 +254,12 @@ For the validated fixture-to-diffraction route, continue with:
     quantity nobody fitted for. The last section says plainly what the notebook has *not* produced:
     a stress, which needs several specimen tilts and the X-ray elastic constants of the reflection
     used.
+
+12. `35_hrem_simulation` — phase-contrast high-resolution transmission electron microscopy
+    (HRTEM / HREM) simulation for uncorrected, $C_s$-corrected, and double-corrected ($C_s + C_c$)
+    instruments. Derives and plots the 1D Contrast Transfer Function (CTF), temporal focal-spread
+    damping, and spatial coherence envelopes. Simulates crystalline supercells under conventional
+    Scherzer underfocus (dark atomic columns) and Negative Spherical Aberration Imaging (NCSI, bright
+    atomic columns). Evaluates atomic vacancies and continuum Volterra edge dislocations, and
+    simulates amorphous carbon foils with 2D FFT Thon ring power spectra for microscope calibration.
+

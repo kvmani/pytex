@@ -19,6 +19,7 @@ from pytex.app.services import ebsd_pattern as ebsd_pattern
 from pytex.app.services import ecci as ecci
 from pytex.app.services import kearns as kearns
 from pytex.app.services import tem as tem
+from pytex.app.services import tem_hrem as tem_hrem
 from pytex.app.services import texture as texture
 from pytex.app.services import variants as variants
 from pytex.app.services import xrd as xrd
@@ -33,6 +34,7 @@ __all__ = [
     "ecci",
     "kearns",
     "tem",
+    "tem_hrem",
     "texture",
     "variants",
     "xrd",

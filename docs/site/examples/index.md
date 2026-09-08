@@ -149,6 +149,10 @@ The complete set of computed-versus-expected values at a glance:
 | `workbench-crystal-viewer-goss-nd` | 45.0000 | 45.0000 | deg | ✅ |
 | `workbench-crystal-viewer-euler-round-trip` | < 1e-08 | 0.00e+00 | deg | ✅ |
 | `workbench-hexagonal-index-conversion` | [2, -1, -1, 0, 1, 0, -1, 0] | [2, -1, -1, 0, 1, 0, -1, 0] | &mdash; | ✅ |
+| `hrem-scherzer-optics-300kv` | [19.688, 53.245, 1.892] | [19.688, 53.245, 1.892] | &mdash; | ✅ |
+| `hrem-ctf-scherzer-zero-crossing` | < 1e-12 | 0.00e+00 | &mdash; | ✅ |
+| `hrem-double-corrected-information-limit` | 0.00e+00 | 0.00e+00 | &mdash; | ✅ |
+| `hrem-ncsi-contrast-inversion` | [1, 1] | [1, 1] | &mdash; | ✅ |
 
 ## Example groups
 
@@ -178,6 +182,7 @@ The complete set of computed-versus-expected values at a glance:
 - {doc}`Orientation-relationship correspondence <generated/transformation>` &mdash; Index-correspondence identities for named orientation relationships: mapping parent planes and directions to their product-phase counterparts, with rationalized indices and angular residuals, the misorientation representation used for EBSD comparison, and the recovery of a relationship and its parallelism statement from measured parent/child orientation pairs.
 - {doc}`Composable visualization primitives <generated/visualization>` &mdash; Geometric guarantees of the visualization layer: a placement transform that reproduces the crystal-to-sample map, the orientation-relationship placement that makes parallel directions coincide in one world frame, a scene bond-length measurement checked against the exact NaCl-type a/2 distance, and the OR stereogram plotting a parallelism as one point and one circle for every variant.
 - {doc}`Workbench service layer <generated/workbench-service-layer>` &mdash; The three quantitative claims the workbench user guide makes, each checked against a value fixed independently of this code: the Kurdjumov-Sachs packet structure and intervariant spectrum from Morito et al., the closure of the m.r.d. scale as an exact identity, the assertion a Miller component label makes about where its poles land, and the crystal viewer's claim that its camera is an orientation, and the two Miller-Bravais conversion rules that a plane and a direction of the same three indices do not share.
+- {doc}`HRTEM simulation and contrast transfer function optics <generated/hrem-simulation-and-ctf>` &mdash; Optics and contrast transfer of high-resolution transmission electron microscopy: relativistic electron wavelength, Scherzer defocus and resolution, analytical zero-crossing of the CTF, chromatic aberration damping reduction in double-corrected TEM, and phase contrast sign inversion in Negative Cs Imaging (NCSI).
 
 ```{toctree}
 :maxdepth: 1
@@ -209,4 +214,5 @@ generated/phase-identification
 generated/transformation
 generated/visualization
 generated/workbench-service-layer
+generated/hrem-simulation-and-ctf
 ```

@@ -13,6 +13,7 @@ from . import (
     ebsd_microstructure,
     elastic_anisotropy,
     ghost_problem,
+    hrem_simulation,
     ipf_coloring,
     kearns_parameter,
     orientation_and_misorientation,
@@ -59,6 +60,7 @@ GROUPS: tuple[ExampleGroup, ...] = (
     transformation_correspondence.GROUP,
     visualization_composition.GROUP,
     workbench_service_layer.GROUP,
+    hrem_simulation.GROUP,
 )
 
 __all__ = ["GROUPS"]

@@ -215,6 +215,8 @@ select = ["E", "F", "I", "B", "UP", "N", "RUF"]
 # sigma is the standard symbol for their uncertainty, so they are the correct
 # characters in the column headers a microscopist reads.
 "src/pytex/app/services/tem.py" = ["RUF001"]
+"src/pytex/app/services/tem_hrem.py" = ["RUF001"]
+"src/pytex/diffraction/hrem.py" = ["RUF001"]
 # This module exists to hold the registered symbols in the characters the
 # literature writes them with. Every Greek letter in it is deliberate and is the
 # whole point of the file, so the confusable-character rules have nothing left
@@ -234,13 +236,17 @@ packages = ["pytex"]
 # fail on them.
 [[tool.mypy.overrides]]
 module = [
+  "abtem", "abtem.*",
+  "ase", "ase.*",
   "diffsims", "diffsims.*",
   "h5py", "h5py.*",
   "kikuchipy", "kikuchipy.*",
   "orix", "orix.*",
   "pymatgen", "pymatgen.*",
+  "zarr", "zarr.*",
 ]
 ignore_missing_imports = true
+follow_imports = "skip"
 
 [[tool.mypy.overrides]]
 module = ["yaml", "yaml.*", "mpl_toolkits", "mpl_toolkits.*"]

@@ -32,6 +32,7 @@ import * as crystal from './panels/crystal.js';
 import * as saedsim from './panels/saedsim.js';
 import * as tem from './panels/tem.js';
 import * as cbed from './panels/cbed.js';
+import * as hrem from './panels/hrem.js';
 import * as diffraction from './panels/diffraction.js';
 import * as xrd from './panels/xrd.js';
 import * as ebsd from './panels/ebsd.js';
@@ -67,7 +68,7 @@ const TEM_ANALYSIS = {
   id: 'tem-analysis',
   title: 'TEM Analysis',
   tagline: 'Simulate, index, and interpret transmission-electron diffraction.',
-  panels: [saedsim, tem, cbed, diffraction],
+  panels: [saedsim, tem, cbed, hrem, diffraction],
 };
 
 // EBSD is grouped for the same reason: one scan, seen six ways — followed by

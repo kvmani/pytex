@@ -310,6 +310,10 @@ ho-1)/2$ the factor by which convolution scales every departure of $\mathbf{A}$ 
 | $\gamma_{j}$ | Bloch-wave excitation: the $j$-th eigenvalue of $\mathbf{A}$. Its real part locates the dispersion surface; its imaginary part is that branch's absorption coefficient. |
 | $I_{\mathrm{dd}}$ | Double-diffraction intensity assigned to a kinematically forbidden reflection reached as $\mathbf{g}_{1} + \mathbf{g}_{2}$. An observability estimate, never a kinematic intensity: the kinematic intensity of such a reflection is exactly zero. |
 | $c$ | Double-diffraction coupling constant scaling $I_{\mathrm{dd}}$. Absorbs what a kinematic treatment cannot supply — beam coupling strength and specimen thickness. Dimensionless, in $(0, 1]$. |
+| $\Delta f$ | Objective lens defocus in high-resolution transmission electron microscopy. |
+| $C_{s}$ | Spherical aberration coefficient of the objective lens. |
+| $C_{c}$ | Chromatic aberration coefficient of the objective lens. |
+| $\alpha_{\mathrm{obj}}$ | Objective aperture semiangle cutoff in high-resolution transmission electron microscopy. |
 
 ## References
 

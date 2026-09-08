@@ -5,6 +5,56 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## HREM Simulation Module for Double-Corrected TEM with abTEM Integration — COMPLETE (2026-09-08)
+
+**Objective.** Implement a state-of-the-art High-Resolution Electron Microscopy (HREM / HRTEM) simulation module in PyTex, integrated with `abtem` via a clean adapter layer. The module supports double-corrected TEM optics up to 5th order aberrations, partial coherence damping envelopes, simulation snapshots for crystalline, defect (vacancies, dislocations), and amorphous materials, a CLI command (`pytex hrem`), an interactive GUI submodule in TEM Analysis (`tem_hrem` service and `hrem.js`), canonical theory documentation (`docs/site/theory/hrem_multislice_and_ctf.md`), executable worked examples (`worked_examples/examples/hrem_simulation.py`), and a tutorial notebook (`docs/site/tutorials/notebooks/35_hrem_simulation.ipynb`).
+
+### Progress Ledger
+
+| Step | Scope | State |
+|---|---|---|
+| 0 | Implementation plan approved & active task ledger initialized | Complete |
+| 1 | Increment 1: Core symbols, canonical domain model & HREM physics (`pytex.core.symbols`, `pytex.diffraction.hrem`, unit tests) | Complete |
+| 2 | Increment 2: abTEM adapter layer & pure-Python fallback (`pytex.adapters.abtem`, unit tests) | Complete |
+| 3 | Increment 3: CLI integration (`pytex hrem simulate`, `pytex hrem ctf`, CLI tests) | Complete |
+| 4 | Increment 4: GUI service layer & interactive panel (`tem_hrem.py`, `hrem.js`, `main.js`, manifest tests) | Complete |
+| 5 | Increment 5: Canonical theory doc, worked examples gallery & tutorial notebook (`hrem_multislice_and_ctf.md`, `hrem_simulation.py`, `35_hrem_simulation.ipynb`) | Complete |
+| 6 | Increment 6: Comprehensive verification & ratchets (Sphinx 0 warnings, repo integrity, ruff, mypy, pytest) | Complete |
+
+### Increments 1-6 Technical Summary
+
+- **Core Symbols & Terminology (`pytex.core.symbols`, `terminology_and_symbol_registry.md`):**
+  - Registered four canonical HREM symbols: `defocus` ($\Delta f$), `spherical_aberration` ($C_s$), `chromatic_aberration` ($C_c$), and `semiangle_cutoff` ($\alpha_{\mathrm{obj}}$).
+- **Core Domain Models & Optics (`pytex.diffraction.hrem`):**
+  - Implemented `DoubleCorrectionMode` (`UNCORRECTED`, `CS_CORRECTED`, `DOUBLE_CORRECTED`, `NCSI`).
+  - Implemented `MicroscopeAberrations`: wave aberration $\chi(q, \theta)$ through 5th order ($C_{10}, C_{30}, C_{50}$, astigmatism $C_{12}$, trefoil $C_{23}$, axial coma $C_{21}$), temporal coherence envelope $E_c(q)$, Frank's spatial coherence envelope $E_s(q)$, objective aperture mask $A(q)$, Scherzer defocus/resolution formulas, and preset factory constructors (`conventional_tem`, `cs_corrected`, `double_corrected`, `ncsi`).
+  - Implemented `CTF1D`: 1D radial profiles, first zero-crossing detection, 1/e² information limit, and `.describe()` prose method.
+  - Implemented `AtomicSnapshot`: coordinate container with builders for oriented crystalline supercells from PyTex `Phase`, point vacancy defects, Volterra edge/screw continuum dislocations, and dense random-packed amorphous foils (`amorphous_sample`).
+  - Implemented `pure_python_phase_object_simulation`: pure-Python Kirkland projected potential and weak phase object simulation fallback.
+  - Implemented `HREMSimulationResult`: 2D micrograph intensity, 2D FFT Thon rings power spectrum, Michelson contrast, base64 PNG export, and explainable `.describe()` method.
+- **abTEM Adapter Layer (`pytex.adapters.abtem`):**
+  - Seamless bridge between PyTex data structures and `abtem.waves.Probe` / `abtem.potentials.Potential` / `abtem.transfer.CTF`.
+  - Supports converting `AtomicSnapshot` to `ase.Atoms` and PyTex `MicroscopeAberrations` to `abtem.CTF`.
+  - Multislice execution with fallback to pure-Python phase-object simulation when `abtem` is not installed.
+- **CLI Commands (`pytex.cli`):**
+  - Subcommands `pytex hrem simulate` and `pytex hrem ctf`. Windows-safe UTF-8 console output encoding.
+- **GUI Service & Interactive Panel (`tem_hrem.py`, `hrem.js`, `main.js`):**
+  - Registered `tem.simulate_hrem` and `tem.ctf_calculator` operations with documentation links, examples, and compact form metadata (`FIELD_WIDTHS`, multi-parameter rows).
+  - Designed responsive dual-view panel ("HRTEM Simulation" and "CTF & Aberrations") with HTML5 canvas micrograph, 2D FFT Thon rings canvas, and SVG CTF curve with coherence damping envelopes and Scherzer/information markers.
+  - Fully verified with `tests/unit/test_app_manifest.py` (746 passed, 0 failures).
+- **Canonical Documentation, Worked Examples, & Tutorial Notebook:**
+  - Authored comprehensive theory document `docs/site/theory/hrem_multislice_and_ctf.md`, indexed in `docs/site/theory/index.md` and `docs/README.md`.
+  - Authored worked example group in `worked_examples/examples/hrem_simulation.py` with 4 pinned physical invariants (relativistic de Broglie wavelength & Scherzer optics, CTF passband zero-crossing root, chromatic aberration damping reduction, and NCSI phase contrast sign inversion). Generated Sphinx gallery page (`docs/site/examples/hrem-simulation-and-ctf.md`), verified with `tests/unit/test_worked_examples.py` (29 passed).
+  - Authored comprehensive tutorial notebook `docs/site/tutorials/notebooks/35_hrem_simulation.ipynb`, registered in `docs/site/tutorials/notebooks.md`. Validated clean execution, zero committed outputs, and null execution counts via `tests/unit/test_notebooks.py` (7 passed).
+- **Verification & Ratchets (Increment 6):**
+  - Sphinx documentation build with zero warnings: `python scripts/check_sphinx_warnings.py --max-warnings 0` passed (0 warnings).
+  - Repository integrity: `python scripts/check_repo_integrity.py` passed with 0 violations.
+  - Linter: `python -m ruff check src/ tests/ worked_examples/` passed with 0 errors.
+  - Type checker: `python -m mypy src/pytex/diffraction/hrem.py src/pytex/adapters/abtem.py src/pytex/app/services/tem_hrem.py` passed with 0 issues.
+  - Test suites: `tests/unit/test_hrem.py`, `tests/unit/test_abtem_adapter.py`, `tests/unit/test_cli.py`, `tests/unit/test_app_manifest.py` (746 passed), `tests/unit/test_worked_examples.py` (144 passed), and `tests/unit/test_notebooks.py` (7 passed) all passed green.
+
+
+
 ## Grand Technical Glossary and In-Depth Mathematical Explanations — COMPLETE (2026-09-08)
 
 **Objective.** Review the user-facing documentation across PyTex to provide deeper explanatory mathematics and rigorous physical context for complex or uncommon terms and phrases (e.g., *excitation error*, *extinction distance*, *relrod*, *HOLZ lines*, *double diffraction*, *camera constant*, *Kikuchi bands*, *gnomonic projection*, *CSL*, *KAM*, *GND*, *Taylor factor*, *double coset*). Create a comprehensive Grand Glossary of Terms and Symbols in `docs/site/concepts/technical_glossary_and_symbols.md` with full mathematical definitions, variable breakdowns, and physical significance, and provide cross-links from algorithm, theory, and workflow pages directly to these definitions.

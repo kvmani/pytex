@@ -1,3 +1,11 @@
+from pytex.adapters.abtem import (
+    from_ase_atoms,
+    is_abtem_available,
+    simulate_hrem,
+    simulate_hrem_multislice,
+    to_abtem_ctf,
+    to_ase_atoms,
+)
 from pytex.adapters.ebsd import (
     EBSD_IMPORT_MANIFEST_SCHEMA_ID,
     EBSD_IMPORT_MANIFEST_SCHEMA_VERSION,
@@ -127,6 +135,7 @@ __all__ = [
     "default_ebsd_frames",
     "direction_from_orix_miller",
     "experiment_manifest_schema_path",
+    "from_ase_atoms",
     "from_orix_miller",
     "from_orix_orientation",
     "from_orix_rotation",
@@ -134,6 +143,7 @@ __all__ = [
     "index_hough",
     "invert_labotex_pole_figures",
     "invert_xrdml_pole_figures",
+    "is_abtem_available",
     "load_labotex_pole_figures",
     "load_xrdml_pole_figure",
     "manifest_schema_path",
@@ -158,6 +168,10 @@ __all__ = [
     "read_xrdml_pole_figure",
     "refine_orientations",
     "scan_reader_for",
+    "simulate_hrem",
+    "simulate_hrem_multislice",
+    "to_abtem_ctf",
+    "to_ase_atoms",
     "to_orix_direction",
     "to_orix_miller_direction",
     "to_orix_miller_phase",

@@ -85,6 +85,7 @@ stereographic_kikuchi_maps
 tem_specimen_tilt_navigation
 convergent_beam_electron_diffraction
 dynamical_cbed_and_symmetry_determination
+hrem_multislice_and_ctf
 foundation_feature_priorities
 ```
 

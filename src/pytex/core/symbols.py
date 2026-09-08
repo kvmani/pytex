@@ -128,6 +128,30 @@ _SYMBOLS: Mapping[str, Symbol] = MappingProxyType(
             _entry("s_3", "s₃", "s_{3}", "Deviation parameter of the third CBED fringe minimum."),
             _entry("s_4", "s₄", "s_{4}", "Deviation parameter of the fourth CBED fringe minimum."),
             _entry("s_5", "s₅", "s_{5}", "Deviation parameter of the fifth CBED fringe minimum."),
+            _entry(
+                "defocus",
+                "Δf",
+                r"\Delta f",
+                "Objective lens defocus in high-resolution transmission electron microscopy.",
+            ),
+            _entry(
+                "spherical_aberration",
+                "Cs",
+                "C_{s}",
+                "Spherical aberration coefficient of the objective lens.",
+            ),
+            _entry(
+                "chromatic_aberration",
+                "Cc",
+                "C_{c}",
+                "Chromatic aberration coefficient of the objective lens.",
+            ),
+            _entry(
+                "semiangle_cutoff",
+                "α_obj",
+                r"\alpha_{\mathrm{obj}}",
+                "Objective aperture semiangle cutoff in HRTEM.",
+            ),
             # -- stage and detector -------------------------------------------
             _entry(
                 "alpha_tilt", "α", r"\alpha", "Primary (α) holder tilt of a double-tilt TEM stage."

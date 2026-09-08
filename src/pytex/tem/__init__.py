@@ -42,6 +42,15 @@ choice determines what can and cannot be resolved:
 
 from __future__ import annotations
 
+from pytex.diffraction.hrem import (
+    CTF1D,
+    AtomicSnapshot,
+    DoubleCorrectionMode,
+    HREMSimulationResult,
+    MicroscopeAberrations,
+    pure_python_phase_object_simulation,
+    relativistic_wavelength_angstrom,
+)
 from pytex.tem.ambiguity import (
     AmbiguityFamily,
     AmbiguityLayer,
@@ -117,21 +126,26 @@ from pytex.tem.synthetic import (
 
 __all__ = [
     "BEAM_AXIS_LABORATORY",
+    "CTF1D",
     "DEFAULT_RANKING",
     "INDEXED_ORIENTATION_SCHEMA",
     "AmbiguityFamily",
     "AmbiguityLayer",
     "AmbiguityReport",
+    "AtomicSnapshot",
     "CurrentState",
     "DetectorRaster",
     "DiscriminatingExperiment",
+    "DoubleCorrectionMode",
     "DoubleTiltStage",
     "EllipticalEnvelope",
     "GeneralStageAxes",
+    "HREMSimulationResult",
     "HolderKind",
     "IndexedOrientation",
     "IndexedPatternObservation",
     "MaskedEnvelope",
+    "MicroscopeAberrations",
     "MultiPatternOrientation",
     "PathStrategy",
     "PolygonEnvelope",
@@ -167,6 +181,8 @@ __all__ = [
     "pattern_rotational_order",
     "plan_path",
     "plan_tilt_to_zone_axis",
+    "pure_python_phase_object_simulation",
+    "relativistic_wavelength_angstrom",
     "solve_tilts_for_direction",
     "synthesize_saed_image",
     "zone_axis_atlas",

@@ -156,6 +156,7 @@ index with cross-links to the matching implementation pages.
 - [TEM Specimen Tilt Navigation](site/theory/tem_specimen_tilt_navigation.md)
 - [Convergent-Beam Electron Diffraction](site/theory/convergent_beam_electron_diffraction.md)
 - [Dynamical CBED: Many-Beam Coupling, Absorption, HOLZ Lines, and Point-Group Determination](site/theory/dynamical_cbed_and_symmetry_determination.md)
+- [High-Resolution Electron Microscopy: Multislice Propagation and Contrast Transfer Function](site/theory/hrem_multislice_and_ctf.md)
 - [Foundation Feature Priorities](site/theory/foundation_feature_priorities.md)
 
 ### Validation
