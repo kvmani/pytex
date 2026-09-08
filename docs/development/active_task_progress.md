@@ -5,6 +5,34 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
+## Rewrite Documentation for Clarity, Accuracy, and Consistent Scientific Style — IN PROGRESS (2026-09-08)
+
+**Objective.** Review and improve user-facing documentation across `docs/site/algorithms`, `docs/site/theory`,
+`docs/site/concepts`, and `docs/site/workflows`. Replace linguistically dense, overly compressed, polemical,
+or conversational phrasing with clear, direct, professional scientific English suitable for materials scientists,
+microscopists, crystallographers, engineers, and graduate students, modeled after the textbook style of
+`docs/site/algorithms/cbed_thickness_and_symmetry.md`. Preserve all scientific meaning, equations, units,
+conventions, references, and API behavior.
+
+### Progress Ledger
+
+| Step | Scope | State |
+|---|---|---|
+| 0 | Implementation plan approved & active task ledger initialized | Complete |
+| 1 | Increment 1: Algorithm pages — Diffraction & TEM (`cbed`, `saed`, `composite_saed`, `tem_tilt`) | Complete |
+| 2 | Increment 2: Algorithm pages — Orientation Relationships & Microstructure (`or_det`, `variant`, `parent_recon`, `csl`, `ebsd_grains`, `kikuchi`, `misorientation`) | In progress |
+| 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Pending |
+| 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Pending |
+| 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Pending |
+| 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Pending |
+
+### Increment 1 Technical Summary
+- `docs/site/algorithms/cbed_thickness_and_symmetry.md`: Replaced colloquial/rhetorical wording ("fishing expedition" -> physical regularisation; "projection symmetry is generally higher than the truth" -> projection symmetry can exceed 3D crystal symmetry; "three refusals, and why each is right" -> diagnostic error conditions and physical constraints).
+- `docs/site/algorithms/saed_pattern_indexing.md`: Standardized calibration rationale (origin vs reflection), refined intensity constraint admonition (dynamical scattering rationale), clarified symmetry deduplication vs uniqueness verdict, and reformulated ZOLZ assumption for off-axis variants.
+- `docs/site/algorithms/composite_saed_assembly.md`: Replaced colloquial "surprises" with rigorous physical consequences of Ewald curvature; refined unified detector basis construction and product-anchored variant mapping; replaced internal developer notes in space-group and intensity normalization admonitions.
+- `docs/site/algorithms/tem_tilt_navigation.md`: Replaced conversational opening and "what is actually hard" table with physical/mathematical considerations; formalized holder frame identity as specimen reference frame; clarified double-tilt gimbal cancellation conditions and two-zone attitude determination consistency checks.
+- Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy, test_app_manifest).
+
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)
 
 **Objective.** Support direct loading and analysis of experimental powder XRD pattern files

@@ -32,16 +32,16 @@ error**:
 
 $$s_g = g_z - \frac{\lambda \lVert \mathbf{g} \rVert^2}{2},$$
 
-with $g_z$ the component along the zone axis. Two consequences are worth
-stating because both surprise readers:
+with $g_z$ the component along the zone axis. Two physical consequences follow from the Ewald sphere geometry:
 
-- A reflection lying exactly in the zero-order Laue zone has $g_z = 0$, so
-  $s_g = -\lambda\lVert\mathbf{g}\rVert^2/2$ — **not** zero. Exact Bragg
-  condition is not the same as being on the zone.
-- $\lambda$ is small ($0.025079$ Å at 200 kV, $0.019687$ Å at 300 kV,
-  relativistically), so the sphere is nearly flat over the accessible
-  $\lVert\mathbf{g}\rVert$ range and a zone-axis pattern looks like a planar
-  section of the reciprocal lattice.
+- A reciprocal lattice point lying strictly within the zero-order Laue zone has $g_z = 0$,
+  yielding $s_g = -\lambda\lVert\mathbf{g}\rVert^2/2 \neq 0$. Consequently, the exact
+  Bragg condition ($s_g = 0$) does not coincide with the zero-order Laue plane, but
+  occurs where the curved Ewald sphere intersects the reciprocal lattice.
+- Because high-energy electron wavelengths are small ($\lambda = 0.025079$ Å at 200 kV
+  and $0.019687$ Å at 300 kV, relativistically), the Ewald sphere curvature is gentle
+  across the low-index reflection regime, rendering the observed zone-axis pattern an
+  approximately planar section of reciprocal space.
 
 A reflection is kept when $\lvert s_g \rvert \le$
 `max_excitation_error_inv_angstrom`. The default of 0.05 Å⁻¹ keeps every
@@ -71,8 +71,9 @@ component the excitation error records.
 
 ## 2. The shared detector basis
 
-Everything rests on one construction. Given a parent zone direction
-$\mathbf{z}_p$, `zone_basis_from_axis` returns an orthonormal right-handed triad
+Composite pattern simulation requires projecting multiple crystal phases onto a
+unified detector coordinate system. Given a parent zone direction $\mathbf{z}_p$,
+`zone_basis_from_axis` returns an orthonormal right-handed triad
 $(\hat{\mathbf{u}}, \hat{\mathbf{v}}, \hat{\mathbf{z}})$ with
 $\hat{\mathbf{z}} = \mathbf{z}_p / \lVert \mathbf{z}_p \rVert$ and
 $\hat{\mathbf{u}} \times \hat{\mathbf{v}} = \hat{\mathbf{z}}$. An optional
@@ -83,28 +84,29 @@ Each variant's basis is the parent's rotated into that child's frame:
 
 $$\mathbf{B}_k = \mathbf{V}_k \mathbf{B}_{\text{parent}} .$$
 
-This is algebraically identical to pulling child reciprocal vectors back into the
-parent frame before projecting, so every sub-pattern is physically consistent on
-one detector — that is what makes a composite pattern meaningful rather than a
-collage.
+This transformation is algebraically equivalent to rotating child reciprocal vectors
+into the reference frame before planar projection, ensuring geometric and metric
+consistency across all overlay sub-patterns on the detector.
 
 The child zone axis is then $\mathbf{z}_c = \mathbf{V}_k \mathbf{z}_p$, which is
-**generally irrational**. The exact direction drives the simulation and a nearest
-rational label is reported with its angular deviation, so a label is never
-mistaken for the geometry.
+**generally irrational**. The exact direction drives the simulation, and the nearest
+rational crystallographic index is reported alongside its angular deviation to
+distinguish the exact geometry from its rational approximation.
 
 ## 3. Anchoring on a product zone instead
 
-The derivation's natural choice is a parent zone axis; the microscope's is a
-low-index zone of the *product*. `simulate_composite_saed_from_child_zone` takes
-the latter and maps it back through the anchor variant:
+While analytical derivations naturally proceed from a parent zone axis, experimental
+TEM observations typically align with a low-index zone axis of a specific product
+variant. The function `simulate_composite_saed_from_child_zone` supports this experimental
+workflow by transforming the chosen child zone axis $\mathbf{z}_c$ back into the parent
+crystal frame via the anchor variant rotation:
 
 $$\mathbf{z}_p = \mathbf{R}_k^{\mathsf{T}} \mathbf{z}_c .$$
 
-That parent direction is generally irrational, and is reported exactly alongside
-its nearest rational label — the same honesty child zone axes receive, so
-neither crystal is privileged in the output. The basis is then built by the same
-`zone_basis_from_axis` call, which gives a **testable identity**:
+The resulting parent zone direction $\mathbf{z}_p$ is generally irrational and is reported
+with both its exact unit vector and its nearest rational Miller index approximation.
+Constructing the detector triad from $\mathbf{z}_p$ ensures complete equivalence between
+parent-anchored and child-anchored projections:
 
 :::{admonition} Identity: the two anchoring routes agree exactly
 :class: tip
@@ -154,35 +156,29 @@ deviation. 34 parent reflections, 338 spots in total.
 
 ## 5. Constraints
 
-:::{admonition} Constraint: declare the space group, or absences are assumed away
+:::{admonition} Precondition: space-group specification and systematic absences
 :class: warning
 
-Lattice centring is read from the **first letter of the space-group symbol**, and
-`ReflectionCondition.from_phase` falls back to primitive when a phase carries
-none. A body-centred phase supplied without its symbol is therefore simulated as
-primitive and keeps reflections its real structure forbids — with nothing in the
-spot list to say so.
+Lattice centring and systematic absence conditions are determined from the space-group
+symbol via `ReflectionCondition.from_phase`. If a phase definition lacks space-group
+information, PyTex defaults to a primitive Bravais lattice, which does not filter out
+systematically absent reflections (such as $\{100\}$ in a body-centred cubic phase).
 
-`pattern.centering_audit()` reports, per phase, the centring applied and whether
-it was **declared** or **assumed**; `describe()`, the reflection table and the
-manifest carry the same statement, and an assumed centring produces an explicit
-warning. If a simulated bcc pattern shows a $\{100\}$ reflection, this is why.
-
-This was not hypothetical: the repository's own shared Burgers worked-example
-setup declared no space groups and had been listing forbidden $\beta$
-reflections until the audit was built.
+To make these assumptions transparent, `pattern.centering_audit()` reports whether
+the centring condition was explicitly declared or inferred. The reflection table,
+manifest, and `describe()` surface record this classification, and an inferred centring
+emits an advisory warning so that missing space-group metadata can be identified.
 :::
 
-:::{admonition} Constraint: intensities are per sub-pattern, and cannot be shared
+:::{admonition} Constraint: independent sub-pattern intensity normalization
 :class: important
 
-Each sub-pattern's intensities are normalized to its own maximum. Kinematic
-theory defines **no** intensity ratio between two different phases, so comparing
-a $\beta$ spot's intensity with an $\alpha$ spot's is meaningless.
-
-A shared normalization option was considered and **rejected**, not deferred: it
-would manufacture a number the theory does not support. Compare within one
-source only; `describe()` states this.
+Kinematic diffraction theory calculates relative intensities within a single crystal
+structure, but does not define an absolute intensity ratio between different phases
+without explicit volume fractions, sample thickness profiles, and excitation parameters.
+Each phase sub-pattern is therefore normalized independently to its own maximum intensity.
+Quantitative cross-phase intensity ratios should not be inferred from the composite
+kinematic display.
 :::
 
 :::{admonition} Constraint: sort keys are quantized

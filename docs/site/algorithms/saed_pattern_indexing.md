@@ -45,11 +45,11 @@ with $r$ measured from the transmitted beam. Pixels scale by the pixel pitch
 first. The camera constant may be given directly or derived from a camera length
 and accelerating voltage through the relativistic electron wavelength.
 
-The **transmitted beam is not a spot** — it is the calibration's centre, and a
-spot coinciding with it is rejected, because it has no direction. Coordinates in
-pixels or millimetres without a camera constant are rejected **at construction**,
-not at first use: an uncalibrated length is not a recoverable state, so failing
-early is the only honest option.
+The **transmitted beam defines the pattern origin** rather than a diffracted reflection;
+any spot located at the origin is rejected because it has zero scattering vector magnitude.
+Coordinates supplied in pixels or millimetres without an accompanying camera constant
+are rejected at construction to prevent propagation of uncalibrated spatial metrics
+into reciprocal space.
 
 ## 3. Seeding: ratio and angle
 
@@ -77,12 +77,15 @@ The defaults are calibrated, not arbitrary:
   $\{111\}$ and $\{200\}$ rings of an fcc metal, which differ by 15%.
 - $\varepsilon_{\text{ang}} = 2°$.
 
-:::{admonition} Constraint: intensities are never used
+:::{admonition} Constraint: geometric matching without intensity weighting
 :class: important
 
-A kinematic intensity model is not reliable enough to index against, and a
-printed pattern rarely carries calibrated intensities at all. **Geometry alone
-decides.** Intensity is carried through for plotting and record-keeping only.
+Selected-area electron diffraction patterns are subject to strong dynamical scattering
+and thickness effects, making kinematic intensity calculations unreliable for candidate
+selection. Experimental spot patterns also frequently lack calibrated photometric
+measurements. Consequently, indexing relies strictly on reciprocal-lattice geometry
+(vector lengths and interplanar angles). Intensity values are retained solely for
+visualization and record-keeping.
 :::
 
 ## 4. Zone axis and orientation
@@ -114,31 +117,32 @@ ordering is deliberate: a solution explaining every spot with moderate residuals
 is a better answer than one explaining half of them perfectly, which is usually a
 coincidence on a sub-lattice.
 
-:::{admonition} Symmetry-equivalent descriptions are one answer, not several
+:::{admonition} Deduplication of symmetry-equivalent solutions
 :class: tip
 
-Many seed assignments are related by a crystal symmetry operation and give the
-same physical answer through different bookkeeping. Two solutions are the same
-when their rotations differ by an element of the point group:
-$\mathbf{R}_1 \simeq \mathbf{R}_2 \mathbf{S}$.
+Different seed assignments frequently correspond to symmetry-equivalent descriptions
+of the same physical crystal orientation. Two candidate solutions are equivalent when
+their rotation matrices differ only by a right multiplication with an element of the
+crystal point group: $\mathbf{R}_1 \simeq \mathbf{R}_2 \mathbf{S}$ for $\mathbf{S} \in G$.
 
-They are deduplicated on that test, and the survivor is rewritten into the
-description a crystallographer would write — fewest negative indices, then lowest
-— so a cubic cube-axis pattern reports $[001]$ rather than the equally valid
-$[0\bar{1}0]$ the seed search happened to find first. Without this, an
-unambiguous solve reported five competing "100% matched" solutions and
-`is_conclusive` was `False`.
+Candidate solutions are deduplicated under this equivalence relation. The representative
+solution is normalized to conventional crystallographic notation (minimizing negative
+indices and choosing the lowest integer representation). For example, a cubic pattern
+aligned with the cube axis is reported as $[001]$ rather than an arbitrary symmetry
+equivalent such as $[0\bar{1}0]$. Deduplication ensures that uniqueness criteria
+(`is_conclusive`) evaluate physically distinct orientations rather than symmetry duplicates.
 :::
 
-:::{admonition} The zone-sense ambiguity is intrinsic, not a failure
+:::{admonition} Intrinsic zone-sense ambiguity
 :class: warning
 
-A single SAED pattern **cannot** distinguish a zone axis from its reverse when
-the reflection set is centrosymmetric: inverting the crystal leaves the pattern
-unchanged (Friedel). The two senses are genuinely different proper rotations that
-index equally well, and the report names the ambiguity rather than presenting one
-sense as the answer. Resolving it needs a second zone axis or a
-convergent-beam/dynamical observation.
+A single kinematic SAED pattern cannot distinguish a zone axis from its antipodal
+direction when the projected diffraction geometry satisfies Friedel's law ($I_{\mathbf{g}} = I_{-\mathbf{g}}$):
+inverting the crystal structure yields an identical diffraction pattern. The two
+senses represent distinct proper rotations that index observed spot positions equally
+well. PyTex reports the presence of this fundamental ambiguity explicitly. Unambiguous
+resolution requires tilted multi-zone data, convergent-beam electron diffraction (CBED),
+or dynamical diffraction analysis.
 :::
 
 `is_conclusive` requires the best solution to index **every** spot and to face no
@@ -208,15 +212,15 @@ worth checking rather than assuming.
 
 ## 8. Constraints and limits
 
-:::{admonition} Constraint: a zone-axis pattern is assumed
+:::{admonition} Assumption: planar zero-order Laue zone geometry
 :class: warning
 
-The spots must lie in one zero-order Laue zone. A crystal tilted off zone — for
-instance a transformation variant seen from a **parent** zone axis, whose own
-child zone axis is generally irrational — produces spots that do not all lie in
-one ZOLZ and is only **partly** indexed. That partial match is the honest
-outcome; a full match there would mean the solver was inventing reflections, and
-a test pins the partial result rather than leaving it to be discovered.
+The indexing model assumes that observed reflections originate predominantly from a
+single zero-order Laue zone (ZOLZ). When a crystal is tilted away from an exact low-index
+zone axis — such as a product transformation variant viewed along a parent zone axis
+where the child zone is irrational — excitation errors vary continuously across reciprocal
+space. In such cases, only reflections falling within the excitation tolerance are indexed,
+yielding a partial solution that accurately represents the off-axis diffraction condition.
 :::
 
 - Systematic absences come from each phase's space group, so a phase supplied

@@ -5,53 +5,52 @@ orientation, `DoubleTiltStage` and the `TiltEnvelope` family for the holder,
 `analyze_ambiguity` for identifiability, and
 `pytex.plotting.tilt_stereogram.plot_tilt_stereogram` for the figure.
 
-You are down one zone axis and want another. This computes the holder $\alpha$
-and $\beta$ that get you there, tells you whether the holder can reach it at all,
-plans the route, and states plainly what the available observations leave
-undetermined.
+Navigating between crystallographic zone axes in transmission electron microscopy
+requires determining the goniometer tilt angles $(\alpha, \beta)$ that bring a
+target zone axis into coincidence with the electron beam. This page outlines
+stage kinematics, reachability within coupled tilt envelopes, closed-form
+inversion, and orientation determination from single patterns versus two-zone
+orientations.
 
-The theory note is
-{doc}`/theory/tem_specimen_tilt_navigation`;
-the design record with the full identifiability analysis is
+The theory note is {doc}`/theory/tem_specimen_tilt_navigation`; the architecture
+foundation with full identifiability analysis is
 {doc}`../architecture/tem_tilt_navigation_foundation`.
 
-## 1. What is actually hard
+## 1. Physical and mathematical considerations
 
-The geometry is the easy half. Alignment inverts in two lines of `atan2`, and
-reachability is a constant-time membership test rather than a search. The
-difficulty is in three places that a naive treatment misses entirely:
+While ideal geometric alignment can be inverted analytically, practical tilt
+planning is governed by three physical constraints:
 
-| Looks like | Actually |
+| Nominal problem | Physical reality |
 | --- | --- |
-| "solve for two angles" | Four branches, times up to 48 symmetry images, times up to two ambiguity families — and telling a *choice* from a *hypothesis* |
-| "the 180° ambiguity is the problem" | Friedel's law is harmless for 22 of the 32 point groups; the diffraction rotation is what bites |
-| "the holder limits are a box" | Real envelopes couple the two ranges, and a path can leave one it started inside |
+| Two-angle inversion | Multiple mathematical solution branches, crystal symmetry equivalents (up to 48 in cubic crystals), and physical ambiguity families. |
+| Zone-sense ambiguity | Friedel's law introduces antipodal symmetry; determining true orientation additionally requires accounting for microscope lens rotation (diffraction rotation). |
+| Tilt stage limits | Real pole-piece clearances impose coupled $(\alpha, \beta)$ envelopes rather than independent Cartesian angular limits. |
 
-## 2. Frames, and the collapse that matters
+## 2. Coordinate frame definitions
 
-No new frame domain is introduced: the **holder frame is the specimen-domain
-frame** for TEM work, so the crystal-to-holder rotation $\mathbf{U}$ is an
-ordinary `Orientation`.
+In PyTex TEM workflows, the **holder coordinate system serves directly as the
+specimen-domain reference frame**, with the crystal-to-holder rotation $\mathbf{U}$
+represented as a standard `Orientation`.
 
-That is not bookkeeping. A textbook treatment inserts a specimen frame between
-crystal and holder, joined by a mounting rotation — and **that rotation and the
-crystal orientation are not separately identifiable from diffraction data**. No
-observable depends on either alone, only on their product, so carrying them
-apart manufactures an unobservable degree of freedom, which is the classic route
-to a sign error that hides for months.
+Separating the specimen frame from the holder frame by an intermediate mounting
+rotation introduces an unobservable degree of freedom: diffraction measurements
+observe only the combined crystal-to-holder rotation $\mathbf{U}$. Defining
+$\mathbf{U}$ directly eliminates parameter redundancy and ensures traceability
+throughout tilt planning.
 
 ## 3. Stage kinematics
 
-The $\alpha$ axis is the rod, fixed in the column. The $\beta$ axis is a cradle
-carried *inside* the rod, so it moves when $\alpha$ changes. Composing the
-$\beta$ rotation about its instantaneous laboratory axis with $\alpha$:
+The $\alpha$ axis is the holder rod, fixed in the microscope column. The $\beta$
+axis is a cradle carried *inside* the rod, so its orientation rotates with $\alpha$.
+Composing the $\beta$ rotation about its instantaneous laboratory axis with $\alpha$:
 
 $$\mathbf{R}_{\text{stage}} = \bigl[\mathbf{R}_x(\alpha)\mathbf{R}_y(\beta)\mathbf{R}_x(\alpha)^{\mathsf T}\bigr]\mathbf{R}_x(\alpha) = \mathbf{R}_x(\alpha)\,\mathbf{R}_y(\beta),$$
 
-so the moving-axis factors cancel exactly. **That cancellation is a property of
-this axis pair, not a general licence to ignore axis motion** — it does not
-survive a non-orthogonal or mis-set pair, which is why the calibrated path
-composes the two rotations explicitly.
+so the moving-axis factors cancel algebraically. This simplification is specific
+to an orthogonal double-tilt gimbal where the inner $\beta$ axis rotates about
+the outer $\alpha$ axis. For non-orthogonal or non-ideal stage configurations,
+the forward kinematics must be composed explicitly via rotation operators.
 
 Transposing for the beam axis gives the form everything else uses:
 
@@ -103,22 +102,24 @@ accident.
 | Self-checking | `det U = +1` only | interzonal-angle test |
 | Constructor | `CurrentState.from_pattern_solution` | `CurrentState.from_two_zone_axes` |
 
-The two-zone path uses only zone-axis identities and stage readouts:
-$\mathbf{U}\hat{\mathbf{n}}_i = \hat{\mathbf{b}}_H(\alpha_i,\beta_i)$, solved as
-a two-vector attitude problem. **The single hardest calibration constant in the
-problem is simply not required** — and since anyone who chased Kikuchi bands to
-get here has almost certainly seen a second zone, this is the path to use.
+The two-zone approach relies strictly on crystallographic zone indices and recorded
+stage tilt readouts: $\mathbf{U}\hat{\mathbf{n}}_i = \hat{\mathbf{b}}_H(\alpha_i,\beta_i)$,
+solved as a classic two-vector attitude determination problem. This method bypasses
+the need for the microscope diffraction lens rotation calibration constant.
 
-It also supplies a check that costs nothing: the interzonal angle is a
-crystallographic invariant, the beam-direction angle depends only on the stage
-model, and a disagreement indicts a reversed sign convention, a mis-indexed
-zone, or a bent specimen.
+Furthermore, it provides an intrinsic physical consistency check: the angle between
+the two crystallographic zone axes $\hat{\mathbf{n}}_1 \cdot \hat{\mathbf{n}}_2$ is
+fixed by lattice geometry and must equal the angle between the two calibrated beam
+directions $\hat{\mathbf{b}}_{H,1} \cdot \hat{\mathbf{b}}_{H,2}$. A discrepancy
+between these angles immediately diagnoses stage miscalibration, zone indexing errors,
+or localized specimen bending.
 
-A residual two-fold survives — flipping *both* senses gives a second valid
-rotation, a $180°$ turn about $\hat{\mathbf{n}}_1\times\hat{\mathbf{n}}_2$ — and
-it is **harmless exactly when that two-fold is a crystal symmetry**, which the
-engine checks and reports. For cubic $[001]$ and $[110]$ the axis is
-$\langle 1\bar{1}0\rangle$ and the answer is yes.
+A residual two-fold ambiguity persists when inverting both zone senses simultaneously,
+corresponding to a $180°$ rotation about $\hat{\mathbf{n}}_1\times\hat{\mathbf{n}}_2$.
+This ambiguity is physically inconsequential whenever the two-fold operation coincides
+with an element of the crystal point group, which the engine evaluates and reports.
+For example, between cubic $[001]$ and $[110]$, the cross-product axis is
+$\langle 1\bar{1}0\rangle$, which is an exact diad in $m\bar{3}m$.
 
 ## 6. Identifiability: three separate ambiguities
 

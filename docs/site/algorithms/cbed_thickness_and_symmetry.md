@@ -99,9 +99,11 @@ input : s_1..s_N        (excitation errors of the dark fringes, any sign)
 9  report t, xi_g, the orders used, R^2, and the residuals
 ```
 
-Step 5 is what makes the search safe rather than a fishing expedition: a wrong
-order assignment does not merely shift the line, it **curves** the plot, so the
-non-physical fits are rejected on sign before $R^2$ is consulted.
+Step 5 provides physical regularisation: testing arbitrary order assignments
+could introduce spurious matches, but an incorrect order assignment introduces
+non-linear curvature into the $(s_n/n)^2$ versus $1/n^2$ relation. Consequently,
+unphysical fits (exhibiting non-positive intercept or non-negative slope) are
+rejected on physical sign criteria before consulting $R^2$.
 
 ### 2.4 The failure mode, stated plainly
 
@@ -192,8 +194,10 @@ measurement**, and choosing one at which the candidate groups differ in BF or WP
 is a step of the method, not a detail.
 
 Note also the $[111]$ *projection* symmetry of silicon: $6mm$, higher than the
-crystal's own $3m$. Projection symmetry is generally higher than the truth, which
-is why section 3.4 refuses to report without higher-order Laue zones.
+crystal's own $3m$ point symmetry. The symmetry of a projected structure can be
+higher than the symmetry of the full three-dimensional crystal, which is why
+section 3.5 requires higher-order Laue zone (HOLZ) reflections to break the
+artificial projection symmetry.
 
 ### 3.4 The algorithm
 
@@ -213,17 +217,18 @@ input : phase, zone axis, ConvergentBeamConfig(method="bloch", laue_zones=(0,1,-
 7  report the point groups those imply, and whether all of them are centric
 ```
 
-Step 2 matters more than it looks. Testing a dense sweep of angles would find
-spurious mirrors in any smooth intensity map; taking mirror candidates only from
-the disc-centre azimuths restricts them to orientations at which a mirror could
-actually permute the discs. Step 5 is needed because $\{1, R_2, R_3, R_6\}$ is
-four matrices but a six-fold group, and naming it before closure would understate
-the symmetry.
+Testing arbitrary symmetry operations can introduce spurious matches in smooth
+intensity maps. PyTex therefore restricts candidate operations in step 2 to
+physically meaningful orientations derived from the diffraction geometry: mirror
+candidates are evaluated only along the disc-centre azimuths and their orthogonal
+axes. Step 5 guarantees algebraic completeness: a set such as $\{1, R_2, R_3, R_6\}$
+contains four matrices that generate a full six-fold group, and classifying the
+symmetry prior to group closure would understate the true pattern symmetry.
 
-### 3.5 Three refusals, and why each is right
+### 3.5 Diagnostic error conditions and physical constraints
 
-The implementation declines to answer in three situations rather than returning
-a number that would sometimes be wrong.
+The implementation rejects calculations in three specific situations where physical
+preconditions are violated, avoiding unphysical or ambiguous results:
 
 - **`method="two-beam"` is refused.** Each disc there is an independent rocking
   curve, symmetric in $s$ by construction, so every $\pm\mathbf{g}$ pair matches
