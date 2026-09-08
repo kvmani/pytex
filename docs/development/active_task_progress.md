@@ -5,7 +5,7 @@ current enough that work can resume after an interrupted agent session without r
 history. Governed by the cardinal rule in `AGENTS.md`: ledger plus commit-and-push to `main`
 after every substantial increment.
 
-## Rewrite Documentation for Clarity, Accuracy, and Consistent Scientific Style — IN PROGRESS (2026-09-08)
+## Rewrite Documentation for Clarity, Accuracy, and Consistent Scientific Style — COMPLETE (2026-09-08)
 
 **Objective.** Review and improve user-facing documentation across `docs/site/algorithms`, `docs/site/theory`,
 `docs/site/concepts`, and `docs/site/workflows`. Replace linguistically dense, overly compressed, polemical,
@@ -24,7 +24,7 @@ conventions, references, and API behavior.
 | 3 | Increment 3: Algorithm pages — Texture, Mechanics & XRD (`pole_figure_inversion`, `ghost_correction`, `ipf_coloring`, `kearns_parameter`, `schmid_and_taylor`, `elastic_homogenization`, `phase_identification`, `precise_lattice`, `rietveld`, `index`) | Complete |
 | 4 | Increment 4: Canonical Theory Notes (`cbed`, `dynamical_cbed`, `saed`, `tem_tilt`, `ebsd_kam`, `ebsd_local`, `orientation_space`, `phase_id`, etc.) | Complete |
 | 5 | Increment 5: Concepts & Workflows (`orientation_relationships`, `core_foundation`, `core_model`, `reference_frames`, `miller_planes_directions`, `ebsd_kam`, `composite_or_diffraction`, etc.) | Complete |
-| 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | In progress |
+| 6 | Comprehensive verification: Sphinx ratchet (0 warnings), unit & policy tests, ruff, repo integrity | Complete |
 
 ### Increment 1 Technical Summary
 - `docs/site/algorithms/cbed_thickness_and_symmetry.md`: Replaced colloquial/rhetorical wording ("fishing expedition" -> physical regularisation; "projection symmetry is generally higher than the truth" -> projection symmetry can exceed 3D crystal symmetry; "three refusals, and why each is right" -> diagnostic error conditions and physical constraints).
@@ -79,6 +79,13 @@ conventions, references, and API behavior.
 - `docs/site/workflows/saed_pattern_solving.md`: Standardized solution diagnostics and uniqueness criteria; clarified physical off-zone partial matching expectations.
 - `docs/site/workflows/tem_pattern_indexing.md`: Formulated end-to-end TEM workflow overview and camera constant calibration significance.
 - Verification: base lane passed (ruff, repo integrity, test_documentation_policy, test_reference_policy).
+
+### Step 6 Verification & Completion Summary
+- `python scripts/check_sphinx_warnings.py --max-warnings 0`: Built Sphinx site and verified 0 warnings.
+- `python scripts/check_repo_integrity.py`: Passed with 0 integrity or hygiene violations.
+- `python -m ruff check docs/`: Passed with 0 linter issues.
+- `python -m pytest -p no:napari tests/unit/test_documentation_policy.py tests/unit/test_reference_policy.py tests/unit/test_repo_integrity.py`: 51 passed with 0 warnings.
+- All 5 substantial increments committed and pushed to `main`.
 
 ## Experimental XRD Pattern File Loading & Analysis — COMPLETE (2026-09-06)
 
